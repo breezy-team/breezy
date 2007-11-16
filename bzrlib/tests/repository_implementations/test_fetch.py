@@ -69,7 +69,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
         # disk.
         knit3_repo = b_bzrdir.open_repository()
         rev1_tree = knit3_repo.revision_tree('rev1')
-        lines = rev1_tree.get_file_lines(rev1_tree.inventory.root.file_id)
+        lines = rev1_tree.get_file_lines(rev1_tree.get_root_id())
         self.assertEqual([], lines)
         b_branch = b_bzrdir.create_branch()
         b_branch.pull(tree_a.branch)

@@ -1356,6 +1356,9 @@ class ConnectedTransport(Transport):
             except ValueError:
                 raise errors.InvalidURL('invalid port number %s in url:\n%s' %
                                         (port, url))
+        if host == '':
+            raise errors.InvalidURL('Host empty in: %s' % url)
+
         host = urllib.unquote(host)
         path = urllib.unquote(path)
 
@@ -1511,7 +1514,14 @@ class ConnectedTransport(Transport):
 
         :return: A new transport or None if the connection cannot be shared.
         """
-        (scheme, user, password, host, port, path) = self._split_url(other_base)
+        try:
+            (scheme, user, password,
+             host, port, path) = self._split_url(other_base)
+        except errors.InvalidURL:
+            # No hope in trying to reuse an existing transport for an invalid
+            # URL
+            return None
+
         transport = None
         # Don't compare passwords, they may be absent from other_base or from
         # self and they don't carry more information than user anyway.

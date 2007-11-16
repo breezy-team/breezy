@@ -14,28 +14,22 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+"""Tests for the 'check' CLI command."""
 
-from bzrlib.builtins import cmd_checkout
-from bzrlib.tests.transport_util import TestCaseWithConnectionHookedTransport
+from bzrlib.tests.blackbox import ExternalBase
 
 
-class TestCheckout(TestCaseWithConnectionHookedTransport):
+class TestCheck(ExternalBase):
 
-    def test_checkout(self):
-        self.make_branch_and_tree('branch1')
+    def test_check_no_tree(self):
+        self.make_branch('.')
+        self.run_bzr('check')
 
-        self.start_logging_connections()
+    def test_check_initial_tree(self):
+        self.make_branch_and_tree('.')
+        self.run_bzr('check')
 
-        cmd = cmd_checkout()
-        cmd.run(self.get_url('branch1'), 'local')
-        self.assertEquals(1, len(self.connections))
-
-    def test_checkout_lightweight(self):
-        self.make_branch_and_tree('branch1')
-
-        self.start_logging_connections()
-
-        cmd = cmd_checkout()
-        cmd.run(self.get_url('branch1'), 'local', lightweight=True)
-        self.assertEquals(1, len(self.connections))
-
+    def test_check_one_commit_tree(self):
+        tree = self.make_branch_and_tree('.')
+        tree.commit('hallelujah')
+        self.run_bzr('check')

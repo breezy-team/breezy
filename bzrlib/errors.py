@@ -470,7 +470,8 @@ class RenameFailedFilesExist(BzrError):
     """Used when renaming and both source and dest exist."""
 
     _fmt = ("Could not rename %(source)s => %(dest)s because both files exist."
-            "%(extra)s")
+            " (Use --after to tell bzr about a rename that has already"
+            " happened)%(extra)s")
 
     def __init__(self, source, dest, extra=None):
         BzrError.__init__(self)
@@ -1252,7 +1253,7 @@ class WeaveFormatError(WeaveError):
 
 class WeaveParentMismatch(WeaveError):
 
-    _fmt = "Parents are mismatched between two revisions."
+    _fmt = "Parents are mismatched between two revisions. %(message)s"
     
 
 class WeaveInvalidChecksum(WeaveError):
@@ -1482,14 +1483,13 @@ class RedirectRequested(TransportError):
 
     _fmt = '%(source)s is%(permanently)s redirected to %(target)s'
 
-    def __init__(self, source, target, is_permament=False, qual_proto=None):
+    def __init__(self, source, target, is_permanent=False, qual_proto=None):
         self.source = source
         self.target = target
-        if is_permament:
+        if is_permanent:
             self.permanently = ' permanently'
         else:
             self.permanently = ''
-        self.is_permament = is_permament
         self._qualified_proto = qual_proto
         TransportError.__init__(self)
 
@@ -1898,9 +1898,9 @@ class ImmortalLimbo(BzrError):
 
 class ImmortalPendingDeletion(BzrError):
 
-    _fmt = """Unable to delete transform temporary directory
-    %(pending_deletion)s.  Please examine %(pending_deletions)s to see if it
-    contains any files you wish to keep, and delete it when you are done."""
+    _fmt = ("Unable to delete transform temporary directory "
+    "%(pending_deletion)s.  Please examine %(pending_deletion)s to see if it "
+    "contains any files you wish to keep, and delete it when you are done.")
 
     def __init__(self, pending_deletion):
        BzrError.__init__(self, pending_deletion=pending_deletion)

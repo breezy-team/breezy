@@ -37,6 +37,7 @@ from bzrlib.osutils import (
 from bzrlib.tests import (
         probe_unicode_in_user_encoding,
         StringIOWrapper,
+        SymlinkFeature,
         TestCase,
         TestCaseInTempDir,
         TestSkipped,
@@ -250,8 +251,7 @@ class TestOSUtils(TestCaseInTempDir):
         self.assertFormatedDelta('2 seconds in the future', -2)
 
     def test_dereference_path(self):
-        if not osutils.has_symlinks():
-            raise TestSkipped('Symlinks are not supported on this platform')
+        self.requireFeature(SymlinkFeature)
         cwd = osutils.realpath('.')
         os.mkdir('bar')
         bar_path = osutils.pathjoin(cwd, 'bar')
@@ -284,12 +284,12 @@ class TestOSUtils(TestCaseInTempDir):
 
         # Make a file readonly
         osutils.make_readonly('file')
-        mode = osutils.lstat('file').st_mode
+        mode = os.lstat('file').st_mode
         self.assertEqual(mode, mode & 0777555)
 
         # Make a file writable
         osutils.make_writable('file')
-        mode = osutils.lstat('file').st_mode
+        mode = os.lstat('file').st_mode
         self.assertEqual(mode, mode | 0200)
 
         if osutils.has_symlinks():
@@ -937,8 +937,7 @@ class TestCopyTree(TestCaseInTempDir):
         self.assertEqual(['c'], os.listdir('target/b'))
 
     def test_copy_tree_symlinks(self):
-        if not osutils.has_symlinks():
-            return
+        self.requireFeature(SymlinkFeature)
         self.build_tree(['source/'])
         os.symlink('a/generic/path', 'source/lnk')
         osutils.copy_tree('source', 'target')

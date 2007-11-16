@@ -720,8 +720,7 @@ class WorkingTree4(WorkingTree3):
                 if from_missing: # implicitly just update our path mapping
                     move_file = False
                 elif not after:
-                    raise errors.RenameFailedFilesExist(from_rel, to_rel,
-                        extra="(Use --after to update the Bazaar id)")
+                    raise errors.RenameFailedFilesExist(from_rel, to_rel)
 
             rollbacks = []
             def rollback_rename():
@@ -1213,6 +1212,11 @@ class WorkingTree4(WorkingTree3):
             for file_id in file_ids:
                 self._inventory.remove_recursive_id(file_id)
 
+    def update_basis_by_delta(self, new_revid, delta):
+        """See MutableTree.update_basis_by_delta."""
+        assert self.last_revision() != new_revid
+        self.current_dirstate().update_basis_by_delta(delta, new_revid)
+
     @needs_read_lock
     def _validate(self):
         self._dirstate._validate()
@@ -1220,7 +1224,8 @@ class WorkingTree4(WorkingTree3):
     @needs_tree_write_lock
     def _write_inventory(self, inv):
         """Write inventory as the current inventory."""
-        assert not self._dirty, "attempting to write an inventory when the dirstate is dirty will cause data loss"
+        assert not self._dirty, ("attempting to write an inventory when the "
+            "dirstate is dirty will cause data loss")
         self.current_dirstate().set_state_from_inventory(inv)
         self._make_dirty(reset_inventory=False)
         if self._inventory is not None:
@@ -1250,7 +1255,7 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         """See WorkingTreeFormat.get_format_description()."""
         return "Working tree format 4"
 
-    def initialize(self, a_bzrdir, revision_id=None):
+    def initialize(self, a_bzrdir, revision_id=None, from_branch=None):
         """See WorkingTreeFormat.initialize().
 
         :param revision_id: allows creating a working tree at a different
@@ -1266,7 +1271,10 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         control_files.create_lock()
         control_files.lock_write()
         control_files.put_utf8('format', self.get_format_string())
-        branch = a_bzrdir.open_branch()
+        if from_branch is not None:
+            branch = from_branch
+        else:
+            branch = a_bzrdir.open_branch()
         if revision_id is None:
             revision_id = branch.last_revision()
         local_path = transport.local_abspath('dirstate')

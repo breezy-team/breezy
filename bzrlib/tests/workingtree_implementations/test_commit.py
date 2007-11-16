@@ -31,8 +31,8 @@ from bzrlib import (
     )
 from bzrlib.errors import (NotBranchError, NotVersionedError, 
                            UnsupportedOperation)
-from bzrlib.osutils import pathjoin, getcwd, has_symlinks
-from bzrlib.tests import TestSkipped, TestCase
+from bzrlib.osutils import pathjoin, getcwd
+from bzrlib.tests import TestCase
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.trace import mutter
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
@@ -105,7 +105,7 @@ class TestCommit(TestCaseWithWorkingTree):
 
         tree_a.lock_read()
         try:
-            root_id = tree_a.inventory.root.file_id
+            root_id = tree_a.get_root_id()
             paths = [(path, ie.file_id)
                      for path, ie in tree_a.iter_entries_by_dir()]
         finally:
@@ -126,7 +126,7 @@ class TestCommit(TestCaseWithWorkingTree):
 
         tree_a.lock_read()
         try:
-            root_id = tree_a.inventory.root.file_id
+            root_id = tree_a.get_root_id()
             paths = [(path, ie.file_id)
                      for path, ie in tree_a.iter_entries_by_dir()]
         finally:
@@ -145,7 +145,7 @@ class TestCommit(TestCaseWithWorkingTree):
 
         tree_a.lock_read()
         try:
-            root_id = tree_a.inventory.root.file_id
+            root_id = tree_a.get_root_id()
         finally:
             tree_a.unlock()
 

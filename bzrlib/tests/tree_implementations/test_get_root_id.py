@@ -14,35 +14,31 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Test that all Tree's implement get_symlink_target"""
+"""Tests for Tree.get_root_id()"""
 
-import os
-
-from bzrlib import (
-    errors,
-    osutils,
-    tests,
-    )
 from bzrlib.tests.tree_implementations import TestCaseWithTree
 
 
-class TestGetSymlinkTarget(TestCaseWithTree):
+class TestGetRootID(TestCaseWithTree):
 
-    def get_tree_with_symlinks(self):
-        self.requireFeature(tests.SymlinkFeature)
+    def make_tree_with_default_root_id(self):
         tree = self.make_branch_and_tree('tree')
-        os.symlink('foo', 'tree/link')
-        os.symlink('../bar', 'tree/rel_link')
-        os.symlink('/baz/bing', 'tree/abs_link')
-
-        tree.add(['link', 'rel_link', 'abs_link'],
-                 ['link-id', 'rel-link-id', 'abs-link-id'])
         return self._convert_tree(tree)
 
-    def test_get_symlink_target(self):
-        tree = self.get_tree_with_symlinks()
+    def make_tree_with_fixed_root_id(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.set_root_id('custom-tree-root-id')
+        return self._convert_tree(tree)
+
+    def test_get_root_id_default(self):
+        tree = self.make_tree_with_default_root_id()
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEqual('foo', tree.get_symlink_target('link-id'))
-        self.assertEqual('../bar', tree.get_symlink_target('rel-link-id'))
-        self.assertEqual('/baz/bing', tree.get_symlink_target('abs-link-id'))
+        self.assertIsNot(None, tree.get_root_id())
+
+    def test_get_root_id_fixed(self):
+        tree = self.make_tree_with_fixed_root_id()
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEqual('custom-tree-root-id', tree.get_root_id())
+

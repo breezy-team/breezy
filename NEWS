@@ -10,6 +10,119 @@ IN DEVELOPMENT
   NOTES WHEN UPGRADING:
 
   CHANGES:
+
+  FEATURES:
+
+   * New ``authentication.conf`` file holding the password or other credentials
+     for remote servers. This can be used for ssh, sftp, smtp and other 
+     supported transports.
+     (Vincent Ladeuil)
+
+  PERFORMANCE:
+
+   * Commit updates the state of the working tree via a delta rather than
+     supplying entirely new basis trees. For commit of a single specified file
+     this reduces the wall clock time for commit by roughly a 30%.
+     (Robert Collins, Martin Pool)
+
+   * Fetch with pack repositories will no longer read the entire history graph.
+     (Robert Collins, #88319)
+
+   * Revert takes out an appropriate lock when reverting to a basis tree, and
+     does not read the basis inventory twice. (Robert Collins)
+
+  IMPROVEMENTS:
+
+   * ``bzr tags`` now prints the revision number for each tag, instead of
+     the revision id, unless --show-ids is passed. In addition, tags can be
+     sorted chronologically instead of lexicographically with --sort=time.
+     (Adeodato Simó, #120231)
+
+  DOCUMENTATION:
+
+  BUG FIXES:
+
+   * A progress bar has been added for knitpack -> knitpack fetching.
+     (Robert Collins, #157789)
+
+   * Detect invalid transport reuse attempts by catching invalid URLs.
+     (Vincent Ladeuil, #161819)
+
+   * Do no use timeout in HttpServer anymore.
+     (Vincent Ladeuil, #158972).
+
+   * Don't catch the exceptions related to the http pipeline status before
+     retrying an http request or some programming errors may be masked.
+     (Vincent Ladeuil, #160012)
+
+   * Fix multiple connections during checkout --lightweight.
+     (Vincent Ladeuil, #159150)
+
+   * FTP server errors don't error in the error handling code.
+     (Robert Collins, #161240)
+
+   * It is clearer when a plugin cannot be loaded because of its name, and a
+     suggestion for an acceptable name is given. (Daniel Watkins, #103023)
+
+   * Obsolete packs are now cleaned up by pack and autopack operations.
+     (Robert Collins, #153789)
+
+   * Reconcile now shows progress bars. (Robert Collins, #159351)
+
+   * Stderr output via logging mechanism now goes through encoded wrapper
+     and no more uses utf-8, but terminal encoding instead. So all unicode
+     strings now should be readable in non-utf-8 terminal.
+     (Alexander Belchenko, #54173)
+
+   * The error message when ``move --after`` should be used makes how to do so
+     clearer. (Daniel Watkins, #85237)
+
+   * Unicode-safe output from ``bzr info``. The output will be encoded
+     using the terminal encoding and unrepresentable characters will be
+     replaced by '?'. (Lukáš Lalinský, #151844)
+
+   * Wrap medusa ftp test server as an FTPServer feature.
+     (Vincent Ladeuil, #157752)
+
+   * Fix exception when ScopeReplacer is assigned to before any members have
+     been retrieved.  (Aaron Bentley)
+
+   * Fix exception when revisionspec contains merge revisons but log
+     formatter doesn't support merge revisions. (Kent Gibson, #148908)
+
+   * Return error instead of a traceback for ``bzr log -r0``.
+     (Kent Gibson, #133751)
+
+  API BREAKS:
+
+   * ``osutils.backup_file`` is deprecated. Actually it's not used in bzrlib
+     during very long time. (Alexander Belchenko)
+
+   * The return value of
+     ``VersionedFile.iter_lines_added_or_present_in_versions`` has been
+     changed. Previously it was an iterator of lines, now it is an iterator of
+     (line, version_id) tuples. This change has been made to aid reconcile and
+     fetch operations. (Robert Collins)
+
+  INTERNALS:
+
+   * Added ``ContainerSerialiser`` and ``ContainerPushParser`` to
+     ``bzrlib.pack``.  These classes provide more convenient APIs for generating
+     and parsing containers from streams rather than from files.  (Andrew
+     Bennetts)
+
+   * New module ``lru_cache`` providing a cache for use by tasks that need
+     semi-random access to large amounts of data. (John A Meinel)
+
+  TESTING:
+
+
+bzr 0.92rc1 2007-10-29
+======================
+
+  NOTES WHEN UPGRADING:
+
+  CHANGES:
   
    * ``bzr`` now returns exit code 4 if an internal error occurred, and 
      3 if a normal error occurred.  (Martin Pool)

@@ -475,6 +475,313 @@ class AggregateIndex(object):
             self.knit_access.set_writer(None, None, (None, None))
 
 
+class Packer(object):
+    """Create a pack from packs."""
+
+    def __init__(self, pack_collection, packs, suffix, revision_ids=None):
+        """Create a Packer.
+
+        :param pack_collection: A RepositoryPackCollection object where the
+            new pack is being written to.
+        :param packs: The packs to combine.
+        :param suffix: The suffix to use on the temporary files for the pack.
+        :param revision_ids: Revision ids to limit the pack to.
+        """
+        self.packs = packs
+        self.suffix = suffix
+        self.revision_ids = revision_ids
+        self._pack_collection = pack_collection
+
+    def pack(self, pb=None):
+        """Create a new pack by reading data from other packs.
+
+        This does little more than a bulk copy of data. One key difference
+        is that data with the same item key across multiple packs is elided
+        from the output. The new pack is written into the current pack store
+        along with its indices, and the name added to the pack names. The 
+        source packs are not altered and are not required to be in the current
+        pack collection.
+
+        :param pb: An optional progress bar to use. A nested bar is created if
+            this is None.
+        :return: A Pack object, or None if nothing was copied.
+        """
+        # open a pack - using the same name as the last temporary file
+        # - which has already been flushed, so its safe.
+        # XXX: - duplicate code warning with start_write_group; fix before
+        #      considering 'done'.
+        if self._pack_collection._new_pack is not None:
+            raise errors.BzrError('call to create_pack_from_packs while '
+                'another pack is being written.')
+        if self.revision_ids is not None:
+            if len(self.revision_ids) == 0:
+                # silly fetch request.
+                return None
+            else:
+                self.revision_ids = frozenset(self.revision_ids)
+        if pb is None:
+            self.pb = ui.ui_factory.nested_progress_bar()
+        else:
+            self.pb = pb
+        try:
+            return self._create_pack_from_packs()
+        finally:
+            if pb is None:
+                self.pb.finished()
+
+    def open_pack(self):
+        """Open a pack for the pack we are creating."""
+        return NewPack(self._pack_collection._upload_transport,
+            self._pack_collection._index_transport,
+            self._pack_collection._pack_transport, upload_suffix=self.suffix)
+
+    def _create_pack_from_packs(self):
+        self.pb.update("Opening pack", 0, 5)
+        new_pack = self.open_pack()
+        # buffer data - we won't be reading-back during the pack creation and
+        # this makes a significant difference on sftp pushes.
+        new_pack.set_write_cache_size(1024*1024)
+        if 'pack' in debug.debug_flags:
+            plain_pack_list = ['%s%s' % (a_pack.pack_transport.base, a_pack.name)
+                for a_pack in self.packs]
+            if self.revision_ids is not None:
+                rev_count = len(self.revision_ids)
+            else:
+                rev_count = 'all'
+            mutter('%s: create_pack: creating pack from source packs: '
+                '%s%s %s revisions wanted %s t=0',
+                time.ctime(), self._pack_collection._upload_transport.base, new_pack.random_name,
+                plain_pack_list, rev_count)
+        # select revisions
+        if self.revision_ids:
+            revision_keys = [(revision_id,) for revision_id in self.revision_ids]
+        else:
+            revision_keys = None
+
+        # select revision keys
+        revision_index_map = self._pack_collection._packs_list_to_pack_map_and_index_list(
+            self.packs, 'revision_index')[0]
+        revision_nodes = self._pack_collection._index_contents(revision_index_map, revision_keys)
+        # copy revision keys and adjust values
+        self.pb.update("Copying revision texts", 1)
+        list(self._copy_nodes_graph(revision_nodes, revision_index_map,
+            new_pack._writer, new_pack.revision_index))
+        if 'pack' in debug.debug_flags:
+            mutter('%s: create_pack: revisions copied: %s%s %d items t+%6.3fs',
+                time.ctime(), self._pack_collection._upload_transport.base, new_pack.random_name,
+                new_pack.revision_index.key_count(),
+                time.time() - new_pack.start_time)
+        # select inventory keys
+        inv_keys = revision_keys # currently the same keyspace, and note that
+        # querying for keys here could introduce a bug where an inventory item
+        # is missed, so do not change it to query separately without cross
+        # checking like the text key check below.
+        inventory_index_map = self._pack_collection._packs_list_to_pack_map_and_index_list(
+            self.packs, 'inventory_index')[0]
+        inv_nodes = self._pack_collection._index_contents(inventory_index_map, inv_keys)
+        # copy inventory keys and adjust values
+        # XXX: Should be a helper function to allow different inv representation
+        # at this point.
+        self.pb.update("Copying inventory texts", 2)
+        inv_lines = self._copy_nodes_graph(inv_nodes, inventory_index_map,
+            new_pack._writer, new_pack.inventory_index, output_lines=True)
+        if self.revision_ids:
+            fileid_revisions = self._pack_collection.repo._find_file_ids_from_xml_inventory_lines(
+                inv_lines, self.revision_ids)
+            text_filter = []
+            for fileid, file_revids in fileid_revisions.iteritems():
+                text_filter.extend(
+                    [(fileid, file_revid) for file_revid in file_revids])
+        else:
+            # eat the iterator to cause it to execute.
+            list(inv_lines)
+            text_filter = None
+        if 'pack' in debug.debug_flags:
+            mutter('%s: create_pack: inventories copied: %s%s %d items t+%6.3fs',
+                time.ctime(), self._pack_collection._upload_transport.base, new_pack.random_name,
+                new_pack.inventory_index.key_count(),
+                time.time() - new_pack.start_time)
+        # select text keys
+        text_index_map = self._pack_collection._packs_list_to_pack_map_and_index_list(
+            self.packs, 'text_index')[0]
+        text_nodes = self._pack_collection._index_contents(text_index_map, text_filter)
+        if text_filter is not None:
+            # We could return the keys copied as part of the return value from
+            # _copy_nodes_graph but this doesn't work all that well with the
+            # need to get line output too, so we check separately, and as we're
+            # going to buffer everything anyway, we check beforehand, which
+            # saves reading knit data over the wire when we know there are
+            # mising records.
+            text_nodes = set(text_nodes)
+            present_text_keys = set(_node[1] for _node in text_nodes)
+            missing_text_keys = set(text_filter) - present_text_keys
+            if missing_text_keys:
+                # TODO: raise a specific error that can handle many missing
+                # keys.
+                a_missing_key = missing_text_keys.pop()
+                raise errors.RevisionNotPresent(a_missing_key[1],
+                    a_missing_key[0])
+        # copy text keys and adjust values
+        self.pb.update("Copying content texts", 3)
+        list(self._copy_nodes_graph(text_nodes, text_index_map,
+            new_pack._writer, new_pack.text_index))
+        if 'pack' in debug.debug_flags:
+            mutter('%s: create_pack: file texts copied: %s%s %d items t+%6.3fs',
+                time.ctime(), self._pack_collection._upload_transport.base, new_pack.random_name,
+                new_pack.text_index.key_count(),
+                time.time() - new_pack.start_time)
+        # select signature keys
+        signature_filter = revision_keys # same keyspace
+        signature_index_map = self._pack_collection._packs_list_to_pack_map_and_index_list(
+            self.packs, 'signature_index')[0]
+        signature_nodes = self._pack_collection._index_contents(signature_index_map,
+            signature_filter)
+        # copy signature keys and adjust values
+        self.pb.update("Copying signature texts", 4)
+        self._copy_nodes(signature_nodes, signature_index_map, new_pack._writer,
+            new_pack.signature_index)
+        if 'pack' in debug.debug_flags:
+            mutter('%s: create_pack: revision signatures copied: %s%s %d items t+%6.3fs',
+                time.ctime(), self._pack_collection._upload_transport.base, new_pack.random_name,
+                new_pack.signature_index.key_count(),
+                time.time() - new_pack.start_time)
+        if not new_pack.data_inserted():
+            new_pack.abort()
+            return None
+        self.pb.update("Finishing pack", 5)
+        new_pack.finish()
+        self._pack_collection.allocate(new_pack)
+        return new_pack
+
+    def _copy_nodes(self, nodes, index_map, writer, write_index):
+        """Copy knit nodes between packs with no graph references."""
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            return self._do_copy_nodes(nodes, index_map, writer,
+                write_index, pb)
+        finally:
+            pb.finished()
+
+    def _do_copy_nodes(self, nodes, index_map, writer, write_index, pb):
+        # for record verification
+        knit_data = _KnitData(None)
+        # plan a readv on each source pack:
+        # group by pack
+        nodes = sorted(nodes)
+        # how to map this into knit.py - or knit.py into this?
+        # we don't want the typical knit logic, we want grouping by pack
+        # at this point - perhaps a helper library for the following code 
+        # duplication points?
+        request_groups = {}
+        for index, key, value in nodes:
+            if index not in request_groups:
+                request_groups[index] = []
+            request_groups[index].append((key, value))
+        record_index = 0
+        pb.update("Copied record", record_index, len(nodes))
+        for index, items in request_groups.iteritems():
+            pack_readv_requests = []
+            for key, value in items:
+                # ---- KnitGraphIndex.get_position
+                bits = value[1:].split(' ')
+                offset, length = int(bits[0]), int(bits[1])
+                pack_readv_requests.append((offset, length, (key, value[0])))
+            # linear scan up the pack
+            pack_readv_requests.sort()
+            # copy the data
+            transport, path = index_map[index]
+            reader = pack.make_readv_reader(transport, path,
+                [offset[0:2] for offset in pack_readv_requests])
+            for (names, read_func), (_1, _2, (key, eol_flag)) in \
+                izip(reader.iter_records(), pack_readv_requests):
+                raw_data = read_func(None)
+                # check the header only
+                df, _ = knit_data._parse_record_header(key[-1], raw_data)
+                df.close()
+                pos, size = writer.add_bytes_record(raw_data, names)
+                write_index.add_node(key, eol_flag + "%d %d" % (pos, size))
+                pb.update("Copied record", record_index)
+                record_index += 1
+
+    def _copy_nodes_graph(self, nodes, index_map, writer, write_index,
+        output_lines=False):
+        """Copy knit nodes between packs.
+
+        :param output_lines: Return lines present in the copied data as
+            an iterator of line,version_id.
+        """
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            return self._do_copy_nodes_graph(nodes, index_map, writer,
+                write_index, output_lines, pb)
+        finally:
+            pb.finished()
+
+    def _do_copy_nodes_graph(self, nodes, index_map, writer, write_index,
+        output_lines, pb):
+        # for record verification
+        knit_data = _KnitData(None)
+        # for line extraction when requested (inventories only)
+        if output_lines:
+            factory = knit.KnitPlainFactory()
+        # plan a readv on each source pack:
+        # group by pack
+        nodes = sorted(nodes)
+        # how to map this into knit.py - or knit.py into this?
+        # we don't want the typical knit logic, we want grouping by pack
+        # at this point - perhaps a helper library for the following code 
+        # duplication points?
+        request_groups = {}
+        record_index = 0
+        pb.update("Copied record", record_index, len(nodes))
+        for index, key, value, references in nodes:
+            if index not in request_groups:
+                request_groups[index] = []
+            request_groups[index].append((key, value, references))
+        for index, items in request_groups.iteritems():
+            pack_readv_requests = []
+            for key, value, references in items:
+                # ---- KnitGraphIndex.get_position
+                bits = value[1:].split(' ')
+                offset, length = int(bits[0]), int(bits[1])
+                pack_readv_requests.append((offset, length, (key, value[0], references)))
+            # linear scan up the pack
+            pack_readv_requests.sort()
+            # copy the data
+            transport, path = index_map[index]
+            reader = pack.make_readv_reader(transport, path,
+                [offset[0:2] for offset in pack_readv_requests])
+            for (names, read_func), (_1, _2, (key, eol_flag, references)) in \
+                izip(reader.iter_records(), pack_readv_requests):
+                raw_data = read_func(None)
+                version_id = key[-1]
+                if output_lines:
+                    # read the entire thing
+                    content, _ = knit_data._parse_record(version_id, raw_data)
+                    if len(references[-1]) == 0:
+                        line_iterator = factory.get_fulltext_content(content)
+                    else:
+                        line_iterator = factory.get_linedelta_content(content)
+                    for line in line_iterator:
+                        yield line, version_id
+                else:
+                    # check the header only
+                    df, _ = knit_data._parse_record_header(version_id, raw_data)
+                    df.close()
+                pos, size = writer.add_bytes_record(raw_data, names)
+                write_index.add_node(key, eol_flag + "%d %d" % (pos, size), references)
+                pb.update("Copied record", record_index)
+                record_index += 1
+
+
+class ReconcilePacker(Packer):
+    """A packer which regenerates indices etc as it copies.
+    
+    This is used by ``bzr reconcile`` to cause parent text pointers to be
+    regenerated.
+    """
+
+
 class RepositoryPackCollection(object):
     """Management of packs within a repository."""
 
@@ -594,147 +901,6 @@ class RepositoryPackCollection(object):
         self._execute_pack_operations(pack_operations)
         return True
 
-    def create_pack_from_packs(self, packs, suffix, revision_ids=None):
-        """Create a new pack by reading data from other packs.
-
-        This does little more than a bulk copy of data. One key difference
-        is that data with the same item key across multiple packs is elided
-        from the output. The new pack is written into the current pack store
-        along with its indices, and the name added to the pack names. The 
-        source packs are not altered and are not required to be in the current
-        pack collection.
-
-        :param packs: An iterable of Packs to combine.
-        :param revision_ids: Either None, to copy all data, or a list
-            of revision_ids to limit the copied data to the data they
-            introduced.
-        :return: A Pack object, or None if nothing was copied.
-        """
-        # open a pack - using the same name as the last temporary file
-        # - which has already been flushed, so its safe.
-        # XXX: - duplicate code warning with start_write_group; fix before
-        #      considering 'done'.
-        if self._new_pack is not None:
-            raise errors.BzrError('call to create_pack_from_packs while '
-                'another pack is being written.')
-        if revision_ids is not None:
-            if len(revision_ids) == 0:
-                # silly fetch request.
-                return None
-            else:
-                revision_ids = frozenset(revision_ids)
-        new_pack = NewPack(self._upload_transport, self._index_transport,
-            self._pack_transport, upload_suffix=suffix)
-        # buffer data - we won't be reading-back during the pack creation and
-        # this makes a significant difference on sftp pushes.
-        new_pack.set_write_cache_size(1024*1024)
-        if 'pack' in debug.debug_flags:
-            plain_pack_list = ['%s%s' % (a_pack.pack_transport.base, a_pack.name)
-                for a_pack in packs]
-            if revision_ids is not None:
-                rev_count = len(revision_ids)
-            else:
-                rev_count = 'all'
-            mutter('%s: create_pack: creating pack from source packs: '
-                '%s%s %s revisions wanted %s t=0',
-                time.ctime(), self._upload_transport.base, new_pack.random_name,
-                plain_pack_list, rev_count)
-        # select revisions
-        if revision_ids:
-            revision_keys = [(revision_id,) for revision_id in revision_ids]
-        else:
-            revision_keys = None
-
-        # select revision keys
-        revision_index_map = self._packs_list_to_pack_map_and_index_list(
-            packs, 'revision_index')[0]
-        revision_nodes = self._index_contents(revision_index_map, revision_keys)
-        # copy revision keys and adjust values
-        list(self._copy_nodes_graph(revision_nodes, revision_index_map,
-            new_pack._writer, new_pack.revision_index))
-        if 'pack' in debug.debug_flags:
-            mutter('%s: create_pack: revisions copied: %s%s %d items t+%6.3fs',
-                time.ctime(), self._upload_transport.base, new_pack.random_name,
-                new_pack.revision_index.key_count(),
-                time.time() - new_pack.start_time)
-        # select inventory keys
-        inv_keys = revision_keys # currently the same keyspace, and note that
-        # querying for keys here could introduce a bug where an inventory item
-        # is missed, so do not change it to query separately without cross
-        # checking like the text key check below.
-        inventory_index_map = self._packs_list_to_pack_map_and_index_list(
-            packs, 'inventory_index')[0]
-        inv_nodes = self._index_contents(inventory_index_map, inv_keys)
-        # copy inventory keys and adjust values
-        # XXX: Should be a helper function to allow different inv representation
-        # at this point.
-        inv_lines = self._copy_nodes_graph(inv_nodes, inventory_index_map,
-            new_pack._writer, new_pack.inventory_index, output_lines=True)
-        if revision_ids:
-            fileid_revisions = self.repo._find_file_ids_from_xml_inventory_lines(
-                inv_lines, revision_ids)
-            text_filter = []
-            for fileid, file_revids in fileid_revisions.iteritems():
-                text_filter.extend(
-                    [(fileid, file_revid) for file_revid in file_revids])
-        else:
-            # eat the iterator to cause it to execute.
-            list(inv_lines)
-            text_filter = None
-        if 'pack' in debug.debug_flags:
-            mutter('%s: create_pack: inventories copied: %s%s %d items t+%6.3fs',
-                time.ctime(), self._upload_transport.base, new_pack.random_name,
-                new_pack.inventory_index.key_count(),
-                time.time() - new_pack.start_time)
-        # select text keys
-        text_index_map = self._packs_list_to_pack_map_and_index_list(
-            packs, 'text_index')[0]
-        text_nodes = self._index_contents(text_index_map, text_filter)
-        if text_filter is not None:
-            # We could return the keys copied as part of the return value from
-            # _copy_nodes_graph but this doesn't work all that well with the
-            # need to get line output too, so we check separately, and as we're
-            # going to buffer everything anyway, we check beforehand, which
-            # saves reading knit data over the wire when we know there are
-            # mising records.
-            text_nodes = set(text_nodes)
-            present_text_keys = set(_node[1] for _node in text_nodes)
-            missing_text_keys = set(text_filter) - present_text_keys
-            if missing_text_keys:
-                # TODO: raise a specific error that can handle many missing
-                # keys.
-                a_missing_key = missing_text_keys.pop()
-                raise errors.RevisionNotPresent(a_missing_key[1],
-                    a_missing_key[0])
-        # copy text keys and adjust values
-        list(self._copy_nodes_graph(text_nodes, text_index_map,
-            new_pack._writer, new_pack.text_index))
-        if 'pack' in debug.debug_flags:
-            mutter('%s: create_pack: file texts copied: %s%s %d items t+%6.3fs',
-                time.ctime(), self._upload_transport.base, new_pack.random_name,
-                new_pack.text_index.key_count(),
-                time.time() - new_pack.start_time)
-        # select signature keys
-        signature_filter = revision_keys # same keyspace
-        signature_index_map = self._packs_list_to_pack_map_and_index_list(
-            packs, 'signature_index')[0]
-        signature_nodes = self._index_contents(signature_index_map,
-            signature_filter)
-        # copy signature keys and adjust values
-        self._copy_nodes(signature_nodes, signature_index_map, new_pack._writer,
-            new_pack.signature_index)
-        if 'pack' in debug.debug_flags:
-            mutter('%s: create_pack: revision signatures copied: %s%s %d items t+%6.3fs',
-                time.ctime(), self._upload_transport.base, new_pack.random_name,
-                new_pack.signature_index.key_count(),
-                time.time() - new_pack.start_time)
-        if not new_pack.data_inserted():
-            new_pack.abort()
-            return None
-        new_pack.finish()
-        self.allocate(new_pack)
-        return new_pack
-
     def _execute_pack_operations(self, pack_operations):
         """Execute a series of pack operations.
 
@@ -745,13 +911,12 @@ class RepositoryPackCollection(object):
             # we may have no-ops from the setup logic
             if len(packs) == 0:
                 continue
-            # have a progress bar?
-            self.create_pack_from_packs(packs, '.autopack')
+            Packer(self, packs, '.autopack').pack()
             for pack in packs:
                 self._remove_pack_from_memory(pack)
         # record the newly available packs and stop advertising the old
         # packs
-        self._save_pack_names()
+        self._save_pack_names(clear_obsolete_packs=True)
         # Move the old packs out of the way now they are no longer referenced.
         for revision_count, packs in pack_operations:
             self._obsolete_packs(packs)
@@ -826,94 +991,6 @@ class RepositoryPackCollection(object):
                     pack_operations.append([0, []])
         
         return pack_operations
-
-    def _copy_nodes(self, nodes, index_map, writer, write_index):
-        # plan a readv on each source pack:
-        # group by pack
-        nodes = sorted(nodes)
-        # how to map this into knit.py - or knit.py into this?
-        # we don't want the typical knit logic, we want grouping by pack
-        # at this point - perhaps a helper library for the following code 
-        # duplication points?
-        request_groups = {}
-        for index, key, value in nodes:
-            if index not in request_groups:
-                request_groups[index] = []
-            request_groups[index].append((key, value))
-        for index, items in request_groups.iteritems():
-            pack_readv_requests = []
-            for key, value in items:
-                # ---- KnitGraphIndex.get_position
-                bits = value[1:].split(' ')
-                offset, length = int(bits[0]), int(bits[1])
-                pack_readv_requests.append((offset, length, (key, value[0])))
-            # linear scan up the pack
-            pack_readv_requests.sort()
-            # copy the data
-            transport, path = index_map[index]
-            reader = pack.make_readv_reader(transport, path,
-                [offset[0:2] for offset in pack_readv_requests])
-            for (names, read_func), (_1, _2, (key, eol_flag)) in \
-                izip(reader.iter_records(), pack_readv_requests):
-                raw_data = read_func(None)
-                pos, size = writer.add_bytes_record(raw_data, names)
-                write_index.add_node(key, eol_flag + "%d %d" % (pos, size))
-
-    def _copy_nodes_graph(self, nodes, index_map, writer, write_index,
-        output_lines=False):
-        """Copy knit nodes between packs.
-
-        :param output_lines: Return lines present in the copied data as
-            an iterator.
-        """
-        # for record verification
-        knit_data = _KnitData(None)
-        # for line extraction when requested (inventories only)
-        if output_lines:
-            factory = knit.KnitPlainFactory()
-        # plan a readv on each source pack:
-        # group by pack
-        nodes = sorted(nodes)
-        # how to map this into knit.py - or knit.py into this?
-        # we don't want the typical knit logic, we want grouping by pack
-        # at this point - perhaps a helper library for the following code 
-        # duplication points?
-        request_groups = {}
-        for index, key, value, references in nodes:
-            if index not in request_groups:
-                request_groups[index] = []
-            request_groups[index].append((key, value, references))
-        for index, items in request_groups.iteritems():
-            pack_readv_requests = []
-            for key, value, references in items:
-                # ---- KnitGraphIndex.get_position
-                bits = value[1:].split(' ')
-                offset, length = int(bits[0]), int(bits[1])
-                pack_readv_requests.append((offset, length, (key, value[0], references)))
-            # linear scan up the pack
-            pack_readv_requests.sort()
-            # copy the data
-            transport, path = index_map[index]
-            reader = pack.make_readv_reader(transport, path,
-                [offset[0:2] for offset in pack_readv_requests])
-            for (names, read_func), (_1, _2, (key, eol_flag, references)) in \
-                izip(reader.iter_records(), pack_readv_requests):
-                raw_data = read_func(None)
-                if output_lines:
-                    # read the entire thing
-                    content, _ = knit_data._parse_record(key[-1], raw_data)
-                    if len(references[-1]) == 0:
-                        line_iterator = factory.get_fulltext_content(content)
-                    else:
-                        line_iterator = factory.get_linedelta_content(content)
-                    for line in line_iterator:
-                        yield line
-                else:
-                    # check the header only
-                    df, _ = knit_data._parse_record_header(key[-1], raw_data)
-                    df.close()
-                pos, size = writer.add_bytes_record(raw_data, names)
-                write_index.add_node(key, eol_flag + "%d %d" % (pos, size), references)
 
     def ensure_loaded(self):
         # NB: if you see an assertion error here, its probably access against
@@ -1136,13 +1213,16 @@ class RepositoryPackCollection(object):
         """Release the mutex around the pack-names index."""
         self.repo.control_files.unlock()
 
-    def _save_pack_names(self):
+    def _save_pack_names(self, clear_obsolete_packs=False):
         """Save the list of packs.
 
         This will take out the mutex around the pack names list for the
         duration of the method call. If concurrent updates have been made, a
         three-way merge between the current list and the current in memory list
         is performed.
+
+        :param clear_obsolete_packs: If True, clear out the contents of the
+            obsolete_packs directory.
         """
         self.lock_names()
         try:
@@ -1168,6 +1248,10 @@ class RepositoryPackCollection(object):
             self.transport.put_file('pack-names', builder.finish())
             # move the baseline forward
             self._packs_at_load = disk_nodes
+            # now clear out the obsolete packs directory
+            if clear_obsolete_packs:
+                self.transport.clone('obsolete_packs').delete_multi(
+                    self.transport.list_dir('obsolete_packs'))
         finally:
             self._unlock_names()
         # synchronise the memory packs list with what we just wrote:
@@ -1250,6 +1334,7 @@ class RepositoryPackCollection(object):
                 self._save_pack_names()
         else:
             self._new_pack.abort()
+            self._new_pack = None
         self.repo._text_knit = None
 
 
@@ -1422,8 +1507,9 @@ class KnitPackRepository(KnitRepository):
         self._write_lock_count = 0
         self._transaction = None
         # for tests
-        self._reconcile_does_inventory_gc = False
+        self._reconcile_does_inventory_gc = True
         self._reconcile_fixes_text_parents = False
+        self._reconcile_backsup_inventory = False
 
     def _abort_write_group(self):
         self._pack_collection._abort_write_group()
@@ -1436,6 +1522,45 @@ class KnitPackRepository(KnitRepository):
         if self.is_write_locked():
             return 'w'
         return 'r'
+
+    def _find_inconsistent_revision_parents(self):
+        """Find revisions with incorrectly cached parents.
+
+        :returns: an iterator yielding tuples of (revison-id, parents-in-index,
+            parents-in-revision).
+        """
+        assert self.is_locked()
+        pb = ui.ui_factory.nested_progress_bar()
+        result = []
+        try:
+            revision_nodes = self._pack_collection.revision_index \
+                .combined_index.iter_all_entries()
+            index_positions = []
+            # Get the cached index values for all revisions, and also the location
+            # in each index of the revision text so we can perform linear IO.
+            for index, key, value, refs in revision_nodes:
+                pos, length = value[1:].split(' ')
+                index_positions.append((index, int(pos), key[0],
+                    tuple(parent[0] for parent in refs[0])))
+                pb.update("Reading revision index.", 0, 0)
+            index_positions.sort()
+            batch_count = len(index_positions) / 1000 + 1
+            pb.update("Checking cached revision graph.", 0, batch_count)
+            for offset in xrange(batch_count):
+                pb.update("Checking cached revision graph.", offset)
+                to_query = index_positions[offset * 1000:(offset + 1) * 1000]
+                if not to_query:
+                    break
+                rev_ids = [item[2] for item in to_query]
+                revs = self.get_revisions(rev_ids)
+                for revision, item in zip(revs, to_query):
+                    index_parents = item[3]
+                    rev_parents = tuple(revision.parent_ids)
+                    if index_parents != rev_parents:
+                        result.append((revision.revision_id, index_parents, rev_parents))
+        finally:
+            pb.finished()
+        return result
 
     def get_parents(self, revision_ids):
         """See StackedParentsProvider.get_parents.
@@ -1469,11 +1594,14 @@ class KnitPackRepository(KnitRepository):
         return self
 
     def _refresh_data(self):
-        if self._write_lock_count == 1 or self.control_files._lock_count == 1:
+        if self._write_lock_count == 1 or (
+            self.control_files._lock_count == 1 and
+            self.control_files._lock_mode == 'r'):
             # forget what names there are
             self._pack_collection.reset()
             # XXX: Better to do an in-memory merge when acquiring a new lock -
             # factor out code from _save_pack_names.
+            self._pack_collection.ensure_loaded()
 
     def _start_write_group(self):
         self._pack_collection._start_write_group()

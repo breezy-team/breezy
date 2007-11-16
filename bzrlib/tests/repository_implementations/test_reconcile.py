@@ -69,6 +69,26 @@ class TestsNeedingReweave(TestReconcile):
         repo.commit_write_group()
         repo.unlock()
 
+        def add_commit(repo, revision_id, parent_ids):
+            repo.lock_write()
+            repo.start_write_group()
+            inv = Inventory(revision_id=revision_id)
+            inv.root.revision = revision_id
+            root_id = inv.root.file_id
+            sha1 = repo.add_inventory(revision_id, inv, parent_ids)
+            vf = repo.weave_store.get_weave_or_empty(root_id,
+                repo.get_transaction())
+            vf.add_lines(revision_id, [], [])
+            rev = bzrlib.revision.Revision(timestamp=0,
+                                           timezone=None,
+                                           committer="Foo Bar <foo@example.com>",
+                                           message="Message",
+                                           inventory_sha1=sha1,
+                                           revision_id=revision_id)
+            rev.parent_ids = parent_ids
+            repo.add_revision(revision_id, rev)
+            repo.commit_write_group()
+            repo.unlock()
         # an empty inventory with no revision for testing with.
         # this is referenced by 'references_missing' to let us test
         # that all the cached data is correctly converted into ghost links
@@ -77,59 +97,21 @@ class TestsNeedingReweave(TestReconcile):
         repo.lock_write()
         repo.start_write_group()
         repo.add_inventory('missing', inv, [])
-        inv = Inventory(revision_id='references_missing')
-        inv.root.revision = 'references_missing'
-        sha1 = repo.add_inventory('references_missing', inv, ['missing'])
-        rev = Revision(timestamp=0,
-                       timezone=None,
-                       committer="Foo Bar <foo@example.com>",
-                       message="Message",
-                       inventory_sha1=sha1,
-                       revision_id='references_missing')
-        rev.parent_ids = ['missing']
-        repo.add_revision('references_missing', rev)
         repo.commit_write_group()
         repo.unlock()
+        add_commit(repo, 'references_missing', ['missing'])
 
         # a inventory with no parents and the revision has parents..
         # i.e. a ghost.
         repo = self.make_repository('inventory_one_ghost')
-        repo.lock_write()
-        repo.start_write_group()
-        inv = Inventory(revision_id='ghost')
-        inv.root.revision = 'ghost'
-        sha1 = repo.add_inventory('ghost', inv, [])
-        rev = Revision(timestamp=0,
-                       timezone=None,
-                       committer="Foo Bar <foo@example.com>",
-                       message="Message",
-                       inventory_sha1=sha1,
-                       revision_id='ghost')
-        rev.parent_ids = ['the_ghost']
-        repo.add_revision('ghost', rev)
-        repo.commit_write_group()
-        repo.unlock()
+        add_commit(repo, 'ghost', ['the_ghost'])
          
         # a inventory with a ghost that can be corrected now.
         t.copy_tree('inventory_one_ghost', 'inventory_ghost_present')
         bzrdir_url = self.get_url('inventory_ghost_present')
         bzrdir = bzrlib.bzrdir.BzrDir.open(bzrdir_url)
         repo = bzrdir.open_repository()
-        repo.lock_write()
-        repo.start_write_group()
-        inv = Inventory(revision_id='the_ghost')
-        inv.root.revision = 'the_ghost'
-        sha1 = repo.add_inventory('the_ghost', inv, [])
-        rev = Revision(timestamp=0,
-                       timezone=None,
-                       committer="Foo Bar <foo@example.com>",
-                       message="Message",
-                       inventory_sha1=sha1,
-                       revision_id='the_ghost')
-        rev.parent_ids = []
-        repo.add_revision('the_ghost', rev)
-        repo.commit_write_group()
-        repo.unlock()
+        add_commit(repo, 'the_ghost', [])
 
     def checkEmptyReconcile(self, **kwargs):
         """Check a reconcile on an empty repository."""
@@ -212,9 +194,10 @@ class TestsNeedingReweave(TestReconcile):
                          repo.get_ancestry('references_missing'))
 
     def check_missing_was_removed(self, repo):
-        backup = repo.control_weaves.get_weave('inventory.backup',
-                                               repo.get_transaction())
-        self.assertTrue('missing' in backup.versions())
+        if repo._reconcile_backsup_inventory:
+            backup = repo.control_weaves.get_weave('inventory.backup',
+                                                   repo.get_transaction())
+            self.assertTrue('missing' in backup.versions())
         self.assertRaises(errors.RevisionNotPresent,
                           repo.get_inventory, 'missing')
 
@@ -340,6 +323,11 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         repo.start_write_group()
         inv = Inventory(revision_id='wrong-secondary-parent')
         inv.root.revision = 'wrong-secondary-parent'
+        if repo.supports_rich_root():
+            root_id = inv.root.file_id
+            vf = repo.weave_store.get_weave_or_empty(root_id,
+                repo.get_transaction())
+            vf.add_lines('wrong-secondary-parent', [], [])
         sha1 = repo.add_inventory('wrong-secondary-parent', inv, ['1', '3', '2'])
         rev = Revision(timestamp=0,
                        timezone=None,
