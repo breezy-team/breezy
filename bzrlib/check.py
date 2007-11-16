@@ -56,11 +56,8 @@ class Check(object):
         # maps (file-id, version) -> sha1; used by InventoryFile._check
         self.checked_texts = {}
         self.checked_weaves = {}
-        self.revision_versions = _mod_repository._RevisionTextVersionCache(
-            self.repository)
-        self.unreferenced_ancestors = set()
+        self.unreferenced_versions = set()
         self.inconsistent_parents = []
-        self.dangling_versions = set()
 
     def check(self):
         self.repository.lock_read()
@@ -81,7 +78,7 @@ class Check(object):
                 revno += 1
                 self.check_one_rev(rev_id)
             # check_weaves is done after the revision scan so that
-            # revision_versions is pre-populated
+            # revision index is known to be valid.
             self.check_weaves()
         finally:
             self.progress.finished()
@@ -113,8 +110,8 @@ class Check(object):
         note('%6d file-ids', len(self.checked_weaves))
         note('%6d unique file texts', self.checked_text_cnt)
         note('%6d repeated file texts', self.repeated_text_cnt)
-        note('%6d unreferenced text ancestors',
-             len(self.unreferenced_ancestors))
+        note('%6d unreferenced text versions',
+             len(self.unreferenced_versions))
         if self.missing_inventory_sha_cnt:
             note('%6d revisions are missing inventory_sha1',
                  self.missing_inventory_sha_cnt)
@@ -135,8 +132,8 @@ class Check(object):
                     for linker in linkers:
                         note('       * %s', linker)
             if verbose:
-                for file_id, revision_id in self.unreferenced_ancestors:
-                    log_error('unreferenced ancestor: {%s} in %s', revision_id,
+                for file_id, revision_id in self.unreferenced_versions:
+                    log_error('unreferenced version: {%s} in %s', revision_id,
                         file_id)
         if len(self.inconsistent_parents):
             note('%6d inconsistent parents', len(self.inconsistent_parents))
@@ -157,9 +154,6 @@ class Check(object):
                         '       %s has wrong parents in index: '
                         '%r should be %r',
                         revision_id, index_parents, actual_parents)
-        if self.dangling_versions:
-            note('%6d file versions are not referenced by their inventory',
-                 len(self.dangling_versions))
 
     def check_one_rev(self, rev_id):
         """Check one revision.
@@ -216,24 +210,18 @@ class Check(object):
             # No progress here, because it looks ugly.
             w.check()
             result = weave_checker.check_file_version_parents(w, weave_id,
-                self.planned_revisions, self.revision_versions)
-            bad_parents, dangling_versions = result
+                self.planned_revisions)
+            bad_parents, unused_versions = result
             bad_parents = bad_parents.items()
-            for revision_id, (weave_parents,correct_parents) in bad_parents:
+            for revision_id, (weave_parents, correct_parents) in bad_parents:
                 self.inconsistent_parents.append(
                     (revision_id, weave_id, weave_parents, correct_parents))
-                if weave_parents is None:
-                    weave_parents = []
-                unreferenced_parents = set(weave_parents)-set(correct_parents)
-                for unreferenced_parent in unreferenced_parents:
-                    self.unreferenced_ancestors.add(
-                        (weave_id, unreferenced_parent))
-            self.dangling_versions.update(dangling_versions)
+            for revision_id in unused_versions:
+                self.unreferenced_versions.add((weave_id, revision_id))
             self.checked_weaves[weave_id] = True
 
     def _check_revision_tree(self, rev_id):
         tree = self.repository.revision_tree(rev_id)
-        self.revision_versions.add_revision_text_versions(tree)
         inv = tree.inventory
         seen_ids = {}
         for file_id in inv:

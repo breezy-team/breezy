@@ -376,45 +376,24 @@ class KnitReconciler(RepoReconciler):
         parent lists, and replaces the versionedfile with a corrected version.
         """
         transaction = self.repo.get_transaction()
-        revision_versions = repository._RevisionTextVersionCache(self.repo)
         versions = self.revisions.versions()
         mutter('Prepopulating revision text cache with %d revisions',
                 len(versions))
-        revision_versions.prepopulate_revs(versions)
-        used_file_versions = revision_versions.used_file_versions()
         vf_checker = self.repo.get_versioned_file_checker()
-        for num, file_id in enumerate(self.repo.weave_store):
+        # List all weaves before altering, to avoid race conditions when we
+        # delete unused weaves.
+        weaves = list(enumerate(self.repo.weave_store))
+        for num, file_id in weaves:
             self.pb.update('Fixing text parents', num,
                            len(self.repo.weave_store))
             vf = self.repo.weave_store.get_weave(file_id, transaction)
-            versions_with_bad_parents, dangling_file_versions = \
+            versions_with_bad_parents, unused_versions = \
                 vf_checker.check_file_version_parents(vf, file_id,
-                vf.versions(), revision_versions)
+                vf.versions())
             if (len(versions_with_bad_parents) == 0 and
-                len(dangling_file_versions) == 0):
+                len(unused_versions) == 0):
                 continue
             full_text_versions = set()
-            unused_versions = set()
-            for dangling_version in dangling_file_versions:
-                version = dangling_version[1]
-                if dangling_version in used_file_versions:
-                    # This version *is* used by some revision, even though it
-                    # isn't used by its own revision!  We make sure any
-                    # revision referencing it is stored as a fulltext
-                    # This avoids bug 155730: it means that clients looking at
-                    # inventories to determine the versions to fetch will not
-                    # miss a required version.  (So clients can assume that if
-                    # they have a complete revision graph, and fetch all file
-                    # versions named by those revisions inventories, then they
-                    # will not have any missing parents for 'delta' knit
-                    # records.)
-                    # XXX: A better, but more difficult and slower fix would be
-                    # to rewrite the inventories referencing this version.
-                    full_text_versions.add(version)
-                else:
-                    # This version is totally unreferenced.  It should be
-                    # removed.
-                    unused_versions.add(version)
             self._fix_text_parent(file_id, vf, versions_with_bad_parents,
                 full_text_versions, unused_versions)
 
@@ -429,14 +408,18 @@ class KnitReconciler(RepoReconciler):
             self.transaction)
         new_parents = {}
         for version in vf.versions():
-            if version in versions_with_bad_parents:
+            if version in unused_versions:
+                continue
+            elif version in versions_with_bad_parents:
                 parents = versions_with_bad_parents[version][1]
             else:
                 parents = vf.get_parents(version)
             new_parents[version] = parents
+        if not len(new_parents):
+            # No used versions, remove the VF.
+            self.repo.weave_store.delete(file_id, self.transaction)
+            return
         for version in TopoSorter(new_parents.items()).iter_topo_order():
-            if version in unused_versions:
-                continue
             lines = vf.get_lines(version)
             parents = new_parents[version]
             if parents and (parents[0] in full_text_versions):

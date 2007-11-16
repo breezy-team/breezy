@@ -169,7 +169,7 @@ class UndamagedRepositoryScenario(BrokenRepoScenario):
         return self.populated_parents()
 
     def check_regexes(self, repo):
-        return ["0 unreferenced text ancestors"]
+        return ["0 unreferenced text versions"]
 
     def populate_repository(self, repo):
         # make rev1a: A well-formed revision, containing 'a-file'
@@ -201,24 +201,24 @@ class FileParentIsNotInRevisionAncestryScenario(BrokenRepoScenario):
     """
 
     def all_versions_after_reconcile(self):
-        return ('rev1a', 'rev1b', 'rev2')
+        return ('rev1a', 'rev2')
 
     def populated_parents(self):
         return (
             ((), 'rev1a'),
-            ((), 'rev1b'),
-            (('rev1a', 'rev1b'), 'rev2'))
+            ((), 'rev1b'), # Will be gc'd
+            (('rev1a', 'rev1b'), 'rev2')) # Will have parents trimmed
 
     def corrected_parents(self):
         return (
             ((), 'rev1a'),
-            ((), 'rev1b'),
+            (None, 'rev1b'),
             (('rev1a',), 'rev2'))
 
     def check_regexes(self, repo):
         return [r"\* a-file-id version rev2 has parents \('rev1a', 'rev1b'\) "
                 r"but should have \('rev1a',\)",
-                "1 unreferenced text ancestors",
+                "0 unreferenced text versions",
                 ]
 
     def populate_repository(self, repo):
@@ -284,8 +284,6 @@ class FileParentHasInaccessibleInventoryScenario(BrokenRepoScenario):
     def check_regexes(self, repo):
         return [r"\* a-file-id version rev3 has parents "
                 r"\('rev1c',\) but should have \(\)",
-                # Also check reporting of unreferenced ancestors
-                r"unreferenced ancestor: {rev1c} in a-file-id",
                 ]
 
     def populate_repository(self, repo):
@@ -369,22 +367,21 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
         if repo.supports_rich_root():
             # TREE_ROOT will be wrong; but we're not testing it. so just adjust
             # the expected count of errors.
-            count = 11
+            count = 9
         else:
-            count = 5
+            count = 3
         return [
             "%d inconsistent parents" % count,
-            r"a-file-id version rev2 has parents \('rev1a',\) "
-            r"but should have \(\)",
-            r"a-file-id version rev2b has parents \('rev1a',\) "
-            r"but should have \(\)",
+            # will be gc'd
+            r"unreferenced version: {rev2} in a-file-id",
+            r"unreferenced version: {rev2b} in a-file-id",
+            # will be corrected
             r"a-file-id version rev3 has parents \('rev2',\) "
             r"but should have \('rev1a',\)",
             r"a-file-id version rev5 has parents \('rev2', 'rev2c'\) "
             r"but should have \('rev2c',\)",
             r"a-file-id version rev4 has parents \('rev2',\) "
             r"but should have \('rev1a',\)",
-            "2 file versions are not referenced by their inventory",
             ]
 
     def populate_repository(self, repo):
@@ -511,7 +508,7 @@ class UnreferencedFileParentsFromNoOpMergeScenario(BrokenRepoScenario):
             )
 
     def corrected_fulltexts(self):
-        return ['rev4']
+        return ['rev2']
 
     def check_regexes(self, repo):
         return []
@@ -681,15 +678,13 @@ class ClaimedFileParentDidNotModifyFileScenario(BrokenRepoScenario):
         if repo.supports_rich_root():
             # TREE_ROOT will be wrong; but we're not testing it. so just adjust
             # the expected count of errors.
-            count = 4
+            count = 3
         else:
-            count = 2
+            count = 1
         return (
             "%d inconsistent parents" % count,
             r"\* a-file-id version current has parents "
             r"\('modified-something-else',\) but should have \('basis',\)",
-            r"\* a-file-id version modified-something-else has parents "
-            r"\('basis',\) but should have \(\)",
             )
 
     def populate_repository(self, repo):
