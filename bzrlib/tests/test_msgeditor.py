@@ -243,6 +243,11 @@ if len(sys.argv) == 2:
                                     'infotext'])
         self.assertFileEqual(expected, msgfilename)
 
+    def test__create_temp_file_with_commit_template_in_unicode_dir(self):
+        os.mkdir('f\xc5\xb1')
+        os.chdir('f\xc5\xb1')
+        msgeditor._create_temp_file_with_commit_template('infotext')
+
     def test__create_temp_file_with_empty_commit_template(self):
         # empty file
         create_file = msgeditor._create_temp_file_with_commit_template
