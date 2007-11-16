@@ -73,6 +73,9 @@ IN DEVELOPMENT
 
    * Reconcile now shows progress bars. (Robert Collins, #159351)
 
+   * ``RemoteBranch`` was not initializing ``self._revision_id_to_revno_map``
+     properly. (John Arbash Meinel, #162486)
+
    * Stderr output via logging mechanism now goes through encoded wrapper
      and no more uses utf-8, but terminal encoding instead. So all unicode
      strings now should be readable in non-utf-8 terminal.
