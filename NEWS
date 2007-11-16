@@ -68,6 +68,9 @@ IN DEVELOPMENT
    * It is clearer when a plugin cannot be loaded because of its name, and a
      suggestion for an acceptable name is given. (Daniel Watkins, #103023)
 
+   * Make sure Repository.fetch(self) is properly a no-op for all
+     Repository implementations. (John Arbash Meinel, #158333)
+
    * Obsolete packs are now cleaned up by pack and autopack operations.
      (Robert Collins, #153789)
 
