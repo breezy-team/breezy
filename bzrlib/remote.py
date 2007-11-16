@@ -357,7 +357,8 @@ class RemoteRepository(object):
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""
         path = self.bzrdir._path_for_remote_call(self._client)
-        if revision.is_null(revid):
+        # revid can be None to indicate no revisions, not just NULL_REVISION
+        if revid is None or revision.is_null(revid):
             fmt_revid = ''
         else:
             fmt_revid = revid
