@@ -25,6 +25,7 @@ import sys
 
 import bzrlib
 import bzrlib.config as config
+from bzrlib import osutils
 from bzrlib.errors import BzrError, BadCommitMessageEncoding
 from bzrlib.trace import warning, mutter
 
@@ -204,9 +205,9 @@ def _create_temp_file_with_commit_template(infotext,
     """
     import tempfile
     tmp_fileno, msgfilename = tempfile.mkstemp(prefix='bzr_log.',
-                                               dir=u'.',
                                                text=True)
-    msgfile = os.fdopen(tmp_fileno, 'w')
+    msgfilename = osutils.basename(msgfilename)
+    msgfile = file(msgfilename, 'w')
     try:
         if start_message is not None:
             msgfile.write("%s\n" % start_message)
