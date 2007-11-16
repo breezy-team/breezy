@@ -4278,6 +4278,21 @@ class cmd_reconfigure(Command):
         reconfiguration.apply(force)
 
 
+class cmd_switch(Command):
+    """Set the branch of a lightweight checkout and update."""
+
+    takes_args = ['to_location']
+
+    def run(self, to_location):
+        from bzrlib.switch import switch
+        to_branch = Branch.open(to_location)
+        tree_location = '.'
+        control_dir = BzrDir.open_containing(tree_location)[0]
+        switch(control_dir, to_branch)
+        note('Switched to branch: %s',
+            urlutils.unescape_for_display(to_branch.base, 'utf-8'))
+
+
 def _create_prefix(cur_transport):
     needed = [cur_transport]
     # Recurse upwards until we can create a directory successfully

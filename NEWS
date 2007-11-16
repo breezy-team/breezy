@@ -22,6 +22,11 @@ IN DEVELOPMENT
      supported transports.
      (Vincent Ladeuil)
 
+   * ``switch`` command added for changing the branch a lightweight checkout
+     is associated with and updating the tree to reflect the latest content
+     accordingly. This command was previously part of the BzrTools plug-in.
+     (Ian Clatworthy, Aaron Bentley, David Allouche)
+
   PERFORMANCE:
 
    * Commit updates the state of the working tree via a delta rather than
