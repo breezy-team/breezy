@@ -205,9 +205,10 @@ def _create_temp_file_with_commit_template(infotext,
     """
     import tempfile
     tmp_fileno, msgfilename = tempfile.mkstemp(prefix='bzr_log.',
+                                               dir='.',
                                                text=True)
     msgfilename = osutils.basename(msgfilename)
-    msgfile = file(msgfilename, 'w')
+    msgfile = os.fdopen(tmp_fileno, 'w')
     try:
         if start_message is not None:
             msgfile.write("%s\n" % start_message)
