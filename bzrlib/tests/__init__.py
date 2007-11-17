@@ -2602,6 +2602,12 @@ def adapt_modules(mods_list, adapter, loader, suite):
         suite.addTests(adapter.adapt(test))
 
 
+def adapt_tests(tests_list, adapter, loader, suite):
+    """Adapt the tests in tests_list using adapter and add to suite."""
+    for test in tests_list:
+        suite.addTests(adapter.adapt(loader.loadTestsFromName(test)))
+
+
 def _rmtree_temp_dir(dirname):
     # If LANG=C we probably have created some bogus paths
     # which rmtree(unicode) will fail to delete
