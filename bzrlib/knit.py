@@ -74,6 +74,7 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     annotate,
+    lru_cache,
     pack,
     trace,
     )
@@ -2224,6 +2225,41 @@ class InterKnit(InterVersionedFile):
         except AttributeError:
             return False
 
+    def _text_by_text_join(self, pb, msg, version_ids, ignore_missing=False):
+        """Copy texts to the target by extracting and adding them one by one.
+
+        see join() for the parameter definitions.
+        """
+        version_ids = self._get_source_version_ids(version_ids, ignore_missing)
+        graph = self.source.get_graph(version_ids)
+        order = topo_sort(graph.items())
+
+        def size_of_content(content):
+            return sum(len(line) for line in content.text())
+        # Cache at most 10MB of parent texts
+        parent_cache = lru_cache.LRUSizeCache(max_size=10*1024*1024,
+                                              compute_size=size_of_content)
+        # TODO: jam 20071116 It would be nice to have a streaming interface to
+        #       get multiple texts from a source. The source could be smarter
+        #       about how it handled intermediate stages.
+        # TODO: jam 20071116 Consider using 'get_line_list' instead of lots of
+        #       calls to get_lines()
+        to_process = [version for version in order
+                               if version not in self.target]
+        total = len(to_process)
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            for index, version in enumerate(to_process):
+                pb.update('Converting versioned data', index, total)
+                sha1, num_bytes, parent_text = self.target.add_lines(version,
+                    self.source.get_parents(version),
+                    self.source.get_lines(version),
+                    parent_texts=parent_cache)
+                parent_cache[version] = parent_text
+        finally:
+            pb.finished()
+        return total
+
     def join(self, pb=None, msg=None, version_ids=None, ignore_missing=False):
         """See InterVersionedFile.join."""
         assert isinstance(self.source, KnitVersionedFile)
@@ -2239,8 +2275,8 @@ class InterKnit(InterVersionedFile):
             # We're converting from a plain to an annotated knit. This requires
             # building the annotations from scratch. The generic join code
             # handles this implicitly so we delegate to it.
-            return super(InterKnit, self).join(pb, msg, version_ids,
-                ignore_missing)
+            return self._text_by_text_join(pb, msg, version_ids,
+                                           ignore_missing)
 
         version_ids = self._get_source_version_ids(version_ids, ignore_missing)
         if not version_ids:
