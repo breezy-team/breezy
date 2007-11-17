@@ -244,9 +244,12 @@ if len(sys.argv) == 2:
         self.assertFileEqual(expected, msgfilename)
 
     def test__create_temp_file_with_commit_template_in_unicode_dir(self):
-        os.mkdir('f\xc5\xb1')
-        os.chdir('f\xc5\xb1')
-        msgeditor._create_temp_file_with_commit_template('infotext')
+        if hasattr(self, 'info'):
+            os.mkdir(self.info['directory'])
+            os.chdir(self.info['directory'])
+            msgeditor._create_temp_file_with_commit_template('infotext')
+        else:
+            raise TestSkipped('Test run elsewhere with non-ascii data.')
 
     def test__create_temp_file_with_empty_commit_template(self):
         # empty file
