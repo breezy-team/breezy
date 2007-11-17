@@ -106,6 +106,9 @@ IN DEVELOPMENT
    * Return error instead of a traceback for ``bzr log -r0``.
      (Kent Gibson, #133751)
 
+   * Working trees are no longer created when pushing into a local no-trees
+     repo. (Daniel Watkins, #50582)
+
   API BREAKS:
 
    * ``osutils.backup_file`` is deprecated. Actually it's not used in bzrlib
