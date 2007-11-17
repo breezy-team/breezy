@@ -187,12 +187,8 @@ def _show_log(branch,
              search=None,
              limit=None):
     """Worker function for show_log - see show_log."""
-    from bzrlib.osutils import format_date
-    from bzrlib.errors import BzrCheckError
-    
-    from warnings import warn
-
     if not isinstance(lf, LogFormatter):
+        from warnings import warn
         warn("not a LogFormatter instance: %r" % lf)
 
     if specific_fileid:
@@ -232,17 +228,24 @@ def _show_log(branch,
     else:
         generate_merge_revisions = getattr(lf, 'supports_merge_revisions', 
                                            False)
+    generate_single_revision = False
     if ((not generate_merge_revisions)
         and ((start_rev_id and (start_rev_id not in rev_nos))
             or (end_rev_id and (end_rev_id not in rev_nos)))):
-        from bzrlib.errors import BzrCommandError
-        raise BzrCommandError('Selected log formatter only supports '
-            'mainline revisions.')
+        generate_single_revision = ((start_rev_id == end_rev_id)
+            and getattr(lf, 'supports_single_merge_revision', False))
+        if not generate_single_revision:
+            from bzrlib.errors import BzrCommandError
+            raise BzrCommandError('Selected log formatter only supports '
+                'mainline revisions.')
+        generate_merge_revisions = generate_single_revision
     view_revs_iter = get_view_revisions(mainline_revs, rev_nos, branch,
                           direction, include_merges=generate_merge_revisions)
     view_revisions = _filter_revision_range(list(view_revs_iter),
                                             start_rev_id,
                                             end_rev_id)
+    if view_revisions and generate_single_revision:
+        view_revisions = view_revisions[0:1]
     if specific_fileid:
         view_revisions = _filter_revisions_touching_file_id(branch,
                                                          specific_fileid,
@@ -577,8 +580,12 @@ class LogFormatter(object):
     - supports_delta must be True if this log formatter supports delta.
         Otherwise the delta attribute may not be populated.
     - supports_merge_revisions must be True if this log formatter supports 
-        merge revisions.  If not, only mainline revisions (those 
-        with merge_depth == 0) will be passed to the formatter.
+        merge revisions.  If not, and if supports_single_merge_revisions is
+        also not True, then only mainline revisions will be passed to the 
+        formatter.
+    - supports_single_merge_revision must be True if this log formatter
+        supports logging only a single merge revision.  This flag is
+        only relevant if supports_merge_revisions is not True.
     - supports_tags must be True if this log formatter supports tags.
         Otherwise the tags attribute may not be populated.
     """
@@ -670,6 +677,7 @@ class LongLogFormatter(LogFormatter):
 class ShortLogFormatter(LogFormatter):
 
     supports_delta = True
+    supports_single_merge_revision = True
 
     @deprecated_method(zero_seventeen)
     def show(self, revno, rev, delta):
@@ -710,6 +718,8 @@ class ShortLogFormatter(LogFormatter):
 
 
 class LineLogFormatter(LogFormatter):
+
+    supports_single_merge_revision = True
 
     def __init__(self, *args, **kwargs):
         from bzrlib.osutils import terminal_width

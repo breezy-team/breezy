@@ -285,8 +285,8 @@ message:
     def test_merges_nonsupporting_formatter(self):
         self._prepare()
         err_msg = 'Selected log formatter only supports mainline revisions.'
-        out,err = self.run_bzr('log --short -r1.1.2', retcode=3)
-        self.assertContainsRe(err, err_msg)
+        # The single revision case is tested in the core tests
+        # since all standard formatters support single merge revisions.
         out,err = self.run_bzr('log --short -r1..1.1.2', retcode=3)
         self.assertContainsRe(err, err_msg)
         out,err = self.run_bzr('log --short -r1.1.1..1.1.2', retcode=3)
