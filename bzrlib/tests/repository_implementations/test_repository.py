@@ -533,7 +533,7 @@ class TestRepository(TestCaseWithRepository):
         list(repo._find_inconsistent_revision_parents())
         repo._check_for_inconsistent_revision_parents()
 
-    def test_add_signature(self):
+    def test_add_signature_text(self):
         repo = self.make_repository('repo')
         repo.lock_write()
         self.addCleanup(repo.unlock)
@@ -544,7 +544,7 @@ class TestRepository(TestCaseWithRepository):
         repo.add_inventory('A', inv, [])
         repo.add_revision('A', Revision('A', committer='A', timestamp=0,
                           inventory_sha1='', timezone=0, message='A'))
-        repo.add_signature('A', 'This might be a signature')
+        repo.add_signature_text('A', 'This might be a signature')
         self.assertEqual('This might be a signature',
                          repo.get_signature_text('A'))
 

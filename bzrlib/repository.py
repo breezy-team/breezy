@@ -1051,10 +1051,10 @@ class Repository(object):
     @needs_write_lock
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
         signature = gpg_strategy.sign(plaintext)
-        self.add_signature(revision_id, signature)
+        self.add_signature_text(revision_id, signature)
 
     @needs_write_lock
-    def add_signature(self, revision_id, signature):
+    def add_signature_text(self, revision_id, signature):
         self._revision_store.add_revision_signature_text(revision_id,
                                                          signature,
                                                          self.get_transaction())
@@ -1636,7 +1636,11 @@ def install_revision(repository, rev, revision_tree):
 
 
 def install_revisions(repository, iterable):
-    """Install all revision data into a repository."""
+    """Install all revision data into a repository.
+
+    Accepts an iterable of revision, tree, signature tuples.  The signature
+    may be None.
+    """
     repository.start_write_group()
     try:
         for revision, revision_tree, signature in iterable:
