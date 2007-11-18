@@ -14,7 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests for the smart wire/domain protocol."""
+"""Tests for the smart wire/domain protocol.
+
+This module contains tests for the domain-level smart requests and responses,
+such as the 'Branch.lock_write' request.
+
+Tests for low-level protocol encoding are found in test_smart_transport.
+"""
 
 from StringIO import StringIO
 import tempfile

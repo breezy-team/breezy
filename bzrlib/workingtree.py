@@ -1326,8 +1326,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                         errors.PathsDoNotExist(paths=(str(from_rel),
                         str(to_rel))))
                 else:
-                    raise errors.RenameFailedFilesExist(from_rel, to_rel,
-                        extra="(Use --after to update the Bazaar id)")
+                    raise errors.RenameFailedFilesExist(from_rel, to_rel)
             rename_entry.only_change_inv = only_change_inv
         return rename_entries
 
@@ -1541,7 +1540,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                                 change_reporter=change_reporter)
                     if (basis_tree.inventory.root is None and
                         new_basis_tree.inventory.root is not None):
-                        self.set_root_id(new_basis_tree.inventory.root.file_id)
+                        self.set_root_id(new_basis_tree.get_root_id())
                 finally:
                     pb.finished()
                     basis_tree.unlock()
@@ -1892,9 +1891,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                          want_unversioned=True, specific_files=files):
                     # Check if it's an unknown (but not ignored) OR
                     # changed (but not deleted) :
-                    if not self.is_ignored(path[1]) and (
-                        versioned == (False, False) or
-                        content_change and kind[1] != None):
+                    if ((versioned == (False, False) or
+                         content_change and kind[1] != None)
+                        and not self.is_ignored(path[1])):
                         has_changed_files = True
                         break
 
@@ -2154,7 +2153,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             try:
                 to_tree = self.branch.basis_tree()
                 if basis.inventory.root is None:
-                    self.set_root_id(to_tree.inventory.root.file_id)
+                    self.set_root_id(to_tree.get_root_id())
                     self.flush()
                 result += merge.merge_inner(
                                       self.branch,
@@ -2719,11 +2718,14 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         control_files.put_bytes('pending-merges', '')
         
 
-    def initialize(self, a_bzrdir, revision_id=None):
+    def initialize(self, a_bzrdir, revision_id=None, from_branch=None):
         """See WorkingTreeFormat.initialize()."""
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
-        branch = a_bzrdir.open_branch()
+        if from_branch is not None:
+            branch = from_branch
+        else:
+            branch = a_bzrdir.open_branch()
         if revision_id is None:
             revision_id = _mod_revision.ensure_null(branch.last_revision())
         branch.lock_write()
@@ -2740,7 +2742,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
                          _bzrdir=a_bzrdir)
         basis_tree = branch.repository.revision_tree(revision_id)
         if basis_tree.inventory.root is not None:
-            wt.set_root_id(basis_tree.inventory.root.file_id)
+            wt.set_root_id(basis_tree.get_root_id())
         # set the parent list and cache the basis tree.
         if _mod_revision.is_null(revision_id):
             parent_trees = []
@@ -2808,7 +2810,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         return LockableFiles(transport, self._lock_file_name, 
                              self._lock_class)
 
-    def initialize(self, a_bzrdir, revision_id=None):
+    def initialize(self, a_bzrdir, revision_id=None, from_branch=None):
         """See WorkingTreeFormat.initialize().
         
         revision_id allows creating a working tree at a different
@@ -2821,7 +2823,10 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         control_files.create_lock()
         control_files.lock_write()
         control_files.put_utf8('format', self.get_format_string())
-        branch = a_bzrdir.open_branch()
+        if from_branch is not None:
+            branch = from_branch
+        else:
+            branch = a_bzrdir.open_branch()
         if revision_id is None:
             revision_id = _mod_revision.ensure_null(branch.last_revision())
         # WorkingTree3 can handle an inventory which has a unique root id.
@@ -2842,7 +2847,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
             basis_tree = branch.repository.revision_tree(revision_id)
             # only set an explicit root id if there is one to set.
             if basis_tree.inventory.root is not None:
-                wt.set_root_id(basis_tree.inventory.root.file_id)
+                wt.set_root_id(basis_tree.get_root_id())
             if revision_id == NULL_REVISION:
                 wt.set_parent_trees([])
             else:

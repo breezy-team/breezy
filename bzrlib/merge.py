@@ -550,7 +550,7 @@ class Merge3Merger(object):
                                  self.tt.root)
         if self.other_tree.inventory.root is None:
             return
-        other_root_file_id = self.other_tree.inventory.root.file_id
+        other_root_file_id = self.other_tree.get_root_id()
         other_root = self.tt.trans_id_file_id(other_root_file_id)
         if other_root == self.tt.root:
             return
