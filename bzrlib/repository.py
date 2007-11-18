@@ -1698,7 +1698,7 @@ def _install_revision(repository, rev, revision_tree, signature):
     except errors.RevisionAlreadyPresent:
         pass
     if signature is not None:
-        repository.add_signature(rev.revision_id, signature)
+        repository.add_signature_text(rev.revision_id, signature)
     repository.add_revision(rev.revision_id, rev, inv)
 
 
