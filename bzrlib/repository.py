@@ -1075,7 +1075,6 @@ class Repository(object):
         finally:
             pb.finished()
 
-
     def _find_text_key_references_from_xml_inventory_lines(self,
         line_iterator):
         """Core routine for extracting references to texts from inventories.
@@ -1089,10 +1088,11 @@ class Repository(object):
             not part of the line_iterator's output then False will be given -
             even though it may actually refer to that key.
         """
-        assert self._serializer.support_altered_by_hack, \
-            ("_find_text_key_references_from_xml_inventory_lines only "
-             "supported for branches which store inventory as unnested xml, "
-             "not on %r" % self)
+        if not self._serializer.support_altered_by_hack:
+            raise AssertionError(
+                "_find_text_key_references_from_xml_inventory_lines only "
+                "supported for branches which store inventory as unnested xml"
+                ", not on %r" % self)
         result = {}
 
         # this code needs to read every new line in every inventory for the
@@ -1138,10 +1138,10 @@ class Repository(object):
                 unescape_revid_cache[revision_id] = unescaped
                 revision_id = unescaped
 
-            # Note that unescaping always means that on a fulltext cached
-            # inventory we deserialised every fileid, which for general 'pull'
-            # is not great, but we don't really want to have some many
-            # fulltexts that this matters anyway. RBC 20071114.
+            # Note that unconditionally unescaping means that we deserialise
+            # every fileid, which for general 'pull' is not great, but we don't
+            # really want to have some many fulltexts that this matters anyway.
+            # RBC 20071114.
             try:
                 file_id = unescape_fileid_cache[file_id]
             except KeyError:
