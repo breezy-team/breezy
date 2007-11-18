@@ -458,7 +458,7 @@ class RepositoryFormatKnit1(RepositoryFormatKnit):
 
 
 class RepositoryFormatKnit3(RepositoryFormatKnit):
-    """Bzr repository knit format 1.
+    """Bzr repository knit format 3.
 
     This repository format has:
      - knits for file texts and inventory
