@@ -2311,3 +2311,168 @@ class TestDirstateTreeReference(TestCaseWithDirState):
             self.assertEqual(expected, state._find_block(key))
         finally:
             state.unlock()
+
+
+class TestDiscardMergeParents(TestCaseWithDirState):
+
+    def test_discard_no_parents(self):
+        # This should be a no-op
+        state = self.create_empty_dirstate()
+        self.addCleanup(state.unlock)
+        state._discard_merge_parents()
+        state._validate()
+
+    def test_discard_one_parent(self):
+        # No-op
+        packed_stat = 'AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk'
+        root_entry_direntry = ('', '', 'a-root-value'), [
+            ('d', '', 0, False, packed_stat),
+            ('d', '', 0, False, packed_stat),
+            ]
+        dirblocks = []
+        dirblocks.append(('', [root_entry_direntry]))
+        dirblocks.append(('', []))
+
+        state = self.create_empty_dirstate()
+        self.addCleanup(state.unlock)
+        state._set_data(['parent-id'], dirblocks[:])
+        state._validate()
+
+        state._discard_merge_parents()
+        state._validate()
+        self.assertEqual(dirblocks, state._dirblocks)
+
+    def test_discard_simple(self):
+        # No-op
+        packed_stat = 'AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk'
+        root_entry_direntry = ('', '', 'a-root-value'), [
+            ('d', '', 0, False, packed_stat),
+            ('d', '', 0, False, packed_stat),
+            ('d', '', 0, False, packed_stat),
+            ]
+        expected_root_entry_direntry = ('', '', 'a-root-value'), [
+            ('d', '', 0, False, packed_stat),
+            ('d', '', 0, False, packed_stat),
+            ]
+        dirblocks = []
+        dirblocks.append(('', [root_entry_direntry]))
+        dirblocks.append(('', []))
+
+        state = self.create_empty_dirstate()
+        self.addCleanup(state.unlock)
+        state._set_data(['parent-id', 'merged-id'], dirblocks[:])
+        state._validate()
+
+        # This should strip of the extra column
+        state._discard_merge_parents()
+        state._validate()
+        expected_dirblocks = [('', [expected_root_entry_direntry]), ('', [])]
+        self.assertEqual(expected_dirblocks, state._dirblocks)
+
+    def test_discard_absent(self):
+        """If entries are only in a merge, discard should remove the entries"""
+        null_stat = dirstate.DirState.NULLSTAT
+        present_dir = ('d', '', 0, False, null_stat)
+        present_file = ('f', '', 0, False, null_stat)
+        absent = dirstate.DirState.NULL_PARENT_DETAILS
+        root_key = ('', '', 'a-root-value')
+        file_in_root_key = ('', 'file-in-root', 'a-file-id')
+        file_in_merged_key = ('', 'file-in-merged', 'b-file-id')
+        dirblocks = [('', [(root_key, [present_dir, present_dir, present_dir])]),
+                     ('', [(file_in_merged_key,
+                            [absent, absent, present_file]),
+                           (file_in_root_key,
+                            [present_file, present_file, present_file]),
+                          ]),
+                    ]
+
+        state = self.create_empty_dirstate()
+        self.addCleanup(state.unlock)
+        state._set_data(['parent-id', 'merged-id'], dirblocks[:])
+        state._validate()
+
+        exp_dirblocks = [('', [(root_key, [present_dir, present_dir])]),
+                         ('', [(file_in_root_key,
+                                [present_file, present_file]),
+                              ]),
+                        ]
+        state._discard_merge_parents()
+        state._validate()
+        self.assertEqual(exp_dirblocks, state._dirblocks)
+
+    def test_discard_renamed(self):
+        null_stat = dirstate.DirState.NULLSTAT
+        present_dir = ('d', '', 0, False, null_stat)
+        present_file = ('f', '', 0, False, null_stat)
+        absent = dirstate.DirState.NULL_PARENT_DETAILS
+        root_key = ('', '', 'a-root-value')
+        file_in_root_key = ('', 'file-in-root', 'a-file-id')
+        # Renamed relative to parent
+        file_rename_s_key = ('', 'file-s', 'b-file-id')
+        file_rename_t_key = ('', 'file-t', 'b-file-id')
+        # And one that is renamed between the parents, but absent in this
+        key_in_1 = ('', 'file-in-1', 'c-file-id')
+        key_in_2 = ('', 'file-in-2', 'c-file-id')
+
+        dirblocks = [
+            ('', [(root_key, [present_dir, present_dir, present_dir])]),
+            ('', [(key_in_1,
+                   [absent, present_file, ('r', 'file-in-2', 'c-file-id')]),
+                  (key_in_2,
+                   [absent, ('r', 'file-in-1', 'c-file-id'), present_file]),
+                  (file_in_root_key,
+                   [present_file, present_file, present_file]),
+                  (file_rename_s_key,
+                   [('r', 'file-t', 'b-file-id'), absent, present_file]),
+                  (file_rename_t_key,
+                   [present_file, absent, ('r', 'file-s', 'b-file-id')]),
+                 ]),
+        ]
+        exp_dirblocks = [
+            ('', [(root_key, [present_dir, present_dir])]),
+            ('', [(key_in_1, [absent, present_file]),
+                  (file_in_root_key, [present_file, present_file]),
+                  (file_rename_t_key, [present_file, absent]),
+                 ]),
+        ]
+        state = self.create_empty_dirstate()
+        self.addCleanup(state.unlock)
+        state._set_data(['parent-id', 'merged-id'], dirblocks[:])
+        state._validate()
+
+        state._discard_merge_parents()
+        state._validate()
+        self.assertEqual(exp_dirblocks, state._dirblocks)
+
+    def test_discard_all_subdir(self):
+        null_stat = dirstate.DirState.NULLSTAT
+        present_dir = ('d', '', 0, False, null_stat)
+        present_file = ('f', '', 0, False, null_stat)
+        absent = dirstate.DirState.NULL_PARENT_DETAILS
+        root_key = ('', '', 'a-root-value')
+        subdir_key = ('', 'sub', 'dir-id')
+        child1_key = ('sub', 'child1', 'child1-id')
+        child2_key = ('sub', 'child2', 'child2-id')
+        child3_key = ('sub', 'child3', 'child3-id')
+
+        dirblocks = [
+            ('', [(root_key, [present_dir, present_dir, present_dir])]),
+            ('', [(subdir_key, [present_dir, present_dir, present_dir])]),
+            ('sub', [(child1_key, [absent, absent, present_file]),
+                     (child2_key, [absent, absent, present_file]),
+                     (child3_key, [absent, absent, present_file]),
+                    ]),
+        ]
+        exp_dirblocks = [
+            ('', [(root_key, [present_dir, present_dir])]),
+            ('', [(subdir_key, [present_dir, present_dir])]),
+            ('sub', []),
+        ]
+        state = self.create_empty_dirstate()
+        self.addCleanup(state.unlock)
+        state._set_data(['parent-id', 'merged-id'], dirblocks[:])
+        state._validate()
+
+        state._discard_merge_parents()
+        state._validate()
+        self.assertEqual(exp_dirblocks, state._dirblocks)
