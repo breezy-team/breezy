@@ -759,7 +759,8 @@ def config_dir():
         if base is None:
             base = os.environ.get('HOME', None)
         if base is None:
-            raise errors.BzrError('You must have one of BZR_HOME, APPDATA, or HOME set')
+            raise errors.BzrError('You must have one of BZR_HOME, APPDATA,'
+                                  ' or HOME set')
         return osutils.pathjoin(base, 'bazaar', '2.0')
     else:
         # cygwin, linux, and darwin all have a $HOME directory
