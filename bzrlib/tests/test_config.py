@@ -34,7 +34,7 @@ from bzrlib import (
     tests,
     trace,
     )
-import bzrlib.util.configobj.configobj as configobj
+from bzrlib.util.configobj import configobj
 
 
 sample_long_alias="log -r-15..-1 --line"
@@ -309,15 +309,15 @@ class TestConfigPath(tests.TestCase):
                          self.bzr_home + '/bazaar.conf')
 
     def test_branches_config_filename(self):
-        self.assertEqual(config.config_filename(),
+        self.assertEqual(config.branches_config_filename(),
                          self.bzr_home + '/branches.conf')
 
     def test_locations_config_filename(self):
-        self.assertEqual(config.config_filename(),
+        self.assertEqual(config.locations_config_filename(),
                          self.bzr_home + '/locations.conf')
 
     def test_authentication_config_filename(self):
-        self.assertEqual(config.config_filename(),
+        self.assertEqual(config.authentication_config_filename(),
                          self.bzr_home + '/authentication.conf')
 
 

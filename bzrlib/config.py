@@ -84,7 +84,7 @@ from bzrlib import (
     urlutils,
     win32utils,
     )
-import bzrlib.util.configobj.configobj as configobj
+from bzrlib.util.configobj import configobj
 """)
 
 
