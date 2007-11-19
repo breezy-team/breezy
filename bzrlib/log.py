@@ -49,14 +49,28 @@ listing other things that were changed in the same revision, but not
 all the changes since the previous revision that touched hello.c.
 """
 
-from itertools import izip
+import codecs
+from itertools import (
+    izip,
+    )
 import re
+import sys
+from warnings import (
+    warn,
+    )
 
 from bzrlib import (
     registry,
     symbol_versioning,
+    user_encoding,
     )
-import bzrlib.errors as errors
+from bzrlib.errors import (
+    BzrCommandError,
+    )
+from bzrlib.osutils import (
+    format_date,
+    terminal_width,
+    )
 from bzrlib.revision import (
     NULL_REVISION,
     )
@@ -188,14 +202,12 @@ def _show_log(branch,
              limit=None):
     """Worker function for show_log - see show_log."""
     if not isinstance(lf, LogFormatter):
-        from warnings import warn
         warn("not a LogFormatter instance: %r" % lf)
 
     if specific_fileid:
         mutter('get log for file_id %r', specific_fileid)
 
     if search is not None:
-        import re
         searchRE = re.compile(search, re.IGNORECASE)
     else:
         searchRE = None
@@ -235,7 +247,6 @@ def _show_log(branch,
         generate_single_revision = ((start_rev_id == end_rev_id)
             and getattr(lf, 'supports_single_merge_revision', False))
         if not generate_single_revision:
-            from bzrlib.errors import BzrCommandError
             raise BzrCommandError('Selected log formatter only supports '
                 'mainline revisions.')
         generate_merge_revisions = generate_single_revision
@@ -370,10 +381,8 @@ def _get_mainline_revs(branch, start_revision, end_revision):
 
     if ((start_rev_id == NULL_REVISION)
         or (end_rev_id == NULL_REVISION)):
-        from bzrlib.errors import BzrCommandError
         raise BzrCommandError('Logging revision 0 is invalid.')
     if start_revno > end_revno:
-        from bzrlib.errors import BzrCommandError
         raise BzrCommandError("Start revision must be older than "
                               "the end revision.")
 
@@ -635,7 +644,6 @@ class LongLogFormatter(LogFormatter):
 
     def log_revision(self, revision):
         """Log a revision, either merged or not."""
-        from bzrlib.osutils import format_date
         indent = '    ' * revision.merge_depth
         to_file = self.to_file
         to_file.write(indent + '-' * 60 + '\n')
@@ -685,8 +693,6 @@ class ShortLogFormatter(LogFormatter):
         return self.log_revision(lr)
 
     def log_revision(self, revision):
-        from bzrlib.osutils import format_date
-
         to_file = self.to_file
         date_str = format_date(revision.rev.timestamp,
                                revision.rev.timezone or 0,
@@ -722,7 +728,6 @@ class LineLogFormatter(LogFormatter):
     supports_single_merge_revision = True
 
     def __init__(self, *args, **kwargs):
-        from bzrlib.osutils import terminal_width
         super(LineLogFormatter, self).__init__(*args, **kwargs)
         self._max_chars = terminal_width() - 1
 
@@ -732,7 +737,6 @@ class LineLogFormatter(LogFormatter):
         return str[:max_len-3]+'...'
 
     def date_string(self, rev):
-        from bzrlib.osutils import format_date
         return format_date(rev.timestamp, rev.timezone or 0, 
                            self.show_timezone, date_fmt="%Y-%m-%d",
                            show_offset=False)
@@ -745,7 +749,6 @@ class LineLogFormatter(LogFormatter):
 
     @deprecated_method(zero_seventeen)
     def show(self, revno, rev, delta):
-        from bzrlib.osutils import terminal_width
         self.to_file.write(self.log_string(revno, rev, terminal_width()-1))
         self.to_file.write('\n')
 
@@ -813,7 +816,6 @@ def log_formatter(name, *args, **kwargs):
     name -- Name of the formatter to construct; currently 'long', 'short' and
         'line' are supported.
     """
-    from bzrlib.errors import BzrCommandError
     try:
         return log_formatter_registry.make_formatter(name, *args, **kwargs)
     except KeyError:
@@ -836,11 +838,8 @@ def show_changed_revisions(branch, old_rh, new_rh, to_file=None,
     :param to_file: A file to write the results to. If None, stdout will be used
     """
     if to_file is None:
-        import sys
-        import codecs
-        import bzrlib
-        to_file = codecs.getwriter(bzrlib.user_encoding)(sys.stdout,
-                                                         errors='replace')
+        to_file = codecs.getwriter(user_encoding)(sys.stdout,
+                                                  errors='replace')
     lf = log_formatter(log_format,
                        show_ids=False,
                        to_file=to_file,
