@@ -914,7 +914,7 @@ class DirState(object):
                     if (entry[1][0][0], entry[1][1][0]) in dead_patterns:
                         deleted_positions.append(pos)
                 if deleted_positions:
-                    if len(deleted_positions) == len(block):
+                    if len(deleted_positions) == len(block[1]):
                         del block[1][:]
                     else:
                         for pos in reversed(deleted_positions):
