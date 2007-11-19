@@ -16,21 +16,17 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-"""Simple text-mode progress indicator.
+"""Progress indicators.
 
-To display an indicator, create a ProgressBar object.  Call it,
-passing Progress objects indicating the current state.  When done,
-call clear().
+The usual way to use this is via bzrlib.ui.ui_factory.nested_progress_bar which
+will maintain a ProgressBarStack for you.
 
-Progress is suppressed when output is not sent to a terminal, so as
-not to clutter log files.
+For direct use, the factory ProgressBar will return an auto-detected progress
+bar that should match your terminal type. You can manually create a
+ProgressBarStack too if you need multiple levels of cooperating progress bars.
+Note that bzrlib's internal functions use the ui module, so if you are using
+bzrlib it really is best to use bzrlib.ui.ui_factory.
 """
-
-# TODO: should be a global option e.g. --silent that disables progress
-# indicators, preferably without needing to adjust all code that
-# potentially calls them.
-
-# TODO: If not on a tty perhaps just print '......' for the benefit of IDEs, etc
 
 # TODO: Optionally show elapsed time instead/as well as ETA; nicer
 # when the rate is unpredictable
