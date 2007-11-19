@@ -243,9 +243,7 @@ def fancy_rename(old, new, rename_func, unlink_func):
             # source and target may be aliases of each other (e.g. on a
             # case-insensitive filesystem), so we may have accidentally renamed
             # source by when we tried to rename target
-            if (not file_existed
-                or e.errno not in (None, errno.ENOENT)
-                or old.lower() != new.lower()):
+            if not (file_existed and e.errno in (None, errno.ENOENT)):
                 raise
     finally:
         if file_existed:
