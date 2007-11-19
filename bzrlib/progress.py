@@ -298,7 +298,6 @@ class TTYProgressBar(_BaseProgressBar):
         self.child_fraction = 0
         self._have_output = False
     
-
     def throttle(self, old_msg):
         """Return True if the bar was updated too recently"""
         # time.time consistently takes 40/4000 ms = 0.01 ms.
@@ -320,7 +319,7 @@ class TTYProgressBar(_BaseProgressBar):
         return False
         
     def tick(self):
-        self.update(self.last_msg, self.last_cnt, self.last_total, 
+        self.update(self.last_msg, self.last_cnt, self.last_total,
                     self.child_fraction)
 
     def child_update(self, message, current, total):
@@ -438,7 +437,7 @@ class TTYProgressBar(_BaseProgressBar):
         self._have_output = True
         #self.to_file.flush()
             
-    def clear(self):        
+    def clear(self):
         if self._have_output:
             self.to_file.write('\r%s\r' % (' ' * (self.width - 1)))
         self._have_output = False
