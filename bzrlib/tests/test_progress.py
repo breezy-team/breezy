@@ -29,11 +29,13 @@ from bzrlib.tests import TestCase
 
 
 class FakeStack:
+
     def __init__(self, top):
         self.__top = top
 
     def top(self):
         return self.__top
+
 
 class InstrumentedProgress(TTYProgressBar):
     """TTYProgress variant that tracks outcomes"""
@@ -63,6 +65,7 @@ class _NonTTYStringIO(StringIO):
 
 
 class TestProgress(TestCase):
+
     def setUp(self):
         q = DummyProgress()
         self.top = ChildProgress(_stack=FakeStack(q))
