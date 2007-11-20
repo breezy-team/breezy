@@ -130,6 +130,19 @@ class TestEntryDiffing(TestCaseWithTree):
 
     def test_link_diff_changed(self):
         self.requireFeature(SymlinkFeature)
+
+        import sys
+        from bzrlib.tests import KnownFailure
+        from bzrlib.tests.tree_implementations import return_parameter
+        # Even more ugly: return_paramater is used for WorkingTree[2-4]
+        if (self.workingtree_to_test_tree is return_parameter
+            and sys.version_info >= (2, 6)):
+            # Furthermore the problem here is that it interacts badly with a
+            # '\0\n\0'.join(lines) where lines contains *one* unicode string
+            # where all the other strings are not unicode.
+            raise  KnownFailure("python-2.6 os.readlink returns unicode path"
+                                " if called with unicode path")
+
         output = StringIO()
         self.link_1.diff(internal_diff, 
                           "/dev/null", self.tree_1, 
@@ -219,6 +232,18 @@ class TestInventory(TestCaseWithTree):
 
     def test_symlink_target(self):
         self.requireFeature(SymlinkFeature)
+
+        import sys
+        from bzrlib.tests import KnownFailure
+        from bzrlib.tests.tree_implementations import _dirstate_tree_from_workingtree
+        if (self.workingtree_to_test_tree is _dirstate_tree_from_workingtree
+            and sys.version_info >= (2, 6)):
+            # Furthermore the problem here is that it interacts badly with a
+            # '\0\n\0'.join(lines) where lines contains *one* unicode string
+            # where all the other strings are not unicode.
+            raise  KnownFailure("python-2.6 os.readlink returns unicode path"
+                                " if called with unicode path")
+
         self._set_up()
         if isinstance(self.tree, MutableTree):
             raise TestSkipped(
@@ -228,6 +253,18 @@ class TestInventory(TestCaseWithTree):
 
     def test_symlink(self):
         self.requireFeature(SymlinkFeature)
+
+        import sys
+        from bzrlib.tests import KnownFailure
+        from bzrlib.tests.tree_implementations import _dirstate_tree_from_workingtree
+        if (self.workingtree_to_test_tree is _dirstate_tree_from_workingtree
+            and sys.version_info >= (2, 6)):
+            # Furthermore the problem here is that it interacts badly with a
+            # '\0\n\0'.join(lines) where lines contains *one* unicode string
+            # where all the other strings are not unicode.
+            raise  KnownFailure("python-2.6 os.readlink returns unicode path"
+                                " if called with unicode path")
+
         self._set_up()
         entry = self.inv[self.inv.path2id('symlink')]
         self.assertEqual(entry.kind, 'symlink')

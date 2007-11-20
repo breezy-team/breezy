@@ -17,6 +17,8 @@
 """Exceptions for bzr, and reporting of them.
 """
 
+import sys
+
 
 from bzrlib import (
     osutils,
@@ -102,9 +104,6 @@ class BzrError(StandardError):
             fmt = self._get_format_string()
             if fmt:
                 d = dict(self.__dict__)
-                # special case: python2.5 puts the 'message' attribute in a
-                # slot, so it isn't seen in __dict__
-                d['message'] = getattr(self, 'message', 'no message')
                 s = fmt % d
                 # __str__() should always return a 'str' object
                 # never a 'unicode' object.
