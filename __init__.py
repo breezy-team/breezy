@@ -183,10 +183,10 @@ def display_info(info, to_file):
                     to_file.write("%s\n" % (email,))
 
 
-class cmd_statistics(bzrlib.commands.Command):
+class cmd_committer_statistics(bzrlib.commands.Command):
     """Generate statistics for LOCATION."""
 
-    aliases = ['stats']
+    aliases = ['stats', 'committer-stats']
     takes_args = ['location?']
     takes_options = ['revision']
 
@@ -220,7 +220,7 @@ class cmd_statistics(bzrlib.commands.Command):
         display_info(info, self.outf)
 
 
-bzrlib.commands.register_command(cmd_statistics)
+bzrlib.commands.register_command(cmd_committer_statistics)
 
 
 class cmd_ancestor_growth(bzrlib.commands.Command):
