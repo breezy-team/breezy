@@ -16,6 +16,7 @@
 
 import os
 import stat
+from StringIO import StringIO
 import sys
 
 from bzrlib import (
@@ -28,6 +29,7 @@ from bzrlib import (
 from bzrlib.bzrdir import BzrDir
 from bzrlib.conflicts import (DuplicateEntry, DuplicateID, MissingParent,
                               UnversionedParent, ParentLoop, DeletingParent,)
+from bzrlib.diff import show_diff_trees
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, CantMoveRoot, 
                            PathsNotVersionedError, ExistingLimbo,
@@ -44,7 +46,7 @@ from bzrlib.tests import (
 from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths, 
                               resolve_conflicts, cook_conflicts, 
                               find_interesting, build_tree, get_backup_name,
-                              change_entry, _FileMover)
+                              change_entry, _FileMover, TransformPreview)
 
 
 class TestTreeTransform(tests.TestCaseWithTransport):
@@ -1469,3 +1471,29 @@ class TestTransformRollback(tests.TestCaseWithTransport):
                           _mover=self.ExceptionFileMover(bad_target='d'))
         self.failUnlessExists('a')
         self.failUnlessExists('a/b')
+
+
+class TestTransformPreview(tests.TestCaseWithTransport):
+
+    def create_tree(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('a', 'content 1')])
+        tree.commit('rev1', rev_id='rev1')
+        return tree.branch.repository.revision_tree('rev1')
+
+    def test_transform_preview(self):
+        revision_tree = self.create_tree()
+        preview = TransformPreview(revision_tree)
+
+    def test_transform_preview_tree(self):
+        revision_tree = self.create_tree()
+        preview = TransformPreview(revision_tree)
+        preview.get_preview_tree()
+
+    def test_diff_preview_tree(self):
+        revision_tree = self.create_tree()
+        preview = TransformPreview(revision_tree)
+        preview.new_file('file2', preview.root, 'content B', 'file2-id')
+        preview_tree = preview.get_preview_tree()
+        out = StringIO()
+        show_diff_trees(revision_tree, preview_tree, out)

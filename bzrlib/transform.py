@@ -17,6 +17,7 @@
 import os
 import errno
 from stat import S_ISREG
+import tempfile
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -61,65 +62,11 @@ class _TransformResults(object):
         self.rename_count = rename_count
 
 
-class TreeTransform(object):
-    """Represent a tree transformation.
-    
-    This object is designed to support incremental generation of the transform,
-    in any order.
+class TreeTransformBase(object):
 
-    However, it gives optimum performance when parent directories are created
-    before their contents.  The transform is then able to put child files
-    directly in their parent directory, avoiding later renames.
-    
-    It is easy to produce malformed transforms, but they are generally
-    harmless.  Attempting to apply a malformed transform will cause an
-    exception to be raised before any modifications are made to the tree.  
-
-    Many kinds of malformed transforms can be corrected with the 
-    resolve_conflicts function.  The remaining ones indicate programming error,
-    such as trying to create a file with no path.
-
-    Two sets of file creation methods are supplied.  Convenience methods are:
-     * new_file
-     * new_directory
-     * new_symlink
-
-    These are composed of the low-level methods:
-     * create_path
-     * create_file or create_directory or create_symlink
-     * version_file
-     * set_executability
-    """
-    def __init__(self, tree, pb=DummyProgress()):
-        """Note: a tree_write lock is taken on the tree.
-        
-        Use TreeTransform.finalize() to release the lock (can be omitted if
-        TreeTransform.apply() called).
-        """
-        object.__init__(self)
+    def __init__(self, tree, limbodir, pb=DummyProgress()):
         self._tree = tree
-        self._tree.lock_tree_write()
-        try:
-            control_files = self._tree._control_files
-            self._limbodir = urlutils.local_path_from_url(
-                control_files.controlfilename('limbo'))
-            try:
-                os.mkdir(self._limbodir)
-            except OSError, e:
-                if e.errno == errno.EEXIST:
-                    raise ExistingLimbo(self._limbodir)
-            self._deletiondir = urlutils.local_path_from_url(
-                control_files.controlfilename('pending-deletion'))
-            try:
-                os.mkdir(self._deletiondir)
-            except OSError, e:
-                if e.errno == errno.EEXIST:
-                    raise errors.ExistingPendingDeletion(self._deletiondir)
-
-        except: 
-            self._tree.unlock()
-            raise
-
+        self._limbodir = limbodir
         self._id_number = 0
         self._new_name = {}
         self._new_parent = {}
@@ -1200,6 +1147,116 @@ class TreeTransform(object):
                    (from_kind, to_kind),
                    (from_executable, to_executable)))
         return iter(sorted(results, key=lambda x:x[1]))
+
+
+class TreeTransform(TreeTransformBase):
+    """Represent a tree transformation.
+
+    This object is designed to support incremental generation of the transform,
+    in any order.
+
+    However, it gives optimum performance when parent directories are created
+    before their contents.  The transform is then able to put child files
+    directly in their parent directory, avoiding later renames.
+
+    It is easy to produce malformed transforms, but they are generally
+    harmless.  Attempting to apply a malformed transform will cause an
+    exception to be raised before any modifications are made to the tree.
+
+    Many kinds of malformed transforms can be corrected with the
+    resolve_conflicts function.  The remaining ones indicate programming error,
+    such as trying to create a file with no path.
+
+    Two sets of file creation methods are supplied.  Convenience methods are:
+     * new_file
+     * new_directory
+     * new_symlink
+
+    These are composed of the low-level methods:
+     * create_path
+     * create_file or create_directory or create_symlink
+     * version_file
+     * set_executability
+    """
+    def __init__(self, tree, pb=DummyProgress()):
+        """Note: a tree_write lock is taken on the tree.
+
+        Use TreeTransform.finalize() to release the lock (can be omitted if
+        TreeTransform.apply() called).
+        """
+        tree.lock_tree_write()
+        try:
+            control_files = tree._control_files
+            limbodir = urlutils.local_path_from_url(
+                control_files.controlfilename('limbo'))
+            try:
+                os.mkdir(limbodir)
+            except OSError, e:
+                if e.errno == errno.EEXIST:
+                    raise ExistingLimbo(limbodir)
+            self._deletiondir = urlutils.local_path_from_url(
+                control_files.controlfilename('pending-deletion'))
+            try:
+                os.mkdir(self._deletiondir)
+            except OSError, e:
+                if e.errno == errno.EEXIST:
+                    raise errors.ExistingPendingDeletion(self._deletiondir)
+
+        except:
+            tree.unlock()
+            raise
+        TreeTransformBase.__init__(self, tree, limbodir, pb)
+
+
+class TransformPreview(TreeTransformBase):
+
+    def __init__(self, tree, pb=DummyProgress()):
+        limbodir = tempfile.mkdtemp()
+        TreeTransformBase.__init__(self, tree, limbodir, pb)
+
+    def canonical_path(self, path):
+        return path
+
+    def get_preview_tree(self):
+        return PreviewTree(self)
+
+
+class PreviewTree(object):
+
+    def __init__(self, transform):
+        self._transform = transform
+
+    def lock_read(self):
+        pass
+
+    def unlock(self):
+        pass
+
+    def changes_from(self, other, want_unchanged=False, specific_files=None,
+        extra_trees=None, require_versioned=False, include_root=False,
+        want_unversioned=False):
+        return tree.InterTree.get(other, self).compare(
+            want_unchanged=want_unchanged,
+            specific_files=specific_files,
+            extra_trees=extra_trees,
+            require_versioned=require_versioned,
+            include_root=include_root,
+            want_unversioned=want_unversioned,
+            )
+
+    def _iter_changes(self, include_unchanged=False, specific_files=None,
+                      pb=None, extra_trees=[], require_versioned=True,
+                      want_unversioned=False):
+        # FIXME: should error out when inputs aren't acceptable
+        return self._transform._iter_changes()
+
+    def get_file_mtime(self, file_id, path=None):
+        trans_id = self._transform.trans_id_file_id(file_id)
+        name = self._transform._limbo_name(trans_id)
+        return os.stat(name).st_mtime
+
+    def paths2ids(self, specific_files, trees=None, require_versioned=False):
+        return 'not_empty'
 
 
 def joinpath(parent, child):
