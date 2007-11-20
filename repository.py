@@ -645,7 +645,10 @@ class SvnRepository(Repository):
         parent_ids = self.revision_parents(revision_id)
 
         # Commit SVN revision properties to a Revision object
-        rev = Revision(revision_id=revision_id, parent_ids=parent_ids)
+        class LazySvnRevision(Revision):
+            inventory_sha1 = property(lambda rev: self.get_inventory_sha1(rev.revision_id))
+
+        rev = LazySvnRevision(revision_id=revision_id, parent_ids=parent_ids)
 
         svn_revprops = self.transport.revprop_list(revnum)
 
@@ -671,9 +674,6 @@ class SvnRepository(Repository):
         parse_revision_metadata(
                 self.branchprop_list.get_property(path, revnum, 
                      SVN_PROP_BZR_REVISION_INFO, ""), rev)
-
-        rev.inventory_sha1 = property(
-            lambda: self.get_inventory_sha1(revision_id))
 
         return rev
 
