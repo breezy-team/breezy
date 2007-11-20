@@ -45,7 +45,7 @@ from bzrlib.tests import (
     test_sftp_transport
     )
 from bzrlib.tests.http_server import HttpServer
-from bzrlib.tests.HTTPTestUtil import (
+from bzrlib.tests.http_utils import (
     TestCaseWithTwoWebservers,
     HTTPServerRedirecting,
     )

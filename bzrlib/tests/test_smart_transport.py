@@ -39,7 +39,7 @@ from bzrlib.smart import (
         server,
         vfs,
 )
-from bzrlib.tests.HTTPTestUtil import (
+from bzrlib.tests.http_utils import (
         HTTPServerWithSmarts,
         SmartRequestHandler,
         )

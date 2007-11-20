@@ -46,7 +46,7 @@ from bzrlib.tests.http_server import (
     HttpServer_PyCurl,
     HttpServer_urllib,
     )
-from bzrlib.tests.HTTPTestUtil import (
+from bzrlib.tests.http_utils import (
     BadProtocolRequestHandler,
     BadStatusRequestHandler,
     ForbiddenRequestHandler,

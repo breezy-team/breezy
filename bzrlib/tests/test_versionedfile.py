@@ -40,7 +40,7 @@ from bzrlib.knit import (
     KnitPlainFactory,
     )
 from bzrlib.tests import TestCaseWithMemoryTransport, TestSkipped
-from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
+from bzrlib.tests.http_utils import TestCaseWithWebserver
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryTransport
