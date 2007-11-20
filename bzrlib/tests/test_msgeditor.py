@@ -35,6 +35,7 @@ from bzrlib.msgeditor import (
 from bzrlib.tests import (
     probe_bad_non_ascii,
     TestCaseWithTransport,
+    TestNotApplicable,
     TestSkipped,
     )
 from bzrlib.trace import mutter
@@ -249,7 +250,7 @@ if len(sys.argv) == 2:
             os.chdir(self.info['directory'])
             msgeditor._create_temp_file_with_commit_template('infotext')
         else:
-            raise TestSkipped('Test run elsewhere with non-ascii data.')
+            raise TestNotApplicable('Test run elsewhere with non-ascii data.')
 
     def test__create_temp_file_with_empty_commit_template(self):
         # empty file
