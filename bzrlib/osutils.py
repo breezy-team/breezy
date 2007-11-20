@@ -52,7 +52,7 @@ from bzrlib import (
     )
 """)
 
-# sha is deprecated in python2.6 but haslib is available as of 2.5
+# sha is deprecated in python2.6 but hashlib is available as of 2.5
 if sys.version_info < (2, 5):
     import md5 as _md5
     md5 = _md5.new

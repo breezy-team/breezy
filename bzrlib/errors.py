@@ -1213,11 +1213,11 @@ class BoundBranchConnectionFailure(BzrError):
 
 class WeaveError(BzrError):
 
-    _fmt = "Error in processing weave: %(message)s"
+    _fmt = "Error in processing weave: %(msg)s"
 
-    def __init__(self, message=None):
+    def __init__(self, msg=None):
         BzrError.__init__(self)
-        self.message = message
+        self.msg = msg
 
 
 class WeaveRevisionAlreadyPresent(WeaveError):
