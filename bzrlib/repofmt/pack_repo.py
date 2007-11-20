@@ -18,23 +18,22 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from itertools import izip
 import math
-import md5
 import time
 
 from bzrlib import (
         debug,
+        osutils,
         pack,
         ui,
         )
 from bzrlib.index import (
+    CombinedGraphIndex,
+    InMemoryGraphIndex,
     GraphIndex,
     GraphIndexBuilder,
-    InMemoryGraphIndex,
-    CombinedGraphIndex,
     GraphIndexPrefixAdapter,
     )
 from bzrlib.knit import KnitGraphIndex, _PackAccess, _KnitData
-from bzrlib.osutils import rand_chars
 from bzrlib.pack import ContainerWriter
 from bzrlib.store import revision
 """)
@@ -224,7 +223,7 @@ class NewPack(Pack):
         # where is the pack renamed to when it is finished?
         self.pack_transport = pack_transport
         # tracks the content written to the .pack file.
-        self._hash = md5.new()
+        self._hash = osutils.md5()
         # a four-tuple with the length in bytes of the indices, once the pack
         # is finalised. (rev, inv, text, sigs)
         self.index_sizes = None
@@ -234,7 +233,7 @@ class NewPack(Pack):
         # under creation.
         self._cache_limit = 0
         # the temporary pack file name.
-        self.random_name = rand_chars(20) + upload_suffix
+        self.random_name = osutils.rand_chars(20) + upload_suffix
         # when was this pack started ?
         self.start_time = time.time()
         # open an output stream for the data added to the pack.

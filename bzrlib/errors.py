@@ -181,17 +181,17 @@ class BzrNewError(BzrError):
 
 
 class AlreadyBuilding(BzrError):
-    
+
     _fmt = "The tree builder is already building a tree."
 
 
 class BzrCheckError(InternalBzrError):
-    
-    _fmt = "Internal check failed: %(message)s"
 
-    def __init__(self, message):
+    _fmt = "Internal check failed: %(msg)s"
+
+    def __init__(self, msg):
         BzrError.__init__(self)
-        self.message = message
+        self.msg = msg
 
 
 class DisabledMethod(InternalBzrError):
@@ -1543,7 +1543,7 @@ class ParseConfigError(BzrError):
         if filename is None:
             filename = ""
         message = "Error(s) parsing config file %s:\n%s" % \
-            (filename, ('\n'.join(e.message for e in errors)))
+            (filename, ('\n'.join(e.msg for e in errors)))
         BzrError.__init__(self, message)
 
 
