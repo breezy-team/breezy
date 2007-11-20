@@ -642,7 +642,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         try:
             tree.set_conflicts(ConflictList())
         except UnsupportedOperation:
-            raise TestSkipped
+            raise TestSkipped('unsupported operation')
         self.assertEqual(tree.conflicts(), ConflictList())
 
     def test_add_conflicts(self):
@@ -650,7 +650,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         try:
             tree.add_conflicts([TextConflict('path_a')])
         except UnsupportedOperation:
-            raise TestSkipped()
+            raise TestSkipped('unsupported operation')
         self.assertEqual(ConflictList([TextConflict('path_a')]),
                          tree.conflicts())
         tree.add_conflicts([TextConflict('path_a')])
@@ -745,7 +745,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # if we write write an inventory then do a walkdirs we should get back
         # missing entries, and actual, and unknowns as appropriate.
         self.build_tree(['present', 'unknown'])
-        inventory = Inventory(tree.path2id(''))
+        inventory = Inventory(tree.get_root_id())
         inventory.add_path('missing', 'file', 'missing-id')
         inventory.add_path('present', 'file', 'present-id')
         # there is no point in being able to write an inventory to an unlocked
@@ -758,7 +758,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             present_stat = os.lstat('present')
             unknown_stat = os.lstat('unknown')
             expected_results = [
-                (('', tree.inventory.root.file_id),
+                (('', tree.get_root_id()),
                  [('missing', 'missing', 'unknown', None, 'missing-id', 'file'),
                   ('present', 'present', 'file', present_stat, 'present-id', 'file'),
                   ('unknown', 'unknown', 'file', unknown_stat, None, None),

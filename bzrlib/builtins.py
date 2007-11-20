@@ -1062,6 +1062,7 @@ class cmd_info(Command):
     _see_also = ['revno', 'working-trees', 'repositories']
     takes_args = ['location?']
     takes_options = ['verbose']
+    encoding_type = 'replace'
 
     @display_command
     def run(self, location=None, verbose=False):
@@ -1071,7 +1072,7 @@ class cmd_info(Command):
             noise_level = 0
         from bzrlib.info import show_bzrdir_info
         show_bzrdir_info(bzrdir.BzrDir.open_containing(location)[0],
-                         verbose=noise_level)
+                         verbose=noise_level, outfile=self.outf)
 
 
 class cmd_remove(Command):
@@ -1384,6 +1385,12 @@ class cmd_diff(Command):
 
     "bzr diff -p1" is equivalent to "bzr diff --prefix old/:new/", and
     produces patches suitable for "patch -p1".
+
+    :Exit values:
+        1 - changed
+        2 - unrepresentable changes
+        3 - error
+        0 - no change
 
     :Examples:
         Shows the difference in the working tree versus the last commit::
@@ -2362,10 +2369,36 @@ class cmd_check(Command):
     def run(self, branch=None, verbose=False):
         from bzrlib.check import check
         if branch is None:
-            branch = Branch.open_containing('.')[0]
+            branch_obj = Branch.open_containing('.')[0]
         else:
-            branch = Branch.open(branch)
-        check(branch, verbose)
+            branch_obj = Branch.open(branch)
+        check(branch_obj, verbose)
+        # bit hacky, check the tree parent is accurate
+        try:
+            if branch is None:
+                tree = WorkingTree.open_containing('.')[0]
+            else:
+                tree = WorkingTree.open(branch)
+        except (errors.NoWorkingTree, errors.NotLocalUrl):
+            pass
+        else:
+            # This is a primitive 'check' for tree state. Currently this is not
+            # integrated into the main check logic as yet.
+            tree.lock_read()
+            try:
+                tree_basis = tree.basis_tree()
+                tree_basis.lock_read()
+                try:
+                    repo_basis = tree.branch.repository.revision_tree(
+                        tree.last_revision())
+                    if len(list(repo_basis._iter_changes(tree_basis))):
+                        raise errors.BzrCheckError(
+                            "Mismatched basis inventory content.")
+                    tree._validate()
+                finally:
+                    tree_basis.unlock()
+            finally:
+                tree.unlock()
 
 
 class cmd_upgrade(Command):
@@ -3058,8 +3091,8 @@ class cmd_revert(Command):
 
     The working tree contains a list of pending merged revisions, which will
     be included as parents in the next commit.  Normally, revert clears that
-    list as well as reverting the files.  If any files, are specified, revert
-    leaves the pending merge list alnone and reverts only the files.  Use "bzr
+    list as well as reverting the files.  If any files are specified, revert
+    leaves the pending merge list alone and reverts only the files.  Use "bzr
     revert ." in the tree root to revert all files but keep the merge record,
     and "bzr revert --forget-merges" to clear the pending merge list without
     reverting any files.
@@ -3523,7 +3556,7 @@ class cmd_uncommit(Command):
 
         if revno <= b.revno():
             rev_id = b.get_rev_id(revno)
-        if rev_id is None:
+        if rev_id is None or _mod_revision.is_null(rev_id):
             self.outf.write('No revisions to uncommit.\n')
             return 1
 
@@ -4164,15 +4197,42 @@ class cmd_tags(Command):
             short_name='d',
             type=unicode,
             ),
+        RegistryOption.from_kwargs('sort',
+            'Sort tags by different criteria.', title='Sorting',
+            alpha='Sort tags lexicographically (default).',
+            time='Sort tags chronologically.',
+            ),
+        'show-ids',
     ]
 
     @display_command
     def run(self,
             directory='.',
+            sort='alpha',
+            show_ids=False,
             ):
         branch, relpath = Branch.open_containing(directory)
-        for tag_name, target in sorted(branch.tags.get_tag_dict().items()):
-            self.outf.write('%-20s %s\n' % (tag_name, target))
+        tags = branch.tags.get_tag_dict().items()
+        if sort == 'alpha':
+            tags.sort()
+        elif sort == 'time':
+            timestamps = {}
+            for tag, revid in tags:
+                try:
+                    revobj = branch.repository.get_revision(revid)
+                except errors.NoSuchRevision:
+                    timestamp = sys.maxint # place them at the end
+                else:
+                    timestamp = revobj.timestamp
+                timestamps[revid] = timestamp
+            tags.sort(key=lambda x: timestamps[x[1]])
+        if not show_ids:
+            # [ (tag, revid), ... ] -> [ (tag, dotted_revno), ... ]
+            revno_map = branch.get_revision_id_to_revno_map()
+            tags = [ (tag, '.'.join(map(str, revno_map.get(revid, ('?',)))))
+                        for tag, revid in tags ]
+        for tag, revspec in tags:
+            self.outf.write('%-20s %s\n' % (tag, revspec))
 
 
 class cmd_reconfigure(Command):

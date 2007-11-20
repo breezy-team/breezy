@@ -10,6 +10,135 @@ IN DEVELOPMENT
   NOTES WHEN UPGRADING:
 
   CHANGES:
+
+   * Disable detection of plink.exe as possible ssh vendor. Plink vendor
+     still available if user selects it explicitly with BZR_SSH environment
+     variable. (Alexander Belchenko, workaround for bug #107593)
+
+  FEATURES:
+
+   * New ``authentication.conf`` file holding the password or other credentials
+     for remote servers. This can be used for ssh, sftp, smtp and other 
+     supported transports.
+     (Vincent Ladeuil)
+
+  PERFORMANCE:
+
+   * Commit updates the state of the working tree via a delta rather than
+     supplying entirely new basis trees. For commit of a single specified file
+     this reduces the wall clock time for commit by roughly a 30%.
+     (Robert Collins, Martin Pool)
+
+   * Fetch with pack repositories will no longer read the entire history graph.
+     (Robert Collins, #88319)
+
+   * Revert takes out an appropriate lock when reverting to a basis tree, and
+     does not read the basis inventory twice. (Robert Collins)
+
+  IMPROVEMENTS:
+
+   * ``bzr tags`` now prints the revision number for each tag, instead of
+     the revision id, unless --show-ids is passed. In addition, tags can be
+     sorted chronologically instead of lexicographically with --sort=time.
+     (Adeodato Simó, #120231)
+
+  DOCUMENTATION:
+
+  BUG FIXES:
+
+   * A progress bar has been added for knitpack -> knitpack fetching.
+     (Robert Collins, #157789)
+
+   * Detect invalid transport reuse attempts by catching invalid URLs.
+     (Vincent Ladeuil, #161819)
+
+   * Do no use timeout in HttpServer anymore.
+     (Vincent Ladeuil, #158972).
+
+   * Don't catch the exceptions related to the http pipeline status before
+     retrying an http request or some programming errors may be masked.
+     (Vincent Ladeuil, #160012)
+
+   * Fix multiple connections during checkout --lightweight.
+     (Vincent Ladeuil, #159150)
+
+   * FTP server errors don't error in the error handling code.
+     (Robert Collins, #161240)
+
+   * It is clearer when a plugin cannot be loaded because of its name, and a
+     suggestion for an acceptable name is given. (Daniel Watkins, #103023)
+
+   * Make sure Repository.fetch(self) is properly a no-op for all
+     Repository implementations. (John Arbash Meinel, #158333)
+
+   * Obsolete packs are now cleaned up by pack and autopack operations.
+     (Robert Collins, #153789)
+
+   * Reconcile now shows progress bars. (Robert Collins, #159351)
+
+   * ``RemoteBranch`` was not initializing ``self._revision_id_to_revno_map``
+     properly. (John Arbash Meinel, #162486)
+
+   * Removing an already-removed file reports the file does not exist. (Daniel
+     Watkins, #152811)
+
+   * Stderr output via logging mechanism now goes through encoded wrapper
+     and no more uses utf-8, but terminal encoding instead. So all unicode
+     strings now should be readable in non-utf-8 terminal.
+     (Alexander Belchenko, #54173)
+
+   * The error message when ``move --after`` should be used makes how to do so
+     clearer. (Daniel Watkins, #85237)
+
+   * Unicode-safe output from ``bzr info``. The output will be encoded
+     using the terminal encoding and unrepresentable characters will be
+     replaced by '?'. (Lukáš Lalinský, #151844)
+
+   * Wrap medusa ftp test server as an FTPServer feature.
+     (Vincent Ladeuil, #157752)
+
+   * Fix exception when ScopeReplacer is assigned to before any members have
+     been retrieved.  (Aaron Bentley)
+
+   * Fix exception when revisionspec contains merge revisons but log
+     formatter doesn't support merge revisions. (Kent Gibson, #148908)
+
+   * Return error instead of a traceback for ``bzr log -r0``.
+     (Kent Gibson, #133751)
+
+   * Working trees are no longer created when pushing into a local no-trees
+     repo. (Daniel Watkins, #50582)
+
+  API BREAKS:
+
+   * ``osutils.backup_file`` is deprecated. Actually it's not used in bzrlib
+     during very long time. (Alexander Belchenko)
+
+   * The return value of
+     ``VersionedFile.iter_lines_added_or_present_in_versions`` has been
+     changed. Previously it was an iterator of lines, now it is an iterator of
+     (line, version_id) tuples. This change has been made to aid reconcile and
+     fetch operations. (Robert Collins)
+
+  INTERNALS:
+
+   * Added ``ContainerSerialiser`` and ``ContainerPushParser`` to
+     ``bzrlib.pack``.  These classes provide more convenient APIs for generating
+     and parsing containers from streams rather than from files.  (Andrew
+     Bennetts)
+
+   * New module ``lru_cache`` providing a cache for use by tasks that need
+     semi-random access to large amounts of data. (John A Meinel)
+
+  TESTING:
+
+
+bzr 0.92rc1 2007-10-29
+======================
+
+  NOTES WHEN UPGRADING:
+
+  CHANGES:
   
    * ``bzr`` now returns exit code 4 if an internal error occurred, and 
      3 if a normal error occurred.  (Martin Pool)
@@ -30,6 +159,18 @@ IN DEVELOPMENT
 
   FEATURES:
 
+   * New ``knitpack-experimental`` repository format. This is interoperable with
+     the ``dirstate-tags`` format but uses a smarter storage design that greatly
+     speeds up many operations, both local and remote. This new format can be
+     used as an option to the ``init``, ``init-repository`` and ``upgrade``
+     commands. See http://doc.bazaar-vcs.org/latest/developers/knitpack.html
+     for further details. (Robert Collins)
+
+   * For users of bzr-svn (and those testing the prototype subtree support) that
+     wish to try packs, a new ``knitpack-subtree-experimental`` format has also
+     been added. This is interoperable with the ``dirstate-subtrees`` format.
+     (Robert Collins)
+
    * New ``reconfigure`` command. (Aaron Bentley)
 
    * New ``revert --forget-merges`` command, which removes the record of a pending 
@@ -38,6 +179,10 @@ IN DEVELOPMENT
    * New ``bzr_remote_path`` configuration variable allows finer control of
      remote bzr locations than BZR_REMOTE_PATH environment variable.
      (Aaron Bentley)
+
+   * New ``launchpad-login`` command to tell Bazaar your Launchpad
+     user ID.  This can then be used by other functions of the
+     Launchpad plugin. (James Henstridge)
 
   PERFORMANCE:
 
@@ -86,11 +231,21 @@ IN DEVELOPMENT
    * Show encodings, locale and list of plugins in the traceback message.
      (Martin Pool, #63894)
 
+   * Experimental directory formats can now be marked with
+     ``experimental = True`` during registration. (Ian Clatworthy)
+
   DOCUMENTATION:
 
    * New *Bazaar in Five Minutes* guide.  (Matthew Revell)
 
+   * The hooks reference documentation is now converted to html as expected.
+     (Ian Clatworthy)
+
   BUG FIXES:
+
+   * Connection error reporting for the smart server has been fixed to
+     display a user friendly message instead of a traceback.
+     (Ian Clatworthy, #115601)
 
    * Make sure to use ``O_BINARY`` when opening files to check their
      sha1sum. (Alexander Belchenko, John Arbash Meinel, #153493)
@@ -139,6 +294,8 @@ IN DEVELOPMENT
    * Fix 'unprintable error' message when displaying BzrCheckError and 
      some other exceptions on Python 2.5.
      (Martin Pool, #144633)
+
+   * Fix ``Inventory.copy()`` and add test for it. (Jelmer Vernooij)
 
    * Handles default value for ListOption in cmd_commit.
      (Vincent Ladeuil, #140432)
@@ -272,6 +429,9 @@ IN DEVELOPMENT
      boolean indicating whether a new file graph node was recorded.
      (Robert Collins)
 
+   * The python path used in the Makefile can now be overridden.
+     (Andrew Bennetts, Ian Clatworthy)
+
   TESTING:
 
    * New transport implementation ``trace+`` which is useful for testing,
@@ -282,6 +442,9 @@ IN DEVELOPMENT
      up and be visible to the test suite.  A new API ``run_bzr_catch_user_errors``
      makes this behavior available to other users.
      (Martin Pool)
+
+   * New method ``TestCase.call_catch_warnings`` for testing methods that 
+     raises a Python warning.  (Martin Pool)
 
 
 bzr 0.91 2007-09-26

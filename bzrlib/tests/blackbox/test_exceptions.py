@@ -54,6 +54,7 @@ class TestExceptionReporting(TestCase):
         # we must use a subprocess, because the normal in-memory mechanism
         # allows errors to propagate up through the test suite
         out, err = self.run_bzr_subprocess(['assert-fail'],
+            universal_newlines=True,
             retcode=errors.EXIT_INTERNAL_ERROR)
         self.assertEqual(4, errors.EXIT_INTERNAL_ERROR)
         self.assertContainsRe(err,

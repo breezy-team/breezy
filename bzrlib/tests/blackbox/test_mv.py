@@ -24,8 +24,8 @@ from bzrlib import (
     )
 
 from bzrlib.tests import (
+    SymlinkFeature,
     TestCaseWithTransport,
-    TestSkipped,
     )
 
 
@@ -135,8 +135,7 @@ class TestMove(TestCaseWithTransport):
         self.run_bzr('rename b a')
 
     def test_mv_through_symlinks(self):
-        if not osutils.has_symlinks():
-            raise TestSkipped('Symlinks are not supported on this platform')
+        self.requireFeature(SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'a/b'])
         os.symlink('a', 'c')
@@ -273,7 +272,8 @@ class TestMove(TestCaseWithTransport):
         self.build_tree(['a']) #touch a
         self.run_bzr_error(
             ["^bzr: ERROR: Could not rename a => b because both files exist."
-             " \(Use --after to update the Bazaar id\)$"],
+             " \(Use --after to tell bzr about a rename that has already"
+             " happened\)$"],
             'mv a b')
         self.failUnlessExists('a')
         self.failUnlessExists('b')
@@ -321,8 +321,9 @@ class TestMove(TestCaseWithTransport):
         self.build_tree(['a2']) #touch a2
 
         self.run_bzr_error(
-            ["^bzr: ERROR: Could not rename a1 => sub/a1 because both files exist."
-             " \(Use --after to update the Bazaar id\)$"],
+            ["^bzr: ERROR: Could not rename a1 => sub/a1 because both files"
+             " exist. \(Use --after to tell bzr about a rename that has already"
+             " happened\)$"],
             'mv a1 a2 sub')
         self.failUnlessExists('a1')
         self.failUnlessExists('a2')

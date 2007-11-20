@@ -50,6 +50,8 @@ form.
 # is quite expensive, even when the message is not printed by any handlers.
 # We should perhaps change back to just simply doing it here.
 
+import codecs
+import logging
 import os
 import sys
 import re
@@ -59,7 +61,6 @@ lazy_import(globals(), """
 from cStringIO import StringIO
 import errno
 import locale
-import logging
 import traceback
 """)
 
@@ -86,6 +87,7 @@ _bzr_log_filename = None
 # configure convenient aliases for output routines
 
 _bzr_logger = logging.getLogger('bzr')
+
 
 def note(*args, **kwargs):
     # FIXME note always emits utf-8, regardless of the terminal encoding
@@ -212,7 +214,10 @@ def enable_default_logging():
     """Configure default logging to stderr and .bzr.log"""
     # FIXME: if this is run twice, things get confused
     global _stderr_handler, _file_handler, _trace_file, _bzr_log_file
-    _stderr_handler = logging.StreamHandler()
+    # create encoded wrapper around stderr
+    stderr = codecs.getwriter(osutils.get_terminal_encoding())(sys.stderr,
+        errors='replace')
+    _stderr_handler = logging.StreamHandler(stderr)
     logging.getLogger('').addHandler(_stderr_handler)
     _stderr_handler.setLevel(logging.INFO)
     if not _file_handler:

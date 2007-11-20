@@ -20,10 +20,10 @@
 
 import os
 
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.osutils import sha, has_symlinks
+from bzrlib.tests import SymlinkFeature, TestCaseWithTransport
 from bzrlib.testament import Testament, StrictTestament, StrictTestament3
 from bzrlib.transform import TreeTransform
-from bzrlib.osutils import sha, has_symlinks
 
 
 class TestamentSetup(TestCaseWithTransport):
@@ -97,8 +97,7 @@ class TestamentTests(TestamentSetup):
 
     def test_testament_symlinks(self):
         """Testament containing symlink (where possible)"""
-        if not has_symlinks():
-            return
+        self.requireFeature(SymlinkFeature)
         os.symlink('wibble/linktarget', 'link')
         self.wt.add(['link'], ['link-id'])
         self.wt.commit(message='add symlink',

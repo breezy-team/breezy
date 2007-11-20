@@ -462,9 +462,9 @@ class Weave(VersionedFile):
             # properly, we do not filter down to that
             # if inserted not in version_ids: continue
             if line[-1] != '\n':
-                yield line + '\n'
+                yield line + '\n', inserted
             else:
-                yield line
+                yield line, inserted
 
     def _walk_internal(self, version_ids=None):
         """Helper method for weave actions."""

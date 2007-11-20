@@ -836,7 +836,7 @@ class KnitVersionedFile(VersionedFile):
                 if method == 'fulltext':
                     next = None
                 else:
-                    next = self.get_parents(cursor)[0]
+                    next = self.get_parents_with_ghosts(cursor)[0]
                 index_memo = self._index.get_position(cursor)
                 component_data[cursor] = (method, index_memo, next)
                 cursor = next
@@ -1117,8 +1117,11 @@ class KnitVersionedFile(VersionedFile):
                 line_iterator = self.factory.get_fulltext_content(data)
             else:
                 line_iterator = self.factory.get_linedelta_content(data)
+            # XXX: It might be more efficient to yield (version_id,
+            # line_iterator) in the future. However for now, this is a simpler
+            # change to integrate into the rest of the codebase. RBC 20071110
             for line in line_iterator:
-                yield line
+                yield line, version_id
 
         pb.update('Walking content.', total, total)
         
@@ -1984,7 +1987,8 @@ class _PackAccess(object):
 
     def set_writer(self, writer, index, (transport, packname)):
         """Set a writer to use for adding data."""
-        self.indices[index] = (transport, packname)
+        if index is not None:
+            self.indices[index] = (transport, packname)
         self.container_writer = writer
         self.write_index = index
 

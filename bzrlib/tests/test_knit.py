@@ -1405,7 +1405,7 @@ class BasicKnitTests(KnitTests):
         self.assertEqual(
             [('readv', 'id.knit', [(0, 87), (87, 89)], False, None)],
             instrumented_t._activity)
-        self.assertEqual(['text\n', 'text2\n'], results)
+        self.assertEqual([('text\n', 'base'), ('text2\n', 'base2')], results)
 
     def test_create_empty_annotated(self):
         k1 = self.make_test_knit(True)
