@@ -41,7 +41,7 @@ from bzrlib.tests import (
     TestSkipped,
     StringIOWrapper,
     )
-from bzrlib.tests.HttpServer import (
+from bzrlib.tests.http_server import (
     HttpServer,
     HttpServer_PyCurl,
     HttpServer_urllib,

@@ -89,7 +89,7 @@ from bzrlib.transport.memory import MemoryServer
 from bzrlib.transport.readonly import ReadonlyServer
 from bzrlib.trace import mutter, note
 from bzrlib.tests import TestUtil
-from bzrlib.tests.HttpServer import HttpServer
+from bzrlib.tests.http_server import HttpServer
 from bzrlib.tests.TestUtil import (
                           TestSuite,
                           TestLoader,
