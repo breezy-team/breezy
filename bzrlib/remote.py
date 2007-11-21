@@ -24,6 +24,7 @@ from bzrlib import (
     errors,
     lockdir,
     repository,
+    revision,
 )
 from bzrlib.branch import Branch, BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, RemoteBzrDirFormat
@@ -32,7 +33,6 @@ from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import NoSuchRevision
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.pack import ContainerReader
-from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import client, vfs
 from bzrlib.symbol_versioning import (
     deprecated_method,
@@ -95,7 +95,7 @@ class RemoteBzrDir(BzrDir):
         self._ensure_real()
         self._real_bzrdir.destroy_branch()
 
-    def create_workingtree(self, revision_id=None):
+    def create_workingtree(self, revision_id=None, from_branch=None):
         raise errors.NotLocalUrl(self.transport.base)
 
     def find_branch_format(self):
@@ -258,9 +258,14 @@ class RemoteRepository(object):
         self._lock_token = None
         self._lock_count = 0
         self._leave_lock = False
-        # for tests
-        self._reconcile_does_inventory_gc = True
-        self._reconcile_fixes_text_parents = True
+        # For tests:
+        # These depend on the actual remote format, so force them off for
+        # maximum compatibility. XXX: In future these should depend on the
+        # remote repository instance, but this is irrelevant until we perform
+        # reconcile via an RPC call.
+        self._reconcile_does_inventory_gc = False
+        self._reconcile_fixes_text_parents = False
+        self._reconcile_backsup_inventory = False
         self.base = self.bzrdir.transport.base
 
     def __str__(self):
@@ -304,7 +309,7 @@ class RemoteRepository(object):
         """See Repository.get_revision_graph()."""
         if revision_id is None:
             revision_id = ''
-        elif revision_id == NULL_REVISION:
+        elif revision.is_null(revision_id):
             return {}
 
         path = self.bzrdir._path_for_remote_call(self._client)
@@ -352,7 +357,8 @@ class RemoteRepository(object):
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""
         path = self.bzrdir._path_for_remote_call(self._client)
-        if revid in (None, NULL_REVISION):
+        # revid can be None to indicate no revisions, not just NULL_REVISION
+        if revid is None or revision.is_null(revid):
             fmt_revid = ''
         else:
             fmt_revid = revid
@@ -492,26 +498,32 @@ class RemoteRepository(object):
             raise errors.UnexpectedSmartServerResponse(response)
 
     def unlock(self):
-        if self._lock_count == 1 and self._lock_mode == 'w':
-            # don't unlock if inside a write group.
-            if self.is_in_write_group():
-                raise errors.BzrError(
-                    'Must end write groups before releasing write locks.')
         self._lock_count -= 1
-        if not self._lock_count:
-            mode = self._lock_mode
-            self._lock_mode = None
+        if self._lock_count > 0:
+            return
+        old_mode = self._lock_mode
+        self._lock_mode = None
+        try:
+            # The real repository is responsible at present for raising an
+            # exception if it's in an unfinished write group.  However, it
+            # normally will *not* actually remove the lock from disk - that's
+            # done by the server on receiving the Repository.unlock call.
+            # This is just to let the _real_repository stay up to date.
             if self._real_repository is not None:
                 self._real_repository.unlock()
-            if mode != 'w':
+        finally:
+            # The rpc-level lock should be released even if there was a
+            # problem releasing the vfs-based lock.
+            if old_mode == 'w':
                 # Only write-locked repositories need to make a remote method
                 # call to perfom the unlock.
-                return
-            assert self._lock_token, 'Locked, but no token!'
-            token = self._lock_token
-            self._lock_token = None
-            if not self._leave_lock:
-                self._unlock(token)
+                assert self._lock_token, \
+                    '%s is locked, but has no token' \
+                    % self
+                old_token = self._lock_token
+                self._lock_token = None
+                if not self._leave_lock:
+                    self._unlock(old_token)
 
     def break_lock(self):
         # should hand off to the network
@@ -615,7 +627,7 @@ class RemoteRepository(object):
             # check that last_revision is in 'from' and then return a
             # no-operation.
             if (revision_id is not None and
-                not _mod_revision.is_null(revision_id)):
+                not revision.is_null(revision_id)):
                 self.get_revision(revision_id)
             return 0, []
         self._ensure_real()
@@ -922,6 +934,7 @@ class RemoteBranch(branch.Branch):
         # We intentionally don't call the parent class's __init__, because it
         # will try to assign to self.tags, which is a property in this subclass.
         # And the parent's __init__ doesn't do much anyway.
+        self._revision_id_to_revno_cache = None
         self._revision_history_cache = None
         self.bzrdir = remote_bzrdir
         if _client is not None:

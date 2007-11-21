@@ -467,6 +467,12 @@ class WorkingTree4(WorkingTree3):
         path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
         return path_utf8.decode('utf8')
 
+    def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
+        entry = self._get_entry(path=path)
+        if entry == (None, None):
+            return False # Missing entries are not executable
+        return entry[1][0][3] # Executable?
+
     if not osutils.supports_executable():
         def is_executable(self, file_id, path=None):
             """Test if a file is executable or not.
@@ -477,6 +483,9 @@ class WorkingTree4(WorkingTree3):
             if entry == (None, None):
                 return False
             return entry[1][0][3]
+
+        _is_executable_from_path_and_stat = \
+            _is_executable_from_path_and_stat_from_basis
     else:
         def is_executable(self, file_id, path=None):
             """Test if a file is executable or not.
@@ -711,8 +720,7 @@ class WorkingTree4(WorkingTree3):
                 if from_missing: # implicitly just update our path mapping
                     move_file = False
                 elif not after:
-                    raise errors.RenameFailedFilesExist(from_rel, to_rel,
-                        extra="(Use --after to update the Bazaar id)")
+                    raise errors.RenameFailedFilesExist(from_rel, to_rel)
 
             rollbacks = []
             def rollback_rename():
@@ -1089,15 +1097,7 @@ class WorkingTree4(WorkingTree3):
         :param path: The path.
         :param stat_result: The stat result being looked up.
         """
-        state = self.current_dirstate()
-        # XXX: should we make the path be passed in as utf8 ?
-        entry = state._get_entry(0, path_utf8=cache_utf8.encode(path))
-        tree_details = entry[1][0]
-        packed_stat = dirstate.pack_stat(stat_result)
-        if tree_details[4] == packed_stat:
-            return tree_details[1]
-        else:
-            return None
+        return self.current_dirstate().sha1_from_stat(path, stat_result)
 
     @needs_read_lock
     def supports_tree_reference(self):
@@ -1180,7 +1180,8 @@ class WorkingTree4(WorkingTree3):
                     # Mark this file id as having been removed
                     entry = block[1][entry_index]
                     ids_to_unversion.discard(entry[0][2])
-                    if (entry[1][0][0] == 'a'
+                    if (entry[1][0][0] in 'ar' # don't remove absent or renamed
+                                               # entries
                         or not state._make_absent(entry)):
                         entry_index += 1
                 # go to the next block. (At the moment we dont delete empty
@@ -1211,6 +1212,11 @@ class WorkingTree4(WorkingTree3):
             for file_id in file_ids:
                 self._inventory.remove_recursive_id(file_id)
 
+    def update_basis_by_delta(self, new_revid, delta):
+        """See MutableTree.update_basis_by_delta."""
+        assert self.last_revision() != new_revid
+        self.current_dirstate().update_basis_by_delta(delta, new_revid)
+
     @needs_read_lock
     def _validate(self):
         self._dirstate._validate()
@@ -1218,7 +1224,8 @@ class WorkingTree4(WorkingTree3):
     @needs_tree_write_lock
     def _write_inventory(self, inv):
         """Write inventory as the current inventory."""
-        assert not self._dirty, "attempting to write an inventory when the dirstate is dirty will cause data loss"
+        assert not self._dirty, ("attempting to write an inventory when the "
+            "dirstate is dirty will cause data loss")
         self.current_dirstate().set_state_from_inventory(inv)
         self._make_dirty(reset_inventory=False)
         if self._inventory is not None:
@@ -1248,7 +1255,7 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         """See WorkingTreeFormat.get_format_description()."""
         return "Working tree format 4"
 
-    def initialize(self, a_bzrdir, revision_id=None):
+    def initialize(self, a_bzrdir, revision_id=None, from_branch=None):
         """See WorkingTreeFormat.initialize().
 
         :param revision_id: allows creating a working tree at a different
@@ -1264,7 +1271,10 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         control_files.create_lock()
         control_files.lock_write()
         control_files.put_utf8('format', self.get_format_string())
-        branch = a_bzrdir.open_branch()
+        if from_branch is not None:
+            branch = from_branch
+        else:
+            branch = a_bzrdir.open_branch()
         if revision_id is None:
             revision_id = branch.last_revision()
         local_path = transport.local_abspath('dirstate')

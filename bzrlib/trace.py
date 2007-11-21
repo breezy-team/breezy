@@ -50,6 +50,8 @@ form.
 # is quite expensive, even when the message is not printed by any handlers.
 # We should perhaps change back to just simply doing it here.
 
+import codecs
+import logging
 import os
 import sys
 import re
@@ -59,7 +61,6 @@ lazy_import(globals(), """
 from cStringIO import StringIO
 import errno
 import locale
-import logging
 import traceback
 """)
 
@@ -86,6 +87,7 @@ _bzr_log_filename = None
 # configure convenient aliases for output routines
 
 _bzr_logger = logging.getLogger('bzr')
+
 
 def note(*args, **kwargs):
     # FIXME note always emits utf-8, regardless of the terminal encoding
@@ -212,7 +214,10 @@ def enable_default_logging():
     """Configure default logging to stderr and .bzr.log"""
     # FIXME: if this is run twice, things get confused
     global _stderr_handler, _file_handler, _trace_file, _bzr_log_file
-    _stderr_handler = logging.StreamHandler()
+    # create encoded wrapper around stderr
+    stderr = codecs.getwriter(osutils.get_terminal_encoding())(sys.stderr,
+        errors='replace')
+    _stderr_handler = logging.StreamHandler(stderr)
     logging.getLogger('').addHandler(_stderr_handler)
     _stderr_handler.setLevel(logging.INFO)
     if not _file_handler:
@@ -324,10 +329,10 @@ def report_exception(exc_info, err_file):
     log_exception_quietly()
     if (isinstance(exc_object, IOError)
         and getattr(exc_object, 'errno', None) == errno.EPIPE):
-        print >>err_file, "bzr: broken pipe"
+        err_file.write("bzr: broken pipe\n")
         return errors.EXIT_ERROR
     elif isinstance(exc_object, KeyboardInterrupt):
-        print >>err_file, "bzr: interrupted"
+        err_file.write("bzr: interrupted\n")
         return errors.EXIT_ERROR
     elif not getattr(exc_object, 'internal_error', True):
         report_user_error(exc_info, err_file)
@@ -351,23 +356,23 @@ def report_user_error(exc_info, err_file):
     if 'error' in debug.debug_flags:
         report_bug(exc_info, err_file)
         return
-    print >>err_file, "bzr: ERROR:", str(exc_info[1])
+    err_file.write("bzr: ERROR: %s\n" % (exc_info[1],))
 
 
 def report_bug(exc_info, err_file):
     """Report an exception that probably indicates a bug in bzr"""
     import traceback
     exc_type, exc_object, exc_tb = exc_info
-    print >>err_file, "bzr: ERROR: %s.%s: %s" % (
-        exc_type.__module__, exc_type.__name__, exc_object)
-    print >>err_file
+    err_file.write("bzr: ERROR: %s.%s: %s\n" % (
+        exc_type.__module__, exc_type.__name__, exc_object))
+    err_file.write('\n')
     traceback.print_exception(exc_type, exc_object, exc_tb, file=err_file)
-    print >>err_file
-    print >>err_file, 'bzr %s on python %s (%s)' % \
+    err_file.write('\n')
+    err_file.write('bzr %s on python %s (%s)\n' % \
                        (bzrlib.__version__,
                         '.'.join(map(str, sys.version_info)),
-                        sys.platform)
-    print >>err_file, 'arguments: %r' % sys.argv
+                        sys.platform))
+    err_file.write('arguments: %r\n' % sys.argv)
     err_file.write(
         'encoding: %r, fsenc: %r, lang: %r\n' % (
             osutils.get_user_encoding(), sys.getfilesystemencoding(),

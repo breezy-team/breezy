@@ -44,7 +44,6 @@ from bzrlib.errors import (NoSuchFile,
                            ConnectionError,
                            DependencyNotPresent)
 from bzrlib.trace import mutter
-from bzrlib.transport import register_urlparse_netloc_protocol
 from bzrlib.transport.http import (
     ca_bundle,
     _extract_headers,
@@ -94,9 +93,6 @@ CURLE_COULDNT_RESOLVE_HOST = _get_pycurl_errcode('E_COULDNT_RESOLVE_HOST', 6)
 CURLE_COULDNT_RESOLVE_PROXY = _get_pycurl_errcode('E_COULDNT_RESOLVE_PROXY', 5)
 CURLE_GOT_NOTHING = _get_pycurl_errcode('E_GOT_NOTHING', 52)
 CURLE_PARTIAL_FILE = _get_pycurl_errcode('E_PARTIAL_FILE', 18)
-
-
-register_urlparse_netloc_protocol('http+pycurl')
 
 
 class PyCurlTransport(HttpTransportBase):
@@ -316,7 +312,7 @@ class PyCurlTransport(HttpTransportBase):
             redirected_to = headers['Location']
             raise errors.RedirectRequested(url,
                                            redirected_to,
-                                           is_permament=(code == 301),
+                                           is_permanent=(code == 301),
                                            qual_proto=self._scheme)
 
 

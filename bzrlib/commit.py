@@ -16,7 +16,7 @@
 
 
 # The newly committed revision is going to have a shape corresponding
-# to that of the working inventory.  Files that are not in the
+# to that of the working tree.  Files that are not in the
 # working tree and that were in the predecessor are reported as
 # removed --- this can include files that were either removed from the
 # inventory or deleted in the working tree.  If they were only
@@ -25,7 +25,7 @@
 # We then consider the remaining entries, which will be in the new
 # version.  Directory entries are simply copied across.  File entries
 # must be checked to see if a new version of the file should be
-# recorded.  For each parent revision inventory, we check to see what
+# recorded.  For each parent revision tree, we check to see what
 # version of the file was present.  If the file was present in at
 # least one tree, and if it was the same version in all the trees,
 # then we can just refer to that version.  Otherwise, a new version
@@ -59,7 +59,7 @@ from cStringIO import StringIO
 from bzrlib import (
     debug,
     errors,
-    inventory,
+    revision,
     tree,
     )
 from bzrlib.branch import Branch
@@ -75,7 +75,7 @@ from bzrlib.osutils import (kind_marker, isdir,isfile, is_inside_any,
 from bzrlib.testament import Testament
 from bzrlib.trace import mutter, note, warning, is_quiet
 from bzrlib.xml5 import serializer_v5
-from bzrlib.inventory import Inventory, InventoryEntry
+from bzrlib.inventory import InventoryEntry, make_entry
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (deprecated_passed,
         deprecated_function,
@@ -269,6 +269,7 @@ class Commit(object):
 
         self.work_tree.lock_write()
         self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        self.basis_revid = self.work_tree.last_revision()
         self.basis_tree = self.work_tree.basis_tree()
         self.basis_tree.lock_read()
         try:
@@ -383,17 +384,8 @@ class Commit(object):
 
             # Make the working tree up to date with the branch
             self._set_progress_stage("Updating the working tree")
-            rev_tree = self.builder.revision_tree()
-            # XXX: This will need to be changed if we support doing a
-            # selective commit while a merge is still pending - then we'd
-            # still have multiple parents after the commit.
-            #
-            # XXX: update_basis_by_delta is slower at present because it works
-            # on inventories, so this is not active until there's a native
-            # dirstate implementation.
-            ## self.work_tree.update_basis_by_delta(self.rev_id,
-            ##      self._basis_delta)
-            self.work_tree.set_parent_trees([(self.rev_id, rev_tree)])
+            self.work_tree.update_basis_by_delta(self.rev_id,
+                 self._basis_delta)
             self.reporter.completed(new_revno, self.rev_id)
             self._process_post_hooks(old_revno, new_revno)
         finally:
@@ -414,18 +406,17 @@ class Commit(object):
             return
         # TODO: we could simplify this by using self._basis_delta.
 
-        # The inital commit adds a root directory, but this in itself is not
-        # a worthwhile commit.  
-        if len(self.basis_inv) == 0 and len(self.builder.new_inventory) == 1:
+        # The initial commit adds a root directory, but this in itself is not
+        # a worthwhile commit.
+        if (self.basis_revid == revision.NULL_REVISION and
+            len(self.builder.new_inventory) == 1):
             raise PointlessCommit()
-        # Shortcut, if the number of entries changes, then we obviously have
-        # a change
-        if len(self.builder.new_inventory) != len(self.basis_inv):
-            return
         # If length == 1, then we only have the root entry. Which means
         # that there is no real difference (only the root could be different)
-        if len(self.builder.new_inventory) != 1 and (self.any_entries_changed
-            or self.any_entries_deleted):
+        # unless deletes occured, in which case the length is irrelevant.
+        if (self.any_entries_deleted or 
+            (len(self.builder.new_inventory) != 1 and
+             self.any_entries_changed)):
             return
         raise PointlessCommit()
 
@@ -686,7 +677,7 @@ class Commit(object):
             set(self.builder.new_inventory._byid.keys())
         if deleted_ids:
             self.any_entries_deleted = True
-            deleted = [(self.basis_inv.id2path(file_id), file_id)
+            deleted = [(self.basis_tree.id2path(file_id), file_id)
                 for file_id in deleted_ids]
             deleted.sort()
             # XXX: this is not quite directory-order sorting
@@ -704,9 +695,9 @@ class Commit(object):
         report_changes = self.reporter.is_verbose()
         deleted_ids = []
         deleted_paths = set()
+        # XXX: Note that entries may have the wrong kind because the entry does
+        # not reflect the status on disk.
         work_inv = self.work_tree.inventory
-        assert work_inv.root is not None
-        # XXX: Note that entries may have the wrong kind.
         entries = work_inv.iter_entries_by_dir(
             specific_file_ids=self.specific_file_ids, yield_parents=True)
         for path, existing_ie in entries:
@@ -794,7 +785,7 @@ class Commit(object):
         # mutter('check %s {%s}', path, file_id)
         # mutter('%s selected for commit', path)
         if definitely_changed or existing_ie is None:
-            ie = inventory.make_entry(kind, name, parent_id, file_id)
+            ie = make_entry(kind, name, parent_id, file_id)
         else:
             ie = existing_ie.copy()
             ie.revision = None

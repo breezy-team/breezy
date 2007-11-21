@@ -24,7 +24,6 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.memorytree import MemoryTree
 from bzrlib.remote import RemoteBranch
 from bzrlib.revision import NULL_REVISION
-from bzrlib.tests import TestSkipped
 from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
 from bzrlib.transport.local import LocalURLServer
 

@@ -53,6 +53,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_bundle_info',
                      'bzrlib.tests.blackbox.test_cat',
                      'bzrlib.tests.blackbox.test_cat_revision',
+                     'bzrlib.tests.blackbox.test_check',
                      'bzrlib.tests.blackbox.test_checkout',
                      'bzrlib.tests.blackbox.test_command_encoding',
                      'bzrlib.tests.blackbox.test_commit',

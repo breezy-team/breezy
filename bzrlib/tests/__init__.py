@@ -354,12 +354,15 @@ class ExtendedTestResult(unittest._TextTestResult):
             self.stream.write("%s: " % flavour)
             self.stream.writeln(self.getDescription(test))
             if getattr(test, '_get_log', None) is not None:
-                print >>self.stream
-                print >>self.stream, \
-                        ('vvvv[log from %s]' % test.id()).ljust(78,'-')
-                print >>self.stream, test._get_log()
-                print >>self.stream, \
-                        ('^^^^[log from %s]' % test.id()).ljust(78,'-')
+                self.stream.write('\n')
+                self.stream.write(
+                        ('vvvv[log from %s]' % test.id()).ljust(78,'-'))
+                self.stream.write('\n')
+                self.stream.write(test._get_log())
+                self.stream.write('\n')
+                self.stream.write(
+                        ('^^^^[log from %s]' % test.id()).ljust(78,'-'))
+                self.stream.write('\n')
             self.stream.writeln(self.separator2)
             self.stream.writeln("%s" % err)
 
@@ -1029,7 +1032,7 @@ class TestCase(unittest.TestCase):
         else:
             self.fail('Unexpected success.  Should have failed: %s' % reason)
 
-    def _capture_warnings(self, a_callable, *args, **kwargs):
+    def _capture_deprecation_warnings(self, a_callable, *args, **kwargs):
         """A helper for callDeprecated and applyDeprecated.
 
         :param a_callable: A callable to call.
@@ -1077,7 +1080,7 @@ class TestCase(unittest.TestCase):
         :param kwargs: The keyword arguments for the callable
         :return: The result of a_callable(``*args``, ``**kwargs``)
         """
-        call_warnings, result = self._capture_warnings(a_callable,
+        call_warnings, result = self._capture_deprecation_warnings(a_callable,
             *args, **kwargs)
         expected_first_warning = symbol_versioning.deprecation_string(
             a_callable, deprecation_format)
@@ -1086,6 +1089,37 @@ class TestCase(unittest.TestCase):
                 a_callable)
         self.assertEqual(expected_first_warning, call_warnings[0])
         return result
+
+    def callCatchWarnings(self, fn, *args, **kw):
+        """Call a callable that raises python warnings.
+
+        The caller's responsible for examining the returned warnings.
+
+        If the callable raises an exception, the exception is not
+        caught and propagates up to the caller.  In that case, the list
+        of warnings is not available.
+
+        :returns: ([warning_object, ...], fn_result)
+        """
+        # XXX: This is not perfect, because it completely overrides the
+        # warnings filters, and some code may depend on suppressing particular
+        # warnings.  It's the easiest way to insulate ourselves from -Werror,
+        # though.  -- Andrew, 20071062
+        wlist = []
+        def _catcher(message, category, filename, lineno, file=None):
+            # despite the name, 'message' is normally(?) a Warning subclass
+            # instance
+            wlist.append(message)
+        saved_showwarning = warnings.showwarning
+        saved_filters = warnings.filters
+        try:
+            warnings.showwarning = _catcher
+            warnings.filters = []
+            result = fn(*args, **kw)
+        finally:
+            warnings.showwarning = saved_showwarning
+            warnings.filters = saved_filters
+        return wlist, result
 
     def callDeprecated(self, expected, callable, *args, **kwargs):
         """Assert that a callable is deprecated in a particular way.
@@ -1096,14 +1130,15 @@ class TestCase(unittest.TestCase):
         and will ensure that that is issued for the function being called.
 
         Note that this only captures warnings raised by symbol_versioning.warn,
-        not other callers that go direct to the warning module.
+        not other callers that go direct to the warning module.  To catch
+        general warnings, use callCatchWarnings.
 
         :param expected: a list of the deprecation warnings expected, in order
         :param callable: The callable to call
         :param args: The positional arguments for the callable
         :param kwargs: The keyword arguments for the callable
         """
-        call_warnings, result = self._capture_warnings(callable,
+        call_warnings, result = self._capture_deprecation_warnings(callable,
             *args, **kwargs)
         self.assertEqual(expected, call_warnings)
         return result
@@ -1282,8 +1317,8 @@ class TestCase(unittest.TestCase):
                     os.remove(self._log_file_name)
                 except OSError, e:
                     if sys.platform == 'win32' and e.errno == errno.EACCES:
-                        print >>sys.stderr, ('Unable to delete log file '
-                                             ' %r' % self._log_file_name)
+                        sys.stderr.write(('Unable to delete log file '
+                                             ' %r\n' % self._log_file_name))
                     else:
                         raise
             return log_contents
@@ -2394,6 +2429,7 @@ def test_suite():
                    'bzrlib.tests.test_lockable_files',
                    'bzrlib.tests.test_log',
                    'bzrlib.tests.test_lsprof',
+                   'bzrlib.tests.test_lru_cache',
                    'bzrlib.tests.test_mail_client',
                    'bzrlib.tests.test_memorytree',
                    'bzrlib.tests.test_merge',
@@ -2582,9 +2618,9 @@ def _rmtree_temp_dir(dirname):
         osutils.rmtree(dirname)
     except OSError, e:
         if sys.platform == 'win32' and e.errno == errno.EACCES:
-            print >>sys.stderr, ('Permission denied: '
+            sys.stderr.write(('Permission denied: '
                                  'unable to remove testing dir '
-                                 '%s' % os.path.basename(dirname))
+                                 '%s\n' % os.path.basename(dirname)))
         else:
             raise
 
@@ -2626,6 +2662,17 @@ class _SymlinkFeature(Feature):
         return 'symlinks'
 
 SymlinkFeature = _SymlinkFeature()
+
+
+class _OsFifoFeature(Feature):
+
+    def _probe(self):
+        return getattr(os, 'mkfifo', None)
+
+    def feature_name(self):
+        return 'filesystem fifos'
+
+OsFifoFeature = _OsFifoFeature()
 
 
 class TestScenarioApplier(object):
@@ -2688,3 +2735,23 @@ def probe_bad_non_ascii(encoding):
         except UnicodeDecodeError:
             return char
     return None
+
+
+class _FTPServerFeature(Feature):
+    """Some tests want an FTP Server, check if one is available.
+
+    Right now, the only way this is available is if 'medusa' is installed.
+    http://www.amk.ca/python/code/medusa.html
+    """
+
+    def _probe(self):
+        try:
+            import bzrlib.tests.ftp_server
+            return True
+        except ImportError:
+            return False
+
+    def feature_name(self):
+        return 'FTPServer'
+
+FTPServerFeature = _FTPServerFeature()

@@ -276,14 +276,13 @@ class KnitRepository(MetaDirRepository):
         :returns: an iterator yielding tuples of (revison-id, parents-in-index,
             parents-in-revision).
         """
+        assert self.is_locked()
         vf = self._get_revision_vf()
-        index_versions = vf.versions()
-        for index_version in index_versions:
-            parents_according_to_index = vf._index.get_parents_with_ghosts(
-                index_version)
-            revision = self._revision_store.get_revision(index_version,
-                self.get_transaction())
-            parents_according_to_revision = revision.parent_ids
+        for index_version in vf.versions():
+            parents_according_to_index = tuple(vf.get_parents_with_ghosts(
+                index_version))
+            revision = self.get_revision(index_version)
+            parents_according_to_revision = tuple(revision.parent_ids)
             if parents_according_to_index != parents_according_to_revision:
                 yield (index_version, parents_according_to_index,
                     parents_according_to_revision)
@@ -324,6 +323,8 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
     # Set this attribute in derived clases to control the _serializer that the
     # repository objects will have passed to their constructor.
     _serializer = xml5.serializer_v5
+    # Knit based repositories handle ghosts reasonably well.
+    supports_ghosts = True
 
     def _get_control_store(self, repo_transport, control_files):
         """Return the control store for this repository."""

@@ -146,8 +146,12 @@ class TransportListRegistry(registry.Registry):
 transport_list_registry = TransportListRegistry()
 
 
-def register_transport_proto(prefix, help=None, info=None, default_port=None):
+def register_transport_proto(prefix, help=None, info=None, default_port=None,
+                             register_netloc=False):
     transport_list_registry.register_transport(prefix, help, default_port)
+    if register_netloc:
+        assert prefix.endswith('://')
+        register_urlparse_netloc_protocol(prefix[:-3])
 
 
 def register_lazy_transport(prefix, module, classname):
@@ -1352,6 +1356,9 @@ class ConnectedTransport(Transport):
             except ValueError:
                 raise errors.InvalidURL('invalid port number %s in url:\n%s' %
                                         (port, url))
+        if host == '':
+            raise errors.InvalidURL('Host empty in: %s' % url)
+
         host = urllib.unquote(host)
         path = urllib.unquote(path)
 
@@ -1507,7 +1514,14 @@ class ConnectedTransport(Transport):
 
         :return: A new transport or None if the connection cannot be shared.
         """
-        (scheme, user, password, host, port, path) = self._split_url(other_base)
+        try:
+            (scheme, user, password,
+             host, port, path) = self._split_url(other_base)
+        except errors.InvalidURL:
+            # No hope in trying to reuse an existing transport for an invalid
+            # URL
+            return None
+
         transport = None
         # Don't compare passwords, they may be absent from other_base or from
         # self and they don't carry more information than user anyway.
@@ -1710,27 +1724,28 @@ transport_list_registry.set_default_transport("file://")
 # Note that sftp:// has no default_port, because the user's ~/.ssh/config
 # can set it to arbitrary values based on hostname.
 register_transport_proto('sftp://',
-            help="Access using SFTP (most SSH servers provide SFTP).")
+            help="Access using SFTP (most SSH servers provide SFTP).",
+            register_netloc=True)
 register_lazy_transport('sftp://', 'bzrlib.transport.sftp', 'SFTPTransport')
 # Decorated http transport
 register_transport_proto('http+urllib://',
 #                help="Read-only access of branches exported on the web."
-            default_port=80)
+            default_port=80, register_netloc=True)
 register_lazy_transport('http+urllib://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
 register_transport_proto('https+urllib://',
 #                help="Read-only access of branches exported on the web using SSL."
-            default_port=443)
+            default_port=443, register_netloc=True)
 register_lazy_transport('https+urllib://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
 register_transport_proto('http+pycurl://',
 #                help="Read-only access of branches exported on the web."
-            default_port=80)
+            default_port=80, register_netloc=True)
 register_lazy_transport('http+pycurl://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
 register_transport_proto('https+pycurl://',
 #                help="Read-only access of branches exported on the web using SSL."
-            default_port=443)
+            default_port=443, register_netloc=True)
 register_lazy_transport('https+pycurl://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
 # Default http transports (last declared wins (if it can be imported))
@@ -1784,29 +1799,37 @@ register_transport_proto('vfat+')
 register_lazy_transport('vfat+',
                         'bzrlib.transport.fakevfat',
                         'FakeVFATTransportDecorator')
+
+# These two schemes were registered, but don't seem to have an actual transport
+# protocol registered
+for scheme in ['ssh', 'bzr+loopback']:
+    register_urlparse_netloc_protocol(scheme)
+del scheme
+
 register_transport_proto('bzr://',
             help="Fast access using the Bazaar smart server.",
-            default_port=4155)
+            default_port=4155, register_netloc=True)
 
 register_lazy_transport('bzr://',
                         'bzrlib.transport.remote',
                         'RemoteTCPTransport')
 register_transport_proto('bzr+http://',
 #                help="Fast access using the Bazaar smart server over HTTP."
-            default_port=80)
+            default_port=80, register_netloc=True)
 register_lazy_transport('bzr+http://',
                         'bzrlib.transport.remote',
                         'RemoteHTTPTransport')
 register_transport_proto('bzr+https://',
 #                help="Fast access using the Bazaar smart server over HTTPS."
-             )
+             register_netloc=True)
 register_lazy_transport('bzr+https://',
                         'bzrlib.transport.remote',
                         'RemoteHTTPTransport')
 # Note that bzr+ssh:// has no default_port, because the user's ~/.ssh/config
 # can set it to arbitrary values based on hostname.
 register_transport_proto('bzr+ssh://',
-            help="Fast access using the Bazaar smart server over SSH.")
+            help="Fast access using the Bazaar smart server over SSH.",
+            register_netloc=True)
 register_lazy_transport('bzr+ssh://',
                         'bzrlib.transport.remote',
                         'RemoteSSHTransport')

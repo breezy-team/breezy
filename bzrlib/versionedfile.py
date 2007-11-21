@@ -420,15 +420,16 @@ class VersionedFile(object):
             version_ids,
             ignore_missing)
 
-    def iter_lines_added_or_present_in_versions(self, version_ids=None, 
+    def iter_lines_added_or_present_in_versions(self, version_ids=None,
                                                 pb=None):
         """Iterate over the lines in the versioned file from version_ids.
 
-        This may return lines from other versions, and does not return the
-        specific version marker at this point. The api may be changed
-        during development to include the version that the versioned file
-        thinks is relevant, but given that such hints are just guesses,
-        its better not to have it if we don't need it.
+        This may return lines from other versions. Each item the returned
+        iterator yields is a tuple of a line and a text version that that line
+        is present in (not introduced in).
+
+        Ordering of results is in whatever order is most suitable for the
+        underlying storage format.
 
         If a progress bar is supplied, it may be used to indicate progress.
         The caller is responsible for cleaning up progress bars (because this
@@ -436,6 +437,8 @@ class VersionedFile(object):
 
         NOTES: Lines are normalised: they will all have \n terminators.
                Lines are returned in arbitrary order.
+
+        :return: An iterator over (line, version_id).
         """
         raise NotImplementedError(self.iter_lines_added_or_present_in_versions)
 

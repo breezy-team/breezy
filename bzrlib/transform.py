@@ -547,7 +547,7 @@ class TreeTransform(object):
             return None
         # the file is old; the old id is still valid
         if self._new_root == trans_id:
-            return self._tree.inventory.root.file_id
+            return self._tree.get_root_id()
         return self._tree.inventory.path2id(path)
 
     def final_file_id(self, trans_id):
@@ -957,7 +957,7 @@ class TreeTransform(object):
                         self.rename_count += 1
                 if trans_id in self._removed_id:
                     if trans_id == self._new_root:
-                        file_id = self._tree.inventory.root.file_id
+                        file_id = self._tree.get_root_id()
                     else:
                         file_id = self.tree_file_id(trans_id)
                     assert file_id is not None
@@ -1335,8 +1335,8 @@ def _build_tree(tree, wt):
         # is set within the tree, nor setting the root and thus
         # marking the tree as dirty, because we use two different
         # idioms here: tree interfaces and inventory interfaces.
-        if wt.path2id('') != tree.inventory.root.file_id:
-            wt.set_root_id(tree.inventory.root.file_id)
+        if wt.get_root_id() != tree.get_root_id():
+            wt.set_root_id(tree.get_root_id())
             wt.flush()
     tt = TreeTransform(wt)
     divert = set()

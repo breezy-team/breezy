@@ -36,6 +36,7 @@ from bzrlib.trace import mutter
 """)
 from bzrlib import debug, errors
 
+_HEADER_READV = (0, 200)
 _OPTION_KEY_ELEMENTS = "key_elements="
 _OPTION_LEN = "len="
 _OPTION_NODE_REFS = "node_ref_lists="
@@ -266,6 +267,17 @@ class GraphIndex(object):
         self._keys_by_offset = None
         self._nodes_by_key = None
         self._size = size
+
+    def __eq__(self, other):
+        """Equal when self and other were created with the same parameters."""
+        return (
+            type(self) == type(other) and
+            self._transport == other._transport and
+            self._name == other._name and
+            self._size == other._size)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     def _buffer_all(self):
         """Buffer all the index data.
@@ -544,8 +556,7 @@ class GraphIndex(object):
         For GraphIndex the estimate is exact.
         """
         if self._key_count is None:
-            # really this should just read the prefix
-            self._buffer_all()
+            self._read_and_parse([_HEADER_READV])
         return self._key_count
 
     def _lookup_keys_via_location(self, location_keys):
@@ -601,7 +612,7 @@ class GraphIndex(object):
                 readv_ranges.append((location, length))
         # read the header if needed
         if self._bisect_nodes is None:
-            readv_ranges.append((0, 200))
+            readv_ranges.append(_HEADER_READV)
         self._read_and_parse(readv_ranges)
         # generate results:
         #  - figure out <, >, missing, present

@@ -100,7 +100,7 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
         to_file.write(line)
         if not line.endswith('\n'):
             to_file.write("\n\\ No newline at end of file\n")
-    print >>to_file
+    to_file.write('\n')
 
 
 def _spawn_external_diff(diffcmd, capture_errors=True):
@@ -412,7 +412,7 @@ def _show_diff_trees(old_tree, new_tree, to_file,
     for path, file_id, kind in delta.removed:
         has_changes = 1
         path_encoded = path.encode(path_encoding, "replace")
-        print >>to_file, "=== removed %s '%s'" % (kind, path_encoded)
+        to_file.write("=== removed %s '%s'\n" % (kind, path_encoded))
         old_name = '%s%s\t%s' % (old_label, path,
                                  _patch_header_date(old_tree, file_id, path))
         new_name = '%s%s\t%s' % (new_label, path, EPOCH_DATE)
@@ -421,7 +421,7 @@ def _show_diff_trees(old_tree, new_tree, to_file,
     for path, file_id, kind in delta.added:
         has_changes = 1
         path_encoded = path.encode(path_encoding, "replace")
-        print >>to_file, "=== added %s '%s'" % (kind, path_encoded)
+        to_file.write("=== added %s '%s'\n" % (kind, path_encoded))
         old_name = '%s%s\t%s' % (old_label, path, EPOCH_DATE)
         new_name = '%s%s\t%s' % (new_label, path,
                                  _patch_header_date(new_tree, file_id, path))
@@ -434,8 +434,8 @@ def _show_diff_trees(old_tree, new_tree, to_file,
         prop_str = get_prop_change(meta_modified)
         oldpath_encoded = old_path.encode(path_encoding, "replace")
         newpath_encoded = new_path.encode(path_encoding, "replace")
-        print >>to_file, "=== renamed %s '%s' => '%s'%s" % (kind,
-                            oldpath_encoded, newpath_encoded, prop_str)
+        to_file.write("=== renamed %s '%s' => '%s'%s\n" % (kind,
+                            oldpath_encoded, newpath_encoded, prop_str))
         old_name = '%s%s\t%s' % (old_label, old_path,
                                  _patch_header_date(old_tree, file_id,
                                                     old_path))
@@ -449,8 +449,8 @@ def _show_diff_trees(old_tree, new_tree, to_file,
         has_changes = 1
         prop_str = get_prop_change(meta_modified)
         path_encoded = path.encode(path_encoding, "replace")
-        print >>to_file, "=== modified %s '%s'%s" % (kind,
-                            path_encoded, prop_str)
+        to_file.write("=== modified %s '%s'%s\n" % (kind,
+                            path_encoded, prop_str))
         # The file may be in a different location in the old tree (because
         # the containing dir was renamed, but the file itself was not)
         old_path = old_tree.id2path(file_id)
