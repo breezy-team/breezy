@@ -417,7 +417,7 @@ def _show_diff_trees(old_tree, new_tree, to_file,
         old_name = '%s%s\t%s' % (old_label, path,
                                  _patch_header_date(old_tree, file_id, path))
         new_name = '%s%s\t%s' % (new_label, path, EPOCH_DATE)
-        differ.diff(file_id, old_tree, None, old_name, new_name)
+        differ.diff(file_id, old_tree, new_tree, old_name, new_name)
     for path, file_id, kind in delta.added:
         has_changes = 1
         path_encoded = path.encode(path_encoding, "replace")
@@ -515,10 +515,10 @@ class Differ(object):
             old_entry = old_tree.inventory[file_id]
         except errors.NoSuchId:
             old_entry = None
-        if new_tree is None:
-            new_entry = None
-        else:
+        try:
             new_entry = new_tree.inventory[file_id]
+        except errors.NoSuchId:
+            new_entry = None
         if old_entry is None:
             new_entry.diff(self.text_diff, new_name, new_tree, old_name,
                            old_entry, old_tree, self.to_file, reverse=True)
