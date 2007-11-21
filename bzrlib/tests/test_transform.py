@@ -1493,7 +1493,11 @@ class TestTransformPreview(tests.TestCaseWithTransport):
     def test_diff_preview_tree(self):
         revision_tree = self.create_tree()
         preview = TransformPreview(revision_tree)
-        preview.new_file('file2', preview.root, 'content B', 'file2-id')
+        preview.new_file('file2', preview.root, 'content B\n', 'file2-id')
         preview_tree = preview.get_preview_tree()
         out = StringIO()
         show_diff_trees(revision_tree, preview_tree, out)
+        lines = out.getvalue().splitlines()
+        self.assertEqual(lines[0], "=== added file 'file2'")
+        # 3 lines of diff administrivia
+        self.assertEqual(lines[4], "+content B")
