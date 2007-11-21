@@ -409,6 +409,7 @@ def _show_diff_trees(old_tree, new_tree, to_file,
         extra_trees=extra_trees, require_versioned=True)
 
     has_changes = 0
+    differ = Differ(to_file, diff_file)
     for path, file_id, kind in delta.removed:
         has_changes = 1
         path_encoded = path.encode(path_encoding, "replace")
@@ -416,8 +417,7 @@ def _show_diff_trees(old_tree, new_tree, to_file,
         old_name = '%s%s\t%s' % (old_label, path,
                                  _patch_header_date(old_tree, file_id, path))
         new_name = '%s%s\t%s' % (new_label, path, EPOCH_DATE)
-        old_tree.diff(diff_file, file_id, old_name, new_name, None,
-                      to_file)
+        differ.diff(file_id, old_tree, None, old_name, new_name)
     for path, file_id, kind in delta.added:
         has_changes = 1
         path_encoded = path.encode(path_encoding, "replace")
@@ -425,8 +425,7 @@ def _show_diff_trees(old_tree, new_tree, to_file,
         old_name = '%s%s\t%s' % (old_label, path, EPOCH_DATE)
         new_name = '%s%s\t%s' % (new_label, path,
                                  _patch_header_date(new_tree, file_id, path))
-        old_tree.diff(diff_file, file_id, old_name, new_name, new_tree,
-                     to_file)
+        differ.diff(file_id, old_tree, new_tree, old_name, new_name)
     for (old_path, new_path, file_id, kind,
          text_modified, meta_modified) in delta.renamed:
         has_changes = 1
@@ -443,7 +442,7 @@ def _show_diff_trees(old_tree, new_tree, to_file,
                                                     new_path))
         _maybe_diff_file_or_symlink(old_name, old_tree, file_id,
                                     new_name, new_tree,
-                                    text_modified, kind, to_file, diff_file)
+                                    text_modified, differ)
     for path, file_id, kind, text_modified, meta_modified in delta.modified:
         has_changes = 1
         prop_str = get_prop_change(meta_modified)
@@ -458,9 +457,8 @@ def _show_diff_trees(old_tree, new_tree, to_file,
         new_name = '%s%s\t%s' % (new_label, path,
                                  _patch_header_date(new_tree, file_id, path))
         if text_modified:
-            _maybe_diff_file_or_symlink(old_name, old_tree, file_id,
-                                        new_name, new_tree,
-                                        True, kind, to_file, diff_file)
+            _maybe_diff_file_or_symlink(old_name, old_tree, file_id, new_name,
+                                        new_tree, True, differ)
 
     return has_changes
 
@@ -501,8 +499,29 @@ def get_prop_change(meta_modified):
 
 
 def _maybe_diff_file_or_symlink(old_path, old_tree, file_id,
-                                new_path, new_tree, text_modified,
-                                kind, to_file, diff_file):
+                                new_path, new_tree, text_modified, differ):
     if text_modified:
-        old_tree.diff(diff_file, file_id, old_path, new_path, new_tree,
-                      to_file)
+        differ.diff(file_id, old_tree, new_tree, old_path, new_path)
+
+
+class Differ(object):
+
+    def __init__(self, to_file, text_diff):
+        self.to_file = to_file
+        self.text_diff = text_diff
+
+    def diff(self, file_id, old_tree, new_tree, old_name, new_name):
+        try:
+            old_entry = old_tree.inventory[file_id]
+        except errors.NoSuchId:
+            old_entry = None
+        if new_tree is None:
+            new_entry = None
+        else:
+            new_entry = new_tree.inventory[file_id]
+        if old_entry is None:
+            new_entry.diff(self.text_diff, new_name, new_tree, old_name,
+                           old_entry, old_tree, self.to_file, reverse=True)
+        else:
+            old_entry.diff(self.text_diff, old_name, old_tree, new_name,
+                           new_entry, new_tree, self.to_file)

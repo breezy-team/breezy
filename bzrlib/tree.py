@@ -277,23 +277,6 @@ class Tree(object):
         """
         raise NotImplementedError(self.get_symlink_target)
 
-    def diff(self, text_diff, file_id, old_name, new_name, new_tree, to_file):
-        try:
-            old_entry = self.inventory[file_id]
-        except errors.NoSuchId:
-            old_entry = None
-        if new_tree is None:
-            new_entry = None
-        else:
-            new_entry = new_tree.inventory[file_id]
-        if old_entry is None:
-            new_entry.diff(text_diff, new_name, new_tree, old_name, old_entry,
-                           self, to_file, reverse=True)
-        else:
-            old_entry.diff(text_diff, old_name, self, new_name, new_entry,
-                           new_tree, to_file)
-
-
     def get_root_id(self):
         """Return the file_id for the root of this tree."""
         raise NotImplementedError(self.get_root_id)
