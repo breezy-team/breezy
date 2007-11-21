@@ -4284,11 +4284,11 @@ class cmd_switch(Command):
     takes_args = ['to_location']
 
     def run(self, to_location):
-        from bzrlib.switch import switch
+        from bzrlib import switch
         to_branch = Branch.open(to_location)
         tree_location = '.'
-        control_dir = BzrDir.open_containing(tree_location)[0]
-        switch(control_dir, to_branch)
+        control_dir = bzrdir.BzrDir.open_containing(tree_location)[0]
+        switch.switch(control_dir, to_branch)
         note('Switched to branch: %s',
             urlutils.unescape_for_display(to_branch.base, 'utf-8'))
 
