@@ -90,6 +90,7 @@ Appendices
 ##########
 
 .. include:: specifying_revisions.txt
+.. include:: conflicts.txt
 .. include:: setting_up_email.txt
 .. include:: authentication_conf.txt
 .. include:: http_smart_server.txt

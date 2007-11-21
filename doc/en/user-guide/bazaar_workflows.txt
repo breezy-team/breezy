@@ -1,5 +1,5 @@
-Bazaar workflows
-================
+Workflows
+=========
 
 Bazaar is just a tool
 ---------------------

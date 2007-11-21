@@ -1,5 +1,5 @@
-Bazaar configuration reference
-##############################
+Configuration reference
+#######################
 
 Information on how to configure Bazaar.
 

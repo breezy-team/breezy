@@ -4,7 +4,7 @@ Introducing Bazaar
 What is Bazaar?
 ---------------
 
-Bazaar is a tool for helping people collaborate together. It does this by
+Bazaar is a tool for helping people collaborate. It does this by
 tracking how a group of files evolves and using that information to help
 people merge their changes together as safely as possible.
 
@@ -49,14 +49,14 @@ to the server whenever one wants to do version control work. Secondly, the
 centralized model tightly links the act of snapshotting changes with the act
 of publishing those changes. This can have a negative influence on quality.
 
-Decentralized VCS tools let users and teams have multiple repositories
+Distributed VCS tools let users and teams have multiple repositories
 rather than just one central one. In Bazaar's case, the history is
 normally kept in the same place as the code that is being version controlled.
 This allows the user to commit their changes whenever it makes sense, even
 when offline. Network access is only required when publishing changes or
 when accessing changes in another location.
 
-For a detailed look at the advantages of decentralized VCS tools over
+For a detailed look at the advantages of distributed VCS tools over
 centralized VCS tools, see http://bazaar-vcs.org/BzrWhy. In a nutshell,
 it comes down to this: distributed VCS tools make effective collaboration
 easier, saving effort and increasing quality along the way.

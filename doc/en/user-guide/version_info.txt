@@ -1,5 +1,5 @@
-Embedding version information in files
-======================================
+Exporting version information
+=============================
 
 Overview
 --------
