@@ -42,7 +42,7 @@ Personal version control
 .. include:: recording_changes.txt
 .. include:: browsing_history.txt
 .. include:: releasing_a_project.txt
-.. later include:: undoing_mistakes.txt
+.. include:: undoing_mistakes.txt
 
 
 Sharing with peers
