@@ -493,16 +493,16 @@ class Differ(object):
 
     def diff(self, file_id, old_path, new_path, old_label, new_label):
         try:
-            old_entry = self.old_tree.inventory[file_id]
+            old_kind = self.old_tree.kind(file_id)
         except errors.NoSuchId:
-            old_entry = None
+            old_kind = None
             old_date = self.EPOCH_DATE
         else:
             old_date = _patch_header_date(self.old_tree, file_id, old_path)
         try:
-            new_entry = self.new_tree.inventory[file_id]
+            new_kind = self.new_tree.kind(file_id)
         except errors.NoSuchId:
-            new_entry = None
+            new_kind = None
             new_date = self.EPOCH_DATE
         else:
             new_date = _patch_header_date(self.new_tree, file_id, new_path)
@@ -510,13 +510,27 @@ class Differ(object):
         old_name = '%s%s\t%s' % (old_label, old_path, old_date)
         new_name = '%s%s\t%s' % (new_label, new_path, new_date)
 
-        if old_entry is None:
-            new_entry.diff(self.text_diff, new_name, self.new_tree, old_name,
-                           old_entry, self.old_tree, self.to_file,
-                           reverse=True)
+        if 'symlink' in (old_kind, new_kind):
+            self.diff_symlink_convenience(file_id, old_kind, new_kind)
+
+        if 'file' in (old_kind, new_kind):
+            from_file_id = to_file_id = file_id
+            if old_kind is None:
+                from_file_id = None
+            if new_kind is None:
+                to_file_id = None
+            self.diff_text(from_file_id, to_file_id, old_name, new_name)
+
+    def diff_symlink_convenience(self, file_id, old_kind, new_kind):
+        if old_kind == 'symlink':
+            old_target = self.old_tree.get_symlink_target(file_id)
         else:
-            old_entry.diff(self.text_diff, old_name, self.old_tree, new_name,
-                           new_entry, self.new_tree, self.to_file)
+            old_kind = None
+        if new_kind == 'symlink':
+            new_target = self.new_tree.get_symlink_target(file_id)
+        else:
+            new_target = None
+        return self.diff_symlink(old_target, new_target)
 
     def diff_symlink(self, old_target, new_target):
         if old_target is None:
