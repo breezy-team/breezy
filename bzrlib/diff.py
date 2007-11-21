@@ -528,3 +528,35 @@ class Differ(object):
         else:
             old_entry.diff(self.text_diff, old_name, self.old_tree, new_name,
                            new_entry, self.new_tree, self.to_file)
+
+    def diff_symlink(self, old_target, new_target):
+        if old_target is None:
+            self.to_file.write('=== target is %r\n' % new_target)
+        elif new_target is None:
+            self.to_file.write('=== target was %r\n' % old_target)
+        else:
+            self.to_file.write('=== target changed %r => %r\n' %
+                               (old_target, new_target))
+
+    def diff_text(self, from_file_id, to_file_id, from_label, to_label):
+        """Diff the content of a given file in two trees
+        
+        :param from_file_id: The id of the file in the from tree.  If None,
+            the file is not present in the from tree:
+        :param to_file_id: The id of the file in the to tree.  If None,
+            the file is not present in the to tree:
+        """
+        def _get_text(tree, file_id):
+            if file_id is not None:
+                return tree.get_file(file_id).readlines()
+            else:
+                return []
+        try:
+            from_text = _get_text(self.old_tree, from_file_id)
+            to_text = _get_text(self.new_tree, to_file_id)
+            self.text_diff(from_label, from_text, to_label, to_text,
+                           self.to_file)
+        except errors.BinaryFile:
+            self.to_file.write(
+                  ("Binary files %s and %s differ\n" %
+                  (from_label, to_label)).encode('utf8'))
