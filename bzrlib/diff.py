@@ -543,7 +543,7 @@ class Differ(object):
 
     def diff_text(self, from_file_id, to_file_id, from_label, to_label):
         """Diff the content of a given file in two trees
-        
+
         :param from_file_id: The id of the file in the from tree.  If None,
             the file is not present in the from tree:
         :param to_file_id: The id of the file in the to tree.  If None,
