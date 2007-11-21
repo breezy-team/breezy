@@ -35,12 +35,14 @@ Getting started
 Personal version control
 ########################
 
-.. later include:: solo_workflow.txt
-.. later include:: starting_a_project.txt
-.. later include:: recording_changes.txt
-.. later include:: browsing_history.txt
-.. later include:: specifying_revisions.txt
-.. later include:: releasing_a_project.txt
+.. include:: solo_workflow.txt
+.. include:: starting_a_project.txt
+.. include:: controlling_registration.txt
+.. include:: reviewing_changes.txt
+.. include:: recording_changes.txt
+.. include:: browsing_history.txt
+.. include:: releasing_a_project.txt
+.. later include:: undoing_mistakes.txt
 
 
 Sharing with peers
