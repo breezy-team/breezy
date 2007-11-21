@@ -515,9 +515,9 @@ class Differ(object):
 
         if 'file' in (old_kind, new_kind):
             from_file_id = to_file_id = file_id
-            if old_kind is None:
+            if old_kind != 'file':
                 from_file_id = None
-            if new_kind is None:
+            if new_kind != 'file':
                 to_file_id = None
             self.diff_text(from_file_id, to_file_id, old_name, new_name)
 
@@ -525,7 +525,7 @@ class Differ(object):
         if old_kind == 'symlink':
             old_target = self.old_tree.get_symlink_target(file_id)
         else:
-            old_kind = None
+            old_target = None
         if new_kind == 'symlink':
             new_target = self.new_tree.get_symlink_target(file_id)
         else:
