@@ -416,8 +416,8 @@ def _show_diff_trees(old_tree, new_tree, to_file,
         old_name = '%s%s\t%s' % (old_label, path,
                                  _patch_header_date(old_tree, file_id, path))
         new_name = '%s%s\t%s' % (new_label, path, EPOCH_DATE)
-        old_tree.inventory[file_id].diff(diff_file, old_name, old_tree,
-                                         new_name, None, None, to_file)
+        old_tree.diff(diff_file, file_id, old_name, new_name, None,
+                      to_file)
     for path, file_id, kind in delta.added:
         has_changes = 1
         path_encoded = path.encode(path_encoding, "replace")
@@ -425,9 +425,8 @@ def _show_diff_trees(old_tree, new_tree, to_file,
         old_name = '%s%s\t%s' % (old_label, path, EPOCH_DATE)
         new_name = '%s%s\t%s' % (new_label, path,
                                  _patch_header_date(new_tree, file_id, path))
-        new_tree.inventory[file_id].diff(diff_file, new_name, new_tree,
-                                         old_name, None, None, to_file, 
-                                         reverse=True)
+        old_tree.diff(diff_file, file_id, old_name, new_name, new_tree,
+                     to_file)
     for (old_path, new_path, file_id, kind,
          text_modified, meta_modified) in delta.renamed:
         has_changes = 1
@@ -505,8 +504,5 @@ def _maybe_diff_file_or_symlink(old_path, old_tree, file_id,
                                 new_path, new_tree, text_modified,
                                 kind, to_file, diff_file):
     if text_modified:
-        new_entry = new_tree.inventory[file_id]
-        old_tree.inventory[file_id].diff(diff_file,
-                                         old_path, old_tree,
-                                         new_path, new_entry, 
-                                         new_tree, to_file)
+        old_tree.diff(diff_file, file_id, old_path, new_path, new_tree,
+                      to_file)
