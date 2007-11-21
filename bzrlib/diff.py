@@ -371,11 +371,11 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                 tree.lock_read()
         new_tree.lock_read()
         try:
-            return _show_diff_trees(old_tree, new_tree, to_file,
-                                    specific_files, external_diff_options,
-                                    old_label=old_label, new_label=new_label,
-                                    extra_trees=extra_trees,
-                                    path_encoding=path_encoding)
+            differ = Differ.from_trees_options(old_tree, new_tree, to_file,
+                                               external_diff_options,
+                                               path_encoding)
+            return differ.show_diff(specific_files, old_label, new_label,
+                                    extra_trees)
         finally:
             new_tree.unlock()
             if extra_trees is not None:
@@ -383,87 +383,6 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                     tree.unlock()
     finally:
         old_tree.unlock()
-
-
-def _show_diff_trees(old_tree, new_tree, to_file,
-                     specific_files, external_diff_options, path_encoding,
-                     old_label='a/', new_label='b/', extra_trees=None):
-
-    # GNU Patch uses the epoch date to detect files that are being added
-    # or removed in a diff.
-    EPOCH_DATE = '1970-01-01 00:00:00 +0000'
-
-    # TODO: Generation of pseudo-diffs for added/deleted files could
-    # be usefully made into a much faster special case.
-
-    if external_diff_options:
-        assert isinstance(external_diff_options, basestring)
-        opts = external_diff_options.split()
-        def diff_file(olab, olines, nlab, nlines, to_file):
-            external_diff(olab, olines, nlab, nlines, to_file, opts)
-    else:
-        diff_file = internal_diff
-    
-    delta = new_tree.changes_from(old_tree,
-        specific_files=specific_files,
-        extra_trees=extra_trees, require_versioned=True)
-
-    has_changes = 0
-    for path, file_id, kind in delta.removed:
-        has_changes = 1
-        path_encoded = path.encode(path_encoding, "replace")
-        to_file.write("=== removed %s '%s'\n" % (kind, path_encoded))
-        old_name = '%s%s\t%s' % (old_label, path,
-                                 _patch_header_date(old_tree, file_id, path))
-        new_name = '%s%s\t%s' % (new_label, path, EPOCH_DATE)
-        old_tree.inventory[file_id].diff(diff_file, old_name, old_tree,
-                                         new_name, None, None, to_file)
-    for path, file_id, kind in delta.added:
-        has_changes = 1
-        path_encoded = path.encode(path_encoding, "replace")
-        to_file.write("=== added %s '%s'\n" % (kind, path_encoded))
-        old_name = '%s%s\t%s' % (old_label, path, EPOCH_DATE)
-        new_name = '%s%s\t%s' % (new_label, path,
-                                 _patch_header_date(new_tree, file_id, path))
-        new_tree.inventory[file_id].diff(diff_file, new_name, new_tree,
-                                         old_name, None, None, to_file, 
-                                         reverse=True)
-    for (old_path, new_path, file_id, kind,
-         text_modified, meta_modified) in delta.renamed:
-        has_changes = 1
-        prop_str = get_prop_change(meta_modified)
-        oldpath_encoded = old_path.encode(path_encoding, "replace")
-        newpath_encoded = new_path.encode(path_encoding, "replace")
-        to_file.write("=== renamed %s '%s' => '%s'%s\n" % (kind,
-                            oldpath_encoded, newpath_encoded, prop_str))
-        old_name = '%s%s\t%s' % (old_label, old_path,
-                                 _patch_header_date(old_tree, file_id,
-                                                    old_path))
-        new_name = '%s%s\t%s' % (new_label, new_path,
-                                 _patch_header_date(new_tree, file_id,
-                                                    new_path))
-        _maybe_diff_file_or_symlink(old_name, old_tree, file_id,
-                                    new_name, new_tree,
-                                    text_modified, kind, to_file, diff_file)
-    for path, file_id, kind, text_modified, meta_modified in delta.modified:
-        has_changes = 1
-        prop_str = get_prop_change(meta_modified)
-        path_encoded = path.encode(path_encoding, "replace")
-        to_file.write("=== modified %s '%s'%s\n" % (kind,
-                            path_encoded, prop_str))
-        # The file may be in a different location in the old tree (because
-        # the containing dir was renamed, but the file itself was not)
-        old_path = old_tree.id2path(file_id)
-        old_name = '%s%s\t%s' % (old_label, old_path,
-                                 _patch_header_date(old_tree, file_id, old_path))
-        new_name = '%s%s\t%s' % (new_label, path,
-                                 _patch_header_date(new_tree, file_id, path))
-        if text_modified:
-            _maybe_diff_file_or_symlink(old_name, old_tree, file_id,
-                                        new_name, new_tree,
-                                        True, kind, to_file, diff_file)
-
-    return has_changes
 
 
 def _patch_header_date(tree, file_id, path):
@@ -501,12 +420,146 @@ def get_prop_change(meta_modified):
         return  ""
 
 
-def _maybe_diff_file_or_symlink(old_path, old_tree, file_id,
-                                new_path, new_tree, text_modified,
-                                kind, to_file, diff_file):
-    if text_modified:
-        new_entry = new_tree.inventory[file_id]
-        old_tree.inventory[file_id].diff(diff_file,
-                                         old_path, old_tree,
-                                         new_path, new_entry, 
-                                         new_tree, to_file)
+class Differ(object):
+
+    # GNU Patch uses the epoch date to detect files that are being added
+    # or removed in a diff.
+    EPOCH_DATE = '1970-01-01 00:00:00 +0000'
+
+    def __init__(self, old_tree, new_tree, to_file, text_diff,
+                 path_encoding='utf-8'):
+        self.old_tree = old_tree
+        self.new_tree = new_tree
+        self.to_file = to_file
+        self.text_diff = text_diff
+        self.path_encoding = path_encoding
+
+    @classmethod
+    def from_trees_options(klass, old_tree, new_tree, to_file,
+                           external_diff_options, path_encoding):
+        if external_diff_options:
+            assert isinstance(external_diff_options, basestring)
+            opts = external_diff_options.split()
+            def diff_file(olab, olines, nlab, nlines, to_file):
+                external_diff(olab, olines, nlab, nlines, to_file, opts)
+        else:
+            diff_file = internal_diff
+        return klass(old_tree, new_tree, to_file, diff_file, path_encoding)
+
+    def show_diff(self, specific_files, old_label='', new_label='',
+                  extra_trees=None):
+        # TODO: Generation of pseudo-diffs for added/deleted files could
+        # be usefully made into a much faster special case.
+
+        delta = self.new_tree.changes_from(self.old_tree,
+            specific_files=specific_files,
+            extra_trees=extra_trees, require_versioned=True)
+
+        has_changes = 0
+        for path, file_id, kind in delta.removed:
+            has_changes = 1
+            path_encoded = path.encode(self.path_encoding, "replace")
+            self.to_file.write("=== removed %s '%s'\n" % (kind, path_encoded))
+            self.diff(file_id, path, path, old_label, new_label)
+
+        for path, file_id, kind in delta.added:
+            has_changes = 1
+            path_encoded = path.encode(self.path_encoding, "replace")
+            self.to_file.write("=== added %s '%s'\n" % (kind, path_encoded))
+            self.diff(file_id, path, path, old_label, new_label)
+        for (old_path, new_path, file_id, kind,
+             text_modified, meta_modified) in delta.renamed:
+            has_changes = 1
+            prop_str = get_prop_change(meta_modified)
+            oldpath_encoded = old_path.encode(self.path_encoding, "replace")
+            newpath_encoded = new_path.encode(self.path_encoding, "replace")
+            self.to_file.write("=== renamed %s '%s' => '%s'%s\n" % (kind,
+                                oldpath_encoded, newpath_encoded, prop_str))
+            if text_modified:
+                self.diff(file_id, old_path, new_path, old_label, new_label)
+        for path, file_id, kind, text_modified, meta_modified in\
+            delta.modified:
+            has_changes = 1
+            prop_str = get_prop_change(meta_modified)
+            path_encoded = path.encode(self.path_encoding, "replace")
+            self.to_file.write("=== modified %s '%s'%s\n" % (kind,
+                                path_encoded, prop_str))
+            # The file may be in a different location in the old tree (because
+            # the containing dir was renamed, but the file itself was not)
+            if text_modified:
+                old_path = self.old_tree.id2path(file_id)
+                self.diff(file_id, old_path, path, old_label, new_label)
+        return has_changes
+
+    def diff(self, file_id, old_path, new_path, old_label, new_label):
+        try:
+            old_kind = self.old_tree.kind(file_id)
+        except errors.NoSuchId:
+            old_kind = None
+            old_date = self.EPOCH_DATE
+        else:
+            old_date = _patch_header_date(self.old_tree, file_id, old_path)
+        try:
+            new_kind = self.new_tree.kind(file_id)
+        except errors.NoSuchId:
+            new_kind = None
+            new_date = self.EPOCH_DATE
+        else:
+            new_date = _patch_header_date(self.new_tree, file_id, new_path)
+
+        old_name = '%s%s\t%s' % (old_label, old_path, old_date)
+        new_name = '%s%s\t%s' % (new_label, new_path, new_date)
+
+        if 'symlink' in (old_kind, new_kind):
+            self.diff_symlink_convenience(file_id, old_kind, new_kind)
+
+        if 'file' in (old_kind, new_kind):
+            from_file_id = to_file_id = file_id
+            if old_kind is None:
+                from_file_id = None
+            if new_kind is None:
+                to_file_id = None
+            self.diff_text(from_file_id, to_file_id, old_name, new_name)
+
+    def diff_symlink_convenience(self, file_id, old_kind, new_kind):
+        if old_kind == 'symlink':
+            old_target = self.old_tree.get_symlink_target(file_id)
+        else:
+            old_kind = None
+        if new_kind == 'symlink':
+            new_target = self.new_tree.get_symlink_target(file_id)
+        else:
+            new_target = None
+        return self.diff_symlink(old_target, new_target)
+
+    def diff_symlink(self, old_target, new_target):
+        if old_target is None:
+            self.to_file.write('=== target is %r\n' % new_target)
+        elif new_target is None:
+            self.to_file.write('=== target was %r\n' % old_target)
+        else:
+            self.to_file.write('=== target changed %r => %r\n' %
+                               (old_target, new_target))
+
+    def diff_text(self, from_file_id, to_file_id, from_label, to_label):
+        """Diff the content of a given file in two trees
+        
+        :param from_file_id: The id of the file in the from tree.  If None,
+            the file is not present in the from tree:
+        :param to_file_id: The id of the file in the to tree.  If None,
+            the file is not present in the to tree:
+        """
+        def _get_text(tree, file_id):
+            if file_id is not None:
+                return tree.get_file(file_id).readlines()
+            else:
+                return []
+        try:
+            from_text = _get_text(self.old_tree, from_file_id)
+            to_text = _get_text(self.new_tree, to_file_id)
+            self.text_diff(from_label, from_text, to_label, to_text,
+                           self.to_file)
+        except errors.BinaryFile:
+            self.to_file.write(
+                  ("Binary files %s and %s differ\n" %
+                  (from_label, to_label)).encode(self.path_encoding))
