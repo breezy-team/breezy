@@ -1250,10 +1250,19 @@ class PreviewTree(object):
         # FIXME: should error out when inputs aren't acceptable
         return self._transform._iter_changes()
 
+    def kind(self, file_id):
+        trans_id = self._transform.trans_id_file_id(file_id)
+        return self._transform.final_kind(trans_id)
+
     def get_file_mtime(self, file_id, path=None):
         trans_id = self._transform.trans_id_file_id(file_id)
         name = self._transform._limbo_name(trans_id)
         return os.stat(name).st_mtime
+
+    def get_file(self, file_id):
+        trans_id = self._transform.trans_id_file_id(file_id)
+        name = self._transform._limbo_name(trans_id)
+        return open(name, 'rb')
 
     def paths2ids(self, specific_files, trees=None, require_versioned=False):
         return 'not_empty'
