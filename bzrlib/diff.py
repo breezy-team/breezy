@@ -472,12 +472,13 @@ class KindChangeDiffer(object):
         :param old_kind: Old file-kind of the file
         :param new_kind: New file-kind of the file
         """
-        differs = [d for d in self.differs if d is not self]
-        result = FileDiffer._diff_many(differs, file_id, old_path, new_path,
-                                       old_kind, None)
+        if None in (old_kind, new_kind):
+            return FileDiffer.CANNOT_DIFF
+        result = FileDiffer._diff_many(self.differs, file_id, old_path,
+                                       new_path, old_kind, None)
         if result is FileDiffer.CANNOT_DIFF:
             return result
-        return FileDiffer._diff_many(differs, file_id, old_path, new_path,
+        return FileDiffer._diff_many(self.differs, file_id, old_path, new_path,
                                      None, new_kind)
 
 
