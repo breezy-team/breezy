@@ -794,14 +794,15 @@ class Repository(object):
                 (format, data_list, StringIO(knit_bytes).read))
 
     @needs_read_lock
-    def missing_revision_ids(self, other, revision_id=None):
+    def missing_revision_ids(self, other, revision_id=None, find_ghosts=True):
         """Return the revision ids that other has that this does not.
         
         These are returned in topological order.
 
         revision_id: only return revision ids included by revision_id.
         """
-        return InterRepository.get(other, self).missing_revision_ids(revision_id)
+        return InterRepository.get(other, self).missing_revision_ids(
+            revision_id, find_ghosts)
 
     @staticmethod
     def open(base):
@@ -1053,6 +1054,10 @@ class Repository(object):
     @needs_write_lock
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
         signature = gpg_strategy.sign(plaintext)
+        self.add_signature_text(revision_id, signature)
+
+    @needs_write_lock
+    def add_signature_text(self, revision_id, signature):
         self._revision_store.add_revision_signature_text(revision_id,
                                                          signature,
                                                          self.get_transaction())
@@ -1077,7 +1082,6 @@ class Repository(object):
         finally:
             pb.finished()
 
-
     def _find_text_key_references_from_xml_inventory_lines(self,
         line_iterator):
         """Core routine for extracting references to texts from inventories.
@@ -1091,10 +1095,11 @@ class Repository(object):
             not part of the line_iterator's output then False will be given -
             even though it may actually refer to that key.
         """
-        assert self._serializer.support_altered_by_hack, \
-            ("_find_text_key_references_from_xml_inventory_lines only "
-             "supported for branches which store inventory as unnested xml, "
-             "not on %r" % self)
+        if not self._serializer.support_altered_by_hack:
+            raise AssertionError(
+                "_find_text_key_references_from_xml_inventory_lines only "
+                "supported for branches which store inventory as unnested xml"
+                ", not on %r" % self)
         result = {}
 
         # this code needs to read every new line in every inventory for the
@@ -1140,10 +1145,10 @@ class Repository(object):
                 unescape_revid_cache[revision_id] = unescaped
                 revision_id = unescaped
 
-            # Note that unescaping always means that on a fulltext cached
-            # inventory we deserialised every fileid, which for general 'pull'
-            # is not great, but we don't really want to have some many
-            # fulltexts that this matters anyway. RBC 20071114.
+            # Note that unconditionally unescaping means that we deserialise
+            # every fileid, which for general 'pull' is not great, but we don't
+            # really want to have some many fulltexts that this matters anyway.
+            # RBC 20071114.
             try:
                 file_id = unescape_fileid_cache[file_id]
             except KeyError:
@@ -1784,9 +1789,19 @@ for _name in [
 
 def install_revision(repository, rev, revision_tree):
     """Install all revision data into a repository."""
+    install_revisions(repository, [(rev, revision_tree, None)])
+
+
+def install_revisions(repository, iterable):
+    """Install all revision data into a repository.
+
+    Accepts an iterable of revision, tree, signature tuples.  The signature
+    may be None.
+    """
     repository.start_write_group()
     try:
-        _install_revision(repository, rev, revision_tree)
+        for revision, revision_tree, signature in iterable:
+            _install_revision(repository, revision, revision_tree, signature)
     except:
         repository.abort_write_group()
         raise
@@ -1794,7 +1809,7 @@ def install_revision(repository, rev, revision_tree):
         repository.commit_write_group()
 
 
-def _install_revision(repository, rev, revision_tree):
+def _install_revision(repository, rev, revision_tree, signature):
     """Install all revision data into a repository."""
     present_parents = []
     parent_trees = {}
@@ -1839,6 +1854,8 @@ def _install_revision(repository, rev, revision_tree):
         repository.add_inventory(rev.revision_id, inv, present_parents)
     except errors.RevisionAlreadyPresent:
         pass
+    if signature is not None:
+        repository.add_signature_text(rev.revision_id, signature)
     repository.add_revision(rev.revision_id, rev, inv)
 
 
@@ -2139,6 +2156,12 @@ format_registry.register_lazy(
     'RepositoryFormatKnit3',
     )
 
+format_registry.register_lazy(
+    'Bazaar Knit Repository Format 4 (bzr 1.0)\n',
+    'bzrlib.repofmt.knitrepo',
+    'RepositoryFormatKnit4',
+    )
+
 # Pack-based formats. There is one format for pre-subtrees, and one for
 # post-subtrees to allow ease of testing.
 # NOTE: These are experimental in 0.92.
@@ -2188,7 +2211,7 @@ class InterRepository(InterObject):
         raise NotImplementedError(self.fetch)
    
     @needs_read_lock
-    def missing_revision_ids(self, revision_id=None):
+    def missing_revision_ids(self, revision_id=None, find_ghosts=True):
         """Return the revision ids that source has that target does not.
         
         These are returned in topological order.
@@ -2355,7 +2378,7 @@ class InterWeaveRepo(InterSameDataRepository):
         return f.count_copied, f.failed_revisions
 
     @needs_read_lock
-    def missing_revision_ids(self, revision_id=None):
+    def missing_revision_ids(self, revision_id=None, find_ghosts=True):
         """See InterRepository.missing_revision_ids()."""
         # we want all revisions to satisfy revision_id in source.
         # but we don't want to stat every file here and there.
@@ -2433,7 +2456,7 @@ class InterKnitRepo(InterSameDataRepository):
         return f.count_copied, f.failed_revisions
 
     @needs_read_lock
-    def missing_revision_ids(self, revision_id=None):
+    def missing_revision_ids(self, revision_id=None, find_ghosts=True):
         """See InterRepository.missing_revision_ids()."""
         if revision_id is not None:
             source_ids = self.source.get_ancestry(revision_id)
@@ -2510,7 +2533,7 @@ class InterPackRepo(InterSameDataRepository):
             # sensibly detect 'new revisions' without doing a full index scan.
         elif _mod_revision.is_null(revision_id):
             # nothing to do:
-            return
+            return (0, [])
         else:
             try:
                 revision_ids = self.missing_revision_ids(revision_id,
@@ -2526,9 +2549,9 @@ class InterPackRepo(InterSameDataRepository):
             # a pack creation, but for now it is simpler to think about as
             # 'upload data, then repack if needed'.
             self.target._pack_collection.autopack()
-            return pack.get_revision_count()
+            return (pack.get_revision_count(), [])
         else:
-            return 0
+            return (0, [])
 
     @needs_read_lock
     def missing_revision_ids(self, revision_id=None, find_ghosts=True):
@@ -2555,6 +2578,12 @@ class InterPackRepo(InterSameDataRepository):
                     target_index.iter_entries(target_keys))
                 missing_revs.update(next_revs - have_revs)
                 searcher.stop_searching_any(have_revs)
+            if next_revs - have_revs == set([revision_id]):
+                # we saw the start rev itself, but no parents from it (or
+                # next_revs would have been updated to e.g. set(). We remove
+                # have_revs because if we found revision_id locally we
+                # stop_searching at the first time around.
+                raise errors.NoSuchRevision(self.source, revision_id)
             return missing_revs
         elif revision_id is not None:
             source_ids = self.source.get_ancestry(revision_id)
@@ -2651,6 +2680,43 @@ class InterKnit1and2(InterKnitRepo):
         return f.count_copied, f.failed_revisions
 
 
+class InterDifferingSerializer(InterKnitRepo):
+
+    @classmethod
+    def _get_repo_format_to_test(self):
+        return None
+
+    @staticmethod
+    def is_compatible(source, target):
+        """Be compatible with Knit2 source and Knit3 target"""
+        if source.supports_rich_root() != target.supports_rich_root():
+            return False
+        # Ideally, we'd support fetching if the source had no tree references
+        # even if it supported them...
+        if (getattr(source, '_format.supports_tree_reference', False) and
+            not getattr(target, '_format.supports_tree_reference', False)):
+            return False
+        return True
+
+    @needs_write_lock
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False):
+        """See InterRepository.fetch()."""
+        revision_ids = self.target.missing_revision_ids(self.source,
+                                                        revision_id)
+        def revisions_iterator():
+            for current_revision_id in revision_ids:
+                revision = self.source.get_revision(current_revision_id)
+                tree = self.source.revision_tree(current_revision_id)
+                try:
+                    signature = self.source.get_signature_text(
+                        current_revision_id)
+                except errors.NoSuchRevision:
+                    signature = None
+                yield revision, tree, signature
+        install_revisions(self.target, revisions_iterator())
+        return len(revision_ids), 0
+
+
 class InterRemoteToOther(InterRepository):
 
     def __init__(self, source, target):
@@ -2720,6 +2786,7 @@ class InterOtherToRemote(InterRepository):
         return None
 
 
+InterRepository.register_optimiser(InterDifferingSerializer)
 InterRepository.register_optimiser(InterSameDataRepository)
 InterRepository.register_optimiser(InterWeaveRepo)
 InterRepository.register_optimiser(InterKnitRepo)

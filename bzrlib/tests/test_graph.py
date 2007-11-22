@@ -150,7 +150,7 @@ class TestGraph(TestCaseWithMemoryTransport):
     def make_graph(self, ancestors):
         tree = self.prepare_memory_tree('.')
         self.build_ancestry(tree, ancestors)
-        tree.unlock()
+        self.addCleanup(tree.unlock)
         return tree.branch.repository.get_graph()
 
     def prepare_memory_tree(self, location):
@@ -259,13 +259,14 @@ class TestGraph(TestCaseWithMemoryTransport):
         """Ensure we do unique_lca using data from two repos"""
         mainline_tree = self.prepare_memory_tree('mainline')
         self.build_ancestry(mainline_tree, mainline)
-        mainline_tree.unlock()
+        self.addCleanup(mainline_tree.unlock)
 
         # This is cheating, because the revisions in the graph are actually
         # different revisions, despite having the same revision-id.
         feature_tree = self.prepare_memory_tree('feature')
         self.build_ancestry(feature_tree, feature_branch)
-        feature_tree.unlock()
+        self.addCleanup(feature_tree.unlock)
+
         graph = mainline_tree.branch.repository.get_graph(
             feature_tree.branch.repository)
         self.assertEqual('rev2b', graph.find_unique_lca('rev2a', 'rev3b'))

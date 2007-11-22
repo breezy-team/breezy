@@ -662,6 +662,15 @@ the method, so that tests can keep running.
 Coding Style Guidelines
 =======================
 
+General Python rules
+--------------------
+
+``hasattr`` should not be used because it swallows exceptions including
+``KeyboardInterrupt``.  Instead, say something like ::
+
+  if getattr(thing, 'name', None) is None
+
+
 Code layout
 -----------
 

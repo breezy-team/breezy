@@ -65,18 +65,25 @@ class cmd_sign_my_commits(Command):
         count = 0
         repo.lock_write()
         try:
-            for rev_id in repo.get_ancestry(branch.last_revision())[1:]:
-                if repo.has_signature_for_revision_id(rev_id):
-                    continue
-                rev = repo.get_revision(rev_id)
-                if rev.committer != committer:
-                    continue
-                # We have a revision without a signature who has a 
-                # matching committer, start signing
-                print rev_id
-                count += 1
-                if not dry_run:
-                    repo.sign_revision(rev_id, gpg_strategy)
+            repo.start_write_group()
+            try:
+                for rev_id in repo.get_ancestry(branch.last_revision())[1:]:
+                    if repo.has_signature_for_revision_id(rev_id):
+                        continue
+                    rev = repo.get_revision(rev_id)
+                    if rev.committer != committer:
+                        continue
+                    # We have a revision without a signature who has a 
+                    # matching committer, start signing
+                    print rev_id
+                    count += 1
+                    if not dry_run:
+                        repo.sign_revision(rev_id, gpg_strategy)
+            except:
+                repo.abort_write_group()
+                raise
+            else:
+                repo.commit_write_group()
         finally:
             repo.unlock()
         print 'Signed %d revisions' % (count,)

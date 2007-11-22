@@ -11,12 +11,19 @@ IN DEVELOPMENT
 
   CHANGES:
 
+   * Disable detection of plink.exe as possible ssh vendor. Plink vendor
+     still available if user selects it explicitly with BZR_SSH environment
+     variable. (Alexander Belchenko, workaround for bug #107593)
+
   FEATURES:
 
    * New ``authentication.conf`` file holding the password or other credentials
      for remote servers. This can be used for ssh, sftp, smtp and other 
      supported transports.
      (Vincent Ladeuil)
+
+   * New rich-root format, recording the same data about tree roots that's
+     recorded for all other directories.  (Aaron Bentley)
 
   PERFORMANCE:
 
@@ -45,6 +52,9 @@ IN DEVELOPMENT
    * A progress bar has been added for knitpack -> knitpack fetching.
      (Robert Collins, #157789)
 
+   * ``commit`` is now able to invoke an external editor in a non-ascii
+     directory. (Daniel Watkins, #84043)
+
    * Detect invalid transport reuse attempts by catching invalid URLs.
      (Vincent Ladeuil, #161819)
 
@@ -64,10 +74,22 @@ IN DEVELOPMENT
    * It is clearer when a plugin cannot be loaded because of its name, and a
      suggestion for an acceptable name is given. (Daniel Watkins, #103023)
 
+   * Make sure Repository.fetch(self) is properly a no-op for all
+     Repository implementations. (John Arbash Meinel, #158333)
+
    * Obsolete packs are now cleaned up by pack and autopack operations.
      (Robert Collins, #153789)
 
    * Reconcile now shows progress bars. (Robert Collins, #159351)
+
+   * ``RemoteBranch`` was not initializing ``self._revision_id_to_revno_map``
+     properly. (John Arbash Meinel, #162486)
+
+   * Removing an already-removed file reports the file does not exist. (Daniel
+     Watkins, #152811)
+
+   * Rename on Windows is able to change filename case.
+     (Alexander Belchenko, #77740)
 
    * Stderr output via logging mechanism now goes through encoded wrapper
      and no more uses utf-8, but terminal encoding instead. So all unicode
@@ -92,6 +114,9 @@ IN DEVELOPMENT
 
    * Return error instead of a traceback for ``bzr log -r0``.
      (Kent Gibson, #133751)
+
+   * Working trees are no longer created when pushing into a local no-trees
+     repo. (Daniel Watkins, #50582)
 
   API BREAKS:
 
