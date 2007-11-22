@@ -648,6 +648,12 @@ class TestTreeDiffer(TestCaseWithTransport):
         self.assertContainsRe(self.differ.to_file.getvalue(),
                               "=== target is 'new'\n")
 
+    def test_diff_directory(self):
+        self.build_tree(['new-tree/new-dir/'])
+        self.new_tree.add('new-dir', 'new-dir-id')
+        self.differ.diff('new-dir-id', None, 'new-dir')
+        self.assertEqual(self.differ.to_file.getvalue(), '')
+
     def create_old_new(self):
         self.build_tree_contents([('old-tree/olddir/',),
                                   ('old-tree/olddir/oldfile', 'old\n')])

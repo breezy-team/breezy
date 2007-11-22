@@ -1845,6 +1845,14 @@ class BadConversionTarget(BzrError):
         self.format = format
 
 
+class NoDifferFound(BzrError):
+
+    _fmt = 'Could not find an appropriate Differ for file "%(path)s"'
+
+    def __init__(self, path):
+        BzrError.__init__(self, path)
+
+
 class NoDiff(BzrError):
 
     _fmt = "Diff is not installed on this machine: %(msg)s"

@@ -372,9 +372,9 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
         new_tree.lock_read()
         try:
             differ = TreeDiffer.from_trees_options(old_tree, new_tree, to_file,
-                                               external_diff_options,
-                                               old_label, new_label,
-                                               path_encoding)
+                                                   path_encoding,
+                                                   external_diff_options,
+                                                   old_label, new_label)
             return differ.show_diff(specific_files, extra_trees)
         finally:
             new_tree.unlock()
@@ -481,6 +481,20 @@ class KindChangeDiffer(object):
         return FileDiffer._diff_many(self.differs, file_id, old_path, new_path,
                                      None, new_kind)
 
+
+class DirectoryDiffer(FileDiffer):
+
+    def diff(self, file_id, old_path, new_path, old_kind, new_kind):
+        """Perform comparison between two directories.  (dummy)
+
+        """
+        if 'directory' not in (old_kind, new_kind):
+            return self.CANNOT_DIFF
+        if old_kind not in ('directory', None):
+            return self.CANNOT_DIFF
+        if new_kind not in ('directory', None):
+            return self.CANNOT_DIFF
+        return self.CHANGED
 
 class SymlinkDiffer(FileDiffer):
 
@@ -595,7 +609,7 @@ class TreeDiffer(object):
 
     # list of factories that can provide instances of FileDiffer objects
     # may be extended by plugins.
-    differ_factories = [SymlinkDiffer]
+    differ_factories = [SymlinkDiffer, DirectoryDiffer]
 
     def __init__(self, old_tree, new_tree, to_file, path_encoding='utf-8',
                  text_differ=None, extra_differs=None):
