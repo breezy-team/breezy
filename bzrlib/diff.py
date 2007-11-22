@@ -559,7 +559,7 @@ class TreeDiffer(object):
     differ_factories = [SymlinkDiffer]
 
     def __init__(self, old_tree, new_tree, to_file, path_encoding='utf-8',
-                 text_differ=None):
+                 text_differ=None, extra_differs=None):
         if text_differ is None:
             text_differ = TextDiffer(old_tree, new_tree, to_file,
                                      path_encoding, '', '',  internal_diff)
@@ -567,6 +567,8 @@ class TreeDiffer(object):
         self.new_tree = new_tree
         self.to_file = to_file
         self.differs = []
+        if extra_differs is not None:
+            self.differs.extend(extra_differs)
         for differ in self.differ_factories:
             self.differs.append(differ(old_tree, new_tree, to_file,
                                        path_encoding))
