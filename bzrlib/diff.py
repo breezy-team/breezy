@@ -421,8 +421,8 @@ def get_prop_change(meta_modified):
 
 
 class FileDiffer(object):
-
     """Base type for command object that compare files"""
+
     # The type or contents of the file were unsuitable for diffing
     CANNOT_DIFF = object()
     # The file has changed in a semantic way
@@ -431,6 +431,13 @@ class FileDiffer(object):
     UNCHANGED = object()
 
     def __init__(self, old_tree, new_tree, to_file, path_encoding='utf-8'):
+        """Constructor.
+
+        :param old_tree: The tree to show as the old tree in the comparison
+        :param new_tree: The tree to show as new in the comparison
+        :param to_file: The file to write comparison data to
+        :param path_encoding: The character encoding to write paths in
+        """
         self.old_tree = old_tree
         self.new_tree = new_tree
         self.to_file = to_file
@@ -448,11 +455,23 @@ class FileDiffer(object):
 
 
 class KindChangeDiffer(object):
+    """Special differ for file kind changes.
 
+    Represents kind change as deletion + creation.  Uses the other differs
+    to do this.
+    """
     def __init__(self, differs):
         self.differs = differs
 
     def diff(self, file_id, old_path, new_path, old_kind, new_kind):
+        """Perform comparison
+
+        :param file_id: The file_id of the file to compare
+        :param old_path: Path of the file in the old tree
+        :param new_path: Path of the file in the new tree
+        :param old_kind: Old file-kind of the file
+        :param new_kind: New file-kind of the file
+        """
         differs = [d for d in self.differs if d is not self]
         result = FileDiffer._diff_many(differs, file_id, old_path, new_path,
                                        old_kind, None)
@@ -465,6 +484,14 @@ class KindChangeDiffer(object):
 class SymlinkDiffer(FileDiffer):
 
     def diff(self, file_id, old_path, new_path, old_kind, new_kind):
+        """Perform comparison between two symlinks
+
+        :param file_id: The file_id of the file to compare
+        :param old_path: Path of the file in the old tree
+        :param new_path: Path of the file in the new tree
+        :param old_kind: Old file-kind of the file
+        :param new_kind: New file-kind of the file
+        """
         if 'symlink' not in (old_kind, new_kind):
             return self.CANNOT_DIFF
         if old_kind == 'symlink':
@@ -507,6 +534,14 @@ class TextDiffer(FileDiffer):
         self.path_encoding = path_encoding
 
     def diff(self, file_id, old_path, new_path, old_kind, new_kind):
+        """Compare two files in unified diff format
+
+        :param file_id: The file_id of the file to compare
+        :param old_path: Path of the file in the old tree
+        :param new_path: Path of the file in the new tree
+        :param old_kind: Old file-kind of the file
+        :param new_kind: New file-kind of the file
+        """
         if 'file' not in (old_kind, new_kind):
             return self.CANNOT_DIFF
         from_file_id = to_file_id = file_id
@@ -555,11 +590,24 @@ class TextDiffer(FileDiffer):
 
 
 class TreeDiffer(object):
+    """Object for comparing the contents of two trees"""
 
+    # list of factories that can provide instances of FileDiffer objects
+    # may be extended by plugins.
     differ_factories = [SymlinkDiffer]
 
     def __init__(self, old_tree, new_tree, to_file, path_encoding='utf-8',
                  text_differ=None, extra_differs=None):
+        """Constructor
+
+        :param old_tree: Tree to show as old in the comparison
+        :param new_tree: Tree to show as new in the comparison
+        :param to_file: File to write comparision to
+        :param path_encoding: Character encoding to write paths in
+        :param text_differ: FileDiffer-type object to use as a last resort for
+            diffing text files.
+        :param extra_differs: FileDiffers to try before any other FileDiffers
+        """
         if text_differ is None:
             text_differ = TextDiffer(old_tree, new_tree, to_file,
                                      path_encoding, '', '',  internal_diff)
@@ -578,8 +626,20 @@ class TreeDiffer(object):
 
     @classmethod
     def from_trees_options(klass, old_tree, new_tree, to_file,
-                           external_diff_options, old_label, new_label,
-                           path_encoding):
+                           path_encoding, external_diff_options, old_label,
+                           new_label):
+        """Factory for producing a TreeDiffer.
+
+        Designed to accept options used by show_diff_trees.
+        :param old_tree: The tree to show as old in the comparison
+        :param new_tree: The tree to show as new in the comparison
+        :param to_file: File to write comparisons to
+        :param path_encoding: Character encoding to use for writing paths
+        :param external_diff_options: If supplied, use the installed diff
+            binary to perform file comparison, using supplied options.
+        :param old_label: Prefix to use for old file labels
+        :param new_label: Prefix to use for new file labels
+        """
         if external_diff_options:
             assert isinstance(external_diff_options, basestring)
             opts = external_diff_options.split()
@@ -592,6 +652,11 @@ class TreeDiffer(object):
         return klass(old_tree, new_tree, to_file, path_encoding, text_differ)
 
     def show_diff(self, specific_files, extra_trees=None):
+        """Write tree diff to self.to_file
+
+        :param sepecific_files: the specific files to compare (recursive)
+        :param extra_trees: extra trees to use for mapping paths to file_ids
+        """
         # TODO: Generation of pseudo-diffs for added/deleted files could
         # be usefully made into a much faster special case.
 
@@ -636,6 +701,12 @@ class TreeDiffer(object):
         return has_changes
 
     def diff(self, file_id, old_path, new_path):
+        """Perform a diff of a single file
+
+        :param file_id: file-id of the file
+        :param old_path: The path of the file in the old tree
+        :param new_path: The path of the file in the new tree
+        """
         try:
             old_kind = self.old_tree.kind(file_id)
         except errors.NoSuchId:
