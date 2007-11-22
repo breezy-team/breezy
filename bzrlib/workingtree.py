@@ -1318,6 +1318,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 only_change_inv = True
             elif self.has_filename(from_rel) and not self.has_filename(to_rel):
                 only_change_inv = False
+            elif (sys.platform == 'win32'
+                and from_rel.lower() == to_rel.lower()
+                and self.has_filename(from_rel)):
+                only_change_inv = False
             else:
                 # something is wrong, so lets determine what exactly
                 if not self.has_filename(from_rel) and \
@@ -1891,9 +1895,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                          want_unversioned=True, specific_files=files):
                     # Check if it's an unknown (but not ignored) OR
                     # changed (but not deleted) :
-                    if not self.is_ignored(path[1]) and (
-                        versioned == (False, False) or
-                        content_change and kind[1] != None):
+                    if ((versioned == (False, False) or
+                         content_change and kind[1] != None)
+                        and not self.is_ignored(path[1])):
                         has_changed_files = True
                         break
 

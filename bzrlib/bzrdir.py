@@ -209,9 +209,14 @@ class BzrDir(object):
         except errors.NotBranchError:
             pass
         try:
-            self.open_workingtree().clone(result)
-        except (errors.NoWorkingTree, errors.NotLocalUrl):
-            pass
+            result_repo = result.find_repository()
+        except errors.NoRepositoryPresent:
+            result_repo = None
+        if result_repo is None or result_repo.make_working_trees():
+            try:
+                self.open_workingtree().clone(result)
+            except (errors.NoWorkingTree, errors.NotLocalUrl):
+                pass
         return result
 
     # TODO: This should be given a Transport, and should chdir up; otherwise
@@ -2481,6 +2486,14 @@ format_registry.register_metadir('dirstate-tags',
         ' Incompatible with bzr < 0.15.',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    )
+format_registry.register_metadir('rich-root',
+    'bzrlib.repofmt.knitrepo.RepositoryFormatKnit4',
+    help='New in 1.0.  Better handling of tree roots.  Incompatible with'
+        ' bzr < 1.0',
+    branch_format='bzrlib.branch.BzrBranchFormat6',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    hidden=False,
     )
 format_registry.register_metadir('dirstate-with-subtree',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
