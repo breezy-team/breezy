@@ -2115,7 +2115,6 @@ class cmd_cat(Command):
         if revision is not None and len(revision) != 1:
             raise errors.BzrCommandError("bzr cat --revision takes exactly"
                                         " one number")
-
         tree = None
         try:
             tree, b, relpath = \
@@ -2125,6 +2124,14 @@ class cmd_cat(Command):
 
         if revision is not None and revision[0].get_branch() is not None:
             b = Branch.open(revision[0].get_branch())
+        b.lock_read()
+        try:
+            return self._run(tree, b, relpath, filename, revision,
+                name_from_revision)
+        finally:
+            b.unlock()
+
+    def _run(self, tree, b, relpath, filename, revision, name_from_revision):
         if tree is None:
             tree = b.basis_tree()
         if revision is None:
@@ -2686,14 +2693,21 @@ class cmd_find_merge_base(Command):
         
         branch1 = Branch.open_containing(branch)[0]
         branch2 = Branch.open_containing(other)[0]
+        branch1.lock_read()
+        try:
+            branch2.lock_read()
+            try:
+                last1 = ensure_null(branch1.last_revision())
+                last2 = ensure_null(branch2.last_revision())
 
-        last1 = ensure_null(branch1.last_revision())
-        last2 = ensure_null(branch2.last_revision())
+                graph = branch1.repository.get_graph(branch2.repository)
+                base_rev_id = graph.find_unique_lca(last1, last2)
 
-        graph = branch1.repository.get_graph(branch2.repository)
-        base_rev_id = graph.find_unique_lca(last1, last2)
-
-        print 'merge base is revision %s' % base_rev_id
+                print 'merge base is revision %s' % base_rev_id
+            finally:
+                branch2.unlock()
+        finally:
+            branch1.unlock()
 
 
 class cmd_merge(Command):
@@ -3091,8 +3105,8 @@ class cmd_revert(Command):
 
     The working tree contains a list of pending merged revisions, which will
     be included as parents in the next commit.  Normally, revert clears that
-    list as well as reverting the files.  If any files, are specified, revert
-    leaves the pending merge list alnone and reverts only the files.  Use "bzr
+    list as well as reverting the files.  If any files are specified, revert
+    leaves the pending merge list alone and reverts only the files.  Use "bzr
     revert ." in the tree root to revert all files but keep the merge record,
     and "bzr revert --forget-merges" to clear the pending merge list without
     reverting any files.
@@ -3422,20 +3436,41 @@ class cmd_re_sign(Command):
     takes_options = ['revision']
     
     def run(self, revision_id_list=None, revision=None):
-        import bzrlib.gpg as gpg
         if revision_id_list is not None and revision is not None:
             raise errors.BzrCommandError('You can only supply one of revision_id or --revision')
         if revision_id_list is None and revision is None:
             raise errors.BzrCommandError('You must supply either --revision or a revision_id')
         b = WorkingTree.open_containing(u'.')[0].branch
+        b.lock_write()
+        try:
+            return self._run(b, revision_id_list, revision)
+        finally:
+            b.unlock()
+
+    def _run(self, b, revision_id_list, revision):
+        import bzrlib.gpg as gpg
         gpg_strategy = gpg.GPGStrategy(b.get_config())
         if revision_id_list is not None:
-            for revision_id in revision_id_list:
-                b.repository.sign_revision(revision_id, gpg_strategy)
+            b.repository.start_write_group()
+            try:
+                for revision_id in revision_id_list:
+                    b.repository.sign_revision(revision_id, gpg_strategy)
+            except:
+                b.repository.abort_write_group()
+                raise
+            else:
+                b.repository.commit_write_group()
         elif revision is not None:
             if len(revision) == 1:
                 revno, rev_id = revision[0].in_history(b)
-                b.repository.sign_revision(rev_id, gpg_strategy)
+                b.repository.start_write_group()
+                try:
+                    b.repository.sign_revision(rev_id, gpg_strategy)
+                except:
+                    b.repository.abort_write_group()
+                    raise
+                else:
+                    b.repository.commit_write_group()
             elif len(revision) == 2:
                 # are they both on rh- if so we can walk between them
                 # might be nice to have a range helper for arbitrary
@@ -3446,9 +3481,16 @@ class cmd_re_sign(Command):
                     to_revno = b.revno()
                 if from_revno is None or to_revno is None:
                     raise errors.BzrCommandError('Cannot sign a range of non-revision-history revisions')
-                for revno in range(from_revno, to_revno + 1):
-                    b.repository.sign_revision(b.get_rev_id(revno), 
-                                               gpg_strategy)
+                b.repository.start_write_group()
+                try:
+                    for revno in range(from_revno, to_revno + 1):
+                        b.repository.sign_revision(b.get_rev_id(revno),
+                                                   gpg_strategy)
+                except:
+                    b.repository.abort_write_group()
+                    raise
+                else:
+                    b.repository.commit_write_group()
             else:
                 raise errors.BzrCommandError('Please supply either one revision, or a range.')
 
@@ -3556,7 +3598,7 @@ class cmd_uncommit(Command):
 
         if revno <= b.revno():
             rev_id = b.get_rev_id(revno)
-        if rev_id is None:
+        if rev_id is None or _mod_revision.is_null(rev_id):
             self.outf.write('No revisions to uncommit.\n')
             return 1
 
@@ -3965,6 +4007,9 @@ class cmd_send(Command):
             outfile = open(output, 'wb')
         try:
             branch = Branch.open_containing(from_)[0]
+            # we may need to write data into branch's repository to calculate
+            # the data to send.
+            branch.lock_write()
             if output is None:
                 config = branch.get_config()
                 if mail_to is None:
@@ -4052,6 +4097,7 @@ class cmd_send(Command):
         finally:
             if output != '-':
                 outfile.close()
+            branch.unlock()
 
 
 class cmd_bundle_revisions(cmd_send):
@@ -4187,7 +4233,7 @@ class cmd_tag(Command):
 class cmd_tags(Command):
     """List tags.
 
-    This tag shows a table of tag names and the revisions they reference.
+    This command shows a table of tag names and the revisions they reference.
     """
 
     _see_also = ['tag']
