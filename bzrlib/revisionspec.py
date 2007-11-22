@@ -639,22 +639,28 @@ class RevisionSpec_ancestor(RevisionSpec):
         for r, b in ((revision_a, branch), (revision_b, other_branch)):
             if r in (None, revision.NULL_REVISION):
                 raise errors.NoCommits(b)
-        revision_source = revision.MultipleRevisionSources(
-                branch.repository, other_branch.repository)
-        graph = branch.repository.get_graph(other_branch.repository)
-        revision_a = revision.ensure_null(revision_a)
-        revision_b = revision.ensure_null(revision_b)
-        if revision.NULL_REVISION in (revision_a, revision_b):
-            rev_id = revision.NULL_REVISION
-        else:
-            rev_id = graph.find_unique_lca(revision_a, revision_b)
-            if rev_id == revision.NULL_REVISION:
-                raise errors.NoCommonAncestor(revision_a, revision_b)
+        branch.lock_read()
+        other_branch.lock_read()
         try:
-            revno = branch.revision_id_to_revno(rev_id)
-        except errors.NoSuchRevision:
-            revno = None
-        return RevisionInfo(branch, revno, rev_id)
+            revision_source = revision.MultipleRevisionSources(
+                    branch.repository, other_branch.repository)
+            graph = branch.repository.get_graph(other_branch.repository)
+            revision_a = revision.ensure_null(revision_a)
+            revision_b = revision.ensure_null(revision_b)
+            if revision.NULL_REVISION in (revision_a, revision_b):
+                rev_id = revision.NULL_REVISION
+            else:
+                rev_id = graph.find_unique_lca(revision_a, revision_b)
+                if rev_id == revision.NULL_REVISION:
+                    raise errors.NoCommonAncestor(revision_a, revision_b)
+            try:
+                revno = branch.revision_id_to_revno(rev_id)
+            except errors.NoSuchRevision:
+                revno = None
+            return RevisionInfo(branch, revno, rev_id)
+        finally:
+            branch.unlock()
+            other_branch.unlock()
 
 
 SPEC_TYPES.append(RevisionSpec_ancestor)

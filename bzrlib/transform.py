@@ -89,6 +89,41 @@ class TreeTransform(object):
      * create_file or create_directory or create_symlink
      * version_file
      * set_executability
+
+    Transform/Transaction ids
+    -------------------------
+    trans_ids are temporary ids assigned to all files involved in a transform.
+    It's possible, even common, that not all files in the Tree have trans_ids.
+
+    trans_ids are used because filenames and file_ids are not good enough
+    identifiers; filenames change, and not all files have file_ids.  File-ids
+    are also associated with trans-ids, so that moving a file moves its
+    file-id.
+
+    trans_ids are only valid for the TreeTransform that generated them.
+
+    Limbo
+    -----
+    Limbo is a temporary directory use to hold new versions of files.
+    Files are added to limbo by new_file, new_directory, new_symlink, and their
+    convenience variants (create_*).  Files may be removed from limbo using
+    cancel_creation.  Files are renamed from limbo into their final location as
+    part of TreeTransform.apply
+
+    Limbo must be cleaned up, by either calling TreeTransform.apply or
+    calling TreeTransform.finalize.
+
+    Files are placed into limbo inside their parent directories, where
+    possible.  This reduces subsequent renames, and makes operations involving
+    lots of files faster.  This is only possible if the parent directory
+    is created *before* creating any of its children.
+
+    Pending-deletion
+    ----------------
+    This temporary directory is used by _FileMover for storing files that are
+    about to be deleted.  FileMover does not delete files until it is
+    sure that a rollback will not happen.  In case of rollback, the files
+    will be restored.
     """
     def __init__(self, tree, pb=DummyProgress()):
         """Note: a tree_write lock is taken on the tree.
@@ -120,9 +155,13 @@ class TreeTransform(object):
             self._tree.unlock()
             raise
 
+        # counter used to generate trans-ids (which are locally unique)
         self._id_number = 0
+        # mapping of trans_id -> new basename
         self._new_name = {}
+        # mapping of trans_id -> new parent trans_id
         self._new_parent = {}
+        # mapping of trans_id with new contents -> new file_kind
         self._new_contents = {}
         # A mapping of transform ids to their limbo filename
         self._limbo_files = {}
@@ -133,22 +172,35 @@ class TreeTransform(object):
         self._limbo_children_names = {}
         # List of transform ids that need to be renamed from limbo into place
         self._needs_rename = set()
+        # Set of trans_ids whose contents will be removed
         self._removed_contents = set()
+        # Mapping of trans_id -> new execute-bit value
         self._new_executability = {}
+        # Mapping of trans_id -> new tree-reference value
         self._new_reference_revision = {}
+        # Mapping of trans_id -> new file_id
         self._new_id = {}
+        # Mapping of old file-id -> trans_id
         self._non_present_ids = {}
+        # Mapping of new file_id -> trans_id
         self._r_new_id = {}
+        # Set of file_ids that will be removed
         self._removed_id = set()
+        # Mapping of path in old tree -> trans_id
         self._tree_path_ids = {}
+        # Mapping trans_id -> path in old tree
         self._tree_id_paths = {}
         # Cache of realpath results, to speed up canonical_path
         self._realpaths = {}
         # Cache of relpath results, to speed up canonical_path
         self._relpaths = {}
+        # The trans_id that will be used as the tree root
         self._new_root = self.trans_id_tree_file_id(tree.get_root_id())
+        # Indictor of whether the transform has been applied
         self.__done = False
+        # A progress bar
         self._pb = pb
+        # A counter of how many files have been renamed
         self.rename_count = 0
 
     def __get_root(self):

@@ -565,9 +565,13 @@ class TestMergeDirective1Branch(tests.TestCaseWithTransport,
     def from_objects(self, repository, revision_id, time, timezone,
         target_branch, patch_type='bundle', local_target_branch=None,
         public_branch=None, message=None):
-        return merge_directive.MergeDirective.from_objects(
-            repository, revision_id, time, timezone, target_branch,
-            patch_type, local_target_branch, public_branch, message)
+        repository.lock_write()
+        try:
+            return merge_directive.MergeDirective.from_objects( repository,
+                revision_id, time, timezone, target_branch, patch_type,
+                local_target_branch, public_branch, message)
+        finally:
+            repository.unlock()
 
     def make_merge_directive(self, revision_id, testament_sha1, time, timezone,
                  target_branch, patch=None, patch_type=None,
