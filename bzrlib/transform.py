@@ -29,10 +29,11 @@ from bzrlib import (
 """)
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, NotVersionedError, CantMoveRoot,
-                           ExistingLimbo, ImmortalLimbo, NoFinalPath)
+                           ExistingLimbo, ImmortalLimbo, NoFinalPath,
+                           UnableCreateSymlink)
 from bzrlib.inventory import InventoryEntry
 from bzrlib.osutils import (file_kind, supports_executable, pathjoin, lexists,
-                            delete_any)
+                            delete_any, has_symlinks)
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.symbol_versioning import (
         deprecated_function,
@@ -387,8 +388,11 @@ class TreeTransform(object):
         target is a bytestring.
         See also new_symlink.
         """
-        os.symlink(target, self._limbo_name(trans_id))
-        unique_add(self._new_contents, trans_id, 'symlink')
+        if has_symlinks():
+            os.symlink(target, self._limbo_name(trans_id))
+            unique_add(self._new_contents, trans_id, 'symlink')
+        else:
+            raise UnableCreateSymlink
 
     def cancel_creation(self, trans_id):
         """Cancel the creation of new file contents."""

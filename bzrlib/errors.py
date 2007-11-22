@@ -252,6 +252,7 @@ class InvalidRevisionId(BzrError):
         self.revision_id = revision_id
         self.branch = branch
 
+
 class ReservedId(BzrError):
 
     _fmt = "Reserved revision-id {%(revision_id)s}"
@@ -2447,3 +2448,8 @@ class UncommittedChanges(BzrError):
         display_url = urlutils.unescape_for_display(
             tree.bzrdir.root_transport.base, 'ascii')
         BzrError.__init__(self, tree=tree, display_url=display_url)
+
+
+class UnableCreateSymlink(BzrError):
+
+    _fmt = 'Unable to create symlink on this platform'
