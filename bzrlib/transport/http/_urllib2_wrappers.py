@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -122,7 +122,6 @@ class AbstractHTTPConnection:
     """A custom HTTP(S) Connection, which can reset itself on a bad response"""
 
     response_class = Response
-    strict = 1 # We don't support HTTP/0.9
 
     def fake_close(self):
         """Make the connection believes the response have been fully handled.
@@ -141,17 +140,20 @@ class AbstractHTTPConnection:
 class HTTPConnection(AbstractHTTPConnection, httplib.HTTPConnection):
 
     # XXX: Needs refactoring at the caller level.
-    def __init__(self, host, port=None, strict=None, proxied_host=None):
-        httplib.HTTPConnection.__init__(self, host, port, strict)
+    def __init__(self, host, port=None, proxied_host=None):
+        # Use strict=True since we don't support HTTP/0.9
+        httplib.HTTPConnection.__init__(self, host, port, strict=True)
         self.proxied_host = proxied_host
 
 
+# FIXME: Should test for ssl availability
 class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
 
     def __init__(self, host, port=None, key_file=None, cert_file=None,
-                 strict=None, proxied_host=None):
+                 proxied_host=None):
+        # Use strict=True since we don't support HTTP/0.9
         httplib.HTTPSConnection.__init__(self, host, port,
-                                         key_file, cert_file, strict)
+                                         key_file, cert_file, strict=True)
         self.proxied_host = proxied_host
 
     def connect(self):
@@ -522,7 +524,7 @@ class HTTPSHandler(AbstractHTTPHandler):
             # - with and without certificate
             # - with self-signed certificate
             # - with and without authentication
-            # - with good and bad credentials (especially the proxy auth aound
+            # - with good and bad credentials (especially the proxy auth around
             #   CONNECT)
             # - with basic and digest schemes
             # - reconnection on errors
