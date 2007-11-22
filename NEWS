@@ -52,6 +52,9 @@ IN DEVELOPMENT
    * A progress bar has been added for knitpack -> knitpack fetching.
      (Robert Collins, #157789)
 
+   * ``commit`` is now able to invoke an external editor in a non-ascii
+     directory. (Daniel Watkins, #84043)
+
    * Detect invalid transport reuse attempts by catching invalid URLs.
      (Vincent Ladeuil, #161819)
 
