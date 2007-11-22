@@ -23,6 +23,7 @@ from tempfile import TemporaryFile
 from bzrlib.diff import (
     internal_diff,
     external_diff,
+    FileDiffer,
     show_diff_trees,
     SymlinkDiffer,
     TreeDiffer,
@@ -552,6 +553,16 @@ class TestShowDiffTrees(TestShowDiffTreesHelper):
         self.assertContainsRe(diff, "=== removed file 'del_%s'"%autf8)
 
 
+class WasIsDiffer(FileDiffer):
+
+    def diff(self, file_id, old_path, new_path, old_kind, new_kind):
+        self.to_file.write('was: ')
+        self.to_file.write(self.old_tree.get_file(file_id).read())
+        self.to_file.write('is: ')
+        self.to_file.write(self.new_tree.get_file(file_id).read())
+        pass
+
+
 class TestTreeDiffer(TestCaseWithTransport):
 
     def setUp(self):
@@ -637,6 +648,54 @@ class TestTreeDiffer(TestCaseWithTransport):
         self.assertContainsRe(self.differ.to_file.getvalue(),
                               "=== target is 'new'\n")
 
+    def test_register_differ(self):
+        self.build_tree_contents([('old-tree/olddir/',),
+                                  ('old-tree/olddir/oldfile', 'old\n')])
+        self.old_tree.add('olddir')
+        self.old_tree.add('olddir/oldfile', 'file-id')
+        self.build_tree_contents([('new-tree/newdir/',),
+                                  ('new-tree/newdir/newfile', 'new\n')])
+        self.new_tree.add('newdir')
+        self.new_tree.add('newdir/newfile', 'file-id')
+
+        old_differ_factories = TreeDiffer.differ_factories
+        TreeDiffer.differ_factories=old_differ_factories[:]
+        TreeDiffer.differ_factories.insert(0, WasIsDiffer)
+        try:
+            differ = TreeDiffer(self.old_tree, self.new_tree, StringIO())
+        finally:
+            TreeDiffer.differ_factories = old_differ_factories
+        differ.diff('file-id', 'olddir/oldfile', 'newdir/newfile')
+        self.assertNotContainsRe(
+            differ.to_file.getvalue(),
+            r'--- olddir/oldfile.*\n\+\+\+ newdir/newfile.*\n\@\@ -1,1 \+1,1'
+             ' \@\@\n-old\n\+new\n\n')
+        self.assertContainsRe(differ.to_file.getvalue(),
+                              'was: old\nis: new\n')
+
+        self.build_tree_contents([('old-tree/olddir/',),
+                                  ('old-tree/olddir/oldfile', 'old\n')])
+        self.old_tree.add('olddir')
+        self.old_tree.add('olddir/oldfile', 'file-id')
+        self.build_tree_contents([('new-tree/newdir/',),
+                                  ('new-tree/newdir/newfile', 'new\n')])
+        self.new_tree.add('newdir')
+        self.new_tree.add('newdir/newfile', 'file-id')
+
+        old_differ_factories = TreeDiffer.differ_factories
+        TreeDiffer.differ_factories=old_differ_factories[:]
+        TreeDiffer.differ_factories.insert(0, WasIsDiffer)
+        try:
+            differ = TreeDiffer(self.old_tree, self.new_tree, StringIO())
+        finally:
+            TreeDiffer.differ_factories = old_differ_factories
+        differ.diff('file-id', 'olddir/oldfile', 'newdir/newfile')
+        self.assertNotContainsRe(
+            differ.to_file.getvalue(),
+            r'--- olddir/oldfile.*\n\+\+\+ newdir/newfile.*\n\@\@ -1,1 \+1,1'
+             ' \@\@\n-old\n\+new\n\n')
+        self.assertContainsRe(differ.to_file.getvalue(),
+                              'was: old\nis: new\n')
 
 class TestPatienceDiffLib(TestCase):
 
