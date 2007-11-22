@@ -496,6 +496,7 @@ class DirectoryDiffer(FileDiffer):
             return self.CANNOT_DIFF
         return self.CHANGED
 
+
 class SymlinkDiffer(FileDiffer):
 
     def diff(self, file_id, old_path, new_path, old_kind, new_kind):
