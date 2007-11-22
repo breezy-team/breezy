@@ -629,7 +629,7 @@ class InventoryFile(InventoryEntry):
             to_file_id, from_file_id = from_file_id, to_file_id
             tree, to_tree = to_tree, tree
             from_label, to_label = to_label, from_label
-        differ = TextDiffer(tree, to_tree, '', '', 'utf-8', output_to,
+        differ = TextDiffer(tree, to_tree, output_to, 'utf-8', '', '',
                             text_diff)
         return differ.diff_text(from_file_id, to_file_id, from_label, to_label)
 

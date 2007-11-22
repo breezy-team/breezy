@@ -573,8 +573,7 @@ class TestTreeDiffer(TestCaseWithTransport):
                                   ('new-tree/newdir/newfile', 'new\n')])
         self.new_tree.add('newdir')
         self.new_tree.add('newdir/newfile', 'file-id')
-        differ = TextDiffer(self.old_tree, self.new_tree,  '', '', 'utf-8',
-                            StringIO(), internal_diff)
+        differ = TextDiffer(self.old_tree, self.new_tree, StringIO())
         differ.diff_text('file-id', None, 'old label', 'new label')
         self.assertEqual(
             '--- old label\n+++ new label\n@@ -1,1 +0,0 @@\n-old\n\n',

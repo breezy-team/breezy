@@ -426,10 +426,11 @@ class FileDiffer(object):
     changed = object()
     unchanged = object()
 
-    def __init__(self, old_tree, new_tree, to_file):
+    def __init__(self, old_tree, new_tree, to_file, path_encoding='utf-8'):
         self.old_tree = old_tree
         self.new_tree = new_tree
         self.to_file = to_file
+        self.path_encoding = path_encoding
 
     @staticmethod
     def _diff_many(differs, file_id, old_path, new_path, old_kind, new_kind):
@@ -492,9 +493,9 @@ class TextDiffer(FileDiffer):
     # or removed in a diff.
     EPOCH_DATE = '1970-01-01 00:00:00 +0000'
 
-    def __init__(self, old_tree, new_tree, old_label, new_label, path_encoding,
-                 to_file, text_differ):
-        FileDiffer.__init__(self, old_tree, new_tree, to_file)
+    def __init__(self, old_tree, new_tree, to_file, path_encoding='utf-8',
+                 old_label='', new_label='', text_differ=internal_diff):
+        FileDiffer.__init__(self, old_tree, new_tree, to_file, path_encoding)
         self.text_differ = text_differ
         self.old_label = old_label
         self.new_label = new_label
@@ -549,18 +550,22 @@ class TextDiffer(FileDiffer):
 
 class TreeDiffer(object):
 
+    differ_factories = [SymlinkDiffer]
+
     def __init__(self, old_tree, new_tree, to_file, path_encoding='utf-8',
                  text_differ=None):
         if text_differ is None:
-            text_differ = TextDiffer(old_tree, new_tree, '', '', path_encoding,
-                                     to_file, internal_diff)
+            text_differ = TextDiffer(old_tree, new_tree, to_file,
+                                     path_encoding, '', '',  internal_diff)
         self.old_tree = old_tree
         self.new_tree = new_tree
         self.to_file = to_file
-        self.differs = [SymlinkDiffer(old_tree, new_tree, to_file),
-                        text_differ]
+        self.differs = []
+        for differ in self.differ_factories:
+            self.differs.append(differ(old_tree, new_tree, to_file,
+                                       path_encoding))
+        self.differs.extend([text_differ, KindChangeDiffer(self.differs)])
         kcd = KindChangeDiffer(self.differs)
-        self.differs.append(kcd)
         self.path_encoding = path_encoding
 
     @classmethod
@@ -574,8 +579,8 @@ class TreeDiffer(object):
                 external_diff(olab, olines, nlab, nlines, to_file, opts)
         else:
             diff_file = internal_diff
-        text_differ = TextDiffer(old_tree, new_tree, old_label, new_label,
-                                 path_encoding, to_file, diff_file)
+        text_differ = TextDiffer(old_tree, new_tree, to_file, path_encoding,
+                                 old_label, new_label, diff_file)
         return klass(old_tree, new_tree, to_file, path_encoding, text_differ)
 
     def show_diff(self, specific_files, extra_trees=None):
