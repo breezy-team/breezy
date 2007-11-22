@@ -26,7 +26,7 @@ def switch(control_dir, to_branch):
     """Switch the branch associated with a checkout.
 
     :param control_dir: BzrDir of the checkout to change
-    :param to_branch: branch that the checkout is to be bound to
+    :param to_branch: branch that the checkout is to reference
     """
     _check_switch_branch_format(control_dir)
     _check_pending_merges(control_dir)
@@ -80,7 +80,7 @@ def _set_branch_location(control, to_branch):
     """Set location value of a branch reference.
 
     :param control: BzrDir of the checkout to change
-    :param to_branch: branch that the checkout is to be bound to.
+    :param to_branch: branch that the checkout is to reference
     """
     transport = control.get_branch_transport(None)
     location = transport.put_bytes('location', to_branch.base)
