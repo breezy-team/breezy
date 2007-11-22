@@ -49,8 +49,8 @@ IN DEVELOPMENT
    * A progress bar has been added for knitpack -> knitpack fetching.
      (Robert Collins, #157789)
 
-   * Commit messages can now be written using an editor in branches with Unicode
-     characters in their name. (Daniel Watkins, #84043)
+   * ``commit`` is now able to invoke an external editor in a non-ascii
+     directory. (Daniel Watkins, #84043)
 
    * Detect invalid transport reuse attempts by catching invalid URLs.
      (Vincent Ladeuil, #161819)
