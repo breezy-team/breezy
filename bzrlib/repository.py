@@ -1051,6 +1051,10 @@ class Repository(object):
     @needs_write_lock
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
         signature = gpg_strategy.sign(plaintext)
+        self.add_signature_text(revision_id, signature)
+
+    @needs_write_lock
+    def add_signature_text(self, revision_id, signature):
         self._revision_store.add_revision_signature_text(revision_id,
                                                          signature,
                                                          self.get_transaction())
@@ -1628,9 +1632,19 @@ for _name in [
 
 def install_revision(repository, rev, revision_tree):
     """Install all revision data into a repository."""
+    install_revisions(repository, [(rev, revision_tree, None)])
+
+
+def install_revisions(repository, iterable):
+    """Install all revision data into a repository.
+
+    Accepts an iterable of revision, tree, signature tuples.  The signature
+    may be None.
+    """
     repository.start_write_group()
     try:
-        _install_revision(repository, rev, revision_tree)
+        for revision, revision_tree, signature in iterable:
+            _install_revision(repository, revision, revision_tree, signature)
     except:
         repository.abort_write_group()
         raise
@@ -1638,7 +1652,7 @@ def install_revision(repository, rev, revision_tree):
         repository.commit_write_group()
 
 
-def _install_revision(repository, rev, revision_tree):
+def _install_revision(repository, rev, revision_tree, signature):
     """Install all revision data into a repository."""
     present_parents = []
     parent_trees = {}
@@ -1683,6 +1697,8 @@ def _install_revision(repository, rev, revision_tree):
         repository.add_inventory(rev.revision_id, inv, present_parents)
     except errors.RevisionAlreadyPresent:
         pass
+    if signature is not None:
+        repository.add_signature_text(rev.revision_id, signature)
     repository.add_revision(rev.revision_id, rev, inv)
 
 
@@ -1981,6 +1997,12 @@ format_registry.register_lazy(
     'Bazaar Knit Repository Format 3 (bzr 0.15)\n',
     'bzrlib.repofmt.knitrepo',
     'RepositoryFormatKnit3',
+    )
+
+format_registry.register_lazy(
+    'Bazaar Knit Repository Format 4 (bzr 1.0)\n',
+    'bzrlib.repofmt.knitrepo',
+    'RepositoryFormatKnit4',
     )
 
 # Pack-based formats. There is one format for pre-subtrees, and one for
@@ -2495,6 +2517,43 @@ class InterKnit1and2(InterKnitRepo):
         return f.count_copied, f.failed_revisions
 
 
+class InterDifferingSerializer(InterKnitRepo):
+
+    @classmethod
+    def _get_repo_format_to_test(self):
+        return None
+
+    @staticmethod
+    def is_compatible(source, target):
+        """Be compatible with Knit2 source and Knit3 target"""
+        if source.supports_rich_root() != target.supports_rich_root():
+            return False
+        # Ideally, we'd support fetching if the source had no tree references
+        # even if it supported them...
+        if (getattr(source, '_format.supports_tree_reference', False) and
+            not getattr(target, '_format.supports_tree_reference', False)):
+            return False
+        return True
+
+    @needs_write_lock
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False):
+        """See InterRepository.fetch()."""
+        revision_ids = self.target.missing_revision_ids(self.source,
+                                                        revision_id)
+        def revisions_iterator():
+            for current_revision_id in revision_ids:
+                revision = self.source.get_revision(current_revision_id)
+                tree = self.source.revision_tree(current_revision_id)
+                try:
+                    signature = self.source.get_signature_text(
+                        current_revision_id)
+                except errors.NoSuchRevision:
+                    signature = None
+                yield revision, tree, signature
+        install_revisions(self.target, revisions_iterator())
+        return len(revision_ids), 0
+
+
 class InterRemoteToOther(InterRepository):
 
     def __init__(self, source, target):
@@ -2564,6 +2623,7 @@ class InterOtherToRemote(InterRepository):
         return None
 
 
+InterRepository.register_optimiser(InterDifferingSerializer)
 InterRepository.register_optimiser(InterSameDataRepository)
 InterRepository.register_optimiser(InterWeaveRepo)
 InterRepository.register_optimiser(InterKnitRepo)
