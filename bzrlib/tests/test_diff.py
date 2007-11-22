@@ -562,8 +562,7 @@ class TestTreeDiffer(TestCaseWithTransport):
         self.new_tree = self.make_branch_and_tree('new-tree')
         self.new_tree.lock_write()
         self.addCleanup(self.new_tree.unlock)
-        self.differ = TreeDiffer(self.old_tree, self.new_tree, StringIO(),
-                                 internal_diff, '', '', 'utf-8')
+        self.differ = TreeDiffer(self.old_tree, self.new_tree, StringIO())
 
     def test_diff_text(self):
         self.build_tree_contents([('old-tree/olddir/',),
@@ -574,8 +573,8 @@ class TestTreeDiffer(TestCaseWithTransport):
                                   ('new-tree/newdir/newfile', 'new\n')])
         self.new_tree.add('newdir')
         self.new_tree.add('newdir/newfile', 'file-id')
-        differ = TextDiffer(self.old_tree, self.new_tree,  '', '', StringIO(),
-                            internal_diff)
+        differ = TextDiffer(self.old_tree, self.new_tree,  '', '', 'utf-8',
+                            StringIO(), internal_diff)
         differ.diff_text('file-id', None, 'old label', 'new label')
         self.assertEqual(
             '--- old label\n+++ new label\n@@ -1,1 +0,0 @@\n-old\n\n',
@@ -616,7 +615,7 @@ class TestTreeDiffer(TestCaseWithTransport):
                                   ('new-tree/newdir/newfile', 'new\n')])
         self.new_tree.add('newdir')
         self.new_tree.add('newdir/newfile', 'file-id')
-        self.differ.diff('file-id', 'olddir/oldfile', 'newdir/newfile', '', '')
+        self.differ.diff('file-id', 'olddir/oldfile', 'newdir/newfile')
         self.assertContainsRe(
             self.differ.to_file.getvalue(),
             r'--- olddir/oldfile.*\n\+\+\+ newdir/newfile.*\n\@\@ -1,1 \+1,1'
@@ -631,7 +630,7 @@ class TestTreeDiffer(TestCaseWithTransport):
         os.symlink('new', 'new-tree/newdir/newfile')
         self.new_tree.add('newdir')
         self.new_tree.add('newdir/newfile', 'file-id')
-        self.differ.diff('file-id', 'olddir/oldfile', 'newdir/newfile', '', '')
+        self.differ.diff('file-id', 'olddir/oldfile', 'newdir/newfile')
         self.assertContainsRe(
             self.differ.to_file.getvalue(),
             r'--- olddir/oldfile.*\n\+\+\+ newdir/newfile.*\n\@\@ -1,1 \+0,0'

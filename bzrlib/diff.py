@@ -373,9 +373,9 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
         try:
             differ = TreeDiffer.from_trees_options(old_tree, new_tree, to_file,
                                                external_diff_options,
+                                               old_label, new_label,
                                                path_encoding)
-            return differ.show_diff(specific_files, old_label, new_label,
-                                    extra_trees)
+            return differ.show_diff(specific_files, extra_trees)
         finally:
             new_tree.unlock()
             if extra_trees is not None:
@@ -492,12 +492,13 @@ class TextDiffer(FileDiffer):
     # or removed in a diff.
     EPOCH_DATE = '1970-01-01 00:00:00 +0000'
 
-    def __init__(self, old_tree, new_tree, old_label, new_label, to_file,
-                 text_differ):
+    def __init__(self, old_tree, new_tree, old_label, new_label, path_encoding,
+                 to_file, text_differ):
         FileDiffer.__init__(self, old_tree, new_tree, to_file)
         self.text_differ = text_differ
         self.old_label = old_label
         self.new_label = new_label
+        self.path_encoding = path_encoding
 
     def diff(self, file_id, old_path, new_path, old_kind, new_kind):
         if 'file' not in (old_kind, new_kind):
@@ -507,7 +508,7 @@ class TextDiffer(FileDiffer):
             old_date = _patch_header_date(self.old_tree, file_id, old_path)
         elif old_kind is None:
             old_date = self.EPOCH_DATE
-            to_file_id = None
+            from_file_id = None
         else:
             return self.cannot_diff
         if new_kind == 'file':
@@ -548,23 +549,24 @@ class TextDiffer(FileDiffer):
 
 class TreeDiffer(object):
 
-    def __init__(self, old_tree, new_tree, to_file, text_diff, old_label='',
-                 new_label='', path_encoding='utf-8'):
+    def __init__(self, old_tree, new_tree, to_file, path_encoding='utf-8',
+                 text_differ=None):
+        if text_differ is None:
+            text_differ = TextDiffer(old_tree, new_tree, '', '', path_encoding,
+                                     to_file, internal_diff)
         self.old_tree = old_tree
         self.new_tree = new_tree
         self.to_file = to_file
         self.differs = [SymlinkDiffer(old_tree, new_tree, to_file),
-                        TextDiffer(old_tree, new_tree, old_label, new_label,
-                                   to_file, text_diff),
-                        ]
+                        text_differ]
         kcd = KindChangeDiffer(self.differs)
         self.differs.append(kcd)
-        self.text_diff = text_diff
         self.path_encoding = path_encoding
 
     @classmethod
     def from_trees_options(klass, old_tree, new_tree, to_file,
-                           external_diff_options, path_encoding):
+                           external_diff_options, old_label, new_label,
+                           path_encoding):
         if external_diff_options:
             assert isinstance(external_diff_options, basestring)
             opts = external_diff_options.split()
@@ -572,10 +574,11 @@ class TreeDiffer(object):
                 external_diff(olab, olines, nlab, nlines, to_file, opts)
         else:
             diff_file = internal_diff
-        return klass(old_tree, new_tree, to_file, diff_file, path_encoding)
+        text_differ = TextDiffer(old_tree, new_tree, old_label, new_label,
+                                 path_encoding, to_file, diff_file)
+        return klass(old_tree, new_tree, to_file, path_encoding, text_differ)
 
-    def show_diff(self, specific_files, old_label='', new_label='',
-                  extra_trees=None):
+    def show_diff(self, specific_files, extra_trees=None):
         # TODO: Generation of pseudo-diffs for added/deleted files could
         # be usefully made into a much faster special case.
 
@@ -588,13 +591,13 @@ class TreeDiffer(object):
             has_changes = 1
             path_encoded = path.encode(self.path_encoding, "replace")
             self.to_file.write("=== removed %s '%s'\n" % (kind, path_encoded))
-            self.diff(file_id, path, path, old_label, new_label)
+            self.diff(file_id, path, path)
 
         for path, file_id, kind in delta.added:
             has_changes = 1
             path_encoded = path.encode(self.path_encoding, "replace")
             self.to_file.write("=== added %s '%s'\n" % (kind, path_encoded))
-            self.diff(file_id, path, path, old_label, new_label)
+            self.diff(file_id, path, path)
         for (old_path, new_path, file_id, kind,
              text_modified, meta_modified) in delta.renamed:
             has_changes = 1
@@ -604,7 +607,7 @@ class TreeDiffer(object):
             self.to_file.write("=== renamed %s '%s' => '%s'%s\n" % (kind,
                                 oldpath_encoded, newpath_encoded, prop_str))
             if text_modified:
-                self.diff(file_id, old_path, new_path, old_label, new_label)
+                self.diff(file_id, old_path, new_path)
         for path, file_id, kind, text_modified, meta_modified in\
             delta.modified:
             has_changes = 1
@@ -616,26 +619,18 @@ class TreeDiffer(object):
             # the containing dir was renamed, but the file itself was not)
             if text_modified:
                 old_path = self.old_tree.id2path(file_id)
-                self.diff(file_id, old_path, path, old_label, new_label)
+                self.diff(file_id, old_path, path)
         return has_changes
 
-    def diff(self, file_id, old_path, new_path, old_label, new_label):
+    def diff(self, file_id, old_path, new_path):
         try:
             old_kind = self.old_tree.kind(file_id)
         except errors.NoSuchId:
             old_kind = None
-        else:
-            old_date = _patch_header_date(self.old_tree, file_id, old_path)
         try:
             new_kind = self.new_tree.kind(file_id)
         except errors.NoSuchId:
             new_kind = None
-            new_date = self.EPOCH_DATE
-        else:
-            new_date = _patch_header_date(self.new_tree, file_id, new_path)
-
-        old_name = '%s%s\t%s' % (old_label, old_path, old_date)
-        new_name = '%s%s\t%s' % (new_label, new_path, new_date)
 
         result = FileDiffer._diff_many(self.differs, file_id, old_path,
                                        new_path, old_kind, new_kind)

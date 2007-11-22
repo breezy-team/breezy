@@ -619,7 +619,7 @@ class InventoryFile(InventoryEntry):
     def _diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
              output_to, reverse=False):
         """See InventoryEntry._diff."""
-        from bzrlib.diff import TreeDiffer
+        from bzrlib.diff import TextDiffer
         from_file_id = self.file_id
         if to_entry:
             to_file_id = to_entry.file_id
@@ -629,7 +629,8 @@ class InventoryFile(InventoryEntry):
             to_file_id, from_file_id = from_file_id, to_file_id
             tree, to_tree = to_tree, tree
             from_label, to_label = to_label, from_label
-        differ = TreeDiffer(tree, to_tree, output_to, text_diff)
+        differ = TextDiffer(tree, to_tree, '', '', 'utf-8', output_to,
+                            text_diff)
         return differ.diff_text(from_file_id, to_file_id, from_label, to_label)
 
     def has_text(self):
@@ -728,7 +729,7 @@ class InventoryLink(InventoryEntry):
     def _diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
              output_to, reverse=False):
         """See InventoryEntry._diff."""
-        from bzrlib.diff import TreeDiffer
+        from bzrlib.diff import SymlinkDiffer
         old_target = self.symlink_target
         if to_entry is not None:
             new_target = to_entry.symlink_target
@@ -741,7 +742,7 @@ class InventoryLink(InventoryEntry):
             old_tree = to_tree
             new_tree = tree
             new_target, old_target = old_target, new_target
-        differ = TreeDiffer(old_tree, new_tree, output_to, text_diff)
+        differ = SymlinkDiffer(old_tree, new_tree, output_to)
         return differ.diff_symlink(old_target, new_target)
 
     def __init__(self, file_id, name, parent_id):
