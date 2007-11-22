@@ -765,7 +765,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
 class TestKnitPackNoSubtrees(TestCaseWithTransport):
 
     def get_format(self):
-        return bzrdir.format_registry.make_bzrdir('knitpack-experimental')
+        return bzrdir.format_registry.make_bzrdir('pack0.92')
 
     def test_disk_layout(self):
         format = self.get_format()
@@ -1147,7 +1147,7 @@ class TestKnitPackSubtrees(TestKnitPackNoSubtrees):
 
     def get_format(self):
         return bzrdir.format_registry.make_bzrdir(
-            'knitpack-subtree-experimental')
+            'pack0.92-subtree')
 
     def check_format(self, t):
         self.assertEqualDiff(
@@ -1158,7 +1158,7 @@ class TestKnitPackSubtrees(TestKnitPackNoSubtrees):
 class TestRepositoryPackCollection(TestCaseWithTransport):
 
     def get_format(self):
-        return bzrdir.format_registry.make_bzrdir('knitpack-experimental')
+        return bzrdir.format_registry.make_bzrdir('pack0.92')
 
     def test__max_pack_count(self):
         """The maximum pack count is a function of the number of revisions."""

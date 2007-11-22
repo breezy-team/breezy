@@ -15,6 +15,11 @@ IN DEVELOPMENT
      still available if user selects it explicitly with BZR_SSH environment
      variable. (Alexander Belchenko, workaround for bug #107593)
 
+   * The pack format is now accessible as "pack0.92", or "pack0.92-subtree" 
+     to enable the subtree functions (for example, for bzr-svn).  
+     See http://doc.bazaar-vcs.org/latest/developer/packrepo.html
+     (Martin Pool)
+
   FEATURES:
 
    * New ``authentication.conf`` file holding the password or other credentials
@@ -166,7 +171,7 @@ bzr 0.92rc1 2007-10-29
      the ``dirstate-tags`` format but uses a smarter storage design that greatly
      speeds up many operations, both local and remote. This new format can be
      used as an option to the ``init``, ``init-repository`` and ``upgrade``
-     commands. See http://doc.bazaar-vcs.org/latest/developers/knitpack.html
+     commands. See http://doc.bazaar-vcs.org/0.92/developers/knitpack.html
      for further details. (Robert Collins)
 
    * For users of bzr-svn (and those testing the prototype subtree support) that
