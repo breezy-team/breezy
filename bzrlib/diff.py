@@ -371,7 +371,7 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                 tree.lock_read()
         new_tree.lock_read()
         try:
-            differ = Differ.from_trees_options(old_tree, new_tree, to_file,
+            differ = TreeDiffer.from_trees_options(old_tree, new_tree, to_file,
                                                external_diff_options,
                                                path_encoding)
             return differ.show_diff(specific_files, old_label, new_label,
@@ -420,17 +420,145 @@ def get_prop_change(meta_modified):
         return  ""
 
 
-class Differ(object):
+class FileDiffer(object):
+
+    cannot_diff = object()
+    changed = object()
+    unchanged = object()
+
+    def __init__(self, old_tree, new_tree, to_file):
+        self.old_tree = old_tree
+        self.new_tree = new_tree
+        self.to_file = to_file
+
+    @staticmethod
+    def _diff_many(differs, file_id, old_path, new_path, old_kind, new_kind):
+        for file_differ in differs:
+            result = file_differ.diff(file_id, old_path, new_path, old_kind,
+                                      new_kind)
+            if result is not FileDiffer.cannot_diff:
+                return result
+        else:
+            return FileDiffer.cannot_diff
+
+
+class KindChangeDiffer(object):
+
+    def __init__(self, differs):
+        self.differs = differs
+
+    def diff(self, file_id, old_path, new_path, old_kind, new_kind):
+        differs = [d for d in self.differs if d is not self]
+        result = FileDiffer._diff_many(differs, file_id, old_path, new_path,
+                                       old_kind, None)
+        if result is FileDiffer.cannot_diff:
+            return result
+        return FileDiffer._diff_many(differs, file_id, old_path, new_path,
+                                     None, new_kind)
+
+
+class SymlinkDiffer(FileDiffer):
+
+    def diff(self, file_id, old_path, new_path, old_kind, new_kind):
+        if 'symlink' not in (old_kind, new_kind):
+            return self.cannot_diff
+        if old_kind == 'symlink':
+            old_target = self.old_tree.get_symlink_target(file_id)
+        elif old_kind is None:
+            old_target = None
+        else:
+            return self.cannot_diff
+        if new_kind == 'symlink':
+            new_target = self.new_tree.get_symlink_target(file_id)
+        elif new_kind is None:
+            new_target = None
+        else:
+            return self.cannot_diff
+        return self.diff_symlink(old_target, new_target)
+
+    def diff_symlink(self, old_target, new_target):
+        if old_target is None:
+            self.to_file.write('=== target is %r\n' % new_target)
+        elif new_target is None:
+            self.to_file.write('=== target was %r\n' % old_target)
+        else:
+            self.to_file.write('=== target changed %r => %r\n' %
+                              (old_target, new_target))
+
+
+class TextDiffer(FileDiffer):
 
     # GNU Patch uses the epoch date to detect files that are being added
     # or removed in a diff.
     EPOCH_DATE = '1970-01-01 00:00:00 +0000'
 
-    def __init__(self, old_tree, new_tree, to_file, text_diff,
-                 path_encoding='utf-8'):
+    def __init__(self, old_tree, new_tree, old_label, new_label, to_file,
+                 text_differ):
+        FileDiffer.__init__(self, old_tree, new_tree, to_file)
+        self.text_differ = text_differ
+        self.old_label = old_label
+        self.new_label = new_label
+
+    def diff(self, file_id, old_path, new_path, old_kind, new_kind):
+        if 'file' not in (old_kind, new_kind):
+            return self.cannot_diff
+        from_file_id = to_file_id = file_id
+        if old_kind == 'file':
+            old_date = _patch_header_date(self.old_tree, file_id, old_path)
+        elif old_kind is None:
+            old_date = self.EPOCH_DATE
+            to_file_id = None
+        else:
+            return self.cannot_diff
+        if new_kind == 'file':
+            new_date = _patch_header_date(self.new_tree, file_id, new_path)
+        elif new_kind is None:
+            new_date = self.EPOCH_DATE
+            to_file_id = None
+        else:
+            return self.cannot_diff
+        from_label = '%s%s\t%s' % (self.old_label, old_path, old_date)
+        to_label = '%s%s\t%s' % (self.new_label, new_path, new_date)
+        return self.diff_text(from_file_id, to_file_id, from_label, to_label)
+
+    def diff_text(self, from_file_id, to_file_id, from_label, to_label):
+        """Diff the content of given files in two trees
+
+        :param from_file_id: The id of the file in the from tree.  If None,
+            the file is not present in the from tree.
+        :param to_file_id: The id of the file in the to tree.  This may refer
+            to a different file from from_file_id.  If None,
+            the file is not present in the to tree.
+        """
+        def _get_text(tree, file_id):
+            if file_id is not None:
+                return tree.get_file(file_id).readlines()
+            else:
+                return []
+        try:
+            from_text = _get_text(self.old_tree, from_file_id)
+            to_text = _get_text(self.new_tree, to_file_id)
+            self.text_differ(from_label, from_text, to_label, to_text,
+                             self.to_file)
+        except errors.BinaryFile:
+            self.to_file.write(
+                  ("Binary files %s and %s differ\n" %
+                  (from_label, to_label)).encode(self.path_encoding))
+
+
+class TreeDiffer(object):
+
+    def __init__(self, old_tree, new_tree, to_file, text_diff, old_label='',
+                 new_label='', path_encoding='utf-8'):
         self.old_tree = old_tree
         self.new_tree = new_tree
         self.to_file = to_file
+        self.differs = [SymlinkDiffer(old_tree, new_tree, to_file),
+                        TextDiffer(old_tree, new_tree, old_label, new_label,
+                                   to_file, text_diff),
+                        ]
+        kcd = KindChangeDiffer(self.differs)
+        self.differs.append(kcd)
         self.text_diff = text_diff
         self.path_encoding = path_encoding
 
@@ -496,7 +624,6 @@ class Differ(object):
             old_kind = self.old_tree.kind(file_id)
         except errors.NoSuchId:
             old_kind = None
-            old_date = self.EPOCH_DATE
         else:
             old_date = _patch_header_date(self.old_tree, file_id, old_path)
         try:
@@ -510,56 +637,10 @@ class Differ(object):
         old_name = '%s%s\t%s' % (old_label, old_path, old_date)
         new_name = '%s%s\t%s' % (new_label, new_path, new_date)
 
-        if 'symlink' in (old_kind, new_kind):
-            self.diff_symlink_convenience(file_id, old_kind, new_kind)
-
-        if 'file' in (old_kind, new_kind):
-            from_file_id = to_file_id = file_id
-            if old_kind != 'file':
-                from_file_id = None
-            if new_kind != 'file':
-                to_file_id = None
-            self.diff_text(from_file_id, to_file_id, old_name, new_name)
-
-    def diff_symlink_convenience(self, file_id, old_kind, new_kind):
-        if old_kind == 'symlink':
-            old_target = self.old_tree.get_symlink_target(file_id)
-        else:
-            old_target = None
-        if new_kind == 'symlink':
-            new_target = self.new_tree.get_symlink_target(file_id)
-        else:
-            new_target = None
-        return self.diff_symlink(old_target, new_target)
-
-    def diff_symlink(self, old_target, new_target):
-        if old_target is None:
-            self.to_file.write('=== target is %r\n' % new_target)
-        elif new_target is None:
-            self.to_file.write('=== target was %r\n' % old_target)
-        else:
-            self.to_file.write('=== target changed %r => %r\n' %
-                               (old_target, new_target))
-
-    def diff_text(self, from_file_id, to_file_id, from_label, to_label):
-        """Diff the content of a given file in two trees
-
-        :param from_file_id: The id of the file in the from tree.  If None,
-            the file is not present in the from tree:
-        :param to_file_id: The id of the file in the to tree.  If None,
-            the file is not present in the to tree:
-        """
-        def _get_text(tree, file_id):
-            if file_id is not None:
-                return tree.get_file(file_id).readlines()
-            else:
-                return []
-        try:
-            from_text = _get_text(self.old_tree, from_file_id)
-            to_text = _get_text(self.new_tree, to_file_id)
-            self.text_diff(from_label, from_text, to_label, to_text,
-                           self.to_file)
-        except errors.BinaryFile:
-            self.to_file.write(
-                  ("Binary files %s and %s differ\n" %
-                  (from_label, to_label)).encode(self.path_encoding))
+        result = FileDiffer._diff_many(self.differs, file_id, old_path,
+                                       new_path, old_kind, new_kind)
+        if result is FileDiffer.cannot_diff:
+            error_path = new_path
+            if error_path is None:
+                error_path = old_path
+            raise errors.NoDifferFound(error_path)
