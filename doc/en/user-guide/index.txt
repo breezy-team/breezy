@@ -48,11 +48,11 @@ Personal version control
 Sharing with peers
 ##################
 
-.. later include:: partner_workflow.txt
-.. later include:: branching_a_project.txt
-.. later include:: merging.txt
-.. later include:: managing_conflicts.txt
-.. later include:: annotating_history.txt
+.. include:: partner_workflow.txt
+.. include:: branching_a_project.txt
+.. include:: merging_changes.txt
+.. include:: resolving_conflicts.txt
+.. include:: annotating_changes.txt
 
 
 Team collaboration, central style
