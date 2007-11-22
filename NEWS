@@ -22,6 +22,9 @@ IN DEVELOPMENT
      supported transports.
      (Vincent Ladeuil)
 
+   * New rich-root format, recording the same data about tree roots that's
+     recorded for all other directories.  (Aaron Bentley)
+
   PERFORMANCE:
 
    * Commit updates the state of the working tree via a delta rather than
