@@ -3091,8 +3091,8 @@ class cmd_revert(Command):
 
     The working tree contains a list of pending merged revisions, which will
     be included as parents in the next commit.  Normally, revert clears that
-    list as well as reverting the files.  If any files, are specified, revert
-    leaves the pending merge list alnone and reverts only the files.  Use "bzr
+    list as well as reverting the files.  If any files are specified, revert
+    leaves the pending merge list alone and reverts only the files.  Use "bzr
     revert ." in the tree root to revert all files but keep the merge record,
     and "bzr revert --forget-merges" to clear the pending merge list without
     reverting any files.
@@ -4187,7 +4187,7 @@ class cmd_tag(Command):
 class cmd_tags(Command):
     """List tags.
 
-    This tag shows a table of tag names and the revisions they reference.
+    This command shows a table of tag names and the revisions they reference.
     """
 
     _see_also = ['tag']
