@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,10 +30,6 @@ import urlparse
 
 from bzrlib.transport import Server
 from bzrlib.transport.local import LocalURLServer
-
-
-class WebserverNotAvailable(Exception):
-    pass
 
 
 class BadWebserverPath(ValueError):
@@ -264,10 +260,10 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
 
 class TestingHTTPServer(BaseHTTPServer.HTTPServer):
 
-    def __init__(self, server_address, RequestHandlerClass,
+    def __init__(self, server_address, request_handler_class,
                  test_case_server):
         BaseHTTPServer.HTTPServer.__init__(self, server_address,
-                                           RequestHandlerClass)
+                                           request_handler_class)
         # test_case_server can be used to communicate between the
         # tests and the server (or the request handler and the
         # server), allowing dynamic behaviors to be defined from
@@ -383,7 +379,7 @@ class HttpServer(Server):
         """See bzrlib.transport.Server.get_bogus_url."""
         # this is chosen to try to prevent trouble with proxies, weird dns,
         # etc
-        return 'http://127.0.0.1:1/'
+        return self._url_protocol + '://127.0.0.1:1/'
 
 
 class HttpServer_urllib(HttpServer):

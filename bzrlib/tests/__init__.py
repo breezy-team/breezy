@@ -2754,4 +2754,21 @@ class _FTPServerFeature(Feature):
     def feature_name(self):
         return 'FTPServer'
 
+
 FTPServerFeature = _FTPServerFeature()
+
+
+class _HTTPSServerFeature(Feature):
+    """Some tests want an https Server, check if one is available.
+
+    Placeholder. We only implement an http server for now.
+    """
+
+    def _probe(self):
+        return True
+
+    def feature_name(self):
+        return 'HTTPSServer'
+
+
+HTTPSServerFeature = _HTTPSServerFeature()

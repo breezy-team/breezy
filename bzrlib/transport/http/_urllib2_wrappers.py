@@ -162,8 +162,10 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
             self.connect_to_origin()
 
     def connect_to_origin(self):
-        ssl = socket.ssl(self.sock, self.key_file, self.cert_file)
-        self.sock = httplib.FakeSocket(self.sock, ssl)
+        pass
+# Temporarily disabled to act as a true http connection
+#        ssl = socket.ssl(self.sock, self.key_file, self.cert_file)
+#        self.sock = httplib.FakeSocket(self.sock, ssl)
 
 
 class Request(urllib2.Request):
