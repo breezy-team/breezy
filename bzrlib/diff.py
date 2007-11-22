@@ -422,9 +422,13 @@ def get_prop_change(meta_modified):
 
 class FileDiffer(object):
 
-    cannot_diff = object()
-    changed = object()
-    unchanged = object()
+    """Base type for command object that compare files"""
+    # The type or contents of the file were unsuitable for diffing
+    CANNOT_DIFF = object()
+    # The file has changed in a semantic way
+    CHANGED = object()
+    # The file content has changed, but there is no semantic change
+    UNCHANGED = object()
 
     def __init__(self, old_tree, new_tree, to_file, path_encoding='utf-8'):
         self.old_tree = old_tree
@@ -437,10 +441,10 @@ class FileDiffer(object):
         for file_differ in differs:
             result = file_differ.diff(file_id, old_path, new_path, old_kind,
                                       new_kind)
-            if result is not FileDiffer.cannot_diff:
+            if result is not FileDiffer.CANNOT_DIFF:
                 return result
         else:
-            return FileDiffer.cannot_diff
+            return FileDiffer.CANNOT_DIFF
 
 
 class KindChangeDiffer(object):
@@ -452,7 +456,7 @@ class KindChangeDiffer(object):
         differs = [d for d in self.differs if d is not self]
         result = FileDiffer._diff_many(differs, file_id, old_path, new_path,
                                        old_kind, None)
-        if result is FileDiffer.cannot_diff:
+        if result is FileDiffer.CANNOT_DIFF:
             return result
         return FileDiffer._diff_many(differs, file_id, old_path, new_path,
                                      None, new_kind)
@@ -462,19 +466,19 @@ class SymlinkDiffer(FileDiffer):
 
     def diff(self, file_id, old_path, new_path, old_kind, new_kind):
         if 'symlink' not in (old_kind, new_kind):
-            return self.cannot_diff
+            return self.CANNOT_DIFF
         if old_kind == 'symlink':
             old_target = self.old_tree.get_symlink_target(file_id)
         elif old_kind is None:
             old_target = None
         else:
-            return self.cannot_diff
+            return self.CANNOT_DIFF
         if new_kind == 'symlink':
             new_target = self.new_tree.get_symlink_target(file_id)
         elif new_kind is None:
             new_target = None
         else:
-            return self.cannot_diff
+            return self.CANNOT_DIFF
         return self.diff_symlink(old_target, new_target)
 
     def diff_symlink(self, old_target, new_target):
@@ -485,6 +489,7 @@ class SymlinkDiffer(FileDiffer):
         else:
             self.to_file.write('=== target changed %r => %r\n' %
                               (old_target, new_target))
+        return self.CHANGED
 
 
 class TextDiffer(FileDiffer):
@@ -503,7 +508,7 @@ class TextDiffer(FileDiffer):
 
     def diff(self, file_id, old_path, new_path, old_kind, new_kind):
         if 'file' not in (old_kind, new_kind):
-            return self.cannot_diff
+            return self.CANNOT_DIFF
         from_file_id = to_file_id = file_id
         if old_kind == 'file':
             old_date = _patch_header_date(self.old_tree, file_id, old_path)
@@ -511,14 +516,14 @@ class TextDiffer(FileDiffer):
             old_date = self.EPOCH_DATE
             from_file_id = None
         else:
-            return self.cannot_diff
+            return self.CANNOT_DIFF
         if new_kind == 'file':
             new_date = _patch_header_date(self.new_tree, file_id, new_path)
         elif new_kind is None:
             new_date = self.EPOCH_DATE
             to_file_id = None
         else:
-            return self.cannot_diff
+            return self.CANNOT_DIFF
         from_label = '%s%s\t%s' % (self.old_label, old_path, old_date)
         to_label = '%s%s\t%s' % (self.new_label, new_path, new_date)
         return self.diff_text(from_file_id, to_file_id, from_label, to_label)
@@ -546,6 +551,7 @@ class TextDiffer(FileDiffer):
             self.to_file.write(
                   ("Binary files %s and %s differ\n" %
                   (from_label, to_label)).encode(self.path_encoding))
+        return self.CHANGED
 
 
 class TreeDiffer(object):
@@ -639,7 +645,7 @@ class TreeDiffer(object):
 
         result = FileDiffer._diff_many(self.differs, file_id, old_path,
                                        new_path, old_kind, new_kind)
-        if result is FileDiffer.cannot_diff:
+        if result is FileDiffer.CANNOT_DIFF:
             error_path = new_path
             if error_path is None:
                 error_path = old_path
