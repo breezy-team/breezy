@@ -44,6 +44,17 @@ from bzrlib.revision import NULL_REVISION
 # 2. Since len(['D', 'E']) > 1, find_lca('D', 'E') => ['A']
 
 
+class DictParentsProvider(object):
+
+    def __init__(self, ancestry):
+        self.ancestry = ancestry
+
+    def __repr__(self):
+        return 'DictParentsProvider(%r)' % self.ancestry
+
+    def get_parents(self, revisions):
+        return [self.ancestry.get(r, None) for r in revisions]
+
 
 class _StackedParentsProvider(object):
 
