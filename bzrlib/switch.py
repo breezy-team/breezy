@@ -66,11 +66,11 @@ def _check_pending_merges(control):
     """
     try:
         tree = control.open_workingtree()
-        # XXX: Should the tree be locked for get_parent_ids?
-        existing_pending_merges = tree.get_parent_ids()[1:]
     except errors.NotBranchError:
-        # no tree, so can't be any pending merges???
+        # old branch is gone
         return
+    # XXX: Should the tree be locked for get_parent_ids?
+    existing_pending_merges = tree.get_parent_ids()[1:]
     if len(existing_pending_merges) > 0:
         raise errors.BzrCommandError('Pending merges must be '
             'committed or reverted before using switch.')
