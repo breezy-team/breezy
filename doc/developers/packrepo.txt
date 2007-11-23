@@ -42,12 +42,12 @@ If you're starting a project from scratch, it's easy to make it a
 ``knitpack`` one. Here's how::
 
   cd my-stuff
-  bzr init --pack0.92
+  bzr init --pack-0.92
   bzr add
   bzr commit -m "initial import"
 
 In other words, use the normal sequence of commands but add the
-``--pack0.92`` option to the ``init`` command.
+``--pack-0.92`` option to the ``init`` command.
 
 **Note:** In bzr 0.92, this format was called ``knitpack-experimental``.
 
@@ -58,14 +58,14 @@ If you're starting a project from scratch and wish to use a shared repository
 for branches, you can make it a ``knitpack`` repository like this::
 
   cd my-repo
-  bzr init-repo --pack0.92 .
+  bzr init-repo --pack-0.92 .
   cd my-stuff
   bzr init
   bzr add
   bzr commit -m "initial import"
 
 In other words, use the normal sequence of commands but add the
-``--pack0.92`` option to the ``init-repo`` command.
+``--pack-0.92`` option to the ``init-repo`` command.
 
 Upgrading an existing branch or repository to knitpack format
 -------------------------------------------------------------
@@ -73,11 +73,11 @@ Upgrading an existing branch or repository to knitpack format
 If you have an existing branch and wish to migrate it to
 a ``knitpack`` format, use the ``upgrade`` command like this::
 
-  bzr upgrade --pack0.92 path-to-my-branch
+  bzr upgrade --pack-0.92 path-to-my-branch
 
 If you are using a shared repository, run::
 
-  bzr upgrade --pack0.92 ROOT_OF_REPOSITORY
+  bzr upgrade --pack-0.92 ROOT_OF_REPOSITORY
 
 to upgrade the history database. Note that this will not
 alter the branch format of each branch, so
@@ -97,7 +97,7 @@ This can be done in one of several ways:
 
 Here are the commands for using the ``pull`` approach::
 
-    bzr init --pack0.92 my-new-branch
+    bzr init --pack-0.92 my-new-branch
     cd my-new-branch
     bzr pull my-source-branch
 
@@ -105,12 +105,12 @@ Here are the commands for using the ``upgrade`` approach::
 
     bzr branch my-source-branch my-new-branch
     cd my-new-branch
-    bzr upgrade --pack0.92 .
+    bzr upgrade --pack-0.92 .
 
 Here are the commands for the shared repository approach::
 
   cd my-repo
-  bzr init-repo --pack0.92 .
+  bzr init-repo --pack-0.92 .
   bzr branch my-source-branch my-new-branch
   cd my-new-branch
 

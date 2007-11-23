@@ -2496,7 +2496,7 @@ format_registry.register_metadir('dirstate-with-subtree',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=True,
     )
-format_registry.register_metadir('pack0.92',
+format_registry.register_metadir('pack-0.92',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack1',
     help='New in 0.92: Pack-based format with data compatible with '
         'dirstate-tags format repositories. Interoperates with '
@@ -2508,7 +2508,7 @@ format_registry.register_metadir('pack0.92',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     experimental=True,
     )
-format_registry.register_metadir('pack0.92-subtree',
+format_registry.register_metadir('pack-0.92-subtree',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack3',
     help='New in 0.92: Pack-based format with data compatible with '
         'dirstate-with-subtree format repositories. Interoperates with '
