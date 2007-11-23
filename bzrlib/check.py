@@ -37,6 +37,7 @@ from bzrlib import repository as _mod_repository
 from bzrlib import revision
 from bzrlib.branch import Branch
 from bzrlib.errors import BzrCheckError
+from bzrlib.repository import Repository
 import bzrlib.ui
 from bzrlib.trace import log_error, note
 
@@ -260,6 +261,23 @@ def _check_branch(branch, verbose):
     repo_result.report_results(verbose)
 
 
+def _check_repository(repository, verbose):
+    """Run consistency checks on a repository.
+    
+    Results are reported through logging.
+    
+    :raise BzrCheckError: if there's a consistency error.
+    """
+    repository.lock_read()
+    try:
+        result = repository.check()
+    finally:
+        repository.unlock()
+    result.report_results(verbose)
+
+
 def check(path, verbose):
     branch_obj = Branch.open_containing(path)[0]
+    repo_obj = Repository.open(path)
     _check_branch(branch_obj, verbose)
+    _check_repository(repo_obj, verbose)
