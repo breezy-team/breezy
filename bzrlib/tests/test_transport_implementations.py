@@ -45,7 +45,12 @@ from bzrlib.errors import (ConnectionError,
                            )
 from bzrlib.osutils import getcwd
 from bzrlib.smart import medium
-from bzrlib.tests import TestCaseInTempDir, TestScenarioApplier, TestSkipped
+from bzrlib.tests import (
+    TestCaseInTempDir,
+    TestScenarioApplier,
+    TestSkipped,
+    TestNotApplicable,
+    )
 from bzrlib.tests.test_transport import TestTransportImplementation
 from bzrlib.transport import (
     ConnectedTransport,
