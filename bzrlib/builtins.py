@@ -2380,10 +2380,7 @@ class cmd_check(Command):
         check(path, verbose)
         # bit hacky, check the tree parent is accurate
         try:
-            if branch is None:
-                tree = WorkingTree.open_containing('.')[0]
-            else:
-                tree = WorkingTree.open(branch)
+            tree = WorkingTree.open(path)
         except (errors.NoWorkingTree, errors.NotLocalUrl):
             pass
         else:
