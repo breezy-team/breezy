@@ -254,11 +254,9 @@ def _check_branch(branch, verbose):
     branch.lock_read()
     try:
         branch_result = branch.check()
-        repo_result = branch.repository.check([branch.last_revision()])
     finally:
         branch.unlock()
     branch_result.report_results(verbose)
-    repo_result.report_results(verbose)
 
 
 def _check_repository(repository, verbose):
@@ -288,6 +286,8 @@ def check(path, verbose):
         repo = None
 
     if branch is not None:
+        if repo is None:
+            repo = branch.repository
         _check_branch(branch, verbose)
     if repo is not None:
         _check_repository(repo, verbose)
