@@ -25,6 +25,11 @@ IN DEVELOPMENT
    * New rich-root format, recording the same data about tree roots that's
      recorded for all other directories.  (Aaron Bentley)
 
+   * ``switch`` command added for changing the branch a lightweight checkout
+     is associated with and updating the tree to reflect the latest content
+     accordingly. This command was previously part of the BzrTools plug-in.
+     (Ian Clatworthy, Aaron Bentley, David Allouche)
+
   PERFORMANCE:
 
    * Commit updates the state of the working tree via a delta rather than
