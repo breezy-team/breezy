@@ -32,7 +32,7 @@
 # raising them.  If there's more than one exception it'd be good to see them
 # all.
 
-from bzrlib import errors
+from bzrlib import errors, osutils
 from bzrlib import repository as _mod_repository
 from bzrlib import revision
 from bzrlib.branch import Branch
@@ -242,6 +242,17 @@ class Check(object):
                                     'in inventory for revision {%s}'
                                     % (path, rev_id))
             seen_names[path] = True
+
+
+def _scan_for_branches(path):
+    dirs = osutils.walkdirs(path).next()[1]
+    branches = []
+    for dir in dirs:
+        try:
+            branches.append(Branch.open_containing(dir[0])[0])
+        except errors.NotBranchError:
+            pass
+    return branches
 
 
 def check_branch(branch, verbose):
