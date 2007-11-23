@@ -452,7 +452,7 @@ def check_not_reserved_id(revision_id):
 
 
 def ensure_null(revision_id):
-    """Ensure only NULL_REVISION is used to represent the null revisionn"""
+    """Ensure only NULL_REVISION is used to represent the null revision"""
     if revision_id is None:
         symbol_versioning.warn('NULL_REVISION should be used for the null'
             ' revision instead of None, as of bzr 0.91.',

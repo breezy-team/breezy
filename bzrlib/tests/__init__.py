@@ -2474,6 +2474,7 @@ def test_suite():
                    'bzrlib.tests.test_store',
                    'bzrlib.tests.test_strace',
                    'bzrlib.tests.test_subsume',
+                   'bzrlib.tests.test_switch',
                    'bzrlib.tests.test_symbol_versioning',
                    'bzrlib.tests.test_tag',
                    'bzrlib.tests.test_testament',
