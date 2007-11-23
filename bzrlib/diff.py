@@ -371,7 +371,7 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                 tree.lock_read()
         new_tree.lock_read()
         try:
-            differ = TreeDiffer.from_trees_options(old_tree, new_tree, to_file,
+            differ = DiffTree.from_trees_options(old_tree, new_tree, to_file,
                                                    path_encoding,
                                                    external_diff_options,
                                                    old_label, new_label)
@@ -420,7 +420,7 @@ def get_prop_change(meta_modified):
         return  ""
 
 
-class FileDiffer(object):
+class DiffPath(object):
     """Base type for command object that compare files"""
 
     # The type or contents of the file were unsuitable for diffing
@@ -448,13 +448,13 @@ class FileDiffer(object):
         for file_differ in differs:
             result = file_differ.diff(file_id, old_path, new_path, old_kind,
                                       new_kind)
-            if result is not FileDiffer.CANNOT_DIFF:
+            if result is not DiffPath.CANNOT_DIFF:
                 return result
         else:
-            return FileDiffer.CANNOT_DIFF
+            return DiffPath.CANNOT_DIFF
 
 
-class KindChangeDiffer(object):
+class DiffKindChange(object):
     """Special differ for file kind changes.
 
     Represents kind change as deletion + creation.  Uses the other differs
@@ -473,16 +473,16 @@ class KindChangeDiffer(object):
         :param new_kind: New file-kind of the file
         """
         if None in (old_kind, new_kind):
-            return FileDiffer.CANNOT_DIFF
-        result = FileDiffer._diff_many(self.differs, file_id, old_path,
+            return DiffPath.CANNOT_DIFF
+        result = DiffPath._diff_many(self.differs, file_id, old_path,
                                        new_path, old_kind, None)
-        if result is FileDiffer.CANNOT_DIFF:
+        if result is DiffPath.CANNOT_DIFF:
             return result
-        return FileDiffer._diff_many(self.differs, file_id, old_path, new_path,
+        return DiffPath._diff_many(self.differs, file_id, old_path, new_path,
                                      None, new_kind)
 
 
-class DirectoryDiffer(FileDiffer):
+class DiffDirectory(DiffPath):
 
     def diff(self, file_id, old_path, new_path, old_kind, new_kind):
         """Perform comparison between two directories.  (dummy)
@@ -497,7 +497,7 @@ class DirectoryDiffer(FileDiffer):
         return self.CHANGED
 
 
-class SymlinkDiffer(FileDiffer):
+class DiffSymlink(DiffPath):
 
     def diff(self, file_id, old_path, new_path, old_kind, new_kind):
         """Perform comparison between two symlinks
@@ -535,7 +535,7 @@ class SymlinkDiffer(FileDiffer):
         return self.CHANGED
 
 
-class TextDiffer(FileDiffer):
+class DiffText(DiffPath):
 
     # GNU Patch uses the epoch date to detect files that are being added
     # or removed in a diff.
@@ -543,7 +543,7 @@ class TextDiffer(FileDiffer):
 
     def __init__(self, old_tree, new_tree, to_file, path_encoding='utf-8',
                  old_label='', new_label='', text_differ=internal_diff):
-        FileDiffer.__init__(self, old_tree, new_tree, to_file, path_encoding)
+        DiffPath.__init__(self, old_tree, new_tree, to_file, path_encoding)
         self.text_differ = text_differ
         self.old_label = old_label
         self.new_label = new_label
@@ -605,12 +605,21 @@ class TextDiffer(FileDiffer):
         return self.CHANGED
 
 
-class TreeDiffer(object):
-    """Object for comparing the contents of two trees"""
+class DiffTree(object):
+    """Provides textual representations of the difference between two trees.
 
-    # list of factories that can provide instances of FileDiffer objects
+    A DiffTree examines two trees and where a file-id has altered
+    between them, generates a textual representation of the difference.
+    DiffTree uses a sequence of DiffPath objects which are each
+    given the opportunity to handle a given altered fileid. The list
+    of DiffPath objects can be extended globally by appending to
+    DiffTree.diff_factories, or for a specific diff operation by
+    supplying the extra_differ option to the appropriate method.
+    """
+
+    # list of factories that can provide instances of DiffPath objects
     # may be extended by plugins.
-    differ_factories = [SymlinkDiffer, DirectoryDiffer]
+    diff_factories = [DiffSymlink, DiffDirectory]
 
     def __init__(self, old_tree, new_tree, to_file, path_encoding='utf-8',
                  text_differ=None, extra_differs=None):
@@ -620,12 +629,12 @@ class TreeDiffer(object):
         :param new_tree: Tree to show as new in the comparison
         :param to_file: File to write comparision to
         :param path_encoding: Character encoding to write paths in
-        :param text_differ: FileDiffer-type object to use as a last resort for
+        :param text_differ: DiffPath-type object to use as a last resort for
             diffing text files.
-        :param extra_differs: FileDiffers to try before any other FileDiffers
+        :param extra_differs: DiffPaths to try before any other DiffPaths
         """
         if text_differ is None:
-            text_differ = TextDiffer(old_tree, new_tree, to_file,
+            text_differ = DiffText(old_tree, new_tree, to_file,
                                      path_encoding, '', '',  internal_diff)
         self.old_tree = old_tree
         self.new_tree = new_tree
@@ -636,15 +645,15 @@ class TreeDiffer(object):
         for differ in self.differ_factories:
             self.differs.append(differ(old_tree, new_tree, to_file,
                                        path_encoding))
-        self.differs.extend([text_differ, KindChangeDiffer(self.differs)])
-        kcd = KindChangeDiffer(self.differs)
+        self.differs.extend([text_differ, DiffKindChange(self.differs)])
+        kcd = DiffKindChange(self.differs)
         self.path_encoding = path_encoding
 
     @classmethod
     def from_trees_options(klass, old_tree, new_tree, to_file,
                            path_encoding, external_diff_options, old_label,
                            new_label):
-        """Factory for producing a TreeDiffer.
+        """Factory for producing a DiffTree.
 
         Designed to accept options used by show_diff_trees.
         :param old_tree: The tree to show as old in the comparison
@@ -663,7 +672,7 @@ class TreeDiffer(object):
                 external_diff(olab, olines, nlab, nlines, to_file, opts)
         else:
             diff_file = internal_diff
-        text_differ = TextDiffer(old_tree, new_tree, to_file, path_encoding,
+        text_differ = DiffText(old_tree, new_tree, to_file, path_encoding,
                                  old_label, new_label, diff_file)
         return klass(old_tree, new_tree, to_file, path_encoding, text_differ)
 
@@ -732,10 +741,10 @@ class TreeDiffer(object):
         except errors.NoSuchId:
             new_kind = None
 
-        result = FileDiffer._diff_many(self.differs, file_id, old_path,
+        result = DiffPath._diff_many(self.differs, file_id, old_path,
                                        new_path, old_kind, new_kind)
-        if result is FileDiffer.CANNOT_DIFF:
+        if result is DiffPath.CANNOT_DIFF:
             error_path = new_path
             if error_path is None:
                 error_path = old_path
-            raise errors.NoDifferFound(error_path)
+            raise errors.NoDiffFound(error_path)

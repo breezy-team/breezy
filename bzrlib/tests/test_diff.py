@@ -23,11 +23,11 @@ from tempfile import TemporaryFile
 from bzrlib.diff import (
     internal_diff,
     external_diff,
-    FileDiffer,
+    DiffPath,
     show_diff_trees,
-    SymlinkDiffer,
-    TreeDiffer,
-    TextDiffer,
+    DiffSymlink,
+    DiffTree,
+    DiffText,
     )
 from bzrlib.errors import BinaryFile, NoDiff
 import bzrlib.osutils as osutils
@@ -553,7 +553,7 @@ class TestShowDiffTrees(TestShowDiffTreesHelper):
         self.assertContainsRe(diff, "=== removed file 'del_%s'"%autf8)
 
 
-class WasIsDiffer(FileDiffer):
+class DiffWasIs(DiffPath):
 
     def diff(self, file_id, old_path, new_path, old_kind, new_kind):
         self.to_file.write('was: ')
@@ -563,7 +563,7 @@ class WasIsDiffer(FileDiffer):
         pass
 
 
-class TestTreeDiffer(TestCaseWithTransport):
+class TestDiffTree(TestCaseWithTransport):
 
     def setUp(self):
         TestCaseWithTransport.setUp(self)
@@ -573,7 +573,7 @@ class TestTreeDiffer(TestCaseWithTransport):
         self.new_tree = self.make_branch_and_tree('new-tree')
         self.new_tree.lock_write()
         self.addCleanup(self.new_tree.unlock)
-        self.differ = TreeDiffer(self.old_tree, self.new_tree, StringIO())
+        self.differ = DiffTree(self.old_tree, self.new_tree, StringIO())
 
     def test_diff_text(self):
         self.build_tree_contents([('old-tree/olddir/',),
@@ -584,7 +584,7 @@ class TestTreeDiffer(TestCaseWithTransport):
                                   ('new-tree/newdir/newfile', 'new\n')])
         self.new_tree.add('newdir')
         self.new_tree.add('newdir/newfile', 'file-id')
-        differ = TextDiffer(self.old_tree, self.new_tree, StringIO())
+        differ = DiffText(self.old_tree, self.new_tree, StringIO())
         differ.diff_text('file-id', None, 'old label', 'new label')
         self.assertEqual(
             '--- old label\n+++ new label\n@@ -1,1 +0,0 @@\n-old\n\n',
@@ -601,17 +601,17 @@ class TestTreeDiffer(TestCaseWithTransport):
             differ.to_file.getvalue())
 
     def test_diff_symlink(self):
-        differ = SymlinkDiffer(self.old_tree, self.new_tree, StringIO())
+        differ = DiffSymlink(self.old_tree, self.new_tree, StringIO())
         differ.diff_symlink('old target', None)
         self.assertEqual("=== target was 'old target'\n",
                          differ.to_file.getvalue())
 
-        differ = SymlinkDiffer(self.old_tree, self.new_tree, StringIO())
+        differ = DiffSymlink(self.old_tree, self.new_tree, StringIO())
         differ.diff_symlink(None, 'new target')
         self.assertEqual("=== target is 'new target'\n",
                          differ.to_file.getvalue())
 
-        differ = SymlinkDiffer(self.old_tree, self.new_tree, StringIO())
+        differ = DiffSymlink(self.old_tree, self.new_tree, StringIO())
         differ.diff_symlink('old target', 'new target')
         self.assertEqual("=== target changed 'old target' => 'new target'\n",
                          differ.to_file.getvalue())
@@ -666,13 +666,13 @@ class TestTreeDiffer(TestCaseWithTransport):
 
     def test_register_differ(self):
         self.create_old_new()
-        old_differ_factories = TreeDiffer.differ_factories
-        TreeDiffer.differ_factories=old_differ_factories[:]
-        TreeDiffer.differ_factories.insert(0, WasIsDiffer)
+        old_differ_factories = DiffTree.differ_factories
+        DiffTree.differ_factories=old_differ_factories[:]
+        DiffTree.differ_factories.insert(0, DiffWasIs)
         try:
-            differ = TreeDiffer(self.old_tree, self.new_tree, StringIO())
+            differ = DiffTree(self.old_tree, self.new_tree, StringIO())
         finally:
-            TreeDiffer.differ_factories = old_differ_factories
+            DiffTree.differ_factories = old_differ_factories
         differ.diff('file-id', 'olddir/oldfile', 'newdir/newfile')
         self.assertNotContainsRe(
             differ.to_file.getvalue(),
@@ -683,8 +683,8 @@ class TestTreeDiffer(TestCaseWithTransport):
 
     def test_extra_differ(self):
         self.create_old_new()
-        was_is = WasIsDiffer(self.old_tree, self.new_tree, StringIO())
-        differ = TreeDiffer(self.old_tree, self.new_tree, was_is.to_file,
+        was_is = DiffWasIs(self.old_tree, self.new_tree, StringIO())
+        differ = DiffTree(self.old_tree, self.new_tree, was_is.to_file,
                             extra_differs = [was_is])
         differ.diff('file-id', 'olddir/oldfile', 'newdir/newfile')
         self.assertNotContainsRe(
