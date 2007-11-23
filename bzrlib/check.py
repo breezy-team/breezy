@@ -242,7 +242,7 @@ class Check(object):
             seen_names[path] = True
 
 
-def check(branch, verbose):
+def _check_branch(branch, verbose):
     """Run consistency checks on a branch.
     
     Results are reported through logging.
@@ -259,4 +259,6 @@ def check(branch, verbose):
     repo_result.report_results(verbose)
 
 
+def check(branch, verbose):
+    _check_branch(branch, verbose)
 
