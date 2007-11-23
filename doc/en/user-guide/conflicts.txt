@@ -1,5 +1,5 @@
-Handling conflicts
-==================
+Conflicts types
+===============
 
 Some operations, like merge, revert and pull, modify the contents of your
 working tree.  These modifications are programmatically generated, and so they

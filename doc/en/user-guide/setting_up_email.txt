@@ -1,5 +1,5 @@
-Setting up email
-================
+Configuring email
+=================
 
 .. Description of the various ways to specify to Bazaar your email address for commits.
 

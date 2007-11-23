@@ -1,10 +1,5 @@
-Specifying revisions
-====================
-
-Description of the subarguments for ``-r`` as used by commands such as
-``bzr log`` and ``bzr merge``.
-
-You can get the online documentation with ``bzr help revisionspec``.
+Revision specifiers
+===================
 
 Revision specs and ranges
 -------------------------

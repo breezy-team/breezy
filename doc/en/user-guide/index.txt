@@ -72,7 +72,6 @@ Team collaboration, distributed style
 .. later include:: shared_repositories.txt
 
 
-
 Best practices
 ##############
 
@@ -82,15 +81,13 @@ Best practices
 .. include:: bug_trackers.txt
 .. include:: shared_repository_layouts.txt
  
-.. Perhaps this ought to go in the User Reference?
-.. include:: configuration.txt
-
 
 Appendices
 ##########
 
 .. include:: specifying_revisions.txt
 .. include:: conflicts.txt
+.. include:: configuration.txt
 .. include:: setting_up_email.txt
 .. include:: authentication_conf.txt
 .. include:: http_smart_server.txt
