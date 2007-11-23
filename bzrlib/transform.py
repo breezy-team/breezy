@@ -1628,7 +1628,8 @@ def revert(working_tree, target_tree, filenames, backups=False,
         pp.next_phase()
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
-            raw_conflicts = resolve_conflicts(tt, child_pb)
+            raw_conflicts = resolve_conflicts(tt, child_pb,
+                lambda t, c: conflict_pass(t, c, target_tree))
         finally:
             child_pb.finished()
         conflicts = cook_conflicts(raw_conflicts, tt)

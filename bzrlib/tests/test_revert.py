@@ -142,3 +142,4 @@ class TestRevert(tests.TestCaseWithTransport):
         os.rmdir('dir')
         tree.remove(['dir/', 'dir/file'])
         tree.revert(['dir/file'])
+        self.failUnlessExists('dir/file')
