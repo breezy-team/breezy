@@ -277,7 +277,17 @@ def _check_repository(repository, verbose):
 
 
 def check(path, verbose):
-    branch_obj = Branch.open_containing(path)[0]
-    repo_obj = Repository.open(path)
-    _check_branch(branch_obj, verbose)
-    _check_repository(repo_obj, verbose)
+    try:
+        branch = Branch.open_containing(path)[0]
+    except errors.NotBranchError:
+        branch = None
+
+    try:
+        repo = Repository.open(path)
+    except errors.NoRepositoryPresent:
+        repo = None
+
+    if branch is not None:
+        _check_branch(branch, verbose)
+    if repo is not None:
+        _check_repository(repo, verbose)
