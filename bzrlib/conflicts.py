@@ -117,7 +117,7 @@ class cmd_resolve(commands.Command):
                 resolve(tree, file_list)
 
 
-def resolve(tree, paths=None, ignore_misses=False):
+def resolve(tree, paths=None, ignore_misses=False, recursive=False):
     tree.lock_tree_write()
     try:
         tree_conflicts = tree.conflicts()
@@ -126,7 +126,8 @@ def resolve(tree, paths=None, ignore_misses=False):
             selected_conflicts = tree_conflicts
         else:
             new_conflicts, selected_conflicts = \
-                tree_conflicts.select_conflicts(tree, paths, ignore_misses)
+                tree_conflicts.select_conflicts(tree, paths, ignore_misses,
+                    recursive)
         try:
             tree.set_conflicts(new_conflicts)
         except errors.UnsupportedOperation:
