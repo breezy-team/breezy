@@ -82,6 +82,9 @@ IN DEVELOPMENT
    * Make sure Repository.fetch(self) is properly a no-op for all
      Repository implementations. (John Arbash Meinel, #158333)
 
+   * ``merge --uncommitted`` can now operate on a single file.
+     (Aaron Bentley, #136890)
+
    * Obsolete packs are now cleaned up by pack and autopack operations.
      (Robert Collins, #153789)
 
