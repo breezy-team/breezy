@@ -244,7 +244,7 @@ class Check(object):
             seen_names[path] = True
 
 
-def _check_branch(branch, verbose):
+def check_branch(branch, verbose):
     """Run consistency checks on a branch.
     
     Results are reported through logging.
@@ -288,6 +288,6 @@ def check(path, verbose):
     if branch is not None:
         if repo is None:
             repo = branch.repository
-        _check_branch(branch, verbose)
+        check_branch(branch, verbose)
     if repo is not None:
         _check_repository(repo, verbose)
