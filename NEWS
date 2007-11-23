@@ -83,7 +83,7 @@ IN DEVELOPMENT
      Repository implementations. (John Arbash Meinel, #158333)
 
    * ``merge --uncommitted`` can now operate on a single file.
-     (Aaron Bentley, #136890)
+     (Aaron Bentley, Lukáš Lalinský, #136890)
 
    * Obsolete packs are now cleaned up by pack and autopack operations.
      (Robert Collins, #153789)
