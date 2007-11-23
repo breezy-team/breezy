@@ -65,9 +65,20 @@ The name, location and version of each plugin installed will be displayed.
 Popular plugins
 ---------------
 
-Here is a sample of some of the more popular plugins:
+Here is a sample of some of the more popular plugins.
 
-* TODO ...
+  ================ ================= ==================================
+  Category         Name              Description
+  ================ ================= ==================================
+  GUI              QBzr              Qt-based GUI tools
+  GUI              bzr-gtk           GTK-based GUI tools
+  GUI              bzr-eclipse       Eclipse integration
+  General          difftools         external diff tool helper
+  General          extmerge          external merge tool helper
+  General          bzrtools          misc. enhancements including shelf
+  Integration      bzr-svn           use Subversion as a repository
+  Migration        cvsps             migrate CVS patch-sets
+  ================ ================= ==================================
 
 If you wish to write your own plugins, it is not difficult to do.
 See `Writing a plugin`_ in the appendices to get started.

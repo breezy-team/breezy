@@ -68,8 +68,10 @@ Team collaboration, central style
 Team collaboration, distributed style
 #####################################
 
-.. later include:: distributed_intro.txt
-.. later include:: shared_repositories.txt
+.. include:: distributed_intro.txt
+.. include:: organizing_branches.txt
+.. include:: using_gatekeepers.txt
+.. include:: sending_changes.txt
 
 
 Best practices

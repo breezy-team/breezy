@@ -28,7 +28,7 @@ associated with it including:
 Revisions are immutable and can be globally identified by a unique identifier
 called the *rev-id*.
 
-*TODO: add diagram*
+.. *TODO: add diagram*
 
 Working Tree
 ------------
@@ -39,7 +39,7 @@ can edit. A working tree is associated with a *branch*.
 Many commands use the working tree as their context, e.g. ``commit`` makes
 a new revision using the current content of files in the working tree.
 
-*TODO: add diagram*
+.. *TODO: add diagram*
 
 Branch
 ------
@@ -52,7 +52,7 @@ so called *directed acyclic graph* (DAG). The primary line of development
 within the DAG is called the *mainline*, *trunk* or simply the
 *left hand side* (LHS).
 
-*TODO: add diagram*
+.. *TODO: add diagram*
 
 Repository
 ----------
@@ -61,7 +61,7 @@ A repository is simply a *store of revisions*. In the simpliest case,
 each branch has its own repository. In other cases, it makes sense for
 branches to share a repository in order to optimize disk usage.
 
-*TODO: add diagram*
+.. *TODO: add diagram*
 
 
 Putting the concepts together
