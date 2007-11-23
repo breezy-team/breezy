@@ -296,9 +296,17 @@ def check(path, verbose):
     except errors.NoRepositoryPresent:
         repo = None
 
+    # We are in a branch
     if branch is not None:
+        # The branch is in a shared repository
         if repo is None:
             repo = branch.repository
         check_branch(branch, verbose)
+
+    # We have a repository
     if repo is not None:
         _check_repository(repo, verbose)
+        # We are in a shared repository
+        if branch is None:
+            for branch in _scan_for_branches(path):
+                check_branch(branch, verbose)
