@@ -79,6 +79,10 @@ IN DEVELOPMENT
    * It is clearer when a plugin cannot be loaded because of its name, and a
      suggestion for an acceptable name is given. (Daniel Watkins, #103023)
 
+   * Leave port as None in transport objects if user doesn't
+     specify a port in urls.
+     (vincent Ladeuil, #150860)
+
    * Make sure Repository.fetch(self) is properly a no-op for all
      Repository implementations. (John Arbash Meinel, #158333)
 
