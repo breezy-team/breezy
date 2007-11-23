@@ -77,6 +77,7 @@ Team collaboration, distributed style
 Best practices
 ##############
 
+.. include:: best_practice_intro.txt
 .. include:: server.txt
 .. include:: hooks.txt
 .. include:: version_info.txt
