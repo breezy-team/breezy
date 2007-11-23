@@ -305,6 +305,31 @@ class RemoteRepository(object):
             #self._real_repository = self.bzrdir._real_bzrdir.open_repository()
             self._set_real_repository(self.bzrdir._real_bzrdir.open_repository())
 
+    def find_text_key_references(self):
+        """Find the text key references within the repository.
+
+        :return: a dictionary mapping (file_id, revision_id) tuples to altered file-ids to an iterable of
+        revision_ids. Each altered file-ids has the exact revision_ids that
+        altered it listed explicitly.
+        :return: A dictionary mapping text keys ((fileid, revision_id) tuples)
+            to whether they were referred to by the inventory of the
+            revision_id that they contain. The inventory texts from all present
+            revision ids are assessed to generate this report.
+        """
+        self._ensure_real()
+        return self._real_repository.find_text_key_references()
+
+    def _generate_text_key_index(self):
+        """Generate a new text key index for the repository.
+
+        This is an expensive function that will take considerable time to run.
+
+        :return: A dict mapping (file_id, revision_id) tuples to a list of
+            parents, also (file_id, revision_id) tuples.
+        """
+        self._ensure_real()
+        return self._real_repository._generate_text_key_index()
+
     def get_revision_graph(self, revision_id=None):
         """See Repository.get_revision_graph()."""
         if revision_id is None:
@@ -795,6 +820,10 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.store_revision_signature(
             gpg_strategy, plaintext, revision_id)
+
+    def add_signature_text(self, revision_id, signature):
+        self._ensure_real()
+        return self._real_repository.add_signature_text(revision_id, signature)
 
     def has_signature_for_revision_id(self, revision_id):
         self._ensure_real()
