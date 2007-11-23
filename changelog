@@ -1,3 +1,11 @@
+bzr (0.92-2) UNRELEASED; urgency=low
+
+  * Rename XS-Vcs-Bzr to Vcs-Bzr field (dpkg supports it now).
+  * Add Homepage field.
+  * Update GPL path to GPL-2 as GPL-3 is now the default.
+
+ -- Arnaud Fontaine <arnaud@andesi.org>  Fri, 23 Nov 2007 00:42:01 +0000
+
 bzr (0.92-1) unstable; urgency=low
 
   * Final 0.92 release.

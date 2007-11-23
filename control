@@ -6,7 +6,8 @@ Uploaders: Rob Weir <rweir@ertius.org>, Jeff Bailey <jbailey@raspberryginger.com
 Build-Depends: debhelper, cdbs, quilt, python, python-all-dev, python-central, python-docutils
 Standards-Version: 3.7.2
 XS-Python-Version: >= 2.4
-XS-VCS-Bzr: http://bzr.debian.org/pkg-bazaar/bzr/unstable
+VCS-Bzr: http://bzr.debian.org/pkg-bazaar/bzr/unstable
+Homepage: http://bazaar-vcs.org
 
 Package: bzr
 Architecture: any
