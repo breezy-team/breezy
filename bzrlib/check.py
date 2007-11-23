@@ -35,6 +35,7 @@
 from bzrlib import errors
 from bzrlib import repository as _mod_repository
 from bzrlib import revision
+from bzrlib.branch import Branch
 from bzrlib.errors import BzrCheckError
 import bzrlib.ui
 from bzrlib.trace import log_error, note
@@ -259,6 +260,6 @@ def _check_branch(branch, verbose):
     repo_result.report_results(verbose)
 
 
-def check(branch, verbose):
-    _check_branch(branch, verbose)
-
+def check(path, verbose):
+    branch_obj = Branch.open_containing(path)[0]
+    _check_branch(branch_obj, verbose)

@@ -2370,16 +2370,14 @@ class cmd_check(Command):
     """
 
     _see_also = ['reconcile']
-    takes_args = ['branch?']
+    takes_args = ['path?']
     takes_options = ['verbose']
 
-    def run(self, branch=None, verbose=False):
+    def run(self, path=None, verbose=False):
         from bzrlib.check import check
-        if branch is None:
-            branch_obj = Branch.open_containing('.')[0]
-        else:
-            branch_obj = Branch.open(branch)
-        check(branch_obj, verbose)
+        if path is None:
+            path = '.'
+        check(path, verbose)
         # bit hacky, check the tree parent is accurate
         try:
             if branch is None:
