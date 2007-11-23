@@ -1,0 +1,17 @@
+Working offline on a central branch
+===================================
+
+Committing locally
+------------------
+
+--local
+
+Merging a series of local commits
+---------------------------------
+
+serial vs parallel development
+
+Being disconnected for long time periods
+----------------------------------------
+
+unbind + bind

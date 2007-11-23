@@ -35,7 +35,7 @@ Getting started
 Personal version control
 ########################
 
-.. include:: solo_workflow.txt
+.. include:: solo_intro.txt
 .. include:: starting_a_project.txt
 .. include:: controlling_registration.txt
 .. include:: reviewing_changes.txt
@@ -48,7 +48,7 @@ Personal version control
 Sharing with peers
 ##################
 
-.. include:: partner_workflow.txt
+.. include:: partner_intro.txt
 .. include:: branching_a_project.txt
 .. include:: merging_changes.txt
 .. include:: resolving_conflicts.txt
@@ -58,31 +58,29 @@ Sharing with peers
 Team collaboration, central style
 #################################
 
-.. later include:: centralized_workflow.txt
-.. later include:: pushing_a_branch.txt
-.. later include:: using_bound_branches.txt
+.. include:: central_intro.txt
+.. include:: publishing_a_branch.txt
+.. include:: using_checkouts.txt
+.. include:: working_offline_central.txt
+.. include:: reusing_a_checkout.txt
 
 
 Team collaboration, distributed style
 #####################################
 
-.. later include:: distributed_workflow.txt
+.. later include:: distributed_intro.txt
 .. later include:: shared_repositories.txt
 
-
-Integrating bazaar with other systems
-#####################################
-
-.. include:: bug_trackers.txt
-.. include:: version_info.txt
 
 
 Best practices
 ##############
 
-.. include:: shared_repository_layouts.txt
 .. include:: server.txt
 .. include:: hooks.txt
+.. include:: version_info.txt
+.. include:: bug_trackers.txt
+.. include:: shared_repository_layouts.txt
  
 .. Perhaps this ought to go in the User Reference?
 .. include:: configuration.txt

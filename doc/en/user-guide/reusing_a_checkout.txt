@@ -1,0 +1,15 @@
+Reusing a checkout
+==================
+
+Motivation
+----------
+
+saving disk space
+developing in a fixed location
+
+Changing where a branch is bound to
+-----------------------------------
+
+Switching a lightweight checkout
+--------------------------------
+
