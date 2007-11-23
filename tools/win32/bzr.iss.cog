@@ -132,6 +132,16 @@ Name: Path; Description: "Add {app} directory to PATH environment variable";
 Name: Shell; Description: "Add Bzr context menu to shell"; Flags: unchecked
 
 
+[Registry]
+Root: HKLM; Subkey: "SOFTWARE\Bazaar"; Flags: noerror uninsdeletekey
+Root: HKLM; Subkey: "SOFTWARE\Bazaar"; ValueName: "InstallPath"; ValueType: string; ValueData: "{app}"; Flags: noerror
+Root: HKLM; Subkey: "SOFTWARE\Bazaar"; ValueName: "BzrlibPath"; ValueType: string; ValueData: "{app}\lib\library.zip\bzrlib"; Flags: noerror
+Root: HKLM; Subkey: "SOFTWARE\Bazaar"; ValueName: "PluginsPath"; ValueType: string; ValueData: "{app}\plugins"; Flags: noerror
+Root: HKLM; Subkey: "SOFTWARE\Bazaar"; ValueName: "PythonPath"; ValueType: string; ValueData: "{app}\lib\library.zip"; Flags: noerror
+; [[[cog cog.outl('Root: HKLM; Subkey: "SOFTWARE\Bazaar"; ValueName: "Version"; ValueType: string; ValueData: "%s"; Flags: noerror' % VERSION) ]]]
+; [[[end]]]
+
+
 [Run]
 Filename: "{app}\bzr_postinstall.exe"; Parameters: "--start-bzr"; Flags: skipifdoesntexist runhidden;
 ; [[[cog
