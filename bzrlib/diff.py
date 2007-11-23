@@ -642,7 +642,7 @@ class DiffTree(object):
         self.differs = []
         if extra_differs is not None:
             self.differs.extend(extra_differs)
-        for differ in self.differ_factories:
+        for differ in self.diff_factories:
             self.differs.append(differ(old_tree, new_tree, to_file,
                                        path_encoding))
         self.differs.extend([text_differ, DiffKindChange(self.differs)])
