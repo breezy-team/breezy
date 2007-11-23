@@ -40,7 +40,7 @@ upgrade the repository, run:
 
 ::
 
-  $ bzr upgrade --dirstate-with-subtree
+  $ bzr upgrade --rich-root
 
 or, if you would like to try the experimental packs format:
 

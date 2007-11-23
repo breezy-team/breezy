@@ -10,6 +10,9 @@ bzr-svn 0.4.5	UNRELEASED
      This should make it easier to use bzr-specific revprops later on and 
      saves some disk space.
 
+   * Use new rich-roots format everywhere rather than experimental 
+     dirstate-with-subtree.
+
   BUG FIXES
 
    * Properly decode unicode commit messages. 

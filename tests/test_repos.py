@@ -1204,7 +1204,7 @@ class SvnRepositoryFormatTests(TestCase):
 
     def test_conversion_target_compatible(self):
         self.assertTrue(self.format.check_conversion_target(
-          format_registry.make_bzrdir('dirstate-with-subtree').repository_format))
+          format_registry.make_bzrdir('rich-root').repository_format))
 
 
 class MetadataMarshallerTests(TestCase):

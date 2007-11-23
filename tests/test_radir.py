@@ -131,7 +131,7 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
     def test_needs_format_upgrade_other(self):
         repos_url = self.make_client("d", "dc")
         x = BzrDir.open(repos_url+"/trunk")
-        self.assertTrue(x.needs_format_conversion(format_registry.make_bzrdir("dirstate-with-subtree")))
+        self.assertTrue(x.needs_format_conversion(format_registry.make_bzrdir("rich-root")))
 
     def test_needs_format_upgrade_default(self):
         repos_url = self.make_client("d", "dc")
