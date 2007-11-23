@@ -28,7 +28,7 @@ from bzrlib import (
     )
 from bzrlib.delta import TreeDelta
 from bzrlib.inventory import Inventory, InventoryDirectory
-from bzrlib.revision import NULL_REVISION
+from bzrlib.revision import NULL_REVISION, Revision
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.tests.repository_implementations import TestCaseWithRepository
 from bzrlib.transport import get_transport
@@ -533,6 +533,41 @@ class TestRepository(TestCaseWithRepository):
         list(repo._find_inconsistent_revision_parents())
         repo._check_for_inconsistent_revision_parents()
 
+    def test_add_signature_text(self):
+        repo = self.make_repository('repo')
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        self.addCleanup(repo.commit_write_group)
+        repo.start_write_group()
+        inv = Inventory(revision_id='A')
+        inv.root.revision = 'A'
+        repo.add_inventory('A', inv, [])
+        repo.add_revision('A', Revision('A', committer='A', timestamp=0,
+                          inventory_sha1='', timezone=0, message='A'))
+        repo.add_signature_text('A', 'This might be a signature')
+        self.assertEqual('This might be a signature',
+                         repo.get_signature_text('A'))
+
+    def test_install_revisions(self):
+        wt = self.make_branch_and_tree('source')
+        wt.commit('A', allow_pointless=True, rev_id='A')
+        repo = wt.branch.repository
+        repo.lock_write()
+        repo.start_write_group()
+        repo.sign_revision('A', bzrlib.gpg.LoopbackGPGStrategy(None))
+        repo.commit_write_group()
+        repo.unlock()
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        repo2 = self.make_repository('repo2')
+        revision = repo.get_revision('A')
+        tree = repo.revision_tree('A')
+        signature = repo.get_signature_text('A')
+        repo2.lock_write()
+        self.addCleanup(repo2.unlock)
+        repository.install_revisions(repo2, [(revision, tree, signature)])
+        self.assertEqual(revision, repo2.get_revision('A'))
+        self.assertEqual(signature, repo2.get_signature_text('A'))
 
 class TestRepositoryLocking(TestCaseWithRepository):
 

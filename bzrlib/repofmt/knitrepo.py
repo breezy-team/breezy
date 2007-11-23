@@ -32,6 +32,7 @@ from bzrlib import (
     osutils,
     transactions,
     xml5,
+    xml6,
     xml7,
     )
 
@@ -457,7 +458,7 @@ class RepositoryFormatKnit1(RepositoryFormatKnit):
 
 
 class RepositoryFormatKnit3(RepositoryFormatKnit):
-    """Bzr repository knit format 2.
+    """Bzr repository knit format 3.
 
     This repository format has:
      - knits for file texts and inventory
@@ -501,6 +502,50 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return "Knit repository format 3"
+
+
+class RepositoryFormatKnit4(RepositoryFormatKnit):
+    """Bzr repository knit format 4.
+
+    This repository format has everything in format 3, except for
+    tree-references:
+     - knits for file texts and inventory
+     - hash subdirectory based stores.
+     - knits for revisions and signatures
+     - TextStores for revisions and signatures.
+     - a format marker of its own
+     - an optional 'shared-storage' flag
+     - an optional 'no-working-trees' flag
+     - a LockDir lock
+     - support for recording full info about the tree root
+    """
+
+    repository_class = KnitRepository
+    _commit_builder_class = RootCommitBuilder
+    rich_root_data = True
+    supports_tree_reference = False
+    _serializer = xml6.serializer_v6
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir('rich-root')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def check_conversion_target(self, target_format):
+        if not target_format.rich_root_data:
+            raise errors.BadConversionTarget(
+                'Does not support rich root data.', target_format)
+
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return 'Bazaar Knit Repository Format 4 (bzr 1.0)\n'
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return "Knit repository format 4"
 
 
 def _get_stream_as_bytes(knit, required_versions):

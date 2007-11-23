@@ -23,7 +23,6 @@ from bzrlib import (
     inventory,
     revision as _mod_revision,
     )
-from bzrlib.repository import _RevisionTextVersionCache
 from bzrlib.tests import TestNotApplicable
 from bzrlib.tests.repository_implementations import TestCaseWithRepository
 from bzrlib.tests.repository_implementations.helpers import (
