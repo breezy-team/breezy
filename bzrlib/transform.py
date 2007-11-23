@@ -392,7 +392,11 @@ class TreeTransform(object):
             os.symlink(target, self._limbo_name(trans_id))
             unique_add(self._new_contents, trans_id, 'symlink')
         else:
-            raise UnableCreateSymlink
+            try:
+                path = FinalPaths(self).get_path(trans_id)
+            except KeyError:
+                path = None
+            raise UnableCreateSymlink(path=path)
 
     def cancel_creation(self, trans_id):
         """Cancel the creation of new file contents."""
@@ -1241,6 +1245,7 @@ class FinalPaths(object):
             self._known_paths[trans_id] = self._determine_path(trans_id)
         return self._known_paths[trans_id]
 
+
 def topology_sorted_ids(tree):
     """Determine the topological order of the ids in a tree"""
     file_ids = list(tree)
@@ -1271,6 +1276,7 @@ def build_tree(tree, wt):
             tree.unlock()
     finally:
         wt.unlock()
+
 
 def _build_tree(tree, wt):
     """See build_tree."""
@@ -1442,6 +1448,7 @@ def new_by_entry(tt, entry, parent_id, tree):
     else:
         raise errors.BadFileKindError(name, kind)
 
+
 def create_by_entry(tt, entry, tree, trans_id, lines=None, mode_id=None):
     """Create new file contents according to an inventory entry."""
     if entry.kind == "file":
@@ -1452,6 +1459,7 @@ def create_by_entry(tt, entry, tree, trans_id, lines=None, mode_id=None):
         tt.create_symlink(tree.get_symlink_target(entry.file_id), trans_id)
     elif entry.kind == "directory":
         tt.create_directory(trans_id)
+
 
 def create_entry_executability(tt, entry, trans_id):
     """Set the executability of a trans_id according to an inventory entry"""
