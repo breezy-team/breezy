@@ -40,6 +40,7 @@ from bzrlib.errors import BzrCheckError
 from bzrlib.repository import Repository
 import bzrlib.ui
 from bzrlib.trace import log_error, note
+from bzrlib.workingtree import WorkingTree
 
 class Check(object):
     """Check a repository"""
@@ -285,6 +286,25 @@ def _check_repository(repository, verbose):
     result.report_results(verbose)
 
 
+def _check_working_tree(tree):
+    # bit hacky, check the tree parent is accurate
+    tree.lock_read()
+    try:
+        tree_basis = tree.basis_tree()
+        tree_basis.lock_read()
+        try:
+            repo_basis = tree.branch.repository.revision_tree(
+                tree.last_revision())
+            if len(list(repo_basis._iter_changes(tree_basis))):
+                raise errors.BzrCheckError(
+                    "Mismatched basis inventory content.")
+            tree._validate()
+        finally:
+            tree_basis.unlock()
+    finally:
+        tree.unlock()
+
+
 def check(path, verbose):
     try:
         branch = Branch.open_containing(path)[0]
@@ -295,6 +315,14 @@ def check(path, verbose):
         repo = Repository.open(path)
     except errors.NoRepositoryPresent:
         repo = None
+
+    try:
+        tree = WorkingTree.open(path)
+    except (errors.NoWorkingTree, errors.NotLocalUrl):
+        tree = None
+
+    if tree is not None:
+        _check_working_tree(path)
 
     if branch is not None:
         # We are in a branch
