@@ -132,3 +132,13 @@ class TestRevert(tests.TestCaseWithTransport):
             ' as of bzr 0.91.  Please use None (the default) instead.'],
             tree.revert, [])
         self.assertIs(None, tree.path2id('file'))
+
+    def test_revert_file_in_deleted_dir(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['dir/', 'dir/file'])
+        tree.add(['dir', 'dir/file'])
+        tree.commit("Added file")
+        os.unlink('dir/file')
+        os.rmdir('dir')
+        tree.remove(['dir/', 'dir/file'])
+        tree.revert(['dir/file'])
