@@ -120,6 +120,9 @@ IN DEVELOPMENT
    * Return error instead of a traceback for ``bzr log -r0``.
      (Kent Gibson, #133751)
 
+   * Upgrade util/configobj to version 4.4.0.
+   (Vincent Ladeuil, #151208).
+
    * Working trees are no longer created when pushing into a local no-trees
      repo. (Daniel Watkins, #50582)
 
