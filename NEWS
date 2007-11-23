@@ -60,6 +60,9 @@ IN DEVELOPMENT
    * ``commit`` is now able to invoke an external editor in a non-ascii
      directory. (Daniel Watkins, #84043)
 
+   * Conflicts are now resolved recursively by ``revert``.
+     (Aaron Bentley, #102739)
+
    * Detect invalid transport reuse attempts by catching invalid URLs.
      (Vincent Ladeuil, #161819)
 
