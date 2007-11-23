@@ -1,3 +1,10 @@
+bzr-builddeb (0.93) UNRELEASED; urgency=low
+
+  * Add Vcs-Bzr field (dpkg supports it now) in debian/control.
+  * Update GPL path to GPL-2 in debian/copyright as GPL-3 is now the default.
+
+ -- Arnaud Fontaine <arnaud@andesi.org>  Fri, 23 Nov 2007 00:03:22 +0000
+
 bzr-builddeb (0.92) unstable; urgency=low
 
   * Support incremental imports of normal mode packages from source packages
