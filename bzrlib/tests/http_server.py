@@ -66,7 +66,6 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
                 and e.args[0] in (errno.EPIPE, errno.ECONNRESET,
                                   errno.ECONNABORTED,)):
                 self.close_connection = 1
-                pass
             else:
                 raise
 
@@ -301,19 +300,20 @@ class HttpServer(Server):
         self.port = 0
         self._httpd = None
 
+    def create_httpd(self):
+        return TestingHTTPServer((self.host, self.port), self.request_handler,
+                                 self)
+
     def _get_httpd(self):
         if self._httpd is None:
-            self._httpd = TestingHTTPServer((self.host, self.port),
-                                            self.request_handler,
-                                            self)
+            self._httpd = self.create_httpd()
             host, self.port = self._httpd.socket.getsockname()
         return self._httpd
 
     def _http_start(self):
         httpd = self._get_httpd()
         self._http_base_url = '%s://%s:%s/' % (self._url_protocol,
-                                               self.host,
-                                               self.port)
+                                               self.host, self.port)
         self._http_starting.release()
 
         while self._http_running:

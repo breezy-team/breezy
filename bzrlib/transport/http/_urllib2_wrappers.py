@@ -146,7 +146,16 @@ class HTTPConnection(AbstractHTTPConnection, httplib.HTTPConnection):
         self.proxied_host = proxied_host
 
 
-# FIXME: Should test for ssl availability
+# Build the appropriate socket wrapper for ssl
+try:
+    import ssl # python 2.6
+    _ssl_wrap_socket = ssl.wrap_socket
+except ImportError:
+    def _ssl_wrap_socket(sock, key_file, cert_file):
+        ssl_sock = socket.ssl(sock, key_file, cert_file)
+        return httplib.FakeSocket(sock, ssl_sock)
+
+
 class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
 
     def __init__(self, host, port=None, key_file=None, cert_file=None,
@@ -162,10 +171,7 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
             self.connect_to_origin()
 
     def connect_to_origin(self):
-        pass
-# Temporarily disabled to act as a true http connection
-#        ssl = socket.ssl(self.sock, self.key_file, self.cert_file)
-#        self.sock = httplib.FakeSocket(self.sock, ssl)
+        self.sock = _ssl_wrap_socket(self.sock, self.key_file, self.cert_file)
 
 
 class Request(urllib2.Request):

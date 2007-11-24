@@ -2761,11 +2761,16 @@ FTPServerFeature = _FTPServerFeature()
 class _HTTPSServerFeature(Feature):
     """Some tests want an https Server, check if one is available.
 
-    Placeholder. We only implement an http server for now.
+    Right now, the only way this is available is under python2.6 which provides
+    an ssl module.
     """
 
     def _probe(self):
-        return True
+        try:
+            import ssl
+            return True
+        except ImportError:
+            return False
 
     def feature_name(self):
         return 'HTTPSServer'
