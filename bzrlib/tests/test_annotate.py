@@ -149,6 +149,8 @@ class TestAnnotate(tests.TestCaseWithTransport):
         tree1.commit('merge 2', rev_id='rev-3',
                      committer='sal@foo.com',
                      timestamp=1166046003.00, timezone=0)
+        tree1.lock_read()
+        self.addCleanup(tree1.unlock)
         return tree1, tree2
 
     def create_deeply_merged_trees(self):
@@ -175,6 +177,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
         rev-6
         """
         tree1, tree2 = self.create_merged_trees()
+        tree1.unlock()
 
         tree3 = tree2.bzrdir.clone('tree3').open_workingtree()
 
@@ -202,6 +205,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
                      timestamp=1166046005.00, timezone=0)
         self.assertEqual(0, tree1.merge_from_branch(tree4.branch))
         tree1.commit('merge five and six', rev_id='rev-6')
+        tree1.lock_read()
         return tree1
 
     def test_annotate_shows_dotted_revnos(self):
@@ -325,6 +329,8 @@ class TestAnnotate(tests.TestCaseWithTransport):
                      committer=u'p\xe9rez',
                      timestamp=1166046000.00, timezone=0)
 
+        tree1.lock_read()
+        self.addCleanup(tree1.unlock)
         # this passes if no exception is raised
         to_file = StringIO()
         annotate.annotate_file(tree1.branch, 'rev-1', 'a-id', to_file=to_file)
@@ -362,6 +368,8 @@ class TestAnnotate(tests.TestCaseWithTransport):
                      author='Author <author@example.com>',
                      timestamp=1166046000.00, timezone=0)
 
+        tree1.lock_read()
+        self.addCleanup(tree1.unlock)
         to_file = StringIO()
         annotate.annotate_file(tree1.branch, 'rev-1', 'a-id', to_file=to_file)
         self.assertEqual('1   committ | hello\n', to_file.getvalue())
