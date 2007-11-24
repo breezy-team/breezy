@@ -24,6 +24,7 @@ import bzrlib
 from bzrlib import (
     bzrdir,
     errors,
+    info,
     osutils,
     repository,
     urlutils,
@@ -486,7 +487,7 @@ Repository:
         repo = branch.repository
         out, err = self.run_bzr('info branch -v')
         self.assertEqualDiff(
-"""Standalone branch (format: dirstate-tags)
+"""Standalone branch (format: %s)
 Location:
   branch root: branch
 
@@ -502,7 +503,8 @@ Branch history:
 Repository:
          0 revisions
          0 KiB
-""" % (format.get_branch_format().get_format_description(),
+""" % (info.describe_format(repo.bzrdir, repo, branch, None),
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
@@ -1106,7 +1108,7 @@ Repository:
        ), out)
         self.assertEqual('', err)
 
-    def assertCheckoutStatusOutput(self, 
+    def assertCheckoutStatusOutput(self,
         command_string, lco_tree, shared_repo=None,
         repo_branch=None,
         tree_locked=False,
@@ -1131,6 +1133,10 @@ Repository:
         :param tree_locked: If true, expect the tree to be locked.
         :param branch_locked: If true, expect the branch to be locked.
         :param repo_locked: If true, expect the repository to be locked.
+            Note that the lco_tree.branch.repository is inspected, and if is not
+            actually locked then this parameter is overridden. This is because
+            pack repositories do not have any public API for obtaining an
+            exclusive repository wide lock.
         :param verbose: If true, expect verbose output
         """
         def friendly_location(url):
@@ -1156,6 +1162,8 @@ Repository:
         format = {True: 'dirstate or dirstate-tags or knitpack-experimental'
                         ' or rich-root',
                   False: 'dirstate'}[light_checkout]
+        if repo_locked:
+            repo_locked = lco_tree.branch.repository.get_physical_lock_status()
         if repo_locked or branch_locked or tree_locked:
             def locked_message(a_bool):
                 if a_bool:

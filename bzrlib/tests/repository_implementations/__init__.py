@@ -27,6 +27,7 @@ rather than in tests/branch_implementations/*.py.
 from bzrlib import (
     repository,
     )
+from bzrlib.revision import NULL_REVISION
 from bzrlib.repofmt import (
     weaverepo,
     )
@@ -143,6 +144,13 @@ class BrokenRepoScenario(object):
     def corrected_fulltexts(self):
         return []
 
+    def repository_text_key_index(self):
+        result = {}
+        if self.versioned_root:
+            result.update(self.versioned_repository_text_keys())
+        result.update(self.repository_text_keys())
+        return result
+
 
 class UndamagedRepositoryScenario(BrokenRepoScenario):
     """A scenario where the repository has no damage.
@@ -161,13 +169,27 @@ class UndamagedRepositoryScenario(BrokenRepoScenario):
         return self.populated_parents()
 
     def check_regexes(self, repo):
-        return ["0 unreferenced text ancestors"]
+        return ["0 unreferenced text versions"]
 
     def populate_repository(self, repo):
         # make rev1a: A well-formed revision, containing 'a-file'
         inv = self.make_one_file_inventory(
             repo, 'rev1a', [], root_revision='rev1a')
         self.add_revision(repo, 'rev1a', inv, [])
+        self.versioned_root = repo.supports_rich_root()
+
+    def repository_text_key_references(self):
+        result = {}
+        if self.versioned_root:
+            result.update({('TREE_ROOT', 'rev1a'): True})
+        result.update({('a-file-id', 'rev1a'): True})
+        return result
+
+    def repository_text_keys(self):
+        return {('a-file-id', 'rev1a'):[NULL_REVISION]}
+
+    def versioned_repository_text_keys(self):
+        return {('TREE_ROOT', 'rev1a'):[NULL_REVISION]}
 
 
 class FileParentIsNotInRevisionAncestryScenario(BrokenRepoScenario):
@@ -179,24 +201,24 @@ class FileParentIsNotInRevisionAncestryScenario(BrokenRepoScenario):
     """
 
     def all_versions_after_reconcile(self):
-        return ('rev1a', 'rev1b', 'rev2')
+        return ('rev1a', 'rev2')
 
     def populated_parents(self):
         return (
             ((), 'rev1a'),
-            ((), 'rev1b'),
-            (('rev1a', 'rev1b'), 'rev2'))
+            ((), 'rev1b'), # Will be gc'd
+            (('rev1a', 'rev1b'), 'rev2')) # Will have parents trimmed
 
     def corrected_parents(self):
         return (
             ((), 'rev1a'),
-            ((), 'rev1b'),
+            (None, 'rev1b'),
             (('rev1a',), 'rev2'))
 
     def check_regexes(self, repo):
         return [r"\* a-file-id version rev2 has parents \('rev1a', 'rev1b'\) "
                 r"but should have \('rev1a',\)",
-                "1 unreferenced text ancestors",
+                "0 unreferenced text versions",
                 ]
 
     def populate_repository(self, repo):
@@ -217,6 +239,24 @@ class FileParentIsNotInRevisionAncestryScenario(BrokenRepoScenario):
         inv = self.make_one_file_inventory(
             repo, 'rev2', ['rev1a', 'rev1b'])
         self.add_revision(repo, 'rev2', inv, ['rev1a'])
+        self.versioned_root = repo.supports_rich_root()
+
+    def repository_text_key_references(self):
+        result = {}
+        if self.versioned_root:
+            result.update({('TREE_ROOT', 'rev1a'): True,
+                           ('TREE_ROOT', 'rev2'): True})
+        result.update({('a-file-id', 'rev1a'): True,
+                       ('a-file-id', 'rev2'): True})
+        return result
+
+    def repository_text_keys(self):
+        return {('a-file-id', 'rev1a'):[NULL_REVISION],
+                ('a-file-id', 'rev2'):[('a-file-id', 'rev1a')]}
+
+    def versioned_repository_text_keys(self):
+        return {('TREE_ROOT', 'rev1a'):[NULL_REVISION],
+                ('TREE_ROOT', 'rev2'):[('TREE_ROOT', 'rev1a')]}
 
 
 class FileParentHasInaccessibleInventoryScenario(BrokenRepoScenario):
@@ -244,8 +284,6 @@ class FileParentHasInaccessibleInventoryScenario(BrokenRepoScenario):
     def check_regexes(self, repo):
         return [r"\* a-file-id version rev3 has parents "
                 r"\('rev1c',\) but should have \(\)",
-                # Also check reporting of unreferenced ancestors
-                r"unreferenced ancestor: {rev1c} in a-file-id",
                 ]
 
     def populate_repository(self, repo):
@@ -267,6 +305,24 @@ class FileParentHasInaccessibleInventoryScenario(BrokenRepoScenario):
         # a-file cannot have rev1c as its ancestor.
         inv = self.make_one_file_inventory(repo, 'rev3', ['rev1c'])
         self.add_revision(repo, 'rev3', inv, ['rev1c', 'rev1a'])
+        self.versioned_root = repo.supports_rich_root()
+
+    def repository_text_key_references(self):
+        result = {}
+        if self.versioned_root:
+            result.update({('TREE_ROOT', 'rev2'): True,
+                           ('TREE_ROOT', 'rev3'): True})
+        result.update({('a-file-id', 'rev2'): True,
+                       ('a-file-id', 'rev3'): True})
+        return result
+
+    def repository_text_keys(self):
+        return {('a-file-id', 'rev2'):[NULL_REVISION],
+                ('a-file-id', 'rev3'):[NULL_REVISION]}
+
+    def versioned_repository_text_keys(self):
+        return {('TREE_ROOT', 'rev2'):[NULL_REVISION],
+                ('TREE_ROOT', 'rev3'):[NULL_REVISION]}
 
 
 class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
@@ -311,22 +367,21 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
         if repo.supports_rich_root():
             # TREE_ROOT will be wrong; but we're not testing it. so just adjust
             # the expected count of errors.
-            count = 11
+            count = 9
         else:
-            count = 5
+            count = 3
         return [
             "%d inconsistent parents" % count,
-            r"a-file-id version rev2 has parents \('rev1a',\) "
-            r"but should have \(\)",
-            r"a-file-id version rev2b has parents \('rev1a',\) "
-            r"but should have \(\)",
+            # will be gc'd
+            r"unreferenced version: {rev2} in a-file-id",
+            r"unreferenced version: {rev2b} in a-file-id",
+            # will be corrected
             r"a-file-id version rev3 has parents \('rev2',\) "
             r"but should have \('rev1a',\)",
             r"a-file-id version rev5 has parents \('rev2', 'rev2c'\) "
             r"but should have \('rev2c',\)",
             r"a-file-id version rev4 has parents \('rev2',\) "
             r"but should have \('rev1a',\)",
-            "2 file versions are not referenced by their inventory",
             ]
 
     def populate_repository(self, repo):
@@ -386,6 +441,42 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
         # parents for the per file graph.
         inv = self.make_one_file_inventory(repo, 'rev5', ['rev2', 'rev2c'])
         self.add_revision(repo, 'rev5', inv, ['rev2', 'rev2c'])
+        self.versioned_root = repo.supports_rich_root()
+
+    def repository_text_key_references(self):
+        result = {}
+        if self.versioned_root:
+            result.update({('TREE_ROOT', 'rev1a'): True,
+                           ('TREE_ROOT', 'rev2'): True,
+                           ('TREE_ROOT', 'rev2b'): True,
+                           ('TREE_ROOT', 'rev2c'): True,
+                           ('TREE_ROOT', 'rev3'): True,
+                           ('TREE_ROOT', 'rev4'): True,
+                           ('TREE_ROOT', 'rev5'): True})
+        result.update({('a-file-id', 'rev1a'): True,
+                       ('a-file-id', 'rev2c'): True,
+                       ('a-file-id', 'rev3'): True,
+                       ('a-file-id', 'rev4'): True,
+                       ('a-file-id', 'rev5'): True})
+        return result
+
+    def repository_text_keys(self):
+        return {('a-file-id', 'rev1a'): [NULL_REVISION],
+                 ('a-file-id', 'rev2c'): [('a-file-id', 'rev1a')],
+                 ('a-file-id', 'rev3'): [('a-file-id', 'rev1a')],
+                 ('a-file-id', 'rev4'): [('a-file-id', 'rev1a')],
+                 ('a-file-id', 'rev5'): [('a-file-id', 'rev2c')]}
+
+    def versioned_repository_text_keys(self):
+        return {('TREE_ROOT', 'rev1a'): [NULL_REVISION],
+                ('TREE_ROOT', 'rev2'): [('TREE_ROOT', 'rev1a')],
+                ('TREE_ROOT', 'rev2b'): [('TREE_ROOT', 'rev1a')],
+                ('TREE_ROOT', 'rev2c'): [('TREE_ROOT', 'rev1a')],
+                ('TREE_ROOT', 'rev3'): [('TREE_ROOT', 'rev1a')],
+                ('TREE_ROOT', 'rev4'):
+                    [('TREE_ROOT', 'rev2'), ('TREE_ROOT', 'rev2b')],
+                ('TREE_ROOT', 'rev5'):
+                    [('TREE_ROOT', 'rev2'), ('TREE_ROOT', 'rev2c')]}
 
 
 class UnreferencedFileParentsFromNoOpMergeScenario(BrokenRepoScenario):
@@ -417,7 +508,7 @@ class UnreferencedFileParentsFromNoOpMergeScenario(BrokenRepoScenario):
             )
 
     def corrected_fulltexts(self):
-        return ['rev4']
+        return ['rev2']
 
     def check_regexes(self, repo):
         return []
@@ -454,6 +545,35 @@ class UnreferencedFileParentsFromNoOpMergeScenario(BrokenRepoScenario):
         # rev4: a modification of a-file on top of rev3.
         inv = self.make_one_file_inventory(repo, 'rev4', ['rev2'])
         self.add_revision(repo, 'rev4', inv, ['rev3'])
+        self.versioned_root = repo.supports_rich_root()
+
+    def repository_text_key_references(self):
+        result = {}
+        if self.versioned_root:
+            result.update({('TREE_ROOT', 'rev1a'): True,
+                           ('TREE_ROOT', 'rev1b'): True,
+                           ('TREE_ROOT', 'rev2'): True,
+                           ('TREE_ROOT', 'rev3'): True,
+                           ('TREE_ROOT', 'rev4'): True})
+        result.update({('a-file-id', 'rev1a'): True,
+                       ('a-file-id', 'rev1b'): True,
+                       ('a-file-id', 'rev2'): False,
+                       ('a-file-id', 'rev4'): True})
+        return result
+
+    def repository_text_keys(self):
+        return {('a-file-id', 'rev1a'): [NULL_REVISION],
+                ('a-file-id', 'rev1b'): [NULL_REVISION],
+                ('a-file-id', 'rev2'): [NULL_REVISION],
+                ('a-file-id', 'rev4'): [('a-file-id', 'rev2')]}
+
+    def versioned_repository_text_keys(self):
+        return {('TREE_ROOT', 'rev1a'): [NULL_REVISION],
+                ('TREE_ROOT', 'rev1b'): [NULL_REVISION],
+                ('TREE_ROOT', 'rev2'):
+                    [('TREE_ROOT', 'rev1a'), ('TREE_ROOT', 'rev1b')],
+                ('TREE_ROOT', 'rev3'): [('TREE_ROOT', 'rev2')],
+                ('TREE_ROOT', 'rev4'): [('TREE_ROOT', 'rev3')]}
 
 
 class TooManyParentsScenario(BrokenRepoScenario):
@@ -503,6 +623,30 @@ class TooManyParentsScenario(BrokenRepoScenario):
         inv = self.make_one_file_inventory(
             repo, 'broken-revision', ('good-parent', 'bad-parent'))
         self.add_revision(repo, 'broken-revision', inv, ('good-parent',))
+        self.versioned_root = repo.supports_rich_root()
+
+    def repository_text_key_references(self):
+        result = {}
+        if self.versioned_root:
+            result.update({('TREE_ROOT', 'bad-parent'): True,
+                           ('TREE_ROOT', 'broken-revision'): True,
+                           ('TREE_ROOT', 'good-parent'): True})
+        result.update({('a-file-id', 'bad-parent'): True,
+                       ('a-file-id', 'broken-revision'): True,
+                       ('a-file-id', 'good-parent'): True})
+        return result
+             
+    def repository_text_keys(self):
+        return {('a-file-id', 'bad-parent'): [NULL_REVISION],
+                ('a-file-id', 'broken-revision'):
+                    [('a-file-id', 'good-parent')],
+                ('a-file-id', 'good-parent'): [('a-file-id', 'bad-parent')]}
+
+    def versioned_repository_text_keys(self):
+        return {('TREE_ROOT', 'bad-parent'): [NULL_REVISION],
+                ('TREE_ROOT', 'broken-revision'):
+                    [('TREE_ROOT', 'good-parent')],
+                ('TREE_ROOT', 'good-parent'): [('TREE_ROOT', 'bad-parent')]}
 
 
 class ClaimedFileParentDidNotModifyFileScenario(BrokenRepoScenario):
@@ -534,15 +678,13 @@ class ClaimedFileParentDidNotModifyFileScenario(BrokenRepoScenario):
         if repo.supports_rich_root():
             # TREE_ROOT will be wrong; but we're not testing it. so just adjust
             # the expected count of errors.
-            count = 4
+            count = 3
         else:
-            count = 2
+            count = 1
         return (
             "%d inconsistent parents" % count,
             r"\* a-file-id version current has parents "
             r"\('modified-something-else',\) but should have \('basis',\)",
-            r"\* a-file-id version modified-something-else has parents "
-            r"\('basis',\) but should have \(\)",
             )
 
     def populate_repository(self, repo):
@@ -562,7 +704,29 @@ class ClaimedFileParentDidNotModifyFileScenario(BrokenRepoScenario):
         inv = self.make_one_file_inventory(
             repo, 'current', ('modified-something-else',))
         self.add_revision(repo, 'current', inv, ('modified-something-else',))
+        self.versioned_root = repo.supports_rich_root()
 
+    def repository_text_key_references(self):
+        result = {}
+        if self.versioned_root:
+            result.update({('TREE_ROOT', 'basis'): True,
+                           ('TREE_ROOT', 'current'): True,
+                           ('TREE_ROOT', 'modified-something-else'): True})
+        result.update({('a-file-id', 'basis'): True,
+                       ('a-file-id', 'current'): True})
+        return result
+
+    def repository_text_keys(self):
+        return {('a-file-id', 'basis'): [NULL_REVISION],
+                ('a-file-id', 'current'): [('a-file-id', 'basis')]}
+
+    def versioned_repository_text_keys(self):
+        return {('TREE_ROOT', 'basis'): ['null:'],
+                ('TREE_ROOT', 'current'):
+                    [('TREE_ROOT', 'modified-something-else')],
+                ('TREE_ROOT', 'modified-something-else'):
+                    [('TREE_ROOT', 'basis')]}
+            
 
 class IncorrectlyOrderedParentsScenario(BrokenRepoScenario):
     """A scenario where the set parents of a version of a file are correct, but
@@ -626,7 +790,37 @@ class IncorrectlyOrderedParentsScenario(BrokenRepoScenario):
             repo, 'broken-revision-2-1', ['parent-1', 'parent-2'])
         self.add_revision(
             repo, 'broken-revision-2-1', inv, ['parent-2', 'parent-1'])
+        self.versioned_root = repo.supports_rich_root()
 
+    def repository_text_key_references(self):
+        result = {}
+        if self.versioned_root:
+            result.update({('TREE_ROOT', 'broken-revision-1-2'): True,
+                           ('TREE_ROOT', 'broken-revision-2-1'): True,
+                           ('TREE_ROOT', 'parent-1'): True,
+                           ('TREE_ROOT', 'parent-2'): True})
+        result.update({('a-file-id', 'broken-revision-1-2'): True,
+                       ('a-file-id', 'broken-revision-2-1'): True,
+                       ('a-file-id', 'parent-1'): True,
+                       ('a-file-id', 'parent-2'): True})
+        return result
+
+    def repository_text_keys(self):
+        return {('a-file-id', 'broken-revision-1-2'):
+                    [('a-file-id', 'parent-1'), ('a-file-id', 'parent-2')],
+                ('a-file-id', 'broken-revision-2-1'):
+                    [('a-file-id', 'parent-2'), ('a-file-id', 'parent-1')],
+                ('a-file-id', 'parent-1'): [NULL_REVISION],
+                ('a-file-id', 'parent-2'): [NULL_REVISION]}
+
+    def versioned_repository_text_keys(self):
+        return {('TREE_ROOT', 'broken-revision-1-2'):
+                    [('TREE_ROOT', 'parent-1'), ('TREE_ROOT', 'parent-2')],
+                ('TREE_ROOT', 'broken-revision-2-1'):
+                    [('TREE_ROOT', 'parent-2'), ('TREE_ROOT', 'parent-1')],
+                ('TREE_ROOT', 'parent-1'): [NULL_REVISION],
+                ('TREE_ROOT', 'parent-2'): [NULL_REVISION]}
+               
 
 all_broken_scenario_classes = [
     UndamagedRepositoryScenario,
@@ -671,6 +865,8 @@ def test_suite():
         'test_commit_builder',
         'test_fetch',
         'test_fileid_involved',
+        'test_find_text_key_references',
+        'test__generate_text_key_index',
         'test_has_same_location',
         'test_is_write_locked',
         'test_iter_reverse_revision_history',

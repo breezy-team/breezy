@@ -94,6 +94,7 @@ from bzrlib.tests.TestUtil import (
                           TestSuite,
                           TestLoader,
                           )
+from bzrlib.tests.EncodingAdapter import EncodingTestAdapter
 from bzrlib.tests.treeshape import build_tree_contents
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
 
@@ -2473,6 +2474,7 @@ def test_suite():
                    'bzrlib.tests.test_store',
                    'bzrlib.tests.test_strace',
                    'bzrlib.tests.test_subsume',
+                   'bzrlib.tests.test_switch',
                    'bzrlib.tests.test_symbol_versioning',
                    'bzrlib.tests.test_tag',
                    'bzrlib.tests.test_testament',
@@ -2511,6 +2513,10 @@ def test_suite():
     from bzrlib.tests.test_transport_implementations import TransportTestProviderAdapter
     adapter = TransportTestProviderAdapter()
     adapt_modules(test_transport_implementations, adapter, loader, suite)
+    adapt_tests(
+        ["bzrlib.tests.test_msgeditor.MsgEditorTest."
+         "test__create_temp_file_with_commit_template_in_unicode_dir"],
+        EncodingTestAdapter(), loader, suite)
     for package in packages_to_test():
         suite.addTest(package.test_suite())
     for m in MODULES_TO_TEST:
@@ -2600,6 +2606,12 @@ def adapt_modules(mods_list, adapter, loader, suite):
     """Adapt the modules in mods_list using adapter and add to suite."""
     for test in iter_suite_tests(loader.loadTestsFromModuleNames(mods_list)):
         suite.addTests(adapter.adapt(test))
+
+
+def adapt_tests(tests_list, adapter, loader, suite):
+    """Adapt the tests in tests_list using adapter and add to suite."""
+    for test in tests_list:
+        suite.addTests(adapter.adapt(loader.loadTestsFromName(test)))
 
 
 def _rmtree_temp_dir(dirname):
