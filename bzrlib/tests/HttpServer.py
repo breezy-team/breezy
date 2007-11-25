@@ -60,36 +60,19 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
     def handle_one_request(self):
         """Handle a single HTTP request.
 
-        You normally don't need to override this method; see the class
-        __doc__ string for information on how to handle specific HTTP
-        commands such as GET and POST.
-
+        We catch all socket errors occurring when the client close the
+        connection early to avoid polluting the test results.
         """
-        for i in xrange(1,11): # Don't try more than 10 times
-            try:
-                self.raw_requestline = self.rfile.readline()
-            except socket.error, e:
-                if e.args[0] in (errno.EAGAIN, errno.EWOULDBLOCK):
-                    # omitted for now because some tests look at the log of
-                    # the server and expect to see no errors.  see recent
-                    # email thread. -- mbp 20051021. 
-                    ## self.log_message('EAGAIN (%d) while reading from raw_requestline' % i)
-                    time.sleep(0.01)
-                    continue
-                raise
+        try:
+            SimpleHTTPRequestHandler.handle_one_request(self)
+        except socket.error, e:
+            if (len(e.args) > 0
+                and e.args[0] in (errno.EPIPE, errno.ECONNRESET,
+                                  errno.ECONNABORTED,)):
+                self.close_connection = 1
+                pass
             else:
-                break
-        if not self.raw_requestline:
-            self.close_connection = 1
-            return
-        if not self.parse_request(): # An error code has been sent, just exit
-            return
-        mname = 'do_' + self.command
-        if getattr(self, mname, None) is None:
-            self.send_error(501, "Unsupported method (%r)" % self.command)
-            return
-        method = getattr(self, mname)
-        method()
+                raise
 
     _range_regexp = re.compile(r'^(?P<start>\d+)-(?P<end>\d+)$')
     _tail_regexp = re.compile(r'^-(?P<tail>\d+)$')
@@ -291,6 +274,15 @@ class TestingHTTPServer(BaseHTTPServer.HTTPServer):
         # the tests cases.
         self.test_case_server = test_case_server
 
+    def server_close(self):
+        """Called to clean-up the server.
+
+        Since the server may be in a blocking read, we shutdown the socket
+        before closing it.
+        """
+        self.socket.shutdown(socket.SHUT_RDWR)
+        BaseHTTPServer.HTTPServer.server_close(self)
+
 
 class HttpServer(Server):
     """A test server for http transports.
@@ -327,7 +319,6 @@ class HttpServer(Server):
                                                self.host,
                                                self.port)
         self._http_starting.release()
-        httpd.socket.settimeout(0.1)
 
         while self._http_running:
             try:
@@ -380,6 +371,7 @@ class HttpServer(Server):
 
     def tearDown(self):
         """See bzrlib.transport.Server.tearDown."""
+        self._httpd.server_close()
         self._http_running = False
         self._http_thread.join()
 

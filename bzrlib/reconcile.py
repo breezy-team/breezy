@@ -17,11 +17,22 @@
 """Reconcilers are able to fix some potential data errors in a branch."""
 
 
-__all__ = ['reconcile', 'Reconciler', 'RepoReconciler', 'KnitReconciler']
+__all__ = [
+    'KnitReconciler',
+    'PackReconciler',
+    'reconcile',
+    'Reconciler',
+    'RepoReconciler',
+    ]
 
 
-from bzrlib import ui
-from bzrlib.trace import mutter
+from bzrlib import (
+    errors,
+    ui,
+    repository,
+    repofmt,
+    )
+from bzrlib.trace import mutter, note
 from bzrlib.tsort import TopoSorter
 
 
@@ -68,14 +79,26 @@ class Reconciler(object):
         self.repo = self.bzrdir.find_repository()
         self.pb.note('Reconciling repository %s',
                      self.repo.bzrdir.root_transport.base)
+        self.pb.update("Reconciling repository", 0, 1)
         repo_reconciler = self.repo.reconcile(thorough=True)
         self.inconsistent_parents = repo_reconciler.inconsistent_parents
         self.garbage_inventories = repo_reconciler.garbage_inventories
-        self.pb.note('Reconciliation complete.')
+        if repo_reconciler.aborted:
+            self.pb.note(
+                'Reconcile aborted: revision index has inconsistent parents.')
+            self.pb.note(
+                'Run "bzr check" for more details.')
+        else:
+            self.pb.note('Reconciliation complete.')
 
 
 class RepoReconciler(object):
     """Reconciler that reconciles a repository.
+
+    The goal of repository reconciliation is to make any derived data
+    consistent with the core data committed by a user. This can involve 
+    reindexing, or removing unreferenced data if that can interfere with
+    queries in a given repository.
 
     Currently this consists of an inventory reweave with revision cross-checks.
     """
@@ -89,6 +112,7 @@ class RepoReconciler(object):
         """
         self.garbage_inventories = 0
         self.inconsistent_parents = 0
+        self.aborted = False
         self.repo = repo
         self.thorough = thorough
 
@@ -170,8 +194,8 @@ class RepoReconciler(object):
                 # This is done to avoid a revision_count * time-to-write additional overhead on 
                 # reconcile.
                 new_inventory_vf._check_write_ok()
-                Weave._add_lines(new_inventory_vf, rev_id, parents, self.inventory.get_lines(rev_id),
-                                 None)
+                Weave._add_lines(new_inventory_vf, rev_id, parents,
+                    self.inventory.get_lines(rev_id), None, None, None, False, True)
             else:
                 new_inventory_vf.add_lines(rev_id, parents, self.inventory.get_lines(rev_id))
 
@@ -267,17 +291,20 @@ class RepoReconciler(object):
 class KnitReconciler(RepoReconciler):
     """Reconciler that reconciles a knit format repository.
 
-    This will detect garbage inventories and remove them.
-
-    Inconsistent parentage is checked for in the revision weave.
+    This will detect garbage inventories and remove them in thorough mode.
     """
 
     def _reconcile_steps(self):
         """Perform the steps to reconcile this repository."""
         if self.thorough:
-            self._load_indexes()
+            try:
+                self._load_indexes()
+            except errors.BzrCheckError:
+                self.aborted = True
+                return
             # knits never suffer this
             self._gc_inventory()
+            self._fix_text_parents()
 
     def _load_indexes(self):
         """Load indexes for the reconciliation."""
@@ -285,6 +312,7 @@ class KnitReconciler(RepoReconciler):
         self.pb.update('Reading indexes.', 0, 2)
         self.inventory = self.repo.get_inventory_weave()
         self.pb.update('Reading indexes.', 1, 2)
+        self.repo._check_for_inconsistent_revision_parents()
         self.revisions = self.repo._revision_store.get_revision_file(self.transaction)
         self.pb.update('Reading indexes.', 2, 2)
 
@@ -337,3 +365,128 @@ class KnitReconciler(RepoReconciler):
         self.garbage_inventories = len(garbage)
         for revision_id in garbage:
             mutter('Garbage inventory {%s} found.', revision_id)
+
+    def _fix_text_parents(self):
+        """Fix bad versionedfile parent entries.
+
+        It is possible for the parents entry in a versionedfile entry to be
+        inconsistent with the values in the revision and inventory.
+
+        This method finds entries with such inconsistencies, corrects their
+        parent lists, and replaces the versionedfile with a corrected version.
+        """
+        transaction = self.repo.get_transaction()
+        versions = self.revisions.versions()
+        mutter('Prepopulating revision text cache with %d revisions',
+                len(versions))
+        vf_checker = self.repo.get_versioned_file_checker()
+        # List all weaves before altering, to avoid race conditions when we
+        # delete unused weaves.
+        weaves = list(enumerate(self.repo.weave_store))
+        for num, file_id in weaves:
+            self.pb.update('Fixing text parents', num,
+                           len(self.repo.weave_store))
+            vf = self.repo.weave_store.get_weave(file_id, transaction)
+            versions_with_bad_parents, unused_versions = \
+                vf_checker.check_file_version_parents(vf, file_id,
+                vf.versions())
+            if (len(versions_with_bad_parents) == 0 and
+                len(unused_versions) == 0):
+                continue
+            full_text_versions = set()
+            self._fix_text_parent(file_id, vf, versions_with_bad_parents,
+                full_text_versions, unused_versions)
+
+    def _fix_text_parent(self, file_id, vf, versions_with_bad_parents,
+            full_text_versions, unused_versions):
+        """Fix bad versionedfile entries in a single versioned file."""
+        mutter('fixing text parent: %r (%d versions)', file_id,
+                len(versions_with_bad_parents))
+        mutter('(%d need to be full texts, %d are unused)',
+                len(full_text_versions), len(unused_versions))
+        new_vf = self.repo.weave_store.get_empty('temp:%s' % file_id,
+            self.transaction)
+        new_parents = {}
+        for version in vf.versions():
+            if version in unused_versions:
+                continue
+            elif version in versions_with_bad_parents:
+                parents = versions_with_bad_parents[version][1]
+            else:
+                parents = vf.get_parents(version)
+            new_parents[version] = parents
+        if not len(new_parents):
+            # No used versions, remove the VF.
+            self.repo.weave_store.delete(file_id, self.transaction)
+            return
+        for version in TopoSorter(new_parents.items()).iter_topo_order():
+            lines = vf.get_lines(version)
+            parents = new_parents[version]
+            if parents and (parents[0] in full_text_versions):
+                # Force this record to be a fulltext, not a delta.
+                new_vf._add(version, lines, parents, False,
+                    None, None, None, False)
+            else:
+                new_vf.add_lines(version, parents, lines)
+        self.repo.weave_store.copy(new_vf, file_id, self.transaction)
+        self.repo.weave_store.delete('temp:%s' % file_id, self.transaction)
+
+
+class PackReconciler(RepoReconciler):
+    """Reconciler that reconciles a pack based repository.
+
+    Garbage inventories do not affect ancestry queries, and removal is
+    considerably more expensive as there is no separate versioned file for
+    them, so they are not cleaned. In short it is currently a no-op.
+
+    In future this may be a good place to hook in annotation cache checking,
+    index recreation etc.
+    """
+
+    # XXX: The index corruption that _fix_text_parents performs is needed for
+    # packs, but not yet implemented. The basic approach is to:
+    #  - lock the names list
+    #  - perform a customised pack() that regenerates data as needed
+    #  - unlock the names list
+    # https://bugs.edge.launchpad.net/bzr/+bug/154173
+
+    def _reconcile_steps(self):
+        """Perform the steps to reconcile this repository."""
+        if not self.thorough:
+            return
+        collection = self.repo._pack_collection
+        collection.ensure_loaded()
+        collection.lock_names()
+        try:
+            packs = collection.all_packs()
+            all_revisions = self.repo.all_revision_ids()
+            total_inventories = len(list(
+                collection.inventory_index.combined_index.iter_all_entries()))
+            if len(all_revisions):
+                self._packer = repofmt.pack_repo.ReconcilePacker(
+                    collection, packs, ".reconcile", all_revisions)
+                new_pack = self._packer.pack(pb=self.pb)
+                if new_pack is not None:
+                    self._discard_and_save(packs)
+            else:
+                # only make a new pack when there is data to copy.
+                self._discard_and_save(packs)
+            self.garbage_inventories = total_inventories - len(list(
+                collection.inventory_index.combined_index.iter_all_entries()))
+        finally:
+            collection._unlock_names()
+
+    def _discard_and_save(self, packs):
+        """Discard some packs from the repository.
+
+        This removes them from the memory index, saves the in-memory index
+        which makes the newly reconciled pack visible and hides the packs to be
+        discarded, and finally renames the packs being discarded into the
+        obsolete packs directory.
+
+        :param packs: The packs to discard.
+        """
+        for pack in packs:
+            self.repo._pack_collection._remove_pack_from_memory(pack)
+        self.repo._pack_collection._save_pack_names()
+        self.repo._pack_collection._obsolete_packs(packs)

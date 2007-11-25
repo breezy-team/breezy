@@ -29,7 +29,37 @@ import zlib
 # we want a \n preserved, break on \n only splitlines.
 import bzrlib
 
-__all__ = ["GzipFile"]
+__all__ = ["GzipFile", "bytes_to_gzip"]
+
+
+def bytes_to_gzip(bytes, factory=zlib.compressobj,
+    level=zlib.Z_DEFAULT_COMPRESSION, method=zlib.DEFLATED,
+    width=-zlib.MAX_WBITS, mem=zlib.DEF_MEM_LEVEL,
+    crc32=zlib.crc32):
+    """Create a gzip file containing bytes and return its content."""
+    result = [
+        '\037\213'  # self.fileobj.write('\037\213')  # magic header
+        '\010'      # self.fileobj.write('\010')      # compression method
+                    # fname = self.filename[:-3]
+                    # flags = 0
+                    # if fname:
+                    #     flags = FNAME
+        '\x00'      # self.fileobj.write(chr(flags))
+        '\0\0\0\0'  # write32u(self.fileobj, long(time.time()))
+        '\002'      # self.fileobj.write('\002')
+        '\377'      # self.fileobj.write('\377')
+                    # if fname:
+        ''          #     self.fileobj.write(fname + '\000')
+        ]
+    # using a compressobj avoids a small header and trailer that the compress()
+    # utility function adds.
+    compress = factory(level, method, width, mem, 0)
+    result.append(compress.compress(bytes))
+    result.append(compress.flush())
+    result.append(struct.pack("<L", LOWU32(crc32(bytes))))
+    # size may exceed 2GB, or even 4GB
+    result.append(struct.pack("<L", LOWU32(len(bytes))))
+    return ''.join(result)
 
 
 class GzipFile(gzip.GzipFile):

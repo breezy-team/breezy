@@ -60,6 +60,12 @@ class TestUncommit(TestCaseWithTransport):
         out, err = self.run_bzr('status')
         self.assertEquals(out, 'modified:\n  a\n')
 
+    def test_uncommit_no_history(self):
+        wt = self.make_branch_and_tree('tree')
+        out, err = self.run_bzr('uncommit --force', retcode=1)
+        self.assertEqual('', err)
+        self.assertEqual('No revisions to uncommit.\n', out)
+
     def test_uncommit_checkout(self):
         wt = self.create_simple_tree()
         checkout_tree = wt.branch.create_checkout('checkout')

@@ -117,7 +117,19 @@ class cmd_resolve(commands.Command):
                 resolve(tree, file_list)
 
 
-def resolve(tree, paths=None, ignore_misses=False):
+def resolve(tree, paths=None, ignore_misses=False, recursive=False):
+    """Resolve some or all of the conflicts in a working tree.
+
+    :param paths: If None, resolve all conflicts.  Otherwise, select only
+        specified conflicts.
+    :param recursive: If True, then elements of paths which are directories
+        have all their children resolved, etc.  When invoked as part of
+        recursive commands like revert, this should be True.  For commands
+        or applications wishing finer-grained control, like the resolve
+        command, this should be False.
+    :ignore_misses: If False, warnings will be printed if the supplied paths
+        do not have conflicts.
+    """
     tree.lock_tree_write()
     try:
         tree_conflicts = tree.conflicts()
@@ -126,7 +138,8 @@ def resolve(tree, paths=None, ignore_misses=False):
             selected_conflicts = tree_conflicts
         else:
             new_conflicts, selected_conflicts = \
-                tree_conflicts.select_conflicts(tree, paths, ignore_misses)
+                tree_conflicts.select_conflicts(tree, paths, ignore_misses,
+                    recursive)
         try:
             tree.set_conflicts(new_conflicts)
         except errors.UnsupportedOperation:

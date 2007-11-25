@@ -28,7 +28,7 @@ from bzrlib import (
     )
 from bzrlib.delta import TreeDelta
 from bzrlib.inventory import Inventory, InventoryDirectory
-from bzrlib.revision import NULL_REVISION
+from bzrlib.revision import NULL_REVISION, Revision
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.tests.repository_implementations import TestCaseWithRepository
 from bzrlib.transport import get_transport
@@ -61,6 +61,8 @@ class TestRepository(TestCaseWithRepository):
         bzrdirb = self.make_bzrdir('b')
         repo_b = tree_a.branch.repository.clone(bzrdirb)
         tree_b = repo_b.revision_tree('rev1')
+        tree_b.lock_read()
+        self.addCleanup(tree_b.unlock)
         tree_b.get_file_text('file1')
         rev1 = repo_b.get_revision('rev1')
 
@@ -160,71 +162,6 @@ class TestRepository(TestCaseWithRepository):
         tree = wt.branch.repository.revision_tree(NULL_REVISION)
         self.assertEqual([], list(tree.list_files(include_root=True)))
 
-    def test_fetch(self):
-        # smoke test fetch to ensure that the convenience function works.
-        # it is defined as a convenience function with the underlying 
-        # functionality provided by an InterRepository
-        tree_a = self.make_branch_and_tree('a')
-        self.build_tree(['a/foo'])
-        tree_a.add('foo', 'file1')
-        tree_a.commit('rev1', rev_id='rev1')
-        # fetch with a default limit (grab everything)
-        repo = bzrdir.BzrDir.create_repository(self.get_url('b'))
-        if (tree_a.branch.repository.supports_rich_root() and not
-            repo.supports_rich_root()):
-            raise TestSkipped('Cannot fetch from model2 to model1')
-        repo.fetch(tree_a.branch.repository,
-                   revision_id=None,
-                   pb=bzrlib.progress.DummyProgress())
-
-    def test_fetch_knit3(self):
-        # create a repository of the sort we are testing.
-        tree_a = self.make_branch_and_tree('a', '')
-        self.build_tree(['a/foo'])
-        tree_a.add('foo', 'file1')
-        tree_a.commit('rev1', rev_id='rev1')
-        # create a knit-3 based format to fetch into
-        f = bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
-        try:
-            format = tree_a.branch.repository._format
-            format.check_conversion_target(f.repository_format)
-            # if we cannot convert data to knit3, skip the test.
-        except errors.BadConversionTarget, e:
-            raise TestSkipped(str(e))
-        self.get_transport().mkdir('b')
-        b_bzrdir = f.initialize(self.get_url('b'))
-        knit3_repo = b_bzrdir.create_repository()
-        # fetch with a default limit (grab everything)
-        knit3_repo.fetch(tree_a.branch.repository, revision_id=None)
-        rev1_tree = knit3_repo.revision_tree('rev1')
-        lines = rev1_tree.get_file_lines(rev1_tree.inventory.root.file_id)
-        self.assertEqual([], lines)
-        b_branch = b_bzrdir.create_branch()
-        b_branch.pull(tree_a.branch)
-        try:
-            tree_b = b_bzrdir.create_workingtree()
-        except errors.NotLocalUrl:
-            raise TestSkipped("cannot make working tree with transport %r"
-                              % b_bzrdir.transport)
-        tree_b.commit('no change', rev_id='rev2')
-        rev2_tree = knit3_repo.revision_tree('rev2')
-        self.assertEqual('rev1', rev2_tree.inventory.root.revision)
-
-    def makeARepoWithSignatures(self):
-        wt = self.make_branch_and_tree('a-repo-with-sigs')
-        wt.commit('rev1', allow_pointless=True, rev_id='rev1')
-        repo = wt.branch.repository
-        repo.sign_revision('rev1', bzrlib.gpg.LoopbackGPGStrategy(None))
-        return repo
-
-    def test_fetch_copies_signatures(self):
-        source_repo = self.makeARepoWithSignatures()
-        target_repo = self.make_repository('target')
-        target_repo.fetch(source_repo, revision_id=None)
-        self.assertEqual(
-            source_repo.get_signature_text('rev1'),
-            target_repo.get_signature_text('rev1'))
-
     def test_get_revision_delta(self):
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo'])
@@ -299,13 +236,6 @@ class TestRepository(TestCaseWithRepository):
         new_signature = wt.branch.repository.get_signature_text('A')
         self.assertEqual(old_signature, new_signature)
 
-    def test_exposed_versioned_files_are_marked_dirty(self):
-        repo = self.make_repository('.')
-        repo.lock_write()
-        inv = repo.get_inventory_weave()
-        repo.unlock()
-        self.assertRaises(errors.OutSideTransaction, inv.add_lines, 'foo', [], [])
-
     def test_format_description(self):
         repo = self.make_repository('.')
         text = repo._format.get_format_description()
@@ -345,7 +275,7 @@ class TestRepository(TestCaseWithRepository):
         tree = self.make_branch_and_tree('.')
         tree.commit('initial empty commit', rev_id='a-rev',
                     allow_pointless=True)
-        result = tree.branch.repository.check(['a-rev'])
+        result = tree.branch.repository.check()
         # writes to log; should accept both verbose or non-verbose
         result.report_results(verbose=True)
         result.report_results(verbose=False)
@@ -435,11 +365,209 @@ class TestRepository(TestCaseWithRepository):
         repo._format.rich_root_data
         repo._format.supports_tree_reference
 
+    def test_get_data_stream(self):
+        # Make a repo with a revision
+        tree = self.make_branch_and_tree('t')
+        self.build_tree(['t/foo'])
+        tree.add('foo', 'file1')
+        tree.commit('message', rev_id='rev_id')
+        repo = tree.branch.repository
+
+        # Get a data stream (a file-like object) for that revision
+        try:
+            stream = repo.get_data_stream(['rev_id'])
+        except NotImplementedError:
+            # Not all repositories support streaming.
+            return
+
+        # The data stream is a iterator that yields (name, versioned_file)
+        # pairs for:
+        #   * the file knit (or knits; if this repo has rich roots there will
+        #     be a file knit for that as well as for 'file1').
+        #   * the inventory knit
+        #   * the revisions knit
+        # in that order.
+        expected_record_names = [
+            ('file', 'file1'),
+            ('inventory',),
+            ('signatures',),
+            ('revisions',)]
+        streamed_names = []
+        for name, bytes in stream:
+            streamed_names.append(name)
+
+        if repo.supports_rich_root():
+            # Check for the root versioned file in the stream, then remove it
+            # from streamed_names so we can compare that with
+            # expected_record_names.
+            # Note that the file knits can be in any order, so this test is
+            # written to allow that.
+            inv = repo.get_inventory('rev_id')
+            expected_record_name = ('file', inv.root.file_id)
+            self.assertTrue(expected_record_name in streamed_names)
+            streamed_names.remove(expected_record_name)
+
+        self.assertEqual(expected_record_names, streamed_names)
+
+    def test_insert_data_stream(self):
+        tree = self.make_branch_and_tree('source')
+        self.build_tree(['source/foo'])
+        tree.add('foo', 'file1')
+        tree.commit('message', rev_id='rev_id')
+        source_repo = tree.branch.repository
+        dest_repo = self.make_repository('dest')
+        try:
+            stream = source_repo.get_data_stream(['rev_id'])
+        except NotImplementedError, e:
+            # Not all repositories support streaming.
+            self.assertContainsRe(str(e), 'get_data_stream')
+            raise TestSkipped('This format does not support streaming.')
+
+        dest_repo.lock_write()
+        try:
+            dest_repo.start_write_group()
+            try:
+                dest_repo.insert_data_stream(stream)
+            except:
+                dest_repo.abort_write_group()
+                raise
+            else:
+                dest_repo.commit_write_group()
+        finally:
+            dest_repo.unlock()
+        # reopen to be sure it was added.
+        dest_repo = dest_repo.bzrdir.open_repository()
+        self.assertTrue(dest_repo.has_revision('rev_id'))
+
     def test_get_serializer_format(self):
         repo = self.make_repository('.')
         format = repo.get_serializer_format()
         self.assertEqual(repo._serializer.format_num, format)
 
+    def test_iter_files_bytes(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file1', 'foo'),
+                                  ('tree/file2', 'bar')])
+        tree.add(['file1', 'file2'], ['file1-id', 'file2-id'])
+        tree.commit('rev1', rev_id='rev1')
+        self.build_tree_contents([('tree/file1', 'baz')])
+        tree.commit('rev2', rev_id='rev2')
+        repository = tree.branch.repository
+        repository.lock_read()
+        self.addCleanup(repository.unlock)
+        extracted = dict((i, ''.join(b)) for i, b in
+                         repository.iter_files_bytes(
+                         [('file1-id', 'rev1', 'file1-old'),
+                          ('file1-id', 'rev2', 'file1-new'),
+                          ('file2-id', 'rev1', 'file2'),
+                         ]))
+        self.assertEqual('foo', extracted['file1-old'])
+        self.assertEqual('bar', extracted['file2'])
+        self.assertEqual('baz', extracted['file1-new'])
+        self.assertRaises(errors.RevisionNotPresent, list,
+                          repository.iter_files_bytes(
+                          [('file1-id', 'rev3', 'file1-notpresent')]))
+        self.assertRaises((errors.RevisionNotPresent, errors.NoSuchId), list,
+                          repository.iter_files_bytes(
+                          [('file3-id', 'rev3', 'file1-notpresent')]))
+
+    def test_item_keys_introduced_by(self):
+        # Make a repo with one revision and one versioned file.
+        tree = self.make_branch_and_tree('t')
+        self.build_tree(['t/foo'])
+        tree.add('foo', 'file1')
+        tree.commit('message', rev_id='rev_id')
+        repo = tree.branch.repository
+
+        # Item keys will be in this order, for maximum convenience for
+        # generating data to insert into knit repository:
+        #   * files
+        #   * inventory
+        #   * signatures
+        #   * revisions
+        expected_item_keys = [
+            ('file', 'file1', ['rev_id']),
+            ('inventory', None, ['rev_id']),
+            ('signatures', None, []),
+            ('revisions', None, ['rev_id'])]
+        item_keys = list(repo.item_keys_introduced_by(['rev_id']))
+        item_keys = [
+            (kind, file_id, list(versions))
+            for (kind, file_id, versions) in item_keys]
+
+        if repo.supports_rich_root():
+            # Check for the root versioned file in the item_keys, then remove
+            # it from streamed_names so we can compare that with
+            # expected_record_names.
+            # Note that the file keys can be in any order, so this test is
+            # written to allow that.
+            inv = repo.get_inventory('rev_id')
+            root_item_key = ('file', inv.root.file_id, ['rev_id'])
+            self.assertTrue(root_item_key in item_keys)
+            item_keys.remove(root_item_key)
+
+        self.assertEqual(expected_item_keys, item_keys)
+
+    def test_get_graph(self):
+        """Bare-bones smoketest that all repositories implement get_graph."""
+        repo = self.make_repository('repo')
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        repo.get_graph()
+
+    def test_implements_revision_graph_can_have_wrong_parents(self):
+        """All repositories should implement
+        revision_graph_can_have_wrong_parents, so that check and reconcile can
+        work correctly.
+        """
+        repo = self.make_repository('.')
+        # This should work, not raise NotImplementedError:
+        if not repo.revision_graph_can_have_wrong_parents():
+            return
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        # This repo must also implement
+        # _find_inconsistent_revision_parents and
+        # _check_for_inconsistent_revision_parents.  So calling these
+        # should not raise NotImplementedError.
+        list(repo._find_inconsistent_revision_parents())
+        repo._check_for_inconsistent_revision_parents()
+
+    def test_add_signature_text(self):
+        repo = self.make_repository('repo')
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        self.addCleanup(repo.commit_write_group)
+        repo.start_write_group()
+        inv = Inventory(revision_id='A')
+        inv.root.revision = 'A'
+        repo.add_inventory('A', inv, [])
+        repo.add_revision('A', Revision('A', committer='A', timestamp=0,
+                          inventory_sha1='', timezone=0, message='A'))
+        repo.add_signature_text('A', 'This might be a signature')
+        self.assertEqual('This might be a signature',
+                         repo.get_signature_text('A'))
+
+    def test_install_revisions(self):
+        wt = self.make_branch_and_tree('source')
+        wt.commit('A', allow_pointless=True, rev_id='A')
+        repo = wt.branch.repository
+        repo.lock_write()
+        repo.start_write_group()
+        repo.sign_revision('A', bzrlib.gpg.LoopbackGPGStrategy(None))
+        repo.commit_write_group()
+        repo.unlock()
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        repo2 = self.make_repository('repo2')
+        revision = repo.get_revision('A')
+        tree = repo.revision_tree('A')
+        signature = repo.get_signature_text('A')
+        repo2.lock_write()
+        self.addCleanup(repo2.unlock)
+        repository.install_revisions(repo2, [(revision, tree, signature)])
+        self.assertEqual(revision, repo2.get_revision('A'))
+        self.assertEqual(signature, repo2.get_signature_text('A'))
 
 class TestRepositoryLocking(TestCaseWithRepository):
 
@@ -506,10 +634,19 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         self.bzrdir = tree_a.branch.bzrdir
         # add a corrupt inventory 'orphan'
         # this may need some generalising for knits.
-        inv_file = tree_a.branch.repository.control_weaves.get_weave(
-            'inventory', 
-            tree_a.branch.repository.get_transaction())
-        inv_file.add_lines('orphan', [], [])
+        tree_a.lock_write()
+        try:
+            tree_a.branch.repository.start_write_group()
+            inv_file = tree_a.branch.repository.get_inventory_weave()
+            try:
+                inv_file.add_lines('orphan', [], [])
+            except:
+                tree_a.branch.repository.commit_write_group()
+                raise
+            else:
+                tree_a.branch.repository.abort_write_group()
+        finally:
+            tree_a.unlock()
         # add a real revision 'rev1'
         tree_a.commit('rev1', rev_id='rev1', allow_pointless=True)
         # add a real revision 'rev2' based on rev1
@@ -525,6 +662,8 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
     def test_revision_trees(self):
         revision_ids = ['rev1', 'rev2', 'rev3', 'rev4']
         repository = self.bzrdir.open_repository()
+        repository.lock_read()
+        self.addCleanup(repository.unlock)
         trees1 = list(repository.revision_trees(revision_ids))
         trees2 = [repository.revision_tree(t) for t in revision_ids]
         assert len(trees1) == len(trees2)
@@ -533,6 +672,8 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
 
     def test_get_deltas_for_revisions(self):
         repository = self.bzrdir.open_repository()
+        repository.lock_read()
+        self.addCleanup(repository.unlock)
         revisions = [repository.get_revision(r) for r in 
                      ['rev1', 'rev2', 'rev3', 'rev4']]
         deltas1 = list(repository.get_deltas_for_revisions(revisions))
@@ -610,10 +751,16 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
 
     def test_reserved_id(self):
         repo = self.make_repository('repository')
-        self.assertRaises(errors.ReservedId, repo.add_inventory, 'reserved:',
-                          None, None)
-        self.assertRaises(errors.ReservedId, repo.add_revision, 'reserved:',
-                          None)
+        repo.lock_write()
+        repo.start_write_group()
+        try:
+            self.assertRaises(errors.ReservedId, repo.add_inventory, 'reserved:',
+                              None, None)
+            self.assertRaises(errors.ReservedId, repo.add_revision, 'reserved:',
+                              None)
+        finally:
+            repo.abort_write_group()
+            repo.unlock()
 
 
 class TestCaseWithCorruptRepository(TestCaseWithRepository):

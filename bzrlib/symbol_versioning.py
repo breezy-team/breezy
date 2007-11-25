@@ -39,6 +39,8 @@ __all__ = ['deprecated_function',
            'zero_eighteen',
            'zero_ninety',
            'zero_ninetyone',
+           'zero_ninetytwo',
+           'zero_ninetythree',
            ]
 
 from warnings import warn
@@ -59,6 +61,8 @@ zero_seventeen = "%s was deprecated in version 0.17."
 zero_eighteen = "%s was deprecated in version 0.18."
 zero_ninety = "%s was deprecated in version 0.90."
 zero_ninetyone = "%s was deprecated in version 0.91."
+zero_ninetytwo = "%s was deprecated in version 0.92."
+zero_ninetythree = "%s was deprecated in version 0.93."
 
 
 def set_warning_method(method):
@@ -84,6 +88,8 @@ def deprecation_string(a_callable, deprecation_version):
         have a single %s operator in it. a_callable will be turned into a nice
         python symbol and then substituted into deprecation_version.
     """
+    # We also want to handle old-style classes, in particular exception, and
+    # they don't have an im_class attribute.
     if getattr(a_callable, 'im_class', None) is None:
         symbol = "%s.%s" % (a_callable.__module__,
                             a_callable.__name__)
@@ -114,6 +120,12 @@ def deprecated_function(deprecation_version):
 
 def deprecated_method(deprecation_version):
     """Decorate a method so that use of it will trigger a warning.
+
+    To deprecate a static or class method, use 
+
+        @staticmethod
+        @deprecated_function
+        def ...
     
     To deprecate an entire class, decorate __init__.
     """
@@ -123,10 +135,15 @@ def deprecated_method(deprecation_version):
         
         def decorated_method(self, *args, **kwargs):
             """This is the decorated method."""
-            symbol = "%s.%s.%s" % (self.__class__.__module__,
-                                   self.__class__.__name__,
-                                   callable.__name__
-                                   )
+            if callable.__name__ == '__init__':
+                symbol = "%s.%s" % (self.__class__.__module__,
+                                    self.__class__.__name__,
+                                    )
+            else:
+                symbol = "%s.%s.%s" % (self.__class__.__module__,
+                                       self.__class__.__name__,
+                                       callable.__name__
+                                       )
             warn(deprecation_version % symbol, DeprecationWarning, stacklevel=2)
             return callable(self, *args, **kwargs)
         _populate_decorated(callable, deprecation_version, "method",

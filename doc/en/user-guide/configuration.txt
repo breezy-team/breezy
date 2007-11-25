@@ -7,12 +7,79 @@ Information on how to configure Bazaar.
 .. TODO: Should have some explanation of why you'd want things in
 .. branch.conf.
 
-Location of configuration files
-===============================
-Each user gets a pair of configurations files in ``$HOME/.bazaar``. The first
-one, named ``bazaar.conf``, includes default configuration options. The other
-file, ``locations.conf``, contains configuration information for specific
-branch locations.  These files are sometimes referred to as ``ini files``.
+
+Environment variables
+=====================
+While most configuration is handled by configuration files, some options
+which may be semi-permanent can also be controlled through the environment.
+
+BZR_EMAIL
+---------
+Override the email id used by Bazaar.  Typical format::
+
+  "John Doe <jdoe@example.com>"
+
+See also the ``email`` configuration value.
+
+BZR_PROGRESS_BAR
+----------------
+Override the progress display.  Possible values are "none", "dots", "tty"
+
+BZR_SIGQUIT_PDB
+---------------
+Control whether SIGQUIT behaves normally or invokes a breakin debugger.
+0 = Standard SIGQUIT behavior
+1 = Invoke breakin debugger (default)
+
+BZR_HOME
+--------
+Override the home directory used by Bazaar.
+
+BZR_SSH
+-------
+Select a different SSH implementation.
+
+BZR_PDB
+-------
+Control whether to launch a debugger on error.
+0 = Standard behavior
+1 = Launch debugger
+
+BZR_REMOTE_PATH
+---------------
+Path to the Bazaar executable to use when using the bzr+ssh protocol.
+
+See also the ``bzr_remote_path`` configuration value
+
+BZR_EDITOR
+----------
+Path to the editor Bazaar should use for commit messages, etc.
+
+BZR_PLUGIN_PATH
+---------------
+The path to the plugins directory that Bazaar should use.
+
+BZRPATH
+-------
+The path where Bazaar should look for shell plugin external commands.
+
+
+Configuration files
+===================
+
+Location
+--------
+
+Configuration files are located in ``$HOME/.bazaar`` and are
+sometimes referred to as ``ini files``:
+
+* ``bazaar.conf`` describes default configuration options,
+
+* ``locations.conf`` describes configuration information for
+  specific branch locations,
+
+* ``authentication.conf`` describes credential information for
+  remote servers.
 
 Each branch can also contain a configuration file that sets values specific
 to that branch. This file is found at ``.bzr/branch/branch.conf`` within the
@@ -21,18 +88,19 @@ one of the values for a branch with a setting that is specific to you then you
 can do so in ``locations.conf``.
 
 General Format
-==============
+--------------
+
 An ini file has three types of contructs: section headers, section
 variables and comments.
 
 Comments
---------
+~~~~~~~~
 A comment is any line that starts with a "#" (sometimes called a "hash
 mark", "pound sign" or "number sign"). Comment lines are ignored by
 Bazaar when parsing ini files.
 
 Section Headers
----------------
+~~~~~~~~~~~~~~~
 A section header is a word enclosed in brackets that starts at the begining
 of a line.  A typical section header looks like this::
 
@@ -52,7 +120,7 @@ the branch as the section header. Some examples include::
 
 
 Section Variables
------------------
+~~~~~~~~~~~~~~~~~
 
 A section variable resides within a section. A section variable contains a
 variable name, an equals sign and a value.  For example::
@@ -62,7 +130,7 @@ variable name, an equals sign and a value.  For example::
 
 
 Variable Policies
------------------
+~~~~~~~~~~~~~~~~~
 
 Variables defined in a section affect the named directory or URL plus
 any locations they contain.  Policies can be used to change how a
@@ -107,11 +175,15 @@ A typical ``bazaar.conf`` section often looks like the following::
     check_signatures  = check-available
     create_signatures = when-required
 
-``$HOME/.bazaar/locations.conf`` allows one to specify overriding settings for a
-specific branch. The format is almost identical to the default section in
-bazaar.conf with one significant change: The section header, instead of
-saying default, will be the path to a branch that you wish to override a
-value for. The '?' and '*' wildcards are supported::
+
+The branch location configuration file, locations.conf
+------------------------------------------------------
+
+``$HOME/.bazaar/locations.conf`` allows one to specify overriding settings for
+a specific branch. The format is almost identical to the default section in
+bazaar.conf with one significant change: The section header, instead of saying
+default, will be the path to a branch that you wish to override a value
+for. The '?' and '*' wildcards are supported::
 
     [/home/jdoe/branches/nethack]
     email = Nethack Admin <nethack@nethack.com>
@@ -122,6 +194,21 @@ value for. The '?' and '*' wildcards are supported::
 
     [http://bazaar-vcs.org/bzr/*]
     check_signatures  = require
+
+The authentication configuration file, authentication.conf
+----------------------------------------------------------
+
+``$HOME/.bazaar/authentication.conf`` allows one to specify credentials for
+remote servers. This can be used for all the supported transports and any part
+of bzr that requires authentication (smtp for example).
+
+The syntax of the file obeys the same rules as the others except for the
+variable policies which don't apply.
+
+For more information on the possible uses of the authentication configuration
+file see the `authentication configuration file documentation`_.
+
+.. _authentication configuration file documentation: authentication_conf.html
 
 Common Variable Options
 =======================
@@ -188,6 +275,17 @@ For example::
 
     gpg_signing_command = /usr/bin/gnpg
 
+bzr_remote_path
+---------------
+(Default: "bzr").  The path to the command that should be used to run the smart
+server for bzr.  This value may only be specified in locations.conf, because:
+
+- it's needed before branch.conf is accessible
+- allowing remote branch.conf files to specify commands would be a security
+  risk
+
+It is overridden by the BZR_REMOTE_PATH environment variable.
+
 smtp_server
 -----------
 (Default: "localhost"). SMTP server to use when Bazaar needs to send
@@ -200,13 +298,48 @@ is set, and smtp_password is not, Bazaar will prompt for a password.
 These settings are only needed if the SMTP server requires authentication
 to send mail.
 
+mail_client
+-----------
+A mail client to use for sending merge requests.
+By default, bzr will try to use ``mapi`` on Windows.  On other platforms, it
+will try ``xdg-email``. If either of these fails, it will fall back to
+``editor``.
+
+Supported values for specific clients:
+
+:evolution: Use Evolution.
+:kmail: Use KMail.
+:mutt: Use Mutt.
+:thunderbird: Use Mozilla Thunderbird or Icedove.  For Thunderbird/Icedove 1.5,
+    this works around some bugs that xdg-email doesn't handle.
+
+Supported generic values are:
+
+:default: See above.
+:editor: Use your editor to compose the merge request.  This also uses
+    your commit id, (see ``bzr whoami``), smtp_server and (optionally)
+    smtp_username and smtp_password.
+:mapi: Use your preferred e-mail client on Windows.
+:xdg-email: Use xdg-email to run your preferred mail program
+
+submit_branch
+-------------
+The branch you intend to submit your current work to.  This is automatically
+set by ``bzr send``, and is also used by the ``submit:`` revision spec.  This
+should usually be set on a per-branch or per-location basis.
+
+public_branch
+-------------
+A publically-accessible version of this branch (implying that this version is
+not publically-accessible).  Used (and set) by ``bzr send``.
+
 
 Branch 6 Options
 ================
 
-These options apply only to branches that use the "experimental-branch6"
-format.  They are usually set in ``.bzr/branch/branch.conf`` automatically, but
-may be manually set in ``locations.conf`` or ``bazaar.conf``.
+These options apply only to branches that use the "dirstate-tags" format.  They
+are usually set in ``.bzr/branch/branch.conf`` automatically, but may be
+manually set in ``locations.conf`` or ``bazaar.conf``.
 
 append_revisions_only
 ---------------------

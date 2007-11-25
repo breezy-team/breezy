@@ -252,7 +252,7 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
     # to avoid downloading the whole file.
     _max_readv_combined = 0
 
-    def readv(self, relpath, offsets):
+    def _readv(self, relpath, offsets):
         """Get parts of the file at the given relative path.
 
         :param offsets: A list of (offset, size) tuples.
@@ -293,6 +293,14 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
 
             # After one or more tries, we get the data.
             yield start, data
+
+    def recommended_page_size(self):
+        """See Transport.recommended_page_size().
+
+        For HTTP we suggest a large page size to reduce the overhead
+        introduced by latency.
+        """
+        return 64 * 1024
 
     @staticmethod
     @deprecated_method(zero_seventeen)

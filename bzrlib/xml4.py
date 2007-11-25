@@ -17,30 +17,20 @@
 from bzrlib.xml_serializer import ElementTree, SubElement, Element, Serializer
 from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
 import bzrlib.inventory as inventory
-from bzrlib.revision import Revision        
+from bzrlib.revision import Revision
 from bzrlib.errors import BzrError
 
 
 class _Serializer_v4(Serializer):
     """Version 0.0.4 serializer
 
-    You should use the serializer_v4 singleton."""
+    You should use the serializer_v4 singleton.
+    
+    v4 serialisation is no longer supported, only deserialisation.
+    """
     
     __slots__ = []
     
-    def _pack_inventory(self, inv):
-        """Convert to XML Element"""
-        # v4 serialization is not used any more.
-        raise NotImplementedError(self._pack_inventory)
-        e = Element('inventory')
-        e.text = '\n'
-        if inv.root.file_id not in (None, ROOT_ID):
-            e.set('file_id', inv.root.file_id)
-        for path, ie in inv.iter_entries():
-            e.append(self._pack_entry(ie))
-        return e
-
-
     def _pack_entry(self, ie):
         """Convert InventoryEntry to XML element"""
         e = Element('entry')
@@ -68,8 +58,10 @@ class _Serializer_v4(Serializer):
         return e
 
 
-    def _unpack_inventory(self, elt):
+    def _unpack_inventory(self, elt, revision_id=None):
         """Construct from XML Element
+
+        :param revision_id: Ignored parameter used by xml5.
         """
         assert elt.tag == 'inventory'
         root_id = elt.get('file_id') or ROOT_ID

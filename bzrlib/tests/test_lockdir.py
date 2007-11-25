@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,10 +30,13 @@ from bzrlib import (
     transport,
     )
 from bzrlib.errors import (
-        LockBreakMismatch,
-        LockContention, LockError, UnlockableTransport,
-        LockNotHeld, LockBroken
-        )
+    LockBreakMismatch,
+    LockBroken,
+    LockContention,
+    LockError,
+    LockFailed,
+    LockNotHeld,
+    )
 from bzrlib.lockdir import LockDir
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.trace import note
@@ -105,14 +108,14 @@ class TestLockDir(TestCaseWithTransport):
         """Fail to create lock on readonly transport"""
         t = self.get_readonly_transport()
         lf = LockDir(t, 'test_lock')
-        self.assertRaises(UnlockableTransport, lf.create)
+        self.assertRaises(LockFailed, lf.create)
 
     def test_12_lock_readonly_transport(self):
         """Fail to lock on readonly transport"""
         lf = LockDir(self.get_transport(), 'test_lock')
         lf.create()
         lf = LockDir(self.get_readonly_transport(), 'test_lock')
-        self.assertRaises(UnlockableTransport, lf.attempt_lock)
+        self.assertRaises(LockFailed, lf.attempt_lock)
 
     def test_20_lock_contested(self):
         """Contention to get a lock"""
@@ -395,7 +398,7 @@ class TestLockDir(TestCaseWithTransport):
         unlocker.start()
         try:
             # Wait and play against the other thread
-            lf2.wait_lock(timeout=1.0, poll=0.01)
+            lf2.wait_lock(timeout=20.0, poll=0.01)
         finally:
             unlocker.join()
         lf2.unlock()
@@ -599,7 +602,7 @@ class TestLockDir(TestCaseWithTransport):
         lock_path = ld1.transport.local_abspath('test_lock')
         os.mkdir(lock_path)
         osutils.make_readonly(lock_path)
-        self.assertRaises(errors.PermissionDenied, ld1.attempt_lock)
+        self.assertRaises(errors.LockFailed, ld1.attempt_lock)
 
     def test_lock_by_token(self):
         ld1 = self.get_lock()

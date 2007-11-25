@@ -40,7 +40,9 @@ class TestCommandHelp(tests.TestCase):
         helptext = cmd.get_help_text()
         self.assertEndsWith(
             helptext,
-            '  -h, --help  Show help message.\n'
+            '  -v, --verbose  Display more information.\n'
+            '  -q, --quiet    Only display errors and warnings.\n'
+            '  -h, --help     Show help message.\n'
             '\n'
             'See also: bar, foo\n')
 
@@ -53,7 +55,8 @@ class TestCommandHelp(tests.TestCase):
         self.assertStartsWith(helptext,
             'Purpose: A sample command.\n'
             'Usage:   bzr Demo')
-        self.assertEndsWith(helptext, 'Show help message.\n\n')
+        self.assertEndsWith(helptext,
+            '  -h, --help     Show help message.\n\n')
 
     def test_command_with_additional_see_also(self):
         class cmd_WithSeeAlso(commands.Command):
@@ -63,7 +66,9 @@ class TestCommandHelp(tests.TestCase):
         helptext = cmd.get_help_text(['gam'])
         self.assertEndsWith(
             helptext,
-            '  -h, --help  Show help message.\n'
+            '  -v, --verbose  Display more information.\n'
+            '  -q, --quiet    Only display errors and warnings.\n'
+            '  -h, --help     Show help message.\n'
             '\n'
             'See also: bar, foo, gam\n')
 
@@ -74,7 +79,9 @@ class TestCommandHelp(tests.TestCase):
         helptext = cmd.get_help_text(['gam'])
         self.assertEndsWith(
             helptext,
-            '  -h, --help  Show help message.\n'
+            '  -v, --verbose  Display more information.\n'
+            '  -q, --quiet    Only display errors and warnings.\n'
+            '  -h, --help     Show help message.\n'
             '\n'
             'See also: gam\n')
 
@@ -107,7 +114,9 @@ class TestCommandHelp(tests.TestCase):
             'Usage:   bzr Demo\n'
             '\n'
             'Options:\n'
-            '  -h, --help  Show help message.\n'
+            '  -v, --verbose  Display more information.\n'
+            '  -q, --quiet    Only display errors and warnings.\n'
+            '  -h, --help     Show help message.\n'
             '\n'
             'Examples:\n'
             '    Example 1:\n'
@@ -124,7 +133,9 @@ class TestCommandHelp(tests.TestCase):
             ':Usage:   bzr Demo\n'
             '\n'
             ':Options:\n'
-            '  -h, --help  Show help message.\n'
+            '  -v, --verbose  Display more information.\n'
+            '  -q, --quiet    Only display errors and warnings.\n'
+            '  -h, --help     Show help message.\n'
             '\n'
             ':Examples:\n'
             '    Example 1::\n'
@@ -159,7 +170,9 @@ class TestCommandHelp(tests.TestCase):
             '\n'
             '\n'
             'Options:\n'
-            '  -h, --help  Show help message.\n'
+            '  -v, --verbose  Display more information.\n'
+            '  -q, --quiet    Only display errors and warnings.\n'
+            '  -h, --help     Show help message.\n'
             '\n'
             'Description:\n'
             '  Blah blah blah.\n\n')

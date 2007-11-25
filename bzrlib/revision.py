@@ -114,7 +114,15 @@ class Revision(object):
     def get_summary(self):
         """Get the first line of the log message for this revision.
         """
-        return self.message.split('\n', 1)[0]
+        return self.message.lstrip().split('\n', 1)[0]
+
+    def get_apparent_author(self):
+        """Return the apparent author of this revision.
+
+        If the revision properties contain the author name,
+        return it. Otherwise return the committer name.
+        """
+        return self.properties.get('author', self.committer)
 
 
 def is_ancestor(revision_id, candidate_id, branch):
@@ -444,8 +452,11 @@ def check_not_reserved_id(revision_id):
 
 
 def ensure_null(revision_id):
-    """Ensure only NULL_REVISION is used to represent the null revisionn"""
+    """Ensure only NULL_REVISION is used to represent the null revision"""
     if revision_id is None:
+        symbol_versioning.warn('NULL_REVISION should be used for the null'
+            ' revision instead of None, as of bzr 0.91.',
+            DeprecationWarning, stacklevel=2)
         return NULL_REVISION
     else:
         return revision_id

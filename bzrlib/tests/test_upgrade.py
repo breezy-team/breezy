@@ -195,7 +195,7 @@ class TestUpgrade(TestCaseWithTransport):
         converter.convert(tree.bzrdir, progress.DummyProgress())
         new_tree = workingtree.WorkingTree.open('tree')
         self.assertIs(new_tree.__class__, workingtree_4.WorkingTree4)
-        self.assertEqual(None, new_tree.last_revision())
+        self.assertEqual('null:', new_tree.last_revision())
 
     def test_convert_knit_dirstate_content(self):
         # smoke test for dirstate conversion: we call dirstate primitives,
@@ -208,7 +208,7 @@ class TestUpgrade(TestCaseWithTransport):
         converter.convert(tree.bzrdir, progress.DummyProgress())
         new_tree = workingtree.WorkingTree.open('tree')
         self.assertIs(new_tree.__class__, workingtree_4.WorkingTree4)
-        self.assertEqual(None, new_tree.last_revision())
+        self.assertEqual('null:', new_tree.last_revision())
 
     def test_convert_knit_one_parent_dirstate(self):
         # test that asking for an upgrade from knit to dirstate works.

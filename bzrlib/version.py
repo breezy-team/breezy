@@ -30,38 +30,61 @@ from bzrlib import (
 from bzrlib.branch import Branch
 
 
-def show_version(show_config=True, show_copyright=True):
-    print "Bazaar (bzr) %s" % bzrlib.__version__
+def show_version(show_config=True, show_copyright=True, to_file=None):
+    if to_file is None:
+        to_file = sys.stdout
+    to_file.write("Bazaar (bzr) %s\n" % bzrlib.__version__)
     # is bzrlib itself in a branch?
     src_tree = _get_bzr_source_tree()
     if src_tree:
         src_revision_id = src_tree.last_revision()
         revno = src_tree.branch.revision_id_to_revno(src_revision_id)
-        print "  from bzr checkout", src_tree.basedir
-        print "    revision:", revno
-        print "    revid:", src_revision_id
-        print "    branch nick:", src_tree.branch.nick
-    print "  Python interpreter:", sys.executable, '.'.join(map(str, sys.version_info))
-    print "  Python standard library:", os.path.dirname(os.__file__)
-    print "  bzrlib:",
+        to_file.write("  from bzr checkout %s\n" % (src_tree.basedir,))
+        to_file.write("    revision: %s\n" % (revno,))
+        to_file.write("    revid: %s\n" % (src_revision_id,))
+        to_file.write("    branch nick: %s\n" % (src_tree.branch.nick,))
+
+    to_file.write("  Python interpreter: ")
+    # show path to python interpreter
+    # (bzr.exe use python interpreter from pythonXY.dll
+    # but sys.executable point to bzr.exe itself)
+    if not hasattr(sys, 'frozen'):  # check for bzr.exe
+        # python executable
+        to_file.write(sys.executable + ' ')
+    else:
+        # pythonXY.dll
+        basedir = os.path.dirname(sys.executable)
+        python_dll = "python%d%d.dll" % sys.version_info[:2]
+        to_file.write(os.path.join(basedir, python_dll) + ' ')
+    # and now version of python interpreter
+    to_file.write('.'.join(map(str, sys.version_info)))
+    to_file.write('\n')
+
+    to_file.write("  Python standard library:" + ' ')
+    to_file.write(os.path.dirname(os.__file__) + '\n')
+    to_file.write("  bzrlib: ")
     if len(bzrlib.__path__) > 1:
         # print repr, which is a good enough way of making it clear it's
         # more than one element (eg ['/foo/bar', '/foo/bzr'])
-        print repr(bzrlib.__path__)
+        to_file.write(repr(bzrlib.__path__) + '\n')
     else:
-        print bzrlib.__path__[0]
+        to_file.write(bzrlib.__path__[0] + '\n')
     if show_config:
-        print "  Bazaar configuration:", config.config_dir()
-        print "  Bazaar log file:", trace._bzr_log_filename
+        config_dir = os.path.normpath(config.config_dir())  # use native slashes
+        if not isinstance(config_dir, unicode):
+            config_dir = config_dir.decode(bzrlib.user_encoding)
+        to_file.write("  Bazaar configuration: %s\n" % (config_dir,))
+        to_file.write("  Bazaar log file: ")
+        to_file.write(trace._bzr_log_filename + '\n')
     if show_copyright:
-        print
-        print bzrlib.__copyright__
-        print "http://bazaar-vcs.org/"
-        print
-        print "bzr comes with ABSOLUTELY NO WARRANTY.  bzr is free software, and"
-        print "you may use, modify and redistribute it under the terms of the GNU"
-        print "General Public License version 2 or later."
-    print
+        to_file.write('\n')
+        to_file.write(bzrlib.__copyright__ + '\n')
+        to_file.write("http://bazaar-vcs.org/\n")
+        to_file.write('\n')
+        to_file.write("bzr comes with ABSOLUTELY NO WARRANTY.  bzr is free software, and\n")
+        to_file.write("you may use, modify and redistribute it under the terms of the GNU\n")
+        to_file.write("General Public License version 2 or later.\n")
+    to_file.write('\n')
 
 
 def _get_bzr_source_tree():

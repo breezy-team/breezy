@@ -15,30 +15,25 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-import os
-import sys
-import stat
 from cStringIO import StringIO
 
 import bzrlib
 from bzrlib import (
     errors,
+    osutils,
     urlutils,
     )
-from bzrlib.errors import (ConnectionError,
-                           DependencyNotPresent,
+from bzrlib.errors import (DependencyNotPresent,
                            FileExists,
                            InvalidURLJoin,
                            NoSuchFile,
                            PathNotChild,
-                           TransportNotPossible,
-                           ConnectionError,
-                           DependencyNotPresent,
                            ReadError,
                            UnsupportedProtocol,
                            )
 from bzrlib.tests import TestCase, TestCaseInTempDir
-from bzrlib.transport import (_CoalescedOffset,
+from bzrlib.transport import (_clear_protocol_handlers,
+                              _CoalescedOffset,
                               ConnectedTransport,
                               _get_protocol_handlers,
                               _set_protocol_handlers,
@@ -47,7 +42,6 @@ from bzrlib.transport import (_CoalescedOffset,
                               LateReadError,
                               register_lazy_transport,
                               register_transport_proto,
-                              _clear_protocol_handlers,
                               Transport,
                               )
 from bzrlib.transport.chroot import ChrootServer
@@ -73,15 +67,20 @@ class TestTransport(TestCase):
 
     def test_get_transport_modules(self):
         handlers = _get_protocol_handlers()
+        # don't pollute the current handlers
+        _clear_protocol_handlers()
         class SampleHandler(object):
             """I exist, isnt that enough?"""
         try:
             _clear_protocol_handlers()
             register_transport_proto('foo')
-            register_lazy_transport('foo', 'bzrlib.tests.test_transport', 'TestTransport.SampleHandler')
+            register_lazy_transport('foo', 'bzrlib.tests.test_transport',
+                                    'TestTransport.SampleHandler')
             register_transport_proto('bar')
-            register_lazy_transport('bar', 'bzrlib.tests.test_transport', 'TestTransport.SampleHandler')
-            self.assertEqual([SampleHandler.__module__, 'bzrlib.transport.chroot'],
+            register_lazy_transport('bar', 'bzrlib.tests.test_transport',
+                                    'TestTransport.SampleHandler')
+            self.assertEqual([SampleHandler.__module__,
+                              'bzrlib.transport.chroot'],
                              _get_transport_modules())
         finally:
             _set_protocol_handlers(handlers)
@@ -89,6 +88,8 @@ class TestTransport(TestCase):
     def test_transport_dependency(self):
         """Transport with missing dependency causes no error"""
         saved_handlers = _get_protocol_handlers()
+        # don't pollute the current handlers
+        _clear_protocol_handlers()
         try:
             register_transport_proto('foo')
             register_lazy_transport('foo', 'bzrlib.tests.test_transport',
@@ -572,26 +573,26 @@ class TestTransportImplementation(TestCaseInTempDir):
 class TestLocalTransports(TestCase):
 
     def test_get_transport_from_abspath(self):
-        here = os.path.abspath('.')
+        here = osutils.abspath('.')
         t = get_transport(here)
         self.assertIsInstance(t, LocalTransport)
         self.assertEquals(t.base, urlutils.local_path_to_url(here) + '/')
 
     def test_get_transport_from_relpath(self):
-        here = os.path.abspath('.')
+        here = osutils.abspath('.')
         t = get_transport('.')
         self.assertIsInstance(t, LocalTransport)
         self.assertEquals(t.base, urlutils.local_path_to_url('.') + '/')
 
     def test_get_transport_from_local_url(self):
-        here = os.path.abspath('.')
+        here = osutils.abspath('.')
         here_url = urlutils.local_path_to_url(here) + '/'
         t = get_transport(here_url)
         self.assertIsInstance(t, LocalTransport)
         self.assertEquals(t.base, here_url)
 
     def test_local_abspath(self):
-        here = os.path.abspath('.')
+        here = osutils.abspath('.')
         t = get_transport(here)
         self.assertEquals(t.local_abspath(''), here)
 
@@ -615,14 +616,14 @@ class TestConnectedTransport(TestCase):
     """Tests for connected to remote server transports"""
 
     def test_parse_url(self):
-        t = ConnectedTransport('sftp://simple.example.com/home/source')
+        t = ConnectedTransport('http://simple.example.com/home/source')
         self.assertEquals(t._host, 'simple.example.com')
         self.assertEquals(t._port, None)
         self.assertEquals(t._path, '/home/source/')
         self.failUnless(t._user is None)
         self.failUnless(t._password is None)
 
-        self.assertEquals(t.base, 'sftp://simple.example.com/home/source/')
+        self.assertEquals(t.base, 'http://simple.example.com/home/source/')
 
     def test_parse_quoted_url(self):
         t = ConnectedTransport('http://ro%62ey:h%40t@ex%41mple.com:2222/path')
@@ -661,11 +662,13 @@ class TestConnectedTransport(TestCase):
         self.assertEquals(t.relpath('sftp://host.com/dev/%path/sub'), 'sub')
 
     def test_connection_sharing_propagate_credentials(self):
-        t = ConnectedTransport('foo://user@host.com/abs/path')
+        t = ConnectedTransport('ftp://user@host.com/abs/path')
+        self.assertEquals('user', t._user)
+        self.assertEquals('host.com', t._host)
         self.assertIs(None, t._get_connection())
         self.assertIs(None, t._password)
         c = t.clone('subdir')
-        self.assertEquals(None, c._get_connection())
+        self.assertIs(None, c._get_connection())
         self.assertIs(None, t._password)
 
         # Simulate the user entering a password
@@ -690,7 +693,10 @@ class TestReusedTransports(TestCase):
     """Tests for transport reuse"""
 
     def test_reuse_same_transport(self):
-        t1 = get_transport('http://foo/')
+        possible_transports = []
+        t1 = get_transport('http://foo/',
+                           possible_transports=possible_transports)
+        self.assertEqual([t1], possible_transports)
         t2 = get_transport('http://foo/', possible_transports=[t1])
         self.assertIs(t1, t2)
 
@@ -709,11 +715,44 @@ class TestReusedTransports(TestCase):
         self.assertIsNot(t1, t2)
 
 
-def get_test_permutations():
-    """Return transport permutations to be used in testing.
+class TestTransportTrace(TestCase):
 
-    This module registers some transports, but they're only for testing
-    registration.  We don't really want to run all the transport tests against
-    them.
-    """
-    return []
+    def test_get(self):
+        transport = get_transport('trace+memory://')
+        self.assertIsInstance(
+            transport, bzrlib.transport.trace.TransportTraceDecorator)
+
+    def test_clone_preserves_activity(self):
+        transport = get_transport('trace+memory://')
+        transport2 = transport.clone('.')
+        self.assertTrue(transport is not transport2)
+        self.assertTrue(transport._activity is transport2._activity)
+
+    # the following specific tests are for the operations that have made use of
+    # logging in tests; we could test every single operation but doing that
+    # still won't cause a test failure when the top level Transport API
+    # changes; so there is little return doing that.
+    def test_get(self):
+        transport = get_transport('trace+memory:///')
+        transport.put_bytes('foo', 'barish')
+        transport.get('foo')
+        expected_result = []
+        # put_bytes records the bytes, not the content to avoid memory
+        # pressure.
+        expected_result.append(('put_bytes', 'foo', 6, None))
+        # get records the file name only.
+        expected_result.append(('get', 'foo'))
+        self.assertEqual(expected_result, transport._activity)
+
+    def test_readv(self):
+        transport = get_transport('trace+memory:///')
+        transport.put_bytes('foo', 'barish')
+        list(transport.readv('foo', [(0, 1), (3, 2)], adjust_for_latency=True,
+            upper_limit=6))
+        expected_result = []
+        # put_bytes records the bytes, not the content to avoid memory
+        # pressure.
+        expected_result.append(('put_bytes', 'foo', 6, None))
+        # readv records the supplied offset request
+        expected_result.append(('readv', 'foo', [(0, 1), (3, 2)], True, 6))
+        self.assertEqual(expected_result, transport._activity)

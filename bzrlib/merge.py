@@ -209,7 +209,7 @@ class Merger(object):
         if check_clean:
             self.compare_basis()
             if self.this_basis != self.this_rev_id:
-                raise BzrCommandError("Working tree has uncommitted changes.")
+                raise errors.UncommittedChanges(self.this_tree)
 
     def compare_basis(self):
         try:
@@ -550,7 +550,7 @@ class Merge3Merger(object):
                                  self.tt.root)
         if self.other_tree.inventory.root is None:
             return
-        other_root_file_id = self.other_tree.inventory.root.file_id
+        other_root_file_id = self.other_tree.get_root_id()
         other_root = self.tt.trans_id_file_id(other_root_file_id)
         if other_root == self.tt.root:
             return

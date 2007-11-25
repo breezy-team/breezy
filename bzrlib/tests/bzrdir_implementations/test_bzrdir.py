@@ -47,6 +47,7 @@ from bzrlib.tests import (
                           ChrootedTestCase,
                           TestCase,
                           TestCaseWithTransport,
+                          TestNotApplicable,
                           TestSkipped,
                           )
 from bzrlib.tests.bzrdir_implementations import TestCaseWithBzrDir
@@ -166,6 +167,17 @@ class TestBzrDir(TestCaseWithBzrDir):
         bzrdir.destroy_workingtree_metadata()
         self.failUnlessExists('tree/file')
         self.assertRaises(errors.NoWorkingTree, bzrdir.open_workingtree)
+
+    def test_destroy_branch(self):
+        branch = self.make_branch('branch')
+        bzrdir = branch.bzrdir
+        try:
+            bzrdir.destroy_branch()
+        except (errors.UnsupportedOperation, errors.TransportNotPossible):
+            raise TestNotApplicable('Format does not support destroying tree')
+        self.assertRaises(errors.NotBranchError, bzrdir.open_branch)
+        bzrdir.create_branch()
+        bzrdir.open_branch()
 
     def test_open_workingtree_raises_no_working_tree(self):
         """BzrDir.open_workingtree() should raise NoWorkingTree (rather than
@@ -445,7 +457,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                                      './.bzr/repository/inventory.knit',
                                      ])
 
-        target.open_workingtree().revert([])
+        target.open_workingtree().revert()
 
     def test_revert_inventory(self):
         tree = self.make_branch_and_tree('source')
@@ -464,7 +476,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                                      './.bzr/repository/inventory.knit',
                                      ])
 
-        target.open_workingtree().revert([])
+        target.open_workingtree().revert()
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
                                     ['./.bzr/stat-cache',
                                      './.bzr/checkout/dirstate',
@@ -512,6 +524,26 @@ class TestBzrDir(TestCaseWithBzrDir):
         target = dir.clone(self.get_url('target'), revision_id='1')
         self.skipIfNoWorkingTree(target)
         self.assertEqual(['1'], target.open_workingtree().get_parent_ids())
+
+    def test_clone_bzrdir_into_notrees_repo(self):
+        """Cloning into a no-trees repo should not create a working tree"""
+        tree = self.make_branch_and_tree('source')
+        self.build_tree(['source/foo'])
+        tree.add('foo')
+        tree.commit('revision 1')
+
+        try:
+            repo = self.make_repository('repo', shared=True)
+        except errors.IncompatibleFormat:
+            raise TestNotApplicable('must support shared repositories')
+        if repo.make_working_trees():
+            repo.set_make_working_trees(False)
+            self.assertFalse(repo.make_working_trees())
+
+        dir = tree.bzrdir
+        a_dir = dir.clone(self.get_url('repo/a'))
+        a_dir.open_branch()
+        self.assertRaises(errors.NoWorkingTree, a_dir.open_workingtree)
 
     def test_get_branch_reference_on_reference(self):
         """get_branch_reference should return the right url."""
@@ -1357,6 +1389,17 @@ class TestBzrDir(TestCaseWithBzrDir):
         bd.retire_bzrdir()
         self.failIf(transport.has('.bzr'))
         self.failUnless(transport.has('.bzr.retired.1'))
+
+    def test_retire_bzrdir_limited(self):
+        bd = self.make_bzrdir('.')
+        transport = bd.root_transport
+        # must not overwrite existing directories
+        self.build_tree(['.bzr.retired.0/', '.bzr.retired.0/junk',],
+            transport=transport)
+        self.failUnless(transport.has('.bzr'))
+        self.assertRaises((errors.FileExists, errors.DirectoryNotEmpty),
+            bd.retire_bzrdir, limit=0) 
+
 
 class TestBreakLock(TestCaseWithBzrDir):
 

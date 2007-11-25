@@ -31,14 +31,20 @@ from bzrlib.conflicts import (DuplicateEntry, DuplicateID, MissingParent,
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, CantMoveRoot, 
                            PathsNotVersionedError, ExistingLimbo,
-                           ImmortalLimbo, LockError)
-from bzrlib.osutils import file_kind, has_symlinks, pathjoin
+                           ExistingPendingDeletion, ImmortalLimbo,
+                           ImmortalPendingDeletion, LockError)
+from bzrlib.osutils import file_kind, pathjoin
 from bzrlib.merge import Merge3Merger
-from bzrlib.tests import TestCaseInTempDir, TestSkipped, TestCase
+from bzrlib.tests import (
+    SymlinkFeature,
+    TestCase,
+    TestCaseInTempDir,
+    TestSkipped,
+    )
 from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths, 
                               resolve_conflicts, cook_conflicts, 
                               find_interesting, build_tree, get_backup_name,
-                              change_entry)
+                              change_entry, _FileMover)
 
 
 class TestTreeTransform(tests.TestCaseWithTransport):
@@ -54,9 +60,9 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         return transform, transform.root
 
     def test_existing_limbo(self):
-        limbo_name = urlutils.local_path_from_url(
-            self.wt._control_files.controlfilename('limbo'))
         transform, root = self.get_transform()
+        limbo_name = transform._limbodir
+        deletion_path = transform._deletiondir
         os.mkdir(pathjoin(limbo_name, 'hehe'))
         self.assertRaises(ImmortalLimbo, transform.apply)
         self.assertRaises(LockError, self.wt.unlock)
@@ -64,8 +70,18 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertRaises(LockError, self.wt.unlock)
         os.rmdir(pathjoin(limbo_name, 'hehe'))
         os.rmdir(limbo_name)
+        os.rmdir(deletion_path)
         transform, root = self.get_transform()
         transform.apply()
+
+    def test_existing_pending_deletion(self):
+        transform, root = self.get_transform()
+        deletion_path = self._limbodir = urlutils.local_path_from_url(
+            transform._tree._control_files.controlfilename('pending-deletion'))
+        os.mkdir(pathjoin(deletion_path, 'blocking-directory'))
+        self.assertRaises(ImmortalPendingDeletion, transform.apply)
+        self.assertRaises(LockError, self.wt.unlock)
+        self.assertRaises(ExistingPendingDeletion, self.get_transform)
 
     def test_build(self):
         transform, root = self.get_transform() 
@@ -374,8 +390,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         replace.apply()
 
     def test_symlinks(self):
-        if not has_symlinks():
-            raise TestSkipped('Symlinks are not supported on this platform')
+        self.requireFeature(SymlinkFeature)
         transform,root = self.get_transform()
         oz_id = transform.new_directory('oz', root, 'oz-id')
         wizard = transform.new_symlink('wizard', oz_id, 'wizard-target', 
@@ -394,6 +409,26 @@ class TestTreeTransform(tests.TestCaseWithTransport):
                          'behind_curtain')
         self.assertEqual(os.readlink(self.wt.abspath('oz/wizard')),
                          'wizard-target')
+
+    def test_unable_create_symlink(self):
+        def tt_helper():
+            wt = self.make_branch_and_tree('.')
+            tt = TreeTransform(wt)  # TreeTransform obtains write lock
+            try:
+                tt.new_symlink('foo', tt.root, 'bar')
+                tt.apply()
+            finally:
+                wt.unlock()
+        os_symlink = getattr(os, 'symlink', None)
+        os.symlink = None
+        try:
+            err = self.assertRaises(errors.UnableCreateSymlink, tt_helper)
+            self.assertEquals(
+                "Unable to create symlink 'foo' on this platform",
+                str(err))
+        finally:
+            if os_symlink:
+                os.symlink = os_symlink
 
     def get_conflicted(self):
         create,root = self.get_transform()
@@ -1041,11 +1076,10 @@ class TestTransformMerge(TestCaseInTempDir):
         self.assertSubset(merge_modified, modified)
         self.assertEqual(len(merge_modified), len(modified))
         this.wt.remove('b')
-        this.wt.revert([])
+        this.wt.revert()
 
     def test_file_merge(self):
-        if not has_symlinks():
-            raise TestSkipped('Symlinks are not supported on this platform')
+        self.requireFeature(SymlinkFeature)
         root_id = generate_ids.gen_root_id()
         base = TransformGroup("BASE", root_id)
         this = TransformGroup("THIS", root_id)
@@ -1153,9 +1187,8 @@ class TestTransformMerge(TestCaseInTempDir):
 
 class TestBuildTree(tests.TestCaseWithTransport):
 
-    def test_build_tree(self):
-        if not has_symlinks():
-            raise TestSkipped('Test requires symlink support')
+    def test_build_tree_with_symlinks(self):
+        self.requireFeature(SymlinkFeature)
         os.mkdir('a')
         a = BzrDir.create_standalone_workingtree('a')
         os.mkdir('a/foo')
@@ -1209,8 +1242,7 @@ class TestBuildTree(tests.TestCaseWithTransport):
 
     def test_symlink_conflict_handling(self):
         """Ensure that when building trees, conflict handling is done"""
-        if not has_symlinks():
-            raise TestSkipped('Test requires symlink support')
+        self.requireFeature(SymlinkFeature)
         source = self.make_branch_and_tree('source')
         os.symlink('foo', 'source/symlink')
         source.add('symlink', 'new-symlink')
@@ -1338,3 +1370,122 @@ class TestGetBackupName(TestCase):
         self.assertEqual(name, 'name.~1~')
         name = get_backup_name(MockEntry(), {'a':['1', '2', '3']}, 'a', tt)
         self.assertEqual(name, 'name.~4~')
+
+
+class TestFileMover(tests.TestCaseWithTransport):
+
+    def test_file_mover(self):
+        self.build_tree(['a/', 'a/b', 'c/', 'c/d'])
+        mover = _FileMover()
+        mover.rename('a', 'q')
+        self.failUnlessExists('q')
+        self.failIfExists('a')
+        self.failUnlessExists('q/b')
+        self.failUnlessExists('c')
+        self.failUnlessExists('c/d')
+
+    def test_pre_delete_rollback(self):
+        self.build_tree(['a/'])
+        mover = _FileMover()
+        mover.pre_delete('a', 'q')
+        self.failUnlessExists('q')
+        self.failIfExists('a')
+        mover.rollback()
+        self.failIfExists('q')
+        self.failUnlessExists('a')
+
+    def test_apply_deletions(self):
+        self.build_tree(['a/', 'b/'])
+        mover = _FileMover()
+        mover.pre_delete('a', 'q')
+        mover.pre_delete('b', 'r')
+        self.failUnlessExists('q')
+        self.failUnlessExists('r')
+        self.failIfExists('a')
+        self.failIfExists('b')
+        mover.apply_deletions()
+        self.failIfExists('q')
+        self.failIfExists('r')
+        self.failIfExists('a')
+        self.failIfExists('b')
+
+    def test_file_mover_rollback(self):
+        self.build_tree(['a/', 'a/b', 'c/', 'c/d/', 'c/e/'])
+        mover = _FileMover()
+        mover.rename('c/d', 'c/f')
+        mover.rename('c/e', 'c/d')
+        try:
+            mover.rename('a', 'c')
+        except OSError, e:
+            mover.rollback()
+        self.failUnlessExists('a')
+        self.failUnlessExists('c/d')
+
+
+class Bogus(Exception):
+    pass
+
+
+class TestTransformRollback(tests.TestCaseWithTransport):
+
+    class ExceptionFileMover(_FileMover):
+
+        def __init__(self, bad_source=None, bad_target=None):
+            _FileMover.__init__(self)
+            self.bad_source = bad_source
+            self.bad_target = bad_target
+
+        def rename(self, source, target):
+            if (self.bad_source is not None and
+                source.endswith(self.bad_source)):
+                raise Bogus
+            elif (self.bad_target is not None and
+                target.endswith(self.bad_target)):
+                raise Bogus
+            else:
+                _FileMover.rename(self, source, target)
+
+    def test_rollback_rename(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a/', 'a/b'])
+        tt = TreeTransform(tree)
+        self.addCleanup(tt.finalize)
+        a_id = tt.trans_id_tree_path('a')
+        tt.adjust_path('c', tt.root, a_id)
+        tt.adjust_path('d', a_id, tt.trans_id_tree_path('a/b'))
+        self.assertRaises(Bogus, tt.apply,
+                          _mover=self.ExceptionFileMover(bad_source='a'))
+        self.failUnlessExists('a')
+        self.failUnlessExists('a/b')
+        tt.apply()
+        self.failUnlessExists('c')
+        self.failUnlessExists('c/d')
+
+    def test_rollback_rename_into_place(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a/', 'a/b'])
+        tt = TreeTransform(tree)
+        self.addCleanup(tt.finalize)
+        a_id = tt.trans_id_tree_path('a')
+        tt.adjust_path('c', tt.root, a_id)
+        tt.adjust_path('d', a_id, tt.trans_id_tree_path('a/b'))
+        self.assertRaises(Bogus, tt.apply,
+                          _mover=self.ExceptionFileMover(bad_target='c/d'))
+        self.failUnlessExists('a')
+        self.failUnlessExists('a/b')
+        tt.apply()
+        self.failUnlessExists('c')
+        self.failUnlessExists('c/d')
+
+    def test_rollback_deletion(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a/', 'a/b'])
+        tt = TreeTransform(tree)
+        self.addCleanup(tt.finalize)
+        a_id = tt.trans_id_tree_path('a')
+        tt.delete_contents(a_id)
+        tt.adjust_path('d', tt.root, tt.trans_id_tree_path('a/b'))
+        self.assertRaises(Bogus, tt.apply,
+                          _mover=self.ExceptionFileMover(bad_target='d'))
+        self.failUnlessExists('a')
+        self.failUnlessExists('a/b')

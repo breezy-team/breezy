@@ -24,9 +24,18 @@ class TestCheckout(TestCaseWithConnectionHookedTransport):
     def test_checkout(self):
         self.make_branch_and_tree('branch1')
 
-        self.install_hooks()
+        self.start_logging_connections()
 
         cmd = cmd_checkout()
         cmd.run(self.get_url('branch1'), 'local')
+        self.assertEquals(1, len(self.connections))
+
+    def test_checkout_lightweight(self):
+        self.make_branch_and_tree('branch1')
+
+        self.start_logging_connections()
+
+        cmd = cmd_checkout()
+        cmd.run(self.get_url('branch1'), 'local', lightweight=True)
         self.assertEquals(1, len(self.connections))
 

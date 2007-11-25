@@ -72,7 +72,7 @@ class RepoFetcher(object):
     after running:
     count_copied -- number of revisions copied
 
-    This should not be used directory, its essential a object to encapsulate
+    This should not be used directly, it's essential a object to encapsulate
     the logic in InterRepository.fetch().
     """
     def __init__(self, to_repository, from_repository, last_revision=None, pb=None):
@@ -80,11 +80,10 @@ class RepoFetcher(object):
         self.failed_revisions = []
         self.count_copied = 0
         if to_repository.has_same_location(from_repository):
-            # check that last_revision is in 'from' and then return a
-            # no-operation.
-            if last_revision is not None and not is_null(last_revision):
-                to_repository.get_revision(last_revision)
-            return
+            # repository.fetch should be taking care of this case.
+            raise errors.BzrError('RepoFetcher run '
+                    'between two objects at the same location: '
+                    '%r and %r' % (to_repository, from_repository))
         self.to_repository = to_repository
         self.from_repository = from_repository
         # must not mutate self._last_revision as its potentially a shared instance
@@ -121,23 +120,21 @@ class RepoFetcher(object):
         requested revisions, finally clearing the progress bar.
         """
         self.to_weaves = self.to_repository.weave_store
-        self.to_control = self.to_repository.control_weaves
         self.from_weaves = self.from_repository.weave_store
-        self.from_control = self.from_repository.control_weaves
         self.count_total = 0
         self.file_ids_names = {}
-        pp = ProgressPhase('Fetch phase', 4, self.pb)
+        pp = ProgressPhase('Transferring', 4, self.pb)
         try:
             pp.next_phase()
             revs = self._revids_to_fetch()
+            if revs is None:
+                return
             self._fetch_everything_for_revisions(revs, pp)
         finally:
             self.pb.clear()
 
     def _fetch_everything_for_revisions(self, revs, pp):
         """Fetch all data for the given set of revisions."""
-        if revs is None:
-            return
         # The first phase is "file".  We pass the progress bar for it directly
         # into item_keys_introduced_by, which has more information about how
         # that phase is progressing than we do.  Progress updates for the other
@@ -196,6 +193,8 @@ class RepoFetcher(object):
             return None
             
         try:
+            # XXX: this gets the full graph on both sides, and will make sure
+            # that ghosts are filled whether or not you care about them.
             return self.to_repository.missing_revision_ids(self.from_repository,
                                                            self._last_revision)
         except errors.NoSuchRevision:
@@ -221,9 +220,7 @@ class RepoFetcher(object):
 
     def _fetch_inventory_weave(self, revs, pb):
         pb.update("fetch inventory", 0, 2)
-        to_weave = self.to_control.get_weave('inventory',
-                self.to_repository.get_transaction())
-
+        to_weave = self.to_repository.get_inventory_weave()
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             # just merge, this is optimisable and its means we don't
@@ -249,7 +246,7 @@ class RepoFetcher(object):
         after fetching weave texts.
         """
         pass
-        
+
 
 class GenericRepoFetcher(RepoFetcher):
     """This is a generic repo to repo fetcher.
@@ -350,12 +347,12 @@ class Inter1and2Helper(object):
         to_store = self.target.weave_store
         for tree in self.iter_rev_trees(revs):
             revision_id = tree.inventory.root.revision
-            root_id = tree.inventory.root.file_id
+            root_id = tree.get_root_id()
             parents = inventory_weave.get_parents(revision_id)
             if root_id not in versionedfile:
                 versionedfile[root_id] = to_store.get_weave_or_empty(root_id, 
                     self.target.get_transaction())
-            parent_texts[root_id] = versionedfile[root_id].add_lines(
+            _, _, parent_texts[root_id] = versionedfile[root_id].add_lines(
                 revision_id, parents, [], parent_texts)
 
     def regenerate_inventory(self, revs):
@@ -402,3 +399,12 @@ class Knit1to2Fetcher(KnitRepoFetcher):
 
     def _fetch_inventory_weave(self, revs, pb):
         self.helper.regenerate_inventory(revs)
+
+
+class RemoteToOtherFetcher(GenericRepoFetcher):
+
+    def _fetch_everything_for_revisions(self, revs, pp):
+        data_stream = self.from_repository.get_data_stream(revs)
+        self.to_repository.insert_data_stream(data_stream)
+
+

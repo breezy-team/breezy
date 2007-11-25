@@ -24,8 +24,10 @@ from bzrlib import (
 from bzrlib.tag import (
     BasicTags,
     _merge_tags_if_possible,
+    DisabledTags,
     )
 from bzrlib.tests import (
+    KnownFailure,
     TestCase,
     TestCaseWithTransport,
     )
@@ -78,3 +80,92 @@ class TestTagMerging(TestCaseWithTransport):
         old_branch.tags.merge_to(new_branch.tags)
         self.assertRaises(errors.TagsNotSupported,
             new_branch.tags.merge_to, old_branch.tags)
+
+    def test_merge_to(self):
+        a = self.make_branch_supporting_tags('a')
+        b = self.make_branch_supporting_tags('b')
+        # simple merge
+        a.tags.set_tag('tag-1', 'x')
+        b.tags.set_tag('tag-2', 'y')
+        a.tags.merge_to(b.tags)
+        self.assertEqual('x', b.tags.lookup_tag('tag-1'))
+        self.assertEqual('y', b.tags.lookup_tag('tag-2'))
+        self.assertRaises(errors.NoSuchTag, a.tags.lookup_tag, 'tag-2')
+        # conflicting merge
+        a.tags.set_tag('tag-2', 'z')
+        conflicts = a.tags.merge_to(b.tags)
+        self.assertEqual(conflicts, [('tag-2', 'z', 'y')])
+        self.assertEqual('y', b.tags.lookup_tag('tag-2'))
+        # overwrite conflicts
+        conflicts = a.tags.merge_to(b.tags, overwrite=True)
+        self.assertEqual(conflicts, [])
+        self.assertEqual('z', b.tags.lookup_tag('tag-2'))
+
+
+class TestTagsInCheckouts(TestCaseWithTransport):
+
+    def test_update_tag_into_checkout(self):
+        # checkouts are directly connected to the tags of their master branch:
+        # adding a tag in the checkout pushes it to the master
+        # https://bugs.launchpad.net/bzr/+bug/93860
+        master = self.make_branch('master')
+        child = self.make_branch('child')
+        child.bind(master)
+        child.tags.set_tag('foo', 'rev-1')
+        self.assertEquals('rev-1', master.tags.lookup_tag('foo'))
+        # deleting a tag updates the master too
+        child.tags.delete_tag('foo')
+        self.assertRaises(errors.NoSuchTag,
+            master.tags.lookup_tag, 'foo')
+    
+    def test_tag_copied_by_initial_checkout(self):
+        # https://bugs.launchpad.net/bzr/+bug/93860
+        master = self.make_branch('master')
+        master.tags.set_tag('foo', 'rev-1')
+        co_tree = master.create_checkout('checkout')
+        self.assertEquals('rev-1',
+            co_tree.branch.tags.lookup_tag('foo'))
+
+    def test_update_updates_tags(self):
+        # https://bugs.launchpad.net/bzr/+bug/93856
+        master = self.make_branch('master')
+        master.tags.set_tag('foo', 'rev-1')
+        child = self.make_branch('child')
+        child.bind(master)
+        child.update()
+        # after an update, the child has all the master's tags
+        self.assertEquals('rev-1', child.tags.lookup_tag('foo'))
+        # add another tag and update again
+        master.tags.set_tag('tag2', 'target2')
+        child.update()
+        self.assertEquals('target2', child.tags.lookup_tag('tag2'))
+
+    def test_tag_deletion_from_master_to_bound(self):
+        master = self.make_branch('master')
+        master.tags.set_tag('foo', 'rev-1')
+        child = self.make_branch('child')
+        child.bind(master)
+        child.update()
+        # and deletion of tags should also propagate
+        master.tags.delete_tag('foo')
+        raise KnownFailure("tag deletion does not propagate: "
+            "https://bugs.launchpad.net/bzr/+bug/138802")
+        self.assertRaises(errors.NoSuchTag,
+            child.tags.lookup_tag, 'foo')
+
+
+class DisabledTagsTests(TestCaseWithTransport):
+
+    def setUp(self):
+        super(DisabledTagsTests, self).setUp()
+        branch = self.make_branch('.')
+        self.tags = DisabledTags(branch)
+
+    def test_supports_tags(self):
+        self.assertEqual(self.tags.supports_tags(), False)
+
+    def test_set_tag(self):
+        self.assertRaises(errors.TagsNotSupported, self.tags.set_tag)
+
+    def test_get_reverse_tag_dict(self):
+        self.assertEqual(self.tags.get_reverse_tag_dict(), {})

@@ -23,23 +23,25 @@ import os
 import bzrlib
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests import TestCaseInTempDir, TestCaseWithTransport
+from bzrlib.tests.test_log import (
+    normalize_log,
+    )
 
 
 class TestLog(ExternalBase):
 
-    def _prepare(self, format=None):
-        if format:
-            self.run_bzr(["init", "--format="+format])
-        else:
-            self.run_bzr("init")
-        self.build_tree(['hello.txt', 'goodbye.txt', 'meep.txt'])
-        self.run_bzr("add hello.txt")
-        self.run_bzr("commit -m message1 hello.txt")
-        self.run_bzr("add goodbye.txt")
-        self.run_bzr("commit -m message2 goodbye.txt")
-        self.run_bzr("add meep.txt")
-        self.run_bzr("commit -m message3 meep.txt")
-        self.full_log = self.run_bzr("log")[0]
+    def _prepare(self, path='.', format=None):
+        tree = self.make_branch_and_tree(path, format=format)
+        self.build_tree(
+            [path + '/hello.txt', path + '/goodbye.txt', path + '/meep.txt'])
+        tree.add('hello.txt')
+        tree.commit(message='message1')
+        tree.add('goodbye.txt')
+        tree.commit(message='message2')
+        tree.add('meep.txt')
+        tree.commit(message='message3')
+        self.full_log = self.run_bzr(["log", path])[0]
+        return tree
 
     def test_log_null_end_revspec(self):
         self._prepare()
@@ -61,8 +63,22 @@ class TestLog(ExternalBase):
     def test_log_null_both_revspecs(self):
         self._prepare()
         log = self.run_bzr("log -r ..")[0]
-        self.assertEquals(self.full_log, log)
         self.assertEqualDiff(self.full_log, log)
+
+    def test_log_zero_revspec(self):
+        self._prepare()
+        self.run_bzr_error('bzr: ERROR: Logging revision 0 is invalid.',
+                           ['log', '-r0'])
+
+    def test_log_zero_begin_revspec(self):
+        self._prepare()
+        self.run_bzr_error('bzr: ERROR: Logging revision 0 is invalid.',
+                           ['log', '-r0..2'])
+
+    def test_log_zero_end_revspec(self):
+        self._prepare()
+        self.run_bzr_error('bzr: ERROR: Logging revision 0 is invalid.',
+                           ['log', '-r-2..0'])
 
     def test_log_negative_begin_revspec_full_log(self):
         self._prepare()
@@ -88,7 +104,7 @@ class TestLog(ExternalBase):
         self.assertTrue('revno: 2\n' in log)
         self.assertTrue('revno: 3\n' in log)
 
-    def test_log_postive_revspecs(self):
+    def test_log_positive_revspecs(self):
         self._prepare()
         log = self.run_bzr("log -r 1..3")[0]
         self.assertEqualDiff(self.full_log, log)
@@ -100,14 +116,8 @@ class TestLog(ExternalBase):
                            ['log', '-r3..1'])
 
     def test_log_revno_n_path(self):
-        os.mkdir('branch1')
-        os.chdir('branch1')
-        self._prepare()
-        os.chdir('..')
-        os.mkdir('branch2')
-        os.chdir('branch2')
-        self._prepare()
-        os.chdir('..')
+        self._prepare(path='branch1')
+        self._prepare(path='branch2')
         log = self.run_bzr("log -r revno:2:branch1..revno:3:branch2",
                           retcode=3)[0]
         log = self.run_bzr("log -r revno:1:branch2..revno:3:branch2")[0]
@@ -127,10 +137,11 @@ class TestLog(ExternalBase):
             err, 'Path does not have any revision history: does-not-exist')
 
     def test_log_with_tags(self):
-        self._prepare(format='dirstate-tags')
-        self.run_bzr('tag -r1 tag1')
-        self.run_bzr('tag -r1 tag1.1')
-        self.run_bzr('tag tag3')
+        tree = self._prepare(format='dirstate-tags')
+        branch = tree.branch
+        branch.tags.set_tag('tag1', branch.get_rev_id(1))
+        branch.tags.set_tag('tag1.1', branch.get_rev_id(1))
+        branch.tags.set_tag('tag3', branch.last_revision()) 
         
         log = self.run_bzr("log -r-1")[0]
         self.assertTrue('tags: tag3' in log)
@@ -141,17 +152,14 @@ class TestLog(ExternalBase):
         self.assertContainsRe(log, r'tags: (tag1, tag1\.1|tag1\.1, tag1)')
 
     def test_merged_log_with_tags(self):
-        os.mkdir('branch1')
-        os.chdir('branch1')
-        self._prepare(format='dirstate-tags')
-        os.chdir('..')
-        self.run_bzr('branch branch1 branch2')
-        os.chdir('branch1')
-        self.run_bzr('commit -m foobar --unchanged')
-        self.run_bzr('tag tag1')
-        os.chdir('../branch2')
-        self.run_bzr('merge ../branch1')
-        self.run_bzr(['commit', '-m', 'merge branch 1'])
+        branch1_tree = self._prepare(path='branch1', format='dirstate-tags')
+        branch1 = branch1_tree.branch
+        branch2_tree = branch1_tree.bzrdir.sprout('branch2').open_workingtree()
+        branch1_tree.commit(message='foobar', allow_pointless=True)
+        branch1.tags.set_tag('tag1', branch1.last_revision())
+        os.chdir('branch2')
+        self.run_bzr('merge ../branch1') # tags don't propagate otherwise
+        branch2_tree.commit(message='merge branch 1')
         log = self.run_bzr("log -r-1")[0]
         self.assertContainsRe(log, r'    tags: tag1')
         log = self.run_bzr("log -r3.1.1")[0]
@@ -167,153 +175,122 @@ class TestLog(ExternalBase):
 class TestLogMerges(ExternalBase):
 
     def _prepare(self):
-        self.build_tree(['parent/'])
-        self.run_bzr('init parent')
-        self.run_bzr(['commit', '-m', 'first post', '--unchanged', 'parent'])
-        self.run_bzr('branch parent child')
-        self.run_bzr(['commit', '-m', 'branch 1', '--unchanged', 'child'])
-        self.run_bzr('branch child smallerchild')
-        self.run_bzr(['commit', '-m', 'branch 2', '--unchanged',
-                      'smallerchild'])
-        os.chdir('child')
-        self.run_bzr('merge ../smallerchild')
-        self.run_bzr(['commit', '-m', 'merge branch 2'])
-        os.chdir('../parent')
-        self.run_bzr('merge ../child')
-        self.run_bzr(['commit', '-m', 'merge branch 1'])
+        parent_tree = self.make_branch_and_tree('parent')
+        parent_tree.commit(message='first post', allow_pointless=True)
+        child_tree = parent_tree.bzrdir.sprout('child').open_workingtree()
+        child_tree.commit(message='branch 1', allow_pointless=True)
+        smaller_tree = \
+                child_tree.bzrdir.sprout('smallerchild').open_workingtree()
+        smaller_tree.commit(message='branch 2', allow_pointless=True)
+        child_tree.merge_from_branch(smaller_tree.branch)
+        child_tree.commit(message='merge branch 2')
+        parent_tree.merge_from_branch(child_tree.branch)
+        parent_tree.commit(message='merge branch 1')
+        os.chdir('parent')
 
     def test_merges_are_indented_by_level(self):
         self._prepare()
         out,err = self.run_bzr('log')
-        # the log will look something like:
-#        self.assertEqual("""\
-#------------------------------------------------------------
-#revno: 2
-#committer: Robert Collins <foo@example.com>
-#branch nick: parent
-#timestamp: Tue 2006-03-28 22:31:40 +1100
-#message:
-#  merge branch 1
-#    ------------------------------------------------------------
-#    revno: 1.1.2  
-#    committer: Robert Collins <foo@example.com>
-#    branch nick: child
-#    timestamp: Tue 2006-03-28 22:31:40 +1100
-#    message:
-#      merge branch 2
-#        ------------------------------------------------------------
-#        revno: 1.1.1.1
-#        committer: Robert Collins <foo@example.com>
-#        branch nick: smallerchild
-#        timestamp: Tue 2006-03-28 22:31:40 +1100
-#        message:
-#          branch 2
-#    ------------------------------------------------------------
-#    revno: 1.1.1
-#    committer: Robert Collins <foo@example.com>
-#    branch nick: child
-#    timestamp: Tue 2006-03-28 22:31:40 +1100
-#    message:
-#      branch 1
-#------------------------------------------------------------
-#revno: 1
-#committer: Robert Collins <foo@example.com>
-#branch nick: parent
-#timestamp: Tue 2006-03-28 22:31:39 +1100
-#message:
-#  first post
-#""", out)
-        # but we dont have a nice pattern matcher hooked up yet, so:
-        # we check for the indenting of the commit message and the 
-        # revision numbers 
-        self.assertTrue('revno: 2' in out)
-        self.assertTrue('  merge branch 1' in out)
-        self.assertTrue('    revno: 1.1.2' in out)
-        self.assertTrue('      merge branch 2' in out)
-        self.assertTrue('        revno: 1.1.1.1' in out)
-        self.assertTrue('          branch 2' in out)
-        self.assertTrue('    revno: 1.1.1' in out)
-        self.assertTrue('      branch 1' in out)
-        self.assertTrue('revno: 1\n' in out)
-        self.assertTrue('  first post' in out)
         self.assertEqual('', err)
+        log = normalize_log(out)
+        self.assertEqualDiff(log, """\
+------------------------------------------------------------
+revno: 2
+committer: Lorem Ipsum <test@example.com>
+branch nick: parent
+timestamp: Just now
+message:
+  merge branch 1
+    ------------------------------------------------------------
+    revno: 1.1.2
+    committer: Lorem Ipsum <test@example.com>
+    branch nick: child
+    timestamp: Just now
+    message:
+      merge branch 2
+        ------------------------------------------------------------
+        revno: 1.1.1.1.1
+        committer: Lorem Ipsum <test@example.com>
+        branch nick: smallerchild
+        timestamp: Just now
+        message:
+          branch 2
+    ------------------------------------------------------------
+    revno: 1.1.1
+    committer: Lorem Ipsum <test@example.com>
+    branch nick: child
+    timestamp: Just now
+    message:
+      branch 1
+------------------------------------------------------------
+revno: 1
+committer: Lorem Ipsum <test@example.com>
+branch nick: parent
+timestamp: Just now
+message:
+  first post
+""")
 
     def test_merges_single_merge_rev(self):
         self._prepare()
         out,err = self.run_bzr('log -r1.1.2')
-        # the log will look something like:
-#        self.assertEqual("""\
-#------------------------------------------------------------
-#revno: 1.1.2  
-#committer: Robert Collins <foo@example.com>
-#branch nick: child
-#timestamp: Tue 2006-03-28 22:31:40 +1100
-#message:
-#  merge branch 2
-#    ------------------------------------------------------------
-#    revno: 1.1.1.1
-#    committer: Robert Collins <foo@example.com>
-#    branch nick: smallerchild
-#    timestamp: Tue 2006-03-28 22:31:40 +1100
-#    message:
-#      branch 2
-#""", out)
-        # but we dont have a nice pattern matcher hooked up yet, so:
-        # we check for the indenting of the commit message and the 
-        # revision numbers 
-        self.assertTrue('revno: 2' not in out)
-        self.assertTrue('  merge branch 1' not in out)
-        self.assertTrue('revno: 1.1.2' in out)
-        self.assertTrue('  merge branch 2' in out)
-        self.assertTrue('    revno: 1.1.1.1' in out)
-        self.assertTrue('      branch 2' in out)
-        self.assertTrue('revno: 1.1.1\n' not in out)
-        self.assertTrue('  branch 1' not in out)
-        self.assertTrue('revno: 1\n' not in out)
-        self.assertTrue('  first post' not in out)
         self.assertEqual('', err)
+        log = normalize_log(out)
+        self.assertEqualDiff(log, """\
+------------------------------------------------------------
+revno: 1.1.2
+committer: Lorem Ipsum <test@example.com>
+branch nick: child
+timestamp: Just now
+message:
+  merge branch 2
+    ------------------------------------------------------------
+    revno: 1.1.1.1.1
+    committer: Lorem Ipsum <test@example.com>
+    branch nick: smallerchild
+    timestamp: Just now
+    message:
+      branch 2
+""")
 
     def test_merges_partial_range(self):
         self._prepare()
         out,err = self.run_bzr('log -r1.1.1..1.1.2')
-        # the log will look something like:
-#        self.assertEqual("""\
-#------------------------------------------------------------
-#revno: 1.1.2  
-#committer: Robert Collins <foo@example.com>
-#branch nick: child
-#timestamp: Tue 2006-03-28 22:31:40 +1100
-#message:
-#  merge branch 2
-#    ------------------------------------------------------------
-#    revno: 1.1.1.1
-#    committer: Robert Collins <foo@example.com>
-#    branch nick: smallerchild
-#    timestamp: Tue 2006-03-28 22:31:40 +1100
-#    message:
-#      branch 2
-#------------------------------------------------------------
-#revno: 1.1.1
-#committer: Robert Collins <foo@example.com>
-#branch nick: child
-#timestamp: Tue 2006-03-28 22:31:40 +1100
-#message:
-#  branch 1
-#""", out)
-        # but we dont have a nice pattern matcher hooked up yet, so:
-        # we check for the indenting of the commit message and the 
-        # revision numbers 
-        self.assertTrue('revno: 2' not in out)
-        self.assertTrue('  merge branch 1' not in out)
-        self.assertTrue('revno: 1.1.2' in out)
-        self.assertTrue('  merge branch 2' in out)
-        self.assertTrue('    revno: 1.1.1.1' in out)
-        self.assertTrue('      branch 2' in out)
-        self.assertTrue('revno: 1.1.1' in out)
-        self.assertTrue('  branch 1' in out)
-        self.assertTrue('revno: 1\n' not in out)
-        self.assertTrue('  first post' not in out)
         self.assertEqual('', err)
+        log = normalize_log(out)
+        self.assertEqualDiff(log, """\
+------------------------------------------------------------
+revno: 1.1.2
+committer: Lorem Ipsum <test@example.com>
+branch nick: child
+timestamp: Just now
+message:
+  merge branch 2
+    ------------------------------------------------------------
+    revno: 1.1.1.1.1
+    committer: Lorem Ipsum <test@example.com>
+    branch nick: smallerchild
+    timestamp: Just now
+    message:
+      branch 2
+------------------------------------------------------------
+revno: 1.1.1
+committer: Lorem Ipsum <test@example.com>
+branch nick: child
+timestamp: Just now
+message:
+  branch 1
+""")
+
+    def test_merges_nonsupporting_formatter(self):
+        self._prepare()
+        err_msg = 'Selected log formatter only supports mainline revisions.'
+        out,err = self.run_bzr('log --short -r1.1.2', retcode=3)
+        self.assertContainsRe(err, err_msg)
+        out,err = self.run_bzr('log --short -r1..1.1.2', retcode=3)
+        self.assertContainsRe(err, err_msg)
+        out,err = self.run_bzr('log --short -r1.1.1..1.1.2', retcode=3)
+        self.assertContainsRe(err, err_msg)
 
  
 class TestLogEncodings(TestCaseInTempDir):
@@ -438,12 +415,12 @@ class TestLogFile(TestCaseWithTransport):
         tree.commit('add file2')
         tree.add('file3')
         tree.commit('add file3')
-        self.run_bzr('branch parent child')
-        print >> file('child/file2', 'wb'), 'hello'
-        self.run_bzr(['commit', '-m', 'branch 1', 'child'])
+        child_tree = tree.bzrdir.sprout('child').open_workingtree()
+        self.build_tree_contents([('child/file2', 'hello')])
+        child_tree.commit(message='branch 1')
+        tree.merge_from_branch(child_tree.branch)
+        tree.commit(message='merge child branch')
         os.chdir('parent')
-        self.run_bzr('merge ../child')
-        self.run_bzr(['commit', '-m', 'merge child branch'])
         log = self.run_bzr('log file1')[0]
         self.assertContainsRe(log, 'revno: 1\n')
         self.assertNotContainsRe(log, 'revno: 2\n')

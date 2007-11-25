@@ -36,6 +36,8 @@ from bzrlib.errors import (
     )
 from bzrlib.trace import mutter
 from bzrlib.transport import (
+    AppendBasedFileStream,
+    _file_streams,
     LateReadError,
     register_transport,
     Server,
@@ -156,6 +158,7 @@ class MemoryTransport(Transport):
                 'undefined', bytes, 0, 1,
                 'put_file must be given a file of bytes, not unicode.')
         self._files[_abspath] = (bytes, mode)
+        return len(bytes)
 
     def mkdir(self, relpath, mode=None):
         """See Transport.mkdir()."""
@@ -164,6 +167,13 @@ class MemoryTransport(Transport):
         if _abspath in self._dirs:
             raise FileExists(relpath)
         self._dirs[_abspath]=mode
+
+    def open_write_stream(self, relpath, mode=None):
+        """See Transport.open_write_stream."""
+        self.put_bytes(relpath, "", mode)
+        result = AppendBasedFileStream(self, relpath)
+        _file_streams[self.abspath(relpath)] = result
+        return result
 
     def listable(self):
         """See Transport.listable."""
@@ -251,21 +261,24 @@ class MemoryTransport(Transport):
     def _abspath(self, relpath):
         """Generate an internal absolute path."""
         relpath = urlutils.unescape(relpath)
-        if relpath.find('..') != -1:
-            raise AssertionError('relpath contains ..')
         if relpath == '':
             return '/'
         if relpath[0] == '/':
             return relpath
-        if relpath == '.':
-            if (self._cwd == '/'):
-                return self._cwd
-            return self._cwd[:-1]
-        if relpath.endswith('/'):
-            relpath = relpath[:-1]
-        if relpath.startswith('./'):
-            relpath = relpath[2:]
-        return self._cwd + relpath
+        cwd_parts = self._cwd.split('/')
+        rel_parts = relpath.split('/')
+        r = []
+        for i in cwd_parts + rel_parts:
+            if i == '..':
+                if not r:
+                    raise ValueError("illegal relpath %r under %r"
+                        % (relpath, self._cwd))
+                r = r[:-1]
+            elif i == '.' or i == '':
+                pass
+            else:
+                r.append(i)
+        return '/' + '/'.join(r)
 
 
 class _MemoryLock(object):

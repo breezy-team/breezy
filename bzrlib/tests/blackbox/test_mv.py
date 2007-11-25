@@ -24,8 +24,8 @@ from bzrlib import (
     )
 
 from bzrlib.tests import (
+    SymlinkFeature,
     TestCaseWithTransport,
-    TestSkipped,
     )
 
 
@@ -65,13 +65,13 @@ class TestMove(TestCaseWithTransport):
         self.build_tree(['unversioned.txt'])
         self.run_bzr_error(
             ["^bzr: ERROR: Could not rename unversioned.txt => elsewhere."
-             " .*unversioned.txt is not versioned$"],
+             " .*unversioned.txt is not versioned\.$"],
             'mv unversioned.txt elsewhere')
 
     def test_mv_nonexisting(self):
         self.run_bzr_error(
             ["^bzr: ERROR: Could not rename doesnotexist => somewhereelse."
-             " .*doesnotexist is not versioned$"],
+             " .*doesnotexist is not versioned\.$"],
             'mv doesnotexist somewhereelse')
 
     def test_mv_unqualified(self):
@@ -83,12 +83,12 @@ class TestMove(TestCaseWithTransport):
         tree.add(['test.txt'])
 
         self.run_bzr_error(
-            ["^bzr: ERROR: Could not move to sub1: sub1 is not versioned$"],
+            ["^bzr: ERROR: Could not move to sub1: sub1 is not versioned\.$"],
             'mv test.txt sub1')
 
         self.run_bzr_error(
             ["^bzr: ERROR: Could not move test.txt => .*hello.txt: "
-             "sub1 is not versioned$"],
+             "sub1 is not versioned\.$"],
             'mv test.txt sub1/hello.txt')
         
     def test_mv_dirs(self):
@@ -124,6 +124,19 @@ class TestMove(TestCaseWithTransport):
         os.chdir('..')
         self.assertMoved('sub1/sub2/hello.txt','sub1/hello.txt')
 
+    def test_mv_change_case(self):
+        # test for bug #77740 (mv unable change filename case on Windows)
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['test.txt'])
+        tree.add(['test.txt'])
+        self.run_bzr('mv test.txt Test.txt')
+        # we can't use failUnlessExists on case-insensitive filesystem
+        # so try to check shape of the tree
+        shape = sorted(os.listdir(u'.'))
+        self.assertEqual(['.bzr', 'Test.txt'], shape)
+        self.assertInWorkingTree('Test.txt')
+        self.assertNotInWorkingTree('test.txt')
+
     def test_mv_smoke_aliases(self):
         # just test that aliases for mv exist, if their behaviour is changed in
         # the future, then extend the tests.
@@ -135,8 +148,7 @@ class TestMove(TestCaseWithTransport):
         self.run_bzr('rename b a')
 
     def test_mv_through_symlinks(self):
-        if not osutils.has_symlinks():
-            raise TestSkipped('Symlinks are not supported on this platform')
+        self.requireFeature(SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'a/b'])
         os.symlink('a', 'c')
@@ -177,7 +189,7 @@ class TestMove(TestCaseWithTransport):
         os.remove('b')
         osutils.rename('a', 'b')
         self.run_bzr_error(
-            ["^bzr: ERROR: Could not move a => b. b is already versioned$"],
+            ["^bzr: ERROR: Could not move a => b. b is already versioned\.$"],
             'mv a b')
         #check that nothing changed
         self.failIfExists('a')
@@ -213,7 +225,7 @@ class TestMove(TestCaseWithTransport):
 
         osutils.rename('a', 'sub/a')
         self.run_bzr_error(
-            ["^bzr: ERROR: Could not move a => a: sub is not versioned$"],
+            ["^bzr: ERROR: Could not move a => a: sub is not versioned\.$"],
             'mv a sub/a')
         self.failIfExists('a')
         self.failUnlessExists('sub/a')
@@ -249,7 +261,7 @@ class TestMove(TestCaseWithTransport):
 
         osutils.rename('a1', 'sub/a1')
         self.run_bzr_error(
-            ["^bzr: ERROR: Could not move to sub. sub is not versioned$"],
+            ["^bzr: ERROR: Could not move to sub. sub is not versioned\.$"],
             'mv a1 a2 sub')
         self.failIfExists('a1')
         self.failUnlessExists('sub/a1')
@@ -273,7 +285,8 @@ class TestMove(TestCaseWithTransport):
         self.build_tree(['a']) #touch a
         self.run_bzr_error(
             ["^bzr: ERROR: Could not rename a => b because both files exist."
-             " \(Use --after to update the Bazaar id\)$"],
+             " \(Use --after to tell bzr about a rename that has already"
+             " happened\)$"],
             'mv a b')
         self.failUnlessExists('a')
         self.failUnlessExists('b')
@@ -321,8 +334,9 @@ class TestMove(TestCaseWithTransport):
         self.build_tree(['a2']) #touch a2
 
         self.run_bzr_error(
-            ["^bzr: ERROR: Could not rename a1 => sub/a1 because both files exist."
-             " \(Use --after to update the Bazaar id\)$"],
+            ["^bzr: ERROR: Could not rename a1 => sub/a1 because both files"
+             " exist. \(Use --after to tell bzr about a rename that has already"
+             " happened\)$"],
             'mv a1 a2 sub')
         self.failUnlessExists('a1')
         self.failUnlessExists('a2')

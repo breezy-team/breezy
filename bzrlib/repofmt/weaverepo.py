@@ -14,21 +14,29 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+"""Deprecated weave-based repository formats.
 
-"""Old weave-based repository formats"""
+Weave based formats scaled linearly with history size and could not represent
+ghosts.
+"""
 
 from StringIO import StringIO
 
 from bzrlib import (
     bzrdir,
+    debug,
+    errors,
     lockable_files,
     lockdir,
+    osutils,
+    revision as _mod_revision,
     weave,
     weavefile,
     xml5,
     )
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repository import (
+    CommitBuilder,
     MetaDirRepository,
     MetaDirRepositoryFormat,
     Repository,
@@ -69,12 +77,104 @@ class AllInOneRepository(Repository):
             text_store = get_store('text-store')
         super(AllInOneRepository, self).__init__(_format, a_bzrdir, a_bzrdir._control_files, _revision_store, control_store, text_store)
 
+    @needs_read_lock
+    def _all_possible_ids(self):
+        """Return all the possible revisions that we could find."""
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(3, "_all_possible_ids scales with size of history.")
+        return self.get_inventory_weave().versions()
+
+    @needs_read_lock
+    def _all_revision_ids(self):
+        """Returns a list of all the revision ids in the repository. 
+
+        These are in as much topological order as the underlying store can 
+        present: for weaves ghosts may lead to a lack of correctness until
+        the reweave updates the parents list.
+        """
+        if self._revision_store.text_store.listable():
+            return self._revision_store.all_revision_ids(self.get_transaction())
+        result = self._all_possible_ids()
+        # TODO: jam 20070210 Ensure that _all_possible_ids returns non-unicode
+        #       ids. (It should, since _revision_store's API should change to
+        #       return utf8 revision_ids)
+        return self._eliminate_revisions_not_present(result)
+
+    def _check_revision_parents(self, revision, inventory):
+        """Private to Repository and Fetch.
+        
+        This checks the parentage of revision in an inventory weave for 
+        consistency and is only applicable to inventory-weave-for-ancestry
+        using repository formats & fetchers.
+        """
+        weave_parents = inventory.get_parents(revision.revision_id)
+        weave_names = inventory.versions()
+        for parent_id in revision.parent_ids:
+            if parent_id in weave_names:
+                # this parent must not be a ghost.
+                if not parent_id in weave_parents:
+                    # but it is a ghost
+                    raise errors.CorruptRepository(self)
+
     def get_commit_builder(self, branch, parents, config, timestamp=None,
                            timezone=None, committer=None, revprops=None,
                            revision_id=None):
         self._check_ascii_revisionid(revision_id, self.get_commit_builder)
-        return Repository.get_commit_builder(self, branch, parents, config,
-            timestamp, timezone, committer, revprops, revision_id)
+        result = WeaveCommitBuilder(self, parents, config, timestamp, timezone,
+                              committer, revprops, revision_id)
+        self.start_write_group()
+        return result
+
+    @needs_read_lock
+    def get_revisions(self, revision_ids):
+        revs = self._get_revisions(revision_ids)
+        # weave corruption can lead to absent revision markers that should be
+        # present.
+        # the following test is reasonably cheap (it needs a single weave read)
+        # and the weave is cached in read transactions. In write transactions
+        # it is not cached but typically we only read a small number of
+        # revisions. For knits when they are introduced we will probably want
+        # to ensure that caching write transactions are in use.
+        inv = self.get_inventory_weave()
+        for rev in revs:
+            self._check_revision_parents(rev, inv)
+        return revs
+
+    @needs_read_lock
+    def get_revision_graph(self, revision_id=None):
+        """Return a dictionary containing the revision graph.
+        
+        :param revision_id: The revision_id to get a graph from. If None, then
+        the entire revision graph is returned. This is a deprecated mode of
+        operation and will be removed in the future.
+        :return: a dictionary of revision_id->revision_parents_list.
+        """
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(2,
+                "get_revision_graph scales with size of history.")
+        # special case NULL_REVISION
+        if revision_id == _mod_revision.NULL_REVISION:
+            return {}
+        a_weave = self.get_inventory_weave()
+        all_revisions = self._eliminate_revisions_not_present(
+                                a_weave.versions())
+        entire_graph = dict([(node, tuple(a_weave.get_parents(node))) for 
+                             node in all_revisions])
+        if revision_id is None:
+            return entire_graph
+        elif revision_id not in entire_graph:
+            raise errors.NoSuchRevision(self, revision_id)
+        else:
+            # add what can be reached from revision_id
+            result = {}
+            pending = set([revision_id])
+            while len(pending) > 0:
+                node = pending.pop()
+                result[node] = entire_graph[node]
+                for revision_id in result[node]:
+                    if revision_id not in result:
+                        pending.add(revision_id)
+            return result
 
     @needs_read_lock
     def is_shared(self):
@@ -97,18 +197,121 @@ class AllInOneRepository(Repository):
         """Returns the policy for making working trees on new branches."""
         return True
 
+    def revision_graph_can_have_wrong_parents(self):
+        # XXX: This is an old format that we don't support full checking on, so
+        # just claim that checking for this inconsistency is not required.
+        return False
+
 
 class WeaveMetaDirRepository(MetaDirRepository):
     """A subclass of MetaDirRepository to set weave specific policy."""
 
     _serializer = xml5.serializer_v5
 
+    @needs_read_lock
+    def _all_possible_ids(self):
+        """Return all the possible revisions that we could find."""
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(3, "_all_possible_ids scales with size of history.")
+        return self.get_inventory_weave().versions()
+
+    @needs_read_lock
+    def _all_revision_ids(self):
+        """Returns a list of all the revision ids in the repository. 
+
+        These are in as much topological order as the underlying store can 
+        present: for weaves ghosts may lead to a lack of correctness until
+        the reweave updates the parents list.
+        """
+        if self._revision_store.text_store.listable():
+            return self._revision_store.all_revision_ids(self.get_transaction())
+        result = self._all_possible_ids()
+        # TODO: jam 20070210 Ensure that _all_possible_ids returns non-unicode
+        #       ids. (It should, since _revision_store's API should change to
+        #       return utf8 revision_ids)
+        return self._eliminate_revisions_not_present(result)
+
+    def _check_revision_parents(self, revision, inventory):
+        """Private to Repository and Fetch.
+        
+        This checks the parentage of revision in an inventory weave for 
+        consistency and is only applicable to inventory-weave-for-ancestry
+        using repository formats & fetchers.
+        """
+        weave_parents = inventory.get_parents(revision.revision_id)
+        weave_names = inventory.versions()
+        for parent_id in revision.parent_ids:
+            if parent_id in weave_names:
+                # this parent must not be a ghost.
+                if not parent_id in weave_parents:
+                    # but it is a ghost
+                    raise errors.CorruptRepository(self)
+
     def get_commit_builder(self, branch, parents, config, timestamp=None,
                            timezone=None, committer=None, revprops=None,
                            revision_id=None):
         self._check_ascii_revisionid(revision_id, self.get_commit_builder)
-        return MetaDirRepository.get_commit_builder(self, branch, parents,
-            config, timestamp, timezone, committer, revprops, revision_id)
+        result = WeaveCommitBuilder(self, parents, config, timestamp, timezone,
+                              committer, revprops, revision_id)
+        self.start_write_group()
+        return result
+
+    @needs_read_lock
+    def get_revision(self, revision_id):
+        """Return the Revision object for a named revision"""
+        # TODO: jam 20070210 get_revision_reconcile should do this for us
+        r = self.get_revision_reconcile(revision_id)
+        # weave corruption can lead to absent revision markers that should be
+        # present.
+        # the following test is reasonably cheap (it needs a single weave read)
+        # and the weave is cached in read transactions. In write transactions
+        # it is not cached but typically we only read a small number of
+        # revisions. For knits when they are introduced we will probably want
+        # to ensure that caching write transactions are in use.
+        inv = self.get_inventory_weave()
+        self._check_revision_parents(r, inv)
+        return r
+
+    @needs_read_lock
+    def get_revision_graph(self, revision_id=None):
+        """Return a dictionary containing the revision graph.
+        
+        :param revision_id: The revision_id to get a graph from. If None, then
+        the entire revision graph is returned. This is a deprecated mode of
+        operation and will be removed in the future.
+        :return: a dictionary of revision_id->revision_parents_list.
+        """
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(3,
+                "get_revision_graph scales with size of history.")
+        # special case NULL_REVISION
+        if revision_id == _mod_revision.NULL_REVISION:
+            return {}
+        a_weave = self.get_inventory_weave()
+        all_revisions = self._eliminate_revisions_not_present(
+                                a_weave.versions())
+        entire_graph = dict([(node, tuple(a_weave.get_parents(node))) for 
+                             node in all_revisions])
+        if revision_id is None:
+            return entire_graph
+        elif revision_id not in entire_graph:
+            raise errors.NoSuchRevision(self, revision_id)
+        else:
+            # add what can be reached from revision_id
+            result = {}
+            pending = set([revision_id])
+            while len(pending) > 0:
+                node = pending.pop()
+                result[node] = entire_graph[node]
+                for revision_id in result[node]:
+                    if revision_id not in result:
+                        pending.add(revision_id)
+            return result
+
+    def revision_graph_can_have_wrong_parents(self):
+        # XXX: This is an old format that we don't support full checking on, so
+        # just claim that checking for this inconsistency is not required.
+        return False
 
 
 class PreSplitOutRepositoryFormat(RepositoryFormat):
@@ -116,13 +319,10 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
 
     rich_root_data = False
     supports_tree_reference = False
+    supports_ghosts = False
 
     def initialize(self, a_bzrdir, shared=False, _internal=False):
-        """Create a weave repository.
-        
-        TODO: when creating split out bzr branch formats, move this to a common
-        base for Format5, Format6. or something like that.
-        """
+        """Create a weave repository."""
         if shared:
             raise errors.IncompatibleFormat(self, a_bzrdir._format)
 
@@ -303,7 +503,6 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
         """See RepositoryFormat._get_text_store()."""
         return self._get_versioned_file_store('weaves', transport, control_files)
 
-
 class RepositoryFormat7(MetaDirRepositoryFormat):
     """Bzr repository 7.
 
@@ -317,6 +516,7 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
     """
 
     _versionedfile_class = weave.WeaveFile
+    supports_ghosts = False
 
     def _get_control_store(self, repo_transport, control_files):
         """Return the control store for this repository."""
@@ -396,6 +596,19 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
             _revision_store=_revision_store,
             control_store=control_store,
             text_store=text_store)
+
+
+class WeaveCommitBuilder(CommitBuilder):
+    """A builder for weave based repos that don't support ghosts."""
+
+    def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
+        versionedfile = self.repository.weave_store.get_weave_or_empty(
+            file_id, self.repository.get_transaction())
+        result = versionedfile.add_lines(
+            self._new_revision_id, parents, new_lines,
+            nostore_sha=nostore_sha)[0:2]
+        versionedfile.clear_cache()
+        return result
 
 
 _legacy_formats = [RepositoryFormat4(),
