@@ -2175,6 +2175,11 @@ format_registry.register_lazy(
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatKnitPack3',
     )
+format_registry.register_lazy(
+    'Bazaar pack repository format 1 with rich root (needs bzr 1.0)\n',
+    'bzrlib.repofmt.pack_repo',
+    'RepositoryFormatKnitPack4',
+    )
 
 
 class InterRepository(InterObject):

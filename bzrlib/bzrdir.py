@@ -2527,4 +2527,16 @@ format_registry.register_metadir('knitpack-subtree-experimental',
     hidden=True,
     experimental=True,
     )
+format_registry.register_metadir('rich-root-pack',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack4',
+    help='New in 1.0: Pack-based format with data compatible with '
+        'rich-root format repositories. Interoperates with '
+        'bzr repositories before 0.92 but cannot be read by bzr < 1.0. '
+        'NOTE: This format is experimental. Before using it, please read '
+        'http://doc.bazaar-vcs.org/latest/developers/knitpack.html.',
+    branch_format='bzrlib.branch.BzrBranchFormat6',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    hidden=False,
+    experimental=True,
+    )
 format_registry.set_default('dirstate-tags')
