@@ -664,15 +664,15 @@ class TestDiffTree(TestCaseWithTransport):
         self.new_tree.add('newdir')
         self.new_tree.add('newdir/newfile', 'file-id')
 
-    def test_register_differ(self):
+    def test_register_diff(self):
         self.create_old_new()
-        old_differ_factories = DiffTree.differ_factories
-        DiffTree.differ_factories=old_differ_factories[:]
-        DiffTree.differ_factories.insert(0, DiffWasIs)
+        old_diff_factories = DiffTree.diff_factories
+        DiffTree.diff_factories=old_diff_factories[:]
+        DiffTree.diff_factories.insert(0, DiffWasIs)
         try:
             differ = DiffTree(self.old_tree, self.new_tree, StringIO())
         finally:
-            DiffTree.differ_factories = old_differ_factories
+            DiffTree.diff_factories = old_diff_factories
         differ.diff('file-id', 'olddir/oldfile', 'newdir/newfile')
         self.assertNotContainsRe(
             differ.to_file.getvalue(),
@@ -681,11 +681,10 @@ class TestDiffTree(TestCaseWithTransport):
         self.assertContainsRe(differ.to_file.getvalue(),
                               'was: old\nis: new\n')
 
-    def test_extra_differ(self):
+    def test_extra_factories(self):
         self.create_old_new()
-        was_is = DiffWasIs(self.old_tree, self.new_tree, StringIO())
-        differ = DiffTree(self.old_tree, self.new_tree, was_is.to_file,
-                            extra_differs = [was_is])
+        differ = DiffTree(self.old_tree, self.new_tree, StringIO(),
+                            extra_factories=[DiffWasIs])
         differ.diff('file-id', 'olddir/oldfile', 'newdir/newfile')
         self.assertNotContainsRe(
             differ.to_file.getvalue(),

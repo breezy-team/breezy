@@ -614,7 +614,7 @@ class DiffTree(object):
     given the opportunity to handle a given altered fileid. The list
     of DiffPath objects can be extended globally by appending to
     DiffTree.diff_factories, or for a specific diff operation by
-    supplying the extra_differ option to the appropriate method.
+    supplying the extra_factories option to the appropriate method.
     """
 
     # list of factories that can provide instances of DiffPath objects
@@ -622,7 +622,7 @@ class DiffTree(object):
     diff_factories = [DiffSymlink, DiffDirectory]
 
     def __init__(self, old_tree, new_tree, to_file, path_encoding='utf-8',
-                 text_differ=None, extra_differs=None):
+                 text_differ=None, extra_factories=None):
         """Constructor
 
         :param old_tree: Tree to show as old in the comparison
@@ -631,8 +631,8 @@ class DiffTree(object):
         :param path_encoding: Character encoding to write paths in
         :param text_differ: DiffPath-type object to use as a last resort for
             diffing text files.
-        :param extra_differs: DiffPaths to try before any other DiffPaths
-        """
+        :param extra_factories: Factories of DiffPaths to try before any other
+            DiffPaths"""
         if text_differ is None:
             text_differ = DiffText(old_tree, new_tree, to_file,
                                      path_encoding, '', '',  internal_diff)
@@ -640,8 +640,9 @@ class DiffTree(object):
         self.new_tree = new_tree
         self.to_file = to_file
         self.differs = []
-        if extra_differs is not None:
-            self.differs.extend(extra_differs)
+        if extra_factories is not None:
+            self.differs.extend(f(old_tree, new_tree, to_file, path_encoding)
+                                for f in extra_factories)
         for differ in self.diff_factories:
             self.differs.append(differ(old_tree, new_tree, to_file,
                                        path_encoding))
