@@ -97,6 +97,8 @@ class TestBranch(TestCaseWithBranch):
 
         rev = b2.repository.get_revision('revision-1')
         tree = b2.repository.revision_tree('revision-1')
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
         self.assertEqual(tree.get_file_text('foo-id'), 'hello')
 
     def test_get_revision_delta(self):
