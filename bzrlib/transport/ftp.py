@@ -144,9 +144,9 @@ class FtpTransport(ConnectedTransport):
             connection.login(user=user, passwd=password)
             connection.set_pasv(not self.is_active)
         except socket.error, e:
-            raise errors.ConnectionError(
-                'failed to connect to %s:%d' % (self._host, self._port),
-                orig_error= e)
+            raise errors.SocketConnectionError(self._host, self._port,
+                                               msg='Unable to connect to',
+                                               orig_error= e)
         except ftplib.error_perm, e:
             raise errors.TransportError(msg="Error setting up connection:"
                                         " %s" % str(e), orig_error=e)
