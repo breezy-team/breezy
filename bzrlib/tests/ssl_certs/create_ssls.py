@@ -97,7 +97,7 @@ ssl_params=dict(
     ca_locality='Bazaar',
     ca_organization='Distributed',
     ca_section='VCS',
-    ca_name='Master fo certificates',
+    ca_name='Master of certificates',
     ca_email='cert@no.spam',
     # Server identity
     server_country_code='LH',
@@ -116,7 +116,7 @@ def build_ca_key():
     key_path = ssl_certs.build_path('ca.key')
     rm_f(key_path)
     _openssl(['genrsa', '-passout', 'stdin', '-des3', '-out', key_path, '4096'],
-             '%(ca_pass)s\n%(ca_pass)s\n' % ssl_params)
+             input='%(ca_pass)s\n%(ca_pass)s\n' % ssl_params)
 
 
 def build_ca_certificate():
@@ -129,7 +129,7 @@ def build_ca_certificate():
               # Will need to be generated again in 10 years -- vila 20071122
               '-days', '3650',
               '-key', key_path, '-out', cert_path],
-             '%(ca_pass)s\n'
+             input='%(ca_pass)s\n'
              '%(ca_country_code)s\n'
              '%(ca_state)s\n'
              '%(ca_locality)s\n'
@@ -149,13 +149,13 @@ def build_server_key():
     key_path = ssl_certs.build_path('server_with_pass.key')
     rm_f(key_path)
     _openssl(['genrsa', '-passout', 'stdin', '-des3', '-out', key_path, '4096'],
-             '%(server_pass)s\n%(server_pass)s\n' % ssl_params)
+             input='%(server_pass)s\n%(server_pass)s\n' % ssl_params)
 
     key_nopass_path = ssl_certs.build_path('server_without_pass.key')
     rm_f(key_nopass_path)
     _openssl(['rsa', '-passin', 'stdin', '-in', key_path,
               '-out', key_nopass_path,],
-             '%(server_pass)s\n' % ssl_params)
+             input='%(server_pass)s\n' % ssl_params)
 
 
 def build_server_signing_request():
@@ -166,7 +166,7 @@ def build_server_signing_request():
     rm_f(server_csr_path)
     _openssl(['req', '-passin', 'stdin', '-new', '-key', key_path,
               '-out', server_csr_path],
-             '%(server_pass)s\n'
+             input='%(server_pass)s\n'
              '%(server_country_code)s\n'
              '%(server_state)s\n'
              '%(server_locality)s\n'
@@ -194,7 +194,7 @@ def sign_server_certificate():
               '-CA', ca_cert_path, '-CAkey', ca_key_path,
               '-set_serial', '01',
               '-out', server_cert_path,],
-             '%(ca_pass)s\n' % ssl_params)
+             input='%(ca_pass)s\n' % ssl_params)
 
 
 def build_ssls(name, options, builders):
@@ -244,6 +244,8 @@ if __name__ == '__main__':
         if (Options.keys or Options.certificates or Options.signing_requests
             or Options.signings):
             error("--ca and --server can't be used with other options")
+        # Handles --ca before --server so that both can be used in the same run
+        # to generate all the files needed by the https test server
         if Options.ca:
             build_ca_key()
             build_ca_certificate()

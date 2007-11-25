@@ -166,6 +166,8 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
         self.proxied_host = proxied_host
 
     def connect(self):
+        if self.debuglevel > 0:
+            print "connect: (%s, %s)" % (self.host, self.port)
         httplib.HTTPConnection.connect(self)
         if self.proxied_host is None:
             self.connect_to_origin()
