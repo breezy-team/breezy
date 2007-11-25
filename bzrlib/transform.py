@@ -106,25 +106,26 @@ class TreeTransform(object):
     Limbo
     -----
     Limbo is a temporary directory use to hold new versions of files.
-    Files are added to limbo by new_file, new_directory, new_symlink, and their
-    convenience variants (create_*).  Files may be removed from limbo using
-    cancel_creation.  Files are renamed from limbo into their final location as
-    part of TreeTransform.apply
+    Files are added to limbo by create_file, create_directory, create_symlink,
+    and their convenience variants (new_*).  Files may be removed from limbo
+    using cancel_creation.  Files are renamed from limbo into their final
+    location as part of TreeTransform.apply
 
     Limbo must be cleaned up, by either calling TreeTransform.apply or
     calling TreeTransform.finalize.
 
     Files are placed into limbo inside their parent directories, where
     possible.  This reduces subsequent renames, and makes operations involving
-    lots of files faster.  This is only possible if the parent directory
-    is created *before* creating any of its children.
+    lots of files faster.  This optimization is only possible if the parent
+    directory is created *before* creating any of its children, so avoid
+    creating children before parents, where possible.
 
     Pending-deletion
     ----------------
     This temporary directory is used by _FileMover for storing files that are
-    about to be deleted.  FileMover does not delete files until it is
-    sure that a rollback will not happen.  In case of rollback, the files
-    will be restored.
+    about to be deleted.  In case of rollback, the files will be restored.
+    FileMover does not delete files until it is sure that a rollback will not
+    happen.  
     """
     def __init__(self, tree, pb=DummyProgress()):
         """Note: a tree_write lock is taken on the tree.
