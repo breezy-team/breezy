@@ -443,6 +443,11 @@ class DiffPath(object):
         self.to_file = to_file
         self.path_encoding = path_encoding
 
+    @classmethod
+    def from_diff_tree(klass, diff_tree):
+        return klass(diff_tree.old_tree, diff_tree.new_tree,
+                     diff_tree.to_file, diff_tree.path_encoding)
+
     @staticmethod
     def _diff_many(differs, file_id, old_path, new_path, old_kind, new_kind):
         for file_differ in differs:
@@ -462,6 +467,10 @@ class DiffKindChange(object):
     """
     def __init__(self, differs):
         self.differs = differs
+
+    @classmethod
+    def from_diff_tree(klass, diff_tree):
+        return klass(diff_tree.differs)
 
     def diff(self, file_id, old_path, new_path, old_kind, new_kind):
         """Perform comparison
@@ -619,36 +628,33 @@ class DiffTree(object):
 
     # list of factories that can provide instances of DiffPath objects
     # may be extended by plugins.
-    diff_factories = [DiffSymlink, DiffDirectory]
+    diff_factories = [DiffSymlink.from_diff_tree,
+                      DiffDirectory.from_diff_tree]
 
     def __init__(self, old_tree, new_tree, to_file, path_encoding='utf-8',
-                 text_differ=None, extra_factories=None):
+                 diff_text=None, extra_factories=None):
         """Constructor
 
         :param old_tree: Tree to show as old in the comparison
         :param new_tree: Tree to show as new in the comparison
         :param to_file: File to write comparision to
         :param path_encoding: Character encoding to write paths in
-        :param text_differ: DiffPath-type object to use as a last resort for
+        :param diff_text: DiffPath-type object to use as a last resort for
             diffing text files.
         :param extra_factories: Factories of DiffPaths to try before any other
             DiffPaths"""
-        if text_differ is None:
-            text_differ = DiffText(old_tree, new_tree, to_file,
-                                     path_encoding, '', '',  internal_diff)
+        if diff_text is None:
+            diff_text = DiffText(old_tree, new_tree, to_file, path_encoding,
+                                 '', '',  internal_diff)
         self.old_tree = old_tree
         self.new_tree = new_tree
         self.to_file = to_file
+        self.path_encoding = path_encoding
         self.differs = []
         if extra_factories is not None:
-            self.differs.extend(f(old_tree, new_tree, to_file, path_encoding)
-                                for f in extra_factories)
-        for differ in self.diff_factories:
-            self.differs.append(differ(old_tree, new_tree, to_file,
-                                       path_encoding))
-        self.differs.extend([text_differ, DiffKindChange(self.differs)])
-        kcd = DiffKindChange(self.differs)
-        self.path_encoding = path_encoding
+            self.differs.extend(f(self) for f in extra_factories)
+        self.differs.extend(f(self) for f in self.diff_factories)
+        self.differs.extend([diff_text, DiffKindChange.from_diff_tree(self)])
 
     @classmethod
     def from_trees_options(klass, old_tree, new_tree, to_file,
@@ -673,9 +679,9 @@ class DiffTree(object):
                 external_diff(olab, olines, nlab, nlines, to_file, opts)
         else:
             diff_file = internal_diff
-        text_differ = DiffText(old_tree, new_tree, to_file, path_encoding,
-                                 old_label, new_label, diff_file)
-        return klass(old_tree, new_tree, to_file, path_encoding, text_differ)
+        diff_text = DiffText(old_tree, new_tree, to_file, path_encoding,
+                             old_label, new_label, diff_file)
+        return klass(old_tree, new_tree, to_file, path_encoding, diff_text)
 
     def show_diff(self, specific_files, extra_trees=None):
         """Write tree diff to self.to_file

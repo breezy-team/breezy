@@ -668,7 +668,7 @@ class TestDiffTree(TestCaseWithTransport):
         self.create_old_new()
         old_diff_factories = DiffTree.diff_factories
         DiffTree.diff_factories=old_diff_factories[:]
-        DiffTree.diff_factories.insert(0, DiffWasIs)
+        DiffTree.diff_factories.insert(0, DiffWasIs.from_diff_tree)
         try:
             differ = DiffTree(self.old_tree, self.new_tree, StringIO())
         finally:
@@ -684,7 +684,7 @@ class TestDiffTree(TestCaseWithTransport):
     def test_extra_factories(self):
         self.create_old_new()
         differ = DiffTree(self.old_tree, self.new_tree, StringIO(),
-                            extra_factories=[DiffWasIs])
+                            extra_factories=[DiffWasIs.from_diff_tree])
         differ.diff('file-id', 'olddir/oldfile', 'newdir/newfile')
         self.assertNotContainsRe(
             differ.to_file.getvalue(),

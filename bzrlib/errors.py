@@ -1845,7 +1845,7 @@ class BadConversionTarget(BzrError):
         self.format = format
 
 
-class NoDifferFound(BzrError):
+class NoDiffFound(BzrError):
 
     _fmt = 'Could not find an appropriate Differ for file "%(path)s"'
 
