@@ -1490,6 +1490,15 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview = TransformPreview(revision_tree)
         preview.get_preview_tree()
 
+    def test_transform_new_file(self):
+        revision_tree = self.create_tree()
+        preview = TransformPreview(revision_tree)
+        preview.new_file('file2', preview.root, 'content B\n', 'file2-id')
+        preview_tree = preview.get_preview_tree()
+        self.assertEqual(preview_tree.kind('file2-id'), 'file')
+        self.assertEqual(
+            preview_tree.get_file('file2-id').read(), 'content B\n')
+
     def test_diff_preview_tree(self):
         revision_tree = self.create_tree()
         preview = TransformPreview(revision_tree)
