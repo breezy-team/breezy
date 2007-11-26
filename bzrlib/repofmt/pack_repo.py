@@ -1876,11 +1876,10 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
 class RepositoryFormatKnitPack4(RepositoryFormatPack):
     """A rich-root, no subtrees parameterised Pack repository.
 
-    This repository format uses the xml7 serializer to get:
+    This repository format uses the xml6 serializer to get:
      - support for recording full info about the tree root
-     - support for recording tree-references
 
-    This format was introduced in 0.92.
+    This format was introduced in 1.0.
     """
 
     repository_class = KnitPackRepository
