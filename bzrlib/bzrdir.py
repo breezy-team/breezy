@@ -49,10 +49,11 @@ from bzrlib import (
     symbol_versioning,
     ui,
     urlutils,
-    xml4,
-    xml5,
+    win32utils,
     workingtree,
     workingtree_4,
+    xml4,
+    xml5,
     )
 from bzrlib.osutils import (
     sha_strings,
@@ -1357,13 +1358,7 @@ class BzrDirFormat(object):
                                       # the covers
                                       mode=temp_control._dir_mode)
         if sys.platform == 'win32' and isinstance(transport, LocalTransport):
-            try:
-                import win32file
-            except ImportError:
-                pass
-            else:
-                win32file.SetFileAttributes(transport._abspath('.bzr'),
-                    win32file.FILE_ATTRIBUTE_HIDDEN)
+            win32utils.set_file_attr_hidden(transport._abspath('.bzr'))
         file_mode = temp_control._file_mode
         del temp_control
         mutter('created control directory in ' + transport.base)

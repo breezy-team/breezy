@@ -30,6 +30,7 @@ from bzrlib import (
     repository,
     symbol_versioning,
     urlutils,
+    win32utils,
     workingtree,
     )
 import bzrlib.branch
@@ -43,6 +44,7 @@ from bzrlib.symbol_versioning import (
 from bzrlib.tests import (
     TestCase,
     TestCaseWithTransport,
+    TestSkipped,
     test_sftp_transport
     )
 from bzrlib.tests.HttpServer import HttpServer
@@ -886,11 +888,15 @@ class TestDotBzrHidden(TestCaseWithTransport):
         return [i.strip() for i in out]
 
     def test_dot_bzr_hidden(self):
+        if sys.platform == 'win32' and not win32utils.has_win32file:
+            raise TestSkipped('unable to make file hidden without pywin32 library')
         b = bzrdir.BzrDir.create('.')
         self.build_tree('a')
         self.assertEquals(['a'], self.get_ls())
 
     def test_dot_bzr_hidden_with_url(self):
+        if sys.platform == 'win32' and not win32utils.has_win32file:
+            raise TestSkipped('unable to make file hidden without pywin32 library')
         b = bzrdir.BzrDir.create(urlutils.local_path_to_url('.'))
         self.build_tree('a')
         self.assertEquals(['a'], self.get_ls())
