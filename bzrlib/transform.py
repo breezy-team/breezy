@@ -1641,7 +1641,8 @@ def revert(working_tree, target_tree, filenames, backups=False,
         pp.next_phase()
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
-            raw_conflicts = resolve_conflicts(tt, child_pb)
+            raw_conflicts = resolve_conflicts(tt, child_pb,
+                lambda t, c: conflict_pass(t, c, target_tree))
         finally:
             child_pb.finished()
         conflicts = cook_conflicts(raw_conflicts, tt)
@@ -1817,10 +1818,11 @@ def conflict_pass(tt, conflicts, path_tree=None):
                 try:
                     tt.final_name(trans_id)
                 except NoFinalPath:
-                    file_id = tt.final_file_id(trans_id)
-                    entry = path_tree.inventory[file_id]
-                    parent_trans_id = tt.trans_id_file_id(entry.parent_id)
-                    tt.adjust_path(entry.name, parent_trans_id, trans_id)
+                    if path_tree is not None:
+                        file_id = tt.final_file_id(trans_id)
+                        entry = path_tree.inventory[file_id]
+                        parent_trans_id = tt.trans_id_file_id(entry.parent_id)
+                        tt.adjust_path(entry.name, parent_trans_id, trans_id)
         elif c_type == 'unversioned parent':
             tt.version_file(tt.inactive_file_id(conflict[1]), conflict[1])
             new_conflicts.add((c_type, 'Versioned directory', conflict[1]))

@@ -128,6 +128,9 @@ IN DEVELOPMENT
      symlink on some platforms (e.g. on Windows).
      (Alexander Belchenko, workaround for #81689)
 
+   * Revert doesn't crash when restoring a single file from a deleted
+     directory. (Aaron Bentley)
+
    * Stderr output via logging mechanism now goes through encoded wrapper
      and no more uses utf-8, but terminal encoding instead. So all unicode
      strings now should be readable in non-utf-8 terminal.
