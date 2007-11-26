@@ -618,7 +618,7 @@ class KnitVersionedFile(VersionedFile):
         result_version_list = []
         while ready_to_send:
             # XXX: pushing and popping lists may be a bit inefficient
-            version_id = ready_to_send.pop()
+            version_id = ready_to_send.pop(0)
             (index_memo, options, parents) = version_index[version_id]
             copy_queue_records.append((version_id, index_memo))
             none, data_pos, data_size = index_memo
@@ -626,8 +626,8 @@ class KnitVersionedFile(VersionedFile):
                 parents))
             if version_id in deferred:
                 # now we can send all the children of this revision - we could
-                # put them in anywhere, but doing them immediately might
-                # give better locality
+                # put them in anywhere, but we hope that sending them soon
+                # after the fulltext will give good locality in the receiver
                 ready_to_send[:0] = deferred.pop(version_id)
         assert len(deferred) == 0, \
             "Still have compressed child versions waiting to be sent"

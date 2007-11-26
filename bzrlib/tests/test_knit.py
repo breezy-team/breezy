@@ -1673,14 +1673,17 @@ class BasicKnitTests(KnitTests):
             ('text-d', ['text-c'], TEXT_1),
             ('text-m', ['text-b', 'text-d'], TEXT_1),
             ]
-        expected_data_list = [
-            # version, options, length, parents
-            ('text-b', ['line-delta'], 84, ['text-a']),
-            ('text-d', ['line-delta'], 84, ['text-c']),
-            ]
         for version_id, parents, lines in test_data:
             k1.add_lines(version_id, parents, split_lines(lines))
 
+        # This test is actually a bit strict as the order in which they're
+        # returned is not defined.  This matches the current (deterministic)
+        # behaviour.
+        expected_data_list = [
+            # version, options, length, parents
+            ('text-d', ['line-delta'], 84, ['text-c']),
+            ('text-b', ['line-delta'], 84, ['text-a']),
+            ]
         # Note that even though we request the revision IDs in a particular
         # order, the data stream may return them in any order it likes.  In this
         # case, they'll be in the order they were inserted into the knit.
@@ -1688,8 +1691,9 @@ class BasicKnitTests(KnitTests):
             ['text-d', 'text-b'])
         self.assertEqual('knit-plain', format)
         self.assertEqual(expected_data_list, data_list)
-        self.assertRecordContentEqual(k1, 'text-b', reader_callable(84))
+        # must match order they're returned
         self.assertRecordContentEqual(k1, 'text-d', reader_callable(84))
+        self.assertRecordContentEqual(k1, 'text-b', reader_callable(84))
         self.assertEqual('', reader_callable(None),
                          "There should be no more bytes left to read.")
 
@@ -1711,17 +1715,20 @@ class BasicKnitTests(KnitTests):
             ('text-d', ['text-c'], TEXT_1),
             ('text-m', ['text-b', 'text-d'], TEXT_1),
            ]
+        for version_id, parents, lines in test_data:
+            k1.add_lines(version_id, parents, split_lines(lines))
+
+        # This test is actually a bit strict as the order in which they're
+        # returned is not defined.  This matches the current (deterministic)
+        # behaviour.
         expected_data_list = [
             # version, options, length, parents
             ('text-a', ['fulltext'], 122, []),
             ('text-b', ['line-delta'], 84, ['text-a']),
+            ('text-m', ['line-delta'], 84, ['text-b', 'text-d']),
             ('text-c', ['fulltext'], 121, []),
             ('text-d', ['line-delta'], 84, ['text-c']),
-            ('text-m', ['line-delta'], 84, ['text-b', 'text-d']),
             ]
-        for version_id, parents, lines in test_data:
-            k1.add_lines(version_id, parents, split_lines(lines))
-
         format, data_list, reader_callable = k1.get_data_stream(
             ['text-a', 'text-b', 'text-c', 'text-d', 'text-m'])
         self.assertEqual('knit-plain', format)
