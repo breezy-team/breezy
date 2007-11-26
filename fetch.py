@@ -28,6 +28,7 @@ import md5
 from svn.core import Pool
 import svn.core
 
+from bzrlib.plugins.svn.errors import InvalidFileName
 from fileids import generate_file_id
 from repository import (SvnRepository, SVN_PROP_BZR_ANCESTRY, 
                 SVN_PROP_SVK_MERGE, SVN_PROP_BZR_MERGE,
@@ -68,6 +69,16 @@ def md5_strings(strings):
     s = md5.new()
     map(s.update, strings)
     return s.hexdigest()
+
+
+def check_filename(path):
+    """Check that a path does not contain invalid characters.
+
+    :param path: Path to check
+    :raises InvalidFileName:
+    """
+    if "\\" in path:
+        raise InvalidFileName(path)
 
 
 class RevisionBuildEditor(svn.delta.Editor):
@@ -195,6 +206,7 @@ class RevisionBuildEditor(svn.delta.Editor):
     def add_directory(self, path, parent_id, copyfrom_path, copyfrom_revnum, 
                       pool):
         path = path.decode("utf-8")
+        check_filename(path)
         file_id = self._get_new_id(parent_id, path)
 
         self.dir_baserev[file_id] = []
@@ -300,6 +312,7 @@ class RevisionBuildEditor(svn.delta.Editor):
 
     def add_file(self, path, parent_id, copyfrom_path, copyfrom_revnum, baton):
         path = path.decode("utf-8")
+        check_filename(path)
         self.is_symlink = False
         self.is_executable = None
         self.file_data = ""

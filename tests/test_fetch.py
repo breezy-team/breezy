@@ -20,9 +20,11 @@ from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.repository import Repository
 from bzrlib.revision import NULL_REVISION
+from bzrlib.tests import TestSkipped
 from bzrlib.trace import mutter
 
 from convert import load_dumpfile
+from bzrlib.plugins.svn.errors import InvalidFileName
 from fileids import generate_svn_file_id, generate_file_id
 import format
 import remote
@@ -30,7 +32,7 @@ from scheme import TrunkBranchingScheme, NoBranchingScheme
 from tests import TestCaseWithSubversionRepository
 from transport import SvnRaTransport
 
-import os
+import os, sys
 
 class TestFetchWorks(TestCaseWithSubversionRepository):
     def test_fetch_fileid_renames(self):
@@ -58,6 +60,19 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         dir = BzrDir.create("f",format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
+
+    def test_fetch_backslash(self):
+        if sys.platform == 'win32':
+            raise TestSkipped("Unable to create filenames with backslash on Windows")
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/trunk/file\\part': "data"})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "My Message")
+        oldrepos = Repository.open(repos_url)
+        oldrepos.set_branching_scheme(TrunkBranchingScheme())
+        dir = BzrDir.create("f",format.get_rich_root_format())
+        newrepos = dir.create_repository()
+        self.assertRaises(InvalidFileName, oldrepos.copy_content_into, newrepos)
 
     def test_fetch_null(self):
         repos_url = self.make_client('d', 'dc')

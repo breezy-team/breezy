@@ -19,6 +19,10 @@ bzr-svn 0.4.5	UNRELEASED
 
    * Handle some corner cases when finding branches.
 
+   * Print comprehensible error when unsupport characters occur in file names.
+     (partial fix of #163585)
+
+
 bzr-svn 0.4.4	2007-11-02
 
   PERFORMANCE

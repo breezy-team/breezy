@@ -126,3 +126,11 @@ class RebaseNotPresent(DependencyNotPresent):
 
     def __init__(self, error):
         DependencyNotPresent.__init__(self, 'bzr-rebase', error)
+
+
+class InvalidFileName(BzrError):
+    _fmt = "Unable to convert Subversion path %(path)s because it contains characters invalid in Bazaar."
+
+    def __init__(self, path):
+        BzrError.__init__(self)
+        self.path = path
