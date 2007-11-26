@@ -382,6 +382,10 @@ class TestFetchDependentData(TestCaseWithInterRepository):
         to_repo.fetch(from_tree.branch.repository, tree_rev)
         # to_repo should have a file_graph for from_tree.path2id('subtree') and
         # revid tree_rev.
-        file_vf = to_repo.weave_store.get_weave(
-            from_tree.path2id('subtree'), to_repo.get_transaction())
-        self.assertEqual([tree_rev], file_vf.get_ancestry([tree_rev]))
+        to_repo.lock_read()
+        try:
+            file_vf = to_repo.weave_store.get_weave(
+                from_tree.path2id('subtree'), to_repo.get_transaction())
+            self.assertEqual([tree_rev], file_vf.get_ancestry([tree_rev]))
+        finally:
+            to_repo.unlock()
