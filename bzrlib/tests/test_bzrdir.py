@@ -21,6 +21,7 @@ For interface contract tests, see tests/bzr_dir_implementations.
 
 import os.path
 from StringIO import StringIO
+import subprocess
 import sys
 
 from bzrlib import (
@@ -877,15 +878,17 @@ class TestHTTPRedirections_pycurl(TestWithTransport_pycurl,
 
 class TestDotBzrHidden(TestCaseWithTransport):
 
-    ls = 'ls'
+    ls = ['ls']
     if sys.platform == 'win32':
-        ls = '%s /C dir /B' % os.environ['COMSPEC']
+        ls = [os.environ['COMSPEC'], '/C', 'dir', '/B']
 
     def get_ls(self):
-        f = os.popen(self.ls)
-        out = f.readlines()
-        self.assertEquals(None, f.close())
-        return [i.strip() for i in out]
+        f = subprocess.Popen(self.ls, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
+        out, err = f.communicate()
+        self.assertEqual(0, f.returncode, 'Calling %s failed: %s'
+                         % (self.ls, err))
+        return out.splitlines()
 
     def test_dot_bzr_hidden(self):
         if sys.platform == 'win32' and not win32utils.has_win32file:
