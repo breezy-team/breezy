@@ -29,7 +29,11 @@ from bzrlib import (
 from bzrlib.delta import TreeDelta
 from bzrlib.inventory import Inventory, InventoryDirectory
 from bzrlib.revision import NULL_REVISION, Revision
-from bzrlib.tests import TestCaseWithTransport, TestSkipped
+from bzrlib.tests import (
+    TestCaseWithTransport,
+    TestNotApplicable,
+    TestSkipped,
+    )
 from bzrlib.tests.repository_implementations import TestCaseWithRepository
 from bzrlib.transport import get_transport
 from bzrlib.upgrade import upgrade
@@ -377,8 +381,8 @@ class TestRepository(TestCaseWithRepository):
         try:
             stream = repo.get_data_stream(['rev_id'])
         except NotImplementedError:
-            # Not all repositories support streaming.
-            return
+            raise TestNotApplicable("%s doesn't support get_data_stream"
+                % repo._format)
 
         # The data stream is a iterator that yields (name, versioned_file)
         # pairs for:

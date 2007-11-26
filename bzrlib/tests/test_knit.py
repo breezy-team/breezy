@@ -1605,6 +1605,44 @@ class BasicKnitTests(KnitTests):
         self.assertEqual(expected_data_list, data_list)
         self.assertRecordContentEqual(k1, 'text-m', reader_callable(None))
         
+    def test_get_data_stream_unordered_index(self):
+        """Get a data stream when the knit index reports versions out of order.
+
+        https://bugs.launchpad.net/bzr/+bug/164637
+        """
+        k1 = self.make_test_knit()
+        test_data = [
+            ('text-a', [], TEXT_1),
+            ('text-b', ['text-a'], TEXT_1),
+            ('text-c', [], TEXT_1),
+            ('text-d', ['text-c'], TEXT_1),
+            ('text-m', ['text-b', 'text-d'], TEXT_1),
+            ]
+        for version_id, parents, lines in test_data:
+            k1.add_lines(version_id, parents, split_lines(lines))
+        # monkey-patch versions method to return out of order, as if coming
+        # from multiple independently indexed packs
+        original_versions = k1.versions
+        k1.versions = lambda: reversed(original_versions())
+        expected_data_list = [
+            ('text-a', ['fulltext'], 122, []),
+            ('text-b', ['line-delta'], 84, ['text-a'])]
+        # now check the fulltext is first and the delta second
+        format, data_list, _ = k1.get_data_stream(['text-a', 'text-b'])
+        self.assertEqual('knit-plain', format)
+        self.assertEqual(expected_data_list, data_list)
+        # and that's true if we ask for them in the opposite order too
+        format, data_list, _ = k1.get_data_stream(['text-b', 'text-a'])
+        self.assertEqual(expected_data_list, data_list)
+        # also try requesting more versions
+        format, data_list, _ = k1.get_data_stream([
+            'text-m', 'text-b', 'text-a'])
+        self.assertEqual([
+            ('text-a', ['fulltext'], 122, []),
+            ('text-b', ['line-delta'], 84, ['text-a']),
+            ('text-m', ['line-delta'], 84, ['text-b', 'text-d']),
+            ], data_list)
+
     def test_get_stream_ghost_parent(self):
         """Get a data stream for a version with a ghost parent."""
         k1 = self.make_test_knit()
@@ -1635,14 +1673,17 @@ class BasicKnitTests(KnitTests):
             ('text-d', ['text-c'], TEXT_1),
             ('text-m', ['text-b', 'text-d'], TEXT_1),
             ]
-        expected_data_list = [
-            # version, options, length, parents
-            ('text-b', ['line-delta'], 84, ['text-a']),
-            ('text-d', ['line-delta'], 84, ['text-c']),
-            ]
         for version_id, parents, lines in test_data:
             k1.add_lines(version_id, parents, split_lines(lines))
 
+        # This test is actually a bit strict as the order in which they're
+        # returned is not defined.  This matches the current (deterministic)
+        # behaviour.
+        expected_data_list = [
+            # version, options, length, parents
+            ('text-d', ['line-delta'], 84, ['text-c']),
+            ('text-b', ['line-delta'], 84, ['text-a']),
+            ]
         # Note that even though we request the revision IDs in a particular
         # order, the data stream may return them in any order it likes.  In this
         # case, they'll be in the order they were inserted into the knit.
@@ -1650,8 +1691,9 @@ class BasicKnitTests(KnitTests):
             ['text-d', 'text-b'])
         self.assertEqual('knit-plain', format)
         self.assertEqual(expected_data_list, data_list)
-        self.assertRecordContentEqual(k1, 'text-b', reader_callable(84))
+        # must match order they're returned
         self.assertRecordContentEqual(k1, 'text-d', reader_callable(84))
+        self.assertRecordContentEqual(k1, 'text-b', reader_callable(84))
         self.assertEqual('', reader_callable(None),
                          "There should be no more bytes left to read.")
 
@@ -1673,17 +1715,20 @@ class BasicKnitTests(KnitTests):
             ('text-d', ['text-c'], TEXT_1),
             ('text-m', ['text-b', 'text-d'], TEXT_1),
            ]
+        for version_id, parents, lines in test_data:
+            k1.add_lines(version_id, parents, split_lines(lines))
+
+        # This test is actually a bit strict as the order in which they're
+        # returned is not defined.  This matches the current (deterministic)
+        # behaviour.
         expected_data_list = [
             # version, options, length, parents
             ('text-a', ['fulltext'], 122, []),
             ('text-b', ['line-delta'], 84, ['text-a']),
+            ('text-m', ['line-delta'], 84, ['text-b', 'text-d']),
             ('text-c', ['fulltext'], 121, []),
             ('text-d', ['line-delta'], 84, ['text-c']),
-            ('text-m', ['line-delta'], 84, ['text-b', 'text-d']),
             ]
-        for version_id, parents, lines in test_data:
-            k1.add_lines(version_id, parents, split_lines(lines))
-
         format, data_list, reader_callable = k1.get_data_stream(
             ['text-a', 'text-b', 'text-c', 'text-d', 'text-m'])
         self.assertEqual('knit-plain', format)
