@@ -2685,3 +2685,37 @@ class TestNoParentsGraphIndexKnit(KnitTests):
             set(index.iter_parents(['tip'])))
         self.assertEqual(set(),
             set(index.iter_parents([])))
+
+
+class TestPackKnits(KnitTests):
+    """Tests that use a _PackAccess and KnitGraphIndex."""
+
+    def test_get_data_stream_packs_ignores_pack_overhead(self):
+        # Packs have an encoding overhead that should not be included in the
+        # 'size' field of a data stream, because it is not returned by the
+        # raw_reading functions - it is why index_memo's are opaque, and
+        # get_data_stream was abusing this.
+        packname = 'test.pack'
+        transport = self.get_transport()
+        def write_data(bytes):
+            transport.append_bytes(packname, bytes)
+        writer = pack.ContainerWriter(write_data)
+        writer.begin()
+        index = InMemoryGraphIndex(2)
+        knit_index = KnitGraphIndex(index, add_callback=index.add_nodes,
+            deltas=True)
+        indices = {index:(transport, packname)}
+        access = _PackAccess(indices, writer=(writer, index))
+        k = KnitVersionedFile('test', get_transport('.'),
+            delta=True, create=True, index=knit_index, access_method=access)
+        # insert something into the knit
+        k.add_lines('text-1', [], ["foo\n"])
+        # get a data stream for it
+        stream = k.get_data_stream(['text-1'])
+        # if the stream has been incorrectly assembled, we will get a short read
+        # reading from the stream (as streams have no trailer)
+        expected_length = stream[1][0][2]
+        # we use -1 to do the read, so that if a trailer is added this test
+        # will fail and we'll adjust it to handle that case correctly, rather
+        # than allowing an over-read that is bogus.
+        self.assertEqual(expected_length, len(stream[2](-1)))

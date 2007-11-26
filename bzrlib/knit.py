@@ -616,14 +616,14 @@ class KnitVersionedFile(VersionedFile):
         # build a list of results to return, plus instructions for data to
         # read from the file
         copy_queue_records = []
-        result_version_list = []
+        temp_version_list = []
         while ready_to_send:
             # XXX: pushing and popping lists may be a bit inefficient
             version_id = ready_to_send.pop(0)
             (index_memo, options, parents) = version_index[version_id]
             copy_queue_records.append((version_id, index_memo))
             none, data_pos, data_size = index_memo
-            result_version_list.append((version_id, options, data_size,
+            temp_version_list.append((version_id, options, data_size,
                 parents))
             if version_id in deferred:
                 # now we can send all the children of this revision - we could
@@ -632,18 +632,20 @@ class KnitVersionedFile(VersionedFile):
                 ready_to_send[:0] = deferred.pop(version_id)
         assert len(deferred) == 0, \
             "Still have compressed child versions waiting to be sent"
-        # XXX:
-        # From here down to the return should really be logic in the returned
-        # callable -- in a class that adapts read_records_iter_raw to read
-        # requests.
+        # XXX: The stream format is such that we cannot stream it - we have to
+        # know the length of all the data a-priori.
         raw_datum = []
+        result_version_list = []
         for (version_id, raw_data), \
             (version_id2, options, _, parents) in \
             izip(self._data.read_records_iter_raw(copy_queue_records),
-                 result_version_list):
+                 temp_version_list):
             assert version_id == version_id2, \
                 'logic error, inconsistent results'
             raw_datum.append(raw_data)
+            result_version_list.append(
+                (version_id, options, len(raw_data), parents))
+        # provide a callback to get data incrementally.
         pseudo_file = StringIO(''.join(raw_datum))
         def read(length):
             if length is None:
