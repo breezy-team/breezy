@@ -1982,7 +1982,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 self.set_parent_trees(parent_trees)
                 resolve(self)
             else:
-                resolve(self, filenames, ignore_misses=True)
+                resolve(self, filenames, ignore_misses=True, recursive=True)
         finally:
             if basis_tree is not None:
                 basis_tree.unlock()

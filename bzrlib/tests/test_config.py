@@ -17,7 +17,6 @@
 
 """Tests for finding and reading the bzr config file[s]."""
 # import system imports here
-from bzrlib.util.configobj.configobj import ConfigObj, ConfigObjError
 from cStringIO import StringIO
 import os
 import sys
@@ -35,6 +34,7 @@ from bzrlib import (
     tests,
     trace,
     )
+from bzrlib.util.configobj import configobj
 
 
 sample_long_alias="log -r-15..-1 --line"
@@ -180,7 +180,7 @@ class FakeControlFiles(object):
 
 class InstrumentedConfig(config.Config):
     """An instrumented config that supplies stubs for template methods."""
-    
+
     def __init__(self):
         super(InstrumentedConfig, self).__init__()
         self._calls = []
@@ -202,10 +202,11 @@ inactive = false
 active = True
 nonactive = False
 """
+
+
 class TestConfigObj(tests.TestCase):
     def test_get_bool(self):
-        from bzrlib.config import ConfigObj
-        co = ConfigObj(StringIO(bool_config))
+        co = config.ConfigObj(StringIO(bool_config))
         self.assertIs(co.get_bool('DEFAULT', 'active'), True)
         self.assertIs(co.get_bool('DEFAULT', 'inactive'), False)
         self.assertIs(co.get_bool('UPPERCASE', 'active'), True)
@@ -217,21 +218,25 @@ good=good # line 2
 [section] # line 3
 whocares=notme # line 4
 """
+
+
 class TestConfigObjErrors(tests.TestCase):
 
     def test_duplicate_section_name_error_line(self):
         try:
-            co = ConfigObj(StringIO(erroneous_config), raise_errors=True)
+            co = configobj.ConfigObj(StringIO(erroneous_config),
+                                     raise_errors=True)
         except config.configobj.DuplicateError, e:
             self.assertEqual(3, e.line_number)
         else:
             self.fail('Error in config file not detected')
 
+
 class TestConfig(tests.TestCase):
 
     def test_constructs(self):
         config.Config()
- 
+
     def test_no_default_editor(self):
         self.assertRaises(NotImplementedError, config.Config().get_editor)
 
@@ -291,45 +296,30 @@ class TestConfigPath(tests.TestCase):
         if sys.platform == 'win32':
             os.environ['BZR_HOME'] = \
                 r'C:\Documents and Settings\bogus\Application Data'
+            self.bzr_home = \
+                'C:/Documents and Settings/bogus/Application Data/bazaar/2.0'
+        else:
+            self.bzr_home = '/home/bogus/.bazaar'
 
     def test_config_dir(self):
-        if sys.platform == 'win32':
-            self.assertEqual(config.config_dir(), 
-                'C:/Documents and Settings/bogus/Application Data/bazaar/2.0')
-        else:
-            self.assertEqual(config.config_dir(), '/home/bogus/.bazaar')
+        self.assertEqual(config.config_dir(), self.bzr_home)
 
     def test_config_filename(self):
-        if sys.platform == 'win32':
-            self.assertEqual(config.config_filename(), 
-                'C:/Documents and Settings/bogus/Application Data/bazaar/2.0/bazaar.conf')
-        else:
-            self.assertEqual(config.config_filename(),
-                             '/home/bogus/.bazaar/bazaar.conf')
+        self.assertEqual(config.config_filename(),
+                         self.bzr_home + '/bazaar.conf')
 
     def test_branches_config_filename(self):
-        if sys.platform == 'win32':
-            self.assertEqual(config.branches_config_filename(), 
-                'C:/Documents and Settings/bogus/Application Data/bazaar/2.0/branches.conf')
-        else:
-            self.assertEqual(config.branches_config_filename(),
-                             '/home/bogus/.bazaar/branches.conf')
+        self.assertEqual(config.branches_config_filename(),
+                         self.bzr_home + '/branches.conf')
 
     def test_locations_config_filename(self):
-        if sys.platform == 'win32':
-            self.assertEqual(config.locations_config_filename(), 
-                'C:/Documents and Settings/bogus/Application Data/bazaar/2.0/locations.conf')
-        else:
-            self.assertEqual(config.locations_config_filename(),
-                             '/home/bogus/.bazaar/locations.conf')
+        self.assertEqual(config.locations_config_filename(),
+                         self.bzr_home + '/locations.conf')
 
     def test_authentication_config_filename(self):
-        if sys.platform == 'win32':
-            self.assertEqual(config.authentication_config_filename(), 
-                'C:/Documents and Settings/bogus/Application Data/bazaar/2.0/authentication.conf')
-        else:
-            self.assertEqual(config.authentication_config_filename(),
-                             '/home/bogus/.bazaar/authentication.conf')
+        self.assertEqual(config.authentication_config_filename(),
+                         self.bzr_home + '/authentication.conf')
+
 
 class TestIniConfig(tests.TestCase):
 
@@ -341,7 +331,7 @@ class TestIniConfig(tests.TestCase):
         my_config = config.IniBasedConfig(None)
         self.failUnless(
             isinstance(my_config._get_parser(file=config_file),
-                        ConfigObj))
+                        configobj.ConfigObj))
 
     def test_cached(self):
         config_file = StringIO(sample_config_text.encode('utf-8'))
@@ -356,7 +346,7 @@ class TestGetConfig(tests.TestCase):
         my_config = config.GlobalConfig()
 
     def test_calls_read_filenames(self):
-        # replace the class that is constructured, to check its parameters
+        # replace the class that is constructed, to check its parameters
         oldparserclass = config.ConfigObj
         config.ConfigObj = InstrumentedConfigObj
         my_config = config.GlobalConfig()
@@ -433,7 +423,10 @@ class TestBranchConfig(tests.TestCaseWithTransport):
         local_path = osutils.getcwd().encode('utf8')
         # Surprisingly ConfigObj doesn't create a trailing newline
         self.check_file_contents(locations,
-            '[%s/branch]\npush_location = http://foobar\npush_location:policy = norecurse' % (local_path,))
+                                 '[%s/branch]\n'
+                                 'push_location = http://foobar\n'
+                                 'push_location:policy = norecurse'
+                                 % (local_path,))
 
     def test_autonick_urlencoded(self):
         b = self.make_branch('!repo')
@@ -557,7 +550,7 @@ class TestGlobalConfigItems(tests.TestCase):
         my_config = self._get_sample_config()
         self.assertEqual("something",
                          my_config.get_user_option('user_global_option'))
-        
+
     def test_post_commit_default(self):
         my_config = self._get_sample_config()
         self.assertEqual(None, my_config.post_commit())
@@ -589,7 +582,7 @@ class TestLocationConfig(tests.TestCaseInTempDir):
         # This is testing the correct file names are provided.
         # TODO: consolidate with the test for GlobalConfigs filename checks.
         #
-        # replace the class that is constructured, to check its parameters
+        # replace the class that is constructed, to check its parameters
         oldparserclass = config.ConfigObj
         config.ConfigObj = InstrumentedConfigObj
         try:
@@ -623,12 +616,12 @@ class TestLocationConfig(tests.TestCaseInTempDir):
     def test__get_matching_sections_no_match(self):
         self.get_branch_config('/')
         self.assertEqual([], self.my_location_config._get_matching_sections())
-        
+
     def test__get_matching_sections_exact(self):
         self.get_branch_config('http://www.example.com')
         self.assertEqual([('http://www.example.com', '')],
                          self.my_location_config._get_matching_sections())
-   
+
     def test__get_matching_sections_suffix_does_not(self):
         self.get_branch_config('http://www.example.com-com')
         self.assertEqual([], self.my_location_config._get_matching_sections())
@@ -646,7 +639,8 @@ class TestLocationConfig(tests.TestCaseInTempDir):
     def test__get_matching_sections_ignoreparent_subdir(self):
         self.get_branch_config(
             'http://www.example.com/ignoreparent/childbranch')
-        self.assertEqual([('http://www.example.com/ignoreparent', 'childbranch')],
+        self.assertEqual([('http://www.example.com/ignoreparent',
+                           'childbranch')],
                          self.my_location_config._get_matching_sections())
 
     def test__get_matching_sections_subdir_trailing_slash(self):
@@ -732,17 +726,17 @@ class TestLocationConfig(tests.TestCaseInTempDir):
         self.get_branch_config('/a/c')
         self.assertEqual(config.CHECK_NEVER,
                          self.my_config.signature_checking())
-        
+
     def test_signatures_when_available(self):
         self.get_branch_config('/a/', global_config=sample_ignore_signatures)
         self.assertEqual(config.CHECK_IF_POSSIBLE,
                          self.my_config.signature_checking())
-        
+
     def test_signatures_always(self):
         self.get_branch_config('/b')
         self.assertEqual(config.CHECK_ALWAYS,
                          self.my_config.signature_checking())
-        
+
     def test_gpg_signing_command(self):
         self.get_branch_config('/b')
         self.assertEqual("gnome-gpg", self.my_config.gpg_signing_command())
@@ -902,7 +896,7 @@ class TestLocationConfig(tests.TestCaseInTempDir):
         self.assertIs(self.my_config.get_user_option('foo'), None)
         self.my_config.set_user_option('foo', 'bar')
         self.assertEqual(
-            self.my_config.branch.control_files.files['branch.conf'], 
+            self.my_config.branch.control_files.files['branch.conf'],
             'foo = bar')
         self.assertEqual(self.my_config.get_user_option('foo'), 'bar')
         self.my_config.set_user_option('foo', 'baz',
@@ -910,7 +904,7 @@ class TestLocationConfig(tests.TestCaseInTempDir):
         self.assertEqual(self.my_config.get_user_option('foo'), 'baz')
         self.my_config.set_user_option('foo', 'qux')
         self.assertEqual(self.my_config.get_user_option('foo'), 'baz')
-        
+
     def test_get_bzr_remote_path(self):
         my_config = config.LocationConfig('/a/c')
         self.assertEqual('bzr', my_config.get_bzr_remote_path())
@@ -933,7 +927,7 @@ option = exact
 
 class TestBranchConfigItems(tests.TestCaseInTempDir):
 
-    def get_branch_config(self, global_config=None, location=None, 
+    def get_branch_config(self, global_config=None, location=None,
                           location_config=None, branch_data_config=None):
         my_config = config.BranchConfig(FakeBranch(location))
         if global_config is not None:
@@ -954,7 +948,7 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
         self.assertEqual("Robert Collins <robertc@example.net>",
                          my_config.username())
         branch.control_files.email = "John"
-        my_config.set_user_option('email', 
+        my_config.set_user_option('email',
                                   "Robert Collins <robertc@example.org>")
         self.assertEqual("John", my_config.username())
         branch.control_files.email = None
@@ -975,7 +969,7 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
         my_config = config.BranchConfig(branch)
         self.assertEqual("Robert Collins <robertc@example.org>",
                          my_config.username())
-    
+
     def test_signatures_forced(self):
         my_config = self.get_branch_config(
             global_config=sample_always_signatures)
@@ -1025,14 +1019,14 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
     def test_config_precedence(self):
         my_config = self.get_branch_config(global_config=precedence_global)
         self.assertEqual(my_config.get_user_option('option'), 'global')
-        my_config = self.get_branch_config(global_config=precedence_global, 
+        my_config = self.get_branch_config(global_config=precedence_global,
                                       branch_data_config=precedence_branch)
         self.assertEqual(my_config.get_user_option('option'), 'branch')
-        my_config = self.get_branch_config(global_config=precedence_global, 
+        my_config = self.get_branch_config(global_config=precedence_global,
                                       branch_data_config=precedence_branch,
                                       location_config=precedence_location)
         self.assertEqual(my_config.get_user_option('option'), 'recurse')
-        my_config = self.get_branch_config(global_config=precedence_global, 
+        my_config = self.get_branch_config(global_config=precedence_global,
                                       branch_data_config=precedence_branch,
                                       location_config=precedence_location,
                                       location='http://example.com/specific')
