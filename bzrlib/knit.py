@@ -2225,7 +2225,7 @@ class InterKnit(InterVersionedFile):
         except AttributeError:
             return False
 
-    def _text_by_text_join(self, pb, msg, version_ids, ignore_missing=False):
+    def _copy_texts(self, pb, msg, version_ids, ignore_missing=False):
         """Copy texts to the target by extracting and adding them one by one.
 
         see join() for the parameter definitions.
@@ -2242,8 +2242,10 @@ class InterKnit(InterVersionedFile):
         # TODO: jam 20071116 It would be nice to have a streaming interface to
         #       get multiple texts from a source. The source could be smarter
         #       about how it handled intermediate stages.
-        # TODO: jam 20071116 Consider using 'get_line_list' instead of lots of
-        #       calls to get_lines()
+        #       get_line_list() or make_mpdiffs() seem like a possibility, but
+        #       at the moment they extract all full texts into memory, which
+        #       causes us to store more than our 3x fulltext goal.
+        #       Repository.iter_files_bytes() may be another possibility
         to_process = [version for version in order
                                if version not in self.target]
         total = len(to_process)
@@ -2272,11 +2274,9 @@ class InterKnit(InterVersionedFile):
         elif self.source.factory.annotated:
             converter = self._anno_to_plain_converter
         else:
-            # We're converting from a plain to an annotated knit. This requires
-            # building the annotations from scratch. The generic join code
-            # handles this implicitly so we delegate to it.
-            return self._text_by_text_join(pb, msg, version_ids,
-                                           ignore_missing)
+            # We're converting from a plain to an annotated knit. Copy them
+            # across by full texts.
+            return self._copy_texts(pb, msg, version_ids, ignore_missing)
 
         version_ids = self._get_source_version_ids(version_ids, ignore_missing)
         if not version_ids:
