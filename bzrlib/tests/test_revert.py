@@ -135,11 +135,15 @@ class TestRevert(tests.TestCaseWithTransport):
 
     def test_revert_file_in_deleted_dir(self):
         tree = self.make_branch_and_tree('.')
-        self.build_tree(['dir/', 'dir/file'])
-        tree.add(['dir', 'dir/file'])
-        tree.commit("Added file")
-        os.unlink('dir/file')
+        self.build_tree(['dir/', 'dir/file1', 'dir/file2'])
+        tree.add(['dir', 'dir/file1', 'dir/file2'],
+                 ['dir-id', 'file1-id', 'file2-id'])
+        tree.commit("Added files")
+        os.unlink('dir/file1')
+        os.unlink('dir/file2')
         os.rmdir('dir')
-        tree.remove(['dir/', 'dir/file'])
-        tree.revert(['dir/file'])
-        self.failUnlessExists('dir/file')
+        tree.remove(['dir/', 'dir/file1', 'dir/file2'])
+        tree.revert(['dir/file1'])
+        self.failUnlessExists('dir/file1')
+        self.failIfExists('dir/file2')
+        self.assertEqual('dir-id', tree.path2id('dir'))
