@@ -54,6 +54,13 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+   * Fix possible error in insert_data_stream when copying between 
+     pack repositories over bzr+ssh or bzr+http.  
+     KnitVersionedFile.get_data_stream now makes sure that requested
+     compression parents are sent before any delta hunks that depend 
+     on them.
+     (Martin Pool, #164637)
+
    * A progress bar has been added for knitpack -> knitpack fetching.
      (Robert Collins, #157789)
 
