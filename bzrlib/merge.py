@@ -374,6 +374,7 @@ class Merger(object):
             merge = self.merge_type(pb=self._pb,
                                     change_reporter=self.change_reporter,
                                     **kwargs)
+            merge.do_merge()
             if self.recurse == 'down':
                 for path, file_id in self.this_tree.iter_references():
                     sub_tree = self.this_tree.get_nested_tree(file_id, path)
@@ -446,11 +447,8 @@ class Merge3Merger(object):
         self.interesting_ids = interesting_ids
         self.interesting_files = interesting_files
         self.this_tree = working_tree
-        self.this_tree.lock_tree_write()
         self.base_tree = base_tree
-        self.base_tree.lock_read()
         self.other_tree = other_tree
-        self.other_tree.lock_read()
         self._raw_conflicts = []
         self.cooked_conflicts = []
         self.reprocess = reprocess
@@ -461,43 +459,19 @@ class Merge3Merger(object):
         if self.pp is None:
             self.pp = ProgressPhase("Merge phase", 3, self.pb)
 
-        self.tt = TreeTransform(working_tree, self.pb)
+    def do_merge(self):
+        self.this_tree.lock_tree_write()
+        self.base_tree.lock_read()
+        self.other_tree.lock_read()
+        self.tt = TreeTransform(self.this_tree, self.pb)
         try:
             self.pp.next_phase()
-            entries = self._entries3()
-            child_pb = ui.ui_factory.nested_progress_bar()
-            try:
-                for num, (file_id, changed, parents3, names3,
-                          executable3) in enumerate(entries):
-                    child_pb.update('Preparing file merge', num, len(entries))
-                    self._merge_names(file_id, parents3, names3)
-                    if changed:
-                        file_status = self.merge_contents(file_id)
-                    else:
-                        file_status = 'unmodified'
-                    self._merge_executable(file_id,
-                        executable3, file_status)
-            finally:
-                child_pb.finished()
-            self.fix_root()
-            self.pp.next_phase()
-            child_pb = ui.ui_factory.nested_progress_bar()
-            try:
-                fs_conflicts = resolve_conflicts(self.tt, child_pb,
-                    lambda t, c: conflict_pass(t, c, self.other_tree))
-            finally:
-                child_pb.finished()
-            if change_reporter is not None:
-                from bzrlib import delta
-                delta.report_changes(self.tt._iter_changes(), change_reporter)
-            self.cook_conflicts(fs_conflicts)
-            for conflict in self.cooked_conflicts:
-                warning(conflict)
+            self.compute_transform()
             self.pp.next_phase()
             results = self.tt.apply(no_conflicts=True)
             self.write_modified(results)
             try:
-                working_tree.add_conflicts(self.cooked_conflicts)
+                self.this_tree.add_conflicts(self.cooked_conflicts)
             except UnsupportedOperation:
                 pass
         finally:
@@ -506,6 +480,38 @@ class Merge3Merger(object):
             self.base_tree.unlock()
             self.this_tree.unlock()
             self.pb.clear()
+
+    def compute_transform(self):
+        entries = self._entries3()
+        child_pb = ui.ui_factory.nested_progress_bar()
+        try:
+            for num, (file_id, changed, parents3, names3,
+                      executable3) in enumerate(entries):
+                child_pb.update('Preparing file merge', num, len(entries))
+                self._merge_names(file_id, parents3, names3)
+                if changed:
+                    file_status = self.merge_contents(file_id)
+                else:
+                    file_status = 'unmodified'
+                self._merge_executable(file_id,
+                    executable3, file_status)
+        finally:
+            child_pb.finished()
+        self.fix_root()
+        self.pp.next_phase()
+        child_pb = ui.ui_factory.nested_progress_bar()
+        try:
+            fs_conflicts = resolve_conflicts(self.tt, child_pb,
+                lambda t, c: conflict_pass(t, c, self.other_tree))
+        finally:
+            child_pb.finished()
+        if self.change_reporter is not None:
+            from bzrlib import delta
+            delta.report_changes(
+                self.tt._iter_changes(), self.change_reporter)
+        self.cook_conflicts(fs_conflicts)
+        for conflict in self.cooked_conflicts:
+            warning(conflict)
 
     def _entries3(self):
         """Gather data about files modified between three trees.

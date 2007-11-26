@@ -95,6 +95,7 @@ class MergeBuilder(object):
         other_basis = self.other.branch.basis_tree()
         merger = merge_type(self.this, self.this, self.base, other_basis, 
                             interesting_ids=interesting_ids, **kwargs)
+        merger.do_merge()
         return merger.cooked_conflicts
 
     def list_transforms(self):
@@ -458,7 +459,6 @@ class FunctionalMergeTest(TestCaseWithTransport):
         file.close()
         mary_tree.commit("change file2")
         # john should be able to merge with no conflicts.
-        merge_type = Merge3Merger
         base = [None, None]
         other = ("mary", -1)
         tree.merge_from_branch(mary_tree.branch)
