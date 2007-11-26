@@ -65,6 +65,9 @@ IN DEVELOPMENT
    * ``commit`` is now able to invoke an external editor in a non-ascii
      directory. (Daniel Watkins, #84043)
 
+   * Catch connection errors for ftp.
+     (Vincent Ladeuil, #164567)
+
    * Conflicts are now resolved recursively by ``revert``.
      (Aaron Bentley, #102739)
 

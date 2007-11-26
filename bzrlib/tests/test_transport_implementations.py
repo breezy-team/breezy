@@ -1005,8 +1005,7 @@ class TransportTests(TestTransportImplementation):
     def test_connection_error(self):
         """ConnectionError is raised when connection is impossible.
         
-        The error may be raised from either the constructor or the first
-        operation on the transport.
+        The error should be raised from the first operation on the transport.
         """
         try:
             url = self._server.get_bogus_url()
