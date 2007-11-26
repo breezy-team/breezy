@@ -107,7 +107,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                                          "text for file %r differs:\n" % path)
 
     def assertRepositoryHasSameItems(self, left_repo, right_repo):
-        """require left_repo and right_repo to have the same value."""
+        """require left_repo and right_repo to contain the same data."""
         # XXX: TODO: Doesn't work yet, because we need to be able to compare
         # local repositories to remote ones...  but this is an as-yet unsolved
         # aspect of format management and the Remote protocols...

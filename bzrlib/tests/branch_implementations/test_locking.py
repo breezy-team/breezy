@@ -499,7 +499,7 @@ class TestBranchLocking(TestCaseWithBranch):
         branch = branch.bzrdir.open_branch()
         branch.lock_write()
         try:
-            # The branch should have asked the rpeository to lock.
+            # The branch should have asked the repository to lock.
             self.assertTrue(branch.repository.is_write_locked())
             # Does the repository type actually lock?
             if not branch.repository.get_physical_lock_status():

@@ -492,7 +492,7 @@ class RemoteRepository(object):
 
     def dont_leave_lock_in_place(self):
         if not self._lock_token:
-            raise NotImplementedError(self.leave_lock_in_place)
+            raise NotImplementedError(self.dont_leave_lock_in_place)
         self._leave_lock = False
 
     def _set_real_repository(self, repository):
@@ -613,12 +613,6 @@ class RemoteRepository(object):
         builder = self._real_repository.get_commit_builder(branch, parents,
                 config, timestamp=timestamp, timezone=timezone,
                 committer=committer, revprops=revprops, revision_id=revision_id)
-        ## We used to do this for knits, so that invidual methods could be
-        ## accelerated, but actually this was in hindsight a bad idea. Because
-        ## really we do need the real repository to assemble the work it's own
-        ## way.
-        ## # Make the builder use this RemoteRepository rather than the real one.
-        ## builder.repository = self
         return builder
 
     @needs_write_lock
@@ -1173,7 +1167,7 @@ class RemoteBranch(branch.Branch):
 
     def dont_leave_lock_in_place(self):
         if not self._lock_token:
-            raise NotImplementedError(self.leave_lock_in_place)
+            raise NotImplementedError(self.dont_leave_lock_in_place)
         self._leave_lock = False
 
     def last_revision_info(self):
