@@ -18,6 +18,7 @@
 
 from cStringIO import StringIO
 import errno
+from itertools import izip
 import os
 from stat import S_ISDIR
 import sys
@@ -80,6 +81,10 @@ class TestBzrDir(TestCaseWithBzrDir):
         reading it again, which leads to changed timestamps. This is ok though,
         because the inventory.kndx file is not ignored, and the integrity of
         knit joins is tested by test_knit and test_versionedfile.
+
+        :seealso: Additionally, assertRepositoryHasSameItems provides value
+            rather than representation checking of repositories for
+            equivalence.
         """
         files = []
         directories = ['.']
@@ -100,6 +105,63 @@ class TestBzrDir(TestCaseWithBzrDir):
                     self.assertEqualDiff(source.get(path).read(),
                                          target.get(path).read(),
                                          "text for file %r differs:\n" % path)
+
+    def assertRepositoryHasSameItems(self, left_repo, right_repo):
+        """require left_repo and right_repo to have the same value."""
+        # XXX: TODO: Doesn't work yet, because we need to be able to compare
+        # local repositories to remote ones...  but this is an as-yet unsolved
+        # aspect of format management and the Remote protocols...
+        # self.assertEqual(left_repo._format.__class__,
+        #     right_repo._format.__class__)
+        left_repo.lock_read()
+        try:
+            right_repo.lock_read()
+            try:
+                # revs
+                all_revs = left_repo.all_revision_ids()
+                self.assertEqual(left_repo.all_revision_ids(),
+                    right_repo.all_revision_ids())
+                for rev_id in left_repo.all_revision_ids():
+                    self.assertEqual(left_repo.get_revision(rev_id),
+                        right_repo.get_revision(rev_id))
+                # inventories
+                left_inv_weave = left_repo.get_inventory_weave()
+                right_inv_weave = right_repo.get_inventory_weave()
+                self.assertEqual(set(left_inv_weave.versions()),
+                    set(right_inv_weave.versions()))
+                # XXX: currently this does not handle indirectly referenced
+                # inventories (e.g. where the inventory is a delta basis for
+                # one that is fully present but that the revid for that
+                # inventory is not yet present.)
+                self.assertEqual(set(left_inv_weave.versions()), set(all_revs))
+                left_trees = left_repo.revision_trees(all_revs)
+                right_trees = right_repo.revision_trees(all_revs)
+                for left_tree, right_tree in izip(left_trees, right_trees):
+                    self.assertEqual(left_tree.inventory, right_tree.inventory)
+                # texts
+                text_index = left_repo._generate_text_key_index()
+                self.assertEqual(text_index,
+                    right_repo._generate_text_key_index())
+                for file_id, revision_id in text_index.iterkeys():
+                    left_weave = left_repo.weave_store.get_weave(
+                        file_id, left_repo.get_transaction())
+                    right_weave = right_repo.weave_store.get_weave(
+                        file_id, right_repo.get_transaction())
+                    self.assertEqual(
+                        left_weave.get_text(revision_id),
+                        right_weave.get_text(revision_id))
+                # signatures
+                for rev_id in all_revs:
+                    try:
+                        left_text = left_repo.get_signature_text(rev_id)
+                    except NoSuchRevision:
+                        continue
+                    right_text = right_repo.get_signature_text(rev_id)
+                    self.assertEqual(left_text, right_text)
+            finally:
+                right_repo.unlock()
+        finally:
+            left_repo.unlock()
 
     def skipIfNoWorkingTree(self, a_bzrdir):
         """Raises TestSkipped if a_bzrdir doesn't have a working tree.
@@ -229,9 +291,9 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
                                     [
                                      './.bzr/merge-hashes',
-                                     './.bzr/repository/inventory.knit',
+                                     './.bzr/repository',
                                      ])
-
+        self.assertRepositoryHasSameItems(tree.branch.repository, repo)
 
     def test_clone_bzrdir_repository_under_shared(self):
         tree = self.make_branch_and_tree('commit_tree')
@@ -324,8 +386,9 @@ class TestBzrDir(TestCaseWithBzrDir):
         target = dir.clone(self.get_url('target/child'), force_new_repo=True)
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
-                                    ['./.bzr/repository/inventory.knit',
+                                    ['./.bzr/repository',
                                      ])
+        self.assertRepositoryHasSameItems(tree.branch.repository, repo)
 
     def test_clone_bzrdir_repository_revision(self):
         # test for revision limiting, [smoke test, not corner case checks].
@@ -361,9 +424,11 @@ class TestBzrDir(TestCaseWithBzrDir):
                                      './.bzr/basis-inventory-cache',
                                      './.bzr/checkout/stat-cache',
                                      './.bzr/merge-hashes',
-                                     './.bzr/repository/inventory.knit',
+                                     './.bzr/repository',
                                      './.bzr/stat-cache',
                                     ])
+        self.assertRepositoryHasSameItems(
+            tree.branch.repository, target.open_repository())
 
     def test_clone_bzrdir_branch_and_repo_into_shared_repo(self):
         # by default cloning into a shared repo uses the shared repo.
@@ -401,10 +466,11 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = source.bzrdir
         target = dir.clone(self.get_url('target/child'), force_new_repo=True)
         self.assertNotEqual(dir.transport.base, target.transport.base)
-        target.open_repository()
+        repo = target.open_repository()
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
-                                    ['./.bzr/repository/inventory.knit',
+                                    ['./.bzr/repository',
                                      ])
+        self.assertRepositoryHasSameItems(tree.branch.repository, repo)
 
     def test_clone_bzrdir_branch_reference(self):
         # cloning should preserve the reference status of the branch in a bzrdir
@@ -418,9 +484,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             return
         target = dir.clone(self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
-        self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
-                                    ['./.bzr/repository/inventory.knit',
-                                     ])
+        self.assertDirectoriesEqual(dir.root_transport, target.root_transport)
 
     def test_clone_bzrdir_branch_revision(self):
         # test for revision limiting, [smoke test, not corner case checks].
@@ -454,9 +518,10 @@ class TestBzrDir(TestCaseWithBzrDir):
                                      './.bzr/checkout/stat-cache',
                                      './.bzr/checkout/merge-hashes',
                                      './.bzr/merge-hashes',
-                                     './.bzr/repository/inventory.knit',
+                                     './.bzr/repository',
                                      ])
-
+        self.assertRepositoryHasSameItems(tree.branch.repository,
+            target.open_repository())
         target.open_workingtree().revert()
 
     def test_revert_inventory(self):
@@ -473,8 +538,10 @@ class TestBzrDir(TestCaseWithBzrDir):
                                      './.bzr/checkout/stat-cache',
                                      './.bzr/checkout/merge-hashes',
                                      './.bzr/merge-hashes',
-                                     './.bzr/repository/inventory.knit',
+                                     './.bzr/repository',
                                      ])
+        self.assertRepositoryHasSameItems(tree.branch.repository,
+            target.open_repository())
 
         target.open_workingtree().revert()
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
@@ -483,8 +550,10 @@ class TestBzrDir(TestCaseWithBzrDir):
                                      './.bzr/checkout/stat-cache',
                                      './.bzr/checkout/merge-hashes',
                                      './.bzr/merge-hashes',
-                                     './.bzr/repository/inventory.knit',
+                                     './.bzr/repository',
                                      ])
+        self.assertRepositoryHasSameItems(tree.branch.repository,
+            target.open_repository())
 
     def test_clone_bzrdir_tree_branch_reference(self):
         # a tree with a branch reference (aka a checkout) 
@@ -923,9 +992,11 @@ class TestBzrDir(TestCaseWithBzrDir):
                                      './.bzr/checkout/inventory',
                                      './.bzr/inventory',
                                      './.bzr/parent',
-                                     './.bzr/repository/inventory.knit',
+                                     './.bzr/repository',
                                      './.bzr/stat-cache',
                                      ])
+        self.assertRepositoryHasSameItems(
+            tree.branch.repository, target.open_repository())
 
     def test_sprout_bzrdir_tree_branch_reference(self):
         # sprouting should create a repository if needed and a sprouted branch.
@@ -1427,6 +1498,13 @@ class TestBreakLock(TestCaseWithBzrDir):
         # break lock with just a repo should unlock the repo.
         repo = self.make_repository('.')
         repo.lock_write()
+        lock_repo = repo.bzrdir.open_repository()
+        if not lock_repo.get_physical_lock_status():
+            # This bzrdir's default repository does not physically lock things
+            # and thus this interaction cannot be tested at the interface
+            # level.
+            repo.unlock()
+            return
         # only one yes needed here: it should only be unlocking
         # the repo
         bzrlib.ui.ui_factory.stdin = StringIO("y\n")
@@ -1436,7 +1514,6 @@ class TestBreakLock(TestCaseWithBzrDir):
             # this bzrdir does not implement break_lock - so we cant test it.
             repo.unlock()
             return
-        lock_repo = repo.bzrdir.open_repository()
         lock_repo.lock_write()
         lock_repo.unlock()
         self.assertRaises(errors.LockBroken, repo.unlock)
@@ -1462,23 +1539,31 @@ class TestBreakLock(TestCaseWithBzrDir):
             # dir is inappropriately accessed, 3 will be needed, and
             # we'll see that because the stream will be fully consumed
             bzrlib.ui.ui_factory.stdin = StringIO("y\ny\ny\n")
+            # determine if the repository will have been locked;
+            this_repo_locked = \
+                thisdir.open_repository().get_physical_lock_status()
             master.bzrdir.break_lock()
-            # only two ys should have been read
-            self.assertEqual("y\n", bzrlib.ui.ui_factory.stdin.read())
+            if this_repo_locked:
+                # only two ys should have been read
+                self.assertEqual("y\n", bzrlib.ui.ui_factory.stdin.read())
+            else:
+                # only one y should have been read
+                self.assertEqual("y\ny\n", bzrlib.ui.ui_factory.stdin.read())
             # we should be able to lock a newly opened branch now
             branch = master.bzrdir.open_branch()
             branch.lock_write()
             branch.unlock()
-            # we should not be able to lock the repository in thisdir as its still
-            # held by the explicit lock we took, and the break lock should not have
-            # touched it.
-            repo = thisdir.open_repository()
-            orig_default = lockdir._DEFAULT_TIMEOUT_SECONDS
-            try:
-                lockdir._DEFAULT_TIMEOUT_SECONDS = 1
-                self.assertRaises(errors.LockContention, repo.lock_write)
-            finally:
-                lockdir._DEFAULT_TIMEOUT_SECONDS = orig_default
+            if this_repo_locked:
+                # we should not be able to lock the repository in thisdir as
+                # its still held by the explicit lock we took, and the break
+                # lock should not have touched it.
+                repo = thisdir.open_repository()
+                orig_default = lockdir._DEFAULT_TIMEOUT_SECONDS
+                try:
+                    lockdir._DEFAULT_TIMEOUT_SECONDS = 1
+                    self.assertRaises(errors.LockContention, repo.lock_write)
+                finally:
+                    lockdir._DEFAULT_TIMEOUT_SECONDS = orig_default
         finally:
             unused_repo.unlock()
         self.assertRaises(errors.LockBroken, master.unlock)
