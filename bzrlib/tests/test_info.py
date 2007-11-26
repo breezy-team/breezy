@@ -139,10 +139,8 @@ class TestInfo(tests.TestCaseWithTransport):
                 continue
             expected = None
             if key in ('dirstate', 'dirstate-tags', 'dirstate-with-subtree',
-                'knitpack-experimental', 'knitpack-subtree-experimental',
-                'rich-root'):
-                expected = 'dirstate or dirstate-tags or'\
-                    ' knitpack-experimental or rich-root'
+                'pack-0.92', 'pack-0.92-subtree', 'rich-root'):
+                expected = 'dirstate or dirstate-tags or pack-0.92 or rich-root'
             if key in ('knit', 'metaweave'):
                 expected = 'knit or metaweave'
             self.assertCheckoutDescription(key, expected)
