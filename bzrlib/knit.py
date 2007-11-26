@@ -575,7 +575,11 @@ class KnitVersionedFile(VersionedFile):
         """Get a data stream for the specified versions.
 
         Versions may be returned in any order, not necessarily the order
-        specified.
+        specified.  They are returned in a partial order by compression
+        parent, so that the deltas can be applied as the data stream is
+        inserted; however note that compression parents will not be sent
+        unless they were specifically requested, as the client may already
+        have them.
 
         :param required_versions: The exact set of versions to be extracted.
             Unlike some other knit methods, this is not used to generate a
@@ -584,35 +588,49 @@ class KnitVersionedFile(VersionedFile):
         :returns: format_signature, list of (version, options, length, parents),
             reader_callable.
         """
-        if not isinstance(required_versions, set):
-            required_versions = set(required_versions)
-        # we don't care about inclusions, the caller cares.
-        # but we need to setup a list of records to visit.
+        required_version_set = frozenset(required_versions)
+        version_index = {}
+        # list of revisions that can just be sent without waiting for their
+        # compression parent
+        ready_to_send = []
+        # map from revision to the children based on it
+        deferred = {}
+        # first, read all relevant index data, enough to sort into the right
+        # order to return
         for version_id in required_versions:
             if not self.has_version(version_id):
                 raise RevisionNotPresent(version_id, self.filename)
-        # Pick the desired versions out of the index in oldest-to-newest order
-        version_list = []
-        for version_id in self.versions():
-            if version_id in required_versions:
-                version_list.append(version_id)
-
-        # create the list of version information for the result
-        copy_queue_records = []
-        copy_set = set()
-        result_version_list = []
-        for version_id in version_list:
             options = self._index.get_options(version_id)
             parents = self._index.get_parents_with_ghosts(version_id)
             index_memo = self._index.get_position(version_id)
+            version_index[version_id] = (index_memo, options, parents)
+            if parents and parents[0] in required_version_set:
+                # must wait until the parent has been sent
+                deferred.setdefault(parents[0], []). \
+                    append(version_id)
+            else:
+                # either a fulltext, or a delta whose parent the client did
+                # not ask for and presumably already has
+                ready_to_send.append(version_id)
+        # build a list of results to return, plus instructions for data to
+        # read from the file
+        copy_queue_records = []
+        result_version_list = []
+        while ready_to_send:
+            # XXX: pushing and popping lists may be a bit inefficient
+            version_id = ready_to_send.pop()
+            (index_memo, options, parents) = version_index[version_id]
             copy_queue_records.append((version_id, index_memo))
             none, data_pos, data_size = index_memo
-            copy_set.add(version_id)
-            # version, options, length, parents
             result_version_list.append((version_id, options, data_size,
                 parents))
-
-        # Read the compressed record data.
+            if version_id in deferred:
+                # now we can send all the children of this revision - we could
+                # put them in anywhere, but doing them immediately might
+                # give better locality
+                ready_to_send[:0] = deferred.pop(version_id)
+        assert len(deferred) == 0, \
+            "Still have compressed child versions waiting to be sent"
         # XXX:
         # From here down to the return should really be logic in the returned
         # callable -- in a class that adapts read_records_iter_raw to read
@@ -622,7 +640,8 @@ class KnitVersionedFile(VersionedFile):
             (version_id2, options, _, parents) in \
             izip(self._data.read_records_iter_raw(copy_queue_records),
                  result_version_list):
-            assert version_id == version_id2, 'logic error, inconsistent results'
+            assert version_id == version_id2, \
+                'logic error, inconsistent results'
             raw_datum.append(raw_data)
         pseudo_file = StringIO(''.join(raw_datum))
         def read(length):
