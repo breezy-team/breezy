@@ -27,6 +27,14 @@ IN DEVELOPMENT
      supported transports.
      (Vincent Ladeuil)
 
+   * New rich-root format, recording the same data about tree roots that's
+     recorded for all other directories.  (Aaron Bentley)
+
+   * ``switch`` command added for changing the branch a lightweight checkout
+     is associated with and updating the tree to reflect the latest content
+     accordingly. This command was previously part of the BzrTools plug-in.
+     (Ian Clatworthy, Aaron Bentley, David Allouche)
+
   PERFORMANCE:
 
    * Commit updates the state of the working tree via a delta rather than
@@ -53,6 +61,9 @@ IN DEVELOPMENT
 
    * A progress bar has been added for knitpack -> knitpack fetching.
      (Robert Collins, #157789)
+
+   * ``commit`` is now able to invoke an external editor in a non-ascii
+     directory. (Daniel Watkins, #84043)
 
    * Detect invalid transport reuse attempts by catching invalid URLs.
      (Vincent Ladeuil, #161819)
