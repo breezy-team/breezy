@@ -42,17 +42,21 @@ class TestBranchLocking(TestCaseWithBranch):
         bcf = b.control_files
         rcf = getattr(b.repository, 'control_files', None)
         if rcf is None:
-            raise TestSkipped(
-                "This tests depends on being able to instrument "
-                "repository.control_files, but %r doesn't have control_files."
-                % (b.repository,))
-
-        # Look out for branch types that reuse their control files
-        self.combined_control = bcf is rcf
-
-        b.control_files = LockWrapper(self.locks, b.control_files, 'bc')
-        b.repository.control_files = \
-            LockWrapper(self.locks, b.repository.control_files, 'rc')
+            self.combined_branch = False
+        else:
+            # Look out for branch types that reuse their control files
+            self.combined_control = bcf is rcf
+        try:
+            b.control_files = LockWrapper(self.locks, b.control_files, 'bc')
+        except AttributeError:
+            # RemoteBranch seems to trigger this.
+            raise TestSkipped("Could not instrument branch control files.")
+        if self.combined_control:
+            # instrument the repository control files too to ensure its worked
+            # with correctly. When they are not shared, we trust the repository
+            # API and only instrument the repository itself. 
+            b.repository.control_files = \
+                LockWrapper(self.locks, b.repository.control_files, 'rc')
         return b
 
     def test_01_lock_read(self):
@@ -70,15 +74,24 @@ class TestBranchLocking(TestCaseWithBranch):
         self.assertFalse(b.is_locked())
         self.assertFalse(b.repository.is_locked())
 
-        self.assertEqual([('b', 'lr', True),
-                          ('r', 'lr', True),
-                          ('rc', 'lr', True),
-                          ('bc', 'lr', True),
-                          ('b', 'ul', True),
-                          ('bc', 'ul', True),
-                          ('r', 'ul', True),
-                          ('rc', 'ul', True),
-                         ], self.locks)
+        if self.combined_control:
+            self.assertEqual([('b', 'lr', True),
+                              ('r', 'lr', True),
+                              ('rc', 'lr', True),
+                              ('bc', 'lr', True),
+                              ('b', 'ul', True),
+                              ('bc', 'ul', True),
+                              ('r', 'ul', True),
+                              ('rc', 'ul', True),
+                             ], self.locks)
+        else:
+            self.assertEqual([('b', 'lr', True),
+                              ('r', 'lr', True),
+                              ('bc', 'lr', True),
+                              ('b', 'ul', True),
+                              ('bc', 'ul', True),
+                              ('r', 'ul', True),
+                             ], self.locks)
 
     def test_02_lock_write(self):
         # Test that locking occurs in the correct order
@@ -95,15 +108,24 @@ class TestBranchLocking(TestCaseWithBranch):
         self.assertFalse(b.is_locked())
         self.assertFalse(b.repository.is_locked())
 
-        self.assertEqual([('b', 'lw', True),
-                          ('r', 'lw', True),
-                          ('rc', 'lw', True),
-                          ('bc', 'lw', True),
-                          ('b', 'ul', True),
-                          ('bc', 'ul', True),
-                          ('r', 'ul', True),
-                          ('rc', 'ul', True),
-                         ], self.locks)
+        if self.combined_control:
+            self.assertEqual([('b', 'lw', True),
+                              ('r', 'lw', True),
+                              ('rc', 'lw', True),
+                              ('bc', 'lw', True),
+                              ('b', 'ul', True),
+                              ('bc', 'ul', True),
+                              ('r', 'ul', True),
+                              ('rc', 'ul', True),
+                             ], self.locks)
+        else:
+            self.assertEqual([('b', 'lw', True),
+                              ('r', 'lw', True),
+                              ('bc', 'lw', True),
+                              ('b', 'ul', True),
+                              ('bc', 'ul', True),
+                              ('r', 'ul', True),
+                             ], self.locks)
 
     def test_03_lock_fail_unlock_repo(self):
         # Make sure branch.unlock() is called, even if there is a
@@ -126,14 +148,23 @@ class TestBranchLocking(TestCaseWithBranch):
 
             # We unlock the branch control files, even if 
             # we fail to unlock the repository
-            self.assertEqual([('b', 'lw', True),
-                              ('r', 'lw', True),
-                              ('rc', 'lw', True),
-                              ('bc', 'lw', True),
-                              ('b', 'ul', True),
-                              ('bc', 'ul', True),
-                              ('r', 'ul', False), 
-                             ], self.locks)
+            if self.combined_control:
+                self.assertEqual([('b', 'lw', True),
+                                  ('r', 'lw', True),
+                                  ('rc', 'lw', True),
+                                  ('bc', 'lw', True),
+                                  ('b', 'ul', True),
+                                  ('bc', 'ul', True),
+                                  ('r', 'ul', False),
+                                 ], self.locks)
+            else:
+                self.assertEqual([('b', 'lw', True),
+                                  ('r', 'lw', True),
+                                  ('bc', 'lw', True),
+                                  ('b', 'ul', True),
+                                  ('bc', 'ul', True),
+                                  ('r', 'ul', False),
+                                 ], self.locks)
 
         finally:
             # For cleanup purposes, make sure we are unlocked
@@ -159,15 +190,24 @@ class TestBranchLocking(TestCaseWithBranch):
 
             # We unlock the repository even if 
             # we fail to unlock the control files
-            self.assertEqual([('b', 'lw', True),
-                              ('r', 'lw', True),
-                              ('rc', 'lw', True),
-                              ('bc', 'lw', True),
-                              ('b', 'ul', True),
-                              ('bc', 'ul', False),
-                              ('r', 'ul', True), 
-                              ('rc', 'ul', True), 
-                             ], self.locks)
+            if self.combined_control:
+                self.assertEqual([('b', 'lw', True),
+                                  ('r', 'lw', True),
+                                  ('rc', 'lw', True),
+                                  ('bc', 'lw', True),
+                                  ('b', 'ul', True),
+                                  ('bc', 'ul', False),
+                                  ('r', 'ul', True),
+                                  ('rc', 'ul', True),
+                                 ], self.locks)
+            else:
+                self.assertEqual([('b', 'lw', True),
+                                  ('r', 'lw', True),
+                                  ('bc', 'lw', True),
+                                  ('b', 'ul', True),
+                                  ('bc', 'ul', False),
+                                  ('r', 'ul', True),
+                                 ], self.locks)
 
         finally:
             # For cleanup purposes, make sure we are unlocked
@@ -208,13 +248,20 @@ class TestBranchLocking(TestCaseWithBranch):
         self.assertFalse(b.is_locked())
         self.assertFalse(b.repository.is_locked())
 
-        self.assertEqual([('b', 'lr', True),
-                          ('r', 'lr', True),
-                          ('rc', 'lr', True),
-                          ('bc', 'lr', False),
-                          ('r', 'ul', True),
-                          ('rc', 'ul', True),
-                         ], self.locks)
+        if self.combined_control:
+            self.assertEqual([('b', 'lr', True),
+                              ('r', 'lr', True),
+                              ('rc', 'lr', True),
+                              ('bc', 'lr', False),
+                              ('r', 'ul', True),
+                              ('rc', 'ul', True),
+                             ], self.locks)
+        else:
+            self.assertEqual([('b', 'lr', True),
+                              ('r', 'lr', True),
+                              ('bc', 'lr', False),
+                              ('r', 'ul', True),
+                             ], self.locks)
 
     def test_08_lock_write_fail_control(self):
         # Test the repository is unlocked if we can't lock self
@@ -224,14 +271,20 @@ class TestBranchLocking(TestCaseWithBranch):
         self.assertRaises(TestPreventLocking, b.lock_write)
         self.assertFalse(b.is_locked())
         self.assertFalse(b.repository.is_locked())
-
-        self.assertEqual([('b', 'lw', True),
-                          ('r', 'lw', True),
-                          ('rc', 'lw', True),
-                          ('bc', 'lw', False),
-                          ('r', 'ul', True),
-                          ('rc', 'ul', True),
-                         ], self.locks)
+        if self.combined_control:
+            self.assertEqual([('b', 'lw', True),
+                              ('r', 'lw', True),
+                              ('rc', 'lw', True),
+                              ('bc', 'lw', False),
+                              ('r', 'ul', True),
+                              ('rc', 'ul', True),
+                             ], self.locks)
+        else:
+            self.assertEqual([('b', 'lw', True),
+                              ('r', 'lw', True),
+                              ('bc', 'lw', False),
+                              ('r', 'ul', True),
+                             ], self.locks)
 
     def test_lock_write_returns_None_refuses_token(self):
         branch = self.make_branch('b')
