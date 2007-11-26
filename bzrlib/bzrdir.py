@@ -29,6 +29,7 @@ objects returned.
 
 from cStringIO import StringIO
 import os
+import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -1355,6 +1356,14 @@ class BzrDirFormat(object):
                                       # FIXME: RBC 20060121 don't peek under
                                       # the covers
                                       mode=temp_control._dir_mode)
+        if sys.platform == 'win32' and isinstance(transport, LocalTransport):
+            try:
+                import win32file
+            except ImportError:
+                pass
+            else:
+                win32file.SetFileAttributes(transport._abspath('.bzr'),
+                    win32file.FILE_ATTRIBUTE_HIDDEN)
         file_mode = temp_control._file_mode
         del temp_control
         mutter('created control directory in ' + transport.base)
