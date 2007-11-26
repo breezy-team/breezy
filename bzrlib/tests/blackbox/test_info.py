@@ -265,7 +265,7 @@ Repository:
         out, err = self.run_bzr('info -v lightcheckout')
         self.assertEqualDiff(
 """Lightweight checkout (format: dirstate or dirstate-tags or \
-knitpack-experimental or rich-root)
+pack-0.92 or rich-root or rich-root-pack)
 Location:
   light checkout root: lightcheckout
    checkout of branch: standalone
@@ -444,7 +444,7 @@ Repository:
         out, err = self.run_bzr('info lightcheckout --verbose')
         self.assertEqualDiff(
 """Lightweight checkout (format: dirstate or dirstate-tags or \
-knitpack-experimental or rich-root)
+pack-0.92 or rich-root or rich-root-pack)
 Location:
   light checkout root: lightcheckout
    checkout of branch: standalone
@@ -584,7 +584,7 @@ Repository:
         out, err = self.run_bzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
 """Lightweight checkout (format: dirstate or dirstate-tags or \
-knitpack-experimental or rich-root)
+pack-0.92 or rich-root or rich-root-pack)
 Location:
   light checkout root: tree/lightcheckout
    checkout of branch: repo/branch
@@ -716,7 +716,7 @@ Repository:
         out, err = self.run_bzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
 """Lightweight checkout (format: dirstate or dirstate-tags or \
-knitpack-experimental or rich-root)
+pack-0.92 or rich-root or rich-root-pack)
 Location:
   light checkout root: tree/lightcheckout
    checkout of branch: repo/branch
@@ -1159,8 +1159,8 @@ Repository:
             (False, True): 'Lightweight checkout',
             (False, False): 'Checkout',
             }[(shared_repo is not None, light_checkout)]
-        format = {True: 'dirstate or dirstate-tags or knitpack-experimental'
-                        ' or rich-root',
+        format = {True: 'dirstate or dirstate-tags or pack-0.92'
+                        ' or rich-root or rich-root-pack',
                   False: 'dirstate'}[light_checkout]
         if repo_locked:
             repo_locked = lco_tree.branch.repository.get_physical_lock_status()

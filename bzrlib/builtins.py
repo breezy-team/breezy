@@ -2831,6 +2831,8 @@ class cmd_merge(Command):
                 merger = _mod_merge.Merger.from_uncommitted(tree, other_tree,
                     pb)
                 allow_pending = False
+                if other_path != '':
+                    merger.interesting_files = [other_path]
 
             if merger is None:
                 merger, allow_pending = self._get_merger_from_branch(tree,
@@ -3694,7 +3696,6 @@ class cmd_serve(Command):
         from bzrlib.smart import medium, server
         from bzrlib.transport import get_transport
         from bzrlib.transport.chroot import ChrootServer
-        from bzrlib.transport.remote import BZR_DEFAULT_PORT, BZR_DEFAULT_INTERFACE
         if directory is None:
             directory = os.getcwd()
         url = urlutils.local_path_to_url(directory)
@@ -3707,9 +3708,9 @@ class cmd_serve(Command):
             smart_server = medium.SmartServerPipeStreamMedium(
                 sys.stdin, sys.stdout, t)
         else:
-            host = BZR_DEFAULT_INTERFACE
+            host = medium.BZR_DEFAULT_INTERFACE
             if port is None:
-                port = BZR_DEFAULT_PORT
+                port = medium.BZR_DEFAULT_PORT
             else:
                 if ':' in port:
                     host, port = port.split(':')
@@ -4322,6 +4323,21 @@ class cmd_reconfigure(Command):
             reconfiguration = reconfigure.Reconfigure.to_checkout(directory,
                                                                   bind_to)
         reconfiguration.apply(force)
+
+
+class cmd_switch(Command):
+    """Set the branch of a lightweight checkout and update."""
+
+    takes_args = ['to_location']
+
+    def run(self, to_location):
+        from bzrlib import switch
+        to_branch = Branch.open(to_location)
+        tree_location = '.'
+        control_dir = bzrdir.BzrDir.open_containing(tree_location)[0]
+        switch.switch(control_dir, to_branch)
+        note('Switched to branch: %s',
+            urlutils.unescape_for_display(to_branch.base, 'utf-8'))
 
 
 def _create_prefix(cur_transport):

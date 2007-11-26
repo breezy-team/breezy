@@ -238,6 +238,18 @@ class TestMerge(ExternalBase):
         self.run_bzr_error(('Cannot use --uncommitted and --revision',),
                            'merge /a --uncommitted -r1 -d b')
 
+    def test_merge_uncommitted_file(self):
+        """It should be possible to merge changes from a single file."""
+        tree_a = self.make_branch_and_tree('tree_a')
+        tree_a.commit('initial commit')
+        tree_a.bzrdir.sprout('tree_b')
+        self.build_tree(['tree_a/file1', 'tree_a/file2'])
+        tree_a.add(['file1', 'file2'])
+        os.chdir('tree_b')
+        self.run_bzr(['merge', '--uncommitted', '../tree_a/file1'])
+        self.failUnlessExists('file1')
+        self.failIfExists('file2')
+
     def pullable_branch(self):
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/file'])
