@@ -747,48 +747,6 @@ class TreeTransformBase(object):
                 continue
             return True
         return False
-            
-    def apply(self, no_conflicts=False, _mover=None):
-        """Apply all changes to the inventory and filesystem.
-        
-        If filesystem or inventory conflicts are present, MalformedTransform
-        will be thrown.
-
-        If apply succeeds, finalize is not necessary.
-
-        :param no_conflicts: if True, the caller guarantees there are no
-            conflicts, so no check is made.
-        :param _mover: Supply an alternate FileMover, for testing
-        """
-        if not no_conflicts:
-            conflicts = self.find_conflicts()
-            if len(conflicts) != 0:
-                raise MalformedTransform(conflicts=conflicts)
-        inv = self._tree.inventory
-        inventory_delta = []
-        child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
-        try:
-            if _mover is None:
-                mover = _FileMover()
-            else:
-                mover = _mover
-            try:
-                child_pb.update('Apply phase', 0, 2)
-                self._apply_removals(inv, inventory_delta, mover)
-                child_pb.update('Apply phase', 1, 2)
-                modified_paths = self._apply_insertions(inv, inventory_delta,
-                                                        mover)
-            except:
-                mover.rollback()
-                raise
-            else:
-                mover.apply_deletions()
-        finally:
-            child_pb.finished()
-        self._tree.apply_inventory_delta(inventory_delta)
-        self.__done = True
-        self.finalize()
-        return _TransformResults(modified_paths, self.rename_count)
 
     def _limbo_name(self, trans_id):
         """Generate the limbo name of a file"""
@@ -822,122 +780,6 @@ class TreeTransformBase(object):
             self._needs_rename.add(trans_id)
         self._limbo_files[trans_id] = limbo_name
         return limbo_name
-
-    def _apply_removals(self, inv, inventory_delta, mover):
-        """Perform tree operations that remove directory/inventory names.
-        
-        That is, delete files that are to be deleted, and put any files that
-        need renaming into limbo.  This must be done in strict child-to-parent
-        order.
-        """
-        tree_paths = list(self._tree_path_ids.iteritems())
-        tree_paths.sort(reverse=True)
-        child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
-        try:
-            for num, data in enumerate(tree_paths):
-                path, trans_id = data
-                child_pb.update('removing file', num, len(tree_paths))
-                full_path = self._tree.abspath(path)
-                if trans_id in self._removed_contents:
-                    mover.pre_delete(full_path, os.path.join(self._deletiondir,
-                                     trans_id))
-                elif trans_id in self._new_name or trans_id in \
-                    self._new_parent:
-                    try:
-                        mover.rename(full_path, self._limbo_name(trans_id))
-                    except OSError, e:
-                        if e.errno != errno.ENOENT:
-                            raise
-                    else:
-                        self.rename_count += 1
-                if trans_id in self._removed_id:
-                    if trans_id == self._new_root:
-                        file_id = self._tree.get_root_id()
-                    else:
-                        file_id = self.tree_file_id(trans_id)
-                    assert file_id is not None
-                    inventory_delta.append((path, None, file_id, None))
-        finally:
-            child_pb.finished()
-
-    def _apply_insertions(self, inv, inventory_delta, mover):
-        """Perform tree operations that insert directory/inventory names.
-        
-        That is, create any files that need to be created, and restore from
-        limbo any files that needed renaming.  This must be done in strict
-        parent-to-child order.
-        """
-        new_paths = self.new_paths()
-        modified_paths = []
-        child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
-        try:
-            for num, (path, trans_id) in enumerate(new_paths):
-                new_entry = None
-                child_pb.update('adding file', num, len(new_paths))
-                try:
-                    kind = self._new_contents[trans_id]
-                except KeyError:
-                    kind = contents = None
-                if trans_id in self._new_contents or \
-                    self.path_changed(trans_id):
-                    full_path = self._tree.abspath(path)
-                    if trans_id in self._needs_rename:
-                        try:
-                            mover.rename(self._limbo_name(trans_id), full_path)
-                        except OSError, e:
-                            # We may be renaming a dangling inventory id
-                            if e.errno != errno.ENOENT:
-                                raise
-                        else:
-                            self.rename_count += 1
-                    if trans_id in self._new_contents:
-                        modified_paths.append(full_path)
-                        del self._new_contents[trans_id]
-
-                if trans_id in self._new_id:
-                    if kind is None:
-                        kind = file_kind(self._tree.abspath(path))
-                    if trans_id in self._new_reference_revision:
-                        new_entry = inventory.TreeReference(
-                            self._new_id[trans_id],
-                            self._new_name[trans_id], 
-                            self.final_file_id(self._new_parent[trans_id]),
-                            None, self._new_reference_revision[trans_id])
-                    else:
-                        new_entry = inventory.make_entry(kind,
-                            self.final_name(trans_id),
-                            self.final_file_id(self.final_parent(trans_id)),
-                            self._new_id[trans_id])
-                else:
-                    if trans_id in self._new_name or trans_id in\
-                        self._new_parent or\
-                        trans_id in self._new_executability:
-                        file_id = self.final_file_id(trans_id)
-                        if file_id is not None:
-                            entry = inv[file_id]
-                            new_entry = entry.copy()
-
-                    if trans_id in self._new_name or trans_id in\
-                        self._new_parent:
-                            if new_entry is not None:
-                                new_entry.name = self.final_name(trans_id)
-                                parent = self.final_parent(trans_id)
-                                parent_id = self.final_file_id(parent)
-                                new_entry.parent_id = parent_id
-
-                if trans_id in self._new_executability:
-                    self._set_executability(path, new_entry, trans_id)
-                if new_entry is not None:
-                    if new_entry.file_id in inv:
-                        old_path = inv.id2path(new_entry.file_id)
-                    else:
-                        old_path = None
-                    inventory_delta.append((old_path, path,
-                                            new_entry.file_id,
-                                            new_entry))
-        finally:
-            child_pb.finished()
-        return modified_paths
 
     def _set_executability(self, path, entry, trans_id):
         """Set the executability of versioned files """
@@ -1148,6 +990,8 @@ class TreeTransformBase(object):
                    (from_executable, to_executable)))
         return iter(sorted(results, key=lambda x:x[1]))
 
+    def get_preview_tree(self):
+        return PreviewTree(self)
 
 class TreeTransform(TreeTransformBase):
     """Represent a tree transformation.
@@ -1207,6 +1051,165 @@ class TreeTransform(TreeTransformBase):
             raise
         TreeTransformBase.__init__(self, tree, limbodir, pb)
 
+    def apply(self, no_conflicts=False, _mover=None):
+        """Apply all changes to the inventory and filesystem.
+        
+        If filesystem or inventory conflicts are present, MalformedTransform
+        will be thrown.
+
+        If apply succeeds, finalize is not necessary.
+
+        :param no_conflicts: if True, the caller guarantees there are no
+            conflicts, so no check is made.
+        :param _mover: Supply an alternate FileMover, for testing
+        """
+        if not no_conflicts:
+            conflicts = self.find_conflicts()
+            if len(conflicts) != 0:
+                raise MalformedTransform(conflicts=conflicts)
+        inv = self._tree.inventory
+        inventory_delta = []
+        child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        try:
+            if _mover is None:
+                mover = _FileMover()
+            else:
+                mover = _mover
+            try:
+                child_pb.update('Apply phase', 0, 2)
+                self._apply_removals(inv, inventory_delta, mover)
+                child_pb.update('Apply phase', 1, 2)
+                modified_paths = self._apply_insertions(inv, inventory_delta,
+                                                        mover)
+            except:
+                mover.rollback()
+                raise
+            else:
+                mover.apply_deletions()
+        finally:
+            child_pb.finished()
+        self._tree.apply_inventory_delta(inventory_delta)
+        # XXX OW!
+        self._TreeTransformBase__done = True
+        self.finalize()
+        return _TransformResults(modified_paths, self.rename_count)
+
+    def _apply_removals(self, inv, inventory_delta, mover):
+        """Perform tree operations that remove directory/inventory names.
+        
+        That is, delete files that are to be deleted, and put any files that
+        need renaming into limbo.  This must be done in strict child-to-parent
+        order.
+        """
+        tree_paths = list(self._tree_path_ids.iteritems())
+        tree_paths.sort(reverse=True)
+        child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        try:
+            for num, data in enumerate(tree_paths):
+                path, trans_id = data
+                child_pb.update('removing file', num, len(tree_paths))
+                full_path = self._tree.abspath(path)
+                if trans_id in self._removed_contents:
+                    mover.pre_delete(full_path, os.path.join(self._deletiondir,
+                                     trans_id))
+                elif trans_id in self._new_name or trans_id in \
+                    self._new_parent:
+                    try:
+                        mover.rename(full_path, self._limbo_name(trans_id))
+                    except OSError, e:
+                        if e.errno != errno.ENOENT:
+                            raise
+                    else:
+                        self.rename_count += 1
+                if trans_id in self._removed_id:
+                    if trans_id == self._new_root:
+                        file_id = self._tree.get_root_id()
+                    else:
+                        file_id = self.tree_file_id(trans_id)
+                    assert file_id is not None
+                    inventory_delta.append((path, None, file_id, None))
+        finally:
+            child_pb.finished()
+
+    def _apply_insertions(self, inv, inventory_delta, mover):
+        """Perform tree operations that insert directory/inventory names.
+        
+        That is, create any files that need to be created, and restore from
+        limbo any files that needed renaming.  This must be done in strict
+        parent-to-child order.
+        """
+        new_paths = self.new_paths()
+        modified_paths = []
+        child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        try:
+            for num, (path, trans_id) in enumerate(new_paths):
+                new_entry = None
+                child_pb.update('adding file', num, len(new_paths))
+                try:
+                    kind = self._new_contents[trans_id]
+                except KeyError:
+                    kind = contents = None
+                if trans_id in self._new_contents or \
+                    self.path_changed(trans_id):
+                    full_path = self._tree.abspath(path)
+                    if trans_id in self._needs_rename:
+                        try:
+                            mover.rename(self._limbo_name(trans_id), full_path)
+                        except OSError, e:
+                            # We may be renaming a dangling inventory id
+                            if e.errno != errno.ENOENT:
+                                raise
+                        else:
+                            self.rename_count += 1
+                    if trans_id in self._new_contents:
+                        modified_paths.append(full_path)
+                        del self._new_contents[trans_id]
+
+                if trans_id in self._new_id:
+                    if kind is None:
+                        kind = file_kind(self._tree.abspath(path))
+                    if trans_id in self._new_reference_revision:
+                        new_entry = inventory.TreeReference(
+                            self._new_id[trans_id],
+                            self._new_name[trans_id], 
+                            self.final_file_id(self._new_parent[trans_id]),
+                            None, self._new_reference_revision[trans_id])
+                    else:
+                        new_entry = inventory.make_entry(kind,
+                            self.final_name(trans_id),
+                            self.final_file_id(self.final_parent(trans_id)),
+                            self._new_id[trans_id])
+                else:
+                    if trans_id in self._new_name or trans_id in\
+                        self._new_parent or\
+                        trans_id in self._new_executability:
+                        file_id = self.final_file_id(trans_id)
+                        if file_id is not None:
+                            entry = inv[file_id]
+                            new_entry = entry.copy()
+
+                    if trans_id in self._new_name or trans_id in\
+                        self._new_parent:
+                            if new_entry is not None:
+                                new_entry.name = self.final_name(trans_id)
+                                parent = self.final_parent(trans_id)
+                                parent_id = self.final_file_id(parent)
+                                new_entry.parent_id = parent_id
+
+                if trans_id in self._new_executability:
+                    self._set_executability(path, new_entry, trans_id)
+                if new_entry is not None:
+                    if new_entry.file_id in inv:
+                        old_path = inv.id2path(new_entry.file_id)
+                    else:
+                        old_path = None
+                    inventory_delta.append((old_path, path,
+                                            new_entry.file_id,
+                                            new_entry))
+        finally:
+            child_pb.finished()
+        return modified_paths
+
 
 class TransformPreview(TreeTransformBase):
 
@@ -1216,9 +1219,6 @@ class TransformPreview(TreeTransformBase):
 
     def canonical_path(self, path):
         return path
-
-    def get_preview_tree(self):
-        return PreviewTree(self)
 
 
 class PreviewTree(object):
