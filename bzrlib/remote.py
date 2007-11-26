@@ -412,7 +412,9 @@ class RemoteRepository(object):
 
     def get_physical_lock_status(self):
         """See Repository.get_physical_lock_status()."""
-        return False
+        # should be an API call to the server.
+        self._ensure_real()
+        return self._real_repository.get_physical_lock_status()
 
     def is_in_write_group(self):
         """Return True if there is an open write group.
