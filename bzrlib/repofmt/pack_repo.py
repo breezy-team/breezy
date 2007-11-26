@@ -48,6 +48,7 @@ from bzrlib import (
     osutils,
     transactions,
     xml5,
+    xml6,
     xml7,
     )
 
@@ -1811,7 +1812,7 @@ class RepositoryFormatKnitPack1(RepositoryFormatPack):
     _serializer = xml5.serializer_v5
 
     def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir('knitpack-experimental')
+        return bzrdir.format_registry.make_bzrdir('pack-0.92')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -1848,7 +1849,7 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir(
-            'knitpack-subtree-experimental')
+            'pack-0.92-subtree')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -1870,3 +1871,42 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return "Packs containing knits with subtree support\n"
+
+
+class RepositoryFormatKnitPack4(RepositoryFormatPack):
+    """A rich-root, no subtrees parameterised Pack repository.
+
+    This repository format uses the xml6 serializer to get:
+     - support for recording full info about the tree root
+
+    This format was introduced in 1.0.
+    """
+
+    repository_class = KnitPackRepository
+    _commit_builder_class = PackRootCommitBuilder
+    rich_root_data = True
+    supports_tree_reference = False
+    _serializer = xml6.serializer_v6
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir(
+            'rich-root-pack')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def check_conversion_target(self, target_format):
+        if not target_format.rich_root_data:
+            raise errors.BadConversionTarget(
+                'Does not support rich root data.', target_format)
+
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return ("Bazaar pack repository format 1 with rich root"
+                " (needs bzr 1.0)\n")
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return "Packs containing knits with rich root support\n"
