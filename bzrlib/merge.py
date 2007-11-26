@@ -347,7 +347,7 @@ class Merger(object):
                                                       self.base_rev_id,
                                                       self.this_branch)
 
-    def do_merge(self):
+    def make_merger(self):
         kwargs = {'working_tree':self.this_tree, 'this_tree': self.this_tree,
                   'other_tree': self.other_tree,
                   'interesting_ids': self.interesting_ids,
@@ -365,15 +365,18 @@ class Merger(object):
         elif self.show_base:
             raise BzrError("Showing base is not supported for this"
                                   " merge type. %s" % self.merge_type)
+        return self.merge_type(pb=self._pb,
+                               change_reporter=self.change_reporter,
+                               **kwargs)
+
+    def do_merge(self):
+        merge = self.make_merger()
         self.this_tree.lock_tree_write()
         if self.base_tree is not None:
             self.base_tree.lock_read()
         if self.other_tree is not None:
             self.other_tree.lock_read()
         try:
-            merge = self.merge_type(pb=self._pb,
-                                    change_reporter=self.change_reporter,
-                                    **kwargs)
             merge.do_merge()
             if self.recurse == 'down':
                 for path, file_id in self.this_tree.iter_references():
