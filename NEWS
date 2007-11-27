@@ -183,6 +183,9 @@ IN DEVELOPMENT
      (line, version_id) tuples. This change has been made to aid reconcile and
      fetch operations. (Robert Collins)
 
+   * ``bzrlib.repository.get_versioned_file_checker`` is now private.
+     (Robert Collins)
+
   INTERNALS:
 
    * Added ``ContainerSerialiser`` and ``ContainerPushParser`` to

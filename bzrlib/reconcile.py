@@ -379,7 +379,7 @@ class KnitReconciler(RepoReconciler):
         versions = self.revisions.versions()
         mutter('Prepopulating revision text cache with %d revisions',
                 len(versions))
-        vf_checker = self.repo.get_versioned_file_checker()
+        vf_checker = self.repo._get_versioned_file_checker()
         # List all weaves before altering, to avoid race conditions when we
         # delete unused weaves.
         weaves = list(enumerate(self.repo.weave_store))

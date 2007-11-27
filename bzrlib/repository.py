@@ -1662,9 +1662,9 @@ class Repository(object):
                 [parents_provider, other_repository._make_parents_provider()])
         return graph.Graph(parents_provider)
 
-    def get_versioned_file_checker(self):
+    def _get_versioned_file_checker(self):
         """Return an object suitable for checking versioned files."""
-        return VersionedFileChecker(self)
+        return _VersionedFileChecker(self)
 
     @needs_write_lock
     def set_make_working_trees(self, new_value):
@@ -2884,7 +2884,7 @@ def _unescape_xml(data):
     return _unescape_re.sub(_unescaper, data)
 
 
-class VersionedFileChecker(object):
+class _VersionedFileChecker(object):
 
     def __init__(self, repository):
         self.repository = repository
