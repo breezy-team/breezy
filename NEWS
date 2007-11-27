@@ -87,6 +87,10 @@ IN DEVELOPMENT
    * Fix multiple connections during checkout --lightweight.
      (Vincent Ladeuil, #159150)
 
+   * Fix typo in limiting offsets coalescing for http, leading to
+     whole files being downloaded instead of parts.
+     (Vincent Ladeuil, #165061)
+
    * FTP server errors don't error in the error handling code.
      (Robert Collins, #161240)
 
