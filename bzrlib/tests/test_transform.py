@@ -33,9 +33,14 @@ from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            PathsNotVersionedError, ExistingLimbo,
                            ExistingPendingDeletion, ImmortalLimbo,
                            ImmortalPendingDeletion, LockError)
-from bzrlib.osutils import file_kind, has_symlinks, pathjoin
+from bzrlib.osutils import file_kind, pathjoin
 from bzrlib.merge import Merge3Merger
-from bzrlib.tests import TestCaseInTempDir, TestSkipped, TestCase
+from bzrlib.tests import (
+    SymlinkFeature,
+    TestCase,
+    TestCaseInTempDir,
+    TestSkipped,
+    )
 from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths, 
                               resolve_conflicts, cook_conflicts, 
                               find_interesting, build_tree, get_backup_name,
@@ -385,8 +390,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         replace.apply()
 
     def test_symlinks(self):
-        if not has_symlinks():
-            raise TestSkipped('Symlinks are not supported on this platform')
+        self.requireFeature(SymlinkFeature)
         transform,root = self.get_transform()
         oz_id = transform.new_directory('oz', root, 'oz-id')
         wizard = transform.new_symlink('wizard', oz_id, 'wizard-target', 
@@ -405,6 +409,26 @@ class TestTreeTransform(tests.TestCaseWithTransport):
                          'behind_curtain')
         self.assertEqual(os.readlink(self.wt.abspath('oz/wizard')),
                          'wizard-target')
+
+    def test_unable_create_symlink(self):
+        def tt_helper():
+            wt = self.make_branch_and_tree('.')
+            tt = TreeTransform(wt)  # TreeTransform obtains write lock
+            try:
+                tt.new_symlink('foo', tt.root, 'bar')
+                tt.apply()
+            finally:
+                wt.unlock()
+        os_symlink = getattr(os, 'symlink', None)
+        os.symlink = None
+        try:
+            err = self.assertRaises(errors.UnableCreateSymlink, tt_helper)
+            self.assertEquals(
+                "Unable to create symlink 'foo' on this platform",
+                str(err))
+        finally:
+            if os_symlink:
+                os.symlink = os_symlink
 
     def get_conflicted(self):
         create,root = self.get_transform()
@@ -1055,8 +1079,7 @@ class TestTransformMerge(TestCaseInTempDir):
         this.wt.revert()
 
     def test_file_merge(self):
-        if not has_symlinks():
-            raise TestSkipped('Symlinks are not supported on this platform')
+        self.requireFeature(SymlinkFeature)
         root_id = generate_ids.gen_root_id()
         base = TransformGroup("BASE", root_id)
         this = TransformGroup("THIS", root_id)
@@ -1164,9 +1187,8 @@ class TestTransformMerge(TestCaseInTempDir):
 
 class TestBuildTree(tests.TestCaseWithTransport):
 
-    def test_build_tree(self):
-        if not has_symlinks():
-            raise TestSkipped('Test requires symlink support')
+    def test_build_tree_with_symlinks(self):
+        self.requireFeature(SymlinkFeature)
         os.mkdir('a')
         a = BzrDir.create_standalone_workingtree('a')
         os.mkdir('a/foo')
@@ -1220,8 +1242,7 @@ class TestBuildTree(tests.TestCaseWithTransport):
 
     def test_symlink_conflict_handling(self):
         """Ensure that when building trees, conflict handling is done"""
-        if not has_symlinks():
-            raise TestSkipped('Test requires symlink support')
+        self.requireFeature(SymlinkFeature)
         source = self.make_branch_and_tree('source')
         os.symlink('foo', 'source/symlink')
         source.add('symlink', 'new-symlink')
@@ -1468,3 +1489,11 @@ class TestTransformRollback(tests.TestCaseWithTransport):
                           _mover=self.ExceptionFileMover(bad_target='d'))
         self.failUnlessExists('a')
         self.failUnlessExists('a/b')
+
+    def test_resolve_no_parent(self):
+        wt = self.make_branch_and_tree('.')
+        tt = TreeTransform(wt)
+        self.addCleanup(tt.finalize)
+        parent = tt.trans_id_file_id('parent-id')
+        tt.new_file('file', parent, 'Contents')
+        resolve_conflicts(tt)

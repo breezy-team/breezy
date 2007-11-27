@@ -111,14 +111,6 @@ class TestRunBzr(ExternalBase):
         self.working_dir = working_dir
         return '', ''
 
-    def test_args(self):
-        """Test that run_bzr passes args correctly to _run_bzr_core"""
-        self.callDeprecated(
-                ['passing varargs to run_bzr was deprecated in version 0.18.'],
-                self.run_bzr,
-                'arg1', 'arg2', 'arg3', retcode=1)
-        self.assertEqual(['arg1', 'arg2', 'arg3'], self.argv)
-
     def test_encoding(self):
         """Test that run_bzr passes encoding to _run_bzr_core"""
         self.run_bzr('foo bar')

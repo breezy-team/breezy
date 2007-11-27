@@ -97,6 +97,8 @@ class TestBranch(TestCaseWithBranch):
 
         rev = b2.repository.get_revision('revision-1')
         tree = b2.repository.revision_tree('revision-1')
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
         self.assertEqual(tree.get_file_text('foo-id'), 'hello')
 
     def test_get_revision_delta(self):
@@ -167,7 +169,7 @@ class TestBranch(TestCaseWithBranch):
 
     def test_clone_branch_nickname(self):
         # test the nick name is preserved always
-        raise TestSkipped('XXX branch cloning is not yet tested..')
+        raise TestSkipped('XXX branch cloning is not yet tested.')
 
     def test_clone_branch_parent(self):
         # test the parent is preserved always
@@ -248,7 +250,11 @@ class TestBranch(TestCaseWithBranch):
         wt.commit("base", allow_pointless=True, rev_id='A')
         from bzrlib.testament import Testament
         strategy = gpg.LoopbackGPGStrategy(None)
+        branch.repository.lock_write()
+        branch.repository.start_write_group()
         branch.repository.sign_revision('A', strategy)
+        branch.repository.commit_write_group()
+        branch.repository.unlock()
         self.assertEqual('-----BEGIN PSEUDO-SIGNED CONTENT-----\n' +
                          Testament.from_revision(branch.repository,
                          'A').as_short_text() +
@@ -258,8 +264,19 @@ class TestBranch(TestCaseWithBranch):
     def test_store_signature(self):
         wt = self.make_branch_and_tree('.')
         branch = wt.branch
-        branch.repository.store_revision_signature(
-            gpg.LoopbackGPGStrategy(None), 'FOO', 'A')
+        branch.lock_write()
+        try:
+            branch.repository.start_write_group()
+            try:
+                branch.repository.store_revision_signature(
+                    gpg.LoopbackGPGStrategy(None), 'FOO', 'A')
+            except:
+                branch.repository.abort_write_group()
+                raise
+            else:
+                branch.repository.commit_write_group()
+        finally:
+            branch.unlock()
         self.assertRaises(errors.NoSuchRevision,
                           branch.repository.has_signature_for_revision_id,
                           'A')
@@ -272,7 +289,11 @@ class TestBranch(TestCaseWithBranch):
         wt = self.make_branch_and_tree('source')
         wt.commit('A', allow_pointless=True, rev_id='A')
         repo = wt.branch.repository
+        repo.lock_write()
+        repo.start_write_group()
         repo.sign_revision('A', gpg.LoopbackGPGStrategy(None))
+        repo.commit_write_group()
+        repo.unlock()
         #FIXME: clone should work to urls,
         # wt.clone should work to disks.
         self.build_tree(['target/'])
@@ -531,9 +552,9 @@ class TestBranchPushLocations(TestCaseWithBranch):
                                    ensure_config_dir_exists)
         ensure_config_dir_exists()
         fn = locations_config_filename()
-        print >> open(fn, 'wt'), ("[%s]\n"
-                                  "push_location=foo" %
-                                  self.get_branch().base[:-1])
+        open(fn, 'wt').write(("[%s]\n"
+                                  "push_location=foo\n" %
+                                  self.get_branch().base[:-1]))
         self.assertEqual("foo", self.get_branch().get_push_location())
 
     def test_set_push_location(self):

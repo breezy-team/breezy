@@ -42,10 +42,15 @@ class TrivialTest(TestCaseWithTransport):
     def test_trivial_reconcile(self):
         t = bzrdir.BzrDir.create_standalone_workingtree('.')
         (out, err) = self.run_bzr('reconcile')
+        if t.branch.repository._reconcile_backsup_inventory:
+            does_backup_text = "Inventory ok.\n"
+        else:
+            does_backup_text = ""
         self.assertEqualDiff(out, "Reconciling repository %s\n"
-                                  "Inventory ok.\n"
+                                  "%s"
                                   "Reconciliation complete.\n" %
-                                  t.bzrdir.root_transport.base)
+                                  (t.bzrdir.root_transport.base,
+                                   does_backup_text))
         self.assertEqualDiff(err, "")
 
     def test_does_something_reconcile(self):
@@ -54,11 +59,21 @@ class TrivialTest(TestCaseWithTransport):
         repo = t.branch.repository
         inv = Inventory(revision_id='missing')
         inv.root.revision='missing'
+        repo.lock_write()
+        repo.start_write_group()
         repo.add_inventory('missing', inv, [])
+        repo.commit_write_group()
+        repo.unlock()
         (out, err) = self.run_bzr('reconcile')
-        self.assertEqualDiff(out, "Reconciling repository %s\n"
-                                  "Backup Inventory created.\n"
-                                  "Inventory regenerated.\n"
-                                  "Reconciliation complete.\n" %
-                                  t.bzrdir.root_transport.base)
+        if repo._reconcile_backsup_inventory:
+            does_backup_text = (
+                "Backup Inventory created.\n"
+                "Inventory regenerated.\n")
+        else:
+            does_backup_text = ""
+        expected = ("Reconciling repository %s\n"
+                    "%s"
+                    "Reconciliation complete.\n" %
+                    (t.bzrdir.root_transport.base, does_backup_text))
+        self.assertEqualDiff(expected, out)
         self.assertEqualDiff(err, "")

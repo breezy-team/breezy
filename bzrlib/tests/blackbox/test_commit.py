@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,11 +18,19 @@
 """Tests for the commit CLI of bzr."""
 
 import os
+import sys
 
+import bzrlib
 from bzrlib import (
+    osutils,
     ignores,
+    osutils,
     )
 from bzrlib.bzrdir import BzrDir
+from bzrlib.tests import (
+    probe_bad_non_ascii,
+    TestSkipped,
+    )
 from bzrlib.tests.blackbox import ExternalBase
 
 
@@ -154,7 +162,7 @@ class TestCommit(ExternalBase):
         a_tree.commit(message='Initial message')
 
         b_tree = a_tree.branch.create_checkout('b')
-        expected = "%s/" % (os.path.abspath('a'), )
+        expected = "%s/" % (osutils.abspath('a'), )
         out, err = self.run_bzr('commit -m blah --unchanged', working_dir='b')
         self.assertEqual(err, 'Committing revision 2 to "%s".\n'
                          'Committed revision 2.\n' % expected)
@@ -212,16 +220,16 @@ class TestCommit(ExternalBase):
         os.chdir('this')
         out,err = self.run_bzr('commit -m added')
         self.assertEqual('', out)
-        expected = '%s/' % (os.getcwd(), )
+        expected = '%s/' % (osutils.getcwd(), )
         self.assertEqualDiff(
             'Committing revision 2 to "%s".\n'
             'modified filetomodify\n'
             'added newdir\n'
             'added newfile\n'
             'renamed dirtorename => renameddir\n'
+            'renamed filetorename => renamedfile\n'
             'renamed dirtoreparent => renameddir/reparenteddir\n'
             'renamed filetoreparent => renameddir/reparentedfile\n'
-            'renamed filetorename => renamedfile\n'
             'deleted dirtoremove\n'
             'deleted filetoremove\n'
             'Committed revision 2.\n' % (expected, ),
@@ -237,8 +245,16 @@ class TestCommit(ExternalBase):
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('foo.c', 'int main() {}')])
         tree.add('foo.c')
-        out,err = self.run_bzr_subprocess('commit -m "\xff"', retcode=1,
-                                                    env_changes={'LANG': 'C'})
+        # LANG env variable has no effect on Windows
+        # but some characters anyway cannot be represented
+        # in default user encoding
+        char = probe_bad_non_ascii(bzrlib.user_encoding)
+        if char is None:
+            raise TestSkipped('Cannot find suitable non-ascii character'
+                'for user_encoding (%s)' % bzrlib.user_encoding)
+        out,err = self.run_bzr_subprocess('commit -m "%s"' % char,
+                                          retcode=1,
+                                          env_changes={'LANG': 'C'})
         self.assertContainsRe(err, r'bzrlib.errors.BzrError: Parameter.*is '
                                     'unsupported by the current encoding.')
 
@@ -520,3 +536,33 @@ class TestCommit(ExternalBase):
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         properties = last_rev.properties
         self.assertEqual('John Doe', properties['author'])
+
+    def test_partial_commit_with_renames_in_tree(self):
+        # this test illustrates bug #140419
+        t = self.make_branch_and_tree('.')
+        self.build_tree(['dir/', 'dir/a', 'test'])
+        t.add(['dir/', 'dir/a', 'test'])
+        t.commit('initial commit')
+        # important part: file dir/a should change parent
+        # and should appear before old parent
+        # then during partial commit we have error
+        # parent_id {dir-XXX} not in inventory
+        t.rename_one('dir/a', 'a')
+        self.build_tree_contents([('test', 'changes in test')])
+        # partial commit
+        out, err = self.run_bzr('commit test -m "partial commit"')
+        self.assertEquals('', out)
+        self.assertContainsRe(err, r'modified test\nCommitted revision 2.')
+
+    def test_commit_readonly_checkout(self):
+        # https://bugs.edge.launchpad.net/bzr/+bug/129701
+        # "UnlockableTransport error trying to commit in checkout of readonly
+        # branch"
+        self.make_branch('master')
+        master = BzrDir.open_from_transport(
+            self.get_readonly_transport('master')).open_branch()
+        master.create_checkout('checkout')
+        out, err = self.run_bzr(['commit', '--unchanged', '-mfoo', 'checkout'],
+            retcode=3)
+        self.assertContainsRe(err,
+            r'^bzr: ERROR: Cannot lock.*readonly transport')

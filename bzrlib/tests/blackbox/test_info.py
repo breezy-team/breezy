@@ -23,6 +23,8 @@ import sys
 import bzrlib
 from bzrlib import (
     bzrdir,
+    errors,
+    info,
     osutils,
     repository,
     urlutils,
@@ -262,7 +264,8 @@ Repository:
         branch5 = tree5.branch
         out, err = self.run_bzr('info -v lightcheckout')
         self.assertEqualDiff(
-"""Lightweight checkout (format: dirstate or dirstate-tags)
+"""Lightweight checkout (format: dirstate or dirstate-tags or \
+pack-0.92 or rich-root or rich-root-pack)
 Location:
   light checkout root: lightcheckout
    checkout of branch: standalone
@@ -440,7 +443,8 @@ Repository:
         # Out of date lightweight checkout
         out, err = self.run_bzr('info lightcheckout --verbose')
         self.assertEqualDiff(
-"""Lightweight checkout (format: dirstate or dirstate-tags)
+"""Lightweight checkout (format: dirstate or dirstate-tags or \
+pack-0.92 or rich-root or rich-root-pack)
 Location:
   light checkout root: lightcheckout
    checkout of branch: standalone
@@ -483,7 +487,7 @@ Repository:
         repo = branch.repository
         out, err = self.run_bzr('info branch -v')
         self.assertEqualDiff(
-"""Standalone branch (format: dirstate-tags)
+"""Standalone branch (format: %s)
 Location:
   branch root: branch
 
@@ -499,7 +503,8 @@ Branch history:
 Repository:
          0 revisions
          0 KiB
-""" % (format.get_branch_format().get_format_description(),
+""" % (info.describe_format(repo.bzrdir, repo, branch, None),
+       format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
@@ -578,7 +583,8 @@ Repository:
         datestring_first = format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
-"""Lightweight checkout (format: dirstate or dirstate-tags)
+"""Lightweight checkout (format: dirstate or dirstate-tags or \
+pack-0.92 or rich-root or rich-root-pack)
 Location:
   light checkout root: tree/lightcheckout
    checkout of branch: repo/branch
@@ -709,7 +715,8 @@ Repository:
         datestring_last = format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
-"""Lightweight checkout (format: dirstate or dirstate-tags)
+"""Lightweight checkout (format: dirstate or dirstate-tags or \
+pack-0.92 or rich-root or rich-root-pack)
 Location:
   light checkout root: tree/lightcheckout
    checkout of branch: repo/branch
@@ -1101,7 +1108,7 @@ Repository:
        ), out)
         self.assertEqual('', err)
 
-    def assertCheckoutStatusOutput(self, 
+    def assertCheckoutStatusOutput(self,
         command_string, lco_tree, shared_repo=None,
         repo_branch=None,
         tree_locked=False,
@@ -1126,12 +1133,16 @@ Repository:
         :param tree_locked: If true, expect the tree to be locked.
         :param branch_locked: If true, expect the branch to be locked.
         :param repo_locked: If true, expect the repository to be locked.
+            Note that the lco_tree.branch.repository is inspected, and if is not
+            actually locked then this parameter is overridden. This is because
+            pack repositories do not have any public API for obtaining an
+            exclusive repository wide lock.
         :param verbose: If true, expect verbose output
         """
         def friendly_location(url):
             path = urlutils.unescape_for_display(url, 'ascii')
             try:
-                return osutils.relpath(os.getcwd(), path)
+                return osutils.relpath(osutils.getcwd(), path)
             except errors.PathNotChild:
                 return path
 
@@ -1139,8 +1150,7 @@ Repository:
             # We expect this to fail because of locking errors. (A write-locked
             # file cannot be read-locked in the same process).
             # This should be removed when the locking errors are fixed.
-            args = command_string.split(' ')
-            self.run_bzr_error([], 'info', *args)
+            self.run_bzr_error([], 'info ' + command_string)
             return
         out, err = self.run_bzr('info %s' % command_string)
         description = {
@@ -1149,8 +1159,11 @@ Repository:
             (False, True): 'Lightweight checkout',
             (False, False): 'Checkout',
             }[(shared_repo is not None, light_checkout)]
-        format = {True: 'dirstate or dirstate-tags',
+        format = {True: 'dirstate or dirstate-tags or pack-0.92'
+                        ' or rich-root or rich-root-pack',
                   False: 'dirstate'}[light_checkout]
+        if repo_locked:
+            repo_locked = lco_tree.branch.repository.get_physical_lock_status()
         if repo_locked or branch_locked or tree_locked:
             def locked_message(a_bool):
                 if a_bool:

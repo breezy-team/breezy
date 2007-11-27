@@ -21,12 +21,9 @@
 from bzrlib import (
     bzrdir,
     errors,
+    symbol_versioning,
     )
 from bzrlib.tests import TestCase, TestCaseWithTransport
-
-
-# TODO: Make sure builtin exception class formats are consistent - e.g. should
-# or shouldn't end with a full stop, etc.
 
 
 class TestErrors(TestCaseWithTransport):
@@ -142,9 +139,16 @@ class TestErrors(TestCaseWithTransport):
             str(error))
 
     def test_read_only_lock_error(self):
-        error = errors.ReadOnlyLockError('filename', 'error message')
+        error = self.applyDeprecated(symbol_versioning.zero_ninetytwo,
+            errors.ReadOnlyLockError, 'filename', 'error message')
         self.assertEqualDiff("Cannot acquire write lock on filename."
                              " error message", str(error))
+
+    def test_lock_failed(self):
+        error = errors.LockFailed('http://canonical.com/', 'readonly transport')
+        self.assertEqualDiff("Cannot lock http://canonical.com/: readonly transport",
+            str(error))
+        self.assertFalse(error.internal_error)
 
     def test_too_many_concurrent_requests(self):
         error = errors.TooManyConcurrentRequests("a medium")
@@ -361,6 +365,43 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqual(
             "Container has multiple records with the same name: n\xc3\xa5me",
             str(e))
+        
+    def test_check_error(self):
+        # This has a member called 'message', which is problematic in
+        # python2.5 because that is a slot on the base Exception class
+        e = errors.BzrCheckError('example check failure')
+        self.assertEqual(
+            "Internal check failed: example check failure",
+            str(e))
+        self.assertTrue(e.internal_error)
+
+    def test_repository_data_stream_error(self):
+        """Test the formatting of RepositoryDataStreamError."""
+        e = errors.RepositoryDataStreamError(u"my reason")
+        self.assertEqual(
+            "Corrupt or incompatible data stream: my reason", str(e))
+
+    def test_immortal_pending_deletion_message(self):
+        err = errors.ImmortalPendingDeletion('foo')
+        self.assertEquals(
+            "Unable to delete transform temporary directory foo.  "
+            "Please examine foo to see if it contains any files "
+            "you wish to keep, and delete it when you are done.",
+            str(err))
+
+    def test_unable_create_symlink(self):
+        err = errors.UnableCreateSymlink()
+        self.assertEquals(
+            "Unable to create symlink on this platform",
+            str(err))
+        err = errors.UnableCreateSymlink(path=u'foo')
+        self.assertEquals(
+            "Unable to create symlink 'foo' on this platform",
+            str(err))
+        err = errors.UnableCreateSymlink(path=u'\xb5')
+        self.assertEquals(
+            "Unable to create symlink u'\\xb5' on this platform",
+            str(err))
 
 
 class PassThroughError(errors.BzrError):

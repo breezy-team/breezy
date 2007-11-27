@@ -26,6 +26,7 @@ from bzrlib import (
         bzrdir,
         cache_utf8,
         config as _mod_config,
+        debug,
         errors,
         lockdir,
         lockable_files,
@@ -61,7 +62,7 @@ from bzrlib.symbol_versioning import (deprecated_function,
                                       zero_eight, zero_nine, zero_sixteen,
                                       zero_ninetyone,
                                       )
-from bzrlib.trace import mutter, note
+from bzrlib.trace import mutter, mutter_callsite, note
 
 
 BZR_BRANCH_FORMAT_4 = "Bazaar-NG branch, format 0.0.4\n"
@@ -404,11 +405,13 @@ class Branch(object):
 
     @needs_read_lock
     def revision_history(self):
-        """Return sequence of revision hashes on to this branch.
+        """Return sequence of revision ids on this branch.
         
         This method will cache the revision history for as long as it is safe to
         do so.
         """
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(3, "revision_history scales with history.")
         if self._revision_history_cache is not None:
             history = self._revision_history_cache
         else:
@@ -488,7 +491,6 @@ class Branch(object):
         """Given a revision id, return its revno"""
         if _mod_revision.is_null(revision_id):
             return 0
-        revision_id = osutils.safe_revision_id(revision_id)
         history = self.revision_history()
         try:
             return history.index(revision_id) + 1
@@ -505,7 +507,8 @@ class Branch(object):
             raise errors.NoSuchRevision(self, revno)
         return history[revno - 1]
 
-    def pull(self, source, overwrite=False, stop_revision=None):
+    def pull(self, source, overwrite=False, stop_revision=None,
+             possible_transports=None):
         """Mirror source into this branch.
 
         This branch is considered to be 'local', having low latency.
@@ -686,7 +689,6 @@ class Branch(object):
             new_history = []
         new_history = self.revision_history()
         if revision_id is not None and new_history != []:
-            revision_id = osutils.safe_revision_id(revision_id)
             try:
                 new_history = new_history[:new_history.index(revision_id) + 1]
             except ValueError:
@@ -769,7 +771,7 @@ class Branch(object):
         if lightweight:
             format = self._get_checkout_format()
             checkout = format.initialize_on_transport(t)
-            BranchReferenceFormat().initialize(checkout, self)
+            from_branch = BranchReferenceFormat().initialize(checkout, self)
         else:
             format = self._get_checkout_format()
             checkout_branch = bzrdir.BzrDir.create_branch_convenience(
@@ -779,7 +781,9 @@ class Branch(object):
             # pull up to the specified revision_id to set the initial 
             # branch tip correctly, and seed it with history.
             checkout_branch.pull(self, stop_revision=revision_id)
-        tree = checkout.create_workingtree(revision_id)
+            from_branch=None
+        tree = checkout.create_workingtree(revision_id,
+                                           from_branch=from_branch)
         basis_tree = tree.basis_tree()
         basis_tree.lock_read()
         try:
@@ -1144,7 +1148,6 @@ class BzrBranchFormat6(BzrBranchFormat5):
     def initialize(self, a_bzrdir):
         """Create a branch of this format in a_bzrdir."""
         utf8_files = [('last-revision', '0 null:\n'),
-                      ('branch-name', ''),
                       ('branch.conf', ''),
                       ('tags', ''),
                       ]
@@ -1189,7 +1192,7 @@ class BranchReferenceFormat(BranchFormat):
     def get_format_description(self):
         """See BranchFormat.get_format_description()."""
         return "Checkout reference format 1"
-        
+
     def get_reference(self, a_bzrdir):
         """See BranchFormat.get_reference()."""
         transport = a_bzrdir.get_branch_transport(None)
@@ -1206,7 +1209,9 @@ class BranchReferenceFormat(BranchFormat):
         branch_transport.put_bytes('location',
             target_branch.bzrdir.root_transport.base)
         branch_transport.put_bytes('format', self.get_format_string())
-        return self.open(a_bzrdir, _found=True)
+        return self.open(
+            a_bzrdir, _found=True,
+            possible_transports=[target_branch.bzrdir.root_transport])
 
     def __init__(self):
         super(BranchReferenceFormat, self).__init__()
@@ -1222,7 +1227,8 @@ class BranchReferenceFormat(BranchFormat):
             # emit some sort of warning/error to the caller ?!
         return clone
 
-    def open(self, a_bzrdir, _found=False, location=None):
+    def open(self, a_bzrdir, _found=False, location=None,
+             possible_transports=None):
         """Return the branch that the branch reference in a_bzrdir points at.
 
         _found is a private parameter, do not use it. It is used to indicate
@@ -1233,7 +1239,8 @@ class BranchReferenceFormat(BranchFormat):
             assert format.__class__ == self.__class__
         if location is None:
             location = self.get_reference(a_bzrdir)
-        real_bzrdir = bzrdir.BzrDir.open(location)
+        real_bzrdir = bzrdir.BzrDir.open(
+            location, possible_transports=possible_transports)
         result = real_bzrdir.open_branch()
         # this changes the behaviour of result.clone to create a new reference
         # rather than a copy of the content of the branch.
@@ -1306,7 +1313,7 @@ class BzrBranch(Branch):
     def get_root_id(self):
         """See Branch.get_root_id."""
         tree = self.repository.revision_tree(self.last_revision())
-        return tree.inventory.root.file_id
+        return tree.get_root_id()
 
     def is_locked(self):
         return self.control_files.is_locked()
@@ -1363,7 +1370,8 @@ class BzrBranch(Branch):
     @needs_write_lock
     def set_revision_history(self, rev_history):
         """See Branch.set_revision_history."""
-        rev_history = [osutils.safe_revision_id(r) for r in rev_history]
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(3, "set_revision_history scales with history.")
         self._clear_cached_state()
         self._write_revision_history(rev_history)
         self._cache_revision_history(rev_history)
@@ -1382,7 +1390,6 @@ class BzrBranch(Branch):
         configured to check constraints on history, in which case this may not
         be permitted.
         """
-        revision_id = osutils.safe_revision_id(revision_id)
         history = self._lefthand_history(revision_id)
         assert len(history) == revno, '%d != %d' % (len(history), revno)
         self.set_revision_history(history)
@@ -1396,6 +1403,8 @@ class BzrBranch(Branch):
 
     def _lefthand_history(self, revision_id, last_rev=None,
                           other_branch=None):
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(4, "_lefthand_history scales with history.")
         # stop_revision must be a descendant of last_revision
         stop_graph = self.repository.get_revision_graph(revision_id)
         if (last_rev is not None and last_rev != _mod_revision.NULL_REVISION
@@ -1426,7 +1435,6 @@ class BzrBranch(Branch):
         :param other_branch: The other branch that DivergedBranches should
             raise with respect to.
         """
-        revision_id = osutils.safe_revision_id(revision_id)
         self.set_revision_history(self._lefthand_history(revision_id,
             last_rev, other_branch))
 
@@ -1440,13 +1448,13 @@ class BzrBranch(Branch):
                 if stop_revision is None:
                     # if there are no commits, we're done.
                     return
-            else:
-                stop_revision = osutils.safe_revision_id(stop_revision)
             # whats the current last revision, before we fetch [and change it
             # possibly]
             last_rev = _mod_revision.ensure_null(self.last_revision())
-            # we fetch here regardless of whether we need to so that we pickup
-            # filled in ghosts.
+            # we fetch here so that we don't process data twice in the common
+            # case of having something to pull, and so that the check for 
+            # already merged can operate on the just fetched graph, which will
+            # be cached in memory.
             self.fetch(other, stop_revision)
             if self.repository.get_graph().is_ancestor(stop_revision,
                                                        last_rev):
@@ -1462,7 +1470,7 @@ class BzrBranch(Branch):
 
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
-             _hook_master=None, run_hooks=True):
+             _hook_master=None, run_hooks=True, possible_transports=None):
         """See Branch.pull.
 
         :param _hook_master: Private parameter - set the branch to 
@@ -1666,7 +1674,7 @@ class BzrBranch5(BzrBranch):
         
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
-             run_hooks=True):
+             run_hooks=True, possible_transports=None):
         """Pull from source into self, updating my master if any.
         
         :param run_hooks: Private parameter - if false, this branch
@@ -1677,7 +1685,7 @@ class BzrBranch5(BzrBranch):
         master_branch = None
         if bound_location and source.base != bound_location:
             # not pulling from master, so we need to update master.
-            master_branch = self.get_master_branch()
+            master_branch = self.get_master_branch(possible_transports)
             master_branch.lock_write()
         try:
             if master_branch:
@@ -1930,7 +1938,6 @@ class BzrBranch6(BzrBranch5):
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
-        revision_id = osutils.safe_revision_id(revision_id)
         if self._get_append_revisions_only():
             self._check_history_violation(revision_id)
         self._write_last_revision_info(revno, revision_id)

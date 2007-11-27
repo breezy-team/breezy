@@ -16,7 +16,10 @@
 
 """Tests of the WorkingTree.unversion API."""
 
-from bzrlib import errors
+from bzrlib import (
+    errors,
+    osutils,
+    )
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 
@@ -99,3 +102,91 @@ class TestUnversion(TestCaseWithWorkingTree):
             self.assertTrue(tree.has_filename('d'))
         finally:
             tree.unlock()
+
+    def test_unversion_renamed(self):
+        tree = self.make_branch_and_tree('a')
+        self.build_tree(['a/dir/', 'a/dir/f1', 'a/dir/f2', 'a/dir/f3',
+                         'a/dir2/'])
+        tree.add(['dir', 'dir/f1', 'dir/f2', 'dir/f3', 'dir2'],
+                 ['dir-id', 'f1-id', 'f2-id', 'f3-id', 'dir2-id'])
+        rev_id1 = tree.commit('init')
+        # Start off by renaming entries, and then unversion a bunch of entries
+        # https://bugs.launchpad.net/bzr/+bug/114615
+        tree.rename_one('dir/f1', 'dir/a')
+        tree.rename_one('dir/f2', 'dir/z')
+        tree.move(['dir/f3'], 'dir2')
+
+        tree.lock_read()
+        try:
+            root_id = tree.get_root_id()
+            paths = [(path, ie.file_id)
+                     for path, ie in tree.iter_entries_by_dir()]
+        finally:
+            tree.unlock()
+        self.assertEqual([('', root_id),
+                          ('dir', 'dir-id'),
+                          ('dir2', 'dir2-id'),
+                          ('dir/a', 'f1-id'),
+                          ('dir/z', 'f2-id'),
+                          ('dir2/f3', 'f3-id'),
+                         ], paths)
+
+        tree.unversion(set(['dir-id']))
+        paths = [(path, ie.file_id)
+                 for path, ie in tree.iter_entries_by_dir()]
+
+        self.assertEqual([('', root_id),
+                          ('dir2', 'dir2-id'),
+                          ('dir2/f3', 'f3-id'),
+                         ], paths)
+
+    def test_unversion_after_conflicted_merge(self):
+        # Test for bug #114615
+        tree_a = self.make_branch_and_tree('A')
+        self.build_tree(['A/a/', 'A/a/m', 'A/a/n'])
+        tree_a.add(['a', 'a/m', 'a/n'], ['a-id', 'm-id', 'n-id'])
+        tree_a.commit('init')
+
+        tree_a.lock_read()
+        try:
+            root_id = tree_a.get_root_id()
+        finally:
+            tree_a.unlock()
+
+        tree_b = tree_a.bzrdir.sprout('B').open_workingtree()
+        self.build_tree(['B/xyz/'])
+        tree_b.add(['xyz'], ['xyz-id'])
+        tree_b.rename_one('a/m', 'xyz/m')
+        tree_b.unversion(['a-id'])
+        tree_b.commit('delete in B')
+
+        paths = [(path, ie.file_id)
+                 for path, ie in tree_b.iter_entries_by_dir()]
+        self.assertEqual([('', root_id),
+                          ('xyz', 'xyz-id'),
+                          ('xyz/m', 'm-id'),
+                         ], paths)
+
+        self.build_tree_contents([('A/a/n', 'new contents for n\n')])
+        tree_a.commit('change n in A')
+
+        # Merging from A should introduce conflicts because 'n' was modified
+        # and removed, so 'a' needs to be restored. We also have a conflict
+        # because 'a' is still an existing directory
+        num_conflicts = tree_b.merge_from_branch(tree_a.branch)
+        self.assertEqual(4, num_conflicts)
+        paths = [(path, ie.file_id)
+                 for path, ie in tree_b.iter_entries_by_dir()]
+        self.assertEqual([('', root_id),
+                          ('a', 'a-id'),
+                          ('xyz', 'xyz-id'),
+                          ('a/n.OTHER', 'n-id'),
+                          ('xyz/m', 'm-id'),
+                         ], paths)
+        tree_b.unversion(['a-id'])
+        paths = [(path, ie.file_id)
+                 for path, ie in tree_b.iter_entries_by_dir()]
+        self.assertEqual([('', root_id),
+                          ('xyz', 'xyz-id'),
+                          ('xyz/m', 'm-id'),
+                         ], paths)

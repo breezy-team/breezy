@@ -25,6 +25,7 @@ import sys
 
 import bzrlib
 import bzrlib.config as config
+from bzrlib import osutils
 from bzrlib.errors import BzrError, BadCommitMessageEncoding
 from bzrlib.trace import warning, mutter
 
@@ -102,8 +103,8 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
 
     if not start_message is None:
         start_message = start_message.encode(bzrlib.user_encoding)
-    return edit_commit_message_encoded(infotext.encode(bzrlib.user_encoding),
-                                       ignoreline, start_message)
+    infotext = infotext.encode(bzrlib.user_encoding, 'replace')
+    return edit_commit_message_encoded(infotext, ignoreline, start_message)
 
 
 def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
@@ -204,8 +205,9 @@ def _create_temp_file_with_commit_template(infotext,
     """
     import tempfile
     tmp_fileno, msgfilename = tempfile.mkstemp(prefix='bzr_log.',
-                                               dir=u'.',
+                                               dir='.',
                                                text=True)
+    msgfilename = osutils.basename(msgfilename)
     msgfile = os.fdopen(tmp_fileno, 'w')
     try:
         if start_message is not None:

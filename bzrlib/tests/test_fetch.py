@@ -231,6 +231,8 @@ class TestMergeFileHistory(TestCaseWithTransport):
         br2 = Branch.open('br2')
         br1 = Branch.open('br1')
         wt2 = WorkingTree.open('br2').merge_from_branch(br1)
+        br2.lock_read()
+        self.addCleanup(br2.unlock)
         for rev_id, text in [('1-2', 'original from 1\n'),
                              ('1-3', 'agreement\n'),
                              ('2-1', 'contents in 2\n'),
@@ -264,11 +266,12 @@ class TestHttpFetch(TestCaseWithWebserver):
 
     def test_weaves_are_retrieved_once(self):
         self.build_tree(("source/", "source/file", "target/"))
-        wt = self.make_branch_and_tree('source')
+        # This test depends on knit dasta storage.
+        wt = self.make_branch_and_tree('source', format='dirstate-tags')
         branch = wt.branch
         wt.add(["file"], ["id"])
         wt.commit("added file")
-        print >>open("source/file", 'w'), "blah"
+        open("source/file", 'w').write("blah\n")
         wt.commit("changed file")
         target = BzrDir.create_branch_and_repo("target/")
         source = Branch.open(self.get_readonly_url("source/"))

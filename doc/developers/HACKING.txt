@@ -470,6 +470,23 @@ should only test errors if there is something particular to the cli in how
 they're displayed or handled.
 
 
+Testing warnings
+----------------
+
+The Python ``warnings`` module is used to indicate a non-fatal code
+problem.  Code that's expected to raise a warning can be tested through
+callCatchWarnings.
+
+The test suite can be run with ``-Werror`` to check no unexpected errors
+occur.
+
+However, warnings should be used with discretion.  It's not an appropriate
+way to give messages to the user, because the warning is normally shown
+only once per source line that causes the problem.  You should also think
+about whether the warning is serious enought that it should be visible to
+users who may not be able to fix it.
+
+
 Interface implementation testing and test scenarios
 ---------------------------------------------------
 
@@ -621,8 +638,38 @@ not required. Minimally though, please try to rename things so that
 callers will at least get an AttributeError rather than weird results.
 
 
+Deprecation decorators
+----------------------
+
+``bzrlib.symbol_versioning`` provides decorators that can be attached to
+methods, functions, and other interfaces to indicate that they should no
+longer be used.
+
+To deprecate a static method you must call ``deprecated_function``
+(**not** method), after the staticmethod call::
+
+    @staticmethod
+    @deprecated_function(zero_ninetyone)
+    def create_repository(base, shared=False, format=None):
+
+When you deprecate an API, you should not just delete its tests, because
+then we might introduce bugs in them.  If the API is still present at all,
+it should still work.  The basic approach is to use
+``TestCase.applyDeprecated`` which in one step checks that the API gives
+the expected deprecation message, and also returns the real result from
+the method, so that tests can keep running.
+
 Coding Style Guidelines
 =======================
+
+General Python rules
+--------------------
+
+``hasattr`` should not be used because it swallows exceptions including
+``KeyboardInterrupt``.  Instead, say something like ::
+
+  if getattr(thing, 'name', None) is None
+
 
 Code layout
 -----------
@@ -1081,6 +1128,7 @@ Recommended values are:
     2. Unrepresentable diff changes (i.e. binary files that we cannot show 
        a diff of).
     3. An error or exception has occurred.
+    4. An internal error occurred (one that shows a traceback.)
 
 Errors are handled through Python exceptions. Exceptions should be defined
 inside bzrlib.errors, so that we can see the whole tree at a glance.

@@ -72,7 +72,6 @@ class VersionedFileStore(TransportStore):
 
     def filename(self, file_id):
         """Return the path relative to the transport root."""
-        file_id = osutils.safe_file_id(file_id)
         return self._relpath(file_id)
 
     def __iter__(self):
@@ -90,7 +89,6 @@ class VersionedFileStore(TransportStore):
                     break # only one suffix can match
 
     def has_id(self, file_id):
-        file_id = osutils.safe_file_id(file_id)
         suffixes = self._versionedfile_class.get_suffixes()
         filename = self.filename(file_id)
         for suffix in suffixes:
@@ -100,14 +98,12 @@ class VersionedFileStore(TransportStore):
 
     def get_empty(self, file_id, transaction):
         """Get an empty weave, which implies deleting the existing one first."""
-        file_id = osutils.safe_file_id(file_id)
         if self.has_id(file_id):
             self.delete(file_id, transaction)
         return self.get_weave_or_empty(file_id, transaction)
 
     def delete(self, file_id, transaction):
         """Remove file_id from the store."""
-        file_id = osutils.safe_file_id(file_id)
         suffixes = self._versionedfile_class.get_suffixes()
         filename = self.filename(file_id)
         for suffix in suffixes:
@@ -134,7 +130,6 @@ class VersionedFileStore(TransportStore):
         file_id. This is used to reduce duplicate filename calculations when
         using 'get_weave_or_empty'. FOR INTERNAL USE ONLY.
         """
-        file_id = osutils.safe_file_id(file_id)
         weave = transaction.map.find_weave(file_id)
         if weave is not None:
             #mutter("cache hit in %s for %s", self, file_id)
@@ -192,7 +187,6 @@ class VersionedFileStore(TransportStore):
         # of calculating the filename before doing a cache lookup is more than
         # compensated for by not calculating the filename when making new
         # versioned files.
-        file_id = osutils.safe_file_id(file_id)
         _filename = self.filename(file_id)
         try:
             return self.get_weave(file_id, transaction, _filename=_filename)
@@ -262,7 +256,6 @@ class VersionedFileStore(TransportStore):
             to_transaction = PassThroughTransaction()
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
-            file_ids = [osutils.safe_file_id(f) for f in file_ids]
             for count, f in enumerate(file_ids):
                 mutter("copy weave {%s} into %s", f, self)
                 pb.update('copy', count, len(file_ids))

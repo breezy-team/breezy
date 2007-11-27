@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import sys
 from urllib import quote
 
 from bzrlib import (
@@ -97,8 +98,11 @@ class TestInfo(tests.TestCaseWithTransport):
                 bzrdir.format_registry.make_bzrdir(format).workingtree_format
             control.create_workingtree()
             tree = workingtree.WorkingTree.open('%s_co' % format)
-            self.assertEqual(expected, info.describe_format(tree.bzrdir,
-                tree.branch.repository, tree.branch, tree))
+            format_description = info.describe_format(tree.bzrdir,
+                    tree.branch.repository, tree.branch, tree)
+            self.assertEqual(expected, format_description,
+                "checkout of format called %r was described as %r" %
+                (expected, format_description))
         finally:
             control._format.workingtree_format = old_format
 
@@ -128,11 +132,17 @@ class TestInfo(tests.TestCaseWithTransport):
 
     def test_describe_checkout_format(self):
         for key in bzrdir.format_registry.keys():
-            if key in ('default', 'weave'):
+            if key in ('default', 'weave', 'experimental'):
+                continue
+            if key.startswith('experimental-'):
+                # these are typically hidden or aliases for other formats
                 continue
             expected = None
-            if key in ('dirstate', 'dirstate-tags', 'dirstate-with-subtree'):
-                expected = 'dirstate or dirstate-tags'
+            if key in ('dirstate', 'dirstate-tags', 'dirstate-with-subtree',
+                'pack-0.92', 'pack-0.92-subtree', 'rich-root',
+                'rich-root-pack'):
+                expected = 'dirstate or dirstate-tags or pack-0.92 or'\
+                    ' rich-root or rich-root-pack'
             if key in ('knit', 'metaweave'):
                 expected = 'knit or metaweave'
             self.assertCheckoutDescription(key, expected)
@@ -242,6 +252,8 @@ class TestInfo(tests.TestCaseWithTransport):
         )
 
     def test_location_list(self):
+        if sys.platform == 'win32':
+            raise tests.TestSkipped('Windows-unfriendly test')
         locs = info.LocationList('/home/foo')
         locs.add_url('a', 'file:///home/foo/')
         locs.add_url('b', 'file:///home/foo/bar/')

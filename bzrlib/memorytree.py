@@ -92,11 +92,34 @@ class MemoryTree(mutabletree.MutableTree):
         stream = self._file_transport.get(path)
         return sha_file(stream)
 
+    def get_root_id(self):
+        return self.path2id('')
+
     def _comparison_data(self, entry, path):
         """See Tree._comparison_data."""
         if entry is None:
             return None, False, None
         return entry.kind, entry.executable, None
+
+    def path_content_summary(self, path):
+        """See Tree.path_content_summary."""
+        id = self.path2id(path)
+        if id is None:
+            return 'missing', None, None, None
+        kind = self.kind(id)
+        if kind == 'file':
+            bytes = self._file_transport.get_bytes(path)
+            size = len(bytes)
+            executable = self._inventory[id].executable
+            sha1 = None # no stat cache
+            return (kind, size, executable, sha1)
+        elif kind == 'directory':
+            # memory tree does not support nested trees yet.
+            return kind, None, None, None
+        elif kind == 'symlink':
+            raise NotImplementedError('symlink support')
+        else:
+            raise NotImplementedError('unknown kind')
 
     def _file_size(self, entry, stat_value):
         """See Tree._file_size."""

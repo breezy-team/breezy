@@ -463,9 +463,9 @@ class Weave(VersionedFile):
             # properly, we do not filter down to that
             # if inserted not in version_ids: continue
             if line[-1] != '\n':
-                yield line + '\n'
+                yield line + '\n', inserted
             else:
-                yield line
+                yield line, inserted
 
     def _walk_internal(self, version_ids=None):
         """Helper method for weave actions."""
@@ -1202,10 +1202,7 @@ class InterWeave(InterVersionedFile):
         if self.target.versions() == [] and version_ids is None:
             self.target._copy_weave_content(self.source)
             return
-        try:
-            self.target._join(self.source, pb, msg, version_ids, ignore_missing)
-        except errors.WeaveParentMismatch:
-            self.target._reweave(self.source, pb, msg)
+        self.target._join(self.source, pb, msg, version_ids, ignore_missing)
 
 
 InterVersionedFile.register_optimiser(InterWeave)

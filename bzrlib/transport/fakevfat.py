@@ -92,7 +92,7 @@ class FakeVFATTransportDecorator(TransportDecorator):
     def has(self, relpath):
         return self._decorated.has(self._squash_name(relpath))
 
-    def readv(self, relpath, offsets):
+    def _readv(self, relpath, offsets):
         return self._decorated.readv(self._squash_name(relpath), offsets)
 
     def put_file(self, relpath, f, mode=None):

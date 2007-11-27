@@ -125,13 +125,11 @@ class Tree(object):
         raise NotImplementedError(self.has_filename)
 
     def has_id(self, file_id):
-        file_id = osutils.safe_file_id(file_id)
         return self.inventory.has_id(file_id)
 
     __contains__ = has_id
 
     def has_or_had_id(self, file_id):
-        file_id = osutils.safe_file_id(file_id)
         if file_id == self.inventory.root.file_id:
             return True
         return self.inventory.has_id(file_id)
@@ -152,7 +150,6 @@ class Tree(object):
 
         :raises NoSuchId:
         """
-        file_id = osutils.safe_file_id(file_id)
         return self.inventory.id2path(file_id)
 
     def is_control_filename(self, filename):
@@ -187,6 +184,20 @@ class Tree(object):
     def kind(self, file_id):
         raise NotImplementedError("Tree subclass %s must implement kind"
             % self.__class__.__name__)
+
+    def path_content_summary(self, path):
+        """Get a summary of the information about path.
+        
+        :param path: A relative path within the tree.
+        :return: A tuple containing kind, size, exec, sha1-or-link.
+            Kind is always present (see tree.kind()).
+            size is present if kind is file, None otherwise.
+            exec is None unless kind is file and the platform supports the 'x'
+                bit.
+            sha1-or-link is the link target if kind is symlink, or the sha1 if
+                it can be obtained without reading the file.
+        """
+        raise NotImplementedError(self.path_content_summary)
 
     def get_reference_revision(self, file_id, path=None):
         raise NotImplementedError("Tree subclass %s must implement "
@@ -266,6 +277,10 @@ class Tree(object):
         """
         raise NotImplementedError(self.get_symlink_target)
 
+    def get_root_id(self):
+        """Return the file_id for the root of this tree."""
+        raise NotImplementedError(self.get_root_id)
+
     def annotate_iter(self, file_id):
         """Return an iterator of revision_id, line tuples.
 
@@ -341,7 +356,6 @@ class Tree(object):
 
     def print_file(self, file_id):
         """Print file with id `file_id` to stdout."""
-        file_id = osutils.safe_file_id(file_id)
         import sys
         sys.stdout.write(self.get_file_text(file_id))
 
@@ -436,7 +450,6 @@ class EmptyTree(Tree):
         return False
 
     def kind(self, file_id):
-        file_id = osutils.safe_file_id(file_id)
         assert self._inventory[file_id].kind == "directory"
         return "directory"
 
@@ -444,7 +457,6 @@ class EmptyTree(Tree):
         return iter([])
     
     def __contains__(self, file_id):
-        file_id = osutils.safe_file_id(file_id)
         return (file_id in self._inventory)
 
     def get_file_sha1(self, file_id, path=None, stat_value=None):

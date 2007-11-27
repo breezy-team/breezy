@@ -166,7 +166,7 @@ class TestShowLog(TestCaseWithTransport):
         wt.commit(message='add file1 and file2')
         self.run_bzr('branch parent child')
         os.unlink('child/file1')
-        print >> file('child/file2', 'wb'), 'hello'
+        file('child/file2', 'wb').write('hello\n')
         self.run_bzr(['commit', '-m', 'remove file1 and modify file2',
             'child'])
         os.chdir('parent')
@@ -219,6 +219,23 @@ def make_commits_with_trailing_newlines(wt):
     return b
 
 
+def normalize_log(log):
+    """Replaces the variable lines of logs with fixed lines"""
+    author = 'author: Dolor Sit <test@example.com>'
+    committer = 'committer: Lorem Ipsum <test@example.com>'
+    lines = log.splitlines(True)
+    for idx,line in enumerate(lines):
+        stripped_line = line.lstrip()
+        indent = ' ' * (len(line) - len(stripped_line))
+        if stripped_line.startswith('author:'):
+            lines[idx] = indent + author + '\n'
+        elif stripped_line.startswith('committer:'):
+            lines[idx] = indent + committer + '\n'
+        elif stripped_line.startswith('timestamp:'):
+            lines[idx] = indent + 'timestamp: Just now\n'
+    return ''.join(lines)
+
+
 class TestShortLogFormatter(TestCaseWithTransport):
 
     def test_trailing_newlines(self):
@@ -227,7 +244,7 @@ class TestShortLogFormatter(TestCaseWithTransport):
         sio = self.make_utf8_encoded_stringio()
         lf = ShortLogFormatter(to_file=sio)
         show_log(b, lf)
-        self.assertEquals(sio.getvalue(), """\
+        self.assertEqualDiff(sio.getvalue(), """\
     3 Joe Foo\t2005-11-21
       single line with trailing newline
 
@@ -243,22 +260,6 @@ class TestShortLogFormatter(TestCaseWithTransport):
 
 
 class TestLongLogFormatter(TestCaseWithTransport):
-
-    def normalize_log(self,log):
-        """Replaces the variable lines of logs with fixed lines"""
-        author = 'author: Dolor Sit <test@example.com>'
-        committer = 'committer: Lorem Ipsum <test@example.com>'
-        lines = log.splitlines(True)
-        for idx,line in enumerate(lines):
-            stripped_line = line.lstrip()
-            indent = ' ' * (len(line) - len(stripped_line))
-            if stripped_line.startswith('author:'):
-                lines[idx] = indent + author + '\n'
-            elif stripped_line.startswith('committer:'):
-                lines[idx] = indent + committer + '\n'
-            elif stripped_line.startswith('timestamp:'):
-                lines[idx] = indent + 'timestamp: Just now\n'
-        return ''.join(lines)
 
     def test_verbose_log(self):
         """Verbose log includes changed files
@@ -311,8 +312,8 @@ added:
         sio = self.make_utf8_encoded_stringio()
         lf = LongLogFormatter(to_file=sio)
         show_log(b, lf, verbose=True)
-        log = self.normalize_log(sio.getvalue())
-        self.assertEqualDiff("""\
+        log = normalize_log(sio.getvalue())
+        self.assertEqualDiff(log, """\
 ------------------------------------------------------------
 revno: 2
 committer: Lorem Ipsum <test@example.com>
@@ -348,7 +349,7 @@ branch nick: parent
 timestamp: Just now
 message:
   first post
-""", log)
+""")
 
     def test_verbose_merge_revisions_contain_deltas(self):
         wt = self.make_branch_and_tree('parent')
@@ -357,7 +358,7 @@ message:
         wt.commit('first post')
         self.run_bzr('branch parent child')
         os.unlink('child/f1')
-        print >> file('child/f2', 'wb'), 'hello'
+        file('child/f2', 'wb').write('hello\n')
         self.run_bzr(['commit', '-m', 'removed f1 and modified f2',
             'child'])
         os.chdir('parent')
@@ -367,8 +368,8 @@ message:
         sio = self.make_utf8_encoded_stringio()
         lf = LongLogFormatter(to_file=sio)
         show_log(b, lf, verbose=True)
-        log = self.normalize_log(sio.getvalue())
-        self.assertEqualDiff("""\
+        log = normalize_log(sio.getvalue())
+        self.assertEqualDiff(log, """\
 ------------------------------------------------------------
 revno: 2
 committer: Lorem Ipsum <test@example.com>
@@ -401,7 +402,7 @@ message:
 added:
   f1
   f2
-""", log)
+""")
 
     def test_trailing_newlines(self):
         wt = self.make_branch_and_tree('.')
@@ -488,7 +489,8 @@ class TestLineLogFormatter(TestCaseWithTransport):
         logfile.flush()
         logfile.seek(0)
         log_contents = logfile.read()
-        self.assertEqualDiff(log_contents, '1: Line-Log-Formatte... 2005-11-23 add a\n')
+        self.assertEqualDiff(log_contents,
+            '1: Line-Log-Formatte... 2005-11-23 add a\n')
 
     def test_short_log_with_merges(self):
         wt = self.make_branch_and_memory_tree('.')
@@ -510,14 +512,14 @@ class TestLineLogFormatter(TestCaseWithTransport):
             formatter = ShortLogFormatter(to_file=logfile)
             show_log(wt.branch, formatter)
             logfile.flush()
-            self.assertEqualDiff("""\
+            self.assertEqualDiff(logfile.getvalue(), """\
     2 Joe Foo\t2005-11-22 [merge]
       rev-2
 
     1 Joe Foo\t2005-11-22
       rev-1
 
-""", logfile.getvalue())
+""")
         finally:
             wt.unlock()
 

@@ -43,93 +43,6 @@ class TestRevert(TestCaseWithWorkingTree):
         self.assertEqual(len(wt.inventory), 1)
 
 
-class TestSnapshot(TestCaseWithWorkingTree):
-
-    def setUp(self):
-        # for full testing we'll need a branch
-        # with a subdir to test parent changes.
-        # and a file, link and dir under that.
-        # but right now I only need one attribute
-        # to change, and then test merge patterns
-        # with fake parent entries.
-        super(TestSnapshot, self).setUp()
-        self.wt = self.make_branch_and_tree('.')
-        self.branch = self.wt.branch
-        self.build_tree(['subdir/', 'subdir/file'], line_endings='binary')
-        self.wt.add(['subdir', 'subdir/file'],
-                                       ['dirid', 'fileid'])
-        self.wt.commit('message_1', rev_id = '1')
-        self.tree_1 = self.branch.repository.revision_tree('1')
-        self.inv_1 = self.branch.repository.get_inventory('1')
-        self.file_1 = self.inv_1['fileid']
-        self.wt.lock_write()
-        self.addCleanup(self.wt.unlock)
-        self.file_active = self.wt.inventory['fileid']
-        self.builder = self.branch.get_commit_builder([], timestamp=time.time(), revision_id='2')
-
-    def test_snapshot_new_revision(self):
-        # This tests that a simple commit with no parents makes a new
-        # revision value in the inventory entry
-        self.file_active.snapshot('2', 'subdir/file', {}, self.wt, self.builder)
-        # expected outcome - file_1 has a revision id of '2', and we can get
-        # its text of 'file contents' out of the weave.
-        self.assertEqual(self.file_1.revision, '1')
-        self.assertEqual(self.file_active.revision, '2')
-        # this should be a separate test probably, but lets check it once..
-        lines = self.branch.repository.weave_store.get_weave(
-            'fileid', 
-            self.branch.repository.get_transaction()).get_lines('2')
-        self.assertEqual(lines, ['contents of subdir/file\n'])
-        self.wt.branch.repository.commit_write_group()
-
-    def test_snapshot_unchanged(self):
-        #This tests that a simple commit does not make a new entry for
-        # an unchanged inventory entry
-        self.file_active.snapshot('2', 'subdir/file', {'1':self.file_1},
-                                  self.wt, self.builder)
-        self.assertEqual(self.file_1.revision, '1')
-        self.assertEqual(self.file_active.revision, '1')
-        vf = self.branch.repository.weave_store.get_weave(
-            'fileid', 
-            self.branch.repository.get_transaction())
-        self.assertRaises(errors.RevisionNotPresent,
-                          vf.get_lines,
-                          '2')
-        self.wt.branch.repository.commit_write_group()
-
-    def test_snapshot_merge_identical_different_revid(self):
-        # This tests that a commit with two identical parents, one of which has
-        # a different revision id, results in a new revision id in the entry.
-        # 1->other, commit a merge of other against 1, results in 2.
-        other_ie = inventory.InventoryFile('fileid', 'newname', self.file_1.parent_id)
-        other_ie = inventory.InventoryFile('fileid', 'file', self.file_1.parent_id)
-        other_ie.revision = '1'
-        other_ie.text_sha1 = self.file_1.text_sha1
-        other_ie.text_size = self.file_1.text_size
-        self.assertEqual(self.file_1, other_ie)
-        other_ie.revision = 'other'
-        self.assertNotEqual(self.file_1, other_ie)
-        versionfile = self.branch.repository.weave_store.get_weave(
-            'fileid', self.branch.repository.get_transaction())
-        versionfile.clone_text('other', '1', ['1'])
-        self.file_active.snapshot('2', 'subdir/file', 
-                                  {'1':self.file_1, 'other':other_ie},
-                                  self.wt, self.builder)
-        self.assertEqual(self.file_active.revision, '2')
-        self.wt.branch.repository.commit_write_group()
-
-    def test_snapshot_changed(self):
-        # This tests that a commit with one different parent results in a new
-        # revision id in the entry.
-        self.wt.rename_one('subdir/file', 'subdir/newname')
-        self.file_active = self.wt.inventory['fileid']
-        self.file_active.snapshot('2', 'subdir/newname', {'1':self.file_1}, 
-                                  self.wt, self.builder)
-        # expected outcome - file_1 has a revision id of '2'
-        self.assertEqual(self.file_active.revision, '2')
-        self.wt.branch.repository.commit_write_group()
-
-
 class TestApplyInventoryDelta(TestCaseWithWorkingTree):
 
     def test_add(self):
@@ -154,10 +67,36 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
                                   ('foo/bar', None, 'bar-id', None)])
         self.assertIs(None, wt.path2id('foo'))
 
-    def test_rename_file(self):
+    def test_rename_dir_with_children(self):
         wt = self.make_branch_and_tree('.')
         wt.lock_write()
         root_id = wt.get_root_id()
+        self.addCleanup(wt.unlock)
+        self.build_tree(['foo/', 'foo/bar'])
+        wt.add(['foo', 'foo/bar'],
+               ['foo-id', 'bar-id'])
+        wt.apply_inventory_delta([('foo', 'baz', 'foo-id',
+            inventory.InventoryDirectory('foo-id', 'baz', root_id))])
+        # foo/bar should have been followed the rename of its parent to baz/bar
+        self.assertEqual('baz/bar', wt.id2path('bar-id'))
+
+    def test_rename_dir_with_children_with_children(self):
+        wt = self.make_branch_and_tree('.')
+        wt.lock_write()
+        root_id = wt.get_root_id()
+        self.addCleanup(wt.unlock)
+        self.build_tree(['foo/', 'foo/bar/', 'foo/bar/baz'])
+        wt.add(['foo', 'foo/bar', 'foo/bar/baz'],
+               ['foo-id', 'bar-id', 'baz-id'])
+        wt.apply_inventory_delta([('foo', 'quux', 'foo-id',
+            inventory.InventoryDirectory('foo-id', 'quux', root_id))])
+        # foo/bar/baz should have been followed the rename of its parent's
+        # parent to quux/bar/baz
+        self.assertEqual('quux/bar/baz', wt.id2path('baz-id'))
+
+    def test_rename_file(self):
+        wt = self.make_branch_and_tree('.')
+        wt.lock_write()
         self.addCleanup(wt.unlock)
         self.build_tree(['foo/', 'foo/bar', 'baz/'])
         wt.add(['foo', 'foo/bar', 'baz'],
@@ -197,6 +136,8 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
         self.build_tree(['dir/', 'dir/child', 'other/'])
         wt.add(['dir', 'dir/child', 'other'],
                ['dir-id', 'child-id', 'other-id'])
+        # this delta moves dir-id to dir2 and reparents 
+        # child-id to a parent of other-id
         wt.apply_inventory_delta([('dir', 'dir2', 'dir-id',
             inventory.InventoryDirectory('dir-id', 'dir2', root_id)),
             ('dir/child', 'other/child', 'child-id',

@@ -99,7 +99,7 @@ def _get_transport_modules():
                 modules.add(factory._module_name)
             else:
                 modules.add(factory._obj.__module__)
-    # Add chroot directly, because there is not handler registered for it.
+    # Add chroot directly, because there is no handler registered for it.
     modules.add('bzrlib.transport.chroot')
     result = list(modules)
     result.sort()
@@ -125,22 +125,26 @@ class TransportListRegistry(registry.Registry):
         self.get(key).insert(0, registry._ObjectGetter(obj))
 
     def register_lazy_transport_provider(self, key, module_name, member_name):
-        self.get(key).insert(0, 
+        self.get(key).insert(0,
                 registry._LazyObjectGetter(module_name, member_name))
 
-    def register_transport(self, key, help=None, info=None):
-        self.register(key, [], help, info)
+    def register_transport(self, key, help=None):
+        self.register(key, [], help)
 
     def set_default_transport(self, key=None):
         """Return either 'key' or the default key if key is None"""
         self._default_key = key
 
 
-transport_list_registry = TransportListRegistry( )
+transport_list_registry = TransportListRegistry()
 
 
-def register_transport_proto(prefix, help=None, info=None):
-    transport_list_registry.register_transport(prefix, help, info)
+def register_transport_proto(prefix, help=None, info=None,
+                             register_netloc=False):
+    transport_list_registry.register_transport(prefix, help)
+    if register_netloc:
+        assert prefix.endswith('://')
+        register_urlparse_netloc_protocol(prefix[:-3])
 
 
 def register_lazy_transport(prefix, module, classname):
@@ -406,7 +410,7 @@ class Transport(object):
         """
         assert not isinstance(from_file, basestring), \
             '_pump should only be called on files not %s' % (type(from_file,))
-        osutils.pumpfile(from_file, to_file)
+        return osutils.pumpfile(from_file, to_file)
 
     def _get_total(self, multi):
         """Try to figure out how many entries are in multi,
@@ -635,10 +639,46 @@ class Transport(object):
         """
         raise errors.NoSmartMedium(self)
 
-    def readv(self, relpath, offsets):
+    def readv(self, relpath, offsets, adjust_for_latency=False,
+        upper_limit=None):
         """Get parts of the file at the given relative path.
 
-        :offsets: A list of (offset, size) tuples.
+        :param relpath: The path to read data from.
+        :param offsets: A list of (offset, size) tuples.
+        :param adjust_for_latency: Adjust the requested offsets to accomodate
+            transport latency. This may re-order the offsets, expand them to
+            grab adjacent data when there is likely a high cost to requesting
+            data relative to delivering it.
+        :param upper_limit: When adjust_for_latency is True setting upper_limit
+            allows the caller to tell the transport about the length of the
+            file, so that requests are not issued for ranges beyond the end of
+            the file. This matters because some servers and/or transports error
+            in such a case rather than just satisfying the available ranges.
+            upper_limit should always be provided when adjust_for_latency is
+            True, and should be the size of the file in bytes.
+        :return: A list or generator of (offset, data) tuples
+        """
+        if adjust_for_latency:
+            # Design note: We may wish to have different algorithms for the
+            # expansion of the offsets per-transport. E.g. for local disk to
+            # use page-aligned expansion. If that is the case consider the
+            # following structure:
+            #  - a test that transport.readv uses self._offset_expander or some
+            #    similar attribute, to do the expansion
+            #  - a test for each transport that it has some known-good offset
+            #    expander
+            #  - unit tests for each offset expander
+            #  - a set of tests for the offset expander interface, giving
+            #    baseline behaviour (which the current transport
+            #    adjust_for_latency tests could be repurposed to).
+            offsets = self._sort_expand_and_combine(offsets, upper_limit)
+        return self._readv(relpath, offsets)
+
+    def _readv(self, relpath, offsets):
+        """Get parts of the file at the given relative path.
+
+        :param relpath: The path to read.
+        :param offsets: A list of (offset, size) tuples.
         :return: A list or generator of (offset, data) tuples
         """
         if not offsets:
@@ -687,6 +727,65 @@ class Transport(object):
                 this_data = data_map.pop(cur_offset_and_size)
                 yield cur_offset_and_size[0], this_data
                 cur_offset_and_size = offset_stack.next()
+
+    def _sort_expand_and_combine(self, offsets, upper_limit):
+        """Helper for readv.
+
+        :param offsets: A readv vector - (offset, length) tuples.
+        :param upper_limit: The highest byte offset that may be requested.
+        :return: A readv vector that will read all the regions requested by
+            offsets, in start-to-end order, with no duplicated regions,
+            expanded by the transports recommended page size.
+        """
+        offsets = sorted(offsets)
+        # short circuit empty requests
+        if len(offsets) == 0:
+            def empty_yielder():
+                # Quick thunk to stop this function becoming a generator
+                # itself, rather we return a generator that has nothing to
+                # yield.
+                if False:
+                    yield None
+            return empty_yielder()
+        # expand by page size at either end
+        maximum_expansion = self.recommended_page_size()
+        new_offsets = []
+        for offset, length in offsets:
+            expansion = maximum_expansion - length
+            if expansion < 0:
+                # we're asking for more than the minimum read anyway.
+                expansion = 0
+            reduction = expansion / 2
+            new_offset = offset - reduction
+            new_length = length + expansion
+            if new_offset < 0:
+                # don't ask for anything < 0
+                new_offset = 0
+            if (upper_limit is not None and
+                new_offset + new_length > upper_limit):
+                new_length = upper_limit - new_offset
+            new_offsets.append((new_offset, new_length))
+        # combine the expanded offsets
+        offsets = []
+        current_offset, current_length = new_offsets[0]
+        current_finish = current_length + current_offset
+        for offset, length in new_offsets[1:]:
+            finish = offset + length
+            if offset > current_finish:
+                # there is a gap, output the current accumulator and start
+                # a new one for the region we're examining.
+                offsets.append((current_offset, current_length))
+                current_offset = offset
+                current_length = length
+                current_finish = finish
+                continue
+            if finish > current_finish:
+                # extend the current accumulator to the end of the region
+                # we're examining.
+                current_finish = finish
+                current_length = finish - current_offset
+        offsets.append((current_offset, current_length))
+        return offsets
 
     @staticmethod
     def _coalesce_offsets(offsets, limit, fudge_factor):
@@ -794,6 +893,7 @@ class Transport(object):
         :param f:       File-like object.
         :param mode: The mode for the newly created file,
                      None means just use the default.
+        :return: The length of the file that was written.
         """
         # We would like to mark this as NotImplemented, but most likely
         # transports have defined it in terms of the old api.
@@ -1252,6 +1352,9 @@ class ConnectedTransport(Transport):
             except ValueError:
                 raise errors.InvalidURL('invalid port number %s in url:\n%s' %
                                         (port, url))
+        if host == '':
+            raise errors.InvalidURL('Host empty in: %s' % url)
+
         host = urllib.unquote(host)
         path = urllib.unquote(path)
 
@@ -1342,7 +1445,7 @@ class ConnectedTransport(Transport):
         """Get the object shared amongst cloned transports.
 
         This should be used only by classes that needs to extend the sharing
-        with other objects than tramsports.
+        with objects other than transports.
 
         Use _get_connection to get the connection itself.
         """
@@ -1400,7 +1503,14 @@ class ConnectedTransport(Transport):
 
         :return: A new transport or None if the connection cannot be shared.
         """
-        (scheme, user, password, host, port, path) = self._split_url(other_base)
+        try:
+            (scheme, user, password,
+             host, port, path) = self._split_url(other_base)
+        except errors.InvalidURL:
+            # No hope in trying to reuse an existing transport for an invalid
+            # URL
+            return None
+
         transport = None
         # Don't compare passwords, they may be absent from other_base or from
         # self and they don't carry more information than user anyway.
@@ -1594,30 +1704,6 @@ class Server(object):
         raise NotImplementedError
 
 
-class TransportLogger(object):
-    """Adapt a transport to get clear logging data on api calls.
-    
-    Feel free to extend to log whatever calls are of interest.
-    """
-
-    def __init__(self, adapted):
-        self._adapted = adapted
-        self._calls = []
-
-    def get(self, name):
-        self._calls.append((name,))
-        return self._adapted.get(name)
-
-    def __getattr__(self, name):
-        """Thunk all undefined access through to self._adapted."""
-        # raise AttributeError, name 
-        return getattr(self._adapted, name)
-
-    def readv(self, name, offsets):
-        self._calls.append((name, offsets))
-        return self._adapted.readv(name, offsets)
-
-
 # None is the default transport, for things with no url scheme
 register_transport_proto('file://',
             help="Access using the standard filesystem (default)")
@@ -1625,85 +1711,108 @@ register_lazy_transport('file://', 'bzrlib.transport.local', 'LocalTransport')
 transport_list_registry.set_default_transport("file://")
 
 register_transport_proto('sftp://',
-            help="Access using SFTP (most SSH servers provide SFTP).")
+            help="Access using SFTP (most SSH servers provide SFTP).",
+            register_netloc=True)
 register_lazy_transport('sftp://', 'bzrlib.transport.sftp', 'SFTPTransport')
 # Decorated http transport
 register_transport_proto('http+urllib://',
 #                help="Read-only access of branches exported on the web."
-            )
+                         register_netloc=True)
 register_lazy_transport('http+urllib://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
 register_transport_proto('https+urllib://',
 #                help="Read-only access of branches exported on the web using SSL."
-            )
+                         register_netloc=True)
 register_lazy_transport('https+urllib://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
 register_transport_proto('http+pycurl://',
 #                help="Read-only access of branches exported on the web."
-            )
+                         register_netloc=True)
 register_lazy_transport('http+pycurl://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
 register_transport_proto('https+pycurl://',
 #                help="Read-only access of branches exported on the web using SSL."
-            )
+                         register_netloc=True)
 register_lazy_transport('https+pycurl://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
 # Default http transports (last declared wins (if it can be imported))
 register_transport_proto('http://',
-            help="Read-only access of branches exported on the web.")
+                 help="Read-only access of branches exported on the web.")
 register_transport_proto('https://',
             help="Read-only access of branches exported on the web using SSL.")
 register_lazy_transport('http://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
 register_lazy_transport('https://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
-register_lazy_transport('http://', 'bzrlib.transport.http._pycurl', 'PyCurlTransport')
-register_lazy_transport('https://', 'bzrlib.transport.http._pycurl', 'PyCurlTransport')
+register_lazy_transport('http://', 'bzrlib.transport.http._pycurl',
+                        'PyCurlTransport')
+register_lazy_transport('https://', 'bzrlib.transport.http._pycurl',
+                        'PyCurlTransport')
 
-register_transport_proto('ftp://',
-            help="Access using passive FTP.")
+register_transport_proto('ftp://', help="Access using passive FTP.")
 register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
-register_transport_proto('aftp://',
-            help="Access using active FTP.")
+register_transport_proto('aftp://', help="Access using active FTP.")
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 
 register_transport_proto('memory://')
-register_lazy_transport('memory://', 'bzrlib.transport.memory', 'MemoryTransport')
+register_lazy_transport('memory://', 'bzrlib.transport.memory',
+                        'MemoryTransport')
+
+# chroots cannot be implicitly accessed, they must be explicitly created:
 register_transport_proto('chroot+')
 
 register_transport_proto('readonly+',
 #              help="This modifier converts any transport to be readonly."
             )
-register_lazy_transport('readonly+', 'bzrlib.transport.readonly', 'ReadonlyTransportDecorator')
+register_lazy_transport('readonly+', 'bzrlib.transport.readonly',
+                        'ReadonlyTransportDecorator')
 
 register_transport_proto('fakenfs+')
-register_lazy_transport('fakenfs+', 'bzrlib.transport.fakenfs', 'FakeNFSTransportDecorator')
+register_lazy_transport('fakenfs+', 'bzrlib.transport.fakenfs',
+                        'FakeNFSTransportDecorator')
+
+register_transport_proto('trace+')
+register_lazy_transport('trace+', 'bzrlib.transport.trace',
+                        'TransportTraceDecorator')
 
 register_transport_proto('unlistable+')
-register_lazy_transport('unlistable+', 'bzrlib.transport.unlistable', 'UnlistableTransportDecorator')
+register_lazy_transport('unlistable+', 'bzrlib.transport.unlistable',
+                        'UnlistableTransportDecorator')
 
 register_transport_proto('brokenrename+')
 register_lazy_transport('brokenrename+', 'bzrlib.transport.brokenrename',
-        'BrokenRenameTransportDecorator')
+                        'BrokenRenameTransportDecorator')
 
 register_transport_proto('vfat+')
 register_lazy_transport('vfat+',
                         'bzrlib.transport.fakevfat',
                         'FakeVFATTransportDecorator')
-register_transport_proto('bzr://',
-            help="Fast access using the Bazaar smart server.")
 
-register_lazy_transport('bzr://',
-                        'bzrlib.transport.remote',
+# These two schemes were registered, but don't seem to have an actual transport
+# protocol registered
+for scheme in ['ssh', 'bzr+loopback']:
+    register_urlparse_netloc_protocol(scheme)
+del scheme
+
+register_transport_proto('bzr://',
+            help="Fast access using the Bazaar smart server.",
+                         register_netloc=True)
+
+register_lazy_transport('bzr://', 'bzrlib.transport.remote',
                         'RemoteTCPTransport')
 register_transport_proto('bzr+http://',
 #                help="Fast access using the Bazaar smart server over HTTP."
-             )
-register_lazy_transport('bzr+http://',
+                         register_netloc=True)
+register_lazy_transport('bzr+http://', 'bzrlib.transport.remote',
+                        'RemoteHTTPTransport')
+register_transport_proto('bzr+https://',
+#                help="Fast access using the Bazaar smart server over HTTPS."
+                         register_netloc=True)
+register_lazy_transport('bzr+https://',
                         'bzrlib.transport.remote',
                         'RemoteHTTPTransport')
 register_transport_proto('bzr+ssh://',
-            help="Fast access using the Bazaar smart server over SSH.")
-register_lazy_transport('bzr+ssh://',
-                        'bzrlib.transport.remote',
+            help="Fast access using the Bazaar smart server over SSH.",
+            register_netloc=True)
+register_lazy_transport('bzr+ssh://', 'bzrlib.transport.remote',
                         'RemoteSSHTransport')

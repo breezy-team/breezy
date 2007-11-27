@@ -164,10 +164,11 @@ class LocalTransport(Transport):
         except (IOError, OSError),e:
             self._translate_error(e, path)
         try:
-            self._pump(f, fp)
+            length = self._pump(f, fp)
             fp.commit()
         finally:
             fp.close()
+        return length
 
     def put_bytes(self, relpath, bytes, mode=None):
         """Copy the string into the location.
@@ -306,7 +307,10 @@ class LocalTransport(Transport):
         """See Transport.open_write_stream."""
         # initialise the file
         self.put_bytes_non_atomic(relpath, "", mode=mode)
-        handle = open(self._abspath(relpath), 'wb')
+        abspath = self._abspath(relpath)
+        handle = open(abspath, 'wb')
+        if mode is not None:
+            self._check_mode_and_size(abspath, handle.fileno(), mode)
         transport._file_streams[self.abspath(relpath)] = handle
         return transport.FileFileStream(self, relpath, handle)
 
