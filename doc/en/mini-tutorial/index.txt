@@ -116,7 +116,7 @@ Edit ``test1.txt`` in your favourite editor, then check what have you done::
 
 Commit your work to the Bazaar branch::
 
-  $ bzr commit -m 'Added first line of text'
+  $ bzr commit -m "Added first line of text"
   Committed revision 2.
 
 
@@ -235,7 +235,7 @@ Check what has changed::
 If you're happy with the changes, you can commit them to your personal
 branch::
 
-  $ bzr commit -m 'Merge from main branch'
+  $ bzr commit -m "Merge from main branch"
   Committed revision 295.
 
 
