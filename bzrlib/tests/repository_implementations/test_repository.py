@@ -853,6 +853,8 @@ class TestEscaping(TestCaseWithTransport):
         # now access over vfat; should be safe
         branch = bzrdir.BzrDir.open('vfat+' + self.get_url('repo')).open_branch()
         revtree = branch.repository.revision_tree(REV_ID)
+        revtree.lock_read()
+        self.addCleanup(revtree.unlock)
         contents = revtree.get_file_text(FOO_ID)
         self.assertEqual(contents, 'contents of repo/foo\n')
 

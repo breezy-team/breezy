@@ -1489,3 +1489,11 @@ class TestTransformRollback(tests.TestCaseWithTransport):
                           _mover=self.ExceptionFileMover(bad_target='d'))
         self.failUnlessExists('a')
         self.failUnlessExists('a/b')
+
+    def test_resolve_no_parent(self):
+        wt = self.make_branch_and_tree('.')
+        tt = TreeTransform(wt)
+        self.addCleanup(tt.finalize)
+        parent = tt.trans_id_file_id('parent-id')
+        tt.new_file('file', parent, 'Contents')
+        resolve_conflicts(tt)
