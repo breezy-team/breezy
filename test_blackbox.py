@@ -40,8 +40,7 @@ class TestRebaseSimple(ExternalBase):
 
     def test_notneeded(self):
         os.chdir('../feature')
-        self.run_bzr_error(['bzr: ERROR: Already rebased on .*'], 
-                           'rebase ../main')
+        self.check_output('No revisions to rebase.', 'rebase ../main')
 
     def test_simple_success(self):
         self.make_file('hello', '42')
