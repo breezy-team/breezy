@@ -771,7 +771,7 @@ class Branch(object):
         if lightweight:
             format = self._get_checkout_format()
             checkout = format.initialize_on_transport(t)
-            BranchReferenceFormat().initialize(checkout, self)
+            from_branch = BranchReferenceFormat().initialize(checkout, self)
         else:
             format = self._get_checkout_format()
             checkout_branch = bzrdir.BzrDir.create_branch_convenience(
@@ -781,7 +781,9 @@ class Branch(object):
             # pull up to the specified revision_id to set the initial 
             # branch tip correctly, and seed it with history.
             checkout_branch.pull(self, stop_revision=revision_id)
-        tree = checkout.create_workingtree(revision_id)
+            from_branch=None
+        tree = checkout.create_workingtree(revision_id,
+                                           from_branch=from_branch)
         basis_tree = tree.basis_tree()
         basis_tree.lock_read()
         try:
@@ -1146,7 +1148,6 @@ class BzrBranchFormat6(BzrBranchFormat5):
     def initialize(self, a_bzrdir):
         """Create a branch of this format in a_bzrdir."""
         utf8_files = [('last-revision', '0 null:\n'),
-                      ('branch-name', ''),
                       ('branch.conf', ''),
                       ('tags', ''),
                       ]
@@ -1191,7 +1192,7 @@ class BranchReferenceFormat(BranchFormat):
     def get_format_description(self):
         """See BranchFormat.get_format_description()."""
         return "Checkout reference format 1"
-        
+
     def get_reference(self, a_bzrdir):
         """See BranchFormat.get_reference()."""
         transport = a_bzrdir.get_branch_transport(None)
@@ -1208,7 +1209,9 @@ class BranchReferenceFormat(BranchFormat):
         branch_transport.put_bytes('location',
             target_branch.bzrdir.root_transport.base)
         branch_transport.put_bytes('format', self.get_format_string())
-        return self.open(a_bzrdir, _found=True)
+        return self.open(
+            a_bzrdir, _found=True,
+            possible_transports=[target_branch.bzrdir.root_transport])
 
     def __init__(self):
         super(BranchReferenceFormat, self).__init__()
@@ -1224,7 +1227,8 @@ class BranchReferenceFormat(BranchFormat):
             # emit some sort of warning/error to the caller ?!
         return clone
 
-    def open(self, a_bzrdir, _found=False, location=None):
+    def open(self, a_bzrdir, _found=False, location=None,
+             possible_transports=None):
         """Return the branch that the branch reference in a_bzrdir points at.
 
         _found is a private parameter, do not use it. It is used to indicate
@@ -1235,7 +1239,8 @@ class BranchReferenceFormat(BranchFormat):
             assert format.__class__ == self.__class__
         if location is None:
             location = self.get_reference(a_bzrdir)
-        real_bzrdir = bzrdir.BzrDir.open(location)
+        real_bzrdir = bzrdir.BzrDir.open(
+            location, possible_transports=possible_transports)
         result = real_bzrdir.open_branch()
         # this changes the behaviour of result.clone to create a new reference
         # rather than a copy of the content of the branch.
@@ -1308,7 +1313,7 @@ class BzrBranch(Branch):
     def get_root_id(self):
         """See Branch.get_root_id."""
         tree = self.repository.revision_tree(self.last_revision())
-        return tree.inventory.root.file_id
+        return tree.get_root_id()
 
     def is_locked(self):
         return self.control_files.is_locked()

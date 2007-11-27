@@ -147,7 +147,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         builder = tree.branch.get_commit_builder([parent_tree.inventory])
         try:
             ie = inventory.make_entry('directory', '', None,
-                    tree.inventory.root.file_id)
+                    tree.get_root_id())
             delta, version_recorded = builder.record_entry_contents(
                 ie, [parent_tree.inventory], '', tree,
                 tree.path_content_summary(''))
@@ -367,7 +367,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             # root
             builder.record_entry_contents(
                 inventory.make_entry('directory', '', None,
-                    tree.inventory.root.file_id), parent_invs, '', tree,
+                    tree.get_root_id()), parent_invs, '', tree,
                     tree.path_content_summary(''))
             def commit_id(file_id):
                 old_ie = tree.inventory[file_id]
@@ -379,7 +379,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
 
             file_id = tree.path2id(new_name)
             parent_id = tree.inventory[file_id].parent_id
-            if parent_id != tree.inventory.root.file_id:
+            if parent_id != tree.get_root_id():
                 commit_id(parent_id)
             # because a change of some sort is meant to have occurred,
             # recording the entry must return True.

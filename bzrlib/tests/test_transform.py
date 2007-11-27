@@ -410,6 +410,26 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertEqual(os.readlink(self.wt.abspath('oz/wizard')),
                          'wizard-target')
 
+    def test_unable_create_symlink(self):
+        def tt_helper():
+            wt = self.make_branch_and_tree('.')
+            tt = TreeTransform(wt)  # TreeTransform obtains write lock
+            try:
+                tt.new_symlink('foo', tt.root, 'bar')
+                tt.apply()
+            finally:
+                wt.unlock()
+        os_symlink = getattr(os, 'symlink', None)
+        os.symlink = None
+        try:
+            err = self.assertRaises(errors.UnableCreateSymlink, tt_helper)
+            self.assertEquals(
+                "Unable to create symlink 'foo' on this platform",
+                str(err))
+        finally:
+            if os_symlink:
+                os.symlink = os_symlink
+
     def get_conflicted(self):
         create,root = self.get_transform()
         create.new_file('dorothy', root, 'dorothy', 'dorothy-id')
@@ -1167,7 +1187,7 @@ class TestTransformMerge(TestCaseInTempDir):
 
 class TestBuildTree(tests.TestCaseWithTransport):
 
-    def test_build_tree(self):
+    def test_build_tree_with_symlinks(self):
         self.requireFeature(SymlinkFeature)
         os.mkdir('a')
         a = BzrDir.create_standalone_workingtree('a')
@@ -1469,3 +1489,11 @@ class TestTransformRollback(tests.TestCaseWithTransport):
                           _mover=self.ExceptionFileMover(bad_target='d'))
         self.failUnlessExists('a')
         self.failUnlessExists('a/b')
+
+    def test_resolve_no_parent(self):
+        wt = self.make_branch_and_tree('.')
+        tt = TreeTransform(wt)
+        self.addCleanup(tt.finalize)
+        parent = tt.trans_id_file_id('parent-id')
+        tt.new_file('file', parent, 'Contents')
+        resolve_conflicts(tt)

@@ -29,6 +29,7 @@ objects returned.
 
 from cStringIO import StringIO
 import os
+import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -48,10 +49,11 @@ from bzrlib import (
     symbol_versioning,
     ui,
     urlutils,
-    xml4,
-    xml5,
+    win32utils,
     workingtree,
     workingtree_4,
+    xml4,
+    xml5,
     )
 from bzrlib.osutils import (
     sha_strings,
@@ -209,9 +211,14 @@ class BzrDir(object):
         except errors.NotBranchError:
             pass
         try:
-            self.open_workingtree().clone(result)
-        except (errors.NoWorkingTree, errors.NotLocalUrl):
-            pass
+            result_repo = result.find_repository()
+        except errors.NoRepositoryPresent:
+            result_repo = None
+        if result_repo is None or result_repo.make_working_trees():
+            try:
+                self.open_workingtree().clone(result)
+            except (errors.NoWorkingTree, errors.NotLocalUrl):
+                pass
         return result
 
     # TODO: This should be given a Transport, and should chdir up; otherwise
@@ -370,10 +377,11 @@ class BzrDir(object):
                                                format=format).bzrdir
         return bzrdir.create_workingtree()
 
-    def create_workingtree(self, revision_id=None):
+    def create_workingtree(self, revision_id=None, from_branch=None):
         """Create a working tree at this BzrDir.
         
-        revision_id: create it as of this revision id.
+        :param revision_id: create it as of this revision id.
+        :param from_branch: override bzrdir branch (for lightweight checkouts)
         """
         raise NotImplementedError(self.create_workingtree)
 
@@ -687,13 +695,14 @@ class BzrDir(object):
         raise NotImplementedError(self.open_repository)
 
     def open_workingtree(self, _unsupported=False,
-            recommend_upgrade=True):
+                         recommend_upgrade=True, from_branch=None):
         """Open the workingtree object at this BzrDir if one is present.
 
         :param recommend_upgrade: Optional keyword parameter, when True (the
             default), emit through the ui module a recommendation that the user
             upgrade the working tree when the workingtree being opened is old
             (but still fully supported).
+        :param from_branch: override bzrdir branch (for lightweight checkouts)
         """
         raise NotImplementedError(self.open_workingtree)
 
@@ -922,7 +931,7 @@ class BzrDirPreSplitOut(BzrDir):
             raise errors.IncompatibleFormat('shared repository', self._format)
         return self.open_repository()
 
-    def create_workingtree(self, revision_id=None):
+    def create_workingtree(self, revision_id=None, from_branch=None):
         """See BzrDir.create_workingtree."""
         # this looks buggy but is not -really-
         # because this format creates the workingtree when the bzrdir is
@@ -1100,10 +1109,10 @@ class BzrDirMeta1(BzrDir):
         """See BzrDir.create_repository."""
         return self._format.repository_format.initialize(self, shared)
 
-    def create_workingtree(self, revision_id=None):
+    def create_workingtree(self, revision_id=None, from_branch=None):
         """See BzrDir.create_workingtree."""
-        from bzrlib.workingtree import WorkingTreeFormat
-        return self._format.workingtree_format.initialize(self, revision_id)
+        return self._format.workingtree_format.initialize(
+            self, revision_id, from_branch=from_branch)
 
     def destroy_workingtree(self):
         """See BzrDir.destroy_workingtree."""
@@ -1348,6 +1357,8 @@ class BzrDirFormat(object):
                                       # FIXME: RBC 20060121 don't peek under
                                       # the covers
                                       mode=temp_control._dir_mode)
+        if sys.platform == 'win32' and isinstance(transport, LocalTransport):
+            win32utils.set_file_attr_hidden(transport._abspath('.bzr'))
         file_mode = temp_control._file_mode
         del temp_control
         mutter('created control directory in ' + transport.base)
@@ -1710,7 +1721,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
         return RepositoryFormat.get_default_format()
 
     def __set_repository_format(self, value):
-        """Allow changint the repository format for metadir formats."""
+        """Allow changing the repository format for metadir formats."""
         self._repository_format = value
 
     repository_format = property(__return_repository_format, __set_repository_format)
@@ -2480,6 +2491,14 @@ format_registry.register_metadir('dirstate-tags',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
+format_registry.register_metadir('rich-root',
+    'bzrlib.repofmt.knitrepo.RepositoryFormatKnit4',
+    help='New in 1.0.  Better handling of tree roots.  Incompatible with'
+        ' bzr < 1.0',
+    branch_format='bzrlib.branch.BzrBranchFormat6',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    hidden=False,
+    )
 format_registry.register_metadir('dirstate-with-subtree',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
     help='New in 0.15: Fast local operations and improved scaling for '
@@ -2489,27 +2508,41 @@ format_registry.register_metadir('dirstate-with-subtree',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=True,
     )
-format_registry.register_metadir('knitpack-experimental',
+format_registry.register_metadir('pack-0.92',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack1',
     help='New in 0.92: Pack-based format with data compatible with '
         'dirstate-tags format repositories. Interoperates with '
         'bzr repositories before 0.92 but cannot be read by bzr < 0.92. '
-        'NOTE: This format is experimental. Before using it, please read '
-        'http://doc.bazaar-vcs.org/latest/developers/knitpack.html.',
+        'Previously called knitpack-experimental.  '
+        'For more information, see '
+        'http://doc.bazaar-vcs.org/latest/developers/packrepo.html.',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     experimental=True,
     )
-format_registry.register_metadir('knitpack-subtree-experimental',
+format_registry.register_metadir('pack-0.92-subtree',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack3',
     help='New in 0.92: Pack-based format with data compatible with '
         'dirstate-with-subtree format repositories. Interoperates with '
         'bzr repositories before 0.92 but cannot be read by bzr < 0.92. '
+        'Previously called knitpack-experimental.  '
+        'For more information, see '
+        'http://doc.bazaar-vcs.org/latest/developers/packrepo.html.',
+    branch_format='bzrlib.branch.BzrBranchFormat6',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    hidden=True,
+    experimental=True,
+    )
+format_registry.register_metadir('rich-root-pack',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack4',
+    help='New in 1.0: Pack-based format with data compatible with '
+        'rich-root format repositories. Interoperates with '
+        'bzr repositories before 0.92 but cannot be read by bzr < 1.0. '
         'NOTE: This format is experimental. Before using it, please read '
         'http://doc.bazaar-vcs.org/latest/developers/knitpack.html.',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
-    hidden=True,
+    hidden=False,
     experimental=True,
     )
 format_registry.set_default('dirstate-tags')

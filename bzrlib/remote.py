@@ -24,6 +24,7 @@ from bzrlib import (
     errors,
     lockdir,
     repository,
+    revision,
 )
 from bzrlib.branch import Branch, BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, RemoteBzrDirFormat
@@ -32,7 +33,6 @@ from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import NoSuchRevision
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.pack import ContainerReader
-from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import client, vfs
 from bzrlib.symbol_versioning import (
     deprecated_method,
@@ -95,7 +95,7 @@ class RemoteBzrDir(BzrDir):
         self._ensure_real()
         self._real_bzrdir.destroy_branch()
 
-    def create_workingtree(self, revision_id=None):
+    def create_workingtree(self, revision_id=None, from_branch=None):
         raise errors.NotLocalUrl(self.transport.base)
 
     def find_branch_format(self):
@@ -305,11 +305,36 @@ class RemoteRepository(object):
             #self._real_repository = self.bzrdir._real_bzrdir.open_repository()
             self._set_real_repository(self.bzrdir._real_bzrdir.open_repository())
 
+    def find_text_key_references(self):
+        """Find the text key references within the repository.
+
+        :return: a dictionary mapping (file_id, revision_id) tuples to altered file-ids to an iterable of
+        revision_ids. Each altered file-ids has the exact revision_ids that
+        altered it listed explicitly.
+        :return: A dictionary mapping text keys ((fileid, revision_id) tuples)
+            to whether they were referred to by the inventory of the
+            revision_id that they contain. The inventory texts from all present
+            revision ids are assessed to generate this report.
+        """
+        self._ensure_real()
+        return self._real_repository.find_text_key_references()
+
+    def _generate_text_key_index(self):
+        """Generate a new text key index for the repository.
+
+        This is an expensive function that will take considerable time to run.
+
+        :return: A dict mapping (file_id, revision_id) tuples to a list of
+            parents, also (file_id, revision_id) tuples.
+        """
+        self._ensure_real()
+        return self._real_repository._generate_text_key_index()
+
     def get_revision_graph(self, revision_id=None):
         """See Repository.get_revision_graph()."""
         if revision_id is None:
             revision_id = ''
-        elif revision_id == NULL_REVISION:
+        elif revision.is_null(revision_id):
             return {}
 
         path = self.bzrdir._path_for_remote_call(self._client)
@@ -357,7 +382,8 @@ class RemoteRepository(object):
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""
         path = self.bzrdir._path_for_remote_call(self._client)
-        if revid in (None, NULL_REVISION):
+        # revid can be None to indicate no revisions, not just NULL_REVISION
+        if revid is None or revision.is_null(revid):
             fmt_revid = ''
         else:
             fmt_revid = revid
@@ -386,7 +412,9 @@ class RemoteRepository(object):
 
     def get_physical_lock_status(self):
         """See Repository.get_physical_lock_status()."""
-        return False
+        # should be an API call to the server.
+        self._ensure_real()
+        return self._real_repository.get_physical_lock_status()
 
     def is_in_write_group(self):
         """Return True if there is an open write group.
@@ -439,7 +467,10 @@ class RemoteRepository(object):
     def lock_write(self, token=None):
         if not self._lock_mode:
             self._lock_token = self._remote_lock_write(token)
-            assert self._lock_token, 'Remote server did not return a token!'
+            # if self._lock_token is None, then this is something like packs or
+            # svn where we don't get to lock the repo, or a weave style repository
+            # where we cannot lock it over the wire and attempts to do so will
+            # fail.
             if self._real_repository is not None:
                 self._real_repository.lock_write(token=self._lock_token)
             if token is not None:
@@ -452,12 +483,16 @@ class RemoteRepository(object):
             raise errors.ReadOnlyError(self)
         else:
             self._lock_count += 1
-        return self._lock_token
+        return self._lock_token or None
 
     def leave_lock_in_place(self):
+        if not self._lock_token:
+            raise NotImplementedError(self.leave_lock_in_place)
         self._leave_lock = True
 
     def dont_leave_lock_in_place(self):
+        if not self._lock_token:
+            raise NotImplementedError(self.dont_leave_lock_in_place)
         self._leave_lock = False
 
     def _set_real_repository(self, repository):
@@ -488,6 +523,9 @@ class RemoteRepository(object):
 
     def _unlock(self, token):
         path = self.bzrdir._path_for_remote_call(self._client)
+        if not token:
+            # with no token the remote repository is not persistently locked.
+            return
         response = self._client.call('Repository.unlock', path, token)
         if response == ('ok',):
             return
@@ -516,9 +554,6 @@ class RemoteRepository(object):
             if old_mode == 'w':
                 # Only write-locked repositories need to make a remote method
                 # call to perfom the unlock.
-                assert self._lock_token, \
-                    '%s is locked, but has no token' \
-                    % self
                 old_token = self._lock_token
                 self._lock_token = None
                 if not self._leave_lock:
@@ -578,8 +613,6 @@ class RemoteRepository(object):
         builder = self._real_repository.get_commit_builder(branch, parents,
                 config, timestamp=timestamp, timezone=timezone,
                 committer=committer, revprops=revprops, revision_id=revision_id)
-        # Make the builder use this RemoteRepository rather than the real one.
-        builder.repository = self
         return builder
 
     @needs_write_lock
@@ -626,7 +659,7 @@ class RemoteRepository(object):
             # check that last_revision is in 'from' and then return a
             # no-operation.
             if (revision_id is not None and
-                not _mod_revision.is_null(revision_id)):
+                not revision.is_null(revision_id)):
                 self.get_revision(revision_id)
             return 0, []
         self._ensure_real()
@@ -795,6 +828,10 @@ class RemoteRepository(object):
         return self._real_repository.store_revision_signature(
             gpg_strategy, plaintext, revision_id)
 
+    def add_signature_text(self, revision_id, signature):
+        self._ensure_real()
+        return self._real_repository.add_signature_text(revision_id, signature)
+
     def has_signature_for_revision_id(self, revision_id):
         self._ensure_real()
         return self._real_repository.has_signature_for_revision_id(revision_id)
@@ -933,6 +970,7 @@ class RemoteBranch(branch.Branch):
         # We intentionally don't call the parent class's __init__, because it
         # will try to assign to self.tags, which is a property in this subclass.
         # And the parent's __init__ doesn't do much anyway.
+        self._revision_id_to_revno_cache = None
         self._revision_history_cache = None
         self.bzrdir = remote_bzrdir
         if _client is not None:
@@ -1024,7 +1062,7 @@ class RemoteBranch(branch.Branch):
             self.repository.unlock()
         path = self.bzrdir._path_for_remote_call(self._client)
         response = self._client.call('Branch.lock_write', path, branch_token,
-                                     repo_token)
+                                     repo_token or '')
         if response[0] == 'ok':
             ok, branch_token, repo_token = response
             return branch_token, repo_token
@@ -1077,12 +1115,12 @@ class RemoteBranch(branch.Branch):
                 if token != self._lock_token:
                     raise errors.TokenMismatch(token, self._lock_token)
             self._lock_count += 1
-        return self._lock_token
+        return self._lock_token or None
 
     def _unlock(self, branch_token, repo_token):
         path = self.bzrdir._path_for_remote_call(self._client)
         response = self._client.call('Branch.unlock', path, branch_token,
-                                     repo_token)
+                                     repo_token or '')
         if response == ('ok',):
             return
         elif response[0] == 'TokenMismatch':
@@ -1098,7 +1136,8 @@ class RemoteBranch(branch.Branch):
             mode = self._lock_mode
             self._lock_mode = None
             if self._real_branch is not None:
-                if not self._leave_lock:
+                if (not self._leave_lock and mode == 'w' and
+                    self._repo_lock_token):
                     # If this RemoteBranch will remove the physical lock for the
                     # repository, make sure the _real_branch doesn't do it
                     # first.  (Because the _real_branch's repository is set to
@@ -1122,9 +1161,13 @@ class RemoteBranch(branch.Branch):
         return self._real_branch.break_lock()
 
     def leave_lock_in_place(self):
+        if not self._lock_token:
+            raise NotImplementedError(self.leave_lock_in_place)
         self._leave_lock = True
 
     def dont_leave_lock_in_place(self):
+        if not self._lock_token:
+            raise NotImplementedError(self.dont_leave_lock_in_place)
         self._leave_lock = False
 
     def last_revision_info(self):
