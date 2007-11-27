@@ -171,3 +171,20 @@ tracker_registry.register(
 tracker_registry.register(
     'bugzilla',
     URLParametrizedIntegerBugTracker('bugzilla', 'show_bug.cgi?id='))
+
+
+class GenericBugTracker(URLParametrizedIntegerBugTracker):
+    """Generic bug tracker specified by an URL template."""
+
+    def __init__(self):
+        self.type_name = 'bugtracker'
+
+    def _get_bug_url(self, bug_id):
+        """Given a validated bug_id, return the bug's web page's URL."""
+        if '{id}' not in self._base_url:
+            raise errors.InvalidBugTrackerURL(self._abbreviation,
+                                              self._base_url)
+        return self._base_url.replace('{id}', str(bug_id))
+
+
+tracker_registry.register('generic', GenericBugTracker())

@@ -104,6 +104,15 @@ class TestBuiltinTrackers(TestCaseWithMemoryTransport):
         self.assertEqual('http://bugs.com/show_bug.cgi?id=1234',
                          tracker.get_bug_url('1234'))
 
+    def test_generic_registered(self):
+        branch = self.make_branch('some_branch')
+        config = branch.get_config()
+        config.set_user_option('bugtracker_foo_url', 'http://bugs.com/{id}/view.html')
+        tracker = bugtracker.tracker_registry.get_tracker('foo', branch)
+        self.assertEqual('http://bugs.com/1234/view.html',
+                         tracker.get_bug_url('1234'))
+
+
 
 class TestUniqueIntegerBugTracker(TestCaseWithMemoryTransport):
 
