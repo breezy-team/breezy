@@ -63,7 +63,7 @@ For example::
 
   bzr commit -m "Merged Mary's changes"
 
-Even if there are no conflicts, an explicit merge is still required.
+Even if there are no conflicts, an explicit commit is still required.
 Unlike some other tools, this is considered a feature in Bazaar.
 A clean merge is not necessarily a good merge so making the commit
 a separate explicit step allows you to run your test suite first to

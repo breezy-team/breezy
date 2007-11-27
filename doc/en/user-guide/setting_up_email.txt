@@ -50,11 +50,11 @@ Setting email via the 'whoami' command
 
 You can use the whoami command to set your email globally::
 
-    % bzr whoami 'Joe Cool <joe@example.com>'
+    % bzr whoami "Joe Cool <joe@example.com>"
 
 or only for the current branch::
 
-    % bzr whoami --branch 'Joe Cool <joe@example.com>'
+    % bzr whoami --branch "Joe Cool <joe@example.com>"
 
 These modify your global ``bazaar.conf`` or branch ``branch.conf`` file, respectively.
 

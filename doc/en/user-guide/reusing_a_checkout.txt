@@ -31,13 +31,13 @@ To change where a checkout is bound to, follow these steps:
  2. Use the ``bind`` command giving the URL of the new
     remote branch you wish to work on.
 
- 3. Make your checkout a copy of the bound branch by using
-    the ``pull --overwrite`` command.
+ 3. Make your checkout a copy of the desired branch by using
+    the ``update`` command followed by the ``revert`` command.
 
-If you now run ``update``, it should report your checkout as
-being up to date. Note that simply binding to a new branch
-and running update is not enough: you need the ``pull --overwrite``
-step to synchronous the local history with the remote history.
+
+Note that simply binding to a new branch
+and running ``update`` is not enough: you need the ``revert`` to
+throw away any local differences in the working tree.
 
 Switching a lightweight checkout
 --------------------------------

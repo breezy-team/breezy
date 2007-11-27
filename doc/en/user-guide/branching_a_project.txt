@@ -71,7 +71,7 @@ Time and space considerations
 Depending on the size of the branch being transferred and the
 speed and latency of the network between your computer and the
 source branch, this initial transfer might take some time.
-Subsequence updates should be much faster as only the
+Subsequent updates should be much faster as only the
 changes are transferred then.
 
 Keep in mind that Bazaar is transferring the

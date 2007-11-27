@@ -10,7 +10,7 @@ wish to put under version control, here are the commands to use::
   cd my-stuff
   bzr init
   bzr add
-  bzr commmit -m "Initial import"
+  bzr commit -m "Initial import"
 
 ``bzr init`` creates a ``.bzr`` directory in the top level directory
 (``my-stuff`` in the example above). Note that:
