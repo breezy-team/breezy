@@ -236,6 +236,10 @@ class BzrDir(object):
             format = BzrDirFormat.get_default_format()
         return format.initialize(base, possible_transports)
 
+    def destroy_repository(self):
+        """Destroy the repository in this BzrDir"""
+        raise NotImplementedError(self.destroy_repository)
+
     def create_branch(self):
         """Create a branch in this BzrDir.
 
@@ -908,6 +912,10 @@ class BzrDirPreSplitOut(BzrDir):
             raise errors.IncompatibleFormat('shared repository', self._format)
         return self.open_repository()
 
+    def destroy_repository(self):
+        """See BzrDir.destroy_repository."""
+        raise errors.UnsupportedOperation(self.destroy_repository, self)
+
     def create_workingtree(self, revision_id=None):
         """See BzrDir.create_workingtree."""
         # this looks buggy but is not -really-
@@ -1085,6 +1093,10 @@ class BzrDirMeta1(BzrDir):
     def create_repository(self, shared=False):
         """See BzrDir.create_repository."""
         return self._format.repository_format.initialize(self, shared)
+
+    def destroy_repository(self):
+        """See BzrDir.destroy_repository."""
+        self.transport.delete_tree('repository')
 
     def create_workingtree(self, revision_id=None):
         """See BzrDir.create_workingtree."""

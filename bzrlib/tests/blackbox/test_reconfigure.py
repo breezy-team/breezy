@@ -56,3 +56,8 @@ class TestReconfigure(tests.TestCaseWithTransport):
         branch = self.make_branch('branch')
         checkout = branch.create_checkout('checkout', lightweight=True)
         self.run_bzr('reconfigure --checkout checkout')
+
+    def test_checkout_to_lightweight_checkout(self):
+        branch = self.make_branch('branch')
+        checkout = branch.create_checkout('checkout')
+        self.run_bzr('reconfigure --lightweight-checkout checkout')

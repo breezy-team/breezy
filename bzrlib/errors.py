@@ -2430,6 +2430,11 @@ class AlreadyCheckout(BzrDirError):
     _fmt = "'%(display_url)s' is already a checkout."
 
 
+class AlreadyLightweightCheckout(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already a lightweight checkout."
+
+
 class ReconfigurationNotSupported(BzrDirError):
 
     _fmt = "Requested reconfiguration of '%(display_url)s' is not supported."
