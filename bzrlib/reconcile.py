@@ -388,8 +388,7 @@ class KnitReconciler(RepoReconciler):
                            len(self.repo.weave_store))
             vf = self.repo.weave_store.get_weave(file_id, transaction)
             versions_with_bad_parents, unused_versions = \
-                vf_checker.check_file_version_parents(vf, file_id,
-                vf.versions())
+                vf_checker.check_file_version_parents(vf, file_id)
             if (len(versions_with_bad_parents) == 0 and
                 len(unused_versions) == 0):
                 continue

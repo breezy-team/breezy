@@ -2900,7 +2900,7 @@ class VersionedFileChecker(object):
         # strip the file_id, for the weave api
         return tuple([revision_id for file_id, revision_id in parent_keys])
 
-    def check_file_version_parents(self, weave, file_id, planned_revisions):
+    def check_file_version_parents(self, weave, file_id):
         """Check the parents stored in a versioned file are correct.
 
         It also detects file versions that are not referenced by their
@@ -2915,12 +2915,12 @@ class VersionedFileChecker(object):
         """
         wrong_parents = {}
         unused_versions = set()
-        for num, revision_id in enumerate(planned_revisions):
+        for num, revision_id in enumerate(weave.versions()):
             try:
                 correct_parents = self.calculate_file_version_parents(
                     revision_id, file_id)
             except KeyError:
-                # we were asked to investigate a non-existant version.
+                # The version is not part of the used keys.
                 unused_versions.add(revision_id)
             else:
                 try:
