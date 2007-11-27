@@ -65,8 +65,9 @@ class LaunchpadTransport(Transport):
     def _requires_launchpad_login(self, url):
         """Does the URL require a Launchpad login in order to be reached?"""
         scheme, netloc, path, query, fragment = urlsplit(url)
-        return scheme == 'bzr+ssh' and (netloc.endswith('launchpad.net') or
-                                        netloc.endswith('launchpad.dev'))
+        return (scheme in ('bzr+ssh', 'sftp')
+                and (netloc.endswith('launchpad.net')
+                     or netloc.endswith('launchpad.dev')))
 
     def _resolve(self, abspath,
                  _request_factory=ResolveLaunchpadPathRequest,
