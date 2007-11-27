@@ -1158,7 +1158,7 @@ class InMemoryGraphIndex(GraphIndexBuilder):
         """Iterate over keys within the index.
 
         :param keys: An iterable providing the keys to be retrieved.
-        :return: An iterable of (index, key, reference_lists, value). There is no
+        :return: An iterable of (index, key, value, reference_lists). There is no
             defined order for the result iteration - it will be in the most
             efficient order for the index (keys iteration order in this case).
         """
@@ -1342,7 +1342,7 @@ class GraphIndexPrefixAdapter(object):
         """Iterate over keys within the index.
 
         :param keys: An iterable providing the keys to be retrieved.
-        :return: An iterable of (key, reference_lists, value). There is no
+        :return: An iterable of (index, key, value, reference_lists). There is no
             defined order for the result iteration - it will be in the most
             efficient order for the index (keys iteration order in this case).
         """
