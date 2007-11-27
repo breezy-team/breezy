@@ -87,7 +87,7 @@ class PackCommitBuilder(CommitBuilder):
             self._new_revision_id, new_lines, parents, nostore_sha,
             self.random_revid)
 
-    def heads(self, file_id, revision_ids):
+    def _heads(self, file_id, revision_ids):
         keys = [(file_id, revision_id) for revision_id in revision_ids]
         return set([key[1] for key in self._file_graph.heads(keys)])
 
@@ -113,7 +113,7 @@ class PackRootCommitBuilder(RootCommitBuilder):
             self._new_revision_id, new_lines, parents, nostore_sha,
             self.random_revid)
 
-    def heads(self, file_id, revision_ids):
+    def _heads(self, file_id, revision_ids):
         keys = [(file_id, revision_id) for revision_id in revision_ids]
         return set([key[1] for key in self._file_graph.heads(keys)])
 
