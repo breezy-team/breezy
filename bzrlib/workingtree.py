@@ -1318,6 +1318,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 only_change_inv = True
             elif self.has_filename(from_rel) and not self.has_filename(to_rel):
                 only_change_inv = False
+            elif (sys.platform == 'win32'
+                and from_rel.lower() == to_rel.lower()
+                and self.has_filename(from_rel)):
+                only_change_inv = False
             else:
                 # something is wrong, so lets determine what exactly
                 if not self.has_filename(from_rel) and \
@@ -1978,7 +1982,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 self.set_parent_trees(parent_trees)
                 resolve(self)
             else:
-                resolve(self, filenames, ignore_misses=True)
+                resolve(self, filenames, ignore_misses=True, recursive=True)
         finally:
             if basis_tree is not None:
                 basis_tree.unlock()

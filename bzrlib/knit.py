@@ -74,6 +74,7 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     annotate,
+    lru_cache,
     pack,
     trace,
     )
@@ -575,7 +576,11 @@ class KnitVersionedFile(VersionedFile):
         """Get a data stream for the specified versions.
 
         Versions may be returned in any order, not necessarily the order
-        specified.
+        specified.  They are returned in a partial order by compression
+        parent, so that the deltas can be applied as the data stream is
+        inserted; however note that compression parents will not be sent
+        unless they were specifically requested, as the client may already
+        have them.
 
         :param required_versions: The exact set of versions to be extracted.
             Unlike some other knit methods, this is not used to generate a
@@ -584,46 +589,63 @@ class KnitVersionedFile(VersionedFile):
         :returns: format_signature, list of (version, options, length, parents),
             reader_callable.
         """
-        if not isinstance(required_versions, set):
-            required_versions = set(required_versions)
-        # we don't care about inclusions, the caller cares.
-        # but we need to setup a list of records to visit.
+        required_version_set = frozenset(required_versions)
+        version_index = {}
+        # list of revisions that can just be sent without waiting for their
+        # compression parent
+        ready_to_send = []
+        # map from revision to the children based on it
+        deferred = {}
+        # first, read all relevant index data, enough to sort into the right
+        # order to return
         for version_id in required_versions:
             if not self.has_version(version_id):
                 raise RevisionNotPresent(version_id, self.filename)
-        # Pick the desired versions out of the index in oldest-to-newest order
-        version_list = []
-        for version_id in self.versions():
-            if version_id in required_versions:
-                version_list.append(version_id)
-
-        # create the list of version information for the result
-        copy_queue_records = []
-        copy_set = set()
-        result_version_list = []
-        for version_id in version_list:
             options = self._index.get_options(version_id)
             parents = self._index.get_parents_with_ghosts(version_id)
             index_memo = self._index.get_position(version_id)
+            version_index[version_id] = (index_memo, options, parents)
+            if parents and parents[0] in required_version_set:
+                # must wait until the parent has been sent
+                deferred.setdefault(parents[0], []). \
+                    append(version_id)
+            else:
+                # either a fulltext, or a delta whose parent the client did
+                # not ask for and presumably already has
+                ready_to_send.append(version_id)
+        # build a list of results to return, plus instructions for data to
+        # read from the file
+        copy_queue_records = []
+        temp_version_list = []
+        while ready_to_send:
+            # XXX: pushing and popping lists may be a bit inefficient
+            version_id = ready_to_send.pop(0)
+            (index_memo, options, parents) = version_index[version_id]
             copy_queue_records.append((version_id, index_memo))
             none, data_pos, data_size = index_memo
-            copy_set.add(version_id)
-            # version, options, length, parents
-            result_version_list.append((version_id, options, data_size,
+            temp_version_list.append((version_id, options, data_size,
                 parents))
-
-        # Read the compressed record data.
-        # XXX:
-        # From here down to the return should really be logic in the returned
-        # callable -- in a class that adapts read_records_iter_raw to read
-        # requests.
+            if version_id in deferred:
+                # now we can send all the children of this revision - we could
+                # put them in anywhere, but we hope that sending them soon
+                # after the fulltext will give good locality in the receiver
+                ready_to_send[:0] = deferred.pop(version_id)
+        assert len(deferred) == 0, \
+            "Still have compressed child versions waiting to be sent"
+        # XXX: The stream format is such that we cannot stream it - we have to
+        # know the length of all the data a-priori.
         raw_datum = []
+        result_version_list = []
         for (version_id, raw_data), \
             (version_id2, options, _, parents) in \
             izip(self._data.read_records_iter_raw(copy_queue_records),
-                 result_version_list):
-            assert version_id == version_id2, 'logic error, inconsistent results'
+                 temp_version_list):
+            assert version_id == version_id2, \
+                'logic error, inconsistent results'
             raw_datum.append(raw_data)
+            result_version_list.append(
+                (version_id, options, len(raw_data), parents))
+        # provide a callback to get data incrementally.
         pseudo_file = StringIO(''.join(raw_datum))
         def read(length):
             if length is None:
@@ -2224,6 +2246,43 @@ class InterKnit(InterVersionedFile):
         except AttributeError:
             return False
 
+    def _copy_texts(self, pb, msg, version_ids, ignore_missing=False):
+        """Copy texts to the target by extracting and adding them one by one.
+
+        see join() for the parameter definitions.
+        """
+        version_ids = self._get_source_version_ids(version_ids, ignore_missing)
+        graph = self.source.get_graph(version_ids)
+        order = topo_sort(graph.items())
+
+        def size_of_content(content):
+            return sum(len(line) for line in content.text())
+        # Cache at most 10MB of parent texts
+        parent_cache = lru_cache.LRUSizeCache(max_size=10*1024*1024,
+                                              compute_size=size_of_content)
+        # TODO: jam 20071116 It would be nice to have a streaming interface to
+        #       get multiple texts from a source. The source could be smarter
+        #       about how it handled intermediate stages.
+        #       get_line_list() or make_mpdiffs() seem like a possibility, but
+        #       at the moment they extract all full texts into memory, which
+        #       causes us to store more than our 3x fulltext goal.
+        #       Repository.iter_files_bytes() may be another possibility
+        to_process = [version for version in order
+                               if version not in self.target]
+        total = len(to_process)
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            for index, version in enumerate(to_process):
+                pb.update('Converting versioned data', index, total)
+                sha1, num_bytes, parent_text = self.target.add_lines(version,
+                    self.source.get_parents(version),
+                    self.source.get_lines(version),
+                    parent_texts=parent_cache)
+                parent_cache[version] = parent_text
+        finally:
+            pb.finished()
+        return total
+
     def join(self, pb=None, msg=None, version_ids=None, ignore_missing=False):
         """See InterVersionedFile.join."""
         assert isinstance(self.source, KnitVersionedFile)
@@ -2236,11 +2295,9 @@ class InterKnit(InterVersionedFile):
         elif self.source.factory.annotated:
             converter = self._anno_to_plain_converter
         else:
-            # We're converting from a plain to an annotated knit. This requires
-            # building the annotations from scratch. The generic join code
-            # handles this implicitly so we delegate to it.
-            return super(InterKnit, self).join(pb, msg, version_ids,
-                ignore_missing)
+            # We're converting from a plain to an annotated knit. Copy them
+            # across by full texts.
+            return self._copy_texts(pb, msg, version_ids, ignore_missing)
 
         version_ids = self._get_source_version_ids(version_ids, ignore_missing)
         if not version_ids:

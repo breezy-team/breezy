@@ -275,6 +275,20 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         self.assertEqual(['rev2'],
                          repo_b.missing_revision_ids(repo_a))
 
+    def test_missing_revision_ids_absent_requested_raises(self):
+        # Asking for missing revisions with a tip that is itself absent in the
+        # source raises NoSuchRevision.
+        repo_b = self.make_to_repository('target')
+        repo_a = self.bzrdir.open_repository()
+        # No pizza revisions anywhere
+        self.assertFalse(repo_a.has_revision('pizza'))
+        self.assertFalse(repo_b.has_revision('pizza'))
+        # Asking specifically for an absent revision errors.
+        self.assertRaises(NoSuchRevision, repo_b.missing_revision_ids, repo_a,
+            revision_id='pizza', find_ghosts=True)
+        self.assertRaises(NoSuchRevision, repo_b.missing_revision_ids, repo_a,
+            revision_id='pizza', find_ghosts=False)
+
     def test_missing_revision_ids_revision_limited(self):
         # revision ids in repository A that are not referenced by the
         # requested revision are not returned.
@@ -368,6 +382,10 @@ class TestFetchDependentData(TestCaseWithInterRepository):
         to_repo.fetch(from_tree.branch.repository, tree_rev)
         # to_repo should have a file_graph for from_tree.path2id('subtree') and
         # revid tree_rev.
-        file_vf = to_repo.weave_store.get_weave(
-            from_tree.path2id('subtree'), to_repo.get_transaction())
-        self.assertEqual([tree_rev], file_vf.get_ancestry([tree_rev]))
+        to_repo.lock_read()
+        try:
+            file_vf = to_repo.weave_store.get_weave(
+                from_tree.path2id('subtree'), to_repo.get_transaction())
+            self.assertEqual([tree_rev], file_vf.get_ancestry([tree_rev]))
+        finally:
+            to_repo.unlock()

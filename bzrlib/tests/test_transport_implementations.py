@@ -45,7 +45,12 @@ from bzrlib.errors import (ConnectionError,
                            )
 from bzrlib.osutils import getcwd
 from bzrlib.smart import medium
-from bzrlib.tests import TestCaseInTempDir, TestScenarioApplier, TestSkipped
+from bzrlib.tests import (
+    TestCaseInTempDir,
+    TestScenarioApplier,
+    TestSkipped,
+    TestNotApplicable,
+    )
 from bzrlib.tests.test_transport import TestTransportImplementation
 from bzrlib.transport import (
     ConnectedTransport,
@@ -900,6 +905,20 @@ class TransportTests(TestTransportImplementation):
         self.assertFalse(t.has('adir/bdir'))
         self.assertFalse(t.has('adir/bsubdir'))
 
+    def test_rename_across_subdirs(self):
+        t = self.get_transport()
+        if t.is_readonly():
+            raise TestNotApplicable("transport is readonly")
+        t.mkdir('a')
+        t.mkdir('b')
+        ta = t.clone('a')
+        tb = t.clone('b')
+        ta.put_bytes('f', 'aoeu')
+        ta.rename('f', '../b/f')
+        self.assertTrue(tb.has('f'))
+        self.assertFalse(ta.has('f'))
+        self.assertTrue(t.has('b/f'))
+
     def test_delete_tree(self):
         t = self.get_transport()
 
@@ -986,8 +1005,7 @@ class TransportTests(TestTransportImplementation):
     def test_connection_error(self):
         """ConnectionError is raised when connection is impossible.
         
-        The error may be raised from either the constructor or the first
-        operation on the transport.
+        The error should be raised from the first operation on the transport.
         """
         try:
             url = self._server.get_bogus_url()

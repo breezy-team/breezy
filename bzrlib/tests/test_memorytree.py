@@ -143,6 +143,8 @@ class TestMemoryTree(TestCaseWithTransport):
         tree.unlock()
         # and we should have a revision that is accessible outside the tree lock
         revtree = tree.branch.repository.revision_tree(revision_id)
+        revtree.lock_read()
+        self.addCleanup(revtree.unlock)
         self.assertEqual('barshoom', revtree.get_file('foo-id').read())
 
     def test_unversion(self):

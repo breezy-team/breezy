@@ -252,6 +252,7 @@ class InvalidRevisionId(BzrError):
         self.revision_id = revision_id
         self.branch = branch
 
+
 class ReservedId(BzrError):
 
     _fmt = "Reserved revision-id {%(revision_id)s}"
@@ -1845,6 +1846,14 @@ class BadConversionTarget(BzrError):
         self.format = format
 
 
+class NoDiffFound(BzrError):
+
+    _fmt = 'Could not find an appropriate Differ for file "%(path)s"'
+
+    def __init__(self, path):
+        BzrError.__init__(self, path)
+
+
 class NoDiff(BzrError):
 
     _fmt = "Diff is not installed on this machine: %(msg)s"
@@ -2447,3 +2456,18 @@ class UncommittedChanges(BzrError):
         display_url = urlutils.unescape_for_display(
             tree.bzrdir.root_transport.base, 'ascii')
         BzrError.__init__(self, tree=tree, display_url=display_url)
+
+
+class UnableCreateSymlink(BzrError):
+
+    _fmt = 'Unable to create symlink %(path_str)son this platform'
+
+    def __init__(self, path=None):
+        path_str = ''
+        if path:
+            try:
+                path_str = repr(str(path))
+            except UnicodeEncodeError:
+                path_str = repr(path)
+            path_str += ' '
+        self.path_str = path_str

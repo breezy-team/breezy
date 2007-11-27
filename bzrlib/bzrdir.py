@@ -29,6 +29,7 @@ objects returned.
 
 from cStringIO import StringIO
 import os
+import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -48,10 +49,11 @@ from bzrlib import (
     symbol_versioning,
     ui,
     urlutils,
-    xml4,
-    xml5,
+    win32utils,
     workingtree,
     workingtree_4,
+    xml4,
+    xml5,
     )
 from bzrlib.osutils import (
     sha_strings,
@@ -1355,6 +1357,8 @@ class BzrDirFormat(object):
                                       # FIXME: RBC 20060121 don't peek under
                                       # the covers
                                       mode=temp_control._dir_mode)
+        if sys.platform == 'win32' and isinstance(transport, LocalTransport):
+            win32utils.set_file_attr_hidden(transport._abspath('.bzr'))
         file_mode = temp_control._file_mode
         del temp_control
         mutter('created control directory in ' + transport.base)
@@ -1717,7 +1721,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
         return RepositoryFormat.get_default_format()
 
     def __set_repository_format(self, value):
-        """Allow changint the repository format for metadir formats."""
+        """Allow changing the repository format for metadir formats."""
         self._repository_format = value
 
     repository_format = property(__return_repository_format, __set_repository_format)
@@ -2487,6 +2491,14 @@ format_registry.register_metadir('dirstate-tags',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
+format_registry.register_metadir('rich-root',
+    'bzrlib.repofmt.knitrepo.RepositoryFormatKnit4',
+    help='New in 1.0.  Better handling of tree roots.  Incompatible with'
+        ' bzr < 1.0',
+    branch_format='bzrlib.branch.BzrBranchFormat6',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    hidden=False,
+    )
 format_registry.register_metadir('dirstate-with-subtree',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
     help='New in 0.15: Fast local operations and improved scaling for '
@@ -2496,27 +2508,41 @@ format_registry.register_metadir('dirstate-with-subtree',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=True,
     )
-format_registry.register_metadir('knitpack-experimental',
+format_registry.register_metadir('pack-0.92',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack1',
     help='New in 0.92: Pack-based format with data compatible with '
         'dirstate-tags format repositories. Interoperates with '
         'bzr repositories before 0.92 but cannot be read by bzr < 0.92. '
-        'NOTE: This format is experimental. Before using it, please read '
-        'http://doc.bazaar-vcs.org/latest/developers/knitpack.html.',
+        'Previously called knitpack-experimental.  '
+        'For more information, see '
+        'http://doc.bazaar-vcs.org/latest/developers/packrepo.html.',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     experimental=True,
     )
-format_registry.register_metadir('knitpack-subtree-experimental',
+format_registry.register_metadir('pack-0.92-subtree',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack3',
     help='New in 0.92: Pack-based format with data compatible with '
         'dirstate-with-subtree format repositories. Interoperates with '
         'bzr repositories before 0.92 but cannot be read by bzr < 0.92. '
+        'Previously called knitpack-experimental.  '
+        'For more information, see '
+        'http://doc.bazaar-vcs.org/latest/developers/packrepo.html.',
+    branch_format='bzrlib.branch.BzrBranchFormat6',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    hidden=True,
+    experimental=True,
+    )
+format_registry.register_metadir('rich-root-pack',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack4',
+    help='New in 1.0: Pack-based format with data compatible with '
+        'rich-root format repositories. Interoperates with '
+        'bzr repositories before 0.92 but cannot be read by bzr < 1.0. '
         'NOTE: This format is experimental. Before using it, please read '
         'http://doc.bazaar-vcs.org/latest/developers/knitpack.html.',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
-    hidden=True,
+    hidden=False,
     experimental=True,
     )
 format_registry.set_default('dirstate-tags')

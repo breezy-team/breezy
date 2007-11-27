@@ -432,19 +432,22 @@ class KnitRepositoryStreamTests(test_knit.KnitTests):
             ('text-d', ['text-c'], test_knit.TEXT_1),
             ('text-m', ['text-b', 'text-d'], test_knit.TEXT_1),
            ]
+        # This test is actually a bit strict as the order in which they're
+        # returned is not defined.  This matches the current (deterministic)
+        # behaviour.
         expected_data_list = [
             # version, options, parents
             ('text-a', ['fulltext'], []),
             ('text-b', ['line-delta'], ['text-a']),
+            ('text-m', ['line-delta'], ['text-b', 'text-d']),
             ('text-c', ['fulltext'], []),
             ('text-d', ['line-delta'], ['text-c']),
-            ('text-m', ['line-delta'], ['text-b', 'text-d']),
             ]
         for version_id, parents, lines in test_data:
             k1.add_lines(version_id, parents, test_knit.split_lines(lines))
 
         bytes = knitrepo._get_stream_as_bytes(
-            k1, ['text-a', 'text-b', 'text-c', 'text-d', 'text-m'])
+            k1, ['text-a', 'text-b', 'text-m', 'text-c', 'text-d', ])
 
         data = bencode.bdecode(bytes)
         format = data.pop(0)
@@ -765,7 +768,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
 class TestKnitPackNoSubtrees(TestCaseWithTransport):
 
     def get_format(self):
-        return bzrdir.format_registry.make_bzrdir('knitpack-experimental')
+        return bzrdir.format_registry.make_bzrdir('pack-0.92')
 
     def test_disk_layout(self):
         format = self.get_format()
@@ -1147,7 +1150,7 @@ class TestKnitPackSubtrees(TestKnitPackNoSubtrees):
 
     def get_format(self):
         return bzrdir.format_registry.make_bzrdir(
-            'knitpack-subtree-experimental')
+            'pack-0.92-subtree')
 
     def check_format(self, t):
         self.assertEqualDiff(
@@ -1158,7 +1161,7 @@ class TestKnitPackSubtrees(TestKnitPackNoSubtrees):
 class TestRepositoryPackCollection(TestCaseWithTransport):
 
     def get_format(self):
-        return bzrdir.format_registry.make_bzrdir('knitpack-experimental')
+        return bzrdir.format_registry.make_bzrdir('pack-0.92')
 
     def test__max_pack_count(self):
         """The maximum pack count is a function of the number of revisions."""

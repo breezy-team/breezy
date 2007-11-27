@@ -696,6 +696,8 @@ class Commit(object):
                
         report_changes = self.reporter.is_verbose()
         deleted_ids = []
+        # A tree of paths that have been deleted. E.g. if foo/bar has been
+        # deleted, then we have {'foo':{'bar':{}}}
         deleted_paths = {}
         # XXX: Note that entries may have the wrong kind because the entry does
         # not reflect the status on disk.
@@ -717,12 +719,10 @@ class Commit(object):
                 deleted_dict = deleted_paths
                 for segment in path_segments:
                     deleted_dict = deleted_dict.get(segment, None)
-                    if deleted_dict is None:
-                        # We took a path not present in the dict.
-                        break
                     if not deleted_dict:
-                        # We've reached an empty child dir in the dict, so are now
-                        # a sub-path.
+                        # We either took a path not present in the dict
+                        # (deleted_dict was None), or we've reached an empty
+                        # child dir in the dict, so are now a sub-path.
                         break
                 else:
                     deleted_dict = None
