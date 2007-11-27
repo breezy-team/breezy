@@ -4,8 +4,11 @@
 
   * "bzr replay" now supports revision ranges.
 
-  * Don't require "bzr replay" and "bzr rebase" to be run in 
+  * Don't require any of the commands to be run in 
     the branch root.
+
+  * Make message when there is nothing to rebase a 
+    bit friendlier.
 
  BUG FIXES
 
