@@ -1255,7 +1255,7 @@ class cmd_init(Command):
         bzr init
         bzr add .
         bzr status
-        bzr commit -m 'imported project'
+        bzr commit -m "imported project"
     """
 
     _see_also = ['init-repository', 'branch', 'checkout']
@@ -1915,15 +1915,15 @@ class cmd_ignore(Command):
 
         Ignore class files in all directories::
 
-            bzr ignore '*.class'
+            bzr ignore "*.class"
 
         Ignore .o files under the lib directory::
 
-            bzr ignore 'lib/**/*.o'
+            bzr ignore "lib/**/*.o"
 
         Ignore .o files under the lib directory::
 
-            bzr ignore 'RE:lib/.*\.o'
+            bzr ignore "RE:lib/.*\.o"
     """
 
     _see_also = ['status', 'ignored']
@@ -2444,7 +2444,7 @@ class cmd_whoami(Command):
 
         Set the current user::
 
-            bzr whoami 'Frank Chu <fchu@example.com>'
+            bzr whoami "Frank Chu <fchu@example.com>"
     """
     takes_options = [ Option('email',
                              help='Display email address only.'),
