@@ -215,7 +215,7 @@ class cmd_rebase_abort(Command):
     def run(self):
         from rebase import read_rebase_plan, remove_rebase_plan, complete_revert
         from bzrlib.workingtree import WorkingTree
-        wt = WorkingTree.open('.')
+        wt = WorkingTree.open_containing('.')[0]
         wt.lock_write()
         try:
             # Read plan file and set last revision
@@ -241,7 +241,7 @@ class cmd_rebase_continue(Command):
                             read_rebase_plan, read_active_rebase_revid, 
                             remove_rebase_plan, workingtree_replay)
         from bzrlib.workingtree import WorkingTree
-        wt = WorkingTree.open('.')
+        wt = WorkingTree.open_containing('.')[0]
         wt.lock_write()
         try:
             # Abort if there are any conflicts
@@ -280,7 +280,7 @@ class cmd_rebase_todo(Command):
         from rebase import (rebase_todo, read_rebase_plan, 
                             read_active_rebase_revid)
         from bzrlib.workingtree import WorkingTree
-        wt = WorkingTree.open('.')
+        wt = WorkingTree.open_containing('.')[0]
         wt.lock_read()
         try:
             try:
@@ -294,6 +294,7 @@ class cmd_rebase_todo(Command):
                 info("%s -> %s" % (revid, replace_map[revid][0]))
         finally:
             wt.unlock()
+
 
 class cmd_replay(Command):
     """Replay commits from another branch on top of this one.
