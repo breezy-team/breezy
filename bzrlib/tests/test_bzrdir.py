@@ -21,6 +21,8 @@ For interface contract tests, see tests/bzr_dir_implementations.
 
 import os.path
 from StringIO import StringIO
+import subprocess
+import sys
 
 from bzrlib import (
     bzrdir,
@@ -29,6 +31,7 @@ from bzrlib import (
     repository,
     symbol_versioning,
     urlutils,
+    win32utils,
     workingtree,
     )
 import bzrlib.branch
@@ -42,6 +45,7 @@ from bzrlib.symbol_versioning import (
 from bzrlib.tests import (
     TestCase,
     TestCaseWithTransport,
+    TestSkipped,
     test_sftp_transport
     )
 from bzrlib.tests.HttpServer import HttpServer
@@ -870,3 +874,32 @@ class TestHTTPRedirections_pycurl(TestWithTransport_pycurl,
     """Tests redirections for pycurl implementation"""
 
     _qualifier = 'pycurl'
+
+
+class TestDotBzrHidden(TestCaseWithTransport):
+
+    ls = ['ls']
+    if sys.platform == 'win32':
+        ls = [os.environ['COMSPEC'], '/C', 'dir', '/B']
+
+    def get_ls(self):
+        f = subprocess.Popen(self.ls, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
+        out, err = f.communicate()
+        self.assertEqual(0, f.returncode, 'Calling %s failed: %s'
+                         % (self.ls, err))
+        return out.splitlines()
+
+    def test_dot_bzr_hidden(self):
+        if sys.platform == 'win32' and not win32utils.has_win32file:
+            raise TestSkipped('unable to make file hidden without pywin32 library')
+        b = bzrdir.BzrDir.create('.')
+        self.build_tree('a')
+        self.assertEquals(['a'], self.get_ls())
+
+    def test_dot_bzr_hidden_with_url(self):
+        if sys.platform == 'win32' and not win32utils.has_win32file:
+            raise TestSkipped('unable to make file hidden without pywin32 library')
+        b = bzrdir.BzrDir.create(urlutils.local_path_to_url('.'))
+        self.build_tree('a')
+        self.assertEquals(['a'], self.get_ls())

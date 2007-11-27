@@ -111,6 +111,9 @@ IN DEVELOPMENT
    * Make sure Repository.fetch(self) is properly a no-op for all
      Repository implementations. (John Arbash Meinel, #158333)
 
+   * Mark .bzr directories as "hidden" on Windows.
+     (Alexander Belchenko, #71147)
+
    * ``merge --uncommitted`` can now operate on a single file.
      (Aaron Bentley, Lukáš Lalinský, #136890)
 
@@ -134,6 +137,9 @@ IN DEVELOPMENT
    * Return error instead of a traceback when bzr is unable to create
      symlink on some platforms (e.g. on Windows).
      (Alexander Belchenko, workaround for #81689)
+
+   * Revert doesn't crash when restoring a single file from a deleted
+     directory. (Aaron Bentley)
 
    * Stderr output via logging mechanism now goes through encoded wrapper
      and no more uses utf-8, but terminal encoding instead. So all unicode
