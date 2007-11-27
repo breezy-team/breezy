@@ -49,6 +49,9 @@ IN DEVELOPMENT
    * Revert takes out an appropriate lock when reverting to a basis tree, and
      does not read the basis inventory twice. (Robert Collins)
 
+   * Diff does not require an inventory to be generated on dirstate trees.
+     (Aaron Bentley, #149254)
+
   IMPROVEMENTS:
 
    * ``bzr tags`` now prints the revision number for each tag, instead of
