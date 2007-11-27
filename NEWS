@@ -79,6 +79,9 @@ IN DEVELOPMENT
    * Catch connection errors for ftp.
      (Vincent Ladeuil, #164567)
 
+   * ``check`` no longer reports spurious unreferenced text versions.
+     (Robert Collins, John A Meinel, #162931, #165071)
+
    * Conflicts are now resolved recursively by ``revert``.
      (Aaron Bentley, #102739)
 
