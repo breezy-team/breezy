@@ -47,7 +47,8 @@ from progress import DummyProgress, ProgressPhase
 from bzrlib.revision import (is_ancestor, NULL_REVISION, ensure_null)
 from bzrlib.textfile import check_text_lines
 from bzrlib.trace import mutter, warning, note
-from bzrlib.transform import (TreeTransform, resolve_conflicts, cook_conflicts,
+from bzrlib.transform import (TransformPreview, TreeTransform,
+                              resolve_conflicts, cook_conflicts,
                               conflict_pass, FinalPaths, create_by_entry,
                               unique_add, ROOT_PARENT)
 from bzrlib.versionedfile import PlanWeaveMerge
@@ -483,6 +484,20 @@ class Merge3Merger(object):
             self.base_tree.unlock()
             self.this_tree.unlock()
             self.pb.clear()
+
+    def make_preview_transform(self):
+        self.base_tree.lock_read()
+        self.other_tree.lock_read()
+        self.tt = TransformPreview(self.this_tree)
+        try:
+            self.pp.next_phase()
+            self.compute_transform()
+            self.pp.next_phase()
+        finally:
+            self.other_tree.unlock()
+            self.base_tree.unlock()
+            self.pb.clear()
+        return self.tt
 
     def compute_transform(self):
         entries = self._entries3()

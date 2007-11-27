@@ -1220,6 +1220,29 @@ class TransformPreview(TreeTransformBase):
     def canonical_path(self, path):
         return path
 
+    def tree_kind(self, trans_id):
+        path = self._tree_id_paths.get(trans_id)
+        file_id = self._tree.path2id(path)
+        return self._tree.kind(file_id)
+
+    def _set_mode(self, trans_id, mode_id, typefunc):
+        """Set the mode of new file contents.
+        The mode_id is the existing file to get the mode from (often the same
+        as trans_id).  The operation is only performed if there's a mode match
+        according to typefunc.
+        """
+        # is it ok to ignore this?  probably
+        pass
+
+    def iter_tree_children(self, parent_id):
+        """Iterate through the entry's tree children, if any"""
+        # This can't possibly be right :) It's only called from
+        # _add_tree_children (where the comment is "") which is called
+        # from find_conflicts.  I don't understand the conflict
+        # resolution well enough yet to know what the right thing to
+        # do is, though in the simplest cases this seems to work.
+        return []
+
 
 class PreviewTree(object):
 
