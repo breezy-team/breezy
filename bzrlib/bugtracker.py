@@ -177,7 +177,11 @@ class GenericBugTracker(URLParametrizedIntegerBugTracker):
     """Generic bug tracker specified by an URL template."""
 
     def __init__(self):
-        self.type_name = 'bugtracker'
+        super(GenericBugTracker, self).__init__('bugtracker', None)
+
+    def get(self, abbreviation, branch):
+        self._abbreviation = abbreviation
+        return super(GenericBugTracker, self).get(abbreviation, branch)
 
     def _get_bug_url(self, bug_id):
         """Given a validated bug_id, return the bug's web page's URL."""

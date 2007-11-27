@@ -403,6 +403,13 @@ class TestErrors(TestCaseWithTransport):
             "Unable to create symlink u'\\xb5' on this platform",
             str(err))
 
+    def test_incorrect_url(self):
+        err = errors.InvalidBugTrackerURL('foo', 'http://bug.com/')
+        self.assertEquals(
+            ("The URL for bug tracker \"foo\" doesn't contain {id}: "
+             "http://bug.com/"),
+            str(err))
+
 
 class PassThroughError(errors.BzrError):
     
