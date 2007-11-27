@@ -424,11 +424,11 @@ class DiffPath(object):
     """Base type for command object that compare files"""
 
     # The type or contents of the file were unsuitable for diffing
-    CANNOT_DIFF = object()
+    CANNOT_DIFF = 'CANNOT_DIFF'
     # The file has changed in a semantic way
-    CHANGED = object()
-    # The file content has changed, but there is no semantic change
-    UNCHANGED = object()
+    CHANGED = 'CHANGED'
+    # The file content may have changed, but there is no semantic change
+    UNCHANGED = 'UNCHANGED'
 
     def __init__(self, old_tree, new_tree, to_file, path_encoding='utf-8'):
         """Constructor.
