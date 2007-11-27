@@ -270,6 +270,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             # the Format factory and creation methods that are
             # permitted to do this.
             self._set_inventory(_inventory, dirty=False)
+        self.case_sensitive = True
 
     branch = property(
         fget=lambda self: self._branch,
