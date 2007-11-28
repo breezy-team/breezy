@@ -283,20 +283,23 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.failUnlessExists('tree/FiLe.moved')
 
     def test_apply_case_conflict(self):
+        """Ensure that a transform with case conflicts can always be applied"""
         tree = self.make_branch_and_tree('tree')
-        # Don't try this at home, kids!
-        # Force the tree to report that it is case insensitive, for conflict
-        # resolution tests
         transform = TreeTransform(tree)
         self.addCleanup(transform.finalize)
         transform.new_file('file', transform.root, 'content')
         transform.new_file('FiLe', transform.root, 'content')
-        resolve_conflicts(transform,
-                          pass_func=lambda t, c: resolve_checkout(t, c, []))
+        dir = transform.new_directory('dir', transform.root)
+        transform.new_file('dirfile', dir, 'content')
+        transform.new_file('dirFiLe', dir, 'content')
+        resolve_conflicts(transform)
         transform.apply()
         self.failUnlessExists('tree/file')
         if not os.path.exists('tree/FiLe.moved'):
             self.failUnlessExists('tree/FiLe')
+        self.failUnlessExists('tree/dir/dirfile')
+        if not os.path.exists('tree/dir/dirFiLe.moved'):
+            self.failUnlessExists('tree/dir/dirFiLe')
 
     def test_case_insensitive_limbo(self):
         tree = self.make_branch_and_tree('tree')
