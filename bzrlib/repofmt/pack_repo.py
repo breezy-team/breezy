@@ -748,7 +748,10 @@ class Packer(object):
             for result in self._do_copy_nodes_graph(nodes, index_map, writer,
                 write_index, output_lines, pb):
                 yield result
-        finally:
+        except Exception:
+            pb.finished()
+            raise
+        else:
             pb.finished()
 
     def _do_copy_nodes_graph(self, nodes, index_map, writer, write_index,
