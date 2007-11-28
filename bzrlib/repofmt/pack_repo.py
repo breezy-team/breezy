@@ -745,9 +745,14 @@ class Packer(object):
         """
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            return self._do_copy_nodes_graph(nodes, index_map, writer,
-                write_index, output_lines, pb)
-        finally:
+            for result in self._do_copy_nodes_graph(nodes, index_map, writer,
+                write_index, output_lines, pb):
+                yield result
+        except Exception:
+            # Python 2.4 does not permit try:finally: in a generator.
+            pb.finished()
+            raise
+        else:
             pb.finished()
 
     def _do_copy_nodes_graph(self, nodes, index_map, writer, write_index,
