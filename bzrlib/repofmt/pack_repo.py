@@ -749,6 +749,7 @@ class Packer(object):
                 write_index, output_lines, pb):
                 yield result
         except Exception:
+            # Python 2.4 does not permit try:finally: in a generator.
             pb.finished()
             raise
         else:
