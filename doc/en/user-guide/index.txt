@@ -26,8 +26,9 @@ Getting started
 ###############
 
 .. include:: installing_bazaar.txt
-.. include:: using_bazaar.txt
-.. later include:: configuring_bazaar.txt
+.. include:: entering_commands.txt
+.. include:: getting_help.txt
+.. include:: configuring_bazaar.txt
 .. include:: using_aliases.txt
 .. include:: plugins.txt
 

@@ -12,7 +12,7 @@ Defining aliases
 ----------------
 
 Command aliases can be defined in the ``[ALIASES]`` section of your
-``.bazaar/bazaar.conf`` file. Aliases start with the alias name, then an
+``bazaar.conf`` file. Aliases start with the alias name, then an
 equal sign, then a command fragment.  Here's an example ALIASES section::
 
     [ALIASES]
