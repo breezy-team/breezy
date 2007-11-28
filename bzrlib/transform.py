@@ -1222,6 +1222,8 @@ class TransformPreview(TreeTransformBase):
 
     def tree_kind(self, trans_id):
         path = self._tree_id_paths.get(trans_id)
+        if path is None:
+            raise NoSuchFile(None)
         file_id = self._tree.path2id(path)
         return self._tree.kind(file_id)
 
@@ -1236,13 +1238,14 @@ class TransformPreview(TreeTransformBase):
 
     def iter_tree_children(self, parent_id):
         """Iterate through the entry's tree children, if any"""
-        # This can't possibly be right :) It's only called from
-        # _add_tree_children (where the comment is "") which is called
-        # from find_conflicts.  I don't understand the conflict
-        # resolution well enough yet to know what the right thing to
-        # do is, though in the simplest cases this seems to work.
-        return []
-
+        try:
+            path = self._tree_id_paths[parent_id]
+        except KeyError:
+            return
+        file_id = self.tree_file_id(parent_id)
+        for child in self._tree.inventory[file_id].children.iterkeys():
+            childpath = joinpath(path, child)
+            yield self.trans_id_tree_path(childpath)
 
 class PreviewTree(object):
 

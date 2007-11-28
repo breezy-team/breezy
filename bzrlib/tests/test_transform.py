@@ -1483,6 +1483,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
     def create_tree(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('a', 'content 1')])
+        tree.add('a', 'a-id')
         tree.commit('rev1', rev_id='rev1')
         return tree.branch.repository.revision_tree('rev1')
 
@@ -1515,3 +1516,11 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.assertEqual(lines[0], "=== added file 'file2'")
         # 3 lines of diff administrivia
         self.assertEqual(lines[4], "+content B")
+
+    def test_transform_conflicts(self):
+        revision_tree = self.create_tree()
+        preview = TransformPreview(revision_tree)
+        preview.new_file('a', preview.root, 'content 2')
+        resolve_conflicts(preview)
+        trans_id = preview.trans_id_file_id('a-id')
+        self.assertEqual('a.moved', preview.final_name(trans_id))
