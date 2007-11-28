@@ -26,6 +26,7 @@ from bzrlib import (
         pack,
         ui,
         )
+from bzrlib.graph import Graph
 from bzrlib.index import (
     GraphIndex,
     GraphIndexBuilder,
@@ -73,10 +74,23 @@ class PackCommitBuilder(CommitBuilder):
     added text, reducing memory and object pressure.
     """
 
+    def __init__(self, repository, parents, config, timestamp=None,
+                 timezone=None, committer=None, revprops=None,
+                 revision_id=None):
+        CommitBuilder.__init__(self, repository, parents, config,
+            timestamp=timestamp, timezone=timezone, committer=committer,
+            revprops=revprops, revision_id=revision_id)
+        self._file_graph = Graph(
+            repository._pack_collection.text_index.combined_index)
+
     def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
         return self.repository._pack_collection._add_text_to_weave(file_id,
             self._new_revision_id, new_lines, parents, nostore_sha,
             self.random_revid)
+
+    def _heads(self, file_id, revision_ids):
+        keys = [(file_id, revision_id) for revision_id in revision_ids]
+        return set([key[1] for key in self._file_graph.heads(keys)])
 
 
 class PackRootCommitBuilder(RootCommitBuilder):
@@ -86,10 +100,23 @@ class PackRootCommitBuilder(RootCommitBuilder):
     added text, reducing memory and object pressure.
     """
 
+    def __init__(self, repository, parents, config, timestamp=None,
+                 timezone=None, committer=None, revprops=None,
+                 revision_id=None):
+        CommitBuilder.__init__(self, repository, parents, config,
+            timestamp=timestamp, timezone=timezone, committer=committer,
+            revprops=revprops, revision_id=revision_id)
+        self._file_graph = Graph(
+            repository._pack_collection.text_index.combined_index)
+
     def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
         return self.repository._pack_collection._add_text_to_weave(file_id,
             self._new_revision_id, new_lines, parents, nostore_sha,
             self.random_revid)
+
+    def _heads(self, file_id, revision_ids):
+        keys = [(file_id, revision_id) for revision_id in revision_ids]
+        return set([key[1] for key in self._file_graph.heads(keys)])
 
 
 class Pack(object):

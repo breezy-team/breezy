@@ -76,8 +76,8 @@ class CommitBuilder(object):
     # the default CommitBuilder does not manage trees whose root is versioned.
     _versioned_root = False
 
-    def __init__(self, repository, parents, config, timestamp=None, 
-                 timezone=None, committer=None, revprops=None, 
+    def __init__(self, repository, parents, config, timestamp=None,
+                 timezone=None, committer=None, revprops=None,
                  revision_id=None):
         """Initiate a CommitBuilder.
 
@@ -118,7 +118,7 @@ class CommitBuilder(object):
             self._timezone = int(timezone)
 
         self._generate_revision_if_needed()
-        self._heads = graph.HeadsCache(repository.get_graph()).heads
+        self.__heads = graph.HeadsCache(repository.get_graph()).heads
 
     def commit(self, message):
         """Make the actual commit.
@@ -189,6 +189,14 @@ class CommitBuilder(object):
             self.random_revid = True
         else:
             self.random_revid = False
+
+    def _heads(self, file_id, revision_ids):
+        """Calculate the graph heads for revision_ids in the graph of file_id.
+
+        This can use either a per-file graph or a global revision graph as we
+        have an identity relationship between the two graphs.
+        """
+        return self.__heads(revision_ids)
 
     def _check_root(self, ie, parent_invs, tree):
         """Helper for record_entry_contents.
@@ -287,7 +295,7 @@ class CommitBuilder(object):
         # XXX: Friction: parent_candidates should return a list not a dict
         #      so that we don't have to walk the inventories again.
         parent_candiate_entries = ie.parent_candidates(parent_invs)
-        head_set = self._heads(parent_candiate_entries.keys())
+        head_set = self._heads(ie.file_id, parent_candiate_entries.keys())
         heads = []
         for inv in parent_invs:
             if ie.file_id in inv:
