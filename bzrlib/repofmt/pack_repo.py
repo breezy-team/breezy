@@ -1095,10 +1095,8 @@ class RepositoryPackCollection(object):
         """
         self.ensure_loaded()
         if a_new_pack.name in self._names:
-            # a collision with the packs we know about (not the only possible
-            # collision, see NewPack.finish() for some discussion). Remove our
-            # prior reference to it.
-            self._remove_pack_from_memory(a_new_pack)
+            raise errors.BzrError(
+                'Pack %r already exists in %s' % (a_new_pack.name, self))
         self._names[a_new_pack.name] = tuple(a_new_pack.index_sizes)
         self.add_pack_to_memory(a_new_pack)
 
