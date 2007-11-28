@@ -15,27 +15,16 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-from bzrlib.builtins import cmd_checkout
-from bzrlib.tests.transport_util import TestCaseWithConnectionHookedTransport
+"""Tests for the _generate_text_key_index API."""
 
 
-class TestCheckout(TestCaseWithConnectionHookedTransport):
+from bzrlib.tests.repository_implementations import TestCaseWithRepository
 
-    def test_checkout(self):
-        self.make_branch_and_tree('branch1')
 
-        self.start_logging_connections()
+class TestGenerateTextKeyIndex(TestCaseWithRepository):
 
-        cmd = cmd_checkout()
-        cmd.run(self.get_url('branch1'), 'local')
-        self.assertEquals(1, len(self.connections))
-
-    def test_checkout_lightweight(self):
-        self.make_branch_and_tree('branch1')
-
-        self.start_logging_connections()
-
-        cmd = cmd_checkout()
-        cmd.run(self.get_url('branch1'), 'local', lightweight=True)
-        self.assertEquals(1, len(self.connections))
-
+    def test_empty(self):
+        repo = self.make_repository('.')
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        self.assertEqual({}, repo._generate_text_key_index())

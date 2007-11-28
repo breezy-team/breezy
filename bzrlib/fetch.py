@@ -123,7 +123,7 @@ class RepoFetcher(object):
         self.from_weaves = self.from_repository.weave_store
         self.count_total = 0
         self.file_ids_names = {}
-        pp = ProgressPhase('Fetch phase', 4, self.pb)
+        pp = ProgressPhase('Transferring', 4, self.pb)
         try:
             pp.next_phase()
             revs = self._revids_to_fetch()

@@ -168,7 +168,8 @@ class SmartServerRepositoryLockWrite(SmartServerRepositoryRequest):
         except errors.LockFailed, e:
             return FailedSmartServerResponse(('LockFailed',
                 str(e.lock), str(e.why)))
-        repository.leave_lock_in_place()
+        if token is not None:
+            repository.leave_lock_in_place()
         repository.unlock()
         if token is None:
             token = ''
@@ -249,6 +250,13 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
 class SmartServerRepositoryStreamKnitDataForRevisions(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository, *revision_ids):
+        repository.lock_read()
+        try:
+            return self._do_repository_request(repository, revision_ids)
+        finally:
+            repository.unlock()
+
+    def _do_repository_request(self, repository, revision_ids):
         stream = repository.get_data_stream(revision_ids)
         filelike = StringIO()
         pack = ContainerWriter(filelike.write)
