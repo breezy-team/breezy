@@ -1670,9 +1670,9 @@ class Repository(object):
                 [parents_provider, other_repository._make_parents_provider()])
         return graph.Graph(parents_provider)
 
-    def get_versioned_file_checker(self):
+    def _get_versioned_file_checker(self):
         """Return an object suitable for checking versioned files."""
-        return VersionedFileChecker(self)
+        return _VersionedFileChecker(self)
 
     @needs_write_lock
     def set_make_working_trees(self, new_value):
@@ -2892,7 +2892,7 @@ def _unescape_xml(data):
     return _unescape_re.sub(_unescaper, data)
 
 
-class VersionedFileChecker(object):
+class _VersionedFileChecker(object):
 
     def __init__(self, repository):
         self.repository = repository
@@ -2908,7 +2908,7 @@ class VersionedFileChecker(object):
         # strip the file_id, for the weave api
         return tuple([revision_id for file_id, revision_id in parent_keys])
 
-    def check_file_version_parents(self, weave, file_id, planned_revisions):
+    def check_file_version_parents(self, weave, file_id):
         """Check the parents stored in a versioned file are correct.
 
         It also detects file versions that are not referenced by their
@@ -2923,12 +2923,12 @@ class VersionedFileChecker(object):
         """
         wrong_parents = {}
         unused_versions = set()
-        for num, revision_id in enumerate(planned_revisions):
+        for num, revision_id in enumerate(weave.versions()):
             try:
                 correct_parents = self.calculate_file_version_parents(
                     revision_id, file_id)
             except KeyError:
-                # we were asked to investigate a non-existant version.
+                # The version is not part of the used keys.
                 unused_versions.add(revision_id)
             else:
                 try:

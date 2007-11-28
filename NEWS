@@ -84,6 +84,9 @@ IN DEVELOPMENT
    * Catch connection errors for ftp.
      (Vincent Ladeuil, #164567)
 
+   * ``check`` no longer reports spurious unreferenced text versions.
+     (Robert Collins, John A Meinel, #162931, #165071)
+
    * Conflicts are now resolved recursively by ``revert``.
      (Aaron Bentley, #102739)
 
@@ -184,6 +187,9 @@ IN DEVELOPMENT
      changed. Previously it was an iterator of lines, now it is an iterator of
      (line, version_id) tuples. This change has been made to aid reconcile and
      fetch operations. (Robert Collins)
+
+   * ``bzrlib.repository.get_versioned_file_checker`` is now private.
+     (Robert Collins)
 
   INTERNALS:
 
