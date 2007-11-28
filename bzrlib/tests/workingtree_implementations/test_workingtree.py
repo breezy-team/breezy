@@ -848,3 +848,18 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.commit('foo')
         tree.remove('file')
         self.assertRaises(errors.NoSuchId, tree.get_file_sha1, 'file-id')
+
+
+    def test_case_sensitive(self):
+        """If filesystem is case-sensitive, tree should report this.
+
+        We check case-sensitivity by creating a file with a lowercase name,
+        then testing whether it exists with an uppercase name.
+        """
+        self.build_tree('filename')
+        if os.path.exists('FILENAME'):
+            case_sensitive = False
+        else:
+            case_sensitive = True
+        tree = self.make_branch_and_tree('test')
+        self.assertEqual(case_sensitive, tree.case_sensitive)
