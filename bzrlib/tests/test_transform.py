@@ -44,7 +44,7 @@ from bzrlib.tests import (
 from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths, 
                               resolve_conflicts, cook_conflicts, 
                               find_interesting, build_tree, get_backup_name,
-                              change_entry, _FileMover)
+                              change_entry, _FileMover, resolve_checkout)
 
 
 class TestTreeTransform(tests.TestCaseWithTransport):
@@ -266,7 +266,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.failUnlessExists('tree/file')
         self.failUnlessExists('tree/FiLe.moved')
 
-    def test_resolve_checkout_conflict(self):
+    def test_resolve_checkout_case_conflict(self):
         tree = self.make_branch_and_tree('tree')
         # Don't try this at home, kids!
         # Force the tree to report that it is case insensitive, for conflict
@@ -276,10 +276,27 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.addCleanup(transform.finalize)
         transform.new_file('file', transform.root, 'content')
         transform.new_file('FiLe', transform.root, 'content')
-        resolve_conflicts(transform)
+        resolve_conflicts(transform,
+                          pass_func=lambda t, c: resolve_checkout(t, c, []))
         transform.apply()
         self.failUnlessExists('tree/file')
         self.failUnlessExists('tree/FiLe.moved')
+
+    def test_apply_case_conflict(self):
+        tree = self.make_branch_and_tree('tree')
+        # Don't try this at home, kids!
+        # Force the tree to report that it is case insensitive, for conflict
+        # resolution tests
+        transform = TreeTransform(tree)
+        self.addCleanup(transform.finalize)
+        transform.new_file('file', transform.root, 'content')
+        transform.new_file('FiLe', transform.root, 'content')
+        resolve_conflicts(transform,
+                          pass_func=lambda t, c: resolve_checkout(t, c, []))
+        transform.apply()
+        self.failUnlessExists('file')
+        if not os.path.exists('FiLe.moved'):
+            self.failUnlessExists('FiLe')
 
     def test_case_insensitive_limbo(self):
         tree = self.make_branch_and_tree('tree')
