@@ -294,9 +294,9 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         resolve_conflicts(transform,
                           pass_func=lambda t, c: resolve_checkout(t, c, []))
         transform.apply()
-        self.failUnlessExists('file')
-        if not os.path.exists('FiLe.moved'):
-            self.failUnlessExists('FiLe')
+        self.failUnlessExists('tree/file')
+        if not os.path.exists('tree/FiLe.moved'):
+            self.failUnlessExists('tree/FiLe')
 
     def test_case_insensitive_limbo(self):
         tree = self.make_branch_and_tree('tree')
