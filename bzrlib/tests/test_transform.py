@@ -84,7 +84,9 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertRaises(ExistingPendingDeletion, self.get_transform)
 
     def test_build(self):
-        transform, root = self.get_transform() 
+        transform, root = self.get_transform()
+        self.wt.lock_tree_write()
+        self.addCleanup(self.wt.unlock)
         self.assertIs(transform.get_tree_parent(root), ROOT_PARENT)
         imaginary_id = transform.trans_id_tree_path('imaginary')
         imaginary_id2 = transform.trans_id_tree_path('imaginary/')
@@ -127,6 +129,8 @@ class TestTreeTransform(tests.TestCaseWithTransport):
 
     def test_convenience(self):
         transform, root = self.get_transform()
+        self.wt.lock_tree_write()
+        self.addCleanup(self.wt.unlock)
         trans_id = transform.new_file('name', root, 'contents', 
                                       'my_pretties', True)
         oz = transform.new_directory('oz', root, 'oz-id')
@@ -578,6 +582,8 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         """
         transform, root = self.get_transform()
         wt = transform._tree
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
         transform.new_file('set_on_creation', root, 'Set on creation', 'soc',
                            True)
         sac = transform.new_file('set_after_creation', root,
