@@ -30,9 +30,8 @@ from bzrlib.tests import TestSkipped
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.trace import mutter
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
-                                WorkingTree)
+                                WorkingTree, WorkingTree2)
 from bzrlib.conflicts import ConflictList, TextConflict, ContentsConflict
-
 
 
 class TestWorkingTree(TestCaseWithWorkingTree):
@@ -849,17 +848,18 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.remove('file')
         self.assertRaises(errors.NoSuchId, tree.get_file_sha1, 'file-id')
 
-
     def test_case_sensitive(self):
         """If filesystem is case-sensitive, tree should report this.
 
         We check case-sensitivity by creating a file with a lowercase name,
         then testing whether it exists with an uppercase name.
         """
-        self.build_tree('filename')
+        self.build_tree(['filename'])
         if os.path.exists('FILENAME'):
             case_sensitive = False
         else:
             case_sensitive = True
         tree = self.make_branch_and_tree('test')
+        if tree.__class__ == WorkingTree2:
+            raise TestSkipped('WorkingTree2 is not supported')
         self.assertEqual(case_sensitive, tree.case_sensitive)
