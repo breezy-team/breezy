@@ -2539,7 +2539,7 @@ format_registry.register_metadir('rich-root-pack',
         'rich-root format repositories. Interoperates with '
         'bzr repositories before 0.92 but cannot be read by bzr < 1.0. '
         'NOTE: This format is experimental. Before using it, please read '
-        'http://doc.bazaar-vcs.org/latest/developers/knitpack.html.',
+        'http://doc.bazaar-vcs.org/latest/developers/packrepo.html.',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=False,
