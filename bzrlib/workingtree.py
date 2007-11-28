@@ -276,9 +276,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         wt_trans = self.bzrdir.get_workingtree_transport(None)
         try:
             wt_trans.stat("FoRMaT")
-        except OSError, e:
-            if e.errno != errno.ENOENT:
-                raise
+        except errors.NoSuchFile:
             self.case_sensitive = True
         else:
             self.case_sensitive = False
