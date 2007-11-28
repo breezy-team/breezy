@@ -745,8 +745,9 @@ class Packer(object):
         """
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            return self._do_copy_nodes_graph(nodes, index_map, writer,
-                write_index, output_lines, pb)
+            for result in self._do_copy_nodes_graph(nodes, index_map, writer,
+                write_index, output_lines, pb):
+                yield result
         finally:
             pb.finished()
 

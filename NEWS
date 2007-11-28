@@ -76,7 +76,7 @@ IN DEVELOPMENT
      (Martin Pool, #164637)
 
    * A progress bar has been added for knitpack -> knitpack fetching.
-     (Robert Collins, #157789)
+     (Robert Collins, #157789, #159147)
 
    * ``commit`` is now able to invoke an external editor in a non-ascii
      directory. (Daniel Watkins, #84043)
