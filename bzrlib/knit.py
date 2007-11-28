@@ -780,8 +780,8 @@ class KnitVersionedFile(VersionedFile):
                             'for version %s '
                             'references '
                             'missing parent %s\n'
-                            'Try running bzr check '
-                            'on the source repository, and bzr reconcile '
+                            'Try running "bzr check" '
+                            'on the source repository, and "bzr reconcile" '
                             'if necessary.' %
                             (version_id, parents[0]))
                 self._add_raw_records(
