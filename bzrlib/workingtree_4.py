@@ -151,6 +151,7 @@ class WorkingTree4(WorkingTree3):
         self._dirstate = None
         self._inventory = None
         #-------------
+        self._detect_case_handling()
 
     @needs_tree_write_lock
     def _add(self, files, ids, kinds):
