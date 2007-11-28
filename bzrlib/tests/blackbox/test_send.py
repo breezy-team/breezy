@@ -192,8 +192,9 @@ class TestSend(tests.TestCaseWithTransport):
     def test_mailto_option(self):
         self.make_trees()
         branch = _mod_branch.Branch.open('branch')
-        branch.get_config().set_user_option('mail_client', 'bogus')
+        branch.get_config().set_user_option('mail_client', 'editor')
         self.run_bzr_error(('No mail-to address specified',), 'send -f branch')
+        branch.get_config().set_user_option('mail_client', 'bogus')
         self.run_bzr('send -f branch -o-')
         self.run_bzr_error(('Unknown mail client: bogus',),
                            'send -f branch --mail-to jrandom@example.org')

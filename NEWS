@@ -59,6 +59,10 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+   * ``bzr send`` now doesn't require the target e-mail address to be
+     specified on the command line if an interactive e-mail client is used.
+     (Lukáš Lalinský)
+
    * ``bzr tags`` now prints the revision number for each tag, instead of
      the revision id, unless --show-ids is passed. In addition, tags can be
      sorted chronologically instead of lexicographically with --sort=time.
