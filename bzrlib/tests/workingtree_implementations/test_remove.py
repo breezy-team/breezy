@@ -183,6 +183,20 @@ class TestRemove(TestCaseWithWorkingTree):
         tree.remove('b', keep_files=False)
         self.assertRemovedAndDeleted('b')
 
+    def test_remove_changed_ignored_files(self):
+        """Changed ignored files should not be deleted."""
+        files = ['an_ignored_file']
+        tree = self.get_tree(files)
+        tree.add(files)
+        ignores.add_runtime_ignores(["*ignored*"])
+        self.assertInWorkingTree(files)
+        self.assertNotEquals(None, tree.is_ignored(files[0]))
+        err = self.assertRaises(errors.BzrRemoveChangedFilesError, tree.remove,
+            files, keep_files=False)
+        self.assertContainsRe(err.changes_as_text,
+            '(?s)added:.*' + files[0])
+        self.assertInWorkingTree(files)
+
     def test_dont_remove_directory_with_unknowns(self):
         """Directories with unknowns should not be deleted."""
         directories = ['a/', 'b/', 'c/', 'c/c/']
