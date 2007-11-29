@@ -4300,7 +4300,9 @@ class cmd_reconfigure(Command):
                      value_switches=True, enum_switch=False,
                      branch='Reconfigure to a branch.',
                      tree='Reconfigure to a tree.',
-                     checkout='Reconfigure to a checkout.'),
+                     checkout='Reconfigure to a checkout.',
+                     lightweight_checkout='Reconfigure to a lightweight'
+                     ' checkout.'),
                      Option('bind-to', help='Branch to bind checkout to.',
                             type=str),
                      Option('force',
@@ -4319,6 +4321,9 @@ class cmd_reconfigure(Command):
         elif target_type == 'checkout':
             reconfiguration = reconfigure.Reconfigure.to_checkout(directory,
                                                                   bind_to)
+        elif target_type == 'lightweight-checkout':
+            reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
+                directory, bind_to)
         reconfiguration.apply(force)
 
 

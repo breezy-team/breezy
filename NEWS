@@ -36,6 +36,9 @@ IN DEVELOPMENT
      accordingly. This command was previously part of the BzrTools plug-in.
      (Ian Clatworthy, Aaron Bentley, David Allouche)
 
+   * ``reconfigure`` command can now convert branches, trees, or checkouts to
+     lightweight checkouts.  (Aaron Bentley)
+
   PERFORMANCE:
 
    * Commit updates the state of the working tree via a delta rather than
