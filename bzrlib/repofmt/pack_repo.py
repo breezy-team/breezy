@@ -834,7 +834,7 @@ class Packer(object):
                 pb.update("Copied record", record_index)
                 record_index += 1
 
-    def _external_compression_parents_of_new_texts(self)
+    def _external_compression_parents_of_new_texts(self):
         keys = set()
         refs = set()
         for node in self.new_pack.text_index.iter_all_entries():
