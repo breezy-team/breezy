@@ -1893,14 +1893,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                      kind, executable) in self._iter_changes(self.basis_tree(),
                          include_unchanged=True, require_versioned=False,
                          want_unversioned=True, specific_files=files):
-                    # Unknown ...
                     if versioned == (False, False):
-                        # ... but not ignored
+                        # The record is unknown ...
                         if not self.is_ignored(path[1]):
+                            # ... but not ignored
                             has_changed_files = True
                             break
-                    # Versioned and changed, but not deleted
                     elif content_change and (kind[1] != None):
+                        # Versioned and changed, but not deleted
                         has_changed_files = True
                         break
 
