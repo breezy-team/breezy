@@ -111,12 +111,12 @@ class TestReconfigure(tests.TestCaseWithTransport):
         branch.set_push_location('sftp://push')
         self.assertEqual('sftp://push',
                          reconfiguration._select_bind_location())
-        branch.set_bound_location('bzr:old-bound')
+        branch.set_bound_location('bzr://foo/old-bound')
         branch.set_bound_location(None)
-        self.assertEqual('bzr:old-bound',
+        self.assertEqual('bzr://foo/old-bound',
                          reconfiguration._select_bind_location())
-        branch.set_bound_location('bzr:cur-bound')
-        self.assertEqual('bzr:cur-bound',
+        branch.set_bound_location('bzr://foo/cur-bound')
+        self.assertEqual('bzr://foo/cur-bound',
                          reconfiguration._select_bind_location())
         reconfiguration.new_bound_location = 'ftp://user-specified'
         self.assertEqual('ftp://user-specified',

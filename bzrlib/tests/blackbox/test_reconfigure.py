@@ -61,7 +61,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
         branch = self.make_branch('branch')
         self.run_bzr_error(['No target configuration specified'],
                            'reconfigure', working_dir='branch')
-                           
+
     def test_checkout_to_lightweight_checkout(self):
         branch = self.make_branch('branch')
         checkout = branch.create_checkout('checkout')
