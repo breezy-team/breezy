@@ -366,7 +366,7 @@ class Merger(object):
             kwargs['show_base'] = self.show_base
         elif self.show_base:
             raise BzrError("Showing base is not supported for this"
-                                  " merge type. %s" % self.merge_type)
+                           " merge type. %s" % self.merge_type)
         return self.merge_type(pb=self._pb,
                                change_reporter=self.change_reporter,
                                **kwargs)
