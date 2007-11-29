@@ -92,6 +92,8 @@ class Editor(MailClient):
     def compose(self, prompt, to, subject, attachment, mime_subtype,
                 extension):
         """See MailClient.compose"""
+        if not to:
+            raise errors.NoMailAddressSpecified()
         body = msgeditor.edit_commit_message(prompt)
         if body == '':
             raise errors.NoMessageSupplied()
@@ -253,6 +255,8 @@ class XDGEmail(ExternalMailClient):
 
     def _get_compose_commandline(self, to, subject, attach_path):
         """See ExternalMailClient._get_compose_commandline"""
+        if not to:
+            raise errors.NoMailAddressSpecified()
         commandline = [to]
         if subject is not None:
             commandline.extend(['--subject', subject])

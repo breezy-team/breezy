@@ -4015,9 +4015,6 @@ class cmd_send(Command):
                 config = branch.get_config()
                 if mail_to is None:
                     mail_to = config.get_user_option('submit_to')
-                if mail_to is None:
-                    raise errors.BzrCommandError('No mail-to address'
-                                                 ' specified')
                 mail_client = config.get_mail_client()
             if remember and submit_branch is None:
                 raise errors.BzrCommandError(

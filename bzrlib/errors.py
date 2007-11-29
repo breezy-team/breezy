@@ -2381,6 +2381,11 @@ class NoMessageSupplied(BzrError):
     _fmt = "No message supplied."
 
 
+class NoMailAddressSpecified(BzrError):
+
+    _fmt = "No mail-to address specified."
+
+
 class UnknownMailClient(BzrError):
 
     _fmt = "Unknown mail client: %(mail_client)s"
