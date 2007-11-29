@@ -1017,8 +1017,7 @@ class TestTransformMerge(TestCaseInTempDir):
         this.tt.new_file('h', this.root, '1\n2\n3\n4\n', 'h')
         this.tt.new_file('i', this.root, '1\n2\n3\n4\n', 'i')
         this.tt.apply()
-        merger = Merge3Merger(this.wt, this.wt, base.wt, other.wt)
-        merger.do_merge()
+        Merge3Merger(this.wt, this.wt, base.wt, other.wt)
 
         # textual merge
         self.assertEqual(this.wt.get_file('a').read(), 'y\nb\nc\nd\bz\n')
@@ -1084,8 +1083,7 @@ class TestTransformMerge(TestCaseInTempDir):
 
         for tg in this, base, other:
             tg.tt.apply()
-        merger = Merge3Merger(this.wt, this.wt, base.wt, other.wt)
-        merger.do_merge()
+        Merge3Merger(this.wt, this.wt, base.wt, other.wt)
         self.assertIs(os.path.isdir(this.wt.abspath('a')), True)
         self.assertIs(os.path.islink(this.wt.abspath('b')), True)
         self.assertIs(os.path.isfile(this.wt.abspath('c')), True)
@@ -1132,8 +1130,7 @@ class TestTransformMerge(TestCaseInTempDir):
 
         for tg in [this, base, other]:
             tg.tt.apply()
-        merger = Merge3Merger(this.wt, this.wt, base.wt, other.wt)
-        merger.do_merge()
+        Merge3Merger(this.wt, this.wt, base.wt, other.wt)
         self.assertEqual(this.wt.id2path('c'), pathjoin('b/c1'))
         self.assertEqual(this.wt.id2path('d'), pathjoin('b/d1'))
         self.assertEqual(this.wt.id2path('e'), pathjoin('b/e1'))
@@ -1160,8 +1157,7 @@ class TestTransformMerge(TestCaseInTempDir):
 
         for tg in [this, base, other]:
             tg.tt.apply()
-        merger = Merge3Merger(this.wt, this.wt, base.wt, other.wt)
-        merger.do_merge()
+        Merge3Merger(this.wt, this.wt, base.wt, other.wt)
 
         self.assertEqual(this.wt.id2path('g'), pathjoin('b/g1.OTHER'))
         self.assertIs(os.path.lexists(this.wt.abspath('b/g1.BASE')), True)

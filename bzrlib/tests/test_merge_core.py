@@ -95,7 +95,6 @@ class MergeBuilder(object):
         other_basis = self.other.branch.basis_tree()
         merger = merge_type(self.this, self.this, self.base, other_basis, 
                             interesting_ids=interesting_ids, **kwargs)
-        merger.do_merge()
         return merger.cooked_conflicts
 
     def list_transforms(self):

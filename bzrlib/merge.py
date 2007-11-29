@@ -353,7 +353,8 @@ class Merger(object):
                   'other_tree': self.other_tree,
                   'interesting_ids': self.interesting_ids,
                   'interesting_files': self.interesting_files,
-                  'pp': self.pp}
+                  'pp': self.pp,
+                  'do_merge': False}
         if self.merge_type.requires_base:
             kwargs['base_tree'] = self.base_tree
         if self.merge_type.supports_reprocess:
@@ -422,7 +423,7 @@ class Merge3Merger(object):
     def __init__(self, working_tree, this_tree, base_tree, other_tree, 
                  interesting_ids=None, reprocess=False, show_base=False,
                  pb=DummyProgress(), pp=None, change_reporter=None,
-                 interesting_files=None):
+                 interesting_files=None, do_merge=True):
         """Initialize the merger object and perform the merge.
 
         :param working_tree: The working tree to apply the merge to
@@ -462,6 +463,8 @@ class Merge3Merger(object):
         self.change_reporter = change_reporter
         if self.pp is None:
             self.pp = ProgressPhase("Merge phase", 3, self.pb)
+        if do_merge:
+            self.do_merge()
 
     def do_merge(self):
         self.this_tree.lock_tree_write()
@@ -1002,12 +1005,13 @@ class WeaveMerger(Merge3Merger):
     def __init__(self, working_tree, this_tree, base_tree, other_tree, 
                  interesting_ids=None, pb=DummyProgress(), pp=None,
                  reprocess=False, change_reporter=None,
-                 interesting_files=None):
+                 interesting_files=None, do_merge=True):
         super(WeaveMerger, self).__init__(working_tree, this_tree, 
                                           base_tree, other_tree, 
                                           interesting_ids=interesting_ids, 
                                           pb=pb, pp=pp, reprocess=reprocess,
-                                          change_reporter=change_reporter)
+                                          change_reporter=change_reporter,
+                                          do_merge=do_merge)
 
     def _merged_lines(self, file_id):
         """Generate the merged lines.
