@@ -390,3 +390,11 @@ class TestBadRevisionParents(TestCaseWithBrokenRevisionIndex):
         self.assertFalse(reconciler.aborted,
             "reconcile should not have aborted on an unbroken repository.")
 
+
+class TestRepeatedReconcile(TestReconcile):
+
+    def test_trivial_two_reconciles_no_error(self):
+        tree = self.make_branch_and_tree('.')
+        tree.commit('first post')
+        tree.branch.repository.reconcile(thorough=True)
+        tree.branch.repository.reconcile(thorough=True)

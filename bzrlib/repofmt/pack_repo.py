@@ -704,7 +704,7 @@ class Packer(object):
                 time.ctime(), self._pack_collection._upload_transport.base, new_pack.random_name,
                 new_pack.signature_index.key_count(),
                 time.time() - new_pack.start_time)
-        if not new_pack.data_inserted():
+        if not self._use_pack(new_pack):
             new_pack.abort()
             return None
         self.pb.update("Finishing pack", 5)
@@ -832,6 +832,14 @@ class Packer(object):
                 pb.update("Copied record", record_index)
                 record_index += 1
 
+    def _use_pack(self, new_pack):
+        """Return True if new_pack should be used.
+
+        :param new_pack: The pack that has just been created.
+        :return: True if the pack should be used.
+        """
+        return new_pack.data_inserted()
+
 
 class ReconcilePacker(Packer):
     """A packer which regenerates indices etc as it copies.
@@ -839,6 +847,21 @@ class ReconcilePacker(Packer):
     This is used by ``bzr reconcile`` to cause parent text pointers to be
     regenerated.
     """
+
+    def _use_pack(self, new_pack):
+        """Override _use_pack to check for reconcile having changed content."""
+        self._data_changed = False
+        # XXX: we might be better checking this at the copy time.
+        original_inventory_keys = set()
+        inv_index = self._pack_collection.inventory_index.combined_index
+        for entry in inv_index.iter_all_entries():
+            original_inventory_keys.add(entry[1])
+        new_inventory_keys = set()
+        for entry in new_pack.inventory_index.iter_all_entries():
+            new_inventory_keys.add(entry[1])
+        if new_inventory_keys != original_inventory_keys:
+            self._data_changed = True
+        return new_pack.data_inserted() and self._data_changed
 
 
 class RepositoryPackCollection(object):
