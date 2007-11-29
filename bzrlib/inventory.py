@@ -142,6 +142,7 @@ class InventoryEntry(object):
         """
         return False, False
 
+    @deprecated_method(symbol_versioning.zero_ninetythree)
     def diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
              output_to, reverse=False):
         """Perform a diff from this to to_entry.
