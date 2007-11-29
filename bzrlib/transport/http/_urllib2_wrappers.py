@@ -101,7 +101,8 @@ class Response(httplib.HTTPResponse):
                 # having issued the response headers (even if the
                 # headers indicate a Content-Type...)
                 body = self.fp.read(self.length)
-                if self.debuglevel > 0:
+                if self.debuglevel > 3:
+                    # This one can be huge and is generally not interesting
                     print "Consumed body: [%s]" % body
             self.close()
         elif self.status == 200:
@@ -1285,7 +1286,7 @@ class Opener(object):
             )
 
         self.open = self._opener.open
-        if DEBUG >= 2:
+        if DEBUG >= 3:
             # When dealing with handler order, it's easy to mess
             # things up, the following will help understand which
             # handler is used, when and for what.
