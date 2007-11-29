@@ -17,7 +17,9 @@
 """Tests for the smart wire/domain protocol.
 
 This module contains tests for the domain-level smart requests and responses,
-such as the 'Branch.lock_write' request.
+such as the 'Branch.lock_write' request. Many of these use specific disk
+formats to exercise calls that only make sense for formats with specific
+properties.
 
 Tests for low-level protocol encoding are found in test_smart_transport.
 """
@@ -378,7 +380,7 @@ class TestSmartServerBranchRequestLockWrite(tests.TestCaseWithTransport):
     def test_lock_write_on_unlocked_branch(self):
         backing = self.get_transport()
         request = smart.branch.SmartServerBranchRequestLockWrite(backing)
-        branch = self.make_branch('.')
+        branch = self.make_branch('.', format='knit')
         repository = branch.repository
         response = request.execute(backing.local_abspath(''))
         branch_nonce = branch.control_files._lock.peek().get('nonce')
@@ -405,7 +407,7 @@ class TestSmartServerBranchRequestLockWrite(tests.TestCaseWithTransport):
     def test_lock_write_with_tokens_on_locked_branch(self):
         backing = self.get_transport()
         request = smart.branch.SmartServerBranchRequestLockWrite(backing)
-        branch = self.make_branch('.')
+        branch = self.make_branch('.', format='knit')
         branch_token = branch.lock_write()
         repo_token = branch.repository.lock_write()
         branch.repository.unlock()
@@ -420,7 +422,7 @@ class TestSmartServerBranchRequestLockWrite(tests.TestCaseWithTransport):
     def test_lock_write_with_mismatched_tokens_on_locked_branch(self):
         backing = self.get_transport()
         request = smart.branch.SmartServerBranchRequestLockWrite(backing)
-        branch = self.make_branch('.')
+        branch = self.make_branch('.', format='knit')
         branch_token = branch.lock_write()
         repo_token = branch.repository.lock_write()
         branch.repository.unlock()
@@ -435,7 +437,7 @@ class TestSmartServerBranchRequestLockWrite(tests.TestCaseWithTransport):
     def test_lock_write_on_locked_repo(self):
         backing = self.get_transport()
         request = smart.branch.SmartServerBranchRequestLockWrite(backing)
-        branch = self.make_branch('.')
+        branch = self.make_branch('.', format='knit')
         branch.repository.lock_write()
         branch.repository.leave_lock_in_place()
         branch.repository.unlock()
@@ -462,7 +464,7 @@ class TestSmartServerBranchRequestUnlock(tests.TestCaseWithTransport):
     def test_unlock_on_locked_branch_and_repo(self):
         backing = self.get_transport()
         request = smart.branch.SmartServerBranchRequestUnlock(backing)
-        branch = self.make_branch('.')
+        branch = self.make_branch('.', format='knit')
         # Lock the branch
         branch_token = branch.lock_write()
         repo_token = branch.repository.lock_write()
@@ -485,7 +487,7 @@ class TestSmartServerBranchRequestUnlock(tests.TestCaseWithTransport):
     def test_unlock_on_unlocked_branch_unlocked_repo(self):
         backing = self.get_transport()
         request = smart.branch.SmartServerBranchRequestUnlock(backing)
-        branch = self.make_branch('.')
+        branch = self.make_branch('.', format='knit')
         response = request.execute(
             backing.local_abspath(''), 'branch token', 'repo token')
         self.assertEqual(
@@ -494,7 +496,7 @@ class TestSmartServerBranchRequestUnlock(tests.TestCaseWithTransport):
     def test_unlock_on_unlocked_branch_locked_repo(self):
         backing = self.get_transport()
         request = smart.branch.SmartServerBranchRequestUnlock(backing)
-        branch = self.make_branch('.')
+        branch = self.make_branch('.', format='knit')
         # Lock the repository.
         repo_token = branch.repository.lock_write()
         branch.repository.leave_lock_in_place()
@@ -690,7 +692,7 @@ class TestSmartServerRepositoryLockWrite(tests.TestCaseWithTransport):
     def test_lock_write_on_unlocked_repo(self):
         backing = self.get_transport()
         request = smart.repository.SmartServerRepositoryLockWrite(backing)
-        repository = self.make_repository('.')
+        repository = self.make_repository('.', format='knit')
         response = request.execute(backing.local_abspath(''))
         nonce = repository.control_files._lock.peek().get('nonce')
         self.assertEqual(SmartServerResponse(('ok', nonce)), response)
@@ -702,7 +704,7 @@ class TestSmartServerRepositoryLockWrite(tests.TestCaseWithTransport):
     def test_lock_write_on_locked_repo(self):
         backing = self.get_transport()
         request = smart.repository.SmartServerRepositoryLockWrite(backing)
-        repository = self.make_repository('.')
+        repository = self.make_repository('.', format='knit')
         repository.lock_write()
         repository.leave_lock_in_place()
         repository.unlock()
@@ -713,7 +715,7 @@ class TestSmartServerRepositoryLockWrite(tests.TestCaseWithTransport):
     def test_lock_write_on_readonly_transport(self):
         backing = self.get_readonly_transport()
         request = smart.repository.SmartServerRepositoryLockWrite(backing)
-        repository = self.make_repository('.')
+        repository = self.make_repository('.', format='knit')
         response = request.execute('')
         self.assertFalse(response.is_successful())
         self.assertEqual('LockFailed', response.args[0])
@@ -728,7 +730,7 @@ class TestSmartServerRepositoryUnlock(tests.TestCaseWithTransport):
     def test_unlock_on_locked_repo(self):
         backing = self.get_transport()
         request = smart.repository.SmartServerRepositoryUnlock(backing)
-        repository = self.make_repository('.')
+        repository = self.make_repository('.', format='knit')
         token = repository.lock_write()
         repository.leave_lock_in_place()
         repository.unlock()
@@ -744,7 +746,7 @@ class TestSmartServerRepositoryUnlock(tests.TestCaseWithTransport):
     def test_unlock_on_unlocked_repo(self):
         backing = self.get_transport()
         request = smart.repository.SmartServerRepositoryUnlock(backing)
-        repository = self.make_repository('.')
+        repository = self.make_repository('.', format='knit')
         response = request.execute(backing.local_abspath(''), 'some token')
         self.assertEqual(
             SmartServerResponse(('TokenMismatch',)), response)

@@ -37,11 +37,6 @@ from bzrlib import (
 from bzrlib.smart import client, medium, protocol
 
 
-# Port 4155 is the default port for bzr://, registered with IANA.
-BZR_DEFAULT_INTERFACE = '0.0.0.0'
-BZR_DEFAULT_PORT = 4155
-
-
 class _SmartStat(object):
 
     def __init__(self, size, mode):

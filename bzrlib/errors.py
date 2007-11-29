@@ -252,6 +252,7 @@ class InvalidRevisionId(BzrError):
         self.revision_id = revision_id
         self.branch = branch
 
+
 class ReservedId(BzrError):
 
     _fmt = "Reserved revision-id {%(revision_id)s}"
@@ -2380,6 +2381,11 @@ class NoMessageSupplied(BzrError):
     _fmt = "No message supplied."
 
 
+class NoMailAddressSpecified(BzrError):
+
+    _fmt = "No mail-to address specified."
+
+
 class UnknownMailClient(BzrError):
 
     _fmt = "Unknown mail client: %(mail_client)s"
@@ -2455,3 +2461,18 @@ class UncommittedChanges(BzrError):
         display_url = urlutils.unescape_for_display(
             tree.bzrdir.root_transport.base, 'ascii')
         BzrError.__init__(self, tree=tree, display_url=display_url)
+
+
+class UnableCreateSymlink(BzrError):
+
+    _fmt = 'Unable to create symlink %(path_str)son this platform'
+
+    def __init__(self, path=None):
+        path_str = ''
+        if path:
+            try:
+                path_str = repr(str(path))
+            except UnicodeEncodeError:
+                path_str = repr(path)
+            path_str += ' '
+        self.path_str = path_str

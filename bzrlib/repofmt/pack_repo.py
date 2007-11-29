@@ -26,6 +26,7 @@ from bzrlib import (
         pack,
         ui,
         )
+from bzrlib.graph import Graph
 from bzrlib.index import (
     GraphIndex,
     GraphIndexBuilder,
@@ -48,6 +49,7 @@ from bzrlib import (
     osutils,
     transactions,
     xml5,
+    xml6,
     xml7,
     )
 
@@ -72,10 +74,23 @@ class PackCommitBuilder(CommitBuilder):
     added text, reducing memory and object pressure.
     """
 
+    def __init__(self, repository, parents, config, timestamp=None,
+                 timezone=None, committer=None, revprops=None,
+                 revision_id=None):
+        CommitBuilder.__init__(self, repository, parents, config,
+            timestamp=timestamp, timezone=timezone, committer=committer,
+            revprops=revprops, revision_id=revision_id)
+        self._file_graph = Graph(
+            repository._pack_collection.text_index.combined_index)
+
     def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
         return self.repository._pack_collection._add_text_to_weave(file_id,
             self._new_revision_id, new_lines, parents, nostore_sha,
             self.random_revid)
+
+    def _heads(self, file_id, revision_ids):
+        keys = [(file_id, revision_id) for revision_id in revision_ids]
+        return set([key[1] for key in self._file_graph.heads(keys)])
 
 
 class PackRootCommitBuilder(RootCommitBuilder):
@@ -85,10 +100,23 @@ class PackRootCommitBuilder(RootCommitBuilder):
     added text, reducing memory and object pressure.
     """
 
+    def __init__(self, repository, parents, config, timestamp=None,
+                 timezone=None, committer=None, revprops=None,
+                 revision_id=None):
+        CommitBuilder.__init__(self, repository, parents, config,
+            timestamp=timestamp, timezone=timezone, committer=committer,
+            revprops=revprops, revision_id=revision_id)
+        self._file_graph = Graph(
+            repository._pack_collection.text_index.combined_index)
+
     def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
         return self.repository._pack_collection._add_text_to_weave(file_id,
             self._new_revision_id, new_lines, parents, nostore_sha,
             self.random_revid)
+
+    def _heads(self, file_id, revision_ids):
+        keys = [(file_id, revision_id) for revision_id in revision_ids]
+        return set([key[1] for key in self._file_graph.heads(keys)])
 
 
 class Pack(object):
@@ -717,9 +745,14 @@ class Packer(object):
         """
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            return self._do_copy_nodes_graph(nodes, index_map, writer,
-                write_index, output_lines, pb)
-        finally:
+            for result in self._do_copy_nodes_graph(nodes, index_map, writer,
+                write_index, output_lines, pb):
+                yield result
+        except Exception:
+            # Python 2.4 does not permit try:finally: in a generator.
+            pb.finished()
+            raise
+        else:
             pb.finished()
 
     def _do_copy_nodes_graph(self, nodes, index_map, writer, write_index,
@@ -1811,7 +1844,7 @@ class RepositoryFormatKnitPack1(RepositoryFormatPack):
     _serializer = xml5.serializer_v5
 
     def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir('knitpack-experimental')
+        return bzrdir.format_registry.make_bzrdir('pack-0.92')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -1848,7 +1881,7 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir(
-            'knitpack-subtree-experimental')
+            'pack-0.92-subtree')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -1870,3 +1903,42 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return "Packs containing knits with subtree support\n"
+
+
+class RepositoryFormatKnitPack4(RepositoryFormatPack):
+    """A rich-root, no subtrees parameterised Pack repository.
+
+    This repository format uses the xml6 serializer to get:
+     - support for recording full info about the tree root
+
+    This format was introduced in 1.0.
+    """
+
+    repository_class = KnitPackRepository
+    _commit_builder_class = PackRootCommitBuilder
+    rich_root_data = True
+    supports_tree_reference = False
+    _serializer = xml6.serializer_v6
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir(
+            'rich-root-pack')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def check_conversion_target(self, target_format):
+        if not target_format.rich_root_data:
+            raise errors.BadConversionTarget(
+                'Does not support rich root data.', target_format)
+
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return ("Bazaar pack repository format 1 with rich root"
+                " (needs bzr 1.0)\n")
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return "Packs containing knits with rich root support\n"

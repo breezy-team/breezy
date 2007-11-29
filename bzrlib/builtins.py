@@ -1255,7 +1255,7 @@ class cmd_init(Command):
         bzr init
         bzr add .
         bzr status
-        bzr commit -m 'imported project'
+        bzr commit -m "imported project"
     """
 
     _see_also = ['init-repository', 'branch', 'checkout']
@@ -1915,15 +1915,15 @@ class cmd_ignore(Command):
 
         Ignore class files in all directories::
 
-            bzr ignore '*.class'
+            bzr ignore "*.class"
 
         Ignore .o files under the lib directory::
 
-            bzr ignore 'lib/**/*.o'
+            bzr ignore "lib/**/*.o"
 
         Ignore .o files under the lib directory::
 
-            bzr ignore 'RE:lib/.*\.o'
+            bzr ignore "RE:lib/.*\.o"
     """
 
     _see_also = ['status', 'ignored']
@@ -2444,7 +2444,7 @@ class cmd_whoami(Command):
 
         Set the current user::
 
-            bzr whoami 'Frank Chu <fchu@example.com>'
+            bzr whoami "Frank Chu <fchu@example.com>"
     """
     takes_options = [ Option('email',
                              help='Display email address only.'),
@@ -2831,6 +2831,8 @@ class cmd_merge(Command):
                 merger = _mod_merge.Merger.from_uncommitted(tree, other_tree,
                     pb)
                 allow_pending = False
+                if other_path != '':
+                    merger.interesting_files = [other_path]
 
             if merger is None:
                 merger, allow_pending = self._get_merger_from_branch(tree,
@@ -3086,9 +3088,9 @@ class cmd_revert(Command):
     last committed revision is used.
 
     To remove only some changes, without reverting to a prior version, use
-    merge instead.  For example, "merge . --r-2..-3" will remove the changes
-    introduced by -2, without affecting the changes introduced by -1.  Or
-    to remove certain changes on a hunk-by-hunk basis, see the Shelf plugin.
+    merge instead.  For example, "merge . --revision -2..-3" will remove the
+    changes introduced by -2, without affecting the changes introduced by -1.
+    Or to remove certain changes on a hunk-by-hunk basis, see the Shelf plugin.
     
     By default, any files that have been manually changed will be backed up
     first.  (Files changed only by merge are not backed up.)  Backup files have
@@ -3694,7 +3696,6 @@ class cmd_serve(Command):
         from bzrlib.smart import medium, server
         from bzrlib.transport import get_transport
         from bzrlib.transport.chroot import ChrootServer
-        from bzrlib.transport.remote import BZR_DEFAULT_PORT, BZR_DEFAULT_INTERFACE
         if directory is None:
             directory = os.getcwd()
         url = urlutils.local_path_to_url(directory)
@@ -3707,9 +3708,9 @@ class cmd_serve(Command):
             smart_server = medium.SmartServerPipeStreamMedium(
                 sys.stdin, sys.stdout, t)
         else:
-            host = BZR_DEFAULT_INTERFACE
+            host = medium.BZR_DEFAULT_INTERFACE
             if port is None:
-                port = BZR_DEFAULT_PORT
+                port = medium.BZR_DEFAULT_PORT
             else:
                 if ':' in port:
                     host, port = port.split(':')
@@ -4014,9 +4015,6 @@ class cmd_send(Command):
                 config = branch.get_config()
                 if mail_to is None:
                     mail_to = config.get_user_option('submit_to')
-                if mail_to is None:
-                    raise errors.BzrCommandError('No mail-to address'
-                                                 ' specified')
                 mail_client = config.get_mail_client()
             if remember and submit_branch is None:
                 raise errors.BzrCommandError(
