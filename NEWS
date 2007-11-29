@@ -209,6 +209,8 @@ IN DEVELOPMENT
    * New module ``lru_cache`` providing a cache for use by tasks that need
      semi-random access to large amounts of data. (John A Meinel)
 
+   * InventoryEntry.diff is now deprecated.  Please use diff.DiffTree instead.
+
   TESTING:
 
 
