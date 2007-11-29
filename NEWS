@@ -97,6 +97,9 @@ IN DEVELOPMENT
      retrying an http request or some programming errors may be masked.
      (Vincent Ladeuil, #160012)
 
+   * Fix ``bzr rm`` to not delete modified and ignored files.
+     (Lukáš Lalinský, #172598)
+
    * Fix exception when revisionspec contains merge revisons but log
      formatter doesn't support merge revisions. (Kent Gibson, #148908)
 
