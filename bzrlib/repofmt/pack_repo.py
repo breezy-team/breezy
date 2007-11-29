@@ -26,6 +26,7 @@ from bzrlib import (
         pack,
         ui,
         )
+from bzrlib.graph import Graph
 from bzrlib.index import (
     GraphIndex,
     GraphIndexBuilder,
@@ -48,6 +49,7 @@ from bzrlib import (
     osutils,
     transactions,
     xml5,
+    xml6,
     xml7,
     )
 
@@ -72,10 +74,23 @@ class PackCommitBuilder(CommitBuilder):
     added text, reducing memory and object pressure.
     """
 
+    def __init__(self, repository, parents, config, timestamp=None,
+                 timezone=None, committer=None, revprops=None,
+                 revision_id=None):
+        CommitBuilder.__init__(self, repository, parents, config,
+            timestamp=timestamp, timezone=timezone, committer=committer,
+            revprops=revprops, revision_id=revision_id)
+        self._file_graph = Graph(
+            repository._pack_collection.text_index.combined_index)
+
     def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
         return self.repository._pack_collection._add_text_to_weave(file_id,
             self._new_revision_id, new_lines, parents, nostore_sha,
             self.random_revid)
+
+    def _heads(self, file_id, revision_ids):
+        keys = [(file_id, revision_id) for revision_id in revision_ids]
+        return set([key[1] for key in self._file_graph.heads(keys)])
 
 
 class PackRootCommitBuilder(RootCommitBuilder):
@@ -85,10 +100,23 @@ class PackRootCommitBuilder(RootCommitBuilder):
     added text, reducing memory and object pressure.
     """
 
+    def __init__(self, repository, parents, config, timestamp=None,
+                 timezone=None, committer=None, revprops=None,
+                 revision_id=None):
+        CommitBuilder.__init__(self, repository, parents, config,
+            timestamp=timestamp, timezone=timezone, committer=committer,
+            revprops=revprops, revision_id=revision_id)
+        self._file_graph = Graph(
+            repository._pack_collection.text_index.combined_index)
+
     def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
         return self.repository._pack_collection._add_text_to_weave(file_id,
             self._new_revision_id, new_lines, parents, nostore_sha,
             self.random_revid)
+
+    def _heads(self, file_id, revision_ids):
+        keys = [(file_id, revision_id) for revision_id in revision_ids]
+        return set([key[1] for key in self._file_graph.heads(keys)])
 
 
 class Pack(object):
@@ -187,7 +215,7 @@ class NewPack(Pack):
         }
 
     def __init__(self, upload_transport, index_transport, pack_transport,
-        upload_suffix=''):
+        upload_suffix='', file_mode=None):
         """Create a NewPack instance.
 
         :param upload_transport: A writable transport for the pack to be
@@ -199,6 +227,7 @@ class NewPack(Pack):
             upload_transport.clone('../packs').
         :param upload_suffix: An optional suffix to be given to any temporary
             files created during the pack creation. e.g '.autopack'
+        :param file_mode: An optional file mode to create the new files with.
         """
         # The relative locations of the packs are constrained, but all are
         # passed in because the caller has them, so as to avoid object churn.
@@ -223,6 +252,8 @@ class NewPack(Pack):
         self.index_transport = index_transport
         # where is the pack renamed to when it is finished?
         self.pack_transport = pack_transport
+        # What file mode to upload the pack and indices with.
+        self._file_mode = file_mode
         # tracks the content written to the .pack file.
         self._hash = md5.new()
         # a four-tuple with the length in bytes of the indices, once the pack
@@ -239,7 +270,7 @@ class NewPack(Pack):
         self.start_time = time.time()
         # open an output stream for the data added to the pack.
         self.write_stream = self.upload_transport.open_write_stream(
-            self.random_name)
+            self.random_name, mode=self._file_mode)
         if 'pack' in debug.debug_flags:
             mutter('%s: create_pack: pack stream open: %s%s t+%6.3fs',
                 time.ctime(), self.upload_transport.base, self.random_name,
@@ -368,7 +399,8 @@ class NewPack(Pack):
         """
         index_name = self.index_name(index_type, self.name)
         self.index_sizes[self.index_offset(index_type)] = \
-            self.index_transport.put_file(index_name, index.finish())
+            self.index_transport.put_file(index_name, index.finish(),
+            mode=self._file_mode)
         if 'pack' in debug.debug_flags:
             # XXX: size might be interesting?
             mutter('%s: create_pack: wrote %s index: %s%s t+%6.3fs',
@@ -533,7 +565,8 @@ class Packer(object):
         """Open a pack for the pack we are creating."""
         return NewPack(self._pack_collection._upload_transport,
             self._pack_collection._index_transport,
-            self._pack_collection._pack_transport, upload_suffix=self.suffix)
+            self._pack_collection._pack_transport, upload_suffix=self.suffix,
+            file_mode=self._pack_collection.repo.control_files._file_mode)
 
     def _create_pack_from_packs(self):
         self.pb.update("Opening pack", 0, 5)
@@ -712,9 +745,14 @@ class Packer(object):
         """
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            return self._do_copy_nodes_graph(nodes, index_map, writer,
-                write_index, output_lines, pb)
-        finally:
+            for result in self._do_copy_nodes_graph(nodes, index_map, writer,
+                write_index, output_lines, pb):
+                yield result
+        except Exception:
+            # Python 2.4 does not permit try:finally: in a generator.
+            pb.finished()
+            raise
+        else:
             pb.finished()
 
     def _do_copy_nodes_graph(self, nodes, index_map, writer, write_index,
@@ -1245,7 +1283,8 @@ class RepositoryPackCollection(object):
             # changing it.
             for key, value in disk_nodes:
                 builder.add_node(key, value)
-            self.transport.put_file('pack-names', builder.finish())
+            self.transport.put_file('pack-names', builder.finish(),
+                mode=self.repo.control_files._file_mode)
             # move the baseline forward
             self._packs_at_load = disk_nodes
             # now clear out the obsolete packs directory
@@ -1288,7 +1327,8 @@ class RepositoryPackCollection(object):
         if not self.repo.is_write_locked():
             raise errors.NotWriteLocked(self)
         self._new_pack = NewPack(self._upload_transport, self._index_transport,
-            self._pack_transport, upload_suffix='.pack')
+            self._pack_transport, upload_suffix='.pack',
+            file_mode=self.repo.control_files._file_mode)
         # allow writing: queue writes to a new index
         self.revision_index.add_writable_index(self._new_pack.revision_index,
             self._new_pack)
@@ -1804,7 +1844,7 @@ class RepositoryFormatKnitPack1(RepositoryFormatPack):
     _serializer = xml5.serializer_v5
 
     def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir('knitpack-experimental')
+        return bzrdir.format_registry.make_bzrdir('pack-0.92')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -1841,7 +1881,7 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir(
-            'knitpack-subtree-experimental')
+            'pack-0.92-subtree')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -1863,3 +1903,42 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return "Packs containing knits with subtree support\n"
+
+
+class RepositoryFormatKnitPack4(RepositoryFormatPack):
+    """A rich-root, no subtrees parameterised Pack repository.
+
+    This repository format uses the xml6 serializer to get:
+     - support for recording full info about the tree root
+
+    This format was introduced in 1.0.
+    """
+
+    repository_class = KnitPackRepository
+    _commit_builder_class = PackRootCommitBuilder
+    rich_root_data = True
+    supports_tree_reference = False
+    _serializer = xml6.serializer_v6
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir(
+            'rich-root-pack')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def check_conversion_target(self, target_format):
+        if not target_format.rich_root_data:
+            raise errors.BadConversionTarget(
+                'Does not support rich root data.', target_format)
+
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return ("Bazaar pack repository format 1 with rich root"
+                " (needs bzr 1.0)\n")
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return "Packs containing knits with rich root support\n"

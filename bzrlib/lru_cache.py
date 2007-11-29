@@ -69,6 +69,11 @@ class LRUCache(object):
             # Trigger the cleanup
             self.cleanup()
 
+    def get(self, key, default=None):
+        if key in self._cache:
+            return self[key]
+        return default
+
     def cleanup(self):
         """Clear the cache until it shrinks to the requested size.
 

@@ -13,7 +13,7 @@ Associating Commits and Bugs
 When you make a commit you can assiociate it with a bug by using the
 ``--fixes`` option of ``commit``. For example::
 
-    $ bzr commit --fixes 12345 -m 'Properly close the connection on errors'
+    $ bzr commit --fixes 12345 -m "Properly close the connection on errors"
 
 This will set a revision property on the revision that is committed
 which contains the URI at which more information on the bug can be found.

@@ -85,7 +85,7 @@ class TestRemove(TestCaseWithWorkingTree):
 
     def test_remove_changed_file(self):
         """Removal of a changed files must fail."""
-        tree = self.get_committed_tree('a')
+        tree = self.get_committed_tree(['a'])
         self.build_tree_contents([('a', "some other new content!")])
         self.assertInWorkingTree('a')
         err = self.assertRaises(errors.BzrRemoveChangedFilesError, tree.remove,

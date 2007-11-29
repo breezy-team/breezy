@@ -203,6 +203,16 @@ class TestLRUCache(tests.TestCase):
         self.assertEqual([1, 4, 5, 3, 2], list(cache._queue))
         self.assertEqual({1:1, 2:1, 3:1, 4:1, 5:1}, cache._refcount)
 
+    def test_get(self):
+        cache = lru_cache.LRUCache(max_cache=5)
+
+        cache.add(1, 10)
+        cache.add(2, 20)
+        self.assertEqual(20, cache.get(2))
+        self.assertIs(None, cache.get(3))
+        obj = object()
+        self.assertIs(obj, cache.get(3, obj))
+
 
 class TestLRUSizeCache(tests.TestCase):
 

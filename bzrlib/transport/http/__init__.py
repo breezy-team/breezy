@@ -250,7 +250,7 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
     _bytes_to_read_before_seek = 128
     # No limit on the offset number that get combined into one, we are trying
     # to avoid downloading the whole file.
-    _max_readv_combined = 0
+    _max_readv_combine = 0
 
     def _readv(self, relpath, offsets):
         """Get parts of the file at the given relative path.

@@ -724,6 +724,8 @@ class TestMerger(TestCaseWithTransport):
         this, other = self.set_up_trees()
         self.assertRaises(errors.RevisionNotPresent, Merger.from_revision_ids,
                           progress.DummyProgress(), this, 'rev2b')
+        this.lock_write()
+        self.addCleanup(this.unlock)
         merger = Merger.from_revision_ids(progress.DummyProgress(), this,
             'rev2b', other_branch=other.branch)
         self.assertEqual('rev2b', merger.other_rev_id)
@@ -742,8 +744,12 @@ class TestMerger(TestCaseWithTransport):
     def test_from_mergeable(self):
         this, other = self.set_up_trees()
         other.commit('rev3', rev_id='rev3')
+        this.lock_write()
+        self.addCleanup(this.unlock)
         md = merge_directive.MergeDirective2.from_objects(
             other.branch.repository, 'rev3', 0, 0, 'this')
+        other.lock_read()
+        self.addCleanup(other.unlock)
         merger, verified = Merger.from_mergeable(this, md,
             progress.DummyProgress())
         md.patch = None

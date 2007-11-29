@@ -270,6 +270,16 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             # the Format factory and creation methods that are
             # permitted to do this.
             self._set_inventory(_inventory, dirty=False)
+        self._detect_case_handling()
+
+    def _detect_case_handling(self):
+        wt_trans = self.bzrdir.get_workingtree_transport(None)
+        try:
+            wt_trans.stat("FoRMaT")
+        except errors.NoSuchFile:
+            self.case_sensitive = True
+        else:
+            self.case_sensitive = False
 
     branch = property(
         fget=lambda self: self._branch,
@@ -1982,7 +1992,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 self.set_parent_trees(parent_trees)
                 resolve(self)
             else:
-                resolve(self, filenames, ignore_misses=True)
+                resolve(self, filenames, ignore_misses=True, recursive=True)
         finally:
             if basis_tree is not None:
                 basis_tree.unlock()

@@ -28,8 +28,12 @@ from bzrlib import (
     )
 from bzrlib.delta import TreeDelta
 from bzrlib.inventory import Inventory, InventoryDirectory
-from bzrlib.revision import NULL_REVISION
-from bzrlib.tests import TestCaseWithTransport, TestSkipped
+from bzrlib.revision import NULL_REVISION, Revision
+from bzrlib.tests import (
+    TestCaseWithTransport,
+    TestNotApplicable,
+    TestSkipped,
+    )
 from bzrlib.tests.repository_implementations import TestCaseWithRepository
 from bzrlib.transport import get_transport
 from bzrlib.upgrade import upgrade
@@ -377,8 +381,8 @@ class TestRepository(TestCaseWithRepository):
         try:
             stream = repo.get_data_stream(['rev_id'])
         except NotImplementedError:
-            # Not all repositories support streaming.
-            return
+            raise TestNotApplicable("%s doesn't support get_data_stream"
+                % repo._format)
 
         # The data stream is a iterator that yields (name, versioned_file)
         # pairs for:
@@ -533,6 +537,41 @@ class TestRepository(TestCaseWithRepository):
         list(repo._find_inconsistent_revision_parents())
         repo._check_for_inconsistent_revision_parents()
 
+    def test_add_signature_text(self):
+        repo = self.make_repository('repo')
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        self.addCleanup(repo.commit_write_group)
+        repo.start_write_group()
+        inv = Inventory(revision_id='A')
+        inv.root.revision = 'A'
+        repo.add_inventory('A', inv, [])
+        repo.add_revision('A', Revision('A', committer='A', timestamp=0,
+                          inventory_sha1='', timezone=0, message='A'))
+        repo.add_signature_text('A', 'This might be a signature')
+        self.assertEqual('This might be a signature',
+                         repo.get_signature_text('A'))
+
+    def test_install_revisions(self):
+        wt = self.make_branch_and_tree('source')
+        wt.commit('A', allow_pointless=True, rev_id='A')
+        repo = wt.branch.repository
+        repo.lock_write()
+        repo.start_write_group()
+        repo.sign_revision('A', bzrlib.gpg.LoopbackGPGStrategy(None))
+        repo.commit_write_group()
+        repo.unlock()
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        repo2 = self.make_repository('repo2')
+        revision = repo.get_revision('A')
+        tree = repo.revision_tree('A')
+        signature = repo.get_signature_text('A')
+        repo2.lock_write()
+        self.addCleanup(repo2.unlock)
+        repository.install_revisions(repo2, [(revision, tree, signature)])
+        self.assertEqual(revision, repo2.get_revision('A'))
+        self.assertEqual(signature, repo2.get_signature_text('A'))
 
 class TestRepositoryLocking(TestCaseWithRepository):
 
@@ -818,6 +857,8 @@ class TestEscaping(TestCaseWithTransport):
         # now access over vfat; should be safe
         branch = bzrdir.BzrDir.open('vfat+' + self.get_url('repo')).open_branch()
         revtree = branch.repository.revision_tree(REV_ID)
+        revtree.lock_read()
+        self.addCleanup(revtree.unlock)
         contents = revtree.get_file_text(FOO_ID)
         self.assertEqual(contents, 'contents of repo/foo\n')
 

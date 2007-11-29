@@ -46,8 +46,8 @@ from bzrlib.tests import (
 from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths, 
                               resolve_conflicts, cook_conflicts, 
                               find_interesting, build_tree, get_backup_name,
-                              change_entry, _FileMover, TransformPreview)
-
+                              change_entry, _FileMover, resolve_checkout,
+                              TransformPreview)
 
 class TestTreeTransform(tests.TestCaseWithTransport):
 
@@ -86,7 +86,9 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertRaises(ExistingPendingDeletion, self.get_transform)
 
     def test_build(self):
-        transform, root = self.get_transform() 
+        transform, root = self.get_transform()
+        self.wt.lock_tree_write()
+        self.addCleanup(self.wt.unlock)
         self.assertIs(transform.get_tree_parent(root), ROOT_PARENT)
         imaginary_id = transform.trans_id_tree_path('imaginary')
         imaginary_id2 = transform.trans_id_tree_path('imaginary/')
@@ -129,6 +131,8 @@ class TestTreeTransform(tests.TestCaseWithTransport):
 
     def test_convenience(self):
         transform, root = self.get_transform()
+        self.wt.lock_tree_write()
+        self.addCleanup(self.wt.unlock)
         trans_id = transform.new_file('name', root, 'contents', 
                                       'my_pretties', True)
         oz = transform.new_directory('oz', root, 'oz-id')
@@ -234,6 +238,105 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         tip_id = transform3.trans_id_tree_file_id('tip-id')
         transform3.adjust_path('tip', root_id, tip_id)
         transform3.apply()
+
+    def test_conflict_on_case_insensitive(self):
+        tree = self.make_branch_and_tree('tree')
+        # Don't try this at home, kids!
+        # Force the tree to report that it is case sensitive, for conflict
+        # resolution tests
+        tree.case_sensitive = True
+        transform = TreeTransform(tree)
+        self.addCleanup(transform.finalize)
+        transform.new_file('file', transform.root, 'content')
+        transform.new_file('FiLe', transform.root, 'content')
+        result = transform.find_conflicts()
+        self.assertEqual([], result)
+        # Force the tree to report that it is case insensitive, for conflict
+        # generation tests
+        tree.case_sensitive = False
+        result = transform.find_conflicts()
+        self.assertEqual([('duplicate', 'new-1', 'new-2', 'file')], result)
+
+    def test_conflict_on_case_insensitive_existing(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/FiLe'])
+        # Don't try this at home, kids!
+        # Force the tree to report that it is case sensitive, for conflict
+        # resolution tests
+        tree.case_sensitive = True
+        transform = TreeTransform(tree)
+        self.addCleanup(transform.finalize)
+        transform.new_file('file', transform.root, 'content')
+        result = transform.find_conflicts()
+        self.assertEqual([], result)
+        # Force the tree to report that it is case insensitive, for conflict
+        # generation tests
+        tree.case_sensitive = False
+        result = transform.find_conflicts()
+        self.assertEqual([('duplicate', 'new-1', 'new-2', 'file')], result)
+
+    def test_resolve_case_insensitive_conflict(self):
+        tree = self.make_branch_and_tree('tree')
+        # Don't try this at home, kids!
+        # Force the tree to report that it is case insensitive, for conflict
+        # resolution tests
+        tree.case_sensitive = False
+        transform = TreeTransform(tree)
+        self.addCleanup(transform.finalize)
+        transform.new_file('file', transform.root, 'content')
+        transform.new_file('FiLe', transform.root, 'content')
+        resolve_conflicts(transform)
+        transform.apply()
+        self.failUnlessExists('tree/file')
+        self.failUnlessExists('tree/FiLe.moved')
+
+    def test_resolve_checkout_case_conflict(self):
+        tree = self.make_branch_and_tree('tree')
+        # Don't try this at home, kids!
+        # Force the tree to report that it is case insensitive, for conflict
+        # resolution tests
+        tree.case_sensitive = False
+        transform = TreeTransform(tree)
+        self.addCleanup(transform.finalize)
+        transform.new_file('file', transform.root, 'content')
+        transform.new_file('FiLe', transform.root, 'content')
+        resolve_conflicts(transform,
+                          pass_func=lambda t, c: resolve_checkout(t, c, []))
+        transform.apply()
+        self.failUnlessExists('tree/file')
+        self.failUnlessExists('tree/FiLe.moved')
+
+    def test_apply_case_conflict(self):
+        """Ensure that a transform with case conflicts can always be applied"""
+        tree = self.make_branch_and_tree('tree')
+        transform = TreeTransform(tree)
+        self.addCleanup(transform.finalize)
+        transform.new_file('file', transform.root, 'content')
+        transform.new_file('FiLe', transform.root, 'content')
+        dir = transform.new_directory('dir', transform.root)
+        transform.new_file('dirfile', dir, 'content')
+        transform.new_file('dirFiLe', dir, 'content')
+        resolve_conflicts(transform)
+        transform.apply()
+        self.failUnlessExists('tree/file')
+        if not os.path.exists('tree/FiLe.moved'):
+            self.failUnlessExists('tree/FiLe')
+        self.failUnlessExists('tree/dir/dirfile')
+        if not os.path.exists('tree/dir/dirFiLe.moved'):
+            self.failUnlessExists('tree/dir/dirFiLe')
+
+    def test_case_insensitive_limbo(self):
+        tree = self.make_branch_and_tree('tree')
+        # Don't try this at home, kids!
+        # Force the tree to report that it is case insensitive
+        tree.case_sensitive = False
+        transform = TreeTransform(tree)
+        self.addCleanup(transform.finalize)
+        dir = transform.new_directory('dir', transform.root)
+        first = transform.new_file('file', dir, 'content')
+        second = transform.new_file('FiLe', dir, 'content')
+        self.assertContainsRe(transform._limbo_name(first), 'new-1/file')
+        self.assertNotContainsRe(transform._limbo_name(second), 'new-1/FiLe')
 
     def test_add_del(self):
         start, root = self.get_transform()
@@ -412,6 +515,26 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertEqual(os.readlink(self.wt.abspath('oz/wizard')),
                          'wizard-target')
 
+    def test_unable_create_symlink(self):
+        def tt_helper():
+            wt = self.make_branch_and_tree('.')
+            tt = TreeTransform(wt)  # TreeTransform obtains write lock
+            try:
+                tt.new_symlink('foo', tt.root, 'bar')
+                tt.apply()
+            finally:
+                wt.unlock()
+        os_symlink = getattr(os, 'symlink', None)
+        os.symlink = None
+        try:
+            err = self.assertRaises(errors.UnableCreateSymlink, tt_helper)
+            self.assertEquals(
+                "Unable to create symlink 'foo' on this platform",
+                str(err))
+        finally:
+            if os_symlink:
+                os.symlink = os_symlink
+
     def get_conflicted(self):
         create,root = self.get_transform()
         create.new_file('dorothy', root, 'dorothy', 'dorothy-id')
@@ -560,6 +683,8 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         """
         transform, root = self.get_transform()
         wt = transform._tree
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
         transform.new_file('set_on_creation', root, 'Set on creation', 'soc',
                            True)
         sac = transform.new_file('set_after_creation', root,
@@ -1170,7 +1295,7 @@ class TestTransformMerge(TestCaseInTempDir):
 
 class TestBuildTree(tests.TestCaseWithTransport):
 
-    def test_build_tree(self):
+    def test_build_tree_with_symlinks(self):
         self.requireFeature(SymlinkFeature)
         os.mkdir('a')
         a = BzrDir.create_standalone_workingtree('a')
@@ -1472,6 +1597,14 @@ class TestTransformRollback(tests.TestCaseWithTransport):
                           _mover=self.ExceptionFileMover(bad_target='d'))
         self.failUnlessExists('a')
         self.failUnlessExists('a/b')
+
+    def test_resolve_no_parent(self):
+        wt = self.make_branch_and_tree('.')
+        tt = TreeTransform(wt)
+        self.addCleanup(tt.finalize)
+        parent = tt.trans_id_file_id('parent-id')
+        tt.new_file('file', parent, 'Contents')
+        resolve_conflicts(tt)
 
 
 class TestTransformPreview(tests.TestCaseWithTransport):

@@ -20,7 +20,7 @@ from cStringIO import StringIO
 
 import bzrlib
 import bzrlib.errors as errors
-from bzrlib.tests import TestCase, TestCaseWithTransport
+from bzrlib.tests import TestCase, TestCaseWithTransport, TestNotApplicable
 from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
 
 
@@ -51,6 +51,9 @@ class TestBreakLock(TestCaseWithBranch):
         # break lock on the branch should try on the repository even
         # if the branch isn't locked
         self.branch.repository.lock_write()
+        other_instance = self.branch.repository.bzrdir.open_repository()
+        if not other_instance.get_physical_lock_status():
+            raise TestNotApplicable("Repository does not lock persistently.")
         bzrlib.ui.ui_factory.stdin = StringIO("y\n")
         try:
             self.unused_branch.break_lock()

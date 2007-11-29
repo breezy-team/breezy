@@ -26,7 +26,6 @@ from bzrlib import (
 from bzrlib.tests import TestCase, TestCaseWithTransport
 
 
-
 class TestErrors(TestCaseWithTransport):
 
     def test_disabled_method(self):
@@ -388,6 +387,20 @@ class TestErrors(TestCaseWithTransport):
             "Unable to delete transform temporary directory foo.  "
             "Please examine foo to see if it contains any files "
             "you wish to keep, and delete it when you are done.",
+            str(err))
+
+    def test_unable_create_symlink(self):
+        err = errors.UnableCreateSymlink()
+        self.assertEquals(
+            "Unable to create symlink on this platform",
+            str(err))
+        err = errors.UnableCreateSymlink(path=u'foo')
+        self.assertEquals(
+            "Unable to create symlink 'foo' on this platform",
+            str(err))
+        err = errors.UnableCreateSymlink(path=u'\xb5')
+        self.assertEquals(
+            "Unable to create symlink u'\\xb5' on this platform",
             str(err))
 
 

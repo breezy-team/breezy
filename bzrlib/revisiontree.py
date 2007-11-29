@@ -31,7 +31,9 @@ class RevisionTree(Tree):
 
     File text can be retrieved from the text store.
     """
-    
+
+    case_sensitive = True
+
     def __init__(self, branch, inv, revision_id):
         # for compatability the 'branch' parameter has not been renamed to 
         # repository at this point. However, we should change RevisionTree's
