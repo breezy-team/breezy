@@ -293,14 +293,14 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
                 for cur_coal, file in self._coalesce_readv(relpath, coalesced):
                     # Split the received chunk
                     for offset, size in cur_coal.ranges:
-                        key = (cur_coal.start + offset, size)
-                        file.seek(cur_coal.start + offset, 0)
+                        start = cur_coal.start + offset
+                        file.seek(start, 0)
                         data = file.read(size)
                         data_len = len(data)
                         if data_len != size:
                             raise errors.ShortReadvError(relpath, start, size,
                                                          actual=data_len)
-                        data_map[key] = data
+                        data_map[(start, size)] = data
 
                     # Yield everything we can
                     while cur_offset_and_size in data_map:
@@ -315,7 +315,8 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
                 self._degrade_range_hint(relpath, coalesced, sys.exc_info())
                 # Some offsets may have been already processed, so we retry
                 # only the unsuccessful ones.
-                offsets = [cur_offset_and_size] + [o for o in offset_stack]
+                offsets = [cur_offset_and_size] + [o for o in iter_offsets]
+                try_again = True
 
     def _coalesce_readv(self, relpath, coalesced):
         """Issue several GET requests to satisfy the coalesced offsets"""
@@ -328,11 +329,11 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
             # The whole file will be downloaded anyway
             max_ranges = total
         for group in xrange(0, len(coalesced), max_ranges):
-            ranges = coalesced[group * max_ranges:group+1 * max_ranges]
+            ranges = coalesced[group:group+max_ranges]
             # Note that the following may raise errors.InvalidRange. It's the
             # caller responsability to decide how to retry since it may provide
             # different coalesced offsets.
-            file = self._get(relpath, ranges)
+            code, file = self._get(relpath, ranges)
             for range in ranges:
                 yield range, file
 

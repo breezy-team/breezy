@@ -84,6 +84,9 @@ IN DEVELOPMENT
    * Catch connection errors for ftp.
      (Vincent Ladeuil, #164567)
 
+   * Catch ShortReadvErrors while using pycurl.
+     (Vincent Ladeuil, 172701)
+
    * ``check`` no longer reports spurious unreferenced text versions.
      (Robert Collins, John A Meinel, #162931, #165071)
 

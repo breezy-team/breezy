@@ -287,9 +287,6 @@ def handle_response(url, code, headers, data):
         # magic value.
         raise errors.InvalidRange(url,0)
 
-    # TODO: jam 20060713 Properly handle redirects (302 Found, etc)
-    #       The '_get' code says to follow redirects, we probably 
-    #       should actually handle the return values
     else:
         raise errors.InvalidHttpResponse(url, "Unknown response code %s" 
                                               % (code,))
