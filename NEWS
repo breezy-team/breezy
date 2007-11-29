@@ -191,6 +191,11 @@ IN DEVELOPMENT
    * ``bzrlib.repository.get_versioned_file_checker`` is now private.
      (Robert Collins)
 
+   * The Repository format registry default has been removed; it was previously
+     obsoleted by the bzrdir format default, which implies a default repository
+     format.
+     (Martin Pool)
+
   INTERNALS:
 
    * Added ``ContainerSerialiser`` and ``ContainerPushParser`` to

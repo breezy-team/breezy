@@ -2149,14 +2149,11 @@ format_registry.register_lazy(
     'RepositoryFormat7'
     )
 
-# KEEP in sync with bzrdir.format_registry default, which controls the overall
-# default control directory format
 format_registry.register_lazy(
     'Bazaar-NG Knit Repository Format 1',
     'bzrlib.repofmt.knitrepo',
     'RepositoryFormatKnit1',
     )
-format_registry.default_key = 'Bazaar-NG Knit Repository Format 1'
 
 format_registry.register_lazy(
     'Bazaar Knit Repository Format 3 (bzr 0.15)\n',
