@@ -770,11 +770,19 @@ class KnitVersionedFile(VersionedFile):
                     # line-delta is no use unless we have its parent.
                     # Fetching from a broken repository with this problem
                     # shouldn't break the target repository.
+                    #
+                    # See https://bugs.launchpad.net/bzr/+bug/164443
                     if not self._index.has_version(parents[0]):
                         raise KnitCorrupt(
                             self.filename,
-                            'line-delta from stream references '
-                            'missing parent %s' % parents[0])
+                            'line-delta from stream '
+                            'for version %s '
+                            'references '
+                            'missing parent %s\n'
+                            'Try running "bzr check" '
+                            'on the source repository, and "bzr reconcile" '
+                            'if necessary.' %
+                            (version_id, parents[0]))
                 self._add_raw_records(
                     [(version_id, options, parents, length)],
                     reader_callable(length))
