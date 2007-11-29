@@ -1332,12 +1332,22 @@ class KnitCorrupt(KnitError):
 
 
 class KnitDataStreamIncompatible(KnitError):
+    # Not raised anymore, as we can convert data streams
 
     _fmt = "Cannot insert knit data stream of format \"%(stream_format)s\" into knit of format \"%(target_format)s\"."
 
     def __init__(self, stream_format, target_format):
         self.stream_format = stream_format
         self.target_format = target_format
+        
+
+class KnitDataStreamUnknown(KnitError):
+    # Indicates a data stream we don't know how to handle.
+
+    _fmt = "Cannot parse knit data stream of format \"%(stream_format)s\"."
+
+    def __init__(self, stream_format):
+        self.stream_format = stream_format
         
 
 class KnitHeaderError(KnitError):
