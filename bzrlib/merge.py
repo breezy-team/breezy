@@ -1002,17 +1002,6 @@ class WeaveMerger(Merge3Merger):
     supports_reprocess = True
     supports_show_base = False
 
-    def __init__(self, working_tree, this_tree, base_tree, other_tree, 
-                 interesting_ids=None, pb=DummyProgress(), pp=None,
-                 reprocess=False, change_reporter=None,
-                 interesting_files=None, do_merge=True):
-        super(WeaveMerger, self).__init__(working_tree, this_tree, 
-                                          base_tree, other_tree, 
-                                          interesting_ids=interesting_ids, 
-                                          pb=pb, pp=pp, reprocess=reprocess,
-                                          change_reporter=change_reporter,
-                                          do_merge=do_merge)
-
     def _merged_lines(self, file_id):
         """Generate the merged lines.
         There is no distinction between lines that are meant to contain <<<<<<<
