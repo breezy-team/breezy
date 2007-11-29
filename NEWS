@@ -31,6 +31,9 @@ IN DEVELOPMENT
      tree roots that's recorded for all other directories.
      (Aaron Bentley, #164639)
 
+   * ``pack-0.92`` repositories can now be reconciled.
+     (Robert Collins, #154173)
+
    * ``switch`` command added for changing the branch a lightweight checkout
      is associated with and updating the tree to reflect the latest content
      accordingly. This command was previously part of the BzrTools plug-in.
