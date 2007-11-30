@@ -1,8 +1,5 @@
-=======================
-SharedRepositoryLayouts
-=======================
-
-.. sectnum::
+Choosing a shared repository layout
+===================================
 
 Bazaar is designed to give you flexibility in how you layout branches inside a shared repository. 
 This flexibility allows users to tailor Bazaar to their workflow,
@@ -14,11 +11,9 @@ what branch a "general" user should grab. In SVN this is deemed the "``trunk/``"
 and in most of the layouts this naming convention is preserved. Some would call this
 "``mainline``" or "``dev``", and people from CVS often refer to this as "``HEAD``".
 
-.. contents::
-
 
 "SVN-Style" (``trunk/``, ``branches/``)
-=======================================
+---------------------------------------
 
 Most people coming from SVN will be familiar with their "standard" project layout. 
 Which is to layout the repository as::
@@ -130,7 +125,7 @@ This layout can be used for Bazaar, but it is not generally recommended.
 
 
 Nested Style (``project/branch/sub-branch/``)
-=============================================
+---------------------------------------------
 
 Another style with Bazaar, which is not generally possible in SVN
 is to have branches nested within each-other.
@@ -202,7 +197,7 @@ and whether the gain of splitting things up outweighs the ability to see more at
 
 
 Sorted by Status (``dev/``, ``merged/``, ``experimental/``)
-===========================================================
+-----------------------------------------------------------
 
 One other way to break up branches is to sort them by their current status.
 So you would end up with a layout something like::
@@ -249,7 +244,7 @@ and local paths.
 
 
 Sorted by date/release/etc (``2006-06/``, ``2006-07/``, ``0.8/``, ``0.9``)
-==========================================================================
+--------------------------------------------------------------------------
 
 Another method of allowing some scalability while also allowing the
 browsing of "current" branches. Basically, this works on the assumption 
@@ -302,7 +297,7 @@ and deficits as a date-based sorting.
 
 
 Simple developer naming (``project/joe/foo``, ``project/barry/bar``)
-====================================================================
+--------------------------------------------------------------------
 
 Another possibly layout is to give each developer a directory, and then
 have a single sub-directory for branches. Something like::
@@ -352,7 +347,7 @@ Usually you would want to split it up by project and then by person.
 
 
 Summary
-=======
+-------
 
 In the end, no single naming scheme will work for everyone. It depends a lot on
 the number of developers, how often you create a new branch, what sort of

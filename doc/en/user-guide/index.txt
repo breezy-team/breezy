@@ -1,6 +1,6 @@
-=================
+#################
 Bazaar User Guide
-=================
+#################
 
 .. Files are currently links but will become includes once the
 .. content makes more sense as a whole.
@@ -10,86 +10,91 @@ Bazaar User Guide
 ..   level 3 ~~~~~~~~
 ..   level 4 ^^^^^^^^ (it is better not to use nesting deeper than 3 levels)
 
-.. later contents::
-.. later sectnum::
+.. contents:: :depth: 2
+.. sectnum::
 
 
-.. later Introduction
-.. later ############
-
-.. later include:: introducing_bazaar.txt
-.. later include:: workflows.txt
-
-
-Setting Up Bazaar
-#################
-
-.. later include:: download.txt
-
-* `Introducing yourself <setting_up_email.html>`_ |--| The various ways that exist
-  to tell Bazaar your email address for commits.
-
-* `Using configuration files <configuration.html>`_ |--| Information on how to configure
-  Bazaar.
-
-
-Basic Topics
+Introduction
 ############
 
-* `Tutorial <tutorial.html>`_ |--| Explains how to use bzr.
-  Loaded with examples.
-
-* `Specifying revision identifiers <specifying_revisions.html>`_ |--| Description 
-  of the subarguments for ``-r`` as used by commands such as
-  **bzr log** and **bzr merge**.
-
-* `Running a Bazaar server <server.html>`_ |--| How to run a server 
-  to allow remote access to Bazaar branches.
+.. include:: introducing_bazaar.txt
+.. include:: core_concepts.txt
+.. include:: bazaar_workflows.txt
 
 
-Advanced Topics
+Getting started
 ###############
 
-* `Conflict handling <conflicts.html>`_ |--| The various kind of conflicts
-  you may encounter, and how to handle them.
-
-* `Centralized workflow <centralized_workflow.html>`_ |--| How to use Bazaar in
-  a centralized way like CVS or Subversion.
-
-.. later include:: using_bound_branches.txt
-.. later include:: shared_repositories.txt
+.. include:: installing_bazaar.txt
+.. include:: entering_commands.txt
+.. include:: getting_help.txt
+.. include:: configuring_bazaar.txt
+.. include:: using_aliases.txt
+.. include:: plugins.txt
 
 
-Best Practices
-##############
+Personal version control
+########################
 
-* `Running a Bazaar smart server <http_smart_server.html>`_ |--| How to run 
-  a smart HTTP server to allow remote access to Bazaar branches.
-
-* `Shared repositories layouts <shared_repository_layouts.html>`_ |--| The
-  pros and cons of various repository layouts.
-
-.. later include:: tracking_upstream.txt
-.. later include:: useful_tips.txt
- 
-
-Extending Bazaar
-################
-
-* `Plugins <plugins.html>`_ |--| Information on how to use plugins in Bazaar.
-
-* `Hooks <hooks.html>`_ |--| How to set up hooks that are executed on certain
-  Bazaar operations.
-
-* `Using aliases <using_aliases.html>`_ |--| How to set up 
-  and use command aliases.
+.. include:: solo_intro.txt
+.. include:: starting_a_project.txt
+.. include:: controlling_registration.txt
+.. include:: reviewing_changes.txt
+.. include:: recording_changes.txt
+.. include:: browsing_history.txt
+.. include:: releasing_a_project.txt
+.. include:: undoing_mistakes.txt
 
 
-Integrating Bazaar With Other Systems
+Sharing with peers
+##################
+
+.. include:: partner_intro.txt
+.. include:: branching_a_project.txt
+.. include:: merging_changes.txt
+.. include:: resolving_conflicts.txt
+.. include:: annotating_changes.txt
+
+
+Team collaboration, central style
+#################################
+
+.. include:: central_intro.txt
+.. include:: publishing_a_branch.txt
+.. include:: using_checkouts.txt
+.. include:: working_offline_central.txt
+.. include:: reusing_a_checkout.txt
+
+
+Team collaboration, distributed style
 #####################################
 
-* `Bug trackers <bug_trackers.html>`_ |--| Information on how to integrate with bug trackers.
+.. include:: distributed_intro.txt
+.. include:: organizing_branches.txt
+.. include:: using_gatekeepers.txt
+.. include:: sending_changes.txt
 
-* `Exporting version information <version_info.html>`_ |--| How to export version numbers to a build system.
+
+Best practices
+##############
+
+.. include:: best_practice_intro.txt
+.. include:: server.txt
+.. include:: hooks.txt
+.. include:: version_info.txt
+.. include:: bug_trackers.txt
+.. include:: shared_repository_layouts.txt
+ 
+
+Appendices
+##########
+
+.. include:: specifying_revisions.txt
+.. include:: conflicts.txt
+.. include:: configuration.txt
+.. include:: setting_up_email.txt
+.. include:: authentication_conf.txt
+.. include:: http_smart_server.txt
+.. include:: writing_a_plugin.txt
 
 .. |--| unicode:: U+2014
