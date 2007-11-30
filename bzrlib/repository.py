@@ -76,8 +76,8 @@ class CommitBuilder(object):
     # the default CommitBuilder does not manage trees whose root is versioned.
     _versioned_root = False
 
-    def __init__(self, repository, parents, config, timestamp=None, 
-                 timezone=None, committer=None, revprops=None, 
+    def __init__(self, repository, parents, config, timestamp=None,
+                 timezone=None, committer=None, revprops=None,
                  revision_id=None):
         """Initiate a CommitBuilder.
 
@@ -118,7 +118,7 @@ class CommitBuilder(object):
             self._timezone = int(timezone)
 
         self._generate_revision_if_needed()
-        self._heads = graph.HeadsCache(repository.get_graph()).heads
+        self.__heads = graph.HeadsCache(repository.get_graph()).heads
 
     def commit(self, message):
         """Make the actual commit.
@@ -189,6 +189,14 @@ class CommitBuilder(object):
             self.random_revid = True
         else:
             self.random_revid = False
+
+    def _heads(self, file_id, revision_ids):
+        """Calculate the graph heads for revision_ids in the graph of file_id.
+
+        This can use either a per-file graph or a global revision graph as we
+        have an identity relationship between the two graphs.
+        """
+        return self.__heads(revision_ids)
 
     def _check_root(self, ie, parent_invs, tree):
         """Helper for record_entry_contents.
@@ -287,7 +295,7 @@ class CommitBuilder(object):
         # XXX: Friction: parent_candidates should return a list not a dict
         #      so that we don't have to walk the inventories again.
         parent_candiate_entries = ie.parent_candidates(parent_invs)
-        head_set = self._heads(parent_candiate_entries.keys())
+        head_set = self._heads(ie.file_id, parent_candiate_entries.keys())
         heads = []
         for inv in parent_invs:
             if ie.file_id in inv:
@@ -1662,9 +1670,9 @@ class Repository(object):
                 [parents_provider, other_repository._make_parents_provider()])
         return graph.Graph(parents_provider)
 
-    def get_versioned_file_checker(self):
+    def _get_versioned_file_checker(self):
         """Return an object suitable for checking versioned files."""
-        return VersionedFileChecker(self)
+        return _VersionedFileChecker(self)
 
     @needs_write_lock
     def set_make_working_trees(self, new_value):
@@ -2141,14 +2149,11 @@ format_registry.register_lazy(
     'RepositoryFormat7'
     )
 
-# KEEP in sync with bzrdir.format_registry default, which controls the overall
-# default control directory format
 format_registry.register_lazy(
     'Bazaar-NG Knit Repository Format 1',
     'bzrlib.repofmt.knitrepo',
     'RepositoryFormatKnit1',
     )
-format_registry.default_key = 'Bazaar-NG Knit Repository Format 1'
 
 format_registry.register_lazy(
     'Bazaar Knit Repository Format 3 (bzr 0.15)\n',
@@ -2884,7 +2889,7 @@ def _unescape_xml(data):
     return _unescape_re.sub(_unescaper, data)
 
 
-class VersionedFileChecker(object):
+class _VersionedFileChecker(object):
 
     def __init__(self, repository):
         self.repository = repository
@@ -2900,7 +2905,7 @@ class VersionedFileChecker(object):
         # strip the file_id, for the weave api
         return tuple([revision_id for file_id, revision_id in parent_keys])
 
-    def check_file_version_parents(self, weave, file_id, planned_revisions):
+    def check_file_version_parents(self, weave, file_id):
         """Check the parents stored in a versioned file are correct.
 
         It also detects file versions that are not referenced by their
@@ -2915,12 +2920,12 @@ class VersionedFileChecker(object):
         """
         wrong_parents = {}
         unused_versions = set()
-        for num, revision_id in enumerate(planned_revisions):
+        for num, revision_id in enumerate(weave.versions()):
             try:
                 correct_parents = self.calculate_file_version_parents(
                     revision_id, file_id)
             except KeyError:
-                # we were asked to investigate a non-existant version.
+                # The version is not part of the used keys.
                 unused_versions.add(revision_id)
             else:
                 try:

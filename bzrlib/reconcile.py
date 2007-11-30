@@ -379,7 +379,7 @@ class KnitReconciler(RepoReconciler):
         versions = self.revisions.versions()
         mutter('Prepopulating revision text cache with %d revisions',
                 len(versions))
-        vf_checker = self.repo.get_versioned_file_checker()
+        vf_checker = self.repo._get_versioned_file_checker()
         # List all weaves before altering, to avoid race conditions when we
         # delete unused weaves.
         weaves = list(enumerate(self.repo.weave_store))
@@ -388,8 +388,7 @@ class KnitReconciler(RepoReconciler):
                            len(self.repo.weave_store))
             vf = self.repo.weave_store.get_weave(file_id, transaction)
             versions_with_bad_parents, unused_versions = \
-                vf_checker.check_file_version_parents(vf, file_id,
-                vf.versions())
+                vf_checker.check_file_version_parents(vf, file_id)
             if (len(versions_with_bad_parents) == 0 and
                 len(unused_versions) == 0):
                 continue

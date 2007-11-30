@@ -202,15 +202,14 @@ class Check(object):
         self.inventory_weave.check(progress_bar=self.progress)
         files_in_revisions = {}
         revisions_of_files = {}
-        weave_checker = self.repository.get_versioned_file_checker()
+        weave_checker = self.repository._get_versioned_file_checker()
         for i, weave_id in enumerate(weave_ids):
             self.progress.update('checking versionedfile', i, n_weaves)
             w = self.repository.weave_store.get_weave(weave_id,
                     self.repository.get_transaction())
             # No progress here, because it looks ugly.
             w.check()
-            result = weave_checker.check_file_version_parents(w, weave_id,
-                self.planned_revisions)
+            result = weave_checker.check_file_version_parents(w, weave_id)
             bad_parents, unused_versions = result
             bad_parents = bad_parents.items()
             for revision_id, (weave_parents, correct_parents) in bad_parents:

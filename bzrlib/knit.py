@@ -599,13 +599,12 @@ class KnitVersionedFile(VersionedFile):
         # first, read all relevant index data, enough to sort into the right
         # order to return
         for version_id in required_versions:
-            if not self.has_version(version_id):
-                raise RevisionNotPresent(version_id, self.filename)
             options = self._index.get_options(version_id)
             parents = self._index.get_parents_with_ghosts(version_id)
             index_memo = self._index.get_position(version_id)
             version_index[version_id] = (index_memo, options, parents)
-            if parents and parents[0] in required_version_set:
+            if ('line-delta' in options
+                and parents[0] in required_version_set):
                 # must wait until the parent has been sent
                 deferred.setdefault(parents[0], []). \
                     append(version_id)
@@ -771,11 +770,19 @@ class KnitVersionedFile(VersionedFile):
                     # line-delta is no use unless we have its parent.
                     # Fetching from a broken repository with this problem
                     # shouldn't break the target repository.
+                    #
+                    # See https://bugs.launchpad.net/bzr/+bug/164443
                     if not self._index.has_version(parents[0]):
                         raise KnitCorrupt(
                             self.filename,
-                            'line-delta from stream references '
-                            'missing parent %s' % parents[0])
+                            'line-delta from stream '
+                            'for version %s '
+                            'references '
+                            'missing parent %s\n'
+                            'Try running "bzr check" '
+                            'on the source repository, and "bzr reconcile" '
+                            'if necessary.' %
+                            (version_id, parents[0]))
                 self._add_raw_records(
                     [(version_id, options, parents, length)],
                     reader_callable(length))

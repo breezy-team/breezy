@@ -2381,6 +2381,11 @@ class NoMessageSupplied(BzrError):
     _fmt = "No message supplied."
 
 
+class NoMailAddressSpecified(BzrError):
+
+    _fmt = "No mail-to address specified."
+
+
 class UnknownMailClient(BzrError):
 
     _fmt = "Unknown mail client: %(mail_client)s"
@@ -2435,6 +2440,11 @@ class AlreadyTree(BzrDirError):
 class AlreadyCheckout(BzrDirError):
 
     _fmt = "'%(display_url)s' is already a checkout."
+
+
+class AlreadyLightweightCheckout(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already a lightweight checkout."
 
 
 class ReconfigurationNotSupported(BzrDirError):

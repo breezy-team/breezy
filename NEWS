@@ -9,6 +9,31 @@ IN DEVELOPMENT
 
   NOTES WHEN UPGRADING:
 
+   * The default repository format is now ``pack-0.92``.  This 
+     default is used when creating new repositories with ``init`` and 
+     ``init-repo``, and when branching over bzr+ssh or bzr+hpss. 
+     (See https://bugs.launchpad.net/bugs/164626)
+
+     This format can be read and written by Bazaar 0.92 and later, and 
+     data can be transferred to and from older formats.
+
+     To upgrade, please reconcile your repository (``bzr reconcile``), and then
+     upgrade (``bzr upgrade``). 
+     
+     ``pack-0.92`` offers substantially better scaling and performance than the
+     previous knits format. Some operations are slower where the code already
+     had bad scaling characteristics under knits, the pack format makes such
+     operations more visible as part of being more scalable overall. We will
+     correct such operations over the coming releases and encourage the filing
+     of bugs on any operation which you observe to be slower in a packs
+     repository. One particular case that we do not intend to fix is pulling
+     data from a pack repository into a knit repository over a high latency
+     link;  downgrading such data requires reinsertion of the file texts, and
+     this is a classic space/time tradeoff. The current implementation is
+     conservative on memory usage because we need to support converting data
+     from any tree without problems.  
+     (Robert Collins, Martin Pool, #164476)
+
   CHANGES:
 
    * Disable detection of plink.exe as possible ssh vendor. Plink vendor
@@ -36,12 +61,20 @@ IN DEVELOPMENT
      accordingly. This command was previously part of the BzrTools plug-in.
      (Ian Clatworthy, Aaron Bentley, David Allouche)
 
+   * ``reconfigure`` command can now convert branches, trees, or checkouts to
+     lightweight checkouts.  (Aaron Bentley)
+
   PERFORMANCE:
 
    * Commit updates the state of the working tree via a delta rather than
      supplying entirely new basis trees. For commit of a single specified file
      this reduces the wall clock time for commit by roughly a 30%.
      (Robert Collins, Martin Pool)
+
+   * Commit with many automatically found deleted paths no longer performs
+     linear scanning for the children of those paths during inventory
+     iteration. This should fix commit performance blowing out when many such
+     paths occur during commit. (Robert Collins, #156491)
 
    * Fetch with pack repositories will no longer read the entire history graph.
      (Robert Collins, #88319)
@@ -54,6 +87,10 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+   * ``bzr send`` now doesn't require the target e-mail address to be
+     specified on the command line if an interactive e-mail client is used.
+     (Lukáš Lalinský)
+
    * ``bzr tags`` now prints the revision number for each tag, instead of
      the revision id, unless --show-ids is passed. In addition, tags can be
      sorted chronologically instead of lexicographically with --sort=time.
@@ -63,21 +100,17 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
-   * Fix possible error in insert_data_stream when copying between 
-     pack repositories over bzr+ssh or bzr+http.  
-     KnitVersionedFile.get_data_stream now makes sure that requested
-     compression parents are sent before any delta hunks that depend 
-     on them.
-     (Martin Pool, #164637)
-
    * A progress bar has been added for knitpack -> knitpack fetching.
-     (Robert Collins, #157789)
+     (Robert Collins, #157789, #159147)
 
    * ``commit`` is now able to invoke an external editor in a non-ascii
      directory. (Daniel Watkins, #84043)
 
    * Catch connection errors for ftp.
      (Vincent Ladeuil, #164567)
+
+   * ``check`` no longer reports spurious unreferenced text versions.
+     (Robert Collins, John A Meinel, #162931, #165071)
 
    * Conflicts are now resolved recursively by ``revert``.
      (Aaron Bentley, #102739)
@@ -92,6 +125,9 @@ IN DEVELOPMENT
      retrying an http request or some programming errors may be masked.
      (Vincent Ladeuil, #160012)
 
+   * Fix ``bzr rm`` to not delete modified and ignored files.
+     (Lukáš Lalinský, #172598)
+
    * Fix exception when revisionspec contains merge revisons but log
      formatter doesn't support merge revisions. (Kent Gibson, #148908)
 
@@ -101,12 +137,23 @@ IN DEVELOPMENT
    * Fix multiple connections during checkout --lightweight.
      (Vincent Ladeuil, #159150)
 
+   * Fix possible error in insert_data_stream when copying between 
+     pack repositories over bzr+ssh or bzr+http.  
+     KnitVersionedFile.get_data_stream now makes sure that requested
+     compression parents are sent before any delta hunks that depend 
+     on them.
+     (Martin Pool, #164637)
+
    * Fix typo in limiting offsets coalescing for http, leading to
      whole files being downloaded instead of parts.
      (Vincent Ladeuil, #165061)
 
    * FTP server errors don't error in the error handling code.
      (Robert Collins, #161240)
+
+   * Give a clearer message when a pull fails because the source needs
+     to be reconciled.
+     (Martin Pool, #164443)
 
    * It is clearer when a plugin cannot be loaded because of its name, and a
      suggestion for an acceptable name is given. (Daniel Watkins, #103023)
@@ -180,6 +227,14 @@ IN DEVELOPMENT
      (line, version_id) tuples. This change has been made to aid reconcile and
      fetch operations. (Robert Collins)
 
+   * ``bzrlib.repository.get_versioned_file_checker`` is now private.
+     (Robert Collins)
+
+   * The Repository format registry default has been removed; it was previously
+     obsoleted by the bzrdir format default, which implies a default repository
+     format.
+     (Martin Pool)
+
   INTERNALS:
 
    * Added ``ContainerSerialiser`` and ``ContainerPushParser`` to
@@ -190,7 +245,17 @@ IN DEVELOPMENT
    * New module ``lru_cache`` providing a cache for use by tasks that need
      semi-random access to large amounts of data. (John A Meinel)
 
+   * InventoryEntry.diff is now deprecated.  Please use diff.DiffTree instead.
+
   TESTING:
+
+
+bzr 0.92 2007-11-05
+===================
+
+  CHANGES:
+
+  * New uninstaller on Win32.  (Alexander Belchenko)
 
 
 bzr 0.92rc1 2007-10-29
@@ -251,11 +316,6 @@ bzr 0.92rc1 2007-10-29
 
    * Commit no longer checks for new text keys during insertion when the
      revision id was deterministically unique. (Robert Collins)
-
-   * Commit with many automatically found deleted paths no longer performs
-     linear scanning for the children of those paths during inventory
-     iteration. This should fix commit performance blowing out when many such
-     paths occur during commit. (Robert Collins, #156491)
 
    * Committing a change which is not a merge and does not change the number of
      files in the tree is faster by utilising the data about whether files are

@@ -894,12 +894,12 @@ class TestDotBzrHidden(TestCaseWithTransport):
         if sys.platform == 'win32' and not win32utils.has_win32file:
             raise TestSkipped('unable to make file hidden without pywin32 library')
         b = bzrdir.BzrDir.create('.')
-        self.build_tree('a')
+        self.build_tree(['a'])
         self.assertEquals(['a'], self.get_ls())
 
     def test_dot_bzr_hidden_with_url(self):
         if sys.platform == 'win32' and not win32utils.has_win32file:
             raise TestSkipped('unable to make file hidden without pywin32 library')
         b = bzrdir.BzrDir.create(urlutils.local_path_to_url('.'))
-        self.build_tree('a')
+        self.build_tree(['a'])
         self.assertEquals(['a'], self.get_ls())
