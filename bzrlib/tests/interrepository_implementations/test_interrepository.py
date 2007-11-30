@@ -186,7 +186,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         # exception
         try:
             to_repo.fetch(tree.branch.repository, 'rev-two')
-        except Exception:
+        except (errors.MissingText, errors.RevisionNotPresent), e:
             # If an exception is raised, the revision should not be in the
             # target.
             self.assertRaises((errors.NoSuchRevision, errors.RevisionNotPresent),

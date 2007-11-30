@@ -2558,6 +2558,16 @@ class InterPackRepo(InterSameDataRepository):
         pack = Packer(self.target._pack_collection, packs, '.fetch',
             revision_ids).pack()
         if pack is not None:
+            external_refs = pack._external_compression_parents_of_new_texts()
+            if external_refs:
+                index = self.target._pack_collection.text_index.combined_index
+                found_items = list(index.iter_entries(external_refs))
+                if len(found_items) != len(external_refs):
+                    found_keys = set(k for idx, k, refs, value in found_items)
+                    missing_items = external_refs - found_keys
+                    missing_file_id, missing_revision_id = missing_items.pop()
+                    raise errors.MissingText(self.target, missing_revision_id,
+                                             missing_file_id)
             self.target._pack_collection._save_pack_names()
             # Trigger an autopack. This may duplicate effort as we've just done
             # a pack creation, but for now it is simpler to think about as

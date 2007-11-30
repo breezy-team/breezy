@@ -173,6 +173,14 @@ class Pack(object):
         """The text index is the name + .tix."""
         return self.index_name('text', name)
 
+    def _external_compression_parents_of_new_texts(self):
+        keys = set()
+        refs = set()
+        for node in self.text_index.iter_all_entries():
+            keys.add(node[1])
+            refs.update(node[3][1])
+        return refs - keys
+
 
 class ExistingPack(Pack):
     """An in memory proxy for an existing .pack and its disk indices."""
@@ -834,14 +842,6 @@ class Packer(object):
                 pb.update("Copied record", record_index)
                 record_index += 1
 
-    def _external_compression_parents_of_new_texts(self):
-        keys = set()
-        refs = set()
-        for node in self.new_pack.text_index.iter_all_entries():
-            keys.add(node[1])
-            refs.update(node[3][1])
-        return refs - keys
-
     def _get_text_nodes(self):
         text_index_map = self._pack_collection._packs_list_to_pack_map_and_index_list(
             self.packs, 'text_index')[0]
@@ -988,7 +988,7 @@ class ReconcilePacker(Packer):
             output_knit.add_lines_with_ghosts(
                 key[1], parents, text_lines, random_id=True, check_content=False)
         # 4) check that nothing inserted has a reference outside the keyspace.
-        missing_text_keys = self._external_compression_parents_of_new_texts()
+        missing_text_keys = self.new_pack._external_compression_parents_of_new_texts()
         if missing_text_keys:
             raise errors.BzrError('Reference to missing compression parents %r'
                 % (refs - keys,))
