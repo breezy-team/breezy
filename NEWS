@@ -96,6 +96,11 @@ IN DEVELOPMENT
      sorted chronologically instead of lexicographically with --sort=time.
      (Adeodato Simó, #120231)
 
+   * Windows standalone version of bzr is able to load system-wide plugins from
+     "plugins" subdirectory in installation directory. In addition standalone
+     installer write to the registry (HKLM\SOFTWARE\Bazaar) useful info 
+     about paths and bzr version. (Alexander Belchenko, #129298)
+
   DOCUMENTATION:
 
   BUG FIXES:
@@ -103,6 +108,9 @@ IN DEVELOPMENT
    * A progress bar has been added for knitpack -> knitpack fetching.
      (Robert Collins, #157789, #159147)
 
+   * Branching from a branch via smart server now preserves the repository
+     format. (Andrew Bennetts,  #164626)
+     
    * ``commit`` is now able to invoke an external editor in a non-ascii
      directory. (Daniel Watkins, #84043)
 

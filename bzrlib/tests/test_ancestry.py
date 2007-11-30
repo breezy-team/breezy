@@ -50,9 +50,11 @@ class TestAncestry(TestCaseWithMemoryTransport):
         builder = BranchBuilder(self.get_transport())
         rev_id = builder.build_commit()
         branch = builder.get_branch()
+        branch.lock_read()
         self.assertTrue(is_ancestor('null:', 'null:', branch))
         self.assertTrue(is_ancestor(rev_id, 'null:',  branch))
         self.assertFalse(is_ancestor('null:', rev_id, branch))
+        branch.unlock()
 
 
 # TODO: check that ancestry is updated to include indirectly merged revisions
