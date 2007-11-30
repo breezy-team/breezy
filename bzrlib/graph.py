@@ -322,6 +322,10 @@ class Graph(object):
 
         Note that None is not an acceptable substitute for NULL_REVISION.
         in the input for this method.
+
+        :param count_steps: If True, the return value will be a tuple of
+            (unique_lca, steps) where steps is the number of times that
+            find_lca was run.  If False, only unique_lca is returned.
         """
         revisions = [left_revision, right_revision]
         steps = 0
