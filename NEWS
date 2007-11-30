@@ -250,6 +250,14 @@ IN DEVELOPMENT
   TESTING:
 
 
+bzr 0.92 2007-11-05
+===================
+
+  CHANGES:
+
+  * New uninstaller on Win32.  (Alexander Belchenko)
+
+
 bzr 0.92rc1 2007-10-29
 ======================
 
