@@ -4000,17 +4000,17 @@ class cmd_send(Command):
     def _run(self, submit_branch, revision, public_branch, remember, format,
              no_bundle, no_patch, output, from_, mail_to, message):
         from bzrlib.revision import NULL_REVISION
+        branch = Branch.open_containing(from_)[0]
         if output is None:
             outfile = StringIO()
         elif output == '-':
             outfile = self.outf
         else:
             outfile = open(output, 'wb')
+        # we may need to write data into branch's repository to calculate
+        # the data to send.
+        branch.lock_write()
         try:
-            branch = Branch.open_containing(from_)[0]
-            # we may need to write data into branch's repository to calculate
-            # the data to send.
-            branch.lock_write()
             if output is None:
                 config = branch.get_config()
                 if mail_to is None:
