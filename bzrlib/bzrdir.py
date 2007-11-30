@@ -2545,4 +2545,4 @@ format_registry.register_metadir('rich-root-pack',
     hidden=False,
     experimental=True,
     )
-format_registry.set_default('dirstate-tags')
+format_registry.set_default('pack-0.92')

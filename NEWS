@@ -9,6 +9,13 @@ IN DEVELOPMENT
 
   NOTES WHEN UPGRADING:
 
+   * The default repository format has changed to ``pack-0.92``.  This 
+     default is used when creating new repositories with ``init`` and 
+     ``init-repo``, and when branching over bzr+ssh or bzr+hpss. 
+     (See https://bugs.launchpad.net/bugs/164626)
+     This format can be read and written by Bazaar 0.92 and later, and 
+     data can be transferred to and from older formats.
+
   CHANGES:
 
    * Disable detection of plink.exe as possible ssh vendor. Plink vendor
