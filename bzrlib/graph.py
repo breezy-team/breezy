@@ -16,6 +16,7 @@
 
 from bzrlib import (
     errors,
+    revision,
     tsort,
     )
 from bzrlib.deprecated_graph import (node_distances, select_farthest)
@@ -347,6 +348,8 @@ class Graph(object):
         smallest number of parent looksup to determine the ancestral
         relationship between N revisions.
         """
+        if revision.is_null(candidate_ancestor):
+            return True
         return set([candidate_descendant]) == self.heads(
             [candidate_ancestor, candidate_descendant])
 
