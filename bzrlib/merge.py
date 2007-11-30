@@ -320,7 +320,8 @@ class Merger(object):
             if self.base_rev_id == NULL_REVISION:
                 raise UnrelatedBranches()
             if steps > 1:
-                warning('Warning: criss-cross merge encountered.')
+                warning('Warning: criss-cross merge encountered.  See bzr'
+                        ' help criss-cross.')
         self.base_tree = self.revision_tree(self.base_rev_id)
         self.base_is_ancestor = True
         self.base_is_other_ancestor = True
