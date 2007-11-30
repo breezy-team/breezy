@@ -1332,7 +1332,8 @@ class KnitCorrupt(KnitError):
 
 
 class KnitDataStreamIncompatible(KnitError):
-    # Not raised anymore, as we can convert data streams
+    # Not raised anymore, as we can convert data streams.  In future we may
+    # need it again for more exotic cases, so we're keeping it around for now.
 
     _fmt = "Cannot insert knit data stream of format \"%(stream_format)s\" into knit of format \"%(target_format)s\"."
 

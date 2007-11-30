@@ -1535,7 +1535,7 @@ class _KnitIndex(_KnitComponentFile):
             return 'line-delta'
 
     def get_options(self, version_id):
-        """Return a string representing options.
+        """Return a list representing options.
 
         e.g. ['foo', 'bar']
         """
@@ -2080,14 +2080,13 @@ class _StreamAccess(object):
     def get_raw_records(self, memos_for_retrieval):
         """Get the raw bytes for a records.
 
-        :param memos_for_retrieval: An iterable containing the (index, pos, 
-            length) memo for retrieving the bytes. The .knit method ignores
-            the index as there is always only a single file.
+        :param memos_for_retrieval: An iterable containing the (thunk_flag,
+            index, start, end) memo for retrieving the bytes.
         :return: An iterator over the bytes of the records.
         """
         # use a generator for memory friendliness
-        for index, start, end in memos_for_retrieval:
-            if index is self.stream_index:
+        for thunk_flag, version_id, start, end in memos_for_retrieval:
+            if version_id is self.stream_index:
                 yield self.data[start:end]
                 continue
             # we have been asked to thunk. This thunking only occurs when
@@ -2096,10 +2095,9 @@ class _StreamAccess(object):
             # We could improve performance here by scanning for where we need
             # to do this and using get_line_list, then interleaving the output
             # as desired. However, for now, this is sufficient.
-            if (index[:6] != 'thunk:' or
-                self.orig_factory.__class__ != KnitPlainFactory):
-                raise errors.KnitCorrupt(self, 'Bad thunk request %r' % index)
-            version_id = index[6:]
+            if self.orig_factory.__class__ != KnitPlainFactory:
+                raise errors.KnitCorrupt(
+                    self, 'Bad thunk request %r' % version_id)
             lines = self.backing_knit.get_lines(version_id)
             line_bytes = ''.join(lines)
             digest = sha_string(line_bytes)
@@ -2175,7 +2173,7 @@ class _StreamIndex(object):
             raise errors.KnitIndexUnknownMethod(self, options)
 
     def get_options(self, version_id):
-        """Return a string representing options.
+        """Return a list representing options.
 
         e.g. ['foo', 'bar']
         """
@@ -2189,17 +2187,18 @@ class _StreamIndex(object):
         """Return details needed to access the version.
         
         _StreamAccess has the data as a big array, so we return slice
-        coordinates into that (as index_memo's are opaque outside the 
-        index and matching access class.
+        coordinates into that (as index_memo's are opaque outside the
+        index and matching access class).
 
-        :return: a tuple (None, start, end).
+        :return: a tuple (thunk_flag, index, start, end).  If thunk_flag is
+            False, index will be self, otherwise it will be a version id.
         """
         try:
             start, end = self._by_version[version_id][1]
-            return self, start, end
+            return False, self, start, end
         except KeyError:
             # Signal to the access object to handle this from the backing knit.
-            return ('thunk:%s' % version_id, None, None)
+            return (True, version_id, None, None)
 
     def get_versions(self):
         """Get all the versions in the stream."""

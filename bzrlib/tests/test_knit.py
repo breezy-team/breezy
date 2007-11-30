@@ -1784,7 +1784,9 @@ class BasicKnitTests(KnitTests):
             knit2.transport.get_bytes(knit2._index._filename))
 
     def assertKnitValuesEqual(self, left, right):
-        """Assert that the texts and graph of left and right are the same."""
+        """Assert that the texts, annotations and graph of left and right are
+        the same.
+        """
         self.assertEqual(set(left.versions()), set(right.versions()))
         for version in left.versions():
             self.assertEqual(left.get_parents_with_ghosts(version),
@@ -2865,8 +2867,8 @@ class Test_StreamIndex(KnitTests):
 
     def assertGetPosition(self, knit, versions, version, result):
         index = self.get_index(knit, knit.get_data_stream(versions))
-        if result[0] is None:
-            result = (index, result[1], result[2])
+        if result[1] is None:
+            result = (result[0], index, result[2], result[3])
         self.assertEqual(result, index.get_position(version))
 
     def assertGetParentsWithGhosts(self, knit, versions, version, parents):
@@ -2951,14 +2953,14 @@ class Test_StreamIndex(KnitTests):
 
     def test_get_position(self):
         knit = self.make_knit_with_4_versions_2_dags()
-        # get_position returns (index(can be None), start, end) for
+        # get_position returns (thunk_flay, index(can be None), start, end) for
         # _StreamAccess to use.
-        self.assertGetPosition(knit, ['a'], 'a', (None, 0, 78))
-        self.assertGetPosition(knit, ['a', 'c'], 'c', (None, 78, 156))
+        self.assertGetPosition(knit, ['a'], 'a', (False, None, 0, 78))
+        self.assertGetPosition(knit, ['a', 'c'], 'c', (False, None, 78, 156))
         # get_position on a text that is not in the datastream (but in the
-        # backing knit) returns ('thunk:versionid', None, None) - and then the
+        # backing knit) returns (True, 'versionid', None, None) - and then the
         # access object can construct the relevant data as needed.
-        self.assertGetPosition(knit, ['a', 'c'], 'b', ('thunk:b', None, None))
+        self.assertGetPosition(knit, ['a', 'c'], 'b', (True, 'b', None, None))
 
 
 class Test_StreamAccess(KnitTests):
@@ -3015,7 +3017,7 @@ class Test_StreamAccess(KnitTests):
         target_knit.join(source_knit)
         index, access = self.get_index_access(target_knit,
             source_knit.get_data_stream([]))
-        raw_data = list(access.get_raw_records([("thunk:A", None, None)]))[0]
+        raw_data = list(access.get_raw_records([(True, "A", None, None)]))[0]
         df = GzipFile(mode='rb', fileobj=StringIO(raw_data))
         self.assertEqual(
             'version A 1 5d36b88bb697a2d778f024048bafabd443d74503\n'
@@ -3028,4 +3030,4 @@ class Test_StreamAccess(KnitTests):
         index, access = self.get_index_access(knit,
             knit.get_data_stream([]))
         self.assertRaises(errors.KnitCorrupt,
-            list, access.get_raw_records([("thunk:A", None, None)]))
+            list, access.get_raw_records([(True, "A", None, None)]))
