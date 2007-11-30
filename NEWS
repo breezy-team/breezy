@@ -71,6 +71,11 @@ IN DEVELOPMENT
      sorted chronologically instead of lexicographically with --sort=time.
      (Adeodato Simó, #120231)
 
+  INTERNALS:
+
+    * New -Dhttp debug option reports http connections, requests and responses.
+      (Vincent Ladeuil)
+
   DOCUMENTATION:
 
   BUG FIXES:

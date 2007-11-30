@@ -328,6 +328,9 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         else:
             # The whole file will be downloaded anyway
             max_ranges = total
+        # TODO: Some web servers may ignore the range requests and return the
+        # whole file, we may want to detect that and avoid further requests.
+        # Hint: test_readv_multiple_get_requests will fail in that case .
         for group in xrange(0, len(coalesced), max_ranges):
             ranges = coalesced[group:group+max_ranges]
             # Note that the following may raise errors.InvalidRange. It's the

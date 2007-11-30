@@ -268,6 +268,7 @@ development.
                operations.
 -Dhashcache    Log every time a working file is read to determine its hash.
 -Dhooks        Trace hook execution.
+-Dhttp         Trace http connections, requests and responses
 -Dhpss         Trace smart protocol requests and responses.
 -Dindex        Trace major index operations.
 -Dlock         Trace when lockdir locks are taken or released.
