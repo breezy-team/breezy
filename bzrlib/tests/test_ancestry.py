@@ -50,6 +50,8 @@ class TestAncestry(TestCaseWithMemoryTransport):
         builder = BranchBuilder(self.get_transport())
         rev_id = builder.build_commit()
         branch = builder.get_branch()
+        branch.lock_read()
+        self.addCleanup(branch.unlock)
         self.assertTrue(is_ancestor('null:', 'null:', branch))
         self.assertTrue(is_ancestor(rev_id, 'null:',  branch))
         self.assertFalse(is_ancestor('null:', rev_id, branch))
