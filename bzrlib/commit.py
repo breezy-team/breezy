@@ -133,10 +133,10 @@ class ReportCommitToLog(NullCommitReporter):
 
     def started(self, revno, rev_id, location=None):
         if location is not None:
-            location = ' to "' + unescape_for_display(location, 'utf-8') + '"'
+            location = ' to: ' + unescape_for_display(location, 'utf-8')
         else:
             location = ''
-        self._note('Committing revision %d%s.', revno, location)
+        self._note('Committing%s', location)
 
     def completed(self, revno, rev_id):
         self._note('Committed revision %d.', revno)

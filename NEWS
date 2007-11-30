@@ -62,6 +62,9 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+   * ``bzr commit`` now doesn't print the revision number twice. (Matt
+     Nordhoff, #172612)
+
    * ``bzr send`` now doesn't require the target e-mail address to be
      specified on the command line if an interactive e-mail client is used.
      (Lukáš Lalinský)
