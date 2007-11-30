@@ -805,8 +805,8 @@ class KnitVersionedFile(VersionedFile):
             factory = KnitAnnotateFactory()
         else:
             raise errors.KnitDataStreamUnknown(format)
-        access = _StreamAccess(reader_callable)
         index = _StreamIndex(data_list)
+        access = _StreamAccess(reader_callable, index, self, factory)
         return KnitVersionedFile(self.filename, self.transport,
             factory=factory, index=index, access_method=access)
 
@@ -2046,16 +2046,36 @@ class _PackAccess(object):
 
 
 class _StreamAccess(object):
-    """A Knit Access object that provides data from a datastream."""
+    """A Knit Access object that provides data from a datastream.
+    
+    It also provides a fallback to present as unannotated data, annotated data
+    from a *backing* access object.
 
-    def __init__(self, reader_callable):
+    This is triggered by a index_memo which is pointing to a different index
+    than this was constructed with, and is used to allow extracting full
+    unannotated texts for insertion into annotated knits.
+    """
+
+    def __init__(self, reader_callable, stream_index, backing_knit,
+        orig_factory):
         """Create a _StreamAccess object.
 
         :param reader_callable: The reader_callable from the datastream.
             This is called to buffer all the data immediately, for 
             random access.
+        :param stream_index: The index the data stream this provides access to
+            which will be present in native index_memo's.
+        :param backing_knit: The knit object that will provide access to 
+            annotated texts which are not available in the stream, so as to
+            create unannotated texts.
+        :param orig_factory: The original content factory used to generate the
+            stream. This is used for checking whether the thunk code for
+            supporting _copy_texts will generate the correct form of data.
         """
         self.data = reader_callable(None)
+        self.stream_index = stream_index
+        self.backing_knit = backing_knit
+        self.orig_factory = orig_factory
 
     def get_raw_records(self, memos_for_retrieval):
         """Get the raw bytes for a records.
@@ -2066,8 +2086,39 @@ class _StreamAccess(object):
         :return: An iterator over the bytes of the records.
         """
         # use a generator for memory friendliness
-        for _, start, end in memos_for_retrieval:
-            yield self.data[start:end]
+        for index, start, end in memos_for_retrieval:
+            if index is self.stream_index:
+                yield self.data[start:end]
+                continue
+            # we have been asked to thunk. This thunking only occurs when
+            # we are obtaining plain texts from an annotated backing knit
+            # so that _copy_texts will work.
+            # We could improve performance here by scanning for where we need
+            # to do this and using get_line_list, then interleaving the output
+            # as desired. However, for now, this is sufficient.
+            if (index[:6] != 'thunk:' or
+                self.orig_factory.__class__ != KnitPlainFactory):
+                raise errors.KnitCorrupt(self, 'Bad thunk request %r' % index)
+            version_id = index[6:]
+            lines = self.backing_knit.get_lines(version_id)
+            line_bytes = ''.join(lines)
+            digest = sha_string(line_bytes)
+            if lines:
+                if lines[-1][-1] != '\n':
+                    lines[-1] = lines[-1] + '\n'
+                    line_bytes += '\n'
+            orig_options = list(self.backing_knit._index.get_options(version_id))
+            if 'fulltext' not in orig_options:
+                if 'line-delta' not in orig_options:
+                    raise errors.KnitCorrupt(self,
+                        'Unknown compression method %r' % orig_options)
+                orig_options.remove('line-delta')
+                orig_options.append('fulltext')
+            # We want plain data, because we expect to thunk only to allow text
+            # extraction.
+            size, bytes = self.backing_knit._data._record_to_data(version_id,
+                digest, lines, line_bytes)
+            yield bytes
 
 
 class _StreamIndex(object):
@@ -2108,6 +2159,21 @@ class _StreamIndex(object):
             graph[version] = parents
         return graph.keys()
 
+    def get_method(self, version_id):
+        """Return compression method of specified version."""
+        try:
+            options = self._by_version[version_id][0]
+        except KeyError:
+            # Strictly speaking this should checkin in the backing knit, but
+            # until we have a test to discriminate, this will do.
+            return 'fulltext'
+        if 'fulltext' in options:
+            return 'fulltext'
+        elif 'line-delta' in options:
+            return 'line-delta'
+        else:
+            raise errors.KnitIndexUnknownMethod(self, options)
+
     def get_options(self, version_id):
         """Return a string representing options.
 
@@ -2128,8 +2194,12 @@ class _StreamIndex(object):
 
         :return: a tuple (None, start, end).
         """
-        start, end = self._by_version[version_id][1]
-        return None, start, end
+        try:
+            start, end = self._by_version[version_id][1]
+            return self, start, end
+        except KeyError:
+            # Signal to the access object to handle this from the backing knit.
+            return ('thunk:%s' % version_id, None, None)
 
     def get_versions(self):
         """Get all the versions in the stream."""
@@ -2144,8 +2214,13 @@ class _StreamIndex(object):
             The order is undefined, allowing for different optimisations in
             the underlying implementation.
         """
-        return [(version, self._by_version[version][2]) for 
-            version in version_ids]
+        result = []
+        for version in version_ids:
+            try:
+                result.append((version, self._by_version[version][2]))
+            except KeyError:
+                pass
+        return result
 
 
 class _KnitData(object):
@@ -2408,7 +2483,7 @@ class InterKnit(InterVersionedFile):
             for index, version in enumerate(to_process):
                 pb.update('Converting versioned data', index, total)
                 sha1, num_bytes, parent_text = self.target.add_lines(version,
-                    self.source.get_parents(version),
+                    self.source.get_parents_with_ghosts(version),
                     self.source.get_lines(version),
                     parent_texts=parent_cache)
                 parent_cache[version] = parent_text

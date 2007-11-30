@@ -61,6 +61,7 @@ from bzrlib.tests import (
     )
 from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryTransport
+from bzrlib.tuned_gzip import GzipFile
 from bzrlib.util import bencode
 from bzrlib.weave import Weave
 
@@ -1830,6 +1831,19 @@ class BasicKnitTests(KnitTests):
         target.insert_data_stream(source.get_data_stream(['text-b']))
         self.assertKnitValuesEqual(source, target)
 
+    def test_insert_data_stream_unannotated_annotated(self):
+        """Inserting an unannotated datastream to an annotated knit works."""
+        # case one - full texts.
+        source = self.make_test_knit(name='source', annotate=False)
+        target = self.make_test_knit(name='target', annotate=True)
+        source.add_lines('text-a', [], split_lines(TEXT_1))
+        target.insert_data_stream(source.get_data_stream(['text-a']))
+        self.assertKnitValuesEqual(source, target)
+        # case two - deltas.
+        source.add_lines('text-b', ['text-a'], split_lines(TEXT_2))
+        target.insert_data_stream(source.get_data_stream(['text-b']))
+        self.assertKnitValuesEqual(source, target)
+
     def test_insert_data_stream_records_already_present(self):
         """Insert a data stream where some records are alreday present in the
         target, and some not.  Only the new records are inserted.
@@ -1943,6 +1957,10 @@ class BasicKnitTests(KnitTests):
         self.assertEqual(a_knit._data._access.data, expected_data)
         self.assertEqual(a_knit.filename, target_knit.filename)
         self.assertEqual(a_knit.transport, target_knit.transport)
+        self.assertEqual(a_knit._index, a_knit._data._access.stream_index)
+        self.assertEqual(target_knit, a_knit._data._access.backing_knit)
+        self.assertIsInstance(a_knit._data._access.orig_factory,
+            source_knit.factory.__class__)
 
     def test__knit_from_data_stream_empty(self):
         """Create a knit object from a datastream."""
@@ -2830,10 +2848,14 @@ class Test_StreamIndex(KnitTests):
         index = self.get_index(knit, knit.get_data_stream(versions))
         self.assertEqual(result, index.get_ancestry(ancestry_versions, False))
 
-    def assertIterParents(self, knit, versions, result):
+    def assertIterParents(self, knit, versions, parent_versions, result):
         """Check the result of an iter_parents call on knit."""
         index = self.get_index(knit, knit.get_data_stream(versions))
-        self.assertEqual(result, index.iter_parents(versions))
+        self.assertEqual(result, index.iter_parents(parent_versions))
+
+    def assertGetMethod(self, knit, versions, version, result):
+        index = self.get_index(knit, knit.get_data_stream(versions))
+        self.assertEqual(result, index.get_method(version))
 
     def assertGetOptions(self, knit, version, options):
         index = self.get_index(knit, knit.get_data_stream(version))
@@ -2841,6 +2863,12 @@ class Test_StreamIndex(KnitTests):
 
     def assertGetPosition(self, knit, versions, version, result):
         index = self.get_index(knit, knit.get_data_stream(versions))
+        self.assertEqual(result, index.get_position(version))
+
+    def assertGetPosition(self, knit, versions, version, result):
+        index = self.get_index(knit, knit.get_data_stream(versions))
+        if result[0] is None:
+            result = (index, result[1], result[2])
         self.assertEqual(result, index.get_position(version))
 
     def assertGetParentsWithGhosts(self, knit, versions, version, parents):
@@ -2890,14 +2918,27 @@ class Test_StreamIndex(KnitTests):
         self.assertIndexAncestry(knit, ['c', 'd'], ['a', 'b', 'c', 'd'],
             {'a':[], 'b':[], 'c':[], 'd':[]}.keys())
 
+    def test_get_method(self):
+        knit = self.make_knit_with_4_versions_2_dags()
+        self.assertGetMethod(knit, ['a'], 'a', 'fulltext')
+        self.assertGetMethod(knit, ['c'], 'c', 'line-delta')
+        # get_method on a basis that is not in the datastream (but in the
+        # backing knit) returns 'fulltext', because thats what we'll create as
+        # we thunk across.
+        self.assertGetMethod(knit, ['c'], 'b', 'fulltext')
+
     def test_iter_parents(self):
         knit = self.make_knit_with_4_versions_2_dags()
-        self.assertIterParents(knit, ['a'], [('a', [])])
-        self.assertIterParents(knit, ['a', 'b'], [('a', []), ('b', [])])
-        self.assertIterParents(knit, ['a', 'b', 'c'],
+        self.assertIterParents(knit, ['a'], ['a'], [('a', [])])
+        self.assertIterParents(knit, ['a', 'b'], ['a', 'b'],
+            [('a', []), ('b', [])])
+        self.assertIterParents(knit, ['a', 'b', 'c'], ['a', 'b', 'c'],
             [('a', []), ('b', []), ('c', ['b', 'a'])])
         self.assertIterParents(knit, ['a', 'b', 'c', 'd'],
+            ['a', 'b', 'c', 'd'],
             [('a', []), ('b', []), ('c', ['b', 'a']), ('d', ['e', 'f'])])
+        self.assertIterParents(knit, ['c'], ['a', 'b', 'c'],
+            [('c', ['b', 'a'])])
 
     def test_get_options(self):
         knit = self.make_knit_with_4_versions_2_dags()
@@ -2915,9 +2956,13 @@ class Test_StreamIndex(KnitTests):
         # _StreamAccess to use.
         self.assertGetPosition(knit, ['a'], 'a', (None, 0, 78))
         self.assertGetPosition(knit, ['a', 'c'], 'c', (None, 78, 156))
+        # get_position on a text that is not in the datastream (but in the
+        # backing knit) returns ('thunk:versionid', None, None) - and then the
+        # access object can construct the relevant data as needed.
+        self.assertGetPosition(knit, ['a', 'c'], 'b', ('thunk:b', None, None))
 
 
-class Test_StreamIndex(KnitTests):
+class Test_StreamAccess(KnitTests):
 
     def get_index_access(self, knit, stream):
         """Get a _StreamAccess from knit and stream."""
@@ -2961,3 +3006,27 @@ class Test_StreamIndex(KnitTests):
         self.assertGetRawRecords(knit, ['a', 'b'])
         self.assertGetRawRecords(knit, ['a'])
         self.assertGetRawRecords(knit, ['b'])
+    
+    def test_get_raw_record_from_backing_knit(self):
+        # the thunk layer should create an artificial A on-demand when needed.
+        source_knit = self.make_test_knit(name='plain', annotate=False)
+        target_knit = self.make_test_knit(name='annotated', annotate=True)
+        source_knit.add_lines("A", [], ["Foo\n"])
+        # Give the target A, so we can try to thunk across to it.
+        target_knit.join(source_knit)
+        index, access = self.get_index_access(target_knit,
+            source_knit.get_data_stream([]))
+        raw_data = list(access.get_raw_records([("thunk:A", None, None)]))[0]
+        df = GzipFile(mode='rb', fileobj=StringIO(raw_data))
+        self.assertEqual(
+            'version A 1 5d36b88bb697a2d778f024048bafabd443d74503\n'
+            'Foo\nend A\n',
+            df.read())
+
+    def test_asking_for_thunk_stream_is_not_plain_errors(self):
+        knit = self.make_test_knit(name='annotated', annotate=True)
+        knit.add_lines("A", [], ["Foo\n"])
+        index, access = self.get_index_access(knit,
+            knit.get_data_stream([]))
+        self.assertRaises(errors.KnitCorrupt,
+            list, access.get_raw_records([("thunk:A", None, None)]))
