@@ -173,7 +173,7 @@ class Pack(object):
         """The text index is the name + .tix."""
         return self.index_name('text', name)
 
-    def _external_compression_parents_of_new_texts(self):
+    def _external_compression_parents_of_texts(self):
         keys = set()
         refs = set()
         for node in self.text_index.iter_all_entries():
@@ -988,7 +988,7 @@ class ReconcilePacker(Packer):
             output_knit.add_lines_with_ghosts(
                 key[1], parents, text_lines, random_id=True, check_content=False)
         # 4) check that nothing inserted has a reference outside the keyspace.
-        missing_text_keys = self.new_pack._external_compression_parents_of_new_texts()
+        missing_text_keys = self.new_pack._external_compression_parents_of_texts()
         if missing_text_keys:
             raise errors.BzrError('Reference to missing compression parents %r'
                 % (refs - keys,))

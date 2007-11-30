@@ -2558,7 +2558,7 @@ class InterPackRepo(InterSameDataRepository):
         pack = Packer(self.target._pack_collection, packs, '.fetch',
             revision_ids).pack()
         if pack is not None:
-            external_refs = pack._external_compression_parents_of_new_texts()
+            external_refs = pack._external_compression_parents_of_texts()
             if external_refs:
                 index = self.target._pack_collection.text_index.combined_index
                 found_items = list(index.iter_entries(external_refs))
