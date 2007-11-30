@@ -36,6 +36,9 @@ IN DEVELOPMENT
      accordingly. This command was previously part of the BzrTools plug-in.
      (Ian Clatworthy, Aaron Bentley, David Allouche)
 
+   * ``reconfigure`` command can now convert branches, trees, or checkouts to
+     lightweight checkouts.  (Aaron Bentley)
+
   PERFORMANCE:
 
    * Commit updates the state of the working tree via a delta rather than
@@ -58,6 +61,10 @@ IN DEVELOPMENT
      (Aaron Bentley, #149254)
 
   IMPROVEMENTS:
+
+   * ``bzr send`` now doesn't require the target e-mail address to be
+     specified on the command line if an interactive e-mail client is used.
+     (Lukáš Lalinský)
 
    * ``bzr tags`` now prints the revision number for each tag, instead of
      the revision id, unless --show-ids is passed. In addition, tags can be
@@ -92,6 +99,9 @@ IN DEVELOPMENT
    * Don't catch the exceptions related to the http pipeline status before
      retrying an http request or some programming errors may be masked.
      (Vincent Ladeuil, #160012)
+
+   * Fix ``bzr rm`` to not delete modified and ignored files.
+     (Lukáš Lalinský, #172598)
 
    * Fix exception when revisionspec contains merge revisons but log
      formatter doesn't support merge revisions. (Kent Gibson, #148908)
@@ -204,6 +214,8 @@ IN DEVELOPMENT
 
    * New module ``lru_cache`` providing a cache for use by tasks that need
      semi-random access to large amounts of data. (John A Meinel)
+
+   * InventoryEntry.diff is now deprecated.  Please use diff.DiffTree instead.
 
   TESTING:
 

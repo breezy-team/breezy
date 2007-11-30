@@ -85,6 +85,11 @@ class RemoteBzrDir(BzrDir):
         self._real_bzrdir.create_repository(shared=shared)
         return self.open_repository()
 
+    def destroy_repository(self):
+        """See BzrDir.destroy_repository"""
+        self._ensure_real()
+        self._real_bzrdir.destroy_repository()
+
     def create_branch(self):
         self._ensure_real()
         real_branch = self._real_bzrdir.create_branch()
