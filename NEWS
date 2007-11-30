@@ -149,6 +149,10 @@ IN DEVELOPMENT
    * Obsolete packs are now cleaned up by pack and autopack operations.
      (Robert Collins, #153789)
 
+   * Operations pulling data from a smart server where the underlying
+     repositories have are respectively annotated an unannotated will now work.
+     (Robert Collins, #165106).
+
    * Reconcile now shows progress bars. (Robert Collins, #159351)
 
    * ``RemoteBranch`` was not initializing ``self._revision_id_to_revno_map``
