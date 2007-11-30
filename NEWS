@@ -9,6 +9,31 @@ IN DEVELOPMENT
 
   NOTES WHEN UPGRADING:
 
+   * The default repository format is now ``pack-0.92``.  This 
+     default is used when creating new repositories with ``init`` and 
+     ``init-repo``, and when branching over bzr+ssh or bzr+hpss. 
+     (See https://bugs.launchpad.net/bugs/164626)
+
+     This format can be read and written by Bazaar 0.92 and later, and 
+     data can be transferred to and from older formats.
+
+     To upgrade, please reconcile your repository (``bzr reconcile``), and then
+     upgrade (``bzr upgrade``). 
+     
+     ``pack-0.92`` offers substantially better scaling and performance than the
+     previous knits format. Some operations are slower where the code already
+     had bad scaling characteristics under knits, the pack format makes such
+     operations more visible as part of being more scalable overall. We will
+     correct such operations over the coming releases and encourage the filing
+     of bugs on any operation which you observe to be slower in a packs
+     repository. One particular case that we do not intend to fix is pulling
+     data from a pack repository into a knit repository over a high latency
+     link;  downgrading such data requires reinsertion of the file texts, and
+     this is a classic space/time tradeoff. The current implementation is
+     conservative on memory usage because we need to support converting data
+     from any tree without problems.  
+     (Robert Collins, Martin Pool, #164476)
+
   CHANGES:
 
    * Disable detection of plink.exe as possible ssh vendor. Plink vendor
@@ -71,6 +96,16 @@ IN DEVELOPMENT
      sorted chronologically instead of lexicographically with --sort=time.
      (Adeodato Simó, #120231)
 
+   * Windows standalone version of bzr is able to load system-wide plugins from
+     "plugins" subdirectory in installation directory. In addition standalone
+     installer write to the registry (HKLM\SOFTWARE\Bazaar) useful info 
+     about paths and bzr version. (Alexander Belchenko, #129298)
+
+  INTERNALS:
+
+    * New -Dhttp debug option reports http connections, requests and responses.
+      (Vincent Ladeuil)
+
   DOCUMENTATION:
 
   BUG FIXES:
@@ -78,6 +113,9 @@ IN DEVELOPMENT
    * A progress bar has been added for knitpack -> knitpack fetching.
      (Robert Collins, #157789, #159147)
 
+   * Branching from a branch via smart server now preserves the repository
+     format. (Andrew Bennetts,  #164626)
+     
    * ``commit`` is now able to invoke an external editor in a non-ascii
      directory. (Daniel Watkins, #84043)
 
@@ -149,6 +187,10 @@ IN DEVELOPMENT
    * Obsolete packs are now cleaned up by pack and autopack operations.
      (Robert Collins, #153789)
 
+   * Operations pulling data from a smart server where the underlying
+     repositories are not both annotated/both unannotated will now work.
+     (Robert Collins, #165304).
+
    * Reconcile now shows progress bars. (Robert Collins, #159351)
 
    * ``RemoteBranch`` was not initializing ``self._revision_id_to_revno_map``
@@ -169,6 +211,11 @@ IN DEVELOPMENT
 
    * Revert doesn't crash when restoring a single file from a deleted
      directory. (Aaron Bentley)
+
+   * Catch ShortReadvErrors while using pycurl. Also make readv more robust by
+     allowing multiple GET requests to be issued if too many ranges are
+     required.
+     (Vincent Ladeuil, #172701)
 
    * Stderr output via logging mechanism now goes through encoded wrapper
      and no more uses utf-8, but terminal encoding instead. So all unicode
@@ -205,6 +252,11 @@ IN DEVELOPMENT
    * ``bzrlib.repository.get_versioned_file_checker`` is now private.
      (Robert Collins)
 
+   * The Repository format registry default has been removed; it was previously
+     obsoleted by the bzrdir format default, which implies a default repository
+     format.
+     (Martin Pool)
+
   INTERNALS:
 
    * Added ``ContainerSerialiser`` and ``ContainerPushParser`` to
@@ -218,6 +270,14 @@ IN DEVELOPMENT
    * InventoryEntry.diff is now deprecated.  Please use diff.DiffTree instead.
 
   TESTING:
+
+
+bzr 0.92 2007-11-05
+===================
+
+  CHANGES:
+
+  * New uninstaller on Win32.  (Alexander Belchenko)
 
 
 bzr 0.92rc1 2007-10-29

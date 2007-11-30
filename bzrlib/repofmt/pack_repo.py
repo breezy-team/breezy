@@ -1033,7 +1033,8 @@ class RepositoryPackCollection(object):
     def ensure_loaded(self):
         # NB: if you see an assertion error here, its probably access against
         # an unlocked repo. Naughty.
-        assert self.repo.is_locked()
+        if not self.repo.is_locked():
+            raise errors.ObjectNotLocked(self.repo)
         if self._names is None:
             self._names = {}
             self._packs_at_load = set()
@@ -1569,7 +1570,8 @@ class KnitPackRepository(KnitRepository):
         :returns: an iterator yielding tuples of (revison-id, parents-in-index,
             parents-in-revision).
         """
-        assert self.is_locked()
+        if not self.is_locked():
+            raise errors.ObjectNotLocked(self)
         pb = ui.ui_factory.nested_progress_bar()
         result = []
         try:
