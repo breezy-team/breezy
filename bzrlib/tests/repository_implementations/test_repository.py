@@ -28,7 +28,11 @@ from bzrlib import (
     )
 from bzrlib.delta import TreeDelta
 from bzrlib.inventory import Inventory, InventoryDirectory
-from bzrlib.repofmt.weaverepo import RepositoryFormat7
+from bzrlib.repofmt.weaverepo import (
+    RepositoryFormat5,
+    RepositoryFormat6,
+    RepositoryFormat7,
+    )
 from bzrlib.revision import NULL_REVISION, Revision
 from bzrlib.smart import server
 from bzrlib.tests import (
@@ -589,7 +593,8 @@ class TestRepository(TestCaseWithRepository):
         remote_repo = remote_bzrdir.open_repository()
         return remote_repo
 
-    def test_sprout_preserves_format(self):
+    def test_sprout_from_hpss_preserves_format(self):
+        """repo.sprout from a smart server preserves the repository format."""
         if self.repository_format == RepositoryFormat7():
             raise KnownFailure(
                 "Cannot fetch weaves over smart protocol.")
@@ -600,6 +605,26 @@ class TestRepository(TestCaseWithRepository):
         except errors.TransportNotPossible:
             raise TestNotApplicable(
                 "Cannot lock_read old formats like AllInOne over HPSS.")
+        remote_backing_repo = bzrdir.BzrDir.open(
+            self.get_vfs_only_url('remote')).open_repository()
+        self.assertEqual(remote_backing_repo._format, local_repo._format)
+
+    def test_sprout_branch_from_hpss_preserves_repo_format(self):
+        """branch.sprout from a smart server preserves the repository format.
+        """
+        weave_formats = [RepositoryFormat5(), RepositoryFormat6(),
+                         RepositoryFormat7()]
+        if self.repository_format in weave_formats:
+            raise KnownFailure(
+                "Cannot fetch weaves over smart protocol.")
+        remote_repo = self.make_remote_repository('remote')
+        remote_branch = remote_repo.bzrdir.create_branch()
+        try:
+            local_bzrdir = remote_branch.bzrdir.sprout('local')
+        except errors.TransportNotPossible:
+            raise TestNotApplicable(
+                "Cannot lock_read old formats like AllInOne over HPSS.")
+        local_repo = local_bzrdir.open_repository()
         remote_backing_repo = bzrdir.BzrDir.open(
             self.get_vfs_only_url('remote')).open_repository()
         self.assertEqual(remote_backing_repo._format, local_repo._format)
