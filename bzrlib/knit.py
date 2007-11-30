@@ -2144,7 +2144,7 @@ class _StreamIndex(object):
         # get a graph of all the mentioned versions:
         # Little ugly - basically copied from KnitIndex, but don't want to
         # accidentally incorporate too much of that index's code.
-        graph = {}
+        ancestry = set()
         pending = set(versions)
         cache = self._by_version
         while pending:
@@ -2155,16 +2155,16 @@ class _StreamIndex(object):
             except KeyError:
                 raise RevisionNotPresent(version, self)
             # if not completed and not a ghost
-            pending.update([p for p in parents if p not in graph])
-            graph[version] = parents
-        return graph.keys()
+            pending.update([p for p in parents if p not in ancestry])
+            ancestry.add(version)
+        return list(ancestry)
 
     def get_method(self, version_id):
         """Return compression method of specified version."""
         try:
             options = self._by_version[version_id][0]
         except KeyError:
-            # Strictly speaking this should checkin in the backing knit, but
+            # Strictly speaking this should check in the backing knit, but
             # until we have a test to discriminate, this will do.
             return 'fulltext'
         if 'fulltext' in options:

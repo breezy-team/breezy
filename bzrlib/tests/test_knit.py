@@ -2846,7 +2846,9 @@ class Test_StreamIndex(KnitTests):
     def assertIndexAncestry(self, knit, ancestry_versions, versions, result):
         """Check the result of a get_ancestry call on knit."""
         index = self.get_index(knit, knit.get_data_stream(versions))
-        self.assertEqual(result, index.get_ancestry(ancestry_versions, False))
+        self.assertEqual(
+            set(result),
+            set(index.get_ancestry(ancestry_versions, False)))
 
     def assertIterParents(self, knit, versions, parent_versions, result):
         """Check the result of an iter_parents call on knit."""
@@ -2860,10 +2862,6 @@ class Test_StreamIndex(KnitTests):
     def assertGetOptions(self, knit, version, options):
         index = self.get_index(knit, knit.get_data_stream(version))
         self.assertEqual(options, index.get_options(version))
-
-    def assertGetPosition(self, knit, versions, version, result):
-        index = self.get_index(knit, knit.get_data_stream(versions))
-        self.assertEqual(result, index.get_position(version))
 
     def assertGetPosition(self, knit, versions, version, result):
         index = self.get_index(knit, knit.get_data_stream(versions))
@@ -2914,9 +2912,9 @@ class Test_StreamIndex(KnitTests):
         self.assertIndexAncestry(knit, ['b'], ['b'], ['b'])
         self.assertIndexAncestry(knit, ['c'], ['c'], ['c'])
         self.assertIndexAncestry(knit, ['c'], ['a', 'b', 'c'],
-            {'a':[], 'b':[], 'c':[]}.keys())
+            set(['a', 'b', 'c']))
         self.assertIndexAncestry(knit, ['c', 'd'], ['a', 'b', 'c', 'd'],
-            {'a':[], 'b':[], 'c':[], 'd':[]}.keys())
+            set(['a', 'b', 'c', 'd']))
 
     def test_get_method(self):
         knit = self.make_knit_with_4_versions_2_dags()
@@ -2949,6 +2947,7 @@ class Test_StreamIndex(KnitTests):
         knit = self.make_knit_with_4_versions_2_dags()
         self.assertGetParentsWithGhosts(knit, ['a'], 'a', [])
         self.assertGetParentsWithGhosts(knit, ['c'], 'c', ['b', 'a'])
+        self.assertGetParentsWithGhosts(knit, ['d'], 'd', ['e', 'f'])
 
     def test_get_position(self):
         knit = self.make_knit_with_4_versions_2_dags()
