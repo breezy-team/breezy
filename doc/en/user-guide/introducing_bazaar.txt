@@ -65,15 +65,21 @@ Other advantages include:
  * easier for developers to create experimental branches
  * easier ad-hoc collaboration with peers
  * less time required on mechanical tasks - more time for creativity
+
  * increased release management flexibility through the use of
    "feature-wide" commits
+
  * trunk quality and stability can be kept higher, making everyone's
    job less stressful
+
  * in open source communities:
+
    * easier for non-core developers to create and maintain changes
+
    * easier for core developers to work with non-core developers and
      move them into the core
-* in companies, easier to work with distributed and outsourced teams.
+
+ * in companies, easier to work with distributed and outsourced teams.
    
 For a detailed look at the advantages of distributed VCS tools over
 centralized VCS tools, see http://bazaar-vcs.org/BzrWhy.
@@ -91,7 +97,7 @@ communities. These include:
  * **rich metadata** that tracks merge history across distributed locations,
    understands directories as first-class objects and correctly tracks
    renames of both files and directories
- * **intelligent, integrated merging** that uses this metadata to
+ * **integrated merging** that uses this metadata intelligently to
    ensure that merging is safe without being painful, letting you
    collaborate without fear
  * **truly portable** across many operating systems including Windows
@@ -145,7 +151,7 @@ The online help and `Bazaar User Reference`_ are also particularly useful as
 they provide all the gory details on the commands and options available.
 
 .. _Bazaar in five minutes: ../mini-tutorial/index.html
-.. _Bazaar Quick Start Summary: ../quick-reference/quick-start-summary.svg
+.. _Bazaar Quick Start Guide: ../quick-reference/quick-start-summary.svg
 .. _Bazaar User Reference: ../user-reference/bzr_man.html
 
 We hope you find this manual useful. If you have suggestions on how it
