@@ -678,6 +678,19 @@ class Packer(object):
             self.new_pack._writer, self.new_pack.text_index))
         self._log_copied_texts()
 
+    def _check_references(self):
+        """Make sure our external refereneces are present."""
+        external_refs = self.new_pack._external_compression_parents_of_texts()
+        if external_refs:
+            index = self._pack_collection.text_index.combined_index
+            found_items = list(index.iter_entries(external_refs))
+            if len(found_items) != len(external_refs):
+                found_keys = set(k for idx, k, refs, value in found_items)
+                missing_items = external_refs - found_keys
+                missing_file_id, missing_revision_id = missing_items.pop()
+                raise errors.RevisionNotPresent(missing_revision_id,
+                                                missing_file_id)
+
     def _create_pack_from_packs(self):
         self.pb.update("Opening pack", 0, 5)
         self.new_pack = self.open_pack()
@@ -714,6 +727,7 @@ class Packer(object):
                 time.ctime(), self._pack_collection._upload_transport.base, new_pack.random_name,
                 new_pack.signature_index.key_count(),
                 time.time() - new_pack.start_time)
+        self._check_references()
         if not self._use_pack(new_pack):
             new_pack.abort()
             return None
