@@ -9,12 +9,30 @@ IN DEVELOPMENT
 
   NOTES WHEN UPGRADING:
 
-   * The default repository format has changed to ``pack-0.92``.  This 
+   * The default repository format is now ``pack-0.92``.  This 
      default is used when creating new repositories with ``init`` and 
      ``init-repo``, and when branching over bzr+ssh or bzr+hpss. 
      (See https://bugs.launchpad.net/bugs/164626)
+
      This format can be read and written by Bazaar 0.92 and later, and 
      data can be transferred to and from older formats.
+
+     To upgrade, please reconcile your repository (``bzr reconcile``), and then
+     upgrade (``bzr upgrade``). 
+     
+     ``pack-0.92`` offers substantially better scaling and performance than the
+     previous knits format. Some operations are slower where the code already
+     had bad scaling characteristics under knits, the pack format makes such
+     operations more visible as part of being more scalable overall. We will
+     correct such operations over the coming releases and encourage the filing
+     of bugs on any operation which you observe to be slower in a packs
+     repository. One particular case that we do not intend to fix is pulling
+     data from a pack repository into a knit repository over a high latency
+     link;  downgrading such data requires reinsertion of the file texts, and
+     this is a classic space/time tradeoff. The current implementation is
+     conservative on memory usage because we need to support converting data
+     from any tree without problems.  
+     (Robert Collins, Martin Pool, #164476)
 
   CHANGES:
 
