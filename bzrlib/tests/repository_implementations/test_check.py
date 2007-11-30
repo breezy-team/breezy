@@ -30,6 +30,27 @@ from bzrlib.tests.repository_implementations.helpers import (
     )
 
 
+class TestNoSpuriousInconsistentAncestors(TestCaseWithRepository):
+
+    def test_two_files_different_versions_no_inconsistencies_bug_165071(self):
+        """Two files, with different versions can be clean."""
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['foo'])
+        tree.smart_add(['.'])
+        tree.commit('1')
+        self.build_tree(['bar'])
+        tree.smart_add(['.'])
+        tree.commit('2')
+        # XXX: check requires a non-empty revision IDs list, but it ignores the
+        # contents of it!
+        check_object = tree.branch.repository.check(['ignored'])
+        check_object.report_results(verbose=False)
+        log = self._get_log(keep_log_file=True)
+        self.assertContainsRe(
+            log,
+            "0 unreferenced text versions")
+
+
 class TestFindInconsistentRevisionParents(TestCaseWithBrokenRevisionIndex):
 
     def test__find_inconsistent_revision_parents(self):

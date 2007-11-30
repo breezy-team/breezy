@@ -2046,6 +2046,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
 
         This doesn't add anything to a branch.
 
+        :type shape:    list or tuple.
         :param line_endings: Either 'binary' or 'native'
             in binary mode, exact contents are written in native mode, the
             line endings match the default platform endings.
@@ -2053,6 +2054,8 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
             If the transport is readonly or None, "." is opened automatically.
         :return: None
         """
+        assert type(shape) in (list, tuple), ("Parameter 'shape' should be "
+            "a list or a tuple. Got %s instead" % type(shape))
         # It's OK to just create them using forward slashes on windows.
         if transport is None or transport.is_readonly():
             transport = get_transport(".")

@@ -31,6 +31,9 @@ IN DEVELOPMENT
      tree roots that's recorded for all other directories.
      (Aaron Bentley, #164639)
 
+   * ``pack-0.92`` repositories can now be reconciled.
+     (Robert Collins, #154173)
+
    * ``switch`` command added for changing the branch a lightweight checkout
      is associated with and updating the tree to reflect the latest content
      accordingly. This command was previously part of the BzrTools plug-in.
@@ -43,11 +46,19 @@ IN DEVELOPMENT
      this reduces the wall clock time for commit by roughly a 30%.
      (Robert Collins, Martin Pool)
 
+   * Commit with many automatically found deleted paths no longer performs
+     linear scanning for the children of those paths during inventory
+     iteration. This should fix commit performance blowing out when many such
+     paths occur during commit. (Robert Collins, #156491)
+
    * Fetch with pack repositories will no longer read the entire history graph.
      (Robert Collins, #88319)
 
    * Revert takes out an appropriate lock when reverting to a basis tree, and
      does not read the basis inventory twice. (Robert Collins)
+
+   * Diff does not require an inventory to be generated on dirstate trees.
+     (Aaron Bentley, #149254)
 
   IMPROVEMENTS:
 
@@ -75,6 +86,9 @@ IN DEVELOPMENT
 
    * Catch connection errors for ftp.
      (Vincent Ladeuil, #164567)
+
+   * ``check`` no longer reports spurious unreferenced text versions.
+     (Robert Collins, John A Meinel, #162931, #165071)
 
    * Conflicts are now resolved recursively by ``revert``.
      (Aaron Bentley, #102739)
@@ -177,6 +191,9 @@ IN DEVELOPMENT
      (line, version_id) tuples. This change has been made to aid reconcile and
      fetch operations. (Robert Collins)
 
+   * ``bzrlib.repository.get_versioned_file_checker`` is now private.
+     (Robert Collins)
+
   INTERNALS:
 
    * Added ``ContainerSerialiser`` and ``ContainerPushParser`` to
@@ -248,11 +265,6 @@ bzr 0.92rc1 2007-10-29
 
    * Commit no longer checks for new text keys during insertion when the
      revision id was deterministically unique. (Robert Collins)
-
-   * Commit with many automatically found deleted paths no longer performs
-     linear scanning for the children of those paths during inventory
-     iteration. This should fix commit performance blowing out when many such
-     paths occur during commit. (Robert Collins, #156491)
 
    * Committing a change which is not a merge and does not change the number of
      files in the tree is faster by utilising the data about whether files are

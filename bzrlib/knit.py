@@ -599,13 +599,12 @@ class KnitVersionedFile(VersionedFile):
         # first, read all relevant index data, enough to sort into the right
         # order to return
         for version_id in required_versions:
-            if not self.has_version(version_id):
-                raise RevisionNotPresent(version_id, self.filename)
             options = self._index.get_options(version_id)
             parents = self._index.get_parents_with_ghosts(version_id)
             index_memo = self._index.get_position(version_id)
             version_index[version_id] = (index_memo, options, parents)
-            if parents and parents[0] in required_version_set:
+            if ('line-delta' in options
+                and parents[0] in required_version_set):
                 # must wait until the parent has been sent
                 deferred.setdefault(parents[0], []). \
                     append(version_id)
