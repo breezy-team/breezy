@@ -25,8 +25,14 @@ associated with it including:
  * a commit message
  * parent revisions from which it was derived.
 
-Revisions are immutable and can be globally identified by a unique identifier
-called the *rev-id*.
+Revisions are immutable and can be globally identified uniquely
+by a *revision-id*. An example revision-id is::
+
+ pqm@pqm.ubuntu.com-20071129184101-u9506rihe4zbzyyz
+ 
+While these identifiers are necessary for internal use and external tool
+integration, branch-specific *revision numbers* are the preferred
+interface for humans. Typical revision numbers are 1, 42 and 2977.1.59.
 
 .. *TODO: add diagram*
 
@@ -48,7 +54,7 @@ In the simplest case, a branch is an *ordered series of revisions*.
 The last revision is known as the *head*.
 
 Branches may split apart and be *merged* back together forming a
-so called *directed acyclic graph* (DAG). The primary line of development
+so-called *directed acyclic graph* (DAG). The primary line of development
 within the DAG is called the *mainline*, *trunk* or simply the
 *left hand side* (LHS).
 
