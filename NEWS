@@ -56,6 +56,9 @@ IN DEVELOPMENT
      sorted chronologically instead of lexicographically with --sort=time.
      (Adeodato Simó, #120231)
 
+   * ``bzr merge`` now warns when it encounters a criss-cross merge.
+     (Aaron Bentley)
+
   DOCUMENTATION:
 
   BUG FIXES:

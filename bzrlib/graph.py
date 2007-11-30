@@ -310,7 +310,8 @@ class Graph(object):
             common_walker.start_searching(new_common)
         return candidate_heads
 
-    def find_unique_lca(self, left_revision, right_revision):
+    def find_unique_lca(self, left_revision, right_revision,
+                        count_steps=False):
         """Find a unique LCA.
 
         Find lowest common ancestors.  If there is no unique  common
@@ -323,10 +324,16 @@ class Graph(object):
         in the input for this method.
         """
         revisions = [left_revision, right_revision]
+        steps = 0
         while True:
+            steps += 1
             lca = self.find_lca(*revisions)
             if len(lca) == 1:
-                return lca.pop()
+                result = lca.pop()
+                if count_steps:
+                    return result, steps
+                else:
+                    return result
             if len(lca) == 0:
                 raise errors.NoCommonAncestor(left_revision, right_revision)
             revisions = lca

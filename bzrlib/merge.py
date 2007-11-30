@@ -315,9 +315,12 @@ class Merger(object):
         if NULL_REVISION in revisions:
             self.base_rev_id = NULL_REVISION
         else:
-            self.base_rev_id = graph.find_unique_lca(*revisions)
+            self.base_rev_id, steps = graph.find_unique_lca(revisions[0],
+                revisions[1], count_steps=True)
             if self.base_rev_id == NULL_REVISION:
                 raise UnrelatedBranches()
+            if steps > 1:
+                warning('Warning: criss-cross merge encountered.')
         self.base_tree = self.revision_tree(self.base_rev_id)
         self.base_is_ancestor = True
         self.base_is_other_ancestor = True
