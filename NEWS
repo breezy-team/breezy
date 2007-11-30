@@ -103,6 +103,9 @@ IN DEVELOPMENT
    * A progress bar has been added for knitpack -> knitpack fetching.
      (Robert Collins, #157789, #159147)
 
+   * Branching from a branch via smart server now preserves the repository
+     format. (Andrew Bennetts,  #164626)
+     
    * ``commit`` is now able to invoke an external editor in a non-ascii
      directory. (Daniel Watkins, #84043)
 
