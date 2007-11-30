@@ -1,0 +1,62 @@
+Sending changes
+===============
+
+Motivation
+----------
+
+In many distributed development scenarios, it isn't always feasible for
+developers to share task branches by advertising their URLs.
+For example, a developer working on a laptop might take it home overnight
+so his/her task branches could well be inaccessible when a gatekeeper
+in another timezone wants to review or merge it.
+
+Bazaar provides a neat feature to assist here: *merge directives*.
+
+Understanding merge directives
+------------------------------
+
+You can think of a merge directive as a "mini branch" - just the
+new growth on a branch since it was created. It's a software
+patch showing what's new but with added intelligence: metadata
+like interim commits, renames and digital signatures.
+
+Another useful metaphor is a packet cake: a merge directive has a recipe
+together with the ingredients you need bundled inside it.
+To stretch the metaphor, the ingredients are all the metadata on the
+changes made to the branch; the recipe is instructions on how those
+changes ought to be merged, i.e. information for the ``merge`` command
+to use in selecting common ancestors.
+
+Regardless of how you think of them, merge directives are neat.
+They are easy to create, suitable for mailing around as attachments
+and can be processed much like branches can on the receiving end.
+
+Creating a merge directive
+--------------------------
+
+To create a merge directive, use the ``send`` command. For example,
+this command creates a merge directive and saves it into the
+nominated output file::
+
+  cd X-fix-123
+  bzr send -o ../fix-123.patch
+
+That file can then be emailed to a reviewer, together with an
+explanation of how and why you fixed the problem the way you did, say.
+
+Emailing merge directives is such a common thing that the ``send`` command
+without options will create a merge directive, fire up your email
+tool and attach it, ready for you to add the explanatory text bit.
+See the online help for ``send`` and the `Configuration reference`_
+for further details on how to configure this.
+
+Applying a merge directive
+--------------------------
+
+Merge directives can be applied in much the same way as branches: by
+using the ``merge`` and ``pull`` commands.
+
+They can also be useful when communicating with upstream projects
+that don't use Bazaar. In particular, the preview of the overall
+change in a merge directive looks like a vanilla software patch, so
+they can be applied using ``patch -p0`` for example.
