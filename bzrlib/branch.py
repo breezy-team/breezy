@@ -1443,9 +1443,10 @@ class BzrBranch(Branch):
         """See Branch.update_revisions."""
         other.lock_read()
         try:
+            other_last_revno, other_last_revision = other.last_revision_info()
             if stop_revision is None:
-                stop_revision = other.last_revision()
-                if stop_revision is None:
+                stop_revision = other_last_revision
+                if _mod_revision.is_null(stop_revision):
                     # if there are no commits, we're done.
                     return
             # whats the current last revision, before we fetch [and change it
@@ -1459,8 +1460,14 @@ class BzrBranch(Branch):
             if self.repository.get_graph().is_ancestor(stop_revision,
                                                        last_rev):
                 return
-            self.generate_revision_history(stop_revision, last_rev=last_rev,
-                other_branch=other)
+            if other_last_revision == stop_revision:
+                self.set_last_revision_info(other_last_revno,
+                                            other_last_revision)
+            else:
+                # TODO: jam 2007-11-29 Is there a way to determine the
+                #       revno without searching all of history??
+                self.generate_revision_history(stop_revision, last_rev=last_rev,
+                    other_branch=other)
         finally:
             other.unlock()
 
@@ -1491,9 +1498,13 @@ class BzrBranch(Branch):
                 if not overwrite:
                     raise
             if overwrite:
-                if stop_revision is None:
-                    stop_revision = source.last_revision()
-                self.generate_revision_history(stop_revision)
+                last_revno, last_revision = source.last_revision_info()
+                if stop_revision is None or stop_revision == last_revision:
+                    self.set_last_revision_info(last_revno, last_revision)
+                else:
+                    # TODO: jam 2007-11-29 Is there a way to determine the
+                    #       revno without searching all of history??
+                    self.generate_revision_history(stop_revision)
             result.tag_conflicts = source.tags.merge_to(self.tags, overwrite)
             result.new_revno, result.new_revid = self.last_revision_info()
             if _hook_master:
