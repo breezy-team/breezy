@@ -596,14 +596,8 @@ class RemoteRepository(object):
     def sprout(self, to_bzrdir, revision_id=None):
         # TODO: Option to control what format is created?
         self._ensure_real()
-        # XXX: dupe of code from Repository._create_sprouting_repo
-        # Most control formats need the repository to be specifically
-        # created, but on some old all-in-one formats it's not needed
-        try:
-            dest_repo = self._real_repository._format.initialize(to_bzrdir,
-                                                                 shared=False)
-        except errors.UninitializableFormat:
-            dest_repo = to_bzrdir.open_repository()
+        dest_repo = self._real_repository._format.initialize(to_bzrdir,
+                                                             shared=False)
         dest_repo.fetch(self, revision_id=revision_id)
         return dest_repo
 
