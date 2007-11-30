@@ -1033,6 +1033,8 @@ class RepositoryPackCollection(object):
     def ensure_loaded(self):
         # NB: if you see an assertion error here, its probably access against
         # an unlocked repo. Naughty.
+        if not self.repo.is_locked():
+            import pdb;pdb.set_trace()
         assert self.repo.is_locked()
         if self._names is None:
             self._names = {}

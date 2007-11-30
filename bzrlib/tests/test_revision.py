@@ -132,6 +132,11 @@ class TestIsAncestor(TestCaseWithTransport):
         revisions_2 = br2.revision_history()
         sources = br1
 
+        br1.lock_read()
+        br2.lock_read()
+        self.addCleanup(br1.unlock)
+        self.addCleanup(br2.unlock)
+
         self.assert_(is_ancestor(revisions[0], revisions[0], br1))
         self.assert_(is_ancestor(revisions[1], revisions[0], sources))
         self.assert_(not is_ancestor(revisions[0], revisions[1], sources))
