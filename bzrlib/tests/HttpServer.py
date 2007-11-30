@@ -149,6 +149,8 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
 
         Handles the Range header.
         """
+        # Update statistics
+        self.server.test_case_server.GET_request_nb += 1
 
         path = self.translate_path(self.path)
         ranges_header_value = self.headers.get('Range')
@@ -304,6 +306,8 @@ class HttpServer(Server):
         self.host = 'localhost'
         self.port = 0
         self._httpd = None
+        # Allows tests to verify number of GET requests issued
+        self.GET_request_nb = 0
 
     def _get_httpd(self):
         if self._httpd is None:

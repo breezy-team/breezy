@@ -32,14 +32,9 @@ from bzrlib import (
     config,
     errors,
     osutils,
+    tests,
     ui,
     urlutils,
-    )
-from bzrlib.tests import (
-    TestCase,
-    TestUIFactory,
-    TestSkipped,
-    StringIOWrapper,
     )
 from bzrlib.tests.HttpServer import (
     HttpServer,
@@ -158,12 +153,12 @@ class TestWithTransport_pycurl(object):
             from bzrlib.transport.http._pycurl import PyCurlTransport
             return PyCurlTransport
         except errors.DependencyNotPresent:
-            raise TestSkipped('pycurl not present')
+            raise tests.TestSkipped('pycurl not present')
 
     _transport = property(_get_pycurl_maybe)
 
 
-class TestHttpUrls(TestCase):
+class TestHttpUrls(tests.TestCase):
 
     # TODO: This should be moved to authorization tests once they
     # are written.
@@ -226,7 +221,7 @@ class TestHttpTransportUrls(object):
             server.tearDown()
 
 
-class TestHttpUrls_urllib(TestHttpTransportUrls, TestCase):
+class TestHttpUrls_urllib(TestHttpTransportUrls, tests.TestCase):
     """Test http urls with urllib"""
 
     _transport = HttpTransport_urllib
@@ -235,7 +230,7 @@ class TestHttpUrls_urllib(TestHttpTransportUrls, TestCase):
 
 
 class TestHttpUrls_pycurl(TestWithTransport_pycurl, TestHttpTransportUrls,
-                          TestCase):
+                          tests.TestCase):
     """Test http urls with pycurl"""
 
     _server = HttpServer_PyCurl
@@ -254,7 +249,7 @@ class TestHttpUrls_pycurl(TestWithTransport_pycurl, TestHttpTransportUrls,
         try:
             import pycurl
         except ImportError:
-            raise TestSkipped('pycurl not present')
+            raise tests.TestSkipped('pycurl not present')
         # Now that we have pycurl imported, we can fake its version_info
         # This was taken from a windows pycurl without SSL
         # (thanks to bialix)
@@ -352,7 +347,7 @@ class TestHttpConnections_pycurl(TestWithTransport_pycurl,
     """Test http connections with pycurl"""
 
 
-class TestHttpTransportRegistration(TestCase):
+class TestHttpTransportRegistration(tests.TestCase):
     """Test registrations of various http implementations"""
 
     def test_http_registered(self):
@@ -372,7 +367,7 @@ class TestPost(object):
         try:
             http_transport = get_transport(url)
         except errors.UnsupportedProtocol:
-            raise TestSkipped('%s not available' % scheme)
+            raise tests.TestSkipped('%s not available' % scheme)
         code, response = http_transport._post('abc def end-of-body')
         self.assertTrue(
             server.received_bytes.startswith('POST /.bzr/smart HTTP/1.'))
@@ -384,7 +379,7 @@ class TestPost(object):
             server.received_bytes.endswith('\r\n\r\nabc def end-of-body'))
 
 
-class TestPost_urllib(TestCase, TestPost):
+class TestPost_urllib(tests.TestCase, TestPost):
     """TestPost for urllib implementation"""
 
     _transport = HttpTransport_urllib
@@ -393,14 +388,14 @@ class TestPost_urllib(TestCase, TestPost):
         self._test_post_body_is_received('http+urllib')
 
 
-class TestPost_pycurl(TestWithTransport_pycurl, TestCase, TestPost):
+class TestPost_pycurl(TestWithTransport_pycurl, tests.TestCase, TestPost):
     """TestPost for pycurl implementation"""
 
     def test_post_body_is_received_pycurl(self):
         self._test_post_body_is_received('http+pycurl')
 
 
-class TestRangeHeader(TestCase):
+class TestRangeHeader(tests.TestCase):
     """Test range_header method"""
 
     def check_header(self, value, ranges=[], tail=0):
@@ -575,7 +570,7 @@ class TestForbiddenServer_pycurl(TestWithTransport_pycurl,
     """Tests forbidden server for pycurl implementation"""
 
 
-class TestRecordingServer(TestCase):
+class TestRecordingServer(tests.TestCase):
 
     def test_create(self):
         server = RecordingServer(expect_body_tail=None)
@@ -653,6 +648,20 @@ class TestRangeRequestServer(object):
         self.assertListRaises((errors.InvalidRange, errors.ShortReadvError,),
                               t.readv, 'a', [(12,2)])
 
+    def test_readv_multiple_get_requests(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        # force transport to issue multiple requests
+        t._max_readv_combine = 1
+        t._max_get_ranges = 1
+        l = list(t.readv('a', ((0, 1), (1, 1), (3, 2), (9, 1))))
+        self.assertEqual(l[0], (0, '0'))
+        self.assertEqual(l[1], (1, '1'))
+        self.assertEqual(l[2], (3, '34'))
+        self.assertEqual(l[3], (9, '9'))
+        # The server should have issued 4 requests
+        self.assertEqual(4, self.get_readonly_server().GET_request_nb)
+
 
 class TestSingleRangeRequestServer(TestRangeRequestServer):
     """Test readv against a server which accept only single range requests"""
@@ -709,8 +718,8 @@ class TestNoRangeRequestServer_urllib(TestNoRangeRequestServer,
 
 
 class TestNoRangeRequestServer_pycurl(TestWithTransport_pycurl,
-                               TestNoRangeRequestServer,
-                               TestCaseWithWebserver):
+                                      TestNoRangeRequestServer,
+                                      TestCaseWithWebserver):
     """Tests range requests refusing server for pycurl implementation"""
 
 
@@ -738,7 +747,7 @@ class TestLimitedRangeRequestServer(object):
         TestCaseWithWebserver.setUp(self)
         # We need to manipulate ranges that correspond to real chunks in the
         # response, so we build a content appropriately.
-        filler = ''.join(['abcdefghij' for _ in range(102)])
+        filler = ''.join(['abcdefghij' for x in range(102)])
         content = ''.join(['%04d' % v + filler for v in range(16)])
         self.build_tree_contents([('a', content)],)
 
@@ -749,7 +758,7 @@ class TestLimitedRangeRequestServer(object):
         self.assertEqual(l[1], (1024, '0001'))
         self.assertEqual(1, self.get_readonly_server().GET_request_nb)
 
-    def test_a_lot_of_ranges(self):
+    def test_more_ranges(self):
         t = self.get_transport()
         l = list(t.readv('a', ((0, 4), (1024, 4), (4096, 4), (8192, 4))))
         self.assertEqual(l[0], (0, '0000'))
@@ -775,14 +784,14 @@ class TestLimitedRangeRequestServer_pycurl(TestWithTransport_pycurl,
 
 
 
-class TestHttpProxyWhiteBox(TestCase):
+class TestHttpProxyWhiteBox(tests.TestCase):
     """Whitebox test proxy http authorization.
 
     Only the urllib implementation is tested here.
     """
 
     def setUp(self):
-        TestCase.setUp(self)
+        tests.TestCase.setUp(self)
         self._old_env = {}
 
     def tearDown(self):
@@ -933,12 +942,12 @@ class TestProxyHttpServer_pycurl(TestWithTransport_pycurl,
         # pycurl does not check HTTP_PROXY for security reasons
         # (for use in a CGI context that we do not care
         # about. Should we ?)
-        raise TestSkipped('pycurl does not check HTTP_PROXY '
-            'for security reasons')
+        raise tests.TestNotApplicable(
+            'pycurl does not check HTTP_PROXY for security reasons')
 
     def test_HTTP_PROXY_with_NO_PROXY(self):
-        raise TestSkipped('pycurl does not check HTTP_PROXY '
-            'for security reasons')
+        raise tests.TestNotApplicable(
+            'pycurl does not check HTTP_PROXY for security reasons')
 
     def test_http_proxy_without_scheme(self):
         # pycurl *ignores* invalid proxy env variables. If that
@@ -1272,8 +1281,8 @@ class TestAuth(object):
     def test_prompt_for_password(self):
         self.server.add_user('joe', 'foo')
         t = self.get_user_transport('joe', None)
-        stdout = StringIOWrapper()
-        ui.ui_factory = TestUIFactory(stdin='foo\n', stdout=stdout)
+        stdout = tests.StringIOWrapper()
+        ui.ui_factory = tests.TestUIFactory(stdin='foo\n', stdout=stdout)
         self.assertEqual('contents of a\n',t.get('a').read())
         # stdin should be empty
         self.assertEqual('', ui.ui_factory.stdin.readline())
@@ -1302,8 +1311,8 @@ class TestAuth(object):
         stdin_content = 'bar\n'  # Not the right password
         self.server.add_user(user, password)
         t = self.get_user_transport(user, None)
-        ui.ui_factory = TestUIFactory(stdin=stdin_content,
-                                      stdout=StringIOWrapper())
+        ui.ui_factory = tests.TestUIFactory(stdin=stdin_content,
+                                            stdout=tests.StringIOWrapper())
         # Create a minimal config file with the right password
         conf = config.AuthenticationConfig()
         conf._get_config().update(

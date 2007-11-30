@@ -57,10 +57,12 @@ class TestSwitch(tests.TestCaseWithTransport):
         tree.add('file-2')
         tree.remove('file-1')
         tree.commit('rev2')
-        os.rename('branch-1', 'branch-2')
-        to_branch = branch.Branch.open('branch-2')
         self.build_tree(['checkout/file-3'])
         checkout.add('file-3')
+        checkout_dir = checkout.bzrdir
+        # rename the branch on disk, the checkout object is now invalid.
+        os.rename('branch-1', 'branch-2')
+        to_branch = branch.Branch.open('branch-2')
         switch.switch(checkout.bzrdir, to_branch)
         self.failIfExists('checkout/file-1')
         self.failUnlessExists('checkout/file-2')
