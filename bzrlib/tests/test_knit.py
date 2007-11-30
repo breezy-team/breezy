@@ -2953,7 +2953,7 @@ class Test_StreamIndex(KnitTests):
 
     def test_get_position(self):
         knit = self.make_knit_with_4_versions_2_dags()
-        # get_position returns (thunk_flay, index(can be None), start, end) for
+        # get_position returns (thunk_flag, index(can be None), start, end) for
         # _StreamAccess to use.
         self.assertGetPosition(knit, ['a'], 'a', (False, None, 0, 78))
         self.assertGetPosition(knit, ['a', 'c'], 'c', (False, None, 78, 156))
