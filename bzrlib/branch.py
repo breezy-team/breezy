@@ -1439,7 +1439,7 @@ class BzrBranch(Branch):
             last_rev, other_branch))
 
     @needs_write_lock
-    def update_revisions(self, other, stop_revision=None):
+    def update_revisions(self, other, stop_revision=None, overwrite=False):
         """See Branch.update_revisions."""
         other.lock_read()
         try:
@@ -1458,24 +1458,28 @@ class BzrBranch(Branch):
             # be cached in memory.
             self.fetch(other, stop_revision)
             # Check to see if one is an ancestor of the other
-            heads = self.repository.get_graph().heads([stop_revision,
-                                                       last_rev])
-            if heads == set([last_rev]):
-                # The current revision is a decendent of the target, nothing to
-                # do
-                return
-            elif heads == set([stop_revision, last_rev]):
-                # These branches have diverged
-                raise errors.DivergedBranches(self, other)
-            assert heads == set([stop_revision])
+            if not overwrite:
+                heads = self.repository.get_graph().heads([stop_revision,
+                                                           last_rev])
+                if heads == set([last_rev]):
+                    # The current revision is a decendent of the target,
+                    # nothing to do
+                    return
+                elif heads == set([stop_revision, last_rev]):
+                    # These branches have diverged
+                    raise errors.DivergedBranches(self, other)
+                assert heads == set([stop_revision])
             if other_last_revision == stop_revision:
                 self.set_last_revision_info(other_last_revno,
                                             other_last_revision)
             else:
                 # TODO: jam 2007-11-29 Is there a way to determine the
                 #       revno without searching all of history??
-                self.generate_revision_history(stop_revision, last_rev=last_rev,
-                    other_branch=other)
+                if overwrite:
+                    self.generate_revision_history(stop_revision)
+                else:
+                    self.generate_revision_history(stop_revision,
+                        last_rev=last_rev, other_branch=other)
         finally:
             other.unlock()
 
@@ -1500,19 +1504,7 @@ class BzrBranch(Branch):
         source.lock_read()
         try:
             result.old_revno, result.old_revid = self.last_revision_info()
-            try:
-                self.update_revisions(source, stop_revision)
-            except DivergedBranches:
-                if not overwrite:
-                    raise
-            if overwrite:
-                last_revno, last_revision = source.last_revision_info()
-                if stop_revision is None or stop_revision == last_revision:
-                    self.set_last_revision_info(last_revno, last_revision)
-                else:
-                    # TODO: jam 2007-11-29 Is there a way to determine the
-                    #       revno without searching all of history??
-                    self.generate_revision_history(stop_revision)
+            self.update_revisions(source, stop_revision, overwrite=overwrite)
             result.tag_conflicts = source.tags.merge_to(self.tags, overwrite)
             result.new_revno, result.new_revid = self.last_revision_info()
             if _hook_master:
