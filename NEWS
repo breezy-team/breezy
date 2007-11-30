@@ -101,6 +101,11 @@ IN DEVELOPMENT
      installer write to the registry (HKLM\SOFTWARE\Bazaar) useful info 
      about paths and bzr version. (Alexander Belchenko, #129298)
 
+  INTERNALS:
+
+    * New -Dhttp debug option reports http connections, requests and responses.
+      (Vincent Ladeuil)
+
   DOCUMENTATION:
 
   BUG FIXES:
@@ -206,6 +211,11 @@ IN DEVELOPMENT
 
    * Revert doesn't crash when restoring a single file from a deleted
      directory. (Aaron Bentley)
+
+   * Catch ShortReadvErrors while using pycurl. Also make readv more robust by
+     allowing multiple GET requests to be issued if too many ranges are
+     required.
+     (Vincent Ladeuil, #172701)
 
    * Stderr output via logging mechanism now goes through encoded wrapper
      and no more uses utf-8, but terminal encoding instead. So all unicode
