@@ -8,9 +8,7 @@ documentation site, http://doc.bazaar-vcs.org.
 Core Documentation
 ==================
 
-* `Bazaar in five minutes <en/mini-tutorial/index.html>`_ 
-
-* `Quick Start Summary <en/quick-reference/quick-start-summary.svg>`_
+* `Quick Start Guide <en/quick-reference/quick-start-summary.svg>`_
 
 * `User Guide <en/user-guide/index.html>`_ 
 
@@ -19,6 +17,16 @@ Core Documentation
 * `Release Notes <en/release-notes/NEWS.html>`_
 
 * `Developer Guide <en/developer-guide/HACKING.html>`_
+
+
+Tutorials
+=========
+
+* `Bazaar in five minutes <en/mini-tutorial/index.html>`_ 
+
+* `A longer tutorial <en/tutorials/tutorial.html>`_ 
+
+* `Centralized workflow <en/tutorials/centralized_workflow.html>`_ 
 
 
 Other Documentation

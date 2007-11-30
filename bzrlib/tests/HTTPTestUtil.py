@@ -164,11 +164,6 @@ class LimitedRangeRequestHandler(TestingHTTPRequestHandler):
         return TestingHTTPRequestHandler.get_multiple_ranges(self, file,
                                                              file_size, ranges)
 
-    def do_GET(self):
-        tcs = self.server.test_case_server
-        tcs.GET_request_nb += 1
-        return TestingHTTPRequestHandler.do_GET(self)
-
 
 class LimitedRangeHTTPServer(HttpServer):
     """An HttpServer erroring out on requests with too much range specifiers"""
@@ -177,7 +172,6 @@ class LimitedRangeHTTPServer(HttpServer):
                  range_limit=None):
         HttpServer.__init__(self, request_handler)
         self.range_limit = range_limit
-        self.GET_request_nb = 0
 
 
 class SingleRangeRequestHandler(TestingHTTPRequestHandler):
@@ -208,8 +202,11 @@ class SingleOnlyRangeRequestHandler(TestingHTTPRequestHandler):
 class NoRangeRequestHandler(TestingHTTPRequestHandler):
     """Ignore range requests without notice"""
 
-    # Just bypass the range handling done by TestingHTTPRequestHandler
-    do_GET = SimpleHTTPRequestHandler.do_GET
+    def do_GET(self):
+        # Update the statistics
+        self.server.test_case_server.GET_request_nb += 1
+        # Just bypass the range handling done by TestingHTTPRequestHandler
+        return SimpleHTTPRequestHandler.do_GET(self)
 
 
 class TestCaseWithWebserver(TestCaseWithTransport):
