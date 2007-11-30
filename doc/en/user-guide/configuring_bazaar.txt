@@ -33,8 +33,8 @@ Windows. There are three primary configuration files in this location:
 
 Each branch can also contain a configuration file that sets values specific
 to that branch. This file is found at ``.bzr/branch/branch.conf`` within the
-branch. This file is visible to all users of a branch, if you wish to override
-one of the values for a branch with a setting that is specific to you then you
+branch. This file is visible to **all users of a branch**. If you wish to override
+one of the values for a branch with a setting that is specific to you, then you
 can do so in ``locations.conf``.
 
 Here is sample content of ``bazaar.conf`` after setting an email address using

@@ -4,8 +4,7 @@ Using aliases
 What are aliases?
 -----------------
 
-Command aliases are an easy way to customize the behaviour of Bazaar. Aliases
-are an easy way to create shortcuts for commonly-typed commands, or to set
+Aliases are an easy way to create shortcuts for commonly-typed commands, or to set
 defaults for commands.
 
 Defining aliases
@@ -53,10 +52,12 @@ Rules for aliases
  * Aliases can override the standard behaviour of existing commands by giving
    an alias name that is the same as the orignal command. For example, default
    commit is changed with ``commit=commit --strict``.
+
  * Aliases cannot refer to other aliases. In other words making a
    ``lastlog`` alias and referring to it with a ``ll`` alias will not work.
-   This includes aliases that override standard commands
- * Giving the ``--no-aliases`` to the bzr command will tell it to ignore aliases
+   This includes aliases that override standard commands.
+
+ * Giving the ``--no-aliases`` option to the bzr command will tell it to ignore aliases
    for that run. For example, running ``bzr --no-aliases commit`` will perform a
-   standard commit instead not do a ``commit --strict``.
+   standard commit instead, not do a ``commit --strict``.
 

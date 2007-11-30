@@ -23,15 +23,19 @@ command-specific arguments.
 Common options
 --------------
 
-Some options are legal for all commands:
+Some options are legal for all commands as shown below.
 
- * -h, --help - get help
- * -v, --verbose - be more verbose
- * -q, --quiet - be more quiet
-
-Most commands typically only support one level of verbosity though
-that may change in the future. To ask for a higher level of verbosity,
-simply specifiy the -v option multiple times.
+  ==========  =========  =================
+  Short form  Long form  Description
+  ==========  =========  =================
+  -h          --help     get help
+  -v          --verbose  be more verbose
+  -q          --quiet    be more quiet
+  ==========  =========  =================
 
 Quiet mode implies that only errors and warnings are displayed.
-This can be useful is scripts.
+This can be useful in scripts.
+
+Note: Most commands typically only support one level of verbosity though
+that may change in the future. To ask for a higher level of verbosity,
+simply specify the -v option multiple times.
