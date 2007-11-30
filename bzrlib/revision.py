@@ -136,8 +136,7 @@ def is_ancestor(revision_id, candidate_id, branch):
     """
     if is_null(candidate_id):
         return True
-    return (candidate_id in branch.repository.get_ancestry(revision_id,
-            topo_sorted=False))
+    return branch.repository.get_graph().is_ancestor(candidate_id, revision_id)
 
 
 def iter_ancestors(revision_id, revision_source, only_present=False):
