@@ -1457,9 +1457,17 @@ class BzrBranch(Branch):
             # already merged can operate on the just fetched graph, which will
             # be cached in memory.
             self.fetch(other, stop_revision)
-            if self.repository.get_graph().is_ancestor(stop_revision,
-                                                       last_rev):
+            # Check to see if one is an ancestor of the other
+            heads = self.repository.get_graph().heads([stop_revision,
+                                                       last_rev])
+            if heads == set([last_rev]):
+                # The current revision is a decendent of the target, nothing to
+                # do
                 return
+            elif heads == set([stop_revision, last_rev]):
+                # These branches have diverged
+                raise errors.DivergedBranches(self, other)
+            assert heads == set([stop_revision])
             if other_last_revision == stop_revision:
                 self.set_last_revision_info(other_last_revno,
                                             other_last_revision)
