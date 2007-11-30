@@ -1,3 +1,22 @@
+bzr (1.0~rc1-1) unstable; urgency=low
+
+  This version of Bazaar changes the default format used for newly created
+  branches and repositories. This format is understood by Bazaar 0.92 and
+  later; previous versions won't be able to read this format. To create new
+  branches while maintaining compatibility with previous Bazaar versions,
+  pass --dirstate or --dirstate-tags (>= 0.15) to `bzr init`.
+
+  To upgrade existing branches or repositories to this new format, run `bzr
+  reconcile`, and then `bzr upgrade`. You need to run these two commands in
+  each standalone branch (those that are not inside a shared repository), but
+  only once in the toplevel directory for shared repositories.
+
+  Additionally, you can run `bzr upgrade` in branches inside a shared
+  repository to upgrade them to a format that support tags, introduced in
+  version 0.15.
+
+ -- Adeodato Simó <dato@net.com.org.es>  Fri, 30 Nov 2007 16:56:57 +0100
+
 bzr (0.16~rc1-1) unstable; urgency=low
 
   This release changes the behaviour of `bzr remove/rm` to remove the working

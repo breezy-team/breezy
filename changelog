@@ -1,10 +1,15 @@
-bzr (0.92-2) UNRELEASED; urgency=low
+bzr (1.0~rc1-1) unstable; urgency=low
 
+  [ Adeodato Simó ]
+  * First release candidate of the upcoming 1.0 release; see NEWS.Debian for
+    more information.
+
+  [ Arnaud Fontaine ]
   * Rename XS-Vcs-Bzr to Vcs-Bzr field (dpkg supports it now).
   * Add Homepage field.
   * Update GPL path to GPL-2 as GPL-3 is now the default.
 
- -- Arnaud Fontaine <arnaud@andesi.org>  Fri, 23 Nov 2007 00:42:01 +0000
+ -- Adeodato Simó <dato@net.com.org.es>  Fri, 30 Nov 2007 15:43:46 +0100
 
 bzr (0.92-1) unstable; urgency=low
 
