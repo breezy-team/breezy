@@ -196,6 +196,9 @@ IN DEVELOPMENT
 
   API BREAKS:
 
+   * Deprecate not passing a ``location`` argument to commit reporters'
+     ``started`` methods. (Matt Nordhoff)
+
    * ``osutils.backup_file`` is deprecated. Actually it's not used in bzrlib
      during very long time. (Alexander Belchenko)
 
