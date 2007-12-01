@@ -11,12 +11,8 @@ DEB_PYTHON_BUILD_ARGS += --executable "/usr/bin/python"
 DEB_COMPRESS_EXCLUDE += .svg
 
 clean::
-	-rm -rf build test*.tmp doc/bzr_man.txt
-	find doc -name "*.html" -print0 | xargs -r0 rm -f
-	find . -name "*.pyc" -print0 | xargs -r0 rm -f
-	rm -f bzr.1 man1/bzr.1
-	rm -f debian/stamp-doc
-	rm -f .bzr.log
+	$(MAKE) clean-docs
+	rm -f bzr.1 debian/stamp-doc
 
 ifneq (,$(findstring test,$(DEB_BUILD_OPTIONS)))
 common-post-build-indep::

@@ -2,7 +2,11 @@ bzr (1.0~rc1-2) unstable; urgency=low
 
   * Install images that come with the documentation.
 
- -- Adeodato Simó <dato@net.com.org.es>  Sat, 01 Dec 2007 11:24:08 +0100
+  * Remove unnecessary stuff from the clean target in debian/rules, and
+    invoke $(MAKE) clean-docs from there so that building twice in a row
+    works.
+
+ -- Adeodato Simó <dato@net.com.org.es>  Sat, 01 Dec 2007 11:42:50 +0100
 
 bzr (1.0~rc1-1) unstable; urgency=low
 
