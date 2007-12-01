@@ -7,6 +7,11 @@ Bazaar Release Notes
 IN DEVELOPMENT
 ==============
 
+  IMPROVEMENTS:
+
+   * ``bzr commit`` now doesn't print the revision number twice. (Matt
+     Nordhoff, #172612)
+
   INTERNALS:
 
     * New -Dhttp debug option reports http connections, requests and responses.
@@ -18,6 +23,11 @@ IN DEVELOPMENT
      allowing multiple GET requests to be issued if too many ranges are
      required.
      (Vincent Ladeuil, #172701)
+
+  API BREAKS:
+
+   * Deprecate not passing a ``location`` argument to commit reporters'
+     ``started`` methods. (Matt Nordhoff)
 
 
 bzr 1.0rc1 2007-11-30
@@ -102,9 +112,6 @@ bzr 1.0rc1 2007-11-30
      (Aaron Bentley, #149254)
 
   IMPROVEMENTS:
-
-   * ``bzr commit`` now doesn't print the revision number twice. (Matt
-     Nordhoff, #172612)
 
    * ``bzr send`` now doesn't require the target e-mail address to be
      specified on the command line if an interactive e-mail client is used.
@@ -248,9 +255,6 @@ bzr 1.0rc1 2007-11-30
      (Vincent Ladeuil, #157752)
 
   API BREAKS:
-
-   * Deprecate not passing a ``location`` argument to commit reporters'
-     ``started`` methods. (Matt Nordhoff)
 
    * ``osutils.backup_file`` is deprecated. Actually it's not used in bzrlib
      during very long time. (Alexander Belchenko)
