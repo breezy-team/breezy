@@ -1,4 +1,4 @@
-from bzrlib import patiencediff
+from bzrlib import patiencediff, revision
 
 class PlanMerge(object):
     """Plan an annotate merge using on-the-fly annotation"""
@@ -18,7 +18,8 @@ class PlanMerge(object):
         new_b = self._find_new(self.b_rev)
         last_i = 0
         last_j = 0
-        a_lines, b_lines = self.vf.get_line_list((self.a_rev, self.b_rev))
+        a_lines = self.vf.get_lines(self.a_rev)
+        b_lines = self.vf.get_lines(self.b_rev)
         for i, j, n in blocks:
             # determine why lines aren't common
             for a_index in range(last_i, i):
@@ -60,7 +61,7 @@ class PlanMerge(object):
 
     def _find_new(self, version_id):
         """Determine which lines are new in the ancestry of this version.
-        
+
         If a lines is present in this version, and not present in any
         common ancestor, it is considered new.
         """
@@ -83,3 +84,46 @@ class PlanMerge(object):
             else:
                 new.intersection_update(result)
         return new
+
+
+class _PlanMergeVersionedfile(object):
+    """A VersionedFile for uncommitted and committed texts.
+
+    Intended to allow merges to be planned with working tree texts.
+    """
+
+    def __init__(self, fallback_versionedfile):
+        self._fallback_versionedfile = fallback_versionedfile
+        self._parents = {}
+        self._lines = {}
+
+    def add_lines(self, version_id, parents, lines):
+        if not revision.is_reserved_id(version_id):
+            raise ValueError('Only reserved ids may be used')
+        if parents is None:
+            raise ValueError('Parents may not be None')
+        if lines is None:
+            raise ValueError('Lines may not be None')
+        self._parents[version_id] = parents
+        self._lines[version_id] = lines
+
+    def get_lines(self, version_id):
+        lines = self._lines.get(version_id)
+        if lines is None:
+            lines = self._fallback_versionedfile.get_lines(version_id)
+        return lines
+
+    def get_ancestry(self, version_id):
+        parents = self._parents.get(version_id)
+        if parents is None:
+            return self._fallback_versionedfile.get_ancestry(version_id)
+        ancestry = set([version_id])
+        for parent in parents:
+            ancestry.update(self.get_ancestry(parent))
+        return ancestry
+
+    def get_parents(self, version_id):
+        parents = self._parents.get(version_id)
+        if parents is None:
+            parents = self._fallback_versionedfile.get_parents(version_id)
+        return parents
