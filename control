@@ -21,7 +21,7 @@ Description: easy to use distributed version control system
  easily extendable.
  .
  Publishing of branches can be done over plain HTTP, that is, no special
- software the server is needed to host Bazaar branches. Branches can
+ software in the server is needed to host Bazaar branches. Branches can
  be pushed to the server via sftp (which most SSH instalations come
  with), FTP, or over a custom and faster protocol if bzr is installed in
  the remote end.
