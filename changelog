@@ -1,3 +1,9 @@
+bzr (1.0~rc1-2) unstable; urgency=low
+
+  * Install images that come with the documentation.
+
+ -- Adeodato Simó <dato@net.com.org.es>  Sat, 01 Dec 2007 11:24:08 +0100
+
 bzr (1.0~rc1-1) unstable; urgency=low
 
   [ Adeodato Simó ]

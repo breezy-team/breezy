@@ -37,3 +37,7 @@ install/bzr::
 	    	xargs -r0 -i'{}' -n1 install -D -m 644 'doc/{}' \
 	    	"debian/bzr/usr/share/doc/bzr/$$ext/{}"; \
 	done
+# Install images as well
+	( cd doc && find -name "*.png" -print0 ) | \
+	    xargs -r0 -i'{}' -n1 install -D -m 644 'doc/{}' \
+	    "debian/bzr/usr/share/doc/bzr/html/{}"
