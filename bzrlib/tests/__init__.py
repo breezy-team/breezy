@@ -2452,6 +2452,7 @@ def test_suite():
                    'bzrlib.tests.test_patch',
                    'bzrlib.tests.test_patches',
                    'bzrlib.tests.test_permissions',
+                   'bzrlib.tests.test_plan_merge',
                    'bzrlib.tests.test_plugins',
                    'bzrlib.tests.test_progress',
                    'bzrlib.tests.test_reconfigure',
