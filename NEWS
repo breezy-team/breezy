@@ -22,6 +22,9 @@ IN DEVELOPMENT
    * Check for missing basis texts when fetching from packs to packs.
      (John Arbash Meinel, #165290)
 
+   * Fall back to showing e-mail in ``log --short/--line`` if the committer/author has
+     only e-mail. (Lukáš Lalinský, #157026)
+
 
 bzr 1.0rc1 2007-11-30
 =====================
