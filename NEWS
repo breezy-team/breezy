@@ -14,6 +14,9 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+   * Better error message when running ``bzr cat`` on a non-existant branch.
+     (Lukáš Lalinský, #133782)
+
    * Catch ShortReadvErrors while using pycurl. Also make readv more robust by
      allowing multiple GET requests to be issued if too many ranges are
      required.
