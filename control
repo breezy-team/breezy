@@ -17,7 +17,7 @@ Suggests: bzr-gtk, bzr-svn, xdg-utils, libxml2-utils
 XB-Python-Version: ${python:Versions}
 Description: easy to use distributed version control system
  Bazaar is a distributed version control system designed to be easy to
- use and intuitive, yet able to adapt to many workflows, reliable, and
+ use and intuitive, able to adapt to many workflows, reliable, and
  easily extendable.
  .
  Publishing of branches can be done over plain HTTP, that is, no special
@@ -27,7 +27,7 @@ Description: easy to use distributed version control system
  the remote end.
  .
  Merging in Bazaar is easy, as the implementation is able to avoid many
- spurious conclicts, deals well with repeated merges between branches,
+ spurious conflicts, deals well with repeated merges between branches,
  and is able to handle modifications to renamed files correctly.
  .
  Bazaar is written in Python, and has a flexible plugin interface which
