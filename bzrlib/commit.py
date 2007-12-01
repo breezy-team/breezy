@@ -92,7 +92,7 @@ class NullCommitReporter(object):
 
     def started(self, revno, revid, location=None):
         if location is None:
-            symbol_versioning.warn("As of bzr 0.93 you must pass a location "
+            symbol_versioning.warn("As of bzr 1.0 you must pass a location "
                                    "to started.", DeprecationWarning,
                                    stacklevel=2)
         pass
@@ -141,7 +141,7 @@ class ReportCommitToLog(NullCommitReporter):
         else:
             # When started was added, location was only made optional by
             # accident.  Matt Nordhoff 20071129
-            symbol_versioning.warn("As of bzr 0.93 you must pass a location "
+            symbol_versioning.warn("As of bzr 1.0 you must pass a location "
                                    "to started.", DeprecationWarning,
                                    stacklevel=2)
             location = ''
