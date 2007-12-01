@@ -1878,7 +1878,12 @@ class _FileMover(object):
 
     def rename(self, from_, to):
         """Rename a file from one path to another.  Functions like os.rename"""
-        os.rename(from_, to)
+        try:
+            os.rename(from_, to)
+        except OSError, e:
+            if e.errno == errno.EEXIST:
+                raise errors.FileExists(to, str(e))
+            raise
         self.past_renames.append((from_, to))
 
     def pre_delete(self, from_, to):

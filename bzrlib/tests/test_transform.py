@@ -36,6 +36,7 @@ from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
 from bzrlib.osutils import file_kind, pathjoin
 from bzrlib.merge import Merge3Merger
 from bzrlib.tests import (
+    CaseInsensitiveFilesystemFeature,
     SymlinkFeature,
     TestCase,
     TestCaseInTempDir,
@@ -1088,8 +1089,24 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.callDeprecated([txt], change_entry, None, None, None, None, None,
             None, None, None)
 
+    def test_case_insensitive_clash(self):
+        self.requireFeature(CaseInsensitiveFilesystemFeature)
+        def tt_helper():
+            wt = self.make_branch_and_tree('.')
+            tt = TreeTransform(wt)  # TreeTransform obtains write lock
+            try:
+                tt.new_file('foo', tt.root, 'bar')
+                tt.new_file('Foo', tt.root, 'spam')
+                tt.apply(no_conflicts=True)
+            finally:
+                wt.unlock()
+        err = self.assertRaises(errors.FileExists, tt_helper)
+        self.assertContainsRe(str(err),
+            "^File exists: .+/foo")
+
 
 class TransformGroup(object):
+
     def __init__(self, dirname, root_id):
         self.name = dirname
         os.mkdir(dirname)
@@ -1461,6 +1478,7 @@ class MockEntry(object):
     def __init__(self):
         object.__init__(self)
         self.name = "name"
+
 
 class TestGetBackupName(TestCase):
     def test_get_backup_name(self):
