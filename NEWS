@@ -1,4 +1,4 @@
-bzr-svn 0.4.5	UNRELEASED
+bzr-svn 0.4.5	2007-12-01
 
   IMPROVEMENTS
 
@@ -21,6 +21,8 @@ bzr-svn 0.4.5	UNRELEASED
 
    * Print comprehensible error when unsupport characters occur in file names.
      (partial fix of #163585)
+
+   * Fix compatibility with Bazaar 1.0rc1.
 
 
 bzr-svn 0.4.4	2007-11-02
