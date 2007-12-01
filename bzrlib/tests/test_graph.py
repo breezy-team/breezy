@@ -373,7 +373,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual(set(['rev1']), graph.heads(('rev1', 'null:')))
 
     def test_heads_one(self):
-        # A single node will alwaya be a head
+        # A single node will always be a head
         graph = self.make_graph(ancestry_1)
         self.assertEqual(set(['null:']), graph.heads(['null:']))
         self.assertEqual(set(['rev1']), graph.heads(['rev1']))
