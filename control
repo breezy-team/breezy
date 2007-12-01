@@ -12,16 +12,25 @@ Homepage: http://bazaar-vcs.org
 Package: bzr
 Architecture: any
 Depends: ${shlibs:Depends}, ${python:Depends}, python (>> 2.5) | python-celementtree
-Recommends: python-paramiko, python-pycurl
-Suggests: xdg-utils, libxml2-utils
-Conflicts: bzr-doc
+Recommends: bzrtools, python-paramiko, python-pycurl
+Suggests: bzr-gtk, bzr-svn, xdg-utils, libxml2-utils
 XB-Python-Version: ${python:Versions}
-Description: Bazaar, the next-generation distributed version control system
- Open source distributed version control system that is powerful, friendly,
- and scalable.
+Description: easy to use distributed version control system
+ Bazaar is a distributed version control system designed to be easy to
+ use and intuitive, yet able to adapt to many workflows, reliable, and
+ easily extendable.
  .
- It manages trees of files and subdirectories. In particular, it records
- revisions of trees, representing their state at a particular point in time,
- and information about those revisions and their relationships. Recording and
- retrieving tree revisions is useful in several ways if you are writing
- software or documents or doing similar creative work.
+ Publishing of branches can be done over plain HTTP, that is, no special
+ software the server is needed to host Bazaar branches. Branches can
+ be pushed to the server via sftp (which most SSH instalations come
+ with), FTP, or over a custom and faster protocol if bzr is installed in
+ the remote end.
+ .
+ Merging in Bazaar is easy, as the implementation is able to avoid many
+ spurious conclicts, deals well with repeated merges between branches,
+ and is able to handle modifications to renamed files correctly.
+ .
+ Bazaar is written in Python, and has a flexible plugin interface which
+ can be used to extend its functionality. Many plugins exist, providing
+ useful commands (bzrtools), graphical interfaces (bzr-gtk), or native
+ interaction with Subversion branches (bzr-svn).
