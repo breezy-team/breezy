@@ -595,7 +595,9 @@ class RemoteRepository(object):
 
     def sprout(self, to_bzrdir, revision_id=None):
         # TODO: Option to control what format is created?
-        dest_repo = to_bzrdir.create_repository()
+        self._ensure_real()
+        dest_repo = self._real_repository._format.initialize(to_bzrdir,
+                                                             shared=False)
         dest_repo.fetch(self, revision_id=revision_id)
         return dest_repo
 
@@ -1232,7 +1234,8 @@ class RemoteBranch(branch.Branch):
         # format, because RemoteBranches can't be created at arbitrary URLs.
         # XXX: if to_bzrdir is a RemoteBranch, this should perhaps do
         # to_bzrdir.create_branch...
-        result = branch.BranchFormat.get_default_format().initialize(to_bzrdir)
+        self._ensure_real()
+        result = self._real_branch._format.initialize(to_bzrdir)
         self.copy_content_into(result, revision_id=revision_id)
         result.set_parent(self.bzrdir.root_transport.base)
         return result

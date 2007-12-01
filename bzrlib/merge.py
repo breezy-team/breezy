@@ -44,7 +44,7 @@ from bzrlib.errors import (BzrCommandError,
 from bzrlib.merge3 import Merge3
 from bzrlib.osutils import rename, pathjoin
 from progress import DummyProgress, ProgressPhase
-from bzrlib.revision import (is_ancestor, NULL_REVISION, ensure_null)
+from bzrlib.revision import (NULL_REVISION, ensure_null)
 from bzrlib.textfile import check_text_lines
 from bzrlib.trace import mutter, warning, note
 from bzrlib.transform import (TreeTransform, resolve_conflicts, cook_conflicts,
@@ -296,12 +296,11 @@ class Merger(object):
         self.base_branch = branch
         self._maybe_fetch(branch, self.this_branch, revision_id)
         self.base_tree = self.revision_tree(revision_id)
-        self.base_is_ancestor = is_ancestor(self.this_basis,
-                                            self.base_rev_id,
-                                            self.this_branch)
-        self.base_is_other_ancestor = is_ancestor(self.other_basis,
-                                                  self.base_rev_id,
-                                                  self.this_branch)
+        graph = self.this_branch.repository.get_graph()
+        self.base_is_ancestor = graph.is_ancestor(self.base_rev_id,
+                                                  self.this_basis)
+        self.base_is_other_ancestor = graph.is_ancestor(self.base_rev_id,
+                                                        self.other_basis)
 
     def _maybe_fetch(self, source, target, revision_id):
         if not source.repository.has_same_location(target.repository):
@@ -340,12 +339,11 @@ class Merger(object):
                 self.base_rev_id = _mod_revision.ensure_null(
                     base_branch.get_rev_id(base_revision[1]))
             self._maybe_fetch(base_branch, self.this_branch, self.base_rev_id)
-            self.base_is_ancestor = is_ancestor(self.this_basis, 
-                                                self.base_rev_id,
-                                                self.this_branch)
-            self.base_is_other_ancestor = is_ancestor(self.other_basis,
-                                                      self.base_rev_id,
-                                                      self.this_branch)
+            graph = self.this_branch.repository.get_graph()
+            self.base_is_ancestor = graph.is_ancestor(self.base_rev_id,
+                                                      self.this_basis)
+            self.base_is_other_ancestor = graph.is_ancestor(self.base_rev_id,
+                                                            self.other_basis)
 
     def do_merge(self):
         kwargs = {'working_tree':self.this_tree, 'this_tree': self.this_tree,
