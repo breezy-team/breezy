@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib import patiencediff, revision
+from bzrlib import errors, patiencediff, revision
 
 class PlanMerge(object):
     """Plan an annotate merge using on-the-fly annotation"""
@@ -109,8 +109,12 @@ class _PlanMergeVersionedfile(object):
     Intended to allow merges to be planned with working tree texts.
     """
 
-    def __init__(self, fallback_versionedfile):
-        self._fallback_versionedfile = fallback_versionedfile
+    def __init__(self, file_id, fallback_versionedfiles=None):
+        self._file_id = file_id
+        if fallback_versionedfiles is None:
+            self.fallback_versionedfiles = []
+        else:
+            self.fallback_versionedfiles = fallback_versionedfiles
         self._parents = {}
         self._lines = {}
 
@@ -126,14 +130,36 @@ class _PlanMergeVersionedfile(object):
 
     def get_lines(self, version_id):
         lines = self._lines.get(version_id)
-        if lines is None:
-            lines = self._fallback_versionedfile.get_lines(version_id)
-        return lines
+        if lines is not None:
+            return lines
+        for versionedfile in self.fallback_versionedfiles:
+            try:
+                return versionedfile.get_lines(version_id)
+            except errors.RevisionNotPresent:
+                continue
+        else:
+            raise errors.RevisionNotPresent(version_id, self._file_id)
 
     def get_ancestry(self, version_id):
+        """See Versionedfile.get_ancestry.
+
+        Note that this implementation assumes that if a Versionedfile can
+        answer get_ancestry at all, it can give an authoritative answer.  In
+        fact, ghosts can invalidate this assumption.  But it's good enough
+        99% of the time, and far cheaper/simpler.
+
+        Also note that the results of this version are never topologically
+        sorted, and are a set.
+        """
         parents = self._parents.get(version_id)
         if parents is None:
-            return self._fallback_versionedfile.get_ancestry(version_id)
+            for vf in self.fallback_versionedfiles:
+                try:
+                    return vf.get_ancestry(version_id)
+                except errors.RevisionNotPresent:
+                    continue
+            else:
+                raise errors.RevisionNotPresent(version_id, self._file_id)
         ancestry = set([version_id])
         for parent in parents:
             ancestry.update(self.get_ancestry(parent))
@@ -141,6 +167,12 @@ class _PlanMergeVersionedfile(object):
 
     def get_parents(self, version_id):
         parents = self._parents.get(version_id)
-        if parents is None:
-            parents = self._fallback_versionedfile.get_parents(version_id)
-        return parents
+        if parents is not None:
+            return parents
+        for versionedfile in self.fallback_versionedfiles:
+            try:
+                return versionedfile.get_parents(version_id)
+            except errors.RevisionNotPresent:
+                continue
+        else:
+            raise errors.RevisionNotPresent(version_id, self._file_id)

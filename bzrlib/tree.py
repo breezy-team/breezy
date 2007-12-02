@@ -300,13 +300,7 @@ class Tree(object):
         'other:' pseudo-revision.
         """
         from bzrlib import plan_merge
-        if getattr(self, '_get_weave', None) is None:
-            repo = self.branch.repository
-            transaction = repo.get_transaction()
-            base_vf = repo.weave_store.get_weave(file_id, transaction)
-        else:
-            base_vf = self._get_weave(file_id)
-        vf = plan_merge._PlanMergeVersionedfile(base_vf)
+        vf = plan_merge._PlanMergeVersionedfile(file_id)
         last_revision_a = self._get_file_revision(file_id, vf, 'this:')
         last_revision_b = other._get_file_revision(file_id, vf, 'other:')
         plan = plan_merge.PlanMerge(last_revision_a, last_revision_b, vf)
@@ -332,8 +326,13 @@ class Tree(object):
             parent_revisions = [file_revision(t) for t in iter_parent_trees()]
             vf.add_lines(last_revision, parent_revisions,
                          self.get_file(file_id).readlines())
+            repo = self.branch.repository
+            transaction = repo.get_transaction()
+            base_vf = repo.weave_store.get_weave(file_id, transaction)
         else:
             last_revision = file_revision(self)
+            base_vf = self._get_weave(file_id)
+        vf.fallback_versionedfiles.append(base_vf)
         return last_revision
 
     inventory = property(_get_inventory,

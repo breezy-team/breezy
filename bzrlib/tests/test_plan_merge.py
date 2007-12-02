@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib import knit, plan_merge, tests
+from bzrlib import errors, knit, plan_merge, tests
 
 class TestPlanMerge(tests.TestCaseWithMemoryTransport):
 
@@ -22,7 +22,8 @@ class TestPlanMerge(tests.TestCaseWithMemoryTransport):
         tests.TestCaseWithMemoryTransport.setUp(self)
         self.vf = knit.KnitVersionedFile('root', self.get_transport(),
                                          create=True)
-        self.plan_merge_vf = plan_merge._PlanMergeVersionedfile(self.vf)
+        self.plan_merge_vf = plan_merge._PlanMergeVersionedfile('root',
+                                                                [self.vf])
 
     def add_version(self, version_id, parents, text):
         self.vf.add_lines(version_id, parents, [c+'\n' for c in text])
@@ -100,9 +101,12 @@ class TestPlanMergeVersionedfile(tests.TestCaseWithMemoryTransport):
 
     def setUp(self):
         tests.TestCaseWithMemoryTransport.setUp(self)
-        self.vf = knit.KnitVersionedFile('root', self.get_transport(),
-                                         create=True)
-        self.plan_merge_vf = plan_merge._PlanMergeVersionedfile(self.vf)
+        self.vf1 = knit.KnitVersionedFile('root', self.get_transport(),
+                                          create=True)
+        self.vf2 = knit.KnitVersionedFile('root', self.get_transport(),
+                                          create=True)
+        self.plan_merge_vf = plan_merge._PlanMergeVersionedfile('root',
+            [self.vf1, self.vf2])
 
     def test_add_lines(self):
         self.plan_merge_vf.add_lines('a:', [], [])
@@ -114,9 +118,44 @@ class TestPlanMergeVersionedfile(tests.TestCaseWithMemoryTransport):
                           None)
 
     def test_ancestry(self):
-        self.vf.add_lines('A', [], [])
-        self.vf.add_lines('B', ['A'], [])
+        self.vf1.add_lines('A', [], [])
+        self.vf1.add_lines('B', ['A'], [])
         self.plan_merge_vf.add_lines('C:', ['B'], [])
         self.plan_merge_vf.add_lines('D:', ['C:'], [])
         self.assertEqual(set(['A', 'B', 'C:', 'D:']),
             self.plan_merge_vf.get_ancestry('D:'))
+
+    def setup_abcde(self):
+        self.vf1.add_lines('A', [], ['a'])
+        self.vf1.add_lines('B', ['A'], ['b'])
+        self.vf2.add_lines('C', [], ['c'])
+        self.vf2.add_lines('D', ['C'], ['d'])
+        self.plan_merge_vf.add_lines('E:', ['B', 'D'], ['e'])
+
+    def test_ancestry_uses_all_versionedfiles(self):
+        self.setup_abcde()
+        self.assertEqual(set(['A', 'B', 'C', 'D', 'E:']),
+            self.plan_merge_vf.get_ancestry('E:'))
+
+    def test_ancestry_raises_revision_not_present(self):
+        error = self.assertRaises(errors.RevisionNotPresent,
+                                  self.plan_merge_vf.get_ancestry, 'E:')
+        self.assertContainsRe(str(error), '{E:} not present in "root"')
+
+    def test_get_parents(self):
+        self.setup_abcde()
+        self.assertEqual(['A'], self.plan_merge_vf.get_parents('B'))
+        self.assertEqual(['C'], self.plan_merge_vf.get_parents('D'))
+        self.assertEqual(['B', 'D'], self.plan_merge_vf.get_parents('E:'))
+        error = self.assertRaises(errors.RevisionNotPresent,
+                                  self.plan_merge_vf.get_parents, 'F')
+        self.assertContainsRe(str(error), '{F} not present in "root"')
+
+    def test_get_lines(self):
+        self.setup_abcde()
+        self.assertEqual(['a'], self.plan_merge_vf.get_lines('A'))
+        self.assertEqual(['c'], self.plan_merge_vf.get_lines('C'))
+        self.assertEqual(['e'], self.plan_merge_vf.get_lines('E:'))
+        error = self.assertRaises(errors.RevisionNotPresent,
+                                  self.plan_merge_vf.get_lines, 'F')
+        self.assertContainsRe(str(error), '{F} not present in "root"')
