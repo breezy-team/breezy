@@ -22,7 +22,7 @@ class TestPlanMerge(tests.TestCaseWithMemoryTransport):
         tests.TestCaseWithMemoryTransport.setUp(self)
         self.vf = knit.KnitVersionedFile('root', self.get_transport(),
                                          create=True)
-        self.plan_merge_vf = plan_merge._PlanMergeVersionedfile('root',
+        self.plan_merge_vf = plan_merge._PlanMergeVersionedFile('root',
                                                                 [self.vf])
 
     def add_version(self, version_id, parents, text):
@@ -97,7 +97,7 @@ class TestPlanMerge(tests.TestCaseWithMemoryTransport):
                          list(plan))
 
 
-class TestPlanMergeVersionedfile(tests.TestCaseWithMemoryTransport):
+class TestPlanMergeVersionedFile(tests.TestCaseWithMemoryTransport):
 
     def setUp(self):
         tests.TestCaseWithMemoryTransport.setUp(self)
@@ -105,7 +105,7 @@ class TestPlanMergeVersionedfile(tests.TestCaseWithMemoryTransport):
                                           create=True)
         self.vf2 = knit.KnitVersionedFile('root', self.get_transport(),
                                           create=True)
-        self.plan_merge_vf = plan_merge._PlanMergeVersionedfile('root',
+        self.plan_merge_vf = plan_merge._PlanMergeVersionedFile('root',
             [self.vf1, self.vf2])
 
     def test_add_lines(self):

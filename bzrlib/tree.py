@@ -300,7 +300,7 @@ class Tree(object):
         'other:' pseudo-revision.
         """
         from bzrlib import plan_merge
-        vf = plan_merge._PlanMergeVersionedfile(file_id)
+        vf = plan_merge._PlanMergeVersionedFile(file_id)
         last_revision_a = self._get_file_revision(file_id, vf, 'this:')
         last_revision_b = other._get_file_revision(file_id, vf, 'other:')
         plan = plan_merge.PlanMerge(last_revision_a, last_revision_b, vf)

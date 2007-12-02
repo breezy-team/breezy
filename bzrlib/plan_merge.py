@@ -16,10 +16,17 @@
 
 from bzrlib import errors, patiencediff, revision
 
+
 class PlanMerge(object):
     """Plan an annotate merge using on-the-fly annotation"""
 
     def __init__(self, a_rev, b_rev, vf):
+        """Contructor.
+
+        :param a_rev: Revision-id of one revision to merge
+        :param b_rev: Revision-id of the other revision to merge
+        :param vf: A versionedfile containing both revisions
+        """
         self.a_rev = a_rev
         self.b_rev = b_rev
         self.lines_a = vf.get_lines(a_rev)
@@ -30,6 +37,14 @@ class PlanMerge(object):
         self.uncommon = a_ancestry.symmetric_difference(b_ancestry)
 
     def plan_merge(self):
+        """Generate a 'plan' for merging the two revisions.
+
+        This involves comparing their texts and determining the cause of
+        differences.  If text A has a line and text B does not, then either the
+        line was added to text A, or it was deleted from B.  Once the causes
+        are combined, they are written out in the format described in
+        VersionedFile.plan_merge
+        """
         blocks = self._get_matching_blocks(self.a_rev, self.b_rev)
         new_a = self._find_new(self.a_rev)
         new_b = self._find_new(self.b_rev)
@@ -58,6 +73,10 @@ class PlanMerge(object):
             last_j = j+n
 
     def _get_matching_blocks(self, left_revision, right_revision):
+        """Return a description of which sections of two revisions match.
+
+        See SequenceMatcher.get_matching_blocks
+        """
         left_lines = self.vf.get_lines(left_revision)
         right_lines = self.vf.get_lines(right_revision)
         matcher = patiencediff.PatienceSequenceMatcher(None, left_lines,
@@ -65,6 +84,11 @@ class PlanMerge(object):
         return matcher.get_matching_blocks()
 
     def _unique_lines(self, matching_blocks):
+        """Analyse matching_blocks to determine which lines are unique
+
+        :return: a tuple of (unique_left, unique_right), where the values are
+            sets of line numbers of unique lines.
+        """
         last_i = 0
         last_j = 0
         unique_left = []
@@ -103,13 +127,23 @@ class PlanMerge(object):
         return new
 
 
-class _PlanMergeVersionedfile(object):
+class _PlanMergeVersionedFile(object):
     """A VersionedFile for uncommitted and committed texts.
 
-    Intended to allow merges to be planned with working tree texts.
+    It is intended to allow merges to be planned with working tree texts.
+    It implements only the small part of the VersionedFile interface used by
+    PlanMerge.  It falls back to multiple versionedfiles for data not stored in
+    _PlanMergeVersionedFile itself.
     """
 
     def __init__(self, file_id, fallback_versionedfiles=None):
+        """Constuctor
+
+        :param file_id: Used when raising exceptions.
+        :param fallback_versionedfiles: If supplied, the set of fallbacks to
+            use.  Otherwise, _PlanMergeVersionedFile.fallback_versionedfiles
+            can be appended to later.
+        """
         self._file_id = file_id
         if fallback_versionedfiles is None:
             self.fallback_versionedfiles = []
@@ -119,6 +153,11 @@ class _PlanMergeVersionedfile(object):
         self._lines = {}
 
     def add_lines(self, version_id, parents, lines):
+        """See VersionedFile.add_lines
+
+        Lines are added locally, not fallback versionedfiles.  Also, ghosts are
+        permitted.  Only reserved ids are permitted.
+        """
         if not revision.is_reserved_id(version_id):
             raise ValueError('Only reserved ids may be used')
         if parents is None:
@@ -129,6 +168,7 @@ class _PlanMergeVersionedfile(object):
         self._lines[version_id] = lines
 
     def get_lines(self, version_id):
+        """See VersionedFile.get_ancestry"""
         lines = self._lines.get(version_id)
         if lines is not None:
             return lines
@@ -141,9 +181,9 @@ class _PlanMergeVersionedfile(object):
             raise errors.RevisionNotPresent(version_id, self._file_id)
 
     def get_ancestry(self, version_id):
-        """See Versionedfile.get_ancestry.
+        """See VersionedFile.get_ancestry.
 
-        Note that this implementation assumes that if a Versionedfile can
+        Note that this implementation assumes that if a VersionedFile can
         answer get_ancestry at all, it can give an authoritative answer.  In
         fact, ghosts can invalidate this assumption.  But it's good enough
         99% of the time, and far cheaper/simpler.
@@ -166,6 +206,7 @@ class _PlanMergeVersionedfile(object):
         return ancestry
 
     def get_parents(self, version_id):
+        """See VersionedFile.get_parents"""
         parents = self._parents.get(version_id)
         if parents is not None:
             return parents
