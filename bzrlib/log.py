@@ -53,6 +53,7 @@ from itertools import izip
 import re
 
 from bzrlib import (
+    config,
     lazy_regex,
     registry,
     symbol_versioning,
@@ -603,23 +604,17 @@ class LogFormatter(object):
     def show(self, revno, rev, delta):
         raise NotImplementedError('not implemented in abstract base')
 
-    _short_name_re = lazy_regex.lazy_compile(r'(.*?)\s*<(.*@.*)>')
-
     def short_committer(self, rev):
-        name = rev.committer
-        match = self._short_name_re.match(name)
-        if match is None:
+        name, address = config.parse_username(rev.committer)
+        if name:
             return name
-        else:
-            return match.group(1) or match.group(2)
+        return address
 
     def short_author(self, rev):
-        name = rev.get_apparent_author()
-        match = self._short_name_re.match(name)
-        if match is None:
+        name, address = config.parse_username(rev.get_apparent_author())
+        if name:
             return name
-        else:
-            return match.group(1) or match.group(2)
+        return address
 
 
 class LongLogFormatter(LogFormatter):
