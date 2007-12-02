@@ -25,8 +25,9 @@ class PlanMerge(object):
         self.lines_a = vf.get_lines(a_rev)
         self.lines_b = vf.get_lines(b_rev)
         self.vf = vf
-        self.uncommon =\
-        set(vf.get_ancestry(a_rev)).symmetric_difference(vf.get_ancestry(b_rev))
+        a_ancestry = set(vf.get_ancestry(a_rev))
+        b_ancestry = set(vf.get_ancestry(b_rev))
+        self.uncommon = a_ancestry.symmetric_difference(b_ancestry)
 
     def plan_merge(self):
         blocks = self._get_matching_blocks(self.a_rev, self.b_rev)
