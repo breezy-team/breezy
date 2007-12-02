@@ -7,6 +7,11 @@ Bazaar Release Notes
 IN DEVELOPMENT
 ==============
 
+  IMPROVEMENTS:
+
+   * ``bzr commit`` now doesn't print the revision number twice. (Matt
+     Nordhoff, #172612)
+
   INTERNALS:
 
     * New -Dhttp debug option reports http connections, requests and responses.
@@ -25,6 +30,11 @@ IN DEVELOPMENT
 
    * Check for missing basis texts when fetching from packs to packs.
      (John Arbash Meinel, #165290)
+
+  API BREAKS:
+
+   * Deprecate not passing a ``location`` argument to commit reporters'
+     ``started`` methods. (Matt Nordhoff)
 
 
 bzr 1.0rc1 2007-11-30
