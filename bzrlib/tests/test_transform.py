@@ -1097,9 +1097,11 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             try:
                 tt.new_file('foo', tt.root, 'bar')
                 tt.new_file('Foo', tt.root, 'spam')
+                # Lie to tt that we've already resolved all conflicts.
                 tt.apply(no_conflicts=True)
-            finally:
+            except:
                 wt.unlock()
+                raise
         err = self.assertRaises(errors.FileExists, tt_helper)
         self.assertContainsRe(str(err),
             "^File exists: .+/foo")
@@ -1109,11 +1111,15 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             wt = self.make_branch_and_tree('.')
             tt = TreeTransform(wt)  # TreeTransform obtains write lock
             try:
-                tt.new_directory('foo', tt.root)
-                tt.new_directory('foo', tt.root)
+                foo_1 = tt.new_directory('foo', tt.root)
+                tt.new_directory('bar', foo_1)
+                foo_2 = tt.new_directory('foo', tt.root)
+                tt.new_directory('baz', foo_2)
+                # Lie to tt that we've already resolved all conflicts.
                 tt.apply(no_conflicts=True)
-            finally:
+            except:
                 wt.unlock()
+                raise
         err = self.assertRaises(errors.FileExists, tt_helper)
         self.assertContainsRe(str(err),
             "^File exists: .+/foo")
@@ -1553,7 +1559,7 @@ class TestFileMover(tests.TestCaseWithTransport):
         mover.rename('c/e', 'c/d')
         try:
             mover.rename('a', 'c')
-        except OSError, e:
+        except errors.FileExists, e:
             mover.rollback()
         self.failUnlessExists('a')
         self.failUnlessExists('c/d')

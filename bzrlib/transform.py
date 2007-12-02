@@ -1881,7 +1881,7 @@ class _FileMover(object):
         try:
             os.rename(from_, to)
         except OSError, e:
-            if e.errno == errno.EEXIST:
+            if e.errno in (errno.EEXIST, errno.ENOTEMPTY):
                 raise errors.FileExists(to, str(e))
             raise
         self.past_renames.append((from_, to))
