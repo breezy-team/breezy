@@ -14,6 +14,10 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+   * Catch OSError 17 (file exists) in final phase of tree transform and show
+     filename to user.
+     (Alexander Belchenko, #111758)
+
    * Catch ShortReadvErrors while using pycurl. Also make readv more robust by
      allowing multiple GET requests to be issued if too many ranges are
      required.
