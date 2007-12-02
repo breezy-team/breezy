@@ -101,6 +101,10 @@ bzr 1.0rc1 2007-11-30
    * Diff does not require an inventory to be generated on dirstate trees.
      (Aaron Bentley, #149254)
 
+   * New annotate merge (--merge-type=weave) implementation is fast on
+     versionedfiles withough cached annotations, e.g. pack-0.92.
+     (Aaron Bentley)
+
   IMPROVEMENTS:
 
    * ``bzr send`` now doesn't require the target e-mail address to be
