@@ -1922,6 +1922,14 @@ class BzrBranch6(BzrBranch5):
         revision_id = self.last_revision_info()[1]
         return revision_id
 
+    def revno(self):
+        """Return current revision number for this branch.
+
+        That is equivalent to the number of revisions committed to
+        this branch.
+        """
+        return self.last_revision_info()[0]
+
     def _write_last_revision_info(self, revno, revision_id):
         """Simply write out the revision id, with no checks.
 
