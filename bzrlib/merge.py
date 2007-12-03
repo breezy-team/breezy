@@ -1155,6 +1155,8 @@ class PlanMerge(object):
         a_ancestry = set(vf.get_ancestry(a_rev))
         b_ancestry = set(vf.get_ancestry(b_rev))
         self.uncommon = a_ancestry.symmetric_difference(b_ancestry)
+        self._last_lines = None
+        self._last_lines_revision_id = None
 
     def plan_merge(self):
         """Generate a 'plan' for merging the two revisions.
@@ -1197,8 +1199,13 @@ class PlanMerge(object):
 
         See SequenceMatcher.get_matching_blocks
         """
-        left_lines = self.vf.get_lines(left_revision)
+        if self._last_lines_revision_id == left_revision:
+            left_lines = self._last_lines
+        else:
+            left_lines = self.vf.get_lines(left_revision)
         right_lines = self.vf.get_lines(right_revision)
+        self._last_lines = right_lines
+        self._last_lines_revision_id = right_revision
         matcher = patiencediff.PatienceSequenceMatcher(None, left_lines,
                                                        right_lines)
         return matcher.get_matching_blocks()
