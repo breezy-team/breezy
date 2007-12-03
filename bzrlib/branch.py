@@ -2081,6 +2081,7 @@ class BzrBranch6(BzrBranch5):
     def _make_tags(self):
         return BasicTags(self)
 
+    @needs_read_lock
     def get_rev_id(self, revno, history=None):
         """Find the revision id of the specified revno."""
         if revno == 0:

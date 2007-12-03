@@ -325,9 +325,7 @@ class RevisionSpec_revno(RevisionSpec):
             # the branch object.
             from bzrlib.branch import Branch
             branch = Branch.open(branch_spec)
-            # Need to use a new revision history
-            # because we are using a specific branch
-            revs = branch.revision_history()
+            revs = None
 
         if dotted:
             branch.lock_read()
@@ -345,18 +343,22 @@ class RevisionSpec_revno(RevisionSpec):
                 # so for  API compatability we return None.
                 return RevisionInfo(branch, None, revisions[0])
         else:
+            last_revno, last_revision_id = branch.last_revision_info()
             if revno < 0:
                 # if get_rev_id supported negative revnos, there would not be a
                 # need for this special case.
-                if (-revno) >= len(revs):
+                if (-revno) >= last_revno:
                     revno = 1
                 else:
-                    revno = len(revs) + revno + 1
+                    revno = last_revno + revno + 1
             try:
                 revision_id = branch.get_rev_id(revno, revs)
             except errors.NoSuchRevision:
                 raise errors.InvalidRevisionSpec(self.user_spec, branch)
         return RevisionInfo(branch, revno, revision_id)
+
+    def in_branch(self, branch, need_revno=True):
+        return self._match_on(branch, None)
 
     def needs_branch(self):
         return self.spec.find(':') == -1
@@ -384,15 +386,28 @@ class RevisionSpec_revid(RevisionSpec):
     Examples::
 
       revid:aaaa@bbbb-123456789 -> Select revision 'aaaa@bbbb-123456789'
-    """    
+    """
+
     prefix = 'revid:'
 
-    def _match_on(self, branch, revs):
+    def _match_on(self, branch, revs, need_revno=True):
         # self.spec comes straight from parsing the command line arguments,
         # so we expect it to be a Unicode string. Switch it to the internal
         # representation.
         revision_id = osutils.safe_revision_id(self.spec, warn=False)
-        return RevisionInfo.from_revision_id(branch, revision_id, revs)
+        if need_revno:
+            if revs is None:
+                # XXX Branch needs a method for incremental
+                # revision_id -> revno resolving without loading
+                # the whole history. (Lukas Lalinsky, 20081203)
+                revs = branch.revision_history()
+            return RevisionInfo.from_revision_id(branch, revision_id, revs)
+        else:
+            return RevisionInfo(branch, None, revision_id)
+
+    def in_branch(self, branch, need_revno=True):
+        # Same as RevisionSpec.in_history, but without history loading.
+        return self._match_on(branch, None, need_revno)
 
 SPEC_TYPES.append(RevisionSpec_revid)
 
