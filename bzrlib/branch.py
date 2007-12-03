@@ -2081,6 +2081,34 @@ class BzrBranch6(BzrBranch5):
     def _make_tags(self):
         return BasicTags(self)
 
+    def get_rev_id(self, revno, history=None):
+        """Find the revision id of the specified revno."""
+        if revno == 0:
+            return _mod_revision.NULL_REVISION
+
+        last_revno, last_revision_id = self.last_revision_info()
+        if revno == last_revno:
+            return last_revision_id
+
+        if revno <= 0 or revno > last_revno:
+            raise errors.NoSuchRevision(self, revno)
+
+        if history is None:
+            history = self._revision_history_cache
+        if history is not None:
+            return history[revno - 1]
+
+        # TODO cache the partially loaded history (Lukas Lalinsky, 20081203)
+        revision_id = last_revision_id
+        history_iter = self.repository.iter_reverse_revision_history(
+            last_revision_id)
+        for i in xrange(last_revno - revno + 1):
+            try:
+                revision_id = history_iter.next()
+            except StopIteration:
+                raise errors.NoSuchRevision(self, revno)
+        return revision_id
+
 
 ######################################################################
 # results of operations

@@ -232,8 +232,18 @@ class RevisionSpec(object):
     # aliases for now, when we fix the core logic, then they
     # will do what you expect.
     in_store = in_history
-    in_branch = in_store
-        
+
+    def in_branch(self, branch, need_revno=True):
+        """Evaluate this revision spec and return a RevisionInfo object.
+
+        If need_revno is False, the returned RevisionInfo object might
+        have the revno attribute set as None (for performance reasons),
+        even if the revno exists in the specified branch.
+
+        The default implementation is an alias for RevisionSpec.in_history.
+        """
+        return self.in_history(branch)
+
     def __repr__(self):
         # this is mostly for helping with testing
         return '<%s %s>' % (self.__class__.__name__,
@@ -347,7 +357,7 @@ class RevisionSpec_revno(RevisionSpec):
             except errors.NoSuchRevision:
                 raise errors.InvalidRevisionSpec(self.user_spec, branch)
         return RevisionInfo(branch, revno, revision_id)
-        
+
     def needs_branch(self):
         return self.spec.find(':') == -1
 
@@ -398,15 +408,17 @@ class RevisionSpec_last(RevisionSpec):
 
       last:1        -> return the last revision
       last:3        -> return the revision 2 before the end.
-    """    
+    """
 
     prefix = 'last:'
 
     def _match_on(self, branch, revs):
+        last_revno, last_revision_id = branch.last_revision_info()
+
         if self.spec == '':
-            if not revs:
+            if not last_revno:
                 raise errors.NoCommits(branch)
-            return RevisionInfo(branch, len(revs), revs[-1])
+            return RevisionInfo(branch, last_revno, last_revision_id)
 
         try:
             offset = int(self.spec)
@@ -416,12 +428,18 @@ class RevisionSpec_last(RevisionSpec):
         if offset <= 0:
             raise errors.InvalidRevisionSpec(self.user_spec, branch,
                                              'you must supply a positive value')
-        revno = len(revs) - offset + 1
+
+        revno = last_revno - offset + 1
         try:
             revision_id = branch.get_rev_id(revno, revs)
         except errors.NoSuchRevision:
             raise errors.InvalidRevisionSpec(self.user_spec, branch)
         return RevisionInfo(branch, revno, revision_id)
+
+    def in_branch(self, branch, need_revno=True):
+        # Same as RevisionSpec.in_history, but without history loading.
+        return self._match_on(branch, None)
+
 
 SPEC_TYPES.append(RevisionSpec_last)
 
