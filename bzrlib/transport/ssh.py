@@ -331,7 +331,10 @@ if paramiko is not None:
     register_ssh_vendor('paramiko', vendor)
     register_ssh_vendor('none', vendor)
     register_default_ssh_vendor(vendor)
+    _sftp_connection_errors = (EOFError, paramiko.SSHException)
     del vendor
+else:
+    _sftp_connection_errors = (EOFError,)
 
 
 class SubprocessVendor(SSHVendor):
@@ -350,7 +353,7 @@ class SubprocessVendor(SSHVendor):
                                                   subsystem='sftp')
             sock = self._connect(argv)
             return SFTPClient(sock)
-        except (EOFError, paramiko.SSHException), e:
+        except _sftp_connection_errors, e:
             self._raise_connection_error(host, port=port, orig_error=e)
         except (OSError, IOError), e:
             # If the machine is fast enough, ssh can actually exit
