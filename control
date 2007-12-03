@@ -12,8 +12,8 @@ Homepage: http://bazaar-vcs.org
 Package: bzr
 Architecture: any
 Depends: ${shlibs:Depends}, ${python:Depends}, python (>> 2.5) | python-celementtree
-Recommends: bzrtools, python-paramiko, python-pycurl
-Suggests: bzr-gtk, bzr-svn, xdg-utils, libxml2-utils
+Recommends: bzrtools, python-paramiko
+Suggests: bzr-gtk, bzr-svn, python-pycurl, xdg-utils
 XB-Python-Version: ${python:Versions}
 Description: easy to use distributed version control system
  Bazaar is a distributed version control system designed to be easy to
@@ -34,3 +34,7 @@ Description: easy to use distributed version control system
  can be used to extend its functionality. Many plugins exist, providing
  useful commands (bzrtools), graphical interfaces (bzr-gtk), or native
  interaction with Subversion branches (bzr-svn).
+ .
+ Install python-paramiko if you are going to push branches to remote
+ hosts with sftp, and python-pycurl if you'd like for SSL certificates
+ always to be verified.

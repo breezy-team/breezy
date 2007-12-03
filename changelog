@@ -4,7 +4,10 @@ bzr (1.0~rc1-3) UNRELEASED; urgency=low
     + revamp the description.
     + add bzrtools to Recommends.
     + add bzr-gtk and bzr-svn to Suggests.
+    + remove libxml2-utils from Suggests.
     + drop conflicts on obsolete bzr-doc.
+    + demote python-pycurl to Suggests, mention in the description
+      what's useful for.
 
  -- Adeodato Simó <dato@net.com.org.es>  Sat, 01 Dec 2007 13:14:07 +0100
 
