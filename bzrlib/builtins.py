@@ -772,6 +772,9 @@ class cmd_push(Command):
                         " leading parent directories."
                         % location)
                 _create_prefix(to_transport)
+            except errors.TooManyRedirections:
+                raise errors.BzrCommandError("Too many redirections trying "
+                                             "to make %s." % location)
 
             # Now the target directory exists, but doesn't have a .bzr
             # directory. So we need to create it, along with any work to create

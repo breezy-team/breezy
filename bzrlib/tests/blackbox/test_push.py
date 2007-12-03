@@ -18,6 +18,7 @@
 """Black-box tests for bzr push."""
 
 import os
+import re
 
 from bzrlib import (
     errors,
@@ -251,9 +252,13 @@ class TestPush(ExternalBase):
 class RedirectingMemoryTransport(MemoryTransport):
 
     def mkdir(self, path, mode=None):
-        if self.abspath(path)[len(self._scheme):] == '/source':
+        path = self.abspath(path)[len(self._scheme):]
+        if path == '/source':
             raise errors.RedirectRequested(
                 path, self._scheme + '/target', is_permanent=True)
+        elif path == '/infinite-loop':
+            raise errors.RedirectRequested(
+                path, self._scheme + '/infinite-loop', is_permanent=True)
         else:
             return super(RedirectingMemoryTransport, self).mkdir(
                 path, mode)
@@ -283,18 +288,19 @@ class TestPushRedirect(ExternalBase):
         self.memory_server.setUp()
         self.addCleanup(self.memory_server.tearDown)
 
+        # Make the branch and tree that we'll be pushing.
+        t = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file'])
+        t.add('file')
+        t.commit('commit 1')
+
     def test_push_redirects_on_mkdir(self):
         """If the push requires a mkdir, push respects redirect requests.
 
         This is added primarily to handle lp:/ URI support, so that users can
         push to new branches by specifying lp:/ URIs.
         """
-        t = self.make_branch_and_tree('tree')
-        self.build_tree(['tree/file'])
-        t.add('file')
-        t.commit('commit 1')
         os.chdir('tree')
-
         destination_url = self.memory_server.get_url() + 'source'
         self.run_bzr('push %s' % destination_url)
         os.chdir('..')
@@ -303,3 +309,16 @@ class TestPushRedirect(ExternalBase):
         remote_revision = Branch.open(
             self.memory_server.get_url() + 'target').last_revision()
         self.assertEqual(remote_revision, local_revision)
+
+    def test_push_gracefully_handles_too_many_redirects(self):
+        """Push fails gracefully if the mkdir generates a large number of
+        redirects.
+        """
+        os.chdir('tree')
+        destination_url = self.memory_server.get_url() + 'infinite-loop'
+        out, err = self.run_bzr_error(
+            ['Too many redirections trying to make %s\\.\n'
+             % re.escape(destination_url)],
+            'push %s' % destination_url, retcode=3)
+        os.chdir('..')
+        self.assertEqual('', out)
