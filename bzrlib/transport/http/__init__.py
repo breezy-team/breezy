@@ -192,7 +192,7 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
             try_again = False
             try:
                 code, f = self._get(relpath, ranges)
-            except errors.InvalidRange, e:
+            except errors.InvalidHttpRange, e:
                 if exc_info is None:
                     exc_info = sys.exc_info()
                 self._degrade_range_hint(relpath, ranges, exc_info)
@@ -211,7 +211,8 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
     # specified.
     _bytes_to_read_before_seek = 128
     # No limit on the offset number that get combined into one, we are trying
-    # to avoid downloading the whole file.
+    # to avoid downloading the whole file. But see _pycurl.py for a different
+    # use.
     _max_readv_combine = 0
     # By default Apache has a limit of ~400 ranges before replying with a 400
     # Bad Request. So we go underneath that amount to be safe.

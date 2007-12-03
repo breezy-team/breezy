@@ -63,7 +63,7 @@ class TestRangeFileAccess(TestCase):
         content = []
         content += bline
         file_size = 200
-        for (start, part) in [(10, alpha), (100, alpha)]:
+        for (start, part) in [(10, alpha), (100, alpha), (126, alpha.upper())]:
             plen = len(part)
             content += 'Content-Range: bytes %d-%d/%d\r\n' % (start,
                                                               start+plen-1,
@@ -110,7 +110,15 @@ class TestRangeFileAccess(TestCase):
         # We crossed a range boundary, so now the file is positioned at the
         # start of the new range (i.e. trying to seek below 100 will error out)
         f.seek(100)
-        f.seek(126)
+        f.seek(125)
+
+        f =  self._file_multi_ranges()
+        self.assertEquals(self.alpha, f.read()) # Read first range
+        f.seek(100)
+        self.assertEquals(self.alpha, f.read()) # Read second range
+        self.assertEquals(126, f.tell())
+        f.seek(126) # Start of third range which is also the current pos !
+        self.assertEquals('A', f.read(1))
 
     def _check_file_boundaries(self, f, start=0):
         f.seek(start)

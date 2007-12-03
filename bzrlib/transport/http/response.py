@@ -161,10 +161,9 @@ class RangeFile(object):
         request not entirely consumed by the client (due to offset coalescing)
         """
         if self._pos < self._start:
-                raise errors.InvalidRange(self._path, self._pos,
-                                          "Can't read before range (%s, %s)"
-                                          % (self._start, self._size))
-
+            raise errors.InvalidRange(self._path, self._pos,
+                                      "Can't read before range (%s, %s)"
+                                      % (self._start, self._size))
         if self._size > 0:
             if size > 0 and self._pos + size > self._start + self._size:
                 raise errors.InvalidRange(
@@ -208,7 +207,7 @@ class RangeFile(object):
 
         if self._size > 0:
             cur_limit = self._start + self._size
-            while final_pos > cur_limit:
+            while final_pos >= cur_limit:
                 # We will cross range boundaries
                 remain = cur_limit - self._pos
                 if remain > 0:
