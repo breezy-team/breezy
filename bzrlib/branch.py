@@ -1372,8 +1372,8 @@ class BzrBranch(Branch):
         """See Branch.set_revision_history."""
         if 'evil' in debug.debug_flags:
             mutter_callsite(3, "set_revision_history scales with history.")
-        self._clear_cached_state()
         self._write_revision_history(rev_history)
+        self._clear_cached_state()
         self._cache_revision_history(rev_history)
         for hook in Branch.hooks['set_rh']:
             hook(self, rev_history)
@@ -1909,13 +1909,27 @@ BranchFormat.register_format(BzrBranchExperimental)
 
 class BzrBranch6(BzrBranch5):
 
+    def __init__(self, *ignored, **ignored_too):
+        super(BzrBranch6, self).__init__(*ignored, **ignored_too)
+        self._last_revision_info_cache = None
+
+    def _clear_cached_state(self):
+        super(BzrBranch6, self)._clear_cached_state()
+        self._last_revision_info_cache = None
+
     @needs_read_lock
     def last_revision_info(self):
-        revision_string = self.control_files.get('last-revision').read()
-        revno, revision_id = revision_string.rstrip('\n').split(' ', 1)
-        revision_id = cache_utf8.get_cached_utf8(revision_id)
-        revno = int(revno)
-        return revno, revision_id
+        """Return information about the last revision.
+
+        :return: A tuple (revno, revision_id).
+        """
+        if self._last_revision_info_cache is None:
+            revision_string = self.control_files.get('last-revision').read()
+            revno, revision_id = revision_string.rstrip('\n').split(' ', 1)
+            revision_id = cache_utf8.get_cached_utf8(revision_id)
+            revno = int(revno)
+            self._last_revision_info_cache = revno, revision_id
+        return self._last_revision_info_cache
 
     def last_revision(self):
         """Return last revision id, or None"""
@@ -1942,6 +1956,7 @@ class BzrBranch6(BzrBranch5):
             self._check_history_violation(revision_id)
         self._write_last_revision_info(revno, revision_id)
         self._clear_cached_state()
+        self._last_revision_info_cache = revno, revision_id
 
     def _check_history_violation(self, revision_id):
         last_revision = _mod_revision.ensure_null(self.last_revision())
