@@ -259,7 +259,14 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
                         if data_len != size:
                             raise errors.ShortReadvError(relpath, start, size,
                                                          actual=data_len)
-                        data_map[(start, size)] = data
+                        if (start, size) == cur_offset_and_size:
+                            # The offset requested are sorted as the coalesced
+                            # ones, not need to cache. Win !
+                            yield cur_offset_and_size[0], data
+                            cur_offset_and_size = iter_offsets.next()
+                        else:
+                            # Different sorting. We need to cache.
+                            data_map[(start, size)] = data
 
                     # Yield everything we can
                     while cur_offset_and_size in data_map:
