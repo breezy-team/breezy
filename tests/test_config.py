@@ -87,5 +87,7 @@ class DebBuildConfigTests(TestCaseWithTransport):
     self.assertEqual(self.config.export_upstream_revision, 'tag:upstream-0.2')
     self.config.set_version(Version('0.2~bzr300'))
     self.assertEqual(self.config.export_upstream_revision, '300')
+    self.config.set_version(Version('0.2~svn200'))
+    self.assertEqual(self.config.export_upstream_revision, 'svn:200')
 
 # vim: ts=2 sts=2 sw=2

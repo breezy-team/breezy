@@ -89,8 +89,11 @@ def tarball_name(package, version):
 def get_snapshot_revision(upstream_version):
   """Return the upstream revision specifier if specified in the upstream version or None. """
   match = re.search("~bzr(.+)$", upstream_version)
-  if match is None:
-    return None
-  return match.groups()[0]
+  if match is not None:
+    return match.groups()[0]
+  match = re.search("~svn(.+)$", upstream_version)
+  if match is not None:
+    return "svn:%s" % match.groups()[0]
+  return None
 
 # vim: ts=2 sts=2 sw=2
