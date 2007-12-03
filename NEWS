@@ -12,6 +12,9 @@ IN DEVELOPMENT
    * ``bzr commit`` now doesn't print the revision number twice. (Matt
      Nordhoff, #172612)
 
+   * Support logging single merge revisions with short and line log formatters.
+     (Kent Gibson)
+
   INTERNALS:
 
     * New -Dhttp debug option reports http connections, requests and responses.
