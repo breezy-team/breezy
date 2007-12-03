@@ -425,7 +425,7 @@ class Branch(object):
         That is equivalent to the number of revisions committed to
         this branch.
         """
-        return len(self.revision_history())
+        return self.last_revision_info()[0]
 
     def unbind(self):
         """Older format branches cannot bind or unbind."""
