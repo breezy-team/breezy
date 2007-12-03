@@ -57,7 +57,7 @@ def find_changelog(t, merge):
     try:
       if not t.has_filename(changelog_file):
         if merge:
-          #Assume LartstiQ's layout (.bzr in debian/)
+          #Assume LarstiQ's layout (.bzr in debian/)
           changelog_file = 'changelog'
           larstiq = True
           if not t.has_filename(changelog_file):
