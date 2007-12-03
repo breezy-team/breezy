@@ -123,6 +123,11 @@ class TestRemove(ExternalBase):
         self.changeFile(c)
         self.run_bzr_remove_changed_files(['modified:[.\s]*a[.\s]*b/c'], files)
 
+    def test_remove_changed_ignored_files(self):
+        tree = self._make_add_and_assert_tree(['a'])
+        self.run_bzr(['ignore', 'a'])
+        self.run_bzr_remove_changed_files(['added:[.\s]*a'], ['a'])
+
     def test_remove_changed_files_from_child_dir(self):
         if sys.platform == 'win32':
             raise TestSkipped("Windows unable to remove '.' directory")

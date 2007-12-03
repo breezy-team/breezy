@@ -20,10 +20,19 @@ import os
 from bzrlib import bzrdir
 from bzrlib.tests import TestCaseWithTransport, TestCase
 from bzrlib.branch import Branch
-from bzrlib.conflicts import (MissingParent, ContentsConflict, TextConflict,
-        PathConflict, DuplicateID, DuplicateEntry, ParentLoop, UnversionedParent,
-        ConflictList, 
-        restore)
+from bzrlib.conflicts import (
+    ConflictList,
+    ContentsConflict,
+    DuplicateID,
+    DuplicateEntry,
+    MissingParent,
+    ParentLoop,
+    PathConflict,
+    TextConflict,
+    UnversionedParent,
+    resolve,
+    restore,
+    )
 from bzrlib.errors import NotConflicted
 
 
@@ -114,6 +123,18 @@ class TestConflicts(TestCaseWithTransport):
         self.assertEqual((tree_conflicts, ConflictList()),
                          tree_conflicts.select_conflicts(tree, ['foo'],
                                                          ignore_misses=True))
+
+    def test_resolve_conflicts_recursive(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['dir/', 'dir/hello'])
+        tree.add(['dir', 'dir/hello'])
+        tree.set_conflicts(ConflictList([TextConflict('dir/hello')]))
+        resolve(tree, ['dir'], recursive=False, ignore_misses=True)
+        self.assertEqual(ConflictList([TextConflict('dir/hello')]),
+                         tree.conflicts())
+        resolve(tree, ['dir'], recursive=True, ignore_misses=True)
+        self.assertEqual(ConflictList([]),
+                         tree.conflicts())
 
 
 class TestConflictStanzas(TestCase):

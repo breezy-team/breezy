@@ -16,10 +16,10 @@
 
 from bzrlib import (
     errors,
+    revision,
     tsort,
     )
 from bzrlib.deprecated_graph import (node_distances, select_farthest)
-from bzrlib.revision import NULL_REVISION
 
 # DIAGRAM of terminology
 #       A
@@ -43,6 +43,17 @@ from bzrlib.revision import NULL_REVISION
 # 1. find_lca('G', 'H') => ['D', 'E']
 # 2. Since len(['D', 'E']) > 1, find_lca('D', 'E') => ['A']
 
+
+class DictParentsProvider(object):
+
+    def __init__(self, ancestry):
+        self.ancestry = ancestry
+
+    def __repr__(self):
+        return 'DictParentsProvider(%r)' % self.ancestry
+
+    def get_parents(self, revisions):
+        return [self.ancestry.get(r, None) for r in revisions]
 
 
 class _StackedParentsProvider(object):
@@ -337,6 +348,13 @@ class Graph(object):
         smallest number of parent looksup to determine the ancestral
         relationship between N revisions.
         """
+        if revision.is_null(candidate_ancestor):
+            return True
+        if revision.is_null(candidate_descendant):
+            # if candidate_descendant is NULL_REVISION, then only
+            # candidate_ancestor == NULL_REVISION is an ancestor, but we've
+            # already handled that case.
+            return False
         return set([candidate_descendant]) == self.heads(
             [candidate_ancestor, candidate_descendant])
 

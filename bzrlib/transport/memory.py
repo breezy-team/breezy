@@ -272,7 +272,7 @@ class MemoryTransport(Transport):
             if i == '..':
                 if not r:
                     raise ValueError("illegal relpath %r under %r"
-                        % relpath, self._cwd)
+                        % (relpath, self._cwd))
                 r = r[:-1]
             elif i == '.' or i == '':
                 pass

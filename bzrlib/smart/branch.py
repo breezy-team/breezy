@@ -128,6 +128,7 @@ class SmartServerBranchRequestLockWrite(SmartServerBranchRequest):
             try:
                 branch_token = branch.lock_write(token=branch_token)
             finally:
+                # this leaves the repository with 1 lock
                 branch.repository.unlock()
         except errors.LockContention:
             return FailedSmartServerResponse(('LockContention',))
@@ -137,7 +138,10 @@ class SmartServerBranchRequestLockWrite(SmartServerBranchRequest):
             return FailedSmartServerResponse(('UnlockableTransport',))
         except errors.LockFailed, e:
             return FailedSmartServerResponse(('LockFailed', str(e.lock), str(e.why)))
-        branch.repository.leave_lock_in_place()
+        if repo_token is None:
+            repo_token = ''
+        else:
+            branch.repository.leave_lock_in_place()
         branch.leave_lock_in_place()
         branch.unlock()
         return SuccessfulSmartServerResponse(('ok', branch_token, repo_token))
@@ -154,7 +158,8 @@ class SmartServerBranchRequestUnlock(SmartServerBranchRequest):
                 branch.repository.unlock()
         except errors.TokenMismatch:
             return FailedSmartServerResponse(('TokenMismatch',))
-        branch.repository.dont_leave_lock_in_place()
+        if repo_token:
+            branch.repository.dont_leave_lock_in_place()
         branch.dont_leave_lock_in_place()
         branch.unlock()
         return SuccessfulSmartServerResponse(('ok',))

@@ -26,6 +26,7 @@ from bzrlib import (
         pack,
         ui,
         )
+from bzrlib.graph import Graph
 from bzrlib.index import (
     GraphIndex,
     GraphIndexBuilder,
@@ -48,6 +49,7 @@ from bzrlib import (
     osutils,
     transactions,
     xml5,
+    xml6,
     xml7,
     )
 
@@ -72,10 +74,23 @@ class PackCommitBuilder(CommitBuilder):
     added text, reducing memory and object pressure.
     """
 
+    def __init__(self, repository, parents, config, timestamp=None,
+                 timezone=None, committer=None, revprops=None,
+                 revision_id=None):
+        CommitBuilder.__init__(self, repository, parents, config,
+            timestamp=timestamp, timezone=timezone, committer=committer,
+            revprops=revprops, revision_id=revision_id)
+        self._file_graph = Graph(
+            repository._pack_collection.text_index.combined_index)
+
     def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
         return self.repository._pack_collection._add_text_to_weave(file_id,
             self._new_revision_id, new_lines, parents, nostore_sha,
             self.random_revid)
+
+    def _heads(self, file_id, revision_ids):
+        keys = [(file_id, revision_id) for revision_id in revision_ids]
+        return set([key[1] for key in self._file_graph.heads(keys)])
 
 
 class PackRootCommitBuilder(RootCommitBuilder):
@@ -85,10 +100,23 @@ class PackRootCommitBuilder(RootCommitBuilder):
     added text, reducing memory and object pressure.
     """
 
+    def __init__(self, repository, parents, config, timestamp=None,
+                 timezone=None, committer=None, revprops=None,
+                 revision_id=None):
+        CommitBuilder.__init__(self, repository, parents, config,
+            timestamp=timestamp, timezone=timezone, committer=committer,
+            revprops=revprops, revision_id=revision_id)
+        self._file_graph = Graph(
+            repository._pack_collection.text_index.combined_index)
+
     def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
         return self.repository._pack_collection._add_text_to_weave(file_id,
             self._new_revision_id, new_lines, parents, nostore_sha,
             self.random_revid)
+
+    def _heads(self, file_id, revision_ids):
+        keys = [(file_id, revision_id) for revision_id in revision_ids]
+        return set([key[1] for key in self._file_graph.heads(keys)])
 
 
 class Pack(object):
@@ -145,6 +173,14 @@ class Pack(object):
         """The text index is the name + .tix."""
         return self.index_name('text', name)
 
+    def _external_compression_parents_of_texts(self):
+        keys = set()
+        refs = set()
+        for node in self.text_index.iter_all_entries():
+            keys.add(node[1])
+            refs.update(node[3][1])
+        return refs - keys
+
 
 class ExistingPack(Pack):
     """An in memory proxy for an existing .pack and its disk indices."""
@@ -187,7 +223,7 @@ class NewPack(Pack):
         }
 
     def __init__(self, upload_transport, index_transport, pack_transport,
-        upload_suffix=''):
+        upload_suffix='', file_mode=None):
         """Create a NewPack instance.
 
         :param upload_transport: A writable transport for the pack to be
@@ -199,6 +235,7 @@ class NewPack(Pack):
             upload_transport.clone('../packs').
         :param upload_suffix: An optional suffix to be given to any temporary
             files created during the pack creation. e.g '.autopack'
+        :param file_mode: An optional file mode to create the new files with.
         """
         # The relative locations of the packs are constrained, but all are
         # passed in because the caller has them, so as to avoid object churn.
@@ -223,6 +260,8 @@ class NewPack(Pack):
         self.index_transport = index_transport
         # where is the pack renamed to when it is finished?
         self.pack_transport = pack_transport
+        # What file mode to upload the pack and indices with.
+        self._file_mode = file_mode
         # tracks the content written to the .pack file.
         self._hash = md5.new()
         # a four-tuple with the length in bytes of the indices, once the pack
@@ -239,7 +278,7 @@ class NewPack(Pack):
         self.start_time = time.time()
         # open an output stream for the data added to the pack.
         self.write_stream = self.upload_transport.open_write_stream(
-            self.random_name)
+            self.random_name, mode=self._file_mode)
         if 'pack' in debug.debug_flags:
             mutter('%s: create_pack: pack stream open: %s%s t+%6.3fs',
                 time.ctime(), self.upload_transport.base, self.random_name,
@@ -342,6 +381,14 @@ class NewPack(Pack):
                 self.pack_transport, self.name,
                 time.time() - self.start_time)
 
+    def flush(self):
+        """Flush any current data."""
+        if self._buffer[1]:
+            bytes = ''.join(self._buffer[0])
+            self.write_stream.write(bytes)
+            self._hash.update(bytes)
+            self._buffer[:] = [[], 0]
+
     def index_name(self, index_type, name):
         """Get the disk name of an index type for pack name 'name'."""
         return name + NewPack.index_definitions[index_type][0]
@@ -368,7 +415,8 @@ class NewPack(Pack):
         """
         index_name = self.index_name(index_type, self.name)
         self.index_sizes[self.index_offset(index_type)] = \
-            self.index_transport.put_file(index_name, index.finish())
+            self.index_transport.put_file(index_name, index.finish(),
+            mode=self._file_mode)
         if 'pack' in debug.debug_flags:
             # XXX: size might be interesting?
             mutter('%s: create_pack: wrote %s index: %s%s t+%6.3fs',
@@ -490,7 +538,19 @@ class Packer(object):
         self.packs = packs
         self.suffix = suffix
         self.revision_ids = revision_ids
+        # The pack object we are creating.
+        self.new_pack = None
         self._pack_collection = pack_collection
+        # The index layer keys for the revisions being copied. None for 'all
+        # objects'.
+        self._revision_keys = None
+        # What text keys to copy. None for 'all texts'. This is set by
+        # _copy_inventory_texts
+        self._text_filter = None
+        self._extra_init()
+
+    def _extra_init(self):
+        """A template hook to allow extending the constructor trivially."""
 
     def pack(self, pb=None):
         """Create a new pack by reading data from other packs.
@@ -533,11 +593,108 @@ class Packer(object):
         """Open a pack for the pack we are creating."""
         return NewPack(self._pack_collection._upload_transport,
             self._pack_collection._index_transport,
-            self._pack_collection._pack_transport, upload_suffix=self.suffix)
+            self._pack_collection._pack_transport, upload_suffix=self.suffix,
+            file_mode=self._pack_collection.repo.control_files._file_mode)
+
+    def _copy_revision_texts(self):
+        """Copy revision data to the new pack."""
+        # select revisions
+        if self.revision_ids:
+            revision_keys = [(revision_id,) for revision_id in self.revision_ids]
+        else:
+            revision_keys = None
+        # select revision keys
+        revision_index_map = self._pack_collection._packs_list_to_pack_map_and_index_list(
+            self.packs, 'revision_index')[0]
+        revision_nodes = self._pack_collection._index_contents(revision_index_map, revision_keys)
+        # copy revision keys and adjust values
+        self.pb.update("Copying revision texts", 1)
+        list(self._copy_nodes_graph(revision_nodes, revision_index_map,
+            self.new_pack._writer, self.new_pack.revision_index))
+        if 'pack' in debug.debug_flags:
+            mutter('%s: create_pack: revisions copied: %s%s %d items t+%6.3fs',
+                time.ctime(), self._pack_collection._upload_transport.base,
+                self.new_pack.random_name,
+                self.new_pack.revision_index.key_count(),
+                time.time() - self.new_pack.start_time)
+        self._revision_keys = revision_keys
+
+    def _copy_inventory_texts(self):
+        """Copy the inventory texts to the new pack.
+
+        self._revision_keys is used to determine what inventories to copy.
+
+        Sets self._text_filter appropriately.
+        """
+        # select inventory keys
+        inv_keys = self._revision_keys # currently the same keyspace, and note that
+        # querying for keys here could introduce a bug where an inventory item
+        # is missed, so do not change it to query separately without cross
+        # checking like the text key check below.
+        inventory_index_map = self._pack_collection._packs_list_to_pack_map_and_index_list(
+            self.packs, 'inventory_index')[0]
+        inv_nodes = self._pack_collection._index_contents(inventory_index_map, inv_keys)
+        # copy inventory keys and adjust values
+        # XXX: Should be a helper function to allow different inv representation
+        # at this point.
+        self.pb.update("Copying inventory texts", 2)
+        inv_lines = self._copy_nodes_graph(inv_nodes, inventory_index_map,
+            self.new_pack._writer, self.new_pack.inventory_index, output_lines=True)
+        if self.revision_ids:
+            self._process_inventory_lines(inv_lines)
+        else:
+            # eat the iterator to cause it to execute.
+            list(inv_lines)
+            self._text_filter = None
+        if 'pack' in debug.debug_flags:
+            mutter('%s: create_pack: inventories copied: %s%s %d items t+%6.3fs',
+                time.ctime(), self._pack_collection._upload_transport.base,
+                self.new_pack.random_name,
+                self.new_pack.inventory_index.key_count(),
+                time.time() - new_pack.start_time)
+
+    def _copy_text_texts(self):
+        # select text keys
+        text_index_map, text_nodes = self._get_text_nodes()
+        if self._text_filter is not None:
+            # We could return the keys copied as part of the return value from
+            # _copy_nodes_graph but this doesn't work all that well with the
+            # need to get line output too, so we check separately, and as we're
+            # going to buffer everything anyway, we check beforehand, which
+            # saves reading knit data over the wire when we know there are
+            # mising records.
+            text_nodes = set(text_nodes)
+            present_text_keys = set(_node[1] for _node in text_nodes)
+            missing_text_keys = set(self._text_filter) - present_text_keys
+            if missing_text_keys:
+                # TODO: raise a specific error that can handle many missing
+                # keys.
+                a_missing_key = missing_text_keys.pop()
+                raise errors.RevisionNotPresent(a_missing_key[1],
+                    a_missing_key[0])
+        # copy text keys and adjust values
+        self.pb.update("Copying content texts", 3)
+        list(self._copy_nodes_graph(text_nodes, text_index_map,
+            self.new_pack._writer, self.new_pack.text_index))
+        self._log_copied_texts()
+
+    def _check_references(self):
+        """Make sure our external refereneces are present."""
+        external_refs = self.new_pack._external_compression_parents_of_texts()
+        if external_refs:
+            index = self._pack_collection.text_index.combined_index
+            found_items = list(index.iter_entries(external_refs))
+            if len(found_items) != len(external_refs):
+                found_keys = set(k for idx, k, refs, value in found_items)
+                missing_items = external_refs - found_keys
+                missing_file_id, missing_revision_id = missing_items.pop()
+                raise errors.RevisionNotPresent(missing_revision_id,
+                                                missing_file_id)
 
     def _create_pack_from_packs(self):
         self.pb.update("Opening pack", 0, 5)
-        new_pack = self.open_pack()
+        self.new_pack = self.open_pack()
+        new_pack = self.new_pack
         # buffer data - we won't be reading-back during the pack creation and
         # this makes a significant difference on sftp pushes.
         new_pack.set_write_cache_size(1024*1024)
@@ -552,86 +709,11 @@ class Packer(object):
                 '%s%s %s revisions wanted %s t=0',
                 time.ctime(), self._pack_collection._upload_transport.base, new_pack.random_name,
                 plain_pack_list, rev_count)
-        # select revisions
-        if self.revision_ids:
-            revision_keys = [(revision_id,) for revision_id in self.revision_ids]
-        else:
-            revision_keys = None
-
-        # select revision keys
-        revision_index_map = self._pack_collection._packs_list_to_pack_map_and_index_list(
-            self.packs, 'revision_index')[0]
-        revision_nodes = self._pack_collection._index_contents(revision_index_map, revision_keys)
-        # copy revision keys and adjust values
-        self.pb.update("Copying revision texts", 1)
-        list(self._copy_nodes_graph(revision_nodes, revision_index_map,
-            new_pack._writer, new_pack.revision_index))
-        if 'pack' in debug.debug_flags:
-            mutter('%s: create_pack: revisions copied: %s%s %d items t+%6.3fs',
-                time.ctime(), self._pack_collection._upload_transport.base, new_pack.random_name,
-                new_pack.revision_index.key_count(),
-                time.time() - new_pack.start_time)
-        # select inventory keys
-        inv_keys = revision_keys # currently the same keyspace, and note that
-        # querying for keys here could introduce a bug where an inventory item
-        # is missed, so do not change it to query separately without cross
-        # checking like the text key check below.
-        inventory_index_map = self._pack_collection._packs_list_to_pack_map_and_index_list(
-            self.packs, 'inventory_index')[0]
-        inv_nodes = self._pack_collection._index_contents(inventory_index_map, inv_keys)
-        # copy inventory keys and adjust values
-        # XXX: Should be a helper function to allow different inv representation
-        # at this point.
-        self.pb.update("Copying inventory texts", 2)
-        inv_lines = self._copy_nodes_graph(inv_nodes, inventory_index_map,
-            new_pack._writer, new_pack.inventory_index, output_lines=True)
-        if self.revision_ids:
-            fileid_revisions = self._pack_collection.repo._find_file_ids_from_xml_inventory_lines(
-                inv_lines, self.revision_ids)
-            text_filter = []
-            for fileid, file_revids in fileid_revisions.iteritems():
-                text_filter.extend(
-                    [(fileid, file_revid) for file_revid in file_revids])
-        else:
-            # eat the iterator to cause it to execute.
-            list(inv_lines)
-            text_filter = None
-        if 'pack' in debug.debug_flags:
-            mutter('%s: create_pack: inventories copied: %s%s %d items t+%6.3fs',
-                time.ctime(), self._pack_collection._upload_transport.base, new_pack.random_name,
-                new_pack.inventory_index.key_count(),
-                time.time() - new_pack.start_time)
-        # select text keys
-        text_index_map = self._pack_collection._packs_list_to_pack_map_and_index_list(
-            self.packs, 'text_index')[0]
-        text_nodes = self._pack_collection._index_contents(text_index_map, text_filter)
-        if text_filter is not None:
-            # We could return the keys copied as part of the return value from
-            # _copy_nodes_graph but this doesn't work all that well with the
-            # need to get line output too, so we check separately, and as we're
-            # going to buffer everything anyway, we check beforehand, which
-            # saves reading knit data over the wire when we know there are
-            # mising records.
-            text_nodes = set(text_nodes)
-            present_text_keys = set(_node[1] for _node in text_nodes)
-            missing_text_keys = set(text_filter) - present_text_keys
-            if missing_text_keys:
-                # TODO: raise a specific error that can handle many missing
-                # keys.
-                a_missing_key = missing_text_keys.pop()
-                raise errors.RevisionNotPresent(a_missing_key[1],
-                    a_missing_key[0])
-        # copy text keys and adjust values
-        self.pb.update("Copying content texts", 3)
-        list(self._copy_nodes_graph(text_nodes, text_index_map,
-            new_pack._writer, new_pack.text_index))
-        if 'pack' in debug.debug_flags:
-            mutter('%s: create_pack: file texts copied: %s%s %d items t+%6.3fs',
-                time.ctime(), self._pack_collection._upload_transport.base, new_pack.random_name,
-                new_pack.text_index.key_count(),
-                time.time() - new_pack.start_time)
+        self._copy_revision_texts()
+        self._copy_inventory_texts()
+        self._copy_text_texts()
         # select signature keys
-        signature_filter = revision_keys # same keyspace
+        signature_filter = self._revision_keys # same keyspace
         signature_index_map = self._pack_collection._packs_list_to_pack_map_and_index_list(
             self.packs, 'signature_index')[0]
         signature_nodes = self._pack_collection._index_contents(signature_index_map,
@@ -645,7 +727,8 @@ class Packer(object):
                 time.ctime(), self._pack_collection._upload_transport.base, new_pack.random_name,
                 new_pack.signature_index.key_count(),
                 time.time() - new_pack.start_time)
-        if not new_pack.data_inserted():
+        self._check_references()
+        if not self._use_pack(new_pack):
             new_pack.abort()
             return None
         self.pb.update("Finishing pack", 5)
@@ -712,9 +795,14 @@ class Packer(object):
         """
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            return self._do_copy_nodes_graph(nodes, index_map, writer,
-                write_index, output_lines, pb)
-        finally:
+            for result in self._do_copy_nodes_graph(nodes, index_map, writer,
+                write_index, output_lines, pb):
+                yield result
+        except Exception:
+            # Python 2.4 does not permit try:finally: in a generator.
+            pb.finished()
+            raise
+        else:
             pb.finished()
 
     def _do_copy_nodes_graph(self, nodes, index_map, writer, write_index,
@@ -773,6 +861,38 @@ class Packer(object):
                 pb.update("Copied record", record_index)
                 record_index += 1
 
+    def _get_text_nodes(self):
+        text_index_map = self._pack_collection._packs_list_to_pack_map_and_index_list(
+            self.packs, 'text_index')[0]
+        return text_index_map, self._pack_collection._index_contents(text_index_map,
+            self._text_filter)
+
+    def _log_copied_texts(self):
+        if 'pack' in debug.debug_flags:
+            mutter('%s: create_pack: file texts copied: %s%s %d items t+%6.3fs',
+                time.ctime(), self._pack_collection._upload_transport.base,
+                self.new_pack.random_name,
+                self.new_pack.text_index.key_count(),
+                time.time() - self.new_pack.start_time)
+
+    def _process_inventory_lines(self, inv_lines):
+        """Use up the inv_lines generator and setup a text key filter."""
+        repo = self._pack_collection.repo
+        fileid_revisions = repo._find_file_ids_from_xml_inventory_lines(
+            inv_lines, self.revision_ids)
+        text_filter = []
+        for fileid, file_revids in fileid_revisions.iteritems():
+            text_filter.extend([(fileid, file_revid) for file_revid in file_revids])
+        self._text_filter = text_filter
+
+    def _use_pack(self, new_pack):
+        """Return True if new_pack should be used.
+
+        :param new_pack: The pack that has just been created.
+        :return: True if the pack should be used.
+        """
+        return new_pack.data_inserted()
+
 
 class ReconcilePacker(Packer):
     """A packer which regenerates indices etc as it copies.
@@ -780,6 +900,132 @@ class ReconcilePacker(Packer):
     This is used by ``bzr reconcile`` to cause parent text pointers to be
     regenerated.
     """
+
+    def _extra_init(self):
+        self._data_changed = False
+
+    def _process_inventory_lines(self, inv_lines):
+        """Generate a text key reference map rather for reconciling with."""
+        repo = self._pack_collection.repo
+        refs = repo._find_text_key_references_from_xml_inventory_lines(
+            inv_lines)
+        self._text_refs = refs
+        # during reconcile we:
+        #  - convert unreferenced texts to full texts
+        #  - correct texts which reference a text not copied to be full texts
+        #  - copy all others as-is but with corrected parents.
+        #  - so at this point we don't know enough to decide what becomes a full
+        #    text.
+        self._text_filter = None
+
+    def _copy_text_texts(self):
+        """generate what texts we should have and then copy."""
+        self.pb.update("Copying content texts", 3)
+        # we have three major tasks here:
+        # 1) generate the ideal index
+        repo = self._pack_collection.repo
+        ideal_index = repo._generate_text_key_index(self._text_refs)
+        # 2) generate a text_nodes list that contains all the deltas that can
+        #    be used as-is, with corrected parents.
+        ok_nodes = []
+        bad_texts = []
+        discarded_nodes = []
+        NULL_REVISION = _mod_revision.NULL_REVISION
+        text_index_map, text_nodes = self._get_text_nodes()
+        for node in text_nodes:
+            # 0 - index
+            # 1 - key 
+            # 2 - value
+            # 3 - refs
+            try:
+                ideal_parents = tuple(ideal_index[node[1]])
+            except KeyError:
+                discarded_nodes.append(node)
+                self._data_changed = True
+            else:
+                if ideal_parents == (NULL_REVISION,):
+                    ideal_parents = ()
+                if ideal_parents == node[3][0]:
+                    # no change needed.
+                    ok_nodes.append(node)
+                elif ideal_parents[0:1] == node[3][0][0:1]:
+                    # the left most parent is the same, or there are no parents
+                    # today. Either way, we can preserve the representation as
+                    # long as we change the refs to be inserted.
+                    self._data_changed = True
+                    ok_nodes.append((node[0], node[1], node[2],
+                        (ideal_parents, node[3][1])))
+                    self._data_changed = True
+                else:
+                    # Reinsert this text completely
+                    bad_texts.append((node[1], ideal_parents))
+                    self._data_changed = True
+        # we're finished with some data.
+        del ideal_index
+        del text_nodes
+        # 3) bulk copy the ok data
+        list(self._copy_nodes_graph(ok_nodes, text_index_map,
+            self.new_pack._writer, self.new_pack.text_index))
+        # 3) adhoc copy all the other texts.
+        transaction = repo.get_transaction()
+        file_id_index = GraphIndexPrefixAdapter(
+            self.new_pack.text_index,
+            ('blank', ), 1,
+            add_nodes_callback=self.new_pack.text_index.add_nodes)
+        knit_index = KnitGraphIndex(file_id_index,
+            add_callback=file_id_index.add_nodes,
+            deltas=True, parents=True)
+        output_knit = knit.KnitVersionedFile('reconcile-texts',
+            self._pack_collection.transport,
+            None,
+            index=knit_index,
+            access_method=_PackAccess(
+                {self.new_pack.text_index:self.new_pack.access_tuple()},
+                (self.new_pack._writer, self.new_pack.text_index)),
+            factory=knit.KnitPlainFactory())
+        for key, parent_keys in bad_texts:
+            # We refer to the new pack to delta data being output.
+            # A possible improvement would be to catch errors on short reads
+            # and only flush then.
+            self.new_pack.flush()
+            parents = []
+            for parent_key in parent_keys:
+                if parent_key[0] != key[0]:
+                    # Graph parents must match the fileid
+                    raise errors.BzrError('Mismatched key parent %r:%r' %
+                        (key, parent_keys))
+                parents.append(parent_key[1])
+            source_weave = repo.weave_store.get_weave(key[0], transaction)
+            text_lines = source_weave.get_lines(key[1])
+            # adapt the 'knit' to the current file_id.
+            file_id_index = GraphIndexPrefixAdapter(
+                self.new_pack.text_index,
+                (key[0], ), 1,
+                add_nodes_callback=self.new_pack.text_index.add_nodes)
+            knit_index._graph_index = file_id_index
+            knit_index._add_callback = file_id_index.add_nodes
+            output_knit.add_lines_with_ghosts(
+                key[1], parents, text_lines, random_id=True, check_content=False)
+        # 4) check that nothing inserted has a reference outside the keyspace.
+        missing_text_keys = self.new_pack._external_compression_parents_of_texts()
+        if missing_text_keys:
+            raise errors.BzrError('Reference to missing compression parents %r'
+                % (refs - keys,))
+        self._log_copied_texts()
+
+    def _use_pack(self, new_pack):
+        """Override _use_pack to check for reconcile having changed content."""
+        # XXX: we might be better checking this at the copy time.
+        original_inventory_keys = set()
+        inv_index = self._pack_collection.inventory_index.combined_index
+        for entry in inv_index.iter_all_entries():
+            original_inventory_keys.add(entry[1])
+        new_inventory_keys = set()
+        for entry in new_pack.inventory_index.iter_all_entries():
+            new_inventory_keys.add(entry[1])
+        if new_inventory_keys != original_inventory_keys:
+            self._data_changed = True
+        return new_pack.data_inserted() and self._data_changed
 
 
 class RepositoryPackCollection(object):
@@ -995,7 +1241,8 @@ class RepositoryPackCollection(object):
     def ensure_loaded(self):
         # NB: if you see an assertion error here, its probably access against
         # an unlocked repo. Naughty.
-        assert self.repo.is_locked()
+        if not self.repo.is_locked():
+            raise errors.ObjectNotLocked(self.repo)
         if self._names is None:
             self._names = {}
             self._packs_at_load = set()
@@ -1036,10 +1283,8 @@ class RepositoryPackCollection(object):
         """
         self.ensure_loaded()
         if a_new_pack.name in self._names:
-            # a collision with the packs we know about (not the only possible
-            # collision, see NewPack.finish() for some discussion). Remove our
-            # prior reference to it.
-            self._remove_pack_from_memory(a_new_pack)
+            raise errors.BzrError(
+                'Pack %r already exists in %s' % (a_new_pack.name, self))
         self._names[a_new_pack.name] = tuple(a_new_pack.index_sizes)
         self.add_pack_to_memory(a_new_pack)
 
@@ -1245,7 +1490,8 @@ class RepositoryPackCollection(object):
             # changing it.
             for key, value in disk_nodes:
                 builder.add_node(key, value)
-            self.transport.put_file('pack-names', builder.finish())
+            self.transport.put_file('pack-names', builder.finish(),
+                mode=self.repo.control_files._file_mode)
             # move the baseline forward
             self._packs_at_load = disk_nodes
             # now clear out the obsolete packs directory
@@ -1288,7 +1534,8 @@ class RepositoryPackCollection(object):
         if not self.repo.is_write_locked():
             raise errors.NotWriteLocked(self)
         self._new_pack = NewPack(self._upload_transport, self._index_transport,
-            self._pack_transport, upload_suffix='.pack')
+            self._pack_transport, upload_suffix='.pack',
+            file_mode=self.repo.control_files._file_mode)
         # allow writing: queue writes to a new index
         self.revision_index.add_writable_index(self._new_pack.revision_index,
             self._new_pack)
@@ -1508,7 +1755,7 @@ class KnitPackRepository(KnitRepository):
         self._transaction = None
         # for tests
         self._reconcile_does_inventory_gc = True
-        self._reconcile_fixes_text_parents = False
+        self._reconcile_fixes_text_parents = True
         self._reconcile_backsup_inventory = False
 
     def _abort_write_group(self):
@@ -1529,7 +1776,8 @@ class KnitPackRepository(KnitRepository):
         :returns: an iterator yielding tuples of (revison-id, parents-in-index,
             parents-in-revision).
         """
-        assert self.is_locked()
+        if not self.is_locked():
+            raise errors.ObjectNotLocked(self)
         pb = ui.ui_factory.nested_progress_bar()
         result = []
         try:
@@ -1804,7 +2052,7 @@ class RepositoryFormatKnitPack1(RepositoryFormatPack):
     _serializer = xml5.serializer_v5
 
     def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir('knitpack-experimental')
+        return bzrdir.format_registry.make_bzrdir('pack-0.92')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -1841,7 +2089,7 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir(
-            'knitpack-subtree-experimental')
+            'pack-0.92-subtree')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -1863,3 +2111,42 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return "Packs containing knits with subtree support\n"
+
+
+class RepositoryFormatKnitPack4(RepositoryFormatPack):
+    """A rich-root, no subtrees parameterised Pack repository.
+
+    This repository format uses the xml6 serializer to get:
+     - support for recording full info about the tree root
+
+    This format was introduced in 1.0.
+    """
+
+    repository_class = KnitPackRepository
+    _commit_builder_class = PackRootCommitBuilder
+    rich_root_data = True
+    supports_tree_reference = False
+    _serializer = xml6.serializer_v6
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir(
+            'rich-root-pack')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def check_conversion_target(self, target_format):
+        if not target_format.rich_root_data:
+            raise errors.BadConversionTarget(
+                'Does not support rich root data.', target_format)
+
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return ("Bazaar pack repository format 1 with rich root"
+                " (needs bzr 1.0)\n")
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return "Packs containing knits with rich root support\n"
