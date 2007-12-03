@@ -368,3 +368,47 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
                           ('killed-a', 'b\n'),
                           ('unchanged', 'g\n')],
                          list(plan))
+
+    def test_subtract_plans(self):
+        old_plan = [
+        ('unchanged', 'a\n'),
+        ('new-a', 'b\n'),
+        ('killed-a', 'c\n'),
+        ('new-b', 'd\n'),
+        ('new-b', 'e\n'),
+        ('killed-b', 'f\n'),
+        ('killed-b', 'g\n'),
+        ]
+        new_plan = [
+        ('unchanged', 'a\n'),
+        ('new-a', 'b\n'),
+        ('killed-a', 'c\n'),
+        ('new-b', 'd\n'),
+        ('new-b', 'h\n'),
+        ('killed-b', 'f\n'),
+        ('killed-b', 'i\n'),
+        ]
+        subtracted_plan = [
+        ('unchanged', 'a\n'),
+        ('new-a', 'b\n'),
+        ('killed-a', 'c\n'),
+        ('new-b', 'h\n'),
+        ('unchanged', 'f\n'),
+        ('killed-b', 'i\n'),
+        ]
+        self.assertEqual(subtracted_plan,
+            list(PlanMerge._subtract_plans(old_plan, new_plan)))
+
+    def test_plan_merge_with_base(self):
+        self.add_version('COMMON', [], 'abc')
+        self.add_version('THIS', ['COMMON'], 'abcd')
+        self.add_version('BASE', ['COMMON'], 'eabc')
+        self.add_version('OTHER', ['BASE'], 'eafb')
+        plan = PlanMerge.plan_merge_with_base('THIS', 'BASE', 'OTHER',
+                                              self.plan_merge_vf)
+        self.assertEqual([('unchanged', 'a\n'),
+                          ('new-b', 'f\n'),
+                          ('unchanged', 'b\n'),
+                          ('killed-b', 'c\n'),
+                          ('new-a', 'd\n')
+                         ], list(plan))
