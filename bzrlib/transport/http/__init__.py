@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -78,49 +78,6 @@ def extract_auth(url, password_manager):
     return url
 
 
-def _extract_headers(header_text, url):
-    """Extract the mapping for an rfc2822 header
-
-    This is a helper function for the test suite and for _pycurl.
-    (urllib already parses the headers for us)
-
-    In the case that there are multiple headers inside the file,
-    the last one is returned.
-
-    :param header_text: A string of header information.
-        This expects that the first line of a header will always be HTTP ...
-    :param url: The url we are parsing, so we can raise nice errors
-    :return: mimetools.Message object, which basically acts like a case 
-        insensitive dictionary.
-    """
-    first_header = True
-    remaining = header_text
-
-    if not remaining:
-        raise errors.InvalidHttpResponse(url, 'Empty headers')
-
-    while remaining:
-        header_file = StringIO(remaining)
-        first_line = header_file.readline()
-        if not first_line.startswith('HTTP'):
-            if first_header: # The first header *must* start with HTTP
-                raise errors.InvalidHttpResponse(url,
-                    'Opening header line did not start with HTTP: %s'
-                    % (first_line,))
-            else:
-                break # We are done parsing
-        first_header = False
-        m = mimetools.Message(header_file)
-
-        # mimetools.Message parses the first header up to a blank line
-        # So while there is remaining data, it probably means there is
-        # another header to be parsed.
-        # Get rid of any preceeding whitespace, which if it is all whitespace
-        # will get rid of everything.
-        remaining = header_file.read().lstrip()
-    return m
-
-
 class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
     """Base class for http implementations.
 
@@ -175,7 +132,9 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         :param relpath: The relative path to the file
         """
         code, response_file = self._get(relpath, None)
-        return response_file
+        # FIXME: some callers want an iterable... One step forward, three steps
+        # backwards :-/
+        return StringIO(response_file.read())
 
     def _get(self, relpath, ranges, tail_amount=0):
         """Get a file, or part of a file.
@@ -311,7 +270,8 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
                         yield cur_offset_and_size[0], this_data
                         cur_offset_and_size = iter_offsets.next()
 
-            except (errors.ShortReadvError,errors.InvalidRange), e:
+            except (errors.ShortReadvError, errors.InvalidRange,
+                    errors.InvalidHttpRange), e:
                 self._degrade_range_hint(relpath, coalesced, sys.exc_info())
                 # Some offsets may have been already processed, so we retry
                 # only the unsuccessful ones.
@@ -330,12 +290,12 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
             max_ranges = total
         # TODO: Some web servers may ignore the range requests and return the
         # whole file, we may want to detect that and avoid further requests.
-        # Hint: test_readv_multiple_get_requests will fail in that case .
+        # Hint: test_readv_multiple_get_requests will fail once we do that
         for group in xrange(0, len(coalesced), max_ranges):
             ranges = coalesced[group:group+max_ranges]
-            # Note that the following may raise errors.InvalidRange. It's the
-            # caller responsability to decide how to retry since it may provide
-            # different coalesced offsets.
+            # Note that the following may raise errors.InvalidHttpRange. It's
+            # the caller responsability to decide how to retry since it may
+            # provide different coalesced offsets.
             code, file = self._get(relpath, ranges)
             for range in ranges:
                 yield range, file

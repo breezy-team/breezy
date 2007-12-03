@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006,2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@ This file complements the urllib2 class hierarchy with custom classes.
 
 For instance, we create a new HTTPConnection and HTTPSConnection that inherit
 from the original urllib2.HTTP(s)Connection objects, but also have a new base
-which implements a custom getresponse and fake_close handlers.
+which implements a custom getresponse and cleanup_pipe handlers.
 
 And then we implement custom HTTPHandler and HTTPSHandler classes, that use
 the custom HTTPConnection classes.
@@ -131,7 +131,7 @@ class AbstractHTTPConnection:
     response_class = Response
     strict = 1 # We don't support HTTP/0.9
 
-    def fake_close(self):
+    def cleanup_pipe(self):
         """Make the connection believes the response have been fully handled.
 
         That makes the httplib.HTTPConnection happy
@@ -480,6 +480,8 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                 version = 'HTTP/%r' % version
             trace.mutter('< %s %s %s' % (version, response.status,
                                             response.reason))
+            # Use the raw header lines instead of treating response.msg as a
+            # dict since we may miss duplicated headers otherwise.
             hdrs = [h.rstrip('\r\n') for h in response.msg.headers]
             trace.mutter('< ' + '\n< '.join(hdrs) + '\n')
         if self._debuglevel > 0:
@@ -566,7 +568,7 @@ class HTTPSHandler(AbstractHTTPHandler):
                 raise ConnectionError("Can't connect to %s via proxy %s" % (
                         connect.proxied_host, self.host))
             # Housekeeping
-            connection.fake_close()
+            connection.cleanup_pipe()
             # Establish the connection encryption 
             connection.connect_to_origin()
             # Propagate the connection to the original request
@@ -637,9 +639,9 @@ class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
     def http_error_302(self, req, fp, code, msg, headers):
         """Requests the redirected to URI.
 
-        Copied from urllib2 to be able to fake_close the
-        associated connection, *before* issuing the redirected
-        request but *after* having eventually raised an error.
+        Copied from urllib2 to be able to clean the pipe of the associated
+        connection, *before* issuing the redirected request but *after* having
+        eventually raised an error.
         """
         # Some servers (incorrectly) return multiple Location headers
         # (so probably same goes for URI).  Use first header.
@@ -684,7 +686,7 @@ class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
         # use it with HTTPError.
         fp.close()
         # We have all we need already in the response
-        req.connection.fake_close()
+        req.connection.cleanup_pipe()
 
         return self.parent.open(redirected_req)
 
@@ -1279,11 +1281,6 @@ class HTTPDefaultErrorHandler(urllib2.HTTPDefaultErrorHandler):
     def http_error_default(self, req, fp, code, msg, hdrs):
         if code == 403:
             raise errors.TransportError('Server refuses to fullfil the request')
-        elif code == 416:
-            # We don't know which, but one of the ranges we
-            # specified was wrong. So we raise with 0 for a lack
-            # of a better magic value.
-            raise errors.InvalidRange(req.get_full_url(),0)
         else:
             raise errors.InvalidHttpResponse(req.get_full_url(),
                                              'Unable to handle http code %d: %s'

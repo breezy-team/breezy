@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -134,8 +134,8 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
         self.send_header("Content-Type",
                          "multipart/byteranges; boundary=%s" % boundary)
         self.end_headers()
+        self.wfile.write("--%s\r\n" % boundary)
         for (start, end) in ranges:
-            self.wfile.write("--%s\r\n" % boundary)
             self.send_header("Content-type", 'application/octet-stream')
             self.send_header("Content-Range", "bytes %d-%d/%d" % (start,
                                                                   end,

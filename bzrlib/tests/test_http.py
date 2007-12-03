@@ -997,10 +997,10 @@ class TestRanges(object):
         # Tail
         self.assertEqual('789', self._file_tail('a', 3))
         # Syntactically invalid range
-        self.assertListRaises(errors.InvalidRange,
+        self.assertListRaises(errors.InvalidHttpRange,
                           self._file_contents, 'a', [(4, 3)])
         # Semantically invalid range
-        self.assertListRaises(errors.InvalidRange,
+        self.assertListRaises(errors.InvalidHttpRange,
                           self._file_contents, 'a', [(42, 128)])
 
 
