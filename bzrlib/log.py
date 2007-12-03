@@ -62,13 +62,13 @@ from warnings import (
 from bzrlib import (
     registry,
     symbol_versioning,
-    user_encoding,
     )
 from bzrlib.errors import (
     BzrCommandError,
     )
 from bzrlib.osutils import (
     format_date,
+    get_terminal_encoding,
     terminal_width,
     )
 from bzrlib.revision import (
@@ -838,8 +838,8 @@ def show_changed_revisions(branch, old_rh, new_rh, to_file=None,
     :param to_file: A file to write the results to. If None, stdout will be used
     """
     if to_file is None:
-        to_file = codecs.getwriter(user_encoding)(sys.stdout,
-                                                  errors='replace')
+        to_file = codecs.getwriter(get_terminal_encoding())(sys.stdout,
+            errors='replace')
     lf = log_formatter(log_format,
                        show_ids=False,
                        to_file=to_file,
