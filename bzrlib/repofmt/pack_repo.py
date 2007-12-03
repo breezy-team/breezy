@@ -926,7 +926,7 @@ class ReconcilePacker(Packer):
         # 1) generate the ideal index
         repo = self._pack_collection.repo
         ancestors = dict([(key[0], tuple(ref[0] for ref in refs[0])) for
-            _, key, _2, refs in 
+            _1, key, _2, refs in 
             self.new_pack.revision_index.iter_all_entries()])
         ideal_index = repo._generate_text_key_index(self._text_refs, ancestors)
         # 2) generate a text_nodes list that contains all the deltas that can
@@ -967,7 +967,7 @@ class ReconcilePacker(Packer):
         # we're finished with some data.
         del ideal_index
         del text_nodes
-        # 4) bulk copy the ok data
+        # 3) bulk copy the ok data
         list(self._copy_nodes_graph(ok_nodes, text_index_map,
             self.new_pack._writer, self.new_pack.text_index))
         # 4) adhoc copy all the other texts.
@@ -1023,7 +1023,7 @@ class ReconcilePacker(Packer):
             knit_index._add_callback = file_id_index.add_nodes
             output_knit.add_lines_with_ghosts(
                 key[1], parents, text_lines, random_id=True, check_content=False)
-        # 4) check that nothing inserted has a reference outside the keyspace.
+        # 5) check that nothing inserted has a reference outside the keyspace.
         missing_text_keys = self.new_pack._external_compression_parents_of_texts()
         if missing_text_keys:
             raise errors.BzrError('Reference to missing compression parents %r'
