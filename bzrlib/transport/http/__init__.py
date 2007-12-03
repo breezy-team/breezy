@@ -133,7 +133,10 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         """
         code, response_file = self._get(relpath, None)
         # FIXME: some callers want an iterable... One step forward, three steps
-        # backwards :-/
+        # backwards :-/ And not only an iterable, but an iterable that can be
+        # seeked backwards, so we will never be able to do that.  One such
+        # known client is bzrlib.bundle.serializer.v4.get_bundle_reader. At the
+        # time of this writing it's even the only known client -- vila20071203
         return StringIO(response_file.read())
 
     def _get(self, relpath, ranges, tail_amount=0):

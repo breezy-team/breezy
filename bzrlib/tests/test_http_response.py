@@ -165,7 +165,7 @@ class TestRanges(TestCase):
 
     def test_range_syntax(self):
 
-        rf = response.RangeFile('foo', None)
+        rf = response.RangeFile('foo', StringIO())
 
         def ok(expected, header_value):
             rf.set_range_from_header(header_value)
