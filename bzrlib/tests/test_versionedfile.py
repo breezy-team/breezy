@@ -821,7 +821,7 @@ class TestPlanMergeVersionedFile(TestCaseWithMemoryTransport):
         self.plan_merge_vf.add_lines('C:', ['B'], [])
         self.plan_merge_vf.add_lines('D:', ['C:'], [])
         self.assertEqual(set(['A', 'B', 'C:', 'D:']),
-            self.plan_merge_vf.get_ancestry('D:'))
+            self.plan_merge_vf.get_ancestry('D:', topo_sorted=False))
 
     def setup_abcde(self):
         self.vf1.add_lines('A', [], ['a'])
@@ -833,11 +833,11 @@ class TestPlanMergeVersionedFile(TestCaseWithMemoryTransport):
     def test_ancestry_uses_all_versionedfiles(self):
         self.setup_abcde()
         self.assertEqual(set(['A', 'B', 'C', 'D', 'E:']),
-            self.plan_merge_vf.get_ancestry('E:'))
+            self.plan_merge_vf.get_ancestry('E:', topo_sorted=False))
 
     def test_ancestry_raises_revision_not_present(self):
         error = self.assertRaises(errors.RevisionNotPresent,
-                                  self.plan_merge_vf.get_ancestry, 'E:')
+                                  self.plan_merge_vf.get_ancestry, 'E:', False)
         self.assertContainsRe(str(error), '{E:} not present in "root"')
 
     def test_get_parents(self):

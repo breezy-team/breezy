@@ -550,7 +550,7 @@ class _PlanMergeVersionedFile(object):
         else:
             raise errors.RevisionNotPresent(version_id, self._file_id)
 
-    def get_ancestry(self, version_id):
+    def get_ancestry(self, version_id, topo_sorted=False):
         """See VersionedFile.get_ancestry.
 
         Note that this implementation assumes that if a VersionedFile can
@@ -561,18 +561,20 @@ class _PlanMergeVersionedFile(object):
         Also note that the results of this version are never topologically
         sorted, and are a set.
         """
+        if topo_sorted:
+            raise ValueError('This implementation does not provide sorting')
         parents = self._parents.get(version_id)
         if parents is None:
             for vf in self.fallback_versionedfiles:
                 try:
-                    return vf.get_ancestry(version_id)
+                    return vf.get_ancestry(version_id, topo_sorted=False)
                 except errors.RevisionNotPresent:
                     continue
             else:
                 raise errors.RevisionNotPresent(version_id, self._file_id)
         ancestry = set([version_id])
         for parent in parents:
-            ancestry.update(self.get_ancestry(parent))
+            ancestry.update(self.get_ancestry(parent, topo_sorted=False))
         return ancestry
 
     def get_parents(self, version_id):

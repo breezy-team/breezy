@@ -1152,8 +1152,8 @@ class _PlanMerge(object):
         self.lines_a = vf.get_lines(a_rev)
         self.lines_b = vf.get_lines(b_rev)
         self.vf = vf
-        a_ancestry = set(vf.get_ancestry(a_rev))
-        b_ancestry = set(vf.get_ancestry(b_rev))
+        a_ancestry = set(vf.get_ancestry(a_rev, topo_sorted=False))
+        b_ancestry = set(vf.get_ancestry(b_rev, topo_sorted=False))
         self.uncommon = a_ancestry.symmetric_difference(b_ancestry)
         self._last_lines = None
         self._last_lines_revision_id = None
