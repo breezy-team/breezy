@@ -396,14 +396,13 @@ class RevisionSpec_revid(RevisionSpec):
         # representation.
         revision_id = osutils.safe_revision_id(self.spec, warn=False)
         if need_revno:
-            if revs is None:
-                # XXX Branch needs a method for incremental
-                # revision_id -> revno resolving without loading
-                # the whole history. (Lukas Lalinsky, 20081203)
-                revs = branch.revision_history()
-            return RevisionInfo.from_revision_id(branch, revision_id, revs)
+            try:
+                revno = branch.revision_id_to_revno(revision_id)
+            except errors.NoSuchRevision:
+                revno = None
         else:
-            return RevisionInfo(branch, None, revision_id)
+            revno = None
+        return RevisionInfo(branch, revno, revision_id)
 
     def in_branch(self, branch, need_revno=True):
         # Same as RevisionSpec.in_history, but without history loading.
@@ -481,8 +480,12 @@ class RevisionSpec_before(RevisionSpec):
 
     prefix = 'before:'
     
-    def _match_on(self, branch, revs):
-        r = RevisionSpec.from_string(self.spec)._match_on(branch, revs)
+    def _match_on(self, branch, revs, need_revno=True, in_branch=False):
+        revspec = RevisionSpec.from_string(self.spec)
+        if in_branch:
+            r = revspec.in_branch(branch, need_revno)
+        else:
+            r = revspec._match_on(branch, revs)
         if r.revno == 0:
             raise errors.InvalidRevisionSpec(self.user_spec, branch,
                                          'cannot go before the null: revision')
@@ -507,6 +510,9 @@ class RevisionSpec_before(RevisionSpec):
                                                  branch)
         return RevisionInfo(branch, revno, revision_id)
 
+    def in_branch(self, branch, need_revno=True):
+        return self._match_on(branch, None, need_revno, True)
+
 SPEC_TYPES.append(RevisionSpec_before)
 
 
@@ -520,11 +526,20 @@ class RevisionSpec_tag(RevisionSpec):
 
     prefix = 'tag:'
 
-    def _match_on(self, branch, revs):
+    def _match_on(self, branch, revs, need_revno=True):
         # Can raise tags not supported, NoSuchTag, etc
-        return RevisionInfo.from_revision_id(branch,
-            branch.tags.lookup_tag(self.spec),
-            revs)
+        revision_id = branch.tags.lookup_tag(self.spec)
+        if need_revno:
+            try:
+                revno = branch.revision_id_to_revno(revision_id)
+            except errors.NoSuchRevision:
+                revno = None
+        else:
+            revno = None
+        return RevisionInfo(branch, revno, revision_id)
+
+    def in_branch(self, branch, need_revno=True):
+        return self._match_on(branch, None, need_revno)
 
 SPEC_TYPES.append(RevisionSpec_tag)
 
