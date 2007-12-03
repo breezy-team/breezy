@@ -13,7 +13,10 @@ export-upstream is used.
 
 It would also be great if packages that are normally built with
 svn-buildpackage to be supported as-is. This would make migration easier, and
-mean that one dev on a team could use Bazaar if the rest wanted SVN.
+mean that one dev on a team could use Bazaar if the rest wanted SVN. This 
+would require bzr-svn to somehow expose the Subversion file properties used 
+by svn-buildpackage, in particular ``mergeWithUpstream''. bzr-builddeb 
+would then also need support to use this data.
 
 The first thing to do is to audit the current code to see how well it works
 in these cases. Apparently Jelmer has tried export-upstream against an SVN
