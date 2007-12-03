@@ -22,7 +22,7 @@ endif
 build/bzr:: debian/stamp-doc
 
 debian/stamp-doc:
-	make docs
+	$(MAKE) docs
 	touch $@
 
 install/bzr::

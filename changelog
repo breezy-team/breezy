@@ -1,5 +1,6 @@
 bzr (1.0~rc1-3) UNRELEASED; urgency=low
 
+  [ Adeodato Simó ]
   * debian/control:
     + revamp the description.
     + add bzrtools to Recommends.
@@ -9,7 +10,11 @@ bzr (1.0~rc1-3) UNRELEASED; urgency=low
     + demote python-pycurl to Suggests, mention in the description
       what's useful for.
 
- -- Adeodato Simó <dato@net.com.org.es>  Sat, 01 Dec 2007 13:14:07 +0100
+  [ James Westby ]
+  * debian/rules:
+    + use '$(MAKE)' instead of 'make' to at least allow a parallel build.
+
+ -- James Westby <jw+debian@jameswestby.net>  Mon, 03 Dec 2007 18:01:47 +0000
 
 bzr (1.0~rc1-2) unstable; urgency=low
 
