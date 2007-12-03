@@ -231,7 +231,7 @@ class PyCurlTransport(HttpTransportBase):
             raise errors.InvalidHttpRange(abspath, range_header,
                                           'Server return code %d'
                                           % curl.getinfo(pycurl.HTTP_CODE))
-        msg = self.__parse_headers(header)
+        msg = self._parse_headers(header)
         return code, response.handle_response(abspath, code, msg, data)
 
     def _parse_headers(self, status_and_headers):
