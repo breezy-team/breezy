@@ -20,6 +20,7 @@
 
 from bzrlib.config import ConfigObj, TreeConfig
 from bzrlib.trace import mutter
+from util import get_snapshot_revision
 
 
 class DebBuildConfig(object):
@@ -184,10 +185,14 @@ class DebBuildConfig(object):
                          "Stop the build if the upstream pull does nothing.")
 
   def _get_export_upstream_revision(self):
-    rev = self._get_best_opt('export-upstream-revision')
-    if rev is not None and self.version is not None:
-      rev = rev.replace('$UPSTREAM_VERSION',
-                        str(self.version.upstream_version))
+    rev = None
+    if self.version is not None:
+      rev = get_snapshot_revision(str(self.version.upstream_version))
+    if rev is None:
+      rev = self._get_best_opt('export-upstream-revision')
+      if rev is not None and self.version is not None:
+        rev = rev.replace('$UPSTREAM_VERSION',
+                          str(self.version.upstream_version))
     return rev
 
   export_upstream_revision = property(_get_export_upstream_revision, None,

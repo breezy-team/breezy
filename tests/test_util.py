@@ -24,10 +24,12 @@ from errors import MissingChangelogError, AddChangelogError
 from util import (
                   find_changelog,
                   recursive_copy,
+                  get_snapshot_revision,
                   )
 
 from bzrlib.tests import (TestCaseWithTransport,
                           TestCaseInTempDir,
+                          TestCase,
                           )
 
 
@@ -155,5 +157,14 @@ bzr-builddeb (0.16.2) unstable; urgency=low
     os.mkdir('debian')
     self.write_changelog('debian/changelog')
     self.assertRaises(AddChangelogError, find_changelog, tree, False)
+
+
+class GetRevisionSnapshotTests(TestCase):
+
+  def test_with_snapshot(self):
+    self.assertEquals("30", get_snapshot_revision("0.4.4~bzr30"))
+
+  def test_without_snapshot(self):
+    self.assertEquals(None, get_snapshot_revision("0.4.4"))
 
 # vim: ts=2 sts=2 sw=2
