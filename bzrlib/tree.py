@@ -303,8 +303,7 @@ class Tree(object):
         vf = versionedfile._PlanMergeVersionedFile(file_id)
         last_revision_a = self._get_file_revision(file_id, vf, 'this:')
         last_revision_b = other._get_file_revision(file_id, vf, 'other:')
-        plan = merge.PlanMerge(last_revision_a, last_revision_b, vf)
-        return plan.plan_merge()
+        return vf.plan_merge(last_revision_a, last_revision_b)
 
     def _get_file_revision(self, file_id, vf, tree_revision):
         def file_revision(revision_tree):

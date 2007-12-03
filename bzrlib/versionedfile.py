@@ -517,6 +517,11 @@ class _PlanMergeVersionedFile(object):
         self._parents = {}
         self._lines = {}
 
+    def plan_merge(self, ver_a, ver_b):
+        """See VersionedFile.plan_merge"""
+        from merge import _PlanMerge
+        return _PlanMerge(ver_a, ver_b, self).plan_merge()
+
     def add_lines(self, version_id, parents, lines):
         """See VersionedFile.add_lines
 

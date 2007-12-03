@@ -29,7 +29,7 @@ from bzrlib import (
 from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList, TextConflict
 from bzrlib.errors import UnrelatedBranches, NoCommits, BzrCommandError
-from bzrlib.merge import transform_tree, merge_inner, PlanMerge
+from bzrlib.merge import transform_tree, merge_inner, _PlanMerge
 from bzrlib.osutils import pathjoin, file_kind
 from bzrlib.revision import common_ancestor
 from bzrlib.tests import TestCaseWithTransport, TestCaseWithMemoryTransport
@@ -309,13 +309,13 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
         self.add_version('A', [], 'abc')
         self.add_version('B', ['A'], 'acehg')
         self.add_version('C', ['A'], 'fabg')
-        return PlanMerge('B', 'C', self.plan_merge_vf)
+        return _PlanMerge('B', 'C', self.plan_merge_vf)
 
     def setup_plan_merge_uncommitted(self):
         self.add_version('A', [], 'abc')
         self.add_uncommitted_version('B:', ['A'], 'acehg')
         self.add_uncommitted_version('C:', ['A'], 'fabg')
-        return PlanMerge('B:', 'C:', self.plan_merge_vf)
+        return _PlanMerge('B:', 'C:', self.plan_merge_vf)
 
     def test_unique_lines(self):
         plan = self.setup_plan_merge()
@@ -333,19 +333,19 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
         self.add_version('B', ['A'], 'abcde')
         self.add_version('C', ['A'], 'abcefg')
         self.add_version('D', ['A', 'B', 'C'], 'abcdegh')
-        my_plan = PlanMerge('B', 'D', self.plan_merge_vf)
+        my_plan = _PlanMerge('B', 'D', self.plan_merge_vf)
         self.assertEqual(set([5, 6]), my_plan._find_new('D'))
         self.assertEqual(set(), my_plan._find_new('A'))
 
     def test_find_new_no_ancestors(self):
         self.add_version('A', [], 'abc')
         self.add_version('B', [], 'xyz')
-        my_plan = PlanMerge('A', 'B', self.vf)
+        my_plan = _PlanMerge('A', 'B', self.vf)
         self.assertEqual(set([0, 1, 2]), my_plan._find_new('A'))
 
     def test_plan_merge(self):
-        my_plan = self.setup_plan_merge()
-        plan = my_plan.plan_merge()
+        self.setup_plan_merge()
+        plan = self.plan_merge_vf.plan_merge('B', 'C')
         self.assertEqual([
                           ('new-b', 'f\n'),
                           ('unchanged', 'a\n'),
@@ -357,8 +357,8 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
                          list(plan))
 
     def test_plan_merge_uncommitted_files(self):
-        my_plan = self.setup_plan_merge_uncommitted()
-        plan = my_plan.plan_merge()
+        self.setup_plan_merge_uncommitted()
+        plan = self.plan_merge_vf.plan_merge('B:', 'C:')
         self.assertEqual([
                           ('new-b', 'f\n'),
                           ('unchanged', 'a\n'),

@@ -1137,7 +1137,7 @@ def _plan_annotate_merge(annotated_a, annotated_b, ancestors_a, ancestors_b):
             yield "unchanged", text_a
 
 
-class PlanMerge(object):
+class _PlanMerge(object):
     """Plan an annotate merge using on-the-fly annotation"""
 
     def __init__(self, a_rev, b_rev, vf):
