@@ -28,6 +28,8 @@ from bzrlib.bzrdir import BzrDirMetaFormat1
 from bzrlib.osutils import abspath
 from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
 from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.transport import register_transport
+from bzrlib.transport.memory import MemoryServer, MemoryTransport
 from bzrlib.uncommit import uncommit
 from bzrlib.urlutils import local_path_from_url
 from bzrlib.workingtree import WorkingTree
@@ -244,3 +246,60 @@ class TestPush(ExternalBase):
         self.run_bzr_error(['At ../dir you have a valid .bzr control'],
                 'push ../dir',
                 working_dir='tree')
+
+
+class RedirectingMemoryTransport(MemoryTransport):
+
+    def mkdir(self, path, mode=None):
+        if self.abspath(path)[len(self._scheme):] == '/source':
+            raise errors.RedirectRequested(
+                path, self._scheme + '/target', is_permanent=True)
+        else:
+            return super(RedirectingMemoryTransport, self).mkdir(
+                path, mode)
+
+
+class RedirectingMemoryServer(MemoryServer):
+
+    def setUp(self):
+        self._dirs = {'/': None}
+        self._files = {}
+        self._locks = {}
+        self._scheme = 'redirecting-memory+%s:///' % id(self)
+        def memory_factory(url):
+            result = RedirectingMemoryTransport(url)
+            result._dirs = self._dirs
+            result._files = self._files
+            result._locks = self._locks
+            return result
+        register_transport(self._scheme, memory_factory)
+
+
+class TestPushRedirect(ExternalBase):
+
+    def setUp(self):
+        ExternalBase.setUp(self)
+        self.memory_server = RedirectingMemoryServer()
+        self.memory_server.setUp()
+        self.addCleanup(self.memory_server.tearDown)
+
+    def test_push_redirects_on_mkdir(self):
+        """If the push requires a mkdir, push respects redirect requests.
+
+        This is added primarily to handle lp:/ URI support, so that users can
+        push to new branches by specifying lp:/ URIs.
+        """
+        t = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file'])
+        t.add('file')
+        t.commit('commit 1')
+        os.chdir('tree')
+
+        destination_url = self.memory_server.get_url() + 'source'
+        self.run_bzr('push %s' % destination_url)
+        os.chdir('..')
+
+        local_revision = Branch.open('tree').last_revision()
+        remote_revision = Branch.open(
+            self.memory_server.get_url() + 'target').last_revision()
+        self.assertEqual(remote_revision, local_revision)
