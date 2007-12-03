@@ -3584,11 +3584,17 @@ class cmd_uncommit(Command):
             tree = None
             b = control.open_branch()
 
-        b.lock_write()
+        if tree is not None:
+            tree.lock_write()
+        else:
+            b.lock_write()
         try:
             return self._run(b, tree, dry_run, verbose, revision, force)
         finally:
-            b.unlock()
+            if tree is not None:
+                tree.unlock()
+            else:
+                b.unlock()
 
     def _run(self, b, tree, dry_run, verbose, revision, force):
         from bzrlib.log import log_formatter, show_log
