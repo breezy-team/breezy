@@ -279,6 +279,9 @@ bzr 1.0rc1 2007-11-30
 
    * InventoryEntry.diff is now deprecated.  Please use diff.DiffTree instead.
 
+   * merge.PlanMerge is now provided to generate annotation-based merges
+     cheaply on versionedfiles with no cheap annotations.
+
   TESTING:
 
 
