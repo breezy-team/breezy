@@ -497,9 +497,12 @@ class RevisionSpec_before(RevisionSpec):
                 revision_id = revision.NULL_REVISION
             else:
                 revision_id = rev.parent_ids[0]
-                try:
-                    revno = revs.index(revision_id) + 1
-                except ValueError:
+                if need_revno:
+                    try:
+                        revno = branch.revision_id_to_revno(revision_id)
+                    except errors.NoSuchRevision:
+                        revno = None
+                else:
                     revno = None
         else:
             revno = r.revno - 1

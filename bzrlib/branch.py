@@ -1912,10 +1912,12 @@ class BzrBranch6(BzrBranch5):
     def __init__(self, *ignored, **ignored_too):
         super(BzrBranch6, self).__init__(*ignored, **ignored_too)
         self._last_revision_info_cache = None
+        self._partial_revision_history_cache = None
 
     def _clear_cached_state(self):
         super(BzrBranch6, self)._clear_cached_state()
         self._last_revision_info_cache = None
+        self._partial_revision_history_cache = None
 
     @needs_read_lock
     def last_revision_info(self):
@@ -1968,10 +1970,18 @@ class BzrBranch6(BzrBranch5):
     def _gen_revision_history(self):
         """Generate the revision history from last revision
         """
+        if self._partial_revision_history_cache:
+            last_revision = self._partial_revision_history_cache.pop(-1)
+            partial_history = self._partial_revision_history_cache
+            partial_history.reverse()
+            self._partial_revision_history_cache = None
+        else:
+            last_revision = self.last_revision()
+            partial_history = []
         history = list(self.repository.iter_reverse_revision_history(
-            self.last_revision()))
+            last_revision))
         history.reverse()
-        return history
+        return history + partial_history
 
     def _write_revision_history(self, history):
         """Factored out of set_revision_history.
@@ -2099,15 +2109,27 @@ class BzrBranch6(BzrBranch5):
         if history is not None:
             return history[revno - 1]
 
-        # TODO cache the partially loaded history (Lukas Lalinsky, 20081203)
-        revision_id = last_revision_id
+        distance = last_revno - revno
+        if self._partial_revision_history_cache:
+            try:
+                return self._partial_revision_history_cache[distance]
+            except IndexError:
+                pass
+            distance -= len(self._partial_revision_history_cache) - 1
+            revision_id = self._partial_revision_history_cache[-1]
+        else:
+            self._partial_revision_history_cache = [last_revision_id]
+            revision_id = last_revision_id
+
         history_iter = self.repository.iter_reverse_revision_history(
-            last_revision_id)
-        for i in xrange(last_revno - revno + 1):
+            revision_id)
+        history_iter.next()
+        for i in xrange(distance):
             try:
                 revision_id = history_iter.next()
             except StopIteration:
                 raise errors.NoSuchRevision(self, revno)
+            self._partial_revision_history_cache.append(revision_id)
         return revision_id
 
 
