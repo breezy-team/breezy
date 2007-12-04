@@ -404,6 +404,5 @@ class TestMerge(ExternalBase):
         tree_a.commit('', rev_id='rev3a')
         tree_b.commit('', rev_id='rev3b')
         graph = tree_a.branch.repository.get_graph(tree_b.branch.repository)
-        result = graph.find_unique_lca('rev3a', 'rev3b', count_steps=True)
         out, err = self.run_bzr(['merge', '-d', 'a', 'b'])
         self.assertContainsRe(err, 'Warning: criss-cross merge encountered.')
