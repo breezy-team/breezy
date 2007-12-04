@@ -167,6 +167,18 @@ class TestDiff(DiffBase):
                           "+contents of branch1/file\n"
                           "\n", subst_dates(out))
 
+    def check_b1_vs_b2(self, cmd):
+        # Compare branch1 vs branch2 using cmd and check the result
+        out, err = self.run_bzr(cmd, retcode=1)
+        self.assertEquals('', err)
+        self.assertEqualDiff("=== modified file 'file'\n"
+                              "--- file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                              "+++ file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                              "@@ -1,1 +1,1 @@\n"
+                              "-contents of branch1/file\n"
+                              "+new content\n"
+                              "\n", subst_dates(out))
+
     def check_no_diffs(self, cmd):
         # Check that running cmd returns an empty diff
         out, err = self.run_bzr(cmd, retcode=0)
@@ -196,41 +208,20 @@ class TestDiff(DiffBase):
         dir1 = branch1_tree.bzrdir
         dir1.destroy_workingtree()
         self.assertFalse(dir1.has_workingtree())
-        out, err = self.run_bzr('diff --old branch2 --new branch1',
-                                         retcode=1)
-        self.assertEquals('', err)
-        self.assertEqualDiff("=== modified file 'file'\n"
-                              "--- file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                              "+++ file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                              "@@ -1,1 +1,1 @@\n"
-                              "-new content\n"
-                              "+contents of branch1/file\n"
-                              "\n", subst_dates(out))
+        self.check_b2_vs_b1('diff --old branch2 --new branch1')
+        self.check_b2_vs_b1('diff --old branch2 branch1')
+        self.check_b2_vs_b1('diff branch2 --new branch1')
         # Compare a branch without a WT to one with a WT
-        out, err = self.run_bzr('diff --old branch1 --new branch2',
-                                         retcode=1)
-        self.assertEquals('', err)
-        self.assertEqualDiff("=== modified file 'file'\n"
-                              "--- file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                              "+++ file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                              "@@ -1,1 +1,1 @@\n"
-                              "-contents of branch1/file\n"
-                              "+new content\n"
-                              "\n", subst_dates(out))
+        self.check_b1_vs_b2('diff --old branch1 --new branch2')
+        self.check_b1_vs_b2('diff --old branch1 branch2')
+        self.check_b1_vs_b2('diff branch1 --new branch2')
         # Compare a branch with a WT against another without a WT
         dir2 = branch2_tree.bzrdir
         dir2.destroy_workingtree()
         self.assertFalse(dir2.has_workingtree())
-        out, err = self.run_bzr('diff --old branch1 --new branch2',
-                                         retcode=1)
-        self.assertEquals('', err)
-        self.assertEqualDiff("=== modified file 'file'\n"
-                              "--- file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                              "+++ file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                              "@@ -1,1 +1,1 @@\n"
-                              "-contents of branch1/file\n"
-                              "+new content\n"
-                              "\n", subst_dates(out))
+        self.check_b1_vs_b2('diff --old branch1 --new branch2')
+        self.check_b1_vs_b2('diff --old branch1 branch2')
+        self.check_b1_vs_b2('diff branch1 --new branch2')
 
     def test_diff_revno_branches(self):
         self.example_branches()
