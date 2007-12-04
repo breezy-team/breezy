@@ -1427,7 +1427,7 @@ class cmd_diff(Command):
 
         Show the differences between two branches for file NEWS::
 
-            bzr diff --old=xxx --new=yyy NEWS
+            bzr diff --old xxx --new yyy NEWS
 
         Same as 'bzr diff' but prefix paths with old/ and new/::
 
