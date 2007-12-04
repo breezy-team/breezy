@@ -4,23 +4,31 @@ Introducing Bazaar
 What is Bazaar?
 ---------------
 
-Bazaar is a tool for helping people collaborate. It does this by
-tracking how a group of files evolves and using that information to help
-people merge their changes together as safely as possible.
+Bazaar is a tool for helping people collaborate. It tracks the changes
+that you and other people make to a group of files - such as software
+source code - to give you snapshots of each stage of their evolution.
+Using that information, Bazaar can effortlessly merge your work with
+other people's.
 
-In general, tools that do this are known as revision control systems or
-version control systems (VCS). In the past, VCS tools have been popular
-with software developers. In the future, VCS tools will undoubtedly also be
-important for other groups of people looking to work together on
-files and documents, e.g. technical writers and translators.
+Tools like Bazaar are called version control systems (VCS) and have
+long been popular with software developers. Bazaar's ease of use,
+flexibility and simple setup make it ideal not only for software
+developers but also for other groups who work together on files and
+documents, such as technical writers, web designers and translators.
+
+This guide takes you through installing Bazaar and how to use it,
+whether on your own or with a team of other people. If you're already
+familiar with distributed version control and want to dive straight in, 
+you may wish to skim this section and jump straight to
+`Learning more`_.
 
 A brief history of version control systems
 ------------------------------------------
 
-VCS tools have been evolving for several decades now. In simple terms,
-there have been 5 generations of tools:
+Version control tools have been evolving for several decades now. In
+simple terms, there have been 5 generations of tools:
 
- 1. file versioning tools, e.g. SCCS, VCS
+ 1. file versioning tools, e.g. SCCS, RCS
  2. tree versioning tools - central style, e.g. CVS
  3. tree versioning tools - central style, done right, e.g. Subversion
  4. tree versioning tools - distributed style, e.g. Arch
@@ -40,7 +48,7 @@ change history or *repository* for a tree of files. To work on the files,
 users need to connect to the server and *checkout* the files. This gives
 them a directory or *working tree* in which a person can make changes.
 To record or *commit* these changes, the user needs access to the central
-server and they need to unsure they have merged their work with the latest
+server and they need to ensure they have merged their work with the latest
 version stored before trying to commit. This approach is known as the
 centralized model. 
 

@@ -58,8 +58,10 @@ the file like this::
   bzr remerge --weave foo
 
 where ``foo`` is the file and ``weave`` is one of the available
-merge algorithms. See the online help for ``remerge`` or the
-User Reference for further details.
+merge algorithms. This algorithm is particularly useful when a
+so-called ``criss-cross`` merge is detected, e.g. when two branches
+merge the same thing then merge each other. See the online help for
+``criss-cross`` and ``remerge`` for further details.
 
 Using external tools to resolve conflicts
 -----------------------------------------
