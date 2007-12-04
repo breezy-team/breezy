@@ -1255,7 +1255,7 @@ class cmd_init(Command):
         bzr init
         bzr add .
         bzr status
-        bzr commit -m 'imported project'
+        bzr commit -m "imported project"
     """
 
     _see_also = ['init-repository', 'branch', 'checkout']
@@ -1915,15 +1915,15 @@ class cmd_ignore(Command):
 
         Ignore class files in all directories::
 
-            bzr ignore '*.class'
+            bzr ignore "*.class"
 
         Ignore .o files under the lib directory::
 
-            bzr ignore 'lib/**/*.o'
+            bzr ignore "lib/**/*.o"
 
         Ignore .o files under the lib directory::
 
-            bzr ignore 'RE:lib/.*\.o'
+            bzr ignore "RE:lib/.*\.o"
     """
 
     _see_also = ['status', 'ignored']
@@ -2444,7 +2444,7 @@ class cmd_whoami(Command):
 
         Set the current user::
 
-            bzr whoami 'Frank Chu <fchu@example.com>'
+            bzr whoami "Frank Chu <fchu@example.com>"
     """
     takes_options = [ Option('email',
                              help='Display email address only.'),
@@ -3574,9 +3574,6 @@ class cmd_uncommit(Command):
     def run(self, location=None,
             dry_run=False, verbose=False,
             revision=None, force=False):
-        from bzrlib.log import log_formatter, show_log
-        from bzrlib.uncommit import uncommit
-
         if location is None:
             location = u'.'
         control, relpath = bzrdir.BzrDir.open_containing(location)
@@ -3587,19 +3584,38 @@ class cmd_uncommit(Command):
             tree = None
             b = control.open_branch()
 
+        if tree is not None:
+            tree.lock_write()
+        else:
+            b.lock_write()
+        try:
+            return self._run(b, tree, dry_run, verbose, revision, force)
+        finally:
+            if tree is not None:
+                tree.unlock()
+            else:
+                b.unlock()
+
+    def _run(self, b, tree, dry_run, verbose, revision, force):
+        from bzrlib.log import log_formatter, show_log
+        from bzrlib.uncommit import uncommit
+
+        last_revno, last_rev_id = b.last_revision_info()
+
         rev_id = None
         if revision is None:
-            revno = b.revno()
+            revno = last_revno
+            rev_id = last_rev_id
         else:
             # 'bzr uncommit -r 10' actually means uncommit
             # so that the final tree is at revno 10.
             # but bzrlib.uncommit.uncommit() actually uncommits
             # the revisions that are supplied.
             # So we need to offset it by one
-            revno = revision[0].in_history(b).revno+1
+            revno = revision[0].in_history(b).revno + 1
+            if revno <= last_revno:
+                rev_id = b.get_rev_id(revno)
 
-        if revno <= b.revno():
-            rev_id = b.get_rev_id(revno)
         if rev_id is None or _mod_revision.is_null(rev_id):
             self.outf.write('No revisions to uncommit.\n')
             return 1
@@ -3613,7 +3629,7 @@ class cmd_uncommit(Command):
                  verbose=False,
                  direction='forward',
                  start_revision=revno,
-                 end_revision=b.revno())
+                 end_revision=last_revno)
 
         if dry_run:
             print 'Dry-run, pretending to remove the above revisions.'
@@ -3628,7 +3644,7 @@ class cmd_uncommit(Command):
                     return 0
 
         uncommit(b, tree=tree, dry_run=dry_run, verbose=verbose,
-                revno=revno)
+                 revno=revno)
 
 
 class cmd_break_lock(Command):
@@ -4015,9 +4031,6 @@ class cmd_send(Command):
                 config = branch.get_config()
                 if mail_to is None:
                     mail_to = config.get_user_option('submit_to')
-                if mail_to is None:
-                    raise errors.BzrCommandError('No mail-to address'
-                                                 ' specified')
                 mail_client = config.get_mail_client()
             if remember and submit_branch is None:
                 raise errors.BzrCommandError(
@@ -4303,7 +4316,9 @@ class cmd_reconfigure(Command):
                      value_switches=True, enum_switch=False,
                      branch='Reconfigure to a branch.',
                      tree='Reconfigure to a tree.',
-                     checkout='Reconfigure to a checkout.'),
+                     checkout='Reconfigure to a checkout.',
+                     lightweight_checkout='Reconfigure to a lightweight'
+                     ' checkout.'),
                      Option('bind-to', help='Branch to bind checkout to.',
                             type=str),
                      Option('force',
@@ -4322,6 +4337,9 @@ class cmd_reconfigure(Command):
         elif target_type == 'checkout':
             reconfiguration = reconfigure.Reconfigure.to_checkout(directory,
                                                                   bind_to)
+        elif target_type == 'lightweight-checkout':
+            reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
+                directory, bind_to)
         reconfiguration.apply(force)
 
 

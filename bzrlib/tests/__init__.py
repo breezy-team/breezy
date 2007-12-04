@@ -2046,6 +2046,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
 
         This doesn't add anything to a branch.
 
+        :type shape:    list or tuple.
         :param line_endings: Either 'binary' or 'native'
             in binary mode, exact contents are written in native mode, the
             line endings match the default platform endings.
@@ -2053,6 +2054,9 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
             If the transport is readonly or None, "." is opened automatically.
         :return: None
         """
+        if type(shape) not in (list, tuple):
+            raise AssertionError("Parameter 'shape' should be "
+                "a list or a tuple. Got %r instead" % (shape,))
         # It's OK to just create them using forward slashes on windows.
         if transport is None or transport.is_readonly():
             transport = get_transport(".")
@@ -2767,3 +2771,29 @@ class _FTPServerFeature(Feature):
         return 'FTPServer'
 
 FTPServerFeature = _FTPServerFeature()
+
+
+class _CaseInsensitiveFilesystemFeature(Feature):
+    """Check if underlined filesystem is case-insensitive
+    (e.g. on Windows, Cygwin, MacOS)
+    """
+
+    def _probe(self):
+        if TestCaseWithMemoryTransport.TEST_ROOT is None:
+            root = osutils.mkdtemp(prefix='testbzr-', suffix='.tmp')
+            TestCaseWithMemoryTransport.TEST_ROOT = root
+        else:
+            root = TestCaseWithMemoryTransport.TEST_ROOT
+        tdir = osutils.mkdtemp(prefix='case-sensitive-probe-', suffix='',
+            dir=root)
+        name_a = osutils.pathjoin(tdir, 'a')
+        name_A = osutils.pathjoin(tdir, 'A')
+        os.mkdir(name_a)
+        result = osutils.isdir(name_A)
+        _rmtree_temp_dir(tdir)
+        return result
+
+    def feature_name(self):
+        return 'case-insensitive filesystem'
+
+CaseInsensitiveFilesystemFeature = _CaseInsensitiveFilesystemFeature()

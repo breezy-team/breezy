@@ -85,6 +85,12 @@ class TestErrors(TestCaseWithTransport):
                          '"stream format" into knit of format '
                          '"target format".', str(error))
 
+    def test_knit_data_stream_unknown(self):
+        error = errors.KnitDataStreamUnknown(
+            'stream format')
+        self.assertEqual('Cannot parse knit data stream of format '
+                         '"stream format".', str(error))
+
     def test_knit_header_error(self):
         error = errors.KnitHeaderError('line foo\n', 'path/to/file')
         self.assertEqual("Knit header error: 'line foo\\n' unexpected"

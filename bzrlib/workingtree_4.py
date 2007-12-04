@@ -151,6 +151,7 @@ class WorkingTree4(WorkingTree3):
         self._dirstate = None
         self._inventory = None
         #-------------
+        self._detect_case_handling()
 
     @needs_tree_write_lock
     def _add(self, files, ids, kinds):
@@ -1379,6 +1380,14 @@ class DirStateRevisionTree(Tree):
     def get_root_id(self):
         return self.path2id('')
 
+    def id2path(self, file_id):
+        "Convert a file-id to a path."
+        entry = self._get_entry(file_id=file_id)
+        if entry == (None, None):
+            raise errors.NoSuchId(tree=self, file_id=file_id)
+        path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
+        return path_utf8.decode('utf8')
+
     def _get_parent_index(self):
         """Return the index in the dirstate referenced by this tree."""
         return self._dirstate.get_parent_ids().index(self._revision_id) + 1
@@ -1506,8 +1515,10 @@ class DirStateRevisionTree(Tree):
         return StringIO(self.get_file_text(file_id))
 
     def get_file_lines(self, file_id):
-        ie = self.inventory[file_id]
-        return self._get_weave(file_id).get_lines(ie.revision)
+        entry = self._get_entry(file_id=file_id)[1]
+        if entry == None:
+            raise errors.NoSuchId(tree=self, file_id=file_id)
+        return self._get_weave(file_id).get_lines(entry[1][4])
 
     def get_file_size(self, file_id):
         return self.inventory[file_id].text_size
@@ -1565,7 +1576,10 @@ class DirStateRevisionTree(Tree):
         return bool(self.path2id(filename))
 
     def kind(self, file_id):
-        return self.inventory[file_id].kind
+        entry = self._get_entry(file_id=file_id)[1]
+        if entry == None:
+            raise errors.NoSuchId(tree=self, file_id=file_id)
+        return dirstate.DirState._minikind_to_kind[entry[1][0]]
 
     def path_content_summary(self, path):
         """See Tree.path_content_summary."""

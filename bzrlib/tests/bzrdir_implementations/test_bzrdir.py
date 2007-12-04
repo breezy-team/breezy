@@ -241,6 +241,18 @@ class TestBzrDir(TestCaseWithBzrDir):
         bzrdir.create_branch()
         bzrdir.open_branch()
 
+    def test_destroy_repository(self):
+        repo = self.make_repository('repository')
+        bzrdir = repo.bzrdir
+        try:
+            bzrdir.destroy_repository()
+        except (errors.UnsupportedOperation, errors.TransportNotPossible):
+            raise TestNotApplicable('Format does not support destroying'
+                                    ' repository')
+        self.assertRaises(errors.NoRepositoryPresent, bzrdir.open_repository)
+        bzrdir.create_repository()
+        bzrdir.open_repository()
+
     def test_open_workingtree_raises_no_working_tree(self):
         """BzrDir.open_workingtree() should raise NoWorkingTree (rather than
         e.g. NotLocalUrl) if there is no working tree.

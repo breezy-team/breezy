@@ -270,6 +270,16 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             # the Format factory and creation methods that are
             # permitted to do this.
             self._set_inventory(_inventory, dirty=False)
+        self._detect_case_handling()
+
+    def _detect_case_handling(self):
+        wt_trans = self.bzrdir.get_workingtree_transport(None)
+        try:
+            wt_trans.stat("FoRMaT")
+        except errors.NoSuchFile:
+            self.case_sensitive = True
+        else:
+            self.case_sensitive = False
 
     branch = property(
         fget=lambda self: self._branch,
@@ -1893,11 +1903,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                      kind, executable) in self._iter_changes(self.basis_tree(),
                          include_unchanged=True, require_versioned=False,
                          want_unversioned=True, specific_files=files):
-                    # Check if it's an unknown (but not ignored) OR
-                    # changed (but not deleted) :
-                    if ((versioned == (False, False) or
-                         content_change and kind[1] != None)
-                        and not self.is_ignored(path[1])):
+                    if versioned == (False, False):
+                        # The record is unknown ...
+                        if not self.is_ignored(path[1]):
+                            # ... but not ignored
+                            has_changed_files = True
+                            break
+                    elif content_change and (kind[1] != None):
+                        # Versioned and changed, but not deleted
                         has_changed_files = True
                         break
 

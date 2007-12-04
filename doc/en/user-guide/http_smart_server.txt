@@ -1,4 +1,3 @@
-===========================
 Serving Bazaar with FastCGI
 ===========================
 
@@ -14,7 +13,7 @@ see the main `smart server documentation`_.
 .. _smart server documentation: server.html
 
 Example
-=======
+-------
 
 You have a webserver already publishing `/srv/example.com/www/code` as
 `http://example.com/code/...` with plain HTTP.  It contains bzr branches and
@@ -190,7 +189,7 @@ Plain HTTP access should continue to work::
 
 
 Advanced configuration
-======================
+----------------------
 
 Because the Bazaar HTTP smart server is a WSGI application, it can be used with
 any 3rd-party WSGI middleware or server that conforms the WSGI standard.  The
@@ -217,7 +216,7 @@ standard`_ for further information.
 
 
 Pushing over ``bzr+http://``
-----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 It is possible to allow pushing data over the http smart server. The
 easiest way to do this, is to just supply ``readonly=False`` to the

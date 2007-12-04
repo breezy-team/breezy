@@ -37,12 +37,7 @@ from bzrlib.smart.protocol import (
     SmartServerRequestProtocolOne,
     SmartServerRequestProtocolTwo,
     )
-
-try:
-    from bzrlib.transport import ssh
-except errors.ParamikoNotPresent:
-    # no paramiko.  SmartSSHClientMedium will break.
-    pass
+from bzrlib.transport import ssh
 
 
 class SmartServerStreamMedium(object):
