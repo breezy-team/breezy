@@ -800,6 +800,38 @@ class TestPatienceDiffLib(TestCase):
         chk_blocks('abbabbbb', 'cabbabbc', [])
         chk_blocks('bbbbbbbb', 'cbbbbbbc', [])
 
+    def test_matching_blocks_tuples(self):
+        def chk_blocks(a, b, expected_blocks):
+            # difflib always adds a signature of the total
+            # length, with no matching entries at the end
+            s = self._PatienceSequenceMatcher(None, a, b)
+            blocks = s.get_matching_blocks()
+            self.assertEquals((len(a), len(b), 0), blocks[-1])
+            self.assertEquals(expected_blocks, blocks[:-1])
+
+        # Some basic matching tests
+        chk_blocks([], [], [])
+        chk_blocks([('a',), ('b',), ('c,')], [], [])
+        chk_blocks([], [('a',), ('b',), ('c,')], [])
+        chk_blocks([('a',), ('b',), ('c,')],
+                   [('a',), ('b',), ('c,')],
+                   [(0, 0, 3)])
+        chk_blocks([('a',), ('b',), ('c,')],
+                   [('a',), ('b',), ('d,')],
+                   [(0, 0, 2)])
+        chk_blocks([('d',), ('b',), ('c,')],
+                   [('a',), ('b',), ('c,')],
+                   [(1, 1, 2)])
+        chk_blocks([('d',), ('a',), ('b',), ('c,')],
+                   [('a',), ('b',), ('c,')],
+                   [(1, 0, 3)])
+        chk_blocks([('a', 'b'), ('c', 'd'), ('e', 'f')],
+                   [('a', 'b'), ('c', 'X'), ('e', 'f')],
+                   [(0, 0, 1), (2, 2, 1)])
+        chk_blocks([('a', 'b'), ('c', 'd'), ('e', 'f')],
+                   [('a', 'b'), ('c', 'dX'), ('e', 'f')],
+                   [(0, 0, 1), (2, 2, 1)])
+
     def test_opcodes(self):
         def chk_ops(a, b, expected_codes):
             s = self._PatienceSequenceMatcher(None, a, b)

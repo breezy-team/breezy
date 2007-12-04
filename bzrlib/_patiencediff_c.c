@@ -70,11 +70,11 @@ static char *opcode_names[] = {
 
 
 struct line {
-    int hash;          /* hash code of the string */
+    long hash;         /* hash code of the string/object */
     Py_ssize_t next;   /* next line from the same equivalence class */
     Py_ssize_t equiv;  /* equivalence class */
     Py_ssize_t len;
-    const char *data;
+    const PyObject *data;
 };
 
 
@@ -152,7 +152,8 @@ static inline int
 compare_lines(struct line *a, struct line *b)
 {
     return ((a->hash != b->hash) || (a->len != b->len) ||
-            memcmp(a->data, b->data, a->len));
+            PyObject_Compare((PyObject *)a->data, (PyObject *)b->data));
+            //memcmp(a->data, b->data, a->len));
 }
 
 
@@ -545,9 +546,10 @@ error:
 static Py_ssize_t
 load_lines(PyObject *orig, struct line **lines)
 {
-    Py_ssize_t size, i, j;
-    int h;
-    char *p;
+    Py_ssize_t size, i, j, tuple_len;
+    Py_ssize_t total_len;
+    // int h;
+    // char *p;
     struct line *line;
     PyObject *seq, *item;
 
@@ -571,25 +573,39 @@ load_lines(PyObject *orig, struct line **lines)
 
     for (i = 0; i < size; i++) {
         item = PySequence_Fast_GET_ITEM(seq, i);
-        if (!PyString_Check(item)){
-            PyErr_Format(PyExc_TypeError,
-                     "sequence item %zd: expected string,"
-                     " %.80s found",
-                     i, item->ob_type->tp_name);
-            Py_DECREF(seq);
-            return -1;
+        // if (!PyString_Check(item)){
+        //     PyErr_Format(PyExc_TypeError,
+        //              "sequence item %zd: expected string,"
+        //              " %.80s found",
+        //              i, item->ob_type->tp_name);
+        //     Py_DECREF(seq);
+        //     return -1;
+        // }
+        if (PyString_Check(item)) {
+            // we could use the 'djb2' hash here if we find it is better than
+            // PyObject_Hash
+            line->len = PyString_GET_SIZE(item);
+        } else if (PyTuple_Check(item)) {
+            total_len = 0;
+            tuple_len = PyObject_Length(item);
+            for (j = 0; j < tuple_len; ++j) {
+                total_len += PyObject_Length(PySequence_Fast_GET_ITEM(item, j));
+            }
+            line->len = total_len;
+        } else {
+            // Generic length
+            line->len = PyObject_Length(item);
         }
-        line->len = PyString_GET_SIZE(item);
-        line->data = p = PyString_AS_STRING(item);
-        /* 'djb2' hash. This gives us a nice compromise between fast hash
-            function and a hash with less collisions. The algorithm doesn't
-            use the hash for actual lookups, only for building the table
-            so a better hash function wouldn't bring us much benefit, but
-            would make this loading code slower. */
-        h = 5381;
-        for (j = 0; j < line->len; j++)
-            h = ((h << 5) + h) + *p++;
-        line->hash = h;
+        line->data = item; //p = PyString_AS_STRING(item);
+        // /* 'djb2' hash. This gives us a nice compromise between fast hash
+        //     function and a hash with less collisions. The algorithm doesn't
+        //     use the hash for actual lookups, only for building the table
+        //     so a better hash function wouldn't bring us much benefit, but
+        //     would make this loading code slower. */
+        // h = 5381;
+        // for (j = 0; j < line->len; j++)
+        //     h = ((h << 5) + h) + *p++;
+        line->hash = PyObject_Hash(item);
         line->next = SENTINEL;
         line++;
     }
