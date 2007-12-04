@@ -29,6 +29,7 @@ objects returned.
 
 from cStringIO import StringIO
 import os
+import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -48,10 +49,11 @@ from bzrlib import (
     symbol_versioning,
     ui,
     urlutils,
-    xml4,
-    xml5,
+    win32utils,
     workingtree,
     workingtree_4,
+    xml4,
+    xml5,
     )
 from bzrlib.osutils import (
     sha_strings,
@@ -242,6 +244,10 @@ class BzrDir(object):
         if format is None:
             format = BzrDirFormat.get_default_format()
         return format.initialize_on_transport(t)
+
+    def destroy_repository(self):
+        """Destroy the repository in this BzrDir"""
+        raise NotImplementedError(self.destroy_repository)
 
     def create_branch(self):
         """Create a branch in this BzrDir.
@@ -929,6 +935,10 @@ class BzrDirPreSplitOut(BzrDir):
             raise errors.IncompatibleFormat('shared repository', self._format)
         return self.open_repository()
 
+    def destroy_repository(self):
+        """See BzrDir.destroy_repository."""
+        raise errors.UnsupportedOperation(self.destroy_repository, self)
+
     def create_workingtree(self, revision_id=None, from_branch=None):
         """See BzrDir.create_workingtree."""
         # this looks buggy but is not -really-
@@ -1106,6 +1116,10 @@ class BzrDirMeta1(BzrDir):
     def create_repository(self, shared=False):
         """See BzrDir.create_repository."""
         return self._format.repository_format.initialize(self, shared)
+
+    def destroy_repository(self):
+        """See BzrDir.destroy_repository."""
+        self.transport.delete_tree('repository')
 
     def create_workingtree(self, revision_id=None, from_branch=None):
         """See BzrDir.create_workingtree."""
@@ -1355,6 +1369,8 @@ class BzrDirFormat(object):
                                       # FIXME: RBC 20060121 don't peek under
                                       # the covers
                                       mode=temp_control._dir_mode)
+        if sys.platform == 'win32' and isinstance(transport, LocalTransport):
+            win32utils.set_file_attr_hidden(transport._abspath('.bzr'))
         file_mode = temp_control._file_mode
         del temp_control
         mutter('created control directory in ' + transport.base)
@@ -1717,7 +1733,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
         return RepositoryFormat.get_default_format()
 
     def __set_repository_format(self, value):
-        """Allow changint the repository format for metadir formats."""
+        """Allow changing the repository format for metadir formats."""
         self._repository_format = value
 
     repository_format = property(__return_repository_format, __set_repository_format)
@@ -2535,10 +2551,10 @@ format_registry.register_metadir('rich-root-pack',
         'rich-root format repositories. Interoperates with '
         'bzr repositories before 0.92 but cannot be read by bzr < 1.0. '
         'NOTE: This format is experimental. Before using it, please read '
-        'http://doc.bazaar-vcs.org/latest/developers/knitpack.html.',
+        'http://doc.bazaar-vcs.org/latest/developers/packrepo.html.',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=False,
     experimental=True,
     )
-format_registry.set_default('dirstate-tags')
+format_registry.set_default('pack-0.92')

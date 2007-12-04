@@ -182,18 +182,22 @@ _launchpad_help = """Integration with Launchpad.net
 Launchpad.net provides free Bazaar branch hosting with integrated bug and
 specification tracking.
 
-The bzr client (through the plugin called 'launchpad') has two special
+The bzr client (through the plugin called 'launchpad') has special
 features to communicate with Launchpad:
 
-    * The register-branch command tells launchpad about the url of a 
+    * The launchpad-login command tells Bazaar your Launchpad user name. This
+      is then used by the 'lp:' transport to download your branches using
+      bzr+ssh://.
+
+    * The register-branch command tells Launchpad about the url of a
       public branch.  Launchpad will then mirror the branch, display
-      its contents and allow it to be attached to bugs and other 
+      its contents and allow it to be attached to bugs and other
       objects.
 
-    * The 'lp:' transport uses Launchpad as a directory service: 
-      for example 'lp:bzr' and 'lp:python' refer to the main branches of the
-      relevant projects and may be branched, logged, etc.  (Only read access
-      is supported at present.)
+    * The 'lp:' transport uses Launchpad as a directory service: for example
+      'lp:bzr' and 'lp:python' refer to the main branches of the relevant
+      projects and may be branched, logged, etc. You can also use the 'lp:'
+      transport to refer to specific branches, e.g. lp:///~bzr/bzr/trunk.
 
 For more information see http://help.launchpad.net/
 """

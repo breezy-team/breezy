@@ -160,14 +160,17 @@ class BundleReader(object):
             source_file = iterablefile.IterableFile(self.iter_decode(fileobj))
         else:
             source_file = StringIO(bz2.decompress(fileobj.read()))
-        self._container = pack.ContainerReader(source_file)
+        self._container_file = source_file
 
     @staticmethod
     def iter_decode(fileobj):
         """Iterate through decoded fragments of the file"""
         decompressor = bz2.BZ2Decompressor()
         for line in fileobj:
-            yield decompressor.decompress(line)
+            try:
+                yield decompressor.decompress(line)
+            except EOFError:
+                return
 
     @staticmethod
     def decode_name(name):
@@ -199,17 +202,16 @@ class BundleReader(object):
         :return: a generator of (bytes, metadata, content_kind, revision_id,
             file_id)
         """
-        iterator = self._container.iter_records()
-        for names, meta_bytes in iterator:
+        iterator = pack.iter_records_from_file(self._container_file)
+        for names, bytes in iterator:
             if len(names) != 1:
                 raise errors.BadBundle('Record has %d names instead of 1'
                                        % len(names))
-            metadata = bencode.bdecode(meta_bytes(None))
+            metadata = bencode.bdecode(bytes)
             if metadata['storage_kind'] == 'header':
                 bytes = None
             else:
                 _unused, bytes = iterator.next()
-                bytes = bytes(None)
             yield (bytes, metadata) + self.decode_name(names[0][0])
 
 

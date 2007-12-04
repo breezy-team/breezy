@@ -85,6 +85,11 @@ class RemoteBzrDir(BzrDir):
         self._real_bzrdir.create_repository(shared=shared)
         return self.open_repository()
 
+    def destroy_repository(self):
+        """See BzrDir.destroy_repository"""
+        self._ensure_real()
+        self._real_bzrdir.destroy_repository()
+
     def create_branch(self):
         self._ensure_real()
         real_branch = self._real_bzrdir.create_branch()
@@ -412,7 +417,9 @@ class RemoteRepository(object):
 
     def get_physical_lock_status(self):
         """See Repository.get_physical_lock_status()."""
-        return False
+        # should be an API call to the server.
+        self._ensure_real()
+        return self._real_repository.get_physical_lock_status()
 
     def is_in_write_group(self):
         """Return True if there is an open write group.
@@ -465,7 +472,10 @@ class RemoteRepository(object):
     def lock_write(self, token=None):
         if not self._lock_mode:
             self._lock_token = self._remote_lock_write(token)
-            assert self._lock_token, 'Remote server did not return a token!'
+            # if self._lock_token is None, then this is something like packs or
+            # svn where we don't get to lock the repo, or a weave style repository
+            # where we cannot lock it over the wire and attempts to do so will
+            # fail.
             if self._real_repository is not None:
                 self._real_repository.lock_write(token=self._lock_token)
             if token is not None:
@@ -478,12 +488,16 @@ class RemoteRepository(object):
             raise errors.ReadOnlyError(self)
         else:
             self._lock_count += 1
-        return self._lock_token
+        return self._lock_token or None
 
     def leave_lock_in_place(self):
+        if not self._lock_token:
+            raise NotImplementedError(self.leave_lock_in_place)
         self._leave_lock = True
 
     def dont_leave_lock_in_place(self):
+        if not self._lock_token:
+            raise NotImplementedError(self.dont_leave_lock_in_place)
         self._leave_lock = False
 
     def _set_real_repository(self, repository):
@@ -514,6 +528,9 @@ class RemoteRepository(object):
 
     def _unlock(self, token):
         path = self.bzrdir._path_for_remote_call(self._client)
+        if not token:
+            # with no token the remote repository is not persistently locked.
+            return
         response = self._client.call('Repository.unlock', path, token)
         if response == ('ok',):
             return
@@ -542,9 +559,6 @@ class RemoteRepository(object):
             if old_mode == 'w':
                 # Only write-locked repositories need to make a remote method
                 # call to perfom the unlock.
-                assert self._lock_token, \
-                    '%s is locked, but has no token' \
-                    % self
                 old_token = self._lock_token
                 self._lock_token = None
                 if not self._leave_lock:
@@ -581,7 +595,9 @@ class RemoteRepository(object):
 
     def sprout(self, to_bzrdir, revision_id=None):
         # TODO: Option to control what format is created?
-        dest_repo = to_bzrdir.create_repository()
+        self._ensure_real()
+        dest_repo = self._real_repository._format.initialize(to_bzrdir,
+                                                             shared=False)
         dest_repo.fetch(self, revision_id=revision_id)
         return dest_repo
 
@@ -604,8 +620,6 @@ class RemoteRepository(object):
         builder = self._real_repository.get_commit_builder(branch, parents,
                 config, timestamp=timestamp, timezone=timezone,
                 committer=committer, revprops=revprops, revision_id=revision_id)
-        # Make the builder use this RemoteRepository rather than the real one.
-        builder.repository = self
         return builder
 
     @needs_write_lock
@@ -682,9 +696,9 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.fileids_altered_by_revision_ids(revision_ids)
 
-    def get_versioned_file_checker(self, revisions, revision_versions_cache):
+    def _get_versioned_file_checker(self, revisions, revision_versions_cache):
         self._ensure_real()
-        return self._real_repository.get_versioned_file_checker(
+        return self._real_repository._get_versioned_file_checker(
             revisions, revision_versions_cache)
         
     def iter_files_bytes(self, desired_files):
@@ -1055,7 +1069,7 @@ class RemoteBranch(branch.Branch):
             self.repository.unlock()
         path = self.bzrdir._path_for_remote_call(self._client)
         response = self._client.call('Branch.lock_write', path, branch_token,
-                                     repo_token)
+                                     repo_token or '')
         if response[0] == 'ok':
             ok, branch_token, repo_token = response
             return branch_token, repo_token
@@ -1108,12 +1122,12 @@ class RemoteBranch(branch.Branch):
                 if token != self._lock_token:
                     raise errors.TokenMismatch(token, self._lock_token)
             self._lock_count += 1
-        return self._lock_token
+        return self._lock_token or None
 
     def _unlock(self, branch_token, repo_token):
         path = self.bzrdir._path_for_remote_call(self._client)
         response = self._client.call('Branch.unlock', path, branch_token,
-                                     repo_token)
+                                     repo_token or '')
         if response == ('ok',):
             return
         elif response[0] == 'TokenMismatch':
@@ -1129,7 +1143,8 @@ class RemoteBranch(branch.Branch):
             mode = self._lock_mode
             self._lock_mode = None
             if self._real_branch is not None:
-                if not self._leave_lock:
+                if (not self._leave_lock and mode == 'w' and
+                    self._repo_lock_token):
                     # If this RemoteBranch will remove the physical lock for the
                     # repository, make sure the _real_branch doesn't do it
                     # first.  (Because the _real_branch's repository is set to
@@ -1153,9 +1168,13 @@ class RemoteBranch(branch.Branch):
         return self._real_branch.break_lock()
 
     def leave_lock_in_place(self):
+        if not self._lock_token:
+            raise NotImplementedError(self.leave_lock_in_place)
         self._leave_lock = True
 
     def dont_leave_lock_in_place(self):
+        if not self._lock_token:
+            raise NotImplementedError(self.dont_leave_lock_in_place)
         self._leave_lock = False
 
     def last_revision_info(self):
@@ -1215,7 +1234,8 @@ class RemoteBranch(branch.Branch):
         # format, because RemoteBranches can't be created at arbitrary URLs.
         # XXX: if to_bzrdir is a RemoteBranch, this should perhaps do
         # to_bzrdir.create_branch...
-        result = branch.BranchFormat.get_default_format().initialize(to_bzrdir)
+        self._ensure_real()
+        result = self._real_branch._format.initialize(to_bzrdir)
         self.copy_content_into(result, revision_id=revision_id)
         result.set_parent(self.bzrdir.root_transport.base)
         return result
@@ -1263,10 +1283,10 @@ class RemoteBranch(branch.Branch):
         self._ensure_real()
         return self._real_branch.set_push_location(location)
 
-    def update_revisions(self, other, stop_revision=None):
+    def update_revisions(self, other, stop_revision=None, overwrite=False):
         self._ensure_real()
         return self._real_branch.update_revisions(
-            other, stop_revision=stop_revision)
+            other, stop_revision=stop_revision, overwrite=overwrite)
 
 
 class RemoteBranchConfig(BranchConfig):

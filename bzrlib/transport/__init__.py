@@ -645,7 +645,7 @@ class Transport(object):
 
         :param relpath: The path to read data from.
         :param offsets: A list of (offset, size) tuples.
-        :param adjust_for_latency: Adjust the requested offsets to accomdate
+        :param adjust_for_latency: Adjust the requested offsets to accomodate
             transport latency. This may re-order the offsets, expand them to
             grab adjacent data when there is likely a high cost to requesting
             data relative to delivering it.
@@ -661,9 +661,12 @@ class Transport(object):
         if adjust_for_latency:
             # Design note: We may wish to have different algorithms for the
             # expansion of the offsets per-transport. E.g. for local disk to
-            # use page-aligned expansion. If that is the case consider the following structure:
-            #  - a test that transport.readv uses self._offset_expander or some similar attribute, to do the expansion
-            #  - a test for each transport that it has some known-good offset expander
+            # use page-aligned expansion. If that is the case consider the
+            # following structure:
+            #  - a test that transport.readv uses self._offset_expander or some
+            #    similar attribute, to do the expansion
+            #  - a test for each transport that it has some known-good offset
+            #    expander
             #  - unit tests for each offset expander
             #  - a set of tests for the offset expander interface, giving
             #    baseline behaviour (which the current transport

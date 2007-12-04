@@ -16,10 +16,10 @@
 
 from bzrlib import (
     errors,
+    revision,
     tsort,
     )
 from bzrlib.deprecated_graph import (node_distances, select_farthest)
-from bzrlib.revision import NULL_REVISION
 
 # DIAGRAM of terminology
 #       A
@@ -242,6 +242,11 @@ class Graph(object):
             order if they need it.
         """
         candidate_heads = set(keys)
+        if revision.NULL_REVISION in candidate_heads:
+            # NULL_REVISION is only a head if it is the only entry
+            candidate_heads.remove(revision.NULL_REVISION)
+            if not candidate_heads:
+                return set([revision.NULL_REVISION])
         if len(candidate_heads) < 2:
             return candidate_heads
         searchers = dict((c, self._make_breadth_first_searcher([c]))
