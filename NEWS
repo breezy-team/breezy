@@ -12,6 +12,10 @@ IN DEVELOPMENT
    * ``bzr commit`` now doesn't print the revision number twice. (Matt
      Nordhoff, #172612)
 
+   * ``bzr pack`` now orders revision texts in topological order, with newest
+     at the start of the file, promoting linear reads for ``bzr log`` and the
+     like. This partially fixes #154129. (Robert Collins)
+
    * Support logging single merge revisions with short and line log formatters.
      (Kent Gibson)
 
