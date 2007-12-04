@@ -546,12 +546,9 @@ error:
 static Py_ssize_t
 load_lines(PyObject *orig, struct line **lines)
 {
-    Py_ssize_t size, i, j, tuple_len;
-    Py_ssize_t total_len;
-    // int h;
-    // char *p;
+    Py_ssize_t size, i, j, tuple_len, cur_len, total_len;
     struct line *line;
-    PyObject *seq, *item;
+    PyObject *seq, *item, *subitem;
 
     seq = PySequence_Fast(orig, "sequence expected");
     if (seq == NULL) {
@@ -574,23 +571,39 @@ load_lines(PyObject *orig, struct line **lines)
     for (i = 0; i < size; i++) {
         item = PySequence_Fast_GET_ITEM(seq, i);
         if (PyString_Check(item)) {
-            // we could use the 'djb2' hash here if we find it is better than
-            // PyObject_Hash, however it seems a lot slower to compute, and
-            // doesn't give particularly better results
+            /* we could use the 'djb2' hash here if we find it is better than
+               PyObject_Hash, however it seems measurably slower to compute,
+               and doesn't give particularly better results
+             */
             line->len = PyString_GET_SIZE(item);
         } else if (PyTuple_Check(item)) {
             total_len = 0;
             tuple_len = PyObject_Length(item);
             for (j = 0; j < tuple_len; ++j) {
-                total_len += PyObject_Length(PySequence_Fast_GET_ITEM(item, j));
+                subitem = PySequence_Fast_GET_ITEM(item, j);
+                cur_len = PyObject_Length(subitem);
+                if (cur_len == -1) {
+                    /* Error */
+                    return -1;
+                }
+                total_len += cur_len;
             }
             line->len = total_len;
         } else {
-            // Generic length
-            line->len = PyObject_Length(item);
+            /* Generic length */
+            cur_len = PyObject_Length(item);
+            if (cur_len == -1) {
+                /* Error */
+                return -1;
+            }
+            line->len = cur_len;
         }
         line->data = item;
         line->hash = PyObject_Hash(item);
+        if (line->hash == (-1)) {
+            /* Propogate the hash exception */
+            return -1;
+        }
         line->next = SENTINEL;
         line++;
     }

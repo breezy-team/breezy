@@ -1079,6 +1079,17 @@ class TestPatienceDiffLib_c(TestPatienceDiffLib):
         self._PatienceSequenceMatcher = \
             bzrlib._patiencediff_c.PatienceSequenceMatcher_c
 
+    def test_unhashable(self):
+        """We should get a proper exception here."""
+        # A sub-list is unhashable
+        e = self.assertRaises(TypeError, self._PatienceSequenceMatcher,
+                                         None, [[]], [])
+
+    def test_no_length(self):
+        # Objects have no length
+        e = self.assertRaises(TypeError, self._PatienceSequenceMatcher,
+                                         None, [object()], [])
+
 
 class TestPatienceDiffLibFiles(TestCaseInTempDir):
 
