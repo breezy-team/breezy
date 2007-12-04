@@ -7,6 +7,14 @@ Bazaar Release Notes
 IN DEVELOPMENT
 ==============
 
+  IMPROVEMENTS:
+
+   * ``bzr commit`` now doesn't print the revision number twice. (Matt
+     Nordhoff, #172612)
+
+   * Support logging single merge revisions with short and line log formatters.
+     (Kent Gibson)
+
   INTERNALS:
 
     * New -Dhttp debug option reports http connections, requests and responses.
@@ -14,10 +22,22 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+   * Catch OSError 17 (file exists) in final phase of tree transform and show
+     filename to user.
+     (Alexander Belchenko, #111758)
+
    * Catch ShortReadvErrors while using pycurl. Also make readv more robust by
      allowing multiple GET requests to be issued if too many ranges are
      required.
      (Vincent Ladeuil, #172701)
+
+   * Check for missing basis texts when fetching from packs to packs.
+     (John Arbash Meinel, #165290)
+
+  API BREAKS:
+
+   * Deprecate not passing a ``location`` argument to commit reporters'
+     ``started`` methods. (Matt Nordhoff)
 
 
 bzr 1.0rc1 2007-11-30
@@ -71,6 +91,9 @@ bzr 1.0rc1 2007-11-30
    * New rich-root and rich-root-pack formats, recording the same data about
      tree roots that's recorded for all other directories.
      (Aaron Bentley, #164639)
+
+   * ``pack-0.92`` repositories can now be reconciled.
+     (Robert Collins, #154173)
 
    * ``switch`` command added for changing the branch a lightweight checkout
      is associated with and updating the tree to reflect the latest content
@@ -278,9 +301,6 @@ bzr 1.0rc1 2007-11-30
      semi-random access to large amounts of data. (John A Meinel)
 
    * InventoryEntry.diff is now deprecated.  Please use diff.DiffTree instead.
-
-   * merge.PlanMerge is now provided to generate annotation-based merges
-     cheaply on versionedfiles with no cheap annotations.
 
   TESTING:
 

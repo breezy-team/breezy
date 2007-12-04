@@ -242,6 +242,11 @@ class Graph(object):
             order if they need it.
         """
         candidate_heads = set(keys)
+        if revision.NULL_REVISION in candidate_heads:
+            # NULL_REVISION is only a head if it is the only entry
+            candidate_heads.remove(revision.NULL_REVISION)
+            if not candidate_heads:
+                return set([revision.NULL_REVISION])
         if len(candidate_heads) < 2:
             return candidate_heads
         searchers = dict((c, self._make_breadth_first_searcher([c]))
@@ -348,13 +353,6 @@ class Graph(object):
         smallest number of parent looksup to determine the ancestral
         relationship between N revisions.
         """
-        if revision.is_null(candidate_ancestor):
-            return True
-        if revision.is_null(candidate_descendant):
-            # if candidate_descendant is NULL_REVISION, then only
-            # candidate_ancestor == NULL_REVISION is an ancestor, but we've
-            # already handled that case.
-            return False
         return set([candidate_descendant]) == self.heads(
             [candidate_ancestor, candidate_descendant])
 

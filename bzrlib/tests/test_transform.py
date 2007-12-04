@@ -36,6 +36,7 @@ from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
 from bzrlib.osutils import file_kind, pathjoin
 from bzrlib.merge import Merge3Merger
 from bzrlib.tests import (
+    CaseInsensitiveFilesystemFeature,
     SymlinkFeature,
     TestCase,
     TestCaseInTempDir,
@@ -1088,8 +1089,44 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.callDeprecated([txt], change_entry, None, None, None, None, None,
             None, None, None)
 
+    def test_case_insensitive_clash(self):
+        self.requireFeature(CaseInsensitiveFilesystemFeature)
+        def tt_helper():
+            wt = self.make_branch_and_tree('.')
+            tt = TreeTransform(wt)  # TreeTransform obtains write lock
+            try:
+                tt.new_file('foo', tt.root, 'bar')
+                tt.new_file('Foo', tt.root, 'spam')
+                # Lie to tt that we've already resolved all conflicts.
+                tt.apply(no_conflicts=True)
+            except:
+                wt.unlock()
+                raise
+        err = self.assertRaises(errors.FileExists, tt_helper)
+        self.assertContainsRe(str(err),
+            "^File exists: .+/foo")
+
+    def test_two_directories_clash(self):
+        def tt_helper():
+            wt = self.make_branch_and_tree('.')
+            tt = TreeTransform(wt)  # TreeTransform obtains write lock
+            try:
+                foo_1 = tt.new_directory('foo', tt.root)
+                tt.new_directory('bar', foo_1)
+                foo_2 = tt.new_directory('foo', tt.root)
+                tt.new_directory('baz', foo_2)
+                # Lie to tt that we've already resolved all conflicts.
+                tt.apply(no_conflicts=True)
+            except:
+                wt.unlock()
+                raise
+        err = self.assertRaises(errors.FileExists, tt_helper)
+        self.assertContainsRe(str(err),
+            "^File exists: .+/foo")
+
 
 class TransformGroup(object):
+
     def __init__(self, dirname, root_id):
         self.name = dirname
         os.mkdir(dirname)
@@ -1462,6 +1499,7 @@ class MockEntry(object):
         object.__init__(self)
         self.name = "name"
 
+
 class TestGetBackupName(TestCase):
     def test_get_backup_name(self):
         tt = MockTransform()
@@ -1521,7 +1559,7 @@ class TestFileMover(tests.TestCaseWithTransport):
         mover.rename('c/e', 'c/d')
         try:
             mover.rename('a', 'c')
-        except OSError, e:
+        except errors.FileExists, e:
             mover.rollback()
         self.failUnlessExists('a')
         self.failUnlessExists('c/d')

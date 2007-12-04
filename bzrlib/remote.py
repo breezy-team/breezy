@@ -1283,10 +1283,10 @@ class RemoteBranch(branch.Branch):
         self._ensure_real()
         return self._real_branch.set_push_location(location)
 
-    def update_revisions(self, other, stop_revision=None):
+    def update_revisions(self, other, stop_revision=None, overwrite=False):
         self._ensure_real()
         return self._real_branch.update_revisions(
-            other, stop_revision=stop_revision)
+            other, stop_revision=stop_revision, overwrite=overwrite)
 
 
 class RemoteBranchConfig(BranchConfig):
