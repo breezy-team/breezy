@@ -17,6 +17,7 @@
 
 from StringIO import StringIO
 
+from bzrlib import config
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.status import show_pending_merges, show_tree_status
 from bzrlib.tests import TestCaseWithTransport
@@ -40,6 +41,32 @@ class TestStatus(TestCaseWithTransport):
         finally:
             tree2.unlock()
         self.assertContainsRe(output.getvalue(), 'empty commit')
+
+    def test_multiple_pending(self):
+        config.GlobalConfig().set_user_option('email', 'Joe Foo <joe@foo.com>')
+        tree = self.make_branch_and_tree('a')
+        tree.commit('commit 1', timestamp=1196796819, timezone=0)
+        tree2 = tree.bzrdir.clone('b').open_workingtree()
+        tree.commit('commit 2', timestamp=1196796819, timezone=0)
+        tree2.commit('commit 2b', timestamp=1196796819, timezone=0)
+        tree3 = tree.bzrdir.clone('c').open_workingtree()
+        tree2.commit('commit 3b', timestamp=1196796819, timezone=0)
+        tree3.commit('commit 3c', timestamp=1196796819, timezone=0)
+        tree.merge_from_branch(tree2.branch)
+        tree.merge_from_branch(tree3.branch)
+        output = StringIO()
+        tree.lock_read()
+        try:
+            show_pending_merges(tree, output)
+        finally:
+            tree.unlock()
+        # Even though 2b is merged by 3c also, it should only be displayed
+        # the first time it shows u.
+        self.assertEqual('pending merges:\n'
+                         '  Joe Foo 2007-12-04 commit 3b\n'
+                         '    Joe Foo 2007-12-04 commit 2b\n'
+                         '  Joe Foo 2007-12-04 commit 3c\n',
+                         output.getvalue())
 
     def tests_revision_to_revision(self):
         """doing a status between two revision trees should work."""

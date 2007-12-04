@@ -158,7 +158,6 @@ def show_pending_merges(new, to_file, short=False):
     ignore = set([None, last_revision, _mod_revision.NULL_REVISION])
     graph = branch.repository.get_graph()
     for merge in pending:
-        ignore.add(merge)
         # Find all of the revisions in the merge source, which are not in the
         # last committed revision.
         # We don't care about last_extra
@@ -210,4 +209,4 @@ def show_pending_merges(new, to_file, short=False):
                     prefix = '   '
                 to_file.write(prefix + ' ' + line_log(mm_revision, width - 5))
                 to_file.write('\n')
-                ignore.add(mmerge)
+        ignore.update(merge_extra)
