@@ -34,7 +34,11 @@ class TestStatus(TestCaseWithTransport):
         # do a merge
         tree2.merge_from_branch(tree.branch)
         output = StringIO()
-        show_pending_merges(tree2, output)
+        tree2.lock_read()
+        try:
+            show_pending_merges(tree2, output)
+        finally:
+            tree2.unlock()
         self.assertContainsRe(output.getvalue(), 'empty commit')
 
     def tests_revision_to_revision(self):

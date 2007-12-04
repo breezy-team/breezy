@@ -18,7 +18,10 @@ import sys
 
 from bzrlib import (
     delta as _mod_delta,
+    osutils,
     tree,
+    tsort,
+    revision as _mod_revision,
     )
 from bzrlib.diff import _raise_if_nonexistent
 import bzrlib.errors as errors
@@ -152,38 +155,55 @@ def show_pending_merges(new, to_file, short=False):
     last_revision = parents[0]
     if not short:
         to_file.write('pending merges:\n')
-    if last_revision is not None:
-        try:
-            ignore = set(branch.repository.get_ancestry(last_revision,
-                                                        topo_sorted=False))
-        except errors.NoSuchRevision:
-            # the last revision is a ghost : assume everything is new 
-            # except for it
-            ignore = set([None, last_revision])
-    else:
-        ignore = set([None])
-    # TODO: this could be improved using merge_sorted - we'd get the same 
-    # output rather than one level of indent.
+    ignore = set([None, last_revision, _mod_revision.NULL_REVISION])
+    graph = branch.repository.get_graph()
     for merge in pending:
         ignore.add(merge)
+        # Find all of the revisions in the merge source, which are not in the
+        # last committed revision.
+        # We don't care about last_extra
+        last_extra, merge_extra = graph.find_difference(last_revision, merge)
+        # Now that we have the revisions, we need to sort them to get a proper
+        # listing. We want to sort in reverse topological order (which
+        # MergeSorter gives us). MergeSorter requires that there are no
+        # dangling references, though, so clean up the graph to point to only
+        # present nodes.
+        merge_extra.discard(_mod_revision.NULL_REVISION)
+        merged_graph = {}
+        for merge, parents in zip(merge_extra, graph.get_parents(merge_extra)):
+            if parents is None: # The revision does not exist in the repository
+                merged_graph[merge] = []
+            else:
+                merged_graph[merge] = [p for p in parents if p in merge_extra]
+        sorter = tsort.MergeSorter(merged_graph, merge)
+        # Get a handle to all of the revisions we will need
+        width = osutils.terminal_width()
         try:
-            from bzrlib.osutils import terminal_width
-            width = terminal_width()
-            m_revision = branch.repository.get_revision(merge)
+            revisions = dict((rev.revision_id, rev) for rev in
+                             branch.repository.get_revisions(merge_extra))
+        except errors.NoSuchRevision:
+            # If we are missing a revision, just print out the revision id
+            if short:
+                prefix = 'P  '
+            else:
+                prefix = ' '
+            to_file.write(prefix + ' ' + merge)
+            to_file.write('\n')
+        else:
+            rev_id_iterator = sorter.iter_topo_order()
+            num, first, depth, eom = rev_id_iterator.next()
+            assert first == merge
+            m_revision = revisions[merge]
             if short:
                 prefix = 'P  '
             else:
                 prefix = ' '
             to_file.write(prefix + ' ' + line_log(m_revision, width - 4))
             to_file.write('\n')
-            inner_merges = branch.repository.get_ancestry(merge)
-            assert inner_merges[0] is None
-            inner_merges.pop(0)
-            inner_merges.reverse()
-            for mmerge in inner_merges:
+            for num, mmerge, depth, eom in rev_id_iterator:
                 if mmerge in ignore:
                     continue
-                mm_revision = branch.repository.get_revision(mmerge)
+                mm_revision = revisions[mmerge]
                 if short:
                     prefix = 'P.  '
                 else:
@@ -191,10 +211,3 @@ def show_pending_merges(new, to_file, short=False):
                 to_file.write(prefix + ' ' + line_log(mm_revision, width - 5))
                 to_file.write('\n')
                 ignore.add(mmerge)
-        except errors.NoSuchRevision:
-            if short:
-                prefix = 'P  '
-            else:
-                prefix = ' '
-            to_file.write(prefix + ' ' + merge)
-            to_file.write('\n')
