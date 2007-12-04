@@ -130,6 +130,9 @@ bzr 1.0rc1 2007-11-30
 
   IMPROVEMENTS:
 
+   * ``bzr merge`` now warns when it encounters a criss-cross merge.
+     (Aaron Bentley)
+
    * ``bzr send`` now doesn't require the target e-mail address to be
      specified on the command line if an interactive e-mail client is used.
      (Lukáš Lalinský)
