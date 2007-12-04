@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+import difflib
 import os
 import errno
 import warnings
@@ -1158,12 +1159,6 @@ class _PlanMerge(object):
         self._last_lines = None
         self._last_lines_revision_id = None
 
-    @classmethod
-    def plan_merge_with_base(klass, this, base, other, vf):
-        old_plan = list(klass(this, base, vf).plan_merge())
-        new_plan = list(klass(this, other, vf).plan_merge())
-        return klass._subtract_plans(old_plan, new_plan)
-
     def plan_merge(self):
         """Generate a 'plan' for merging the two revisions.
 
@@ -1261,8 +1256,8 @@ class _PlanMerge(object):
 
     @staticmethod
     def _subtract_plans(old_plan, new_plan):
-        matcher = patiencediff.PatienceSequenceMatcher(None, old_plan,
-                                                       new_plan)
+        # Can't use patience diff-- C version doesn't work with tuples
+        matcher = difflib.SequenceMatcher(None, old_plan, new_plan)
         last_j = 0
         for i, j, n in matcher.get_matching_blocks():
             for jj in range(last_j, j):
