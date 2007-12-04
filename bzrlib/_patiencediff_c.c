@@ -573,17 +573,10 @@ load_lines(PyObject *orig, struct line **lines)
 
     for (i = 0; i < size; i++) {
         item = PySequence_Fast_GET_ITEM(seq, i);
-        // if (!PyString_Check(item)){
-        //     PyErr_Format(PyExc_TypeError,
-        //              "sequence item %zd: expected string,"
-        //              " %.80s found",
-        //              i, item->ob_type->tp_name);
-        //     Py_DECREF(seq);
-        //     return -1;
-        // }
         if (PyString_Check(item)) {
             // we could use the 'djb2' hash here if we find it is better than
-            // PyObject_Hash
+            // PyObject_Hash, however it seems a lot slower to compute, and
+            // doesn't give particularly better results
             line->len = PyString_GET_SIZE(item);
         } else if (PyTuple_Check(item)) {
             total_len = 0;
@@ -596,15 +589,7 @@ load_lines(PyObject *orig, struct line **lines)
             // Generic length
             line->len = PyObject_Length(item);
         }
-        line->data = item; //p = PyString_AS_STRING(item);
-        // /* 'djb2' hash. This gives us a nice compromise between fast hash
-        //     function and a hash with less collisions. The algorithm doesn't
-        //     use the hash for actual lookups, only for building the table
-        //     so a better hash function wouldn't bring us much benefit, but
-        //     would make this loading code slower. */
-        // h = 5381;
-        // for (j = 0; j < line->len; j++)
-        //     h = ((h << 5) + h) + *p++;
+        line->data = item;
         line->hash = PyObject_Hash(item);
         line->next = SENTINEL;
         line++;
