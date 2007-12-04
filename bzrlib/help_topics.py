@@ -554,10 +554,8 @@ _criss_cross = \
 A criss-cross in the branch history can cause the default merge technique
 to emit more conflicts than would normally be expected.
 
-If your tree uses a knit format, you can use merge --weave instead, which
-should provide a much better result.  If your tree uses a pack format, merge
---weave will usually be very slow.  You can check your format type with
-``bzr info``.
+If you encounter criss-crosses, you can use merge --weave instead, which
+should provide a much better result.
 
 Criss-crosses occur in a branch's history if two branches merge the same thing
 and then merge one another, or if two branches merge one another at the same
@@ -576,9 +574,8 @@ Selecting older merge points (which Bazaar does) mean that extra conflicts
 are emitted.
 
 The ``weave`` merge type is not affected by this problem because it uses
-line annotations instead of a basis revision to determine the cause of
-differences.  It is slow on packs because they don't cache annotation
-information, but this should improve dramatically in the near future."""
+line-origin detection instead of a basis revision to determine the cause of
+differences."""
 
 
 # Register help topics
