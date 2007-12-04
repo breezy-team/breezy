@@ -27,6 +27,7 @@ import tempfile
 import time
 
 from bzrlib import (
+    bzrdir,
     errors,
     osutils,
     patiencediff,
@@ -37,6 +38,7 @@ from bzrlib import (
 
 from bzrlib.symbol_versioning import (
         deprecated_function,
+        zero_ninetythree,
         )
 from bzrlib.trace import mutter, warning
 
@@ -268,6 +270,7 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
                         new_abspath, e)
 
 
+@deprecated_function(zero_ninetythree)
 def diff_cmd_helper(tree, specific_files, external_diff_options, 
                     old_revision_spec=None, new_revision_spec=None,
                     revision_specs=None,
@@ -344,6 +347,125 @@ def diff_cmd_helper(tree, specific_files, external_diff_options,
                            extra_trees=extra_trees)
 
 
+def _get_trees_to_diff(path_list, revision_specs, old_url, new_url):
+    """Get the trees and specific files to diff given a list of paths.
+
+    This method works out the trees to be diff'ed and the files of
+    interest within those trees.
+
+    :param path_list:
+        the list of arguments passed to the diff command
+    :param revision_specs:
+        Zero, one or two RevisionSpecs from the diff command line,
+        saying what revisions to compare.
+    :param old_url:
+        The url of the old branch or tree. If None, the tree to use is
+        taken from the first path, if any, or the current working tree.
+    :param new_url:
+        The url of the new branch or tree. If None, the tree to use is
+        taken from the first path, if any, or the current working tree.
+    :returns:
+        a tuple of (old_tree, new_tree, specific_files, extra_trees) where
+        extra_trees is a sequence of additional trees to search in for
+        file-ids.
+    """
+    # Get the old and new revision specs
+    old_revision_spec = None
+    new_revision_spec = None
+    if revision_specs is not None:
+        if len(revision_specs) > 0:
+            old_revision_spec = revision_specs[0]
+        if len(revision_specs) > 1:
+            new_revision_spec = revision_specs[1]
+        # If both revision specs include a branch, we can diff them
+        # without needing to look further for the details
+        if (old_revision_spec is not None and
+            new_revision_spec is not None and
+            not old_revision_spec.needs_branch() and
+            not new_revision_spec.needs_branch()):
+            old_tree = _get_tree_to_diff(old_revision_spec)
+            new_tree = _get_tree_to_diff(new_revision_spec)
+            specific_files = path_list or None
+            return old_tree, new_tree, specific_files, None
+
+    # If no path is given, assume the current directory
+    if path_list is None or len(path_list) == 0:
+        default_location = u'.'
+        other_paths = []
+        check_paths = True
+    elif old_url is not None and new_url is not None:
+        default_location = None  # don't care - not required
+        other_paths = path_list
+        check_paths = False
+    else:
+        default_location = path_list[0]
+        other_paths = path_list[1:]
+        check_paths = True
+
+    # Get the old location
+    if old_url is None:
+        old_url = default_location
+    working_tree, branch, relpath = \
+        bzrdir.BzrDir.open_containing_tree_or_branch(old_url)
+    old_tree = _get_tree_to_diff(old_revision_spec, working_tree, branch)
+
+    # Get the new location
+    if new_url is None:
+        new_url = default_location
+    if new_url != old_url:
+        working_tree, branch, relpath = \
+            bzrdir.BzrDir.open_containing_tree_or_branch(new_url)
+    new_tree = _get_tree_to_diff(new_revision_spec, working_tree, branch,
+        basis_is_default=working_tree is None)
+
+    # Get the specific files and extra trees
+    specific_files = _relative_files_for_diff(working_tree, relpath,
+        other_paths, check_paths)
+    extra_trees = None
+    if new_tree != working_tree and working_tree is not None:
+        extra_trees = (working_tree,)
+    return old_tree, new_tree, specific_files, extra_trees
+
+
+def _get_tree_to_diff(spec, tree=None, branch=None, basis_is_default=True):
+    if branch is None and tree is not None:
+        branch = tree.branch
+    if spec is None or spec.spec is None:
+        if basis_is_default:
+            return branch.basis_tree()
+        else:
+            return tree
+    revision = spec.in_store(branch)
+    revision_id = revision.rev_id
+    rev_branch = revision.branch
+    return rev_branch.repository.revision_tree(revision_id)
+
+
+def _relative_files_for_diff(tree, first_relpath, other_paths, check_paths):
+    """Get the specific files for diff.
+
+    This method converts path arguments to relative paths in a tree.
+    If the tree is None or check_paths is False, other_paths are assumed
+    to be relative already. Otherwise, all arguments must be paths in
+    the working tree.
+    """
+    specific_files = []
+    if first_relpath != '':
+        specific_files.append(first_relpath)
+    if not check_paths or tree is None:
+        specific_files.extend(other_paths)
+    else:
+        for filename in other_paths:
+            try:
+                specific_files.append(tree.relpath(osutils.dereference_path(
+                    filename)))
+            except errors.PathNotChild:
+                raise errors.BzrCommandError("Files are in different branches")
+    if len(specific_files) == 0:
+        specific_files = None
+    return specific_files
+
+
 def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                     external_diff_options=None,
                     old_label='a/', new_label='b/',
@@ -351,8 +473,11 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                     path_encoding='utf8'):
     """Show in text form the changes from one tree to another.
 
-    to_files
-        If set, include only changes to these files.
+    to_file
+        The output stream.
+
+    specific_files
+        Include only changes to these files - None for all changes.
 
     external_diff_options
         If set, use an external GNU diff and pass these options.

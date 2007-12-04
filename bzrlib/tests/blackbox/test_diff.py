@@ -146,8 +146,10 @@ class TestDiff(DiffBase):
     def example_branches(self):
         branch1_tree = self.make_branch_and_tree('branch1')
         self.build_tree(['branch1/file'], line_endings='binary')
+        self.build_tree(['branch1/file2'], line_endings='binary')
         branch1_tree.add('file')
-        branch1_tree.commit(message='add file')
+        branch1_tree.add('file2')
+        branch1_tree.commit(message='add file and file2')
         branch2_tree = branch1_tree.bzrdir.sprout('branch2').open_workingtree()
         self.build_tree_contents([('branch2/file', 'new content\n')])
         branch2_tree.commit(message='update file')
@@ -166,7 +168,8 @@ class TestDiff(DiffBase):
                           "-new content\n"
                           "+contents of branch1/file\n"
                           "\n", subst_dates(out))
-        out, err = self.run_bzr('diff branch2 branch1',
+        # Compare two working trees
+        out, err = self.run_bzr('diff --old branch2 --new branch1',
                                          retcode=1)
         self.assertEquals('', err)
         self.assertEqualDiff("=== modified file 'file'\n"
@@ -175,6 +178,64 @@ class TestDiff(DiffBase):
                               "@@ -1,1 +1,1 @@\n"
                               "-new content\n"
                               "+contents of branch1/file\n"
+                              "\n", subst_dates(out))
+        # Test with a selected file that was changed
+        out, err = self.run_bzr('diff --old branch2 --new branch1 file',
+                                         retcode=1)
+        self.assertEquals('', err)
+        self.assertEqualDiff("=== modified file 'file'\n"
+                              "--- file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                              "+++ file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                              "@@ -1,1 +1,1 @@\n"
+                              "-new content\n"
+                              "+contents of branch1/file\n"
+                              "\n", subst_dates(out))
+        # Test with a selected file that was not changed
+        out, err = self.run_bzr('diff --old branch2 --new branch1 file2',
+                                         retcode=0)
+        self.assertEquals('', err)
+        self.assertEquals('', out)
+
+    def test_diff_branches_no_working_trees(self):
+        branch1_tree, branch2_tree = self.example_branches()
+        # Compare a working tree to a branch without a WT
+        dir1 = branch1_tree.bzrdir
+        dir1.destroy_workingtree()
+        self.assertFalse(dir1.has_workingtree())
+        out, err = self.run_bzr('diff --old branch2 --new branch1',
+                                         retcode=1)
+        self.assertEquals('', err)
+        self.assertEqualDiff("=== modified file 'file'\n"
+                              "--- file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                              "+++ file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                              "@@ -1,1 +1,1 @@\n"
+                              "-new content\n"
+                              "+contents of branch1/file\n"
+                              "\n", subst_dates(out))
+        # Compare a branch without a WT to one with a WT
+        out, err = self.run_bzr('diff --old branch1 --new branch2',
+                                         retcode=1)
+        self.assertEquals('', err)
+        self.assertEqualDiff("=== modified file 'file'\n"
+                              "--- file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                              "+++ file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                              "@@ -1,1 +1,1 @@\n"
+                              "-contents of branch1/file\n"
+                              "+new content\n"
+                              "\n", subst_dates(out))
+        # Compare a branch with a WT against another without a WT
+        dir2 = branch2_tree.bzrdir
+        dir2.destroy_workingtree()
+        self.assertFalse(dir2.has_workingtree())
+        out, err = self.run_bzr('diff --old branch1 --new branch2',
+                                         retcode=1)
+        self.assertEquals('', err)
+        self.assertEqualDiff("=== modified file 'file'\n"
+                              "--- file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                              "+++ file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                              "@@ -1,1 +1,1 @@\n"
+                              "-contents of branch1/file\n"
+                              "+new content\n"
                               "\n", subst_dates(out))
 
     def test_diff_revno_branches(self):
@@ -220,6 +281,14 @@ class TestDiff(DiffBase):
         tree.rename_one('hello', 'hello1')
         self.run_bzr('diff hello1', retcode=1)
         self.run_bzr('diff -r 0..1 hello1', retcode=1)
+
+    def test_diff_to_branch_no_working_tree(self):
+        branch1_tree = self.example_branch2()
+        dir1 = branch1_tree.bzrdir
+        dir1.destroy_workingtree()
+        self.assertFalse(dir1.has_workingtree())
+        output = self.run_bzr('diff -r 1.. branch1', retcode=1)
+        self.assertContainsRe(output[0], '\n\\-original line\n\\+repo line\n')
 
 
 class TestCheckoutDiff(TestDiff):

@@ -7,6 +7,13 @@ Bazaar Release Notes
 IN DEVELOPMENT
 ==============
 
+  NOTES WHEN UPGRADING:
+
+   * The syntax ``bzr diff branch1 branch2`` is no longer supported.
+     Use ``bzr diff branch1 --new branch2`` instead. This change has
+     been made to remove the ambiguity where ``branch2`` is in fact a
+     specific file to diff within ``branch1``.
+
   IMPROVEMENTS:
 
    * ``bzr commit`` now doesn't print the revision number twice. (Matt
@@ -14,6 +21,12 @@ IN DEVELOPMENT
 
    * Support logging single merge revisions with short and line log formatters.
      (Kent Gibson)
+
+   * ``bzr diff`` now works on branches without working trees. Tree-less
+     branches can also be compared to each other and to working trees using
+     the new diff options ``--old`` and ``--new``. Diffing between branches,
+     with or without trees, now supports specific file filtering as well.
+     (Ian Clatworthy, #6700)
 
   INTERNALS:
 
