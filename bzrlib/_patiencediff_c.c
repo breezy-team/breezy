@@ -583,8 +583,8 @@ load_lines(PyObject *orig, struct line **lines)
                 subitem = PySequence_Fast_GET_ITEM(item, j);
                 cur_len = PyObject_Length(subitem);
                 if (cur_len == -1) {
-                    /* Error */
-                    return -1;
+                    size = -1;
+                    goto cleanup;
                 }
                 total_len += cur_len;
             }
@@ -593,8 +593,8 @@ load_lines(PyObject *orig, struct line **lines)
             /* Generic length */
             cur_len = PyObject_Length(item);
             if (cur_len == -1) {
-                /* Error */
-                return -1;
+                size = -1;
+                goto cleanup;
             }
             line->len = cur_len;
         }
@@ -602,12 +602,14 @@ load_lines(PyObject *orig, struct line **lines)
         line->hash = PyObject_Hash(item);
         if (line->hash == (-1)) {
             /* Propogate the hash exception */
-            return -1;
+            size = -1;
+            goto cleanup;
         }
         line->next = SENTINEL;
         line++;
     }
 
+    cleanup:
     Py_DECREF(seq);
     return size;
 }
