@@ -118,7 +118,7 @@ class RangeFile(object):
         """Create a new range from its description in the headers"""
         try:
             rtype, values = content_range.split()
-        except:
+        except ValueError:
             raise errors.InvalidHttpRange(self._path, content_range,
                                           "Malformed Content-Range header '%s'"
                                           % content_range)
@@ -133,7 +133,7 @@ class RangeFile(object):
             start, end = start_end.split('-')
             start = int(start)
             end = int(end)
-        except:
+        except ValueError:
             raise errors.InvalidHttpRange(self._path, content_range,
                                           "Invalid range values '%s'" % values)
         size = end - start + 1

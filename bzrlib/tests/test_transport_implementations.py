@@ -190,12 +190,12 @@ class TransportTests(TestTransportImplementation):
         # Use itertools.imap() instead of use zip() or map(), since they fully
         # evaluate their inputs, the transport requests should be issued and
         # handled sequentially (we don't want to force transport to buffer).
-        for content, f in itertools.imap(None, contents, content_f):
+        for content, f in itertools.izip(contents, content_f):
             self.assertEqual(content, f.read())
 
         content_f = t.get_multi(iter(files))
         # Use itertools.imap() for the same reason
-        for content, f in itertools.imap(None, contents, content_f):
+        for content, f in itertools.izip(contents, content_f):
             self.assertEqual(content, f.read())
 
         self.assertRaises(NoSuchFile, t.get, 'c')

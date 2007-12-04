@@ -253,12 +253,12 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
             cur_offset_and_size = iter_offsets.next()
 
             try:
-                for cur_coal, file in self._coalesce_readv(relpath, coalesced):
+                for cur_coal, rfile in self._coalesce_readv(relpath, coalesced):
                     # Split the received chunk
                     for offset, size in cur_coal.ranges:
                         start = cur_coal.start + offset
-                        file.seek(start, 0)
-                        data = file.read(size)
+                        rfile.seek(start, 0)
+                        data = rfile.read(size)
                         data_len = len(data)
                         if data_len != size:
                             raise errors.ShortReadvError(relpath, start, size,
@@ -307,9 +307,9 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
             # Note that the following may raise errors.InvalidHttpRange. It's
             # the caller responsability to decide how to retry since it may
             # provide different coalesced offsets.
-            code, file = self._get(relpath, ranges)
+            code, rfile = self._get(relpath, ranges)
             for range in ranges:
-                yield range, file
+                yield range, rfile
 
     def recommended_page_size(self):
         """See Transport.recommended_page_size().
