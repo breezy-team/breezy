@@ -388,8 +388,8 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url):
             specific_files = path_list or None
             return old_tree, new_tree, specific_files, None
 
-    # If no path is given, assume the current directory
     if path_list is None or len(path_list) == 0:
+        # If no path is given, assume the current directory
         default_location = u'.'
         other_paths = []
         check_paths = True
@@ -403,10 +403,13 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url):
         check_paths = True
 
     # Get the old location
+    specific_files = []
     if old_url is None:
         old_url = default_location
     working_tree, branch, relpath = \
         bzrdir.BzrDir.open_containing_tree_or_branch(old_url)
+    if relpath != '':
+        specific_files.append(relpath)
     old_tree = _get_tree_to_diff(old_revision_spec, working_tree, branch)
 
     # Get the new location
@@ -415,12 +418,19 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url):
     if new_url != old_url:
         working_tree, branch, relpath = \
             bzrdir.BzrDir.open_containing_tree_or_branch(new_url)
+        if relpath != '':
+            specific_files.append(relpath)
     new_tree = _get_tree_to_diff(new_revision_spec, working_tree, branch,
         basis_is_default=working_tree is None)
 
-    # Get the specific files and extra trees
-    specific_files = _relative_files_for_diff(working_tree, relpath,
-        other_paths, check_paths)
+    # Get the specific files (all files is None, no files is [])
+    if check_paths and working_tree is not None:
+        other_paths = _relative_paths_in_tree(working_tree, other_paths)
+    specific_files.extend(other_paths)
+    if len(specific_files) == 0:
+        specific_files = None
+
+    # Get extra trees that ought to be searched for file-ids
     extra_trees = None
     if new_tree != working_tree and working_tree is not None:
         extra_trees = (working_tree,)
@@ -441,29 +451,18 @@ def _get_tree_to_diff(spec, tree=None, branch=None, basis_is_default=True):
     return rev_branch.repository.revision_tree(revision_id)
 
 
-def _relative_files_for_diff(tree, first_relpath, other_paths, check_paths):
-    """Get the specific files for diff.
+def _relative_paths_in_tree(tree, paths):
+    """Get the relative paths within a working tree.
 
-    This method converts path arguments to relative paths in a tree.
-    If the tree is None or check_paths is False, other_paths are assumed
-    to be relative already. Otherwise, all arguments must be paths in
-    the working tree.
+    All paths must be existing paths in the working tree.
     """
-    specific_files = []
-    if first_relpath != '':
-        specific_files.append(first_relpath)
-    if not check_paths or tree is None:
-        specific_files.extend(other_paths)
-    else:
-        for filename in other_paths:
-            try:
-                specific_files.append(tree.relpath(osutils.dereference_path(
-                    filename)))
-            except errors.PathNotChild:
-                raise errors.BzrCommandError("Files are in different branches")
-    if len(specific_files) == 0:
-        specific_files = None
-    return specific_files
+    result = []
+    for filename in paths:
+        try:
+            result.append(tree.relpath(osutils.dereference_path(filename)))
+        except errors.PathNotChild:
+            raise errors.BzrCommandError("Files are in different branches")
+    return result
 
 
 def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
