@@ -12,6 +12,11 @@ IN DEVELOPMENT
    * ``bzr commit`` now doesn't print the revision number twice. (Matt
      Nordhoff, #172612)
 
+   * New configuration option ``bugtracker_<tracker_abbrevation>_url`` to
+     define locations of bug trackers that are not directly supported by
+     bzr or a plugin. The URL will be treated as a template and ``{id}``
+     placeholders will be replaced by specific bug IDs.  (Lukáš Lalinský)
+
    * Support logging single merge revisions with short and line log formatters.
      (Kent Gibson)
 

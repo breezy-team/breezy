@@ -12,7 +12,7 @@ Associating commits and bugs
 When you make a commit you can assiociate it with a bug by using the
 ``--fixes`` option of ``commit``. For example::
 
-    $ bzr commit --fixes 12345 -m "Properly close the connection on errors"
+    $ bzr commit --fixes project:12345 -m "Properly close the connection"
 
 This will set a revision property on the revision that is committed
 which contains the URI at which more information on the bug can be found.
@@ -64,6 +64,23 @@ example::
 
 would allow ``bzr commit --fixes twisted:1234`` to mark Twisted's bug 1234 as
 fixed.
+
+bugtracker_<tracker_abbrevation>_url
+------------------------------------
+If present, the location of a generic bug tracker instance referred to by
+<tracker_abbreviation>. The location must contain an ``{id}`` placeholder,
+which will be replaced by a specific bug ID. This option can then be used
+together with ``bzr commit --fixes`` to mark bugs in that tracker as being
+fixed by that commit. For example::
+
+    bugtracker_python_url = http://bugs.python.org/issue{id}
+
+would allow ``bzr commit --fixes python:1234`` to mark bug 1234 in Python's
+Roundup bug tracker as fixed, or::
+
+    bugtracker_cpan_url = http://rt.cpan.org/Public/Bug/Display.html?id={id}
+
+for CPAN's RT bug tracker.
 
 Limitations of the system
 -------------------------
