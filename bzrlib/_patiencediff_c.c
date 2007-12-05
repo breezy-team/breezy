@@ -587,15 +587,16 @@ load_lines(PyObject *orig, struct line **lines)
              */
             line->len = PyString_GET_SIZE(item);
             line->c_data = p = PyString_AS_STRING(item);
-            // /* 'djb2' hash. This gives us a nice compromise between fast hash
-            //     function and a hash with less collisions. The algorithm doesn't
-            //     use the hash for actual lookups, only for building the table
-            //     so a better hash function wouldn't bring us much benefit, but
-            //     would make this loading code slower. */
-            // hash = 5381;
-            // for (j = 0; j < line->len; j++)
-            //     hash = ((hash << 5) + hash) + *p++;
-            line->hash = PyObject_Hash(item);
+            /* 'djb2' hash. This gives us a nice compromise between fast hash
+                function and a hash with less collisions. The algorithm doesn't
+                use the hash for actual lookups, only for building the table
+                so a better hash function wouldn't bring us much benefit, but
+                would make this loading code slower. */
+            hash = 5381;
+            for (j = 0; j < line->len; j++)
+                hash = ((hash << 5) + hash) + *p++;
+            line->hash = hash;
+            // line->hash = PyObject_Hash(item);
         } else if (PyTuple_Check(item)) {
             total_len = 0;
             tuple_len = PyObject_Length(item);
