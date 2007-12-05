@@ -62,9 +62,13 @@ class LaunchpadTransport(Transport):
         if netloc != '':
             raise errors.InvalidURL(path=base)
 
-    def _requires_launchpad_login(self, url):
-        """Does the URL require a Launchpad login in order to be reached?"""
-        scheme, netloc, path, query, fragment = urlsplit(url)
+    def _requires_launchpad_login(self, scheme, netloc, path, query,
+                                  fragment):
+        """Does the URL require a Launchpad login in order to be reached?
+
+        The URL is specified by its parsed components, as returned from
+        urlsplit.
+        """
         return (scheme in ('bzr+ssh', 'sftp')
                 and (netloc.endswith('launchpad.net')
                      or netloc.endswith('launchpad.dev')))
@@ -90,7 +94,8 @@ class LaunchpadTransport(Transport):
             _lp_login = get_lp_login()
         for url in result['urls']:
             scheme, netloc, path, query, fragment = urlsplit(url)
-            if self._requires_launchpad_login(url):
+            if self._requires_launchpad_login(scheme, netloc, path, query,
+                                              fragment):
                 # Only accept launchpad.net bzr+ssh URLs if we know
                 # the user's Launchpad login:
                 if _lp_login is None:
