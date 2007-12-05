@@ -75,6 +75,7 @@ struct line {
     Py_ssize_t equiv;  /* equivalence class */
     Py_ssize_t len;
     const PyObject *data;
+    const char *c_data;
 };
 
 
@@ -151,9 +152,14 @@ bisect_left(Py_ssize_t *list, Py_ssize_t item, Py_ssize_t lo, Py_ssize_t hi)
 static inline int
 compare_lines(struct line *a, struct line *b)
 {
-    return ((a->hash != b->hash) || (a->len != b->len) ||
-            PyObject_Compare((PyObject *)a->data, (PyObject *)b->data));
-            //memcmp(a->data, b->data, a->len));
+    if (((a->hash != b->hash) || (a->len != b->len))) {
+        return 0;
+    }
+    if (a->c_data != NULL && b->c_data != NULL) {
+        return memcmp(a->c_data, b->c_data, a->len);
+    } else {
+        return PyObject_Compare((PyObject *)a->data, (PyObject *)b->data);
+    }
 }
 
 
@@ -570,12 +576,26 @@ load_lines(PyObject *orig, struct line **lines)
 
     for (i = 0; i < size; i++) {
         item = PySequence_Fast_GET_ITEM(seq, i);
+        line->data = item;
+        line->c_data = NULL;
         if (PyString_Check(item)) {
+            long hash;
+            const char *p;
             /* we could use the 'djb2' hash here if we find it is better than
                PyObject_Hash, however it seems measurably slower to compute,
                and doesn't give particularly better results
              */
             line->len = PyString_GET_SIZE(item);
+            line->c_data = p = PyString_AS_STRING(item);
+            // /* 'djb2' hash. This gives us a nice compromise between fast hash
+            //     function and a hash with less collisions. The algorithm doesn't
+            //     use the hash for actual lookups, only for building the table
+            //     so a better hash function wouldn't bring us much benefit, but
+            //     would make this loading code slower. */
+            // hash = 5381;
+            // for (j = 0; j < line->len; j++)
+            //     hash = ((hash << 5) + hash) + *p++;
+            line->hash = PyObject_Hash(item);
         } else if (PyTuple_Check(item)) {
             total_len = 0;
             tuple_len = PyObject_Length(item);
@@ -589,6 +609,7 @@ load_lines(PyObject *orig, struct line **lines)
                 total_len += cur_len;
             }
             line->len = total_len;
+            line->hash = PyObject_Hash(item);
         } else {
             /* Generic length */
             cur_len = PyObject_Length(item);
@@ -597,9 +618,8 @@ load_lines(PyObject *orig, struct line **lines)
                 goto cleanup;
             }
             line->len = cur_len;
+            line->hash = PyObject_Hash(item);
         }
-        line->data = item;
-        line->hash = PyObject_Hash(item);
         if (line->hash == (-1)) {
             /* Propogate the hash exception */
             size = -1;
