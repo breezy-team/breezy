@@ -3969,8 +3969,8 @@ class cmd_send(Command):
     for that mirror.
 
     Mail is sent using your preferred mail program.  This should be transparent
-    on Windows (it uses MAPI).  On *nix, it requires the xdg-email utility.  If
-    the preferred client can't be found (or used), your editor will be used.
+    on Windows (it uses MAPI).  On Linux, it requires the xdg-email utility.
+    If the preferred client can't be found (or used), your editor will be used.
     
     To use a specific mail program, set the mail_client configuration option.
     (For Thunderbird 1.5, this works around some bugs.)  Supported values for
