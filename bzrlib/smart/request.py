@@ -41,8 +41,9 @@ class SmartServerRequest(object):
         :param backing_transport: the base transport to be used when performing
             this request.
         :param root_client_path: the client path that maps to the root of
-            backing_transport.  This is used to interpret relpaths received from
-            the client.
+            backing_transport.  This is used to interpret relpaths received
+            from the client.  Clients will not be able to refer to paths above
+            this root.
         """
         self._backing_transport = backing_transport
         if not root_client_path.startswith('/'):
@@ -88,6 +89,13 @@ class SmartServerRequest(object):
         raise NotImplementedError(self.do_body)
     
     def translate_client_path(self, client_path):
+        """Translate a path received from a network client into a local
+        relpath.
+
+        All paths received from the client *must* be translated.
+
+        :returns: a relpath that may be used with self._backing_transport
+        """
         if not client_path.startswith('/'):
             client_path = '/' + client_path
         if client_path.startswith(self._root_client_path):
@@ -99,10 +107,12 @@ class SmartServerRequest(object):
             raise errors.PathNotChild(client_path, self._root_client_path)
 
     def transport_from_client_path(self, client_path):
-        # inputs:
-        #  * 'path': path the client sent
-        #  * 'self._backing_transport': transport rooted at what we're serving
-        #  * xxx: path to _backing_transport root as a client path
+        """Get a backing transport corresponding to the location referred to by
+        a network client.
+
+        :seealso: translate_client_path
+        :returns: a transport cloned from self._backing_transport
+        """
         relpath = self.translate_client_path(client_path)
         return self._backing_transport.clone(relpath)
 
