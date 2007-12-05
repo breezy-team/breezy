@@ -33,7 +33,13 @@ from bzrlib.transport.chroot import ChrootServer
 
 
 class SmartServerRequest(object):
-    """Base class for request handlers."""
+    """Base class for request handlers.
+    
+    To define a new request, subclass this class and override the `do` method
+    (and if appropriate, `do_body` as well).  Request implementors should take
+    care to call `translate_client_path` and `transport_from_client_path` as
+    appropriate when dealing with paths received from the client.
+    """
 
     def __init__(self, backing_transport, root_client_path='/'):
         """Constructor.

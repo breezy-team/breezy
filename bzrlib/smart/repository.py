@@ -38,12 +38,15 @@ class SmartServerRepositoryRequest(SmartServerRequest):
     def do(self, path, *args):
         """Execute a repository request.
         
-        The repository must be at the exact path - no searching is done.
+        All Repository requests take a path to the repository as their first
+        argument.  The repository must be at the exact path given by the
+        client - no searching is done.
 
         The actual logic is delegated to self.do_repository_request.
 
-        :param path: The path for the repository.
-        :return: A smart server from self.do_repository_request().
+        :param client_path: The path for the repository as received from the
+            client.
+        :return: A SmartServerResponse from self.do_repository_request().
         """
         transport = self.transport_from_client_path(path)
         bzrdir = BzrDir.open_from_transport(transport)

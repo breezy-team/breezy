@@ -27,12 +27,19 @@ from bzrlib.smart.request import (
 
 
 class SmartServerBranchRequest(SmartServerRequest):
-    """Base class for handling common branch request logic."""
+    """Base class for handling common branch request logic.
+    """
 
     def do(self, path, *args):
         """Execute a request for a branch at path.
+    
+        All Branch requests take a path to the branch as their first argument.
 
         If the branch is a branch reference, NotBranchError is raised.
+
+        :param path: The path for the repository as received from the
+            client.
+        :return: A SmartServerResponse from self.do_with_branch().
         """
         transport = self.transport_from_client_path(path)
         bzrdir = BzrDir.open_from_transport(transport)
