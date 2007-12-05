@@ -42,14 +42,14 @@ default algorithm is a variation of *3-way merging* which
 works as follows. Given an ancestor A and two branches B and C,
 the following table provides the rules used.
 
-  === === === ========================
-   A   B   C  Result
-  === === === ========================
-   x   x   x  x (unchanged)
-   x   x   y  y (line from C)
-   x   y   x  y (line from B)
-   x   y   z  ? (conflict)
-  === === === ========================
+  === === === ====== =================
+   A   B   C  Result Comment
+  === === === ====== =================
+   x   x   x  x      unchanged
+   x   x   y  y      line from C
+   x   y   x  y      line from B
+   x   y   z  ?      conflict
+  === === === ====== =================
 
 Note that some merges can only be completed with the assistance
 of a human. Details on how to resolve these are given in

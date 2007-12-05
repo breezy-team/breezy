@@ -1242,7 +1242,8 @@ class Repository(object):
                 raise errors.NoSuchIdInRepository(self, file_id)
             yield callable_data, weave.get_lines(revision_id)
 
-    def _generate_text_key_index(self, text_key_references=None):
+    def _generate_text_key_index(self, text_key_references=None,
+        ancestors=None):
         """Generate a new text key index for the repository.
 
         This is an expensive function that will take considerable time to run.
@@ -1252,8 +1253,9 @@ class Repository(object):
             the parents list will be [NULL_REVISION].
         """
         # All revisions, to find inventory parents.
-        revision_graph = self.get_revision_graph_with_ghosts()
-        ancestors = revision_graph.get_ancestors()
+        if ancestors is None:
+            revision_graph = self.get_revision_graph_with_ghosts()
+            ancestors = revision_graph.get_ancestors()
         if text_key_references is None:
             text_key_references = self.find_text_key_references()
         pb = ui.ui_factory.nested_progress_bar()

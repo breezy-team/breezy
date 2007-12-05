@@ -8,11 +8,12 @@ documentation site, http://doc.bazaar-vcs.org.
 Core Documentation
 ==================
 
-* `Quick Start Guide <en/quick-reference/quick-start-summary.svg>`_
-
 * `User Guide <en/user-guide/index.html>`_ 
 
 * `User Reference <en/user-reference/bzr_man.html>`_ 
+
+* `Quick Start Card <en/quick-reference/quick-start-summary.svg>`_
+  (`PNG <en/quick-reference/quick-start-summary.png>`_)
 
 * `Release Notes <en/release-notes/NEWS.html>`_
 
