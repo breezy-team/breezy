@@ -36,7 +36,7 @@ Specifications
 Data formats
 ============
 
-* `Knit pack repositories <knitpack.html>`_ |--| KnitPack repositories 
+* `Knit pack repositories <packrepo.html>`_ |--| KnitPack repositories 
   (new in Bazaar 0.92).
 
 
