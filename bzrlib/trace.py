@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -50,28 +50,34 @@ form.
 # is quite expensive, even when the message is not printed by any handlers.
 # We should perhaps change back to just simply doing it here.
 
+import codecs
+import logging
 import os
 import sys
 import re
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+from cStringIO import StringIO
 import errno
-import logging
+import locale
+import traceback
 """)
 
 import bzrlib
-from bzrlib.symbol_versioning import (deprecated_function,
-        zero_nine,
-        )
 
 lazy_import(globals(), """
-from bzrlib import debug
+from bzrlib import (
+    debug,
+    errors,
+    osutils,
+    plugin,
+    )
 """)
 
 _file_handler = None
 _stderr_handler = None
-_stderr_quiet = False
+_verbosity_level = 0
 _trace_file = None
 _trace_depth = 0
 _bzr_log_file = None
@@ -81,6 +87,7 @@ _bzr_log_filename = None
 # configure convenient aliases for output routines
 
 _bzr_logger = logging.getLogger('bzr')
+
 
 def note(*args, **kwargs):
     # FIXME note always emits utf-8, regardless of the terminal encoding
@@ -125,6 +132,21 @@ def mutter(fmt, *args):
     #_trace_file.flush()
 
 
+def mutter_callsite(stacklevel, fmt, *args):
+    """Perform a mutter of fmt and args, logging the call trace.
+
+    :param stacklevel: The number of frames to show. None will show all
+        frames.
+    :param fmt: The format string to pass to mutter.
+    :param args: A list of substitution variables.
+    """
+    outf = StringIO()
+    traceback.print_stack(limit=stacklevel + 1, file=outf)
+    formatted_lines = outf.getvalue().splitlines()
+    formatted_stack = '\n'.join(formatted_lines[:-2])
+    mutter(fmt + "\nCalled from:\n%s", *(args + (formatted_stack,)))
+
+
 def _rollover_trace_maybe(trace_fname):
     import stat
     try:
@@ -132,8 +154,7 @@ def _rollover_trace_maybe(trace_fname):
         if size <= 4 << 20:
             return
         old_fname = trace_fname + '.old'
-        from osutils import rename
-        rename(trace_fname, old_fname)
+        osutils.rename(trace_fname, old_fname)
     except OSError:
         return
 
@@ -178,20 +199,6 @@ def open_tracefile(tracefilename=None):
         warning("failed to open trace file: %s" % (e))
 
 
-@deprecated_function(zero_nine)
-def log_exception(msg=None):
-    """Log the last exception to stderr and the trace file.
-
-    The exception string representation is used as the error
-    summary, unless msg is given.
-
-    Please see log_exception_quietly() for the replacement API.
-    """
-    if msg:
-        error(msg)
-    log_exception_quietly()
-
-
 def log_exception_quietly():
     """Log the last exception to the trace file only.
 
@@ -207,7 +214,10 @@ def enable_default_logging():
     """Configure default logging to stderr and .bzr.log"""
     # FIXME: if this is run twice, things get confused
     global _stderr_handler, _file_handler, _trace_file, _bzr_log_file
-    _stderr_handler = logging.StreamHandler()
+    # create encoded wrapper around stderr
+    stderr = codecs.getwriter(osutils.get_terminal_encoding())(sys.stderr,
+        errors='replace')
+    _stderr_handler = logging.StreamHandler(stderr)
     logging.getLogger('').addHandler(_stderr_handler)
     _stderr_handler.setLevel(logging.INFO)
     if not _file_handler:
@@ -218,10 +228,34 @@ def enable_default_logging():
     _bzr_logger.setLevel(logging.DEBUG)
 
 
+def set_verbosity_level(level):
+    """Set the verbosity level.
+
+    :param level: -ve for quiet, 0 for normal, +ve for verbose
+    """
+    global _verbosity_level
+    _verbosity_level = level
+    _update_logging_level(level < 0)
+
+
+def get_verbosity_level():
+    """Get the verbosity level.
+
+    See set_verbosity_level() for values.
+    """
+    return _verbosity_level
+
+
 def be_quiet(quiet=True):
-    global _stderr_handler, _stderr_quiet
-    
-    _stderr_quiet = quiet
+    # Perhaps this could be deprecated now ...
+    if quiet:
+        set_verbosity_level(-1)
+    else:
+        set_verbosity_level(0)
+
+
+def _update_logging_level(quiet=True):
+    """Hide INFO messages if quiet."""
     if quiet:
         _stderr_handler.setLevel(logging.WARNING)
     else:
@@ -229,8 +263,13 @@ def be_quiet(quiet=True):
 
 
 def is_quiet():
-    global _stderr_quiet
-    return _stderr_quiet
+    """Is the verbosity level negative?"""
+    return _verbosity_level < 0
+
+
+def is_verbose():
+    """Is the verbosity level positive?"""
+    return _verbosity_level > 0
 
 
 def disable_default_logging():
@@ -279,22 +318,33 @@ def disable_test_log((test_log_hdlr, old_trace_file, old_trace_depth)):
 
 
 def report_exception(exc_info, err_file):
+    """Report an exception to err_file (typically stderr) and to .bzr.log.
+
+    This will show either a full traceback or a short message as appropriate.
+
+    :return: The appropriate exit code for this error.
+    """
     exc_type, exc_object, exc_tb = exc_info
     # Log the full traceback to ~/.bzr.log
     log_exception_quietly()
     if (isinstance(exc_object, IOError)
         and getattr(exc_object, 'errno', None) == errno.EPIPE):
-        print >>err_file, "bzr: broken pipe"
+        err_file.write("bzr: broken pipe\n")
+        return errors.EXIT_ERROR
     elif isinstance(exc_object, KeyboardInterrupt):
-        print >>err_file, "bzr: interrupted"
+        err_file.write("bzr: interrupted\n")
+        return errors.EXIT_ERROR
     elif not getattr(exc_object, 'internal_error', True):
         report_user_error(exc_info, err_file)
+        return errors.EXIT_ERROR
     elif isinstance(exc_object, (OSError, IOError)):
         # Might be nice to catch all of these and show them as something more
         # specific, but there are too many cases at the moment.
         report_user_error(exc_info, err_file)
+        return errors.EXIT_ERROR
     else:
         report_bug(exc_info, err_file)
+        return errors.EXIT_INTERNAL_ERROR
 
 
 # TODO: Should these be specially encoding the output?
@@ -306,22 +356,34 @@ def report_user_error(exc_info, err_file):
     if 'error' in debug.debug_flags:
         report_bug(exc_info, err_file)
         return
-    print >>err_file, "bzr: ERROR:", str(exc_info[1])
+    err_file.write("bzr: ERROR: %s\n" % (exc_info[1],))
 
 
 def report_bug(exc_info, err_file):
     """Report an exception that probably indicates a bug in bzr"""
     import traceback
     exc_type, exc_object, exc_tb = exc_info
-    print >>err_file, "bzr: ERROR: %s.%s: %s" % (
-        exc_type.__module__, exc_type.__name__, exc_object)
-    print >>err_file
+    err_file.write("bzr: ERROR: %s.%s: %s\n" % (
+        exc_type.__module__, exc_type.__name__, exc_object))
+    err_file.write('\n')
     traceback.print_exception(exc_type, exc_object, exc_tb, file=err_file)
-    print >>err_file
-    print >>err_file, 'bzr %s on python %s (%s)' % \
+    err_file.write('\n')
+    err_file.write('bzr %s on python %s (%s)\n' % \
                        (bzrlib.__version__,
                         '.'.join(map(str, sys.version_info)),
-                        sys.platform)
-    print >>err_file, 'arguments: %r' % sys.argv
-    print >>err_file
-    print >>err_file, "** please send this report to bazaar@lists.ubuntu.com"
+                        sys.platform))
+    err_file.write('arguments: %r\n' % sys.argv)
+    err_file.write(
+        'encoding: %r, fsenc: %r, lang: %r\n' % (
+            osutils.get_user_encoding(), sys.getfilesystemencoding(),
+            os.environ.get('LANG')))
+    err_file.write("plugins:\n")
+    for name, a_plugin in sorted(plugin.plugins().items()):
+        err_file.write("  %-20s %s [%s]\n" %
+            (name, a_plugin.path(), a_plugin.__version__))
+    err_file.write(
+        "\n"
+        "** Please send this report to bazaar@lists.ubuntu.com\n"
+        "   with a description of what you were doing when the\n"
+        "   error occurred.\n"
+        )

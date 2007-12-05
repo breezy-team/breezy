@@ -41,7 +41,7 @@ class RevisionTree(Tree):
         self._repository = branch
         self._weave_store = branch.weave_store
         self._inventory = inv
-        self._revision_id = osutils.safe_revision_id(revision_id)
+        self._revision_id = revision_id
 
     def supports_tree_reference(self):
         return True
@@ -62,55 +62,54 @@ class RevisionTree(Tree):
         """Return the revision id associated with this tree."""
         return self._revision_id
 
-    @symbol_versioning.deprecated_method(symbol_versioning.zero_nineteen)
+    @symbol_versioning.deprecated_method(symbol_versioning.zero_ninety)
     def get_weave(self, file_id):
         return self._get_weave(file_id)
 
     def _get_weave(self, file_id):
-        file_id = osutils.safe_file_id(file_id)
         return self._weave_store.get_weave(file_id,
                 self._repository.get_transaction())
 
     def get_file_lines(self, file_id):
-        file_id = osutils.safe_file_id(file_id)
         ie = self._inventory[file_id]
         weave = self._get_weave(file_id)
         return weave.get_lines(ie.revision)
 
     def get_file_text(self, file_id):
-        file_id = osutils.safe_file_id(file_id)
         return ''.join(self.get_file_lines(file_id))
 
-    def get_file(self, file_id):
-        file_id = osutils.safe_file_id(file_id)
+    def get_file(self, file_id, path=None):
         return StringIO(self.get_file_text(file_id))
+
+    def iter_files_bytes(self, desired_files):
+        """See Tree.extract_files_bytes.
+
+        This version is implemented on top of Repository.extract_files_bytes"""
+        repo_desired_files = [(f, self.inventory[f].revision, i)
+                              for f, i in desired_files]
+        return self._repository.iter_files_bytes(repo_desired_files)
 
     def annotate_iter(self, file_id,
                       default_revision=revision.CURRENT_REVISION):
         """See Tree.annotate_iter"""
-        file_id = osutils.safe_file_id(file_id)
         w = self._get_weave(file_id)
         return w.annotate_iter(self.inventory[file_id].revision)
 
     def get_file_size(self, file_id):
-        file_id = osutils.safe_file_id(file_id)
         return self._inventory[file_id].text_size
 
     def get_file_sha1(self, file_id, path=None, stat_value=None):
-        file_id = osutils.safe_file_id(file_id)
         ie = self._inventory[file_id]
         if ie.kind == "file":
             return ie.text_sha1
         return None
 
     def get_file_mtime(self, file_id, path=None):
-        file_id = osutils.safe_file_id(file_id)
         ie = self._inventory[file_id]
         revision = self._repository.get_revision(ie.revision)
         return revision.timestamp
 
     def is_executable(self, file_id, path=None):
-        file_id = osutils.safe_file_id(file_id)
         ie = self._inventory[file_id]
         if ie.kind != "file":
             return None
@@ -130,7 +129,6 @@ class RevisionTree(Tree):
             yield path, 'V', entry.kind, entry.file_id, entry
 
     def get_symlink_target(self, file_id):
-        file_id = osutils.safe_file_id(file_id)
         ie = self._inventory[file_id]
         return ie.symlink_target;
 
@@ -142,8 +140,21 @@ class RevisionTree(Tree):
             return self.inventory.root.file_id
 
     def kind(self, file_id):
-        file_id = osutils.safe_file_id(file_id)
         return self._inventory[file_id].kind
+
+    def path_content_summary(self, path):
+        """See Tree.path_content_summary."""
+        id = self.inventory.path2id(path)
+        if id is None:
+            return ('missing', None, None, None)
+        entry = self._inventory[id]
+        kind = entry.kind
+        if kind == 'file':
+            return (kind, entry.text_size, entry.executable, entry.text_sha1)
+        elif kind == 'symlink':
+            return (kind, None, None, entry.symlink_target)
+        else:
+            return (kind, None, None, None)
 
     def _comparison_data(self, entry, path):
         if entry is None:

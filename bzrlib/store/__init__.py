@@ -39,8 +39,6 @@ from bzrlib import (
 from bzrlib.errors import BzrError, UnlistableStore, TransportNotPossible
 from bzrlib.symbol_versioning import (
     deprecated_function,
-    zero_eight,
-    zero_eleven,
     )
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport
@@ -129,7 +127,6 @@ class Store(object):
             pb.update('preparing to copy')
         failed = set()
         count = 0
-        ids = [osutils.safe_file_id(i) for i in ids] # get the list for showing a length.
         for fileid in ids:
             count += 1
             if self.has_id(fileid):
@@ -174,13 +171,7 @@ class TransportStore(Store):
 
         f -- A file-like object
         """
-        fileid = osutils.safe_file_id(fileid)
         mutter("add store entry %r", fileid)
-        if isinstance(f, str):
-            symbol_versioning.warn(zero_eleven % 'Passing a string to Store.add',
-                DeprecationWarning, stacklevel=2)
-            f = StringIO(f)
-        
         names = self._id_to_names(fileid, suffix)
         if self._transport.has_any(names):
             raise BzrError("store %r already contains id %r" 
@@ -219,7 +210,6 @@ class TransportStore(Store):
 
     def has_id(self, fileid, suffix=None):
         """See Store.has_id."""
-        fileid = osutils.safe_file_id(fileid)
         return self._transport.has_any(self._id_to_names(fileid, suffix))
 
     def _get_name(self, fileid, suffix=None):
@@ -243,7 +233,6 @@ class TransportStore(Store):
 
     def get(self, fileid, suffix=None):
         """See Store.get()."""
-        fileid = osutils.safe_file_id(fileid)
         names = self._id_to_names(fileid, suffix)
         for name in names:
             try:
@@ -375,9 +364,3 @@ class TransportStore(Store):
             total += self._transport.stat(relpath).st_size
                 
         return count, total
-
-
-@deprecated_function(zero_eight)
-def copy_all(store_from, store_to, pb=None):
-    """Copy all ids from one store to another."""
-    store_to.copy_all_ids(store_from, pb)

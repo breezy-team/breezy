@@ -15,16 +15,24 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+# NOTE: If update these, please also update the help for global-options in
+#       bzrlib/help_topics.py.
+
 debug_flags = set()
 """Set of flags that enable different debug behaviour.
 
 These are set with eg ``-Dlock`` on the bzr command line.
 
 Options include:
-    
+ 
+ * auth - show authentication sections used
  * error - show stack traces for all top level exceptions
- * hooks 
+ * evil - capture call sites that do expensive or badly-scaling operations.
+ * fetch - trace history copying between repositories
+ * hooks - trace hook execution
  * hpss - trace smart protocol requests and responses
+ * http - trace http connections, requests and responses
+ * index - trace major index operations
  * lock - trace when lockdir locks are taken or released
 
 """

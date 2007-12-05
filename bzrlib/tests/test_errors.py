@@ -21,12 +21,9 @@
 from bzrlib import (
     bzrdir,
     errors,
+    symbol_versioning,
     )
 from bzrlib.tests import TestCase, TestCaseWithTransport
-
-
-# TODO: Make sure builtin exception class formats are consistent - e.g. should
-# or shouldn't end with a full stop, etc.
 
 
 class TestErrors(TestCaseWithTransport):
@@ -81,10 +78,23 @@ class TestErrors(TestCaseWithTransport):
             "cannot be broken.",
             str(error))
 
+    def test_knit_data_stream_incompatible(self):
+        error = errors.KnitDataStreamIncompatible(
+            'stream format', 'target format')
+        self.assertEqual('Cannot insert knit data stream of format '
+                         '"stream format" into knit of format '
+                         '"target format".', str(error))
+
+    def test_knit_data_stream_unknown(self):
+        error = errors.KnitDataStreamUnknown(
+            'stream format')
+        self.assertEqual('Cannot parse knit data stream of format '
+                         '"stream format".', str(error))
+
     def test_knit_header_error(self):
         error = errors.KnitHeaderError('line foo\n', 'path/to/file')
         self.assertEqual("Knit header error: 'line foo\\n' unexpected"
-                         " for file path/to/file", str(error))
+                         " for file \"path/to/file\".", str(error))
 
     def test_knit_index_unknown_method(self):
         error = errors.KnitIndexUnknownMethod('http://host/foo.kndx',
@@ -118,15 +128,14 @@ class TestErrors(TestCaseWithTransport):
 
     def test_no_such_id(self):
         error = errors.NoSuchId("atree", "anid")
-        self.assertEqualDiff("The file id anid is not present in the tree "
+        self.assertEqualDiff("The file id \"anid\" is not present in the tree "
             "atree.",
             str(error))
 
     def test_no_such_revision_in_tree(self):
         error = errors.NoSuchRevisionInTree("atree", "anid")
-        self.assertEqualDiff("The revision id anid is not present in the tree "
-            "atree.",
-            str(error))
+        self.assertEqualDiff("The revision id {anid} is not present in the"
+                             " tree atree.", str(error))
         self.assertIsInstance(error, errors.NoSuchRevision)
 
     def test_not_write_locked(self):
@@ -136,9 +145,16 @@ class TestErrors(TestCaseWithTransport):
             str(error))
 
     def test_read_only_lock_error(self):
-        error = errors.ReadOnlyLockError('filename', 'error message')
+        error = self.applyDeprecated(symbol_versioning.zero_ninetytwo,
+            errors.ReadOnlyLockError, 'filename', 'error message')
         self.assertEqualDiff("Cannot acquire write lock on filename."
                              " error message", str(error))
+
+    def test_lock_failed(self):
+        error = errors.LockFailed('http://canonical.com/', 'readonly transport')
+        self.assertEqualDiff("Cannot lock http://canonical.com/: readonly transport",
+            str(error))
+        self.assertFalse(error.internal_error)
 
     def test_too_many_concurrent_requests(self):
         error = errors.TooManyConcurrentRequests("a medium")
@@ -353,8 +369,45 @@ class TestErrors(TestCaseWithTransport):
         """Test the formatting of DuplicateRecordNameError."""
         e = errors.DuplicateRecordNameError(u"n\xe5me".encode('utf-8'))
         self.assertEqual(
-            "Container has multiple records with the same name: \"n\xc3\xa5me\"",
+            "Container has multiple records with the same name: n\xc3\xa5me",
             str(e))
+        
+    def test_check_error(self):
+        # This has a member called 'message', which is problematic in
+        # python2.5 because that is a slot on the base Exception class
+        e = errors.BzrCheckError('example check failure')
+        self.assertEqual(
+            "Internal check failed: example check failure",
+            str(e))
+        self.assertTrue(e.internal_error)
+
+    def test_repository_data_stream_error(self):
+        """Test the formatting of RepositoryDataStreamError."""
+        e = errors.RepositoryDataStreamError(u"my reason")
+        self.assertEqual(
+            "Corrupt or incompatible data stream: my reason", str(e))
+
+    def test_immortal_pending_deletion_message(self):
+        err = errors.ImmortalPendingDeletion('foo')
+        self.assertEquals(
+            "Unable to delete transform temporary directory foo.  "
+            "Please examine foo to see if it contains any files "
+            "you wish to keep, and delete it when you are done.",
+            str(err))
+
+    def test_unable_create_symlink(self):
+        err = errors.UnableCreateSymlink()
+        self.assertEquals(
+            "Unable to create symlink on this platform",
+            str(err))
+        err = errors.UnableCreateSymlink(path=u'foo')
+        self.assertEquals(
+            "Unable to create symlink 'foo' on this platform",
+            str(err))
+        err = errors.UnableCreateSymlink(path=u'\xb5')
+        self.assertEquals(
+            "Unable to create symlink u'\\xb5' on this platform",
+            str(err))
 
     def test_invalid_url_join(self):
         """Test the formatting of InvalidURLJoin."""
@@ -362,6 +415,13 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqual(
             "Invalid URL join request: Reason: 'base path' + ('args',)",
             str(e))
+
+    def test_incorrect_url(self):
+        err = errors.InvalidBugTrackerURL('foo', 'http://bug.com/')
+        self.assertEquals(
+            ("The URL for bug tracker \"foo\" doesn't contain {id}: "
+             "http://bug.com/"),
+            str(err))
 
 
 class PassThroughError(errors.BzrError):

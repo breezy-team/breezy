@@ -81,7 +81,6 @@ class TextRevisionStore(RevisionStore):
         assert self.text_store.listable()
         result_graph = {}
         for rev_id in self.text_store:
-            rev_id = osutils.safe_revision_id(rev_id)
             rev = self.get_revision(rev_id, transaction)
             result_graph[rev_id] = rev.parent_ids
         # remove ghosts
@@ -108,6 +107,7 @@ class TextRevisionStore(RevisionStore):
         return revisions
 
     def _get_revision_xml_file(self, revision_id):
+        _mod_revision.check_not_reserved_id(revision_id)
         try:
             return self.text_store.get(revision_id)
         except (IndexError, KeyError):

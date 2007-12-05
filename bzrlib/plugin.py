@@ -42,10 +42,11 @@ import zipfile
 from bzrlib import (
     config,
     osutils,
-    plugins,
     )
+from bzrlib import plugins as _mod_plugins
 """)
 
+from bzrlib.symbol_versioning import deprecated_function, zero_ninetyone
 from bzrlib.trace import mutter, warning, log_exception_quietly
 
 
@@ -56,17 +57,28 @@ def get_default_plugin_path():
     """Get the DEFAULT_PLUGIN_PATH"""
     global DEFAULT_PLUGIN_PATH
     if DEFAULT_PLUGIN_PATH is None:
-        DEFAULT_PLUGIN_PATH = osutils.pathjoin(config.config_dir(), 'plugins')
+        path = [osutils.pathjoin(config.config_dir(), 'plugins')]
+        if getattr(sys, 'frozen', None):    # bzr.exe
+            # We need to use relative path to system-wide plugin
+            # directory because bzrlib from standalone bzr.exe
+            # could be imported by another standalone program
+            # (e.g. bzr-config; or TortoiseBzr/Olive if/when they
+            # will become standalone exe). [bialix 20071123]
+            # __file__ typically is
+            # C:\Program Files\Bazaar\lib\library.zip\bzrlib\plugin.pyc
+            # then plugins directory is
+            # C:\Program Files\Bazaar\plugins
+            # so relative path is ../../../plugins
+            path.append(osutils.abspath(osutils.pathjoin(
+                osutils.dirname(__file__), '../../../plugins')))
+        DEFAULT_PLUGIN_PATH = os.pathsep.join(path)
     return DEFAULT_PLUGIN_PATH
 
 
+@deprecated_function(zero_ninetyone)
 def all_plugins():
     """Return a dictionary of the plugins."""
-    result = {}
-    for name, plugin in plugins.__dict__.items():
-        if isinstance(plugin, types.ModuleType):
-            result[name] = plugin
-    return result
+    return dict((name, plugin.module) for name, plugin in plugins().items())
 
 
 def disable_plugins():
@@ -80,13 +92,20 @@ def disable_plugins():
     _loaded = True
 
 
+def _strip_trailing_sep(path):
+    return path.rstrip("\\/")
+
+
 def set_plugins_path():
     """Set the path for plugins to be loaded from."""
     path = os.environ.get('BZR_PLUGIN_PATH',
                           get_default_plugin_path()).split(os.pathsep)
+    # Get rid of trailing slashes, since Python can't handle them when
+    # it tries to import modules.
+    path = map(_strip_trailing_sep, path)
     # search the plugin path before the bzrlib installed dir
-    path.append(os.path.dirname(plugins.__file__))
-    plugins.__path__ = path
+    path.append(os.path.dirname(_mod_plugins.__file__))
+    _mod_plugins.__path__ = path
     return path
 
 
@@ -123,7 +142,12 @@ def load_from_path(dirs):
 
     The python module path for bzrlib.plugins will be modified to be 'dirs'.
     """
-    plugins.__path__ = dirs
+    # We need to strip the trailing separators here as well as in the
+    # set_plugins_path function because calling code can pass anything in to
+    # this function, and since it sets plugins.__path__, it should set it to
+    # something that will be valid for Python to use (in case people try to
+    # run "import bzrlib.plugins.PLUGINNAME" after calling this function).
+    _mod_plugins.__path__ = map(_strip_trailing_sep, dirs)
     for d in dirs:
         if not d:
             continue
@@ -133,7 +157,6 @@ def load_from_path(dirs):
         else:
             # it might be a zip: try loading from the zip.
             load_from_zip(d)
-            continue
 
 
 # backwards compatability: load_from_dirs was the old name
@@ -169,7 +192,7 @@ def load_from_dir(d):
                     break
             else:
                 continue
-        if getattr(plugins, f, None):
+        if getattr(_mod_plugins, f, None):
             mutter('Plugin name %s already loaded', f)
         else:
             # mutter('add plugin name %s', f)
@@ -183,8 +206,10 @@ def load_from_dir(d):
         except Exception, e:
             ## import pdb; pdb.set_trace()
             if re.search('\.|-| ', name):
-                warning('Unable to load plugin %r from %r: '
-                    'It is not a valid python module name.' % (name, d))
+                sanitised_name = re.sub('[-. ]', '_', name)
+                warning("Unable to load %r in %r as a plugin because file path"
+                        " isn't a valid module name; try renaming it to %r."
+                        % (name, d, sanitised_name))
             else:
                 warning('Unable to load plugin %r from %r' % (name, d))
             log_exception_quietly()
@@ -253,7 +278,7 @@ def load_from_zip(zip_name):
     
         if not plugin_name:
             continue
-        if getattr(plugins, plugin_name, None):
+        if getattr(_mod_plugins, plugin_name, None):
             mutter('Plugin name %s already loaded', plugin_name)
             continue
     
@@ -267,6 +292,18 @@ def load_from_zip(zip_name):
             warning('Unable to load plugin %r from %r'
                     % (name, zip_name))
             log_exception_quietly()
+
+
+def plugins():
+    """Return a dictionary of the plugins.
+    
+    Each item in the dictionary is a PlugIn object.
+    """
+    result = {}
+    for name, plugin in _mod_plugins.__dict__.items():
+        if isinstance(plugin, types.ModuleType):
+            result[name] = PlugIn(name, plugin)
+    return result
 
 
 class PluginsHelpIndex(object):
@@ -335,3 +372,57 @@ class ModuleHelpTopic(object):
     def get_help_topic(self):
         """Return the modules help topic - its __name__ after bzrlib.plugins.."""
         return self.module.__name__[len('bzrlib.plugins.'):]
+
+
+class PlugIn(object):
+    """The bzrlib representation of a plugin.
+
+    The PlugIn object provides a way to manipulate a given plugin module.
+    """
+
+    def __init__(self, name, module):
+        """Construct a plugin for module."""
+        self.name = name
+        self.module = module
+
+    def path(self):
+        """Get the path that this plugin was loaded from."""
+        if getattr(self.module, '__path__', None) is not None:
+            return os.path.abspath(self.module.__path__[0])
+        elif getattr(self.module, '__file__', None) is not None:
+            return os.path.abspath(self.module.__file__)
+        else:
+            return repr(self.module)
+
+    def __str__(self):
+        return "<%s.%s object at %s, name=%s, module=%s>" % (
+            self.__class__.__module__, self.__class__.__name__, id(self),
+            self.name, self.module)
+
+    __repr__ = __str__
+
+    def test_suite(self):
+        """Return the plugin's test suite."""
+        if getattr(self.module, 'test_suite', None) is not None:
+            return self.module.test_suite()
+        else:
+            return None
+
+    def version_info(self):
+        """Return the plugin's version_tuple or None if unknown."""
+        version_info = getattr(self.module, 'version_info', None)
+        if version_info is not None and len(version_info) == 3:
+            version_info = tuple(version_info) + ('final', 0)
+        return version_info
+    
+    def _get__version__(self):
+        version_info = self.version_info()
+        if version_info is None:
+            return "unknown"
+        if version_info[3] == 'final':
+            version_string = '%d.%d.%d' % version_info[:3]
+        else:
+            version_string = '%d.%d.%d%s%d' % version_info
+        return version_string
+
+    __version__ = property(_get__version__)

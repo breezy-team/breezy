@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,10 +29,17 @@ from bzrlib import (
     win32utils,
     )
 from bzrlib.errors import BzrBadParameterNotUnicode, InvalidURL
+from bzrlib.osutils import (
+        is_inside_any,
+        is_inside_or_parent_of_any,
+        pathjoin,
+        )
 from bzrlib.tests import (
+        probe_unicode_in_user_encoding,
         StringIOWrapper,
-        TestCase, 
-        TestCaseInTempDir, 
+        SymlinkFeature,
+        TestCase,
+        TestCaseInTempDir,
         TestSkipped,
         )
 
@@ -86,6 +93,16 @@ class TestOSUtils(TestCaseInTempDir):
 
     # TODO: test fancy_rename using a MemoryTransport
 
+    def test_rename_change_case(self):
+        # on Windows we should be able to change filename case by rename
+        self.build_tree(['a', 'b/'])
+        osutils.rename('a', 'A')
+        osutils.rename('b', 'B')
+        # we can't use failUnlessExists on case-insensitive filesystem
+        # so try to check shape of the tree
+        shape = sorted(os.listdir('.'))
+        self.assertEquals(['A', 'B'], shape)
+
     def test_01_rand_chars_empty(self):
         result = osutils.rand_chars(0)
         self.assertEqual(result, '')
@@ -104,6 +121,31 @@ class TestOSUtils(TestCaseInTempDir):
         self.assertTrue(is_inside('foo.c', 'foo.c'))
         self.assertFalse(is_inside('foo.c', ''))
         self.assertTrue(is_inside('', 'foo.c'))
+
+    def test_is_inside_any(self):
+        SRC_FOO_C = pathjoin('src', 'foo.c')
+        for dirs, fn in [(['src', 'doc'], SRC_FOO_C),
+                         (['src'], SRC_FOO_C),
+                         (['src'], 'src'),
+                         ]:
+            self.assert_(is_inside_any(dirs, fn))
+        for dirs, fn in [(['src'], 'srccontrol'),
+                         (['src'], 'srccontrol/foo')]:
+            self.assertFalse(is_inside_any(dirs, fn))
+
+    def test_is_inside_or_parent_of_any(self):
+        for dirs, fn in [(['src', 'doc'], 'src/foo.c'),
+                         (['src'], 'src/foo.c'),
+                         (['src/bar.c'], 'src'),
+                         (['src/bar.c', 'bla/foo.c'], 'src'),
+                         (['src'], 'src'),
+                         ]:
+            self.assert_(is_inside_or_parent_of_any(dirs, fn))
+            
+        for dirs, fn in [(['src'], 'srccontrol'),
+                         (['srccontrol/foo.c'], 'src'),
+                         (['src'], 'srccontrol/foo')]:
+            self.assertFalse(is_inside_or_parent_of_any(dirs, fn))
 
     def test_rmtree(self):
         # Check to remove tree with read-only files/dirs
@@ -219,8 +261,7 @@ class TestOSUtils(TestCaseInTempDir):
         self.assertFormatedDelta('2 seconds in the future', -2)
 
     def test_dereference_path(self):
-        if not osutils.has_symlinks():
-            raise TestSkipped('Symlinks are not supported on this platform')
+        self.requireFeature(SymlinkFeature)
         cwd = osutils.realpath('.')
         os.mkdir('bar')
         bar_path = osutils.pathjoin(cwd, 'bar')
@@ -246,7 +287,6 @@ class TestOSUtils(TestCaseInTempDir):
         foo_baz_path = osutils.pathjoin(foo_path, 'baz')
         self.assertEqual(baz_path, osutils.dereference_path(foo_baz_path))
 
-
     def test_changing_access(self):
         f = file('file', 'w')
         f.write('monkey')
@@ -254,12 +294,12 @@ class TestOSUtils(TestCaseInTempDir):
 
         # Make a file readonly
         osutils.make_readonly('file')
-        mode = osutils.lstat('file').st_mode
+        mode = os.lstat('file').st_mode
         self.assertEqual(mode, mode & 0777555)
 
         # Make a file writable
         osutils.make_writable('file')
-        mode = osutils.lstat('file').st_mode
+        mode = os.lstat('file').st_mode
         self.assertEqual(mode, mode | 0200)
 
         if osutils.has_symlinks():
@@ -267,7 +307,6 @@ class TestOSUtils(TestCaseInTempDir):
             os.symlink('nonexistent', 'dangling')
             osutils.make_readonly('dangling')
             osutils.make_writable('dangling')
-
 
     def test_kind_marker(self):
         self.assertEqual("", osutils.kind_marker("file"))
@@ -319,6 +358,7 @@ class TestSafeUtf8(TestCase):
 class TestSafeRevisionId(TestCase):
 
     def test_from_ascii_string(self):
+        # this shouldn't give a warning because it's getting an ascii string
         self.assertEqual('foobar', osutils.safe_revision_id('foobar'))
 
     def test_from_unicode_string_ascii_contents(self):
@@ -445,6 +485,16 @@ class TestWin32FuncsDirs(TestCaseInTempDir):
         #       Consider using a different unicode character, or make
         #       osutils.getcwd() renormalize the path.
         self.assertEndsWith(osutils._win32_getcwd(), u'mu-\xb5')
+
+    def test_minimum_path_selection(self):
+        self.assertEqual(set(),
+            osutils.minimum_path_selection([]))
+        self.assertEqual(set(['a', 'b']),
+            osutils.minimum_path_selection(['a', 'b']))
+        self.assertEqual(set(['a/', 'b']),
+            osutils.minimum_path_selection(['a/', 'b']))
+        self.assertEqual(set(['a/', 'b']),
+            osutils.minimum_path_selection(['a/c', 'a/', 'b']))
 
     def test_mkdtemp(self):
         tmpdir = osutils._win32_mkdtemp(dir='.')
@@ -897,8 +947,7 @@ class TestCopyTree(TestCaseInTempDir):
         self.assertEqual(['c'], os.listdir('target/b'))
 
     def test_copy_tree_symlinks(self):
-        if not osutils.has_symlinks():
-            return
+        self.requireFeature(SymlinkFeature)
         self.build_tree(['source/'])
         os.symlink('a/generic/path', 'source/lnk')
         osutils.copy_tree('source', 'target')
@@ -971,18 +1020,8 @@ class TestSetUnsetEnv(TestCase):
         
         So Unicode strings must be encoded.
         """
-        # Try a few different characters, to see if we can get
-        # one that will be valid in the user_encoding
-        possible_vals = [u'm\xb5', u'\xe1', u'\u0410']
-        for uni_val in possible_vals:
-            try:
-                env_val = uni_val.encode(bzrlib.user_encoding)
-            except UnicodeEncodeError:
-                # Try a different character
-                pass
-            else:
-                break
-        else:
+        uni_val, env_val = probe_unicode_in_user_encoding()
+        if uni_val is None:
             raise TestSkipped('Cannot find a unicode character that works in'
                               ' encoding %s' % (bzrlib.user_encoding,))
 
@@ -1018,3 +1057,17 @@ class TestLocalTimeOffset(TestCase):
         self.assertTrue(isinstance(offset, int))
         eighteen_hours = 18 * 3600
         self.assertTrue(-eighteen_hours < offset < eighteen_hours)
+
+
+class TestShaFileByName(TestCaseInTempDir):
+
+    def test_sha_empty(self):
+        self.build_tree_contents([('foo', '')])
+        expected_sha = osutils.sha_string('')
+        self.assertEqual(expected_sha, osutils.sha_file_by_name('foo'))
+
+    def test_sha_mixed_endings(self):
+        text = 'test\r\nwith\nall\rpossible line endings\r\n'
+        self.build_tree_contents([('foo', text)])
+        expected_sha = osutils.sha_string(text)
+        self.assertEqual(expected_sha, osutils.sha_file_by_name('foo'))

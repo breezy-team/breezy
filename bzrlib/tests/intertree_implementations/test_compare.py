@@ -513,6 +513,29 @@ class TestIterChanges(TestCaseWithTwoTrees):
             self.deleted(tree1, 'empty-root-id')])
         self.assertEqual(expected_results, self.do_iter_changes(tree1, tree2))
 
+    def test_empty_specific_files(self):
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_no_content(tree1)
+        tree2 = self.get_tree_no_parents_abc_content(tree2)
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+        self.assertEqual([],
+            self.do_iter_changes(tree1, tree2, specific_files=[]))
+
+    def test_no_specific_files(self):
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_no_content(tree1)
+        tree2 = self.get_tree_no_parents_abc_content(tree2)
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+        expected_results = sorted([
+            self.added(tree2, 'root-id'),
+            self.added(tree2, 'a-id'),
+            self.added(tree2, 'b-id'),
+            self.added(tree2, 'c-id'),
+            self.deleted(tree1, 'empty-root-id')])
+        self.assertEqual(expected_results, self.do_iter_changes(tree1, tree2))
+
     def test_empty_to_abc_content_a_only(self):
         tree1 = self.make_branch_and_tree('1')
         tree2 = self.make_to_branch_and_tree('2')
@@ -930,7 +953,6 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2.set_root_id(tree1.get_root_id())
         self.build_tree(['tree1/fromfile', 'tree1/fromdir/'])
         self.build_tree(['tree2/tofile', 'tree2/todir/', 'tree2/unknown'])
-        # try:
         os.symlink('original', 'tree1/changed')
         os.symlink('original', 'tree1/removed')
         os.symlink('original', 'tree1/tofile')
@@ -963,14 +985,10 @@ class TestIterChanges(TestCaseWithTwoTrees):
             ]
         tree1.add(from_paths_and_ids, from_paths_and_ids)
         tree2.add(to_paths_and_ids, to_paths_and_ids)
-        # except ???:
-        #   raise TestSkipped('OS does not support symlinks')
-        #   links_supported = False
         return self.mutable_trees_to_locked_test_trees(tree1, tree2)
 
     def test_versioned_symlinks(self):
-        if not has_symlinks():
-            raise tests.TestSkipped("No symlink support")
+        self.requireFeature(tests.SymlinkFeature)
         tree1, tree2 = self.make_trees_with_symlinks()
         root_id = tree1.path2id('')
         expected = [
@@ -991,8 +1009,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
                 want_unversioned=True))
 
     def test_versioned_symlinks_specific_files(self):
-        if not has_symlinks():
-            raise tests.TestSkipped("No symlink support")
+        self.requireFeature(tests.SymlinkFeature)
         tree1, tree2 = self.make_trees_with_symlinks()
         root_id = tree1.path2id('')
         expected = [

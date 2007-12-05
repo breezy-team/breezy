@@ -43,8 +43,8 @@ if version_info < NEED_VERS:
                 os.execvp(python, [python] + sys.argv)
             except OSError:
                 pass
-    print >>sys.stderr, "bzr: error: cannot find a suitable python interpreter"
-    print >>sys.stderr, "  (need %d.%d or later)" % NEED_VERS
+    sys.stderr.write("bzr: error: cannot find a suitable python interpreter\n")
+    sys.stderr.write("  (need %d.%d or later)\n" % NEED_VERS)
     sys.exit(1)
 if hasattr(os, "unsetenv"):
     os.unsetenv(REINVOKE)
@@ -67,6 +67,12 @@ except ImportError, e:
                      "\n")
     raise
 
+if bzrlib.version_info[:3] != (0, 93, 0):
+    sys.stderr.write("bzr: WARNING: bzrlib version doesn't match the bzr program.\n"
+            "This may indicate an installation problem.\n"
+            "bzrlib from %s is version %r\n"
+            % (bzrlib.__path__, bzrlib.version_info))
+
 import bzrlib.inspect_for_copy
 bzrlib.inspect_for_copy.import_copy_with_hacked_inspect()
 
@@ -88,11 +94,6 @@ else:
 import bzrlib.commands
 import bzrlib.trace
 
-if bzrlib.version_info[:3] != (0, 19, 0):
-    sys.stderr.write("bzr: WARNING: bzrlib version doesn't match the bzr program.\n"
-            "This may indicate an installation problem.\n"
-            "bzrlib from %s is version %r\n"
-            % (bzrlib.__path__, bzrlib.version_info))
 
 if __name__ == '__main__':
     bzrlib.trace.enable_default_logging()
@@ -117,7 +118,9 @@ if __name__ == '__main__':
         sys.stderr.flush()
     except IOError, e:
         import errno
-        if sys.platform != 'win32' or e.errno != errno.EINVAL:
+        if e.errno in [errno.EINVAL, errno.EPIPE]:
+            pass
+        else:
             raise
     if bzrlib.trace._trace_file:
         # this is also _bzr_log

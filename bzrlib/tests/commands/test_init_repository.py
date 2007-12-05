@@ -23,7 +23,7 @@ class TestInitRepository(TestCaseWithConnectionHookedTransport):
 
     def setUp(self):
         super(TestInitRepository, self).setUp()
-        self.install_hooks()
+        self.start_logging_connections()
 
     def test_init_repository(self):
         cmd = cmd_init_repository()

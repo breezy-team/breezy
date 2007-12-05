@@ -28,7 +28,7 @@ class TestSprout(TestCaseWithBranch):
 
     def test_sprout_branch_nickname(self):
         # test the nick name is reset always
-        raise tests.TestSkipped('XXX branch sprouting is not yet tested..')
+        raise tests.TestSkipped('XXX branch sprouting is not yet tested.')
 
     def test_sprout_branch_parent(self):
         source = self.make_branch('source')
@@ -91,7 +91,7 @@ class TestSprout(TestCaseWithBranch):
         # simulated uncommit
         wt.branch.set_last_revision_info(0, _mod_revision.NULL_REVISION)
         wt.set_last_revision(_mod_revision.NULL_REVISION)
-        wt.revert([])
+        wt.revert()
         wt.commit('rev1b', rev_id='rev1b')
         wt2 = wt.bzrdir.sprout('target',
             revision_id='rev1a').open_workingtree()

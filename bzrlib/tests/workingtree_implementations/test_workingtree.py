@@ -30,9 +30,8 @@ from bzrlib.tests import TestSkipped
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.trace import mutter
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
-                                WorkingTree)
+                                WorkingTree, WorkingTree2)
 from bzrlib.conflicts import ConflictList, TextConflict, ContentsConflict
-
 
 
 class TestWorkingTree(TestCaseWithWorkingTree):
@@ -523,7 +522,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         open('b1/d', 'wb').write('d test\n')
         merge_inner(this.branch, other, base, this_tree=this)
         self.assertNotEqual(open('b1/a', 'rb').read(), 'a test\n')
-        this.revert([])
+        this.revert()
         self.assertEqual(open('b1/a', 'rb').read(), 'a test\n')
         self.assertIs(os.path.exists('b1/b.~1~'), True)
         self.assertIs(os.path.exists('b1/c'), False)
@@ -642,7 +641,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         try:
             tree.set_conflicts(ConflictList())
         except UnsupportedOperation:
-            raise TestSkipped
+            raise TestSkipped('unsupported operation')
         self.assertEqual(tree.conflicts(), ConflictList())
 
     def test_add_conflicts(self):
@@ -650,7 +649,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         try:
             tree.add_conflicts([TextConflict('path_a')])
         except UnsupportedOperation:
-            raise TestSkipped()
+            raise TestSkipped('unsupported operation')
         self.assertEqual(ConflictList([TextConflict('path_a')]),
                          tree.conflicts())
         tree.add_conflicts([TextConflict('path_a')])
@@ -677,7 +676,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_revert_clear_conflicts2(self):
         tree = self.make_merge_conflicts()
         self.assertEqual(len(tree.conflicts()), 1)
-        tree.revert([])
+        tree.revert()
         self.assertEqual(len(tree.conflicts()), 0)
 
     def test_format_description(self):
@@ -745,7 +744,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # if we write write an inventory then do a walkdirs we should get back
         # missing entries, and actual, and unknowns as appropriate.
         self.build_tree(['present', 'unknown'])
-        inventory = Inventory(tree.path2id(''))
+        inventory = Inventory(tree.get_root_id())
         inventory.add_path('missing', 'file', 'missing-id')
         inventory.add_path('present', 'file', 'present-id')
         # there is no point in being able to write an inventory to an unlocked
@@ -758,7 +757,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             present_stat = os.lstat('present')
             unknown_stat = os.lstat('unknown')
             expected_results = [
-                (('', tree.inventory.root.file_id),
+                (('', tree.get_root_id()),
                  [('missing', 'missing', 'unknown', None, 'missing-id', 'file'),
                   ('present', 'present', 'file', present_stat, 'present-id', 'file'),
                   ('unknown', 'unknown', 'file', unknown_stat, None, None),
@@ -848,3 +847,19 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.commit('foo')
         tree.remove('file')
         self.assertRaises(errors.NoSuchId, tree.get_file_sha1, 'file-id')
+
+    def test_case_sensitive(self):
+        """If filesystem is case-sensitive, tree should report this.
+
+        We check case-sensitivity by creating a file with a lowercase name,
+        then testing whether it exists with an uppercase name.
+        """
+        self.build_tree(['filename'])
+        if os.path.exists('FILENAME'):
+            case_sensitive = False
+        else:
+            case_sensitive = True
+        tree = self.make_branch_and_tree('test')
+        if tree.__class__ == WorkingTree2:
+            raise TestSkipped('WorkingTree2 is not supported')
+        self.assertEqual(case_sensitive, tree.case_sensitive)

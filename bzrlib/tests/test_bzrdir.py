@@ -1,4 +1,4 @@
-    # Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 # 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,6 +21,8 @@ For interface contract tests, see tests/bzr_dir_implementations.
 
 import os.path
 from StringIO import StringIO
+import subprocess
+import sys
 
 from bzrlib import (
     bzrdir,
@@ -29,6 +31,7 @@ from bzrlib import (
     repository,
     symbol_versioning,
     urlutils,
+    win32utils,
     workingtree,
     )
 import bzrlib.branch
@@ -36,9 +39,13 @@ from bzrlib.errors import (NotBranchError,
                            UnknownFormatError,
                            UnsupportedFormatError,
                            )
+from bzrlib.symbol_versioning import (
+    zero_ninetyone,
+    )
 from bzrlib.tests import (
     TestCase,
     TestCaseWithTransport,
+    TestSkipped,
     test_sftp_transport
     )
 from bzrlib.tests.HttpServer import HttpServer
@@ -90,7 +97,8 @@ class TestFormatRegistry(TestCase):
             'branch6',
             'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
             'Experimental successor to knit.  Use at your own risk.',
-            branch_format='bzrlib.branch.BzrBranchFormat6')
+            branch_format='bzrlib.branch.BzrBranchFormat6',
+            experimental=True)
         my_format_registry.register_metadir(
             'hidden format',
             'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
@@ -137,10 +145,13 @@ class TestFormatRegistry(TestCase):
         topics.register('formats', self.make_format_registry().help_topic, 
                         'Directory formats')
         topic = topics.get_detail('formats')
-        new, deprecated = topic.split('Deprecated formats')
+        new, rest = topic.split('Experimental formats')
+        experimental, deprecated = rest.split('Deprecated formats')
         self.assertContainsRe(new, 'These formats can be used')
         self.assertContainsRe(new, 
                 ':knit:\n    \(native\) \(default\) Format using knits\n')
+        self.assertContainsRe(experimental, 
+                ':branch6:\n    \(native\) Experimental successor to knit')
         self.assertContainsRe(deprecated, 
                 ':lazy:\n    \(native\) Format registered lazily\n')
         self.assertNotContainsRe(new, 'hidden')
@@ -198,9 +209,8 @@ class SampleBzrDirFormat(bzrdir.BzrDirFormat):
         """See BzrDirFormat.get_format_string()."""
         return "Sample .bzr dir format."
 
-    def initialize(self, url, possible_transports=None):
+    def initialize_on_transport(self, t):
         """Create a bzr dir."""
-        t = get_transport(url, possible_transports)
         t.mkdir('.bzr')
         t.put_bytes('.bzr/branch-format', self.get_format_string())
         return SampleBzrDir(t, self)
@@ -261,28 +271,40 @@ class TestBzrDirFormat(TestCaseWithTransport):
         # now open_downlevel should fail too.
         self.assertRaises(UnknownFormatError, bzrdir.BzrDir.open_unsupported, url)
 
-    def test_create_repository(self):
+    def test_create_repository_deprecated(self):
+        # new interface is to make the bzrdir, then a repository within that.
         format = SampleBzrDirFormat()
-        repo = bzrdir.BzrDir.create_repository(self.get_url(), format=format)
+        repo = self.applyDeprecated(zero_ninetyone,
+                bzrdir.BzrDir.create_repository,
+                self.get_url(), format=format)
         self.assertEqual('A repository', repo)
 
     def test_create_repository_shared(self):
+        # new interface is to make the bzrdir, then a repository within that.
         old_format = bzrdir.BzrDirFormat.get_default_format()
-        repo = bzrdir.BzrDir.create_repository('.', shared=True)
+        repo = self.applyDeprecated(zero_ninetyone,
+                bzrdir.BzrDir.create_repository,
+                '.', shared=True)
         self.assertTrue(repo.is_shared())
 
     def test_create_repository_nonshared(self):
+        # new interface is to make the bzrdir, then a repository within that.
         old_format = bzrdir.BzrDirFormat.get_default_format()
-        repo = bzrdir.BzrDir.create_repository('.')
+        repo = self.applyDeprecated(zero_ninetyone,
+                bzrdir.BzrDir.create_repository,
+                '.')
         self.assertFalse(repo.is_shared())
 
     def test_create_repository_under_shared(self):
         # an explicit create_repository always does so.
         # we trust the format is right from the 'create_repository test'
+        # new interface is to make the bzrdir, then a repository within that.
         format = bzrdir.format_registry.make_bzrdir('knit')
         self.make_repository('.', shared=True, format=format)
-        repo = bzrdir.BzrDir.create_repository(self.get_url('child'),
-                                               format=format)
+        repo = self.applyDeprecated(zero_ninetyone,
+                bzrdir.BzrDir.create_repository,
+                self.get_url('child'),
+                format=format)
         self.assertTrue(isinstance(repo, repository.Repository))
         self.assertTrue(repo.bzrdir.root_transport.base.endswith('child/'))
 
@@ -852,3 +874,32 @@ class TestHTTPRedirections_pycurl(TestWithTransport_pycurl,
     """Tests redirections for pycurl implementation"""
 
     _qualifier = 'pycurl'
+
+
+class TestDotBzrHidden(TestCaseWithTransport):
+
+    ls = ['ls']
+    if sys.platform == 'win32':
+        ls = [os.environ['COMSPEC'], '/C', 'dir', '/B']
+
+    def get_ls(self):
+        f = subprocess.Popen(self.ls, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
+        out, err = f.communicate()
+        self.assertEqual(0, f.returncode, 'Calling %s failed: %s'
+                         % (self.ls, err))
+        return out.splitlines()
+
+    def test_dot_bzr_hidden(self):
+        if sys.platform == 'win32' and not win32utils.has_win32file:
+            raise TestSkipped('unable to make file hidden without pywin32 library')
+        b = bzrdir.BzrDir.create('.')
+        self.build_tree(['a'])
+        self.assertEquals(['a'], self.get_ls())
+
+    def test_dot_bzr_hidden_with_url(self):
+        if sys.platform == 'win32' and not win32utils.has_win32file:
+            raise TestSkipped('unable to make file hidden without pywin32 library')
+        b = bzrdir.BzrDir.create(urlutils.local_path_to_url('.'))
+        self.build_tree(['a'])
+        self.assertEquals(['a'], self.get_ls())

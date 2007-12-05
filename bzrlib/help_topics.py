@@ -240,20 +240,16 @@ _global_options = \
 """Global Options
 
 These options may be used with any command, and may appear in front of any
-command.  (e.g. "bzr --quiet help").
+command.  (e.g. "bzr --profile help").
 
---quiet        Suppress informational output; only print errors and warnings
---version      Print the version number
-
---no-aliases   Do not process command aliases when running this command
+--version      Print the version number. Must be supplied before the command.
+--no-aliases   Do not process command aliases when running this command.
 --builtin      Use the built-in version of a command, not the plugin version.
-               This does not suppress other plugin effects
---no-plugins   Do not process any plugins
+               This does not suppress other plugin effects.
+--no-plugins   Do not process any plugins.
 
--Derror        Instead of normal error handling, always print a traceback on
-               error.
---profile      Profile execution using the hotshot profiler
---lsprof       Profile execution using the lsprof profiler
+--profile      Profile execution using the hotshot profiler.
+--lsprof       Profile execution using the lsprof profiler.
 --lsprof-file  Profile execution using the lsprof profiler, and write the
                results to a specified file.  If the filename ends with ".txt",
                text format will be used.  If the filename either starts with
@@ -262,9 +258,34 @@ command.  (e.g. "bzr --quiet help").
                will be a pickle.
 
 See doc/developers/profiling.txt for more information on profiling.
+A number of debug flags are also available to assist troubleshooting and
+development.
 
-Note: --version must be supplied before any command.
+-Dauth         Trace authentication sections used.
+-Derror        Instead of normal error handling, always print a traceback on
+               error.
+-Devil         Capture call sites that do expensive or badly-scaling
+               operations.
+-Dhashcache    Log every time a working file is read to determine its hash.
+-Dhooks        Trace hook execution.
+-Dhttp         Trace http connections, requests and responses
+-Dhpss         Trace smart protocol requests and responses.
+-Dindex        Trace major index operations.
+-Dlock         Trace when lockdir locks are taken or released.
 """
+
+_standard_options = \
+"""Standard Options
+
+Standard options are legal for all commands.
+      
+--help, -h     Show help message.
+--verbose, -v  Display more information.
+--quiet, -q    Only display errors and warnings.
+
+Unlike global options, standard options can be used in aliases.
+"""
+
 
 _checkouts = \
 """Checkouts
@@ -428,6 +449,37 @@ Useful commands::
                this will update the tree to match the branch.
 """
 
+
+_branches = \
+"""Branches
+
+A branch consists of the state of a project, including all of its
+history. All branches have a repository associated (which is where the
+branch history is stored), but multiple branches may share the same
+repository (a shared repository). Branches can be copied and merged.
+
+Related commands::
+
+  init    Make a directory into a versioned branch.
+  branch  Create a new copy of a branch.
+  merge   Perform a three-way merge.
+"""
+
+
+_standalone_trees = \
+"""Standalone Trees
+
+A standalone tree is a working tree with an associated repository. It
+is an independently usable branch, with no dependencies on any other.
+Creating a standalone tree (via bzr init) is the quickest way to put
+an existing project under version control.
+
+Related Commands::
+
+  init    Make a directory into a versioned branch.
+"""
+
+
 _status_flags = \
 """Status Flags
 
@@ -472,6 +524,7 @@ EDITOR           Editor for editing commit messages.
 BZR_PLUGIN_PATH  Paths where bzr should look for plugins.
 BZR_HOME         Directory holding .bazaar config dir. Overrides HOME.
 BZR_HOME (Win32) Directory holding bazaar config dir. Overrides APPDATA and HOME.
+BZR_REMOTE_PATH  Full name of remote 'bzr' command (for bzr+ssh:// URLs).
 ================ =================================================================
 """
 
@@ -497,7 +550,36 @@ A typical config file might look something like::
   log10 = log --short -r -10..-1
 """
 
+_criss_cross = \
+"""
+A criss-cross in the branch history can cause the default merge technique
+to emit more conflicts than would normally be expected.
 
+If you encounter criss-crosses, you can use merge --weave instead, which
+should provide a much better result.
+
+Criss-crosses occur in a branch's history if two branches merge the same thing
+and then merge one another, or if two branches merge one another at the same
+time.  They can be avoided by having each branch only merge from or into a
+designated central branch (a "star topology").
+
+Criss-crosses cause problems because of the way merge works.  Bazaar's default
+merge is a three-way merger; in order to merge OTHER into THIS, it must
+find a basis for comparison, BASE.  Using BASE, it can determine whether
+differences between THIS and OTHER are due to one side adding lines, or
+from another side removing lines.
+
+Criss-crosses mean there is no good choice for a base.  Selecting the recent
+merge points could cause one side's changes to be silently discarded.
+Selecting older merge points (which Bazaar does) mean that extra conflicts
+are emitted.
+
+The ``weave`` merge type is not affected by this problem because it uses
+line-origin detection instead of a basis revision to determine the cause of
+differences."""
+
+
+# Register help topics
 topic_registry.register("revisionspec", _help_on_revisionspec,
                         "Explain how to use --revision")
 topic_registry.register('basic', _basic_help, "Basic commands", SECT_HIDDEN)
@@ -506,10 +588,10 @@ def get_format_topic(topic):
     from bzrlib import bzrdir
     return "Storage Formats\n\n" + bzrdir.format_registry.help_topic(topic)
 topic_registry.register('formats', get_format_topic, 'Directory formats')
-topic_registry.register('global-options', _global_options,
+topic_registry.register('standard-options', _standard_options,
                         'Options that can be used with any command')
-topic_registry.register('checkouts', _checkouts,
-                        'Information on what a checkout is', SECT_CONCEPT)
+topic_registry.register('global-options', _global_options,
+                    'Options that control how Bazaar runs')
 topic_registry.register('urlspec', _help_on_transport,
                         "Supported transport protocols")
 topic_registry.register('status-flags', _status_flags,
@@ -518,15 +600,30 @@ def get_bugs_topic(topic):
     from bzrlib import bugtracker
     return "Bug Trackers\n\n" + bugtracker.tracker_registry.help_topic(topic)
 topic_registry.register('bugs', get_bugs_topic, 'Bug tracker support')
-topic_registry.register('repositories', _repositories,
-                        'Basic information on shared repositories.',
-                        SECT_CONCEPT)
-topic_registry.register('working-trees', _working_trees,
-                        'Information on working trees', SECT_CONCEPT)
 topic_registry.register('env-variables', _env_variables,
                         'Environment variable names and values')
 topic_registry.register('files', _files,
                         'Information on configuration and log files')
+
+
+# Register concept topics.
+# Note that we might choose to remove these from the online help in the
+# future or implement them via loading content from files. In the meantime,
+# please keep them concise.
+topic_registry.register('branches', _branches,
+                        'Information on what a branch is', SECT_CONCEPT)
+topic_registry.register('checkouts', _checkouts,
+                        'Information on what a checkout is', SECT_CONCEPT)
+topic_registry.register('repositories', _repositories,
+                        'Basic information on shared repositories.',
+                        SECT_CONCEPT)
+topic_registry.register('standalone-trees', _standalone_trees,
+                        'Information on what a standalone tree is',
+                        SECT_CONCEPT)
+topic_registry.register('working-trees', _working_trees,
+                        'Information on working trees', SECT_CONCEPT)
+topic_registry.register('criss-cross', _criss_cross,
+                        'Information on criss-cross merging', SECT_CONCEPT)
 
 
 class HelpTopicIndex(object):

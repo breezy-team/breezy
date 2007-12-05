@@ -42,6 +42,7 @@ SourceDir="..\..\win32_bzr.exe"
 
 SetupIconFile="..\bzr.ico"
 InfoBeforeFile="..\tools\win32\info.txt"
+InfoAfterFile="..\tools\win32\survey.txt"
 
 VersionInfoCompany="Canonical Ltd."
 VersionInfoCopyright="Canonical Ltd., 2005-2007"
@@ -117,6 +118,7 @@ Name: "main"; Description: "Main Files"; Types: full compact custom; Flags: fixe
 
 [Dirs]
 Name: "{userappdata}\bazaar\2.0"
+Name: "{app}\plugins"; Flags: uninsalwaysuninstall
 
 
 [Icons]
@@ -129,6 +131,16 @@ Name: "{group}\Uninstall Bazaar"; Filename: "{uninstallexe}"; IconFileName: "{sy
 [Tasks]
 Name: Path; Description: "Add {app} directory to PATH environment variable";
 Name: Shell; Description: "Add Bzr context menu to shell"; Flags: unchecked
+
+
+[Registry]
+Root: HKLM; Subkey: "SOFTWARE\Bazaar"; Flags: noerror uninsdeletekey
+Root: HKLM; Subkey: "SOFTWARE\Bazaar"; ValueName: "InstallPath"; ValueType: string; ValueData: "{app}"; Flags: noerror
+Root: HKLM; Subkey: "SOFTWARE\Bazaar"; ValueName: "BzrlibPath"; ValueType: string; ValueData: "{app}\lib\library.zip\bzrlib"; Flags: noerror
+Root: HKLM; Subkey: "SOFTWARE\Bazaar"; ValueName: "PluginsPath"; ValueType: string; ValueData: "{app}\plugins"; Flags: noerror
+Root: HKLM; Subkey: "SOFTWARE\Bazaar"; ValueName: "PythonPath"; ValueType: string; ValueData: "{app}\lib\library.zip"; Flags: noerror
+; [[[cog cog.outl('Root: HKLM; Subkey: "SOFTWARE\Bazaar"; ValueName: "Version"; ValueType: string; ValueData: "%s"; Flags: noerror' % VERSION) ]]]
+; [[[end]]]
 
 
 [Run]
@@ -147,3 +159,7 @@ Filename: "{app}\bzr_postinstall.exe"; Parameters: "--add-shell-menu"; Tasks: Sh
 
 [UninstallRun]
 Filename: "{app}\bzr_postinstall.exe"; Parameters: "--delete-path --delete-shell-menu --silent"; Flags: skipifdoesntexist runhidden; 
+
+
+[UninstallDelete]
+Type: filesandordirs; Name: "{app}\plugins\*"

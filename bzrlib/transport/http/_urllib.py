@@ -20,25 +20,19 @@ import urlparse
 
 from bzrlib import (
     errors,
+    trace,
     urlutils,
     )
-from bzrlib.trace import mutter
-from bzrlib.transport import register_urlparse_netloc_protocol
-from bzrlib.transport.http import HttpTransportBase
+from bzrlib.transport import http
 # TODO: handle_response should be integrated into the _urllib2_wrappers
 from bzrlib.transport.http.response import handle_response
 from bzrlib.transport.http._urllib2_wrappers import (
     Opener,
     Request,
-    extract_authentication_uri,
-    extract_credentials,
     )
 
 
-register_urlparse_netloc_protocol('http+urllib')
-
-
-class HttpTransport_urllib(HttpTransportBase):
+class HttpTransport_urllib(http.HttpTransportBase):
     """Python urllib transport for http and https."""
 
     # In order to debug we have to issue our traces in sync with
@@ -61,6 +55,8 @@ class HttpTransport_urllib(HttpTransportBase):
         path = self._combine_paths(self._path, relative)
         # urllib2 will be confused if it find authentication
         # info (user, password) in the urls. So we handle them separatly.
+
+        # rhaaaa ! confused where ? confused when ? --vila 20070922
         return self._unsplit_url(self._unqualified_scheme,
                                  None, None, self._host, self._port, path)
 
@@ -75,23 +71,20 @@ class HttpTransport_urllib(HttpTransportBase):
             request.connection = connection
             (auth, proxy_auth) = self._get_credentials()
         else:
-            # First request, intialize credentials
+            # First request, intialize credentials.
+            # scheme and realm will be set by the _urllib2_wrappers.AuthHandler
             user = self._user
             password = self._password
-            authuri = self._remote_path('.')
-            auth = {'user': user, 'password': password, 'authuri': authuri}
-
-            if user and password is not None: # '' is a valid password
-                # Make the (user, password) available to urllib2
-                # We default to a realm of None to catch them all.
-                self._opener.password_manager.add_password(None, authuri,
-                                                           user, password)
-            proxy_auth = {}
+            auth = dict(host=self._host, port=self._port,
+                        user=user, password=password,
+                        protocol=self._unqualified_scheme,
+                        path=self._path)
+            # Proxy initialization will be done by first proxied request
+            proxy_auth = dict()
         # Ensure authentication info is provided
         request.auth = auth
         request.proxy_auth = proxy_auth
 
-        mutter('%s: [%s]' % (request.method, request.get_full_url()))
         if self._debuglevel > 0:
             print 'perform: %s base: %s, url: %s' % (request.method, self.base,
                                                      request.get_full_url())
@@ -110,12 +103,12 @@ class HttpTransport_urllib(HttpTransportBase):
                 and code in (301, 302, 303, 307):
             raise errors.RedirectRequested(request.get_full_url(),
                                            request.redirected_to,
-                                           is_permament=(code == 301),
+                                           is_permanent=(code == 301),
                                            qual_proto=self._scheme)
 
         if request.redirected_to is not None:
-            mutter('redirected from: %s to: %s' % (request.get_full_url(),
-                                                   request.redirected_to))
+            trace.mutter('redirected from: %s to: %s' % (request.get_full_url(),
+                                                         request.redirected_to))
 
         return response
 
@@ -155,11 +148,6 @@ class HttpTransport_urllib(HttpTransportBase):
         # Close response to free the httplib.HTTPConnection pipeline
         self._get_connection().fake_close()
         return code, data
-
-    def should_cache(self):
-        """Return True if the data pulled across should be cached locally.
-        """
-        return True
 
     def _head(self, relpath):
         """Request the HEAD of a file.

@@ -39,6 +39,7 @@ from bzrlib.branch import (
     BranchReferenceFormat,
     BzrBranch5,
     BzrBranchFormat5,
+    BzrBranchFormat6,
     PullResult,
     )
 from bzrlib.bzrdir import (BzrDirMetaFormat1, BzrDirMeta1, 
@@ -54,10 +55,21 @@ from bzrlib.transport import get_transport
 
 class TestDefaultFormat(TestCase):
 
+    def test_default_format(self):
+        # update this if you change the default branch format
+        self.assertIsInstance(BranchFormat.get_default_format(),
+                BzrBranchFormat6)
+
+    def test_default_format_is_same_as_bzrdir_default(self):
+        # XXX: it might be nice if there was only one place the default was
+        # set, but at the moment that's not true -- mbp 20070814 -- 
+        # https://bugs.launchpad.net/bzr/+bug/132376
+        self.assertEqual(BranchFormat.get_default_format(),
+                BzrDirFormat.get_default_format().get_branch_format())
+
     def test_get_set_default_format(self):
+        # set the format and then set it back again
         old_format = BranchFormat.get_default_format()
-        # default is 5
-        self.assertTrue(isinstance(old_format, BzrBranchFormat5))
         BranchFormat.set_default_format(SampleBranchFormat())
         try:
             # the default branch format is used by the meta dir format
@@ -95,10 +107,20 @@ class TestBranchFormat5(TestCaseWithTransport):
                                    ensure_config_dir_exists)
         ensure_config_dir_exists()
         fn = locations_config_filename()
+        # write correct newlines to locations.conf
+        # by default ConfigObj uses native line-endings for new files
+        # but uses already existing line-endings if file is not empty
+        f = open(fn, 'wb')
+        try:
+            f.write('# comment\n')
+        finally:
+            f.close()
+
         branch = self.make_branch('.', format='knit')
         branch.set_push_location('foo')
         local_path = urlutils.local_path_from_url(branch.base[:-1])
-        self.assertFileEqual("[%s]\n"
+        self.assertFileEqual("# comment\n"
+                             "[%s]\n"
                              "push_location = foo\n"
                              "push_location:policy = norecurse" % local_path,
                              fn)
@@ -224,32 +246,6 @@ class TestBranch6(TestCaseWithTransport):
         finally:
             tree.unlock()
 
-    def test_append_revision(self):
-        tree = self.make_branch_and_tree('branch1',
-            format='dirstate-tags')
-        tree.lock_write()
-        try:
-            tree.commit('foo', rev_id='foo')
-            tree.commit('bar', rev_id='bar')
-            tree.commit('baz', rev_id='baz')
-            tree.set_last_revision('bar')
-            tree.branch.set_last_revision_info(2, 'bar')
-            tree.commit('qux', rev_id='qux')
-            tree.add_parent_tree_id('baz')
-            tree.commit('qux', rev_id='quxx')
-            tree.branch.set_last_revision_info(0, 'null:')
-            self.assertRaises(errors.NotLeftParentDescendant,
-                              tree.branch.append_revision, 'bar')
-            tree.branch.append_revision('foo')
-            self.assertRaises(errors.NotLeftParentDescendant,
-                              tree.branch.append_revision, 'baz')
-            tree.branch.append_revision('bar')
-            tree.branch.append_revision('baz')
-            self.assertRaises(errors.NotLeftParentDescendant,
-                              tree.branch.append_revision, 'quxx')
-        finally:
-            tree.unlock()
-
     def do_checkout_test(self, lightweight=False):
         tree = self.make_branch_and_tree('source', format='dirstate-with-subtree')
         subtree = self.make_branch_and_tree('source/subtree',
@@ -275,7 +271,6 @@ class TestBranch6(TestCaseWithTransport):
             self.assertEndsWith(subbranch.base, 'source/subtree/subsubtree/')
         else:
             self.assertEndsWith(subbranch.base, 'target/subtree/subsubtree/')
-
 
     def test_checkout_with_references(self):
         self.do_checkout_test()
@@ -336,6 +331,7 @@ class TestHooks(TestCase):
         self.assertTrue("set_rh" in hooks, "set_rh not in %s" % hooks)
         self.assertTrue("post_push" in hooks, "post_push not in %s" % hooks)
         self.assertTrue("post_commit" in hooks, "post_commit not in %s" % hooks)
+        self.assertTrue("pre_commit" in hooks, "pre_commit not in %s" % hooks)
         self.assertTrue("post_pull" in hooks, "post_pull not in %s" % hooks)
         self.assertTrue("post_uncommit" in hooks, "post_uncommit not in %s" % hooks)
 

@@ -35,7 +35,10 @@ from bzrlib import (
     )
 from bzrlib.progress import _BaseProgressBar
 from bzrlib.repofmt import weaverepo
-from bzrlib.symbol_versioning import zero_ten, zero_eleven
+from bzrlib.symbol_versioning import (
+        zero_ten,
+        zero_eleven,
+        )
 from bzrlib.tests import (
                           ChrootedTestCase,
                           ExtendedTestResult,
@@ -45,6 +48,7 @@ from bzrlib.tests import (
                           TestCaseInTempDir,
                           TestCaseWithMemoryTransport,
                           TestCaseWithTransport,
+                          TestNotApplicable,
                           TestSkipped,
                           TestSuite,
                           TestUtil,
@@ -560,8 +564,8 @@ class TestTestCaseInTempDir(TestCaseInTempDir):
     def test_home_is_not_working(self):
         self.assertNotEqual(self.test_dir, self.test_home_dir)
         cwd = osutils.getcwd()
-        self.assertEqual(self.test_dir, cwd)
-        self.assertEqual(self.test_home_dir, os.environ['HOME'])
+        self.assertIsSameRealPath(self.test_dir, cwd)
+        self.assertIsSameRealPath(self.test_home_dir, os.environ['HOME'])
 
 
 class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
@@ -575,14 +579,15 @@ class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
         few tests should need to do that), and having a missing dir as home is
         an effective way to ensure that this is the case.
         """
-        self.assertEqual(self.TEST_ROOT + "/MemoryTransportMissingHomeDir",
+        self.assertIsSameRealPath(
+            self.TEST_ROOT + "/MemoryTransportMissingHomeDir",
             self.test_home_dir)
-        self.assertEqual(self.test_home_dir, os.environ['HOME'])
+        self.assertIsSameRealPath(self.test_home_dir, os.environ['HOME'])
         
     def test_cwd_is_TEST_ROOT(self):
-        self.assertEqual(self.test_dir, self.TEST_ROOT)
+        self.assertIsSameRealPath(self.test_dir, self.TEST_ROOT)
         cwd = osutils.getcwd()
-        self.assertEqual(self.test_dir, cwd)
+        self.assertIsSameRealPath(self.test_dir, cwd)
 
     def test_make_branch_and_memory_tree(self):
         """In TestCaseWithMemoryTransport we should not make the branch on disk.
@@ -607,6 +612,19 @@ class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
         self.assertIsInstance(tree, memorytree.MemoryTree)
         self.assertEqual(format.repository_format.__class__,
             tree.branch.repository._format.__class__)
+
+    def test_safety_net(self):
+        """No test should modify the safety .bzr directory.
+
+        We just test that the _check_safety_net private method raises
+        AssertionError, it's easier than building a test suite with the same
+        test.
+        """
+        # Oops, a commit in the current directory (i.e. without local .bzr
+        # directory) will crawl up the hierarchy to find a .bzr directory.
+        self.run_bzr(['commit', '-mfoo', '--unchanged'])
+        # But we have a safety net in place.
+        self.assertRaises(AssertionError, self._check_safety_net)
 
 
 class TestTestCaseWithTransport(TestCaseWithTransport):
@@ -703,32 +721,35 @@ class MockProgress(_BaseProgressBar):
 
 class TestTestResult(TestCase):
 
-    def test_elapsed_time_with_benchmarking(self):
+    def check_timing(self, test_case, expected_re):
         result = bzrlib.tests.TextTestResult(self._log_file,
-                                        descriptions=0,
-                                        verbosity=1,
-                                        )
-        result._recordTestStartTime()
-        time.sleep(0.003)
-        result.extractBenchmarkTime(self)
-        timed_string = result._testTimeString()
-        # without explicit benchmarking, we should get a simple time.
-        self.assertContainsRe(timed_string, "^ +[0-9]+ms$")
-        # if a benchmark time is given, we want a x of y style result.
-        self.time(time.sleep, 0.001)
-        result.extractBenchmarkTime(self)
-        timed_string = result._testTimeString()
-        self.assertContainsRe(
-            timed_string, "^ +[0-9]+ms/ +[0-9]+ms$")
-        # extracting the time from a non-bzrlib testcase sets to None
-        result._recordTestStartTime()
-        result.extractBenchmarkTime(
-            unittest.FunctionTestCase(self.test_elapsed_time_with_benchmarking))
-        timed_string = result._testTimeString()
-        self.assertContainsRe(timed_string, "^ +[0-9]+ms$")
-        # cheat. Yes, wash thy mouth out with soap.
-        self._benchtime = None
+                descriptions=0,
+                verbosity=1,
+                )
+        test_case.run(result)
+        timed_string = result._testTimeString(test_case)
+        self.assertContainsRe(timed_string, expected_re)
 
+    def test_test_reporting(self):
+        class ShortDelayTestCase(TestCase):
+            def test_short_delay(self):
+                time.sleep(0.003)
+            def test_short_benchmark(self):
+                self.time(time.sleep, 0.003)
+        self.check_timing(ShortDelayTestCase('test_short_delay'),
+                          r"^ +[0-9]+ms$")
+        # if a benchmark time is given, we want a x of y style result.
+        self.check_timing(ShortDelayTestCase('test_short_benchmark'),
+                          r"^ +[0-9]+ms/ +[0-9]+ms$")
+
+    def test_unittest_reporting_unittest_class(self):
+        # getting the time from a non-bzrlib test works ok
+        class ShortDelayTestCase(unittest.TestCase):
+            def test_short_delay(self):
+                time.sleep(0.003)
+        self.check_timing(ShortDelayTestCase('test_short_delay'),
+                          r"^ +[0-9]+ms$")
+        
     def test_assigned_benchmark_file_stores_date(self):
         output = StringIO()
         result = bzrlib.tests.TextTestResult(self._log_file,
@@ -737,7 +758,6 @@ class TestTestResult(TestCase):
                                         bench_history=output
                                         )
         output_string = output.getvalue()
-        
         # if you are wondering about the regexp please read the comment in
         # test_bench_history (bzrlib.tests.test_selftest.TestRunner)
         # XXX: what comment?  -- Andrew Bennetts
@@ -842,7 +862,6 @@ class TestTestResult(TestCase):
             )
         test = self.get_passing_test()
         result.startTest(test)
-        result.extractBenchmarkTime(test)
         prefix = len(result_stream.getvalue())
         # the err parameter has the shape:
         # (class, exception object, traceback)
@@ -868,7 +887,6 @@ class TestTestResult(TestCase):
         test = self.get_passing_test()
         # this seeds the state to handle reporting the test.
         result.startTest(test)
-        result.extractBenchmarkTime(test)
         # the err parameter has the shape:
         # (class, exception object, traceback)
         # KnownFailures dont get their tracebacks shown though, so we
@@ -933,7 +951,6 @@ class TestTestResult(TestCase):
         test = self.get_passing_test()
         feature = Feature()
         result.startTest(test)
-        result.extractBenchmarkTime(test)
         prefix = len(result_stream.getvalue())
         result.report_unsupported(test, feature)
         output = result_stream.getvalue()[prefix:]
@@ -953,7 +970,6 @@ class TestTestResult(TestCase):
         feature = Feature()
         # this seeds the state to handle reporting the test.
         result.startTest(test)
-        result.extractBenchmarkTime(test)
         result.report_unsupported(test, feature)
         # no output on unsupported features
         self.assertEqual(
@@ -992,26 +1008,29 @@ class TestTestResult(TestCase):
 
     def test_strict_with_unsupported_feature(self):
         result = bzrlib.tests.TextTestResult(self._log_file, descriptions=0,
-                                                verbosity=1)
+                                             verbosity=1)
         test = self.get_passing_test()
         feature = "Unsupported Feature"
         result.addNotSupported(test, feature)
         self.assertFalse(result.wasStrictlySuccessful())
-
+        self.assertEqual(None, result._extractBenchmarkTime(test))
+ 
     def test_strict_with_known_failure(self):
         result = bzrlib.tests.TextTestResult(self._log_file, descriptions=0,
-                                                verbosity=1)
+                                             verbosity=1)
         test = self.get_passing_test()
         err = (KnownFailure, KnownFailure('foo'), None)
-        result.addKnownFailure(test, err)
+        result._addKnownFailure(test, err)
         self.assertFalse(result.wasStrictlySuccessful())
+        self.assertEqual(None, result._extractBenchmarkTime(test))
 
     def test_strict_with_success(self):
         result = bzrlib.tests.TextTestResult(self._log_file, descriptions=0,
-                                                verbosity=1)
+                                             verbosity=1)
         test = self.get_passing_test()
         result.addSuccess(test)
         self.assertTrue(result.wasStrictlySuccessful())
+        self.assertEqual(None, result._extractBenchmarkTime(test))
 
 
 class TestRunner(TestCase):
@@ -1130,6 +1149,27 @@ class TestRunner(TestCase):
         self.assertTrue(result.wasSuccessful())
         # Check if cleanup was called the right number of times.
         self.assertEqual(0, test.counter)
+
+    def test_not_applicable(self):
+        # run a test that is skipped because it's not applicable
+        def not_applicable_test():
+            from bzrlib.tests import TestNotApplicable
+            raise TestNotApplicable('this test never runs')
+        out = StringIO()
+        runner = TextTestRunner(stream=out, verbosity=2)
+        test = unittest.FunctionTestCase(not_applicable_test)
+        result = self.run_test_runner(runner, test)
+        self._log_file.write(out.getvalue())
+        self.assertTrue(result.wasSuccessful())
+        self.assertTrue(result.wasStrictlySuccessful())
+        self.assertContainsRe(out.getvalue(),
+                r'(?m)not_applicable_test   * N/A')
+        self.assertContainsRe(out.getvalue(),
+                r'(?m)^    this test never runs')
+
+    def test_not_applicable_demo(self):
+        # just so you can see it in the test output
+        raise TestNotApplicable('this test is just a demonstation')
 
     def test_unsupported_features_listed(self):
         """When unsupported features are encountered they are detailed."""
@@ -1485,6 +1525,22 @@ class TestExtraAssertions(TestCase):
         self.callDeprecated([], testfunc, be_deprecated=False)
 
 
+class TestWarningTests(TestCase):
+    """Tests for calling methods that raise warnings."""
+
+    def test_callCatchWarnings(self):
+        def meth(a, b):
+            warnings.warn("this is your last warning")
+            return a + b
+        wlist, result = self.callCatchWarnings(meth, 1, 2)
+        self.assertEquals(3, result)
+        # would like just to compare them, but UserWarning doesn't implement
+        # eq well
+        w0, = wlist
+        self.assertIsInstance(w0, UserWarning)
+        self.assertEquals("this is your last warning", str(w0))
+
+
 class TestConvenienceMakers(TestCaseWithTransport):
     """Test for the make_* convenience functions."""
 
@@ -1632,3 +1688,29 @@ class TestCheckInventoryShape(TestCaseWithTransport):
             self.check_inventory_shape(tree.inventory, files)
         finally:
             tree.unlock()
+
+
+class TestBlackboxSupport(TestCase):
+    """Tests for testsuite blackbox features."""
+
+    def test_run_bzr_failure_not_caught(self):
+        # When we run bzr in blackbox mode, we want any unexpected errors to
+        # propagate up to the test suite so that it can show the error in the
+        # usual way, and we won't get a double traceback.
+        e = self.assertRaises(
+            AssertionError,
+            self.run_bzr, ['assert-fail'])
+        # make sure we got the real thing, not an error from somewhere else in
+        # the test framework
+        self.assertEquals('always fails', str(e))
+        # check that there's no traceback in the test log
+        self.assertNotContainsRe(self._get_log(keep_log_file=True),
+            r'Traceback')
+
+    def test_run_bzr_user_error_caught(self):
+        # Running bzr in blackbox mode, normal/expected/user errors should be
+        # caught in the regular way and turned into an error message plus exit
+        # code.
+        out, err = self.run_bzr(["log", "/nonexistantpath"], retcode=3)
+        self.assertEqual(out, '')
+        self.assertEqual(err, 'bzr: ERROR: Not a branch: "/nonexistantpath/".\n')

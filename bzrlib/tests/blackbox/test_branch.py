@@ -28,28 +28,23 @@ from bzrlib.workingtree import WorkingTree
 
 class TestBranch(ExternalBase):
 
-    def example_branch(test):
-        test.run_bzr('init')
-        file('hello', 'wt').write('foo')
-        test.run_bzr('add hello')
-        test.run_bzr('commit -m setup hello')
-        file('goodbye', 'wt').write('baz')
-        test.run_bzr('add goodbye')
-        test.run_bzr('commit -m setup goodbye')
+    def example_branch(self, path='.'):
+        tree = self.make_branch_and_tree(path)
+        self.build_tree_contents([(path + '/hello', 'foo')])
+        tree.add('hello')
+        tree.commit(message='setup')
+        self.build_tree_contents([(path + '/goodbye', 'baz')])
+        tree.add('goodbye')
+        tree.commit(message='setup')
 
     def test_branch(self):
         """Branch from one branch to another."""
-        os.mkdir('a')
-        os.chdir('a')
-        self.example_branch()
-        os.chdir('..')
+        self.example_branch('a')
         self.run_bzr('branch a b')
         b = branch.Branch.open('b')
         self.assertEqual('b\n', b.control_files.get_utf8('branch-name').read())
         self.run_bzr('branch a c -r 1')
-        os.chdir('b')
-        self.run_bzr('commit -m foo --unchanged')
-        os.chdir('..')
+        b.bzrdir.open_workingtree().commit(message='foo', allow_pointless=True)
 
     def test_branch_only_copies_history(self):
         # Knit branches should only push the history for the current revision.

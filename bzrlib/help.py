@@ -40,11 +40,22 @@ def help(topic=None, outfile=None):
         outfile = sys.stdout
 
     indices = HelpIndices()
-    topics = indices.search(topic)
-    shadowed_terms = []
-    for index, topic in topics[1:]:
-        shadowed_terms.append('%s%s' % (index.prefix, topic.get_help_topic()))
-    outfile.write(topics[0][1].get_help_text(shadowed_terms))
+
+    alias = _mod_commands.get_alias(topic)
+    try:
+        topics = indices.search(topic)
+        shadowed_terms = []
+        for index, topic in topics[1:]:
+            shadowed_terms.append('%s%s' % (index.prefix,
+                topic.get_help_topic()))
+        outfile.write(topics[0][1].get_help_text(shadowed_terms))
+    except errors.NoHelpTopic:
+        if alias is None:
+            raise
+
+    if alias is not None:
+        outfile.write("'bzr %s' is an alias for 'bzr %s'.\n" % (topic,
+            " ".join(alias)))
 
 
 def help_commands(outfile=None):
