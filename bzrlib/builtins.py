@@ -747,8 +747,17 @@ class cmd_push(Command):
             # The destination doesn't exist; create it.
             # XXX: Refactor the create_prefix/no_create_prefix code into a
             #      common helper function
+
+            def make_directory(transport):
+                transport.mkdir('.')
+                return transport
+
+            def redirected(redirected_transport, e, redirection_notice):
+                return transport.get_transport(e.get_target_url())
+
             try:
-                to_transport.mkdir('.')
+                to_transport = transport.do_catching_redirections(
+                    make_directory, to_transport, redirected)
             except errors.FileExists:
                 if not use_existing_dir:
                     raise errors.BzrCommandError("Target directory %s"
@@ -763,6 +772,9 @@ class cmd_push(Command):
                         " leading parent directories."
                         % location)
                 _create_prefix(to_transport)
+            except errors.TooManyRedirections:
+                raise errors.BzrCommandError("Too many redirections trying "
+                                             "to make %s." % location)
 
             # Now the target directory exists, but doesn't have a .bzr
             # directory. So we need to create it, along with any work to create
