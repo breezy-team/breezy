@@ -99,3 +99,35 @@ class TestSwitchHeavyweight(TestSwitch):
     def setUp(self):
         super(TestSwitchHeavyweight, self).setUp()
         self.lightweight = False
+
+    def test_switch_with_local_commits(self):
+        """Test switch complains about local commits unless --force given."""
+        tree = self._setup_tree()
+        to_branch = tree.bzrdir.sprout('branch-2').open_branch()
+        self.build_tree(['branch-1/file-2'])
+        tree.add('file-2')
+        tree.remove('file-1')
+        tree.commit('rev2')
+        checkout = tree.branch.create_checkout('checkout')
+        self.build_tree(['checkout/file-3'])
+        checkout.add('file-3')
+        checkout.commit(message='local only commit', local=True)
+        self.build_tree(['checkout/file-4'])
+        # Check the error reporting is as expected
+        err = self.assertRaises(errors.BzrCommandError,
+            switch.switch, checkout.bzrdir, to_branch)
+        self.assertContainsRe(str(err),
+            'Cannot switch as local commits found in the checkout.')
+        # Check all is ok when force is given
+        self.failIfExists('checkout/file-1')
+        self.failUnlessExists('checkout/file-2')
+        switch.switch(checkout.bzrdir, to_branch, force=True)
+        self.failUnlessExists('checkout/file-1')
+        self.failIfExists('checkout/file-2')
+        self.failIfExists('checkout/file-3')
+        self.failUnlessExists('checkout/file-4')
+        # Check that the checkout is a true mirror of the bound branch
+        missing_in_checkout = checkout.branch.missing_revisions(to_branch)
+        self.assertEqual([], missing_in_checkout)
+        missing_in_remote = to_branch.missing_revisions(checkout.branch)
+        self.assertEqual([], missing_in_remote)
