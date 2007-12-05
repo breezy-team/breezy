@@ -63,6 +63,7 @@ class VfsRequest(request.SmartServerRequest):
 class HasRequest(VfsRequest):
 
     def do(self, relpath):
+        relpath = self.translate_client_path(relpath)
         r = self._backing_transport.has(relpath) and 'yes' or 'no'
         return request.SuccessfulSmartServerResponse((r,))
 
@@ -70,6 +71,7 @@ class HasRequest(VfsRequest):
 class GetRequest(VfsRequest):
 
     def do(self, relpath):
+        relpath = self.translate_client_path(relpath)
         try:
             backing_bytes = self._backing_transport.get_bytes(relpath)
         except errors.ReadError:
@@ -81,6 +83,7 @@ class GetRequest(VfsRequest):
 class AppendRequest(VfsRequest):
 
     def do(self, relpath, mode):
+        relpath = self.translate_client_path(relpath)
         self._relpath = relpath
         self._mode = _deserialise_optional_mode(mode)
     
@@ -93,6 +96,7 @@ class AppendRequest(VfsRequest):
 class DeleteRequest(VfsRequest):
 
     def do(self, relpath):
+        relpath = self.translate_client_path(relpath)
         self._backing_transport.delete(relpath)
         return request.SuccessfulSmartServerResponse(('ok', ))
 
@@ -100,6 +104,7 @@ class DeleteRequest(VfsRequest):
 class IterFilesRecursiveRequest(VfsRequest):
 
     def do(self, relpath):
+        relpath = self.translate_client_path(relpath)
         transport = self._backing_transport.clone(relpath)
         filenames = transport.iter_files_recursive()
         return request.SuccessfulSmartServerResponse(('names',) + tuple(filenames))
@@ -108,6 +113,7 @@ class IterFilesRecursiveRequest(VfsRequest):
 class ListDirRequest(VfsRequest):
 
     def do(self, relpath):
+        relpath = self.translate_client_path(relpath)
         filenames = self._backing_transport.list_dir(relpath)
         return request.SuccessfulSmartServerResponse(('names',) + tuple(filenames))
 
@@ -115,6 +121,7 @@ class ListDirRequest(VfsRequest):
 class MkdirRequest(VfsRequest):
 
     def do(self, relpath, mode):
+        relpath = self.translate_client_path(relpath)
         self._backing_transport.mkdir(relpath,
                                       _deserialise_optional_mode(mode))
         return request.SuccessfulSmartServerResponse(('ok',))
@@ -123,6 +130,8 @@ class MkdirRequest(VfsRequest):
 class MoveRequest(VfsRequest):
 
     def do(self, rel_from, rel_to):
+        rel_from = self.translate_client_path(rel_from)
+        rel_to = self.translate_client_path(rel_to)
         self._backing_transport.move(rel_from, rel_to)
         return request.SuccessfulSmartServerResponse(('ok',))
 
@@ -130,6 +139,7 @@ class MoveRequest(VfsRequest):
 class PutRequest(VfsRequest):
 
     def do(self, relpath, mode):
+        relpath = self.translate_client_path(relpath)
         self._relpath = relpath
         self._mode = _deserialise_optional_mode(mode)
 
@@ -141,6 +151,7 @@ class PutRequest(VfsRequest):
 class PutNonAtomicRequest(VfsRequest):
 
     def do(self, relpath, mode, create_parent, dir_mode):
+        relpath = self.translate_client_path(relpath)
         self._relpath = relpath
         self._dir_mode = _deserialise_optional_mode(dir_mode)
         self._mode = _deserialise_optional_mode(mode)
@@ -159,6 +170,7 @@ class PutNonAtomicRequest(VfsRequest):
 class ReadvRequest(VfsRequest):
 
     def do(self, relpath):
+        relpath = self.translate_client_path(relpath)
         self._relpath = relpath
 
     def do_body(self, body_bytes):
@@ -182,6 +194,8 @@ class ReadvRequest(VfsRequest):
 class RenameRequest(VfsRequest):
 
     def do(self, rel_from, rel_to):
+        rel_from = self.translate_client_path(rel_from)
+        rel_to = self.translate_client_path(rel_to)
         self._backing_transport.rename(rel_from, rel_to)
         return request.SuccessfulSmartServerResponse(('ok', ))
 
@@ -189,6 +203,7 @@ class RenameRequest(VfsRequest):
 class RmdirRequest(VfsRequest):
 
     def do(self, relpath):
+        relpath = self.translate_client_path(relpath)
         self._backing_transport.rmdir(relpath)
         return request.SuccessfulSmartServerResponse(('ok', ))
 
@@ -196,6 +211,7 @@ class RmdirRequest(VfsRequest):
 class StatRequest(VfsRequest):
 
     def do(self, relpath):
+        relpath = self.translate_client_path(relpath)
         stat = self._backing_transport.stat(relpath)
         return request.SuccessfulSmartServerResponse(
             ('stat', str(stat.st_size), oct(stat.st_mode)))
