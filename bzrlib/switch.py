@@ -76,14 +76,51 @@ def _check_pending_merges(control):
             'committed or reverted before using switch.')
 
 
-def _set_branch_location(control, to_branch):
+def _set_branch_location(control, to_branch, force=False):
     """Set location value of a branch reference.
 
     :param control: BzrDir of the checkout to change
     :param to_branch: branch that the checkout is to reference
+    :param force: skip the check for local commits in a heavy checkout
     """
-    transport = control.get_branch_transport(None)
-    location = transport.put_bytes('location', to_branch.base)
+    branch_format = control.find_branch_format()
+    if branch_format.get_reference(control) is not None:
+        # Lightweight checkout: update the branch reference
+        branch_format.set_reference(control, to_branch)
+    else:
+        b = control.open_branch()
+        bound_branch = b.get_bound_location()
+        if bound_branch is not None:
+            # Heavyweight checkout: check all local commits
+            # have been pushed to the current bound branch then
+            # synchronise the local branch with the new remote branch
+            # and bind to it
+            if not force and _any_local_commits(b, bound_branch):
+                raise errors.BzrCommandError(
+                    'Cannot switch as local commits found in the checkout. '
+                    'Commit these to the bound branch or use --force to '
+                    'throw them away.')
+            b.pull(to_branch, overwrite=True)
+            b.set_bound_location(to_branch.base)
+        else:
+            raise errors.BzrCommandError('Cannot switch a branch, '
+                'only a checkout.')
+
+
+def _any_local_commits(this_branch, other_branch):
+    """Does this branch have any commits not in the other branch?"""
+    last_rev = _mod_revision.ensure_null(this_branch.last_revision())
+    if last_rev != _mod_revision.NULL_REVISION:
+        other_branch.lock_read()
+        try:
+            other_last_rev = other_branch.last_revision()
+            remote_graph = other_branch.repository.get_revision_graph(
+                other_last_rev)
+            if last_rev not in remote_graph:
+                return True
+        finally:
+            other_branch.unlock()
+    return False
 
 
 def _update(tree, source_repository):
