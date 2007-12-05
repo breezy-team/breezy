@@ -54,12 +54,14 @@ class SmartServerRequestFindRepository(SmartServerRequest):
 
         :return: norepository or ok, relpath.
         """
-        bzrdir = BzrDir.open_from_transport(self.transport_from_client_path(path))
+        bzrdir = BzrDir.open_from_transport(
+            self.transport_from_client_path(path))
         try:
             repository = bzrdir.find_repository()
             # the relpath of the bzrdir in the found repository gives us the 
             # path segments to pop-out.
-            relpath = repository.bzrdir.root_transport.relpath(bzrdir.root_transport.base)
+            relpath = repository.bzrdir.root_transport.relpath(
+                bzrdir.root_transport.base)
             if len(relpath):
                 segments = ['..'] * len(relpath.split('/'))
             else:
@@ -98,7 +100,8 @@ class SmartServerRequestOpenBranch(SmartServerRequest):
         If a bzrdir is not present, an exception is propogated
         rather than 'no branch' because these are different conditions.
         """
-        bzrdir = BzrDir.open_from_transport(self.transport_from_client_path(path))
+        bzrdir = BzrDir.open_from_transport(
+            self.transport_from_client_path(path))
         try:
             reference_url = bzrdir.get_branch_reference()
             if reference_url is None:
