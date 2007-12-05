@@ -2126,22 +2126,15 @@ class cmd_cat(Command):
     def run(self, filename, revision=None, name_from_revision=False):
         if revision is not None and len(revision) != 1:
             raise errors.BzrCommandError("bzr cat --revision takes exactly"
-                                        " one number")
-        tree = None
+                                         " one revision specifier")
+        tree, branch, relpath = \
+            bzrdir.BzrDir.open_containing_tree_or_branch(filename)
+        branch.lock_read()
         try:
-            tree, b, relpath = \
-                    bzrdir.BzrDir.open_containing_tree_or_branch(filename)
-        except errors.NotBranchError:
-            pass
-
-        if revision is not None and revision[0].get_branch() is not None:
-            b = Branch.open(revision[0].get_branch())
-        b.lock_read()
-        try:
-            return self._run(tree, b, relpath, filename, revision,
-                name_from_revision)
+            return self._run(tree, branch, relpath, filename, revision,
+                             name_from_revision)
         finally:
-            b.unlock()
+            branch.unlock()
 
     def _run(self, tree, b, relpath, filename, revision, name_from_revision):
         if tree is None:

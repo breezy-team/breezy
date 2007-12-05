@@ -34,6 +34,9 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+   * Better error message when running ``bzr cat`` on a non-existant branch.
+     (Lukáš Lalinský, #133782)
+
    * Catch OSError 17 (file exists) in final phase of tree transform and show
      filename to user.
      (Alexander Belchenko, #111758)
