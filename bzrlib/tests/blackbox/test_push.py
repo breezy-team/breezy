@@ -29,7 +29,7 @@ from bzrlib.bzrdir import BzrDirMetaFormat1
 from bzrlib.osutils import abspath
 from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
 from bzrlib.tests.blackbox import ExternalBase
-from bzrlib.transport import register_transport
+from bzrlib.transport import register_transport, unregister_transport
 from bzrlib.transport.memory import MemoryServer, MemoryTransport
 from bzrlib.uncommit import uncommit
 from bzrlib.urlutils import local_path_from_url
@@ -271,13 +271,17 @@ class RedirectingMemoryServer(MemoryServer):
         self._files = {}
         self._locks = {}
         self._scheme = 'redirecting-memory+%s:///' % id(self)
-        def memory_factory(url):
-            result = RedirectingMemoryTransport(url)
-            result._dirs = self._dirs
-            result._files = self._files
-            result._locks = self._locks
-            return result
-        register_transport(self._scheme, memory_factory)
+        register_transport(self._scheme, self._memory_factory)
+
+    def _memory_factory(self, url):
+        result = RedirectingMemoryTransport(url)
+        result._dirs = self._dirs
+        result._files = self._files
+        result._locks = self._locks
+        return result
+
+    def tearDown(self):
+        unregister_transport(self._scheme, self._memory_factory)
 
 
 class TestPushRedirect(ExternalBase):
