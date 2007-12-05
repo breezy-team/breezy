@@ -129,7 +129,7 @@ class TestCat(TestCaseWithTransport):
         out, err = self.run_bzr_subprocess(['cat', url])
         self.assertEqual('contents of README\n', out)
 
-    def test_cat_nonexistant_branch(self):
+    def test_cat_nonexistent_branch(self):
         if sys.platform == "win32":
             location = "C:/i/do/not/exist"
         else:
