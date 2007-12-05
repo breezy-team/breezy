@@ -34,10 +34,19 @@ To change where a checkout is bound to, follow these steps:
  3. Make your checkout a copy of the desired branch by using
     the ``update`` command followed by the ``revert`` command.
 
-
 Note that simply binding to a new branch
-and running ``update`` is not enough: you need the ``revert`` to
-throw away any local differences in the working tree.
+and running ``update`` merges in your local changes. You need
+to decide whether to keep them or not by running either ``revert``
+or ``commit``.
+
+An alternative to the bind+update recipe is:
+
+ 1. Use the ``unbind`` command to turn the checkout into a normal branch.
+
+ 2. Run ``bzr pull --overwrite URL`` to make the branch a mirror of
+    a new URL.
+
+ 3. Run ``bzr bind URL`` to bind to that URL.
 
 Switching a lightweight checkout
 --------------------------------
@@ -59,7 +68,7 @@ are working on with ease. For example::
   (hack away)
 
 Note that X-trunk in this example will have a ``.bzr`` directory within it
-but their will be no working tree there as the branch was created in
+but there will be no working tree there as the branch was created in
 a tree-less repository. You can grab or create as many branches as you
 need there and switch between them as required. For example::
 
@@ -75,7 +84,8 @@ In many ways, ``switch`` operates like ``update`` in that it
 refreshes your working tree and merges in any local changes you
 have made. The primary different is that ``switch`` requires
 a branch location and it is only supported (currently) on
-lightweight checkouts.
+lightweight checkouts. ``switch`` also only preserves
+uncommitted changes while update keeps committed ones.
 
 Note: The branches may be local only or they may be bound to
 remote ones (by creating them with ``checkout`` or by using ``bind``

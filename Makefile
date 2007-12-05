@@ -92,6 +92,7 @@ txt_files := $(wildcard $(addsuffix /*.txt, $(doc_dir))) $(derived_txt_files) \
 non_txt_files := \
        doc/default.css \
        doc/en/quick-reference/quick-start-summary.svg \
+       doc/en/quick-reference/quick-start-summary.png \
        $(wildcard doc/en/user-guide/images/*.png)
 htm_files := $(patsubst %.txt, %.html, $(txt_files)) 
 dev_txt_files := $(wildcard $(addsuffix /*.txt, doc/developers))

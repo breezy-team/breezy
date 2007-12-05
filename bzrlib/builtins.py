@@ -747,8 +747,17 @@ class cmd_push(Command):
             # The destination doesn't exist; create it.
             # XXX: Refactor the create_prefix/no_create_prefix code into a
             #      common helper function
+
+            def make_directory(transport):
+                transport.mkdir('.')
+                return transport
+
+            def redirected(redirected_transport, e, redirection_notice):
+                return transport.get_transport(e.get_target_url())
+
             try:
-                to_transport.mkdir('.')
+                to_transport = transport.do_catching_redirections(
+                    make_directory, to_transport, redirected)
             except errors.FileExists:
                 if not use_existing_dir:
                     raise errors.BzrCommandError("Target directory %s"
@@ -763,6 +772,9 @@ class cmd_push(Command):
                         " leading parent directories."
                         % location)
                 _create_prefix(to_transport)
+            except errors.TooManyRedirections:
+                raise errors.BzrCommandError("Too many redirections trying "
+                                             "to make %s." % location)
 
             # Now the target directory exists, but doesn't have a .bzr
             # directory. So we need to create it, along with any work to create
@@ -3574,9 +3586,6 @@ class cmd_uncommit(Command):
     def run(self, location=None,
             dry_run=False, verbose=False,
             revision=None, force=False):
-        from bzrlib.log import log_formatter, show_log
-        from bzrlib.uncommit import uncommit
-
         if location is None:
             location = u'.'
         control, relpath = bzrdir.BzrDir.open_containing(location)
@@ -3587,19 +3596,38 @@ class cmd_uncommit(Command):
             tree = None
             b = control.open_branch()
 
+        if tree is not None:
+            tree.lock_write()
+        else:
+            b.lock_write()
+        try:
+            return self._run(b, tree, dry_run, verbose, revision, force)
+        finally:
+            if tree is not None:
+                tree.unlock()
+            else:
+                b.unlock()
+
+    def _run(self, b, tree, dry_run, verbose, revision, force):
+        from bzrlib.log import log_formatter, show_log
+        from bzrlib.uncommit import uncommit
+
+        last_revno, last_rev_id = b.last_revision_info()
+
         rev_id = None
         if revision is None:
-            revno = b.revno()
+            revno = last_revno
+            rev_id = last_rev_id
         else:
             # 'bzr uncommit -r 10' actually means uncommit
             # so that the final tree is at revno 10.
             # but bzrlib.uncommit.uncommit() actually uncommits
             # the revisions that are supplied.
             # So we need to offset it by one
-            revno = revision[0].in_history(b).revno+1
+            revno = revision[0].in_history(b).revno + 1
+            if revno <= last_revno:
+                rev_id = b.get_rev_id(revno)
 
-        if revno <= b.revno():
-            rev_id = b.get_rev_id(revno)
         if rev_id is None or _mod_revision.is_null(rev_id):
             self.outf.write('No revisions to uncommit.\n')
             return 1
@@ -3613,7 +3641,7 @@ class cmd_uncommit(Command):
                  verbose=False,
                  direction='forward',
                  start_revision=revno,
-                 end_revision=b.revno())
+                 end_revision=last_revno)
 
         if dry_run:
             print 'Dry-run, pretending to remove the above revisions.'
@@ -3628,7 +3656,7 @@ class cmd_uncommit(Command):
                     return 0
 
         uncommit(b, tree=tree, dry_run=dry_run, verbose=verbose,
-                revno=revno)
+                 revno=revno)
 
 
 class cmd_break_lock(Command):
