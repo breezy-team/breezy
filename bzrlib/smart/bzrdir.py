@@ -30,15 +30,24 @@ class SmartServerRequestOpenBzrDir(SmartServerRequest):
 
     def do(self, path):
         from bzrlib.bzrdir import BzrDirFormat
-        t = self.transport_from_client_path(path)
-        default_format = BzrDirFormat.get_default_format()
-        real_bzrdir = default_format.open(t, _found=True)
         try:
-            real_bzrdir._format.probe_transport(t)
-        except (errors.NotBranchError, errors.UnknownFormatError):
+            t = self.transport_from_client_path(path)
+        except errors.PathNotChild:
+            # The client is trying to ask about a path that they have no access
+            # to.
+            # Ideally we'd return a FailedSmartServerResponse here rather than
+            # a "successful" negative, but we want to be compatibile with
+            # clients that don't anticipate errors from this method.
             answer = 'no'
         else:
-            answer = 'yes'
+            default_format = BzrDirFormat.get_default_format()
+            real_bzrdir = default_format.open(t, _found=True)
+            try:
+                real_bzrdir._format.probe_transport(t)
+            except (errors.NotBranchError, errors.UnknownFormatError):
+                answer = 'no'
+            else:
+                answer = 'yes'
         return SuccessfulSmartServerResponse((answer,))
 
 

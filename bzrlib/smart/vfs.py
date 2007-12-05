@@ -104,6 +104,8 @@ class DeleteRequest(VfsRequest):
 class IterFilesRecursiveRequest(VfsRequest):
 
     def do(self, relpath):
+        if not relpath.endswith('/'):
+            relpath += '/'
         relpath = self.translate_client_path(relpath)
         transport = self._backing_transport.clone(relpath)
         filenames = transport.iter_files_recursive()
@@ -113,6 +115,8 @@ class IterFilesRecursiveRequest(VfsRequest):
 class ListDirRequest(VfsRequest):
 
     def do(self, relpath):
+        if not relpath.endswith('/'):
+            relpath += '/'
         relpath = self.translate_client_path(relpath)
         filenames = self._backing_transport.list_dir(relpath)
         return request.SuccessfulSmartServerResponse(('names',) + tuple(filenames))
@@ -211,6 +215,8 @@ class RmdirRequest(VfsRequest):
 class StatRequest(VfsRequest):
 
     def do(self, relpath):
+        if not relpath.endswith('/'):
+            relpath += '/'
         relpath = self.translate_client_path(relpath)
         stat = self._backing_transport.stat(relpath)
         return request.SuccessfulSmartServerResponse(

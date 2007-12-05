@@ -53,13 +53,14 @@ class SmartServerStreamMedium(object):
     which will typically be a LocalTransport looking at the server's filesystem.
     """
 
-    def __init__(self, backing_transport):
+    def __init__(self, backing_transport, root_client_path='/'):
         """Construct new server.
 
         :param backing_transport: Transport for the directory served.
         """
         # backing_transport could be passed to serve instead of __init__
         self.backing_transport = backing_transport
+        self.root_client_path = root_client_path
         self.finished = False
 
     def serve(self):
@@ -91,7 +92,8 @@ class SmartServerStreamMedium(object):
             bytes = bytes[len(REQUEST_VERSION_TWO):]
         else:
             protocol_class = SmartServerRequestProtocolOne
-        protocol = protocol_class(self.backing_transport, self._write_out)
+        protocol = protocol_class(
+            self.backing_transport, self._write_out, self.root_client_path)
         protocol.accept_bytes(bytes)
         return protocol
 
@@ -139,13 +141,14 @@ class SmartServerStreamMedium(object):
 
 class SmartServerSocketStreamMedium(SmartServerStreamMedium):
 
-    def __init__(self, sock, backing_transport):
+    def __init__(self, sock, backing_transport, root_client_path='/'):
         """Constructor.
 
         :param sock: the socket the server will read from.  It will be put
             into blocking mode.
         """
-        SmartServerStreamMedium.__init__(self, backing_transport)
+        SmartServerStreamMedium.__init__(
+            self, backing_transport, root_client_path=root_client_path)
         self.push_back = ''
         sock.setblocking(True)
         self.socket = sock

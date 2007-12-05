@@ -51,6 +51,7 @@ class SmartServerRequest(object):
             from the client.  Clients will not be able to refer to paths above
             this root.
         """
+        rcp = root_client_path
         self._backing_transport = backing_transport
         if not root_client_path.startswith('/'):
             root_client_path = '/' + root_client_path
