@@ -24,6 +24,10 @@ from bzrlib import branch, errors, switch, tests
 
 class TestSwitch(tests.TestCaseWithTransport):
 
+    def setUp(self):
+        super(TestSwitch, self).setUp()
+        self.lightweight = True
+
     def _setup_tree(self):
         tree = self.make_branch_and_tree('branch-1')
         self.build_tree(['branch-1/file-1'])
@@ -39,7 +43,8 @@ class TestSwitch(tests.TestCaseWithTransport):
         tree.add('file-2')
         tree.remove('file-1')
         tree.commit('rev2')
-        checkout = tree.branch.create_checkout('checkout', lightweight=True)
+        checkout = tree.branch.create_checkout('checkout',
+            lightweight=self.lightweight)
         self.build_tree(['checkout/file-3'])
         checkout.add('file-3')
         self.failIfExists('checkout/file-1')
@@ -52,7 +57,8 @@ class TestSwitch(tests.TestCaseWithTransport):
     def test_switch_after_branch_moved(self):
         """Test switch after the branch is moved."""
         tree = self._setup_tree()
-        checkout = tree.branch.create_checkout('checkout', lightweight=True)
+        checkout = tree.branch.create_checkout('checkout',
+            lightweight=self.lightweight)
         self.build_tree(['branch-1/file-2'])
         tree.add('file-2')
         tree.remove('file-1')
@@ -63,27 +69,19 @@ class TestSwitch(tests.TestCaseWithTransport):
         # rename the branch on disk, the checkout object is now invalid.
         os.rename('branch-1', 'branch-2')
         to_branch = branch.Branch.open('branch-2')
-        switch.switch(checkout.bzrdir, to_branch)
+        force = not self.lightweight
+        switch.switch(checkout.bzrdir, to_branch, force)
         self.failIfExists('checkout/file-1')
         self.failUnlessExists('checkout/file-2')
         self.failUnlessExists('checkout/file-3')
-
-    def test_switch_on_heavy_checkout(self):
-        """Test graceful failure on heavyweight checkouts."""
-        tree = self._setup_tree()
-        checkout = tree.branch.create_checkout('checkout-1', lightweight=False)
-        branch2 = self.make_branch('branch-2')
-        err = self.assertRaises(errors.BzrCommandError,
-            switch.switch, checkout.bzrdir, branch2)
-        self.assertContainsRe(str(err),
-            "The switch command can only be used on a lightweight checkout")
 
     def test_switch_when_pending_merges(self):
         """Test graceful failure if pending merges are outstanding."""
         # Create 2 branches and a checkout
         tree = self._setup_tree()
         tree2 = tree.bzrdir.sprout('branch-2').open_workingtree()
-        checkout = tree.branch.create_checkout('checkout', lightweight=True)
+        checkout = tree.branch.create_checkout('checkout',
+            lightweight=self.lightweight)
         # Change tree2 and merge it into the checkout without committing
         self.build_tree(['branch-2/file-2'])
         tree2.add('file-2')
@@ -94,3 +92,10 @@ class TestSwitch(tests.TestCaseWithTransport):
             switch.switch, checkout.bzrdir, tree2.branch)
         self.assertContainsRe(str(err),
             "Pending merges must be committed or reverted before using switch")
+
+
+class TestSwitchHeavyweight(TestSwitch):
+
+    def setUp(self):
+        super(TestSwitchHeavyweight, self).setUp()
+        self.lightweight = False

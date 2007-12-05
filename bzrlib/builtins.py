@@ -4356,16 +4356,30 @@ class cmd_reconfigure(Command):
 
 
 class cmd_switch(Command):
-    """Set the branch of a lightweight checkout and update."""
+    """Set the branch of a checkout and update.
+    
+    For lightweight checkouts, this changes the branch being referenced.
+    For heavyweight checkouts, this checks that there are no local commits
+    versus the current bound branch, then it makes the local branch a mirror
+    of the new location and binds to it.
+    
+    In both cases, the working tree is updated and uncommitted changes
+    are merged. The user can commit or revert these as they desire.
+
+    Pending merges need to be committed or reverted before using switch.
+    """
 
     takes_args = ['to_location']
+    takes_options = [Option('force',
+                        help='Switch even if local commits will be lost.')
+                     ]
 
-    def run(self, to_location):
+    def run(self, to_location, force=False):
         from bzrlib import switch
         to_branch = Branch.open(to_location)
         tree_location = '.'
         control_dir = bzrdir.BzrDir.open_containing(tree_location)[0]
-        switch.switch(control_dir, to_branch)
+        switch.switch(control_dir, to_branch, force)
         note('Switched to branch: %s',
             urlutils.unescape_for_display(to_branch.base, 'utf-8'))
 

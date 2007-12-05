@@ -16,47 +16,27 @@
 
 # Original author: David Allouche
 
-from bzrlib import errors, merge
+from bzrlib import errors, merge, revision
 from bzrlib.branch import Branch, BranchFormat, BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir
 from bzrlib.trace import note
 
 
-def switch(control_dir, to_branch):
+def switch(control_dir, to_branch, force=False):
     """Switch the branch associated with a checkout.
 
     :param control_dir: BzrDir of the checkout to change
     :param to_branch: branch that the checkout is to reference
+    :param force: skip the check for local commits in a heavy checkout
     """
-    _check_switch_branch_format(control_dir)
     _check_pending_merges(control_dir)
     try:
         source_repository = control_dir.open_branch().repository
     except errors.NotBranchError:
         source_repository = to_branch.repository
-    _set_branch_location(control_dir, to_branch)
+    _set_branch_location(control_dir, to_branch, force)
     tree = control_dir.open_workingtree()
     _update(tree, source_repository)
-
-
-def _check_switch_branch_format(control):
-    """Check that the branch format supports the switch operation.
-
-    Note: Only lightweight checkouts are currently supported.
-    This may change in the future though.
-
-    :param control: BzrDir of the branch to check
-    """
-    branch_format = BranchFormat.find_format(control)
-    format_string = branch_format.get_format_string()
-    if not format_string.startswith("Bazaar-NG Branch Reference Format "):
-        raise errors.BzrCommandError(
-            'The switch command can only be used on a lightweight checkout.\n'
-            'Expected branch reference, found %s at %s' % (
-            format_string.strip(), control.root_transport.base))
-    if not format_string == BranchReferenceFormat().get_format_string():
-        raise errors.BzrCommandError(
-            'Unsupported: %r' % (format_string.strip(),))        
 
 
 def _check_pending_merges(control):
@@ -100,6 +80,7 @@ def _set_branch_location(control, to_branch, force=False):
                     'Cannot switch as local commits found in the checkout. '
                     'Commit these to the bound branch or use --force to '
                     'throw them away.')
+            b.set_bound_location(None)
             b.pull(to_branch, overwrite=True)
             b.set_bound_location(to_branch.base)
         else:
@@ -107,10 +88,12 @@ def _set_branch_location(control, to_branch, force=False):
                 'only a checkout.')
 
 
-def _any_local_commits(this_branch, other_branch):
+def _any_local_commits(this_branch, other_branch_url):
     """Does this branch have any commits not in the other branch?"""
-    last_rev = _mod_revision.ensure_null(this_branch.last_revision())
-    if last_rev != _mod_revision.NULL_REVISION:
+    last_rev = revision.ensure_null(this_branch.last_revision())
+    if last_rev != revision.NULL_REVISION:
+        a_bzrdir, relpath = BzrDir.open_containing(other_branch_url)
+        other_branch = a_bzrdir.open_branch()
         other_branch.lock_read()
         try:
             other_last_rev = other_branch.last_revision()
