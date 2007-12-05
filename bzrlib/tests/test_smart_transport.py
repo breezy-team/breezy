@@ -1222,7 +1222,7 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
         handler.accept_body('100,1')
         handler.end_of_body()
         self.assertTrue(handler.finished_reading)
-        self.assertEqual(('ShortReadvError', 'a-file', '100', '1', '0'),
+        self.assertEqual(('ShortReadvError', './a-file', '100', '1', '0'),
             handler.response.args)
         self.assertEqual(None, handler.response.body)
 
