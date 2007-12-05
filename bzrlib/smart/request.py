@@ -45,7 +45,6 @@ class SmartServerRequest(object):
             the client.
         """
         self._backing_transport = backing_transport
-#        self._real_backing_transport = backing_transport
         if not root_client_path.startswith('/'):
             root_client_path = '/' + root_client_path
         if not root_client_path.endswith('/'):
@@ -76,14 +75,6 @@ class SmartServerRequest(object):
         """
         self._check_enabled()
         return self.do(*args)
-#        chrooted_backing = ChrootServer(self._real_backing_transport)
-#        chrooted_backing.setUp()
-#        self._backing_transport = get_transport(chrooted_backing.get_url())
-#        try:
-#            return self.do(*args)
-#        finally:
-#            self._backing_transport = None
-#            chrooted_backing.tearDown()
 
     def do_body(self, body_bytes):
         """Called if the client sends a body with the request.
@@ -218,8 +209,6 @@ class SmartServerRequestHandler(object):
 
     def dispatch_command(self, cmd, args):
         """Deprecated compatibility method.""" # XXX XXX
-        #mutter('%s[%s]: %r %r)' % (self._backing_transport.server.backing_transport.base,
-        #    self._backing_transport.base_path, cmd, args))
         try:
             command = self._commands.get(cmd)
         except LookupError:
@@ -239,7 +228,6 @@ class SmartServerRequestHandler(object):
         result = self._call_converting_errors(callable, args, kwargs)
 
         if result is not None:
-            #mutter('  -> %r' % (result,))
             self.response = result
             self.finished_reading = True
 
