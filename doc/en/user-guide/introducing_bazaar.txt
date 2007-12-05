@@ -153,13 +153,13 @@ you may wish to get started quickly by reading the following documents:
 
  * `Bazaar in five minutes`_ - a mini-tutorial
 
- * `Bazaar Quick Start Guide`_ - a one page summary of commonly used commands.
+ * `Bazaar Quick Start Card`_ - a one page summary of commonly used commands.
 
 The online help and `Bazaar User Reference`_ are also particularly useful as
 they provide all the gory details on the commands and options available.
 
 .. _Bazaar in five minutes: ../mini-tutorial/index.html
-.. _Bazaar Quick Start Guide: ../quick-reference/quick-start-summary.svg
+.. _Bazaar Quick Start Card: ../quick-reference/quick-start-summary.svg
 .. _Bazaar User Reference: ../user-reference/bzr_man.html
 
 We hope you find this manual useful. If you have suggestions on how it
