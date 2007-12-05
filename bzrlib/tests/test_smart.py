@@ -36,14 +36,18 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.branch import BranchReferenceFormat
+# Some imports so that "smart.branch.foo", etc, work correctly.
+import bzrlib.smart.branch
+import bzrlib.smart.bzrdir
+import bzrlib.smart.repository
 from bzrlib.smart.request import (
     FailedSmartServerResponse,
     SmartServerRequest,
     SmartServerResponse,
     SuccessfulSmartServerResponse,
     )
-from bzrlib.util import bencode
 from bzrlib.transport import chroot, get_transport
+from bzrlib.util import bencode
 
 
 class TestCaseWithChrootedTransport(tests.TestCaseWithTransport):
