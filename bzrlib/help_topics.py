@@ -272,6 +272,7 @@ development.
 -Dhpss         Trace smart protocol requests and responses.
 -Dindex        Trace major index operations.
 -Dlock         Trace when lockdir locks are taken or released.
+-Dmerge        Emit information for debugging merges.
 """
 
 _standard_options = \

@@ -20,6 +20,7 @@ import errno
 import warnings
 
 from bzrlib import (
+    debug,
     errors,
     osutils,
     patiencediff,
@@ -993,6 +994,12 @@ class WeaveMerger(Merge3Merger):
         and conflicts.
         """
         plan = self.this_tree.plan_file_merge(file_id, self.other_tree)
+        if 'merge' in debug.debug_flags:
+            plan = list(plan)
+            trans_id = self.tt.trans_id_file_id(file_id)
+            name = self.tt.final_name(trans_id) + '.plan'
+            contents = ('%10s|%s' % l for l in plan)
+            self.tt.new_file(name, self.tt.final_parent(trans_id), contents)
         textmerge = PlanWeaveMerge(plan, '<<<<<<< TREE\n',
             '>>>>>>> MERGE-SOURCE\n')
         return textmerge.merge_lines(self.reprocess)
