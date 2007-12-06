@@ -86,6 +86,8 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
                       sequencematcher=sequence_matcher)
 
     ud = list(ud)
+    if len(ud) == 0: # Identical contents, nothing to do
+        return
     # work-around for difflib being too smart for its own good
     # if /dev/null is "1,0", patch won't recognize it as /dev/null
     if not oldlines:
