@@ -56,3 +56,11 @@ class ReposConfigTests(TestCaseInTempDir):
         self.assertEquals(True, c.get_override_svn_revprops())
         c.set_user_option("override-svn-revprops", "False")
         self.assertEquals(False, c.get_override_svn_revprops())
+
+    def test_set_revprops(self):
+        c = SvnRepositoryConfig("blabla2")
+        self.assertEquals(None, c.get_set_revprops())
+        c.set_user_option("set-revprops", "True")
+        self.assertEquals(True, c.get_set_revprops())
+        c.set_user_option("set-revprops", "False")
+        self.assertEquals(False, c.get_set_revprops())

@@ -14,3 +14,6 @@ The following settings would be set on the revisions:
 
 bzr-svn should not be looking at any file properties set on the branch root if any 
 of these revision properties is set.
+
+An additional option "set-revprops" in ~/.subversion.conf will be provided. 
+It defaults to True if the repository supports setting revision properties.
