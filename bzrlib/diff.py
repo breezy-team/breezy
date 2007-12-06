@@ -743,11 +743,11 @@ class DiffTree(object):
         """
         try:
             old_kind = self.old_tree.kind(file_id)
-        except errors.NoSuchId:
+        except (errors.NoSuchId, errors.NoSuchFile):
             old_kind = None
         try:
             new_kind = self.new_tree.kind(file_id)
-        except errors.NoSuchId:
+        except (errors.NoSuchId, errors.NoSuchFile):
             new_kind = None
 
         result = DiffPath._diff_many(self.differs, file_id, old_path,
