@@ -80,6 +80,8 @@ def convert_error(err):
         return UnexpectedEndOfContainerError()
     elif num == svn.core.SVN_ERR_RA_SVN_MALFORMED_DATA:
         return TransportError("Malformed data", msg)
+    elif num == svn.core.SVN_ERR_RA_NOT_IMPLEMENTED:
+        return NotImplementedError("Function not implemented in remote server")
     elif num == SVN_ERR_UNKNOWN_HOSTNAME:
         return ConnectionError(msg=msg)
     elif num > 0 and num < 1000:
