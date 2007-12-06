@@ -766,8 +766,9 @@ class SvnRepository(Repository):
                 # check again.
                 raise e
             found = False
-            # TODO: Start at self.revmap.last_revnum_checked(str(scheme))
-            for (branch, revno, _) in self.find_branches(scheme, last_revnum):
+            for (branch, revno, _) in self.find_branches(scheme, 
+                    self.revmap.last_revnum_checked(str(scheme)),
+                    last_revnum):
                 # Look at their bzr:revision-id-vX
                 revids = []
                 try:
@@ -1030,15 +1031,15 @@ class SvnRepository(Repository):
 
         return self._ancestry
 
-    def find_branches(self, scheme, revnum=None):
+    def find_branches(self, scheme, from_revnum=0, to_revnum=None):
         """Find all branches that were changed in the specified revision number.
 
         :param revnum: Revision to search for branches.
         :return: iterator that returns tuples with (path, revision number, still exists). The revision number is the revision in which the branch last existed.
         """
         assert scheme is not None
-        if revnum is None:
-            revnum = self.transport.get_latest_revnum()
+        if to_revnum is None:
+            to_revnum = self.transport.get_latest_revnum()
 
         created_branches = {}
 
@@ -1046,8 +1047,8 @@ class SvnRepository(Repository):
 
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            for i in range(revnum+1):
-                pb.update("finding branches", i, revnum+1)
+            for i in range(from_revnum, to_revnum+1):
+                pb.update("finding branches", i, to_revnum+1)
                 paths = self._log.get_revision_paths(i)
                 for p in sorted(paths.keys()):
                     if scheme.is_branch(p) or scheme.is_tag(p):
@@ -1088,7 +1089,7 @@ class SvnRepository(Repository):
             pb.finished()
 
         for p in created_branches:
-            j = self._log.find_latest_change(p, revnum, 
+            j = self._log.find_latest_change(p, to_revnum, 
                                              include_parents=True,
                                              include_children=True)
             if j is None:
