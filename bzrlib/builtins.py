@@ -747,8 +747,17 @@ class cmd_push(Command):
             # The destination doesn't exist; create it.
             # XXX: Refactor the create_prefix/no_create_prefix code into a
             #      common helper function
+
+            def make_directory(transport):
+                transport.mkdir('.')
+                return transport
+
+            def redirected(redirected_transport, e, redirection_notice):
+                return transport.get_transport(e.get_target_url())
+
             try:
-                to_transport.mkdir('.')
+                to_transport = transport.do_catching_redirections(
+                    make_directory, to_transport, redirected)
             except errors.FileExists:
                 if not use_existing_dir:
                     raise errors.BzrCommandError("Target directory %s"
@@ -763,6 +772,9 @@ class cmd_push(Command):
                         " leading parent directories."
                         % location)
                 _create_prefix(to_transport)
+            except errors.TooManyRedirections:
+                raise errors.BzrCommandError("Too many redirections trying "
+                                             "to make %s." % location)
 
             # Now the target directory exists, but doesn't have a .bzr
             # directory. So we need to create it, along with any work to create
@@ -2114,22 +2126,15 @@ class cmd_cat(Command):
     def run(self, filename, revision=None, name_from_revision=False):
         if revision is not None and len(revision) != 1:
             raise errors.BzrCommandError("bzr cat --revision takes exactly"
-                                        " one number")
-        tree = None
+                                         " one revision specifier")
+        tree, branch, relpath = \
+            bzrdir.BzrDir.open_containing_tree_or_branch(filename)
+        branch.lock_read()
         try:
-            tree, b, relpath = \
-                    bzrdir.BzrDir.open_containing_tree_or_branch(filename)
-        except errors.NotBranchError:
-            pass
-
-        if revision is not None and revision[0].get_branch() is not None:
-            b = Branch.open(revision[0].get_branch())
-        b.lock_read()
-        try:
-            return self._run(tree, b, relpath, filename, revision,
-                name_from_revision)
+            return self._run(tree, branch, relpath, filename, revision,
+                             name_from_revision)
         finally:
-            b.unlock()
+            branch.unlock()
 
     def _run(self, tree, b, relpath, filename, revision, name_from_revision):
         if tree is None:
@@ -2599,6 +2604,9 @@ class cmd_selftest(Command):
                                  ' expression.'),
                      Option('strict', help='Fail on missing dependencies or '
                             'known failures.'),
+                     Option('coverage', type=str, argname="DIRECTORY",
+                            help='Generate line coverage report in this'
+                                 'directory.'),
                      ]
     encoding_type = 'replace'
 
@@ -2606,7 +2614,7 @@ class cmd_selftest(Command):
             transport=None, benchmark=None,
             lsprof_timed=None, cache_dir=None,
             first=False, list_only=False,
-            randomize=None, exclude=None, strict=False):
+            randomize=None, exclude=None, strict=False, coverage=None):
         import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
@@ -2648,6 +2656,7 @@ class cmd_selftest(Command):
                               random_seed=randomize,
                               exclude_pattern=exclude,
                               strict=strict,
+                              coverage_dir=coverage,
                               )
         finally:
             if benchfile is not None:
@@ -3957,8 +3966,8 @@ class cmd_send(Command):
     for that mirror.
 
     Mail is sent using your preferred mail program.  This should be transparent
-    on Windows (it uses MAPI).  On *nix, it requires the xdg-email utility.  If
-    the preferred client can't be found (or used), your editor will be used.
+    on Windows (it uses MAPI).  On Linux, it requires the xdg-email utility.
+    If the preferred client can't be found (or used), your editor will be used.
     
     To use a specific mail program, set the mail_client configuration option.
     (For Thunderbird 1.5, this works around some bugs.)  Supported values for

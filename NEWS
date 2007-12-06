@@ -9,11 +9,25 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+   * Added a --coverage option to selftest. (Andrew Bennetts)
+
    * ``bzr commit`` now doesn't print the revision number twice. (Matt
      Nordhoff, #172612)
 
+   * New configuration option ``bugtracker_<tracker_abbrevation>_url`` to
+     define locations of bug trackers that are not directly supported by
+     bzr or a plugin. The URL will be treated as a template and ``{id}``
+     placeholders will be replaced by specific bug IDs.  (Lukáš Lalinský)
+
    * Support logging single merge revisions with short and line log formatters.
      (Kent Gibson)
+
+   * User Guide enhanced with suggested readability improvements from
+     Matt Revell and corrections from John Arbash Meinel. (Ian Clatworthy)
+
+   * Quick Start Guide renamed to Quick Start Card, moved down in
+     the catalog, provided in png format and updated to refer to ``send``
+     instead of ``bundle``. (Ian Clatworthy, #165080)
 
   INTERNALS:
 
@@ -21,6 +35,9 @@ IN DEVELOPMENT
       (Vincent Ladeuil)
 
   BUGFIXES:
+
+   * Better error message when running ``bzr cat`` on a non-existant branch.
+     (Lukáš Lalinský, #133782)
 
    * Catch OSError 17 (file exists) in final phase of tree transform and show
      filename to user.
@@ -33,6 +50,9 @@ IN DEVELOPMENT
 
    * Check for missing basis texts when fetching from packs to packs.
      (John Arbash Meinel, #165290)
+
+   * Fall back to showing e-mail in ``log --short/--line`` if the committer/author has
+     only e-mail. (Lukáš Lalinský, #157026)
 
   API BREAKS:
 
@@ -123,6 +143,10 @@ bzr 1.0rc1 2007-11-30
 
    * Diff does not require an inventory to be generated on dirstate trees.
      (Aaron Bentley, #149254)
+
+   * New annotate merge (--merge-type=weave) implementation is fast on
+     versionedfiles withough cached annotations, e.g. pack-0.92.
+     (Aaron Bentley)
 
   IMPROVEMENTS:
 
