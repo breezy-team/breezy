@@ -4,11 +4,14 @@
 
   * "bzr replay" now supports revision ranges.
 
-  * Don't require "bzr replay" and "bzr rebase" to be run in 
+  * Don't require any of the commands to be run in 
     the branch root.
 
   * Give preference to push location when no upstream location 
     is specified.
+
+  * Make message when there is nothing to rebase a 
+    bit friendlier.
 
  BUG FIXES
 
