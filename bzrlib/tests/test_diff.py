@@ -239,6 +239,18 @@ class TestDiff(TestCase):
                           ]
                           , lines)
 
+    def test_internal_diff_no_content(self):
+        output = StringIO()
+        internal_diff(u'old', [], u'new', [], output)
+        self.assertEqual('', output.getvalue())
+
+    def test_internal_diff_no_changes(self):
+        output = StringIO()
+        internal_diff(u'old', ['text\n', 'contents\n'],
+                      u'new', ['text\n', 'contents\n'],
+                      output)
+        self.assertEqual('', output.getvalue())
+
     def test_internal_diff_returns_bytes(self):
         import StringIO
         output = StringIO.StringIO()
