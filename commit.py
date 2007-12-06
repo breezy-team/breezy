@@ -68,10 +68,6 @@ def set_svn_revprops(transport, revnum, author, timestamp):
     :param author: New author
     :param timestamp: UTC timestamp
     """
-    revprops = {
-        svn.core.SVN_PROP_REVISION_AUTHOR: author,
-        svn.core.SVN_PROP_REVISION_DATE: svn_time_to_cstring(1000000*timestamp)
-    }
     for (name, value) in revprops.items():
         try:
             transport.change_rev_prop(revnum, name, value)
@@ -469,14 +465,14 @@ class SvnCommitBuilder(RootCommitBuilder):
         bp_parts = self.branch.get_branch_path().split("/")
         repository_latest_revnum = self.repository.transport.get_latest_revnum()
         lock = self.repository.transport.lock_write(".")
+        set_revprops = self.repository.get_config().get_set_revprops()
 
         try:
             existing_bp_parts = _check_dirs_exist(self.repository.transport, 
                                               bp_parts, -1)
             self.revnum = None
             self._svn_revprops[svn.core.SVN_PROP_REVISION_LOG] = message.encode("utf-8")
-            self.editor = self.repository.transport.get_commit_editor(self._svn_revprops,
-                  done, None, False)
+            self.editor = self.repository.transport.get_commit_editor(self._svn_revprops, done, None, False)
 
             root = self.editor.open_root(self.base_revnum)
 
@@ -531,8 +527,12 @@ class SvnCommitBuilder(RootCommitBuilder):
                (self.revnum, self.author, self.date, revid))
 
         if self.repository.get_config().get_override_svn_revprops():
-            set_svn_revprops(self.repository.transport, 
-                             self.revnum, self._committer, self._timestamp)
+            set_svn_revprops(self.repository.transport, self.revnum, {
+                svn.core.SVN_PROP_REVISION_AUTHOR: self._committer,
+                svn.core.SVN_PROP_REVISION_DATE: svn_time_to_cstring(1000000*self._timestamp)
+                })
+
+        # FIXME: Set bzr: revision properties if we haven't done so yet
 
         return revid
 

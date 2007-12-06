@@ -559,7 +559,8 @@ class RevpropTests(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My commit")
 
         transport = SvnRaTransport(repos_url)
-        set_svn_revprops(transport, 1, "Somebody", 473385600)
+        set_svn_revprops(transport, 1, {"svn:author": "Somebody", 
+                                        "svn:date": svn_time_to_cstring(1000000*473385600)})
 
         self.assertEquals(("Somebody", "1985-01-01T00:00:00.000000Z", "My commit"), 
                           self.client_log("dc")[1][1:])
@@ -572,4 +573,4 @@ class RevpropTests(TestCaseWithSubversionRepository):
 
         transport = SvnRaTransport(repos_url)
         self.assertRaises(RevpropChangeFailed, 
-            lambda: set_svn_revprops(transport, 1, "Somebody", 473385600))
+                lambda: set_svn_revprops(transport, 1, {"svn:author": "Somebody", "svn:date": svn_time_to_cstring(1000000*473385600)}))
