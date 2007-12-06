@@ -42,8 +42,9 @@ import stat
 from subprocess import Popen, PIPE
 import sys
 import tempfile
-import unittest
 import time
+import trace
+import unittest
 import warnings
 
 
@@ -2286,6 +2287,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
               random_seed=None,
               exclude_pattern=None,
               strict=False,
+              coverage_dir=None,
               ):
     TestCase._gather_lsprof_in_benchmarks = lsprof_timed
     if verbose:
@@ -2323,7 +2325,18 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
         else:
             suite = filter_suite_by_re(suite, pattern, exclude_pattern,
                 random_order)
+
+    if coverage_dir is not None:
+        tracer = trace.Trace(count=1, trace=0)
+        sys.settrace(tracer.globaltrace)
+
     result = runner.run(suite)
+
+    if coverage_dir is not None:
+        sys.settrace(None)
+        results = tracer.results()
+        results.write_results(show_missing=1, summary=False,
+                              coverdir=coverage_dir)
 
     if strict:
         return result.wasStrictlySuccessful()
@@ -2341,6 +2354,7 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              random_seed=None,
              exclude_pattern=None,
              strict=False,
+             coverage_dir=None,
              ):
     """Run the whole test suite under the enhanced runner"""
     # XXX: Very ugly way to do this...
@@ -2368,7 +2382,8 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
                      list_only=list_only,
                      random_seed=random_seed,
                      exclude_pattern=exclude_pattern,
-                     strict=strict)
+                     strict=strict,
+                     coverage_dir=coverage_dir)
     finally:
         default_transport = old_transport
 
