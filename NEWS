@@ -9,6 +9,8 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+   * Added a --coverage option to selftest. (Andrew Bennetts)
+
    * ``bzr commit`` now doesn't print the revision number twice. (Matt
      Nordhoff, #172612)
 
