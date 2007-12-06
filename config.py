@@ -82,14 +82,6 @@ class SvnRepositoryConfig(IniBasedConfig):
         except KeyError:
             return None
 
-    def get_supports_commit_revprop(self):
-        """Check whether or not the repository supports setting custom
-        revision properties during commit."""
-        try:
-            return self._get_parser().get_bool(self.uuid, "supports-commit-revprop")
-        except KeyError:
-            return None
-
     def get_override_svn_revprops(self):
         """Check whether or not bzr-svn should attempt to override Subversion revision 
         properties after committing."""

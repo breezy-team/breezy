@@ -72,11 +72,3 @@ class ReposConfigTests(TestCaseInTempDir):
         self.assertEquals(True, c.get_supports_change_revprop())
         c.set_user_option("supports-change-revprop", "False")
         self.assertEquals(False, c.get_supports_change_revprop())
-
-    def test_supports_commit_revprop(self):
-        c = SvnRepositoryConfig("blabla2")
-        self.assertEquals(None, c.get_supports_commit_revprop())
-        c.set_user_option("supports-commit-revprop", "True")
-        self.assertEquals(True, c.get_supports_commit_revprop())
-        c.set_user_option("supports-commit-revprop", "False")
-        self.assertEquals(False, c.get_supports_commit_revprop())
