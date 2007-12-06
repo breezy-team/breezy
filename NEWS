@@ -27,6 +27,10 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+   * Add root_client_path parameter to SmartWSGIApp.  This makes it possible to
+     publish filesystem locations that don't exactly match URL paths.
+     (Andrew Bennetts, #124089)
+
    * Catch OSError 17 (file exists) in final phase of tree transform and show
      filename to user.
      (Alexander Belchenko, #111758)
