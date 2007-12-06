@@ -297,7 +297,23 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
 
         self.assertEqual([("tags/branchab", 2, True), 
                           ("tags/brancha", 2, True)], 
-                list(repos.find_branches(TrunkBranchingScheme(), 2)))
+                list(repos.find_branches(TrunkBranchingScheme(), to_revnum=2)))
+
+    def test_find_branches_start_revno(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/branches/brancha': None})
+        self.client_add("dc/branches")
+        self.client_commit("dc", "My Message")
+        self.build_tree({'dc/branches/branchb': None})
+        self.client_add("dc/branches/branchb")
+        self.client_commit("dc", "My Message 2")
+
+        repos = Repository.open(repos_url)
+        repos.set_branching_scheme(TrunkBranchingScheme())
+
+        self.assertEqual([("branches/branchb", 2, True)],
+                list(repos.find_branches(TrunkBranchingScheme(), from_revnum=2, 
+                    to_revnum=2)))
 
     def test_find_branches_file_moved_from_nobranch(self):
         repos_url = self.make_client("a", "dc")
@@ -345,7 +361,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
 
         self.assertEqual([("t2/branches/brancha", 2, True), 
                           ("t2/branches/branchab", 2, True)], 
-                list(repos.find_branches(TrunkBranchingScheme(1), 2)))
+                list(repos.find_branches(TrunkBranchingScheme(1), to_revnum=2)))
 
     def test_find_branches_no(self):
         repos_url = self.make_client("a", "dc")
@@ -354,7 +370,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos.set_branching_scheme(NoBranchingScheme())
 
         self.assertEqual([("", 0, True)], 
-                list(repos.find_branches(NoBranchingScheme(), 0)))
+                list(repos.find_branches(NoBranchingScheme(), to_revnum=0)))
 
     def test_find_branches_no_later(self):
         repos_url = self.make_client("a", "dc")
@@ -363,7 +379,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos.set_branching_scheme(NoBranchingScheme())
 
         self.assertEqual([("", 0, True)], 
-                list(repos.find_branches(NoBranchingScheme(), 0)))
+                list(repos.find_branches(NoBranchingScheme(), to_revnum=0)))
 
     def test_find_branches_trunk_empty(self):
         repos_url = self.make_client("a", "dc")
@@ -372,7 +388,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos.set_branching_scheme(TrunkBranchingScheme())
 
         self.assertEqual([], 
-                list(repos.find_branches(TrunkBranchingScheme(), 0)))
+                list(repos.find_branches(TrunkBranchingScheme(), to_revnum=0)))
 
     def test_find_branches_trunk_one(self):
         repos_url = self.make_client("a", "dc")
@@ -385,7 +401,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My Message")
 
         self.assertEqual([("trunk", 1, True)], 
-                list(repos.find_branches(TrunkBranchingScheme(), 1)))
+                list(repos.find_branches(TrunkBranchingScheme(), to_revnum=1)))
 
     def test_find_branches_removed(self):
         repos_url = self.make_client("a", "dc")
@@ -401,9 +417,9 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "remove")
 
         self.assertEqual([("trunk", 1, True)], 
-                list(repos.find_branches(TrunkBranchingScheme(), 1)))
+                list(repos.find_branches(TrunkBranchingScheme(), to_revnum=1)))
         self.assertEqual([("trunk", 1, False)], 
-                list(repos.find_branches(TrunkBranchingScheme(), 2)))
+                list(repos.find_branches(TrunkBranchingScheme(), to_revnum=2)))
 
     def test_url(self):
         """ Test repository URL is kept """
@@ -1204,7 +1220,7 @@ class SvnRepositoryFormatTests(TestCase):
 
     def test_conversion_target_compatible(self):
         self.assertTrue(self.format.check_conversion_target(
-          format_registry.make_bzrdir('dirstate-with-subtree').repository_format))
+          format_registry.make_bzrdir('rich-root').repository_format))
 
 
 class MetadataMarshallerTests(TestCase):

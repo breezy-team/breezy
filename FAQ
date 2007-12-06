@@ -40,13 +40,13 @@ upgrade the repository, run:
 
 ::
 
-  $ bzr upgrade --dirstate-with-subtree
+  $ bzr upgrade --rich-root
 
 or, if you would like to try the experimental packs format:
 
 ::
 
- $ bzr upgrade --knitpack-subtree 
+ $ bzr upgrade --rich-root-pack
 
 ===========================================================================
 Pushing a branch that didn't exist in Subversion yet with `bzr push` fails.

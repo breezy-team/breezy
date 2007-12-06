@@ -289,7 +289,6 @@ class SvnRepository(Repository):
         self.dir_cache = {}
         self.pool = Pool()
         self.get_config().add_location(self.base)
-        self._revids_seen = {}
         cache_dir = self.create_cache_dir()
         cachedir_transport = get_transport(cache_dir)
         cache_file = os.path.join(cache_dir, 'cache-v%d' % MAPPING_VERSION)
@@ -646,7 +645,10 @@ class SvnRepository(Repository):
         parent_ids = self.revision_parents(revision_id)
 
         # Commit SVN revision properties to a Revision object
-        rev = Revision(revision_id=revision_id, parent_ids=parent_ids)
+        class LazySvnRevision(Revision):
+            inventory_sha1 = property(lambda rev: self.get_inventory_sha1(rev.revision_id))
+
+        rev = LazySvnRevision(revision_id=revision_id, parent_ids=parent_ids)
 
         svn_revprops = self.transport.revprop_list(revnum)
 
@@ -672,9 +674,6 @@ class SvnRepository(Repository):
         parse_revision_metadata(
                 self.branchprop_list.get_property(path, revnum, 
                      SVN_PROP_BZR_REVISION_INFO, ""), rev)
-
-        rev.inventory_sha1 = property(
-            lambda: self.get_inventory_sha1(revision_id))
 
         return rev
 
@@ -762,14 +761,15 @@ class SvnRepository(Repository):
             if scheme is None:
                 scheme = self.get_scheme()
             last_revnum = self.transport.get_latest_revnum()
-            if (self._revids_seen.has_key(str(scheme)) and 
-                last_revnum <= self._revids_seen[str(scheme)]):
+            if (last_revnum <= self.revmap.last_revnum_checked(str(scheme))):
                 # All revision ids in this repository for the current 
                 # scheme have already been discovered. No need to 
                 # check again.
                 raise e
             found = False
-            for (branch, revno, _) in self.find_branches(scheme, last_revnum):
+            for (branch, revno, _) in self.find_branches(scheme, 
+                    self.revmap.last_revnum_checked(str(scheme)),
+                    last_revnum):
                 # Look at their bzr:revision-id-vX
                 revids = []
                 try:
@@ -789,14 +789,11 @@ class SvnRepository(Repository):
                         found = True
                     self.revmap.insert_revid(entry_revid, branch, 0, revno, 
                             str(scheme), entry_revno)
-
-                if found:
-                    break
                 
+            # We've added all the revision ids for this scheme in the repository,
+            # so no need to check again unless new revisions got added
+            self.revmap.set_last_revnum_checked(str(scheme), last_revnum)
             if not found:
-                # We've added all the revision ids for this scheme in the repository,
-                # so no need to check again unless new revisions got added
-                self._revids_seen[str(scheme)] = last_revnum
                 raise e
             (branch_path, min_revnum, max_revnum, scheme) = self.revmap.lookup_revid(revid)
             assert isinstance(branch_path, str)
@@ -1035,15 +1032,15 @@ class SvnRepository(Repository):
 
         return self._ancestry
 
-    def find_branches(self, scheme, revnum=None):
+    def find_branches(self, scheme, from_revnum=0, to_revnum=None):
         """Find all branches that were changed in the specified revision number.
 
         :param revnum: Revision to search for branches.
         :return: iterator that returns tuples with (path, revision number, still exists). The revision number is the revision in which the branch last existed.
         """
         assert scheme is not None
-        if revnum is None:
-            revnum = self.transport.get_latest_revnum()
+        if to_revnum is None:
+            to_revnum = self.transport.get_latest_revnum()
 
         created_branches = {}
 
@@ -1051,8 +1048,8 @@ class SvnRepository(Repository):
 
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            for i in range(revnum+1):
-                pb.update("finding branches", i, revnum+1)
+            for i in range(from_revnum, to_revnum+1):
+                pb.update("finding branches", i, to_revnum+1)
                 paths = self._log.get_revision_paths(i)
                 for p in sorted(paths.keys()):
                     if scheme.is_branch(p) or scheme.is_tag(p):
@@ -1093,7 +1090,7 @@ class SvnRepository(Repository):
             pb.finished()
 
         for p in created_branches:
-            j = self._log.find_latest_change(p, revnum, 
+            j = self._log.find_latest_change(p, to_revnum, 
                                              include_parents=True,
                                              include_children=True)
             if j is None:

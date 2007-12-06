@@ -31,7 +31,7 @@ import revspec
 # versions ending in 'exp' mean experimental mappings
 # versions ending in 'dev' mean development version
 # versions ending in 'final' mean release (well tested, etc)
-version_info = (0, 4, 5, 'dev', 0)
+version_info = (0, 4, 6, 'dev', 0)
 
 if version_info[3] == 'final':
     version_string = '%d.%d.%d' % version_info[:3]
@@ -39,7 +39,7 @@ else:
     version_string = '%d.%d.%d%s%d' % version_info
 __version__ = version_string
 
-COMPATIBLE_BZR_VERSIONS = [(0, 92)]
+COMPATIBLE_BZR_VERSIONS = [(0, 93), (1, 0)]
 
 def check_bzrlib_version(desired):
     """Check that bzrlib is compatible.
@@ -135,6 +135,7 @@ def lazy_register_optimizers():
     optimizers_registered = True
     InterRepository.register_optimiser(fetch.InterFromSvnRepository)
     InterRepository.register_optimiser(commit.InterToSvnRepository)
+
 
 def get_scheme(schemename):
     """Parse scheme identifier and return a branching scheme."""

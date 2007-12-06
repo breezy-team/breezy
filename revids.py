@@ -92,8 +92,20 @@ class RevidMap(object):
         create index if not exists lookup_branch_revnum on revmap (max_revnum, min_revnum, path, scheme);
         create table if not exists revno_cache (revid text unique, dist_to_origin integer);
         create index if not exists revid on revno_cache (revid);
+        create table if not exists revids_seen (scheme text, max_revnum int);
+        create unique index if not exists scheme on revids_seen (scheme);
         """)
         self.cachedb.commit()
+
+    def set_last_revnum_checked(self, scheme, revnum):
+        self.cachedb.execute("replace into revids_seen (scheme, max_revnum) VALUES (?, ?)", (scheme, revnum))
+
+    def last_revnum_checked(self, scheme):
+        ret = self.cachedb.execute(
+            "select max_revnum from revids_seen where scheme = ?", (scheme,)).fetchone()
+        if ret is None:
+            return 0
+        return int(ret[0])
     
     def lookup_revid(self, revid):
         ret = self.cachedb.execute(
