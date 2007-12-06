@@ -192,6 +192,9 @@ bzr 1.0rc1 2007-11-30
    * Detect invalid transport reuse attempts by catching invalid URLs.
      (Vincent Ladeuil, #161819)
 
+   * Deleting a file without removing it shows a correct diff, not a traceback.
+     (Aaron Bentley)
+
    * Do no use timeout in HttpServer anymore.
      (Vincent Ladeuil, #158972).
 
