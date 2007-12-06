@@ -7,6 +7,9 @@
   * Don't require "bzr replay" and "bzr rebase" to be run in 
     the branch root.
 
+  * Give preference to push location when no upstream location 
+    is specified.
+
  BUG FIXES
 
   * Fix "bzr replay", add test.
