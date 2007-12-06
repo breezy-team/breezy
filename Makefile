@@ -111,6 +111,7 @@ USER_GUIDE_DEPENDENCIES = $(wildcard $(addsuffix /*.txt, doc/en/user-guide))
 MAN_DEPENDENCIES = bzrlib/builtins.py \
 		 bzrlib/bundle/commands.py \
 		 bzrlib/conflicts.py \
+		 bzrlib/help_topics.py \
 		 bzrlib/sign_my_commits.py \
 		 generate_docs.py \
 		 tools/doc_generate/__init__.py \
