@@ -27,6 +27,12 @@ class TestRevidMap(TestCase):
     def test_create(self):
         revidmap = RevidMap()
 
+    def test_lookup_revids_seen(self):
+        revidmap = RevidMap()
+        self.assertEquals(0, revidmap.last_revnum_checked("trunk"))
+        revidmap.set_last_revnum_checked("trunk", 45)
+        self.assertEquals(45, revidmap.last_revnum_checked("trunk"))
+
     def test_lookup_revid_nonexistant(self):
         revidmap = RevidMap()
         self.assertRaises(NoSuchRevision, lambda: revidmap.lookup_revid("bla"))

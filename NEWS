@@ -1,5 +1,11 @@
 bzr-svn 0.4.6	UNRELEASED
 
+  PERFORMANCE
+  
+   * Remember where revids have already been detected. Makes incremental
+     push a lot faster, in particular in Subversion repositories 
+	 with a lot of branches.
+
 bzr-svn 0.4.5	2007-12-01
 
   IMPROVEMENTS

@@ -288,7 +288,6 @@ class SvnRepository(Repository):
         self.dir_cache = {}
         self.pool = Pool()
         self.get_config().add_location(self.base)
-        self._revids_seen = {}
         cache_dir = self.create_cache_dir()
         cachedir_transport = get_transport(cache_dir)
         cache_file = os.path.join(cache_dir, 'cache-v%d' % MAPPING_VERSION)
@@ -761,13 +760,13 @@ class SvnRepository(Repository):
             if scheme is None:
                 scheme = self.get_scheme()
             last_revnum = self.transport.get_latest_revnum()
-            if (self._revids_seen.has_key(str(scheme)) and 
-                last_revnum <= self._revids_seen[str(scheme)]):
+            if (last_revnum <= self.revmap.last_revnum_checked(str(scheme))):
                 # All revision ids in this repository for the current 
                 # scheme have already been discovered. No need to 
                 # check again.
                 raise e
             found = False
+            # TODO: Start at self.revmap.last_revnum_checked(str(scheme))
             for (branch, revno, _) in self.find_branches(scheme, last_revnum):
                 # Look at their bzr:revision-id-vX
                 revids = []
@@ -788,14 +787,11 @@ class SvnRepository(Repository):
                         found = True
                     self.revmap.insert_revid(entry_revid, branch, 0, revno, 
                             str(scheme), entry_revno)
-
-                if found:
-                    break
                 
+            # We've added all the revision ids for this scheme in the repository,
+            # so no need to check again unless new revisions got added
+            self.revmap.set_last_revnum_checked(str(scheme), last_revnum)
             if not found:
-                # We've added all the revision ids for this scheme in the repository,
-                # so no need to check again unless new revisions got added
-                self._revids_seen[str(scheme)] = last_revnum
                 raise e
             (branch_path, min_revnum, max_revnum, scheme) = self.revmap.lookup_revid(revid)
             assert isinstance(branch_path, str)

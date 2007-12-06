@@ -136,6 +136,7 @@ def lazy_register_optimizers():
     InterRepository.register_optimiser(fetch.InterFromSvnRepository)
     InterRepository.register_optimiser(commit.InterToSvnRepository)
 
+
 def get_scheme(schemename):
     """Parse scheme identifier and return a branching scheme."""
     from scheme import BranchingScheme
