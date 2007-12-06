@@ -30,7 +30,7 @@ from bzrlib import (
     )
 
 
-# A RangeFile should respect the following grammar (simplified to outline the
+# A RangeFile epxects the following grammar (simplified to outline the
 # assumptions we rely upon).
 
 # file: whole_file
@@ -89,7 +89,7 @@ class RangeFile(object):
         """Read the boundary headers defining a new range"""
         boundary_line = '\r\n'
         while boundary_line == '\r\n':
-            # RFC2616 19.2 Additional CRLFs msy preceed the first boundary
+            # RFC2616 19.2 Additional CRLFs may preceed the first boundary
             # string entity.
             # To be on the safe side we allow it before any boundary line
             boundary_line = self._file.readline()
@@ -122,7 +122,7 @@ class RangeFile(object):
             raise errors.InvalidHttpRange(self._path, content_range,
                                           "Malformed Content-Range header '%s'"
                                           % content_range)
-        if rtype  != 'bytes':
+        if rtype != 'bytes':
             raise errors.InvalidHttpRange(self._path, content_range,
                                           "Unsupported range type '%s'" % rtype)
         try:

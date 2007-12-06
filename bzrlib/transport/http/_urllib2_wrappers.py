@@ -124,11 +124,11 @@ class Response(httplib.HTTPResponse):
             self.will_close = False
 
     def finish(self):
-        """Finish reading the bdy.
+        """Finish reading the body.
 
-        In some cases, the client may have leave some bytes to read in the
+        In some cases, the client may have left some bytes to read in the
         body. That will block the next request to succeed if we use a
-        persistent connection. If we don't use a persitent connection, well,
+        persistent connection. If we don't use a persistent connection, well,
         nothing will block the next request since a new connection will be
         issued anyway.
         """

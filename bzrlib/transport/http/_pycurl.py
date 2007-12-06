@@ -208,7 +208,7 @@ class PyCurlTransport(HttpTransportBase):
 
         return code, data
 
-    # The mother class use 0 to minimize the requests, but since we can't
+    # The parent class use 0 to minimize the requests, but since we can't
     # exploit the results as soon as they are received (pycurl limitation) we'd
     # better issue more requests and provide a more responsive UI do the cost
     # of more latency costs.

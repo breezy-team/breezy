@@ -265,7 +265,7 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
                                                          actual=data_len)
                         if (start, size) == cur_offset_and_size:
                             # The offset requested are sorted as the coalesced
-                            # ones, not need to cache. Win !
+                            # ones, no need to cache. Win !
                             yield cur_offset_and_size[0], data
                             cur_offset_and_size = iter_offsets.next()
                         else:
@@ -305,7 +305,7 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         for group in xrange(0, len(coalesced), max_ranges):
             ranges = coalesced[group:group+max_ranges]
             # Note that the following may raise errors.InvalidHttpRange. It's
-            # the caller responsability to decide how to retry since it may
+            # the caller's responsability to decide how to retry since it may
             # provide different coalesced offsets.
             code, rfile = self._get(relpath, ranges)
             for range in ranges:

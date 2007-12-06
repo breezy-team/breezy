@@ -140,7 +140,7 @@ class TestRangeFileAccess(TestCase):
     def test_invalid_accesses(self):
         """Test errors triggered by invalid accesses."""
 
-        f =  self._file_size_unknown()
+        f = self._file_size_unknown()
         self.assertRaises(errors.InvalidRange, f.seek, -1, 2)
 
         for builder, start in self.files:
@@ -149,7 +149,7 @@ class TestRangeFileAccess(TestCase):
         for builder, start in self.files[1:3]:
             self._check_file_boundaries(builder(), start)
 
-        f =  self._file_multi_ranges()
+        f = self._file_multi_ranges()
         self._check_accesses_inside_range(f, start=10)
         f.seek(40) # Will trigger the decoding and setting of the second range
         self.assertEquals(100, f.tell())
@@ -159,12 +159,12 @@ class TestRangeFileAccess(TestCase):
         self._check_beyond_range(self._file_single_range, start=10)
         self._check_beyond_range(self._file_multi_ranges, start=10)
 
-        f =  self._file_multi_ranges()
+        f = self._file_multi_ranges()
         f.seek(40) # Past the first range but before the second
         # Now the file is positioned at the second range start (100)
         self.assertRaises(errors.InvalidRange, f.seek, 41)
 
-        f =  self._file_multi_ranges()
+        f = self._file_multi_ranges()
         # We can seek across ranges but not beyond
         self.assertRaises(errors.InvalidRange, f.read, 127)
 
@@ -368,7 +368,7 @@ class TestHandleResponse(TestCase):
 
     def _build_HTTPMessage(self, raw_headers):
         status_and_headers = StringIO(raw_headers)
-        # Get read of the status line
+        # Get rid of the status line
         status_and_headers.readline()
         msg = httplib.HTTPMessage(status_and_headers)
         return msg

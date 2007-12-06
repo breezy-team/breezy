@@ -16,7 +16,7 @@ IN DEVELOPMENT
 
     * readv urllib http implementation is now a real iterator above the
       underlying socket and deliver data as soon as it arrives. 'get' still
-      wraps its ouput in a StringIO.
+      wraps its output in a StringIO.
       (Vincent Ladeuil)
 
     * New -Dhttp debug option reports http connections, requests and responses.
