@@ -65,7 +65,8 @@ class _TransformResults(object):
 
 class TreeTransformBase(object):
 
-    def __init__(self, tree, limbodir, pb=DummyProgress()):
+    def __init__(self, tree, limbodir, pb=DummyProgress(),
+                 case_sensitive=True):
         object.__init__(self)
         self._tree = tree
         self._limbodir = limbodir
@@ -113,6 +114,8 @@ class TreeTransformBase(object):
         self.__done = False
         # A progress bar
         self._pb = pb
+        # Whether the target is case sensitive
+        self._case_sensitive_target = case_sensitive
         # A counter of how many files have been renamed
         self.rename_count = 0
 
@@ -709,7 +712,7 @@ class TreeTransformBase(object):
             return conflicts
         for children in by_parent.itervalues():
             name_ids = [(self.final_name(t), t) for t in children]
-            if not self._tree.case_sensitive:
+            if not self._case_sensitive_target:
                 name_ids = [(n.lower(), t) for n, t in name_ids]
             name_ids.sort()
             last_name = None
@@ -795,7 +798,7 @@ class TreeTransformBase(object):
                 # the direct path can only be used if no other file has
                 # already taken this pathname, i.e. if the name is unused, or
                 # if it is already associated with this trans_id.
-                elif self._tree.case_sensitive:
+                elif self._case_sensitive_target:
                     if (self._limbo_children_names[parent].get(filename)
                         in (trans_id, None)):
                         use_direct_path = True
@@ -1124,7 +1127,8 @@ class TreeTransform(TreeTransformBase):
             tree.unlock()
             raise
 
-        TreeTransformBase.__init__(self, tree, limbodir, pb)
+        TreeTransformBase.__init__(self, tree, limbodir, pb,
+                                   tree.case_sensitive)
 
     def apply(self, no_conflicts=False, _mover=None):
         """Apply all changes to the inventory and filesystem.
@@ -1288,9 +1292,9 @@ class TreeTransform(TreeTransformBase):
 
 class TransformPreview(TreeTransformBase):
 
-    def __init__(self, tree, pb=DummyProgress()):
+    def __init__(self, tree, pb=DummyProgress(), case_sensitive=True):
         limbodir = tempfile.mkdtemp()
-        TreeTransformBase.__init__(self, tree, limbodir, pb)
+        TreeTransformBase.__init__(self, tree, limbodir, pb, case_sensitive)
 
     def canonical_path(self, path):
         return path

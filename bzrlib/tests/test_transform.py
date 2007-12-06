@@ -251,9 +251,14 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform.new_file('FiLe', transform.root, 'content')
         result = transform.find_conflicts()
         self.assertEqual([], result)
+        transform.finalize()
         # Force the tree to report that it is case insensitive, for conflict
         # generation tests
         tree.case_sensitive = False
+        transform = TreeTransform(tree)
+        self.addCleanup(transform.finalize)
+        transform.new_file('file', transform.root, 'content')
+        transform.new_file('FiLe', transform.root, 'content')
         result = transform.find_conflicts()
         self.assertEqual([('duplicate', 'new-1', 'new-2', 'file')], result)
 
@@ -269,9 +274,13 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform.new_file('file', transform.root, 'content')
         result = transform.find_conflicts()
         self.assertEqual([], result)
+        transform.finalize()
         # Force the tree to report that it is case insensitive, for conflict
         # generation tests
         tree.case_sensitive = False
+        transform = TreeTransform(tree)
+        self.addCleanup(transform.finalize)
+        transform.new_file('file', transform.root, 'content')
         result = transform.find_conflicts()
         self.assertEqual([('duplicate', 'new-1', 'new-2', 'file')], result)
 
