@@ -71,7 +71,7 @@ class TestSwitch(tests.TestCaseWithTransport):
         to_branch = branch.Branch.open('branch-2')
         # Check fails without --force
         err = self.assertRaises((errors.NotBranchError,
-            errors.BzrCommandError),
+            errors.BoundBranchConnectionFailure),
             switch.switch, checkout.bzrdir, to_branch)
         switch.switch(checkout.bzrdir, to_branch, force=True)
         self.failIfExists('checkout/file-1')

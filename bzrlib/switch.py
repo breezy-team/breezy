@@ -47,6 +47,7 @@ def _check_pending_merges(control, force=False):
     try:
         tree = control.open_workingtree()
     except errors.NotBranchError, ex:
+        # Lightweight checkout and branch is no longer there
         if force:
             return
         else:
@@ -77,34 +78,37 @@ def _set_branch_location(control, to_branch, force=False):
             # have been pushed to the current bound branch then
             # synchronise the local branch with the new remote branch
             # and bind to it
-            if not force and _any_local_commits(b, bound_branch):
+            possible_transports = []
+            if not force and _any_local_commits(b, possible_transports):
                 raise errors.BzrCommandError(
                     'Cannot switch as local commits found in the checkout. '
                     'Commit these to the bound branch or use --force to '
                     'throw them away.')
             b.set_bound_location(None)
-            b.pull(to_branch, overwrite=True)
+            b.pull(to_branch, overwrite=True,
+                possible_transports=possible_transports)
             b.set_bound_location(to_branch.base)
         else:
             raise errors.BzrCommandError('Cannot switch a branch, '
                 'only a checkout.')
 
 
-def _any_local_commits(this_branch, other_branch_url):
-    """Does this branch have any commits not in the other branch?"""
+def _any_local_commits(this_branch, possible_transports):
+    """Does this branch have any commits not in the master branch?"""
     last_rev = revision.ensure_null(this_branch.last_revision())
     if last_rev != revision.NULL_REVISION:
-        a_bzrdir, relpath = BzrDir.open_containing(other_branch_url)
-        other_branch = a_bzrdir.open_branch()
+        other_branch = this_branch.get_master_branch(possible_transports)
+        this_branch.lock_read()
         other_branch.lock_read()
         try:
             other_last_rev = other_branch.last_revision()
-            remote_graph = other_branch.repository.get_revision_graph(
-                other_last_rev)
-            if last_rev not in remote_graph:
+            graph = this_branch.repository.get_graph(
+                other_branch.repository)
+            if not graph.is_ancestor(last_rev, other_last_rev):
                 return True
         finally:
             other_branch.unlock()
+            this_branch.unlock()
     return False
 
 
