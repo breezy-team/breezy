@@ -13,7 +13,8 @@ Core Documentation
 * `User Reference <en/user-reference/bzr_man.html>`_ 
 
 * `Quick Start Card <en/quick-reference/quick-start-summary.svg>`_
-  (`PNG <en/quick-reference/quick-start-summary.png>`_)
+  (`PDF <en/quick-reference/quick-start-summary.pdf>`_,
+  `PNG <en/quick-reference/quick-start-summary.png>`_)
 
 * `Release Notes <en/release-notes/NEWS.html>`_
 

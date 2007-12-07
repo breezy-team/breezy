@@ -564,7 +564,8 @@ A typical config file might look something like::
 """
 
 _criss_cross = \
-"""
+"""Criss-Cross
+
 A criss-cross in the branch history can cause the default merge technique
 to emit more conflicts than would normally be expected.
 
