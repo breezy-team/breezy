@@ -29,7 +29,7 @@ def switch(control_dir, to_branch, force=False):
     :param to_branch: branch that the checkout is to reference
     :param force: skip the check for local commits in a heavy checkout
     """
-    _check_pending_merges(control_dir)
+    _check_pending_merges(control_dir, force)
     try:
         source_repository = control_dir.open_branch().repository
     except errors.NotBranchError:
@@ -39,16 +39,18 @@ def switch(control_dir, to_branch, force=False):
     _update(tree, source_repository)
 
 
-def _check_pending_merges(control):
+def _check_pending_merges(control, force=False):
     """Check that there are no outstanding pending merges before switching.
 
     :param control: BzrDir of the branch to check
     """
     try:
         tree = control.open_workingtree()
-    except errors.NotBranchError:
-        # old branch is gone
-        return
+    except errors.NotBranchError, ex:
+        if force:
+            return
+        else:
+            raise ex
     # XXX: Should the tree be locked for get_parent_ids?
     existing_pending_merges = tree.get_parent_ids()[1:]
     if len(existing_pending_merges) > 0:

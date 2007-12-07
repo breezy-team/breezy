@@ -69,8 +69,11 @@ class TestSwitch(tests.TestCaseWithTransport):
         # rename the branch on disk, the checkout object is now invalid.
         os.rename('branch-1', 'branch-2')
         to_branch = branch.Branch.open('branch-2')
-        force = not self.lightweight
-        switch.switch(checkout.bzrdir, to_branch, force)
+        # Check fails without --force
+        err = self.assertRaises((errors.NotBranchError,
+            errors.BzrCommandError),
+            switch.switch, checkout.bzrdir, to_branch)
+        switch.switch(checkout.bzrdir, to_branch, force=True)
         self.failIfExists('checkout/file-1')
         self.failUnlessExists('checkout/file-2')
         self.failUnlessExists('checkout/file-3')
