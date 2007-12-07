@@ -868,6 +868,19 @@ class BranchFormat(object):
         """
         return None
 
+    @classmethod
+    def set_reference(self, a_bzrdir, to_branch):
+        """Set the target reference of the branch in a_bzrdir.
+
+        format probing must have been completed before calling
+        this method - it is assumed that the format of the branch
+        in a_bzrdir is correct.
+
+        :param a_bzrdir: The bzrdir to set the branch reference for.
+        :param to_branch: branch that the checkout is to reference
+        """
+        raise NotImplementedError(self.set_reference)
+
     def get_format_string(self):
         """Return the ASCII format string that identifies this format."""
         raise NotImplementedError(self.get_format_string)
@@ -1197,6 +1210,11 @@ class BranchReferenceFormat(BranchFormat):
         """See BranchFormat.get_reference()."""
         transport = a_bzrdir.get_branch_transport(None)
         return transport.get('location').read()
+
+    def set_reference(self, a_bzrdir, to_branch):
+        """See BranchFormat.set_reference()."""
+        transport = a_bzrdir.get_branch_transport(None)
+        location = transport.put_bytes('location', to_branch.base)
 
     def initialize(self, a_bzrdir, target_branch=None):
         """Create a branch of this format in a_bzrdir."""
@@ -1858,6 +1876,19 @@ class BzrBranchExperimental(BzrBranch5):
         :return: None if the branch is not a reference branch.
         """
         return None
+
+    @classmethod
+    def set_reference(self, a_bzrdir, to_branch):
+        """Set the target reference of the branch in a_bzrdir.
+
+        format probing must have been completed before calling
+        this method - it is assumed that the format of the branch
+        in a_bzrdir is correct.
+
+        :param a_bzrdir: The bzrdir to set the branch reference for.
+        :param to_branch: branch that the checkout is to reference
+        """
+        raise NotImplementedError(self.set_reference)
 
     @classmethod
     def _initialize_control_files(cls, a_bzrdir, utf8_files, lock_filename,
