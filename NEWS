@@ -7,6 +7,13 @@ Bazaar Release Notes
 IN DEVELOPMENT
 ==============
 
+  CHANGES:
+   
+   * If a traceback occurs, users are now asked to report the bug 
+     through Launchpad (https://bugs.launchpad.net/bzr/), rather than 
+     by mail to the mailing list.
+     (Martin Pool)
+
   IMPROVEMENTS:
 
    * Added a --coverage option to selftest. (Andrew Bennetts)
@@ -63,13 +70,14 @@ IN DEVELOPMENT
    * Check for missing basis texts when fetching from packs to packs.
      (John Arbash Meinel, #165290)
 
-   * Fall back to showing e-mail in ``log --short/--line`` if the committer/author has
-     only e-mail. (Lukáš Lalinský, #157026)
+   * Fall back to showing e-mail in ``log --short/--line`` if the 
+     committer/author has only e-mail. (Lukáš Lalinský, #157026)
 
   API BREAKS:
 
    * Deprecate not passing a ``location`` argument to commit reporters'
      ``started`` methods. (Matt Nordhoff)
+
 
 
 bzr 1.0rc1 2007-11-30
