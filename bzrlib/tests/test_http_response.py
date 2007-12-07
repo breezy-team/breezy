@@ -14,162 +14,237 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests from HTTP response parsing."""
+"""Tests from HTTP response parsing.
+
+
+We test two main things in this module the RangeFile class and the
+handle_response method.
+
+There are four different kinds of RangeFile:
+- a whole file whose size is unknown, seen as a simple byte stream,
+- a whole file whose size is known, we can't read past its end,
+- a single range file, a part of a file with a start and a size,
+- a multiple range file, several consecutive parts with known start offset
+  and size.
+
+Some properties are common to all kinds:
+- seek can only be forward (its really a socket underneath),
+- read can't cross ranges,
+- successive ranges are taken into account transparently,
+- the expected pattern of use is either seek(offset)+read(size) or a single
+  read with no size specified
+
+The handle_response method read the response body of a GET request an returns
+the corresponding RangeFile.
+
+"""
 
 from cStringIO import StringIO
 import httplib
 
-from bzrlib import errors
-from bzrlib.transport import http
+from bzrlib import (
+    errors,
+    tests,
+    )
 from bzrlib.transport.http import response
-from bzrlib.tests import TestCase
 
 
-class TestRangeFileAccess(TestCase):
-    """Test RangeFile."""
+class TestRangeFileMixin(object):
+    """Tests for accessing the first range in a RangeFile."""
+
+    # A simple string used to represent a file part (also called a range), in
+    # which offsets are easy to calculate for test writers. It's used as a
+    # building block with slight variations but basically 'a' if the first char
+    # of the range and 'z' is the last.
+    alpha = 'abcdefghijklmnopqrstuvwxyz'
+
+    def test_can_read_at_first_access(self):
+        """Test that the just created file can be read."""
+        self.assertEquals(self.alpha, self._file.read())
+
+    def test_seek_read(self):
+        """Test seek/read inside the range."""
+        f = self._file
+        start = self.first_range_start
+        # Before any use, tell() should be at the range start
+        self.assertEquals(start, f.tell())
+        cur = start # For an overall offset assertion
+        f.seek(start + 3)
+        cur += 3
+        self.assertEquals('def', f.read(3))
+        cur += len('def')
+        f.seek(4, 1)
+        cur += 4
+        self.assertEquals('klmn', f.read(4))
+        cur += len('klmn')
+        self.assertEquals(cur, f.tell())
+
+    def test_unbounded_read_after_seek(self):
+        f = self._file
+        f.seek(24, 1)
+        # Should not cross ranges
+        self.assertEquals('yz', f.read())
+
+    def test_seek_backwards(self):
+        f = self._file
+        start = self.first_range_start
+        f.seek(start)
+        f.read(12)
+        self.assertRaises(errors.InvalidRange, f.seek, start + 5)
+
+    def test_seek_outside_single_range(self):
+        f = self._file
+        if f._size == -1 or f._boundary is not None:
+            raise tests.TestNotApplicable('Needs a fully defined range')
+        # Will seek past the range and then errors out
+        self.assertRaises(errors.InvalidRange,
+                          f.seek, self.first_range_start + 27)
+
+    def test_read_past_end_of_range(self):
+        f = self._file
+        if f._size == -1:
+            raise tests.TestNotApplicable("Can't check an unknown size")
+        start = self.first_range_start
+        f.seek(start + 20)
+        self.assertRaises(errors.InvalidRange, f.read, 10)
+
+
+class TestRangeFileSizeUnknown(tests.TestCase, TestRangeFileMixin):
+    """Test a RangeFile for a whole file whose size is not known."""
 
     def setUp(self):
-        self.alpha = 'abcdefghijklmnopqrstuvwxyz'
-        # Each file is defined as a tuple (builder, start), 'builder' is a
-        # callable returning a RangeFile and 'start' the start of the first (or
-        # unique) range.
-        self.files = [(self._file_size_unknown, 0),
-                      (self._file_size_known, 0),
-                      (self._file_single_range, 10),
-                      (self._file_multi_ranges, 10),]
+        super(TestRangeFileSizeUnknown, self).setUp()
+        self._file = response.RangeFile('Whole_file_size_known',
+                                        StringIO(self.alpha))
+        # We define no range, relying on RangeFile to provide default values
+        self.first_range_start = 0 # It's the whole file
+
+    def test_seek_from_end(self):
+        self.assertRaises(errors.InvalidRange, self._file.seek, -1, 2)
 
 
-    def _file_size_unknown(self):
-        return response.RangeFile('Whole_file_size_unknown',
-                                  StringIO(self.alpha))
+class TestRangeFileSizeKnown(tests.TestCase, TestRangeFileMixin):
+    """Test a RangeFile for a whole file whose size is known."""
 
-    def _file_size_known(self):
-        alpha = self.alpha
-        f = response.RangeFile('Whole_file_size_known', StringIO(alpha))
-        f.set_range(0, len(alpha))
-        return f
+    def setUp(self):
+        super(TestRangeFileSizeKnown, self).setUp()
+        self._file = response.RangeFile('Whole_file_size_known',
+                                        StringIO(self.alpha))
+        self._file.set_range(0, len(self.alpha))
+        self.first_range_start = 0 # It's the whole file
 
-    def _file_single_range(self):
-        alpha = self.alpha
-        f = response.RangeFile('Single_range_file', StringIO(alpha))
-        f.set_range(10, len(alpha))
-        return f
 
-    def _file_multi_ranges(self):
-        alpha = self.alpha
+class TestRangeFileSingleRange(tests.TestCase, TestRangeFileMixin):
+    """Test a RangeFile for a single range."""
+
+    def setUp(self):
+        super(TestRangeFileSingleRange, self).setUp()
+        self._file = response.RangeFile('Single_range_file',
+                                        StringIO(self.alpha))
+        self.first_range_start = 15
+        self._file.set_range(self.first_range_start, len(self.alpha))
+
+
+class TestRangeFilMultipleRanges(tests.TestCase, TestRangeFileMixin):
+    """Test a RangeFile for multiple ranges."""
+
+    def setUp(self):
+        super(TestRangeFilMultipleRanges, self).setUp()
 
         boundary = 'separation'
-        bline = '--' + boundary + '\r\n'
-        content = []
-        content += bline
-        file_size = 200
-        for (start, part) in [(10, alpha), (100, alpha), (126, alpha.upper())]:
-            plen = len(part)
-            content += 'Content-Range: bytes %d-%d/%d\r\n' % (start,
-                                                              start+plen-1,
-                                                              file_size)
-            content += '\r\n'
-            content += part
-            content += bline
 
-        data = ''.join(content)
-        f = response.RangeFile('Multiple_ranges_file', StringIO(data))
-        # Ranges are set by decoding the headers
-        f.set_boundary(boundary)
-        return f
+        content = ''
+        self.first_range_start = 25
+        file_size = 200 # big enough to encompass all ranges
+        for (start, part) in [(self.first_range_start, self.alpha),
+                              # Two contiguous ranges
+                              (100, self.alpha),
+                              (126, self.alpha.upper())]:
+            content += self._multipart_byterange(part, start, boundary,
+                                                 file_size)
+        # Final boundary
+        content += self._boundary_line(boundary)
 
-    def _check_accesses_inside_range(self, f, start=0):
-        self.assertEquals(start, f.tell())
-        self.assertEquals('abc', f.read(3))
-        self.assertEquals('def', f.read(3))
-        self.assertEquals(start + 6, f.tell())
-        f.seek(start + 10)
-        self.assertEquals('klm', f.read(3))
-        self.assertEquals('no', f.read(2))
-        self.assertEquals(start + 15, f.tell())
-        # Unbounded read, should not cross range
-        self.assertEquals('pqrstuvwxyz', f.read())
+        self._file = response.RangeFile('Multiple_ranges_file',
+                                        StringIO(content))
+        # Ranges are set by decoding the range headers, the RangeFile user is
+        # supposed to call the following before using seek or read since it
+        # requires knowing the *response* headers (in that case the boundary
+        # which is part of the Content-Type header).
+        self._file.set_boundary(boundary)
 
-    def test_valid_accesses(self):
-        """Test valid accesses: inside one or more ranges"""
-        alpha = 'abcdefghijklmnopqrstuvwxyz'
+    def _boundary_line(self, boundary):
+        """Helper to build the formatted boundary line."""
+        return '--' + boundary + '\r\n'
 
-        for builder, start in self.files[:3]:
-            self._check_accesses_inside_range(builder(), start)
+    def _multipart_byterange(self, data, offset, boundary, file_size='*'):
+        """Encode a part of a file as a multipart/byterange MIME type.
 
-        f =  self._file_multi_ranges()
-        self._check_accesses_inside_range(f, start=10)
-        f.seek(100) # Will trigger the decoding and setting of the second range
-        self._check_accesses_inside_range(f, 100)
+        When a range request is issued, the HTTP response body can be
+        decomposed in parts, each one representing a range (start, size) in a
+        file.
 
-        f =  self._file_multi_ranges()
-        f.seek(10)
+        :param data: The payload.
+        :param offset: where data starts in the file
+        :param boundary: used to separate the parts
+        :param file_size: the size of the file containing the range (default to
+            '*' meaning unknown)
+
+        :return: a string containing the data encoded as it will appear in the
+            HTTP response body.
+        """
+        bline = self._boundary_line(boundary)
+        # Each range begins with a boundary line
+        range = bline
+        # A range is described by a set of headers, but only 'Content-Range' is
+        # required for our implementation (TestHandleResponse below will
+        # exercise ranges with multiple or missing headers')
+        range += 'Content-Range: bytes %d-%d/%d\r\n' % (offset,
+                                                        offset+len(data)-1,
+                                                        file_size)
+        range += '\r\n'
+        # Finally the raw bytes
+        range += data
+        return range
+
+    def test_read_all_ranges(self):
+        f = self._file
+        self.assertEquals(self.alpha, f.read()) # Read first range
+        f.seek(100) # Trigger the second range recognition
+        self.assertEquals(self.alpha, f.read()) # Read second range
+        self.assertEquals(126, f.tell())
+        f.seek(126) # Start of third range which is also the current pos !
+        self.assertEquals('A', f.read(1))
+        f.seek(10, 1)
+        self.assertEquals('LMN', f.read(3))
+
+    def test_seek_into_void(self):
+        f = self._file
+        start = self.first_range_start
+        f.seek(start)
         # Seeking to a point between two ranges is possible (only once) but
         # reading there is forbidden
-        f.seek(40)
+        f.seek(start + 40)
         # We crossed a range boundary, so now the file is positioned at the
         # start of the new range (i.e. trying to seek below 100 will error out)
         f.seek(100)
         f.seek(125)
 
-        f =  self._file_multi_ranges()
-        self.assertEquals(self.alpha, f.read()) # Read first range
-        f.seek(100)
-        self.assertEquals(self.alpha, f.read()) # Read second range
-        self.assertEquals(126, f.tell())
-        f.seek(126) # Start of third range which is also the current pos !
-        self.assertEquals('A', f.read(1))
+    def test_seek_above_ranges(self):
+        f = self._file
+        start = self.first_range_start
+        f.seek(126) # skip the two first ranges
+        self.assertEquals('AB', f.read(2))
 
-    def _check_file_boundaries(self, f, start=0):
-        f.seek(start)
-        self.assertRaises(errors.InvalidRange, f.read, 27)
-        # Will seek past the range and then errors out
-        self.assertRaises(errors.InvalidRange, f.seek, start + 27)
-
-    def _check_beyond_range(self, builder, start):
-        f = builder()
-        f.seek(start + 20)
-        # Will try to read past the end of the range
-        self.assertRaises(errors.InvalidRange, f.read, 10)
-
-    def _check_seek_backwards(self, f, start=0):
-        f.read(start + 12)
-        # Can't seek backwards
-        self.assertRaises(errors.InvalidRange, f.seek, start + 5)
-
-    def test_invalid_accesses(self):
-        """Test errors triggered by invalid accesses."""
-
-        f = self._file_size_unknown()
-        self.assertRaises(errors.InvalidRange, f.seek, -1, 2)
-
-        for builder, start in self.files:
-            self._check_seek_backwards(builder(), start)
-
-        for builder, start in self.files[1:3]:
-            self._check_file_boundaries(builder(), start)
-
-        f = self._file_multi_ranges()
-        self._check_accesses_inside_range(f, start=10)
-        f.seek(40) # Will trigger the decoding and setting of the second range
-        self.assertEquals(100, f.tell())
-        self._check_accesses_inside_range(f, 100)
-
-
-        self._check_beyond_range(self._file_single_range, start=10)
-        self._check_beyond_range(self._file_multi_ranges, start=10)
-
-        f = self._file_multi_ranges()
-        f.seek(40) # Past the first range but before the second
+    def test_seek_twice_between_ranges(self):
+        f = self._file
+        start = self.first_range_start
+        f.seek(start + 40) # Past the first range but before the second
         # Now the file is positioned at the second range start (100)
-        self.assertRaises(errors.InvalidRange, f.seek, 41)
-
-        f = self._file_multi_ranges()
-        # We can seek across ranges but not beyond
-        self.assertRaises(errors.InvalidRange, f.read, 127)
+        self.assertRaises(errors.InvalidRange, f.seek, start + 41)
 
 
-class TestRanges(TestCase):
+class TestRanges(tests.TestCase):
 
     def test_range_syntax(self):
 
@@ -195,6 +270,7 @@ class TestRanges(TestCase):
         nok('bytes xx-yyy/zzz')
         nok('bytes xx-12/zzz')
         nok('bytes 11-yy/zzz')
+
 
 # Taken from real request responses
 _full_text_response = (200, """HTTP/1.1 200 OK\r
@@ -364,7 +440,7 @@ Content-Type: text/html; charset=iso-8859-1\r
 """)
 
 
-class TestHandleResponse(TestCase):
+class TestHandleResponse(tests.TestCase):
 
     def _build_HTTPMessage(self, raw_headers):
         status_and_headers = StringIO(raw_headers)

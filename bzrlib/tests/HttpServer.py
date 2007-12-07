@@ -134,15 +134,16 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
         self.send_header("Content-Type",
                          "multipart/byteranges; boundary=%s" % boundary)
         self.end_headers()
-        self.wfile.write("--%s\r\n" % boundary)
         for (start, end) in ranges:
+            self.wfile.write("--%s\r\n" % boundary)
             self.send_header("Content-type", 'application/octet-stream')
             self.send_header("Content-Range", "bytes %d-%d/%d" % (start,
                                                                   end,
                                                                   file_size))
             self.end_headers()
             self.send_range_content(file, start, end - start + 1)
-            self.wfile.write("--%s\r\n" % boundary)
+        # Final boundary
+        self.wfile.write("--%s\r\n" % boundary)
 
     def do_GET(self):
         """Serve a GET request.
