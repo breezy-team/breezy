@@ -20,25 +20,31 @@ If you accidently register a file using ``add`` that you
 don't want version controlled, you can use the ``remove``
 command to tell Bazaar to forget about it.
 
-``remove`` has been designed to *Do the Right Thing* in
-that it will leave the file on disk if it hasn't been
-committed yet but delete it otherwise. For example::
+``remove`` has been designed to *Do the Safe Thing* in
+that it will not delete a modified file. For example::
 
   bzr add foo.html
   (oops - didn't mean that)
   bzr remove foo.html
+
+This will complain about the file being modified or unknown.
+If you want to keep the file, use the ``--keep`` option.
+Alternatively, if you want to remove the file, use the ``--force`` option.
+For example::
+
+  bzr add foo.html
+  (oops - didn't mean that)
+  bzr remove --keep foo.html
   (foo.html left on disk)
 
-On the other hand::
+On the other hand, the ``TODO`` file is deregistered and
+removed from disk without complaint in this example::
 
   bzr add TODO
   bzr commit -m "added TODO"
   (hack, hack, hack - but don't change TODO)
   bzr remove TODO
   (TODO file deleted)
-
-If you want to insist on keeping the file, use the ``--keep`` option.
-If you want to insist on removing the file, use the ``--force`` option.
 
 Note: If you delete a file using your file manager, IDE or via an operating
 system command, the ``commit`` command will implicitly treat it as removed.
@@ -53,8 +59,9 @@ to be thrown away, the command to use is ``revert`` like this::
 
   bzr revert
 
-As a precaution, it is good practice to use ``bzr diff`` first to
-check that everything being thrown away really ought to be.
+As a precaution, it is good practice to use ``bzr status`` and
+``bzr diff`` first to check that everything being thrown away
+really ought to be.
 
 Undoing changes to a file since the last commit
 -----------------------------------------------
@@ -82,10 +89,21 @@ provide the wrong error message. For example::
   bzr uncommit
   bzr commit -m "Fix bug #1"
 
-Undoing an earlier commit
--------------------------
+Another common reason for undoing a commit is because you forgot to add
+one or more files. Some users like to alias ``commit`` to ``commit --strict``
+so that commits fail if unknown files are found in the tree.
 
-You can use the -r option to undo several commits like this:
+Note: While the ``merge`` command is not introduced until the next
+chapter, it is worth noting now that ``uncommit`` restores any pending
+merges. (Running ``bzr status`` after ``uncommit`` will show these.)
+``merge`` can also be used to effectively undo just a selected commit
+earlier in history. For more information on ``merge``, see `Merging changes`_
+in the next chapter and the Bazaar User Reference.
+
+Undoing multiple commits
+------------------------
+
+You can use the -r option to undo several commits like this::
 
   bzr uncommit -r -3
 

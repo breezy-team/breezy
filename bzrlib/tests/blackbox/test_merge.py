@@ -392,3 +392,17 @@ class TestMerge(ExternalBase):
         # pick 1 revision with option --changes
         self.run_bzr('merge -d target -c revid:rev_d source')
         self.assertDirectoryContent('target', ['.bzr', 'a', 'd'])
+
+    def test_merge_criss_cross(self):
+        tree_a = self.make_branch_and_tree('a')
+        tree_a.commit('', rev_id='rev1')
+        tree_b = tree_a.bzrdir.sprout('b').open_workingtree()
+        tree_a.commit('', rev_id='rev2a')
+        tree_b.commit('', rev_id='rev2b')
+        tree_a.merge_from_branch(tree_b.branch)
+        tree_b.merge_from_branch(tree_a.branch)
+        tree_a.commit('', rev_id='rev3a')
+        tree_b.commit('', rev_id='rev3b')
+        graph = tree_a.branch.repository.get_graph(tree_b.branch.repository)
+        out, err = self.run_bzr(['merge', '-d', 'a', 'b'])
+        self.assertContainsRe(err, 'Warning: criss-cross merge encountered.')

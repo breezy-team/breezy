@@ -236,11 +236,17 @@ class TestGraph(TestCaseWithMemoryTransport):
                          graph.find_unique_lca(NULL_REVISION, 'rev1'))
         self.assertEqual('rev1', graph.find_unique_lca('rev1', 'rev1'))
         self.assertEqual('rev1', graph.find_unique_lca('rev2a', 'rev2b'))
+        self.assertEqual(('rev1', 1,),
+                         graph.find_unique_lca('rev2a', 'rev2b',
+                         count_steps=True))
 
     def test_unique_lca_criss_cross(self):
         """Ensure we don't pick non-unique lcas in a criss-cross"""
         graph = self.make_graph(criss_cross)
         self.assertEqual('rev1', graph.find_unique_lca('rev3a', 'rev3b'))
+        lca, steps = graph.find_unique_lca('rev3a', 'rev3b', count_steps=True)
+        self.assertEqual('rev1', lca)
+        self.assertEqual(2, steps)
 
     def test_unique_lca_null_revision(self):
         """Ensure we pick NULL_REVISION when necessary"""
@@ -373,7 +379,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual(set(['rev1']), graph.heads(('rev1', 'null:')))
 
     def test_heads_one(self):
-        # A single node will alwaya be a head
+        # A single node will always be a head
         graph = self.make_graph(ancestry_1)
         self.assertEqual(set(['null:']), graph.heads(['null:']))
         self.assertEqual(set(['rev1']), graph.heads(['rev1']))

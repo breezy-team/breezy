@@ -862,20 +862,29 @@ def _auto_user_id():
     return realname, (username + '@' + socket.gethostname())
 
 
+def parse_username(username):
+    """Parse e-mail username and return a (name, address) tuple."""
+    match = re.match(r'(.*?)\s*<?([\w+.-]+@[\w+.-]+)>?', username)
+    if match is None:
+        return (username, '')
+    else:
+        return (match.group(1), match.group(2))
+
+
 def extract_email_address(e):
     """Return just the address part of an email string.
-    
+
     That is just the user@domain part, nothing else. 
     This part is required to contain only ascii characters.
     If it can't be extracted, raises an error.
-    
+
     >>> extract_email_address('Jane Tester <jane@test.com>')
     "jane@test.com"
     """
-    m = re.search(r'[\w+.-]+@[\w+.-]+', e)
-    if not m:
+    name, email = parse_username(e)
+    if not email:
         raise errors.NoEmailInUsername(e)
-    return m.group(0)
+    return email
 
 
 class TreeConfig(IniBasedConfig):

@@ -425,7 +425,7 @@ class Branch(object):
         That is equivalent to the number of revisions committed to
         this branch.
         """
-        return len(self.revision_history())
+        return self.last_revision_info()[0]
 
     def unbind(self):
         """Older format branches cannot bind or unbind."""
@@ -868,6 +868,19 @@ class BranchFormat(object):
         """
         return None
 
+    @classmethod
+    def set_reference(self, a_bzrdir, to_branch):
+        """Set the target reference of the branch in a_bzrdir.
+
+        format probing must have been completed before calling
+        this method - it is assumed that the format of the branch
+        in a_bzrdir is correct.
+
+        :param a_bzrdir: The bzrdir to set the branch reference for.
+        :param to_branch: branch that the checkout is to reference
+        """
+        raise NotImplementedError(self.set_reference)
+
     def get_format_string(self):
         """Return the ASCII format string that identifies this format."""
         raise NotImplementedError(self.get_format_string)
@@ -1198,6 +1211,11 @@ class BranchReferenceFormat(BranchFormat):
         transport = a_bzrdir.get_branch_transport(None)
         return transport.get('location').read()
 
+    def set_reference(self, a_bzrdir, to_branch):
+        """See BranchFormat.set_reference()."""
+        transport = a_bzrdir.get_branch_transport(None)
+        location = transport.put_bytes('location', to_branch.base)
+
     def initialize(self, a_bzrdir, target_branch=None):
         """Create a branch of this format in a_bzrdir."""
         if target_branch is None:
@@ -1439,13 +1457,14 @@ class BzrBranch(Branch):
             last_rev, other_branch))
 
     @needs_write_lock
-    def update_revisions(self, other, stop_revision=None):
+    def update_revisions(self, other, stop_revision=None, overwrite=False):
         """See Branch.update_revisions."""
         other.lock_read()
         try:
+            other_last_revno, other_last_revision = other.last_revision_info()
             if stop_revision is None:
-                stop_revision = other.last_revision()
-                if stop_revision is None:
+                stop_revision = other_last_revision
+                if _mod_revision.is_null(stop_revision):
                     # if there are no commits, we're done.
                     return
             # whats the current last revision, before we fetch [and change it
@@ -1456,11 +1475,29 @@ class BzrBranch(Branch):
             # already merged can operate on the just fetched graph, which will
             # be cached in memory.
             self.fetch(other, stop_revision)
-            if self.repository.get_graph().is_ancestor(stop_revision,
-                                                       last_rev):
-                return
-            self.generate_revision_history(stop_revision, last_rev=last_rev,
-                other_branch=other)
+            # Check to see if one is an ancestor of the other
+            if not overwrite:
+                heads = self.repository.get_graph().heads([stop_revision,
+                                                           last_rev])
+                if heads == set([last_rev]):
+                    # The current revision is a decendent of the target,
+                    # nothing to do
+                    return
+                elif heads == set([stop_revision, last_rev]):
+                    # These branches have diverged
+                    raise errors.DivergedBranches(self, other)
+                assert heads == set([stop_revision])
+            if other_last_revision == stop_revision:
+                self.set_last_revision_info(other_last_revno,
+                                            other_last_revision)
+            else:
+                # TODO: jam 2007-11-29 Is there a way to determine the
+                #       revno without searching all of history??
+                if overwrite:
+                    self.generate_revision_history(stop_revision)
+                else:
+                    self.generate_revision_history(stop_revision,
+                        last_rev=last_rev, other_branch=other)
         finally:
             other.unlock()
 
@@ -1485,15 +1522,7 @@ class BzrBranch(Branch):
         source.lock_read()
         try:
             result.old_revno, result.old_revid = self.last_revision_info()
-            try:
-                self.update_revisions(source, stop_revision)
-            except DivergedBranches:
-                if not overwrite:
-                    raise
-            if overwrite:
-                if stop_revision is None:
-                    stop_revision = source.last_revision()
-                self.generate_revision_history(stop_revision)
+            self.update_revisions(source, stop_revision, overwrite=overwrite)
             result.tag_conflicts = source.tags.merge_to(self.tags, overwrite)
             result.new_revno, result.new_revid = self.last_revision_info()
             if _hook_master:
@@ -1847,6 +1876,19 @@ class BzrBranchExperimental(BzrBranch5):
         :return: None if the branch is not a reference branch.
         """
         return None
+
+    @classmethod
+    def set_reference(self, a_bzrdir, to_branch):
+        """Set the target reference of the branch in a_bzrdir.
+
+        format probing must have been completed before calling
+        this method - it is assumed that the format of the branch
+        in a_bzrdir is correct.
+
+        :param a_bzrdir: The bzrdir to set the branch reference for.
+        :param to_branch: branch that the checkout is to reference
+        """
+        raise NotImplementedError(self.set_reference)
 
     @classmethod
     def _initialize_control_files(cls, a_bzrdir, utf8_files, lock_filename,

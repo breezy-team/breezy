@@ -629,6 +629,13 @@ class TestRepository(TestCaseWithRepository):
             self.get_vfs_only_url('remote')).open_repository()
         self.assertEqual(remote_backing_repo._format, local_repo._format)
 
+    def test__make_parents_provider(self):
+        """Repositories must have a _make_parents_provider method that returns
+        an object with a get_parents method.
+        """
+        repo = self.make_repository('repo')
+        repo._make_parents_provider().get_parents
+
 
 class TestRepositoryLocking(TestCaseWithRepository):
 

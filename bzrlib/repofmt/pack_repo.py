@@ -38,6 +38,7 @@ from bzrlib.knit import KnitGraphIndex, _PackAccess, _KnitData
 from bzrlib.osutils import rand_chars
 from bzrlib.pack import ContainerWriter
 from bzrlib.store import revision
+from bzrlib import tsort
 """)
 from bzrlib import (
     bzrdir,
@@ -924,7 +925,10 @@ class ReconcilePacker(Packer):
         # we have three major tasks here:
         # 1) generate the ideal index
         repo = self._pack_collection.repo
-        ideal_index = repo._generate_text_key_index(self._text_refs)
+        ancestors = dict([(key[0], tuple(ref[0] for ref in refs[0])) for
+            _1, key, _2, refs in 
+            self.new_pack.revision_index.iter_all_entries()])
+        ideal_index = repo._generate_text_key_index(self._text_refs, ancestors)
         # 2) generate a text_nodes list that contains all the deltas that can
         #    be used as-is, with corrected parents.
         ok_nodes = []
@@ -966,7 +970,20 @@ class ReconcilePacker(Packer):
         # 3) bulk copy the ok data
         list(self._copy_nodes_graph(ok_nodes, text_index_map,
             self.new_pack._writer, self.new_pack.text_index))
-        # 3) adhoc copy all the other texts.
+        # 4) adhoc copy all the other texts.
+        # We have to topologically insert all texts otherwise we can fail to
+        # reconcile when parts of a single delta chain are preserved intact,
+        # and other parts are not. E.g. Discarded->d1->d2->d3. d1 will be
+        # reinserted, and if d3 has incorrect parents it will also be
+        # reinserted. If we insert d3 first, d2 is present (as it was bulk
+        # copied), so we will try to delta, but d2 is not currently able to be
+        # extracted because it's basis d1 is not present. Topologically sorting
+        # addresses this. The following generates a sort for all the texts that
+        # are being inserted without having to reference the entire text key
+        # space (we only topo sort the revisions, which is smaller).
+        topo_order = tsort.topo_sort(ancestors)
+        rev_order = dict(zip(topo_order, range(len(topo_order))))
+        bad_texts.sort(key=lambda key:rev_order[key[0][1]])
         transaction = repo.get_transaction()
         file_id_index = GraphIndexPrefixAdapter(
             self.new_pack.text_index,
@@ -1006,7 +1023,7 @@ class ReconcilePacker(Packer):
             knit_index._add_callback = file_id_index.add_nodes
             output_knit.add_lines_with_ghosts(
                 key[1], parents, text_lines, random_id=True, check_content=False)
-        # 4) check that nothing inserted has a reference outside the keyspace.
+        # 5) check that nothing inserted has a reference outside the keyspace.
         missing_text_keys = self.new_pack._external_compression_parents_of_texts()
         if missing_text_keys:
             raise errors.BzrError('Reference to missing compression parents %r'

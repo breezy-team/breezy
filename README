@@ -2,8 +2,8 @@
 README for Bazaar
 =================
 
-Bazaar is a decentralized revision control system, designed to be easy
-for developers and end users alike.
+Bazaar (``bzr``) is a decentralized revision control system, designed to be
+easy for developers and end users alike.
 
 To install Bazaar from source, follow the instructions in the INSTALL
 file. Otherwise, you may want to check your distribution package manager
@@ -19,9 +19,9 @@ Bazaar is written in Python, and is sponsored by Canonical Limited, the
 founders of Ubuntu and Launchpad. Bazaar is Free Software, and is released
 under the GNU General Public License.
 
-Bazaar was formerly known as Bazaar-NG, and some documentation still uses
-that old name. Also, since the Bazaar binary is called "bzr", many times this
-shorter name is used instead (like Subversion/svn and Mercurial/hg).
+Bazaar was formerly known as Bazaar-NG.  It's the successor to ``baz``, a fork
+of GNU arch, but shares no code.  (To upgrade from Baz, use the ``baz-import``
+command in the bzrtools plugin.)
 
 Bazaar highlights
 =================
@@ -63,18 +63,33 @@ Bazaar highlights
  * Vibrant and active community.
 
    Help with Bazaar is obtained easily, via the mailing list, or the IRC
-   channel. Check http://bazaar-vcs.org/BzrSupport for details.
+   channel.
+
 
 Registration and Feedback
 =========================
 
+If you encounter any problems with Bazaar, need help understanding it, or would
+like to offer suggestions or feedback, please get in touch with us:
+
+ * Ask a question through our web support interface, at 
+   https://answers.launchpad.net/bzr/
+
+ * Report bugs at https://bugs.edge.launchpad.net/bzr/+filebug
+
+ * Write to us at bazaar@lists.canonical.com 
+   You can join the list at <https://lists.ubuntu.com/mailman/listinfo/bazaar>.
+   You don't need to subscribe to post, but your first post will be held 
+   briefly for manual moderation.
+
+ * Talk to us in irc://irc.ubuntu.com/bzr
+
+ * And see http://bazaar-vcs.org/BzrSupport for more.
+
 If you would like to help us improve Bazaar by telling us about yourself and
 what we could do better, please register and complete the online survey here:
-http://www.surveymonkey.com/s.aspx?sm=L94RvLswhKdktrxiHWiX3g_3d_3d.
-
-Registration is completely optional. If you would like to provide feedback
-in other ways, see http://bazaar-vcs.org/BzrSupport for alternative ways of
-getting in contact with us.
+http://www.surveymonkey.com/s.aspx?sm=L94RvLswhKdktrxiHWiX3g_3d_3d.  
+Registration is completely optional. 
 
 Enjoy,
 The Bazaar Team
