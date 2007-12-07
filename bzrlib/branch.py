@@ -1878,6 +1878,19 @@ class BzrBranchExperimental(BzrBranch5):
         return None
 
     @classmethod
+    def set_reference(self, a_bzrdir, to_branch):
+        """Set the target reference of the branch in a_bzrdir.
+
+        format probing must have been completed before calling
+        this method - it is assumed that the format of the branch
+        in a_bzrdir is correct.
+
+        :param a_bzrdir: The bzrdir to set the branch reference for.
+        :param to_branch: branch that the checkout is to reference
+        """
+        raise NotImplementedError(self.set_reference)
+
+    @classmethod
     def _initialize_control_files(cls, a_bzrdir, utf8_files, lock_filename,
             lock_class):
         branch_transport = a_bzrdir.get_branch_transport(cls)
