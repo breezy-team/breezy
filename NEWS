@@ -26,8 +26,8 @@ IN DEVELOPMENT
      Matt Revell and corrections from John Arbash Meinel. (Ian Clatworthy)
 
    * Quick Start Guide renamed to Quick Start Card, moved down in
-     the catalog, provided in png format and updated to refer to ``send``
-     instead of ``bundle``. (Ian Clatworthy, #165080)
+     the catalog, provided in pdf and png format and updated to refer
+     to ``send`` instead of ``bundle``. (Ian Clatworthy, #165080)
 
   INTERNALS:
 
