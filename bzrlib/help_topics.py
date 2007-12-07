@@ -128,6 +128,18 @@ def _help_on_topics(dummy):
     return ''.join(out)
 
 
+def _load_from_file(topic_name):
+    """Load help from a file.
+
+    The help is already expected to be in ReStructuredText format.
+    """
+    # FIXME ...
+    bzr_dir = "."
+    filename = "%s/doc/en/user-reference/%s.txt" % (bzr_dir,topic_name)
+    lines = open(filename).readlines()
+    return ''.join(lines)
+
+
 def _help_on_revisionspec(name):
     """Generate the help for revision specs."""
     import re
@@ -605,6 +617,16 @@ topic_registry.register('env-variables', _env_variables,
                         'Environment variable names and values')
 topic_registry.register('files', _files,
                         'Information on configuration and log files')
+
+# Load some of the help topics from files
+topic_registry.register('authentication', _load_from_file,
+                        'Information on configuring authentication')
+topic_registry.register('configuration', _load_from_file,
+                        'Details on the configuration settings available')
+topic_registry.register('conflicts', _load_from_file,
+                        'Types of conflicts and what to do about them')
+topic_registry.register('hooks', _load_from_file,
+                        'Points at which custom processing can be added')
 
 
 # Register concept topics.

@@ -1,9 +1,8 @@
-###############
-Hooks Reference 
-###############
+Hooks
+=====
 
 post_push
-#########
+---------
 
 Run after ``push`` has completed.
 
@@ -37,7 +36,8 @@ The hook signature is (push_result), containing the members
     The revision id (eg joe@foo.com-5676566-boa234a) after the push.
 
 post_pull
-#########
+---------
+
 Run after ``pull`` has completed.
 
 The hook signature is (push_result) containing the members
@@ -48,7 +48,8 @@ is read-locked and the target branches are write-locked. Source will
 be the local low-latency branch.
 
 pre_commit
-##########
+----------
+
 Run prefore ``commit`` has completed.
 
 The hook signature is (local, master, old_revno, old_revid, future_revno,
@@ -59,14 +60,16 @@ obtained from CommitBuilder.revision_tree(). Hooks MUST NOT modify tree_delta
 and future_tree.
 
 post_commit
-###########
+-----------
+
 Run after ``commit`` has completed.
 
 The hook signature is (local, master, old_revno, old_revid, new_revno,
 new_revid) old_revid is NULL_REVISION for the first commit to a branch.
 
 post_uncommit
-#############
+-------------
+
 Run after ``uncommit`` has completed.
 
 The api signature is (local, master, old_revno, old_revid, new_revno,
@@ -74,11 +77,12 @@ new_revid) where local is the local branch or None, master is the target
 branch, and an empty branch receives new_revno of 0, new_revid of None.
 
 set_rh
-######
+------
+
 Run after the branch's revision history has been modified (push, pull, commit
 and uncommit can all modify the revision history).
 
 The hook signature is (branch, revision_history), and the branch will be
 write-locked.
 
-See also `Using Hooks <../user-guide/hooks.html>`_.
+See also `Using Hooks <../user-guide/index.html#using-hooks>`_.
