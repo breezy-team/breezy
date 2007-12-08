@@ -139,6 +139,7 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         # time of this writing it's even the only known client -- vila20071203
         return StringIO(response_file.read())
 
+    # TODO: Add tests for tail_amount or deprecate it
     def _get(self, relpath, ranges, tail_amount=0):
         """Get a file, or part of a file.
 
@@ -174,30 +175,6 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
             # original exception; the 'mutter' calls above will indicate that
             # further tries were unsuccessful
             raise exc_info[0], exc_info[1], exc_info[2]
-
-    def _get_ranges_hinted(self, relpath, ranges):
-        """Issue a ranged GET request taking server capabilities into account.
-
-        Depending of the errors returned by the server, we try several GET
-        requests, trying to minimize the data transferred.
-
-        :param relpath: Path relative to transport base URL
-        :param ranges: None to get the whole file;
-            or  a list of _CoalescedOffset to fetch parts of a file.
-        :returns: A file handle containing at least the requested ranges.
-        """
-        exc_info = None
-        try_again = True
-        while try_again:
-            try_again = False
-            try:
-                code, f = self._get(relpath, ranges)
-            except errors.InvalidHttpRange, e:
-                if exc_info is None:
-                    exc_info = sys.exc_info()
-                self._degrade_range_hint(relpath, ranges, exc_info)
-                try_again = True
-        return f
 
     # _coalesce_offsets is a helper for readv, it try to combine ranges without
     # degrading readv performances. _bytes_to_read_before_seek is the value
@@ -318,34 +295,6 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         introduced by latency.
         """
         return 64 * 1024
-
-    @staticmethod
-    @deprecated_method(zero_seventeen)
-    def offsets_to_ranges(offsets):
-        """Turn a list of offsets and sizes into a list of byte ranges.
-
-        :param offsets: A list of tuples of (start, size).  An empty list
-            is not accepted.
-        :return: a list of inclusive byte ranges (start, end) 
-            Adjacent ranges will be combined.
-        """
-        # Make sure we process sorted offsets
-        offsets = sorted(offsets)
-
-        prev_end = None
-        combined = []
-
-        for start, size in offsets:
-            end = start + size - 1
-            if prev_end is None:
-                combined.append([start, end])
-            elif start <= prev_end + 1:
-                combined[-1][1] = end
-            else:
-                combined.append([start, end])
-            prev_end = end
-
-        return combined
 
     def _post(self, body_bytes):
         """POST body_bytes to .bzr/smart on this transport.
