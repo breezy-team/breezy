@@ -21,6 +21,7 @@ import errno
 import warnings
 
 from bzrlib import (
+    debug,
     errors,
     osutils,
     patiencediff,
@@ -315,9 +316,13 @@ class Merger(object):
         if NULL_REVISION in revisions:
             self.base_rev_id = NULL_REVISION
         else:
-            self.base_rev_id = graph.find_unique_lca(*revisions)
+            self.base_rev_id, steps = graph.find_unique_lca(revisions[0],
+                revisions[1], count_steps=True)
             if self.base_rev_id == NULL_REVISION:
                 raise UnrelatedBranches()
+            if steps > 1:
+                warning('Warning: criss-cross merge encountered.  See bzr'
+                        ' help criss-cross.')
         self.base_tree = self.revision_tree(self.base_rev_id)
         self.base_is_ancestor = True
         self.base_is_other_ancestor = True
@@ -991,6 +996,12 @@ class WeaveMerger(Merge3Merger):
         """
         plan = self.this_tree.plan_file_merge(file_id, self.other_tree,
                                               base=self.base_tree)
+        if 'merge' in debug.debug_flags:
+            plan = list(plan)
+            trans_id = self.tt.trans_id_file_id(file_id)
+            name = self.tt.final_name(trans_id) + '.plan'
+            contents = ('%10s|%s' % l for l in plan)
+            self.tt.new_file(name, self.tt.final_parent(trans_id), contents)
         textmerge = PlanWeaveMerge(plan, '<<<<<<< TREE\n',
             '>>>>>>> MERGE-SOURCE\n')
         return textmerge.merge_lines(self.reprocess)
