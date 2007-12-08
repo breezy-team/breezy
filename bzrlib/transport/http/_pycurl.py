@@ -212,9 +212,9 @@ class PyCurlTransport(HttpTransportBase):
     # exploit the results as soon as they are received (pycurl limitation) we'd
     # better issue more requests and provide a more responsive UI do the cost
     # of more latency costs.
-    # If you modify this think about modifying the comment in http/__init__.py
+    # If you modify this, think about modifying the comment in http/__init__.py
     # too.
-    _max_readv_combine = 25
+    _get_max_size = 4 * 1024 * 1024
 
     def _get_ranged(self, relpath, offsets, tail_amount):
         """Make a request for just part of the file."""

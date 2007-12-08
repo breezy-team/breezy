@@ -660,7 +660,22 @@ class TestRangeRequestServer(object):
         self.assertEqual(l[2], (3, '34'))
         self.assertEqual(l[3], (9, '9'))
         # The server should have issued 4 requests
-        self.assertEqual(4, self.get_readonly_server().GET_request_nb)
+        self.assertEqual(4, server.GET_request_nb)
+
+    def test_readv_get_max_size(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        # force transport to issue multiple requests by limiting the number of
+        # bytes by request. Note that this apply to coalesced offsets only, a
+        # single range ill keep its size even if bigger than the limit.
+        t._get_max_size = 2
+        l = list(t.readv('a', ((0, 1), (1, 1), (2, 4), (6, 4))))
+        self.assertEqual(l[0], (0, '0'))
+        self.assertEqual(l[1], (1, '1'))
+        self.assertEqual(l[2], (2, '2345'))
+        self.assertEqual(l[3], (6, '6789'))
+        # The server should have issued 3 requests
+        self.assertEqual(3, server.GET_request_nb)
 
 
 class TestSingleRangeRequestServer(TestRangeRequestServer):

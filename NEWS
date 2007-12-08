@@ -76,7 +76,9 @@ IN DEVELOPMENT
      (John Arbash Meinel, #165290)
 
    * Give more feedback during long http downloads by making readv deliver data
-     as it arrives for urllib, and issue more requests for pycurl.
+     as it arrives for urllib, and issue more requests for pycurl. High latency
+     networks are better handled by urllib, the pycurl implementation give more
+     feedback but also incur more latency.
      (Vincent Ladeuil, #173010)
 
    * Fall back to showing e-mail in ``log --short/--line`` if the 

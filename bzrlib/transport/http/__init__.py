@@ -188,12 +188,14 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
     # specified.
     _bytes_to_read_before_seek = 128
     # No limit on the offset number that get combined into one, we are trying
-    # to avoid downloading the whole file. But see _pycurl.py for a different
-    # use.
+    # to avoid downloading the whole file.
     _max_readv_combine = 0
     # By default Apache has a limit of ~400 ranges before replying with a 400
     # Bad Request. So we go underneath that amount to be safe.
     _max_get_ranges = 200
+    # We impose no limit on the range size. But see _pycurl.py for a different
+    # use.
+    _get_max_size = 0
 
     def _readv(self, relpath, offsets):
         """Get parts of the file at the given relative path.
@@ -214,7 +216,8 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
             sorted_offsets = sorted(offsets)
             coalesced = self._coalesce_offsets(
                 sorted_offsets, limit=self._max_readv_combine,
-                fudge_factor=self._bytes_to_read_before_seek)
+                fudge_factor=self._bytes_to_read_before_seek,
+                max_size=self._get_max_size)
 
             # Turn it into a list, we will iterate it several times
             coalesced = list(coalesced)
@@ -268,25 +271,49 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
 
     def _coalesce_readv(self, relpath, coalesced):
         """Issue several GET requests to satisfy the coalesced offsets"""
-        total = len(coalesced)
-        if self._range_hint == 'multi':
-             max_ranges = self._max_get_ranges
-        elif self._range_hint == 'single':
-             max_ranges = total
+
+        def get_and_yield(relpath, coalesced):
+            if coalesced:
+                # Note that the _get below may raise
+                # errors.InvalidHttpRange. It's the caller's responsability to
+                # decide how to retry since it may provide different coalesced
+                # offsets.
+                code, rfile = self._get(relpath, coalesced)
+                for coal in coalesced:
+                    yield coal, rfile
+
+        if self._range_hint is None:
+            # Download whole file
+            for c, rfile in get_and_yield(relpath, coalesced):
+                yield c, rfile
         else:
-            # The whole file will be downloaded anyway
-            max_ranges = total
-        # TODO: Some web servers may ignore the range requests and return the
-        # whole file, we may want to detect that and avoid further requests.
-        # Hint: test_readv_multiple_get_requests will fail once we do that
-        for group in xrange(0, len(coalesced), max_ranges):
-            ranges = coalesced[group:group+max_ranges]
-            # Note that the following may raise errors.InvalidHttpRange. It's
-            # the caller's responsability to decide how to retry since it may
-            # provide different coalesced offsets.
-            code, rfile = self._get(relpath, ranges)
-            for range in ranges:
-                yield range, rfile
+            total = len(coalesced)
+            if self._range_hint == 'multi':
+                max_ranges = self._max_get_ranges
+            else: # self._range_hint == 'single'
+                max_ranges = total
+            # TODO: Some web servers may ignore the range requests and return
+            # the whole file, we may want to detect that and avoid further
+            # requests.
+            # Hint: test_readv_multiple_get_requests will fail once we do that
+            cumul = 0
+            ranges = []
+            for coal in coalesced:
+                if ((self._get_max_size > 0
+                     and cumul + coal.length > self._get_max_size)
+                    or len(ranges) >= max_ranges):
+                    # Get that much and yield
+                    for c, rfile in get_and_yield(relpath, ranges):
+                        yield c, rfile
+                    # Restart with the current offset
+                    ranges = [coal]
+                    cumul = coal.length
+                else:
+                    ranges.append(coal)
+                    cumul += coal.length
+            # Get the rest and yield
+            for c, rfile in get_and_yield(relpath, ranges):
+                yield c, rfile
 
     def recommended_page_size(self):
         """See Transport.recommended_page_size().
@@ -410,7 +437,11 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
             return self.__class__(self.abspath(offset), self)
 
     def _attempted_range_header(self, offsets, tail_amount):
-        """Prepare a HTTP Range header at a level the server should accept"""
+        """Prepare a HTTP Range header at a level the server should accept.
+
+        :return: the range header representing offsets/tail_amount or None if
+            no header can be built.
+        """
 
         if self._range_hint == 'multi':
             # Generate the header describing all offsets

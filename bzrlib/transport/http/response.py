@@ -64,6 +64,9 @@ class RangeFile(object):
         self._path = path
         self._file = infile
         self._boundary = None
+        # When using multi parts response, this will be set with the headers
+        # associated with the range currently read.
+        self._headers = None
         # Default to the whole file of unspecified size
         self.set_range(0, -1)
 
@@ -105,9 +108,9 @@ class RangeFile(object):
         Parse the headers including the empty line following them so that we
         are ready to read the data itself.
         """
-        msg = httplib.HTTPMessage(self._file, seekable=0)
+        self._headers = httplib.HTTPMessage(self._file, seekable=0)
         # Extract the range definition
-        content_range = msg.getheader('content-range', None)
+        content_range = self._headers.getheader('content-range', None)
         if content_range is None:
             raise errors.InvalidHttpResponse(
                 self._path,
@@ -115,13 +118,12 @@ class RangeFile(object):
         self.set_range_from_header(content_range)
 
     def set_range_from_header(self, content_range):
-        """Create a new range from its description in the headers"""
+        """Helper to set the new range from its description in the headers"""
         try:
             rtype, values = content_range.split()
         except ValueError:
             raise errors.InvalidHttpRange(self._path, content_range,
-                                          "Malformed Content-Range header '%s'"
-                                          % content_range)
+                                          'Malformed header')
         if rtype != 'bytes':
             raise errors.InvalidHttpRange(self._path, content_range,
                                           "Unsupported range type '%s'" % rtype)
@@ -135,11 +137,11 @@ class RangeFile(object):
             end = int(end)
         except ValueError:
             raise errors.InvalidHttpRange(self._path, content_range,
-                                          "Invalid range values '%s'" % values)
+                                          'Invalid range values')
         size = end - start + 1
         if size <= 0:
             raise errors.InvalidHttpRange(self._path, content_range,
-                                          "Invalid range values '%s'" % values)
+                                          'Invalid range, size <= 0')
         self.set_range(start, size)
 
     def _checked_read(self, size):
@@ -178,6 +180,7 @@ class RangeFile(object):
                 limited = min(limited, size)
             data = self._file.read(limited)
         else:
+            # Size of file unknown
             data = self._file.read(size)
         # Update _pos respecting the data effectively read
         self._pos += len(data)
