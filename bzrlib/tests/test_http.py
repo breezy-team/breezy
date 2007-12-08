@@ -987,7 +987,7 @@ class TestRanges(object):
     def _file_tail(self, relpath, tail_amount):
         code, data = self.transport._get(relpath, [], tail_amount)
         self.assertTrue(code in (200, 206),'_get returns: %d' % code)
-        data.seek(-tail_amount + 1, 2)
+        data.seek(-tail_amount, 2)
         return data.read(tail_amount)
 
     def test_range_header(self):
