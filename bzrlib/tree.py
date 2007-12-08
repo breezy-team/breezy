@@ -291,7 +291,7 @@ class Tree(object):
         """
         raise NotImplementedError(self.annotate_iter)
 
-    def plan_file_merge(self, file_id, other):
+    def plan_file_merge(self, file_id, other, base=None):
         """Generate a merge plan based on annotations.
 
         If the file contains uncommitted changes in this tree, they will be
@@ -303,7 +303,12 @@ class Tree(object):
         vf = versionedfile._PlanMergeVersionedFile(file_id)
         last_revision_a = self._get_file_revision(file_id, vf, 'this:')
         last_revision_b = other._get_file_revision(file_id, vf, 'other:')
-        return vf.plan_merge(last_revision_a, last_revision_b)
+        if base is None:
+            last_revision_base = None
+        else:
+            last_revision_base = other._get_file_revision(file_id, vf, 'base:')
+        return vf.plan_merge(last_revision_a, last_revision_b,
+                             last_revision_base)
 
     def _get_file_revision(self, file_id, vf, tree_revision):
         def file_revision(revision_tree):

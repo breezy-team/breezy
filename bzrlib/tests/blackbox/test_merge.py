@@ -392,3 +392,16 @@ class TestMerge(ExternalBase):
         # pick 1 revision with option --changes
         self.run_bzr('merge -d target -c revid:rev_d source')
         self.assertDirectoryContent('target', ['.bzr', 'a', 'd'])
+
+    def test_weave_cherrypick(self):
+        this_tree = self.make_branch_and_tree('this')
+        self.build_tree_contents([('this/file', "a\n")])
+        this_tree.add('file')
+        this_tree.commit('rev1')
+        other_tree = this_tree.bzrdir.sprout('other').open_workingtree()
+        self.build_tree_contents([('other/file', "a\nb\n")])
+        other_tree.commit('rev2b')
+        self.build_tree_contents([('other/file', "c\na\nb\n")])
+        other_tree.commit('rev3b')
+        self.run_bzr('merge --weave -d this other -c -1')
+        self.assertFileEqual('c\na\n', 'this/file')

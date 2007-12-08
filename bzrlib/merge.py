@@ -989,7 +989,8 @@ class WeaveMerger(Merge3Merger):
         There is no distinction between lines that are meant to contain <<<<<<<
         and conflicts.
         """
-        plan = self.this_tree.plan_file_merge(file_id, self.other_tree)
+        plan = self.this_tree.plan_file_merge(file_id, self.other_tree,
+                                              base=self.base_tree)
         textmerge = PlanWeaveMerge(plan, '<<<<<<< TREE\n',
             '>>>>>>> MERGE-SOURCE\n')
         return textmerge.merge_lines(self.reprocess)
