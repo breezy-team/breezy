@@ -191,11 +191,11 @@ class RangeFile(object):
             final_pos = start_pos + offset
         elif whence == 2:
             if self._size > 0:
-                final_pos = self._start + self._size - 1 + offset # offset < 0
+                final_pos = self._start + self._size + offset # offset < 0
             else:
                 raise errors.InvalidRange(
                     self._path, self._pos,
-                    "RangeFile: can't seek while size is unknown")
+                    "RangeFile: can't seek from end while size is unknown")
         else:
             raise ValueError("Invalid value %s for whence." % whence)
 

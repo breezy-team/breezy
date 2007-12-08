@@ -108,6 +108,23 @@ class TestRangeFileMixin(object):
         f.seek(start + 20)
         self.assertRaises(errors.InvalidRange, f.read, 10)
 
+    def test_seek_from_end(self):
+       """Test seeking from the end of the file.
+
+       The semantic is unclear in case of multiple ranges. Seeking from end
+       exists only for the http transports, cannot be used if the file size is
+       unknown and is not used in bzrlib itself. This test must be (and is)
+       overridden by daughter classes.
+
+       Reading from end makes sense only when a range has been requested from
+       the end of the file (see HttpTransportBase._get() when using the
+       'tail_amount' parameter). The HTTP response can only be a whole file or
+       a single range.
+       """
+       f = self._file
+       f.seek(-2, 2)
+       self.assertEquals('yz', f.read())
+
 
 class TestRangeFileSizeUnknown(tests.TestCase, TestRangeFileMixin):
     """Test a RangeFile for a whole file whose size is not known."""
@@ -120,6 +137,10 @@ class TestRangeFileSizeUnknown(tests.TestCase, TestRangeFileMixin):
         self.first_range_start = 0 # It's the whole file
 
     def test_seek_from_end(self):
+        """See TestRangeFileMixin.test_seek_from_end.
+
+        The end of the file can't be determined since the size is unknown.
+        """
         self.assertRaises(errors.InvalidRange, self._file.seek, -1, 2)
 
 
@@ -144,6 +165,12 @@ class TestRangeFileSingleRange(tests.TestCase, TestRangeFileMixin):
         self.first_range_start = 15
         self._file.set_range(self.first_range_start, len(self.alpha))
 
+
+    def test_read_before_range(self):
+        # This can't occur under normal circumstances, we have to force it
+        f = self._file
+        f._pos = 0 # Force an invalid pos
+        self.assertRaises(errors.InvalidRange, f.read, 2)
 
 class TestRangeFilMultipleRanges(tests.TestCase, TestRangeFileMixin):
     """Test a RangeFile for multiple ranges."""
@@ -218,6 +245,17 @@ class TestRangeFilMultipleRanges(tests.TestCase, TestRangeFileMixin):
         f.seek(10, 1)
         self.assertEquals('LMN', f.read(3))
 
+    def test_seek_from_end(self):
+        """See TestRangeFileMixin.test_seek_from_end."""
+        # The actual implementation will seek from end for the first range only
+        # and then fail. Since seeking from end is intented to be used for a
+        # single range only anyway, this test just document the actual
+        # behaviour.
+        f = self._file
+        f.seek(-2, 2)
+        self.assertEquals('yz', f.read())
+        self.assertRaises(errors.InvalidRange, f.seek, -2, 2)
+
     def test_seek_into_void(self):
         f = self._file
         start = self.first_range_start
@@ -244,32 +282,45 @@ class TestRangeFilMultipleRanges(tests.TestCase, TestRangeFileMixin):
         self.assertRaises(errors.InvalidRange, f.seek, start + 41)
 
 
-class TestRanges(tests.TestCase):
+class TestRangeFileVarious(tests.TestCase):
+    """Tests RangeFile aspects not covered elsewhere."""
+
+    def test_seek_whence(self):
+        """Test the seek whence parameter values."""
+        f = response.RangeFile('foo', StringIO('abc'))
+        f.set_range(0, 3)
+        f.seek(0)
+        f.seek(1, 1)
+        f.seek(-1, 2)
+        self.assertRaises(ValueError, f.seek, 0, 14)
 
     def test_range_syntax(self):
+        """Test the Content-Range scanning."""
 
-        rf = response.RangeFile('foo', StringIO())
+        f = response.RangeFile('foo', StringIO())
 
         def ok(expected, header_value):
-            rf.set_range_from_header(header_value)
+            f.set_range_from_header(header_value)
             # Slightly peek under the covers to get the size
-            self.assertEquals(expected, (rf.tell(), rf._size))
+            self.assertEquals(expected, (f.tell(), f._size))
 
         ok((1, 10), 'bytes 1-10/11')
         ok((1, 10), 'bytes 1-10/*')
         ok((12, 2), '\tbytes 12-13/*')
         ok((28, 1), '  bytes 28-28/*')
         ok((2123, 2120), 'bytes  2123-4242/12310')
-        ok((1, 10), 'bytes 1-10/xxx') # We don't check total (xxx)
+        ok((1, 10), 'bytes 1-10/ttt') # We don't check total (ttt)
 
         def nok(header_value):
             self.assertRaises(errors.InvalidHttpRange,
-                              rf.set_range_from_header, header_value)
+                              f.set_range_from_header, header_value)
 
+        nok('bytes 10-2/3')
         nok('chars 1-2/3')
         nok('bytes xx-yyy/zzz')
         nok('bytes xx-12/zzz')
         nok('bytes 11-yy/zzz')
+        nok('bytes10-2/3')
 
 
 # Taken from real request responses
@@ -365,6 +416,7 @@ mbp@source\r
 --418470f848b63279b--\r
 """)
 
+
 _multipart_squid_range_response = (206, """HTTP/1.0 206 Partial Content\r
 Date: Thu, 31 Aug 2006 21:16:22 GMT\r
 Server: Apache/2.2.2 (Unix) DAV/2\r
@@ -411,6 +463,19 @@ Connection: close\r
 """)
 
 
+_full_text_response_no_content_length = (200, """HTTP/1.1 200 OK\r
+Date: Tue, 11 Jul 2006 04:32:56 GMT\r
+Server: Apache/2.0.54 (Fedora)\r
+Last-Modified: Sun, 23 Apr 2006 19:35:20 GMT\r
+ETag: "56691-23-38e9ae00"\r
+Accept-Ranges: bytes\r
+Connection: close\r
+Content-Type: text/plain; charset=UTF-8\r
+\r
+""", """Bazaar-NG meta directory, format 1
+""")
+
+
 _single_range_no_content_range = (206, """HTTP/1.1 206 Partial Content\r
 Date: Tue, 11 Jul 2006 04:45:22 GMT\r
 Server: Apache/2.0.54 (Fedora)\r
@@ -422,6 +487,20 @@ Connection: close\r
 \r
 """, """mbp@sourcefrog.net-20050309040815-13242001617e4a06
 mbp@sourcefrog.net-20050309040929-eee0eb3e6d1e762""")
+
+
+_single_range_response_truncated = (206, """HTTP/1.1 206 Partial Content\r
+Date: Tue, 11 Jul 2006 04:45:22 GMT\r
+Server: Apache/2.0.54 (Fedora)\r
+Last-Modified: Thu, 06 Jul 2006 20:22:05 GMT\r
+ETag: "238a3c-16ec2-805c5540"\r
+Accept-Ranges: bytes\r
+Content-Length: 100\r
+Content-Range: bytes 100-199/93890\r
+Connection: close\r
+Content-Type: text/plain; charset=UTF-8\r
+\r
+""", """mbp@sourcefrog.net-20050309040815-13242001617e4a06""")
 
 
 _invalid_response = (444, """HTTP/1.1 444 Bad Response\r
@@ -437,6 +516,37 @@ Content-Type: text/html; charset=iso-8859-1\r
 <p>I don't know what I'm doing</p>
 <hr>
 </body></html>
+""")
+
+
+_multipart_no_content_range = (206, """HTTP/1.0 206 Partial Content\r
+Content-Type: multipart/byteranges; boundary=THIS_SEPARATES\r
+Content-Length: 598\r
+\r
+""",
+"""\r
+--THIS_SEPARATES\r
+Content-Type: text/plain\r
+\r
+# bzr knit index 8
+--THIS_SEPARATES\r
+""")
+
+
+_multipart_no_boundary = (206, """HTTP/1.0 206 Partial Content\r
+Content-Type: multipart/byteranges; boundary=THIS_SEPARATES\r
+Content-Length: 598\r
+\r
+""",
+"""\r
+--THIS_SEPARATES\r
+Content-Type: text/plain\r
+Content-Range: bytes 0-18/18672\r
+\r
+# bzr knit index 8
+
+The range ended at the line above, this text is garbage instead of a boundary
+line
 """)
 
 
@@ -473,6 +583,11 @@ class TestHandleResponse(tests.TestCase):
         out.seek(100)
         self.assertEqual(_single_range_no_content_type[2], out.read(100))
 
+    def test_single_range_truncated(self):
+        out = self.get_response(_single_range_response_truncated)
+        # Content-Range declares 100 but only 51 present
+        self.assertRaises(errors.ShortReadvError, out.seek, out.tell() + 51)
+
     def test_multi_range(self):
         out = self.get_response(_multipart_range_response)
 
@@ -504,9 +619,28 @@ class TestHandleResponse(tests.TestCase):
         out = response.handle_response('http://foo', code, msg, StringIO(body))
         self.assertEqual(body, out.read())
 
+    def test_full_text_no_content_length(self):
+        code, raw_headers, body = _full_text_response_no_content_length
+        msg = self._build_HTTPMessage(raw_headers)
+        out = response.handle_response('http://foo', code, msg, StringIO(body))
+        self.assertEqual(body, out.read())
+
     def test_missing_content_range(self):
         code, raw_headers, body = _single_range_no_content_range
         msg = self._build_HTTPMessage(raw_headers)
         self.assertRaises(errors.InvalidHttpResponse,
                           response.handle_response,
-                          'http://nocontent', code, msg, StringIO(body))
+                          'http://bogus', code, msg, StringIO(body))
+
+    def test_multipart_no_content_range(self):
+        code, raw_headers, body = _multipart_no_content_range
+        msg = self._build_HTTPMessage(raw_headers)
+        self.assertRaises(errors.InvalidHttpResponse,
+                          response.handle_response,
+                          'http://bogus', code, msg, StringIO(body))
+
+    def test_multipart_no_boundary(self):
+        out = self.get_response(_multipart_no_boundary)
+        out.read()  # Read the whole range
+        # Fail to find the boundary line
+        self.assertRaises(errors.InvalidHttpResponse, out.seek, 1, 1)
