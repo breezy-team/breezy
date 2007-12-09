@@ -3030,10 +3030,6 @@ class cmd_remerge(Command):
                                              " merges.  Not cherrypicking or"
                                              " multi-merges.")
             repository = tree.branch.repository
-            graph = repository.get_graph()
-            base_revision = graph.find_unique_lca(parents[0], parents[1])
-            base_tree = repository.revision_tree(base_revision)
-            other_tree = repository.revision_tree(parents[1])
             interesting_ids = None
             new_conflicts = []
             conflicts = tree.conflicts()
@@ -3069,18 +3065,19 @@ class cmd_remerge(Command):
             # list, we imply that the working tree text has seen and rejected
             # all the changes from the other tree, when in fact those changes
             # have not yet been seen.
+            pb = ui.ui_factory.nested_progress_bar()
             tree.set_parent_ids(parents[:1])
             try:
-                conflicts = _mod_merge.merge_inner(
-                                          tree.branch, other_tree, base_tree,
-                                          this_tree=tree,
-                                          interesting_ids=interesting_ids,
-                                          other_rev_id=parents[1],
-                                          merge_type=merge_type,
-                                          show_base=show_base,
-                                          reprocess=reprocess)
+                merger = _mod_merge.Merger.from_revision_ids(pb,
+                                                             tree, parents[1])
+                merger.interesting_ids = interesting_ids
+                merger.merge_type = merge_type
+                merger.show_base = show_base
+                merger.reprocess = reprocess
+                conflicts = merger.do_merge()
             finally:
                 tree.set_parent_ids(parents)
+                pb.finished()
         finally:
             tree.unlock()
         if conflicts > 0:
