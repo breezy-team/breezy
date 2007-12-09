@@ -9,6 +9,7 @@ bzr (1.0~rc1-3) UNRELEASED; urgency=low
     + drop conflicts on obsolete bzr-doc.
     + demote python-pycurl to Suggests, mention in the description
       what's useful for.
+    + properly capitalize Vcs-Bzr.
 
   [ James Westby ]
   * debian/rules:
