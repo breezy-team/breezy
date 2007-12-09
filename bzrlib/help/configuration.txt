@@ -1,13 +1,13 @@
-Configuration reference
+Configuration Settings
 =======================
 
-Information on how to configure Bazaar.
+.. Information on how to configure Bazaar.
 
 .. TODO: Should have some explanation of why you'd want things in
 .. branch.conf.
 
 
-Environment variables
+Environment settings
 ---------------------
 
 While most configuration is handled by configuration files, some options

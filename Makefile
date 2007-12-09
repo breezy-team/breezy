@@ -87,7 +87,6 @@ doc_dir := doc/en/tutorials
 txt_files := $(wildcard $(addsuffix /*.txt, $(doc_dir))) $(derived_txt_files) \
 	doc/en/user-guide/index.txt \
 	doc/en/mini-tutorial/index.txt \
-	doc/en/user-reference/hooks.txt \
 	doc/index.txt
 non_txt_files := \
        doc/default.css \

@@ -30,6 +30,7 @@ BZRLIB = {}
 PKG_DATA = {# install files from selftest suite
             'package_data': {'bzrlib': ['doc/api/*.txt',
                                         'tests/test_patches_data/*',
+                                        'help/*.txt',
                                        ]},
            }
 
@@ -304,6 +305,10 @@ elif 'py2exe' in sys.argv:
     # so we need to explicitly add all package
     additional_packages.append('email')
 
+    # text files for help topis
+    import glob
+    text_topics = glob.glob('bzrlib/help/*.txt')
+
     options_list = {"py2exe": {"packages": BZRLIB['packages'] +
                                            additional_packages,
                                "excludes": ["Tkinter", "medusa", "tools"],
@@ -314,7 +319,9 @@ elif 'py2exe' in sys.argv:
           console=[target,
                    'tools/win32/bzr_postinstall.py',
                   ],
-          zipfile='lib/library.zip')
+          zipfile='lib/library.zip',
+          data_files=[('lib/help', text_topics)],
+          )
 
 else:
     # ad-hoc for easy_install

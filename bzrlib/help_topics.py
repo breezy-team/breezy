@@ -33,7 +33,13 @@ be used in the help text, producing sensible input to a manual while
 rendering on the screen naturally.
 """
 
-from bzrlib import registry
+import sys
+
+import bzrlib
+from bzrlib import (
+    osutils,
+    registry,
+    )
 
 
 # Section identifiers (map topics to the right place in the manual)
@@ -126,6 +132,18 @@ def _help_on_topics(dummy):
         summary = topic_registry.get_summary(topic)
         out.append("%-*s %s\n" % (lmax, topic, summary))
     return ''.join(out)
+
+
+def _load_from_file(topic_name):
+    """Load help from a file.
+
+    The help is already expected to be in ReStructuredText format.
+    """
+    base = osutils.dirname(bzrlib.__file__)
+    if getattr(sys, 'frozen', None):    # bzr.exe
+        base = osutils.abspath(osutils.pathjoin(base,'..','..'))
+    filename = osutils.pathjoin(base, 'help', topic_name+".txt")
+    return open(filename, 'rU').read()
 
 
 def _help_on_revisionspec(name):
@@ -606,6 +624,16 @@ topic_registry.register('env-variables', _env_variables,
                         'Environment variable names and values')
 topic_registry.register('files', _files,
                         'Information on configuration and log files')
+
+# Load some of the help topics from files
+topic_registry.register('authentication', _load_from_file,
+                        'Information on configuring authentication')
+topic_registry.register('configuration', _load_from_file,
+                        'Details on the configuration settings available')
+topic_registry.register('conflicts', _load_from_file,
+                        'Types of conflicts and what to do about them')
+topic_registry.register('hooks', _load_from_file,
+                        'Points at which custom processing can be added')
 
 
 # Register concept topics.

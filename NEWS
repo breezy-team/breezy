@@ -36,6 +36,11 @@ IN DEVELOPMENT
      the catalog, provided in pdf and png format and updated to refer
      to ``send`` instead of ``bundle``. (Ian Clatworthy, #165080)
 
+   * Reference material has now be moved out of the User Guide and added
+     to the User Reference. The User Reference has gained 4 sections as
+     a result: Authenication Settings, Configuration Settings, Conflicts
+     and Hooks. (Ian Clatworthy)
+
    * ``switch`` can now be used on heavyweight checkouts as well as
      lightweight ones. After switching a heavyweight checkout, the
      local branch is a mirror/cache of the new bound branch and
@@ -52,6 +57,9 @@ IN DEVELOPMENT
       (Vincent Ladeuil)
 
     * New -Dmerge debug option, which emits merge plans for merge-type=weave.
+
+    * Help topics can now be loaded from files. 
+      (Ian Clatworthy, Alexander Belchenko)
 
   BUGFIXES:
 

@@ -47,5 +47,5 @@ what you do with them is up to you.
 Standard hooks
 --------------
 
-For a complete list of hooks and their parameters, see the `Hooks Reference
-<../user-reference/hooks.html>`_.
+For a complete list of hooks and their parameters, see `Hooks'
+<../user-reference/bzr_man.html#hooks>`_ in the User Reference.

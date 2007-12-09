@@ -1,5 +1,5 @@
-Configuring authentication
-==========================
+Authentication Settings
+=======================
 
 
 Intent
