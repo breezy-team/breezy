@@ -145,7 +145,7 @@ class TestEntryDiffing(TestCaseWithTree):
         import sys
         from bzrlib.tests import KnownFailure
         from bzrlib.tests.tree_implementations import return_parameter
-        # Even more ugly: return_paramater is used for WorkingTree[2-4]
+        # Even more ugly: return_parameter is used for WorkingTree[2-4]
         if (self.workingtree_to_test_tree is return_parameter
             and sys.version_info >= (2, 6)):
             # Furthermore the problem here is that it interacts badly with a
