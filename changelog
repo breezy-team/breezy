@@ -1,6 +1,8 @@
-bzr (1.0~rc1-3) UNRELEASED; urgency=low
+bzr (1.0~rc2-1) unstable; urgency=low
 
   [ Adeodato Simó ]
+  * New 1.0 release candidate.
+
   * debian/control:
     + revamp the description.
     + add bzrtools to Recommends.
@@ -17,7 +19,7 @@ bzr (1.0~rc1-3) UNRELEASED; urgency=low
   * debian/rules:
     + use '$(MAKE)' instead of 'make' to at least allow a parallel build.
 
- -- James Westby <jw+debian@jameswestby.net>  Mon, 03 Dec 2007 18:01:47 +0000
+ -- Adeodato Simó <dato@net.com.org.es>  Sun, 09 Dec 2007 21:31:49 +0100
 
 bzr (1.0~rc1-2) unstable; urgency=low
 
