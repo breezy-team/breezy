@@ -417,5 +417,5 @@ class TestMerge(ExternalBase):
         other_tree.commit('rev2b')
         self.build_tree_contents([('other/file', "c\na\nb\n")])
         other_tree.commit('rev3b')
-        self.run_bzr('merge --weave -d this other -c -1')
+        self.run_bzr('merge --weave -d this other -r -2..-1')
         self.assertFileEqual('c\na\n', 'this/file')

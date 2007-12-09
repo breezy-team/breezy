@@ -306,7 +306,7 @@ class Tree(object):
         if base is None:
             last_revision_base = None
         else:
-            last_revision_base = other._get_file_revision(file_id, vf, 'base:')
+            last_revision_base = base._get_file_revision(file_id, vf, 'base:')
         return vf.plan_merge(last_revision_a, last_revision_b,
                              last_revision_base)
 

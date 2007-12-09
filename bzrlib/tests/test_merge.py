@@ -288,6 +288,24 @@ class TestMerge(TestCaseWithTransport):
         merger.do_merge()
         self.assertEqual(tree_a.get_parent_ids(), [tree_b.last_revision()])
 
+    def test_weave_cherrypick(self):
+        this_tree = self.make_branch_and_tree('this')
+        self.build_tree_contents([('this/file', "a\n")])
+        this_tree.add('file')
+        this_tree.commit('rev1')
+        other_tree = this_tree.bzrdir.sprout('other').open_workingtree()
+        self.build_tree_contents([('other/file', "a\nb\n")])
+        other_tree.commit('rev2b', rev_id='rev2b')
+        self.build_tree_contents([('other/file', "c\na\nb\n")])
+        other_tree.commit('rev3b', rev_id='rev3b')
+        this_tree.lock_write()
+        self.addCleanup(this_tree.unlock)
+        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+            this_tree, 'rev3b', 'rev2b', other_tree.branch)
+        merger.merge_type = _mod_merge.WeaveMerger
+        merger.do_merge()
+        self.assertFileEqual('c\na\n', 'this/file')
+
 
 class TestPlanMerge(TestCaseWithMemoryTransport):
 
