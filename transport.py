@@ -42,6 +42,10 @@ def _create_auth_baton(pool):
         svn.client.get_ssl_client_cert_pw_file_provider(pool),
         svn.client.get_ssl_server_trust_file_provider(pool),
         ]
+    if svn.core.SVN_VER_MAJOR == 1 and svn.core.SVN_VER_MINOR >= 5:
+        import auth
+        providers += auth.SubversionAuthenticationConfig().get_svn_auth_providers()
+        providers.append(get_ssl_client_cert_pw_provider(1))
     return svn.core.svn_auth_open(providers, pool)
 
 
