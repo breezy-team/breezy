@@ -106,7 +106,7 @@ class LogWalker(object):
                     pool = Pool()
                     self._get_transport().get_log("/", self.saved_revnum, 
                                              to_revnum, self._limit, True, 
-                                             True, rcvr, pool)
+                                             True, [], rcvr, pool)
                     pool.destroy()
             finally:
                 pb.finished()
