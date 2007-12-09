@@ -361,7 +361,7 @@ class Graph(object):
         """Determine whether a revision is an ancestor of another.
 
         We answer this using heads() as heads() has the logic to perform the
-        smallest number of parent looksup to determine the ancestral
+        smallest number of parent lookups to determine the ancestral
         relationship between N revisions.
         """
         return set([candidate_descendant]) == self.heads(

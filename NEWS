@@ -7,6 +7,13 @@ Bazaar Release Notes
 IN DEVELOPMENT
 ==============
 
+  CHANGES:
+   
+   * If a traceback occurs, users are now asked to report the bug 
+     through Launchpad (https://bugs.launchpad.net/bzr/), rather than 
+     by mail to the mailing list.
+     (Martin Pool)
+
   IMPROVEMENTS:
 
    * Added a --coverage option to selftest. (Andrew Bennetts)
@@ -26,13 +33,25 @@ IN DEVELOPMENT
      Matt Revell and corrections from John Arbash Meinel. (Ian Clatworthy)
 
    * Quick Start Guide renamed to Quick Start Card, moved down in
-     the catalog, provided in png format and updated to refer to ``send``
-     instead of ``bundle``. (Ian Clatworthy, #165080)
+     the catalog, provided in pdf and png format and updated to refer
+     to ``send`` instead of ``bundle``. (Ian Clatworthy, #165080)
+
+   * ``switch`` can now be used on heavyweight checkouts as well as
+     lightweight ones. After switching a heavyweight checkout, the
+     local branch is a mirror/cache of the new bound branch and
+     uncommitted changes in the working tree are merged. As a safety
+     check, if there are local commits in a checkout which have not
+     been committed to the previously bound branch, then ``switch``
+     fails unless the ``--force`` option is given. This option is
+     now also required if the branch a lightweight checkout is pointing
+     to has been moved. (Ian Clatworthy)
 
   INTERNALS:
 
     * New -Dhttp debug option reports http connections, requests and responses.
       (Vincent Ladeuil)
+
+    * New -Dmerge debug option, which emits merge plans for merge-type=weave.
 
   BUGFIXES:
 
@@ -51,13 +70,17 @@ IN DEVELOPMENT
    * Check for missing basis texts when fetching from packs to packs.
      (John Arbash Meinel, #165290)
 
-   * Fall back to showing e-mail in ``log --short/--line`` if the committer/author has
-     only e-mail. (Lukáš Lalinský, #157026)
+   * Fall back to showing e-mail in ``log --short/--line`` if the 
+     committer/author has only e-mail. (Lukáš Lalinský, #157026)
+
+   * Implement _make_parents_provider on RemoteRepository, allowing generating
+     bundles against branches on a smart server.  (Andrew Bennetts, #147836)
 
   API BREAKS:
 
    * Deprecate not passing a ``location`` argument to commit reporters'
      ``started`` methods. (Matt Nordhoff)
+
 
 
 bzr 1.0rc1 2007-11-30
@@ -191,6 +214,9 @@ bzr 1.0rc1 2007-11-30
 
    * Detect invalid transport reuse attempts by catching invalid URLs.
      (Vincent Ladeuil, #161819)
+
+   * Deleting a file without removing it shows a correct diff, not a traceback.
+     (Aaron Bentley)
 
    * Do no use timeout in HttpServer anymore.
      (Vincent Ladeuil, #158972).
