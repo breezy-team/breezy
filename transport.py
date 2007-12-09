@@ -325,10 +325,34 @@ class SvnRaTransport(Transport):
 
     @convert_svn_error
     @needs_busy
-    def get_log(self, path, from_revnum, to_revnum, *args, **kwargs):
+    def get_log(self, path, from_revnum, to_revnum, limit, discover_changed_paths, 
+                strict_node_history, rcvr, pool=None):
         self.mutter('svn log %r:%r %r' % (from_revnum, to_revnum, path))
+        if hasattr(svn.ra, 'get_log2'):
+            return svn.ra.get_log2(self._ra,  [self._request_path(path)], 
+                           from_revnum, to_revnum, limit, discover_changed_paths,
+                           strict_node_history, False, 
+                           [svn.core.SVN_PROP_REVISION_LOG, 
+                            svn.core.SVN_PROP_REVISION_AUTHOR,
+                            svn.core.SVN_PROP_REVISION_DATE],
+                           rcvr, pool)
+        class LogEntry:
+            def __init__(self, changed_paths, rev, author, date, message):
+                self.changed_paths = changed_paths
+                self.revprops = {
+                        svn.core.SVN_PROP_REVISION_AUTHOR: author,
+                        svn.core.SVN_PROP_REVISION_LOG: message,
+                        svn.core.SVN_PROP_REVISION_DATE: date
+                        }
+                self.revision = rev
+                self.has_children = None
+
+        def rcvr_convert(orig_paths, rev, author, date, message, pool):
+            rcvr(LogEntry(orig_paths, rev, author, date, message), pool)
+
         return svn.ra.get_log(self._ra, [self._request_path(path)], 
-                              from_revnum, to_revnum, *args, **kwargs)
+                              from_revnum, to_revnum, limit, discover_changed_paths, 
+                              strict_node_history, rcvr_convert, pool)
 
     def _open_real_transport(self):
         if self._backing_url != self.svn_url:
