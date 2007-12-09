@@ -1,4 +1,6 @@
 debian/overrides/bzr		usr/share/lintian/overrides/
 contrib/bash/*			etc/bash_completion.d/
 doc/default.css			usr/share/doc/bzr/html
+doc/en/quick-reference/quick-start-summary.pdf	usr/share/doc/bzr/html/en/quick-reference
+doc/en/quick-reference/quick-start-summary.png	usr/share/doc/bzr/html/en/quick-reference
 doc/en/quick-reference/quick-start-summary.svg	usr/share/doc/bzr/html/en/quick-reference
