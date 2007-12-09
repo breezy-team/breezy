@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,292 +14,313 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests from HTTP response parsing."""
-
-from cStringIO import StringIO
-import mimetools
-
-from bzrlib import errors
-from bzrlib.transport import http
-from bzrlib.transport.http import response
-from bzrlib.tests import TestCase
+"""Tests from HTTP response parsing.
 
 
-class TestResponseRange(TestCase):
-    """Test the ResponseRange class."""
+We test two main things in this module the RangeFile class and the
+handle_response method.
 
-    def test_cmp(self):
-        RR = response.ResponseRange
-        r1 = RR(0, 10, 0)
-        r2 = RR(15, 20, 10)
-        self.assertTrue(r1 < r2)
-        self.assertFalse(r1 > r2)
-        self.assertTrue(r1 < 5)
-        self.assertFalse(r2 < 5)
+There are four different kinds of RangeFile:
+- a whole file whose size is unknown, seen as a simple byte stream,
+- a whole file whose size is known, we can't read past its end,
+- a single range file, a part of a file with a start and a size,
+- a multiple range file, several consecutive parts with known start offset
+  and size.
 
-        self.assertEqual(RR(0, 10, 5), RR(0, 10, 5))
-        self.assertNotEqual(RR(0, 10, 5), RR(0, 8, 5))
-        self.assertNotEqual(RR(0, 10, 5), RR(0, 10, 6))
+Some properties are common to all kinds:
+- seek can only be forward (its really a socket underneath),
+- read can't cross ranges,
+- successive ranges are taken into account transparently,
+- the expected pattern of use is either seek(offset)+read(size) or a single
+  read with no size specified
 
-    def test_sort_list(self):
-        """Ensure longer ranges are sorted after shorter ones"""
-        RR = response.ResponseRange
-        lst = [RR(3, 8, 0), 5, RR(3, 7, 0), 6]
-        lst.sort()
-        self.assertEqual([RR(3,7,0), RR(3,8,0), 5, 6], lst)
+The handle_response method read the response body of a GET request an returns
+the corresponding RangeFile.
 
-
-class TestRangeFile(TestCase):
-    """Test RangeFile."""
-
-    def setUp(self):
-        content = "abcdefghijklmnopqrstuvwxyz"
-        self.fp = response.RangeFile('foo', StringIO(content))
-        self.fp._add_range(0,  9,   0)
-        self.fp._add_range(20, 29, 10)
-        self.fp._add_range(30, 39, 15)
-
-    def test_valid_accesses(self):
-        """Test so that valid accesses work to the file."""
-        self.fp.seek(0, 0)
-        self.assertEquals(self.fp.read(3), 'abc')
-        self.assertEquals(self.fp.read(3), 'def')
-        self.assertEquals(self.fp.tell(), 6)
-        self.fp.seek(20, 0)
-        self.assertEquals(self.fp.read(3), 'klm')
-        self.assertEquals(self.fp.read(2), 'no')
-        self.assertEquals(self.fp.tell(), 25)
-        # should wrap over to 30-39 entity
-        self.assertEquals(self.fp.read(3), 'pqr')
-        self.fp.seek(3)
-        self.assertEquals(self.fp.read(3), 'def')
-        self.assertEquals(self.fp.tell(), 6)
-
-    def test_invalid_accesses(self):
-        """Test so that invalid accesses trigger errors."""
-        self.fp.seek(9)
-        self.assertRaises(errors.InvalidRange, self.fp.read, 2)
-        self.fp.seek(39)
-        self.assertRaises(errors.InvalidRange, self.fp.read, 2)
-        self.fp.seek(19)
-        self.assertRaises(errors.InvalidRange, self.fp.read, 2)
-
-    def test__finish_ranges(self):
-        """Test that after RangeFile._finish_ranges the list is sorted."""
-        self.fp._add_range(1, 2, 3)
-        self.fp._add_range(8, 9, 10)
-        self.fp._add_range(3, 4, 5)
-
-        # TODO: jam 20060706 If we switch to inserting
-        #       in sorted order, remove this test
-        self.assertNotEqual(self.fp._ranges, sorted(self.fp._ranges))
-
-        self.fp._finish_ranges()
-        self.assertEqual(self.fp._ranges, sorted(self.fp._ranges))
-
-    def test_seek_and_tell(self):
-        # Check for seeking before start
-        self.fp.seek(-2, 0)
-        self.assertEqual(0, self.fp.tell())
-
-        self.fp.seek(5, 0)
-        self.assertEqual(5, self.fp.tell())
-
-        self.fp.seek(-2, 1)
-        self.assertEqual(3, self.fp.tell())
-
-        # TODO: jam 20060706 following tests will fail if this 
-        #       is not true, and would be difficult to debug
-        #       but it is a layering violation
-        self.assertEqual(39, self.fp._len)
-
-        self.fp.seek(0, 2)
-        self.assertEqual(39, self.fp.tell())
-
-        self.fp.seek(-10, 2)
-        self.assertEqual(29, self.fp.tell())
-
-        self.assertRaises(ValueError, self.fp.seek, 0, 4)
-        self.assertRaises(ValueError, self.fp.seek, 0, -1)
-
-
-class TestRegexes(TestCase):
-
-    def assertRegexMatches(self, groups, text):
-        """Check that the regex matches and returns the right values"""
-        m = self.regex.match(text)
-        self.assertNotEqual(None, m, "text %s did not match regex" % (text,))
-
-        self.assertEqual(groups, m.groups())
-
-    def test_range_re(self):
-        """Test that we match valid ranges."""
-        self.regex = response.HttpRangeResponse._CONTENT_RANGE_RE
-        self.assertRegexMatches(('bytes', '1', '10', '11'),
-                           'bytes 1-10/11')
-        self.assertRegexMatches(('bytes', '1', '10', '11'),
-                           '\tbytes  1-10/11   ')
-        self.assertRegexMatches(('bytes', '2123', '4242', '1231'),
-                           '\tbytes  2123-4242/1231   ')
-        self.assertRegexMatches(('chars', '1', '2', '3'),
-                           ' chars 1-2/3')
-
-    def test_content_type_re(self):
-        self.regex = response.HttpMultipartRangeResponse._CONTENT_TYPE_RE
-        self.assertRegexMatches(('', 'xxyyzz'),
-                                'multipart/byteranges; boundary = xxyyzz')
-        self.assertRegexMatches(('', 'xxyyzz'),
-                                'multipart/byteranges;boundary=xxyyzz')
-        self.assertRegexMatches(('', 'xx yy zz'),
-                                ' multipart/byteranges ; boundary= xx yy zz ')
-        self.assertRegexMatches(('"', 'xx yy zz'),
-                                ' multipart/byteranges ; boundary= "xx yy zz" ')
-        self.assertEqual(None,
-                         self.regex.match(
-                             ' multipart/byteranges ; boundary= "xx yy zz '))
-        self.assertEqual(None,
-                         self.regex.match(
-                             ' multipart/byteranges ; boundary= xx yy zz" '))
-        self.assertEqual(None,
-                self.regex.match('multipart byteranges;boundary=xx'))
-
-
-simple_data = """
---xxyyzz\r
-foo\r
-Content-range: bytes 1-10/20\r
-\r
-1234567890
---xxyyzz\r
-Content-Range: bytes 21-30/20\r
-bar\r
-\r
-abcdefghij
---xxyyzz\r
-content-range: bytes 41-50/20\r
-\r
-zyxwvutsrq
---xxyyzz\r
-content-range: bytes 51-60/20\r
-\r
-xxyyzz fbd
 """
 
+from cStringIO import StringIO
+import httplib
 
-class TestHelpers(TestCase):
-    """Test the helper functions"""
-
-    def test__parse_range(self):
-        """Test that _parse_range acts reasonably."""
-        content = StringIO('')
-        parse_range = response.HttpRangeResponse._parse_range
-        self.assertEqual((1,2), parse_range('bytes 1-2/3'))
-        self.assertEqual((10,20), parse_range('bytes 10-20/2'))
-
-        self.assertRaises(errors.InvalidHttpRange, parse_range, 'char 1-3/2')
-        self.assertRaises(errors.InvalidHttpRange, parse_range, 'bytes a-3/2')
-
-        try:
-            parse_range('bytes x-10/3', path='http://foo/bar')
-        except errors.InvalidHttpRange, e:
-            self.assertContainsRe(str(e), 'http://foo/bar')
-            self.assertContainsRe(str(e), 'bytes x-10/3')
-        else:
-            self.fail('Did not raise InvalidHttpRange')
-
-    def test__parse_boundary_simple(self):
-        """Test that _parse_boundary handles Content-type properly"""
-        parse_boundary = response.HttpMultipartRangeResponse._parse_boundary
-        m = parse_boundary(' multipart/byteranges; boundary=xxyyzz')
-        self.assertNotEqual(None, m)
-        # Check that the returned regex is capable of splitting simple_data
-        matches = list(m.finditer(simple_data))
-        self.assertEqual(4, len(matches))
-
-        # match.group() should be the content-range entry
-        # and match.end() should be the start of the content
-        self.assertEqual(' bytes 1-10/20', matches[0].group(1))
-        self.assertEqual(simple_data.find('1234567890'), matches[0].end())
-        self.assertEqual(' bytes 21-30/20', matches[1].group(1))
-        self.assertEqual(simple_data.find('abcdefghij'), matches[1].end())
-        self.assertEqual(' bytes 41-50/20', matches[2].group(1))
-        self.assertEqual(simple_data.find('zyxwvutsrq'), matches[2].end())
-        self.assertEqual(' bytes 51-60/20', matches[3].group(1))
-        self.assertEqual(simple_data.find('xxyyzz fbd'), matches[3].end())
-
-    def test__parse_boundary_invalid(self):
-        parse_boundary = response.HttpMultipartRangeResponse._parse_boundary
-        try:
-            parse_boundary(' multipart/bytes;boundary=xxyyzz',
-                           path='http://foo/bar')
-        except errors.InvalidHttpContentType, e:
-            self.assertContainsRe(str(e), 'http://foo/bar')
-            self.assertContainsRe(str(e), 'multipart/bytes;boundary=xxyyzz')
-        else:
-            self.fail('Did not raise InvalidHttpContentType')
+from bzrlib import (
+    errors,
+    tests,
+    )
+from bzrlib.transport.http import response
 
 
-class TestHttpRangeResponse(TestCase):
+class TestRangeFileMixin(object):
+    """Tests for accessing the first range in a RangeFile."""
 
-    def test_smoketest(self):
-        """A basic test that HttpRangeResponse is reasonable."""
-        content = StringIO('0123456789')
-        f = response.HttpRangeResponse('http://foo', 'bytes 1-10/9', content)
-        self.assertEqual([response.ResponseRange(1,10,0)], f._ranges)
+    # A simple string used to represent a file part (also called a range), in
+    # which offsets are easy to calculate for test writers. It's used as a
+    # building block with slight variations but basically 'a' if the first char
+    # of the range and 'z' is the last.
+    alpha = 'abcdefghijklmnopqrstuvwxyz'
 
-        f.seek(0)
+    def test_can_read_at_first_access(self):
+        """Test that the just created file can be read."""
+        self.assertEquals(self.alpha, self._file.read())
+
+    def test_seek_read(self):
+        """Test seek/read inside the range."""
+        f = self._file
+        start = self.first_range_start
+        # Before any use, tell() should be at the range start
+        self.assertEquals(start, f.tell())
+        cur = start # For an overall offset assertion
+        f.seek(start + 3)
+        cur += 3
+        self.assertEquals('def', f.read(3))
+        cur += len('def')
+        f.seek(4, 1)
+        cur += 4
+        self.assertEquals('klmn', f.read(4))
+        cur += len('klmn')
+        self.assertEquals(cur, f.tell())
+
+    def test_unbounded_read_after_seek(self):
+        f = self._file
+        f.seek(24, 1)
+        # Should not cross ranges
+        self.assertEquals('yz', f.read())
+
+    def test_seek_backwards(self):
+        f = self._file
+        start = self.first_range_start
+        f.seek(start)
+        f.read(12)
+        self.assertRaises(errors.InvalidRange, f.seek, start + 5)
+
+    def test_seek_outside_single_range(self):
+        f = self._file
+        if f._size == -1 or f._boundary is not None:
+            raise tests.TestNotApplicable('Needs a fully defined range')
+        # Will seek past the range and then errors out
+        self.assertRaises(errors.InvalidRange,
+                          f.seek, self.first_range_start + 27)
+
+    def test_read_past_end_of_range(self):
+        f = self._file
+        if f._size == -1:
+            raise tests.TestNotApplicable("Can't check an unknown size")
+        start = self.first_range_start
+        f.seek(start + 20)
+        self.assertRaises(errors.InvalidRange, f.read, 10)
+
+    def test_seek_from_end(self):
+       """Test seeking from the end of the file.
+
+       The semantic is unclear in case of multiple ranges. Seeking from end
+       exists only for the http transports, cannot be used if the file size is
+       unknown and is not used in bzrlib itself. This test must be (and is)
+       overridden by daughter classes.
+
+       Reading from end makes sense only when a range has been requested from
+       the end of the file (see HttpTransportBase._get() when using the
+       'tail_amount' parameter). The HTTP response can only be a whole file or
+       a single range.
+       """
+       f = self._file
+       f.seek(-2, 2)
+       self.assertEquals('yz', f.read())
+
+
+class TestRangeFileSizeUnknown(tests.TestCase, TestRangeFileMixin):
+    """Test a RangeFile for a whole file whose size is not known."""
+
+    def setUp(self):
+        super(TestRangeFileSizeUnknown, self).setUp()
+        self._file = response.RangeFile('Whole_file_size_known',
+                                        StringIO(self.alpha))
+        # We define no range, relying on RangeFile to provide default values
+        self.first_range_start = 0 # It's the whole file
+
+    def test_seek_from_end(self):
+        """See TestRangeFileMixin.test_seek_from_end.
+
+        The end of the file can't be determined since the size is unknown.
+        """
+        self.assertRaises(errors.InvalidRange, self._file.seek, -1, 2)
+
+
+class TestRangeFileSizeKnown(tests.TestCase, TestRangeFileMixin):
+    """Test a RangeFile for a whole file whose size is known."""
+
+    def setUp(self):
+        super(TestRangeFileSizeKnown, self).setUp()
+        self._file = response.RangeFile('Whole_file_size_known',
+                                        StringIO(self.alpha))
+        self._file.set_range(0, len(self.alpha))
+        self.first_range_start = 0 # It's the whole file
+
+
+class TestRangeFileSingleRange(tests.TestCase, TestRangeFileMixin):
+    """Test a RangeFile for a single range."""
+
+    def setUp(self):
+        super(TestRangeFileSingleRange, self).setUp()
+        self._file = response.RangeFile('Single_range_file',
+                                        StringIO(self.alpha))
+        self.first_range_start = 15
+        self._file.set_range(self.first_range_start, len(self.alpha))
+
+
+    def test_read_before_range(self):
+        # This can't occur under normal circumstances, we have to force it
+        f = self._file
+        f._pos = 0 # Force an invalid pos
         self.assertRaises(errors.InvalidRange, f.read, 2)
-        f.seek(1)
-        self.assertEqual('012345', f.read(6))
 
-    def test_invalid(self):
-        try:
-            f = response.HttpRangeResponse('http://foo', 'bytes x-10/9',
-                                           StringIO('0123456789'))
-        except errors.InvalidHttpRange, e:
-            self.assertContainsRe(str(e), 'http://foo')
-            self.assertContainsRe(str(e), 'bytes x-10/9')
-        else:
-            self.fail('Failed to raise InvalidHttpRange')
+class TestRangeFilMultipleRanges(tests.TestCase, TestRangeFileMixin):
+    """Test a RangeFile for multiple ranges."""
+
+    def setUp(self):
+        super(TestRangeFilMultipleRanges, self).setUp()
+
+        boundary = 'separation'
+
+        content = ''
+        self.first_range_start = 25
+        file_size = 200 # big enough to encompass all ranges
+        for (start, part) in [(self.first_range_start, self.alpha),
+                              # Two contiguous ranges
+                              (100, self.alpha),
+                              (126, self.alpha.upper())]:
+            content += self._multipart_byterange(part, start, boundary,
+                                                 file_size)
+        # Final boundary
+        content += self._boundary_line(boundary)
+
+        self._file = response.RangeFile('Multiple_ranges_file',
+                                        StringIO(content))
+        # Ranges are set by decoding the range headers, the RangeFile user is
+        # supposed to call the following before using seek or read since it
+        # requires knowing the *response* headers (in that case the boundary
+        # which is part of the Content-Type header).
+        self._file.set_boundary(boundary)
+
+    def _boundary_line(self, boundary):
+        """Helper to build the formatted boundary line."""
+        return '--' + boundary + '\r\n'
+
+    def _multipart_byterange(self, data, offset, boundary, file_size='*'):
+        """Encode a part of a file as a multipart/byterange MIME type.
+
+        When a range request is issued, the HTTP response body can be
+        decomposed in parts, each one representing a range (start, size) in a
+        file.
+
+        :param data: The payload.
+        :param offset: where data starts in the file
+        :param boundary: used to separate the parts
+        :param file_size: the size of the file containing the range (default to
+            '*' meaning unknown)
+
+        :return: a string containing the data encoded as it will appear in the
+            HTTP response body.
+        """
+        bline = self._boundary_line(boundary)
+        # Each range begins with a boundary line
+        range = bline
+        # A range is described by a set of headers, but only 'Content-Range' is
+        # required for our implementation (TestHandleResponse below will
+        # exercise ranges with multiple or missing headers')
+        range += 'Content-Range: bytes %d-%d/%d\r\n' % (offset,
+                                                        offset+len(data)-1,
+                                                        file_size)
+        range += '\r\n'
+        # Finally the raw bytes
+        range += data
+        return range
+
+    def test_read_all_ranges(self):
+        f = self._file
+        self.assertEquals(self.alpha, f.read()) # Read first range
+        f.seek(100) # Trigger the second range recognition
+        self.assertEquals(self.alpha, f.read()) # Read second range
+        self.assertEquals(126, f.tell())
+        f.seek(126) # Start of third range which is also the current pos !
+        self.assertEquals('A', f.read(1))
+        f.seek(10, 1)
+        self.assertEquals('LMN', f.read(3))
+
+    def test_seek_from_end(self):
+        """See TestRangeFileMixin.test_seek_from_end."""
+        # The actual implementation will seek from end for the first range only
+        # and then fail. Since seeking from end is intented to be used for a
+        # single range only anyway, this test just document the actual
+        # behaviour.
+        f = self._file
+        f.seek(-2, 2)
+        self.assertEquals('yz', f.read())
+        self.assertRaises(errors.InvalidRange, f.seek, -2, 2)
+
+    def test_seek_into_void(self):
+        f = self._file
+        start = self.first_range_start
+        f.seek(start)
+        # Seeking to a point between two ranges is possible (only once) but
+        # reading there is forbidden
+        f.seek(start + 40)
+        # We crossed a range boundary, so now the file is positioned at the
+        # start of the new range (i.e. trying to seek below 100 will error out)
+        f.seek(100)
+        f.seek(125)
+
+    def test_seek_above_ranges(self):
+        f = self._file
+        start = self.first_range_start
+        f.seek(126) # skip the two first ranges
+        self.assertEquals('AB', f.read(2))
+
+    def test_seek_twice_between_ranges(self):
+        f = self._file
+        start = self.first_range_start
+        f.seek(start + 40) # Past the first range but before the second
+        # Now the file is positioned at the second range start (100)
+        self.assertRaises(errors.InvalidRange, f.seek, start + 41)
 
 
-class TestHttpMultipartRangeResponse(TestCase):
-    """Test the handling of multipart range responses"""
+class TestRangeFileVarious(tests.TestCase):
+    """Tests RangeFile aspects not covered elsewhere."""
 
-    def test_simple(self):
-        content = StringIO(simple_data)
-        multi = response.HttpMultipartRangeResponse('http://foo',
-                    'multipart/byteranges; boundary = xxyyzz', content)
+    def test_seek_whence(self):
+        """Test the seek whence parameter values."""
+        f = response.RangeFile('foo', StringIO('abc'))
+        f.set_range(0, 3)
+        f.seek(0)
+        f.seek(1, 1)
+        f.seek(-1, 2)
+        self.assertRaises(ValueError, f.seek, 0, 14)
 
-        self.assertEqual(4, len(multi._ranges))
+    def test_range_syntax(self):
+        """Test the Content-Range scanning."""
 
-        multi.seek(1)
-        self.assertEqual('1234567890', multi.read(10))
-        multi.seek(21)
-        self.assertEqual('abcdefghij', multi.read(10))
-        multi.seek(41)
-        self.assertEqual('zyxwvutsrq', multi.read(10))
-        multi.seek(51)
-        self.assertEqual('xxyyzz fbd', multi.read(10))
-        # TODO: jam 20060706 Currently RangeFile does not support
-        #       reading across ranges. Consider adding it.
-        multi.seek(41)
-        # self.assertEqual('zyxwvutsrqxxyyzz fbd', multi.read(20))
-        self.assertRaises(errors.InvalidRange, multi.read, 20)
+        f = response.RangeFile('foo', StringIO())
 
-        multi.seek(21)
-        self.assertRaises(errors.InvalidRange, multi.read, 11)
-        multi.seek(31)
-        self.assertRaises(errors.InvalidRange, multi.read, 10)
+        def ok(expected, header_value):
+            f.set_range_from_header(header_value)
+            # Slightly peek under the covers to get the size
+            self.assertEquals(expected, (f.tell(), f._size))
 
-    def test_invalid(self):
-        content = StringIO('')
-        try:
-            response.HttpMultipartRangeResponse('http://foo',
-                        'multipart/byte;boundary=invalid', content)
-        except errors.InvalidHttpContentType, e:
-            self.assertContainsRe(str(e), 'http://foo')
-            self.assertContainsRe(str(e), 'multipart/byte;')
+        ok((1, 10), 'bytes 1-10/11')
+        ok((1, 10), 'bytes 1-10/*')
+        ok((12, 2), '\tbytes 12-13/*')
+        ok((28, 1), '  bytes 28-28/*')
+        ok((2123, 2120), 'bytes  2123-4242/12310')
+        ok((1, 10), 'bytes 1-10/ttt') # We don't check total (ttt)
+
+        def nok(header_value):
+            self.assertRaises(errors.InvalidHttpRange,
+                              f.set_range_from_header, header_value)
+
+        nok('bytes 10-2/3')
+        nok('chars 1-2/3')
+        nok('bytes xx-yyy/zzz')
+        nok('bytes xx-12/zzz')
+        nok('bytes 11-yy/zzz')
+        nok('bytes10-2/3')
 
 
 # Taken from real request responses
@@ -314,25 +335,6 @@ Connection: close\r
 Content-Type: text/plain; charset=UTF-8\r
 \r
 """, """Bazaar-NG meta directory, format 1
-""")
-
-
-_missing_response = (404, """HTTP/1.1 404 Not Found\r
-Date: Tue, 11 Jul 2006 04:32:56 GMT\r
-Server: Apache/2.0.54 (Fedora)\r
-Content-Length: 336\r
-Connection: close\r
-Content-Type: text/html; charset=iso-8859-1\r
-\r
-""", """<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
-<html><head>
-<title>404 Not Found</title>
-</head><body>
-<h1>Not Found</h1>
-<p>The requested URL /branches/bzr/jam-integration/.bzr/repository/format was not found on this server.</p>
-<hr>
-<address>Apache/2.0.54 (Fedora) Server at bzr.arbash-meinel.com Port 80</address>
-</body></html>
 """)
 
 
@@ -414,6 +416,7 @@ mbp@source\r
 --418470f848b63279b--\r
 """)
 
+
 _multipart_squid_range_response = (206, """HTTP/1.0 206 Partial Content\r
 Date: Thu, 31 Aug 2006 21:16:22 GMT\r
 Server: Apache/2.2.2 (Unix) DAV/2\r
@@ -446,34 +449,60 @@ scott@netsplit.com-20050821213706-c86\r
 """)
 
 
-_redirect_response = (206, """HTTP/1.1 301 Moved Permanently\r
-Date: Tue, 18 Jul 2006 20:29:22 GMT\r
-Server: Apache/2.0.54 (Ubuntu) PHP/4.4.0-3ubuntu1 mod_ssl/2.0.54 OpenSSL/0.9.7g\r
-Location: http://bazaar-vcs.org/bzr/bzr.dev/.bzr/repository/inventory.knit\r
-Content-Length: 272\r
-Keep-Alive: timeout=15, max=100\r
-Connection: Keep-Alive\r
-Content-Type: text/html; charset=iso-8859-1\r
-\r
-HTTP/1.1 206 Partial Content\r
-Date: Tue, 18 Jul 2006 20:29:23 GMT\r
-Server: Apache/2.0.54 (Ubuntu) PHP/4.4.0-3ubuntu1 mod_ssl/2.0.54 OpenSSL/0.9.7g\r
-Last-Modified: Tue, 18 Jul 2006 20:24:59 GMT\r
-ETag: "be8213-83958c-f0d3dcc0"\r
+# This is made up
+_full_text_response_no_content_type = (200, """HTTP/1.1 200 OK\r
+Date: Tue, 11 Jul 2006 04:32:56 GMT\r
+Server: Apache/2.0.54 (Fedora)\r
+Last-Modified: Sun, 23 Apr 2006 19:35:20 GMT\r
+ETag: "56691-23-38e9ae00"\r
 Accept-Ranges: bytes\r
-Content-Length: 425\r
-Content-Range: bytes 8623075-8623499/8623500\r
-Keep-Alive: timeout=15, max=100\r
-Connection: Keep-Alive\r
-Content-Type: text/plain; charset=UTF-8\r
+Content-Length: 35\r
+Connection: close\r
 \r
-""", """this data intentionally removed, 
-this is not meant to be tested by
-handle_response, just _extract_headers
+""", """Bazaar-NG meta directory, format 1
 """)
 
 
-# This is made up
+_full_text_response_no_content_length = (200, """HTTP/1.1 200 OK\r
+Date: Tue, 11 Jul 2006 04:32:56 GMT\r
+Server: Apache/2.0.54 (Fedora)\r
+Last-Modified: Sun, 23 Apr 2006 19:35:20 GMT\r
+ETag: "56691-23-38e9ae00"\r
+Accept-Ranges: bytes\r
+Connection: close\r
+Content-Type: text/plain; charset=UTF-8\r
+\r
+""", """Bazaar-NG meta directory, format 1
+""")
+
+
+_single_range_no_content_range = (206, """HTTP/1.1 206 Partial Content\r
+Date: Tue, 11 Jul 2006 04:45:22 GMT\r
+Server: Apache/2.0.54 (Fedora)\r
+Last-Modified: Thu, 06 Jul 2006 20:22:05 GMT\r
+ETag: "238a3c-16ec2-805c5540"\r
+Accept-Ranges: bytes\r
+Content-Length: 100\r
+Connection: close\r
+\r
+""", """mbp@sourcefrog.net-20050309040815-13242001617e4a06
+mbp@sourcefrog.net-20050309040929-eee0eb3e6d1e762""")
+
+
+_single_range_response_truncated = (206, """HTTP/1.1 206 Partial Content\r
+Date: Tue, 11 Jul 2006 04:45:22 GMT\r
+Server: Apache/2.0.54 (Fedora)\r
+Last-Modified: Thu, 06 Jul 2006 20:22:05 GMT\r
+ETag: "238a3c-16ec2-805c5540"\r
+Accept-Ranges: bytes\r
+Content-Length: 100\r
+Content-Range: bytes 100-199/93890\r
+Connection: close\r
+Content-Type: text/plain; charset=UTF-8\r
+\r
+""", """mbp@sourcefrog.net-20050309040815-13242001617e4a06""")
+
+
 _invalid_response = (444, """HTTP/1.1 444 Bad Response\r
 Date: Tue, 11 Jul 2006 04:32:56 GMT\r
 Connection: close\r
@@ -490,113 +519,51 @@ Content-Type: text/html; charset=iso-8859-1\r
 """)
 
 
-# This should be in test_http.py, but the headers we
-# want to parse are here
-class TestExtractHeader(TestCase):
-    
-    def use_response(self, response):
-        self.headers = http._extract_headers(response[1], 'http://foo')
-
-    def check_header(self, header, value):
-        self.assertEqual(value, self.headers[header])
-        
-    def test_full_text(self):
-        self.use_response(_full_text_response)
-
-        self.check_header('Date', 'Tue, 11 Jul 2006 04:32:56 GMT')
-        self.check_header('date', 'Tue, 11 Jul 2006 04:32:56 GMT')
-        self.check_header('Content-Length', '35')
-        self.check_header('Content-Type', 'text/plain; charset=UTF-8')
-        self.check_header('content-type', 'text/plain; charset=UTF-8')
-
-    def test_missing_response(self):
-        self.use_response(_missing_response)
-
-        self.check_header('Content-Length', '336')
-        self.check_header('Content-Type', 'text/html; charset=iso-8859-1')
-
-    def test_single_range(self):
-        self.use_response(_single_range_response)
-
-        self.check_header('Content-Length', '100')
-        self.check_header('Content-Range', 'bytes 100-199/93890')
-        self.check_header('Content-Type', 'text/plain; charset=UTF-8')
-
-    def test_single_range_no_content(self):
-        self.use_response(_single_range_no_content_type)
-
-        self.check_header('Content-Length', '100')
-        self.check_header('Content-Range', 'bytes 100-199/93890')
-
-    def test_multi_range(self):
-        self.use_response(_multipart_range_response)
-
-        self.check_header('Content-Length', '1534')
-        self.check_header('Content-Type',
-                          'multipart/byteranges; boundary=418470f848b63279b')
-
-    def test_multi_squid_range(self):
-        self.use_response(_multipart_squid_range_response)
-
-        self.check_header('Content-Length', '598')
-        self.check_header('Content-Type',
-                          'multipart/byteranges; '\
-                          'boundary="squid/2.5.STABLE12:C99323425AD4FE26F726261FA6C24196"')
-
-    def test_redirect(self):
-        """We default to returning the last group of headers in the file."""
-        self.use_response(_redirect_response)
-        self.check_header('Content-Range', 'bytes 8623075-8623499/8623500')
-        self.check_header('Content-Type', 'text/plain; charset=UTF-8')
-
-    def test_empty(self):
-        self.assertRaises(errors.InvalidHttpResponse,
-            http._extract_headers, '', 'bad url')
-
-    def test_no_opening_http(self):
-        # Remove the HTTP line from the header
-        first, txt = _full_text_response[1].split('\r\n', 1)
-        self.assertRaises(errors.InvalidHttpResponse,
-            http._extract_headers, txt, 'missing HTTTP')
-
-    def test_trailing_whitespace(self):
-        # Test that we ignore bogus whitespace on the end
-        code, txt, body = _full_text_response
-        txt += '\r\n\n\n\n\n'
-        self.use_response((code, txt, body))
-
-        self.check_header('Date', 'Tue, 11 Jul 2006 04:32:56 GMT')
-        self.check_header('Content-Length', '35')
-        self.check_header('Content-Type', 'text/plain; charset=UTF-8')
-
-    def test_trailing_non_http(self):
-        # Test that we ignore bogus stuff on the end
-        code, txt, body = _full_text_response
-        txt = txt + 'Foo: Bar\r\nBaz: Bling\r\n\r\n'
-        self.use_response((code, txt, body))
-
-        self.check_header('Date', 'Tue, 11 Jul 2006 04:32:56 GMT')
-        self.check_header('Content-Length', '35')
-        self.check_header('Content-Type', 'text/plain; charset=UTF-8')
-        self.assertRaises(KeyError, self.headers.__getitem__, 'Foo')
-
-    def test_extra_whitespace(self):
-        # Test that we read an HTTP response, even with extra whitespace
-        code, txt, body = _redirect_response
-        # Find the second HTTP location
-        loc = txt.find('HTTP', 5)
-        txt = txt[:loc] + '\r\n\n' + txt[loc:]
-        self.use_response((code, txt, body))
-        self.check_header('Content-Range', 'bytes 8623075-8623499/8623500')
-        self.check_header('Content-Type', 'text/plain; charset=UTF-8')
+_multipart_no_content_range = (206, """HTTP/1.0 206 Partial Content\r
+Content-Type: multipart/byteranges; boundary=THIS_SEPARATES\r
+Content-Length: 598\r
+\r
+""",
+"""\r
+--THIS_SEPARATES\r
+Content-Type: text/plain\r
+\r
+# bzr knit index 8
+--THIS_SEPARATES\r
+""")
 
 
-class TestHandleResponse(TestCase):
-    
+_multipart_no_boundary = (206, """HTTP/1.0 206 Partial Content\r
+Content-Type: multipart/byteranges; boundary=THIS_SEPARATES\r
+Content-Length: 598\r
+\r
+""",
+"""\r
+--THIS_SEPARATES\r
+Content-Type: text/plain\r
+Content-Range: bytes 0-18/18672\r
+\r
+# bzr knit index 8
+
+The range ended at the line above, this text is garbage instead of a boundary
+line
+""")
+
+
+class TestHandleResponse(tests.TestCase):
+
+    def _build_HTTPMessage(self, raw_headers):
+        status_and_headers = StringIO(raw_headers)
+        # Get rid of the status line
+        status_and_headers.readline()
+        msg = httplib.HTTPMessage(status_and_headers)
+        return msg
+
     def get_response(self, a_response):
         """Process a supplied response, and return the result."""
-        headers = http._extract_headers(a_response[1], 'http://foo')
-        return response.handle_response('http://foo', a_response[0], headers,
+        code, raw_headers, body = a_response
+        msg = self._build_HTTPMessage(raw_headers)
+        return response.handle_response('http://foo', code, msg,
                                         StringIO(a_response[2]))
 
     def test_full_text(self):
@@ -604,31 +571,25 @@ class TestHandleResponse(TestCase):
         # It is a StringIO from the original data
         self.assertEqual(_full_text_response[2], out.read())
 
-    def test_missing_response(self):
-        self.assertRaises(errors.NoSuchFile,
-            self.get_response, _missing_response)
-
     def test_single_range(self):
         out = self.get_response(_single_range_response)
-        self.assertIsInstance(out, response.HttpRangeResponse)
-
-        self.assertRaises(errors.InvalidRange, out.read, 20)
 
         out.seek(100)
         self.assertEqual(_single_range_response[2], out.read(100))
 
     def test_single_range_no_content(self):
         out = self.get_response(_single_range_no_content_type)
-        self.assertIsInstance(out, response.HttpRangeResponse)
-
-        self.assertRaises(errors.InvalidRange, out.read, 20)
 
         out.seek(100)
         self.assertEqual(_single_range_no_content_type[2], out.read(100))
 
+    def test_single_range_truncated(self):
+        out = self.get_response(_single_range_response_truncated)
+        # Content-Range declares 100 but only 51 present
+        self.assertRaises(errors.ShortReadvError, out.seek, out.tell() + 51)
+
     def test_multi_range(self):
         out = self.get_response(_multipart_range_response)
-        self.assertIsInstance(out, response.HttpMultipartRangeResponse)
 
         # Just make sure we can read the right contents
         out.seek(0)
@@ -639,7 +600,6 @@ class TestHandleResponse(TestCase):
 
     def test_multi_squid_range(self):
         out = self.get_response(_multipart_squid_range_response)
-        self.assertIsInstance(out, response.HttpMultipartRangeResponse)
 
         # Just make sure we can read the right contents
         out.seek(0)
@@ -650,30 +610,37 @@ class TestHandleResponse(TestCase):
 
     def test_invalid_response(self):
         self.assertRaises(errors.InvalidHttpResponse,
-            self.get_response, _invalid_response)
+                          self.get_response, _invalid_response)
 
     def test_full_text_no_content_type(self):
         # We should not require Content-Type for a full response
-        a_response = _full_text_response
-        headers = http._extract_headers(a_response[1], 'http://foo')
-        del headers['Content-Type']
-        out = response.handle_response('http://foo', a_response[0], headers,
-                                        StringIO(a_response[2]))
-        self.assertEqual(_full_text_response[2], out.read())
+        code, raw_headers, body = _full_text_response_no_content_type
+        msg = self._build_HTTPMessage(raw_headers)
+        out = response.handle_response('http://foo', code, msg, StringIO(body))
+        self.assertEqual(body, out.read())
 
-    def test_missing_no_content_type(self):
-        # Without Content-Type we should still raise NoSuchFile on a 404
-        a_response = _missing_response
-        headers = http._extract_headers(a_response[1], 'http://missing')
-        del headers['Content-Type']
-        self.assertRaises(errors.NoSuchFile,
-            response.handle_response, 'http://missing', a_response[0], headers,
-                                      StringIO(a_response[2]))
+    def test_full_text_no_content_length(self):
+        code, raw_headers, body = _full_text_response_no_content_length
+        msg = self._build_HTTPMessage(raw_headers)
+        out = response.handle_response('http://foo', code, msg, StringIO(body))
+        self.assertEqual(body, out.read())
 
     def test_missing_content_range(self):
-        a_response = _single_range_response
-        headers = http._extract_headers(a_response[1], 'http://nocontent')
-        del headers['Content-Range']
+        code, raw_headers, body = _single_range_no_content_range
+        msg = self._build_HTTPMessage(raw_headers)
         self.assertRaises(errors.InvalidHttpResponse,
-            response.handle_response, 'http://nocontent', a_response[0],
-                                      headers, StringIO(a_response[2]))
+                          response.handle_response,
+                          'http://bogus', code, msg, StringIO(body))
+
+    def test_multipart_no_content_range(self):
+        code, raw_headers, body = _multipart_no_content_range
+        msg = self._build_HTTPMessage(raw_headers)
+        self.assertRaises(errors.InvalidHttpResponse,
+                          response.handle_response,
+                          'http://bogus', code, msg, StringIO(body))
+
+    def test_multipart_no_boundary(self):
+        out = self.get_response(_multipart_no_boundary)
+        out.read()  # Read the whole range
+        # Fail to find the boundary line
+        self.assertRaises(errors.InvalidHttpResponse, out.seek, 1, 1)

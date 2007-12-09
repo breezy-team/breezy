@@ -137,7 +137,8 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
                                                                   file_size))
             self.end_headers()
             self.send_range_content(file, start, end - start + 1)
-            self.wfile.write("--%s\r\n" % boundary)
+        # Final boundary
+        self.wfile.write("--%s\r\n" % boundary)
 
     def do_GET(self):
         """Serve a GET request.

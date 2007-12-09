@@ -474,6 +474,7 @@ class TestBadStatusServer(object):
     def test_http_has(self):
         server = self.get_readonly_server()
         t = self._transport(server.get_url())
+        import pdb; pdb.set_trace()
         self.assertRaises(errors.InvalidHttpResponse, t.has, 'foo/bar')
 
     def test_http_get(self):
@@ -666,7 +667,22 @@ class TestRangeRequestServer(object):
         self.assertEqual(l[2], (3, '34'))
         self.assertEqual(l[3], (9, '9'))
         # The server should have issued 4 requests
-        self.assertEqual(4, self.get_readonly_server().GET_request_nb)
+        self.assertEqual(4, server.GET_request_nb)
+
+    def test_readv_get_max_size(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        # force transport to issue multiple requests by limiting the number of
+        # bytes by request. Note that this apply to coalesced offsets only, a
+        # single range ill keep its size even if bigger than the limit.
+        t._get_max_size = 2
+        l = list(t.readv('a', ((0, 1), (1, 1), (2, 4), (6, 4))))
+        self.assertEqual(l[0], (0, '0'))
+        self.assertEqual(l[1], (1, '1'))
+        self.assertEqual(l[2], (2, '2345'))
+        self.assertEqual(l[3], (6, '6789'))
+        # The server should have issued 3 requests
+        self.assertEqual(3, server.GET_request_nb)
 
 
 class TestSingleRangeRequestServer(TestRangeRequestServer):
@@ -993,7 +1009,7 @@ class TestRanges(object):
     def _file_tail(self, relpath, tail_amount):
         code, data = self.transport._get(relpath, [], tail_amount)
         self.assertTrue(code in (200, 206),'_get returns: %d' % code)
-        data.seek(-tail_amount + 1, 2)
+        data.seek(-tail_amount, 2)
         return data.read(tail_amount)
 
     def test_range_header(self):
@@ -1003,10 +1019,10 @@ class TestRanges(object):
         # Tail
         self.assertEqual('789', self._file_tail('a', 3))
         # Syntactically invalid range
-        self.assertListRaises(errors.InvalidRange,
+        self.assertListRaises(errors.InvalidHttpRange,
                           self._file_contents, 'a', [(4, 3)])
         # Semantically invalid range
-        self.assertListRaises(errors.InvalidRange,
+        self.assertListRaises(errors.InvalidHttpRange,
                           self._file_contents, 'a', [(42, 128)])
 
 
