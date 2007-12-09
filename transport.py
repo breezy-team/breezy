@@ -370,6 +370,7 @@ class SvnRaTransport(Transport):
 
     @convert_svn_error
     def change_rev_prop(self, revnum, name, value, pool=None):
+        self.mutter('svn revprop -r%d --set %s=%s' % (revnum, name, value))
         svn.ra.change_rev_prop(self._ra, revnum, name, value)
 
     @convert_svn_error
@@ -511,17 +512,21 @@ class SvnRaTransport(Transport):
     def get_commit_editor(self, revprops, done_cb, lock_token, keep_locks):
         self._open_real_transport()
         self._mark_busy()
-        if has_attr(svn.ra, 'get_commit_editor3'):
-            editor = svn.ra.get_commit_editor3(self._ra, revprops, done_cb, 
-                                              lock_token, keep_locks)
-        elif revprops.keys() != [svn.core.SVN_PROP_REVISION_LOG]:
-            raise NotImplementedError()
-        else:
-            editor = svn.ra.get_commit_editor(self._ra, 
-                        revprops[svn.core.SVN_PROP_REVISION_LOG],
-                        done_cb, lock_token, keep_locks)
+        try:
+            if hasattr(svn.ra, 'get_commit_editor3'):
+                editor = svn.ra.get_commit_editor3(self._ra, revprops, done_cb, 
+                                                  lock_token, keep_locks)
+            elif revprops.keys() != [svn.core.SVN_PROP_REVISION_LOG]:
+                raise NotImplementedError()
+            else:
+                editor = svn.ra.get_commit_editor(self._ra, 
+                            revprops[svn.core.SVN_PROP_REVISION_LOG],
+                            done_cb, lock_token, keep_locks)
 
-        return Editor(self, editor)
+            return Editor(self, editor)
+        except:
+            self._unmark_busy()
+            raise
 
     def listable(self):
         """See Transport.listable().

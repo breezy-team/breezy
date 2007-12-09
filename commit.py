@@ -59,14 +59,13 @@ def _check_dirs_exist(transport, bp_parts, base_rev):
     return []
 
 
-def set_svn_revprops(transport, revnum, author, timestamp):
+def set_svn_revprops(transport, revnum, revprops):
     """Attempt to change the revision properties on the
     specified revision.
 
     :param transport: SvnRaTransport connected to target repository
     :param revnum: Revision number of revision to change metadata of.
-    :param author: New author
-    :param timestamp: UTC timestamp
+    :param revprops: Dictionary with revision properties to set.
     """
     for (name, value) in revprops.items():
         try:
@@ -107,8 +106,8 @@ class SvnCommitBuilder(RootCommitBuilder):
 
         self._svn_revprops = {
             SVN_REVPROP_BZR_FILEIDS: "",
-            SVN_REVPROP_BZR_TIMESTAMP: timestamp,
-            SVN_REVPROP_BZR_TIMEZONE: timezone,
+            SVN_REVPROP_BZR_TIMESTAMP: str(timestamp),
+            SVN_REVPROP_BZR_TIMEZONE: str(timezone),
             SVN_REVPROP_BZR_COMMITTER: committer
         }
 
@@ -466,13 +465,25 @@ class SvnCommitBuilder(RootCommitBuilder):
         repository_latest_revnum = self.repository.transport.get_latest_revnum()
         lock = self.repository.transport.lock_write(".")
         set_revprops = self.repository.get_config().get_set_revprops()
+        remaining_revprops = self._svn_revprops # Keep track of the revprops that haven't been set yet
 
         try:
             existing_bp_parts = _check_dirs_exist(self.repository.transport, 
                                               bp_parts, -1)
             self.revnum = None
             self._svn_revprops[svn.core.SVN_PROP_REVISION_LOG] = message.encode("utf-8")
-            self.editor = self.repository.transport.get_commit_editor(self._svn_revprops, done, None, False)
+            try:
+                self.editor = self.repository.transport.get_commit_editor(self._svn_revprops, 
+                                                                          done, None, False)
+                self._svn_revprops = {}
+            except NotImplementedError:
+                if set_revprops:
+                    raise
+                # Try without bzr: revprops
+                self.editor = self.repository.transport.get_commit_editor({
+                    svn.core.SVN_PROP_REVISION_LOG: self._svn_revprops[svn.core.SVN_PROP_REVISION_LOG]},
+                    done, None, False)
+                del self._svn_revprops[svn.core.SVN_PROP_REVISION_LOG]
 
             root = self.editor.open_root(self.base_revnum)
 
@@ -532,7 +543,11 @@ class SvnCommitBuilder(RootCommitBuilder):
                 svn.core.SVN_PROP_REVISION_DATE: svn_time_to_cstring(1000000*self._timestamp)
                 })
 
-        # FIXME: Set bzr: revision properties if we haven't done so yet
+        try:
+            set_svn_revprops(self.repository.transport, self.revnum, 
+                         self._svn_revprops) 
+        except RevpropChangeFailed:
+            pass # Ignore for now
 
         return revid
 
@@ -542,7 +557,9 @@ class SvnCommitBuilder(RootCommitBuilder):
         :param ie: Inventory entry.
         :param path: Path of the inventory entry.
         """
-        self._svnprops[SVN_PROP_BZR_FILEIDS] += "%s\t%s\n" % (urllib.quote(path), ie.file_id)
+        file_id_entry = "%s\t%s\n" % (urllib.quote(path), ie.file_id)
+        self._svnprops[SVN_PROP_BZR_FILEIDS] += file_id_entry
+        self._svn_revprops[SVN_REVPROP_BZR_FILEIDS]+= file_id_entry
 
     def record_entry_contents(self, ie, parent_invs, path, tree,
                               content_summary):
