@@ -1,3 +1,10 @@
+bzr (1.0~rc2-2) unstable; urgency=low
+
+  * Apply patch to fix wrong version numbers in bzr and bzrlib.
+    (See https://bugs.launchpad.net/bzr/+bug/175171.)
+
+ -- Adeodato Simó <dato@net.com.org.es>  Sun, 09 Dec 2007 23:20:52 +0100
+
 bzr (1.0~rc2-1) unstable; urgency=low
 
   [ Adeodato Simó ]

@@ -1,0 +1,22 @@
+--- a/bzr
++++ b/bzr
+@@ -67,7 +67,7 @@
+                      "\n")
+     raise
+ 
+-if bzrlib.version_info[:3] != (0, 93, 0):
++if bzrlib.version_info[:3] != (1, 0, 0):
+     sys.stderr.write("bzr: WARNING: bzrlib version doesn't match the bzr program.\n"
+             "This may indicate an installation problem.\n"
+             "bzrlib from %s is version %r\n"
+--- a/bzrlib/__init__.py
++++ b/bzrlib/__init__.py
+@@ -35,7 +35,7 @@
+ # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
+ # releaselevel of 'dev' for unreleased under-development code.
+ 
+-version_info = (0, 1, 0, 'candidate', 2)
++version_info = (1, 0, 0, 'candidate', 2)
+ 
+ # API compatibility version: bzrlib is currently API compatible with 0.18.
+ api_minimum_version = (0, 18, 0)
