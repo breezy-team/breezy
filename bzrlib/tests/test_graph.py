@@ -145,24 +145,12 @@ class InstrumentedParentsProvider(object):
         return self._real_parents_provider.get_parents(nodes)
 
 
-class DictParentsProvider(object):
-
-    def __init__(self, ancestry):
-        self.ancestry = ancestry
-
-    def __repr__(self):
-        return 'DictParentsProvider(%r)' % self.ancestry
-
-    def get_parents(self, revisions):
-        return [self.ancestry.get(r, None) for r in revisions]
-
-
 class TestGraph(TestCaseWithMemoryTransport):
 
     def make_graph(self, ancestors):
         tree = self.prepare_memory_tree('.')
         self.build_ancestry(tree, ancestors)
-        tree.unlock()
+        self.addCleanup(tree.unlock)
         return tree.branch.repository.get_graph()
 
     def prepare_memory_tree(self, location):
@@ -248,11 +236,17 @@ class TestGraph(TestCaseWithMemoryTransport):
                          graph.find_unique_lca(NULL_REVISION, 'rev1'))
         self.assertEqual('rev1', graph.find_unique_lca('rev1', 'rev1'))
         self.assertEqual('rev1', graph.find_unique_lca('rev2a', 'rev2b'))
+        self.assertEqual(('rev1', 1,),
+                         graph.find_unique_lca('rev2a', 'rev2b',
+                         count_steps=True))
 
     def test_unique_lca_criss_cross(self):
         """Ensure we don't pick non-unique lcas in a criss-cross"""
         graph = self.make_graph(criss_cross)
         self.assertEqual('rev1', graph.find_unique_lca('rev3a', 'rev3b'))
+        lca, steps = graph.find_unique_lca('rev3a', 'rev3b', count_steps=True)
+        self.assertEqual('rev1', lca)
+        self.assertEqual(2, steps)
 
     def test_unique_lca_null_revision(self):
         """Ensure we pick NULL_REVISION when necessary"""
@@ -271,13 +265,14 @@ class TestGraph(TestCaseWithMemoryTransport):
         """Ensure we do unique_lca using data from two repos"""
         mainline_tree = self.prepare_memory_tree('mainline')
         self.build_ancestry(mainline_tree, mainline)
-        mainline_tree.unlock()
+        self.addCleanup(mainline_tree.unlock)
 
         # This is cheating, because the revisions in the graph are actually
         # different revisions, despite having the same revision-id.
         feature_tree = self.prepare_memory_tree('feature')
         self.build_ancestry(feature_tree, feature_branch)
-        feature_tree.unlock()
+        self.addCleanup(feature_tree.unlock)
+
         graph = mainline_tree.branch.repository.get_graph(
             feature_tree.branch.repository)
         self.assertEqual('rev2b', graph.find_unique_lca('rev2a', 'rev3b'))
@@ -303,8 +298,8 @@ class TestGraph(TestCaseWithMemoryTransport):
 
     def test_stacked_parents_provider(self):
 
-        parents1 = DictParentsProvider({'rev2': ['rev3']})
-        parents2 = DictParentsProvider({'rev1': ['rev4']})
+        parents1 = _mod_graph.DictParentsProvider({'rev2': ['rev3']})
+        parents2 = _mod_graph.DictParentsProvider({'rev1': ['rev4']})
         stacked = _mod_graph._StackedParentsProvider([parents1, parents2])
         self.assertEqual([['rev4',], ['rev3']],
                          stacked.get_parents(['rev1', 'rev2']))
@@ -384,7 +379,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual(set(['rev1']), graph.heads(('rev1', 'null:')))
 
     def test_heads_one(self):
-        # A single node will alwaya be a head
+        # A single node will always be a head
         graph = self.make_graph(ancestry_1)
         self.assertEqual(set(['null:']), graph.heads(['null:']))
         self.assertEqual(set(['rev1']), graph.heads(['rev1']))

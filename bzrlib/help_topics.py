@@ -268,9 +268,11 @@ development.
                operations.
 -Dhashcache    Log every time a working file is read to determine its hash.
 -Dhooks        Trace hook execution.
+-Dhttp         Trace http connections, requests and responses
 -Dhpss         Trace smart protocol requests and responses.
 -Dindex        Trace major index operations.
 -Dlock         Trace when lockdir locks are taken or released.
+-Dmerge        Emit information for debugging merges.
 """
 
 _standard_options = \
@@ -549,6 +551,35 @@ A typical config file might look something like::
   log10 = log --short -r -10..-1
 """
 
+_criss_cross = \
+"""Criss-Cross
+
+A criss-cross in the branch history can cause the default merge technique
+to emit more conflicts than would normally be expected.
+
+If you encounter criss-crosses, you can use merge --weave instead, which
+should provide a much better result.
+
+Criss-crosses occur in a branch's history if two branches merge the same thing
+and then merge one another, or if two branches merge one another at the same
+time.  They can be avoided by having each branch only merge from or into a
+designated central branch (a "star topology").
+
+Criss-crosses cause problems because of the way merge works.  Bazaar's default
+merge is a three-way merger; in order to merge OTHER into THIS, it must
+find a basis for comparison, BASE.  Using BASE, it can determine whether
+differences between THIS and OTHER are due to one side adding lines, or
+from another side removing lines.
+
+Criss-crosses mean there is no good choice for a base.  Selecting the recent
+merge points could cause one side's changes to be silently discarded.
+Selecting older merge points (which Bazaar does) mean that extra conflicts
+are emitted.
+
+The ``weave`` merge type is not affected by this problem because it uses
+line-origin detection instead of a basis revision to determine the cause of
+differences."""
+
 
 # Register help topics
 topic_registry.register("revisionspec", _help_on_revisionspec,
@@ -593,6 +624,8 @@ topic_registry.register('standalone-trees', _standalone_trees,
                         SECT_CONCEPT)
 topic_registry.register('working-trees', _working_trees,
                         'Information on working trees', SECT_CONCEPT)
+topic_registry.register('criss-cross', _criss_cross,
+                        'Information on criss-cross merging', SECT_CONCEPT)
 
 
 class HelpTopicIndex(object):

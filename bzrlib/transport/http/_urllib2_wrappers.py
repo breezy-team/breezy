@@ -32,6 +32,9 @@ And a custom Request class that lets us track redirections, and
 handle authentication schemes.
 """
 
+# TODO: now that we have -Dhttp most of the needs should be covered in a more
+# accessible way (i.e. no need to edit the source), if experience confirms
+# that, delete all DEBUG uses -- vila20071130 (happy birthday).
 DEBUG = 0
 
 # FIXME: Oversimplifying, two kind of exceptions should be
@@ -54,8 +57,10 @@ import time
 from bzrlib import __version__ as bzrlib_version
 from bzrlib import (
     config,
+    debug,
     errors,
     osutils,
+    trace,
     transport,
     ui,
     )
@@ -100,7 +105,8 @@ class Response(httplib.HTTPResponse):
                 # having issued the response headers (even if the
                 # headers indicate a Content-Type...)
                 body = self.fp.read(self.length)
-                if self.debuglevel > 0:
+                if self.debuglevel > 3:
+                    # This one can be huge and is generally not interesting
                     print "Consumed body: [%s]" % body
             self.close()
         elif self.status == 200:
@@ -140,7 +146,14 @@ class AbstractHTTPConnection:
 class HTTPConnection(AbstractHTTPConnection, httplib.HTTPConnection):
 
     # XXX: Needs refactoring at the caller level.
-    def __init__(self, host, port=None, proxied_host=None):
+    def __init__(self, host, port=None, strict=None, proxied_host=None):
+        if 'http' in debug.debug_flags:
+            netloc = host
+            if port is not None:
+                netloc += '%d' % port
+            if proxied_host is not None:
+                netloc += '(proxy for %s)' % proxied_host
+            trace.mutter('* About to connect() to %s' % netloc)
         # Use strict=True since we don't support HTTP/0.9
         httplib.HTTPConnection.__init__(self, host, port, strict=True)
         self.proxied_host = proxied_host
@@ -436,12 +449,17 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
         headers.update(request.unredirected_hdrs)
 
         try:
-            connection._send_request(request.get_method(),
-                                     request.get_selector(),
+            method = request.get_method()
+            url = request.get_selector()
+            connection._send_request(method, url,
                                      # FIXME: implements 100-continue
                                      #None, # We don't send the body yet
                                      request.get_data(),
                                      headers)
+            if 'http' in debug.debug_flags:
+                trace.mutter('> %s %s' % (method, url))
+                hdrs = ['%s: %s' % (k, v) for k,v in headers.items()]
+                trace.mutter('> ' + '\n> '.join(hdrs) + '\n')
             if self._debuglevel > 0:
                 print 'Request sent: [%r]' % request
             response = connection.getresponse()
@@ -464,6 +482,17 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
 #            connection.send(body)
 #            response = connection.getresponse()
 
+        if 'http' in debug.debug_flags:
+            version = 'HTTP/%d.%d'
+            try:
+                version = version % (response.version / 10,
+                                     response.version % 10)
+            except:
+                version = 'HTTP/%r' % version
+            trace.mutter('< %s %s %s' % (version, response.status,
+                                            response.reason))
+            hdrs = [h.rstrip('\r\n') for h in response.msg.headers]
+            trace.mutter('< ' + '\n< '.join(hdrs) + '\n')
         if self._debuglevel > 0:
             print 'Receives response: %r' % response
             print '  For: %r(%r)' % (request.get_method(),
@@ -1296,7 +1325,7 @@ class Opener(object):
             )
 
         self.open = self._opener.open
-        if DEBUG >= 2:
+        if DEBUG >= 3:
             # When dealing with handler order, it's easy to mess
             # things up, the following will help understand which
             # handler is used, when and for what.

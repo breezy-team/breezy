@@ -251,6 +251,7 @@ class InvalidRevisionId(BzrError):
         self.revision_id = revision_id
         self.branch = branch
 
+
 class ReservedId(BzrError):
 
     _fmt = "Reserved revision-id {%(revision_id)s}"
@@ -1330,12 +1331,23 @@ class KnitCorrupt(KnitError):
 
 
 class KnitDataStreamIncompatible(KnitError):
+    # Not raised anymore, as we can convert data streams.  In future we may
+    # need it again for more exotic cases, so we're keeping it around for now.
 
     _fmt = "Cannot insert knit data stream of format \"%(stream_format)s\" into knit of format \"%(target_format)s\"."
 
     def __init__(self, stream_format, target_format):
         self.stream_format = stream_format
         self.target_format = target_format
+        
+
+class KnitDataStreamUnknown(KnitError):
+    # Indicates a data stream we don't know how to handle.
+
+    _fmt = "Cannot parse knit data stream of format \"%(stream_format)s\"."
+
+    def __init__(self, stream_format):
+        self.stream_format = stream_format
         
 
 class KnitHeaderError(KnitError):
@@ -1844,6 +1856,14 @@ class BadConversionTarget(BzrError):
         self.format = format
 
 
+class NoDiffFound(BzrError):
+
+    _fmt = 'Could not find an appropriate Differ for file "%(path)s"'
+
+    def __init__(self, path):
+        BzrError.__init__(self, path)
+
+
 class NoDiff(BzrError):
 
     _fmt = "Diff is not installed on this machine: %(msg)s"
@@ -2278,6 +2298,16 @@ class MalformedBugIdentifier(BzrError):
         self.reason = reason
 
 
+class InvalidBugTrackerURL(BzrError):
+
+    _fmt = ("The URL for bug tracker \"%(abbreviation)s\" doesn't "
+            "contain {id}: %(url)s")
+
+    def __init__(self, abbreviation, url):
+        self.abbreviation = abbreviation
+        self.url = url
+
+
 class UnknownBugTrackerAbbreviation(BzrError):
 
     _fmt = ("Cannot find registered bug tracker called %(abbreviation)s "
@@ -2371,6 +2401,11 @@ class NoMessageSupplied(BzrError):
     _fmt = "No message supplied."
 
 
+class NoMailAddressSpecified(BzrError):
+
+    _fmt = "No mail-to address specified."
+
+
 class UnknownMailClient(BzrError):
 
     _fmt = "Unknown mail client: %(mail_client)s"
@@ -2427,6 +2462,11 @@ class AlreadyCheckout(BzrDirError):
     _fmt = "'%(display_url)s' is already a checkout."
 
 
+class AlreadyLightweightCheckout(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already a lightweight checkout."
+
+
 class ReconfigurationNotSupported(BzrDirError):
 
     _fmt = "Requested reconfiguration of '%(display_url)s' is not supported."
@@ -2446,3 +2486,18 @@ class UncommittedChanges(BzrError):
         display_url = urlutils.unescape_for_display(
             tree.bzrdir.root_transport.base, 'ascii')
         BzrError.__init__(self, tree=tree, display_url=display_url)
+
+
+class UnableCreateSymlink(BzrError):
+
+    _fmt = 'Unable to create symlink %(path_str)son this platform'
+
+    def __init__(self, path=None):
+        path_str = ''
+        if path:
+            try:
+                path_str = repr(str(path))
+            except UnicodeEncodeError:
+                path_str = repr(path)
+            path_str += ' '
+        self.path_str = path_str

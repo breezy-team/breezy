@@ -20,10 +20,10 @@ import urlparse
 
 from bzrlib import (
     errors,
+    trace,
     urlutils,
     )
-from bzrlib.trace import mutter
-from bzrlib.transport.http import HttpTransportBase
+from bzrlib.transport import http
 # TODO: handle_response should be integrated into the _urllib2_wrappers
 from bzrlib.transport.http.response import handle_response
 from bzrlib.transport.http._urllib2_wrappers import (
@@ -32,7 +32,7 @@ from bzrlib.transport.http._urllib2_wrappers import (
     )
 
 
-class HttpTransport_urllib(HttpTransportBase):
+class HttpTransport_urllib(http.HttpTransportBase):
     """Python urllib transport for http and https."""
 
     # In order to debug we have to issue our traces in sync with
@@ -85,7 +85,6 @@ class HttpTransport_urllib(HttpTransportBase):
         request.auth = auth
         request.proxy_auth = proxy_auth
 
-        mutter('%s: [%s]' % (request.method, request.get_full_url()))
         if self._debuglevel > 0:
             print 'perform: %s base: %s, url: %s' % (request.method, self.base,
                                                      request.get_full_url())
@@ -108,8 +107,8 @@ class HttpTransport_urllib(HttpTransportBase):
                                            qual_proto=self._scheme)
 
         if request.redirected_to is not None:
-            mutter('redirected from: %s to: %s' % (request.get_full_url(),
-                                                   request.redirected_to))
+            trace.mutter('redirected from: %s to: %s' % (request.get_full_url(),
+                                                         request.redirected_to))
 
         return response
 

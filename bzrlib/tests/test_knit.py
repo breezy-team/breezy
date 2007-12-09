@@ -46,6 +46,8 @@ from bzrlib.knit import (
     _KnitIndex,
     _PackAccess,
     PlainKnitContent,
+    _StreamAccess,
+    _StreamIndex,
     WeaveToKnit,
     KnitSequenceMatcher,
     )
@@ -58,6 +60,7 @@ from bzrlib.tests import (
     )
 from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryTransport
+from bzrlib.tuned_gzip import GzipFile
 from bzrlib.util import bencode
 from bzrlib.weave import Weave
 
@@ -1131,6 +1134,38 @@ class BasicKnitTests(KnitTests):
         self.assertTrue(k.has_version('text-1'))
         self.assertEqualDiff(''.join(k.get_lines('text-1')), TEXT_1)
 
+    def test_newline_empty_lines(self):
+        # ensure that ["\n"] round trips ok.
+        knit = self.make_test_knit()
+        knit.add_lines('a', [], ["\n"])
+        knit.add_lines_with_ghosts('b', [], ["\n"])
+        self.assertEqual(["\n"], knit.get_lines('a'))
+        self.assertEqual(["\n"], knit.get_lines('b'))
+        self.assertEqual(['fulltext'], knit._index.get_options('a'))
+        self.assertEqual(['fulltext'], knit._index.get_options('b'))
+        knit.add_lines('c', ['a'], ["\n"])
+        knit.add_lines_with_ghosts('d', ['b'], ["\n"])
+        self.assertEqual(["\n"], knit.get_lines('c'))
+        self.assertEqual(["\n"], knit.get_lines('d'))
+        self.assertEqual(['line-delta'], knit._index.get_options('c'))
+        self.assertEqual(['line-delta'], knit._index.get_options('d'))
+
+    def test_empty_lines(self):
+        # bizarrely, [] is not listed as having no-eol. 
+        knit = self.make_test_knit()
+        knit.add_lines('a', [], [])
+        knit.add_lines_with_ghosts('b', [], [])
+        self.assertEqual([], knit.get_lines('a'))
+        self.assertEqual([], knit.get_lines('b'))
+        self.assertEqual(['fulltext'], knit._index.get_options('a'))
+        self.assertEqual(['fulltext'], knit._index.get_options('b'))
+        knit.add_lines('c', ['a'], [])
+        knit.add_lines_with_ghosts('d', ['b'], [])
+        self.assertEqual([], knit.get_lines('c'))
+        self.assertEqual([], knit.get_lines('d'))
+        self.assertEqual(['line-delta'], knit._index.get_options('c'))
+        self.assertEqual(['line-delta'], knit._index.get_options('d'))
+
     def test_knit_reload(self):
         # test that the content in a reloaded knit is correct
         k = self.make_test_knit()
@@ -1604,6 +1639,44 @@ class BasicKnitTests(KnitTests):
         self.assertEqual(expected_data_list, data_list)
         self.assertRecordContentEqual(k1, 'text-m', reader_callable(None))
         
+    def test_get_data_stream_unordered_index(self):
+        """Get a data stream when the knit index reports versions out of order.
+
+        https://bugs.launchpad.net/bzr/+bug/164637
+        """
+        k1 = self.make_test_knit()
+        test_data = [
+            ('text-a', [], TEXT_1),
+            ('text-b', ['text-a'], TEXT_1),
+            ('text-c', [], TEXT_1),
+            ('text-d', ['text-c'], TEXT_1),
+            ('text-m', ['text-b', 'text-d'], TEXT_1),
+            ]
+        for version_id, parents, lines in test_data:
+            k1.add_lines(version_id, parents, split_lines(lines))
+        # monkey-patch versions method to return out of order, as if coming
+        # from multiple independently indexed packs
+        original_versions = k1.versions
+        k1.versions = lambda: reversed(original_versions())
+        expected_data_list = [
+            ('text-a', ['fulltext'], 122, []),
+            ('text-b', ['line-delta'], 84, ['text-a'])]
+        # now check the fulltext is first and the delta second
+        format, data_list, _ = k1.get_data_stream(['text-a', 'text-b'])
+        self.assertEqual('knit-plain', format)
+        self.assertEqual(expected_data_list, data_list)
+        # and that's true if we ask for them in the opposite order too
+        format, data_list, _ = k1.get_data_stream(['text-b', 'text-a'])
+        self.assertEqual(expected_data_list, data_list)
+        # also try requesting more versions
+        format, data_list, _ = k1.get_data_stream([
+            'text-m', 'text-b', 'text-a'])
+        self.assertEqual([
+            ('text-a', ['fulltext'], 122, []),
+            ('text-b', ['line-delta'], 84, ['text-a']),
+            ('text-m', ['line-delta'], 84, ['text-b', 'text-d']),
+            ], data_list)
+
     def test_get_stream_ghost_parent(self):
         """Get a data stream for a version with a ghost parent."""
         k1 = self.make_test_knit()
@@ -1634,14 +1707,17 @@ class BasicKnitTests(KnitTests):
             ('text-d', ['text-c'], TEXT_1),
             ('text-m', ['text-b', 'text-d'], TEXT_1),
             ]
-        expected_data_list = [
-            # version, options, length, parents
-            ('text-b', ['line-delta'], 84, ['text-a']),
-            ('text-d', ['line-delta'], 84, ['text-c']),
-            ]
         for version_id, parents, lines in test_data:
             k1.add_lines(version_id, parents, split_lines(lines))
 
+        # This test is actually a bit strict as the order in which they're
+        # returned is not defined.  This matches the current (deterministic)
+        # behaviour.
+        expected_data_list = [
+            # version, options, length, parents
+            ('text-d', ['line-delta'], 84, ['text-c']),
+            ('text-b', ['line-delta'], 84, ['text-a']),
+            ]
         # Note that even though we request the revision IDs in a particular
         # order, the data stream may return them in any order it likes.  In this
         # case, they'll be in the order they were inserted into the knit.
@@ -1649,8 +1725,9 @@ class BasicKnitTests(KnitTests):
             ['text-d', 'text-b'])
         self.assertEqual('knit-plain', format)
         self.assertEqual(expected_data_list, data_list)
-        self.assertRecordContentEqual(k1, 'text-b', reader_callable(84))
+        # must match order they're returned
         self.assertRecordContentEqual(k1, 'text-d', reader_callable(84))
+        self.assertRecordContentEqual(k1, 'text-b', reader_callable(84))
         self.assertEqual('', reader_callable(None),
                          "There should be no more bytes left to read.")
 
@@ -1672,17 +1749,20 @@ class BasicKnitTests(KnitTests):
             ('text-d', ['text-c'], TEXT_1),
             ('text-m', ['text-b', 'text-d'], TEXT_1),
            ]
+        for version_id, parents, lines in test_data:
+            k1.add_lines(version_id, parents, split_lines(lines))
+
+        # This test is actually a bit strict as the order in which they're
+        # returned is not defined.  This matches the current (deterministic)
+        # behaviour.
         expected_data_list = [
             # version, options, length, parents
             ('text-a', ['fulltext'], 122, []),
             ('text-b', ['line-delta'], 84, ['text-a']),
+            ('text-m', ['line-delta'], 84, ['text-b', 'text-d']),
             ('text-c', ['fulltext'], 121, []),
             ('text-d', ['line-delta'], 84, ['text-c']),
-            ('text-m', ['line-delta'], 84, ['text-b', 'text-d']),
             ]
-        for version_id, parents, lines in test_data:
-            k1.add_lines(version_id, parents, split_lines(lines))
-
         format, data_list, reader_callable = k1.get_data_stream(
             ['text-a', 'text-b', 'text-c', 'text-d', 'text-m'])
         self.assertEqual('knit-plain', format)
@@ -1701,6 +1781,19 @@ class BasicKnitTests(KnitTests):
         self.assertEqual(
             knit1.transport.get_bytes(knit1._index._filename),
             knit2.transport.get_bytes(knit2._index._filename))
+
+    def assertKnitValuesEqual(self, left, right):
+        """Assert that the texts, annotations and graph of left and right are
+        the same.
+        """
+        self.assertEqual(set(left.versions()), set(right.versions()))
+        for version in left.versions():
+            self.assertEqual(left.get_parents_with_ghosts(version),
+                right.get_parents_with_ghosts(version))
+            self.assertEqual(left.get_lines(version),
+                right.get_lines(version))
+            self.assertEqual(left.annotate(version),
+                right.annotate(version))
 
     def test_insert_data_stream_empty(self):
         """Inserting a data stream with no records should not put any data into
@@ -1722,11 +1815,35 @@ class BasicKnitTests(KnitTests):
         source = self.make_test_knit(name='source')
         source.add_lines('text-a', [], split_lines(TEXT_1))
         data_stream = source.get_data_stream(['text-a'])
-        
         target = self.make_test_knit(name='target')
         target.insert_data_stream(data_stream)
-        
         self.assertKnitFilesEqual(source, target)
+
+    def test_insert_data_stream_annotated_unannotated(self):
+        """Inserting an annotated datastream to an unannotated knit works."""
+        # case one - full texts.
+        source = self.make_test_knit(name='source', annotate=True)
+        target = self.make_test_knit(name='target', annotate=False)
+        source.add_lines('text-a', [], split_lines(TEXT_1))
+        target.insert_data_stream(source.get_data_stream(['text-a']))
+        self.assertKnitValuesEqual(source, target)
+        # case two - deltas.
+        source.add_lines('text-b', ['text-a'], split_lines(TEXT_2))
+        target.insert_data_stream(source.get_data_stream(['text-b']))
+        self.assertKnitValuesEqual(source, target)
+
+    def test_insert_data_stream_unannotated_annotated(self):
+        """Inserting an unannotated datastream to an annotated knit works."""
+        # case one - full texts.
+        source = self.make_test_knit(name='source', annotate=False)
+        target = self.make_test_knit(name='target', annotate=True)
+        source.add_lines('text-a', [], split_lines(TEXT_1))
+        target.insert_data_stream(source.get_data_stream(['text-a']))
+        self.assertKnitValuesEqual(source, target)
+        # case two - deltas.
+        source.add_lines('text-b', ['text-a'], split_lines(TEXT_2))
+        target.insert_data_stream(source.get_data_stream(['text-b']))
+        self.assertKnitValuesEqual(source, target)
 
     def test_insert_data_stream_records_already_present(self):
         """Insert a data stream where some records are alreday present in the
@@ -1809,20 +1926,59 @@ class BasicKnitTests(KnitTests):
         self.assertRaises(
             errors.KnitCorrupt, target.insert_data_stream, data_stream)
 
-    def test_insert_data_stream_incompatible_format(self):
+    def test_insert_data_stream_unknown_format(self):
         """A data stream in a different format to the target knit cannot be
         inserted.
 
-        It will raise KnitDataStreamIncompatible.
+        It will raise KnitDataStreamUnknown because the fallback code will fail
+        to make a knit. In future we may need KnitDataStreamIncompatible again,
+        for more exotic cases.
         """
         data_stream = ('fake-format-signature', [], lambda _: '')
         target = self.make_test_knit(name='target')
         self.assertRaises(
-            errors.KnitDataStreamIncompatible,
+            errors.KnitDataStreamUnknown,
             target.insert_data_stream, data_stream)
 
     #  * test that a stream of "already present version, then new version"
     #    inserts correctly.
+
+
+    def assertMadeStreamKnit(self, source_knit, versions, target_knit):
+        """Assert that a knit made from a stream is as expected."""
+        a_stream = source_knit.get_data_stream(versions)
+        expected_data = a_stream[2](None)
+        a_stream = source_knit.get_data_stream(versions)
+        a_knit = target_knit._knit_from_datastream(a_stream)
+        self.assertEqual(source_knit.factory.__class__,
+            a_knit.factory.__class__)
+        self.assertIsInstance(a_knit._data._access, _StreamAccess)
+        self.assertIsInstance(a_knit._index, _StreamIndex)
+        self.assertEqual(a_knit._index.data_list, a_stream[1])
+        self.assertEqual(a_knit._data._access.data, expected_data)
+        self.assertEqual(a_knit.filename, target_knit.filename)
+        self.assertEqual(a_knit.transport, target_knit.transport)
+        self.assertEqual(a_knit._index, a_knit._data._access.stream_index)
+        self.assertEqual(target_knit, a_knit._data._access.backing_knit)
+        self.assertIsInstance(a_knit._data._access.orig_factory,
+            source_knit.factory.__class__)
+
+    def test__knit_from_data_stream_empty(self):
+        """Create a knit object from a datastream."""
+        annotated = self.make_test_knit(name='source', annotate=True)
+        plain = self.make_test_knit(name='target', annotate=False)
+        # case 1: annotated source
+        self.assertMadeStreamKnit(annotated, [], annotated)
+        self.assertMadeStreamKnit(annotated, [], plain)
+        # case 2: plain source
+        self.assertMadeStreamKnit(plain, [], annotated)
+        self.assertMadeStreamKnit(plain, [], plain)
+
+    def test__knit_from_data_stream_unknown_format(self):
+        annotated = self.make_test_knit(name='source', annotate=True)
+        self.assertRaises(errors.KnitDataStreamUnknown,
+            annotated._knit_from_datastream, ("unknown", None, None))
+
 
 TEXT_1 = """\
 Banana cup cakes:
@@ -2639,3 +2795,238 @@ class TestNoParentsGraphIndexKnit(KnitTests):
             set(index.iter_parents(['tip'])))
         self.assertEqual(set(),
             set(index.iter_parents([])))
+
+
+class TestPackKnits(KnitTests):
+    """Tests that use a _PackAccess and KnitGraphIndex."""
+
+    def test_get_data_stream_packs_ignores_pack_overhead(self):
+        # Packs have an encoding overhead that should not be included in the
+        # 'size' field of a data stream, because it is not returned by the
+        # raw_reading functions - it is why index_memo's are opaque, and
+        # get_data_stream was abusing this.
+        packname = 'test.pack'
+        transport = self.get_transport()
+        def write_data(bytes):
+            transport.append_bytes(packname, bytes)
+        writer = pack.ContainerWriter(write_data)
+        writer.begin()
+        index = InMemoryGraphIndex(2)
+        knit_index = KnitGraphIndex(index, add_callback=index.add_nodes,
+            deltas=True)
+        indices = {index:(transport, packname)}
+        access = _PackAccess(indices, writer=(writer, index))
+        k = KnitVersionedFile('test', get_transport('.'),
+            delta=True, create=True, index=knit_index, access_method=access)
+        # insert something into the knit
+        k.add_lines('text-1', [], ["foo\n"])
+        # get a data stream for it
+        stream = k.get_data_stream(['text-1'])
+        # if the stream has been incorrectly assembled, we will get a short read
+        # reading from the stream (as streams have no trailer)
+        expected_length = stream[1][0][2]
+        # we use -1 to do the read, so that if a trailer is added this test
+        # will fail and we'll adjust it to handle that case correctly, rather
+        # than allowing an over-read that is bogus.
+        self.assertEqual(expected_length, len(stream[2](-1)))
+
+
+class Test_StreamIndex(KnitTests):
+
+    def get_index(self, knit, stream):
+        """Get a _StreamIndex from knit and stream."""
+        return knit._knit_from_datastream(stream)._index
+
+    def assertIndexVersions(self, knit, versions):
+        """Check that the _StreamIndex versions are those of the stream."""
+        index = self.get_index(knit, knit.get_data_stream(versions))
+        self.assertEqual(set(index.get_versions()), set(versions))
+        # check we didn't get duplicates
+        self.assertEqual(len(index.get_versions()), len(versions))
+
+    def assertIndexAncestry(self, knit, ancestry_versions, versions, result):
+        """Check the result of a get_ancestry call on knit."""
+        index = self.get_index(knit, knit.get_data_stream(versions))
+        self.assertEqual(
+            set(result),
+            set(index.get_ancestry(ancestry_versions, False)))
+
+    def assertIterParents(self, knit, versions, parent_versions, result):
+        """Check the result of an iter_parents call on knit."""
+        index = self.get_index(knit, knit.get_data_stream(versions))
+        self.assertEqual(result, index.iter_parents(parent_versions))
+
+    def assertGetMethod(self, knit, versions, version, result):
+        index = self.get_index(knit, knit.get_data_stream(versions))
+        self.assertEqual(result, index.get_method(version))
+
+    def assertGetOptions(self, knit, version, options):
+        index = self.get_index(knit, knit.get_data_stream(version))
+        self.assertEqual(options, index.get_options(version))
+
+    def assertGetPosition(self, knit, versions, version, result):
+        index = self.get_index(knit, knit.get_data_stream(versions))
+        if result[1] is None:
+            result = (result[0], index, result[2], result[3])
+        self.assertEqual(result, index.get_position(version))
+
+    def assertGetParentsWithGhosts(self, knit, versions, version, parents):
+        index = self.get_index(knit, knit.get_data_stream(versions))
+        self.assertEqual(parents, index.get_parents_with_ghosts(version))
+
+    def make_knit_with_4_versions_2_dags(self):
+        knit = self.make_test_knit()
+        knit.add_lines('a', [], ["foo"])
+        knit.add_lines('b', [], [])
+        knit.add_lines('c', ['b', 'a'], [])
+        knit.add_lines_with_ghosts('d', ['e', 'f'], [])
+        return knit
+
+    def test_versions(self):
+        """The versions of a StreamIndex are those of the datastream."""
+        knit = self.make_knit_with_4_versions_2_dags()
+        # ask for most permutations, which catches bugs like falling back to the
+        # target knit, or showing ghosts, etc.
+        self.assertIndexVersions(knit, [])
+        self.assertIndexVersions(knit, ['a'])
+        self.assertIndexVersions(knit, ['b'])
+        self.assertIndexVersions(knit, ['c'])
+        self.assertIndexVersions(knit, ['d'])
+        self.assertIndexVersions(knit, ['a', 'b'])
+        self.assertIndexVersions(knit, ['b', 'c'])
+        self.assertIndexVersions(knit, ['a', 'c'])
+        self.assertIndexVersions(knit, ['a', 'b', 'c'])
+        self.assertIndexVersions(knit, ['a', 'b', 'c', 'd'])
+
+    def test_construct(self):
+        """Constructing a StreamIndex generates index data."""
+        data_list = [('text-a', ['fulltext'], 127, []),
+            ('text-b', ['option'], 128, ['text-c'])]
+        index = _StreamIndex(data_list)
+        self.assertEqual({'text-a':(['fulltext'], (0, 127), []),
+            'text-b':(['option'], (127, 127 + 128), ['text-c'])},
+            index._by_version)
+
+    def test_get_ancestry(self):
+        knit = self.make_knit_with_4_versions_2_dags()
+        self.assertIndexAncestry(knit, ['a'], ['a'], ['a'])
+        self.assertIndexAncestry(knit, ['b'], ['b'], ['b'])
+        self.assertIndexAncestry(knit, ['c'], ['c'], ['c'])
+        self.assertIndexAncestry(knit, ['c'], ['a', 'b', 'c'],
+            set(['a', 'b', 'c']))
+        self.assertIndexAncestry(knit, ['c', 'd'], ['a', 'b', 'c', 'd'],
+            set(['a', 'b', 'c', 'd']))
+
+    def test_get_method(self):
+        knit = self.make_knit_with_4_versions_2_dags()
+        self.assertGetMethod(knit, ['a'], 'a', 'fulltext')
+        self.assertGetMethod(knit, ['c'], 'c', 'line-delta')
+        # get_method on a basis that is not in the datastream (but in the
+        # backing knit) returns 'fulltext', because thats what we'll create as
+        # we thunk across.
+        self.assertGetMethod(knit, ['c'], 'b', 'fulltext')
+
+    def test_iter_parents(self):
+        knit = self.make_knit_with_4_versions_2_dags()
+        self.assertIterParents(knit, ['a'], ['a'], [('a', [])])
+        self.assertIterParents(knit, ['a', 'b'], ['a', 'b'],
+            [('a', []), ('b', [])])
+        self.assertIterParents(knit, ['a', 'b', 'c'], ['a', 'b', 'c'],
+            [('a', []), ('b', []), ('c', ['b', 'a'])])
+        self.assertIterParents(knit, ['a', 'b', 'c', 'd'],
+            ['a', 'b', 'c', 'd'],
+            [('a', []), ('b', []), ('c', ['b', 'a']), ('d', ['e', 'f'])])
+        self.assertIterParents(knit, ['c'], ['a', 'b', 'c'],
+            [('c', ['b', 'a'])])
+
+    def test_get_options(self):
+        knit = self.make_knit_with_4_versions_2_dags()
+        self.assertGetOptions(knit, 'a', ['no-eol', 'fulltext'])
+        self.assertGetOptions(knit, 'c', ['line-delta'])
+
+    def test_get_parents_with_ghosts(self):
+        knit = self.make_knit_with_4_versions_2_dags()
+        self.assertGetParentsWithGhosts(knit, ['a'], 'a', [])
+        self.assertGetParentsWithGhosts(knit, ['c'], 'c', ['b', 'a'])
+        self.assertGetParentsWithGhosts(knit, ['d'], 'd', ['e', 'f'])
+
+    def test_get_position(self):
+        knit = self.make_knit_with_4_versions_2_dags()
+        # get_position returns (thunk_flag, index(can be None), start, end) for
+        # _StreamAccess to use.
+        self.assertGetPosition(knit, ['a'], 'a', (False, None, 0, 78))
+        self.assertGetPosition(knit, ['a', 'c'], 'c', (False, None, 78, 156))
+        # get_position on a text that is not in the datastream (but in the
+        # backing knit) returns (True, 'versionid', None, None) - and then the
+        # access object can construct the relevant data as needed.
+        self.assertGetPosition(knit, ['a', 'c'], 'b', (True, 'b', None, None))
+
+
+class Test_StreamAccess(KnitTests):
+
+    def get_index_access(self, knit, stream):
+        """Get a _StreamAccess from knit and stream."""
+        knit =  knit._knit_from_datastream(stream)
+        return knit._index, knit._data._access
+
+    def assertGetRawRecords(self, knit, versions):
+        index, access = self.get_index_access(knit,
+            knit.get_data_stream(versions))
+        # check that every version asked for can be obtained from the resulting
+        # access object.
+        # batch
+        memos = []
+        for version in versions:
+            memos.append(knit._index.get_position(version))
+        original = {}
+        for version, data in zip(
+            versions, knit._data._access.get_raw_records(memos)):
+            original[version] = data
+        memos = []
+        for version in versions:
+            memos.append(index.get_position(version))
+        streamed = {}
+        for version, data in zip(versions, access.get_raw_records(memos)):
+            streamed[version] = data
+        self.assertEqual(original, streamed)
+        # individually
+        for version in versions:
+            data = list(access.get_raw_records(
+                [index.get_position(version)]))[0]
+            self.assertEqual(original[version], data)
+
+    def make_knit_with_two_versions(self):
+        knit = self.make_test_knit()
+        knit.add_lines('a', [], ["foo"])
+        knit.add_lines('b', [], ["bar"])
+        return knit
+
+    def test_get_raw_records(self):
+        knit = self.make_knit_with_two_versions()
+        self.assertGetRawRecords(knit, ['a', 'b'])
+        self.assertGetRawRecords(knit, ['a'])
+        self.assertGetRawRecords(knit, ['b'])
+    
+    def test_get_raw_record_from_backing_knit(self):
+        # the thunk layer should create an artificial A on-demand when needed.
+        source_knit = self.make_test_knit(name='plain', annotate=False)
+        target_knit = self.make_test_knit(name='annotated', annotate=True)
+        source_knit.add_lines("A", [], ["Foo\n"])
+        # Give the target A, so we can try to thunk across to it.
+        target_knit.join(source_knit)
+        index, access = self.get_index_access(target_knit,
+            source_knit.get_data_stream([]))
+        raw_data = list(access.get_raw_records([(True, "A", None, None)]))[0]
+        df = GzipFile(mode='rb', fileobj=StringIO(raw_data))
+        self.assertEqual(
+            'version A 1 5d36b88bb697a2d778f024048bafabd443d74503\n'
+            'Foo\nend A\n',
+            df.read())
+
+    def test_asking_for_thunk_stream_is_not_plain_errors(self):
+        knit = self.make_test_knit(name='annotated', annotate=True)
+        knit.add_lines("A", [], ["Foo\n"])
+        index, access = self.get_index_access(knit,
+            knit.get_data_stream([]))
+        self.assertRaises(errors.KnitCorrupt,
+            list, access.get_raw_records([(True, "A", None, None)]))

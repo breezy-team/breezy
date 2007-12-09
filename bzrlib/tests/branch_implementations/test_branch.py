@@ -97,6 +97,8 @@ class TestBranch(TestCaseWithBranch):
 
         rev = b2.repository.get_revision('revision-1')
         tree = b2.repository.revision_tree('revision-1')
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
         self.assertEqual(tree.get_file_text('foo-id'), 'hello')
 
     def test_get_revision_delta(self):
@@ -262,8 +264,19 @@ class TestBranch(TestCaseWithBranch):
     def test_store_signature(self):
         wt = self.make_branch_and_tree('.')
         branch = wt.branch
-        branch.repository.store_revision_signature(
-            gpg.LoopbackGPGStrategy(None), 'FOO', 'A')
+        branch.lock_write()
+        try:
+            branch.repository.start_write_group()
+            try:
+                branch.repository.store_revision_signature(
+                    gpg.LoopbackGPGStrategy(None), 'FOO', 'A')
+            except:
+                branch.repository.abort_write_group()
+                raise
+            else:
+                branch.repository.commit_write_group()
+        finally:
+            branch.unlock()
         self.assertRaises(errors.NoSuchRevision,
                           branch.repository.has_signature_for_revision_id,
                           'A')
@@ -563,6 +576,24 @@ class TestFormat(TestCaseWithBranch):
         made_branch = self.make_branch('.')
         self.assertEqual(None,
             made_branch._format.get_reference(made_branch.bzrdir))
+
+    def test_set_reference(self):
+        """set_reference on all regular branches should be callable."""
+        if not self.branch_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        this_branch = self.make_branch('this')
+        other_branch = self.make_branch('other')
+        try:
+            this_branch._format.set_reference(this_branch.bzrdir, other_branch)
+        except NotImplementedError:
+            # that's ok
+            pass
+        else:
+            ref = this_branch._format.get_reference(this_branch.bzrdir)
+            self.assertEqual(ref, other_branch.base)
 
     def test_format_initialize_find_open(self):
         # loopback test to check the current format initializes to itself.

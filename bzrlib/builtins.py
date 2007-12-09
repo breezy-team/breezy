@@ -747,8 +747,17 @@ class cmd_push(Command):
             # The destination doesn't exist; create it.
             # XXX: Refactor the create_prefix/no_create_prefix code into a
             #      common helper function
+
+            def make_directory(transport):
+                transport.mkdir('.')
+                return transport
+
+            def redirected(redirected_transport, e, redirection_notice):
+                return transport.get_transport(e.get_target_url())
+
             try:
-                to_transport.mkdir('.')
+                to_transport = transport.do_catching_redirections(
+                    make_directory, to_transport, redirected)
             except errors.FileExists:
                 if not use_existing_dir:
                     raise errors.BzrCommandError("Target directory %s"
@@ -763,6 +772,9 @@ class cmd_push(Command):
                         " leading parent directories."
                         % location)
                 _create_prefix(to_transport)
+            except errors.TooManyRedirections:
+                raise errors.BzrCommandError("Too many redirections trying "
+                                             "to make %s." % location)
 
             # Now the target directory exists, but doesn't have a .bzr
             # directory. So we need to create it, along with any work to create
@@ -1255,7 +1267,7 @@ class cmd_init(Command):
         bzr init
         bzr add .
         bzr status
-        bzr commit -m 'imported project'
+        bzr commit -m "imported project"
     """
 
     _see_also = ['init-repository', 'branch', 'checkout']
@@ -1915,15 +1927,15 @@ class cmd_ignore(Command):
 
         Ignore class files in all directories::
 
-            bzr ignore '*.class'
+            bzr ignore "*.class"
 
         Ignore .o files under the lib directory::
 
-            bzr ignore 'lib/**/*.o'
+            bzr ignore "lib/**/*.o"
 
         Ignore .o files under the lib directory::
 
-            bzr ignore 'RE:lib/.*\.o'
+            bzr ignore "RE:lib/.*\.o"
     """
 
     _see_also = ['status', 'ignored']
@@ -2114,17 +2126,17 @@ class cmd_cat(Command):
     def run(self, filename, revision=None, name_from_revision=False):
         if revision is not None and len(revision) != 1:
             raise errors.BzrCommandError("bzr cat --revision takes exactly"
-                                        " one number")
-
-        tree = None
+                                         " one revision specifier")
+        tree, branch, relpath = \
+            bzrdir.BzrDir.open_containing_tree_or_branch(filename)
+        branch.lock_read()
         try:
-            tree, b, relpath = \
-                    bzrdir.BzrDir.open_containing_tree_or_branch(filename)
-        except errors.NotBranchError:
-            pass
+            return self._run(tree, branch, relpath, filename, revision,
+                             name_from_revision)
+        finally:
+            branch.unlock()
 
-        if revision is not None and revision[0].get_branch() is not None:
-            b = Branch.open(revision[0].get_branch())
+    def _run(self, tree, b, relpath, filename, revision, name_from_revision):
         if tree is None:
             tree = b.basis_tree()
         if revision is None:
@@ -2437,7 +2449,7 @@ class cmd_whoami(Command):
 
         Set the current user::
 
-            bzr whoami 'Frank Chu <fchu@example.com>'
+            bzr whoami "Frank Chu <fchu@example.com>"
     """
     takes_options = [ Option('email',
                              help='Display email address only.'),
@@ -2592,6 +2604,9 @@ class cmd_selftest(Command):
                                  ' expression.'),
                      Option('strict', help='Fail on missing dependencies or '
                             'known failures.'),
+                     Option('coverage', type=str, argname="DIRECTORY",
+                            help='Generate line coverage report in this'
+                                 'directory.'),
                      ]
     encoding_type = 'replace'
 
@@ -2599,7 +2614,7 @@ class cmd_selftest(Command):
             transport=None, benchmark=None,
             lsprof_timed=None, cache_dir=None,
             first=False, list_only=False,
-            randomize=None, exclude=None, strict=False):
+            randomize=None, exclude=None, strict=False, coverage=None):
         import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
@@ -2641,6 +2656,7 @@ class cmd_selftest(Command):
                               random_seed=randomize,
                               exclude_pattern=exclude,
                               strict=strict,
+                              coverage_dir=coverage,
                               )
         finally:
             if benchfile is not None:
@@ -2686,14 +2702,21 @@ class cmd_find_merge_base(Command):
         
         branch1 = Branch.open_containing(branch)[0]
         branch2 = Branch.open_containing(other)[0]
+        branch1.lock_read()
+        try:
+            branch2.lock_read()
+            try:
+                last1 = ensure_null(branch1.last_revision())
+                last2 = ensure_null(branch2.last_revision())
 
-        last1 = ensure_null(branch1.last_revision())
-        last2 = ensure_null(branch2.last_revision())
+                graph = branch1.repository.get_graph(branch2.repository)
+                base_rev_id = graph.find_unique_lca(last1, last2)
 
-        graph = branch1.repository.get_graph(branch2.repository)
-        base_rev_id = graph.find_unique_lca(last1, last2)
-
-        print 'merge base is revision %s' % base_rev_id
+                print 'merge base is revision %s' % base_rev_id
+            finally:
+                branch2.unlock()
+        finally:
+            branch1.unlock()
 
 
 class cmd_merge(Command):
@@ -2817,6 +2840,8 @@ class cmd_merge(Command):
                 merger = _mod_merge.Merger.from_uncommitted(tree, other_tree,
                     pb)
                 allow_pending = False
+                if other_path != '':
+                    merger.interesting_files = [other_path]
 
             if merger is None:
                 merger, allow_pending = self._get_merger_from_branch(tree,
@@ -3072,9 +3097,9 @@ class cmd_revert(Command):
     last committed revision is used.
 
     To remove only some changes, without reverting to a prior version, use
-    merge instead.  For example, "merge . --r-2..-3" will remove the changes
-    introduced by -2, without affecting the changes introduced by -1.  Or
-    to remove certain changes on a hunk-by-hunk basis, see the Shelf plugin.
+    merge instead.  For example, "merge . --revision -2..-3" will remove the
+    changes introduced by -2, without affecting the changes introduced by -1.
+    Or to remove certain changes on a hunk-by-hunk basis, see the Shelf plugin.
     
     By default, any files that have been manually changed will be backed up
     first.  (Files changed only by merge are not backed up.)  Backup files have
@@ -3422,20 +3447,41 @@ class cmd_re_sign(Command):
     takes_options = ['revision']
     
     def run(self, revision_id_list=None, revision=None):
-        import bzrlib.gpg as gpg
         if revision_id_list is not None and revision is not None:
             raise errors.BzrCommandError('You can only supply one of revision_id or --revision')
         if revision_id_list is None and revision is None:
             raise errors.BzrCommandError('You must supply either --revision or a revision_id')
         b = WorkingTree.open_containing(u'.')[0].branch
+        b.lock_write()
+        try:
+            return self._run(b, revision_id_list, revision)
+        finally:
+            b.unlock()
+
+    def _run(self, b, revision_id_list, revision):
+        import bzrlib.gpg as gpg
         gpg_strategy = gpg.GPGStrategy(b.get_config())
         if revision_id_list is not None:
-            for revision_id in revision_id_list:
-                b.repository.sign_revision(revision_id, gpg_strategy)
+            b.repository.start_write_group()
+            try:
+                for revision_id in revision_id_list:
+                    b.repository.sign_revision(revision_id, gpg_strategy)
+            except:
+                b.repository.abort_write_group()
+                raise
+            else:
+                b.repository.commit_write_group()
         elif revision is not None:
             if len(revision) == 1:
                 revno, rev_id = revision[0].in_history(b)
-                b.repository.sign_revision(rev_id, gpg_strategy)
+                b.repository.start_write_group()
+                try:
+                    b.repository.sign_revision(rev_id, gpg_strategy)
+                except:
+                    b.repository.abort_write_group()
+                    raise
+                else:
+                    b.repository.commit_write_group()
             elif len(revision) == 2:
                 # are they both on rh- if so we can walk between them
                 # might be nice to have a range helper for arbitrary
@@ -3446,9 +3492,16 @@ class cmd_re_sign(Command):
                     to_revno = b.revno()
                 if from_revno is None or to_revno is None:
                     raise errors.BzrCommandError('Cannot sign a range of non-revision-history revisions')
-                for revno in range(from_revno, to_revno + 1):
-                    b.repository.sign_revision(b.get_rev_id(revno), 
-                                               gpg_strategy)
+                b.repository.start_write_group()
+                try:
+                    for revno in range(from_revno, to_revno + 1):
+                        b.repository.sign_revision(b.get_rev_id(revno),
+                                                   gpg_strategy)
+                except:
+                    b.repository.abort_write_group()
+                    raise
+                else:
+                    b.repository.commit_write_group()
             else:
                 raise errors.BzrCommandError('Please supply either one revision, or a range.')
 
@@ -3530,9 +3583,6 @@ class cmd_uncommit(Command):
     def run(self, location=None,
             dry_run=False, verbose=False,
             revision=None, force=False):
-        from bzrlib.log import log_formatter, show_log
-        from bzrlib.uncommit import uncommit
-
         if location is None:
             location = u'.'
         control, relpath = bzrdir.BzrDir.open_containing(location)
@@ -3543,19 +3593,38 @@ class cmd_uncommit(Command):
             tree = None
             b = control.open_branch()
 
+        if tree is not None:
+            tree.lock_write()
+        else:
+            b.lock_write()
+        try:
+            return self._run(b, tree, dry_run, verbose, revision, force)
+        finally:
+            if tree is not None:
+                tree.unlock()
+            else:
+                b.unlock()
+
+    def _run(self, b, tree, dry_run, verbose, revision, force):
+        from bzrlib.log import log_formatter, show_log
+        from bzrlib.uncommit import uncommit
+
+        last_revno, last_rev_id = b.last_revision_info()
+
         rev_id = None
         if revision is None:
-            revno = b.revno()
+            revno = last_revno
+            rev_id = last_rev_id
         else:
             # 'bzr uncommit -r 10' actually means uncommit
             # so that the final tree is at revno 10.
             # but bzrlib.uncommit.uncommit() actually uncommits
             # the revisions that are supplied.
             # So we need to offset it by one
-            revno = revision[0].in_history(b).revno+1
+            revno = revision[0].in_history(b).revno + 1
+            if revno <= last_revno:
+                rev_id = b.get_rev_id(revno)
 
-        if revno <= b.revno():
-            rev_id = b.get_rev_id(revno)
         if rev_id is None or _mod_revision.is_null(rev_id):
             self.outf.write('No revisions to uncommit.\n')
             return 1
@@ -3569,7 +3638,7 @@ class cmd_uncommit(Command):
                  verbose=False,
                  direction='forward',
                  start_revision=revno,
-                 end_revision=b.revno())
+                 end_revision=last_revno)
 
         if dry_run:
             print 'Dry-run, pretending to remove the above revisions.'
@@ -3584,7 +3653,7 @@ class cmd_uncommit(Command):
                     return 0
 
         uncommit(b, tree=tree, dry_run=dry_run, verbose=verbose,
-                revno=revno)
+                 revno=revno)
 
 
 class cmd_break_lock(Command):
@@ -3652,7 +3721,6 @@ class cmd_serve(Command):
         from bzrlib.smart import medium, server
         from bzrlib.transport import get_transport
         from bzrlib.transport.chroot import ChrootServer
-        from bzrlib.transport.remote import BZR_DEFAULT_PORT, BZR_DEFAULT_INTERFACE
         if directory is None:
             directory = os.getcwd()
         url = urlutils.local_path_to_url(directory)
@@ -3665,9 +3733,9 @@ class cmd_serve(Command):
             smart_server = medium.SmartServerPipeStreamMedium(
                 sys.stdin, sys.stdout, t)
         else:
-            host = BZR_DEFAULT_INTERFACE
+            host = medium.BZR_DEFAULT_INTERFACE
             if port is None:
-                port = BZR_DEFAULT_PORT
+                port = medium.BZR_DEFAULT_PORT
             else:
                 if ':' in port:
                     host, port = port.split(':')
@@ -3898,8 +3966,8 @@ class cmd_send(Command):
     for that mirror.
 
     Mail is sent using your preferred mail program.  This should be transparent
-    on Windows (it uses MAPI).  On *nix, it requires the xdg-email utility.  If
-    the preferred client can't be found (or used), your editor will be used.
+    on Windows (it uses MAPI).  On Linux, it requires the xdg-email utility.
+    If the preferred client can't be found (or used), your editor will be used.
     
     To use a specific mail program, set the mail_client configuration option.
     (For Thunderbird 1.5, this works around some bugs.)  Supported values for
@@ -3965,13 +4033,13 @@ class cmd_send(Command):
             outfile = open(output, 'wb')
         try:
             branch = Branch.open_containing(from_)[0]
+            # we may need to write data into branch's repository to calculate
+            # the data to send.
+            branch.lock_write()
             if output is None:
                 config = branch.get_config()
                 if mail_to is None:
                     mail_to = config.get_user_option('submit_to')
-                if mail_to is None:
-                    raise errors.BzrCommandError('No mail-to address'
-                                                 ' specified')
                 mail_client = config.get_mail_client()
             if remember and submit_branch is None:
                 raise errors.BzrCommandError(
@@ -4052,6 +4120,7 @@ class cmd_send(Command):
         finally:
             if output != '-':
                 outfile.close()
+            branch.unlock()
 
 
 class cmd_bundle_revisions(cmd_send):
@@ -4187,7 +4256,7 @@ class cmd_tag(Command):
 class cmd_tags(Command):
     """List tags.
 
-    This tag shows a table of tag names and the revisions they reference.
+    This command shows a table of tag names and the revisions they reference.
     """
 
     _see_also = ['tag']
@@ -4256,7 +4325,9 @@ class cmd_reconfigure(Command):
                      value_switches=True, enum_switch=False,
                      branch='Reconfigure to a branch.',
                      tree='Reconfigure to a tree.',
-                     checkout='Reconfigure to a checkout.'),
+                     checkout='Reconfigure to a checkout.',
+                     lightweight_checkout='Reconfigure to a lightweight'
+                     ' checkout.'),
                      Option('bind-to', help='Branch to bind checkout to.',
                             type=str),
                      Option('force',
@@ -4275,7 +4346,39 @@ class cmd_reconfigure(Command):
         elif target_type == 'checkout':
             reconfiguration = reconfigure.Reconfigure.to_checkout(directory,
                                                                   bind_to)
+        elif target_type == 'lightweight-checkout':
+            reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
+                directory, bind_to)
         reconfiguration.apply(force)
+
+
+class cmd_switch(Command):
+    """Set the branch of a checkout and update.
+    
+    For lightweight checkouts, this changes the branch being referenced.
+    For heavyweight checkouts, this checks that there are no local commits
+    versus the current bound branch, then it makes the local branch a mirror
+    of the new location and binds to it.
+    
+    In both cases, the working tree is updated and uncommitted changes
+    are merged. The user can commit or revert these as they desire.
+
+    Pending merges need to be committed or reverted before using switch.
+    """
+
+    takes_args = ['to_location']
+    takes_options = [Option('force',
+                        help='Switch even if local commits will be lost.')
+                     ]
+
+    def run(self, to_location, force=False):
+        from bzrlib import switch
+        to_branch = Branch.open(to_location)
+        tree_location = '.'
+        control_dir = bzrdir.BzrDir.open_containing(tree_location)[0]
+        switch.switch(control_dir, to_branch, force)
+        note('Switched to branch: %s',
+            urlutils.unescape_for_display(to_branch.base, 'utf-8'))
 
 
 def _create_prefix(cur_transport):

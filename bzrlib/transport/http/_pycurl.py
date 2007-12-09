@@ -36,13 +36,12 @@ from cStringIO import StringIO
 import sys
 
 from bzrlib import (
+    debug,
     errors,
+    trace,
     __version__ as bzrlib_version,
     )
 import bzrlib
-from bzrlib.errors import (NoSuchFile,
-                           ConnectionError,
-                           DependencyNotPresent)
 from bzrlib.trace import mutter
 from bzrlib.transport.http import (
     ca_bundle,
@@ -55,7 +54,7 @@ try:
     import pycurl
 except ImportError, e:
     mutter("failed to import pycurl: %s", e)
-    raise DependencyNotPresent('pycurl', e)
+    raise errors.DependencyNotPresent('pycurl', e)
 
 try:
     # see if we can actually initialize PyCurl - sometimes it will load but
@@ -70,7 +69,7 @@ try:
     pycurl.Curl()
 except pycurl.error, e:
     mutter("failed to initialize pycurl: %s", e)
-    raise DependencyNotPresent('pycurl', e)
+    raise errors.DependencyNotPresent('pycurl', e)
 
 
 
@@ -112,7 +111,7 @@ class PyCurlTransport(HttpTransportBase):
             # protocols
             supported = pycurl.version_info()[8]
             if 'https' not in supported:
-                raise DependencyNotPresent('pycurl', 'no https support')
+                raise errors.DependencyNotPresent('pycurl', 'no https support')
         self.cabundle = ca_bundle.get_ca_path()
 
     def _get_curl(self):
@@ -202,7 +201,7 @@ class PyCurlTransport(HttpTransportBase):
         data.seek(0)
 
         if code == 404:
-            raise NoSuchFile(abspath)
+            raise errors.NoSuchFile(abspath)
         if code != 200:
             self._raise_curl_http_error(
                 curl, 'expected 200 or 404 for full response.')
@@ -264,9 +263,12 @@ class PyCurlTransport(HttpTransportBase):
 
     def _set_curl_options(self, curl):
         """Set options for all requests"""
-        ## curl.setopt(pycurl.VERBOSE, 1)
-        # TODO: maybe include a summary of the pycurl version
-        ua_str = 'bzr/%s (pycurl)' % (bzrlib.__version__,)
+        if 'http' in debug.debug_flags:
+            curl.setopt(pycurl.VERBOSE, 1)
+            # pycurl doesn't implement the CURLOPT_STDERR option, so we can't
+            # do : curl.setopt(pycurl.STDERR, trace._trace_file)
+
+        ua_str = 'bzr/%s (pycurl: %s)' % (bzrlib.__version__, pycurl.version)
         curl.setopt(pycurl.USERAGENT, ua_str)
         if self.cabundle:
             curl.setopt(pycurl.CAINFO, self.cabundle)
@@ -292,8 +294,8 @@ class PyCurlTransport(HttpTransportBase):
                         CURLE_COULDNT_CONNECT,
                         CURLE_GOT_NOTHING,
                         CURLE_COULDNT_RESOLVE_PROXY,):
-                raise ConnectionError('curl connection error (%s)\non %s'
-                              % (e[1], url))
+                raise errors.ConnectionError(
+                    'curl connection error (%s)\non %s' % (e[1], url))
             elif e[0] == CURLE_PARTIAL_FILE:
                 # Pycurl itself has detected a short read.  We do
                 # not have all the information for the

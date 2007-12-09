@@ -111,9 +111,12 @@ class TestReconfigure(tests.TestCaseWithTransport):
         branch.set_push_location('sftp://push')
         self.assertEqual('sftp://push',
                          reconfiguration._select_bind_location())
-        branch.set_bound_location('bzr:old-bound')
+        branch.set_bound_location('bzr://foo/old-bound')
         branch.set_bound_location(None)
-        self.assertEqual('bzr:old-bound',
+        self.assertEqual('bzr://foo/old-bound',
+                         reconfiguration._select_bind_location())
+        branch.set_bound_location('bzr://foo/cur-bound')
+        self.assertEqual('bzr://foo/cur-bound',
                          reconfiguration._select_bind_location())
         reconfiguration.new_bound_location = 'ftp://user-specified'
         self.assertEqual('ftp://user-specified',
@@ -148,3 +151,39 @@ class TestReconfigure(tests.TestCaseWithTransport):
         checkout = parent.create_checkout('checkout')
         self.assertRaises(errors.AlreadyCheckout,
                           reconfigure.Reconfigure.to_checkout, checkout.bzrdir)
+
+    def test_checkout_to_lightweight(self):
+        parent = self.make_branch('parent')
+        checkout = parent.create_checkout('checkout')
+        checkout.commit('test', rev_id='new-commit', local=True)
+        reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
+            checkout.bzrdir)
+        reconfiguration.apply()
+        wt = checkout.bzrdir.open_workingtree()
+        self.assertTrue(parent.repository.has_same_location(
+            wt.branch.repository))
+        parent.repository.get_revision('new-commit')
+        self.assertRaises(errors.NoRepositoryPresent,
+                          checkout.bzrdir.open_repository)
+
+    def test_branch_to_lightweight_checkout(self):
+        parent = self.make_branch('parent')
+        child = parent.bzrdir.sprout('child').open_workingtree()
+        child.commit('test', rev_id='new-commit')
+        child.bzrdir.destroy_workingtree()
+        reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
+            child.bzrdir)
+        reconfiguration.apply()
+        wt = child.bzrdir.open_workingtree()
+        self.assertTrue(parent.repository.has_same_location(
+            wt.branch.repository))
+        parent.repository.get_revision('new-commit')
+        self.assertRaises(errors.NoRepositoryPresent,
+                          child.bzrdir.open_repository)
+
+    def test_lightweight_checkout_to_lightweight_checkout(self):
+        parent = self.make_branch('parent')
+        checkout = parent.create_checkout('checkout', lightweight=True)
+        self.assertRaises(errors.AlreadyLightweightCheckout,
+                          reconfigure.Reconfigure.to_lightweight_checkout,
+                          checkout.bzrdir)

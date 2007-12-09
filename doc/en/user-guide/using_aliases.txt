@@ -1,18 +1,18 @@
-=================================
-Using aliases for Bazaar commands
-=================================
+Using aliases
+=============
 
-Command aliases are an easy way to customize the behaviour of Bazaar. Aliases
-are an easy way to create shortcuts for commonly-typed commands, or to set
+What are aliases?
+-----------------
+
+Aliases are an easy way to create shortcuts for commonly-typed commands, or to set
 defaults for commands.
 
-Command aliases can be defined in the ``[ALIASES]`` section of your
-``.bazaar/bazaar.conf`` file. Aliases start with the alias name, then an
-equal sign, then a command fragment.  Here's an example ALIASES section:
+Defining aliases
+----------------
 
-Examples
-========
-A typical example::
+Command aliases can be defined in the ``[ALIASES]`` section of your
+``bazaar.conf`` file. Aliases start with the alias name, then an
+equal sign, then a command fragment.  Here's an example ALIASES section::
 
     [ALIASES]
     recentlog=log -r-3..-1
@@ -20,8 +20,7 @@ A typical example::
     commit=commit --strict
     diff=diff --diff-options -p
 
-Explanation of examples
-=======================
+Here are the explanations of the examples above:
 
  * The first alias makes a new ``recentlog`` command that shows the logs for the
    last three revisions
@@ -30,8 +29,9 @@ Explanation of examples
    files in the tree are not recognized.
  * the ``diff`` alias adds the coveted -p option to diff
 
-Using the Aliases
-=================
+Using the aliases
+-----------------
+
 The aliases defined above would be used like so: ::
 
    % bzr recentlog
@@ -39,8 +39,8 @@ The aliases defined above would be used like so: ::
    % bzr commit
    % bzr diff
 
-Rules for Aliases
-=================
+Rules for aliases
+-----------------
 
  * You can override a portion of the options given in an alias by
    specifying the new part on the command-line.  For example, if
@@ -52,10 +52,12 @@ Rules for Aliases
  * Aliases can override the standard behaviour of existing commands by giving
    an alias name that is the same as the orignal command. For example, default
    commit is changed with ``commit=commit --strict``.
+
  * Aliases cannot refer to other aliases. In other words making a
    ``lastlog`` alias and referring to it with a ``ll`` alias will not work.
-   This includes aliases that override standard commands
- * Giving the ``--no-aliases`` to the bzr command will tell it to ignore aliases
+   This includes aliases that override standard commands.
+
+ * Giving the ``--no-aliases`` option to the bzr command will tell it to ignore aliases
    for that run. For example, running ``bzr --no-aliases commit`` will perform a
-   standard commit instead not do a ``commit --strict``.
+   standard commit instead, not do a ``commit --strict``.
 

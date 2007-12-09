@@ -246,10 +246,17 @@ def fancy_rename(old, new, rename_func, unlink_func):
 
     success = False
     try:
-        # This may throw an exception, in which case success will
-        # not be set.
-        rename_func(old, new)
-        success = True
+        try:
+            # This may throw an exception, in which case success will
+            # not be set.
+            rename_func(old, new)
+            success = True
+        except (IOError, OSError), e:
+            # source and target may be aliases of each other (e.g. on a
+            # case-insensitive filesystem), so we may have accidentally renamed
+            # source by when we tried to rename target
+            if not (file_existed and e.errno in (None, errno.ENOENT)):
+                raise
     finally:
         if file_existed:
             # If the file used to exist, rename it back into place
