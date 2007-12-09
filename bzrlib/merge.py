@@ -369,6 +369,9 @@ class Merger(object):
         elif self.show_base:
             raise BzrError("Showing base is not supported for this"
                                   " merge type. %s" % self.merge_type)
+        if (not getattr(self.merge_type, 'supports_reverse_cherrypick', True)
+            and not self.base_is_other_ancestor):
+            raise errors.CannotReverseCherrypick()
         self.this_tree.lock_tree_write()
         if self.base_tree is not None:
             self.base_tree.lock_read()
@@ -416,6 +419,7 @@ class Merge3Merger(object):
     supports_reprocess = True
     supports_show_base = True
     history_based = False
+    supports_reverse_cherrypick = True
     winner_idx = {"this": 2, "other": 1, "conflict": 1}
 
     def __init__(self, working_tree, this_tree, base_tree, other_tree, 
@@ -978,6 +982,7 @@ class WeaveMerger(Merge3Merger):
     """Three-way tree merger, text weave merger."""
     supports_reprocess = True
     supports_show_base = False
+    supports_reverse_cherrypick = False
 
     def __init__(self, working_tree, this_tree, base_tree, other_tree, 
                  interesting_ids=None, pb=DummyProgress(), pp=None,

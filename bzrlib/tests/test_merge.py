@@ -288,7 +288,7 @@ class TestMerge(TestCaseWithTransport):
         merger.do_merge()
         self.assertEqual(tree_a.get_parent_ids(), [tree_b.last_revision()])
 
-    def test_weave_cherrypick(self):
+    def prepare_cherrypick(self):
         this_tree = self.make_branch_and_tree('this')
         self.build_tree_contents([('this/file', "a\n")])
         this_tree.add('file')
@@ -300,11 +300,29 @@ class TestMerge(TestCaseWithTransport):
         other_tree.commit('rev3b', rev_id='rev3b')
         this_tree.lock_write()
         self.addCleanup(this_tree.unlock)
+        return this_tree, other_tree
+
+    def test_weave_cherrypick(self):
+        this_tree, other_tree = self.prepare_cherrypick()
         merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
             this_tree, 'rev3b', 'rev2b', other_tree.branch)
         merger.merge_type = _mod_merge.WeaveMerger
         merger.do_merge()
         self.assertFileEqual('c\na\n', 'this/file')
+
+    def test_weave_cannot_reverse_cherrypick(self):
+        this_tree, other_tree = self.prepare_cherrypick()
+        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+            this_tree, 'rev2b', 'rev3b', other_tree.branch)
+        merger.merge_type = _mod_merge.WeaveMerger
+        self.assertRaises(errors.CannotReverseCherrypick, merger.do_merge)
+
+    def test_merge3_can_reverse_cherrypick(self):
+        this_tree, other_tree = self.prepare_cherrypick()
+        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+            this_tree, 'rev2b', 'rev3b', other_tree.branch)
+        merger.merge_type = _mod_merge.Merge3Merger
+        merger.do_merge()
 
 
 class TestPlanMerge(TestCaseWithMemoryTransport):

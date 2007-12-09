@@ -1101,6 +1101,12 @@ class UnrelatedBranches(BzrError):
             " no merge base revision was specified.")
 
 
+class CannotReverseCherrypick(BzrError):
+
+    _fmt = ('Selected merge cannot perform reverse cherrypicks.  Try merge3'
+            ' or diff3.')
+
+
 class NoCommonAncestor(BzrError):
     
     _fmt = "Revisions have no common ancestor: %(revision_a)s %(revision_b)s"
