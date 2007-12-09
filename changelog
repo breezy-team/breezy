@@ -11,6 +11,8 @@ bzr (1.0~rc1-3) UNRELEASED; urgency=low
       what's useful for.
     + properly capitalize Vcs-Bzr.
 
+  * Add graphviz to Build-Depends in order to build performance.png.
+
   [ James Westby ]
   * debian/rules:
     + use '$(MAKE)' instead of 'make' to at least allow a parallel build.
