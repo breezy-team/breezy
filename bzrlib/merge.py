@@ -372,6 +372,9 @@ class Merger(object):
         if (not getattr(self.merge_type, 'supports_reverse_cherrypick', True)
             and not self.base_is_other_ancestor):
             raise errors.CannotReverseCherrypick()
+        if self.merge_type.history_based:
+            kwargs['cherrypick'] = (not self.base_is_ancestor or
+                                    not self.base_is_other_ancestor)
         self.this_tree.lock_tree_write()
         if self.base_tree is not None:
             self.base_tree.lock_read()
@@ -983,11 +986,13 @@ class WeaveMerger(Merge3Merger):
     supports_reprocess = True
     supports_show_base = False
     supports_reverse_cherrypick = False
+    history_based = True
 
     def __init__(self, working_tree, this_tree, base_tree, other_tree, 
                  interesting_ids=None, pb=DummyProgress(), pp=None,
                  reprocess=False, change_reporter=None,
-                 interesting_files=None):
+                 interesting_files=None, cherrypick=False):
+        self.cherrypick = cherrypick
         super(WeaveMerger, self).__init__(working_tree, this_tree, 
                                           base_tree, other_tree, 
                                           interesting_ids=interesting_ids, 
@@ -999,8 +1004,12 @@ class WeaveMerger(Merge3Merger):
         There is no distinction between lines that are meant to contain <<<<<<<
         and conflicts.
         """
+        if self.cherrypick:
+            base = self.base_tree
+        else:
+            base = None
         plan = self.this_tree.plan_file_merge(file_id, self.other_tree,
-                                              base=self.base_tree)
+                                              base=base)
         if 'merge' in debug.debug_flags:
             plan = list(plan)
             trans_id = self.tt.trans_id_file_id(file_id)
