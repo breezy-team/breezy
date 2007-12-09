@@ -8,6 +8,8 @@ setup(name='bzr-stats',
       version='0.0.1',
       license='GPL',
       author='John Arbash Meinel',
+      author_email="john@arbash-meinel.com",
+      url="http://launchpad.net/bzr-stats",
       long_description="""
       Simple statistics plugin for Bazaar.
       """,
