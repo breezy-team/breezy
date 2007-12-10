@@ -32,6 +32,8 @@ import os
 from remote import SvnRaTransport
 from tests import TestCaseWithSubversionRepository
 
+from svn.core import svn_time_to_cstring
+
 class TestNativeCommit(TestCaseWithSubversionRepository):
     def test_simple_commit(self):
         self.make_client('d', 'dc')

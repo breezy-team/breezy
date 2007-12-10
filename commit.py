@@ -108,11 +108,16 @@ class SvnCommitBuilder(RootCommitBuilder):
             SVN_REVPROP_BZR_FILEIDS: "",
             SVN_REVPROP_BZR_TIMESTAMP: str(timestamp),
             SVN_REVPROP_BZR_TIMEZONE: str(timezone),
-            SVN_REVPROP_BZR_COMMITTER: committer
         }
 
-        for name, value in revprops.items():
-            self._svn_revprops[SVN_REVPROP_BZR_REVPROP_PREFIX+name] = value
+        if committer is not None:
+            self._svn_revprops[SVN_REVPROP_BZR_COMMITTER] = committer.encode("utf-8")
+        else:
+            self._svn_revprops[SVN_REVPROP_BZR_COMMITTER] = None
+
+        if revprops is not None:
+            for name, value in revprops.items():
+                self._svn_revprops[SVN_REVPROP_BZR_REVPROP_PREFIX+name] = value
 
         # Gather information about revision on top of which the commit is 
         # happening
@@ -559,7 +564,7 @@ class SvnCommitBuilder(RootCommitBuilder):
         """
         file_id_entry = "%s\t%s\n" % (urllib.quote(path), ie.file_id)
         self._svnprops[SVN_PROP_BZR_FILEIDS] += file_id_entry
-        self._svn_revprops[SVN_REVPROP_BZR_FILEIDS]+= file_id_entry
+        self._svn_revprops[SVN_REVPROP_BZR_FILEIDS] += file_id_entry
 
     def record_entry_contents(self, ie, parent_invs, path, tree,
                               content_summary):
