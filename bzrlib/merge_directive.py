@@ -188,9 +188,34 @@ class _BaseMergeDirective(object):
             if self.patch_type == 'bundle':
                 info = bundle_serializer.read_bundle(
                     StringIO(self.get_raw_bundle()))
+                missing_revisions = []
+                for revision in info.real_revisions:
+                    for parent_id in revision.parent_ids:
+                        if (parent_id not in info.real_revisions and
+                            not target_repo.has_revision(parent_id)):
+                            missing_revisions.append(parent_id)
+                if len(missing_revisions) > 0:
+                    target_branch = _mod_branch.Branch.open(self.target_branch)
+                    for missing_revision in missing_revisions:
+                        target_repo.fetch(target_branch.repository,
+                                          missing_revision)
                 # We don't use the bundle's target revision, because
                 # MergeDirective.revision_id is authoritative.
-                info.install_revisions(target_repo, stream_input=False)
+                try:
+                    info.install_revisions(target_repo, stream_input=False)
+                except errors.RevisionNotPresent:
+                    # At least one dependency isn't present.  Try installing
+                    # missing revisions from the submit branch
+                    for revision in info.real_revisions:
+                        for parent_id in revision.parent_ids:
+                            if (parent_id not in info.real_revisions and
+                                not target_repo.has_revision(parent_id)):
+                                missing_revisions.append(parent_id)
+                    submit_branch = _mod_branch.Branch.open(self.target_branch)
+                    for missing_revision in missing_revisions:
+                        target_repo.fetch(submit_branch.repository,
+                                          missing_revision)
+                    info.install_revisions(target_repo, stream_input=False)
             else:
                 source_branch = _mod_branch.Branch.open(self.source_branch)
                 target_repo.fetch(source_branch.repository, self.revision_id)

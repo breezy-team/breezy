@@ -14,6 +14,9 @@ IN DEVELOPMENT
    * ``bzr commit`` now doesn't print the revision number twice. (Matt
      Nordhoff, #172612)
 
+   * Merge directives now fetch prerequisites from the target branch if
+     needed.  (Aaron Bentley)
+
    * New configuration option ``bugtracker_<tracker_abbrevation>_url`` to
      define locations of bug trackers that are not directly supported by
      bzr or a plugin. The URL will be treated as a template and ``{id}``
