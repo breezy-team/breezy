@@ -610,7 +610,7 @@ class Packer(object):
         revision_nodes = self._pack_collection._index_contents(revision_index_map, revision_keys)
         # copy revision keys and adjust values
         self.pb.update("Copying revision texts", 1)
-        total_items, readv_group_iter = self._sort_revisions(revision_nodes)
+        total_items, readv_group_iter = self._revision_node_readv(revision_nodes)
         list(self._copy_nodes_graph(revision_index_map, self.new_pack._writer,
             self.new_pack.revision_index, readv_group_iter, total_items))
         if 'pack' in debug.debug_flags:
@@ -906,7 +906,7 @@ class Packer(object):
             text_filter.extend([(fileid, file_revid) for file_revid in file_revids])
         self._text_filter = text_filter
 
-    def _sort_revisions(self, revision_nodes):
+    def _revision_node_readv(self, revision_nodes):
         """Return the total revisions and the readv's to issue.
 
         :param revision_nodes: The revision index contents for the packs being
@@ -927,7 +927,7 @@ class Packer(object):
 class OptimisingPacker(Packer):
     """A packer which spends more time to create better disk layouts."""
 
-    def _sort_revisions(self, revision_nodes):
+    def _revision_node_readv(self, revision_nodes):
         """Return the total revisions and the readv's to issue.
 
         This sort places revisions in topological order with the ancestors
@@ -1232,8 +1232,7 @@ class RepositoryPackCollection(object):
         """Execute a series of pack operations.
 
         :param pack_operations: A list of [revision_count, packs_to_combine].
-        :param _packer_class: The class of packer to use. If not supplied
-            Packer will be used.
+        :param _packer_class: The class of packer to use (default: Packer).
         :return: None.
         """
         for revision_count, packs in pack_operations:
