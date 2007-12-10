@@ -24,7 +24,8 @@ IN DEVELOPMENT
 
   INTERNALS:
 
-    * Help topics can now be loaded from files. (Ian Clatworthy)
+    * Help topics can now be loaded from files. 
+      (Ian Clatworthy, Alexander Belchenko)
 
   API BREAKS:
 

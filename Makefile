@@ -87,7 +87,6 @@ doc_dir := doc/en/tutorials
 txt_files := $(wildcard $(addsuffix /*.txt, $(doc_dir))) $(derived_txt_files) \
 	doc/en/user-guide/index.txt \
 	doc/en/mini-tutorial/index.txt \
-	doc/en/user-reference/hooks.txt \
 	doc/index.txt
 non_txt_files := \
        doc/default.css \
@@ -119,7 +118,8 @@ MAN_DEPENDENCIES = bzrlib/builtins.py \
 		 generate_docs.py \
 		 tools/doc_generate/__init__.py \
 		 tools/doc_generate/autodoc_man.py \
-		 tools/doc_generate/autodoc_rstx.py
+		 tools/doc_generate/autodoc_rstx.py \
+		 $(wildcard $(addsuffix /*.txt, bzrlib/help)) 
 
 doc/en/user-reference/bzr_man.txt: $(MAN_DEPENDENCIES)
 	$(PYTHON) generate_docs.py -o $@ rstx

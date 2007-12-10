@@ -33,7 +33,13 @@ be used in the help text, producing sensible input to a manual while
 rendering on the screen naturally.
 """
 
-from bzrlib import registry
+import sys
+
+import bzrlib
+from bzrlib import (
+    osutils,
+    registry,
+    )
 
 
 # Section identifiers (map topics to the right place in the manual)
@@ -133,11 +139,11 @@ def _load_from_file(topic_name):
 
     The help is already expected to be in ReStructuredText format.
     """
-    # FIXME ...
-    bzr_dir = "."
-    filename = "%s/doc/en/user-reference/%s.txt" % (bzr_dir,topic_name)
-    lines = open(filename).readlines()
-    return ''.join(lines)
+    base = osutils.dirname(bzrlib.__file__)
+    if getattr(sys, 'frozen', None):    # bzr.exe
+        base = osutils.abspath(osutils.pathjoin(base, '..', '..'))
+    filename = osutils.pathjoin(base, 'help', topic_name + ".txt")
+    return open(filename, 'rU').read()
 
 
 def _help_on_revisionspec(name):

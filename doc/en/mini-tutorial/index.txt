@@ -263,7 +263,8 @@ they choose, can use it merge your work back into the parent branch.
 Learning more
 =============
 
-You can find out more about Bazaar in the `Bazaar user guide <../../index.html>`_.
+You can find out more about Bazaar in the
+`Bazaar user guide <../user-guide/index.html>`_.
 
 To learn about Bazaar on the command-line::
 
