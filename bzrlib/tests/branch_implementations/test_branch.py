@@ -577,6 +577,24 @@ class TestFormat(TestCaseWithBranch):
         self.assertEqual(None,
             made_branch._format.get_reference(made_branch.bzrdir))
 
+    def test_set_reference(self):
+        """set_reference on all regular branches should be callable."""
+        if not self.branch_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        this_branch = self.make_branch('this')
+        other_branch = self.make_branch('other')
+        try:
+            this_branch._format.set_reference(this_branch.bzrdir, other_branch)
+        except NotImplementedError:
+            # that's ok
+            pass
+        else:
+            ref = this_branch._format.get_reference(this_branch.bzrdir)
+            self.assertEqual(ref, other_branch.base)
+
     def test_format_initialize_find_open(self):
         # loopback test to check the current format initializes to itself.
         if not self.branch_format.is_supported():
