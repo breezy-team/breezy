@@ -2231,7 +2231,7 @@ class cmd_commit(Command):
                     "files in the working tree."),
              ListOption('fixes', type=str,
                     help="Mark a bug as being fixed by this revision."),
-             Option('author', type=str,
+             Option('author', type=unicode,
                     help="Set the author's name, if it's different "
                          "from the committer."),
              Option('local',
