@@ -13,6 +13,10 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+   * ``bzr pack`` now orders revision texts in topological order, with newest
+     at the start of the file, promoting linear reads for ``bzr log`` and the
+     like. This partially fixes #154129. (Robert Collins)
+
   BUGFIXES:
 
    * Fix Makefile rules for doc generation. (Ian Clatworthy, #175207)
