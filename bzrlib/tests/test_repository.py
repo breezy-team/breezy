@@ -1195,7 +1195,13 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         repo = self.make_repository('.', format=format)
         packs = repo._pack_collection
         self.assertEqual([0], packs.pack_distribution(0))
-        
+
+    def test_ensure_loaded_unlocked(self):
+        format = self.get_format()
+        repo = self.make_repository('.', format=format)
+        self.assertRaises(errors.ObjectNotLocked,
+                          repo._pack_collection.ensure_loaded)
+
     def test_pack_distribution_one_to_nine(self):
         format = self.get_format()
         repo = self.make_repository('.', format=format)

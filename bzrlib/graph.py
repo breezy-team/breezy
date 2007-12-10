@@ -16,6 +16,7 @@
 
 from bzrlib import (
     errors,
+    revision,
     tsort,
     )
 from bzrlib.deprecated_graph import (node_distances, select_farthest)
@@ -241,6 +242,11 @@ class Graph(object):
             order if they need it.
         """
         candidate_heads = set(keys)
+        if revision.NULL_REVISION in candidate_heads:
+            # NULL_REVISION is only a head if it is the only entry
+            candidate_heads.remove(revision.NULL_REVISION)
+            if not candidate_heads:
+                return set([revision.NULL_REVISION])
         if len(candidate_heads) < 2:
             return candidate_heads
         searchers = dict((c, self._make_breadth_first_searcher([c]))
@@ -309,7 +315,8 @@ class Graph(object):
             common_walker.start_searching(new_common)
         return candidate_heads
 
-    def find_unique_lca(self, left_revision, right_revision):
+    def find_unique_lca(self, left_revision, right_revision,
+                        count_steps=False):
         """Find a unique LCA.
 
         Find lowest common ancestors.  If there is no unique  common
@@ -320,12 +327,22 @@ class Graph(object):
 
         Note that None is not an acceptable substitute for NULL_REVISION.
         in the input for this method.
+
+        :param count_steps: If True, the return value will be a tuple of
+            (unique_lca, steps) where steps is the number of times that
+            find_lca was run.  If False, only unique_lca is returned.
         """
         revisions = [left_revision, right_revision]
+        steps = 0
         while True:
+            steps += 1
             lca = self.find_lca(*revisions)
             if len(lca) == 1:
-                return lca.pop()
+                result = lca.pop()
+                if count_steps:
+                    return result, steps
+                else:
+                    return result
             if len(lca) == 0:
                 raise errors.NoCommonAncestor(left_revision, right_revision)
             revisions = lca
@@ -344,7 +361,7 @@ class Graph(object):
         """Determine whether a revision is an ancestor of another.
 
         We answer this using heads() as heads() has the logic to perform the
-        smallest number of parent looksup to determine the ancestral
+        smallest number of parent lookups to determine the ancestral
         relationship between N revisions.
         """
         return set([candidate_descendant]) == self.heads(

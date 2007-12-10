@@ -4,6 +4,74 @@ Bazaar Release Notes
 
 .. contents::
 
+bzr 1.0rc2 2007-12-07
+=====================
+
+  IMPROVEMENTS:
+
+   * Added a --coverage option to selftest. (Andrew Bennetts)
+
+   * ``bzr commit`` now doesn't print the revision number twice. (Matt
+     Nordhoff, #172612)
+
+   * New configuration option ``bugtracker_<tracker_abbrevation>_url`` to
+     define locations of bug trackers that are not directly supported by
+     bzr or a plugin. The URL will be treated as a template and ``{id}``
+     placeholders will be replaced by specific bug IDs.  (Lukáš Lalinský)
+
+   * Support logging single merge revisions with short and line log formatters.
+     (Kent Gibson)
+
+   * User Guide enhanced with suggested readability improvements from
+     Matt Revell and corrections from John Arbash Meinel. (Ian Clatworthy)
+
+   * Quick Start Guide renamed to Quick Start Card, moved down in
+     the catalog, provided in pdf and png format and updated to refer
+     to ``send`` instead of ``bundle``. (Ian Clatworthy, #165080)
+
+   * ``switch`` can now be used on heavyweight checkouts as well as
+     lightweight ones. After switching a heavyweight checkout, the
+     local branch is a mirror/cache of the new bound branch and
+     uncommitted changes in the working tree are merged. As a safety
+     check, if there are local commits in a checkout which have not
+     been committed to the previously bound branch, then ``switch``
+     fails unless the ``--force`` option is given. This option is
+     now also required if the branch a lightweight checkout is pointing
+     to has been moved. (Ian Clatworthy)
+
+  INTERNALS:
+
+    * New -Dhttp debug option reports http connections, requests and responses.
+      (Vincent Ladeuil)
+
+    * New -Dmerge debug option, which emits merge plans for merge-type=weave.
+
+  BUGFIXES:
+
+   * Better error message when running ``bzr cat`` on a non-existant branch.
+     (Lukáš Lalinský, #133782)
+
+   * Catch OSError 17 (file exists) in final phase of tree transform and show
+     filename to user.
+     (Alexander Belchenko, #111758)
+
+   * Catch ShortReadvErrors while using pycurl. Also make readv more robust by
+     allowing multiple GET requests to be issued if too many ranges are
+     required.
+     (Vincent Ladeuil, #172701)
+
+   * Check for missing basis texts when fetching from packs to packs.
+     (John Arbash Meinel, #165290)
+
+   * Fall back to showing e-mail in ``log --short/--line`` if the committer/author has
+     only e-mail. (Lukáš Lalinský, #157026)
+
+  API BREAKS:
+
+   * Deprecate not passing a ``location`` argument to commit reporters'
+     ``started`` methods. (Matt Nordhoff)
+
+
 bzr 1.0rc1 2007-11-30
 =====================
 
@@ -56,6 +124,9 @@ bzr 1.0rc1 2007-11-30
      tree roots that's recorded for all other directories.
      (Aaron Bentley, #164639)
 
+   * ``pack-0.92`` repositories can now be reconciled.
+     (Robert Collins, #154173)
+
    * ``switch`` command added for changing the branch a lightweight checkout
      is associated with and updating the tree to reflect the latest content
      accordingly. This command was previously part of the BzrTools plug-in.
@@ -85,7 +156,14 @@ bzr 1.0rc1 2007-11-30
    * Diff does not require an inventory to be generated on dirstate trees.
      (Aaron Bentley, #149254)
 
+   * New annotate merge (--merge-type=weave) implementation is fast on
+     versionedfiles withough cached annotations, e.g. pack-0.92.
+     (Aaron Bentley)
+
   IMPROVEMENTS:
+
+   * ``bzr merge`` now warns when it encounters a criss-cross merge.
+     (Aaron Bentley)
 
    * ``bzr send`` now doesn't require the target e-mail address to be
      specified on the command line if an interactive e-mail client is used.
@@ -125,6 +203,9 @@ bzr 1.0rc1 2007-11-30
 
    * Detect invalid transport reuse attempts by catching invalid URLs.
      (Vincent Ladeuil, #161819)
+
+   * Deleting a file without removing it shows a correct diff, not a traceback.
+     (Aaron Bentley)
 
    * Do no use timeout in HttpServer anymore.
      (Vincent Ladeuil, #158972).
