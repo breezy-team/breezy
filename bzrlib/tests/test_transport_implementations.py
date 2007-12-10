@@ -20,6 +20,7 @@ Transport implementations tested here are supplied by
 TransportTestProviderAdapter.
 """
 
+import itertools
 import os
 from cStringIO import StringIO
 from StringIO import StringIO as pyStringIO
@@ -186,11 +187,15 @@ class TransportTests(TestTransportImplementation):
         self.build_tree(files, transport=t, line_endings='binary')
         self.check_transport_contents('contents of a\n', t, 'a')
         content_f = t.get_multi(files)
-        for content, f in zip(contents, content_f):
+        # Use itertools.izip() instead of use zip() or map(), since they fully
+        # evaluate their inputs, the transport requests should be issued and
+        # handled sequentially (we don't want to force transport to buffer).
+        for content, f in itertools.izip(contents, content_f):
             self.assertEqual(content, f.read())
 
         content_f = t.get_multi(iter(files))
-        for content, f in zip(contents, content_f):
+        # Use itertools.izip() for the same reason
+        for content, f in itertools.izip(contents, content_f):
             self.assertEqual(content, f.read())
 
         self.assertRaises(NoSuchFile, t.get, 'c')
@@ -978,7 +983,7 @@ class TransportTests(TestTransportImplementation):
         self.check_transport_contents('c this file\n', t, 'b')
 
         # TODO: Try to write a test for atomicity
-        # TODO: Test moving into a non-existant subdirectory
+        # TODO: Test moving into a non-existent subdirectory
         # TODO: Test Transport.move_multi
 
     def test_copy(self):
@@ -1281,7 +1286,7 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual('', t.relpath(t.base))
         # base ends with /
         self.assertEqual('', t.relpath(t.base[:-1]))
-        # subdirs which dont exist should still give relpaths.
+        # subdirs which don't exist should still give relpaths.
         self.assertEqual('foo', t.relpath(t.base + 'foo'))
         # trailing slash should be the same.
         self.assertEqual('foo', t.relpath(t.base + 'foo/'))
@@ -1569,7 +1574,7 @@ class TransportTests(TestTransportImplementation):
                 adjust_for_latency=True, upper_limit=content_size))
             self.assertEqual(1, len(result))
             data_len = len(result[0][1])
-            # minimmum length is from 400 to 1034 - 634
+            # minimum length is from 400 to 1034 - 634
             self.assertTrue(data_len >= 634)
             # must contain the region 400 to 1034
             self.assertTrue(result[0][0] <= 400)
