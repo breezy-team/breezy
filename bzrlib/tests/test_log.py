@@ -902,6 +902,16 @@ class TestLogFormatter(TestCase):
         rev.committer = 'John Doe <jdoe@example.com>'
         lf = LogFormatter(None)
         self.assertEqual('John Doe', lf.short_committer(rev))
+        rev.committer = 'John Smith <jsmith@example.com>'
+        self.assertEqual('John Smith', lf.short_committer(rev))
+        rev.committer = 'John Smith'
+        self.assertEqual('John Smith', lf.short_committer(rev))
+        rev.committer = 'jsmith@example.com'
+        self.assertEqual('jsmith@example.com', lf.short_committer(rev))
+        rev.committer = '<jsmith@example.com>'
+        self.assertEqual('jsmith@example.com', lf.short_committer(rev))
+        rev.committer = 'John Smith jsmith@example.com'
+        self.assertEqual('John Smith', lf.short_committer(rev))
 
     def test_short_author(self):
         rev = Revision('a-id')
@@ -909,4 +919,12 @@ class TestLogFormatter(TestCase):
         lf = LogFormatter(None)
         self.assertEqual('John Doe', lf.short_author(rev))
         rev.properties['author'] = 'John Smith <jsmith@example.com>'
+        self.assertEqual('John Smith', lf.short_author(rev))
+        rev.properties['author'] = 'John Smith'
+        self.assertEqual('John Smith', lf.short_author(rev))
+        rev.properties['author'] = 'jsmith@example.com'
+        self.assertEqual('jsmith@example.com', lf.short_author(rev))
+        rev.properties['author'] = '<jsmith@example.com>'
+        self.assertEqual('jsmith@example.com', lf.short_author(rev))
+        rev.properties['author'] = 'John Smith jsmith@example.com'
         self.assertEqual('John Smith', lf.short_author(rev))

@@ -42,7 +42,7 @@ development next time you ``update``. In this case, ``update``
 does the following:
 
  * it brings the latest revisions from the bound branch down and
-   makes that the mainline of development without your checkout
+   makes that the mainline of development within your checkout
 
  * it moves your local changes since you last updated into a logical
    parallel branch

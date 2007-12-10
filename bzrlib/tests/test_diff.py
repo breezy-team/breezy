@@ -239,6 +239,18 @@ class TestDiff(TestCase):
                           ]
                           , lines)
 
+    def test_internal_diff_no_content(self):
+        output = StringIO()
+        internal_diff(u'old', [], u'new', [], output)
+        self.assertEqual('', output.getvalue())
+
+    def test_internal_diff_no_changes(self):
+        output = StringIO()
+        internal_diff(u'old', ['text\n', 'contents\n'],
+                      u'new', ['text\n', 'contents\n'],
+                      output)
+        self.assertEqual('', output.getvalue())
+
     def test_internal_diff_returns_bytes(self):
         import StringIO
         output = StringIO.StringIO()
@@ -599,6 +611,24 @@ class TestDiffTree(TestCaseWithTransport):
         self.assertEqual(
             '--- old label\n+++ new label\n@@ -1,1 +1,1 @@\n-old\n+new\n\n',
             differ.to_file.getvalue())
+
+    def test_diff_deletion(self):
+        self.build_tree_contents([('old-tree/file', 'contents'),
+                                  ('new-tree/file', 'contents')])
+        self.old_tree.add('file', 'file-id')
+        self.new_tree.add('file', 'file-id')
+        os.unlink('new-tree/file')
+        self.differ.show_diff(None)
+        self.assertContainsRe(self.differ.to_file.getvalue(), '-contents')
+
+    def test_diff_creation(self):
+        self.build_tree_contents([('old-tree/file', 'contents'),
+                                  ('new-tree/file', 'contents')])
+        self.old_tree.add('file', 'file-id')
+        self.new_tree.add('file', 'file-id')
+        os.unlink('old-tree/file')
+        self.differ.show_diff(None)
+        self.assertContainsRe(self.differ.to_file.getvalue(), '\+contents')
 
     def test_diff_symlink(self):
         differ = DiffSymlink(self.old_tree, self.new_tree, StringIO())

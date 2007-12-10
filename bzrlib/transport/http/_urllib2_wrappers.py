@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006,2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@ This file complements the urllib2 class hierarchy with custom classes.
 
 For instance, we create a new HTTPConnection and HTTPSConnection that inherit
 from the original urllib2.HTTP(s)Connection objects, but also have a new base
-which implements a custom getresponse and fake_close handlers.
+which implements a custom getresponse and cleanup_pipe handlers.
 
 And then we implement custom HTTPHandler and HTTPSHandler classes, that use
 the custom HTTPConnection classes.
@@ -123,6 +123,20 @@ class Response(httplib.HTTPResponse):
             # below we keep the socket with the server opened.
             self.will_close = False
 
+    def finish(self):
+        """Finish reading the body.
+
+        In some cases, the client may have left some bytes to read in the
+        body. That will block the next request to succeed if we use a
+        persistent connection. If we don't use a persistent connection, well,
+        nothing will block the next request since a new connection will be
+        issued anyway.
+        """
+        if not self.isclosed():
+            # Make sure nothing was left to be read on the socket
+            data = self.read(self.length)
+            self.close()
+
 
 # Not inheriting from 'object' because httplib.HTTPConnection doesn't.
 class AbstractHTTPConnection:
@@ -131,11 +145,30 @@ class AbstractHTTPConnection:
     response_class = Response
     strict = 1 # We don't support HTTP/0.9
 
-    def fake_close(self):
+    def __init__(self):
+        self._response = None
+
+    def _mutter_connect(self):
+        netloc = self.host
+        if self.port is not None:
+            netloc += ':%d' % self.port
+        if self.proxied_host is not None:
+            netloc += '(proxy for %s)' % self.proxied_host
+        trace.mutter('* About to connect() to %s' % netloc)
+
+    def getresponse(self):
+        """Capture the response to be able to cleanup"""
+        self._response = httplib.HTTPConnection.getresponse(self)
+        return self._response
+
+    def cleanup_pipe(self):
         """Make the connection believes the response have been fully handled.
 
         That makes the httplib.HTTPConnection happy
         """
+        if self._response is not None:
+            self._response.finish()
+            self._response = None
         # Preserve our preciousss
         sock = self.sock
         self.sock = None
@@ -149,26 +182,28 @@ class HTTPConnection(AbstractHTTPConnection, httplib.HTTPConnection):
 
     # XXX: Needs refactoring at the caller level.
     def __init__(self, host, port=None, strict=None, proxied_host=None):
-        if 'http' in debug.debug_flags:
-            netloc = host
-            if port is not None:
-                netloc += '%d' % port
-            if proxied_host is not None:
-                netloc += '(proxy for %s)' % proxied_host
-            trace.mutter('* About to connect() to %s' % netloc)
+        AbstractHTTPConnection.__init__(self)
         httplib.HTTPConnection.__init__(self, host, port, strict)
         self.proxied_host = proxied_host
+
+    def connect(self):
+        if 'http' in debug.debug_flags:
+            self._mutter_connect()
+        httplib.HTTPConnection.connect(self)
 
 
 class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
 
     def __init__(self, host, port=None, key_file=None, cert_file=None,
                  strict=None, proxied_host=None):
+        AbstractHTTPConnection.__init__(self)
         httplib.HTTPSConnection.__init__(self, host, port,
                                          key_file, cert_file, strict)
         self.proxied_host = proxied_host
 
     def connect(self):
+        if 'http' in debug.debug_flags:
+            self._mutter_connect()
         httplib.HTTPConnection.connect(self)
         if self.proxied_host is None:
             self.connect_to_origin()
@@ -385,7 +420,6 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                     print '  Will retry, %s %r' % (method, url)
                 request.connection.close()
                 response = self.do_open(http_class, request, False)
-                convert_to_addinfourl = False
             else:
                 if self._debuglevel > 0:
                     print 'Received second exception: [%r]' % exc_val
@@ -421,7 +455,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                     print '  Failed again, %s %r' % (method, url)
                     print '  Will raise: [%r]' % my_exception
                 raise my_exception, None, exc_tb
-        return response, convert_to_addinfourl
+        return response
 
     def do_open(self, http_class, request, first_try=True):
         """See urllib2.AbstractHTTPHandler.do_open for the general idea.
@@ -455,9 +489,8 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
             convert_to_addinfourl = True
         except (socket.gaierror, httplib.BadStatusLine, httplib.UnknownProtocol,
                 socket.error, httplib.HTTPException):
-            response, convert_to_addinfourl = self.retry_or_raise(http_class,
-                                                                  request,
-                                                                  first_try)
+            response = self.retry_or_raise(http_class, request, first_try)
+            convert_to_addinfourl = False
 
 # FIXME: HTTPConnection does not fully support 100-continue (the
 # server responses are just ignored)
@@ -471,17 +504,6 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
 #            connection.send(body)
 #            response = connection.getresponse()
 
-        if 'http' in debug.debug_flags:
-            version = 'HTTP/%d.%d'
-            try:
-                version = version % (response.version / 10,
-                                     response.version % 10)
-            except:
-                version = 'HTTP/%r' % version
-            trace.mutter('< %s %s %s' % (version, response.status,
-                                            response.reason))
-            hdrs = [h.rstrip('\r\n') for h in response.msg.headers]
-            trace.mutter('< ' + '\n< '.join(hdrs) + '\n')
         if self._debuglevel > 0:
             print 'Receives response: %r' % response
             print '  For: %r(%r)' % (request.get_method(),
@@ -496,36 +518,27 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
             resp = urllib2.addinfourl(fp, r.msg, req.get_full_url())
             resp.code = r.status
             resp.msg = r.reason
+            resp.version = r.version
             if self._debuglevel > 0:
                 print 'Create addinfourl: %r' % resp
                 print '  For: %r(%r)' % (request.get_method(),
                                          request.get_full_url())
+            if 'http' in debug.debug_flags:
+                version = 'HTTP/%d.%d'
+                try:
+                    version = version % (resp.version / 10,
+                                         resp.version % 10)
+                except:
+                    version = 'HTTP/%r' % resp.version
+                trace.mutter('< %s %s %s' % (version, resp.code,
+                                             resp.msg))
+                # Use the raw header lines instead of treating resp.info() as a
+                # dict since we may miss duplicated headers otherwise.
+                hdrs = [h.rstrip('\r\n') for h in resp.info().headers]
+                trace.mutter('< ' + '\n< '.join(hdrs) + '\n')
         else:
             resp = response
         return resp
-
-#       # we need titled headers in a dict but
-#       # response.getheaders returns a list of (lower(header).
-#       # Let's title that because most of bzr handle titled
-#       # headers, but maybe we should switch to lowercased
-#       # headers...
-#        # jam 20060908: I think we actually expect the headers to
-#        #       be similar to mimetools.Message object, which uses
-#        #       case insensitive keys. It lowers() all requests.
-#        #       My concern is that the code may not do perfect title case.
-#        #       For example, it may use Content-type rather than Content-Type
-#
-#        # When we get rid of addinfourl, we must ensure that bzr
-#        # always use titled headers and that any header received
-#        # from server is also titled.
-#
-#        headers = {}
-#        for header, value in (response.getheaders()):
-#            headers[header.title()] = value
-#        # FIXME: Implements a secured .read method
-#        response.code = response.status
-#        response.headers = headers
-#        return response
 
 
 class HTTPHandler(AbstractHTTPHandler):
@@ -566,7 +579,7 @@ class HTTPSHandler(AbstractHTTPHandler):
                 raise ConnectionError("Can't connect to %s via proxy %s" % (
                         connect.proxied_host, self.host))
             # Housekeeping
-            connection.fake_close()
+            connection.cleanup_pipe()
             # Establish the connection encryption 
             connection.connect_to_origin()
             # Propagate the connection to the original request
@@ -637,9 +650,9 @@ class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
     def http_error_302(self, req, fp, code, msg, headers):
         """Requests the redirected to URI.
 
-        Copied from urllib2 to be able to fake_close the
-        associated connection, *before* issuing the redirected
-        request but *after* having eventually raised an error.
+        Copied from urllib2 to be able to clean the pipe of the associated
+        connection, *before* issuing the redirected request but *after* having
+        eventually raised an error.
         """
         # Some servers (incorrectly) return multiple Location headers
         # (so probably same goes for URI).  Use first header.
@@ -684,7 +697,7 @@ class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
         # use it with HTTPError.
         fp.close()
         # We have all we need already in the response
-        req.connection.fake_close()
+        req.connection.cleanup_pipe()
 
         return self.parent.open(redirected_req)
 
@@ -1279,11 +1292,6 @@ class HTTPDefaultErrorHandler(urllib2.HTTPDefaultErrorHandler):
     def http_error_default(self, req, fp, code, msg, hdrs):
         if code == 403:
             raise errors.TransportError('Server refuses to fullfil the request')
-        elif code == 416:
-            # We don't know which, but one of the ranges we
-            # specified was wrong. So we raise with 0 for a lack
-            # of a better magic value.
-            raise errors.InvalidRange(req.get_full_url(),0)
         else:
             raise errors.InvalidHttpResponse(req.get_full_url(),
                                              'Unable to handle http code %d: %s'

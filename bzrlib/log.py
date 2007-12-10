@@ -60,6 +60,8 @@ from warnings import (
     )
 
 from bzrlib import (
+    config,
+    lazy_regex,
     registry,
     symbol_versioning,
     )
@@ -619,10 +621,16 @@ class LogFormatter(object):
         raise NotImplementedError('not implemented in abstract base')
 
     def short_committer(self, rev):
-        return re.sub('<.*@.*>', '', rev.committer).strip(' ')
+        name, address = config.parse_username(rev.committer)
+        if name:
+            return name
+        return address
 
     def short_author(self, rev):
-        return re.sub('<.*@.*>', '', rev.get_apparent_author()).strip(' ')
+        name, address = config.parse_username(rev.get_apparent_author())
+        if name:
+            return name
+        return address
 
 
 class LongLogFormatter(LogFormatter):

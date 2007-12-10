@@ -7,24 +7,85 @@ Bazaar Release Notes
 IN DEVELOPMENT
 ==============
 
-  IMPROVEMENTS:
+  CHANGES:
+   
+  FEATURES:
 
-   * ``bzr commit`` now doesn't print the revision number twice. (Matt
-     Nordhoff, #172612)
+  IMPROVEMENTS:
 
    * ``bzr pack`` now orders revision texts in topological order, with newest
      at the start of the file, promoting linear reads for ``bzr log`` and the
      like. This partially fixes #154129. (Robert Collins)
 
+  BUGFIXES:
+
+   * Fix Makefile rules for doc generation. (Ian Clatworthy, #175207)
+
+  INTERNALS:
+
+  API BREAKS:
+
+  TESTING:
+
+
+bzr 1.0rc2 2007-12-07
+=====================
+
+  CHANGES:
+   
+   * If a traceback occurs, users are now asked to report the bug 
+     through Launchpad (https://bugs.launchpad.net/bzr/), rather than 
+     by mail to the mailing list.
+     (Martin Pool)
+
+  IMPROVEMENTS:
+
+   * Added a --coverage option to selftest. (Andrew Bennetts)
+
+   * ``bzr commit`` now doesn't print the revision number twice. (Matt
+     Nordhoff, #172612)
+
+   * New configuration option ``bugtracker_<tracker_abbrevation>_url`` to
+     define locations of bug trackers that are not directly supported by
+     bzr or a plugin. The URL will be treated as a template and ``{id}``
+     placeholders will be replaced by specific bug IDs.  (Lukáš Lalinský)
+
    * Support logging single merge revisions with short and line log formatters.
      (Kent Gibson)
 
+   * User Guide enhanced with suggested readability improvements from
+     Matt Revell and corrections from John Arbash Meinel. (Ian Clatworthy)
+
+   * Quick Start Guide renamed to Quick Start Card, moved down in
+     the catalog, provided in pdf and png format and updated to refer
+     to ``send`` instead of ``bundle``. (Ian Clatworthy, #165080)
+
+   * ``switch`` can now be used on heavyweight checkouts as well as
+     lightweight ones. After switching a heavyweight checkout, the
+     local branch is a mirror/cache of the new bound branch and
+     uncommitted changes in the working tree are merged. As a safety
+     check, if there are local commits in a checkout which have not
+     been committed to the previously bound branch, then ``switch``
+     fails unless the ``--force`` option is given. This option is
+     now also required if the branch a lightweight checkout is pointing
+     to has been moved. (Ian Clatworthy)
+
   INTERNALS:
+
+    * readv urllib http implementation is now a real iterator above the
+      underlying socket and deliver data as soon as it arrives. 'get' still
+      wraps its output in a StringIO.
+      (Vincent Ladeuil)
 
     * New -Dhttp debug option reports http connections, requests and responses.
       (Vincent Ladeuil)
 
+    * New -Dmerge debug option, which emits merge plans for merge-type=weave.
+
   BUGFIXES:
+
+   * Better error message when running ``bzr cat`` on a non-existant branch.
+     (Lukáš Lalinský, #133782)
 
    * Catch OSError 17 (file exists) in final phase of tree transform and show
      filename to user.
@@ -38,10 +99,23 @@ IN DEVELOPMENT
    * Check for missing basis texts when fetching from packs to packs.
      (John Arbash Meinel, #165290)
 
+   * Give more feedback during long http downloads by making readv deliver data
+     as it arrives for urllib, and issue more requests for pycurl. High latency
+     networks are better handled by urllib, the pycurl implementation give more
+     feedback but also incur more latency.
+     (Vincent Ladeuil, #173010)
+
+   * Fall back to showing e-mail in ``log --short/--line`` if the 
+     committer/author has only e-mail. (Lukáš Lalinský, #157026)
+
+   * Implement _make_parents_provider on RemoteRepository, allowing generating
+     bundles against branches on a smart server.  (Andrew Bennetts, #147836)
+
   API BREAKS:
 
    * Deprecate not passing a ``location`` argument to commit reporters'
      ``started`` methods. (Matt Nordhoff)
+
 
 
 bzr 1.0rc1 2007-11-30
@@ -128,7 +202,14 @@ bzr 1.0rc1 2007-11-30
    * Diff does not require an inventory to be generated on dirstate trees.
      (Aaron Bentley, #149254)
 
+   * New annotate merge (--merge-type=weave) implementation is fast on
+     versionedfiles withough cached annotations, e.g. pack-0.92.
+     (Aaron Bentley)
+
   IMPROVEMENTS:
+
+   * ``bzr merge`` now warns when it encounters a criss-cross merge.
+     (Aaron Bentley)
 
    * ``bzr send`` now doesn't require the target e-mail address to be
      specified on the command line if an interactive e-mail client is used.
@@ -168,6 +249,9 @@ bzr 1.0rc1 2007-11-30
 
    * Detect invalid transport reuse attempts by catching invalid URLs.
      (Vincent Ladeuil, #161819)
+
+   * Deleting a file without removing it shows a correct diff, not a traceback.
+     (Aaron Bentley)
 
    * Do no use timeout in HttpServer anymore.
      (Vincent Ladeuil, #158972).
