@@ -7,53 +7,54 @@
 # (c) Balint Aradi, 2007
 #
 ###############################################################################
-#
-# Invocation: bzr_access <bzr_executable> <repo_collection> <user>
-#
-# The script extracts from the SSH_ORIGINAL_COMMAND environment variable the
-# repository, which bazaar tries to access through the bzr+ssh protocol. The
-# repository is assumed to be relative to <repo_collection>. Based
-# on the configuration file <repo_collection>/bzr_access.conf it determines
-# the access rights (denied, read-only, read-write) for the specified user.
-# If the user has read-only or read-write access a bazaar smart server is
-# started for it in read-only or in read-write mode, rsp., using the specified
-# bzr executable.
-#
-# Config file: INI format, pretty much similar to the authfile of subversion.
-#
-# Groups can be defined in the [groups] section. The options in this block are
-# the names of the groups to be defined, the corresponding values the lists of
-# the users belonging to the given groups. (User names must be separated by
-# whitespace characters.)
-#
-# All other sections names should be path names (starting with '/'), defining
-# the permissions for the given path. The options in those sections are user
-# names or group references (group name with a leading '@'), the corresponding
-# values are the permissions: 'rw', 'r' and '' (without the quotes) for
-# read-write, read-only and no access, respectively.
-#
-# Only the options in the section with the longest matching name are evaluated.
-# The last relevant option for the user is used.
-#
-# Sample bzr_access.conf:
-#
-# [groups]
-# admins = alpha
-# devels = beta gamma delta
-#
-# [/test/trunk]
-# @admins = rw
-# @devels = r
-#
-# [/test/branches]
-# @admins = rw
-# @devels = rw
-#
-#
-# To use this with a single SSH user and login, set up .ssh/authorized_keys with
-#  command="/path/to/bzr_access /path/to/bzr /path/to/repository username",no-port-forwarding,no-X11-forwarding,no-agent-forwarding ssh-<type> <key>
-#
-###############################################################################
+"""
+Invocation: bzr_access <bzr_executable> <repo_collection> <user>
+
+The script extracts from the SSH_ORIGINAL_COMMAND environment variable the
+repository, which bazaar tries to access through the bzr+ssh protocol. The
+repository is assumed to be relative to <repo_collection>. Based
+on the configuration file <repo_collection>/bzr_access.conf it determines
+the access rights (denied, read-only, read-write) for the specified user.
+If the user has read-only or read-write access a bazaar smart server is
+started for it in read-only or in read-write mode, rsp., using the specified
+bzr executable.
+
+Config file: INI format, pretty much similar to the authfile of subversion.
+
+Groups can be defined in the [groups] section. The options in this block are
+the names of the groups to be defined, the corresponding values the lists of
+the users belonging to the given groups. (User names must be separated by
+whitespace characters.)
+
+All other sections names should be path names (starting with '/'), defining
+the permissions for the given path. The options in those sections are user
+names or group references (group name with a leading '@'), the corresponding
+values are the permissions: 'rw', 'r' and '' (without the quotes) for
+read-write, read-only and no access, respectively.
+
+Only the options in the section with the longest matching name are evaluated.
+The last relevant option for the user is used.
+
+Sample bzr_access.conf::
+
+   [groups]
+   admins = alpha
+   devels = beta gamma delta
+   
+   [/test/trunk]
+   @admins = rw
+   @devels = r
+   
+   [/test/branches]
+   @admins = rw
+   @devels = rw
+
+
+To use this with a single SSH user and login, set up .ssh/authorized_keys with::
+
+   command="/path/to/bzr_access /path/to/bzr /path/to/repository username",no-port-forwarding,no-X11-forwarding,no-agent-forwarding ssh-<type> <key>
+"""
+
 import ConfigParser
 import os
 import re
@@ -85,7 +86,7 @@ PAT_SSH_COMMAND = re.compile(r"""^bzr\s+
                              --directory=(?P<dir>\S+)\s+
                              --allow-writes\s*$""", re.VERBOSE)
 
-# Command line for staring bzr (executable and repository are substituted)
+# Command line for starting bzr
 BZR_OPTIONS = ['serve', '--inet', '--directory']
 BZR_READWRITE_FLAGS = ['--allow-writes']
 
