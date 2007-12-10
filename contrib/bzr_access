@@ -50,9 +50,10 @@ Sample bzr_access.conf::
    @devels = rw
 
 
-To use this with a single SSH user and login, set up .ssh/authorized_keys with::
+This allows you to set up a single SSH user, and customize the access based on
+ssh key. Your ``.ssh/authorized_key`` file should look something like this::
 
-   command="/path/to/bzr_access /path/to/bzr /path/to/repository username",no-port-forwarding,no-X11-forwarding,no-agent-forwarding ssh-<type> <key>
+   command="/path/to/bzr_access /path/to/bzr /path/to/repository <username>",no-port-forwarding,no-X11-forwarding,no-agent-forwarding ssh-<type> <key>
 """
 
 import ConfigParser
