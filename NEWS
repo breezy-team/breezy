@@ -18,6 +18,9 @@ IN DEVELOPMENT
 
    * Added a --coverage option to selftest. (Andrew Bennetts)
 
+   * Annotate merge (merge-type=weave) now supports cherrypicking.
+     (Aaron Bentley)
+
    * ``bzr commit`` now doesn't print the revision number twice. (Matt
      Nordhoff, #172612)
 
