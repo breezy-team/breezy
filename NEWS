@@ -68,6 +68,11 @@ bzr 1.0rc2 2007-12-07
 
   INTERNALS:
 
+    * readv urllib http implementation is now a real iterator above the
+      underlying socket and deliver data as soon as it arrives. 'get' still
+      wraps its output in a StringIO.
+      (Vincent Ladeuil)
+
     * New -Dhttp debug option reports http connections, requests and responses.
       (Vincent Ladeuil)
 
@@ -89,6 +94,12 @@ bzr 1.0rc2 2007-12-07
 
    * Check for missing basis texts when fetching from packs to packs.
      (John Arbash Meinel, #165290)
+
+   * Give more feedback during long http downloads by making readv deliver data
+     as it arrives for urllib, and issue more requests for pycurl. High latency
+     networks are better handled by urllib, the pycurl implementation give more
+     feedback but also incur more latency.
+     (Vincent Ladeuil, #173010)
 
    * Fall back to showing e-mail in ``log --short/--line`` if the 
      committer/author has only e-mail. (Lukáš Lalinský, #157026)
