@@ -9,6 +9,26 @@ IN DEVELOPMENT
 
   CHANGES:
    
+  FEATURES:
+
+  IMPROVEMENTS:
+
+  BUGFIXES:
+
+   * Fix Makefile rules for doc generation. (Ian Clatworthy, #175207)
+
+  INTERNALS:
+
+  API BREAKS:
+
+  TESTING:
+
+
+bzr 1.0rc2 2007-12-07
+=====================
+
+  CHANGES:
+   
    * If a traceback occurs, users are now asked to report the bug 
      through Launchpad (https://bugs.launchpad.net/bzr/), rather than 
      by mail to the mailing list.
