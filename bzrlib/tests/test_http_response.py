@@ -16,9 +16,8 @@
 
 """Tests from HTTP response parsing.
 
-
-We test two main things in this module the RangeFile class and the
-handle_response method.
+The handle_response method read the response body of a GET request an returns
+the corresponding RangeFile.
 
 There are four different kinds of RangeFile:
 - a whole file whose size is unknown, seen as a simple byte stream,
@@ -31,12 +30,11 @@ Some properties are common to all kinds:
 - seek can only be forward (its really a socket underneath),
 - read can't cross ranges,
 - successive ranges are taken into account transparently,
+
 - the expected pattern of use is either seek(offset)+read(size) or a single
-  read with no size specified
-
-The handle_response method read the response body of a GET request an returns
-the corresponding RangeFile.
-
+  read with no size specified. For multiple range files, multiple read() will
+  return the corresponding ranges, trying to read further will raise
+  InvalidHttpResponse.
 """
 
 from cStringIO import StringIO
@@ -54,7 +52,7 @@ class TestRangeFileMixin(object):
 
     # A simple string used to represent a file part (also called a range), in
     # which offsets are easy to calculate for test writers. It's used as a
-    # building block with slight variations but basically 'a' if the first char
+    # building block with slight variations but basically 'a' is the first char
     # of the range and 'z' is the last.
     alpha = 'abcdefghijklmnopqrstuvwxyz'
 
@@ -77,7 +75,31 @@ class TestRangeFileMixin(object):
         cur += 4
         self.assertEquals('klmn', f.read(4))
         cur += len('klmn')
+        # read(0) in the middle of a range
+        self.assertEquals('', f.read(0))
+        # seek in place
+        here = f.tell()
+        f.seek(0, 1)
+        self.assertEquals(here, f.tell())
         self.assertEquals(cur, f.tell())
+
+    def test_read_zero(self):
+        f = self._file
+        start = self.first_range_start
+        self.assertEquals('', f.read(0))
+        f.seek(10, 1)
+        self.assertEquals('', f.read(0))
+
+    def test_seek_at_range_end(self):
+        f = self._file
+        f.seek(26, 1)
+
+    def test_read_at_range_end(self):
+        """Test read behaviour at range end."""
+        f = self._file
+        self.assertEquals(self.alpha, f.read())
+        self.assertEquals('', f.read(0))
+        self.assertRaises(errors.InvalidRange, f.read, 1)
 
     def test_unbounded_read_after_seek(self):
         f = self._file
@@ -143,6 +165,12 @@ class TestRangeFileSizeUnknown(tests.TestCase, TestRangeFileMixin):
         """
         self.assertRaises(errors.InvalidRange, self._file.seek, -1, 2)
 
+    def test_read_at_range_end(self):
+        """Test read behaviour at range end."""
+        f = self._file
+        self.assertEquals(self.alpha, f.read())
+        self.assertEquals('', f.read(0))
+        self.assertEquals('', f.read(1))
 
 class TestRangeFileSizeKnown(tests.TestCase, TestRangeFileMixin):
     """Test a RangeFile for a whole file whose size is known."""
@@ -173,7 +201,17 @@ class TestRangeFileSingleRange(tests.TestCase, TestRangeFileMixin):
         self.assertRaises(errors.InvalidRange, f.read, 2)
 
 class TestRangeFilMultipleRanges(tests.TestCase, TestRangeFileMixin):
-    """Test a RangeFile for multiple ranges."""
+    """Test a RangeFile for multiple ranges.
+
+    The RangeFile used for the tests contains three ranges:
+
+    - at offset 25: alpha
+    - at offset 100: alpha
+    - at offset 126: alpha.upper()
+
+    The two last ranges are contiguous. This only rarely occurs (should not in
+    fact) in real uses but may lead to hard to track bugs.
+    """
 
     def setUp(self):
         super(TestRangeFilMultipleRanges, self).setUp()
@@ -248,7 +286,7 @@ class TestRangeFilMultipleRanges(tests.TestCase, TestRangeFileMixin):
     def test_seek_from_end(self):
         """See TestRangeFileMixin.test_seek_from_end."""
         # The actual implementation will seek from end for the first range only
-        # and then fail. Since seeking from end is intented to be used for a
+        # and then fail. Since seeking from end is intended to be used for a
         # single range only anyway, this test just document the actual
         # behaviour.
         f = self._file
@@ -268,7 +306,7 @@ class TestRangeFilMultipleRanges(tests.TestCase, TestRangeFileMixin):
         f.seek(100)
         f.seek(125)
 
-    def test_seek_above_ranges(self):
+    def test_seek_across_ranges(self):
         f = self._file
         start = self.first_range_start
         f.seek(126) # skip the two first ranges
@@ -280,6 +318,20 @@ class TestRangeFilMultipleRanges(tests.TestCase, TestRangeFileMixin):
         f.seek(start + 40) # Past the first range but before the second
         # Now the file is positioned at the second range start (100)
         self.assertRaises(errors.InvalidRange, f.seek, start + 41)
+
+    def test_seek_at_range_end(self):
+        """Test seek behavior at range end."""
+        f = self._file
+        f.seek(25 + 25)
+        f.seek(100 + 25)
+        f.seek(126 + 25)
+
+    def test_read_at_range_end(self):
+        f = self._file
+        self.assertEquals(self.alpha, f.read())
+        self.assertEquals(self.alpha, f.read())
+        self.assertEquals(self.alpha.upper(), f.read())
+        self.assertRaises(errors.InvalidHttpResponse, f.read, 1)
 
 
 class TestRangeFileVarious(tests.TestCase):

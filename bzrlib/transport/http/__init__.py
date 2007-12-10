@@ -204,7 +204,7 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         :param return: A list or generator of (offset, data) tuples
         """
 
-        # offsets may be a genarator, we will iterate it several times, so
+        # offsets may be a generator, we will iterate it several times, so
         # build a list
         offsets = list(offsets)
 
@@ -227,7 +227,7 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
             # Cache the data read, but only until it's been used
             data_map = {}
             # We will iterate on the data received from the GET requests and
-            # serve the corresponding offsets repecting the initial order. We
+            # serve the corresponding offsets respecting the initial order. We
             # need an offset iterator for that.
             iter_offsets = iter(offsets)
             cur_offset_and_size = iter_offsets.next()
@@ -275,7 +275,7 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         def get_and_yield(relpath, coalesced):
             if coalesced:
                 # Note that the _get below may raise
-                # errors.InvalidHttpRange. It's the caller's responsability to
+                # errors.InvalidHttpRange. It's the caller's responsibility to
                 # decide how to retry since it may provide different coalesced
                 # offsets.
                 code, rfile = self._get(relpath, coalesced)
@@ -290,8 +290,11 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
             total = len(coalesced)
             if self._range_hint == 'multi':
                 max_ranges = self._max_get_ranges
-            else: # self._range_hint == 'single'
+            elif self._range_hint == 'single':
                 max_ranges = total
+            else:
+                raise AssertionError("Unknown _range_hint %r"
+                                     % (self._range_hint,))
             # TODO: Some web servers may ignore the range requests and return
             # the whole file, we may want to detect that and avoid further
             # requests.
