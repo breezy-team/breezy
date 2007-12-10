@@ -100,7 +100,7 @@ dev_txt_files := $(wildcard $(addsuffix /*.txt, doc/developers))
 dev_htm_files := $(patsubst %.txt, %.html, $(dev_txt_files)) 
 
 doc/en/user-guide/index.html: $(wildcard $(addsuffix /*.txt, doc/en/user-guide)) 
-	$(rst2html) --stylesheet=../../default.css $< $@
+	$(rst2html) --stylesheet=../../default.css doc/en/user-guide/index.txt $@
 
 doc/developers/%.html: doc/developers/%.txt
 	$(rst2html) --stylesheet=../default.css $< $@
