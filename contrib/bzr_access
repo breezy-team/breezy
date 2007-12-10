@@ -8,7 +8,7 @@
 #
 ###############################################################################
 #
-# Invokation: bzr_access <bzr_executable> <repo_collection> <user>
+# Invocation: bzr_access <bzr_executable> <repo_collection> <user>
 #
 # The script extracts from the SSH_ORIGINAL_COMMAND environment variable the
 # repository, which bazaar tries to access through the bzr+ssh protocol. The
@@ -19,7 +19,7 @@
 # started for it in read-only or in read-write mode, rsp., using the specified
 # bzr executable.
 #
-# Config file: INI format, pretty much similar to the autzhfile of subversion.
+# Config file: INI format, pretty much similar to the authfile of subversion.
 #
 # Groups can be defined in the [groups] section. The options in this block are
 # the names of the groups to be defined, the corresponding values the lists of
@@ -49,11 +49,16 @@
 # @admins = rw
 # @devels = rw
 #
+#
+# To use this with a single SSH user and login, set up .ssh/authorized_keys with
+#  command="/path/to/bzr_access /path/to/bzr /path/to/repository username",no-port-forwarding,no-X11-forwarding,no-agent-forwarding ssh-<type> <key>
+#
 ###############################################################################
 import ConfigParser
-import re
-import sys
 import os
+import re
+import subprocess
+import sys
 
 CONFIG_FILE = "bzr_access.conf"
 SCRIPT_NAME = os.path.basename(sys.argv[0])
@@ -81,8 +86,8 @@ PAT_SSH_COMMAND = re.compile(r"""^bzr\s+
                              --allow-writes\s*$""", re.VERBOSE)
 
 # Command line for staring bzr (executable and repository are substituted)
-BZR_READWRITE = "%s serve --inet --directory='%s' --allow-writes"
-BZR_READ = "%s serve --inet --directory='%s'"
+BZR_OPTIONS = ['serve', '--inet', '--directory']
+BZR_READWRITE_FLAGS = ['--allow-writes']
 
 
 
@@ -197,12 +202,16 @@ def main():
   # Determine permission and execute bzr with appropriate options
   perm = accessMan.permission(user, directory)
   absDir = os.path.join(repoRoot, directory)
+  command = [bzrExec] + BZR_OPTIONS + [absDir]
   if perm == PERM_READ:
-    os.system(BZR_READ % (bzrExec, absDir))
+    # Nothing extra needed for readonly operations
+    pass
   elif perm == PERM_READWRITE:
-    os.system(BZR_READWRITE % (bzrExec, absDir))
+    # Add the write flags
+    command.extend(BZR_READWRITE_FLAGS)
   else:
     error("Access denied.", EXIT_NOACCESS)
+  return subprocess.call(command)
 
 
 if __name__ == "__main__":
