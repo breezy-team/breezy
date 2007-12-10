@@ -92,79 +92,79 @@ BZR_READWRITE_FLAGS = ['--allow-writes']
 
 
 def error(msg, exitCode):
-  """Prints error message to stdout and exits with given error code."""
-
-  print >>sys.stderr, "%s::error: %s" % (SCRIPT_NAME, msg)
-  sys.exit(exitCode)
+    """Prints error message to stdout and exits with given error code."""
+    
+    print >>sys.stderr, "%s::error: %s" % (SCRIPT_NAME, msg)
+    sys.exit(exitCode)
   
 
 
 class AccessManager(object):
-  """Manages the permissions, can be queried for a specific user and path."""
-
-  def __init__(self, fp):
-    """:param fp: File like object, containing the configuration options.
-    """
-    self.config = ConfigParser.ConfigParser()
-    self.config.readfp(fp)
-    self.groups = {}
-    if self.config.has_section("groups"):
-      for group, users in self.config.items("groups"):
-        self.groups[group] = dict.fromkeys(users.split())
+    """Manages the permissions, can be queried for a specific user and path."""
+    
+    def __init__(self, fp):
+        """:param fp: File like object, containing the configuration options.
+        """
+        self.config = ConfigParser.ConfigParser()
+        self.config.readfp(fp)
+        self.groups = {}
+        if self.config.has_section("groups"):
+            for group, users in self.config.items("groups"):
+                self.groups[group] = dict.fromkeys(users.split())
         
 
-  def permission(self, user, path):
-    """Determines the permission for a given user and a given path
-    :param user: user to look for.
-    :param path: path to look for.
-    :return: permission.
-    """
-    if not path.startswith("/"):
-      return PERM_DENIED
-    perm = PERM_DENIED
-    pathFound = False
-    while not pathFound and path != "/":
-      pathFound = self.config.has_section(path)
-      if (pathFound):
-        options = self.config.options(path)[-1::-1]
-        for option in options:
-          value = PERM_DICT.get(self.config.get(path, option), PERM_DENIED)
-          if self._isRelevant(option, user):
-            perm = value
-      else:
-        path = os.path.dirname(path)
-    return perm
-
-
-  def _isRelevant(self, option, user):
-    """Decides if a certain option is relevant for a given user.
-
-    An option is relevant if it is identical with the user or with a reference
-    to a group including the user.
-
-    :param option: Option to check.
-    :param user: User
-    :return: True if option is relevant for the user, False otherwise.
-    """
-    if option.startswith("@"):
-      result = self.groups.get(option[1:], {}).has_key(user)
-    else:
-      result = (option == user)
-    return result
+    def permission(self, user, path):
+        """Determines the permission for a given user and a given path
+        :param user: user to look for.
+        :param path: path to look for.
+        :return: permission.
+        """
+        if not path.startswith("/"):
+            return PERM_DENIED
+        perm = PERM_DENIED
+        pathFound = False
+        while not pathFound and path != "/":
+            pathFound = self.config.has_section(path)
+            if (pathFound):
+                options = self.config.options(path)[-1::-1]
+                for option in options:
+                    value = PERM_DICT.get(self.config.get(path, option), PERM_DENIED)
+                    if self._isRelevant(option, user):
+                        perm = value
+            else:
+                path = os.path.dirname(path)
+        return perm
+      
+      
+    def _isRelevant(self, option, user):
+        """Decides if a certain option is relevant for a given user.
+      
+        An option is relevant if it is identical with the user or with a reference
+        to a group including the user.
+      
+        :param option: Option to check.
+        :param user: User
+        :return: True if option is relevant for the user, False otherwise.
+        """
+        if option.startswith("@"):
+            result = self.groups.get(option[1:], {}).has_key(user)
+        else:
+            result = (option == user)
+        return result
 
 
 
 def getDirectory(command):
-  """Extracts the directory name from the command pass to ssh.
-  :param command: command to parse.
-  :return: Directory name or empty string, if directory was not found or if it
-  does not start with '/'.
-  """
-  match = PAT_SSH_COMMAND.match(command)
-  if not match:
-    return ""
-  directory = match.group("dir")
-  return os.path.normpath(directory)
+    """Extracts the directory name from the command pass to ssh.
+    :param command: command to parse.
+    :return: Directory name or empty string, if directory was not found or if it
+    does not start with '/'.
+    """
+    match = PAT_SSH_COMMAND.match(command)
+    if not match:
+        return ""
+    directory = match.group("dir")
+    return os.path.normpath(directory)
 
 
 
@@ -172,46 +172,47 @@ def getDirectory(command):
 # Main program
 ############################################################################
 def main():
-
-  # Read arguments
-  if len(sys.argv) != 4:
-    error("Invalid number or arguments.", EXIT_BAD_NR_ARG)
-  (bzrExec, repoRoot, user) = sys.argv[1:4]
-
-  # Sanity checks
-  if not os.access(bzrExec, os.X_OK):
-    error("bzr is not executable.", EXIT_BZR_NOEXEC)
-  if not os.access(repoRoot, os.R_OK):
-    error("Path to repository not readable.", EXIT_REPO_NOREAD)
-
-  # Extract the repository path from the command passed to ssh.
-  if not os.environ.has_key("SSH_ORIGINAL_COMMAND"):
-    error("Environment variable SSH_ORIGINAL_COMMAND missing.", EXIT_BADENV)
-  directory = getDirectory(os.environ["SSH_ORIGINAL_COMMAND"])
-  if not len(directory):
-    error("Bad directory name.", EXIT_BADDIR)
-
-  # Read in config file.
-  try:
-    fp = open(os.path.join(repoRoot, CONFIG_FILE), "r")
-    accessMan = AccessManager(fp)
-    fp.close()
-  except IOError:
-    error("Can't read config file.", EXIT_NOCONF)
-
-  # Determine permission and execute bzr with appropriate options
-  perm = accessMan.permission(user, directory)
-  absDir = os.path.join(repoRoot, directory)
-  command = [bzrExec] + BZR_OPTIONS + [absDir]
-  if perm == PERM_READ:
-    # Nothing extra needed for readonly operations
-    pass
-  elif perm == PERM_READWRITE:
-    # Add the write flags
-    command.extend(BZR_READWRITE_FLAGS)
-  else:
-    error("Access denied.", EXIT_NOACCESS)
-  return subprocess.call(command)
+    # Read arguments
+    if len(sys.argv) != 4:
+        error("Invalid number or arguments.", EXIT_BAD_NR_ARG)
+    (bzrExec, repoRoot, user) = sys.argv[1:4]
+    
+    # Sanity checks
+    if not os.access(bzrExec, os.X_OK):
+        error("bzr is not executable.", EXIT_BZR_NOEXEC)
+    if not os.access(repoRoot, os.R_OK):
+        error("Path to repository not readable.", EXIT_REPO_NOREAD)
+    
+    # Extract the repository path from the command passed to ssh.
+    if not os.environ.has_key("SSH_ORIGINAL_COMMAND"):
+        error("Environment variable SSH_ORIGINAL_COMMAND missing.", EXIT_BADENV)
+    directory = getDirectory(os.environ["SSH_ORIGINAL_COMMAND"])
+    if not len(directory):
+        error("Bad directory name.", EXIT_BADDIR)
+    
+    # Read in config file.
+    try:
+        fp = open(os.path.join(repoRoot, CONFIG_FILE), "r")
+        try:
+            accessMan = AccessManager(fp)
+        finally:
+            fp.close()
+    except IOError:
+        error("Can't read config file.", EXIT_NOCONF)
+    
+    # Determine permission and execute bzr with appropriate options
+    perm = accessMan.permission(user, directory)
+    absDir = os.path.join(repoRoot, directory)
+    command = [bzrExec] + BZR_OPTIONS + [absDir]
+    if perm == PERM_READ:
+        # Nothing extra needed for readonly operations
+        pass
+    elif perm == PERM_READWRITE:
+        # Add the write flags
+        command.extend(BZR_READWRITE_FLAGS)
+    else:
+        error("Access denied.", EXIT_NOACCESS)
+    return subprocess.call(command)
 
 
 if __name__ == "__main__":
