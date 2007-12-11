@@ -3579,6 +3579,7 @@ class cmd_uncommit(Command):
                     Option('force', help='Say yes to all questions.')]
     takes_args = ['location?']
     aliases = []
+    encoding_type = 'replace'
 
     def run(self, location=None,
             dry_run=False, verbose=False,
