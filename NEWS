@@ -14,10 +14,6 @@ bzr 1.0rc3 2007-12-11
      by mail to the mailing list.
      (Martin Pool)
 
-  FEATURES:
-
-  IMPROVEMENTS:
-
   BUGFIXES:
 
    * Fix Makefile rules for doc generation. (Ian Clatworthy, #175207)
@@ -31,16 +27,19 @@ bzr 1.0rc3 2007-12-11
    * Implement _make_parents_provider on RemoteRepository, allowing generating
      bundles against branches on a smart server.  (Andrew Bennetts, #147836)
 
+  DOCUMENTATION:
+
+   * Improved user guide.  (Ian Clatworthy)
+
+   * The single-page quick reference guide is now available as a PDF.
+     (Ian Clatworthy)
+
   INTERNALS:
 
     * readv urllib http implementation is now a real iterator above the
       underlying socket and deliver data as soon as it arrives. 'get' still
       wraps its output in a StringIO.
       (Vincent Ladeuil)
-
-  API BREAKS:
-
-  TESTING:
 
 
 bzr 1.0rc2 2007-12-07
