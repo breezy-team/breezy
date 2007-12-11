@@ -119,7 +119,7 @@ MAN_DEPENDENCIES = bzrlib/builtins.py \
 		 tools/doc_generate/__init__.py \
 		 tools/doc_generate/autodoc_man.py \
 		 tools/doc_generate/autodoc_rstx.py \
-		 $(wildcard $(addsuffix /*.txt, bzrlib/help)) 
+		 $(wildcard $(addsuffix /*.txt, bzrlib/help_topics/en)) 
 
 doc/en/user-reference/bzr_man.txt: $(MAN_DEPENDENCIES)
 	$(PYTHON) generate_docs.py -o $@ rstx

@@ -137,12 +137,12 @@ def _help_on_topics(dummy):
 def _load_from_file(topic_name):
     """Load help from a file.
 
-    The help is already expected to be in ReStructuredText format.
+    Topics are expected to be in bzrlib/help_topics.
     """
     base = osutils.dirname(bzrlib.__file__)
     if getattr(sys, 'frozen', None):    # bzr.exe
         base = osutils.abspath(osutils.pathjoin(base, '..', '..'))
-    filename = osutils.pathjoin(base, 'help', topic_name + ".txt")
+    filename = osutils.pathjoin(base, 'help_topics', 'en', topic_name + ".txt")
     return open(filename, 'rU').read()
 
 
