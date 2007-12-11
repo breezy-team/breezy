@@ -49,7 +49,7 @@ from bzrlib.osutils import (
     pathjoin,
     terminal_width,
     )
-from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
+from bzrlib.tests.http_utils import TestCaseWithWebserver
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.workingtree import WorkingTree

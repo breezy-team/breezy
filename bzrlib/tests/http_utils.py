@@ -27,7 +27,7 @@ import urlparse
 
 from bzrlib.smart import protocol
 from bzrlib.tests import TestCaseWithTransport
-from bzrlib.tests.HttpServer import (
+from bzrlib.tests.http_server import (
     HttpServer,
     TestingHTTPRequestHandler,
     )
