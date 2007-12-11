@@ -4,6 +4,44 @@ Bazaar Release Notes
 
 .. contents::
 
+bzr 1.0rc3 2007-12-11
+=====================
+
+  CHANGES:
+   
+   * If a traceback occurs, users are now asked to report the bug 
+     through Launchpad (https://bugs.launchpad.net/bzr/), rather than 
+     by mail to the mailing list.
+     (Martin Pool)
+
+  BUGFIXES:
+
+   * Fix Makefile rules for doc generation. (Ian Clatworthy, #175207)
+
+   * Give more feedback during long http downloads by making readv deliver data
+     as it arrives for urllib, and issue more requests for pycurl. High latency
+     networks are better handled by urllib, the pycurl implementation give more
+     feedback but also incur more latency.
+     (Vincent Ladeuil, #173010)
+
+   * Implement _make_parents_provider on RemoteRepository, allowing generating
+     bundles against branches on a smart server.  (Andrew Bennetts, #147836)
+
+  DOCUMENTATION:
+
+   * Improved user guide.  (Ian Clatworthy)
+
+   * The single-page quick reference guide is now available as a PDF.
+     (Ian Clatworthy)
+
+  INTERNALS:
+
+    * readv urllib http implementation is now a real iterator above the
+      underlying socket and deliver data as soon as it arrives. 'get' still
+      wraps its output in a StringIO.
+      (Vincent Ladeuil)
+
+
 bzr 1.0rc2 2007-12-07
 =====================
 
@@ -63,8 +101,8 @@ bzr 1.0rc2 2007-12-07
    * Check for missing basis texts when fetching from packs to packs.
      (John Arbash Meinel, #165290)
 
-   * Fall back to showing e-mail in ``log --short/--line`` if the committer/author has
-     only e-mail. (Lukáš Lalinský, #157026)
+   * Fall back to showing e-mail in ``log --short/--line`` if the 
+     committer/author has only e-mail. (Lukáš Lalinský, #157026)
 
   API BREAKS:
 

@@ -2605,7 +2605,7 @@ class cmd_selftest(Command):
                      Option('strict', help='Fail on missing dependencies or '
                             'known failures.'),
                      Option('coverage', type=str, argname="DIRECTORY",
-                            help='Generate line coverage report in this'
+                            help='Generate line coverage report in this '
                                  'directory.'),
                      ]
     encoding_type = 'replace'
