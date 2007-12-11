@@ -18,6 +18,7 @@
 
 import os
 
+import bzrlib
 from bzrlib import uncommit, workingtree
 from bzrlib.bzrdir import BzrDirMetaFormat1
 from bzrlib.errors import BzrError, BoundBranchOutOfDate
@@ -227,3 +228,14 @@ class TestUncommit(TestCaseWithTransport):
         out, err = self.run_bzr('uncommit --force -r 2')
 
         self.assertEqual(['a2', 'b3', 'c3', 'c4', 'b4'], wt.get_parent_ids())
+
+    def test_uncommit_nonascii(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.commit(u'\u1234 message')
+        real_encoding = bzrlib.user_encoding
+        bzrlib.user_encoding = 'ascii'
+        try:
+            out, err = self.run_bzr('uncommit --force tree')
+        finally:
+            bzrlib.user_encoding = real_encoding
+        self.assertContainsRe(out, r'\? message')
