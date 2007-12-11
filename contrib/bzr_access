@@ -121,6 +121,7 @@ class AccessManager(object):
     def __init__(self, fp):
         """:param fp: File like object, containing the configuration options.
         """
+        # TODO: jam 20071211 Consider switching to bzrlib.util.configobj
         self.config = ConfigParser.ConfigParser()
         self.config.readfp(fp)
         self.groups = {}
