@@ -117,23 +117,18 @@ comunity grow and to reduce the workflow friction both
 that means less time on mechanical tasks and more time for
 interesting development.
 
-While designed as a free service to support open source projects,
-Canonical may make Launchpad available to commercial software developers
-depending on their requirements. We would be happy to hear from you
-if you think Launchpad would be useful for managing your community.
-
 
 Bazaar: Launchpad's VCS client
 ------------------------------
 
-When reading this tutorial, it is important to remember that:
+This tutorial looks at how Bazaar and Launchpad can be used together
+and how they complement each other. It is important to remember that:
 
 1. Bazaar can be used without Launchpad
 2. Launchpad can be used without Bazaar.
 
 By design though, their sum is greater than the individual
-parts. This chapter looks at how these tools can be used together
-and how they complement each other.
+parts.
 
 
 Finding and browsing branches using Launchpad
@@ -403,3 +398,8 @@ the process from idea to running code in the hands of end users.
 If you have any feedback on how you'd like to see Bazaar and Launchpad
 further integrated, please contact us on the Bazaar mailing list,
 bazaar@lists.canonical.com.
+
+While designed as a free service to support open source projects,
+Canonical may make Launchpad available to commercial software developers
+depending on their requirements. We would be happy to hear from you
+if you think Launchpad would be useful for managing your community.
