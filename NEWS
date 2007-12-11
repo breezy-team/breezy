@@ -13,6 +13,8 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+   * *Using Bazaar with Launchpad* tutorial added. (Ian Clatworthy)
+
    * ``bzr pack`` now orders revision texts in topological order, with newest
      at the start of the file, promoting linear reads for ``bzr log`` and the
      like. This partially fixes #154129. (Robert Collins)
