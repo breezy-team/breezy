@@ -5,4 +5,4 @@ though, the material is built by probing various internal
 registries, e.g. the set of available file formats. If you're
 not sure where to find the source content you're looking for,
 please contact the developers on the mailing list or IRC.
-See http://bazaar-vcs.org/Community for contact details.
+See http://bazaar-vcs.org/BzrSupport for contact details.
