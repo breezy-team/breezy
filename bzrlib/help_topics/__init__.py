@@ -139,7 +139,7 @@ def _load_from_file(topic_name):
 
     Topics are expected to be txt files in bzrlib.help_topics.
     """
-    resource_name = "en/%s.txt" % (topic_name,)
+    resource_name = osutils.pathjoin("en", "%s.txt" % (topic_name,))
     return osutils.resource_string('bzrlib.help_topics', resource_name)
 
 
