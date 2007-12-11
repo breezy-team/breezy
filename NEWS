@@ -21,6 +21,9 @@ IN DEVELOPMENT
 
    * Fix Makefile rules for doc generation. (Ian Clatworthy, #175207)
 
+   * Transform failures no longer cause ImmortalLimbo errors (Aaron Bentley,
+     #137681)
+
   INTERNALS:
 
   API BREAKS:
