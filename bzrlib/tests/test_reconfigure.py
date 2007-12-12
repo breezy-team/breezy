@@ -49,8 +49,8 @@ class TestReconfigure(tests.TestCaseWithTransport):
 
     def test_repo_to_branch(self):
         repo = self.make_repository('repo')
-        self.assertRaises(errors.ReconfigurationNotSupported,
-                          reconfigure.Reconfigure.to_branch, repo.bzrdir)
+        reconfiguration = reconfigure.Reconfigure.to_branch(repo.bzrdir)
+        reconfiguration.apply()
 
     def test_checkout_to_branch(self):
         branch = self.make_branch('branch')
@@ -187,3 +187,20 @@ class TestReconfigure(tests.TestCaseWithTransport):
         self.assertRaises(errors.AlreadyLightweightCheckout,
                           reconfigure.Reconfigure.to_lightweight_checkout,
                           checkout.bzrdir)
+
+    def test_repo_to_tree(self):
+        repo = self.make_repository('repo')
+        reconfiguration = reconfigure.Reconfigure.to_tree(repo.bzrdir)
+        reconfiguration.apply()
+        workingtree.WorkingTree.open('repo')
+
+    def test_repo_to_lightweight_checkout(self):
+        repo = self.make_repository('repo')
+        reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
+            repo.bzrdir)
+        self.assertRaises(errors.NoBindLocation, reconfiguration.apply)
+        branch = self.make_branch('branch')
+        reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
+            repo.bzrdir, 'branch')
+        reconfiguration.apply()
+        _mod_branch.Branch.open('repo')
