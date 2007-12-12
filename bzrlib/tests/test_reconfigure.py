@@ -18,6 +18,7 @@ from bzrlib import (
     branch as _mod_branch,
     errors,
     reconfigure,
+    repository,
     tests,
     workingtree,
     )
@@ -194,8 +195,8 @@ class TestReconfigure(tests.TestCaseWithTransport):
         reconfiguration.apply()
         workingtree.WorkingTree.open('repo')
 
-    def test_repo_to_lightweight_checkout(self):
-        repo = self.make_repository('repo')
+    def test_shared_repo_to_lightweight_checkout(self):
+        repo = self.make_repository('repo', shared=True)
         reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
             repo.bzrdir)
         self.assertRaises(errors.NoBindLocation, reconfiguration.apply)
@@ -203,4 +204,15 @@ class TestReconfigure(tests.TestCaseWithTransport):
         reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
             repo.bzrdir, 'branch')
         reconfiguration.apply()
-        _mod_branch.Branch.open('repo')
+        workingtree.WorkingTree.open('repo')
+        repository.Repository.open('repo')
+
+    def test_unshared_repo_to_lightweight_checkout(self):
+        repo = self.make_repository('repo', shared=False)
+        branch = self.make_branch('branch')
+        reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
+            repo.bzrdir, 'branch')
+        reconfiguration.apply()
+        workingtree.WorkingTree.open('repo')
+        self.assertRaises(errors.NoRepositoryPresent,
+                          repository.Repository.open, 'repo')

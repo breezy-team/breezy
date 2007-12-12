@@ -17,6 +17,8 @@ IN DEVELOPMENT
      at the start of the file, promoting linear reads for ``bzr log`` and the
      like. This partially fixes #154129. (Robert Collins)
 
+   * ``reconfigure`` can now convert from repositories.  (Aaron Bentley)
+
   BUGFIXES:
 
    * Fix Makefile rules for doc generation. (Ian Clatworthy, #175207)

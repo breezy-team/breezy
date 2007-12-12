@@ -128,7 +128,8 @@ class Reconfigure(object):
         else:
             if want_reference and (self.repository.bzrdir.root_transport.base
                                    == self.bzrdir.root_transport.base):
-                self._destroy_repository = True
+                if not self.repository.is_shared():
+                    self._destroy_repository = True
         if self.referenced_branch is None:
             if want_reference:
                 self._create_reference = True
