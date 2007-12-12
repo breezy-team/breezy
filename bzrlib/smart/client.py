@@ -17,7 +17,7 @@
 from urlparse import urlparse
 
 from bzrlib.smart import protocol
-from bzrlib.urlutils import unescape
+from bzrlib.urlutils import unescape, relative_url
 
 
 class _SmartClient(object):
@@ -68,4 +68,7 @@ class _SmartClient(object):
         anything but path, so it is only safe to use it in requests sent over
         the medium from the matching transport.
         """
-        return unescape(urlparse(transport.base)[2]).encode('utf8')
+        transport_path = unescape(urlparse(transport.base)[2]).encode('utf8')
+        #import pdb; pdb.set_trace()
+        return relative_url(self._shared_medium.base,
+                transport.base).encode('utf8')

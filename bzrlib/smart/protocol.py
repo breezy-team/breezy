@@ -471,6 +471,8 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
     def call(self, *args):
         if 'hpss' in debug.debug_flags:
             mutter('hpss call:   %s', repr(args)[1:-1])
+            mutter('             (to %s)', self._request._medium.base)
+            #import pdb; pdb.set_trace()
             self._request_start_time = time.time()
         self._write_args(args)
         self._request.finished_writing()
@@ -482,6 +484,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         """
         if 'hpss' in debug.debug_flags:
             mutter('hpss call w/body: %s (%r...)', repr(args)[1:-1], body[:20])
+            mutter('                  (to %s)', self._request._medium._path)
             mutter('              %d bytes', len(body))
             self._request_start_time = time.time()
         self._write_args(args)
@@ -497,6 +500,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         """
         if 'hpss' in debug.debug_flags:
             mutter('hpss call w/readv: %s', repr(args)[1:-1])
+            mutter('                   (to %s)', self._request._medium._path)
             self._request_start_time = time.time()
         self._write_args(args)
         readv_bytes = self._serialise_offsets(body)

@@ -101,8 +101,11 @@ class RemoteTransport(transport.ConnectedTransport):
                 if 'hpss' in debug.debug_flags:
                     trace.mutter('hpss: Built a new medium: %s',
                                  medium.__class__.__name__)
+            trace.mutter('Making _SharedConnection(%r, %r)', medium,
+                    credentials)
             self._shared_connection = transport._SharedConnection(medium,
-                                                                  credentials)
+                                                                  credentials,
+                                                                  self.base)
 
         if _client is None:
             self._client = client._SmartClient(self.get_shared_medium())
@@ -148,7 +151,11 @@ class RemoteTransport(transport.ConnectedTransport):
 
     def _remote_path(self, relpath):
         """Returns the Unicode version of the absolute path for relpath."""
-        return self._combine_paths(self._path, relpath)
+        combined_path = self._combine_paths(self._path, relpath)
+        shared_medium_base = self.get_shared_medium().base
+        url_from_shared = urlutils.join(shared_medium_base, combined_path)
+        result = urlutils.relative_url(shared_medium_base, url_from_shared)
+        return result
 
     def _call(self, method, *args):
         resp = self._call2(method, *args)
@@ -492,11 +499,11 @@ class RemoteHTTPTransport(RemoteTransport):
         # We let http_transport take care of the credentials
         return self._http_transport.get_smart_medium(), None
 
-    def _remote_path(self, relpath):
+    def X_remote_path(self, relpath):
         """After connecting, HTTP Transport only deals in relative URLs."""
         # Adjust the relpath based on which URL this smart transport is
         # connected to.
-        http_base = urlutils.normalize_url(self._http_transport.base)
+        http_base = urlutils.normalize_url(self.get_smart_medium().base)
         url = urlutils.join(self.base[len('bzr+'):], relpath)
         url = urlutils.normalize_url(url)
         return urlutils.relative_url(http_base, url)
