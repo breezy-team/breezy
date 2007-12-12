@@ -449,7 +449,8 @@ def _get_tree_to_diff(spec, tree=None, branch=None, basis_is_default=True):
 def _relative_paths_in_tree(tree, paths):
     """Get the relative paths within a working tree.
 
-    All paths must be existing paths in the working tree.
+    Each path may be either an absolute path or a path relative to the
+    current working directory.
     """
     result = []
     for filename in paths:
