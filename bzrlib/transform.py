@@ -798,6 +798,8 @@ class TreeTransform(object):
             return conflicts
         for children in by_parent.itervalues():
             name_ids = [(self.final_name(t), t) for t in children]
+            if not self._tree.case_sensitive:
+                name_ids = [(n.lower(), t) for n, t in name_ids]
             name_ids.sort()
             last_name = None
             last_trans_id = None
@@ -924,9 +926,20 @@ class TreeTransform(object):
                 # the direct path can only be used if no other file has
                 # already taken this pathname, i.e. if the name is unused, or
                 # if it is already associated with this trans_id.
-                elif (self._limbo_children_names[parent].get(filename)
-                      in (trans_id, None)):
-                    use_direct_path = True
+                elif self._tree.case_sensitive:
+                    if (self._limbo_children_names[parent].get(filename)
+                        in (trans_id, None)):
+                        use_direct_path = True
+                else:
+                    for l_filename, l_trans_id in\
+                        self._limbo_children_names[parent].iteritems():
+                        if l_trans_id == trans_id:
+                            continue
+                        if l_filename.lower() == filename.lower():
+                            break
+                    else:
+                        use_direct_path = True
+
         if use_direct_path:
             limbo_name = pathjoin(self._limbo_files[parent], filename)
             self._limbo_children[parent].add(trans_id)
@@ -1787,16 +1800,15 @@ def conflict_pass(tt, conflicts, path_tree=None):
                                conflict[1], conflict[2], ))
         elif c_type == 'duplicate':
             # files that were renamed take precedence
-            new_name = tt.final_name(conflict[1])+'.moved'
             final_parent = tt.final_parent(conflict[1])
             if tt.path_changed(conflict[1]):
-                tt.adjust_path(new_name, final_parent, conflict[2])
-                new_conflicts.add((c_type, 'Moved existing file to', 
-                                   conflict[2], conflict[1]))
+                existing_file, new_file = conflict[2], conflict[1]
             else:
-                tt.adjust_path(new_name, final_parent, conflict[1])
-                new_conflicts.add((c_type, 'Moved existing file to', 
-                                  conflict[1], conflict[2]))
+                existing_file, new_file = conflict[1], conflict[2]
+            new_name = tt.final_name(existing_file)+'.moved'
+            tt.adjust_path(new_name, final_parent, existing_file)
+            new_conflicts.add((c_type, 'Moved existing file to', 
+                               existing_file, new_file))
         elif c_type == 'parent loop':
             # break the loop by undoing one of the ops that caused the loop
             cur = conflict[1]
@@ -1866,7 +1878,12 @@ class _FileMover(object):
 
     def rename(self, from_, to):
         """Rename a file from one path to another.  Functions like os.rename"""
-        os.rename(from_, to)
+        try:
+            os.rename(from_, to)
+        except OSError, e:
+            if e.errno in (errno.EEXIST, errno.ENOTEMPTY):
+                raise errors.FileExists(to, str(e))
+            raise
         self.past_renames.append((from_, to))
 
     def pre_delete(self, from_, to):

@@ -1,0 +1,105 @@
+Core concepts
+=============
+
+A simple user model
+-------------------
+
+To use Bazaar you need to understand four core concepts:
+
+ * **revision** - a snapshot of the files you're working with
+
+ * **working tree** - the directory containing your version controlled
+   files and sub-directories
+
+ * **branch** - an ordered set of revisions that describe the history of a
+   set of files
+
+ * **repository** - a store of revisions.
+
+Let's look at each in more detail.
+
+Revision
+--------
+
+A revision is a *snapshot* of the state of a tree of files and directories
+including their content and shape. A revision also has some metadata
+associated with it including:
+
+ * who committed it
+ * when it was committed
+ * a commit message
+ * parent revisions from which it was derived.
+
+Revisions are immutable and can be globally identified uniquely
+by a *revision-id*. An example revision-id is::
+
+ pqm@pqm.ubuntu.com-20071129184101-u9506rihe4zbzyyz
+ 
+While these identifiers are necessary for internal use and external tool
+integration, branch-specific *revision numbers* are the preferred
+interface for humans. Typical revision numbers are 1, 42 and 2977.1.59.
+
+.. *TODO: add diagram*
+
+Working Tree
+------------
+
+A working tree is a *version controlled directory* holding files the user
+can edit. A working tree is associated with a *branch*.
+
+Many commands use the working tree as their context, e.g. ``commit`` makes
+a new revision using the current content of files in the working tree.
+
+.. *TODO: add diagram*
+
+Branch
+------
+
+In the simplest case, a branch is an *ordered series of revisions*.
+The last revision is known as the *head*.
+
+Branches may split apart and be *merged* back together forming a
+*graph* of revisions. Technically, the graph shows directed relationships
+(between parent and child revisions) and there are no loops, so
+you may hear some people refer to it as a *directed acyclic graph* or DAG.
+
+If this name sound scary, don't worry. The important things
+to remembers are:
+
+* the primary line of development within the DAG is called
+  the *mainline*, *trunk* or simply the *left hand side* (LHS)
+
+* a branch might have other lines of development and if it does,
+  these other lines of development begin at some point and end at
+  another point.
+
+If you understand that, you understand branches.
+
+.. *TODO: add diagram*
+
+Repository
+----------
+
+A repository is simply a *store of revisions*. In the simpliest case,
+each branch has its own repository. In other cases, it makes sense for
+branches to share a repository in order to optimize disk usage.
+
+.. *TODO: add diagram*
+
+
+Putting the concepts together
+-----------------------------
+
+Once the concepts above are understood, the various ways of using Bazaar
+are easier to understand. The simpliest way of using Bazaar is to use
+a *standalone tree* which has a working tree, branch and repository
+all in a single location. Other common scenarios include:
+
+ * *shared repositories* - working tree and branch are collocated
+   but the repository is in a higher level directory
+
+ * *lightweight checkouts* - branch is stored is a different location
+   to the working tree.
+
+The best way to use Bazaar depends on what you want to do so let's look
+at some common workflows next.

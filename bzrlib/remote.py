@@ -595,7 +595,9 @@ class RemoteRepository(object):
 
     def sprout(self, to_bzrdir, revision_id=None):
         # TODO: Option to control what format is created?
-        dest_repo = to_bzrdir.create_repository()
+        self._ensure_real()
+        dest_repo = self._real_repository._format.initialize(to_bzrdir,
+                                                             shared=False)
         dest_repo.fetch(self, revision_id=revision_id)
         return dest_repo
 
@@ -694,9 +696,9 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.fileids_altered_by_revision_ids(revision_ids)
 
-    def get_versioned_file_checker(self, revisions, revision_versions_cache):
+    def _get_versioned_file_checker(self, revisions, revision_versions_cache):
         self._ensure_real()
-        return self._real_repository.get_versioned_file_checker(
+        return self._real_repository._get_versioned_file_checker(
             revisions, revision_versions_cache)
         
     def iter_files_bytes(self, desired_files):
@@ -892,6 +894,10 @@ class RemoteRepository(object):
     def _check_for_inconsistent_revision_parents(self):
         self._ensure_real()
         return self._real_repository._check_for_inconsistent_revision_parents()
+
+    def _make_parents_provider(self):
+        self._ensure_real()
+        return self._real_repository._make_parents_provider()
 
 
 class RemoteBranchLockableFiles(LockableFiles):
@@ -1232,7 +1238,8 @@ class RemoteBranch(branch.Branch):
         # format, because RemoteBranches can't be created at arbitrary URLs.
         # XXX: if to_bzrdir is a RemoteBranch, this should perhaps do
         # to_bzrdir.create_branch...
-        result = branch.BranchFormat.get_default_format().initialize(to_bzrdir)
+        self._ensure_real()
+        result = self._real_branch._format.initialize(to_bzrdir)
         self.copy_content_into(result, revision_id=revision_id)
         result.set_parent(self.bzrdir.root_transport.base)
         return result
@@ -1280,10 +1287,10 @@ class RemoteBranch(branch.Branch):
         self._ensure_real()
         return self._real_branch.set_push_location(location)
 
-    def update_revisions(self, other, stop_revision=None):
+    def update_revisions(self, other, stop_revision=None, overwrite=False):
         self._ensure_real()
         return self._real_branch.update_revisions(
-            other, stop_revision=stop_revision)
+            other, stop_revision=stop_revision, overwrite=overwrite)
 
 
 class RemoteBranchConfig(BranchConfig):

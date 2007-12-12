@@ -1332,12 +1332,23 @@ class KnitCorrupt(KnitError):
 
 
 class KnitDataStreamIncompatible(KnitError):
+    # Not raised anymore, as we can convert data streams.  In future we may
+    # need it again for more exotic cases, so we're keeping it around for now.
 
     _fmt = "Cannot insert knit data stream of format \"%(stream_format)s\" into knit of format \"%(target_format)s\"."
 
     def __init__(self, stream_format, target_format):
         self.stream_format = stream_format
         self.target_format = target_format
+        
+
+class KnitDataStreamUnknown(KnitError):
+    # Indicates a data stream we don't know how to handle.
+
+    _fmt = "Cannot parse knit data stream of format \"%(stream_format)s\"."
+
+    def __init__(self, stream_format):
+        self.stream_format = stream_format
         
 
 class KnitHeaderError(KnitError):
@@ -1444,11 +1455,10 @@ class ConnectionReset(TransportError):
 
 class InvalidRange(TransportError):
 
-    _fmt = "Invalid range access in %(path)s at %(offset)s."
-    
-    def __init__(self, path, offset):
-        TransportError.__init__(self, ("Invalid range access in %s at %d"
-                                       % (path, offset)))
+    _fmt = "Invalid range access in %(path)s at %(offset)s: %(msg)s"
+
+    def __init__(self, path, offset, msg=None):
+        TransportError.__init__(self, msg)
         self.path = path
         self.offset = offset
 
@@ -1465,7 +1475,7 @@ class InvalidHttpResponse(TransportError):
 class InvalidHttpRange(InvalidHttpResponse):
 
     _fmt = "Invalid http range %(range)r for %(path)s: %(msg)s"
-    
+
     def __init__(self, path, range, msg):
         self.range = range
         InvalidHttpResponse.__init__(self, path, msg)
@@ -1474,7 +1484,7 @@ class InvalidHttpRange(InvalidHttpResponse):
 class InvalidHttpContentType(InvalidHttpResponse):
 
     _fmt = 'Invalid http Content-type "%(ctype)s" for %(path)s: %(msg)s'
-    
+
     def __init__(self, path, ctype, msg):
         self.ctype = ctype
         InvalidHttpResponse.__init__(self, path, msg)
@@ -2288,6 +2298,16 @@ class MalformedBugIdentifier(BzrError):
         self.reason = reason
 
 
+class InvalidBugTrackerURL(BzrError):
+
+    _fmt = ("The URL for bug tracker \"%(abbreviation)s\" doesn't "
+            "contain {id}: %(url)s")
+
+    def __init__(self, abbreviation, url):
+        self.abbreviation = abbreviation
+        self.url = url
+
+
 class UnknownBugTrackerAbbreviation(BzrError):
 
     _fmt = ("Cannot find registered bug tracker called %(abbreviation)s "
@@ -2379,6 +2399,11 @@ class SMTPError(BzrError):
 class NoMessageSupplied(BzrError):
 
     _fmt = "No message supplied."
+
+
+class NoMailAddressSpecified(BzrError):
+
+    _fmt = "No mail-to address specified."
 
 
 class UnknownMailClient(BzrError):

@@ -1,0 +1,19 @@
+Getting help
+============
+
+Bazaar comes with a built-in on-line help system. To see the list of topics,
+the command is::
+
+  bzr help
+
+To see the list of commands, the command is::
+
+  bzr help commands
+
+To get help on topic xxx or command xxx, the command is::
+
+  bzr help xxx
+
+If you wish to search the help or read it as a larger document, the
+information is also available in the Bazaar User Reference.
+

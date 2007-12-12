@@ -218,7 +218,7 @@ class FileParentIsNotInRevisionAncestryScenario(BrokenRepoScenario):
     def check_regexes(self, repo):
         return [r"\* a-file-id version rev2 has parents \('rev1a', 'rev1b'\) "
                 r"but should have \('rev1a',\)",
-                "0 unreferenced text versions",
+                "1 unreferenced text versions",
                 ]
 
     def populate_repository(self, repo):

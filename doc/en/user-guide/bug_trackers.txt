@@ -1,27 +1,26 @@
-============
-Bug Trackers
-============
+Integrating Bazaar with bug trackers
+====================================
 
 Bazaar has a facility that allows you to associate a commit with a bug
 in the project's bug tracker. Other tools can then use this information
 to link between the commit and the bug, or to automatically mark the bug
 closed in the branches that contain the commit.
 
-Associating Commits and Bugs
-============================
+Associating commits and bugs
+----------------------------
 
 When you make a commit you can assiociate it with a bug by using the
 ``--fixes`` option of ``commit``. For example::
 
-    $ bzr commit --fixes 12345 -m 'Properly close the connection on errors'
+    $ bzr commit --fixes project:12345 -m "Properly close the connection"
 
 This will set a revision property on the revision that is committed
 which contains the URI at which more information on the bug can be found.
 Bazaar itself does no more than this, but once the information is recorded
 other tools can make use of it.
 
-Configuration of the Bug Tracker
-================================
+Configuration of the bug tracker
+--------------------------------
 
 As each project has it's own bug tracker, and there are many different
 bug tracking systems you must first do some configuration before you
@@ -41,7 +40,8 @@ You can set up these values for each of the projects you work on in
 can specify which you mean at commit time.
 
 bugzilla_<tracker_abbreviation>_url
------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 If present, the location of the Bugzilla bug tracker referred to by
 <tracker_abbreviation>. This option can then be used together with ``bzr commit
 --fixes`` to mark bugs in that tracker as being fixed by that commit. For
@@ -53,7 +53,8 @@ would allow ``bzr commit --fixes squid:1234`` to mark Squid's bug 1234 as
 fixed.
 
 trac_<tracker_abbrevation>_url
-------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 If present, the location of the Trac instance referred to by
 <tracker_abbreviation>. This option can then be used together with ``bzr commit
 --fixes`` to mark bugs in that tracker as being fixed by that commit. For
@@ -64,8 +65,25 @@ example::
 would allow ``bzr commit --fixes twisted:1234`` to mark Twisted's bug 1234 as
 fixed.
 
+bugtracker_<tracker_abbrevation>_url
+------------------------------------
+If present, the location of a generic bug tracker instance referred to by
+<tracker_abbreviation>. The location must contain an ``{id}`` placeholder,
+which will be replaced by a specific bug ID. This option can then be used
+together with ``bzr commit --fixes`` to mark bugs in that tracker as being
+fixed by that commit. For example::
+
+    bugtracker_python_url = http://bugs.python.org/issue{id}
+
+would allow ``bzr commit --fixes python:1234`` to mark bug 1234 in Python's
+Roundup bug tracker as fixed, or::
+
+    bugtracker_cpan_url = http://rt.cpan.org/Public/Bug/Display.html?id={id}
+
+for CPAN's RT bug tracker.
+
 Limitations of the system
-=========================
+-------------------------
 
 This method of associating revisions and bugs does have some limitations. The
 first is that the association can only be made at commit time. This means that
