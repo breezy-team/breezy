@@ -375,32 +375,24 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url):
     if revision_specs is not None:
         if len(revision_specs) > 0:
             old_revision_spec = revision_specs[0]
+            if old_url is None:
+                old_url = old_revision_spec.get_branch()
         if len(revision_specs) > 1:
             new_revision_spec = revision_specs[1]
-        # If both revision specs include a branch, we can diff them
-        # without needing to look further for the details
-        if (old_revision_spec is not None and
-            new_revision_spec is not None and
-            not old_revision_spec.needs_branch() and
-            not new_revision_spec.needs_branch()):
-            old_tree = _get_tree_to_diff(old_revision_spec)
-            new_tree = _get_tree_to_diff(new_revision_spec)
-            specific_files = path_list or None
-            return old_tree, new_tree, specific_files, None
+            if new_url is None:
+                new_url = new_revision_spec.get_branch()
 
+    other_paths = []
+    make_paths_wt_relative = True
     if path_list is None or len(path_list) == 0:
         # If no path is given, assume the current directory
         default_location = u'.'
-        other_paths = []
-        check_paths = True
     elif old_url is not None and new_url is not None:
-        default_location = None  # don't care - not required
         other_paths = path_list
-        check_paths = False
+        make_paths_wt_relative = False
     else:
         default_location = path_list[0]
         other_paths = path_list[1:]
-        check_paths = True
 
     # Get the old location
     specific_files = []
@@ -424,7 +416,7 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url):
         basis_is_default=working_tree is None)
 
     # Get the specific files (all files is None, no files is [])
-    if check_paths and working_tree is not None:
+    if make_paths_wt_relative and working_tree is not None:
         other_paths = _relative_paths_in_tree(working_tree, other_paths)
     specific_files.extend(other_paths)
     if len(specific_files) == 0:
@@ -432,7 +424,7 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url):
 
     # Get extra trees that ought to be searched for file-ids
     extra_trees = None
-    if new_tree != working_tree and working_tree is not None:
+    if working_tree is not None and working_tree not in (old_tree, new_tree):
         extra_trees = (working_tree,)
     return old_tree, new_tree, specific_files, extra_trees
 
@@ -442,7 +434,10 @@ def _get_tree_to_diff(spec, tree=None, branch=None, basis_is_default=True):
         branch = tree.branch
     if spec is None or spec.spec is None:
         if basis_is_default:
-            return branch.basis_tree()
+            if tree is not None:
+                return tree.basis_tree()
+            else:
+                return branch.basis_tree()
         else:
             return tree
     revision = spec.in_store(branch)
