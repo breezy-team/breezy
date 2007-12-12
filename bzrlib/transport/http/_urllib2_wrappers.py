@@ -134,7 +134,23 @@ class Response(httplib.HTTPResponse):
         """
         if not self.isclosed():
             # Make sure nothing was left to be read on the socket
-            data = self.read(self.length)
+            pending = 0
+            # We can't read all the remaining data in a single read since there
+            # may be a lot to read (several MB in the worst cases). We read and
+            # discard by chunks instead. The underlying file is either a socket
+            # or a StringIO, so reading 8k chunks should be fine.
+            bufsiz = 8192
+            while self.length and self.length > bufsiz:
+                data = self.read(bufsiz)
+                pending += len(data)
+            if self.length:
+                data = self.read(self.length)
+                pending += len(data)
+            if pending:
+                trace.mutter(
+                    "bogus http server didn't give body length,"
+                    "%s bytes left on the socket",
+                    pending)
             self.close()
 
 
