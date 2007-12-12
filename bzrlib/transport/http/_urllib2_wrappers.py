@@ -123,6 +123,12 @@ class Response(httplib.HTTPResponse):
             # below we keep the socket with the server opened.
             self.will_close = False
 
+    # in finish() below, we may have to discard several MB in the worst
+    # case. To avoid buffering that much, we read and discard by chunks
+    # instead. The underlying file is either a socket or a StringIO, so reading
+    # 8k chunks should be fine.
+    _discarded_buf_size = 8192
+
     def finish(self):
         """Finish reading the body.
 
@@ -131,17 +137,15 @@ class Response(httplib.HTTPResponse):
         persistent connection. If we don't use a persistent connection, well,
         nothing will block the next request since a new connection will be
         issued anyway.
+
+        :return: the number of bytes left on the socket (may be None)
         """
+        pending = None
         if not self.isclosed():
             # Make sure nothing was left to be read on the socket
             pending = 0
-            # We can't read all the remaining data in a single read since there
-            # may be a lot to read (several MB in the worst cases). We read and
-            # discard by chunks instead. The underlying file is either a socket
-            # or a StringIO, so reading 8k chunks should be fine.
-            bufsiz = 8192
-            while self.length and self.length > bufsiz:
-                data = self.read(bufsiz)
+            while self.length and self.length > self._discarded_buf_size:
+                data = self.read(self._discarded_buf_size)
                 pending += len(data)
             if self.length:
                 data = self.read(self.length)
@@ -152,6 +156,7 @@ class Response(httplib.HTTPResponse):
                     "%s bytes left on the socket",
                     pending)
             self.close()
+        return pending
 
 
 # Not inheriting from 'object' because httplib.HTTPConnection doesn't.
@@ -161,8 +166,13 @@ class AbstractHTTPConnection:
     response_class = Response
     strict = 1 # We don't support HTTP/0.9
 
+    # When we detect a server responding with the whole file to range requests,
+    # we want to warn. But not below a given thresold.
+    _range_warning_thresold = 1024 * 1024
+
     def __init__(self):
         self._response = None
+        self._ranges_received_whole_file = None
 
     def _mutter_connect(self):
         netloc = self.host
@@ -183,7 +193,17 @@ class AbstractHTTPConnection:
         That makes the httplib.HTTPConnection happy
         """
         if self._response is not None:
-            self._response.finish()
+            pending = self._response.finish()
+            # Warn the user (once) that 
+            if (self._ranges_received_whole_file is None
+                and self._response.status == 200
+                and pending and pending > self._range_warning_thresold
+                ):
+                self._ranges_received_whole_file = True
+                trace.warning(
+                    'Got a 200 response when asking for multiple ranges,'
+                    ' does your server at %s:%s support range requests?',
+                    self.host, self.port)
             self._response = None
         # Preserve our preciousss
         sock = self.sock
