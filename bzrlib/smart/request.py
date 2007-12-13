@@ -27,7 +27,6 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.bundle.serializer import write_bundle
-from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
 from bzrlib.transport.chroot import ChrootServer
 
@@ -115,9 +114,6 @@ class SmartServerRequest(object):
             path = client_path[len(self._root_client_path):]
             relpath = urlutils.joinpath('/', path)
             assert relpath.startswith('/')
-            mutter('translate_client_path(%r) [rcp=%r, backing=%r] -> %r',
-                client_path, self._root_client_path, self._backing_transport,
-                '.' + relpath)
             return '.' + relpath
         else:
             raise errors.PathNotChild(client_path, self._root_client_path)
@@ -131,7 +127,6 @@ class SmartServerRequest(object):
         """
         relpath = self.translate_client_path(client_path)
         result = self._backing_transport.clone(relpath)
-        mutter('transport_from_client_path -> %r', result)
         return result
 
 

@@ -149,11 +149,6 @@ class SmartWSGIApp(object):
         assert not adjusted_relpath.startswith('/')
 
         transport = self.backing_transport.clone(adjusted_relpath)
-
-
-        # Random Notes:
-
-        #transport = self.backing_transport.clone(relpath)
         out_buffer = StringIO()
         request_data_length = int(environ['CONTENT_LENGTH'])
         request_data_bytes = environ['wsgi.input'].read(request_data_length)
