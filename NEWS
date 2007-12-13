@@ -16,6 +16,10 @@ bzr 1.0 2007-12-14
 
    * Improve bug tracker integration documentation. (Ian Clatworthy)
 
+   * Minor edits to ``Bazaar in five minutes`` from David Roberts and
+     to the rebasing section of the User Guide from Aaron Bentley.
+     (Ian Clatworthy)
+
 
 bzr 1.0rc3 2007-12-11
 =====================
