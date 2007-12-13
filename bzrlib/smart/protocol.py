@@ -473,7 +473,6 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
             mutter('hpss call:   %s', repr(args)[1:-1])
             if getattr(self._request._medium, 'base', None) is not None:
                 mutter('             (to %s)', self._request._medium.base)
-            #import pdb; pdb.set_trace()
             self._request_start_time = time.time()
         self._write_args(args)
         self._request.finished_writing()

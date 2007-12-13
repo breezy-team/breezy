@@ -101,8 +101,6 @@ class RemoteTransport(transport.ConnectedTransport):
                 if 'hpss' in debug.debug_flags:
                     trace.mutter('hpss: Built a new medium: %s',
                                  medium.__class__.__name__)
-            trace.mutter('Making _SharedConnection(%r, %r)', medium,
-                    credentials)
             self._shared_connection = transport._SharedConnection(medium,
                                                                   credentials,
                                                                   self.base)
