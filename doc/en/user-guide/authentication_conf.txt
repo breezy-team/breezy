@@ -6,7 +6,7 @@ Intent
 ------
 
 Many different authentication policies can be described in the
-``$HOME/.bazaar/authentication.conf`` file but a particular user should need
+``authentication.conf`` file but a particular user should need
 only a few definitions to cover his needs without having to specify a user and
 a password for every branch he uses.
 
@@ -112,7 +112,7 @@ File format
 The general rules for `configuration files`_ apply except for the variable
 policies.
 
-.. _configuration files: configuration.html
+.. _configuration files: #configuration-reference
 
 Each section describes an authentication definition.
 
