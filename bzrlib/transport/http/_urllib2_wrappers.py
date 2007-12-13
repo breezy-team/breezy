@@ -78,9 +78,6 @@ class Response(httplib.HTTPResponse):
     # Some responses have bodies in which we have no interest
     _body_ignored_responses = [301,302, 303, 307, 401, 403, 404]
 
-    def __init__(self, *args, **kwargs):
-        httplib.HTTPResponse.__init__(self, *args, **kwargs)
-
     def begin(self):
         """Begin to read the response from the server.
 
@@ -175,9 +172,7 @@ class AbstractHTTPConnection:
         self._ranges_received_whole_file = None
 
     def _mutter_connect(self):
-        netloc = self.host
-        if self.port is not None:
-            netloc += ':%d' % self.port
+        netloc = '%s:%s' % (self.host, self.port)
         if self.proxied_host is not None:
             netloc += '(proxy for %s)' % self.proxied_host
         trace.mutter('* About to connect() to %s' % netloc)
@@ -188,10 +183,7 @@ class AbstractHTTPConnection:
         return self._response
 
     def cleanup_pipe(self):
-        """Make the connection believes the response have been fully handled.
-
-        That makes the httplib.HTTPConnection happy
-        """
+        """Make the connection believe the response has been fully processed."""
         if self._response is not None:
             pending = self._response.finish()
             # Warn the user (once) that 
