@@ -83,13 +83,13 @@ Best practices
 .. include:: hooks.txt
 .. include:: version_info.txt
 .. include:: bug_trackers.txt
-.. include:: shared_repository_layouts.txt
  
 
 Appendices
 ##########
 
 .. include:: specifying_revisions.txt
+.. include:: shared_repository_layouts.txt
 .. include:: conflicts.txt
 .. include:: configuration.txt
 .. include:: setting_up_email.txt
