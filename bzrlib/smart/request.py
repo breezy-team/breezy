@@ -51,12 +51,12 @@ class SmartServerRequest(object):
             from the client.  Clients will not be able to refer to paths above
             this root.
         """
-        rcp = root_client_path
         self._backing_transport = backing_transport
-        if not root_client_path.startswith('/'):
-            root_client_path = '/' + root_client_path
-        if not root_client_path.endswith('/'):
-            root_client_path += '/'
+        if root_client_path is not None:
+            if not root_client_path.startswith('/'):
+                root_client_path = '/' + root_client_path
+            if not root_client_path.endswith('/'):
+                root_client_path += '/'
         self._root_client_path = root_client_path
 
     def _check_enabled(self):
@@ -101,14 +101,23 @@ class SmartServerRequest(object):
 
         All paths received from the client *must* be translated.
 
+        :param client_path: the path from the client.
         :returns: a relpath that may be used with self._backing_transport
+            (unlike the untranslated client_path, which must not be used with
+            the backing transport).
         """
+        if self._root_client_path is None:
+            # no translation necessary!
+            return client_path
         if not client_path.startswith('/'):
             client_path = '/' + client_path
         if client_path.startswith(self._root_client_path):
             path = client_path[len(self._root_client_path):]
             relpath = urlutils.joinpath('/', path)
             assert relpath.startswith('/')
+            mutter('translate_client_path(%r) [rcp=%r, backing=%r] -> %r',
+                client_path, self._root_client_path, self._backing_transport,
+                '.' + relpath)
             return '.' + relpath
         else:
             raise errors.PathNotChild(client_path, self._root_client_path)
@@ -121,7 +130,9 @@ class SmartServerRequest(object):
         :returns: a transport cloned from self._backing_transport
         """
         relpath = self.translate_client_path(client_path)
-        return self._backing_transport.clone(relpath)
+        result = self._backing_transport.clone(relpath)
+        mutter('transport_from_client_path -> %r', result)
+        return result
 
 
 class SmartServerResponse(object):

@@ -38,14 +38,18 @@ class SmartTCPServer(object):
     hooks: An instance of SmartServerHooks.
     """
 
-    def __init__(self, backing_transport, host='127.0.0.1', port=0):
+    def __init__(self, backing_transport, host='127.0.0.1', port=0,
+                 root_client_path='/'):
         """Construct a new server.
 
         To actually start it running, call either start_background_thread or
         serve.
 
+        :param backing_transport: The transport to serve.
         :param host: Name of the interface to listen on.
         :param port: TCP port to listen on, or 0 to allocate a transient port.
+        :param root_client_path: The client path that will correspond to root
+            of backing_transport.
         """
         # let connections timeout so that we get a chance to terminate
         # Keep a reference to the exceptions we want to catch because the socket
@@ -63,7 +67,7 @@ class SmartTCPServer(object):
         self.backing_transport = backing_transport
         self._started = threading.Event()
         self._stopped = threading.Event()
-        self.root_client_path = '/'
+        self.root_client_path = root_client_path
 
     def serve(self):
         self._should_terminate = False

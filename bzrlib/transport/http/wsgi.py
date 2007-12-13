@@ -39,8 +39,8 @@ def make_app(root, prefix, path_var, readonly=True):
         base_transport = get_transport('readonly+' + local_url)
     else:
         base_transport = get_transport(local_url)
-    app = SmartWSGIApp(base_transport)
-    app = RelpathSetter(app, prefix, path_var)
+    app = SmartWSGIApp(base_transport, prefix)
+    app = RelpathSetter(app, '', path_var)
     return app
 
 
@@ -116,12 +116,49 @@ class SmartWSGIApp(object):
             return []
 
         relpath = environ['bzrlib.relpath']
-        transport = self.backing_transport.clone(relpath)
+        # 1. subtract HTTP path from rcp ("adjusted rcp")
+        #    1a.  If HTTP path unconsumed, clone backing transport with
+        #         remainder ("adjusted transport")
+        # 2. feed HPSS request path + adjusted/backing transport + adjusted
+        #    rcp?
+
+        if not relpath.startswith('/'):
+            relpath = '/' + relpath
+        if not relpath.endswith('/'):
+            relpath += '/'
+
+        # (relpath='/foo/bar/', rcp='/foo/' -> (rp 'bar', arcp '/')
+        #  relpath='/foo/', rcp='/foo/bar/' -> (rp '/', arcp '/bar')
+        if relpath.startswith(self.root_client_path):
+            # The entire root client path is part of the relpath.
+            adjusted_rcp = None
+            # Consume the relpath part we just subtracted
+            adjusted_relpath = relpath[len(self.root_client_path):]
+        elif self.root_client_path.startswith(relpath):
+            # The relpath traverses some of the mandatory root client path.
+            # Subtract relpath from HTTP request
+            adjusted_rcp = '/' + self.root_client_path[len(relpath):]
+            # The entire relpath was consumed.
+            adjusted_relpath = '.'
+        else:
+            adjusted_rcp = self.root_client_path
+            adjusted_relpath = relpath
+
+        if adjusted_relpath.startswith('/'):
+            adjusted_relpath = adjusted_relpath[1:]
+        assert not adjusted_relpath.startswith('/')
+
+        transport = self.backing_transport.clone(adjusted_relpath)
+
+
+        # Random Notes:
+
+        #transport = self.backing_transport.clone(relpath)
         out_buffer = StringIO()
         request_data_length = int(environ['CONTENT_LENGTH'])
         request_data_bytes = environ['wsgi.input'].read(request_data_length)
         smart_protocol_request = self.make_request(
-            transport, out_buffer.write, request_data_bytes)
+            transport, out_buffer.write, request_data_bytes, adjusted_rcp)
         if smart_protocol_request.next_read_size() != 0:
             # The request appears to be incomplete, or perhaps it's just a
             # newer version we don't understand.  Regardless, all we can do
@@ -135,7 +172,7 @@ class SmartWSGIApp(object):
         start_response('200 OK', headers)
         return [response_data]
 
-    def make_request(self, transport, write_func, request_bytes):
+    def make_request(self, transport, write_func, request_bytes, rcp):
         # XXX: This duplicates the logic in
         # SmartServerStreamMedium._build_protocol.
         if request_bytes.startswith(protocol.REQUEST_VERSION_TWO):
@@ -144,6 +181,6 @@ class SmartWSGIApp(object):
         else:
             protocol_class = protocol.SmartServerRequestProtocolOne
         server_protocol = protocol_class(
-            transport, write_func, self.root_client_path)
+            transport, write_func, rcp)
         server_protocol.accept_bytes(request_bytes)
         return server_protocol
