@@ -151,11 +151,7 @@ class RemoteTransport(transport.ConnectedTransport):
 
     def _remote_path(self, relpath):
         """Returns the Unicode version of the absolute path for relpath."""
-        combined_path = self._combine_paths(self._path, relpath)
-        shared_medium_base = self.get_shared_medium().base
-        url_from_shared = urlutils.join(shared_medium_base, combined_path)
-        result = urlutils.relative_url(shared_medium_base, url_from_shared)
-        return result
+        return self._combine_paths(self._path, relpath)
 
     def _call(self, method, *args):
         resp = self._call2(method, *args)
@@ -499,7 +495,7 @@ class RemoteHTTPTransport(RemoteTransport):
         # We let http_transport take care of the credentials
         return self._http_transport.get_smart_medium(), None
 
-    def X_remote_path(self, relpath):
+    def _remote_path(self, relpath):
         """After connecting, HTTP Transport only deals in relative URLs."""
         # Adjust the relpath based on which URL this smart transport is
         # connected to.
@@ -520,26 +516,14 @@ class RemoteHTTPTransport(RemoteTransport):
         smart requests may be different).  This is so that the server doesn't
         have to handle .bzr/smart requests at arbitrary places inside .bzr
         directories, just at the initial URL the user uses.
-
-        The exception is parent paths (i.e. relative_url of "..").
         """
         if relative_url:
             abs_url = self.abspath(relative_url)
         else:
             abs_url = self.base
-        # We either use the exact same http_transport (for child locations), or
-        # a clone of the underlying http_transport (for parent locations).  This
-        # means we share the connection.
-        norm_base = urlutils.normalize_url(self.base)
-        norm_abs_url = urlutils.normalize_url(abs_url)
-        normalized_rel_url = urlutils.relative_url(norm_base, norm_abs_url)
-        if normalized_rel_url == ".." or normalized_rel_url.startswith("../"):
-            http_transport = self._http_transport.clone(normalized_rel_url)
-        else:
-            http_transport = self._http_transport
         return RemoteHTTPTransport(abs_url,
                                    _from_transport=self,
-                                   http_transport=http_transport)
+                                   http_transport=self._http_transport)
 
 
 def get_test_permutations():
