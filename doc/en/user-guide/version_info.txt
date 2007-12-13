@@ -1,24 +1,51 @@
 Exporting version information
 =============================
 
-Overview
---------
+Getting the last revision number
+--------------------------------
 
-This document describes ways of using ``bzr version-info`` as part of a
-build process to embed version information into a final project.
+If you only need the last revision number in your build scripts, you can
+use the ``revno`` command to get that value like this::
+
+  $ bzr revno
+  3104
 
 
-Python project
---------------
+Getting more version information
+--------------------------------
 
-TODO: Figure out how to attach into ``setup.py``
+The ``version-info`` command can be used to output more information
+about the lastest version like this::
+
+  $ bzr version-info
+  revision-id: pqm@pqm.ubuntu.com-20071211175118-s94sizduj201hrs5
+  date: 2007-12-11 17:51:18 +0000
+  build-date: 2007-12-13 13:14:51 +1000
+  revno: 3104
+  branch-nick: bzr.dev
+
+You can easily filter that output using operating system tools or
+scripts. For example (on Linux/Unix)::
+
+  $ bzr version-info | grep ^date
+  date: 2007-12-11 17:51:18 +0000
+
+The ``--all`` option will actually dump version information about
+every revision if you need that information for more advanced
+post-processing.
+
+
+Python projects
+---------------
+
+.. TODO: Figure out how to attach into ``setup.py``
 
 
 If using a Makefile to build your project, you can generate the version
 information file as simply as::
 
   library/_version.py:
-        bzr version-info --format=python > library/_version.py
+        bzr version-info --format python > library/_version.py
 
 This generates a file which contains 3 dictionaries:
 
@@ -38,6 +65,16 @@ This generates a file which contains 3 dictionaries:
     modified date can be determined by looking in the ``revisions``
     map. This is also empty by default, and enabled only by ``--all``
     or ``--include-file-revisions``.
+
+
+Projects in other languages
+---------------------------
+
+Support for dumping version information in other languages in currently
+in development. Please contact us on the mailing list about your
+requirements in this area. (As of the Bazaar 1.0 release date, some patches
+are available for other languages but are not yet merged into the core product.)
+
 
 Check clean
 -----------
