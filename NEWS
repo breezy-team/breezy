@@ -11,6 +11,11 @@ bzr 1.0 2007-12-14
 
    * More improvements and fixes to the User Guide.  (Ian Clatworthy)
 
+   * Add information on cherrypicking/rebasing to the User Guide.
+     (Ian Clatworthy)
+
+   * Improve bug tracker integration documentation. (Ian Clatworthy)
+
 
 bzr 1.0rc3 2007-12-11
 =====================
