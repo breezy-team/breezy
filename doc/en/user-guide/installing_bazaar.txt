@@ -6,7 +6,7 @@ Linux
 
 Bazaar packages are available for most popular Linux distributions
 including Ubuntu/Debian, Red Hat and Gentoo.
-See http://bazaar-vcs.org/Downloads for the latest instructions.
+See http://bazaar-vcs.org/Download for the latest instructions.
 
 Windows
 -------
@@ -14,7 +14,7 @@ Windows
 For Windows users, an installer is available that includes
 the core Bazaar package together with necessary pre-requisites
 and some useful plug-ins.
-See http://bazaar-vcs.org/Downloads for the latest instructions.
+See http://bazaar-vcs.org/Download for the latest instructions.
 
 Note: If you are running Cygwin on Windows, a Bazaar for Cygwin package
 is available and ought to be used instead of the Windows version.
@@ -24,7 +24,7 @@ Other operating systems
 
 Beyond Linux and Windows, Bazaar packages are available for a large
 range of other operating systems include Mac OS X, FreeBSD and Solaris.
-See http://bazaar-vcs.org/Downloads for the latest instructions.
+See http://bazaar-vcs.org/Download for the latest instructions.
 
 
 Installing from scratch
@@ -36,7 +36,7 @@ pre-built package, the steps are:
   1. If it is not installed already, install Python 2.4 or later.
 
   2. Download the ``bazaar-xxx.tar.gz`` file (where xxx is the version
-     number) from http://bazaar-vcs.org/Downloads or from Launchpad
+     number) from http://bazaar-vcs.org/Download or from Launchpad
      (https://launchpad.net/~bzr/).
 
   3. Unpack the archive using tar, WinZip or equivalent.
