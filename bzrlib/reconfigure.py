@@ -157,7 +157,8 @@ class Reconfigure(object):
         """Return True if changes are planned, False otherwise"""
         return (self._unbind or self._bind or self._destroy_tree
                 or self._create_tree or self._destroy_reference
-                or self._create_branch or self._create_repository)
+                or self._create_branch or self._create_repository
+                or self._create_reference)
 
     def _check(self):
         """Raise if reconfiguration would destroy local changes"""

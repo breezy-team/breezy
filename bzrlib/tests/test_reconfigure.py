@@ -147,6 +147,24 @@ class TestReconfigure(tests.TestCaseWithTransport):
                                                               parent.base)
         reconfiguration.apply()
 
+    def test_tree_to_lightweight_checkout(self):
+        # A tree with no related branches and no supplied bind location cannot
+        # become a checkout
+        parent = self.make_branch('parent')
+
+        tree = self.make_branch_and_tree('tree')
+        reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
+            tree.bzrdir)
+        self.assertRaises(errors.NoBindLocation, reconfiguration.apply)
+        # setting a parent allows it to become a checkout
+        tree.branch.set_parent(parent.base)
+        reconfiguration.apply()
+        # supplying a location allows it to become a checkout
+        tree2 = self.make_branch_and_tree('tree2')
+        reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
+            tree2.bzrdir, parent.base)
+        reconfiguration.apply()
+
     def test_checkout_to_checkout(self):
         parent = self.make_branch('parent')
         checkout = parent.create_checkout('checkout')
