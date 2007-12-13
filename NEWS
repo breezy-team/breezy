@@ -7,7 +7,7 @@ bzr (1.0~rc1-1) unstable; urgency=low
   pass --dirstate or --dirstate-tags (>= 0.15) to `bzr init`.
 
   To upgrade existing branches or repositories to this new format, run `bzr
-  reconcile`, and then `bzr upgrade`. You need to run these two commands in
+  upgrade`, and then `bzr reconcile`. You need to run these two commands in
   each standalone branch (those that are not inside a shared repository), but
   only once in the toplevel directory for shared repositories.
 

@@ -1,3 +1,13 @@
+bzr (1.0~rc3-1) UNRELEASED; urgency=low
+
+  * After some chat with upstream, recommend `bzr upgrade` and then `bzr
+    reconcile` in NEWS.Debian, instead of reconcile before upgrade, since
+    reconciling in the old format (knits) can be remarkably slower than in
+    the new format (packs). (NB: this should only be done with 1.0~rc2 and
+    later, due to LP #165290.)
+
+ -- Adeodato Simó <dato@net.com.org.es>  Thu, 13 Dec 2007 10:53:22 +0100
+
 bzr (1.0~rc2-2) unstable; urgency=low
 
   * Apply patch to fix wrong version numbers in bzr and bzrlib.
