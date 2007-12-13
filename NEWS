@@ -25,6 +25,10 @@ IN DEVELOPMENT
      removed use characters not supported in the terminal encoding.
      (Aaron Bentley)
 
+   * When dumb http servers return whole files instead of the requested ranges,
+     read the remaining bytes by chunks to avoid overflowing network buffers.
+     (Vincent Ladeuil, #175886)
+
   INTERNALS:
 
   API BREAKS:
