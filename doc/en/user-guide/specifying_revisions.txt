@@ -6,7 +6,7 @@ Revision identifiers and ranges
 
 Bazaar has a very expressive way to specify a revision or a range of revisions.
 To specify a range of revisions, the upper and lower bounds are separated by the
-`..` symbol. For example::
+``..`` symbol. For example::
 
     $ bzr log -r 1..4
 

@@ -1,8 +1,6 @@
 Configuration reference
 =======================
 
-.. Information on how to configure Bazaar.
-
 .. TODO: Should have some explanation of why you'd want things in
 .. branch.conf.
 
@@ -32,7 +30,7 @@ BZR_SIGQUIT_PDB
 
 Control whether SIGQUIT behaves normally or invokes a breakin debugger.
 
-* 0 = Standard SIGQUIT behavior
+* 0 = Standard SIGQUIT behavior (normally, exit with a core dump)
 * 1 = Invoke breakin debugger (default)
 
 BZR_HOME
@@ -84,7 +82,10 @@ Location
 
 Configuration files are located in ``$HOME/.bazaar`` on Linux/Unix and
 ``C:\Documents and Settings\<username>\Application Data\Bazaar\2.0`` on
-Windows. There are three primary configuration files in this location:
+Windows. (You can check the location for your system by using
+``bzr version``.)
+
+There are three primary configuration files in this location:
 
 * ``bazaar.conf`` describes default configuration options,
 
