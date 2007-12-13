@@ -186,7 +186,7 @@ class AbstractHTTPConnection:
         """Make the connection believe the response has been fully processed."""
         if self._response is not None:
             pending = self._response.finish()
-            # Warn the user (once) that 
+            # Warn the user (once)
             if (self._ranges_received_whole_file is None
                 and self._response.status == 200
                 and pending and pending > self._range_warning_thresold
