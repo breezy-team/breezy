@@ -172,6 +172,13 @@ class TestLog(ExternalBase):
         self.assertTrue('revno: 2\n' in log)
         self.assertTrue('revno: 3\n' in log)
 
+    def test_log_limit_short(self):
+        self._prepare()
+        log = self.run_bzr("log -l 2")[0]
+        self.assertTrue('revno: 1\n' not in log)
+        self.assertTrue('revno: 2\n' in log)
+        self.assertTrue('revno: 3\n' in log)
+
 class TestLogMerges(ExternalBase):
 
     def _prepare(self):
