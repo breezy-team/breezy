@@ -2231,7 +2231,7 @@ class cmd_commit(Command):
                     "files in the working tree."),
              ListOption('fixes', type=str,
                     help="Mark a bug as being fixed by this revision."),
-             Option('author', type=str,
+             Option('author', type=unicode,
                     help="Set the author's name, if it's different "
                          "from the committer."),
              Option('local',
@@ -3579,6 +3579,7 @@ class cmd_uncommit(Command):
                     Option('force', help='Say yes to all questions.')]
     takes_args = ['location?']
     aliases = []
+    encoding_type = 'replace'
 
     def run(self, location=None,
             dry_run=False, verbose=False,

@@ -4,6 +4,41 @@ Bazaar Release Notes
 
 .. contents::
 
+IN DEVELOPMENT
+==============
+
+  CHANGES:
+   
+  FEATURES:
+
+  IMPROVEMENTS:
+
+   * ``bzr pack`` now orders revision texts in topological order, with newest
+     at the start of the file, promoting linear reads for ``bzr log`` and the
+     like. This partially fixes #154129. (Robert Collins)
+
+   * Merge directives now fetch prerequisites from the target branch if
+     needed.  (Aaron Bentley)
+
+  BUGFIXES:
+
+   * Fix Makefile rules for doc generation. (Ian Clatworthy, #175207)
+
+   * ``uncommit`` works even when the commit messages of revisions to be
+     removed use characters not supported in the terminal encoding.
+     (Aaron Bentley)
+
+   * When dumb http servers return whole files instead of the requested ranges,
+     read the remaining bytes by chunks to avoid overflowing network buffers.
+     (Vincent Ladeuil, #175886)
+
+  INTERNALS:
+
+  API BREAKS:
+
+  TESTING:
+
+
 bzr 1.0 2007-12-14
 ==================
 
