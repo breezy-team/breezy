@@ -647,7 +647,7 @@ class TestTestCaseWithTransport(TestCaseWithTransport):
         self.assertEqual(t2.base[:-1], t.abspath('foo/bar'))
 
     def test_get_readonly_url_http(self):
-        from bzrlib.tests.HttpServer import HttpServer
+        from bzrlib.tests.http_server import HttpServer
         from bzrlib.transport import get_transport
         from bzrlib.transport.local import LocalURLServer
         from bzrlib.transport.http import HttpTransportBase

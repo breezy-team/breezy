@@ -36,12 +36,18 @@ from bzrlib import (
     ui,
     urlutils,
     )
-from bzrlib.tests.HttpServer import (
+from bzrlib.tests import (
+    TestCase,
+    TestUIFactory,
+    TestSkipped,
+    StringIOWrapper,
+    )
+from bzrlib.tests.http_server import (
     HttpServer,
     HttpServer_PyCurl,
     HttpServer_urllib,
     )
-from bzrlib.tests.HTTPTestUtil import (
+from bzrlib.tests.http_utils import (
     BadProtocolRequestHandler,
     BadStatusRequestHandler,
     ForbiddenRequestHandler,
