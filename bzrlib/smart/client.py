@@ -22,11 +22,15 @@ from bzrlib import urlutils
 
 class _SmartClient(object):
 
-    def __init__(self, shared_medium):
-        self._shared_medium = shared_medium
+    def __init__(self, shared_connection):
+        """Constructor.
+
+        :param shared_connection: a bzrlib.transport._SharedConnection
+        """
+        self._shared_connection = shared_connection
 
     def get_smart_medium(self):
-        return self._shared_medium.connection
+        return self._shared_connection.connection
 
     def call(self, method, *args):
         """Call a method on the remote server."""
@@ -68,9 +72,9 @@ class _SmartClient(object):
         anything but path, so it is only safe to use it in requests sent over
         the medium from the matching transport.
         """
-        if self._shared_medium.base.startswith('bzr+http://'):
-            medium_base = self._shared_medium.base
+        if self._shared_connection.base.startswith('bzr+http://'):
+            medium_base = self._shared_connection.base
         else:
-            medium_base = urlutils.join(self._shared_medium.base, '/')
+            medium_base = urlutils.join(self._shared_connection.base, '/')
             
         return urlutils.relative_url(medium_base, transport.base).encode('utf8')
