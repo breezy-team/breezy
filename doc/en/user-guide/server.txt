@@ -1,5 +1,5 @@
-Running a Bazaar server
-=======================
+Running a smart server
+======================
 
 Bazaar does not require a specialised server because it operates over HTTP, FTP
 or SFTP.  There is an optional smart server that can be invoked over SSH, from
@@ -17,22 +17,21 @@ enter the URL to the branch in the Bazaar command you are running.::
 
 Bazaar supports writing over FTP, SFTP and (via a plugin) over HTTP-WebDAV.
 
-High-performance server
------------------------
+High-performance smart server
+-----------------------------
 
-The high-performance server is currently in development.  It provides a dumb
-server facility as well as additional capabilities which allow the version of
-bzr that accompanies this documentation to perform some operations much faster
-than via dumb servers.  In future releases of bzr the range of operations that
-are improved by using the high-performance server will increase.
+The high-performance smart server (hpss) performs certain operations much faster
+than dumb servers are capable of.  In future releases, the range of operations
+that are improved by using the smart server will increase as we continue to
+tune performance.
 
 To maintain the highest security possible, the current
-high-performance server provides read-only access by default.  To
+smart server provides read-only access by default.  To
 enable read-write access, run it with ``--allow-writes``. When using
 the SSH access method, bzr automatically runs with with the
 ``--allow-writes`` option.
 
-The server can be configured to run in three different ways:
+The alternative ways of configuring a smart server are explained below.
 
 SSH
 ~~~

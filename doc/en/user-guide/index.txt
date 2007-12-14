@@ -79,17 +79,18 @@ Best practices
 ##############
 
 .. include:: best_practice_intro.txt
+.. include:: adv_merging.txt
 .. include:: server.txt
 .. include:: hooks.txt
 .. include:: version_info.txt
 .. include:: bug_trackers.txt
-.. include:: shared_repository_layouts.txt
  
 
 Appendices
 ##########
 
 .. include:: specifying_revisions.txt
+.. include:: shared_repository_layouts.txt
 .. include:: conflicts.txt
 .. include:: configuration.txt
 .. include:: setting_up_email.txt
