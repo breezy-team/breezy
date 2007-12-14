@@ -1666,6 +1666,7 @@ class cmd_log(Command):
                         'regular expression.',
                    type=str),
             Option('limit',
+                   short_name='l',
                    help='Limit the output to the first N revisions.',
                    argname='N',
                    type=_parse_limit),
