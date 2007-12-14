@@ -28,7 +28,7 @@ Tutorials
 
 * `A longer tutorial <en/tutorials/tutorial.html>`_ 
 
-* `Using Bazaar with Launchpad <en/tutorials/using_bazaar_with_lp.html>`_ 
+* `Using Bazaar with Launchpad <en/tutorials/using_bazaar_with_launchpad.html>`_ 
 
 * `Centralized workflow <en/tutorials/centralized_workflow.html>`_ 
 

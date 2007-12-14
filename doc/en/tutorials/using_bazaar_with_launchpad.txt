@@ -3,6 +3,7 @@ Using Bazaar with Launchpad
 ===========================
 
 .. contents::
+.. sectnum::
 
 Motivation
 ==========
@@ -186,11 +187,18 @@ As Launchpad keeps track of thousands of open source projects
 and their latest code whether it be managed by Bazaar, CVS or Subversion,
 Bazaar users can grab that code as easily as this::
 
-  bzr branch lp:project-code
+  bzr branch lp:project-name
 
-where `project-code` is the Launchpad project code. You can then browse
-the code locally using your favorite editor or IDE and change the
-code if you wish.
+where `project-name` is the Launchpad project ID. Here are some examples::
+
+  bzr branch lp:inkscape
+  bzr branch lp:amarok
+  bzr branch lp:python
+  bzr branch lp:rails
+  bzr branch lp:java-gnome
+
+You can then browse the code locally using your favorite editor or IDE and
+change the code if you wish.
 
 Publishing your changes
 -----------------------
@@ -200,19 +208,34 @@ wanted, it's time to impress your friends and make the world a better
 place by making your code available to others. As explained earlier,
 Launchpad is a free Bazaar code hosting service so you can push your
 branch to it and others can access your code from there. For example,
-you can push your changes to a personal branch like this::
-
-  bzr push bzr+ssh://userid@bazaar.launchpad.net/~userid/+junk/my-project
-
-where `userid` is your Launchpad user ID and `my-project` is a name
-to identify this branch. Alternatively, you can push your changes to
-a team branch like this, assuming you are a member of that team::
+assuming you are a member of the relevant team,
+you can push your changes to a team branch like this::
 
   bzr push bzr+ssh://userid@bazaar.launchpad.net/~team-name/project-name/branch-name
 
-It is also polite to notify the upstream developers about your branch so
-they can pull your changes from it if they are generally applicable to
-all users and meet the project's quality standards.
+where `userid` is your Launchpad user ID.
+Others can then download your code like this::
+
+  bzr branch http://bazaar.launchpad.net/~team-name/project-name/branch-name
+
+
+Personal branches
+-----------------
+
+Even if you are not a member of a team, Launchpad can be used to publish
+your changes. In this case, simply create a personal branch like this::
+
+  bzr push bzr+ssh://userid@bazaar.launchpad.net/~userid/+junk/my-project
+
+where `my-project` is a name you select to uniquely identify the branch.
+Others can then download your code like this::
+
+  bzr branch http://bazaar.launchpad.net/~userid/+junk/my-project
+
+Note: Even when publishing to a personal branch, it is polite to notify the
+upstream developers about your branch so they can pull your changes from
+it if they are generally applicable to all users and meet the project's
+quality standards.
 
 
 Linking branches using Launchpad
@@ -268,6 +291,12 @@ Firstly, the branch usually needs to be merged into the trunk
 Secondly, many teams have a separate process for confirming
 bugs are fixed over and above a developer saying so.
 
+As explained later, merge control features are currently under
+development in Launchpad and automatically changing the status of
+bugs to *Fix Committed* will be more appropriate once those features
+are in place.
+
+
 Associating a branch with a blueprint
 -------------------------------------
 
@@ -316,7 +345,8 @@ Some of the steps involved may include:
   multiple languages.
 
 This section briefly looks at some of the features in Launchpad that
-help get code into production.
+help get good quality code into production. Strong integration with
+Bazaar is core to making this happen smoothly.
 
 Note: Where indicated, some of the features below are still under
 development. If one or more of these features interest you, please
@@ -333,6 +363,17 @@ After navigating to a branch in Launchpad, one of the available actions
 is *Propose for merging*. This lets you nominate which branch this code
 ought to be merged into.
 
+Tracking the knowledge about which branches are proposed to be merged
+into a codeline helps Release Managers keep on top of what still needs
+to be completed, or can be completed, before a ship date. Using this
+information, they can ensure branches are merged after completing any
+necessary reviews. In the simple case, the Release Manager may manually
+merge branches. In more advanced cases, the merging could be automatically
+done by a robot (like `PQM`_) when the branch reaches the right state
+(e.g. *Review completed*).
+
+.. _PQM: https://launchpad.net/pqm
+
 
 Code review tracking
 --------------------
@@ -341,6 +382,7 @@ A number of feature are under development in Launchpad to track the
 states, conversations and outcomes of code reviews. These features are
 expected to be integrated with branch merge proposals and branch
 browsing features.
+
 
 Personal Package Archives (PPAs)
 --------------------------------
@@ -393,7 +435,7 @@ branches, branches can be browsed online, branches can be linked to bugs
 and blueprints, and the status of bug-branch relationships can be
 automatically managed by mentioning the bug while commiting in Bazaar.
 Further integration is under development with the aim of streamlining
-the process from idea to running code in the hands of end users.
+the process from *great idea* to *running code in the hands of end users*.
 
 If you have any feedback on how you'd like to see Bazaar and Launchpad
 further integrated, please contact us on the Bazaar mailing list,
@@ -402,4 +444,5 @@ bazaar@lists.canonical.com.
 While designed as a free service to support open source projects,
 Canonical may make Launchpad available to commercial software developers
 depending on their requirements. We would be happy to hear from you
-if you think Launchpad would be useful for managing your community.
+if you think Launchpad would be useful for managing your community,
+open source or otherwise.
