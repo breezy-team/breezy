@@ -70,7 +70,12 @@ http://bazaar-vcs.org/HistoryHorizon
 =====================================================
 The Bazaar revno's differ from the Subversion revno's
 =====================================================
-That's right. Bazaar revision numbers are per-branch, whereas Subversion revno's are per-repository.
+That's right. Bazaar revision numbers are per-branch, whereas Subversion revno's are per-repository. If you 
+would like to use Subversion revision numbers, use the "svn:" revision specifier. For example:
+
+::
+
+  $ bzr ls -rsvn:34 svn://example.com/bar
 
 =========================================================================
 Bazaar reports branches have diverged while pulling, when they haven't
