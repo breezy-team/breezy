@@ -38,7 +38,7 @@ Config file: INI format, pretty much similar to the authfile of subversion.
 Groups can be defined in the [groups] section. The options in this block are
 the names of the groups to be defined, the corresponding values the lists of
 the users belonging to the given groups. (User names must be separated by
-whitespace characters.)
+commas.)
 
 All other sections names should be path names (starting with '/'), defining
 the permissions for the given path. The options in those sections are user
@@ -53,7 +53,7 @@ Sample bzr_access.conf::
 
    [groups]
    admins = alpha
-   devels = beta gamma delta
+   devels = beta, gamma, delta
    
    [/test/trunk]
    @admins = rw
