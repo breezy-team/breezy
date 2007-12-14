@@ -4,7 +4,7 @@
 #  bzr_access:
 #    Simple access control for shared bazaar repository accessed over ssh.
 #
-# (c) Balint Aradi, 2007
+# Copyright (C) 2007 Balint Aradi
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -93,6 +93,7 @@ EXIT_BADENV = 4
 EXIT_BADDIR = 5
 EXIT_NOCONF = 6
 EXIT_NOACCESS = 7
+EXIT_BADUSERNAME = 8
 
 # pattern for the bzr command passed to ssh
 PAT_SSH_COMMAND = re.compile(r"""^bzr\s+
@@ -107,11 +108,11 @@ BZR_READWRITE_FLAGS = ['--allow-writes']
 
 
 
-def error(msg, exitCode):
+def error(msg, exit_code):
     """Prints error message to stdout and exits with given error code."""
     
     print >>sys.stderr, "%s::error: %s" % (SCRIPT_NAME, msg)
-    sys.exit(exitCode)
+    sys.exit(exit_code)
   
 
 
@@ -127,7 +128,7 @@ class AccessManager(object):
         self.groups = {}
         if self.config.has_section("groups"):
             for group, users in self.config.items("groups"):
-                self.groups[group] = dict.fromkeys(users.split())
+                self.groups[group] = set([ s.strip() for s in users.split(",")])
         
 
     def permission(self, user, path):
@@ -141,37 +142,39 @@ class AccessManager(object):
         perm = PERM_DENIED
         pathFound = False
         while not pathFound and path != "/":
+            print >>sys.stderr, "DEBUG:", path
             pathFound = self.config.has_section(path)
             if (pathFound):
-                options = self.config.options(path)[-1::-1]
+                options = reversed(self.config.options(path))
                 for option in options:
-                    value = PERM_DICT.get(self.config.get(path, option), PERM_DENIED)
-                    if self._isRelevant(option, user):
+                    value = PERM_DICT.get(self.config.get(path, option),
+                                          PERM_DENIED)
+                    if self._is_relevant(option, user):
                         perm = value
             else:
                 path = os.path.dirname(path)
         return perm
       
       
-    def _isRelevant(self, option, user):
+    def _is_relevant(self, option, user):
         """Decides if a certain option is relevant for a given user.
       
-        An option is relevant if it is identical with the user or with a reference
-        to a group including the user.
+        An option is relevant if it is identical with the user or with a
+        reference to a group including the user.
       
         :param option: Option to check.
         :param user: User
         :return: True if option is relevant for the user, False otherwise.
         """
         if option.startswith("@"):
-            result = self.groups.get(option[1:], {}).has_key(user)
+            result = (user in self.groups.get(option[1:], set()))
         else:
             result = (option == user)
         return result
 
 
 
-def getDirectory(command):
+def get_directory(command):
     """Extracts the directory name from the command pass to ssh.
     :param command: command to parse.
     :return: Directory name or empty string, if directory was not found or if it
@@ -203,9 +206,13 @@ def main():
     # Extract the repository path from the command passed to ssh.
     if not os.environ.has_key("SSH_ORIGINAL_COMMAND"):
         error("Environment variable SSH_ORIGINAL_COMMAND missing.", EXIT_BADENV)
-    directory = getDirectory(os.environ["SSH_ORIGINAL_COMMAND"])
+    directory = get_directory(os.environ["SSH_ORIGINAL_COMMAND"])
     if not len(directory):
         error("Bad directory name.", EXIT_BADDIR)
+
+    # Control user name
+    if not user.isalnum():
+        error("Invalid user name", EXIT_BADUSERNAME)
     
     # Read in config file.
     try:
