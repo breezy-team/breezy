@@ -20,6 +20,8 @@ IN DEVELOPMENT
    * Merge directives now fetch prerequisites from the target branch if
      needed.  (Aaron Bentley)
 
+   * ``reconfigure`` can now convert from repositories.  (Aaron Bentley)
+
   BUGFIXES:
 
    * Fix Makefile rules for doc generation. (Ian Clatworthy, #175207)
@@ -34,6 +36,9 @@ IN DEVELOPMENT
    * When dumb http servers return whole files instead of the requested ranges,
      read the remaining bytes by chunks to avoid overflowing network buffers.
      (Vincent Ladeuil, #175886)
+
+   * ``reconfigure`` is able to convert trees into lightweight checkouts.
+     (Aaron Bentley)
 
   INTERNALS:
 
