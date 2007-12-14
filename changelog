@@ -2,6 +2,7 @@ bzr (1.0-1) unstable; urgency=low
 
   * Final 1.0 release.
     + Wrong download links in User Guide fixed. (Closes: #455592)
+    + Drop now unneeded patch fix_version_strings.diff.
 
   * After some chat with upstream, recommend `bzr upgrade` and then `bzr
     reconcile` in NEWS.Debian, instead of reconcile before upgrade, since
