@@ -106,7 +106,7 @@ class LogWalker(object):
             try:
                 while self.saved_revnum < to_revnum:
                     pool = Pool()
-                    self._get_transport().get_log("/", self.saved_revnum, 
+                    self._get_transport().get_log("", self.saved_revnum, 
                                              to_revnum, self._limit, True, 
                                              True, [], rcvr, pool)
                     pool.destroy()
