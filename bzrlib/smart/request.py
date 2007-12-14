@@ -48,7 +48,8 @@ class SmartServerRequest(object):
         :param root_client_path: the client path that maps to the root of
             backing_transport.  This is used to interpret relpaths received
             from the client.  Clients will not be able to refer to paths above
-            this root.
+            this root.  If root_client_path is None, then no translation will
+            be performed on client paths.  Default is '/'.
         """
         self._backing_transport = backing_transport
         if root_client_path is not None:
@@ -126,8 +127,7 @@ class SmartServerRequest(object):
         :returns: a transport cloned from self._backing_transport
         """
         relpath = self.translate_client_path(client_path)
-        result = self._backing_transport.clone(relpath)
-        return result
+        return self._backing_transport.clone(relpath)
 
 
 class SmartServerResponse(object):

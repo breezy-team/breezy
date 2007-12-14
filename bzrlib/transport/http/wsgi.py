@@ -116,29 +116,27 @@ class SmartWSGIApp(object):
             return []
 
         relpath = environ['bzrlib.relpath']
-        # 1. subtract HTTP path from rcp ("adjusted rcp")
-        #    1a.  If HTTP path unconsumed, clone backing transport with
-        #         remainder ("adjusted transport")
-        # 2. feed HPSS request path + adjusted/backing transport + adjusted
-        #    rcp?
 
         if not relpath.startswith('/'):
             relpath = '/' + relpath
         if not relpath.endswith('/'):
             relpath += '/'
 
-        # (relpath='/foo/bar/', rcp='/foo/' -> (rp 'bar', arcp '/')
-        #  relpath='/foo/', rcp='/foo/bar/' -> (rp '/', arcp '/bar')
+        # Compare the HTTP path (relpath) and root_client_path, and calculate
+        # new relpath and root_client_path accordingly, to be used to build the
+        # request.
         if relpath.startswith(self.root_client_path):
-            # The entire root client path is part of the relpath.
+            # The relpath traverses all of the mandatory root client path.
+            # Remove the root_client_path from the relpath, and set
+            # adjusted_tcp to None to tell the request handler that no further
+            # path translation is required.
             adjusted_rcp = None
-            # Consume the relpath part we just subtracted
             adjusted_relpath = relpath[len(self.root_client_path):]
         elif self.root_client_path.startswith(relpath):
             # The relpath traverses some of the mandatory root client path.
-            # Subtract relpath from HTTP request
+            # Subtract the relpath from the root_client_path, and set the
+            # relpath to '.'.
             adjusted_rcp = '/' + self.root_client_path[len(relpath):]
-            # The entire relpath was consumed.
             adjusted_relpath = '.'
         else:
             adjusted_rcp = self.root_client_path
