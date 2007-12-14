@@ -95,6 +95,8 @@ class LogWalker(object):
                 self.db.execute(
                      "replace into changed_path (rev, path, action, copyfrom_path, copyfrom_rev) values (?, ?, ?, ?, ?)", 
                      (log_entry.revision, p.strip("/"), orig_paths[p].action, copyfrom_path, orig_paths[p].copyfrom_rev))
+                # Work around nasty memory leak in Subversion
+                orig_paths[p]._parent_pool.destroy()
 
             self.saved_revnum = log_entry.revision
             if self.saved_revnum % 1000 == 0:
