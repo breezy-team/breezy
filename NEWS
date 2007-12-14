@@ -24,6 +24,14 @@ IN DEVELOPMENT
    * Transform failures no longer cause ImmortalLimbo errors (Aaron Bentley,
      #137681)
 
+   * ``uncommit`` works even when the commit messages of revisions to be
+     removed use characters not supported in the terminal encoding.
+     (Aaron Bentley)
+
+   * When dumb http servers return whole files instead of the requested ranges,
+     read the remaining bytes by chunks to avoid overflowing network buffers.
+     (Vincent Ladeuil, #175886)
+
   INTERNALS:
 
   API BREAKS:
@@ -47,6 +55,9 @@ bzr 1.0rc2 2007-12-07
 
    * ``bzr commit`` now doesn't print the revision number twice. (Matt
      Nordhoff, #172612)
+
+   * Merge directives now fetch prerequisites from the target branch if
+     needed.  (Aaron Bentley)
 
    * New configuration option ``bugtracker_<tracker_abbrevation>_url`` to
      define locations of bug trackers that are not directly supported by

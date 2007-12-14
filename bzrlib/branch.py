@@ -1794,22 +1794,6 @@ class BzrBranch5(BzrBranch):
         # last_rev is not in the other_last_rev history, AND
         # other_last_rev is not in our history, and do it without pulling
         # history around
-        last_rev = _mod_revision.ensure_null(self.last_revision())
-        if last_rev != _mod_revision.NULL_REVISION:
-            other.lock_read()
-            try:
-                other_last_rev = other.last_revision()
-                if not _mod_revision.is_null(other_last_rev):
-                    # neither branch is new, we have to do some work to
-                    # ascertain diversion.
-                    remote_graph = other.repository.get_revision_graph(
-                        other_last_rev)
-                    local_graph = self.repository.get_revision_graph(last_rev)
-                    if (last_rev not in remote_graph and
-                        other_last_rev not in local_graph):
-                        raise errors.DivergedBranches(self, other)
-            finally:
-                other.unlock()
         self.set_bound_location(other.base)
 
     @needs_write_lock
