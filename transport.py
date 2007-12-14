@@ -519,9 +519,15 @@ class SvnRaTransport(Transport):
             elif revprops.keys() != [svn.core.SVN_PROP_REVISION_LOG]:
                 raise NotImplementedError()
             else:
+                def done_wrapper(new_rev, date, author):
+                    commit_info = svn.core.svn_commit_info_t()
+                    commit_info.revision = new_rev
+                    commit_info.date = date
+                    commit_info.author = author
+                    done_cb(commit_info)
                 editor = svn.ra.get_commit_editor(self._ra, 
                             revprops[svn.core.SVN_PROP_REVISION_LOG],
-                            done_cb, lock_token, keep_locks)
+                            done_wrapper, lock_token, keep_locks)
 
             return Editor(self, editor)
         except:

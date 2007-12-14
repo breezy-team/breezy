@@ -15,4 +15,8 @@ The following settings would be set on the revisions:
 bzr-svn should not be looking at any file properties set on the branch root if any 
 of these revision properties is set.
 
-Needs more tests...
+Needs more tests...:
+
+ * 
+
+Make sure that bzr revprops set as bzr:* in svn properties don't get converted to svn:bzr: in bzr revprops.
