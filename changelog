@@ -1,4 +1,7 @@
-bzr (1.0~rc3-1) UNRELEASED; urgency=low
+bzr (1.0-1) unstable; urgency=low
+
+  * Final 1.0 release.
+    + Wrong download links in User Guide fixed. (Closes: #455592)
 
   * After some chat with upstream, recommend `bzr upgrade` and then `bzr
     reconcile` in NEWS.Debian, instead of reconcile before upgrade, since
@@ -6,7 +9,7 @@ bzr (1.0~rc3-1) UNRELEASED; urgency=low
     the new format (packs). (NB: this should only be done with 1.0~rc2 and
     later, due to LP #165290.)
 
- -- Adeodato Simó <dato@net.com.org.es>  Thu, 13 Dec 2007 10:53:22 +0100
+ -- Adeodato Simó <dato@net.com.org.es>  Fri, 14 Dec 2007 13:12:06 +0100
 
 bzr (1.0~rc2-2) unstable; urgency=low
 
