@@ -37,6 +37,9 @@ IN DEVELOPMENT
      read the remaining bytes by chunks to avoid overflowing network buffers.
      (Vincent Ladeuil, #175886)
 
+   * ``reconfigure`` is able to convert trees into lightweight checkouts.
+     (Aaron Bentley)
+
   INTERNALS:
 
   API BREAKS:
