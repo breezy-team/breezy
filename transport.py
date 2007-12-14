@@ -408,10 +408,10 @@ class SvnRaTransport(Transport):
 
     def _request_path(self, relpath):
         if self._backing_url == self.svn_url:
-            return relpath
+            return relpath.strip("/")
         newrelpath = urlutils.join(
                 urlutils.relative_url(self._backing_url+"/", self.svn_url+"/"),
-                relpath).rstrip("/")
+                relpath).strip("/")
         self.mutter('request path %r -> %r' % (relpath, newrelpath))
         return newrelpath
 

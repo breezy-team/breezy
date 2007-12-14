@@ -6,6 +6,8 @@ bzr-svn 0.4.6	UNRELEASED
      push a lot faster, in particular in Subversion repositories 
 	 with a lot of branches.
 
+   * Work around memory leak in the Python Subversion bindings of svn.ra.get_log(). 
+
 bzr-svn 0.4.5	2007-12-01
 
   IMPROVEMENTS
