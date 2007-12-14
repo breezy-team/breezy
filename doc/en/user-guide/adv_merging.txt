@@ -1,5 +1,5 @@
-Advanced merging
-================
+Pseudo merging
+==============
 
 Cherrypicking
 -------------
@@ -46,11 +46,6 @@ In many cases where they are useful (see above), this is not a major
 problem because there are good reasons why a full merge should never
 be done at a later time. In other cases, additional conflicts will need
 to be resolved when the changes are merged again.
-
-Note: The reason why Bazaar doesn't track cherrypicks yet is that doing so
-can lead to poor performance. We are exploring ways of tracking
-this information that perform acceptably and hope to improve Bazaar's
-cherrypicking support in the future accordingly.
 
 
 Reverse cherrypicking
@@ -113,4 +108,6 @@ show the list of commits still to be replayed.
 Note: Some users coming from central VCS tools with poor merge tracking
 like rebasing because it's similar to how they are use to working in older
 tools, or because "perfectly clean" history seems important. Before rebasing
-in Bazaar, think about whether a normal merge is a better choice.
+in Bazaar, think about whether a normal merge is a better choice. In
+particular, rebasing a private branch before sharing it is OK but
+rebasing after sharing a branch with someone else is **strongly** discouraged.
