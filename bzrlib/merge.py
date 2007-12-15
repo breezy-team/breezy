@@ -119,6 +119,8 @@ class Merger(object):
             tree.branch.repository.get_graph().is_ancestor(
             base_revision_id, tree.branch.last_revision())):
             base_revision_id = None
+        else:
+            warning('Performing cherrypick')
         merger = klass.from_revision_ids(pb, tree, other_revision_id,
                                          base_revision_id)
         return merger, verified
