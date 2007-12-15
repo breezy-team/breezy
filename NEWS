@@ -12,6 +12,10 @@ bzr-svn 0.4.6	UNRELEASED
 
    * Support retrieving credentials from Bazaar rather than relying on Subversions' cache. (#120768)
 
+  INTERNALS
+  
+   * Added pydoctor configuration file.
+
   BUG FIXES
 
    * Improved compatibility with Subversion 1.5.
