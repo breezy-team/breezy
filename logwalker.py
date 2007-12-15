@@ -82,8 +82,9 @@ class LogWalker(object):
 
         pb = ui.ui_factory.nested_progress_bar()
 
-        def rcvr(orig_paths, rev, author, date, message, pool):
-            pb.update('fetching svn revision info', rev, to_revnum)
+        def rcvr(log_entry, pool):
+            pb.update('fetching svn revision info', log_entry.revision, to_revnum)
+            orig_paths = log_entry.changed_paths
             if orig_paths is None:
                 orig_paths = {}
             for p in orig_paths:
@@ -93,9 +94,11 @@ class LogWalker(object):
 
                 self.db.execute(
                      "replace into changed_path (rev, path, action, copyfrom_path, copyfrom_rev) values (?, ?, ?, ?, ?)", 
-                     (rev, p.strip("/"), orig_paths[p].action, copyfrom_path, orig_paths[p].copyfrom_rev))
+                     (log_entry.revision, p.strip("/"), orig_paths[p].action, copyfrom_path, orig_paths[p].copyfrom_rev))
+                # Work around nasty memory leak in Subversion
+                orig_paths[p]._parent_pool.destroy()
 
-            self.saved_revnum = rev
+            self.saved_revnum = log_entry.revision
             if self.saved_revnum % 1000 == 0:
                 self.db.commit()
 
@@ -103,9 +106,9 @@ class LogWalker(object):
             try:
                 while self.saved_revnum < to_revnum:
                     pool = Pool()
-                    self._get_transport().get_log("/", self.saved_revnum, 
+                    self._get_transport().get_log("", self.saved_revnum, 
                                              to_revnum, self._limit, True, 
-                                             True, rcvr, pool)
+                                             True, [], rcvr, pool)
                     pool.destroy()
             finally:
                 pb.finished()

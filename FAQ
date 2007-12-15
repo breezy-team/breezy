@@ -4,8 +4,8 @@
 Bazaar is using a lot of memory accessing a Subversion repository
 =================================================================
 bzr-svn can use a lot of memory cloning big branches. The problem appears to be 
-caused both by a memory leak in the python-subversion bindings or Subversion
-(the svn_ra_get_log() function) and the memory overhead from Bazaar.
+caused mainly by a memory leak in the python-subversion bindings for the svn_ra_get_log() 
+function.
 
 Newer versions of Subversion (1.5 especially) use significantly less memory 
 than older versions (though they still seem to leak).
@@ -70,7 +70,12 @@ http://bazaar-vcs.org/HistoryHorizon
 =====================================================
 The Bazaar revno's differ from the Subversion revno's
 =====================================================
-That's right. Bazaar revision numbers are per-branch, whereas Subversion revno's are per-repository.
+That's right. Bazaar revision numbers are per-branch, whereas Subversion revno's are per-repository. If you 
+would like to use Subversion revision numbers, use the "svn:" revision specifier. For example:
+
+::
+
+  $ bzr ls -rsvn:34 svn://example.com/bar
 
 =========================================================================
 Bazaar reports branches have diverged while pulling, when they haven't

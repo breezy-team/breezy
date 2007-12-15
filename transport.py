@@ -329,10 +329,36 @@ class SvnRaTransport(Transport):
 
     @convert_svn_error
     @needs_busy
-    def get_log(self, path, from_revnum, to_revnum, *args, **kwargs):
+    def get_log(self, path, from_revnum, to_revnum, limit, discover_changed_paths, 
+                strict_node_history, revprops, rcvr, pool=None):
         self.mutter('svn log %r:%r %r' % (from_revnum, to_revnum, path))
+        if hasattr(svn.ra, 'get_log2'):
+            return svn.ra.get_log2(self._ra, [self._request_path(path)], 
+                           from_revnum, to_revnum, limit, discover_changed_paths,
+                           strict_node_history, False, 
+                           revprops, rcvr, pool)
+
+        class LogEntry:
+            def __init__(self, changed_paths, rev, author, date, message):
+                self.changed_paths = changed_paths
+                self.revprops = {}
+                if svn.core.SVN_PROP_REVISION_AUTHOR in revprops:
+                    self.revprops[svn.core.SVN_PROP_REVISION_AUTHOR] = author
+                if svn.core.SVN_PROP_REVISION_LOG in revprops:
+                    self.revprops[svn.core.SVN_PROP_REVISION_LOG] = message
+                if svn.core.SVN_PROP_REVISION_DATE in revprops:
+                    self.revprops[svn.core.SVN_PROP_REVISION_DATE] = date
+                # FIXME: Check other revprops
+                # FIXME: Handle revprops is None
+                self.revision = rev
+                self.has_children = None
+
+        def rcvr_convert(orig_paths, rev, author, date, message, pool):
+            rcvr(LogEntry(orig_paths, rev, author, date, message), pool)
+
         return svn.ra.get_log(self._ra, [self._request_path(path)], 
-                              from_revnum, to_revnum, *args, **kwargs)
+                              from_revnum, to_revnum, limit, discover_changed_paths, 
+                              strict_node_history, rcvr_convert, pool)
 
     def _open_real_transport(self):
         if self._backing_url != self.svn_url:
@@ -385,10 +411,10 @@ class SvnRaTransport(Transport):
 
     def _request_path(self, relpath):
         if self._backing_url == self.svn_url:
-            return relpath
+            return relpath.strip("/")
         newrelpath = urlutils.join(
                 urlutils.relative_url(self._backing_url+"/", self.svn_url+"/"),
-                relpath).rstrip("/")
+                relpath).strip("/")
         self.mutter('request path %r -> %r' % (relpath, newrelpath))
         return newrelpath
 
