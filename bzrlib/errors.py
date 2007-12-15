@@ -653,7 +653,7 @@ class NoRepositoryPresent(BzrError):
 
 class FileInWrongBranch(BzrError):
 
-    _fmt = 'File "%(path)s" in not in branch %(branch_base)s.'
+    _fmt = 'File "%(path)s" is not in branch %(branch_base)s.'
 
     def __init__(self, branch, path):
         BzrError.__init__(self)
