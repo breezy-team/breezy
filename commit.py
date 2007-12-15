@@ -38,8 +38,8 @@ from repository import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS,
                         SVN_REVPROP_BZR_COMMITTER, SVN_REVPROP_BZR_FILEIDS,
                         SVN_REVPROP_BZR_MERGE, SVN_REVPROP_BZR_REVISION_ID,
                         SVN_REVPROP_BZR_REVPROP_PREFIX, SVN_REVPROP_BZR_ROOT,
-                        SVN_REVPROP_BZR_TIMESTAMP, SVN_REVPROP_BZR_TIMEZONE,
-                        SVN_REVPROP_BZR_MAPPING_VERSION)
+                        SVN_REVPROP_BZR_TIMESTAMP, SVN_REVPROP_BZR_MAPPING_VERSION,
+                        format_highres_date)
 import urllib
 
 
@@ -108,10 +108,7 @@ class SvnCommitBuilder(RootCommitBuilder):
         self._svn_revprops = {SVN_REVPROP_BZR_MAPPING_VERSION: str(MAPPING_VERSION)}
 
         if timestamp is not None:
-            self._svn_revprops[SVN_REVPROP_BZR_TIMESTAMP] = str(timestamp)
-
-        if timezone is not None:
-            self._svn_revprops[SVN_REVPROP_BZR_TIMEZONE] = str(timezone)
+            self._svn_revprops[SVN_REVPROP_BZR_TIMESTAMP] = format_highres_date(timestamp, timezone)
 
         if committer is not None:
             self._svn_revprops[SVN_REVPROP_BZR_COMMITTER] = committer.encode("utf-8")
@@ -490,7 +487,7 @@ class SvnCommitBuilder(RootCommitBuilder):
         fileids += list(_dir_process_file_id(self.old_inv, self.new_inventory, "", self.new_inventory.root.file_id))
 
         if fileids != []:
-            file_id_text = "".join(["%s\t%s\n" % (urllib.quote(path), file_id) for (path, file_id) in fileids])
+            file_id_text = "".join(["%s\t%s\n" % (urllib.quote(path), file_id) for (file_id, path) in fileids])
             self._svn_revprops[SVN_REVPROP_BZR_FILEIDS] = file_id_text
             self._svnprops[SVN_PROP_BZR_FILEIDS] = file_id_text
 
@@ -537,7 +534,6 @@ class SvnCommitBuilder(RootCommitBuilder):
                     value = value.encode('utf-8')
                 self.editor.change_dir_prop(branch_batons[-1], prop, value, 
                                             self.pool)
-                self.mutter("setting revision property %r to %r" % (prop, value))
 
             for baton in reversed(branch_batons):
                 self.editor.close_directory(baton, self.pool)

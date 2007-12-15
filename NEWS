@@ -8,6 +8,8 @@ bzr-svn 0.4.6	UNRELEASED
 
    * Work around memory leak in the Python Subversion bindings of svn.ra.get_log(). 
 
+   * Set revision properties when possible.
+
 bzr-svn 0.4.5	2007-12-01
 
   IMPROVEMENTS

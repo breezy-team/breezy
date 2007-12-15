@@ -1,21 +1,3 @@
-Subversion 1.5 adds support for custom revision properties. This allows moving the various Bazaar-related 
-properties from file to revision properties.
-
-The following settings would be set on the revisions:
-* bzr:branch
-* bzr:revision-id
-* bzr:merge
-* bzr:pgp-signature
-* bzr:committer
-* bzr:timestamp
-* bzr:properties:branch-nick
-* bzr:properties:*
-* bzr:root
-* bzr:mapping-version
-
-bzr-svn should not be looking at any file properties set on the branch root if any 
-of these revision properties is set.
-
-Needs more tests...:
-
-Make sure that bzr revprops set as bzr:* in svn properties don't get converted to svn:bzr: in bzr revprops.
+- Needs more tests
+- Needs upgrade command that can use legacy file properties and set revprops
+- Support disabling legacy file property support somehow

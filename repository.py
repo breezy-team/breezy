@@ -64,7 +64,6 @@ SVN_REVPROP_BZR_REVPROP_PREFIX = 'bzr:revprop:'
 SVN_REVPROP_BZR_ROOT = 'bzr:root'
 SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
 SVN_REVPROP_BZR_TIMESTAMP = 'bzr:timestamp'
-SVN_REVPROP_BZR_TIMEZONE = 'bzr:timezone'
 SVN_REVPROP_BZR_MAPPING_VERSION = 'bzr:mapping-version'
 
 # The following two functions don't use day names (which can vary by 
@@ -236,6 +235,42 @@ def revision_id_to_svk_feature(revid):
     # TODO: What about renamed revisions? Should use 
     # repository.lookup_revision_id here.
     return "%s:/%s:%d" % (uuid, branch, revnum)
+
+
+def revision_parse_svn_revprops(rev, props):
+    """Update a Revision object from a set of Subversion revision properties.
+    
+    :param rev: Revision object
+    :param props: Dictionary with Subversion revision properties.
+    """
+    rev.timezone = None
+
+    if props.has_key(SVN_REVPROP_BZR_TIMESTAMP):
+        (rev.timestamp, rev.timezone) = unpack_highres_date(props[SVN_REVPROP_BZR_TIMESTAMP])
+    elif props.has_key(svn.core.SVN_PROP_REVISION_DATE):
+        rev.timestamp = 1.0 * svn.core.secs_from_timestr(
+            props[svn.core.SVN_PROP_REVISION_DATE], None)
+    else:
+        rev.timestamp = 0 # FIXME: Obtain repository creation time
+
+    if props.has_key(SVN_REVPROP_BZR_COMMITTER):
+        rev.committer = props[SVN_REVPROP_BZR_COMMITTER].decode("utf-8")
+    elif props.has_key(svn.core.SVN_PROP_REVISION_AUTHOR):
+        rev.committer = props[svn.core.SVN_PROP_REVISION_AUTHOR]
+    else:
+        rev.committer = ""
+
+    rev.message = props.get(svn.core.SVN_PROP_REVISION_LOG)
+    if rev.message is not None:
+        assert isinstance(rev.message, str)
+        try:
+            rev.message = rev.message.decode("utf-8")
+        except UnicodeDecodeError:
+            pass
+
+    for name, value in props.items():
+        if name.startswith(SVN_REVPROP_BZR_REVPROP_PREFIX):
+            rev.properties[name[len(SVN_REVPROP_BZR_REVPROP_PREFIX):]] = value
 
 
 class SvnRepositoryFormat(RepositoryFormat):
@@ -498,14 +533,21 @@ class SvnRepository(Repository):
         :return: dictionary with paths as keys, file ids as values
         """
         (path, revnum, _) = self.lookup_revision_id(revid)
-        # Only consider bzr:file-ids if this is a bzr revision
-        if not self.branchprop_list.touches_property(path, revnum, 
-                SVN_PROP_BZR_REVISION_INFO):
-            return {}
-        fileids = self.branchprop_list.get_property(path, revnum, 
-                                                    SVN_PROP_BZR_FILEIDS)
-        if fileids is None:
-            return {}
+
+        svn_revprops = self.transport.revprop_list(revnum)
+        if svn_revprops.has_key(SVN_REVPROP_BZR_MAPPING_VERSION):
+            if not svn_revprops.has_key(SVN_REVPROP_BZR_FILEIDS):
+                return {}
+            fileids = svn_revprops[SVN_REVPROP_BZR_FILEIDS]
+        else:
+            # Only consider bzr:file-ids if this is a bzr revision
+            if not self.branchprop_list.touches_property(path, revnum, 
+                    SVN_PROP_BZR_REVISION_INFO):
+                return {}
+            fileids = self.branchprop_list.get_property(path, revnum, 
+                                                        SVN_PROP_BZR_FILEIDS)
+            if fileids is None:
+                return {}
         ret = {}
         for line in fileids.splitlines():
             (path, key) = line.split("\t", 2)
@@ -623,15 +665,21 @@ class SvnRepository(Repository):
         if not self._log.touches_path(branch, revnum):
             return parent_ids
        
+        svn_revprops = self.transport.revprop_list(revnum)
+        if svn_revprops.has_key(SVN_REVPROP_BZR_MAPPING_VERSION):
+            if svn_revprops[SVN_REVPROP_BZR_ROOT] != branch:
+                return parent_ids
+            if not svn_revprops.has_key(SVN_REVPROP_BZR_MERGE):
+                return parent_ids
+            return parent_ids + svn_revprops[SVN_REVPROP_BZR_MERGE].splitlines()
+
         if bzr_merges is None:
             bzr_merges = self._bzr_merged_revisions(branch, revnum, scheme)
-        if svk_merges is None:
-            svk_merges = self._svk_merged_revisions(branch, revnum, scheme)
 
         parent_ids.extend(bzr_merges)
 
-        if bzr_merges == []:
-            # Commit was doing using svk apparently
+        if bzr_merges == [] and svk_merges is None:
+            svk_merges = self._svk_merged_revisions(branch, revnum, scheme)
             parent_ids.extend(svk_merges)
 
         return parent_ids
@@ -650,29 +698,13 @@ class SvnRepository(Repository):
             inventory_sha1 = property(lambda rev: self.get_inventory_sha1(rev.revision_id))
 
         rev = LazySvnRevision(revision_id=revision_id, parent_ids=parent_ids)
+        rev.properties = {}
 
         svn_revprops = self.transport.revprop_list(revnum)
+        revision_parse_svn_revprops(rev, svn_revprops)
 
-        if svn_revprops.has_key(svn.core.SVN_PROP_REVISION_AUTHOR):
-            rev.committer = svn_revprops[svn.core.SVN_PROP_REVISION_AUTHOR]
-        else:
-            rev.committer = ""
-
-        rev.message = svn_revprops.get(svn.core.SVN_PROP_REVISION_LOG)
-
-        if rev.message:
-            try:
-                rev.message = rev.message.decode("utf-8")
-            except UnicodeDecodeError:
-                pass
-
-        if svn_revprops.has_key(svn.core.SVN_PROP_REVISION_DATE):
-            rev.timestamp = 1.0 * svn.core.secs_from_timestr(svn_revprops[svn.core.SVN_PROP_REVISION_DATE], None)
-        else:
-            rev.timestamp = 0.0 # FIXME: Obtain repository creation time
-        rev.timezone = None
-        rev.properties = {}
-        parse_revision_metadata(
+        if svn_revprops.get(SVN_REVPROP_BZR_MAPPING_VERSION) != str(MAPPING_VERSION):
+            parse_revision_metadata(
                 self.branchprop_list.get_property(path, revnum, 
                      SVN_PROP_BZR_REVISION_INFO, ""), rev)
 
@@ -703,24 +735,33 @@ class SvnRepository(Repository):
         if revid is not None:
             return revid
 
-        # Lookup the revision from the bzr:revision-id-vX property
-        line = self.branchprop_list.get_property_diff(path, revnum, 
-                SVN_PROP_BZR_REVISION_ID+str(scheme)).strip("\n")
-        # Or generate it
-        if line == "":
-            revid = generate_svn_revision_id(self.uuid, revnum, path, 
-                                             scheme)
-        else:
-            try:
-                (bzr_revno, revid) = parse_revid_property(line)
-                self.revmap.insert_revid(revid, path, revnum, revnum, 
-                        scheme, bzr_revno)
-            except errors.InvalidPropertyValue, e:
-                mutter(str(e))
+        # See if there is a bzr:revision-id revprop set
+        revprops = self._log._get_transport().revprop_list(revnum)
+        if revprops.has_key(SVN_REVPROP_BZR_MAPPING_VERSION):
+            if revprops[SVN_REVPROP_BZR_ROOT] == path:
+                revid = revprops[SVN_REVPROP_BZR_REVISION_ID]
+            else:
                 revid = generate_svn_revision_id(self.uuid, revnum, path, 
                                                  scheme)
-                self.revmap.insert_revid(revid, path, revnum, revnum, 
-                        scheme)
+        else:
+            # Lookup the revision from the bzr:revision-id-vX property
+            line = self.branchprop_list.get_property_diff(path, revnum, 
+                    SVN_PROP_BZR_REVISION_ID+str(scheme)).strip("\n")
+            # Or generate it
+            if line == "":
+                revid = generate_svn_revision_id(self.uuid, revnum, path, 
+                                                 scheme)
+            else:
+                try:
+                    (bzr_revno, revid) = parse_revid_property(line)
+                    self.revmap.insert_revid(revid, path, revnum, revnum, 
+                            scheme, bzr_revno)
+                except errors.InvalidPropertyValue, e:
+                    mutter(str(e))
+                    revid = generate_svn_revision_id(self.uuid, revnum, path, 
+                                                     scheme)
+        self.revmap.insert_revid(revid, path, revnum, revnum, 
+                scheme)
 
         return revid
 

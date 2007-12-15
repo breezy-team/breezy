@@ -34,8 +34,10 @@ from repository import (SvnRepository, SVN_PROP_BZR_ANCESTRY,
                 SVN_PROP_SVK_MERGE, SVN_PROP_BZR_MERGE,
                 SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVISION_INFO, 
                 SVN_PROP_BZR_BRANCHING_SCHEME, SVN_PROP_BZR_REVISION_ID,
+                SVN_REVPROP_BZR_MAPPING_VERSION, MAPPING_VERSION,
                 SVN_PROP_BZR_FILEIDS, SvnRepositoryFormat, 
-                parse_revision_metadata, parse_merge_property)
+                parse_revision_metadata, parse_merge_property,
+                revision_parse_svn_revprops)
 from tree import apply_txdelta_handler
 
 
@@ -121,26 +123,9 @@ class RevisionBuildEditor(svn.delta.Editor):
         rev = Revision(revision_id=revid, parent_ids=self._get_parent_ids())
 
         svn_revprops = self.source._log._get_transport().revprop_list(self.revnum)
-        if svn_revprops.has_key(svn.core.SVN_PROP_REVISION_DATE):
-            rev.timestamp = 1.0 * svn.core.secs_from_timestr(
-                svn_revprops[svn.core.SVN_PROP_REVISION_DATE], None)
-        else:
-            rev.timestamp = 0 # FIXME: Obtain repository creation time
-        rev.timezone = None
+        revision_parse_svn_revprops(rev, svn_revprops)
 
-        if svn_revprops.has_key(svn.core.SVN_PROP_REVISION_AUTHOR):
-            rev.committer = svn_revprops[svn.core.SVN_PROP_REVISION_AUTHOR]
-        else:
-            rev.committer = ""
-        rev.message = svn_revprops.get(svn.core.SVN_PROP_REVISION_LOG)
-        if rev.message is not None:
-            assert isinstance(rev.message, str)
-            try:
-                rev.message = rev.message.decode("utf-8")
-            except UnicodeDecodeError:
-                pass
-
-        if self._revinfo:
+        if self._revinfo and svn_revprops.get(SVN_REVPROP_BZR_MAPPING_VERSION) != str(MAPPING_VERSION):
             parse_revision_metadata(self._revinfo, rev)
 
         return rev
