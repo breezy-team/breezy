@@ -22,6 +22,8 @@ IN DEVELOPMENT
 
    * ``reconfigure`` can now convert from repositories.  (Aaron Bentley)
 
+   * ``-l`` is now a short form for ``--limit`` in ``log``.  (Matt Nordhoff)
+
   BUGFIXES:
 
    * Fix Makefile rules for doc generation. (Ian Clatworthy, #175207)
