@@ -30,11 +30,12 @@ class SubversionAuthenticationConfig(AuthenticationConfig):
     """Simple extended version of AuthenticationConfig that can provide 
     the information Subversion requires.
     """
-    def __init__(self, file=None, scheme="svn"):
+    def __init__(self, file=None, scheme="svn", host=None):
         super(SubversionAuthenticationConfig, self).__init__(file)
         self.scheme = scheme
+        self.host = host
 
-    def get_svn_username(realm, may_save, pool=None):
+    def get_svn_username(self, realm, may_save, pool=None):
         """Look up a Subversion user name in the Bazaar authentication cache.
 
         :param realm: Authentication realm (optional)
@@ -42,11 +43,11 @@ class SubversionAuthenticationConfig(AuthenticationConfig):
         :param pool: Allocation pool, is ignored.
         """
         username_cred = svn_auth_cred_username_t()
-        username_cred.username = self.get_user(self.scheme, host=None, realm=realm)
+        username_cred.username = self.get_user(self.scheme, host=self.host, realm=realm)
         username_cred.may_save = False
         return username_cred
 
-    def get_svn_simple(realm, username, may_save, pool):
+    def get_svn_simple(self, realm, username, may_save, pool):
         """Look up a Subversion user name+password combination in the Bazaar authentication cache.
 
         :param realm: Authentication realm (optional)
@@ -56,12 +57,12 @@ class SubversionAuthenticationConfig(AuthenticationConfig):
         """
         simple_cred = svn_auth_cred_simple_t()
         simple_cred.username = username or self.get_username(realm, may_save, pool)
-        simple_cred.password = self.get_password(self.scheme, host=None, 
+        simple_cred.password = self.get_password(self.scheme, host=self.host, 
                                     user=simple_cred.username, realm=realm)
         simple_cred.may_save = False
         return simple_cred
 
-    def get_svn_ssl_server_trust(realm, failures, cert_info, may_save, pool):
+    def get_svn_ssl_server_trust(self, realm, failures, cert_info, may_save, pool):
         """Return a Subversion auth provider that verifies SSL server trust.
 
         :param realm: Realm name (optional)
@@ -70,8 +71,10 @@ class SubversionAuthenticationConfig(AuthenticationConfig):
         :param may_save: Whether this information may be stored.
         """
         ssl_server_trust = svn_auth_cred_ssl_server_trust_t()
-        credentials = self.get_credentials(self.scheme, host=None)
-        if credentials.has_key("verify_certificates") and credentials["verify_certificates"] == False:
+        credentials = self.get_credentials(self.scheme, host=self.host)
+        if (credentials is not None and 
+            credentials.has_key("verify_certificates") and 
+            credentials["verify_certificates"] == False):
             ssl_server_trust.accepted_failures = (svn.core.SVN_AUTH_SSL_NOTYETVALID + 
                                                   svn.core.SVN_AUTH_SSL_EXPIRED +
                                                   svn.core.SVN_AUTH_SSL_CNMISMATCH +
