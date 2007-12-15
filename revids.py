@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+"""Revision id generation and caching."""
+
 from bzrlib.errors import (InvalidRevisionId, NoSuchRevision)
 
 MAPPING_VERSION = 3
@@ -22,6 +24,11 @@ REVISION_ID_PREFIX = "svn-v%d-" % MAPPING_VERSION
 import urllib
 
 def escape_svn_path(x):
+    """Escape a Subversion path for use in a revision identifier.
+
+    :param x: Path
+    :return: Escaped path
+    """
     if isinstance(x, unicode):
         x = x.encode("utf-8")
     return urllib.quote(x, "")
@@ -98,9 +105,21 @@ class RevidMap(object):
         self.cachedb.commit()
 
     def set_last_revnum_checked(self, scheme, revnum):
+        """Remember the latest revision number that has been checked
+        for a particular scheme.
+
+        :param scheme: Branching scheme name.
+        :param revnum: Revision number.
+        """
         self.cachedb.execute("replace into revids_seen (scheme, max_revnum) VALUES (?, ?)", (scheme, revnum))
 
     def last_revnum_checked(self, scheme):
+        """Retrieve the latest revision number that has been checked 
+        for revision ids for a particular branching scheme.
+
+        :param scheme: Branching scheme name.
+        :return: Last revision number checked or 0.
+        """
         ret = self.cachedb.execute(
             "select max_revnum from revids_seen where scheme = ?", (scheme,)).fetchone()
         if ret is None:
@@ -108,6 +127,12 @@ class RevidMap(object):
         return int(ret[0])
     
     def lookup_revid(self, revid):
+        """Lookup the details for a particular revision id.
+
+        :param revid: Revision id.
+        :return: Tuple with path inside repository, minimum revision number, maximum revision number and 
+            branching scheme.
+        """
         ret = self.cachedb.execute(
             "select path, min_revnum, max_revnum, scheme from revmap where revid='%s'" % revid).fetchone()
         if ret is None:

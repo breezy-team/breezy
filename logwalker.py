@@ -120,15 +120,13 @@ class LogWalker(object):
         self.db.commit()
 
     def follow_path(self, path, revnum):
-        """Return iterator over all the revisions between revnum and 
-        0 named path or inside path.
+        """Return iterator over all the revisions between revnum and 0 named path or inside path.
 
-        :param path:   Branch path to start reporting (in revnum)
-        :param revnum:        Start revision.
-
-        :return: An iterators that yields tuples with (path, paths, revnum)
-        where paths is a dictionary with all changes that happened in path 
-        in revnum.
+        :param path:    Branch path to start reporting (in revnum)
+        :param revnum:  Start revision.
+        :return: An iterator that yields tuples with (path, paths, revnum)
+            where paths is a dictionary with all changes that happened in path 
+            in revnum.
         """
         assert revnum >= 0
 
@@ -240,7 +238,11 @@ class LogWalker(object):
         return (self.db.execute("select 1 from changed_path where path='%s' and rev=%d" % (path, revnum)).fetchone() is not None)
 
     def find_children(self, path, revnum):
-        """Find all children of path in revnum."""
+        """Find all children of path in revnum.
+
+        :param path:  Path to check
+        :param revnum:  Revision to check
+        """
         path = path.strip("/")
         transport = self._get_transport()
         ft = transport.check_path(path, revnum)
