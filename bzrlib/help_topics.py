@@ -552,7 +552,8 @@ A typical config file might look something like::
 """
 
 _criss_cross = \
-"""
+"""Criss-Cross
+
 A criss-cross in the branch history can cause the default merge technique
 to emit more conflicts than would normally be expected.
 
@@ -599,8 +600,9 @@ topic_registry.register('status-flags', _status_flags,
                         "Help on status flags")
 def get_bugs_topic(topic):
     from bzrlib import bugtracker
-    return "Bug Trackers\n\n" + bugtracker.tracker_registry.help_topic(topic)
-topic_registry.register('bugs', get_bugs_topic, 'Bug tracker support')
+    return "Bug Tracker Settings\n\n" + \
+        bugtracker.tracker_registry.help_topic(topic)
+topic_registry.register('bugs', get_bugs_topic, 'Bug tracker settings')
 topic_registry.register('env-variables', _env_variables,
                         'Environment variable names and values')
 topic_registry.register('files', _files,

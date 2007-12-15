@@ -139,7 +139,7 @@ Bazaar User Reference
 :Version:   %(version)s
 :Generated: %(datestamp)s
 
-.. contents::
+.. contents:: :depth: 2
 
 -----
 

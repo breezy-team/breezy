@@ -895,6 +895,10 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository._check_for_inconsistent_revision_parents()
 
+    def _make_parents_provider(self):
+        self._ensure_real()
+        return self._real_repository._make_parents_provider()
+
 
 class RemoteBranchLockableFiles(LockableFiles):
     """A 'LockableFiles' implementation that talks to a smart server.
