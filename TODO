@@ -5,6 +5,7 @@ todo:
 - free memory! (#54253)
 - tests for setting svk:merge from .bzr checkout
 - tests for http-specific SvnRaTransport._request_path() code
+- tests for auth.py
 - more blackbox tests
  - svn-import without scheme specified should guess
  - bzr missing
