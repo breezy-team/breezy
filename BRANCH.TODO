@@ -17,6 +17,4 @@ of these revision properties is set.
 
 Needs more tests...:
 
- * 
-
 Make sure that bzr revprops set as bzr:* in svn properties don't get converted to svn:bzr: in bzr revprops.

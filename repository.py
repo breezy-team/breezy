@@ -353,7 +353,7 @@ class SvnRepository(Repository):
         return ListBranchingScheme(parse_list_scheme_text(text))
 
     def set_property_scheme(self, scheme):
-        def done(revision, date, author):
+        def done(revmetadata, pool):
             pass
         editor = self.transport.get_commit_editor(
                 {svn.core.SVN_PROP_REVISION_LOG: "Updating branching scheme for Bazaar."},
