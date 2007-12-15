@@ -75,7 +75,7 @@ tags:
 ifdef PRETTY
 rst2html := $(PYTHON) tools/rst2prettyhtml.py doc/bazaar-vcs.org.kid 
 else
-rst2html := $(PYTHON) tools/rst2html.py --link-stylesheet --footnote-references=superscript 
+rst2html := $(PYTHON) tools/rst2html.py --link-stylesheet --footnote-references=superscript --halt=warning
 endif
 
 # translate txt docs to html
