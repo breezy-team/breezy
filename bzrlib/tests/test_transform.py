@@ -1124,6 +1124,24 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertContainsRe(str(err),
             "^File exists: .+/foo")
 
+    def test_two_directories_clash_finalize(self):
+        def tt_helper():
+            wt = self.make_branch_and_tree('.')
+            tt = TreeTransform(wt)  # TreeTransform obtains write lock
+            try:
+                foo_1 = tt.new_directory('foo', tt.root)
+                tt.new_directory('bar', foo_1)
+                foo_2 = tt.new_directory('foo', tt.root)
+                tt.new_directory('baz', foo_2)
+                # Lie to tt that we've already resolved all conflicts.
+                tt.apply(no_conflicts=True)
+            except:
+                tt.finalize()
+                raise
+        err = self.assertRaises(errors.FileExists, tt_helper)
+        self.assertContainsRe(str(err),
+            "^File exists: .+/foo")
+
 
 class TransformGroup(object):
 
