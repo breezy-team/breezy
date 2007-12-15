@@ -19,7 +19,11 @@ https://launchpad.net/bugs/54253
 ==============================================================================
 I am unable to access a repository that requires user/password authentication.
 ==============================================================================
-bzr-svn doesn't support prompting for passwords yet, but it can 
+The Python bindings required for password prompting are only present in 
+version 1.5 of Subversion so password prompting is only possible if 
+you have that version installed.
+
+If you have an older version installed, bzr-svn can 
 use passwords cached by Subversion. Subversion can be forced to cache 
 the password by accessing the repository using the Subversion command-line 
 client. For example, try running 'svn info <url>'.

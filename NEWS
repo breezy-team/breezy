@@ -8,6 +8,14 @@ bzr-svn 0.4.6	UNRELEASED
 
    * Work around memory leak in the Python Subversion bindings of svn.ra.get_log(). 
 
+  FEATURES
+
+   * Support retrieving credentials from Bazaar rather than relying on Subversions' cache. (#120768)
+
+  BUG FIXES
+
+   * Improved compatibility with Subversion 1.5.
+
 bzr-svn 0.4.5	2007-12-01
 
   IMPROVEMENTS
