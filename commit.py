@@ -34,11 +34,12 @@ from repository import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS,
                         SVN_PROP_SVK_MERGE, SVN_PROP_BZR_REVISION_INFO, 
                         SVN_PROP_BZR_REVISION_ID, revision_id_to_svk_feature,
                         generate_revision_metadata, SvnRepositoryFormat, 
-                        SvnRepository,
+                        SvnRepository, MAPPING_VERSION,
                         SVN_REVPROP_BZR_COMMITTER, SVN_REVPROP_BZR_FILEIDS,
                         SVN_REVPROP_BZR_MERGE, SVN_REVPROP_BZR_REVISION_ID,
                         SVN_REVPROP_BZR_REVPROP_PREFIX, SVN_REVPROP_BZR_ROOT,
-                        SVN_REVPROP_BZR_TIMESTAMP, SVN_REVPROP_BZR_TIMEZONE)
+                        SVN_REVPROP_BZR_TIMESTAMP, SVN_REVPROP_BZR_TIMEZONE,
+                        SVN_REVPROP_BZR_MAPPING_VERSION)
 import urllib
 
 
@@ -104,7 +105,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             timestamp, timezone, committer, revprops)
         self._svnprops[SVN_PROP_BZR_FILEIDS] = ""
 
-        self._svn_revprops = {}
+        self._svn_revprops = {SVN_REVPROP_BZR_MAPPING_VERSION: str(MAPPING_VERSION)}
 
         if timestamp is not None:
             self._svn_revprops[SVN_REVPROP_BZR_TIMESTAMP] = str(timestamp)

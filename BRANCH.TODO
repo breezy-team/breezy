@@ -11,6 +11,7 @@ The following settings would be set on the revisions:
 * bzr:properties:branch-nick
 * bzr:properties:*
 * bzr:root
+* bzr:mapping-version
 
 bzr-svn should not be looking at any file properties set on the branch root if any 
 of these revision properties is set.
