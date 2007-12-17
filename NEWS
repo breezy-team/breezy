@@ -16,6 +16,9 @@ IN DEVELOPMENT
 
   FEATURES:
 
+   * New option to use custom template-based formats in  ``bzr version-info``.
+     (Lukáš Lalinský)
+
   IMPROVEMENTS:
 
    * ``bzr diff`` now works on branches without working trees. Tree-less
