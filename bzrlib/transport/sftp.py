@@ -395,6 +395,7 @@ class SFTPTransport(ConnectedTransport):
                     cur_offset_and_size = offset_stack.next()
                 else:
                     data_map[key] = data
+            cur_coalesced.ranges = new_ranges
 
             # Now that we've read some data, see if we can yield anything back
             while cur_offset_and_size in data_map:
@@ -408,13 +409,18 @@ class SFTPTransport(ConnectedTransport):
                     cur_coalesced = cur_coalesced_stack.next()
                 except StopIteration:
                     cur_coalesced = None
+                if buffered_data:
+                    # Why do we have buffered data left
+                    import pdb; pdb.set_trace()
+                buffered_data = ''
+                buffered_start = cur_coalesced.start
             elif buffered_end >= cur_coalesced.start + cur_coalesced.length:
                 raise AssertionError('Somehow we read too much data: %s > %s'
                     % (buffered_end, cur_coalesced.start + cur_coalesced.length))
 
         if cur_coalesced is not None:
             raise errors.ShortReadvError(relpath, cur_coalesced.start,
-                cur_coalesced.length, len(data))
+                cur_coalesced.length, len(buffered_data))
 
     def put_file(self, relpath, f, mode=None):
         """
