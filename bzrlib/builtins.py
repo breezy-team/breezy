@@ -1466,11 +1466,11 @@ class cmd_diff(Command):
                help='Set prefixes added to old and new filenames, as '
                     'two values separated by a colon. (eg "old/:new/").'),
         Option('old',
-            help='Branch/tree to compare from',
+            help='Branch/tree to compare from.',
             type=unicode,
             ),
         Option('new',
-            help='Branch/tree to compare to',
+            help='Branch/tree to compare to.',
             type=unicode,
             ),
         'revision',
