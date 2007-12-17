@@ -1023,7 +1023,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         sub_path = self.id2path(file_id)
         branch_transport = mkdirs(sub_path)
         if format is None:
-            format = bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
+            format = self.bzrdir.cloning_metadir()
+        if not format._repository_format.rich_root_data:
+            format = bzrdir.format_registry.make_bzrdir('rich-root')
         branch_transport.ensure_base()
         branch_bzrdir = format.initialize_on_transport(branch_transport)
         try:

@@ -17,7 +17,10 @@
 
 import os
 
-from bzrlib import bzrdir, tests
+from bzrlib import bzrdir, tests, workingtree
+from bzrlib.repofmt.knitrepo import RepositoryFormatKnit4
+from bzrlib.repofmt.pack_repo import RepositoryFormatKnitPack4
+
 
 
 class TestSplit(tests.TestCaseWithTransport):
@@ -38,3 +41,21 @@ class TestSplit(tests.TestCaseWithTransport):
         wt.add(['b', 'b/c', 'b/c/d'], ['b-id', 'c-id', 'd-id'])
         wt.commit('added files')
         self.run_bzr_error(('must upgrade your branch at .*a',), 'split a/b')
+
+    def split_formats(self, format, repo_format):
+        tree = self.make_branch_and_tree('rich-root', format=format)
+        self.build_tree(['rich-root/a/'])
+        tree.add('a')
+        self.run_bzr(['split', 'rich-root/a'])
+        subtree = workingtree.WorkingTree.open('rich-root/a')
+        self.assertIsInstance(subtree.branch.repository._format,
+                              repo_format)
+
+    def test_split_non_rich_root(self):
+        self.split_formats('dirstate-tags', RepositoryFormatKnit4)
+
+    def test_split_rich_root(self):
+        self.split_formats('rich-root', RepositoryFormatKnit4)
+
+    def test_split_rich_root_pack(self):
+        self.split_formats('rich-root-pack', RepositoryFormatKnitPack4)
