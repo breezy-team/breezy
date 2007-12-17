@@ -9,9 +9,20 @@ IN DEVELOPMENT
 
   CHANGES:
    
+   * The syntax ``bzr diff branch1 branch2`` is no longer supported.
+     Use ``bzr diff branch1 --new branch2`` instead. This change has
+     been made to remove the ambiguity where ``branch2`` is in fact a
+     specific file to diff within ``branch1``.
+
   FEATURES:
 
   IMPROVEMENTS:
+
+   * ``bzr diff`` now works on branches without working trees. Tree-less
+     branches can also be compared to each other and to working trees using
+     the new diff options ``--old`` and ``--new``. Diffing between branches,
+     with or without trees, now supports specific file filtering as well.
+     (Ian Clatworthy, #6700)
 
    * ``bzr pack`` now orders revision texts in topological order, with newest
      at the start of the file, promoting linear reads for ``bzr log`` and the
@@ -25,8 +36,6 @@ IN DEVELOPMENT
    * ``-l`` is now a short form for ``--limit`` in ``log``.  (Matt Nordhoff)
 
   BUGFIXES:
-
-   * Fix Makefile rules for doc generation. (Ian Clatworthy, #175207)
 
    * Transform failures no longer cause ImmortalLimbo errors (Aaron Bentley,
      #137681)
