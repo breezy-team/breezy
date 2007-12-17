@@ -27,7 +27,7 @@ class TestSplit(tests.TestCaseWithTransport):
 
     def test_split(self):
         self.build_tree(['a/', 'a/b/', 'a/b/c'])
-        wt = self.make_branch_and_tree('a')
+        wt = self.make_branch_and_tree('a', format='rich-root-pack')
         wt.add(['b', 'b/c'])
         wt.commit('rev1')
         self.run_bzr('split a/b')
@@ -58,9 +58,6 @@ class TestSplit(tests.TestCaseWithTransport):
         subtree = workingtree.WorkingTree.open('rich-root/a')
         self.assertIsInstance(subtree.branch.repository._format,
                               repo_format)
-
-    def test_split_non_rich_root(self):
-        self.split_formats('dirstate-tags', RepositoryFormatKnit4)
 
     def test_split_rich_root(self):
         self.split_formats('rich-root', RepositoryFormatKnit4)
