@@ -47,7 +47,9 @@ IN DEVELOPMENT
    * Reference material has now be moved out of the User Guide and added
      to the User Reference. The User Reference has gained 4 sections as
      a result: Authenication Settings, Configuration Settings, Conflicts
-     and Hooks. (Ian Clatworthy)
+     and Hooks. All help topics are now dumped into text format in the
+     doc/en/user-reference directory for those who like browsing that
+     information in their editor. (Ian Clatworthy)
 
   INTERNALS:
 
