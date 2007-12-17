@@ -23,7 +23,7 @@ IN DEVELOPMENT
    * ``reconfigure`` can now convert from repositories.  (Aaron Bentley)
 
    * ``split`` now supported, to enable splitting large trees into smaller
-     pieces.
+     pieces.  (Aaron Bentley)
 
   BUGFIXES:
 
