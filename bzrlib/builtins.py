@@ -3811,22 +3811,20 @@ class cmd_join(Command):
 
 
 class cmd_split(Command):
-    """Split a tree into two trees.
+    """Split a subdirectory of a tree into a separate tree.
 
-    This command is for experimental use only.  It requires the target tree
-    to be in dirstate-with-subtree format, which cannot be converted into
-    earlier formats.
+    This command will produce a target tree in a format that supports
+    rich roots, like 'rich-root' or 'rich-root-pack'.  These formats cannot be
+    converted into earlier formats like 'dirstate-tags'.
 
     The TREE argument should be a subdirectory of a working tree.  That
     subdirectory will be converted into an independent tree, with its own
     branch.  Commits in the top-level tree will not apply to the new subtree.
-    If you want that behavior, do "bzr join --reference TREE".
     """
 
-    _see_also = ['join']
+    # join is not un-hidden yet
+    #_see_also = ['join']
     takes_args = ['tree']
-
-    hidden = True
 
     def run(self, tree):
         containing_tree, subdir = WorkingTree.open_containing(tree)
@@ -3837,7 +3835,6 @@ class cmd_split(Command):
             containing_tree.extract(sub_id)
         except errors.RootNotRich:
             raise errors.UpgradeRequired(containing_tree.branch.base)
-
 
 
 class cmd_merge_directive(Command):
