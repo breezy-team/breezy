@@ -1406,6 +1406,7 @@ def recv_all(socket, bytes):
         b += new
     return b
 
+
 def dereference_path(path):
     """Determine the real path to a file.
 
@@ -1423,3 +1424,32 @@ def dereference_path(path):
 def supports_mapi():
     """Return True if we can use MAPI to launch a mail client."""
     return sys.platform == "win32"
+
+
+def resource_string(package, resource_name):
+    """Load a resource from a package and return it as a string.
+
+    Note: Only packages that start with bzrlib are currently supported.
+
+    This is designed to be a lightweight implementation of resource
+    loading in a way which is API compatible with the same API from
+    pkg_resources. See
+    http://peak.telecommunity.com/DevCenter/PkgResources#basic-resource-access.
+    If and when pkg_resources becomes a standard library, this routine
+    can delegate to it.
+    """
+    # Check package name is within bzrlib
+    if package == "bzrlib":
+        resource_relpath = resource_name
+    elif package.startswith("bzrlib."):
+        package = package[len("bzrlib."):].replace('.', os.sep)
+        resource_relpath = pathjoin(package, resource_name)
+    else:
+        raise errors.BzrError('resource package %s not in bzrlib' % package)
+
+    # Map the resource to a file and read its contents
+    base = dirname(bzrlib.__file__)
+    if getattr(sys, 'frozen', None):    # bzr.exe
+        base = abspath(pathjoin(base, '..', '..'))
+    filename = pathjoin(base, resource_relpath)
+    return open(filename, 'rU').read()
