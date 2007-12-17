@@ -32,10 +32,12 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import trace
 from bzrlib.bisect_multi import bisect_multi_bytes
+from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 """)
 from bzrlib import debug, errors
 
+_HEADER_READV = (0, 200)
 _OPTION_KEY_ELEMENTS = "key_elements="
 _OPTION_LEN = "len="
 _OPTION_NODE_REFS = "node_ref_lists="
@@ -555,8 +557,7 @@ class GraphIndex(object):
         For GraphIndex the estimate is exact.
         """
         if self._key_count is None:
-            # really this should just read the prefix
-            self._buffer_all()
+            self._read_and_parse([_HEADER_READV])
         return self._key_count
 
     def _lookup_keys_via_location(self, location_keys):
@@ -612,7 +613,7 @@ class GraphIndex(object):
                 readv_ranges.append((location, length))
         # read the header if needed
         if self._bisect_nodes is None:
-            readv_ranges.append((0, 200))
+            readv_ranges.append(_HEADER_READV)
         self._read_and_parse(readv_ranges)
         # generate results:
         #  - figure out <, >, missing, present
@@ -994,6 +995,35 @@ class CombinedGraphIndex(object):
                 self.__class__.__name__,
                 ', '.join(map(repr, self._indices)))
 
+    def get_parents(self, revision_ids):
+        """See StackedParentsProvider.get_parents.
+        
+        This implementation thunks the graph.Graph.get_parents api across to
+        GraphIndex.
+
+        :param revision_ids: An iterable of graph keys for this graph.
+        :return: A list of parent details for each key in revision_ids.
+            Each parent details will be one of:
+             * None when the key was missing
+             * (NULL_REVISION,) when the key has no parents.
+             * (parent_key, parent_key...) otherwise.
+        """
+        search_keys = set(revision_ids)
+        search_keys.discard(NULL_REVISION)
+        found_parents = {NULL_REVISION:[]}
+        for index, key, value, refs in self.iter_entries(search_keys):
+            parents = refs[0]
+            if not parents:
+                parents = (NULL_REVISION,)
+            found_parents[key] = parents
+        result = []
+        for key in revision_ids:
+            try:
+                result.append(found_parents[key])
+            except KeyError:
+                result.append(None)
+        return result
+
     def insert_index(self, pos, index):
         """Insert a new index in the list of indices to query.
 
@@ -1128,7 +1158,7 @@ class InMemoryGraphIndex(GraphIndexBuilder):
         """Iterate over keys within the index.
 
         :param keys: An iterable providing the keys to be retrieved.
-        :return: An iterable of (index, key, reference_lists, value). There is no
+        :return: An iterable of (index, key, value, reference_lists). There is no
             defined order for the result iteration - it will be in the most
             efficient order for the index (keys iteration order in this case).
         """
@@ -1312,7 +1342,7 @@ class GraphIndexPrefixAdapter(object):
         """Iterate over keys within the index.
 
         :param keys: An iterable providing the keys to be retrieved.
-        :return: An iterable of (key, reference_lists, value). There is no
+        :return: An iterable of (index, key, value, reference_lists). There is no
             defined order for the result iteration - it will be in the most
             efficient order for the index (keys iteration order in this case).
         """

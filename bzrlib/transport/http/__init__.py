@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -78,49 +78,6 @@ def extract_auth(url, password_manager):
     return url
 
 
-def _extract_headers(header_text, url):
-    """Extract the mapping for an rfc2822 header
-
-    This is a helper function for the test suite and for _pycurl.
-    (urllib already parses the headers for us)
-
-    In the case that there are multiple headers inside the file,
-    the last one is returned.
-
-    :param header_text: A string of header information.
-        This expects that the first line of a header will always be HTTP ...
-    :param url: The url we are parsing, so we can raise nice errors
-    :return: mimetools.Message object, which basically acts like a case 
-        insensitive dictionary.
-    """
-    first_header = True
-    remaining = header_text
-
-    if not remaining:
-        raise errors.InvalidHttpResponse(url, 'Empty headers')
-
-    while remaining:
-        header_file = StringIO(remaining)
-        first_line = header_file.readline()
-        if not first_line.startswith('HTTP'):
-            if first_header: # The first header *must* start with HTTP
-                raise errors.InvalidHttpResponse(url,
-                    'Opening header line did not start with HTTP: %s'
-                    % (first_line,))
-            else:
-                break # We are done parsing
-        first_header = False
-        m = mimetools.Message(header_file)
-
-        # mimetools.Message parses the first header up to a blank line
-        # So while there is remaining data, it probably means there is
-        # another header to be parsed.
-        # Get rid of any preceeding whitespace, which if it is all whitespace
-        # will get rid of everything.
-        remaining = header_file.read().lstrip()
-    return m
-
-
 class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
     """Base class for http implementations.
 
@@ -175,7 +132,12 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         :param relpath: The relative path to the file
         """
         code, response_file = self._get(relpath, None)
-        return response_file
+        # FIXME: some callers want an iterable... One step forward, three steps
+        # backwards :-/ And not only an iterable, but an iterable that can be
+        # seeked backwards, so we will never be able to do that.  One such
+        # known client is bzrlib.bundle.serializer.v4.get_bundle_reader. At the
+        # time of this writing it's even the only known client -- vila20071203
+        return StringIO(response_file.read())
 
     def _get(self, relpath, ranges, tail_amount=0):
         """Get a file, or part of a file.
@@ -208,34 +170,10 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
             self._range_hint = None
             mutter('Retry "%s" without ranges' % relpath)
         else:
-            # We tried all the tricks, but nothing worked. We re-raise original
-            # exception; the 'mutter' calls above will indicate that further
-            # tries were unsuccessful
+            # We tried all the tricks, but nothing worked. We re-raise the
+            # original exception; the 'mutter' calls above will indicate that
+            # further tries were unsuccessful
             raise exc_info[0], exc_info[1], exc_info[2]
-
-    def _get_ranges_hinted(self, relpath, ranges):
-        """Issue a ranged GET request taking server capabilities into account.
-
-        Depending of the errors returned by the server, we try several GET
-        requests, trying to minimize the data transferred.
-
-        :param relpath: Path relative to transport base URL
-        :param ranges: None to get the whole file;
-            or  a list of _CoalescedOffset to fetch parts of a file.
-        :returns: A file handle containing at least the requested ranges.
-        """
-        exc_info = None
-        try_again = True
-        while try_again:
-            try_again = False
-            try:
-                code, f = self._get(relpath, ranges)
-            except errors.InvalidRange, e:
-                if exc_info is None:
-                    exc_info = sys.exc_info()
-                self._degrade_range_hint(relpath, ranges, exc_info)
-                try_again = True
-        return f
 
     # _coalesce_offsets is a helper for readv, it try to combine ranges without
     # degrading readv performances. _bytes_to_read_before_seek is the value
@@ -250,7 +188,13 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
     _bytes_to_read_before_seek = 128
     # No limit on the offset number that get combined into one, we are trying
     # to avoid downloading the whole file.
-    _max_readv_combined = 0
+    _max_readv_combine = 0
+    # By default Apache has a limit of ~400 ranges before replying with a 400
+    # Bad Request. So we go underneath that amount to be safe.
+    _max_get_ranges = 200
+    # We impose no limit on the range size. But see _pycurl.py for a different
+    # use.
+    _get_max_size = 0
 
     def _readv(self, relpath, offsets):
         """Get parts of the file at the given relative path.
@@ -258,41 +202,120 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         :param offsets: A list of (offset, size) tuples.
         :param return: A list or generator of (offset, data) tuples
         """
-        sorted_offsets = sorted(list(offsets))
-        fudge = self._bytes_to_read_before_seek
-        coalesced = self._coalesce_offsets(sorted_offsets,
-                                           limit=self._max_readv_combine,
-                                           fudge_factor=fudge)
-        coalesced = list(coalesced)
-        mutter('http readv of %s  offsets => %s collapsed %s',
-                relpath, len(offsets), len(coalesced))
 
-        f = self._get_ranges_hinted(relpath, coalesced)
-        for start, size in offsets:
-            try_again = True
-            while try_again:
-                try_again = False
-                f.seek(start, ((start < 0) and 2) or 0)
-                start = f.tell()
-                try:
-                    data = f.read(size)
-                    if len(data) != size:
-                        raise errors.ShortReadvError(relpath, start, size,
-                                                     actual=len(data))
-                except errors.ShortReadvError, e:
-                    self._degrade_range_hint(relpath, coalesced, sys.exc_info())
+        # offsets may be a generator, we will iterate it several times, so
+        # build a list
+        offsets = list(offsets)
 
-                    # Since the offsets and the ranges may not be in the same
-                    # order, we don't try to calculate a restricted single
-                    # range encompassing unprocessed offsets.
+        try_again = True
+        while try_again:
+            try_again = False
 
-                    # Note: we replace 'f' here, it may need cleaning one day
-                    # before being thrown that way.
-                    f = self._get_ranges_hinted(relpath, coalesced)
-                    try_again = True
+            # Coalesce the offsets to minimize the GET requests issued
+            sorted_offsets = sorted(offsets)
+            coalesced = self._coalesce_offsets(
+                sorted_offsets, limit=self._max_readv_combine,
+                fudge_factor=self._bytes_to_read_before_seek,
+                max_size=self._get_max_size)
 
-            # After one or more tries, we get the data.
-            yield start, data
+            # Turn it into a list, we will iterate it several times
+            coalesced = list(coalesced)
+            mutter('http readv of %s  offsets => %s collapsed %s',
+                    relpath, len(offsets), len(coalesced))
+
+            # Cache the data read, but only until it's been used
+            data_map = {}
+            # We will iterate on the data received from the GET requests and
+            # serve the corresponding offsets respecting the initial order. We
+            # need an offset iterator for that.
+            iter_offsets = iter(offsets)
+            cur_offset_and_size = iter_offsets.next()
+
+            try:
+                for cur_coal, rfile in self._coalesce_readv(relpath, coalesced):
+                    # Split the received chunk
+                    for offset, size in cur_coal.ranges:
+                        start = cur_coal.start + offset
+                        rfile.seek(start, 0)
+                        data = rfile.read(size)
+                        data_len = len(data)
+                        if data_len != size:
+                            raise errors.ShortReadvError(relpath, start, size,
+                                                         actual=data_len)
+                        if (start, size) == cur_offset_and_size:
+                            # The offset requested are sorted as the coalesced
+                            # ones, no need to cache. Win !
+                            yield cur_offset_and_size[0], data
+                            cur_offset_and_size = iter_offsets.next()
+                        else:
+                            # Different sorting. We need to cache.
+                            data_map[(start, size)] = data
+
+                    # Yield everything we can
+                    while cur_offset_and_size in data_map:
+                        # Clean the cached data since we use it
+                        # XXX: will break if offsets contains duplicates --
+                        # vila20071129
+                        this_data = data_map.pop(cur_offset_and_size)
+                        yield cur_offset_and_size[0], this_data
+                        cur_offset_and_size = iter_offsets.next()
+
+            except (errors.ShortReadvError, errors.InvalidRange,
+                    errors.InvalidHttpRange), e:
+                self._degrade_range_hint(relpath, coalesced, sys.exc_info())
+                # Some offsets may have been already processed, so we retry
+                # only the unsuccessful ones.
+                offsets = [cur_offset_and_size] + [o for o in iter_offsets]
+                try_again = True
+
+    def _coalesce_readv(self, relpath, coalesced):
+        """Issue several GET requests to satisfy the coalesced offsets"""
+
+        def get_and_yield(relpath, coalesced):
+            if coalesced:
+                # Note that the _get below may raise
+                # errors.InvalidHttpRange. It's the caller's responsibility to
+                # decide how to retry since it may provide different coalesced
+                # offsets.
+                code, rfile = self._get(relpath, coalesced)
+                for coal in coalesced:
+                    yield coal, rfile
+
+        if self._range_hint is None:
+            # Download whole file
+            for c, rfile in get_and_yield(relpath, coalesced):
+                yield c, rfile
+        else:
+            total = len(coalesced)
+            if self._range_hint == 'multi':
+                max_ranges = self._max_get_ranges
+            elif self._range_hint == 'single':
+                max_ranges = total
+            else:
+                raise AssertionError("Unknown _range_hint %r"
+                                     % (self._range_hint,))
+            # TODO: Some web servers may ignore the range requests and return
+            # the whole file, we may want to detect that and avoid further
+            # requests.
+            # Hint: test_readv_multiple_get_requests will fail once we do that
+            cumul = 0
+            ranges = []
+            for coal in coalesced:
+                if ((self._get_max_size > 0
+                     and cumul + coal.length > self._get_max_size)
+                    or len(ranges) >= max_ranges):
+                    # Get that much and yield
+                    for c, rfile in get_and_yield(relpath, ranges):
+                        yield c, rfile
+                    # Restart with the current offset
+                    ranges = [coal]
+                    cumul = coal.length
+                else:
+                    ranges.append(coal)
+                    cumul += coal.length
+            # Get the rest and yield
+            for c, rfile in get_and_yield(relpath, ranges):
+                yield c, rfile
 
     def recommended_page_size(self):
         """See Transport.recommended_page_size().
@@ -301,34 +324,6 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         introduced by latency.
         """
         return 64 * 1024
-
-    @staticmethod
-    @deprecated_method(zero_seventeen)
-    def offsets_to_ranges(offsets):
-        """Turn a list of offsets and sizes into a list of byte ranges.
-
-        :param offsets: A list of tuples of (start, size).  An empty list
-            is not accepted.
-        :return: a list of inclusive byte ranges (start, end) 
-            Adjacent ranges will be combined.
-        """
-        # Make sure we process sorted offsets
-        offsets = sorted(offsets)
-
-        prev_end = None
-        combined = []
-
-        for start, size in offsets:
-            end = start + size - 1
-            if prev_end is None:
-                combined.append([start, end])
-            elif start <= prev_end + 1:
-                combined[-1][1] = end
-            else:
-                combined.append([start, end])
-            prev_end = end
-
-        return combined
 
     def _post(self, body_bytes):
         """POST body_bytes to .bzr/smart on this transport.
@@ -444,10 +439,14 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
             return self.__class__(self.abspath(offset), self)
 
     def _attempted_range_header(self, offsets, tail_amount):
-        """Prepare a HTTP Range header at a level the server should accept"""
+        """Prepare a HTTP Range header at a level the server should accept.
+
+        :return: the range header representing offsets/tail_amount or None if
+            no header can be built.
+        """
 
         if self._range_hint == 'multi':
-            # Nothing to do here
+            # Generate the header describing all offsets
             return self._range_header(offsets, tail_amount)
         elif self._range_hint == 'single':
             # Combine all the requested ranges into a single

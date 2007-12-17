@@ -158,7 +158,50 @@ class TestInterRepository(TestCaseWithInterRepository):
         # makes a target version repo 
         repo_b = self.make_to_repository('b')
         check_push_rev1(repo_b)
-        
+
+    def test_fetch_missing_basis_text(self):
+        """If fetching a delta, we should die if a basis is not present."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a'])
+        tree.add(['a'], ['a-id'])
+        tree.commit('one', rev_id='rev-one')
+        self.build_tree_contents([('tree/a', 'new contents\n')])
+        tree.commit('two', rev_id='rev-two')
+
+        to_repo = self.make_to_repository('to_repo')
+        # We build a broken revision so that we can test the fetch code dies
+        # properly. So copy the inventory and revision, but not the text.
+        to_repo.lock_write()
+        try:
+            to_repo.start_write_group()
+            inv = tree.branch.repository.get_inventory('rev-one')
+            to_repo.add_inventory('rev-one', inv, [])
+            rev = tree.branch.repository.get_revision('rev-one')
+            to_repo.add_revision('rev-one', rev, inv=inv)
+            to_repo.commit_write_group()
+        finally:
+            to_repo.unlock()
+
+        # Implementations can either copy the missing basis text, or raise an
+        # exception
+        try:
+            to_repo.fetch(tree.branch.repository, 'rev-two')
+        except errors.RevisionNotPresent, e:
+            # If an exception is raised, the revision should not be in the
+            # target.
+            self.assertRaises((errors.NoSuchRevision, errors.RevisionNotPresent),
+                              to_repo.revision_tree, 'rev-two')
+        else:
+            # If not exception is raised, then the basis text should be
+            # available.
+            to_repo.lock_read()
+            try:
+                rt = to_repo.revision_tree('rev-one')
+                self.assertEqual('contents of tree/a\n',
+                                 rt.get_file_text('a-id'))
+            finally:
+                to_repo.unlock()
+
     def test_fetch_missing_revision_same_location_fails(self):
         repo_a = self.make_repository('.')
         repo_b = repository.Repository.open('.')
@@ -275,6 +318,20 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         self.assertEqual(['rev2'],
                          repo_b.missing_revision_ids(repo_a))
 
+    def test_missing_revision_ids_absent_requested_raises(self):
+        # Asking for missing revisions with a tip that is itself absent in the
+        # source raises NoSuchRevision.
+        repo_b = self.make_to_repository('target')
+        repo_a = self.bzrdir.open_repository()
+        # No pizza revisions anywhere
+        self.assertFalse(repo_a.has_revision('pizza'))
+        self.assertFalse(repo_b.has_revision('pizza'))
+        # Asking specifically for an absent revision errors.
+        self.assertRaises(NoSuchRevision, repo_b.missing_revision_ids, repo_a,
+            revision_id='pizza', find_ghosts=True)
+        self.assertRaises(NoSuchRevision, repo_b.missing_revision_ids, repo_a,
+            revision_id='pizza', find_ghosts=False)
+
     def test_missing_revision_ids_revision_limited(self):
         # revision ids in repository A that are not referenced by the
         # requested revision are not returned.
@@ -368,6 +425,10 @@ class TestFetchDependentData(TestCaseWithInterRepository):
         to_repo.fetch(from_tree.branch.repository, tree_rev)
         # to_repo should have a file_graph for from_tree.path2id('subtree') and
         # revid tree_rev.
-        file_vf = to_repo.weave_store.get_weave(
-            from_tree.path2id('subtree'), to_repo.get_transaction())
-        self.assertEqual([tree_rev], file_vf.get_ancestry([tree_rev]))
+        to_repo.lock_read()
+        try:
+            file_vf = to_repo.weave_store.get_weave(
+                from_tree.path2id('subtree'), to_repo.get_transaction())
+            self.assertEqual([tree_rev], file_vf.get_ancestry([tree_rev]))
+        finally:
+            to_repo.unlock()

@@ -420,15 +420,16 @@ class VersionedFile(object):
             version_ids,
             ignore_missing)
 
-    def iter_lines_added_or_present_in_versions(self, version_ids=None, 
+    def iter_lines_added_or_present_in_versions(self, version_ids=None,
                                                 pb=None):
         """Iterate over the lines in the versioned file from version_ids.
 
-        This may return lines from other versions, and does not return the
-        specific version marker at this point. The api may be changed
-        during development to include the version that the versioned file
-        thinks is relevant, but given that such hints are just guesses,
-        its better not to have it if we don't need it.
+        This may return lines from other versions. Each item the returned
+        iterator yields is a tuple of a line and a text version that that line
+        is present in (not introduced in).
+
+        Ordering of results is in whatever order is most suitable for the
+        underlying storage format.
 
         If a progress bar is supplied, it may be used to indicate progress.
         The caller is responsible for cleaning up progress bars (because this
@@ -436,6 +437,8 @@ class VersionedFile(object):
 
         NOTES: Lines are normalised: they will all have \n terminators.
                Lines are returned in arbitrary order.
+
+        :return: An iterator over (line, version_id).
         """
         raise NotImplementedError(self.iter_lines_added_or_present_in_versions)
 
@@ -487,6 +490,105 @@ class VersionedFile(object):
     def weave_merge(self, plan, a_marker=TextMerge.A_MARKER,
                     b_marker=TextMerge.B_MARKER):
         return PlanWeaveMerge(plan, a_marker, b_marker).merge_lines()[0]
+
+
+class _PlanMergeVersionedFile(object):
+    """A VersionedFile for uncommitted and committed texts.
+
+    It is intended to allow merges to be planned with working tree texts.
+    It implements only the small part of the VersionedFile interface used by
+    PlanMerge.  It falls back to multiple versionedfiles for data not stored in
+    _PlanMergeVersionedFile itself.
+    """
+
+    def __init__(self, file_id, fallback_versionedfiles=None):
+        """Constuctor
+
+        :param file_id: Used when raising exceptions.
+        :param fallback_versionedfiles: If supplied, the set of fallbacks to
+            use.  Otherwise, _PlanMergeVersionedFile.fallback_versionedfiles
+            can be appended to later.
+        """
+        self._file_id = file_id
+        if fallback_versionedfiles is None:
+            self.fallback_versionedfiles = []
+        else:
+            self.fallback_versionedfiles = fallback_versionedfiles
+        self._parents = {}
+        self._lines = {}
+
+    def plan_merge(self, ver_a, ver_b):
+        """See VersionedFile.plan_merge"""
+        from merge import _PlanMerge
+        return _PlanMerge(ver_a, ver_b, self).plan_merge()
+
+    def add_lines(self, version_id, parents, lines):
+        """See VersionedFile.add_lines
+
+        Lines are added locally, not fallback versionedfiles.  Also, ghosts are
+        permitted.  Only reserved ids are permitted.
+        """
+        if not revision.is_reserved_id(version_id):
+            raise ValueError('Only reserved ids may be used')
+        if parents is None:
+            raise ValueError('Parents may not be None')
+        if lines is None:
+            raise ValueError('Lines may not be None')
+        self._parents[version_id] = parents
+        self._lines[version_id] = lines
+
+    def get_lines(self, version_id):
+        """See VersionedFile.get_ancestry"""
+        lines = self._lines.get(version_id)
+        if lines is not None:
+            return lines
+        for versionedfile in self.fallback_versionedfiles:
+            try:
+                return versionedfile.get_lines(version_id)
+            except errors.RevisionNotPresent:
+                continue
+        else:
+            raise errors.RevisionNotPresent(version_id, self._file_id)
+
+    def get_ancestry(self, version_id, topo_sorted=False):
+        """See VersionedFile.get_ancestry.
+
+        Note that this implementation assumes that if a VersionedFile can
+        answer get_ancestry at all, it can give an authoritative answer.  In
+        fact, ghosts can invalidate this assumption.  But it's good enough
+        99% of the time, and far cheaper/simpler.
+
+        Also note that the results of this version are never topologically
+        sorted, and are a set.
+        """
+        if topo_sorted:
+            raise ValueError('This implementation does not provide sorting')
+        parents = self._parents.get(version_id)
+        if parents is None:
+            for vf in self.fallback_versionedfiles:
+                try:
+                    return vf.get_ancestry(version_id, topo_sorted=False)
+                except errors.RevisionNotPresent:
+                    continue
+            else:
+                raise errors.RevisionNotPresent(version_id, self._file_id)
+        ancestry = set([version_id])
+        for parent in parents:
+            ancestry.update(self.get_ancestry(parent, topo_sorted=False))
+        return ancestry
+
+    def get_parents(self, version_id):
+        """See VersionedFile.get_parents"""
+        parents = self._parents.get(version_id)
+        if parents is not None:
+            return parents
+        for versionedfile in self.fallback_versionedfiles:
+            try:
+                return versionedfile.get_parents(version_id)
+            except errors.RevisionNotPresent:
+                continue
+        else:
+            raise errors.RevisionNotPresent(version_id, self._file_id)
 
 
 class PlanWeaveMerge(TextMerge):

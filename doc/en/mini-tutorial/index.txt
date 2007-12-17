@@ -34,7 +34,7 @@ and Installation_ pages.
 .. _installation instructions: http://bazaar-vcs.org/WindowsDownloads
 .. _install using MacPorts: http://bazaar-vcs.org/MacPorts
 .. _Downloads: http://bazaar-vcs.org/Download
-.. _Installation: http://bazaar-vcs.org/InstallationFAQ
+.. _Installation: http://bazaar-vcs.org/InstallationFaq
 
 
 Introducing yourself
@@ -103,7 +103,7 @@ for the ``.bzr`` sub-directory.
 Making changes to your files
 ============================
 
-Let's change a file and commit those changes to your branch.
+Let's change a file and commit that change to your branch.
 
 Edit ``test1.txt`` in your favourite editor, then check what have you done::
 
@@ -116,7 +116,7 @@ Edit ``test1.txt`` in your favourite editor, then check what have you done::
 
 Commit your work to the Bazaar branch::
 
-  $ bzr commit -m 'Added first line of text'
+  $ bzr commit -m "Added first line of text"
   Committed revision 2.
 
 
@@ -162,13 +162,13 @@ Let's assume you want to publish your branch at ``www.example.com/myproject``::
 Bazaar will create a ``myproject`` directory on the remote server and
 push your branch to it.
  
-**Note:** to use sftp, you may need to install ``paramiko`` and
-``pyCrypto``. See http://bazaar-vcs.org/InstallationFaq for details.
-
 Now anyone can create their own copy of your branch by typing::
 
  $ bzr branch http://www.example.com/myproject
  
+**Note:** to use sftp, you may need to install ``paramiko`` and
+``pyCrypto``. See http://bazaar-vcs.org/InstallationFaq for details.
+
 
 Publishing your branch with Launchpad
 =====================================
@@ -235,7 +235,7 @@ Check what has changed::
 If you're happy with the changes, you can commit them to your personal
 branch::
 
-  $ bzr commit -m 'Merge from main branch'
+  $ bzr commit -m "Merge from main branch"
   Committed revision 295.
 
 
@@ -263,7 +263,8 @@ they choose, can use it merge your work back into the parent branch.
 Learning more
 =============
 
-You can find out more about Bazaar in the `Bazaar user guide <../../index.html>`_.
+You can find out more about Bazaar in the
+`Bazaar User Guide <../user-guide/index.html>`_.
 
 To learn about Bazaar on the command-line::
 

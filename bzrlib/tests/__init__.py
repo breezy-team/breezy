@@ -42,8 +42,9 @@ import stat
 from subprocess import Popen, PIPE
 import sys
 import tempfile
-import unittest
 import time
+import trace
+import unittest
 import warnings
 
 
@@ -94,6 +95,7 @@ from bzrlib.tests.TestUtil import (
                           TestSuite,
                           TestLoader,
                           )
+from bzrlib.tests.EncodingAdapter import EncodingTestAdapter
 from bzrlib.tests.treeshape import build_tree_contents
 import bzrlib.version_info_formats.format_custom
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
@@ -2047,6 +2049,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
 
         This doesn't add anything to a branch.
 
+        :type shape:    list or tuple.
         :param line_endings: Either 'binary' or 'native'
             in binary mode, exact contents are written in native mode, the
             line endings match the default platform endings.
@@ -2054,6 +2057,9 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
             If the transport is readonly or None, "." is opened automatically.
         :return: None
         """
+        if type(shape) not in (list, tuple):
+            raise AssertionError("Parameter 'shape' should be "
+                "a list or a tuple. Got %r instead" % (shape,))
         # It's OK to just create them using forward slashes on windows.
         if transport is None or transport.is_readonly():
             transport = get_transport(".")
@@ -2283,6 +2289,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
               random_seed=None,
               exclude_pattern=None,
               strict=False,
+              coverage_dir=None,
               ):
     TestCase._gather_lsprof_in_benchmarks = lsprof_timed
     if verbose:
@@ -2320,7 +2327,18 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
         else:
             suite = filter_suite_by_re(suite, pattern, exclude_pattern,
                 random_order)
+
+    if coverage_dir is not None:
+        tracer = trace.Trace(count=1, trace=0)
+        sys.settrace(tracer.globaltrace)
+
     result = runner.run(suite)
+
+    if coverage_dir is not None:
+        sys.settrace(None)
+        results = tracer.results()
+        results.write_results(show_missing=1, summary=False,
+                              coverdir=coverage_dir)
 
     if strict:
         return result.wasStrictlySuccessful()
@@ -2338,6 +2356,7 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              random_seed=None,
              exclude_pattern=None,
              strict=False,
+             coverage_dir=None,
              ):
     """Run the whole test suite under the enhanced runner"""
     # XXX: Very ugly way to do this...
@@ -2365,7 +2384,8 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
                      list_only=list_only,
                      random_seed=random_seed,
                      exclude_pattern=exclude_pattern,
-                     strict=strict)
+                     strict=strict,
+                     coverage_dir=coverage_dir)
     finally:
         default_transport = old_transport
 
@@ -2431,6 +2451,7 @@ def test_suite():
                    'bzrlib.tests.test_lockable_files',
                    'bzrlib.tests.test_log',
                    'bzrlib.tests.test_lsprof',
+                   'bzrlib.tests.test_lru_cache',
                    'bzrlib.tests.test_mail_client',
                    'bzrlib.tests.test_memorytree',
                    'bzrlib.tests.test_merge',
@@ -2474,6 +2495,7 @@ def test_suite():
                    'bzrlib.tests.test_store',
                    'bzrlib.tests.test_strace',
                    'bzrlib.tests.test_subsume',
+                   'bzrlib.tests.test_switch',
                    'bzrlib.tests.test_symbol_versioning',
                    'bzrlib.tests.test_tag',
                    'bzrlib.tests.test_testament',
@@ -2512,6 +2534,10 @@ def test_suite():
     from bzrlib.tests.test_transport_implementations import TransportTestProviderAdapter
     adapter = TransportTestProviderAdapter()
     adapt_modules(test_transport_implementations, adapter, loader, suite)
+    adapt_tests(
+        ["bzrlib.tests.test_msgeditor.MsgEditorTest."
+         "test__create_temp_file_with_commit_template_in_unicode_dir"],
+        EncodingTestAdapter(), loader, suite)
     for package in packages_to_test():
         suite.addTest(package.test_suite())
     for m in MODULES_TO_TEST:
@@ -2601,6 +2627,12 @@ def adapt_modules(mods_list, adapter, loader, suite):
     """Adapt the modules in mods_list using adapter and add to suite."""
     for test in iter_suite_tests(loader.loadTestsFromModuleNames(mods_list)):
         suite.addTests(adapter.adapt(test))
+
+
+def adapt_tests(tests_list, adapter, loader, suite):
+    """Adapt the tests in tests_list using adapter and add to suite."""
+    for test in tests_list:
+        suite.addTests(adapter.adapt(loader.loadTestsFromName(test)))
 
 
 def _rmtree_temp_dir(dirname):
@@ -2756,3 +2788,29 @@ class _FTPServerFeature(Feature):
         return 'FTPServer'
 
 FTPServerFeature = _FTPServerFeature()
+
+
+class _CaseInsensitiveFilesystemFeature(Feature):
+    """Check if underlined filesystem is case-insensitive
+    (e.g. on Windows, Cygwin, MacOS)
+    """
+
+    def _probe(self):
+        if TestCaseWithMemoryTransport.TEST_ROOT is None:
+            root = osutils.mkdtemp(prefix='testbzr-', suffix='.tmp')
+            TestCaseWithMemoryTransport.TEST_ROOT = root
+        else:
+            root = TestCaseWithMemoryTransport.TEST_ROOT
+        tdir = osutils.mkdtemp(prefix='case-sensitive-probe-', suffix='',
+            dir=root)
+        name_a = osutils.pathjoin(tdir, 'a')
+        name_A = osutils.pathjoin(tdir, 'A')
+        os.mkdir(name_a)
+        result = osutils.isdir(name_A)
+        _rmtree_temp_dir(tdir)
+        return result
+
+    def feature_name(self):
+        return 'case-insensitive filesystem'
+
+CaseInsensitiveFilesystemFeature = _CaseInsensitiveFilesystemFeature()

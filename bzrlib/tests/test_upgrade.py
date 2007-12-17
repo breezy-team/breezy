@@ -67,9 +67,17 @@ class TestUpgrade(TestCaseWithTransport):
             'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
         rt = b.repository.revision_tree(rh[0])
         foo_id = 'foo-20051004035605-91e788d1875603ae'
-        eq(rt.get_file_text(foo_id), 'initial contents\n')
+        rt.lock_read()
+        try:
+            eq(rt.get_file_text(foo_id), 'initial contents\n')
+        finally:
+            rt.unlock()
         rt = b.repository.revision_tree(rh[1])
-        eq(rt.get_file_text(foo_id), 'new contents\n')
+        rt.lock_read()
+        try:
+            eq(rt.get_file_text(foo_id), 'new contents\n')
+        finally:
+            rt.unlock()
         # check a backup was made:
         transport = get_transport(b.base)
         transport.stat('.bzr.backup')
@@ -125,11 +133,13 @@ class TestUpgrade(TestCaseWithTransport):
         self.assertNotEqual(old_repo_format.__class__, repo._format.__class__)
         # and we should be able to read the names for the file id 
         # 'dir-20051005095101-da1441ea3fa6917a'
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
         self.assertNotEqual(
             [],
             repo.weave_store.get_weave(
                 'dir-20051005095101-da1441ea3fa6917a',
-                repo.get_transaction()))
+                repo.get_transaction()).versions())
 
     def test_upgrade_to_meta_sets_workingtree_last_revision(self):
         self.build_tree_contents(_upgrade_dir_template)
