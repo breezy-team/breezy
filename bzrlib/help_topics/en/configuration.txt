@@ -1,11 +1,11 @@
-Configuration reference
+Configuration Settings
 =======================
 
 .. TODO: Should have some explanation of why you'd want things in
 .. branch.conf.
 
 
-Environment variables
+Environment settings
 ---------------------
 
 While most configuration is handled by configuration files, some options
@@ -222,7 +222,7 @@ The syntax of the file obeys the same rules as the others except for the
 variable policies which don't apply.
 
 For more information on the possible uses of the authentication configuration
-file see `Configuring authentication`_.
+file see `Authentication Settings`_.
 
 
 Common variable options
