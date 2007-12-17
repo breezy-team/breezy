@@ -2446,3 +2446,10 @@ class UncommittedChanges(BzrError):
         display_url = urlutils.unescape_for_display(
             tree.bzrdir.root_transport.base, 'ascii')
         BzrError.__init__(self, tree=tree, display_url=display_url)
+
+class MissingTemplateVariable(BzrError):
+
+    _fmt = 'Variable {%(name)s} is not available.'
+
+    def __init__(self, name):
+        self.name = name
