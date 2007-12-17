@@ -47,7 +47,7 @@ def infogen(options, outfile):
              "timestamp": time.strftime("%Y-%m-%d %H:%M:%S +0000",tt),
              "version": bzrlib.__version__,
              }
-    nominated_filename = options.filename
+    nominated_filename = getattr(options, 'filename', None)
     if nominated_filename is None:
         topic_dir = None
     else:
