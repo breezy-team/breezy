@@ -1024,18 +1024,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         branch_transport = mkdirs(sub_path)
         if format is None:
             format = self.bzrdir.cloning_metadir()
-        if not format._repository_format.rich_root_data:
-            format = bzrdir.format_registry.make_bzrdir('rich-root')
         branch_transport.ensure_base()
         branch_bzrdir = format.initialize_on_transport(branch_transport)
         try:
             repo = branch_bzrdir.find_repository()
         except errors.NoRepositoryPresent:
             repo = branch_bzrdir.create_repository()
-            assert repo.supports_rich_root()
-        else:
-            if not repo.supports_rich_root():
-                raise errors.RootNotRich()
+        if not repo.supports_rich_root():
+            raise errors.RootNotRich()
         new_branch = branch_bzrdir.create_branch()
         new_branch.pull(self.branch)
         for parent_id in self.get_parent_ids():
