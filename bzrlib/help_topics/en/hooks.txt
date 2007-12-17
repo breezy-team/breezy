@@ -85,6 +85,6 @@ and uncommit can all modify the revision history).
 The hook signature is (branch, revision_history), and the branch will be
 write-locked.
 
-See also `Using Hooks`_ in the User Guide.
+See also `Using hooks`_ in the User Guide.
 
 .. _Using hooks: ../user-guide/index.html#using-hooks
