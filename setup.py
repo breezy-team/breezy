@@ -237,7 +237,7 @@ if 'bdist_wininst' in sys.argv:
         for root, dirs, files in os.walk('doc'):
             r = []
             for f in files:
-                if os.path.splitext(f)[1] in ('.html', '.css'):
+                if os.path.splitext(f)[1] in ('.html','.css','.png','.pdf'):
                     r.append(os.path.join(root, f))
             if r:
                 relative = root[4:]

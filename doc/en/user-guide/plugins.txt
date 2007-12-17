@@ -34,11 +34,11 @@ How to install a plugin
 -----------------------
 
 Installing a plugin is very easy! If not already created, create a
-``plugins`` directory under your Bazaar configuration directory
-($BZR_HOME), i.e. ``~/.bazaar/`` on Linux and
+``plugins`` directory under your Bazaar configuration directory,
+``~/.bazaar/`` on Linux and
 ``C:\Documents and Settings\<username>\Application Data\Bazaar\2.0\``
-on Windows. Within this directory, each plugin is placed in its own
-subdirectory.
+on Windows. Within this directory (referred to as $BZR_HOME below),
+each plugin is placed in its own subdirectory.
 
 Plugins work particularly well with Bazaar branches. For example, to
 install the bzrtools plugins for your main user account on Linux,
@@ -47,11 +47,11 @@ one can perform the following::
     bzr branch http://panoramicfeedback.com/opensource/bzr/bzrtools
     ~/.bazaar/plugins/bzrtools
 
-When installing plugins the directories that you install them in must
+When installing plugins, the directories that you install them in must
 be valid python identifiers. This means that they can only contain
 certain characters, notably they cannot contain hyphens (``-``). Rather
-than installing ``bzr-gtk`` to ``~/.bazaar/plugins/bzr-gtk``, install it
-to ``~/.bazaar/plugins/gtk``.
+than installing ``bzr-gtk`` to ``$BZR_HOME/plugins/bzr-gtk``, install it
+to ``$BZR_HOME/plugins/gtk``.
 
 Alternative plugin locations
 ----------------------------

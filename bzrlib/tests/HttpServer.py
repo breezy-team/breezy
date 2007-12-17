@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -142,7 +142,8 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
                                                                   file_size))
             self.end_headers()
             self.send_range_content(file, start, end - start + 1)
-            self.wfile.write("--%s\r\n" % boundary)
+        # Final boundary
+        self.wfile.write("--%s\r\n" % boundary)
 
     def do_GET(self):
         """Serve a GET request.
