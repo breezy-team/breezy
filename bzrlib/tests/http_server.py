@@ -23,6 +23,7 @@ import random
 import re
 import SimpleHTTPServer
 import socket
+import SocketServer
 import sys
 import threading
 import time
@@ -268,26 +269,77 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             return path
 
 
-class TestingHTTPServer(BaseHTTPServer.HTTPServer):
+class TestingHTTPServerWrapper(object):
+    """Isolate the wrapper itself to make the server use transparent.
 
-    def __init__(self, server_address, request_handler_class,
-                 test_case_server):
-        BaseHTTPServer.HTTPServer.__init__(self, server_address,
-                                           request_handler_class)
+    Daughter classes can override any method and/or directly call the _server
+    methods.
+    """
+
+    def __init__(self, server_class, test_case_server,
+                 server_address, request_handler_class):
+        self._server = server_class(server_address, request_handler_class)
         # test_case_server can be used to communicate between the
         # tests and the server (or the request handler and the
         # server), allowing dynamic behaviors to be defined from
         # the tests cases.
-        self.test_case_server = test_case_server
+        self._server.test_case_server = test_case_server
+
+    def __getattr__(self, name):
+        return getattr(self._server, name)
+
+    def server_bind(self):
+        """Override server_bind to store the server name."""
+        self._server.server_bind()
+        host, port = self._server.socket.getsockname()[:2]
+        self._server.server_name = socket.getfqdn(host)
+        self._server.server_port = port
 
     def server_close(self):
-        """Called to clean-up the server.
+         """Called to clean-up the server.
+ 
+         Since the server may be (surely is, even) in a blocking listen, we
+         shutdown its socket before closing it.
+         """
+         # Note that is this executed as part of the implicit tear down in the
+         # main thread while the server runs in its own thread. The clean way
+         # to tear down the server will be to instruct him to stop accepting
+         # connections and wait for the current connection to end naturally. To
+         # end the connection naturally, the http transports should close their
+         # socket when they do not need to talk to the server anymore.  We
+         # don't want to impose such a constraint on the http transports (and
+         # we can't anyway ;). So we must tear down here, from the main thread,
+         # when the test have ended.  Note that since the server is in a
+         # blocking operation and since python use select internally, shutting
+         # down the socket is reliable and relatively clean.
+         self._server.socket.shutdown(socket.SHUT_RDWR)
+         # Let the server properly close the socket
+         self._server.server_close()
 
-        Since the server may be in a blocking read, we shutdown the socket
-        before closing it.
-        """
-        self.socket.shutdown(socket.SHUT_RDWR)
-        BaseHTTPServer.HTTPServer.server_close(self)
+class TestingHTTPServer(TestingHTTPServerWrapper):
+
+    def __init__(self, server_address, request_handler_class, test_case_server):
+        super(TestingHTTPServer, self).__init__(
+            SocketServer.TCPServer, test_case_server,
+            server_address, request_handler_class)
+
+
+class TestingThreadingHTTPServer(TestingHTTPServerWrapper):
+    """A threading HTTP test server for HTTP 1.1.
+
+    Since tests can initiate several concurrent connections to the same http
+    server, we need an independent connection for each of them. We achieve that
+    by spawning a new thread for each connection.
+    """
+
+    def __init__(self, server_address, request_handler_class, test_case_server):
+        super(TestingThreadingHTTPServer, self).__init__(
+            SocketServer.ThreadingTCPServer, test_case_server,
+            server_address, request_handler_class)
+        # Decides how threads will act upon termination of the main
+        # process. This is prophylactic as we should not leave the threads
+        # lying around.
+        self._server.daemon_threads = True
 
 
 class HttpServer(transport.Server):
@@ -315,9 +367,8 @@ class HttpServer(transport.Server):
 
     def _get_httpd(self):
         if self._httpd is None:
-            self._httpd = TestingHTTPServer((self.host, self.port),
-                                            self.request_handler,
-                                            self)
+            self._httpd = TestingHTTPServer(
+                (self.host, self.port), self.request_handler, self)
             host, self.port = self._httpd.socket.getsockname()
         return self._httpd
 
