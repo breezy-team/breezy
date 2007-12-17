@@ -16,20 +16,21 @@
 
 import BaseHTTPServer
 import errno
+import httplib
 import os
-from SimpleHTTPServer import SimpleHTTPRequestHandler
-import socket
 import posixpath
 import random
 import re
+import SimpleHTTPServer
+import socket
 import sys
 import threading
 import time
 import urllib
 import urlparse
 
-from bzrlib.transport import Server
-from bzrlib.transport.local import LocalURLServer
+from bzrlib import transport
+from bzrlib.transport import local
 
 
 class WebserverNotAvailable(Exception):
@@ -41,12 +42,14 @@ class BadWebserverPath(ValueError):
         return 'path %s is not in %s' % self.args
 
 
-class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
+class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     """Handles one request.
 
     A TestingHTTPRequestHandler is instantiated for every request
     received by the associated server.
     """
+    # The Message-like class used to parse the request headers
+    MessageClass = httplib.HTTPMessage
 
     def log_message(self, format, *args):
         tcs = self.server.test_case_server
@@ -54,7 +57,7 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
                 self.address_string(),
                 self.log_date_time_string(),
                 format % args,
-                self.headers.get('referer', '-'),
+                self.headers.get('referrer', '-'),
                 self.headers.get('user-agent', '-'))
 
     def handle_one_request(self):
@@ -64,13 +67,12 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
         connection early to avoid polluting the test results.
         """
         try:
-            SimpleHTTPRequestHandler.handle_one_request(self)
+            SimpleHTTPServer.SimpleHTTPRequestHandler.handle_one_request(self)
         except socket.error, e:
             if (len(e.args) > 0
                 and e.args[0] in (errno.EPIPE, errno.ECONNRESET,
                                   errno.ECONNABORTED,)):
                 self.close_connection = 1
-                pass
             else:
                 raise
 
@@ -157,7 +159,7 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
         ranges_header_value = self.headers.get('Range')
         if ranges_header_value is None or os.path.isdir(path):
             # Let the mother class handle most cases
-            return SimpleHTTPRequestHandler.do_GET(self)
+            return SimpleHTTPServer.SimpleHTTPRequestHandler.do_GET(self)
 
         try:
             # Always read in binary mode. Opening files in text
@@ -234,7 +236,8 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
         return self._translate_path(path)
 
     def _translate_path(self, path):
-        return SimpleHTTPRequestHandler.translate_path(self, path)
+        return SimpleHTTPServer.SimpleHTTPRequestHandler.translate_path(
+            self, path)
 
     if sys.platform == 'win32':
         # On win32 you cannot access non-ascii filenames without
@@ -267,10 +270,10 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
 
 class TestingHTTPServer(BaseHTTPServer.HTTPServer):
 
-    def __init__(self, server_address, RequestHandlerClass,
+    def __init__(self, server_address, request_handler_class,
                  test_case_server):
         BaseHTTPServer.HTTPServer.__init__(self, server_address,
-                                           RequestHandlerClass)
+                                           request_handler_class)
         # test_case_server can be used to communicate between the
         # tests and the server (or the request handler and the
         # server), allowing dynamic behaviors to be defined from
@@ -287,7 +290,7 @@ class TestingHTTPServer(BaseHTTPServer.HTTPServer):
         BaseHTTPServer.HTTPServer.server_close(self)
 
 
-class HttpServer(Server):
+class HttpServer(transport.Server):
     """A test server for http transports.
 
     Subclasses can provide a specific request handler.
@@ -302,7 +305,7 @@ class HttpServer(Server):
 
     # Subclasses can provide a specific request handler
     def __init__(self, request_handler=TestingHTTPRequestHandler):
-        Server.__init__(self)
+        transport.Server.__init__(self)
         self.request_handler = request_handler
         self.host = 'localhost'
         self.port = 0
@@ -357,7 +360,7 @@ class HttpServer(Server):
         # XXX: TODO: make the server back onto vfs_server rather than local
         # disk.
         assert backing_transport_server is None or \
-            isinstance(backing_transport_server, LocalURLServer), \
+            isinstance(backing_transport_server, local.LocalURLServer), \
             "HTTPServer currently assumes local transport, got %s" % \
             backing_transport_server
         self._home_dir = os.getcwdu()
@@ -388,7 +391,7 @@ class HttpServer(Server):
         """See bzrlib.transport.Server.get_bogus_url."""
         # this is chosen to try to prevent trouble with proxies, weird dns,
         # etc
-        return 'http://127.0.0.1:1/'
+        return self._url_protocol + '://127.0.0.1:1/'
 
 
 class HttpServer_urllib(HttpServer):
