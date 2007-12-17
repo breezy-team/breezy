@@ -136,7 +136,7 @@ class TestMerge(ExternalBase):
         self.failUnlessExists('sub/a.txt.BASE')
 
     def test_merge_remember(self):
-        """Merge changes from one branch to another and test parent location."""
+        """Merge changes from one branch to another, test submit location."""
         tree_a = self.make_branch_and_tree('branch_a')
         branch_a = tree_a.branch
         self.build_tree(['branch_a/a'])
@@ -166,15 +166,18 @@ class TestMerge(ExternalBase):
         tree_b.add('d')
         self.run_bzr_error(['Working tree ".*" has uncommitted changes'],
                            'merge ../branch_a')
-        self.assertEquals(abspath(branch_b.get_parent()), abspath(parent))
+        self.assertEquals(abspath(branch_b.get_submit_branch()),
+                          abspath(parent))
         # test implicit --remember after resolving conflict
         tree_b.commit('commit d')
         out, err = self.run_bzr('merge')
         
         base = urlutils.local_path_from_url(branch_a.base)
-        self.assertEquals(out, 'Merging from remembered location %s\n' % (base,))
+        self.assertEquals(out,
+                          'Merging from remembered location %s\n' % (base,))
         self.assertEquals(err, '+N  b\nAll changes applied successfully.\n')
-        self.assertEquals(abspath(branch_b.get_parent()), abspath(parent))
+        self.assertEquals(abspath(branch_b.get_submit_branch()),
+                          abspath(parent))
         # re-open tree as external run_bzr modified it
         tree_b = branch_b.bzrdir.open_workingtree()
         tree_b.commit('merge branch_a')
@@ -182,7 +185,7 @@ class TestMerge(ExternalBase):
         out, err = self.run_bzr('merge ../branch_c --remember')
         self.assertEquals(out, '')
         self.assertEquals(err, '+N  c\nAll changes applied successfully.\n')
-        self.assertEquals(abspath(branch_b.get_parent()),
+        self.assertEquals(abspath(branch_b.get_submit_branch()),
                           abspath(branch_c.bzrdir.root_transport.base))
         # re-open tree as external run_bzr modified it
         tree_b = branch_b.bzrdir.open_workingtree()
@@ -406,3 +409,27 @@ class TestMerge(ExternalBase):
         graph = tree_a.branch.repository.get_graph(tree_b.branch.repository)
         out, err = self.run_bzr(['merge', '-d', 'a', 'b'])
         self.assertContainsRe(err, 'Warning: criss-cross merge encountered.')
+
+    def test_merge_from_submit(self):
+        tree_a = self.make_branch_and_tree('a')
+        tree_b = tree_a.bzrdir.sprout('b').open_workingtree()
+        tree_c = tree_a.bzrdir.sprout('c').open_workingtree()
+        out, err = self.run_bzr(['merge', '-d', 'c'])
+        self.assertContainsRe(out, 'Merging from remembered location .*a\/$')
+        tree_c.branch.set_submit_branch(tree_b.bzrdir.root_transport.base)
+        out, err = self.run_bzr(['merge', '-d', 'c'])
+        self.assertContainsRe(out, 'Merging from remembered location .*b\/$')
+
+    def test_remember_sets_submit(self):
+        tree_a = self.make_branch_and_tree('a')
+        tree_b = tree_a.bzrdir.sprout('b').open_workingtree()
+        self.assertIs(tree_b.branch.get_submit_branch(), None)
+
+        # Remember should not happen if using default from parent
+        out, err = self.run_bzr(['merge', '-d', 'b'])
+        self.assertIs(tree_b.branch.get_submit_branch(), None)
+
+        # Remember should happen if user supplies location
+        out, err = self.run_bzr(['merge', '-d', 'b', 'a'])
+        self.assertEqual(tree_b.branch.get_submit_branch(),
+                         tree_a.bzrdir.root_transport.base)
