@@ -328,34 +328,73 @@ class SFTPTransport(ConnectedTransport):
         mutter('SFTP.readv() %s offsets => %s coalesced => %s requests',
                 len(offsets), len(coalesced), len(requests))
 
-        # Queue the current read until we have read the full coalesced section
-        cur_data = []
-        cur_data_len = 0
+        # We have several layers of indirection, so lets try to list them all.
+        # 1) The requested offsets from the user, which are in (start, length)
+        #    pairs starting at the beginning of the file.
+        # 2) CoalescedOffsets which combine those absolute locations, and give
+        #    an overall start and length in absolute terms, and then a list of
+        #    ranges offset by CoalescedOffsets.start.
+        # 3) For large Coalesced ranges, we further split them up into 32KB
+        #    chunks (sftp protocol minimum supported size).
+        # 4) As we read data back from the requests keep track of where we are
+        #    and return any data that we can.
+        # Keep track of the currently coalesced data
+        buffered_data = ''
+        buffered_start = 0
         cur_coalesced_stack = iter(coalesced)
         cur_coalesced = cur_coalesced_stack.next()
+        buffered_start = cur_coalesced.start
 
-        # Cache the results, but only until they have been fulfilled
+        # Cache the results, but only until they have been fulfilled, this
+        # mostly just stores the out-of-order data
         data_map = {}
         # turn the list of offsets into a stack
         offset_stack = iter(offsets)
         cur_offset_and_size = offset_stack.next()
 
         for data in fp.readv(requests):
-            cur_data += data
-            cur_data_len += len(data)
+            # TODO: jam 20071217 We could buffer into a list, and then handle
+            #       the sub-chunks, rather than buffering into a string which
+            #       needs to be repeatedly memory allocated. However, it makes
+            #       the processing code a lot more complex (you have to build
+            #       another list with possibly parts of these buffered
+            #       sections, etc)
+            buffered_data += data
+            buffered_end = buffered_start + len(buffered_data)
 
-            if cur_data_len < cur_coalesced.length:
-                continue
-            assert cur_data_len == cur_coalesced.length, \
-                "Somehow we read too much: %s != %s" % (cur_data_len,
-                                                        cur_coalesced.length)
-            all_data = ''.join(cur_data)
-            cur_data = []
-            cur_data_len = 0
+            # Check to see if this is enough data to satisfy some of the
+            # coalesced subranges
 
+            new_ranges = []
             for suboffset, subsize in cur_coalesced.ranges:
-                key = (cur_coalesced.start+suboffset, subsize)
-                data_map[key] = all_data[suboffset:suboffset+subsize]
+                start = cur_coalesced.start + suboffset
+                end = start + subsize
+                if buffered_start > start:
+                    raise AssertionError('We messed up. The data we are'
+                                         ' reading is starting after the'
+                                         ' point of the sub offset')
+                if (buffered_start < start
+                    or buffered_end < end):
+                    # Either we haven't started reading, or we haven't finished
+                    new_ranges.append((suboffset, subsize))
+                    continue
+
+                # We have read enough data, collect it into a single string
+                buf_start = start - buffered_start
+                buf_end = buf_start + subsize
+                data = buffered_data[buf_start:buf_end]
+
+                # Because this data won't be repeated, shrink the buffer
+                buffered_data = buffered_data[buf_end:]
+                buffered_start += buf_end
+
+                # Is this exactly the next requested data chunk?
+                key = (start, subsize)
+                if key == cur_offset_and_size:
+                    yield start, data
+                    cur_offset_and_size = offset_stack.next()
+                else:
+                    data_map[key] = data
 
             # Now that we've read some data, see if we can yield anything back
             while cur_offset_and_size in data_map:
@@ -363,11 +402,15 @@ class SFTPTransport(ConnectedTransport):
                 yield cur_offset_and_size[0], this_data
                 cur_offset_and_size = offset_stack.next()
 
-            # We read a coalesced entry, so mark it as done
-            cur_coalesced = None
-            # Now that we've read all of the data for this coalesced section
-            # on to the next
-            cur_coalesced = cur_coalesced_stack.next()
+            if buffered_end == cur_coalesced.start + cur_coalesced.length:
+                # We reached the end of this section, go on to the next
+                try:
+                    cur_coalesced = cur_coalesced_stack.next()
+                except StopIteration:
+                    cur_coalesced = None
+            elif buffered_end >= cur_coalesced.start + cur_coalesced.length:
+                raise AssertionError('Somehow we read too much data: %s > %s'
+                    % (buffered_end, cur_coalesced.start + cur_coalesced.length))
 
         if cur_coalesced is not None:
             raise errors.ShortReadvError(relpath, cur_coalesced.start,

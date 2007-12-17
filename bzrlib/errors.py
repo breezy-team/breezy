@@ -570,6 +570,16 @@ class ShortReadvError(PathError):
         self.actual = actual
 
 
+class OverlappingReadv(BzrError):
+    """Raised when a readv() requests overlapping chunks of data.
+
+    Not all transports supports this, so the api should generally forbid it.
+    (It isn't a feature we need anyway.
+    """
+
+    _fmt = 'Requested readv ranges overlap'
+
+
 class PathNotChild(PathError):
 
     _fmt = 'Path "%(path)s" is not a child of path "%(base)s"%(extra)s'

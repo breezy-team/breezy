@@ -792,7 +792,8 @@ class Transport(object):
         return offsets
 
     @staticmethod
-    def _coalesce_offsets(offsets, limit=0, fudge_factor=0, max_size=0):
+    def _coalesce_offsets(offsets, limit=0, fudge_factor=0, max_size=0,
+                          allow_overlap=False):
         """Yield coalesced offsets.
 
         With a long list of neighboring requests, combine them
@@ -801,27 +802,26 @@ class Transport(object):
         Turns  [(15, 10), (25, 10)] => [(15, 20, [(0, 10), (10, 10)])]
 
         :param offsets: A list of (start, length) pairs
-
         :param limit: Only combine a maximum of this many pairs Some transports
                 penalize multiple reads more than others, and sometimes it is
                 better to return early.
                 0 means no limit
-
         :param fudge_factor: All transports have some level of 'it is
-                better to read some more data and throw it away rather 
+                better to read some more data and throw it away rather
                 than seek', so collapse if we are 'close enough'
-
         :param max_size: Create coalesced offsets no bigger than this size.
                 When a single offset is bigger than 'max_size', it will keep
                 its size and be alone in the coalesced offset.
                 0 means no maximum size.
-
-        :return: yield _CoalescedOffset objects, which have members for where
-                to start, how much to read, and how to split those 
-                chunks back up
+        :param allow_overlap: If False, raise an error if requested ranges
+            overlap.
+        :return: return a list of _CoalescedOffset objects, which have members
+            for where to start, how much to read, and how to split those chunks
+            back up
         """
         last_end = None
         cur = _CoalescedOffset(None, None, [])
+        coalesced_offsets = []
 
         for start, size in offsets:
             end = start + size
@@ -830,18 +830,19 @@ class Transport(object):
                 and start >= cur.start
                 and (limit <= 0 or len(cur.ranges) < limit)
                 and (max_size <= 0 or end - cur.start <= max_size)):
+                if not allow_overlap and start < last_end:
+                    raise errors.OverlappingReadv()
                 cur.length = end - cur.start
                 cur.ranges.append((start-cur.start, size))
             else:
                 if cur.start is not None:
-                    yield cur
+                    coalesced_offsets.append(cur)
                 cur = _CoalescedOffset(start, size, [(0, size)])
             last_end = end
 
         if cur.start is not None:
-            yield cur
-
-        return
+            coalesced_offsets.append(cur)
+        return coalesced_offsets
 
     def get_multi(self, relpaths, pb=None):
         """Get a list of file-like objects, one for each entry in relpaths.
