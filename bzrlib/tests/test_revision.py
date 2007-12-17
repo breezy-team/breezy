@@ -134,6 +134,7 @@ class TestIsAncestor(TestCaseWithTransport):
         sources = br1
 
         br1.lock_read()
+        br2.lock_read()
         self.addCleanup(br1.unlock)
         br2.lock_read()
         self.addCleanup(br2.unlock)

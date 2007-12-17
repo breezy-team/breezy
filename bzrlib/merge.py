@@ -20,6 +20,7 @@ import errno
 import warnings
 
 from bzrlib import (
+    debug,
     errors,
     osutils,
     patiencediff,
@@ -314,9 +315,13 @@ class Merger(object):
         if NULL_REVISION in revisions:
             self.base_rev_id = NULL_REVISION
         else:
-            self.base_rev_id = graph.find_unique_lca(*revisions)
+            self.base_rev_id, steps = graph.find_unique_lca(revisions[0],
+                revisions[1], count_steps=True)
             if self.base_rev_id == NULL_REVISION:
                 raise UnrelatedBranches()
+            if steps > 1:
+                warning('Warning: criss-cross merge encountered.  See bzr'
+                        ' help criss-cross.')
         self.base_tree = self.revision_tree(self.base_rev_id)
         self.base_is_ancestor = True
         self.base_is_other_ancestor = True
@@ -989,6 +994,12 @@ class WeaveMerger(Merge3Merger):
         and conflicts.
         """
         plan = self.this_tree.plan_file_merge(file_id, self.other_tree)
+        if 'merge' in debug.debug_flags:
+            plan = list(plan)
+            trans_id = self.tt.trans_id_file_id(file_id)
+            name = self.tt.final_name(trans_id) + '.plan'
+            contents = ('%10s|%s' % l for l in plan)
+            self.tt.new_file(name, self.tt.final_parent(trans_id), contents)
         textmerge = PlanWeaveMerge(plan, '<<<<<<< TREE\n',
             '>>>>>>> MERGE-SOURCE\n')
         return textmerge.merge_lines(self.reprocess)
@@ -1135,3 +1146,120 @@ def _plan_annotate_merge(annotated_a, annotated_b, ancestors_a, ancestors_b):
         for text_a, text_b in zip(plain_a[ai:a_cur], plain_b[bi:b_cur]):
             assert text_a == text_b
             yield "unchanged", text_a
+
+
+class _PlanMerge(object):
+    """Plan an annotate merge using on-the-fly annotation"""
+
+    def __init__(self, a_rev, b_rev, vf):
+        """Contructor.
+
+        :param a_rev: Revision-id of one revision to merge
+        :param b_rev: Revision-id of the other revision to merge
+        :param vf: A versionedfile containing both revisions
+        """
+        self.a_rev = a_rev
+        self.b_rev = b_rev
+        self.lines_a = vf.get_lines(a_rev)
+        self.lines_b = vf.get_lines(b_rev)
+        self.vf = vf
+        a_ancestry = set(vf.get_ancestry(a_rev, topo_sorted=False))
+        b_ancestry = set(vf.get_ancestry(b_rev, topo_sorted=False))
+        self.uncommon = a_ancestry.symmetric_difference(b_ancestry)
+        self._last_lines = None
+        self._last_lines_revision_id = None
+
+    def plan_merge(self):
+        """Generate a 'plan' for merging the two revisions.
+
+        This involves comparing their texts and determining the cause of
+        differences.  If text A has a line and text B does not, then either the
+        line was added to text A, or it was deleted from B.  Once the causes
+        are combined, they are written out in the format described in
+        VersionedFile.plan_merge
+        """
+        blocks = self._get_matching_blocks(self.a_rev, self.b_rev)
+        new_a = self._find_new(self.a_rev)
+        new_b = self._find_new(self.b_rev)
+        last_i = 0
+        last_j = 0
+        a_lines = self.vf.get_lines(self.a_rev)
+        b_lines = self.vf.get_lines(self.b_rev)
+        for i, j, n in blocks:
+            # determine why lines aren't common
+            for a_index in range(last_i, i):
+                if a_index in new_a:
+                    cause = 'new-a'
+                else:
+                    cause = 'killed-b'
+                yield cause, a_lines[a_index]
+            for b_index in range(last_j, j):
+                if b_index in new_b:
+                    cause = 'new-b'
+                else:
+                    cause = 'killed-a'
+                yield cause, b_lines[b_index]
+            # handle common lines
+            for a_index in range(i, i+n):
+                yield 'unchanged', a_lines[a_index]
+            last_i = i+n
+            last_j = j+n
+
+    def _get_matching_blocks(self, left_revision, right_revision):
+        """Return a description of which sections of two revisions match.
+
+        See SequenceMatcher.get_matching_blocks
+        """
+        if self._last_lines_revision_id == left_revision:
+            left_lines = self._last_lines
+        else:
+            left_lines = self.vf.get_lines(left_revision)
+        right_lines = self.vf.get_lines(right_revision)
+        self._last_lines = right_lines
+        self._last_lines_revision_id = right_revision
+        matcher = patiencediff.PatienceSequenceMatcher(None, left_lines,
+                                                       right_lines)
+        return matcher.get_matching_blocks()
+
+    def _unique_lines(self, matching_blocks):
+        """Analyse matching_blocks to determine which lines are unique
+
+        :return: a tuple of (unique_left, unique_right), where the values are
+            sets of line numbers of unique lines.
+        """
+        last_i = 0
+        last_j = 0
+        unique_left = []
+        unique_right = []
+        for i, j, n in matching_blocks:
+            unique_left.extend(range(last_i, i))
+            unique_right.extend(range(last_j, j))
+            last_i = i + n
+            last_j = j + n
+        return unique_left, unique_right
+
+    def _find_new(self, version_id):
+        """Determine which lines are new in the ancestry of this version.
+
+        If a lines is present in this version, and not present in any
+        common ancestor, it is considered new.
+        """
+        if version_id not in self.uncommon:
+            return set()
+        parents = self.vf.get_parents(version_id)
+        if len(parents) == 0:
+            return set(range(len(self.vf.get_lines(version_id))))
+        new = None
+        for parent in parents:
+            blocks = self._get_matching_blocks(version_id, parent)
+            result, unused = self._unique_lines(blocks)
+            parent_new = self._find_new(parent)
+            for i, j, n in blocks:
+                for ii, jj in [(i+r, j+r) for r in range(n)]:
+                    if jj in parent_new:
+                        result.append(ii)
+            if new is None:
+                new = set(result)
+            else:
+                new.intersection_update(result)
+        return new

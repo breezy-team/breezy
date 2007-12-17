@@ -106,6 +106,18 @@ class IndirectUrlTests(TestCase):
         self.assertEquals('http://bazaar.launchpad.net/~apt/apt/devel',
                           transport._resolve('lp:///apt', factory))
 
+    def test_skip_sftp_launchpad_net_when_anonymous(self):
+        # Test that sftp://bazaar.launchpad.net gets skipped if
+        # Bazaar does not know the user's Launchpad ID:
+        self.assertEqual(None, get_lp_login())
+        factory = FakeResolveFactory(
+            self, 'apt', dict(urls=[
+                    'sftp://bazaar.launchpad.net/~apt/apt/devel',
+                    'http://bazaar.launchpad.net/~apt/apt/devel']))
+        transport = LaunchpadTransport('lp:///')
+        self.assertEquals('http://bazaar.launchpad.net/~apt/apt/devel',
+                          transport._resolve('lp:///apt', factory))
+
     def test_rewrite_bzr_ssh_launchpad_net(self):
         # Test that bzr+ssh URLs get rewritten to include the user's
         # Launchpad ID (assuming we know the Launchpad ID).

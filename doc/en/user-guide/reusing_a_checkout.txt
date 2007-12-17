@@ -20,6 +20,7 @@ On other occasions, the location of your sandbox might be
 configured into numerous development and testing tools. Once
 again, reusing a checkout across multiple branches can help.
 
+
 Changing where a branch is bound to
 -----------------------------------
 
@@ -34,19 +35,28 @@ To change where a checkout is bound to, follow these steps:
  3. Make your checkout a copy of the desired branch by using
     the ``update`` command followed by the ``revert`` command.
 
+Note that simply binding to a new branch and running ``update``
+merges in your local changes, both committed and uncommitted. You need
+to decide whether to keep them or not by running either ``revert``
+or ``commit``.
 
-Note that simply binding to a new branch
-and running ``update`` is not enough: you need the ``revert`` to
-throw away any local differences in the working tree.
+An alternative to the bind+update recipe is using the ``switch``
+command. This is basically the same as removing the existing
+branch and running ``checkout`` again on the new location, except
+that any uncommitted changes in your tree are merged in.
+
+Note: As ``switch`` can potentially throw away committed changes in
+order to make a checkout an accurate cache of a different bound branch,
+it will fail by design if there are changes which have been committed
+locally but are not yet committed to the most recently bound branch.
+To truly abandon these changes, use the ``--force`` option.
+
 
 Switching a lightweight checkout
 --------------------------------
 
-If you have a lightweight checkout, there is no local history
-to worry about. In this case, you
-can simply alter the branch that the checkout (i.e.
-working tree) is referring to by using the ``switch`` command.
-
+With a lightweight checkout, there are no local commits and ``switch``
+effectively changes which branch the working tree is associated with.
 One possible setup is to use a lightweight checkout in combination
 with a local tree-less repository. This lets you switch what you
 are working on with ease. For example::
@@ -59,7 +69,7 @@ are working on with ease. For example::
   (hack away)
 
 Note that X-trunk in this example will have a ``.bzr`` directory within it
-but their will be no working tree there as the branch was created in
+but there will be no working tree there as the branch was created in
 a tree-less repository. You can grab or create as many branches as you
 need there and switch between them as required. For example::
 
@@ -71,14 +81,6 @@ need there and switch between them as required. For example::
   bzr switch ../X-trunk
   (go back to working on the trunk)
 
-In many ways, ``switch`` operates like ``update`` in that it
-refreshes your working tree and merges in any local changes you
-have made. The primary different is that ``switch`` requires
-a branch location and it is only supported (currently) on
-lightweight checkouts.
-
 Note: The branches may be local only or they may be bound to
 remote ones (by creating them with ``checkout`` or by using ``bind``
-after creating them with ``branch``). ``switch`` and ``bind`` are
-similar but different: switch controls which branch the working tree
-refers to while ``bind`` associates a remote branch to the local one.
+after creating them with ``branch``).
