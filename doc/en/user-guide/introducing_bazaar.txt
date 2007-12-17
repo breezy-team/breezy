@@ -129,7 +129,7 @@ free software written in Python so it is easy to contribute improvements.
 Our collective goal is to build and support a distributed VCS tool that
 developers love to use, a tool that helps them get their job done without
 getting in their way. If you wish to get involved, please see
-http://bazaar-vcs.org/Community.
+http://bazaar-vcs.org/BzrSupport.
 
 
 Learning more
