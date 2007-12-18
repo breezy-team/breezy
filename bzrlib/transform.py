@@ -1322,7 +1322,7 @@ def topology_sorted_ids(tree):
     return file_ids
 
 
-def build_tree(tree, wt):
+def build_tree(tree, wt, accelerator_tree=None):
     """Create working tree for a branch, using a TreeTransform.
     
     This function should be used on empty trees, having a tree root at most.
@@ -1340,14 +1340,20 @@ def build_tree(tree, wt):
     try:
         tree.lock_read()
         try:
-            return _build_tree(tree, wt)
+            if accelerator_tree is not None:
+                accelerator_tree.lock_read()
+            try:
+                return _build_tree(tree, wt, accelerator_tree)
+            finally:
+                if accelerator_tree is not None:
+                    accelerator_tree.unlock()
         finally:
             tree.unlock()
     finally:
         wt.unlock()
 
 
-def _build_tree(tree, wt):
+def _build_tree(tree, wt, accelerator_tree):
     """See build_tree."""
     if len(wt.inventory) > 1:  # more than just a root
         raise errors.WorkingTreeAlreadyPopulated(base=wt.basedir)
@@ -1423,6 +1429,19 @@ def _build_tree(tree, wt):
                     new_trans_id = file_trans_id[file_id]
                     old_parent = tt.trans_id_tree_path(tree_path)
                     _reparent_children(tt, old_parent, new_trans_id)
+            if accelerator_tree is not None:
+                new_deferred_contents = []
+                for file_id, trans_id in deferred_contents:
+                    if (accelerator_tree.get_file_sha1(file_id) ==
+                        tree.get_file_sha1(file_id)):
+                        contents = accelerator_tree.get_file(file_id)
+                        try:
+                            tt.create_file(contents, trans_id)
+                        finally:
+                            contents.close()    
+                    else:
+                        new_deferred_contents.append((file_id, trans_id))
+                deferred_contents = new_deferred_contents
             for num, (trans_id, bytes) in enumerate(
                 tree.iter_files_bytes(deferred_contents)):
                 tt.create_file(bytes, trans_id)
