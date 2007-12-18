@@ -1654,7 +1654,7 @@ class Repository(object):
         parent_map = {}
         for revision_id in keys:
             if revision_id == _mod_revision.NULL_REVISION:
-                parents[revision_id] = []
+                parent_map[revision_id] = []
             else:
                 try:
                     parent_ids = self.get_revision(revision_id).parent_ids
