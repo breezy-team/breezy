@@ -33,21 +33,19 @@
 
 import os
 from cStringIO import StringIO
+import httplib
 import sys
 
 from bzrlib import (
+    debug,
     errors,
+    trace,
     __version__ as bzrlib_version,
     )
 import bzrlib
-from bzrlib.errors import (NoSuchFile,
-                           ConnectionError,
-                           DependencyNotPresent)
 from bzrlib.trace import mutter
-from bzrlib.transport import register_urlparse_netloc_protocol
 from bzrlib.transport.http import (
     ca_bundle,
-    _extract_headers,
     HttpTransportBase,
     response,
     )
@@ -56,7 +54,7 @@ try:
     import pycurl
 except ImportError, e:
     mutter("failed to import pycurl: %s", e)
-    raise DependencyNotPresent('pycurl', e)
+    raise errors.DependencyNotPresent('pycurl', e)
 
 try:
     # see if we can actually initialize PyCurl - sometimes it will load but
@@ -71,7 +69,7 @@ try:
     pycurl.Curl()
 except pycurl.error, e:
     mutter("failed to initialize pycurl: %s", e)
-    raise DependencyNotPresent('pycurl', e)
+    raise errors.DependencyNotPresent('pycurl', e)
 
 
 
@@ -96,9 +94,6 @@ CURLE_GOT_NOTHING = _get_pycurl_errcode('E_GOT_NOTHING', 52)
 CURLE_PARTIAL_FILE = _get_pycurl_errcode('E_PARTIAL_FILE', 18)
 
 
-register_urlparse_netloc_protocol('http+pycurl')
-
-
 class PyCurlTransport(HttpTransportBase):
     """http client transport using pycurl
 
@@ -116,7 +111,7 @@ class PyCurlTransport(HttpTransportBase):
             # protocols
             supported = pycurl.version_info()[8]
             if 'https' not in supported:
-                raise DependencyNotPresent('pycurl', 'no https support')
+                raise errors.DependencyNotPresent('pycurl', 'no https support')
         self.cabundle = ca_bundle.get_ca_path()
 
     def _get_curl(self):
@@ -206,12 +201,20 @@ class PyCurlTransport(HttpTransportBase):
         data.seek(0)
 
         if code == 404:
-            raise NoSuchFile(abspath)
+            raise errors.NoSuchFile(abspath)
         if code != 200:
             self._raise_curl_http_error(
                 curl, 'expected 200 or 404 for full response.')
 
         return code, data
+
+    # The parent class use 0 to minimize the requests, but since we can't
+    # exploit the results as soon as they are received (pycurl limitation) we'd
+    # better issue more requests and provide a more responsive UI do the cost
+    # of more latency costs.
+    # If you modify this, think about modifying the comment in http/__init__.py
+    # too.
+    _get_max_size = 4 * 1024 * 1024
 
     def _get_ranged(self, relpath, offsets, tail_amount):
         """Make a request for just part of the file."""
@@ -227,10 +230,25 @@ class PyCurlTransport(HttpTransportBase):
         data.seek(0)
 
         code = curl.getinfo(pycurl.HTTP_CODE)
-        # mutter('header:\n%r', header.getvalue())
-        headers = _extract_headers(header.getvalue(), abspath)
-        # handle_response will raise NoSuchFile, etc based on the response code
-        return code, response.handle_response(abspath, code, headers, data)
+
+        if code == 404: # not found
+            raise errors.NoSuchFile(abspath)
+        elif code in (400, 416):
+            # We don't know which, but one of the ranges we specified was
+            # wrong.
+            raise errors.InvalidHttpRange(abspath, range_header,
+                                          'Server return code %d'
+                                          % curl.getinfo(pycurl.HTTP_CODE))
+        msg = self._parse_headers(header)
+        return code, response.handle_response(abspath, code, msg, data)
+
+    def _parse_headers(self, status_and_headers):
+        """Transform the headers provided by curl into an HTTPMessage"""
+        status_and_headers.seek(0)
+        # Ignore status line
+        status_and_headers.readline()
+        msg = httplib.HTTPMessage(status_and_headers)
+        return msg
 
     def _post(self, body_bytes):
         fake_file = StringIO(body_bytes)
@@ -247,8 +265,8 @@ class PyCurlTransport(HttpTransportBase):
         self._curl_perform(curl, header, ['Expect: '])
         data.seek(0)
         code = curl.getinfo(pycurl.HTTP_CODE)
-        headers = _extract_headers(header.getvalue(), abspath)
-        return code, response.handle_response(abspath, code, headers, data)
+        msg = self._parse_headers(header)
+        return code, response.handle_response(abspath, code, msg, data)
 
     def _raise_curl_http_error(self, curl, info=None):
         code = curl.getinfo(pycurl.HTTP_CODE)
@@ -268,9 +286,12 @@ class PyCurlTransport(HttpTransportBase):
 
     def _set_curl_options(self, curl):
         """Set options for all requests"""
-        ## curl.setopt(pycurl.VERBOSE, 1)
-        # TODO: maybe include a summary of the pycurl version
-        ua_str = 'bzr/%s (pycurl)' % (bzrlib.__version__,)
+        if 'http' in debug.debug_flags:
+            curl.setopt(pycurl.VERBOSE, 1)
+            # pycurl doesn't implement the CURLOPT_STDERR option, so we can't
+            # do : curl.setopt(pycurl.STDERR, trace._trace_file)
+
+        ua_str = 'bzr/%s (pycurl: %s)' % (bzrlib.__version__, pycurl.version)
         curl.setopt(pycurl.USERAGENT, ua_str)
         if self.cabundle:
             curl.setopt(pycurl.CAINFO, self.cabundle)
@@ -296,27 +317,25 @@ class PyCurlTransport(HttpTransportBase):
                         CURLE_COULDNT_CONNECT,
                         CURLE_GOT_NOTHING,
                         CURLE_COULDNT_RESOLVE_PROXY,):
-                raise ConnectionError('curl connection error (%s)\non %s'
-                              % (e[1], url))
+                raise errors.ConnectionError(
+                    'curl connection error (%s)\non %s' % (e[1], url))
             elif e[0] == CURLE_PARTIAL_FILE:
-                # Pycurl itself has detected a short read.  We do
-                # not have all the information for the
-                # ShortReadvError, but that should be enough
+                # Pycurl itself has detected a short read.  We do not have all
+                # the information for the ShortReadvError, but that should be
+                # enough
                 raise errors.ShortReadvError(url,
                                              offset='unknown', length='unknown',
                                              actual='unknown',
                                              extra='Server aborted the request')
-            # jam 20060713 The code didn't use to re-raise the exception here,
-            # but that seemed bogus
             raise
         code = curl.getinfo(pycurl.HTTP_CODE)
         if code in (301, 302, 303, 307):
             url = curl.getinfo(pycurl.EFFECTIVE_URL)
-            headers = _extract_headers(header.getvalue(), url)
-            redirected_to = headers['Location']
+            msg = self._parse_headers(header)
+            redirected_to = msg.getheader('location')
             raise errors.RedirectRequested(url,
                                            redirected_to,
-                                           is_permament=(code == 301),
+                                           is_permanent=(code == 301),
                                            qual_proto=self._scheme)
 
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -64,7 +64,7 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
         connection early to avoid polluting the test results.
         """
         try:
-            self._handle_one_request()
+            SimpleHTTPRequestHandler.handle_one_request(self)
         except socket.error, e:
             if (len(e.args) > 0
                 and e.args[0] in (errno.EPIPE, errno.ECONNRESET,
@@ -73,43 +73,6 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
                 pass
             else:
                 raise
-
-    def _handle_one_request(self):
-        """
-        Request handling as defined in the base class.
-
-        You normally don't need to override this method; see the class
-        __doc__ string for information on how to handle specific HTTP
-        commands such as GET and POST.
-
-        On some platforms, notably OS X, a lot of EAGAIN (resource temporary
-        unavailable) occur. We retry silently at most 10 times.
-        """
-        for i in xrange(1,11): # Don't try more than 10 times
-            try:
-                self.raw_requestline = self.rfile.readline()
-            except socket.error, e:
-                if e.args[0] in (errno.EAGAIN, errno.EWOULDBLOCK):
-                    # omitted for now because some tests look at the log of
-                    # the server and expect to see no errors.  see recent
-                    # email thread. -- mbp 20051021. 
-                    ## self.log_message('EAGAIN (%d) while reading from raw_requestline' % i)
-                    time.sleep(0.01)
-                    continue
-                raise
-            else:
-                break
-        if not self.raw_requestline:
-            self.close_connection = 1
-            return
-        if not self.parse_request(): # An error code has been sent, just exit
-            return
-        mname = 'do_' + self.command
-        if getattr(self, mname, None) is None:
-            self.send_error(501, "Unsupported method (%r)" % self.command)
-            return
-        method = getattr(self, mname)
-        method()
 
     _range_regexp = re.compile(r'^(?P<start>\d+)-(?P<end>\d+)$')
     _tail_regexp = re.compile(r'^-(?P<tail>\d+)$')
@@ -179,13 +142,16 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
                                                                   file_size))
             self.end_headers()
             self.send_range_content(file, start, end - start + 1)
-            self.wfile.write("--%s\r\n" % boundary)
+        # Final boundary
+        self.wfile.write("--%s\r\n" % boundary)
 
     def do_GET(self):
         """Serve a GET request.
 
         Handles the Range header.
         """
+        # Update statistics
+        self.server.test_case_server.GET_request_nb += 1
 
         path = self.translate_path(self.path)
         ranges_header_value = self.headers.get('Range')
@@ -311,6 +277,15 @@ class TestingHTTPServer(BaseHTTPServer.HTTPServer):
         # the tests cases.
         self.test_case_server = test_case_server
 
+    def server_close(self):
+        """Called to clean-up the server.
+
+        Since the server may be in a blocking read, we shutdown the socket
+        before closing it.
+        """
+        self.socket.shutdown(socket.SHUT_RDWR)
+        BaseHTTPServer.HTTPServer.server_close(self)
+
 
 class HttpServer(Server):
     """A test server for http transports.
@@ -332,6 +307,8 @@ class HttpServer(Server):
         self.host = 'localhost'
         self.port = 0
         self._httpd = None
+        # Allows tests to verify number of GET requests issued
+        self.GET_request_nb = 0
 
     def _get_httpd(self):
         if self._httpd is None:
@@ -346,7 +323,6 @@ class HttpServer(Server):
         self._http_base_url = '%s://%s:%s/' % (self._url_protocol,
                                                self.host,
                                                self.port)
-        httpd.socket.settimeout(0.1)
         self._http_starting.release()
 
         while self._http_running:

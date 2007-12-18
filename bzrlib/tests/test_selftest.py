@@ -1534,6 +1534,22 @@ class TestExtraAssertions(TestCase):
         self.callDeprecated([], testfunc, be_deprecated=False)
 
 
+class TestWarningTests(TestCase):
+    """Tests for calling methods that raise warnings."""
+
+    def test_callCatchWarnings(self):
+        def meth(a, b):
+            warnings.warn("this is your last warning")
+            return a + b
+        wlist, result = self.callCatchWarnings(meth, 1, 2)
+        self.assertEquals(3, result)
+        # would like just to compare them, but UserWarning doesn't implement
+        # eq well
+        w0, = wlist
+        self.assertIsInstance(w0, UserWarning)
+        self.assertEquals("this is your last warning", str(w0))
+
+
 class TestConvenienceMakers(TestCaseWithTransport):
     """Test for the make_* convenience functions."""
 

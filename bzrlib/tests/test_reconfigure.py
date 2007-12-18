@@ -18,6 +18,7 @@ from bzrlib import (
     branch as _mod_branch,
     errors,
     reconfigure,
+    repository,
     tests,
     workingtree,
     )
@@ -49,8 +50,8 @@ class TestReconfigure(tests.TestCaseWithTransport):
 
     def test_repo_to_branch(self):
         repo = self.make_repository('repo')
-        self.assertRaises(errors.ReconfigurationNotSupported,
-                          reconfigure.Reconfigure.to_branch, repo.bzrdir)
+        reconfiguration = reconfigure.Reconfigure.to_branch(repo.bzrdir)
+        reconfiguration.apply()
 
     def test_checkout_to_branch(self):
         branch = self.make_branch('branch')
@@ -111,9 +112,12 @@ class TestReconfigure(tests.TestCaseWithTransport):
         branch.set_push_location('sftp://push')
         self.assertEqual('sftp://push',
                          reconfiguration._select_bind_location())
-        branch.set_bound_location('bzr:old-bound')
+        branch.set_bound_location('bzr://foo/old-bound')
         branch.set_bound_location(None)
-        self.assertEqual('bzr:old-bound',
+        self.assertEqual('bzr://foo/old-bound',
+                         reconfiguration._select_bind_location())
+        branch.set_bound_location('bzr://foo/cur-bound')
+        self.assertEqual('bzr://foo/cur-bound',
                          reconfiguration._select_bind_location())
         reconfiguration.new_bound_location = 'ftp://user-specified'
         self.assertEqual('ftp://user-specified',
@@ -143,8 +147,90 @@ class TestReconfigure(tests.TestCaseWithTransport):
                                                               parent.base)
         reconfiguration.apply()
 
+    def test_tree_to_lightweight_checkout(self):
+        # A tree with no related branches and no supplied bind location cannot
+        # become a checkout
+        parent = self.make_branch('parent')
+
+        tree = self.make_branch_and_tree('tree')
+        reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
+            tree.bzrdir)
+        self.assertRaises(errors.NoBindLocation, reconfiguration.apply)
+        # setting a parent allows it to become a checkout
+        tree.branch.set_parent(parent.base)
+        reconfiguration.apply()
+        # supplying a location allows it to become a checkout
+        tree2 = self.make_branch_and_tree('tree2')
+        reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
+            tree2.bzrdir, parent.base)
+        reconfiguration.apply()
+
     def test_checkout_to_checkout(self):
         parent = self.make_branch('parent')
         checkout = parent.create_checkout('checkout')
         self.assertRaises(errors.AlreadyCheckout,
                           reconfigure.Reconfigure.to_checkout, checkout.bzrdir)
+
+    def test_checkout_to_lightweight(self):
+        parent = self.make_branch('parent')
+        checkout = parent.create_checkout('checkout')
+        checkout.commit('test', rev_id='new-commit', local=True)
+        reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
+            checkout.bzrdir)
+        reconfiguration.apply()
+        wt = checkout.bzrdir.open_workingtree()
+        self.assertTrue(parent.repository.has_same_location(
+            wt.branch.repository))
+        parent.repository.get_revision('new-commit')
+        self.assertRaises(errors.NoRepositoryPresent,
+                          checkout.bzrdir.open_repository)
+
+    def test_branch_to_lightweight_checkout(self):
+        parent = self.make_branch('parent')
+        child = parent.bzrdir.sprout('child').open_workingtree()
+        child.commit('test', rev_id='new-commit')
+        child.bzrdir.destroy_workingtree()
+        reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
+            child.bzrdir)
+        reconfiguration.apply()
+        wt = child.bzrdir.open_workingtree()
+        self.assertTrue(parent.repository.has_same_location(
+            wt.branch.repository))
+        parent.repository.get_revision('new-commit')
+        self.assertRaises(errors.NoRepositoryPresent,
+                          child.bzrdir.open_repository)
+
+    def test_lightweight_checkout_to_lightweight_checkout(self):
+        parent = self.make_branch('parent')
+        checkout = parent.create_checkout('checkout', lightweight=True)
+        self.assertRaises(errors.AlreadyLightweightCheckout,
+                          reconfigure.Reconfigure.to_lightweight_checkout,
+                          checkout.bzrdir)
+
+    def test_repo_to_tree(self):
+        repo = self.make_repository('repo')
+        reconfiguration = reconfigure.Reconfigure.to_tree(repo.bzrdir)
+        reconfiguration.apply()
+        workingtree.WorkingTree.open('repo')
+
+    def test_shared_repo_to_lightweight_checkout(self):
+        repo = self.make_repository('repo', shared=True)
+        reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
+            repo.bzrdir)
+        self.assertRaises(errors.NoBindLocation, reconfiguration.apply)
+        branch = self.make_branch('branch')
+        reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
+            repo.bzrdir, 'branch')
+        reconfiguration.apply()
+        workingtree.WorkingTree.open('repo')
+        repository.Repository.open('repo')
+
+    def test_unshared_repo_to_lightweight_checkout(self):
+        repo = self.make_repository('repo', shared=False)
+        branch = self.make_branch('branch')
+        reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
+            repo.bzrdir, 'branch')
+        reconfiguration.apply()
+        workingtree.WorkingTree.open('repo')
+        self.assertRaises(errors.NoRepositoryPresent,
+                          repository.Repository.open, 'repo')

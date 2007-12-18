@@ -70,22 +70,22 @@ lazy_import(globals(), """
 import errno
 from fnmatch import fnmatch
 import re
-from StringIO import StringIO
+from cStringIO import StringIO
 
 import bzrlib
 from bzrlib import (
+    debug,
     errors,
     mail_client,
     osutils,
     symbol_versioning,
     trace,
+    ui,
     urlutils,
     win32utils,
     )
-import bzrlib.util.configobj.configobj as configobj
+from bzrlib.util.configobj import configobj
 """)
-
-from bzrlib.trace import mutter, warning
 
 
 CHECK_IF_POSSIBLE=0
@@ -236,15 +236,11 @@ class Config(object):
         v = os.environ.get('BZR_EMAIL')
         if v:
             return v.decode(bzrlib.user_encoding)
-        v = os.environ.get('BZREMAIL')
-        if v:
-            warning('BZREMAIL is deprecated in favor of BZR_EMAIL. Please update your configuration.')
-            return v.decode(bzrlib.user_encoding)
-    
+
         v = self._get_user_id()
         if v:
             return v
-        
+
         v = os.environ.get('EMAIL')
         if v:
             return v.decode(bzrlib.user_encoding)
@@ -275,8 +271,8 @@ class Config(object):
         if policy is None:
             policy = self._get_signature_checking()
             if policy is not None:
-                warning("Please use create_signatures, not check_signatures "
-                        "to set signing policy.")
+                trace.warning("Please use create_signatures,"
+                              " not check_signatures to set signing policy.")
             if policy == CHECK_ALWAYS:
                 return True
         elif policy == SIGN_ALWAYS:
@@ -460,15 +456,15 @@ class LocationConfig(IniBasedConfig):
 
     def __init__(self, location):
         name_generator = locations_config_filename
-        if (not os.path.exists(name_generator()) and 
+        if (not os.path.exists(name_generator()) and
                 os.path.exists(branches_config_filename())):
             if sys.platform == 'win32':
-                warning('Please rename %s to %s' 
-                         % (branches_config_filename(),
-                            locations_config_filename()))
+                trace.warning('Please rename %s to %s'
+                              % (branches_config_filename(),
+                                 locations_config_filename()))
             else:
-                warning('Please rename ~/.bazaar/branches.conf'
-                        ' to ~/.bazaar/locations.conf')
+                trace.warning('Please rename ~/.bazaar/branches.conf'
+                              ' to ~/.bazaar/locations.conf')
             name_generator = branches_config_filename
         super(LocationConfig, self).__init__(name_generator)
         # local file locations are looked up by local path, rather than
@@ -743,9 +739,9 @@ def ensure_config_dir_exists(path=None):
         if sys.platform == 'win32':
             parent_dir = os.path.dirname(path)
             if not os.path.isdir(parent_dir):
-                mutter('creating config parent directory: %r', parent_dir)
+                trace.mutter('creating config parent directory: %r', parent_dir)
             os.mkdir(parent_dir)
-        mutter('creating config directory: %r', path)
+        trace.mutter('creating config directory: %r', path)
         os.mkdir(path)
 
 
@@ -763,7 +759,8 @@ def config_dir():
         if base is None:
             base = os.environ.get('HOME', None)
         if base is None:
-            raise errors.BzrError('You must have one of BZR_HOME, APPDATA, or HOME set')
+            raise errors.BzrError('You must have one of BZR_HOME, APPDATA,'
+                                  ' or HOME set')
         return osutils.pathjoin(base, 'bazaar', '2.0')
     else:
         # cygwin, linux, and darwin all have a $HOME directory
@@ -785,6 +782,11 @@ def branches_config_filename():
 def locations_config_filename():
     """Return per-user configuration ini file filename."""
     return osutils.pathjoin(config_dir(), 'locations.conf')
+
+
+def authentication_config_filename():
+    """Return per-user authentication ini file filename."""
+    return osutils.pathjoin(config_dir(), 'authentication.conf')
 
 
 def user_ignore_config_filename():
@@ -860,24 +862,34 @@ def _auto_user_id():
     return realname, (username + '@' + socket.gethostname())
 
 
+def parse_username(username):
+    """Parse e-mail username and return a (name, address) tuple."""
+    match = re.match(r'(.*?)\s*<?([\w+.-]+@[\w+.-]+)>?', username)
+    if match is None:
+        return (username, '')
+    else:
+        return (match.group(1), match.group(2))
+
+
 def extract_email_address(e):
     """Return just the address part of an email string.
-    
+
     That is just the user@domain part, nothing else. 
     This part is required to contain only ascii characters.
     If it can't be extracted, raises an error.
-    
+
     >>> extract_email_address('Jane Tester <jane@test.com>')
     "jane@test.com"
     """
-    m = re.search(r'[\w+.-]+@[\w+.-]+', e)
-    if not m:
+    name, email = parse_username(e)
+    if not email:
         raise errors.NoEmailInUsername(e)
-    return m.group(0)
+    return email
 
 
 class TreeConfig(IniBasedConfig):
     """Branch configuration data associated with its contents, not location"""
+
     def __init__(self, branch):
         self.branch = branch
 
@@ -928,3 +940,188 @@ class TreeConfig(IniBasedConfig):
             self.branch.control_files.put('branch.conf', out_file)
         finally:
             self.branch.unlock()
+
+
+class AuthenticationConfig(object):
+    """The authentication configuration file based on a ini file.
+
+    Implements the authentication.conf file described in
+    doc/developers/authentication-ring.txt.
+    """
+
+    def __init__(self, _file=None):
+        self._config = None # The ConfigObj
+        if _file is None:
+            self._filename = authentication_config_filename()
+            self._input = self._filename = authentication_config_filename()
+        else:
+            # Tests can provide a string as _file
+            self._filename = None
+            self._input = _file
+
+    def _get_config(self):
+        if self._config is not None:
+            return self._config
+        try:
+            # FIXME: Should we validate something here ? Includes: empty
+            # sections are useless, at least one of
+            # user/password/password_encoding should be defined, etc.
+
+            # Note: the encoding below declares that the file itself is utf-8
+            # encoded, but the values in the ConfigObj are always Unicode.
+            self._config = ConfigObj(self._input, encoding='utf-8')
+        except configobj.ConfigObjError, e:
+            raise errors.ParseConfigError(e.errors, e.config.filename)
+        return self._config
+
+    def _save(self):
+        """Save the config file, only tests should use it for now."""
+        conf_dir = os.path.dirname(self._filename)
+        ensure_config_dir_exists(conf_dir)
+        self._get_config().write(file(self._filename, 'wb'))
+
+    def _set_option(self, section_name, option_name, value):
+        """Set an authentication configuration option"""
+        conf = self._get_config()
+        section = conf.get(section_name)
+        if section is None:
+            conf[section] = {}
+            section = conf[section]
+        section[option_name] = value
+        self._save()
+
+    def get_credentials(self, scheme, host, port=None, user=None, path=None):
+        """Returns the matching credentials from authentication.conf file.
+
+        :param scheme: protocol
+
+        :param host: the server address
+
+        :param port: the associated port (optional)
+
+        :param user: login (optional)
+
+        :param path: the absolute path on the server (optional)
+
+        :return: A dict containing the matching credentials or None.
+           This includes:
+           - name: the section name of the credentials in the
+             authentication.conf file,
+           - user: can't de different from the provided user if any,
+           - password: the decoded password, could be None if the credential
+             defines only the user
+           - verify_certificates: https specific, True if the server
+             certificate should be verified, False otherwise.
+        """
+        credentials = None
+        for auth_def_name, auth_def in self._get_config().items():
+            a_scheme, a_host, a_user, a_path = map(
+                auth_def.get, ['scheme', 'host', 'user', 'path'])
+
+            try:
+                a_port = auth_def.as_int('port')
+            except KeyError:
+                a_port = None
+            except ValueError:
+                raise ValueError("'port' not numeric in %s" % auth_def_name)
+            try:
+                a_verify_certificates = auth_def.as_bool('verify_certificates')
+            except KeyError:
+                a_verify_certificates = True
+            except ValueError:
+                raise ValueError(
+                    "'verify_certificates' not boolean in %s" % auth_def_name)
+
+            # Attempt matching
+            if a_scheme is not None and scheme != a_scheme:
+                continue
+            if a_host is not None:
+                if not (host == a_host
+                        or (a_host.startswith('.') and host.endswith(a_host))):
+                    continue
+            if a_port is not None and port != a_port:
+                continue
+            if (a_path is not None and path is not None
+                and not path.startswith(a_path)):
+                continue
+            if (a_user is not None and user is not None
+                and a_user != user):
+                # Never contradict the caller about the user to be used
+                continue
+            if a_user is None:
+                # Can't find a user
+                continue
+            credentials = dict(name=auth_def_name,
+                               user=a_user, password=auth_def['password'],
+                               verify_certificates=a_verify_certificates)
+            self.decode_password(credentials,
+                                 auth_def.get('password_encoding', None))
+            if 'auth' in debug.debug_flags:
+                trace.mutter("Using authentication section: %r", auth_def_name)
+            break
+
+        return credentials
+
+    def get_user(self, scheme, host, port=None,
+                 realm=None, path=None, prompt=None):
+        """Get a user from authentication file.
+
+        :param scheme: protocol
+
+        :param host: the server address
+
+        :param port: the associated port (optional)
+
+        :param realm: the realm sent by the server (optional)
+
+        :param path: the absolute path on the server (optional)
+
+        :return: The found user.
+        """
+        credentials = self.get_credentials(scheme, host, port, user=None,
+                                           path=path)
+        if credentials is not None:
+            user = credentials['user']
+        else:
+            user = None
+        return user
+
+    def get_password(self, scheme, host, user, port=None,
+                     realm=None, path=None, prompt=None):
+        """Get a password from authentication file or prompt the user for one.
+
+        :param scheme: protocol
+
+        :param host: the server address
+
+        :param port: the associated port (optional)
+
+        :param user: login
+
+        :param realm: the realm sent by the server (optional)
+
+        :param path: the absolute path on the server (optional)
+
+        :return: The found password or the one entered by the user.
+        """
+        credentials = self.get_credentials(scheme, host, port, user, path)
+        if credentials is not None:
+            password = credentials['password']
+        else:
+            password = None
+        # Prompt user only if we could't find a password
+        if password is None:
+            if prompt is None:
+                # Create a default prompt suitable for most of the cases
+                prompt = '%s' % scheme.upper() + ' %(user)s@%(host)s password'
+            # Special handling for optional fields in the prompt
+            if port is not None:
+                prompt_host = '%s:%d' % (host, port)
+            else:
+                prompt_host = host
+            password = ui.ui_factory.get_password(prompt,
+                                                  host=prompt_host, user=user)
+        return password
+
+    def decode_password(self, credentials, encoding):
+        return credentials

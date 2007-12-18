@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006,2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@ This file complements the urllib2 class hierarchy with custom classes.
 
 For instance, we create a new HTTPConnection and HTTPSConnection that inherit
 from the original urllib2.HTTP(s)Connection objects, but also have a new base
-which implements a custom getresponse and fake_close handlers.
+which implements a custom getresponse and cleanup_pipe handlers.
 
 And then we implement custom HTTPHandler and HTTPSHandler classes, that use
 the custom HTTPConnection classes.
@@ -32,12 +32,10 @@ And a custom Request class that lets us track redirections, and
 handle authentication schemes.
 """
 
+# TODO: now that we have -Dhttp most of the needs should be covered in a more
+# accessible way (i.e. no need to edit the source), if experience confirms
+# that, delete all DEBUG uses -- vila20071130 (happy birthday).
 DEBUG = 0
-
-# TODO: It may be possible to share the password_manager across
-# all transports by prefixing the realm by the protocol used
-# (especially if other protocols do not use realms). See
-# PasswordManager below.
 
 # FIXME: Oversimplifying, two kind of exceptions should be
 # raised, once a request is issued: URLError before we have been
@@ -60,10 +58,13 @@ import time
 
 from bzrlib import __version__ as bzrlib_version
 from bzrlib import (
+    config,
+    debug,
     errors,
+    trace,
+    transport,
     ui,
     )
-
 
 
 # We define our own Response class to keep our httplib pipe clean
@@ -76,9 +77,6 @@ class Response(httplib.HTTPResponse):
 
     # Some responses have bodies in which we have no interest
     _body_ignored_responses = [301,302, 303, 307, 401, 403, 404]
-
-    def __init__(self, *args, **kwargs):
-        httplib.HTTPResponse.__init__(self, *args, **kwargs)
 
     def begin(self):
         """Begin to read the response from the server.
@@ -105,7 +103,8 @@ class Response(httplib.HTTPResponse):
                 # having issued the response headers (even if the
                 # headers indicate a Content-Type...)
                 body = self.fp.read(self.length)
-                if self.debuglevel > 0:
+                if self.debuglevel > 3:
+                    # This one can be huge and is generally not interesting
                     print "Consumed body: [%s]" % body
             self.close()
         elif self.status == 200:
@@ -113,8 +112,48 @@ class Response(httplib.HTTPResponse):
             # close the connection. Some cases are not correctly detected by
             # httplib.HTTPConnection.getresponse (called by
             # httplib.HTTPResponse.begin). The CONNECT response for the https
-            # through proxy case is one.
+            # through proxy case is one.  Note: the 'will_close' below refers
+            # to the "true" socket between us and the server, whereas the
+            # 'close()' above refers to the copy of that socket created by
+            # httplib for the response itself. So, in the if above we close the
+            # socket to indicate that we are done with the response whereas
+            # below we keep the socket with the server opened.
             self.will_close = False
+
+    # in finish() below, we may have to discard several MB in the worst
+    # case. To avoid buffering that much, we read and discard by chunks
+    # instead. The underlying file is either a socket or a StringIO, so reading
+    # 8k chunks should be fine.
+    _discarded_buf_size = 8192
+
+    def finish(self):
+        """Finish reading the body.
+
+        In some cases, the client may have left some bytes to read in the
+        body. That will block the next request to succeed if we use a
+        persistent connection. If we don't use a persistent connection, well,
+        nothing will block the next request since a new connection will be
+        issued anyway.
+
+        :return: the number of bytes left on the socket (may be None)
+        """
+        pending = None
+        if not self.isclosed():
+            # Make sure nothing was left to be read on the socket
+            pending = 0
+            while self.length and self.length > self._discarded_buf_size:
+                data = self.read(self._discarded_buf_size)
+                pending += len(data)
+            if self.length:
+                data = self.read(self.length)
+                pending += len(data)
+            if pending:
+                trace.mutter(
+                    "bogus http server didn't give body length,"
+                    "%s bytes left on the socket",
+                    pending)
+            self.close()
+        return pending
 
 
 # Not inheriting from 'object' because httplib.HTTPConnection doesn't.
@@ -124,11 +163,40 @@ class AbstractHTTPConnection:
     response_class = Response
     strict = 1 # We don't support HTTP/0.9
 
-    def fake_close(self):
-        """Make the connection believes the response have been fully handled.
+    # When we detect a server responding with the whole file to range requests,
+    # we want to warn. But not below a given thresold.
+    _range_warning_thresold = 1024 * 1024
 
-        That makes the httplib.HTTPConnection happy
-        """
+    def __init__(self):
+        self._response = None
+        self._ranges_received_whole_file = None
+
+    def _mutter_connect(self):
+        netloc = '%s:%s' % (self.host, self.port)
+        if self.proxied_host is not None:
+            netloc += '(proxy for %s)' % self.proxied_host
+        trace.mutter('* About to connect() to %s' % netloc)
+
+    def getresponse(self):
+        """Capture the response to be able to cleanup"""
+        self._response = httplib.HTTPConnection.getresponse(self)
+        return self._response
+
+    def cleanup_pipe(self):
+        """Make the connection believe the response has been fully processed."""
+        if self._response is not None:
+            pending = self._response.finish()
+            # Warn the user (once)
+            if (self._ranges_received_whole_file is None
+                and self._response.status == 200
+                and pending and pending > self._range_warning_thresold
+                ):
+                self._ranges_received_whole_file = True
+                trace.warning(
+                    'Got a 200 response when asking for multiple ranges,'
+                    ' does your server at %s:%s support range requests?',
+                    self.host, self.port)
+            self._response = None
         # Preserve our preciousss
         sock = self.sock
         self.sock = None
@@ -142,19 +210,28 @@ class HTTPConnection(AbstractHTTPConnection, httplib.HTTPConnection):
 
     # XXX: Needs refactoring at the caller level.
     def __init__(self, host, port=None, strict=None, proxied_host=None):
+        AbstractHTTPConnection.__init__(self)
         httplib.HTTPConnection.__init__(self, host, port, strict)
         self.proxied_host = proxied_host
+
+    def connect(self):
+        if 'http' in debug.debug_flags:
+            self._mutter_connect()
+        httplib.HTTPConnection.connect(self)
 
 
 class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
 
     def __init__(self, host, port=None, key_file=None, cert_file=None,
                  strict=None, proxied_host=None):
+        AbstractHTTPConnection.__init__(self)
         httplib.HTTPSConnection.__init__(self, host, port,
                                          key_file, cert_file, strict)
         self.proxied_host = proxied_host
 
     def connect(self):
+        if 'http' in debug.debug_flags:
+            self._mutter_connect()
         httplib.HTTPConnection.connect(self)
         if self.proxied_host is None:
             self.connect_to_origin()
@@ -193,7 +270,7 @@ class Request(urllib2.Request):
         # Unless told otherwise, redirections are not followed
         self.follow_redirections = False
         # auth and proxy_auth are dicts containing, at least
-        # (scheme, url, realm, user, password).
+        # (scheme, host, port, realm, user, password, protocol, path).
         # The dict entries are mostly handled by the AuthHandler.
         # Some authentication schemes may add more entries.
         self.auth = {}
@@ -238,54 +315,6 @@ class _ConnectRequest(Request):
         just want to enable the SSL tunneling.
         """
         urllib2.Request.set_proxy(self, proxy, type)
-
-
-def extract_credentials(url):
-    """Extracts credentials information from url.
-
-    Get user and password from url of the form: http://user:pass@host/path
-    :returns: (clean_url, user, password)
-    """
-    scheme, netloc, path, query, fragment = urlparse.urlsplit(url)
-
-    if '@' in netloc:
-        auth, netloc = netloc.split('@', 1)
-        if ':' in auth:
-            user, password = auth.split(':', 1)
-        else:
-            user, password = auth, None
-        user = urllib.unquote(user)
-        if password is not None:
-            password = urllib.unquote(password)
-    else:
-        user = None
-        password = None
-
-    # Build the clean url
-    clean_url = urlparse.urlunsplit((scheme, netloc, path, query, fragment))
-
-    return clean_url, user, password
-
-def extract_authentication_uri(url):
-    """Extract the authentication uri from any url.
-
-    In the context of bzr, we simplified the authentication uri
-    to the host only. For the transport lifetime, we allow only
-    one user by realm on a given host. I.e. handling several
-    users for different paths for the same realm should be done
-    at a higher level.
-    """
-    scheme, host, path, query, fragment = urlparse.urlsplit(url)
-    return '%s://%s' % (scheme, host)
-
-
-# The AuthHandler classes handle the authentication of the requests, to do
-# that, they need a PasswordManager *at build time*. We also need one to reuse
-# the passwords entered by the user.
-class PasswordManager(urllib2.HTTPPasswordMgrWithDefaultRealm):
-
-    def __init__(self):
-        urllib2.HTTPPasswordMgrWithDefaultRealm.__init__(self)
 
 
 class ConnectionHandler(urllib2.BaseHandler):
@@ -405,6 +434,10 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
             raise errors.ConnectionError("Couldn't resolve host '%s'"
                                          % request.get_origin_req_host(),
                                          orig_error=exc_val)
+        elif isinstance(exc_val, httplib.ImproperConnectionState):
+            # The httplib pipeline is in incorrect state, it's a bug in our
+            # implementation.
+            raise exc_type, exc_val, exc_tb
         else:
             if first_try:
                 if self._debuglevel > 0:
@@ -415,7 +448,6 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                     print '  Will retry, %s %r' % (method, url)
                 request.connection.close()
                 response = self.do_open(http_class, request, False)
-                convert_to_addinfourl = False
             else:
                 if self._debuglevel > 0:
                     print 'Received second exception: [%r]' % exc_val
@@ -434,21 +466,10 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                 else:
                     # All other exception are considered connection related.
 
-                    # httplib.HTTPException should indicate a bug in our
-                    # urllib-based implementation, somewhow the httplib
-                    # pipeline is in an incorrect state, we retry in hope that
-                    # this will correct the problem but that may need
-                    # investigation (note that no such bug is known as of
-                    # 20061005 --vila).
-
                     # socket errors generally occurs for reasons
                     # far outside our scope, so closing the
                     # connection and retrying is the best we can
                     # do.
-
-                    # FIXME: and then there is HTTPError raised by:
-                    # - HTTPDefaultErrorHandler (we define our own)
-                    # - HTTPRedirectHandler.redirect_request 
 
                     my_exception = errors.ConnectionError(
                         msg= 'while sending %s %s:' % (request.get_method(),
@@ -462,7 +483,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                     print '  Failed again, %s %r' % (method, url)
                     print '  Will raise: [%r]' % my_exception
                 raise my_exception, None, exc_tb
-        return response, convert_to_addinfourl
+        return response
 
     def do_open(self, http_class, request, first_try=True):
         """See urllib2.AbstractHTTPHandler.do_open for the general idea.
@@ -479,21 +500,25 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
         headers.update(request.unredirected_hdrs)
 
         try:
-            connection._send_request(request.get_method(),
-                                     request.get_selector(),
+            method = request.get_method()
+            url = request.get_selector()
+            connection._send_request(method, url,
                                      # FIXME: implements 100-continue
                                      #None, # We don't send the body yet
                                      request.get_data(),
                                      headers)
+            if 'http' in debug.debug_flags:
+                trace.mutter('> %s %s' % (method, url))
+                hdrs = ['%s: %s' % (k, v) for k,v in headers.items()]
+                trace.mutter('> ' + '\n> '.join(hdrs) + '\n')
             if self._debuglevel > 0:
                 print 'Request sent: [%r]' % request
             response = connection.getresponse()
             convert_to_addinfourl = True
         except (socket.gaierror, httplib.BadStatusLine, httplib.UnknownProtocol,
                 socket.error, httplib.HTTPException):
-            response, convert_to_addinfourl = self.retry_or_raise(http_class,
-                                                                  request,
-                                                                  first_try)
+            response = self.retry_or_raise(http_class, request, first_try)
+            convert_to_addinfourl = False
 
 # FIXME: HTTPConnection does not fully support 100-continue (the
 # server responses are just ignored)
@@ -521,36 +546,27 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
             resp = urllib2.addinfourl(fp, r.msg, req.get_full_url())
             resp.code = r.status
             resp.msg = r.reason
+            resp.version = r.version
             if self._debuglevel > 0:
                 print 'Create addinfourl: %r' % resp
                 print '  For: %r(%r)' % (request.get_method(),
                                          request.get_full_url())
+            if 'http' in debug.debug_flags:
+                version = 'HTTP/%d.%d'
+                try:
+                    version = version % (resp.version / 10,
+                                         resp.version % 10)
+                except:
+                    version = 'HTTP/%r' % resp.version
+                trace.mutter('< %s %s %s' % (version, resp.code,
+                                             resp.msg))
+                # Use the raw header lines instead of treating resp.info() as a
+                # dict since we may miss duplicated headers otherwise.
+                hdrs = [h.rstrip('\r\n') for h in resp.info().headers]
+                trace.mutter('< ' + '\n< '.join(hdrs) + '\n')
         else:
             resp = response
         return resp
-
-#       # we need titled headers in a dict but
-#       # response.getheaders returns a list of (lower(header).
-#       # Let's title that because most of bzr handle titled
-#       # headers, but maybe we should switch to lowercased
-#       # headers...
-#        # jam 20060908: I think we actually expect the headers to
-#        #       be similar to mimetools.Message object, which uses
-#        #       case insensitive keys. It lowers() all requests.
-#        #       My concern is that the code may not do perfect title case.
-#        #       For example, it may use Content-type rather than Content-Type
-#
-#        # When we get rid of addinfourl, we must ensure that bzr
-#        # always use titled headers and that any header received
-#        # from server is also titled.
-#
-#        headers = {}
-#        for header, value in (response.getheaders()):
-#            headers[header.title()] = value
-#        # FIXME: Implements a secured .read method
-#        response.code = response.status
-#        response.headers = headers
-#        return response
 
 
 class HTTPHandler(AbstractHTTPHandler):
@@ -591,7 +607,7 @@ class HTTPSHandler(AbstractHTTPHandler):
                 raise ConnectionError("Can't connect to %s via proxy %s" % (
                         connect.proxied_host, self.host))
             # Housekeeping
-            connection.fake_close()
+            connection.cleanup_pipe()
             # Establish the connection encryption 
             connection.connect_to_origin()
             # Propagate the connection to the original request
@@ -662,9 +678,9 @@ class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
     def http_error_302(self, req, fp, code, msg, headers):
         """Requests the redirected to URI.
 
-        Copied from urllib2 to be able to fake_close the
-        associated connection, *before* issuing the redirected
-        request but *after* having eventually raised an error.
+        Copied from urllib2 to be able to clean the pipe of the associated
+        connection, *before* issuing the redirected request but *after* having
+        eventually raised an error.
         """
         # Some servers (incorrectly) return multiple Location headers
         # (so probably same goes for URI).  Use first header.
@@ -709,7 +725,7 @@ class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
         # use it with HTTPError.
         fp.close()
         # We have all we need already in the response
-        req.connection.fake_close()
+        req.connection.cleanup_pipe()
 
         return self.parent.open(redirected_req)
 
@@ -737,9 +753,8 @@ class ProxyHandler(urllib2.ProxyHandler):
     handler_order = 100
     _debuglevel = DEBUG
 
-    def __init__(self, password_manager, proxies=None):
+    def __init__(self, proxies=None):
         urllib2.ProxyHandler.__init__(self, proxies)
-        self.password_manager = password_manager
         # First, let's get rid of urllib2 implementation
         for type, proxy in self.proxies.items():
             if self._debuglevel > 0:
@@ -782,7 +797,7 @@ class ProxyHandler(urllib2.ProxyHandler):
 
     def proxy_bypass(self, host):
         """Check if host should be proxied or not"""
-        no_proxy = self.get_proxy_env_var('no', None)
+        no_proxy = self.get_proxy_env_var('no', default_to=None)
         if no_proxy is None:
             return False
         hhost, hport = urllib.splitport(host)
@@ -814,33 +829,26 @@ class ProxyHandler(urllib2.ProxyHandler):
         # grok user:password@host:port as well as
         # http://user:password@host:port
 
-        # Extract credentials from the url and store them in the
-        # password manager so that the proxy AuthHandler can use
-        # them later.
-        proxy, user, password = extract_credentials(proxy)
+        (scheme, user, password,
+         host, port, path) = transport.ConnectedTransport._split_url(proxy)
+
         if request.proxy_auth == {}:
-            # No proxy auth parameter are available, we are
-            # handling the first proxied request, intialize.
-            # scheme and realm will be set by the AuthHandler
-            authuri = extract_authentication_uri(proxy)
-            request.proxy_auth = {'user': user, 'password': password,
-                                  'authuri': authuri}
-            if user and password is not None: # '' is a valid password
-                # We default to a realm of None to catch them all.
-                self.password_manager.add_password(None, authuri,
-                                                   user, password)
-        orig_type = request.get_type()
-        scheme, r_scheme = urllib.splittype(proxy)
+            # No proxy auth parameter are available, we are handling the first
+            # proxied request, intialize.  scheme (the authentication scheme)
+            # and realm will be set by the AuthHandler
+            request.proxy_auth = {
+                                  'host': host, 'port': port,
+                                  'user': user, 'password': password,
+                                  'protocol': scheme,
+                                   # We ignore path since we connect to a proxy
+                                  'path': None}
+        if port is None:
+            phost = host
+        else:
+            phost = host + ':%d' % port
+        request.set_proxy(phost, type)
         if self._debuglevel > 0:
-            print 'scheme: %s, r_scheme: %s' % (scheme, r_scheme)
-        host, XXX = urllib.splithost(r_scheme)
-        if host is None:
-            raise errors.InvalidURL(proxy,
-                                    'Invalid syntax in proxy env variable')
-        host = urllib.unquote(host)
-        request.set_proxy(host, type)
-        if self._debuglevel > 0:
-            print 'set_proxy: proxy set to %s://%s' % (type, host)
+            print 'set_proxy: proxy set to %s://%s' % (type, phost)
         return request
 
 
@@ -882,7 +890,7 @@ class AbstractAuthHandler(urllib2.BaseHandler):
       successful and the request authentication parameters have been updated.
     """
 
-    _max_retry = 2
+    _max_retry = 3
     """We don't want to retry authenticating endlessly"""
 
     # The following attributes should be defined by daughter
@@ -890,10 +898,10 @@ class AbstractAuthHandler(urllib2.BaseHandler):
     # - auth_required_header:  the header received from the server
     # - auth_header: the header sent in the request
 
-    def __init__(self, password_manager):
-        self.password_manager = password_manager
-        self.find_user_password = password_manager.find_user_password
-        self.add_password = password_manager.add_password
+    def __init__(self):
+        # We want to know when we enter into an try/fail cycle of
+        # authentications so we initialize to None to indicate that we aren't
+        # in such a cycle by default.
         self._retry_count = None
 
     def update_auth(self, auth, key, value):
@@ -912,8 +920,8 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         """
         # Don't try  to authenticate endlessly
         if self._retry_count is None:
-            # The retry being recusrsive calls, None identify the first try
-            self._retry_count = 0
+            # The retry being recusrsive calls, None identify the first retry
+            self._retry_count = 1
         else:
             self._retry_count += 1
             if self._retry_count > self._max_retry:
@@ -935,8 +943,8 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         if self.auth_match(server_header, auth):
             # auth_match may have modified auth (by adding the
             # password or changing the realm, for example)
-            if request.get_header(self.auth_header, None) is not None \
-                    and not auth['modified']:
+            if (request.get_header(self.auth_header, None) is not None
+                and not auth['modified']):
                 # We already tried that, give up
                 return None
 
@@ -998,26 +1006,46 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         # It may happen that we need to reconnect later, let's be ready
         self._retry_count = None
 
-    def get_password(self, user, authuri, realm=None):
+    def get_user_password(self, auth):
         """Ask user for a password if none is already available."""
-        user_found, password = self.find_user_password(realm, authuri)
-        if user_found != user:
-            # FIXME: write a test for that case
-            password = None
+        auth_conf = config.AuthenticationConfig()
+        user = auth['user']
+        password = auth['password']
+        realm = auth['realm']
+
+        if user is None:
+            user = auth.get_user(auth['protocol'], auth['host'],
+                                 port=auth['port'], path=auth['path'],
+                                 realm=realm)
+            if user is None:
+                # Default to local user
+                user = getpass.getuser()
 
         if password is None:
-            # Prompt user only if we can't find a password
-            if realm:
-                realm_prompt = " Realm: '%s'" % realm
-            else:
-                realm_prompt = ''
-            scheme, host, path, query, fragment = urlparse.urlsplit(authuri)
-            password = ui.ui_factory.get_password(prompt=self.password_prompt,
-                                                  user=user, host=host,
-                                                  realm=realm_prompt)
-            if password is not None:
-                self.add_password(realm, authuri, user, password)
-        return password
+            password = auth_conf.get_password(
+                auth['protocol'], auth['host'], user, port=auth['port'],
+                path=auth['path'], realm=realm,
+                prompt=self.build_password_prompt(auth))
+
+        return user, password
+
+    def _build_password_prompt(self, auth):
+        """Build a prompt taking the protocol used into account.
+
+        The AuthHandler is used by http and https, we want that information in
+        the prompt, so we build the prompt from the authentication dict which
+        contains all the needed parts.
+
+        Also, hhtp and proxy AuthHandlers present different prompts to the
+        user. The daughter classes hosuld implements a public
+        build_password_prompt using this method.
+        """
+        prompt = '%s' % auth['protocol'].upper() + ' %(user)s@%(host)s'
+        realm = auth['realm']
+        if realm is not None:
+            prompt += ", Realm: '%s'" % realm
+        prompt += ' password'
+        return prompt
 
     def http_request(self, request):
         """Insert an authentication header if information is available"""
@@ -1056,9 +1084,9 @@ class BasicAuthHandler(AbstractAuthHandler):
             # Put useful info into auth
             self.update_auth(auth, 'scheme', scheme)
             self.update_auth(auth, 'realm', realm)
-            if auth.get('password',None) is None:
-                password = self.get_password(auth['user'], auth['authuri'],
-                                             auth['realm'])
+            if auth['user'] is None or auth['password'] is None:
+                user, password = self.get_user_password(auth)
+                self.update_auth(auth, 'user', user)
                 self.update_auth(auth, 'password', password)
         return match is not None
 
@@ -1118,16 +1146,17 @@ class DigestAuthHandler(AbstractAuthHandler):
             return False
 
         realm = req_auth.get('realm', None)
-        if auth.get('password',None) is None:
-            auth['password'] = self.get_password(auth['user'],
-                                                 auth['authuri'],
-                                                 realm)
         # Put useful info into auth
+        self.update_auth(auth, 'scheme', scheme)
+        self.update_auth(auth, 'realm', realm)
+        if auth['user'] is None or auth['password'] is None:
+            user, password = self.get_user_password(auth)
+            self.update_auth(auth, 'user', user)
+            self.update_auth(auth, 'password', password)
+
         try:
-            self.update_auth(auth, 'scheme', scheme)
             if req_auth.get('algorithm', None) is not None:
                 self.update_auth(auth, 'algorithm', req_auth.get('algorithm'))
-            self.update_auth(auth, 'realm', realm)
             nonce = req_auth['nonce']
             if auth.get('nonce', None) != nonce:
                 # A new nonce, never used
@@ -1188,7 +1217,6 @@ class HTTPAuthHandler(AbstractAuthHandler):
     the auth request attribute.
     """
 
-    password_prompt = 'HTTP %(user)s@%(host)s%(realm)s password'
     auth_required_header = 'www-authenticate'
     auth_header = 'Authorization'
 
@@ -1199,6 +1227,9 @@ class HTTPAuthHandler(AbstractAuthHandler):
     def set_auth(self, request, auth):
         """Set the auth params for the request"""
         request.auth = auth
+
+    def build_password_prompt(self, auth):
+        return self._build_password_prompt(auth)
 
     def http_error_401(self, req, fp, code, msg, headers):
         return self.auth_required(req, headers)
@@ -1212,7 +1243,6 @@ class ProxyAuthHandler(AbstractAuthHandler):
     the proxy_auth request attribute..
     """
 
-    password_prompt = 'Proxy %(user)s@%(host)s%(realm)s password'
     auth_required_header = 'proxy-authenticate'
     # FIXME: the correct capitalization is Proxy-Authorization,
     # but python-2.4 urllib2.Request insist on using capitalize()
@@ -1226,6 +1256,11 @@ class ProxyAuthHandler(AbstractAuthHandler):
     def set_auth(self, request, auth):
         """Set the auth params for the request"""
         request.proxy_auth = auth
+
+    def build_password_prompt(self, auth):
+        prompt = self._build_password_prompt(auth)
+        prompt = 'Proxy ' + prompt
+        return prompt
 
     def http_error_407(self, req, fp, code, msg, headers):
         return self.auth_required(req, headers)
@@ -1285,11 +1320,6 @@ class HTTPDefaultErrorHandler(urllib2.HTTPDefaultErrorHandler):
     def http_error_default(self, req, fp, code, msg, hdrs):
         if code == 403:
             raise errors.TransportError('Server refuses to fullfil the request')
-        elif code == 416:
-            # We don't know which, but one of the ranges we
-            # specified was wrong. So we raise with 0 for a lack
-            # of a better magic value.
-            raise errors.InvalidRange(req.get_full_url(),0)
         else:
             raise errors.InvalidHttpResponse(req.get_full_url(),
                                              'Unable to handle http code %d: %s'
@@ -1307,21 +1337,20 @@ class Opener(object):
                  connection=ConnectionHandler,
                  redirect=HTTPRedirectHandler,
                  error=HTTPErrorProcessor,):
-        self.password_manager = PasswordManager()
         self._opener = urllib2.build_opener( \
             connection, redirect, error,
-            ProxyHandler(self.password_manager),
-            HTTPBasicAuthHandler(self.password_manager),
-            HTTPDigestAuthHandler(self.password_manager),
-            ProxyBasicAuthHandler(self.password_manager),
-            ProxyDigestAuthHandler(self.password_manager),
+            ProxyHandler(),
+            HTTPBasicAuthHandler(),
+            HTTPDigestAuthHandler(),
+            ProxyBasicAuthHandler(),
+            ProxyDigestAuthHandler(),
             HTTPHandler,
             HTTPSHandler,
             HTTPDefaultErrorHandler,
             )
 
         self.open = self._opener.open
-        if DEBUG >= 2:
+        if DEBUG >= 3:
             # When dealing with handler order, it's easy to mess
             # things up, the following will help understand which
             # handler is used, when and for what.

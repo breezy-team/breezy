@@ -28,8 +28,19 @@ from bzrlib import (
     )
 from bzrlib.delta import TreeDelta
 from bzrlib.inventory import Inventory, InventoryDirectory
-from bzrlib.revision import NULL_REVISION
-from bzrlib.tests import TestCaseWithTransport, TestSkipped
+from bzrlib.repofmt.weaverepo import (
+    RepositoryFormat5,
+    RepositoryFormat6,
+    RepositoryFormat7,
+    )
+from bzrlib.revision import NULL_REVISION, Revision
+from bzrlib.smart import server
+from bzrlib.tests import (
+    KnownFailure,
+    TestCaseWithTransport,
+    TestNotApplicable,
+    TestSkipped,
+    )
 from bzrlib.tests.repository_implementations import TestCaseWithRepository
 from bzrlib.transport import get_transport
 from bzrlib.upgrade import upgrade
@@ -61,6 +72,8 @@ class TestRepository(TestCaseWithRepository):
         bzrdirb = self.make_bzrdir('b')
         repo_b = tree_a.branch.repository.clone(bzrdirb)
         tree_b = repo_b.revision_tree('rev1')
+        tree_b.lock_read()
+        self.addCleanup(tree_b.unlock)
         tree_b.get_file_text('file1')
         rev1 = repo_b.get_revision('rev1')
 
@@ -375,8 +388,8 @@ class TestRepository(TestCaseWithRepository):
         try:
             stream = repo.get_data_stream(['rev_id'])
         except NotImplementedError:
-            # Not all repositories support streaming.
-            return
+            raise TestNotApplicable("%s doesn't support get_data_stream"
+                % repo._format)
 
         # The data stream is a iterator that yields (name, versioned_file)
         # pairs for:
@@ -421,7 +434,20 @@ class TestRepository(TestCaseWithRepository):
             self.assertContainsRe(str(e), 'get_data_stream')
             raise TestSkipped('This format does not support streaming.')
 
-        dest_repo.insert_data_stream(stream)
+        dest_repo.lock_write()
+        try:
+            dest_repo.start_write_group()
+            try:
+                dest_repo.insert_data_stream(stream)
+            except:
+                dest_repo.abort_write_group()
+                raise
+            else:
+                dest_repo.commit_write_group()
+        finally:
+            dest_repo.unlock()
+        # reopen to be sure it was added.
+        dest_repo = dest_repo.bzrdir.open_repository()
         self.assertTrue(dest_repo.has_revision('rev_id'))
 
     def test_get_serializer_format(self):
@@ -438,6 +464,8 @@ class TestRepository(TestCaseWithRepository):
         self.build_tree_contents([('tree/file1', 'baz')])
         tree.commit('rev2', rev_id='rev2')
         repository = tree.branch.repository
+        repository.lock_read()
+        self.addCleanup(repository.unlock)
         extracted = dict((i, ''.join(b)) for i, b in
                          repository.iter_files_bytes(
                          [('file1-id', 'rev1', 'file1-old'),
@@ -494,6 +522,8 @@ class TestRepository(TestCaseWithRepository):
     def test_get_graph(self):
         """Bare-bones smoketest that all repositories implement get_graph."""
         repo = self.make_repository('repo')
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
         repo.get_graph()
 
     def test_implements_revision_graph_can_have_wrong_parents(self):
@@ -503,14 +533,108 @@ class TestRepository(TestCaseWithRepository):
         """
         repo = self.make_repository('.')
         # This should work, not raise NotImplementedError:
-        result = repo.revision_graph_can_have_wrong_parents()
-        if result:
-            # If true, then this repo must also implement
-            # _find_inconsistent_revision_parents and
-            # _check_for_inconsistent_revision_parents.  So calling these
-            # should also not raise NotImplementedError.
-            list(repo._find_inconsistent_revision_parents())
-            repo._check_for_inconsistent_revision_parents()
+        if not repo.revision_graph_can_have_wrong_parents():
+            return
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        # This repo must also implement
+        # _find_inconsistent_revision_parents and
+        # _check_for_inconsistent_revision_parents.  So calling these
+        # should not raise NotImplementedError.
+        list(repo._find_inconsistent_revision_parents())
+        repo._check_for_inconsistent_revision_parents()
+
+    def test_add_signature_text(self):
+        repo = self.make_repository('repo')
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        self.addCleanup(repo.commit_write_group)
+        repo.start_write_group()
+        inv = Inventory(revision_id='A')
+        inv.root.revision = 'A'
+        repo.add_inventory('A', inv, [])
+        repo.add_revision('A', Revision('A', committer='A', timestamp=0,
+                          inventory_sha1='', timezone=0, message='A'))
+        repo.add_signature_text('A', 'This might be a signature')
+        self.assertEqual('This might be a signature',
+                         repo.get_signature_text('A'))
+
+    def test_install_revisions(self):
+        wt = self.make_branch_and_tree('source')
+        wt.commit('A', allow_pointless=True, rev_id='A')
+        repo = wt.branch.repository
+        repo.lock_write()
+        repo.start_write_group()
+        repo.sign_revision('A', bzrlib.gpg.LoopbackGPGStrategy(None))
+        repo.commit_write_group()
+        repo.unlock()
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        repo2 = self.make_repository('repo2')
+        revision = repo.get_revision('A')
+        tree = repo.revision_tree('A')
+        signature = repo.get_signature_text('A')
+        repo2.lock_write()
+        self.addCleanup(repo2.unlock)
+        repository.install_revisions(repo2, [(revision, tree, signature)])
+        self.assertEqual(revision, repo2.get_revision('A'))
+        self.assertEqual(signature, repo2.get_signature_text('A'))
+
+    # XXX: this helper duplicated from tests.test_repository
+    def make_remote_repository(self, path):
+        """Make a RemoteRepository object backed by a real repository that will
+        be created at the given path."""
+        repo = self.make_repository(path)
+        smart_server = server.SmartTCPServer_for_testing()
+        smart_server.setUp(self.get_server())
+        remote_transport = get_transport(smart_server.get_url()).clone(path)
+        self.addCleanup(smart_server.tearDown)
+        remote_bzrdir = bzrdir.BzrDir.open_from_transport(remote_transport)
+        remote_repo = remote_bzrdir.open_repository()
+        return remote_repo
+
+    def test_sprout_from_hpss_preserves_format(self):
+        """repo.sprout from a smart server preserves the repository format."""
+        if self.repository_format == RepositoryFormat7():
+            raise KnownFailure(
+                "Cannot fetch weaves over smart protocol.")
+        remote_repo = self.make_remote_repository('remote')
+        local_bzrdir = self.make_bzrdir('local')
+        try:
+            local_repo = remote_repo.sprout(local_bzrdir)
+        except errors.TransportNotPossible:
+            raise TestNotApplicable(
+                "Cannot lock_read old formats like AllInOne over HPSS.")
+        remote_backing_repo = bzrdir.BzrDir.open(
+            self.get_vfs_only_url('remote')).open_repository()
+        self.assertEqual(remote_backing_repo._format, local_repo._format)
+
+    def test_sprout_branch_from_hpss_preserves_repo_format(self):
+        """branch.sprout from a smart server preserves the repository format.
+        """
+        weave_formats = [RepositoryFormat5(), RepositoryFormat6(),
+                         RepositoryFormat7()]
+        if self.repository_format in weave_formats:
+            raise KnownFailure(
+                "Cannot fetch weaves over smart protocol.")
+        remote_repo = self.make_remote_repository('remote')
+        remote_branch = remote_repo.bzrdir.create_branch()
+        try:
+            local_bzrdir = remote_branch.bzrdir.sprout('local')
+        except errors.TransportNotPossible:
+            raise TestNotApplicable(
+                "Cannot lock_read old formats like AllInOne over HPSS.")
+        local_repo = local_bzrdir.open_repository()
+        remote_backing_repo = bzrdir.BzrDir.open(
+            self.get_vfs_only_url('remote')).open_repository()
+        self.assertEqual(remote_backing_repo._format, local_repo._format)
+
+    def test__make_parents_provider(self):
+        """Repositories must have a _make_parents_provider method that returns
+        an object with a get_parents method.
+        """
+        repo = self.make_repository('repo')
+        repo._make_parents_provider().get_parents
 
 
 class TestRepositoryLocking(TestCaseWithRepository):
@@ -606,6 +730,8 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
     def test_revision_trees(self):
         revision_ids = ['rev1', 'rev2', 'rev3', 'rev4']
         repository = self.bzrdir.open_repository()
+        repository.lock_read()
+        self.addCleanup(repository.unlock)
         trees1 = list(repository.revision_trees(revision_ids))
         trees2 = [repository.revision_tree(t) for t in revision_ids]
         assert len(trees1) == len(trees2)
@@ -614,6 +740,8 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
 
     def test_get_deltas_for_revisions(self):
         repository = self.bzrdir.open_repository()
+        repository.lock_read()
+        self.addCleanup(repository.unlock)
         revisions = [repository.get_revision(r) for r in 
                      ['rev1', 'rev2', 'rev3', 'rev4']]
         deltas1 = list(repository.get_deltas_for_revisions(revisions))
@@ -793,6 +921,8 @@ class TestEscaping(TestCaseWithTransport):
         # now access over vfat; should be safe
         branch = bzrdir.BzrDir.open('vfat+' + self.get_url('repo')).open_branch()
         revtree = branch.repository.revision_tree(REV_ID)
+        revtree.lock_read()
+        self.addCleanup(revtree.unlock)
         contents = revtree.get_file_text(FOO_ID)
         self.assertEqual(contents, 'contents of repo/foo\n')
 

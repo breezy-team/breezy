@@ -139,7 +139,8 @@ class TestFileIdInvolved(FileIdInvolvedBase):
     def test_fileids_altered_between_two_revs(self):
         def foo(old, new):
             print set(self.branch.repository.get_ancestry(new)).difference(set(self.branch.repository.get_ancestry(old)))
-
+        self.branch.lock_read()
+        self.addCleanup(self.branch.unlock)
         self.assertEqual(
             {'b-file-id-2006-01-01-defg':set(['rev-J']),
              'c-funky<file-id>quiji%bo':set(['rev-K'])
@@ -173,18 +174,20 @@ class TestFileIdInvolved(FileIdInvolvedBase):
     def fileids_altered_by_revision_ids(self, revision_ids):
         """This is a wrapper to strip TREE_ROOT if it occurs"""
         repo = self.branch.repository
-        root_id = self.branch.basis_tree().inventory.root.file_id
+        root_id = self.branch.basis_tree().get_root_id()
         result = repo.fileids_altered_by_revision_ids(revision_ids)
         if root_id in result:
             del result[root_id]
         return result
 
     def test_fileids_altered_by_revision_ids(self):
+        self.branch.lock_read()
+        self.addCleanup(self.branch.unlock)
         self.assertEqual(
             {'a-file-id-2006-01-01-abcd':set(['rev-A']),
              'b-file-id-2006-01-01-defg': set(['rev-A']),
              'c-funky<file-id>quiji%bo': set(['rev-A']),
-             }, 
+             },
             self.fileids_altered_by_revision_ids(["rev-A"]))
         self.assertEqual(
             {'a-file-id-2006-01-01-abcd':set(['rev-B'])
@@ -201,6 +204,8 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         # comparing the trees - no less, and no more. This is correct 
         # because in our sample data we do not revert any file ids along
         # the revision history.
+        self.branch.lock_read()
+        self.addCleanup(self.branch.unlock)
         pp=[]
         history = self.branch.revision_history( )
 
@@ -237,8 +242,10 @@ class TestFileIdInvolvedNonAscii(FileIdInvolvedBase):
                               % self.repository_format)
 
         repo = main_wt.branch.repository
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
         file_ids = repo.fileids_altered_by_revision_ids([revision_id])
-        root_id = main_wt.basis_tree().path2id('')
+        root_id = main_wt.basis_tree().get_root_id()
         if root_id in file_ids:
             self.assertEqual({file_id:set([revision_id]),
                               root_id:set([revision_id])
@@ -290,6 +297,8 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
         # this tests that fileids_alteted_by_revision_ids returns 
         # more information than compare_tree can, because it 
         # sees each change rather than the aggregate delta.
+        self.branch.lock_read()
+        self.addCleanup(self.branch.unlock)
         history = self.branch.revision_history()
         old_rev = history[0]
         new_rev = history[1]

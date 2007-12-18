@@ -25,12 +25,15 @@ These are set with eg ``-Dlock`` on the bzr command line.
 
 Options include:
  
- * evil - capture call sites that do expensive or badly-scaling operations.
+ * auth - show authentication sections used
  * error - show stack traces for all top level exceptions
+ * evil - capture call sites that do expensive or badly-scaling operations.
  * fetch - trace history copying between repositories
  * hooks - trace hook execution
  * hpss - trace smart protocol requests and responses
+ * http - trace http connections, requests and responses
  * index - trace major index operations
  * lock - trace when lockdir locks are taken or released
+ * merge - emit information for debugging merges
 
 """

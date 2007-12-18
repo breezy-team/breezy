@@ -30,7 +30,7 @@ from bzrlib.commit import Commit, NullCommitReporter
 from bzrlib.config import BranchConfig
 from bzrlib.errors import (PointlessCommit, BzrError, SigningFailed, 
                            LockContention)
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import SymlinkFeature, TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 
 
@@ -95,11 +95,16 @@ class TestCommit(TestCaseWithTransport):
         eq(rev.message, 'add hello')
 
         tree1 = b.repository.revision_tree(rh[0])
+        tree1.lock_read()
         text = tree1.get_file_text(file_id)
-        eq(text, 'hello world')
+        tree1.unlock()
+        self.assertEqual('hello world', text)
 
         tree2 = b.repository.revision_tree(rh[1])
-        eq(tree2.get_file_text(file_id), 'version 2')
+        tree2.lock_read()
+        text = tree2.get_file_text(file_id)
+        tree2.unlock()
+        self.assertEqual('version 2', text)
 
     def test_delete_commit(self):
         """Test a commit with a deleted file"""
@@ -168,11 +173,15 @@ class TestCommit(TestCaseWithTransport):
         eq(b.revno(), 3)
 
         tree2 = b.repository.revision_tree('test@rev-2')
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
         self.assertTrue(tree2.has_filename('hello'))
         self.assertEquals(tree2.get_file_text('hello-id'), 'hello')
         self.assertEquals(tree2.get_file_text('buongia-id'), 'new text')
         
         tree3 = b.repository.revision_tree('test@rev-3')
+        tree3.lock_read()
+        self.addCleanup(tree3.unlock)
         self.assertFalse(tree3.has_filename('hello'))
         self.assertEquals(tree3.get_file_text('buongia-id'), 'new text')
 
@@ -189,6 +198,8 @@ class TestCommit(TestCaseWithTransport):
 
         eq = self.assertEquals
         tree1 = b.repository.revision_tree('test@rev-1')
+        tree1.lock_read()
+        self.addCleanup(tree1.unlock)
         eq(tree1.id2path('hello-id'), 'hello')
         eq(tree1.get_file_text('hello-id'), 'contents of hello\n')
         self.assertFalse(tree1.has_filename('fruity'))
@@ -197,6 +208,8 @@ class TestCommit(TestCaseWithTransport):
         eq(ie.revision, 'test@rev-1')
 
         tree2 = b.repository.revision_tree('test@rev-2')
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
         eq(tree2.id2path('hello-id'), 'fruity')
         eq(tree2.get_file_text('hello-id'), 'contents of hello\n')
         self.check_inventory_shape(tree2.inventory, ['fruity'])
@@ -584,8 +597,7 @@ class TestCommit(TestCaseWithTransport):
             basis.unlock()
 
     def test_commit_kind_changes(self):
-        if not osutils.has_symlinks():
-            raise tests.TestSkipped('Test requires symlink support')
+        self.requireFeature(SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         os.symlink('target', 'name')
         tree.add('name', 'a-file-id')

@@ -16,10 +16,10 @@
 
 from bzrlib import (
     errors,
+    revision,
     tsort,
     )
 from bzrlib.deprecated_graph import (node_distances, select_farthest)
-from bzrlib.revision import NULL_REVISION
 
 # DIAGRAM of terminology
 #       A
@@ -43,6 +43,17 @@ from bzrlib.revision import NULL_REVISION
 # 1. find_lca('G', 'H') => ['D', 'E']
 # 2. Since len(['D', 'E']) > 1, find_lca('D', 'E') => ['A']
 
+
+class DictParentsProvider(object):
+
+    def __init__(self, ancestry):
+        self.ancestry = ancestry
+
+    def __repr__(self):
+        return 'DictParentsProvider(%r)' % self.ancestry
+
+    def get_parents(self, revisions):
+        return [self.ancestry.get(r, None) for r in revisions]
 
 
 class _StackedParentsProvider(object):
@@ -91,7 +102,7 @@ class Graph(object):
         specialized implementations for particular repository types.  See
         Repository.get_graph()
 
-        :param parents_func: an object providing a get_parents call
+        :param parents_provider: An object providing a get_parents call
             conforming to the behavior of StackedParentsProvider.get_parents
         """
         self.get_parents = parents_provider.get_parents
@@ -231,6 +242,11 @@ class Graph(object):
             order if they need it.
         """
         candidate_heads = set(keys)
+        if revision.NULL_REVISION in candidate_heads:
+            # NULL_REVISION is only a head if it is the only entry
+            candidate_heads.remove(revision.NULL_REVISION)
+            if not candidate_heads:
+                return set([revision.NULL_REVISION])
         if len(candidate_heads) < 2:
             return candidate_heads
         searchers = dict((c, self._make_breadth_first_searcher([c]))
@@ -239,7 +255,21 @@ class Graph(object):
         # skip over the actual candidate for each searcher
         for searcher in active_searchers.itervalues():
             searcher.next()
+        # The common walker finds nodes that are common to two or more of the
+        # input keys, so that we don't access all history when a currently
+        # uncommon search point actually meets up with something behind a
+        # common search point. Common search points do not keep searches
+        # active; they just allow us to make searches inactive without
+        # accessing all history.
+        common_walker = self._make_breadth_first_searcher([])
         while len(active_searchers) > 0:
+            ancestors = set()
+            # advance searches
+            try:
+                common_walker.next()
+            except StopIteration:
+                # No common points being searched at this time.
+                pass
             for candidate in active_searchers.keys():
                 try:
                     searcher = active_searchers[candidate]
@@ -249,30 +279,44 @@ class Graph(object):
                     # a descendant of another candidate.
                     continue
                 try:
-                    ancestors = searcher.next()
+                    ancestors.update(searcher.next())
                 except StopIteration:
                     del active_searchers[candidate]
                     continue
-                for ancestor in ancestors:
-                    if ancestor in candidate_heads:
-                        candidate_heads.remove(ancestor)
-                        del searchers[ancestor]
-                        if ancestor in active_searchers:
-                            del active_searchers[ancestor]
+            # process found nodes
+            new_common = set()
+            for ancestor in ancestors:
+                if ancestor in candidate_heads:
+                    candidate_heads.remove(ancestor)
+                    del searchers[ancestor]
+                    if ancestor in active_searchers:
+                        del active_searchers[ancestor]
+                # it may meet up with a known common node
+                if ancestor in common_walker.seen:
+                    # some searcher has encountered our known common nodes:
+                    # just stop it
+                    ancestor_set = set([ancestor])
+                    for searcher in searchers.itervalues():
+                        searcher.stop_searching_any(ancestor_set)
+                else:
+                    # or it may have been just reached by all the searchers:
                     for searcher in searchers.itervalues():
                         if ancestor not in searcher.seen:
                             break
                     else:
-                        # if this revision was seen by all searchers, then it
-                        # is a descendant of all candidates, so we can stop
-                        # searching it, and any seen ancestors
+                        # The final active searcher has just reached this node,
+                        # making it be known as a descendant of all candidates,
+                        # so we can stop searching it, and any seen ancestors
+                        new_common.add(ancestor)
                         for searcher in searchers.itervalues():
                             seen_ancestors =\
                                 searcher.find_seen_ancestors(ancestor)
                             searcher.stop_searching_any(seen_ancestors)
+            common_walker.start_searching(new_common)
         return candidate_heads
 
-    def find_unique_lca(self, left_revision, right_revision):
+    def find_unique_lca(self, left_revision, right_revision,
+                        count_steps=False):
         """Find a unique LCA.
 
         Find lowest common ancestors.  If there is no unique  common
@@ -283,12 +327,22 @@ class Graph(object):
 
         Note that None is not an acceptable substitute for NULL_REVISION.
         in the input for this method.
+
+        :param count_steps: If True, the return value will be a tuple of
+            (unique_lca, steps) where steps is the number of times that
+            find_lca was run.  If False, only unique_lca is returned.
         """
         revisions = [left_revision, right_revision]
+        steps = 0
         while True:
+            steps += 1
             lca = self.find_lca(*revisions)
             if len(lca) == 1:
-                return lca.pop()
+                result = lca.pop()
+                if count_steps:
+                    return result, steps
+                else:
+                    return result
             if len(lca) == 0:
                 raise errors.NoCommonAncestor(left_revision, right_revision)
             revisions = lca
@@ -306,69 +360,12 @@ class Graph(object):
     def is_ancestor(self, candidate_ancestor, candidate_descendant):
         """Determine whether a revision is an ancestor of another.
 
-        There are two possible outcomes: True and False, but there are three
-        possible relationships:
-
-        a) candidate_ancestor is an ancestor of candidate_descendant
-        b) candidate_ancestor is an descendant of candidate_descendant
-        c) candidate_ancestor is an sibling of candidate_descendant
-
-        To check for a, we walk from candidate_descendant, looking for
-        candidate_ancestor.
-
-        To check for b, we walk from candidate_ancestor, looking for
-        candidate_descendant.
-
-        To make a and b more efficient, we can stop any searches that hit
-        common ancestors.
-
-        If we exhaust our searches, but neither a or b is true, then c is true.
-
-        In order to find c efficiently, we must avoid searching from
-        candidate_descendant or candidate_ancestor into common ancestors.  But
-        if we don't search common ancestors at all, we won't know if we hit
-        common ancestors.  So we have a walker for common ancestors.  Note that
-        its searches are not required to terminate in order to determine c to
-        be true.
+        We answer this using heads() as heads() has the logic to perform the
+        smallest number of parent lookups to determine the ancestral
+        relationship between N revisions.
         """
-        ancestor_walker = self._make_breadth_first_searcher(
-            [candidate_ancestor])
-        descendant_walker = self._make_breadth_first_searcher(
-            [candidate_descendant])
-        common_walker = self._make_breadth_first_searcher([])
-        active_ancestor = True
-        active_descendant = True
-        while (active_ancestor or active_descendant):
-            new_common = set()
-            if active_descendant:
-                try:
-                    nodes = descendant_walker.next()
-                except StopIteration:
-                    active_descendant = False
-                else:
-                    if candidate_ancestor in nodes:
-                        return True
-                    new_common.update(nodes.intersection(ancestor_walker.seen))
-            if active_ancestor:
-                try:
-                    nodes = ancestor_walker.next()
-                except StopIteration:
-                    active_ancestor = False
-                else:
-                    if candidate_descendant in nodes:
-                        return False
-                    new_common.update(nodes.intersection(
-                        descendant_walker.seen))
-            try:
-                new_common.update(common_walker.next())
-            except StopIteration:
-                pass
-            for walker in (ancestor_walker, descendant_walker):
-                for node in new_common:
-                    c_ancestors = walker.find_seen_ancestors(node)
-                    walker.stop_searching_any(c_ancestors)
-                common_walker.start_searching(new_common)
-        return False
+        return set([candidate_descendant]) == self.heads(
+            [candidate_ancestor, candidate_descendant])
 
 
 class HeadsCache(object):
@@ -399,8 +396,32 @@ class HeadsCache(object):
             return set(heads)
 
 
+class HeadsCache(object):
+    """A cache of results for graph heads calls."""
+
+    def __init__(self, graph):
+        self.graph = graph
+        self._heads = {}
+
+    def heads(self, keys):
+        """Return the heads of keys.
+
+        :see also: Graph.heads.
+        :param keys: The keys to calculate heads for.
+        :return: A set containing the heads, which may be mutated without
+            affecting future lookups.
+        """
+        keys = frozenset(keys)
+        try:
+            return set(self._heads[keys])
+        except KeyError:
+            heads = self.graph.heads(keys)
+            self._heads[keys] = heads
+            return set(heads)
+
+
 class _BreadthFirstSearcher(object):
-    """Parallel search the breadth-first the ancestry of revisions.
+    """Parallel search breadth-first the ancestry of revisions.
 
     This class implements the iterator protocol, but additionally
     1. provides a set of seen ancestors, and

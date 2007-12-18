@@ -22,11 +22,9 @@ import os
 
 from bzrlib.diff import internal_diff
 from bzrlib.mutabletree import MutableTree
-from bzrlib.osutils import (
-    has_symlinks,
-    )
-from bzrlib.symbol_versioning import zero_ninetyone
-from bzrlib.tests import TestSkipped
+from bzrlib.osutils import has_symlinks
+from bzrlib.symbol_versioning import zero_ninetyone, zero_ninetythree
+from bzrlib.tests import SymlinkFeature, TestSkipped
 from bzrlib.tests.tree_implementations import TestCaseWithTree
 from bzrlib.uncommit import uncommit
 
@@ -66,10 +64,12 @@ class TestEntryDiffing(TestCaseWithTree):
 
     def test_file_diff_deleted(self):
         output = StringIO()
-        self.file_1.diff(internal_diff, 
-                          "old_label", self.tree_1,
-                          "/dev/null", None, None,
-                          output)
+        self.applyDeprecated(zero_ninetythree,
+                             self.file_1.diff,
+                             internal_diff,
+                             "old_label", self.tree_1,
+                             "/dev/null", None, None,
+                             output)
         self.assertEqual(output.getvalue(), "--- old_label\n"
                                             "+++ /dev/null\n"
                                             "@@ -1,1 +0,0 @@\n"
@@ -78,10 +78,12 @@ class TestEntryDiffing(TestCaseWithTree):
 
     def test_file_diff_added(self):
         output = StringIO()
-        self.file_1.diff(internal_diff, 
-                          "new_label", self.tree_1,
-                          "/dev/null", None, None,
-                          output, reverse=True)
+        self.applyDeprecated(zero_ninetythree,
+                             self.file_1.diff,
+                             internal_diff,
+                             "new_label", self.tree_1,
+                             "/dev/null", None, None,
+                             output, reverse=True)
         self.assertEqual(output.getvalue(), "--- /dev/null\n"
                                             "+++ new_label\n"
                                             "@@ -0,0 +1,1 @@\n"
@@ -90,10 +92,12 @@ class TestEntryDiffing(TestCaseWithTree):
 
     def test_file_diff_changed(self):
         output = StringIO()
-        self.file_1.diff(internal_diff, 
-                          "/dev/null", self.tree_1, 
-                          "new_label", self.file_2, self.tree_2,
-                          output)
+        self.applyDeprecated(zero_ninetythree,
+                             self.file_1.diff,
+                             internal_diff,
+                             "/dev/null", self.tree_1,
+                             "new_label", self.file_2, self.tree_2,
+                             output)
         self.assertEqual(output.getvalue(), "--- /dev/null\n"
                                             "+++ new_label\n"
                                             "@@ -1,1 +1,1 @@\n"
@@ -103,42 +107,47 @@ class TestEntryDiffing(TestCaseWithTree):
         
     def test_file_diff_binary(self):
         output = StringIO()
-        self.file_1.diff(internal_diff, 
-                          "/dev/null", self.tree_1, 
-                          "new_label", self.file_2b, self.tree_2,
-                          output)
+        self.applyDeprecated(zero_ninetythree,
+                             self.file_1.diff,
+                             internal_diff,
+                             "/dev/null", self.tree_1,
+                             "new_label", self.file_2b, self.tree_2,
+                             output)
         self.assertEqual(output.getvalue(), 
                          "Binary files /dev/null and new_label differ\n")
+
     def test_link_diff_deleted(self):
-        if not has_symlinks():
-            return
+        self.requireFeature(SymlinkFeature)
         output = StringIO()
-        self.link_1.diff(internal_diff, 
-                          "old_label", self.tree_1,
-                          "/dev/null", None, None,
-                          output)
+        self.applyDeprecated(zero_ninetythree,
+                             self.link_1.diff,
+                             internal_diff, "old_label",
+                             self.tree_1, "/dev/null", None, None,
+                             output)
         self.assertEqual(output.getvalue(),
                          "=== target was 'target1'\n")
 
     def test_link_diff_added(self):
-        if not has_symlinks():
-            return
+        self.requireFeature(SymlinkFeature)
         output = StringIO()
-        self.link_1.diff(internal_diff, 
-                          "new_label", self.tree_1,
-                          "/dev/null", None, None,
-                          output, reverse=True)
+        self.applyDeprecated(zero_ninetythree,
+                             self.link_1.diff,
+                             internal_diff,
+                             "new_label", self.tree_1,
+                             "/dev/null", None, None,
+                             output, reverse=True)
         self.assertEqual(output.getvalue(),
                          "=== target is 'target1'\n")
 
     def test_link_diff_changed(self):
-        if not has_symlinks():
-            return
+        self.requireFeature(SymlinkFeature)
         output = StringIO()
-        self.link_1.diff(internal_diff, 
-                          "/dev/null", self.tree_1, 
-                          "new_label", self.link_2, self.tree_2,
-                          output)
+        self.applyDeprecated(zero_ninetythree,
+                             self.link_1.diff,
+                             internal_diff,
+                             "/dev/null", self.tree_1,
+                             "new_label", self.link_2, self.tree_2,
+                             output)
         self.assertEqual(output.getvalue(),
                          "=== target changed 'target1' => 'target2'\n")
 
@@ -222,8 +231,7 @@ class TestInventory(TestCaseWithTree):
         self.inv = self.tree.inventory
 
     def test_symlink_target(self):
-        if not has_symlinks():
-            raise TestSkipped('No symlink support')
+        self.requireFeature(SymlinkFeature)
         self._set_up()
         if isinstance(self.tree, MutableTree):
             raise TestSkipped(
@@ -232,8 +240,7 @@ class TestInventory(TestCaseWithTree):
         self.assertEqual(entry.symlink_target, 'link-target')
 
     def test_symlink(self):
-        if not has_symlinks():
-            raise TestSkipped('No symlink support')
+        self.requireFeature(SymlinkFeature)
         self._set_up()
         entry = self.inv[self.inv.path2id('symlink')]
         self.assertEqual(entry.kind, 'symlink')

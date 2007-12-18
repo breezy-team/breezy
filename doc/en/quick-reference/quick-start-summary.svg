@@ -15,8 +15,8 @@
    sodipodi:version="0.32"
    inkscape:version="0.45.1"
    version="1.0"
-   sodipodi:docbase="/home/iacobs/work/pers/bzr-quickref"
-   sodipodi:docname="bzr-quickref.svg"
+   sodipodi:docbase="/home/ian/bzr/repo.packs/bzr.quick-start-tweaks/doc/en/quick-reference"
+   sodipodi:docname="quick-start-summary.svg"
    inkscape:output_extension="org.inkscape.output.svg.inkscape"
    inkscape:export-filename="/home/iacobs/work/pers/bzr-quickref.png"
    inkscape:export-xdpi="300"
@@ -192,17 +192,17 @@
      inkscape:pageshadow="2"
      inkscape:zoom="0.70710678"
      inkscape:cx="800.64614"
-     inkscape:cy="357.91315"
+     inkscape:cy="357.97261"
      inkscape:document-units="px"
-     inkscape:current-layer="layer1"
+     inkscape:current-layer="g3488"
      width="1052.3622px"
      height="744.09449px"
      inkscape:showpageshadow="false"
-     showgrid="true"
+     showgrid="false"
      inkscape:window-width="1280"
      inkscape:window-height="752"
      inkscape:window-x="0"
-     inkscape:window-y="48" />
+     inkscape:window-y="25" />
   <metadata
      id="metadata2771">
     <rdf:RDF>
@@ -1173,17 +1173,13 @@
            y="505.56467"
            id="text4467"
            sodipodi:linespacing="110%"><tspan
-             id="tspan4471"
-             sodipodi:role="line"
-             x="782.40674"
-             y="505.56467">bzr bundle ../myproject-base \</tspan><tspan
              id="tspan8805"
              sodipodi:role="line"
              x="782.40674"
-             y="516.638"> --output ../base.patch</tspan><tspan
+             y="505.56467">bzr send</tspan><tspan
              sodipodi:role="line"
              x="782.40674"
-             y="527.71133"
+             y="516.638"
              id="tspan4473" /></text>
         <text
            xml:space="preserve"
@@ -1195,10 +1191,10 @@
              id="tspan4608"
              sodipodi:role="line"
              x="776.13232"
-             y="494.69229">Create a revision bundle</tspan></text>
+             y="494.69229">Email a merge directive</tspan></text>
       </g>
       <g
-         transform="translate(1e-4,1.0049582)"
+         transform="translate(1e-4,31.004958)"
          id="g3339">
         <text
            xml:space="preserve"
@@ -1228,7 +1224,7 @@
              y="549.18048">directory</tspan></text>
       </g>
       <g
-         transform="translate(1e-4,1.6002853)"
+         transform="translate(1e-4,33.600285)"
          id="g3332">
         <text
            xml:space="preserve"
@@ -1256,6 +1252,36 @@
              sodipodi:role="line"
              x="776.32574"
              y="595.03461">archive</tspan></text>
+      </g>
+      <g
+         transform="translate(-1.4135726,38.47762)"
+         id="g2446">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="782.40674"
+           y="505.56467"
+           id="text2448"
+           sodipodi:linespacing="110%"><tspan
+             id="tspan2450"
+             sodipodi:role="line"
+             x="782.40674"
+             y="505.56467">bzr send -o ../base.patch</tspan><tspan
+             sodipodi:role="line"
+             x="782.40674"
+             y="516.638"
+             id="tspan2452" /></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="776.13232"
+           y="494.69229"
+           id="text2454"
+           sodipodi:linespacing="100%"><tspan
+             id="tspan2456"
+             sodipodi:role="line"
+             x="776.13232"
+             y="494.69229">Create a merge directive</tspan></text>
       </g>
     </g>
     <text
@@ -1303,7 +1329,7 @@
          sodipodi:role="line"
          id="tspan3411"
          x="146.57143"
-         y="97.808769">Quick Start Guide</tspan></text>
+         y="97.808769">Quick Start Card</tspan></text>
     <g
        id="g12314"
        transform="translate(17.946423,1.7472534)"

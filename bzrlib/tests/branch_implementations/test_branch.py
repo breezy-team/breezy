@@ -28,6 +28,7 @@ from bzrlib import (
     transactions,
     remote,
     repository,
+    tests,
     )
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
 from bzrlib.delta import TreeDelta
@@ -97,6 +98,8 @@ class TestBranch(TestCaseWithBranch):
 
         rev = b2.repository.get_revision('revision-1')
         tree = b2.repository.revision_tree('revision-1')
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
         self.assertEqual(tree.get_file_text('foo-id'), 'hello')
 
     def test_get_revision_delta(self):
@@ -167,7 +170,7 @@ class TestBranch(TestCaseWithBranch):
 
     def test_clone_branch_nickname(self):
         # test the nick name is preserved always
-        raise TestSkipped('XXX branch cloning is not yet tested..')
+        raise TestSkipped('XXX branch cloning is not yet tested.')
 
     def test_clone_branch_parent(self):
         # test the parent is preserved always
@@ -262,8 +265,19 @@ class TestBranch(TestCaseWithBranch):
     def test_store_signature(self):
         wt = self.make_branch_and_tree('.')
         branch = wt.branch
-        branch.repository.store_revision_signature(
-            gpg.LoopbackGPGStrategy(None), 'FOO', 'A')
+        branch.lock_write()
+        try:
+            branch.repository.start_write_group()
+            try:
+                branch.repository.store_revision_signature(
+                    gpg.LoopbackGPGStrategy(None), 'FOO', 'A')
+            except:
+                branch.repository.abort_write_group()
+                raise
+            else:
+                branch.repository.commit_write_group()
+        finally:
+            branch.unlock()
         self.assertRaises(errors.NoSuchRevision,
                           branch.repository.has_signature_for_revision_id,
                           'A')
@@ -564,6 +578,24 @@ class TestFormat(TestCaseWithBranch):
         self.assertEqual(None,
             made_branch._format.get_reference(made_branch.bzrdir))
 
+    def test_set_reference(self):
+        """set_reference on all regular branches should be callable."""
+        if not self.branch_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        this_branch = self.make_branch('this')
+        other_branch = self.make_branch('other')
+        try:
+            this_branch._format.set_reference(this_branch.bzrdir, other_branch)
+        except NotImplementedError:
+            # that's ok
+            pass
+        else:
+            ref = this_branch._format.get_reference(this_branch.bzrdir)
+            self.assertEqual(ref, other_branch.base)
+
     def test_format_initialize_find_open(self):
         # loopback test to check the current format initializes to itself.
         if not self.branch_format.is_supported():
@@ -607,7 +639,7 @@ class TestBound(TestCaseWithBranch):
         try:
             branch.bind(branch2)
         except errors.UpgradeRequired:
-            raise TestSkipped('Format does not support binding')
+            raise tests.TestNotApplicable('Format does not support binding')
         self.assertTrue(branch.unbind())
         self.assertFalse(branch.unbind())
         self.assertIs(None, branch.get_bound_location())
@@ -617,12 +649,24 @@ class TestBound(TestCaseWithBranch):
         try:
             self.assertIs(None, branch.get_old_bound_location())
         except errors.UpgradeRequired:
-            raise TestSkipped('Format does not store old bound locations')
+            raise tests.TestNotApplicable(
+                    'Format does not store old bound locations')
         branch2 = self.make_branch('branch2')
         branch.bind(branch2)
         self.assertIs(None, branch.get_old_bound_location())
         branch.unbind()
         self.assertContainsRe(branch.get_old_bound_location(), '\/branch2\/$')
+
+    def test_bind_diverged(self):
+        tree_a = self.make_branch_and_tree('tree_a')
+        tree_a.commit('rev1a')
+        tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
+        tree_a.commit('rev2a')
+        tree_b.commit('rev2b')
+        try:
+            tree_b.branch.bind(tree_a.branch)
+        except errors.UpgradeRequired:
+            raise tests.TestNotApplicable('Format does not support binding')
 
 
 class TestStrict(TestCaseWithBranch):

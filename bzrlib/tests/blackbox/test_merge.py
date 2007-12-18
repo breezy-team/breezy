@@ -238,6 +238,18 @@ class TestMerge(ExternalBase):
         self.run_bzr_error(('Cannot use --uncommitted and --revision',),
                            'merge /a --uncommitted -r1 -d b')
 
+    def test_merge_uncommitted_file(self):
+        """It should be possible to merge changes from a single file."""
+        tree_a = self.make_branch_and_tree('tree_a')
+        tree_a.commit('initial commit')
+        tree_a.bzrdir.sprout('tree_b')
+        self.build_tree(['tree_a/file1', 'tree_a/file2'])
+        tree_a.add(['file1', 'file2'])
+        os.chdir('tree_b')
+        self.run_bzr(['merge', '--uncommitted', '../tree_a/file1'])
+        self.failUnlessExists('file1')
+        self.failIfExists('file2')
+
     def pullable_branch(self):
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/file'])
@@ -380,3 +392,17 @@ class TestMerge(ExternalBase):
         # pick 1 revision with option --changes
         self.run_bzr('merge -d target -c revid:rev_d source')
         self.assertDirectoryContent('target', ['.bzr', 'a', 'd'])
+
+    def test_merge_criss_cross(self):
+        tree_a = self.make_branch_and_tree('a')
+        tree_a.commit('', rev_id='rev1')
+        tree_b = tree_a.bzrdir.sprout('b').open_workingtree()
+        tree_a.commit('', rev_id='rev2a')
+        tree_b.commit('', rev_id='rev2b')
+        tree_a.merge_from_branch(tree_b.branch)
+        tree_b.merge_from_branch(tree_a.branch)
+        tree_a.commit('', rev_id='rev3a')
+        tree_b.commit('', rev_id='rev3b')
+        graph = tree_a.branch.repository.get_graph(tree_b.branch.repository)
+        out, err = self.run_bzr(['merge', '-d', 'a', 'b'])
+        self.assertContainsRe(err, 'Warning: criss-cross merge encountered.')

@@ -57,6 +57,7 @@ import bzrlib
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
     deprecated_function,
+    zero_ninetythree,
     )
 from bzrlib.trace import mutter
 
@@ -68,20 +69,17 @@ from bzrlib.trace import mutter
 # OR with 0 on those platforms
 O_BINARY = getattr(os, 'O_BINARY', 0)
 
-# On posix, use lstat instead of stat so that we can
-# operate on broken symlinks. On Windows revert to stat.
-lstat = getattr(os, 'lstat', os.stat)
 
 def make_readonly(filename):
     """Make a filename read-only."""
-    mod = lstat(filename).st_mode
+    mod = os.lstat(filename).st_mode
     if not stat.S_ISLNK(mod):
         mod = mod & 0777555
         os.chmod(filename, mod)
 
 
 def make_writable(filename):
-    mod = lstat(filename).st_mode
+    mod = os.lstat(filename).st_mode
     if not stat.S_ISLNK(mod):
         mod = mod | 0200
         os.chmod(filename, mod)
@@ -236,10 +234,17 @@ def fancy_rename(old, new, rename_func, unlink_func):
 
     success = False
     try:
-        # This may throw an exception, in which case success will
-        # not be set.
-        rename_func(old, new)
-        success = True
+        try:
+            # This may throw an exception, in which case success will
+            # not be set.
+            rename_func(old, new)
+            success = True
+        except (IOError, OSError), e:
+            # source and target may be aliases of each other (e.g. on a
+            # case-insensitive filesystem), so we may have accidentally renamed
+            # source by when we tried to rename target
+            if not (file_existed and e.errno in (None, errno.ENOENT)):
+                raise
     finally:
         if file_existed:
             # If the file used to exist, rename it back into place
@@ -463,6 +468,7 @@ def normalizepath(f):
         return pathjoin(F(p), e)
 
 
+@deprecated_function(zero_ninetythree)
 def backup_file(fn):
     """Copy a file to a backup.
 
@@ -593,7 +599,7 @@ def sha_file(f):
 def sha_file_by_name(fname):
     """Calculate the SHA1 of a file by reading the full text"""
     s = sha.new()
-    f = os.open(fname, os.O_RDONLY)
+    f = os.open(fname, os.O_RDONLY | O_BINARY)
     try:
         while True:
             b = os.read(f, 1<<16)
@@ -1400,6 +1406,7 @@ def recv_all(socket, bytes):
         b += new
     return b
 
+
 def dereference_path(path):
     """Determine the real path to a file.
 
@@ -1417,3 +1424,32 @@ def dereference_path(path):
 def supports_mapi():
     """Return True if we can use MAPI to launch a mail client."""
     return sys.platform == "win32"
+
+
+def resource_string(package, resource_name):
+    """Load a resource from a package and return it as a string.
+
+    Note: Only packages that start with bzrlib are currently supported.
+
+    This is designed to be a lightweight implementation of resource
+    loading in a way which is API compatible with the same API from
+    pkg_resources. See
+    http://peak.telecommunity.com/DevCenter/PkgResources#basic-resource-access.
+    If and when pkg_resources becomes a standard library, this routine
+    can delegate to it.
+    """
+    # Check package name is within bzrlib
+    if package == "bzrlib":
+        resource_relpath = resource_name
+    elif package.startswith("bzrlib."):
+        package = package[len("bzrlib."):].replace('.', os.sep)
+        resource_relpath = pathjoin(package, resource_name)
+    else:
+        raise errors.BzrError('resource package %s not in bzrlib' % package)
+
+    # Map the resource to a file and read its contents
+    base = dirname(bzrlib.__file__)
+    if getattr(sys, 'frozen', None):    # bzr.exe
+        base = abspath(pathjoin(base, '..', '..'))
+    filename = pathjoin(base, resource_relpath)
+    return open(filename, 'rU').read()

@@ -20,6 +20,7 @@ Transport implementations tested here are supplied by
 TransportTestProviderAdapter.
 """
 
+import itertools
 import os
 from cStringIO import StringIO
 from StringIO import StringIO as pyStringIO
@@ -45,7 +46,12 @@ from bzrlib.errors import (ConnectionError,
                            )
 from bzrlib.osutils import getcwd
 from bzrlib.smart import medium
-from bzrlib.tests import TestCaseInTempDir, TestScenarioApplier, TestSkipped
+from bzrlib.tests import (
+    TestCaseInTempDir,
+    TestScenarioApplier,
+    TestSkipped,
+    TestNotApplicable,
+    )
 from bzrlib.tests.test_transport import TestTransportImplementation
 from bzrlib.transport import (
     ConnectedTransport,
@@ -181,11 +187,15 @@ class TransportTests(TestTransportImplementation):
         self.build_tree(files, transport=t, line_endings='binary')
         self.check_transport_contents('contents of a\n', t, 'a')
         content_f = t.get_multi(files)
-        for content, f in zip(contents, content_f):
+        # Use itertools.izip() instead of use zip() or map(), since they fully
+        # evaluate their inputs, the transport requests should be issued and
+        # handled sequentially (we don't want to force transport to buffer).
+        for content, f in itertools.izip(contents, content_f):
             self.assertEqual(content, f.read())
 
         content_f = t.get_multi(iter(files))
-        for content, f in zip(contents, content_f):
+        # Use itertools.izip() for the same reason
+        for content, f in itertools.izip(contents, content_f):
             self.assertEqual(content, f.read())
 
         self.assertRaises(NoSuchFile, t.get, 'c')
@@ -900,6 +910,20 @@ class TransportTests(TestTransportImplementation):
         self.assertFalse(t.has('adir/bdir'))
         self.assertFalse(t.has('adir/bsubdir'))
 
+    def test_rename_across_subdirs(self):
+        t = self.get_transport()
+        if t.is_readonly():
+            raise TestNotApplicable("transport is readonly")
+        t.mkdir('a')
+        t.mkdir('b')
+        ta = t.clone('a')
+        tb = t.clone('b')
+        ta.put_bytes('f', 'aoeu')
+        ta.rename('f', '../b/f')
+        self.assertTrue(tb.has('f'))
+        self.assertFalse(ta.has('f'))
+        self.assertTrue(t.has('b/f'))
+
     def test_delete_tree(self):
         t = self.get_transport()
 
@@ -959,7 +983,7 @@ class TransportTests(TestTransportImplementation):
         self.check_transport_contents('c this file\n', t, 'b')
 
         # TODO: Try to write a test for atomicity
-        # TODO: Test moving into a non-existant subdirectory
+        # TODO: Test moving into a non-existent subdirectory
         # TODO: Test Transport.move_multi
 
     def test_copy(self):
@@ -986,8 +1010,7 @@ class TransportTests(TestTransportImplementation):
     def test_connection_error(self):
         """ConnectionError is raised when connection is impossible.
         
-        The error may be raised from either the constructor or the first
-        operation on the transport.
+        The error should be raised from the first operation on the transport.
         """
         try:
             url = self._server.get_bogus_url()
@@ -1110,7 +1133,7 @@ class TransportTests(TestTransportImplementation):
 
         def new_url(scheme=None, user=None, password=None,
                     host=None, port=None, path=None):
-            """Build a new url from t.base chaging only parts of it.
+            """Build a new url from t.base changing only parts of it.
 
             Only the parameters different from None will be changed.
             """
@@ -1123,7 +1146,11 @@ class TransportTests(TestTransportImplementation):
             if path     is None: path     = t._path
             return t._unsplit_url(scheme, user, password, host, port, path)
 
-        self.assertIsNot(t, t._reuse_for(new_url(scheme='foo')))
+        if t._scheme == 'ftp':
+            scheme = 'sftp'
+        else:
+            scheme = 'ftp'
+        self.assertIsNot(t, t._reuse_for(new_url(scheme=scheme)))
         if t._user == 'me':
             user = 'you'
         else:
@@ -1147,6 +1174,8 @@ class TransportTests(TestTransportImplementation):
         else:
             port = 1234
         self.assertIsNot(t, t._reuse_for(new_url(port=port)))
+        # No point in trying to reuse a transport for a local URL
+        self.assertIs(None, t._reuse_for('/valid_but_not_existing'))
 
     def test_connection_sharing(self):
         t = self.get_transport()
@@ -1257,7 +1286,7 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual('', t.relpath(t.base))
         # base ends with /
         self.assertEqual('', t.relpath(t.base[:-1]))
-        # subdirs which dont exist should still give relpaths.
+        # subdirs which don't exist should still give relpaths.
         self.assertEqual('foo', t.relpath(t.base + 'foo'))
         # trailing slash should be the same.
         self.assertEqual('foo', t.relpath(t.base + 'foo/'))
@@ -1545,7 +1574,7 @@ class TransportTests(TestTransportImplementation):
                 adjust_for_latency=True, upper_limit=content_size))
             self.assertEqual(1, len(result))
             data_len = len(result[0][1])
-            # minimmum length is from 400 to 1034 - 634
+            # minimum length is from 400 to 1034 - 634
             self.assertTrue(data_len >= 634)
             # must contain the region 400 to 1034
             self.assertTrue(result[0][0] <= 400)

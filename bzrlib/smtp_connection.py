@@ -21,7 +21,10 @@ import errno
 import smtplib
 import socket
 
-from bzrlib import ui
+from bzrlib import (
+    config,
+    ui,
+    )
 from bzrlib.errors import (
     NoDestinationAddress,
     SMTPError,
@@ -79,21 +82,34 @@ class SMTPConnection(object):
             else:
                 raise
 
-        # If this fails, it just returns an error, but it shouldn't raise an
-        # exception unless something goes really wrong (in which case we want
-        # to fail anyway).
-        self._connection.starttls()
+        # Say EHLO (falling back to HELO) to query the server's features.
+        code, resp = self._connection.ehlo()
+        if not (200 <= code <= 299):
+            code, resp = self._connection.helo()
+            if not (200 <= code <= 299):
+                raise SMTPError("server refused HELO: %d %s" % (code, resp))
+
+        # Use TLS if the server advertised it:
+        if self._connection.has_extn("starttls"):
+            code, resp = self._connection.starttls()
+            if not (200 <= code <= 299):
+                raise SMTPError("server refused STARTTLS: %d %s" % (code, resp))
+            # Say EHLO again, to check for newly revealed features
+            code, resp = self._connection.ehlo()
+            if not (200 <= code <= 299):
+                raise SMTPError("server refused EHLO: %d %s" % (code, resp))
 
     def _authenticate(self):
         """If necessary authenticate yourself to the server."""
+        auth = config.AuthenticationConfig()
         if self._smtp_username is None:
-            return
+            self._smtp_username = auth.get_user('smtp', self._smtp_server)
+            if self._smtp_username is None:
+                return
 
         if self._smtp_password is None:
-            self._smtp_password = ui.ui_factory.get_password(
-                'Please enter the SMTP password: %(user)s@%(host)s',
-                user=self._smtp_username,
-                host=self._smtp_server)
+            self._smtp_password = auth.get_password(
+                'smtp', self._smtp_server, self._smtp_username)
 
         self._connection.login(self._smtp_username, self._smtp_password)
 

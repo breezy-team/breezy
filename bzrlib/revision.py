@@ -125,6 +125,7 @@ class Revision(object):
         return self.properties.get('author', self.committer)
 
 
+@deprecated_function(symbol_versioning.zero_ninetythree)
 def is_ancestor(revision_id, candidate_id, branch):
     """Return true if candidate_id is an ancestor of revision_id.
 
@@ -133,11 +134,11 @@ def is_ancestor(revision_id, candidate_id, branch):
     
     revisions_source is an object supporting a get_revision operation that
     behaves like Branch's.
+
+    This function is deprecated, it is better for callers to directly use
+    Graph.is_ancestor() (just watch out that the parameter order is switched)
     """
-    if is_null(candidate_id):
-        return True
-    return (candidate_id in branch.repository.get_ancestry(revision_id,
-            topo_sorted=False))
+    return branch.repository.get_graph().is_ancestor(candidate_id, revision_id)
 
 
 def iter_ancestors(revision_id, revision_source, only_present=False):
@@ -452,7 +453,7 @@ def check_not_reserved_id(revision_id):
 
 
 def ensure_null(revision_id):
-    """Ensure only NULL_REVISION is used to represent the null revisionn"""
+    """Ensure only NULL_REVISION is used to represent the null revision"""
     if revision_id is None:
         symbol_versioning.warn('NULL_REVISION should be used for the null'
             ' revision instead of None, as of bzr 0.91.',

@@ -33,7 +33,13 @@ be used in the help text, producing sensible input to a manual while
 rendering on the screen naturally.
 """
 
-from bzrlib import registry
+import sys
+
+import bzrlib
+from bzrlib import (
+    osutils,
+    registry,
+    )
 
 
 # Section identifiers (map topics to the right place in the manual)
@@ -126,6 +132,15 @@ def _help_on_topics(dummy):
         summary = topic_registry.get_summary(topic)
         out.append("%-*s %s\n" % (lmax, topic, summary))
     return ''.join(out)
+
+
+def _load_from_file(topic_name):
+    """Load help from a file.
+
+    Topics are expected to be txt files in bzrlib.help_topics.
+    """
+    resource_name = osutils.pathjoin("en", "%s.txt" % (topic_name,))
+    return osutils.resource_string('bzrlib.help_topics', resource_name)
 
 
 def _help_on_revisionspec(name):
@@ -261,15 +276,18 @@ See doc/developers/profiling.txt for more information on profiling.
 A number of debug flags are also available to assist troubleshooting and
 development.
 
+-Dauth         Trace authentication sections used.
 -Derror        Instead of normal error handling, always print a traceback on
                error.
 -Devil         Capture call sites that do expensive or badly-scaling
                operations.
 -Dhashcache    Log every time a working file is read to determine its hash.
 -Dhooks        Trace hook execution.
+-Dhttp         Trace http connections, requests and responses
 -Dhpss         Trace smart protocol requests and responses.
 -Dindex        Trace major index operations.
 -Dlock         Trace when lockdir locks are taken or released.
+-Dmerge        Emit information for debugging merges.
 """
 
 _standard_options = \
@@ -522,6 +540,7 @@ EDITOR           Editor for editing commit messages.
 BZR_PLUGIN_PATH  Paths where bzr should look for plugins.
 BZR_HOME         Directory holding .bazaar config dir. Overrides HOME.
 BZR_HOME (Win32) Directory holding bazaar config dir. Overrides APPDATA and HOME.
+BZR_REMOTE_PATH  Full name of remote 'bzr' command (for bzr+ssh:// URLs).
 ================ =================================================================
 """
 
@@ -547,6 +566,35 @@ A typical config file might look something like::
   log10 = log --short -r -10..-1
 """
 
+_criss_cross = \
+"""Criss-Cross
+
+A criss-cross in the branch history can cause the default merge technique
+to emit more conflicts than would normally be expected.
+
+If you encounter criss-crosses, you can use merge --weave instead, which
+should provide a much better result.
+
+Criss-crosses occur in a branch's history if two branches merge the same thing
+and then merge one another, or if two branches merge one another at the same
+time.  They can be avoided by having each branch only merge from or into a
+designated central branch (a "star topology").
+
+Criss-crosses cause problems because of the way merge works.  Bazaar's default
+merge is a three-way merger; in order to merge OTHER into THIS, it must
+find a basis for comparison, BASE.  Using BASE, it can determine whether
+differences between THIS and OTHER are due to one side adding lines, or
+from another side removing lines.
+
+Criss-crosses mean there is no good choice for a base.  Selecting the recent
+merge points could cause one side's changes to be silently discarded.
+Selecting older merge points (which Bazaar does) mean that extra conflicts
+are emitted.
+
+The ``weave`` merge type is not affected by this problem because it uses
+line-origin detection instead of a basis revision to determine the cause of
+differences."""
+
 
 # Register help topics
 topic_registry.register("revisionspec", _help_on_revisionspec,
@@ -567,12 +615,23 @@ topic_registry.register('status-flags', _status_flags,
                         "Help on status flags")
 def get_bugs_topic(topic):
     from bzrlib import bugtracker
-    return "Bug Trackers\n\n" + bugtracker.tracker_registry.help_topic(topic)
-topic_registry.register('bugs', get_bugs_topic, 'Bug tracker support')
+    return "Bug Tracker Settings\n\n" + \
+        bugtracker.tracker_registry.help_topic(topic)
+topic_registry.register('bugs', get_bugs_topic, 'Bug tracker settings')
 topic_registry.register('env-variables', _env_variables,
                         'Environment variable names and values')
 topic_registry.register('files', _files,
                         'Information on configuration and log files')
+
+# Load some of the help topics from files
+topic_registry.register('authentication', _load_from_file,
+                        'Information on configuring authentication')
+topic_registry.register('configuration', _load_from_file,
+                        'Details on the configuration settings available')
+topic_registry.register('conflicts', _load_from_file,
+                        'Types of conflicts and what to do about them')
+topic_registry.register('hooks', _load_from_file,
+                        'Points at which custom processing can be added')
 
 
 # Register concept topics.
@@ -591,6 +650,8 @@ topic_registry.register('standalone-trees', _standalone_trees,
                         SECT_CONCEPT)
 topic_registry.register('working-trees', _working_trees,
                         'Information on working trees', SECT_CONCEPT)
+topic_registry.register('criss-cross', _criss_cross,
+                        'Information on criss-cross merging', SECT_CONCEPT)
 
 
 class HelpTopicIndex(object):

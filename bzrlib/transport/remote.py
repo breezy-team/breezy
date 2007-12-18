@@ -36,16 +36,6 @@ from bzrlib import (
     )
 from bzrlib.smart import client, medium, protocol
 
-# must do this otherwise urllib can't parse the urls properly :(
-for scheme in ['ssh', 'bzr', 'bzr+loopback', 'bzr+ssh', 'bzr+http', 'bzr+https']:
-    transport.register_urlparse_netloc_protocol(scheme)
-del scheme
-
-
-# Port 4155 is the default port for bzr://, registered with IANA.
-BZR_DEFAULT_INTERFACE = '0.0.0.0'
-BZR_DEFAULT_PORT = 4155
-
 
 class _SmartStat(object):
 
