@@ -1,13 +1,12 @@
-Revision specifiers
-===================
+Specifying revisions
+====================
 
-Revision specs and ranges
--------------------------
+Revision identifiers and ranges
+-------------------------------
 
-``bzr`` has a very expressive way to specify a revision, or a range of revisions.
-We'll take the example of the ``log`` command.
-
-To specify a range of revisions, use for example::
+Bazaar has a very expressive way to specify a revision or a range of revisions.
+To specify a range of revisions, the upper and lower bounds are separated by the
+``..`` symbol. For example::
 
     $ bzr log -r 1..4
 
@@ -16,17 +15,21 @@ You can omit one bound like::
     $ bzr log -r 1..
     $ bzr log -r ..4
 
-Note:
-    Omitting the lower bound doesn't work on versions of ``bzr`` prior to 0.14.
-
-Other commands, like ``bzr cat`` take only one revision, not a range, like::
+Some commands take only one revision, not a range. For example::
 
     $ bzr cat -r 42 foo.c
 
-Available revision specs
-------------------------
+In other cases, a range is required but you want the length of the range to
+be one. For commands where this is relevant, the ``-c`` option is used like this::
 
-The revision, or the bounds of the range, can be one of
+    $ bzr diff -c 42
+
+
+Available revision identifiers
+------------------------------
+
+The revision, or the bounds of the range, can be given using
+different format specifications as shown below.
 
  +----------------------+------------------------------------+
  |  argument type       | description                        |
@@ -43,10 +46,20 @@ The revision, or the bounds of the range, can be one of
  +----------------------+------------------------------------+
  | **date**:*value*     | first entry after a given date     |
  +----------------------+------------------------------------+
+ | **tag**:*value*      | revision matching a given tag      |
+ +----------------------+------------------------------------+
  | **ancestor**:*path*  | last merged revision from a branch |
  +----------------------+------------------------------------+
  | **branch**:*path*    | latest revision on another branch  |
  +----------------------+------------------------------------+
+ | **submit**:*path*    | common ancestor with submit branch |
+ +----------------------+------------------------------------+
+
+A brief introduction to some of these formats is given below.
+For complete details, see `Revision Identifiers`_ in the
+Bazaar User Reference.
+
+.. _Revision Identifiers: ../user-reference/bzr_man.html#revision-identifiers
 
 Numbers
 ~~~~~~~
@@ -64,15 +77,6 @@ To display the log for the last ten revisions::
 
     $ bzr log -r -10..
 
-revno, last
-~~~~~~~~~~~
-
-**revno**:*number*
-    The same as *number*, except that negative numbers are not allowed.
-
-**last**:*number*
-    The same as -''number''. **last:1** means the last commited revision.
-
 revid
 ~~~~~
 
@@ -82,7 +86,6 @@ log`` and some other commands.
 For example::
 
     $ bzr log -r revid:Matthieu.Moy@imag.fr-20051026185030-93c7cad63ee570df
-
 
 before
 ~~~~~~

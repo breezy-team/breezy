@@ -78,9 +78,6 @@ class Response(httplib.HTTPResponse):
     # Some responses have bodies in which we have no interest
     _body_ignored_responses = [301,302, 303, 307, 401, 403, 404]
 
-    def __init__(self, *args, **kwargs):
-        httplib.HTTPResponse.__init__(self, *args, **kwargs)
-
     def begin(self):
         """Begin to read the response from the server.
 
@@ -123,6 +120,12 @@ class Response(httplib.HTTPResponse):
             # below we keep the socket with the server opened.
             self.will_close = False
 
+    # in finish() below, we may have to discard several MB in the worst
+    # case. To avoid buffering that much, we read and discard by chunks
+    # instead. The underlying file is either a socket or a StringIO, so reading
+    # 8k chunks should be fine.
+    _discarded_buf_size = 8192
+
     def finish(self):
         """Finish reading the body.
 
@@ -131,11 +134,26 @@ class Response(httplib.HTTPResponse):
         persistent connection. If we don't use a persistent connection, well,
         nothing will block the next request since a new connection will be
         issued anyway.
+
+        :return: the number of bytes left on the socket (may be None)
         """
+        pending = None
         if not self.isclosed():
             # Make sure nothing was left to be read on the socket
-            data = self.read(self.length)
+            pending = 0
+            while self.length and self.length > self._discarded_buf_size:
+                data = self.read(self._discarded_buf_size)
+                pending += len(data)
+            if self.length:
+                data = self.read(self.length)
+                pending += len(data)
+            if pending:
+                trace.mutter(
+                    "bogus http server didn't give body length,"
+                    "%s bytes left on the socket",
+                    pending)
             self.close()
+        return pending
 
 
 # Not inheriting from 'object' because httplib.HTTPConnection doesn't.
@@ -145,13 +163,16 @@ class AbstractHTTPConnection:
     response_class = Response
     strict = 1 # We don't support HTTP/0.9
 
+    # When we detect a server responding with the whole file to range requests,
+    # we want to warn. But not below a given thresold.
+    _range_warning_thresold = 1024 * 1024
+
     def __init__(self):
         self._response = None
+        self._ranges_received_whole_file = None
 
     def _mutter_connect(self):
-        netloc = self.host
-        if self.port is not None:
-            netloc += ':%d' % self.port
+        netloc = '%s:%s' % (self.host, self.port)
         if self.proxied_host is not None:
             netloc += '(proxy for %s)' % self.proxied_host
         trace.mutter('* About to connect() to %s' % netloc)
@@ -162,12 +183,19 @@ class AbstractHTTPConnection:
         return self._response
 
     def cleanup_pipe(self):
-        """Make the connection believes the response have been fully handled.
-
-        That makes the httplib.HTTPConnection happy
-        """
+        """Make the connection believe the response has been fully processed."""
         if self._response is not None:
-            self._response.finish()
+            pending = self._response.finish()
+            # Warn the user (once)
+            if (self._ranges_received_whole_file is None
+                and self._response.status == 200
+                and pending and pending > self._range_warning_thresold
+                ):
+                self._ranges_received_whole_file = True
+                trace.warning(
+                    'Got a 200 response when asking for multiple ranges,'
+                    ' does your server at %s:%s support range requests?',
+                    self.host, self.port)
             self._response = None
         # Preserve our preciousss
         sock = self.sock

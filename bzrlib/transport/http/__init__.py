@@ -139,7 +139,6 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         # time of this writing it's even the only known client -- vila20071203
         return StringIO(response_file.read())
 
-    # TODO: Add tests for tail_amount or deprecate it
     def _get(self, relpath, ranges, tail_amount=0):
         """Get a file, or part of a file.
 

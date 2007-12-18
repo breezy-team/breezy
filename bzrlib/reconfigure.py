@@ -62,8 +62,6 @@ class Reconfigure(object):
 
         :param bzrdir: The bzrdir to reconfigure
         :raise errors.AlreadyBranch: if bzrdir is already a branch
-        :raise errors.ReconfigurationNotSupported: if bzrdir does not contain
-            a branch or branch reference
         """
         reconfiguration = Reconfigure(bzrdir)
         reconfiguration._plan_changes(want_tree=False, want_branch=True,
@@ -78,8 +76,6 @@ class Reconfigure(object):
 
         :param bzrdir: The bzrdir to reconfigure
         :raise errors.AlreadyTree: if bzrdir is already a tree
-        :raise errors.ReconfigurationNotSupported: if bzrdir does not contain
-            a branch or branch reference
         """
         reconfiguration = Reconfigure(bzrdir)
         reconfiguration._plan_changes(want_tree=True, want_branch=True,
@@ -95,8 +91,6 @@ class Reconfigure(object):
         :param bzrdir: The bzrdir to reconfigure
         :param bound_location: The location the checkout should be bound to.
         :raise errors.AlreadyCheckout: if bzrdir is already a checkout
-        :raise errors.ReconfigurationNotSupported: if bzrdir does not contain
-            a branch or branch reference
         """
         reconfiguration = Reconfigure(bzrdir, bound_location)
         reconfiguration._plan_changes(want_tree=True, want_branch=True,
@@ -113,8 +107,6 @@ class Reconfigure(object):
         :param bound_location: The location the checkout should be bound to.
         :raise errors.AlreadyLightweightCheckout: if bzrdir is already a
             lightweight checkout
-        :raise errors.ReconfigurationNotSupported: if bzrdir does not contain
-            a branch or branch reference
         """
         reconfiguration = klass(bzrdir, reference_location)
         reconfiguration._plan_changes(want_tree=True, want_branch=False,
@@ -130,17 +122,14 @@ class Reconfigure(object):
             raise errors.ReconfigurationNotSupported(self.bzrdir)
         if want_branch and want_reference:
             raise errors.ReconfigurationNotSupported(self.bzrdir)
-        if (want_branch or want_reference) and (self.local_branch is None and
-                                                self.referenced_branch
-                                                is None):
-            raise errors.ReconfigurationNotSupported(self.bzrdir)
         if self.repository is None:
             if not want_reference:
                 self._create_repository = True
         else:
             if want_reference and (self.repository.bzrdir.root_transport.base
                                    == self.bzrdir.root_transport.base):
-                self._destroy_repository = True
+                if not self.repository.is_shared():
+                    self._destroy_repository = True
         if self.referenced_branch is None:
             if want_reference:
                 self._create_reference = True
@@ -168,7 +157,8 @@ class Reconfigure(object):
         """Return True if changes are planned, False otherwise"""
         return (self._unbind or self._bind or self._destroy_tree
                 or self._create_tree or self._destroy_reference
-                or self._create_branch or self._create_repository)
+                or self._create_branch or self._create_repository
+                or self._create_reference)
 
     def _check(self):
         """Raise if reconfiguration would destroy local changes"""
@@ -223,18 +213,20 @@ class Reconfigure(object):
             repo = self.bzrdir.create_repository()
         else:
             repo = self.repository
-        if self._create_branch:
+        if self._create_branch and self.referenced_branch is not None:
             repo.fetch(self.referenced_branch.repository,
                        self.referenced_branch.last_revision())
+        last_revision_info = None
         if self._destroy_reference:
-            reference_info = self.referenced_branch.last_revision_info()
+            last_revision_info = self.referenced_branch.last_revision_info()
             self.bzrdir.destroy_branch()
         if self._destroy_branch:
-            reference_info = self.local_branch.last_revision_info()
+            last_revision_info = self.local_branch.last_revision_info()
             self.bzrdir.destroy_branch()
         if self._create_branch:
             local_branch = self.bzrdir.create_branch()
-            local_branch.set_last_revision_info(*reference_info)
+            if last_revision_info is not None:
+                local_branch.set_last_revision_info(*last_revision_info)
         else:
             local_branch = self.local_branch
         if self._create_reference:

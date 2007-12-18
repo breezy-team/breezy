@@ -24,6 +24,7 @@ import sys
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.rio import read_stanzas
 
+from bzrlib.version_info_formats.format_custom import CustomVersionInfoBuilder
 from bzrlib.version_info_formats.format_rio import RioVersionInfoBuilder
 from bzrlib.version_info_formats.format_python import PythonVersionInfoBuilder
 
@@ -222,4 +223,31 @@ class TestVersionInfo(TestCaseWithTransport):
         self.assertEqual('unversioned', tvi.file_revisions['c'])
         self.assertEqual('removed', tvi.file_revisions['d'])
 
+    def test_custom_version_text(self):
+        wt = self.create_branch()
 
+        def regen(tpl, **kwargs):
+            sio = StringIO()
+            builder = CustomVersionInfoBuilder(wt.branch, working_tree=wt,
+                                               template=tpl, **kwargs)
+            builder.generate(sio)
+            val = sio.getvalue()
+            return val
+
+        val = regen('build-date: "{build_date}"\ndate: "{date}"')
+        self.assertContainsRe(val, 'build-date: "[0-9-+: ]+"')
+        self.assertContainsRe(val, 'date: "[0-9-+: ]+"')
+
+        val = regen('revno: {revno}')
+        self.assertEqual(val, 'revno: 3')
+
+        val = regen('revision-id: {revision_id}')
+        self.assertEqual(val, 'revision-id: r3')
+
+        val = regen('clean: {clean}', check_for_clean=True)
+        self.assertEqual(val, 'clean: 1')
+
+        self.build_tree(['branch/c'])
+        val = regen('clean: {clean}', check_for_clean=True)
+        self.assertEqual(val, 'clean: 0')
+        os.remove('branch/c')
