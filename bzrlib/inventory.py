@@ -50,7 +50,7 @@ from bzrlib.errors import (
     BzrCheckError,
     BzrError,
     )
-from bzrlib.symbol_versioning import deprecated_method, one_zero
+from bzrlib.symbol_versioning import deprecated_method
 from bzrlib.trace import mutter
 
 
@@ -198,7 +198,7 @@ class InventoryEntry(object):
                     candidates[ie.revision] = ie
         return candidates
 
-    @deprecated_method(one_zero)
+    @deprecated_method(symbol_versioning.zero_ninetyone)
     def find_previous_heads(self, previous_inventories,
                             versioned_file_store,
                             transaction,
