@@ -59,20 +59,26 @@ class _KnitParentsProvider(object):
         return 'KnitParentsProvider(%r)' % self._knit
 
     def get_parents(self, revision_ids):
-        parents_list = []
-        for revision_id in revision_ids:
+        """See graph._StackedParentsProvider.get_parents"""
+        parent_map = self.get_parent_map(revision_ids)
+        return [parent_map.get(r, None) for r in revision_ids]
+
+    def get_parent_map(self, keys):
+        """See graph._StackedParentsProvider.get_parent_map"""
+        parent_map = {}
+        for revision_id in keys:
             if revision_id == _mod_revision.NULL_REVISION:
-                parents = []
+                parent_map[revision_id] = []
             else:
                 try:
                     parents = self._knit.get_parents_with_ghosts(revision_id)
                 except errors.RevisionNotPresent:
-                    parents = None
+                    pass
                 else:
                     if len(parents) == 0:
                         parents = [_mod_revision.NULL_REVISION]
-            parents_list.append(parents)
-        return parents_list
+                parent_map[revision_id] = parents
+        return parent_map
 
 
 class KnitRepository(MetaDirRepository):

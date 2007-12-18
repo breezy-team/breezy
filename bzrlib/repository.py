@@ -1645,20 +1645,25 @@ class Repository(object):
 
     def get_parents(self, revision_ids):
         """See StackedParentsProvider.get_parents"""
-        parents_list = []
-        for revision_id in revision_ids:
+        parent_map = self.get_parent_map(revision_ids)
+        return [parent_map.get(r, None) for r in revision_ids]
+
+    def get_parent_map(self, keys):
+        """See graph._StackedParentsProvider.get_parent_map"""
+        parent_map = {}
+        for revision_id in keys:
             if revision_id == _mod_revision.NULL_REVISION:
-                parents = []
+                parents[revision_id] = []
             else:
                 try:
-                    parents = self.get_revision(revision_id).parent_ids
+                    parent_ids = self.get_revision(revision_id).parent_ids
                 except errors.NoSuchRevision:
-                    parents = None
+                    pass
                 else:
-                    if len(parents) == 0:
-                        parents = [_mod_revision.NULL_REVISION]
-            parents_list.append(parents)
-        return parents_list
+                    if len(parent_ids) == 0:
+                        parent_ids = [_mod_revision.NULL_REVISION]
+                    parent_map[revision_id] = parent_ids
+        return parent_map
 
     def _make_parents_provider(self):
         return self

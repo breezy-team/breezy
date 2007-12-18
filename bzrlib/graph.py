@@ -55,6 +55,11 @@ class DictParentsProvider(object):
     def get_parents(self, revisions):
         return [self.ancestry.get(r, None) for r in revisions]
 
+    def get_parent_map(self, keys):
+        """See _StackedParentsProvider.get_parent_map"""
+        ancestry = self.ancestry
+        return dict((k, ancestry[k]) for k in keys if k in ancestry)
+
 
 class _StackedParentsProvider(object):
 
@@ -76,16 +81,75 @@ class _StackedParentsProvider(object):
         If the revision is not present (i.e. a ghost), None is used in place
         of the list of parents.
         """
-        found = {}
-        for parents_provider in self._parent_providers:
-            pending_revisions = [r for r in revision_ids if r not in found]
-            parent_list = parents_provider.get_parents(pending_revisions)
-            new_found = dict((k, v) for k, v in zip(pending_revisions,
-                             parent_list) if v is not None)
-            found.update(new_found)
-            if len(found) == len(revision_ids):
-                break
+        found = self.get_parent_map(revision_ids)
         return [found.get(r, None) for r in revision_ids]
+
+    def get_parent_map(self, keys):
+        """Get a mapping of keys => parents
+
+        A dictionary is returned with an entry for each key present in this
+        source. If this source doesn't have information about a key, it should
+        not include an entry.
+
+        [NULL_REVISION] is used as the parent of the first user-committed
+        revision.  Its parent list is empty.
+
+        :param keys: An iterable returning keys to check (eg revision_ids)
+        :return: A dictionary mapping each key to its parents
+        """
+        found = {}
+        remaining = set(keys)
+        for parents_provider in self._parent_providers:
+            new_found = parents_provider.get_parent_map(remaining)
+            found.update(new_found)
+            remaining.difference_update(new_found)
+            if not remaining:
+                break
+        return found
+
+
+class CachingParentsProvider(object):
+    """A parents provider which will cache the revision => parents in a dict.
+
+    This is useful for providers that have an expensive lookup.
+    """
+
+    def __init__(self, parent_provider):
+        self._real_provider = parent_provider
+        # Theoretically we could use an LRUCache here
+        self._cache = {}
+
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self._real_provider)
+
+    def get_parents(self, revision_ids):
+        """See _StackedParentsProvider.get_parents"""
+        found = self.get_parent_map(revision_ids)
+        return [found.get(r, None) for r in revision_ids]
+
+    def get_parent_map(self, keys):
+        """See _StackedParentsProvider.get_parent_map"""
+        needed = set()
+        # If the _real_provider doesn't have a key, we cache a value of None,
+        # which we then later use to realize we cannot provide a value for that
+        # key.
+        parent_map = {}
+        cache = self._cache
+        for key in keys:
+            if key in cache:
+                value = cache[key]
+                if value is not None:
+                    parent_map[key] = value
+            else:
+                needed.add(key)
+
+        if needed:
+            new_parents = self._real_provider.get_parent_map(needed)
+            cache.update(new_parents)
+            parent_map.update(new_parents)
+            needed.difference_update(new_parents)
+            cache.update(dict.fromkeys(needed, None))
+        return parent_map
 
 
 class Graph(object):
@@ -106,6 +170,7 @@ class Graph(object):
             conforming to the behavior of StackedParentsProvider.get_parents
         """
         self.get_parents = parents_provider.get_parents
+        self.get_parent_map = parents_provider.get_parent_map
         self._parents_provider = parents_provider
 
     def __repr__(self):
@@ -432,11 +497,15 @@ class _BreadthFirstSearcher(object):
         self._start = set(revisions)
         self._search_revisions = None
         self.seen = set(revisions)
-        self._parents_provider = parents_provider 
+        self._parents_provider = parents_provider
 
     def __repr__(self):
-        return ('_BreadthFirstSearcher(self._search_revisions=%r,'
-                ' self.seen=%r)' % (self._search_revisions, self.seen))
+        if self._search_revisions is not None:
+            search = 'searching=%r' % (list(self._search_revisions),)
+        else:
+            search = 'starting=%r' % (list(self._start),)
+        return ('_BreadthFirstSearcher(%s,'
+                ' seen=%r)' % (search, list(self.seen)))
 
     def next(self):
         """Return the next ancestors of this revision.
