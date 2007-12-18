@@ -2735,7 +2735,8 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         control_files.put_bytes('pending-merges', '')
         
 
-    def initialize(self, a_bzrdir, revision_id=None, from_branch=None):
+    def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
+                   accelerator_tree=None):
         """See WorkingTreeFormat.initialize()."""
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
@@ -2827,7 +2828,8 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         return LockableFiles(transport, self._lock_file_name, 
                              self._lock_class)
 
-    def initialize(self, a_bzrdir, revision_id=None, from_branch=None):
+    def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
+                   accelerator_tree=None):
         """See WorkingTreeFormat.initialize().
         
         revision_id allows creating a working tree at a different

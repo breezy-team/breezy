@@ -948,7 +948,7 @@ class cmd_checkout(Command):
                                  "such access, and also support local commits."
                             ),
                      Option('files-from',
-                            help="Get file contents from this tree", type=str)
+                            help="Get file contents from this tree.", type=str)
                      ]
     aliases = ['co']
 
