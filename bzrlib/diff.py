@@ -38,7 +38,7 @@ from bzrlib import (
 
 from bzrlib.symbol_versioning import (
         deprecated_function,
-        zero_ninetythree,
+        one_zero,
         )
 from bzrlib.trace import mutter, warning
 
@@ -272,7 +272,7 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
                         new_abspath, e)
 
 
-@deprecated_function(zero_ninetythree)
+@deprecated_function(one_zero)
 def diff_cmd_helper(tree, specific_files, external_diff_options, 
                     old_revision_spec=None, new_revision_spec=None,
                     revision_specs=None,
