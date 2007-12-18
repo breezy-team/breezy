@@ -98,7 +98,6 @@ from bzrlib.tests.TestUtil import (
                           TestSuite,
                           TestLoader,
                           )
-from bzrlib.tests.EncodingAdapter import EncodingTestAdapter
 from bzrlib.tests.treeshape import build_tree_contents
 import bzrlib.version_info_formats.format_custom
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
@@ -2677,10 +2676,6 @@ def test_suite():
     from bzrlib.tests.test_transport_implementations import TransportTestProviderAdapter
     adapter = TransportTestProviderAdapter()
     adapt_modules(test_transport_implementations, adapter, loader, suite)
-    adapt_tests(
-        ["bzrlib.tests.test_msgeditor.MsgEditorTest."
-         "test__create_temp_file_with_commit_template_in_unicode_dir"],
-        EncodingTestAdapter(), loader, suite)
     for package in packages_to_test():
         suite.addTest(package.test_suite())
     for m in MODULES_TO_TEST:
