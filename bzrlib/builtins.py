@@ -947,11 +947,17 @@ class cmd_checkout(Command):
                                  "common operations like diff and status without "
                                  "such access, and also support local commits."
                             ),
+                     Option('files-from',
+                            help="Get file contents from this tree", type=str)
                      ]
     aliases = ['co']
 
     def run(self, branch_location=None, to_location=None, revision=None,
-            lightweight=False):
+            lightweight=False, files_from=None):
+        if files_from is not None:
+            accelerator_tree = WorkingTree.open(files_from)
+        else:
+            accelerator_tree = None
         if revision is None:
             revision = [None]
         elif len(revision) > 1:
@@ -978,7 +984,8 @@ class cmd_checkout(Command):
             except errors.NoWorkingTree:
                 source.bzrdir.create_workingtree(revision_id)
                 return
-        source.create_checkout(to_location, revision_id, lightweight)
+        source.create_checkout(to_location, revision_id, lightweight,
+                               accelerator_tree)
 
 
 class cmd_renames(Command):

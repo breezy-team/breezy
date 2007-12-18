@@ -1256,7 +1256,8 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         """See WorkingTreeFormat.get_format_description()."""
         return "Working tree format 4"
 
-    def initialize(self, a_bzrdir, revision_id=None, from_branch=None):
+    def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
+                   accelerator_tree=None):
         """See WorkingTreeFormat.initialize().
 
         :param revision_id: allows creating a working tree at a different
@@ -1307,7 +1308,7 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
             if basis_root_id is not None:
                 wt._set_root_id(basis_root_id)
                 wt.flush()
-            transform.build_tree(basis, wt)
+            transform.build_tree(basis, wt, accelerator_tree)
             basis.unlock()
         finally:
             control_files.unlock()

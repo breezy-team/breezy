@@ -757,7 +757,7 @@ class Branch(object):
         return format
 
     def create_checkout(self, to_location, revision_id=None,
-                        lightweight=False):
+                        lightweight=False, accelerator_tree=None):
         """Create a checkout of a branch.
         
         :param to_location: The url to produce the checkout at
@@ -783,7 +783,8 @@ class Branch(object):
             checkout_branch.pull(self, stop_revision=revision_id)
             from_branch=None
         tree = checkout.create_workingtree(revision_id,
-                                           from_branch=from_branch)
+                                           from_branch=from_branch,
+                                           accelerator_tree=accelerator_tree)
         basis_tree = tree.basis_tree()
         basis_tree.lock_read()
         try:

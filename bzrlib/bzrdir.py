@@ -939,7 +939,8 @@ class BzrDirPreSplitOut(BzrDir):
         """See BzrDir.destroy_repository."""
         raise errors.UnsupportedOperation(self.destroy_repository, self)
 
-    def create_workingtree(self, revision_id=None, from_branch=None):
+    def create_workingtree(self, revision_id=None, from_branch=None,
+                           accelerator_tree=None):
         """See BzrDir.create_workingtree."""
         # this looks buggy but is not -really-
         # because this format creates the workingtree when the bzrdir is
@@ -1121,10 +1122,12 @@ class BzrDirMeta1(BzrDir):
         """See BzrDir.destroy_repository."""
         self.transport.delete_tree('repository')
 
-    def create_workingtree(self, revision_id=None, from_branch=None):
+    def create_workingtree(self, revision_id=None, from_branch=None,
+                           accelerator_tree=None):
         """See BzrDir.create_workingtree."""
         return self._format.workingtree_format.initialize(
-            self, revision_id, from_branch=from_branch)
+            self, revision_id, from_branch=from_branch,
+            accelerator_tree=accelerator_tree)
 
     def destroy_workingtree(self):
         """See BzrDir.destroy_workingtree."""
