@@ -17,6 +17,7 @@
 from bzrlib import (
     errors,
     graph as _mod_graph,
+    symbol_versioning,
     tests,
     )
 from bzrlib.revision import NULL_REVISION
@@ -449,19 +450,35 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual((set(['e']), set(['f', 'g'])),
                          graph.find_difference('e', 'f'))
 
-    def test_stacked_parents_provider(self):
-
+    def test_stacked_parents_provider_get_parents(self):
         parents1 = _mod_graph.DictParentsProvider({'rev2': ['rev3']})
         parents2 = _mod_graph.DictParentsProvider({'rev1': ['rev4']})
         stacked = _mod_graph._StackedParentsProvider([parents1, parents2])
         self.assertEqual([['rev4',], ['rev3']],
-                         stacked.get_parents(['rev1', 'rev2']))
+             self.applyDeprecated(symbol_versioning.one_one,
+                                  stacked.get_parents, ['rev1', 'rev2']))
         self.assertEqual([['rev3',], ['rev4']],
-                         stacked.get_parents(['rev2', 'rev1']))
+             self.applyDeprecated(symbol_versioning.one_one,
+                                  stacked.get_parents, ['rev2', 'rev1']))
         self.assertEqual([['rev3',], ['rev3']],
-                         stacked.get_parents(['rev2', 'rev2']))
+             self.applyDeprecated(symbol_versioning.one_one,
+                         stacked.get_parents, ['rev2', 'rev2']))
         self.assertEqual([['rev4',], ['rev4']],
-                         stacked.get_parents(['rev1', 'rev1']))
+             self.applyDeprecated(symbol_versioning.one_one,
+                         stacked.get_parents, ['rev1', 'rev1']))
+
+    def test_stacked_parents_provider(self):
+        parents1 = _mod_graph.DictParentsProvider({'rev2': ['rev3']})
+        parents2 = _mod_graph.DictParentsProvider({'rev1': ['rev4']})
+        stacked = _mod_graph._StackedParentsProvider([parents1, parents2])
+        self.assertEqual({'rev1':['rev4'], 'rev2':['rev3']},
+                         stacked.get_parent_map(['rev1', 'rev2']))
+        self.assertEqual({'rev2':['rev3'], 'rev1':['rev4']},
+                         stacked.get_parent_map(['rev2', 'rev1']))
+        self.assertEqual({'rev2':['rev3']},
+                         stacked.get_parent_map(['rev2', 'rev2']))
+        self.assertEqual({'rev1':['rev4']},
+                         stacked.get_parent_map(['rev1', 'rev1']))
 
     def test_iter_topo_order(self):
         graph = self.make_graph(ancestry_1)
@@ -676,34 +693,48 @@ class TestCachingParentsProvider(tests.TestCase):
     def test_get_parents(self):
         """Requesting the same revision should be returned from cache"""
         self.assertEqual({}, self.caching_pp._cache)
-        self.assertEqual([('b',)], self.caching_pp.get_parents(['a']))
+        self.assertEqual([('b',)],
+            self.applyDeprecated(symbol_versioning.one_one,
+            self.caching_pp.get_parents, ['a']))
         self.assertEqual(['a'], self.inst_pp.calls)
-        self.assertEqual([('b',)], self.caching_pp.get_parents(['a']))
+        self.assertEqual([('b',)],
+            self.applyDeprecated(symbol_versioning.one_one,
+            self.caching_pp.get_parents, ['a']))
         # No new call, as it should have been returned from the cache
         self.assertEqual(['a'], self.inst_pp.calls)
         self.assertEqual({'a':('b',)}, self.caching_pp._cache)
 
-    def test_get_parents_not_present(self):
+    def test_get_parent_map(self):
+        """Requesting the same revision should be returned from cache"""
+        self.assertEqual({}, self.caching_pp._cache)
+        self.assertEqual({'a':('b',)}, self.caching_pp.get_parent_map(['a']))
+        self.assertEqual(['a'], self.inst_pp.calls)
+        self.assertEqual({'a':('b',)}, self.caching_pp.get_parent_map(['a']))
+        # No new call, as it should have been returned from the cache
+        self.assertEqual(['a'], self.inst_pp.calls)
+        self.assertEqual({'a':('b',)}, self.caching_pp._cache)
+
+    def test_get_parent_map_not_present(self):
         """The cache should also track when a revision doesn't exist"""
-        self.assertEqual([None], self.caching_pp.get_parents(['b']))
+        self.assertEqual({}, self.caching_pp.get_parent_map(['b']))
         self.assertEqual(['b'], self.inst_pp.calls)
-        self.assertEqual([None], self.caching_pp.get_parents(['b']))
+        self.assertEqual({}, self.caching_pp.get_parent_map(['b']))
         # No new calls
         self.assertEqual(['b'], self.inst_pp.calls)
         self.assertEqual({'b':None}, self.caching_pp._cache)
 
-    def test_get_parents_mixed(self):
+    def test_get_parent_map_mixed(self):
         """Anything that can be returned from cache, should be"""
-        self.assertEqual([None], self.caching_pp.get_parents(['b']))
+        self.assertEqual({}, self.caching_pp.get_parent_map(['b']))
         self.assertEqual(['b'], self.inst_pp.calls)
-        self.assertEqual([('b',), None],
-                         self.caching_pp.get_parents(['a', 'b']))
+        self.assertEqual({'a':('b',)},
+                         self.caching_pp.get_parent_map(['a', 'b']))
         self.assertEqual(['b', 'a'], self.inst_pp.calls)
 
-    def test_get_parents_repeated(self):
+    def test_get_parent_map_repeated(self):
         """Asking for the same parent 2x will only forward 1 request."""
-        self.assertEqual([None, ('b',), None],
-                         self.caching_pp.get_parents(['b', 'a', 'b']))
+        self.assertEqual({'a':('b',)},
+                         self.caching_pp.get_parent_map(['b', 'a', 'b']))
         # Use sorted because we don't care about the order, just that each is
         # only present 1 time.
         self.assertEqual(['a', 'b'], sorted(self.inst_pp.calls))

@@ -17,6 +17,7 @@
 from bzrlib import (
     errors,
     revision,
+    symbol_versioning,
     tsort,
     )
 from bzrlib.deprecated_graph import (node_distances, select_farthest)
@@ -52,6 +53,7 @@ class DictParentsProvider(object):
     def __repr__(self):
         return 'DictParentsProvider(%r)' % self.ancestry
 
+    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
     def get_parents(self, revisions):
         return [self.ancestry.get(r, None) for r in revisions]
 
@@ -69,6 +71,7 @@ class _StackedParentsProvider(object):
     def __repr__(self):
         return "_StackedParentsProvider(%r)" % self._parent_providers
 
+    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
     def get_parents(self, revision_ids):
         """Find revision ids of the parents of a list of revisions
 
@@ -122,6 +125,7 @@ class CachingParentsProvider(object):
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self._real_provider)
 
+    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
     def get_parents(self, revision_ids):
         """See _StackedParentsProvider.get_parents"""
         found = self.get_parent_map(revision_ids)
@@ -419,7 +423,7 @@ class Graph(object):
         An ancestor may sort after a descendant if the relationship is not
         visible in the supplied list of revisions.
         """
-        sorter = tsort.TopoSorter(zip(revisions, self.get_parents(revisions)))
+        sorter = tsort.TopoSorter(self.get_parent_map(revisions))
         return sorter.iter_topo_order()
 
     def is_ancestor(self, candidate_ancestor, candidate_descendant):
@@ -517,10 +521,9 @@ class _BreadthFirstSearcher(object):
             self._search_revisions = self._start
         else:
             new_search_revisions = set()
-            for parents in self._parents_provider.get_parents(
-                self._search_revisions):
-                if parents is None:
-                    continue
+            parent_map = self._parents_provider.get_parent_map(
+                            self._search_revisions)
+            for parents in parent_map.itervalues():
                 new_search_revisions.update(p for p in parents if
                                             p not in self.seen)
             self._search_revisions = new_search_revisions

@@ -1643,6 +1643,7 @@ class Repository(object):
     def revision_parents(self, revision_id):
         return self.get_inventory_weave().parent_names(revision_id)
 
+    @deprecated_method(symbol_versioning.one_one)
     def get_parents(self, revision_ids):
         """See StackedParentsProvider.get_parents"""
         parent_map = self.get_parent_map(revision_ids)

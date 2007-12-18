@@ -35,7 +35,11 @@ from bzrlib.bisect_multi import bisect_multi_bytes
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 """)
-from bzrlib import debug, errors
+from bzrlib import (
+    debug,
+    errors,
+    symbol_versioning,
+    )
 
 _HEADER_READV = (0, 200)
 _OPTION_KEY_ELEMENTS = "key_elements="
@@ -995,6 +999,7 @@ class CombinedGraphIndex(object):
                 self.__class__.__name__,
                 ', '.join(map(repr, self._indices)))
 
+    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
     def get_parents(self, revision_ids):
         """See graph._StackedParentsProvider.get_parents.
         

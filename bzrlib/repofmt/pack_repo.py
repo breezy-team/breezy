@@ -48,6 +48,7 @@ from bzrlib import (
     lockable_files,
     lockdir,
     osutils,
+    symbol_versioning,
     transactions,
     xml5,
     xml6,
@@ -1894,6 +1895,7 @@ class KnitPackRepository(KnitRepository):
             pb.finished()
         return result
 
+    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
     def get_parents(self, revision_ids):
         """See graph._StackedParentsProvider.get_parents."""
         parent_map = self.get_parent_map(revision_ids)
