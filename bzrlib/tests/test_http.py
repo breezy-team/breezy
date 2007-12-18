@@ -21,6 +21,7 @@
 # TODO: What about renaming to bzrlib.tests.transport.http ?
 
 from cStringIO import StringIO
+import httplib
 import os
 import select
 import socket
@@ -37,15 +38,11 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.tests import (
+    http_server,
     TestCase,
     TestUIFactory,
     TestSkipped,
     StringIOWrapper,
-    )
-from bzrlib.tests.http_server import (
-    HttpServer,
-    HttpServer_PyCurl,
-    HttpServer_urllib,
     )
 from bzrlib.tests.http_utils import (
     BadProtocolRequestHandler,
@@ -151,6 +148,54 @@ class RecordingServer(object):
         self.port = None
 
 
+class TestHTTPServer(tests.TestCase):
+    """Test the HTTP servers implementations."""
+
+    def test_invalid_protocol(self):
+        class BogusRequestHandler(http_server.TestingHTTPRequestHandler):
+
+            protocol_version = 'HTTP/0.1'
+
+        server = http_server.HttpServer(BogusRequestHandler)
+        try:
+            self.assertRaises(httplib.UnknownProtocol,server.setUp)
+        except:
+            server.tearDown()
+            self.fail('HTTP Server creation did not raise UnknownProtocol')
+
+    def test_server_start_and_stop(self):
+        server = http_server.HttpServer()
+        server.setUp()
+        self.assertTrue(server._http_running)
+        server.tearDown()
+        self.assertFalse(server._http_running)
+
+    def test_create_http_server_one_zero(self):
+        class RequestHandlerOneZero(http_server.TestingHTTPRequestHandler):
+
+            protocol_version = 'HTTP/1.0'
+
+        server = http_server.HttpServer(RequestHandlerOneZero)
+        server.setUp()
+        try:
+            self.assertIsInstance(server._httpd, http_server.TestingHTTPServer)
+        finally:
+            server.tearDown()
+
+    def test_create_http_server_one_one(self):
+        class RequestHandlerOneOne(http_server.TestingHTTPRequestHandler):
+
+            protocol_version = 'HTTP/1.1'
+
+        server = http_server.HttpServer(RequestHandlerOneOne)
+        server.setUp()
+        try:
+            self.assertIsInstance(server._httpd,
+                                  http_server.TestingThreadingHTTPServer)
+        finally:
+            server.tearDown()
+
+
 class TestWithTransport_pycurl(object):
     """Test case to inherit from if pycurl is present"""
 
@@ -231,7 +276,7 @@ class TestHttpUrls_urllib(TestHttpTransportUrls, tests.TestCase):
     """Test http urls with urllib"""
 
     _transport = HttpTransport_urllib
-    _server = HttpServer_urllib
+    _server = http_server.HttpServer_urllib
     _qualified_prefix = 'http+urllib'
 
 
@@ -239,7 +284,7 @@ class TestHttpUrls_pycurl(TestWithTransport_pycurl, TestHttpTransportUrls,
                           tests.TestCase):
     """Test http urls with pycurl"""
 
-    _server = HttpServer_PyCurl
+    _server = http_server.HttpServer_PyCurl
     _qualified_prefix = 'http+pycurl'
 
     # TODO: This should really be moved into another pycurl
@@ -433,7 +478,7 @@ class TestWallServer(object):
     """Tests exceptions during the connection phase"""
 
     def create_transport_readonly_server(self):
-        return HttpServer(WallRequestHandler)
+        return http_server.HttpServer(WallRequestHandler)
 
     def test_http_has(self):
         server = self.get_readonly_server()
@@ -469,7 +514,7 @@ class TestBadStatusServer(object):
     """Tests bad status from server."""
 
     def create_transport_readonly_server(self):
-        return HttpServer(BadStatusRequestHandler)
+        return http_server.HttpServer(BadStatusRequestHandler)
 
     def test_http_has(self):
         server = self.get_readonly_server()
@@ -501,7 +546,7 @@ class TestInvalidStatusServer(TestBadStatusServer):
     """
 
     def create_transport_readonly_server(self):
-        return HttpServer(InvalidStatusRequestHandler)
+        return http_server.HttpServer(InvalidStatusRequestHandler)
 
 
 class TestInvalidStatusServer_urllib(TestInvalidStatusServer,
@@ -521,7 +566,7 @@ class TestBadProtocolServer(object):
     """Tests bad protocol from server."""
 
     def create_transport_readonly_server(self):
-        return HttpServer(BadProtocolRequestHandler)
+        return http_server.HttpServer(BadProtocolRequestHandler)
 
     def test_http_has(self):
         server = self.get_readonly_server()
@@ -551,7 +596,7 @@ class TestForbiddenServer(object):
     """Tests forbidden server"""
 
     def create_transport_readonly_server(self):
-        return HttpServer(ForbiddenRequestHandler)
+        return http_server.HttpServer(ForbiddenRequestHandler)
 
     def test_http_has(self):
         server = self.get_readonly_server()
@@ -688,7 +733,7 @@ class TestSingleRangeRequestServer(TestRangeRequestServer):
     """Test readv against a server which accept only single range requests"""
 
     def create_transport_readonly_server(self):
-        return HttpServer(SingleRangeRequestHandler)
+        return http_server.HttpServer(SingleRangeRequestHandler)
 
 
 class TestSingleRangeRequestServer_urllib(TestSingleRangeRequestServer,
@@ -708,7 +753,7 @@ class TestSingleOnlyRangeRequestServer(TestRangeRequestServer):
     """Test readv against a server which only accept single range requests"""
 
     def create_transport_readonly_server(self):
-        return HttpServer(SingleOnlyRangeRequestHandler)
+        return http_server.HttpServer(SingleOnlyRangeRequestHandler)
 
 
 class TestSingleOnlyRangeRequestServer_urllib(TestSingleOnlyRangeRequestServer,
@@ -728,7 +773,7 @@ class TestNoRangeRequestServer(TestRangeRequestServer):
     """Test readv against a server which do not accept range requests"""
 
     def create_transport_readonly_server(self):
-        return HttpServer(NoRangeRequestHandler)
+        return http_server.HttpServer(NoRangeRequestHandler)
 
 
 class TestNoRangeRequestServer_urllib(TestNoRangeRequestServer,

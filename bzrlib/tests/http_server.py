@@ -348,6 +348,11 @@ class HttpServer(transport.Server):
     Subclasses can provide a specific request handler.
     """
 
+    # The real servers depending on the protocol
+    http_server_class = {'HTTP/1.0': TestingHTTPServer,
+                         'HTTP/1.1': TestingThreadingHTTPServer,
+                         }
+
     # Whether or not we proxy the requests (see
     # TestingHTTPRequestHandler.translate_path).
     proxy_requests = False
@@ -367,20 +372,42 @@ class HttpServer(transport.Server):
 
     def _get_httpd(self):
         if self._httpd is None:
-            self._httpd = TestingHTTPServer(
-                (self.host, self.port), self.request_handler, self)
+            rhandler = self.request_handler
+            proto_vers = rhandler.protocol_version
+            # Create the appropriate server for the required protocol
+            serv_cls = self.http_server_class.get(proto_vers, None)
+            if serv_cls is None:
+                raise httplib.UnknownProtocol(proto_vers)
+            else:
+                self._httpd = serv_cls((self.host, self.port), rhandler, self)
             host, self.port = self._httpd.socket.getsockname()
         return self._httpd
 
     def _http_start(self):
-        httpd = self._get_httpd()
-        self._http_base_url = '%s://%s:%s/' % (self._url_protocol,
-                                               self.host,
-                                               self.port)
-        self._http_starting.release()
+        """Server thread main entry point. """
+        self._http_running = False
+        try:
+            try:
+                httpd = self._get_httpd()
+                self._http_base_url = '%s://%s:%s/' % (self._url_protocol,
+                                                       self.host, self.port)
+                self._http_running = True
+            except:
+                # Whatever goes wrong, we save the exception for the main
+                # thread. Note that since we are running in a thread, no signal
+                # can be received, so we don't care about KeyboardInterrupt.
+                self._http_exception = sys.exc_info()
+        finally:
+            # Release the lock or the main thread will block and the whole
+            # process will hang.
+            self._http_starting.release()
 
+        # From now on, exceptions are taken care of by the
+        # SocketServer.BaseServer or the request handler.
         while self._http_running:
             try:
+                # Really an HTTP connection but the python framework is generic
+                # and call them requests
                 httpd.handle_request()
             except socket.timeout:
                 pass
@@ -416,15 +443,21 @@ class HttpServer(transport.Server):
             backing_transport_server
         self._home_dir = os.getcwdu()
         self._local_path_parts = self._home_dir.split(os.path.sep)
+        self._http_base_url = None
+
         self._http_starting = threading.Lock()
         self._http_starting.acquire()
-        self._http_running = True
-        self._http_base_url = None
         self._http_thread = threading.Thread(target=self._http_start)
         self._http_thread.setDaemon(True)
+        self._http_exception = None
         self._http_thread.start()
+
         # Wait for the server thread to start (i.e release the lock)
         self._http_starting.acquire()
+
+        if self._http_exception is not None:
+            exc_class, exc_value, exc_tb = self._http_exception
+            raise exc_class, exc_value, exc_tb
         self._http_starting.release()
         self.logs = []
 
