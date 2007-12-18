@@ -631,10 +631,10 @@ class TestRepository(TestCaseWithRepository):
 
     def test__make_parents_provider(self):
         """Repositories must have a _make_parents_provider method that returns
-        an object with a get_parents method.
+        an object with a get_parent_map method.
         """
         repo = self.make_repository('repo')
-        repo._make_parents_provider().get_parents
+        repo._make_parents_provider().get_parent_map
 
 
 class TestRepositoryLocking(TestCaseWithRepository):
