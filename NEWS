@@ -72,6 +72,10 @@ IN DEVELOPMENT
 
   TESTING:
 
+   * Modules can now customise their tests by defining a ``load_tests``
+     attribute. ``pydoc bzrlib.tests.TestUtil.TestLoader.loadTestsFromModule``
+     for the documentation on this attribute. (Robert Collins)
+
    * New helper function ``bzrlib.tests.condition_id_re`` which helps
      filter tests based on a regular expression search on the tests id.
      (Robert Collins)

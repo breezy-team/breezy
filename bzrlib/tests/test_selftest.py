@@ -1806,3 +1806,38 @@ class TestBlackboxSupport(TestCase):
         out, err = self.run_bzr(["log", "/nonexistantpath"], retcode=3)
         self.assertEqual(out, '')
         self.assertEqual(err, 'bzr: ERROR: Not a branch: "/nonexistantpath/".\n')
+
+
+class TestTestLoader(TestCase):
+    """Tests for the test loader."""
+
+    def _get_loader_and_module(self):
+        """Gets a TestLoader and a module with one test in it."""
+        loader = TestUtil.TestLoader()
+        module = {}
+        class Stub(TestCase):
+            def test_foo(self):
+                pass
+        class MyModule(object):
+            pass
+        MyModule.a_class = Stub
+        module = MyModule()
+        return loader, module
+
+    def test_module_no_load_tests_attribute_loads_classes(self):
+        loader, module = self._get_loader_and_module()
+        self.assertEqual(1, loader.loadTestsFromModule(module).countTestCases())
+
+    def test_module_load_tests_attribute_gets_called(self):
+        loader, module = self._get_loader_and_module()
+        # 'self' is here because we're faking the module with a class. Regular
+        # load_tests do not need that :)
+        def load_tests(self, standard_tests, module, loader):
+            result = loader.suiteClass()
+            for test in iter_suite_tests(standard_tests):
+                result.addTests([test, test])
+            return result
+        # add a load_tests() method which multiplies the tests from the module.
+        module.__class__.load_tests = load_tests
+        self.assertEqual(2, loader.loadTestsFromModule(module).countTestCases())
+
