@@ -2000,7 +2000,9 @@ class cmd_ignored(Command):
     """List ignored files and the patterns that matched them.
     """
 
+    encoding_type = 'replace'
     _see_also = ['ignore']
+
     @display_command
     def run(self):
         tree = WorkingTree.open_containing(u'.')[0]
@@ -2011,7 +2013,7 @@ class cmd_ignored(Command):
                     continue
                 ## XXX: Slightly inefficient since this was already calculated
                 pat = tree.is_ignored(path)
-                print '%-50s %s' % (path, pat)
+                self.outf.write('%-50s %s\n' % (path, pat))
         finally:
             tree.unlock()
 

@@ -40,6 +40,9 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+   * Fixed Unicode encoding error in ``ignored`` when the output is
+     redirected to a pipe. (Lukáš Lalinský)
+
    * Transform failures no longer cause ImmortalLimbo errors (Aaron Bentley,
      #137681)
 
