@@ -2424,7 +2424,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
         order_changer = preserve_input
     if pattern != '.*' or random_order:
         if matching_tests_first:
-            suites = map(order_change, split_suite_by_re(suite, pattern))
+            suites = map(order_changer, split_suite_by_re(suite, pattern))
             suite = TestUtil.TestSuite(suites)
         else:
             suite = order_changer(filter_suite_by_re(suite, pattern))
