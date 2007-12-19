@@ -1512,6 +1512,8 @@ class TestBuildTree(tests.TestCaseWithTransport):
             calls.append(file_id)
             return real_source_get_file(file_id, path)
         source.get_file = get_file
+        source.lock_read()
+        self.addCleanup(source.unlock)
         target = self.make_branch_and_tree('target')
         build_tree(source.basis_tree(), target, source)
         self.assertEqual(['file1-id'], calls)
