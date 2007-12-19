@@ -1407,6 +1407,17 @@ def recv_all(socket, bytes):
     return b
 
 
+def send_all(socket, bytes):
+    """Send all bytes on a socket.
+
+    Regular socket.sendall() can give socket error 10053 on Windows.  This
+    implementation sends no more than 64k at a time, which avoids this problem.
+    """
+    chunk_size = 2**16
+    for pos in xrange(0, len(bytes), chunk_size):
+        socket.sendall(bytes[pos:pos+chunk_size])
+
+
 def dereference_path(path):
     """Determine the real path to a file.
 

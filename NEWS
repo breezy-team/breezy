@@ -43,6 +43,9 @@ IN DEVELOPMENT
    * Fixed Unicode encoding error in ``ignored`` when the output is
      redirected to a pipe. (Lukáš Lalinský)
 
+   * Fix traceback when sending large response bodies over the smart protocol
+     on Windows. (Andrew Bennetts, #115781)
+
    * Transform failures no longer cause ImmortalLimbo errors (Aaron Bentley,
      #137681)
 
