@@ -46,24 +46,15 @@ from bzrlib.tests import (
     StringIOWrapper,
     )
 from bzrlib.tests.http_utils import (
-    BadProtocolRequestHandler,
-    BadStatusRequestHandler,
-    ForbiddenRequestHandler,
     HTTPBasicAuthServer,
     HTTPDigestAuthServer,
     HTTPServerRedirecting,
-    InvalidStatusRequestHandler,
-    LimitedRangeHTTPServer,
-    NoRangeRequestHandler,
     ProxyBasicAuthServer,
     ProxyDigestAuthServer,
     ProxyServer,
-    SingleRangeRequestHandler,
-    SingleOnlyRangeRequestHandler,
     TestCaseWithRedirectedWebserver,
     TestCaseWithTwoWebservers,
     TestCaseWithWebserver,
-    WallRequestHandler,
     )
 from bzrlib.transport import (
     _CoalescedOffset,
@@ -170,11 +161,7 @@ class TestHttpUrls(tests.TestCase):
                           f.credentials[0])
 
 
-class TestHttpUrls_pycurl(TestWithTransport_pycurl, tests.TestCase):
-    """Test http urls with pycurl"""
-
-    _server = http_server.HttpServer_PyCurl
-    _qualified_prefix = 'http+pycurl'
+class TestHttps_pycurl(TestWithTransport_pycurl, tests.TestCase):
 
     # TODO: This should really be moved into another pycurl
     # specific test. When https tests will be implemented, take
@@ -209,16 +196,6 @@ class TestHttpUrls_pycurl(TestWithTransport_pycurl, tests.TestCase):
         self.assertRaises(errors.DependencyNotPresent, self._transport,
                           'https://launchpad.net')
 
-class TestHttpTransportRegistration(tests.TestCase):
-    """Test registrations of various http implementations"""
-
-    def test_http_registered(self):
-        # urlllib should always be present
-        t = get_transport('http+urllib://bzr.google.com/')
-        self.assertIsInstance(t, Transport)
-        self.assertIsInstance(t, HttpTransport_urllib)
-
-
 class TestRangeHeader(tests.TestCase):
     """Test range_header method"""
 
@@ -245,153 +222,6 @@ class TestRangeHeader(tests.TestCase):
         self.check_header('0-9,300-5000,-50',
                           ranges=[(0,9), (300,5000)],
                           tail=50)
-
-
-class TestWallServer(object):
-    """Tests exceptions during the connection phase"""
-
-    def create_transport_readonly_server(self):
-        return http_server.HttpServer(WallRequestHandler)
-
-    def test_http_has(self):
-        server = self.get_readonly_server()
-        t = self._transport(server.get_url())
-        # Unfortunately httplib (see HTTPResponse._read_status
-        # for details) make no distinction between a closed
-        # socket and badly formatted status line, so we can't
-        # just test for ConnectionError, we have to test
-        # InvalidHttpResponse too.
-        self.assertRaises((errors.ConnectionError, errors.InvalidHttpResponse),
-                          t.has, 'foo/bar')
-
-    def test_http_get(self):
-        server = self.get_readonly_server()
-        t = self._transport(server.get_url())
-        self.assertRaises((errors.ConnectionError, errors.InvalidHttpResponse),
-                          t.get, 'foo/bar')
-
-
-class TestWallServer_urllib(TestWallServer, TestCaseWithWebserver):
-    """Tests "wall" server for urllib implementation"""
-
-    _transport = HttpTransport_urllib
-
-
-class TestWallServer_pycurl(TestWithTransport_pycurl,
-                            TestWallServer,
-                            TestCaseWithWebserver):
-    """Tests "wall" server for pycurl implementation"""
-
-
-class TestBadStatusServer(object):
-    """Tests bad status from server."""
-
-    def create_transport_readonly_server(self):
-        return http_server.HttpServer(BadStatusRequestHandler)
-
-    def test_http_has(self):
-        server = self.get_readonly_server()
-        t = self._transport(server.get_url())
-        self.assertRaises(errors.InvalidHttpResponse, t.has, 'foo/bar')
-
-    def test_http_get(self):
-        server = self.get_readonly_server()
-        t = self._transport(server.get_url())
-        self.assertRaises(errors.InvalidHttpResponse, t.get, 'foo/bar')
-
-
-class TestBadStatusServer_urllib(TestBadStatusServer, TestCaseWithWebserver):
-    """Tests bad status server for urllib implementation"""
-
-    _transport = HttpTransport_urllib
-
-
-class TestBadStatusServer_pycurl(TestWithTransport_pycurl,
-                                 TestBadStatusServer,
-                                 TestCaseWithWebserver):
-    """Tests bad status server for pycurl implementation"""
-
-
-class TestInvalidStatusServer(TestBadStatusServer):
-    """Tests invalid status from server.
-
-    Both implementations raises the same error as for a bad status.
-    """
-
-    def create_transport_readonly_server(self):
-        return http_server.HttpServer(InvalidStatusRequestHandler)
-
-
-class TestInvalidStatusServer_urllib(TestInvalidStatusServer,
-                                     TestCaseWithWebserver):
-    """Tests invalid status server for urllib implementation"""
-
-    _transport = HttpTransport_urllib
-
-
-class TestInvalidStatusServer_pycurl(TestWithTransport_pycurl,
-                                     TestInvalidStatusServer,
-                                     TestCaseWithWebserver):
-    """Tests invalid status server for pycurl implementation"""
-
-
-class TestBadProtocolServer(object):
-    """Tests bad protocol from server."""
-
-    def create_transport_readonly_server(self):
-        return http_server.HttpServer(BadProtocolRequestHandler)
-
-    def test_http_has(self):
-        server = self.get_readonly_server()
-        t = self._transport(server.get_url())
-        self.assertRaises(errors.InvalidHttpResponse, t.has, 'foo/bar')
-
-    def test_http_get(self):
-        server = self.get_readonly_server()
-        t = self._transport(server.get_url())
-        self.assertRaises(errors.InvalidHttpResponse, t.get, 'foo/bar')
-
-
-class TestBadProtocolServer_urllib(TestBadProtocolServer,
-                                   TestCaseWithWebserver):
-    """Tests bad protocol server for urllib implementation"""
-
-    _transport = HttpTransport_urllib
-
-# curl don't check the protocol version
-#class TestBadProtocolServer_pycurl(TestWithTransport_pycurl,
-#                                   TestBadProtocolServer,
-#                                   TestCaseWithWebserver):
-#    """Tests bad protocol server for pycurl implementation"""
-
-
-class TestForbiddenServer(object):
-    """Tests forbidden server"""
-
-    def create_transport_readonly_server(self):
-        return http_server.HttpServer(ForbiddenRequestHandler)
-
-    def test_http_has(self):
-        server = self.get_readonly_server()
-        t = self._transport(server.get_url())
-        self.assertRaises(errors.TransportError, t.has, 'foo/bar')
-
-    def test_http_get(self):
-        server = self.get_readonly_server()
-        t = self._transport(server.get_url())
-        self.assertRaises(errors.TransportError, t.get, 'foo/bar')
-
-
-class TestForbiddenServer_urllib(TestForbiddenServer, TestCaseWithWebserver):
-    """Tests forbidden server for urllib implementation"""
-
-    _transport = HttpTransport_urllib
-
-
-class TestForbiddenServer_pycurl(TestWithTransport_pycurl,
-                                 TestForbiddenServer,
-                                 TestCaseWithWebserver):
-    """Tests forbidden server for pycurl implementation"""
 
 
 class TestRecordingServer(tests.TestCase):
@@ -423,204 +253,6 @@ class TestRecordingServer(tests.TestCase):
         self.assertEqual('HTTP/1.1 200 OK\r\n',
                          osutils.recv_all(sock, 4096))
         self.assertEqual('abc', server.received_bytes)
-
-
-class TestRangeRequestServer(object):
-    """Tests readv requests against server.
-
-    This MUST be used by daughter classes that also inherit from
-    TestCaseWithWebserver.
-
-    We can't inherit directly from TestCaseWithWebserver or the
-    test framework will try to create an instance which cannot
-    run, its implementation being incomplete.
-    """
-
-    def setUp(self):
-        TestCaseWithWebserver.setUp(self)
-        self.build_tree_contents([('a', '0123456789')],)
-
-    def test_readv(self):
-        server = self.get_readonly_server()
-        t = self._transport(server.get_url())
-        l = list(t.readv('a', ((0, 1), (1, 1), (3, 2), (9, 1))))
-        self.assertEqual(l[0], (0, '0'))
-        self.assertEqual(l[1], (1, '1'))
-        self.assertEqual(l[2], (3, '34'))
-        self.assertEqual(l[3], (9, '9'))
-
-    def test_readv_out_of_order(self):
-        server = self.get_readonly_server()
-        t = self._transport(server.get_url())
-        l = list(t.readv('a', ((1, 1), (9, 1), (0, 1), (3, 2))))
-        self.assertEqual(l[0], (1, '1'))
-        self.assertEqual(l[1], (9, '9'))
-        self.assertEqual(l[2], (0, '0'))
-        self.assertEqual(l[3], (3, '34'))
-
-    def test_readv_invalid_ranges(self):
-        server = self.get_readonly_server()
-        t = self._transport(server.get_url())
-
-        # This is intentionally reading off the end of the file
-        # since we are sure that it cannot get there
-        self.assertListRaises((errors.InvalidRange, errors.ShortReadvError,),
-                              t.readv, 'a', [(1,1), (8,10)])
-
-        # This is trying to seek past the end of the file, it should
-        # also raise a special error
-        self.assertListRaises((errors.InvalidRange, errors.ShortReadvError,),
-                              t.readv, 'a', [(12,2)])
-
-    def test_readv_multiple_get_requests(self):
-        server = self.get_readonly_server()
-        t = self._transport(server.get_url())
-        # force transport to issue multiple requests
-        t._max_readv_combine = 1
-        t._max_get_ranges = 1
-        l = list(t.readv('a', ((0, 1), (1, 1), (3, 2), (9, 1))))
-        self.assertEqual(l[0], (0, '0'))
-        self.assertEqual(l[1], (1, '1'))
-        self.assertEqual(l[2], (3, '34'))
-        self.assertEqual(l[3], (9, '9'))
-        # The server should have issued 4 requests
-        self.assertEqual(4, server.GET_request_nb)
-
-    def test_readv_get_max_size(self):
-        server = self.get_readonly_server()
-        t = self._transport(server.get_url())
-        # force transport to issue multiple requests by limiting the number of
-        # bytes by request. Note that this apply to coalesced offsets only, a
-        # single range ill keep its size even if bigger than the limit.
-        t._get_max_size = 2
-        l = list(t.readv('a', ((0, 1), (1, 1), (2, 4), (6, 4))))
-        self.assertEqual(l[0], (0, '0'))
-        self.assertEqual(l[1], (1, '1'))
-        self.assertEqual(l[2], (2, '2345'))
-        self.assertEqual(l[3], (6, '6789'))
-        # The server should have issued 3 requests
-        self.assertEqual(3, server.GET_request_nb)
-
-
-class TestSingleRangeRequestServer(TestRangeRequestServer):
-    """Test readv against a server which accept only single range requests"""
-
-    def create_transport_readonly_server(self):
-        return http_server.HttpServer(SingleRangeRequestHandler)
-
-
-class TestSingleRangeRequestServer_urllib(TestSingleRangeRequestServer,
-                                          TestCaseWithWebserver):
-    """Tests single range requests accepting server for urllib implementation"""
-
-    _transport = HttpTransport_urllib
-
-
-class TestSingleRangeRequestServer_pycurl(TestWithTransport_pycurl,
-                                          TestSingleRangeRequestServer,
-                                          TestCaseWithWebserver):
-    """Tests single range requests accepting server for pycurl implementation"""
-
-
-class TestSingleOnlyRangeRequestServer(TestRangeRequestServer):
-    """Test readv against a server which only accept single range requests"""
-
-    def create_transport_readonly_server(self):
-        return http_server.HttpServer(SingleOnlyRangeRequestHandler)
-
-
-class TestSingleOnlyRangeRequestServer_urllib(TestSingleOnlyRangeRequestServer,
-                                              TestCaseWithWebserver):
-    """Tests single range requests accepting server for urllib implementation"""
-
-    _transport = HttpTransport_urllib
-
-
-class TestSingleOnlyRangeRequestServer_pycurl(TestWithTransport_pycurl,
-                                              TestSingleOnlyRangeRequestServer,
-                                              TestCaseWithWebserver):
-    """Tests single range requests accepting server for pycurl implementation"""
-
-
-class TestNoRangeRequestServer(TestRangeRequestServer):
-    """Test readv against a server which do not accept range requests"""
-
-    def create_transport_readonly_server(self):
-        return http_server.HttpServer(NoRangeRequestHandler)
-
-
-class TestNoRangeRequestServer_urllib(TestNoRangeRequestServer,
-                                      TestCaseWithWebserver):
-    """Tests range requests refusing server for urllib implementation"""
-
-    _transport = HttpTransport_urllib
-
-
-class TestNoRangeRequestServer_pycurl(TestWithTransport_pycurl,
-                                      TestNoRangeRequestServer,
-                                      TestCaseWithWebserver):
-    """Tests range requests refusing server for pycurl implementation"""
-
-
-class TestLimitedRangeRequestServer(object):
-    """Tests readv requests against server that errors out on too much ranges.
-
-    This MUST be used by daughter classes that also inherit from
-    TestCaseWithWebserver.
-
-    We can't inherit directly from TestCaseWithWebserver or the
-    test framework will try to create an instance which cannot
-    run, its implementation being incomplete.
-    """
-
-    range_limit = 3
-
-    def create_transport_readonly_server(self):
-        # Requests with more range specifiers will error out
-        return LimitedRangeHTTPServer(range_limit=self.range_limit)
-
-    def get_transport(self):
-        return self._transport(self.get_readonly_server().get_url())
-
-    def setUp(self):
-        TestCaseWithWebserver.setUp(self)
-        # We need to manipulate ranges that correspond to real chunks in the
-        # response, so we build a content appropriately.
-        filler = ''.join(['abcdefghij' for x in range(102)])
-        content = ''.join(['%04d' % v + filler for v in range(16)])
-        self.build_tree_contents([('a', content)],)
-
-    def test_few_ranges(self):
-        t = self.get_transport()
-        l = list(t.readv('a', ((0, 4), (1024, 4), )))
-        self.assertEqual(l[0], (0, '0000'))
-        self.assertEqual(l[1], (1024, '0001'))
-        self.assertEqual(1, self.get_readonly_server().GET_request_nb)
-
-    def test_more_ranges(self):
-        t = self.get_transport()
-        l = list(t.readv('a', ((0, 4), (1024, 4), (4096, 4), (8192, 4))))
-        self.assertEqual(l[0], (0, '0000'))
-        self.assertEqual(l[1], (1024, '0001'))
-        self.assertEqual(l[2], (4096, '0004'))
-        self.assertEqual(l[3], (8192, '0008'))
-        # The server will refuse to serve the first request (too much ranges),
-        # a second request will succeeds.
-        self.assertEqual(2, self.get_readonly_server().GET_request_nb)
-
-
-class TestLimitedRangeRequestServer_urllib(TestLimitedRangeRequestServer,
-                                          TestCaseWithWebserver):
-    """Tests limited range requests server for urllib implementation"""
-
-    _transport = HttpTransport_urllib
-
-
-class TestLimitedRangeRequestServer_pycurl(TestWithTransport_pycurl,
-                                          TestLimitedRangeRequestServer,
-                                          TestCaseWithWebserver):
-    """Tests limited range requests server for pycurl implementation"""
-
 
 
 class TestHttpProxyWhiteBox(tests.TestCase):
