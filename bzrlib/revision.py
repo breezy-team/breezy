@@ -125,7 +125,7 @@ class Revision(object):
         return self.properties.get('author', self.committer)
 
 
-@deprecated_function(symbol_versioning.zero_ninetythree)
+@deprecated_function(symbol_versioning.one_zero)
 def is_ancestor(revision_id, candidate_id, branch):
     """Return true if candidate_id is an ancestor of revision_id.
 

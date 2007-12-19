@@ -371,7 +371,7 @@ class TestRepository(TestCaseWithRepository):
     def test_format_attributes(self):
         """All repository formats should have some basic attributes."""
         # create a repository to get a real format instance, not the 
-        # template from the test suite parameterisation.
+        # template from the test suite parameterization.
         repo = self.make_repository('.')
         repo._format.rich_root_data
         repo._format.supports_tree_reference
@@ -628,6 +628,13 @@ class TestRepository(TestCaseWithRepository):
         remote_backing_repo = bzrdir.BzrDir.open(
             self.get_vfs_only_url('remote')).open_repository()
         self.assertEqual(remote_backing_repo._format, local_repo._format)
+
+    def test__make_parents_provider(self):
+        """Repositories must have a _make_parents_provider method that returns
+        an object with a get_parent_map method.
+        """
+        repo = self.make_repository('repo')
+        repo._make_parents_provider().get_parent_map
 
 
 class TestRepositoryLocking(TestCaseWithRepository):

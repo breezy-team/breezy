@@ -1083,6 +1083,17 @@ class TestMailAddressExtraction(tests.TestCase):
         self.assertRaises(errors.NoEmailInUsername,
                           config.extract_email_address, 'Jane Tester')
 
+    def test_parse_username(self):
+        self.assertEqual(('', 'jdoe@example.com'),
+                         config.parse_username('jdoe@example.com'))
+        self.assertEqual(('', 'jdoe@example.com'),
+                         config.parse_username('<jdoe@example.com>'))
+        self.assertEqual(('John Doe', 'jdoe@example.com'),
+                         config.parse_username('John Doe <jdoe@example.com>'))
+        self.assertEqual(('John Doe', ''),
+                         config.parse_username('John Doe'))
+        self.assertEqual(('John Doe', 'jdoe@example.com'),
+                         config.parse_username('John Doe jdoe@example.com'))
 
 class TestTreeConfig(tests.TestCaseWithTransport):
 

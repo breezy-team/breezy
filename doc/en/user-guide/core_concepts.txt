@@ -4,14 +4,19 @@ Core concepts
 A simple user model
 -------------------
 
-The user model on which Bazaar is based has 4 core concepts:
+To use Bazaar you need to understand four core concepts:
 
- * revisions
- * working trees
- * branches
- * repositories.
+ * **revision** - a snapshot of the files you're working with
 
-These are explained below.
+ * **working tree** - the directory containing your version controlled
+   files and sub-directories
+
+ * **branch** - an ordered set of revisions that describe the history of a
+   set of files
+
+ * **repository** - a store of revisions.
+
+Let's look at each in more detail.
 
 Revision
 --------
@@ -33,6 +38,9 @@ by a *revision-id*. An example revision-id is::
 While these identifiers are necessary for internal use and external tool
 integration, branch-specific *revision numbers* are the preferred
 interface for humans. Typical revision numbers are 1, 42 and 2977.1.59.
+See `Specifying revisions`_ in the appendices for a closer look at
+the numerous ways that revisions and ranges of revisions can be specified
+in Bazaar.
 
 .. *TODO: add diagram*
 
@@ -54,9 +62,21 @@ In the simplest case, a branch is an *ordered series of revisions*.
 The last revision is known as the *head*.
 
 Branches may split apart and be *merged* back together forming a
-so-called *directed acyclic graph* (DAG). The primary line of development
-within the DAG is called the *mainline*, *trunk* or simply the
-*left hand side* (LHS).
+*graph* of revisions. Technically, the graph shows directed relationships
+(between parent and child revisions) and there are no loops, so
+you may hear some people refer to it as a *directed acyclic graph* or DAG.
+
+If this name sound scary, don't worry. The important things
+to remembers are:
+
+* the primary line of development within the DAG is called
+  the *mainline*, *trunk* or simply the *left hand side* (LHS)
+
+* a branch might have other lines of development and if it does,
+  these other lines of development begin at some point and end at
+  another point.
+
+If you understand that, you understand branches.
 
 .. *TODO: add diagram*
 

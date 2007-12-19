@@ -152,11 +152,12 @@ class TestTransport(TestCase):
 
 
 class TestCoalesceOffsets(TestCase):
-    
-    def check(self, expected, offsets, limit=0, fudge=0):
+
+    def check(self, expected, offsets, limit=0, max_size=0, fudge=0):
         coalesce = Transport._coalesce_offsets
         exp = [_CoalescedOffset(*x) for x in expected]
-        out = list(coalesce(offsets, limit=limit, fudge_factor=fudge))
+        out = list(coalesce(offsets, limit=limit, fudge_factor=fudge,
+                            max_size=max_size))
         self.assertEqual(exp, out)
 
     def test_coalesce_empty(self):
@@ -169,7 +170,7 @@ class TestCoalesceOffsets(TestCase):
         self.check([(0, 10, [(0, 10)]),
                     (20, 10, [(0, 10)]),
                    ], [(0, 10), (20, 10)])
-            
+
     def test_coalesce_unsorted(self):
         self.check([(20, 10, [(0, 10)]),
                     (0, 10, [(0, 10)]),
@@ -179,6 +180,7 @@ class TestCoalesceOffsets(TestCase):
         self.check([(0, 20, [(0, 10), (10, 10)])],
                    [(0, 10), (10, 10)])
 
+    # XXX: scary, http.readv() can't handle that --vila20071209
     def test_coalesce_overlapped(self):
         self.check([(0, 15, [(0, 10), (5, 10)])],
                    [(0, 10), (5, 10)])
@@ -207,6 +209,20 @@ class TestCoalesceOffsets(TestCase):
                     (100, 10, [(0, 10),]),
                    ], [(10, 10), (30, 10), (100, 10)],
                    fudge=10
+                  )
+    def test_coalesce_max_size(self):
+        self.check([(10, 20, [(0, 10), (10, 10)]),
+                    (30, 50, [(0, 50)]),
+                    # If one range is above max_size, it gets its own coalesced
+                    # offset
+                    (100, 80, [(0, 80),]),],
+                   [(10, 10), (20, 10), (30, 50), (100, 80)],
+                   max_size=50
+                  )
+
+    def test_coalesce_no_max_size(self):
+        self.check([(10, 170, [(0, 10), (10, 10), (20, 50), (70, 100)]),],
+                   [(10, 10), (20, 10), (30, 50), (80, 100)],
                   )
 
 

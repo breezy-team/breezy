@@ -34,5 +34,6 @@ Options include:
  * http - trace http connections, requests and responses
  * index - trace major index operations
  * lock - trace when lockdir locks are taken or released
+ * merge - emit information for debugging merges
 
 """

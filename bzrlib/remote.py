@@ -197,7 +197,7 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
     Instances of this repository are represented by RemoteRepository
     instances.
 
-    The RemoteRepositoryFormat is parameterised during construction
+    The RemoteRepositoryFormat is parameterized during construction
     to reflect the capabilities of the real, remote format. Specifically
     the attributes rich_root_data and supports_tree_reference are set
     on a per instance basis, and are not set (and should not be) at
@@ -894,6 +894,10 @@ class RemoteRepository(object):
     def _check_for_inconsistent_revision_parents(self):
         self._ensure_real()
         return self._real_repository._check_for_inconsistent_revision_parents()
+
+    def _make_parents_provider(self):
+        self._ensure_real()
+        return self._real_repository._make_parents_provider()
 
 
 class RemoteBranchLockableFiles(LockableFiles):

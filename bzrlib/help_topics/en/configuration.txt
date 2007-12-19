@@ -1,13 +1,11 @@
-Configuration reference
+Configuration Settings
 =======================
-
-Information on how to configure Bazaar.
 
 .. TODO: Should have some explanation of why you'd want things in
 .. branch.conf.
 
 
-Environment variables
+Environment settings
 ---------------------
 
 While most configuration is handled by configuration files, some options
@@ -31,8 +29,9 @@ BZR_SIGQUIT_PDB
 ~~~~~~~~~~~~~~~
 
 Control whether SIGQUIT behaves normally or invokes a breakin debugger.
-0 = Standard SIGQUIT behavior
-1 = Invoke breakin debugger (default)
+
+* 0 = Standard SIGQUIT behavior (normally, exit with a core dump)
+* 1 = Invoke breakin debugger (default)
 
 BZR_HOME
 ~~~~~~~~
@@ -48,15 +47,16 @@ BZR_PDB
 ~~~~~~~
 
 Control whether to launch a debugger on error.
-0 = Standard behavior
-1 = Launch debugger
+
+* 0 = Standard behavior
+* 1 = Launch debugger
 
 BZR_REMOTE_PATH
 ~~~~~~~~~~~~~~~
 
 Path to the Bazaar executable to use when using the bzr+ssh protocol.
 
-See also the ``bzr_remote_path`` configuration value
+See also the ``bzr_remote_path`` configuration value.
 
 BZR_EDITOR
 ~~~~~~~~~~
@@ -80,8 +80,12 @@ Configuration files
 Location
 ~~~~~~~~
 
-Configuration files are located in ``$HOME/.bazaar`` and are
-sometimes referred to as ``ini files``:
+Configuration files are located in ``$HOME/.bazaar`` on Linux/Unix and
+``C:\Documents and Settings\<username>\Application Data\Bazaar\2.0`` on
+Windows. (You can check the location for your system by using
+``bzr version``.)
+
+There are three primary configuration files in this location:
 
 * ``bazaar.conf`` describes default configuration options,
 
@@ -174,7 +178,7 @@ would be ``sftp://example.com/location/branch1``.
 The main configuration file, bazaar.conf
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The main configuration file, ``$HOME/.bazaar/bazaar.conf``, only allows one
+``bazaar.conf`` only allows one
 section called ``[DEFAULT]``. This default section contains the default
 configuration options for all branches. The default section can be
 overriden by providing a branch-specific section in ``locations.conf``.
@@ -191,7 +195,7 @@ A typical ``bazaar.conf`` section often looks like the following::
 The branch location configuration file, locations.conf
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``$HOME/.bazaar/locations.conf`` allows one to specify overriding settings for
+``locations.conf`` allows one to specify overriding settings for
 a specific branch. The format is almost identical to the default section in
 bazaar.conf with one significant change: The section header, instead of saying
 default, will be the path to a branch that you wish to override a value
@@ -210,7 +214,7 @@ for. The '?' and '*' wildcards are supported::
 The authentication configuration file, authentication.conf
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``$HOME/.bazaar/authentication.conf`` allows one to specify credentials for
+``authentication.conf`` allows one to specify credentials for
 remote servers. This can be used for all the supported transports and any part
 of bzr that requires authentication (smtp for example).
 
@@ -218,9 +222,8 @@ The syntax of the file obeys the same rules as the others except for the
 variable policies which don't apply.
 
 For more information on the possible uses of the authentication configuration
-file see the `authentication configuration file documentation`_.
+file see `Authentication Settings`_.
 
-.. _authentication configuration file documentation: authentication_conf.html
 
 Common variable options
 -----------------------
@@ -238,7 +241,8 @@ editor
 
 The path of the editor that you wish to use if *bzr commit* is run without
 a commit message. This setting is trumped by the environment variable
-``$BZR_EDITOR``, and overrides ``$VISUAL`` and ``$EDITOR``.
+``BZR_EDITOR``, and overrides the ``VISUAL`` and ``EDITOR`` environment
+variables.
 
 check_signatures
 ~~~~~~~~~~~~~~~~
@@ -358,10 +362,11 @@ A publically-accessible version of this branch (implying that this version is
 not publically-accessible).  Used (and set) by ``bzr send``.
 
 
-Branch 6 options
-----------------
+Branch type specific options
+----------------------------
 
-These options apply only to branches that use the "dirstate-tags" format.  They
+These options apply only to branches that use the ``dirstate-tags`` or
+later format.  They
 are usually set in ``.bzr/branch/branch.conf`` automatically, but may be
 manually set in ``locations.conf`` or ``bazaar.conf``.
 
@@ -397,4 +402,3 @@ bound
 
 If set to "True", the branch should act as a checkout, and push each commit to
 the bound_location.  This option is normally set by ``bind``/``unbind``.
-

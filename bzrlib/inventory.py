@@ -50,7 +50,7 @@ from bzrlib.errors import (
     BzrCheckError,
     BzrError,
     )
-from bzrlib.symbol_versioning import deprecated_method, zero_ninetyone
+from bzrlib.symbol_versioning import deprecated_method
 from bzrlib.trace import mutter
 
 
@@ -142,7 +142,7 @@ class InventoryEntry(object):
         """
         return False, False
 
-    @deprecated_method(symbol_versioning.zero_ninetythree)
+    @deprecated_method(symbol_versioning.one_zero)
     def diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
              output_to, reverse=False):
         """Perform a diff from this to to_entry.
@@ -198,7 +198,7 @@ class InventoryEntry(object):
                     candidates[ie.revision] = ie
         return candidates
 
-    @deprecated_method(zero_ninetyone)
+    @deprecated_method(symbol_versioning.zero_ninetyone)
     def find_previous_heads(self, previous_inventories,
                             versioned_file_store,
                             transaction,
