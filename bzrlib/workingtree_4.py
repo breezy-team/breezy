@@ -1298,10 +1298,24 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
                 else:
                     wt._set_root_id(ROOT_ID)
                 wt.flush()
-            wt.set_last_revision(revision_id)
-            wt.flush()
-            basis = wt.basis_tree()
+            basis = None
+            # frequently, we will get here due to branching.  The accelerator
+            # tree will be the tree from the branch, so the desired basis
+            # tree will often be a parent of the accelerator tree.
+            if accelerator_tree is not None:
+                try:
+                    basis = accelerator_tree.revision_tree(revision_id)
+                except errors.NoSuchRevision:
+                    pass
+            if basis is None:
+                basis = branch.repository.revision_tree(revision_id)
+            if revision_id == NULL_REVISION:
+                parents_list = []
+            else:
+                parents_list = [(revision_id, basis)]
             basis.lock_read()
+            wt.set_parent_trees(parents_list, allow_leftmost_as_ghost=True)
+            wt.flush()
             # if the basis has a root id we have to use that; otherwise we use
             # a new random one
             basis_root_id = basis.get_root_id()
