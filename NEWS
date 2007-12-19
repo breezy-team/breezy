@@ -83,6 +83,9 @@ IN DEVELOPMENT
       dictionary instead of ``get_parents`` returning a list.
       ``get_parents`` is now considered deprecated.  (John Arbash Meinel)
 
+    * Patience Diff now supports arbitrary python objects, as long as they
+      support ``hash()``. (John Arbash Meinel)
+
   API BREAKS:
 
   TESTING:
