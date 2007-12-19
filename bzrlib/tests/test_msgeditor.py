@@ -45,7 +45,7 @@ from bzrlib.trace import mutter
 
 
 def load_tests(standard_tests, module, loader):
-    """Parameterise the test for tempfile creation with different encodings."""
+    """Parameterize the test for tempfile creation with different encodings."""
     to_adapt, result = split_suite_by_re(standard_tests,
         "test__create_temp_file_with_commit_template_in_unicode_dir")
     for test in iter_suite_tests(to_adapt):

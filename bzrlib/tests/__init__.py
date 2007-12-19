@@ -1720,8 +1720,8 @@ class TestCaseWithMemoryTransport(TestCase):
     _TEST_NAME = 'test'
 
     def __init__(self, methodName='runTest'):
-        # allow test parameterisation after test construction and before test
-        # execution. Variables that the parameteriser sets need to be 
+        # allow test parameterization after test construction and before test
+        # execution. Variables that the parameterizer sets need to be 
         # ones that are not set by setUp, or setUp will trash them.
         super(TestCaseWithMemoryTransport, self).__init__(methodName)
         self.vfs_transport_factory = default_transport
