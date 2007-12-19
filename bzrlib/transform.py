@@ -1460,35 +1460,22 @@ def _iter_files_bytes_accelerated(tree, accelerator_tree, desired_files):
     if accelerator_tree is None:
         new_desired_files = desired_files
     else:
-        desired_file_ids = [f for f, i in desired_files]
-        paths = dict((e.file_id, p) for p, e in
-            accelerator_tree.iter_entries_by_dir(
-            specific_file_ids=desired_file_ids))
+        iter = accelerator_tree._iter_changes(tree, include_unchanged=True)
+        unchanged = dict((f, p[0]) for (f, p, c, v, d, n, k, e)
+                         in iter if not c)
         new_desired_files = []
         for file_id, identifier in desired_files:
-            want_new = True
-            accelerator_path = paths.get(file_id)
+            accelerator_path = unchanged.get(file_id)
             if accelerator_path is None:
                 new_desired_files.append((file_id, identifier))
                 continue
+            contents = accelerator_tree.get_file(file_id, accelerator_path)
             try:
-                if (accelerator_tree.get_file_sha1(file_id, accelerator_path)
-                    == tree.get_file_sha1(file_id)):
-                    contents = accelerator_tree.get_file(file_id,
-                                                         accelerator_path)
-                    try:
-                        want_new = False
-                        contents_bytes = (contents.read(),)
-                    finally:
-                        contents.close()
-                    yield identifier, contents_bytes
-            except errors.NoSuchId:
-                pass
-            except IOError, e:
-                if e.errno != errno.ENOENT:
-                    raise
-            if want_new:
-                new_desired_files.append((file_id, identifier))
+                want_new = False
+                contents_bytes = (contents.read(),)
+            finally:
+                contents.close()
+            yield identifier, contents_bytes
     for result in tree.iter_files_bytes(new_desired_files):
         yield result
 
