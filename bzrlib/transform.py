@@ -1449,7 +1449,7 @@ def _build_tree(tree, wt, accelerator_tree):
             wt.add_conflicts(conflicts)
         except errors.UnsupportedOperation:
             pass
-        result = tt.apply()
+        result = tt.apply(no_conflicts=True)
     finally:
         tt.finalize()
         top_pb.finished()
