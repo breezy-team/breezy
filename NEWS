@@ -4,7 +4,7 @@ bzr-svn 0.4.6	UNRELEASED
   
    * Remember where revids have already been detected. Makes incremental
      push a lot faster, in particular in Subversion repositories 
-	 with a lot of branches.
+	 with a lot of branches. (#139364)
 
    * Work around memory leak in the Python Subversion bindings of svn.ra.get_log(). 
 
