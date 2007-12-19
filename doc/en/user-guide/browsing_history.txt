@@ -24,7 +24,7 @@ numerous revision nodes is known as a Directed Acyclic Graph or
 DAG for short.
 
 In many cases though, you may only be interested in seeing the *mainline*
-for a brach, namely the primary line of development within the DAG.
+for a branch, namely the primary line of development within the DAG.
 To do this, use the following command::
 
   bzr log --short

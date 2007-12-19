@@ -74,7 +74,8 @@ class TestSuite(unittest.TestSuite):
 
 
 class TestLoader(unittest.TestLoader):
-    """Custom  TestLoader to address some quirks in the stock python one."""
+    """Custom TestLoader to extend the stock python one."""
+
     suiteClass = TestSuite
 
     def loadTestsFromModuleNames(self, names):
