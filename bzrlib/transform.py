@@ -1429,26 +1429,9 @@ def _build_tree(tree, wt, accelerator_tree):
                     new_trans_id = file_trans_id[file_id]
                     old_parent = tt.trans_id_tree_path(tree_path)
                     _reparent_children(tt, old_parent, new_trans_id)
-            if accelerator_tree is not None:
-                new_deferred_contents = []
-                for file_id, trans_id in deferred_contents:
-                    defer = True
-                    try:
-                        if (accelerator_tree.get_file_sha1(file_id) ==
-                            tree.get_file_sha1(file_id)):
-                            contents = accelerator_tree.get_file(file_id)
-                            try:
-                                tt.create_file(contents, trans_id)
-                                defer = False
-                            finally:
-                                contents.close()    
-                    except errors.NoSuchId:
-                        pass
-                    if defer:
-                        new_deferred_contents.append((file_id, trans_id))
-                deferred_contents = new_deferred_contents
             for num, (trans_id, bytes) in enumerate(
-                tree.iter_files_bytes(deferred_contents)):
+                _iter_files_bytes_accelerated(tree, accelerator_tree,
+                                              deferred_contents)):
                 tt.create_file(bytes, trans_id)
                 pb.update('Adding file contents',
                           (num + len(tree.inventory) - len(deferred_contents)),
@@ -1471,6 +1454,30 @@ def _build_tree(tree, wt, accelerator_tree):
         tt.finalize()
         top_pb.finished()
     return result
+
+
+def _iter_files_bytes_accelerated(tree, accelerator_tree, desired_files):
+    if accelerator_tree is None:
+        new_desired_files = desired_files
+    else:
+        new_desired_files = []
+        for file_id, identifier in desired_files:
+            want_new = True
+            try:
+                if (accelerator_tree.get_file_sha1(file_id) ==
+                    tree.get_file_sha1(file_id)):
+                    contents = accelerator_tree.get_file(file_id)
+                    try:
+                        yield identifier, (contents.read(),)
+                        want_new = False
+                    finally:
+                        contents.close()
+            except errors.NoSuchId:
+                pass
+            if want_new:
+                new_desired_files.append((file_id, identifier))
+    for result in tree.iter_files_bytes(new_desired_files):
+        yield result
 
 
 def _reparent_children(tt, old_parent, new_parent):
