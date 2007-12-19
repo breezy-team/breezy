@@ -70,7 +70,7 @@ This generates a file which contains 3 dictionaries:
 Projects in other languages
 ---------------------------
 
-Support for dumping version information in other languages in currently
+Support for dumping version information in other languages is currently
 in development. Please contact us on the mailing list about your
 requirements in this area. (As of the Bazaar 1.0 release date, some patches
 are available for other languages but are not yet merged into the core product.)

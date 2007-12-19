@@ -60,7 +60,7 @@ Note: As you provide a short name for each tracker, you can specify one or
 more bugs in one or more trackers at commit time if you wish.
 
 bugzilla_<tracker_abbreviation>_url
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------------------
 
 If present, the location of the Bugzilla bug tracker referred to by
 <tracker_abbreviation>. This option can then be used together with ``bzr commit
@@ -73,7 +73,7 @@ would allow ``bzr commit --fixes squid:1234`` to mark Squid's bug 1234 as
 fixed.
 
 trac_<tracker_abbrevation>_url
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------------
 
 If present, the location of the Trac instance referred to by
 <tracker_abbreviation>. This option can then be used together with ``bzr commit
@@ -86,7 +86,8 @@ would allow ``bzr commit --fixes twisted:1234`` to mark Twisted's bug 1234 as
 fixed.
 
 bugtracker_<tracker_abbrevation>_url
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------------------
+
 If present, the location of a generic bug tracker instance referred to by
 <tracker_abbreviation>. The location must contain an ``{id}`` placeholder,
 which will be replaced by a specific bug ID. This option can then be used

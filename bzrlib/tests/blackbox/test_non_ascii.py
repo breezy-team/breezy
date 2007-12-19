@@ -496,3 +496,13 @@ class TestNonAscii(TestCaseWithTransport):
         self.run_bzr_decode(['info', self.info['directory']])
         self.run_bzr_decode(['info', self.info['directory']],
                             encoding='ascii')
+
+    def test_ignored(self):
+        fname = self.info['filename'] + '1.txt'
+        self.build_tree_contents([(fname, 'ignored\n')])
+        self.run_bzr(['ignore', fname])
+        txt = self.run_bzr_decode(['ignored'])
+        self.assertEqual(txt, '%-50s %s\n' % (fname, fname))
+        txt = self.run_bzr_decode(['ignored'], encoding='ascii')
+        fname = fname.encode('ascii', 'replace')
+        self.assertEqual(txt, '%-50s %s\n' % (fname, fname))
