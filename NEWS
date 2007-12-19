@@ -28,6 +28,9 @@ IN DEVELOPMENT
 
    * Fix Makefile rules for doc generation. (Ian Clatworthy, #175207)
 
+   * Fix traceback when sending large response bodies over the smart protocol
+     on Windows. (Andrew Bennetts, #115781)
+
    * Transform failures no longer cause ImmortalLimbo errors (Aaron Bentley,
      #137681)
 
