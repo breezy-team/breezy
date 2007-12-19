@@ -9,9 +9,23 @@ IN DEVELOPMENT
 
   CHANGES:
    
+   * The syntax ``bzr diff branch1 branch2`` is no longer supported.
+     Use ``bzr diff branch1 --new branch2`` instead. This change has
+     been made to remove the ambiguity where ``branch2`` is in fact a
+     specific file to diff within ``branch1``.
+
   FEATURES:
 
+   * New option to use custom template-based formats in  ``bzr version-info``.
+     (Lukáš Lalinský)
+
   IMPROVEMENTS:
+
+   * ``bzr diff`` now works on branches without working trees. Tree-less
+     branches can also be compared to each other and to working trees using
+     the new diff options ``--old`` and ``--new``. Diffing between branches,
+     with or without trees, now supports specific file filtering as well.
+     (Ian Clatworthy, #6700)
 
    * ``bzr pack`` now orders revision texts in topological order, with newest
      at the start of the file, promoting linear reads for ``bzr log`` and the
@@ -26,7 +40,8 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
-   * Fix Makefile rules for doc generation. (Ian Clatworthy, #175207)
+   * Fixed Unicode encoding error in ``ignored`` when the output is
+     redirected to a pipe. (Lukáš Lalinský)
 
    * Fix traceback when sending large response bodies over the smart protocol
      on Windows. (Andrew Bennetts, #115781)
@@ -45,7 +60,23 @@ IN DEVELOPMENT
    * ``reconfigure`` is able to convert trees into lightweight checkouts.
      (Aaron Bentley)
 
+  DOCUMENTATION:
+
+   * Reference material has now be moved out of the User Guide and added
+     to the User Reference. The User Reference has gained 4 sections as
+     a result: Authenication Settings, Configuration Settings, Conflicts
+     and Hooks. All help topics are now dumped into text format in the
+     doc/en/user-reference directory for those who like browsing that
+     information in their editor. (Ian Clatworthy)
+
   INTERNALS:
+
+    * Help topics can now be loaded from files. 
+      (Ian Clatworthy, Alexander Belchenko)
+
+    * Parent Providers should now implement ``get_parent_map`` returning a
+      dictionary instead of ``get_parents`` returning a list.
+      ``get_parents`` is now considered deprecated.  (John Arbash Meinel)
 
   API BREAKS:
 

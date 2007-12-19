@@ -2488,6 +2488,14 @@ class UncommittedChanges(BzrError):
         BzrError.__init__(self, tree=tree, display_url=display_url)
 
 
+class MissingTemplateVariable(BzrError):
+
+    _fmt = 'Variable {%(name)s} is not available.'
+
+    def __init__(self, name):
+        self.name = name
+
+
 class UnableCreateSymlink(BzrError):
 
     _fmt = 'Unable to create symlink %(path_str)son this platform'

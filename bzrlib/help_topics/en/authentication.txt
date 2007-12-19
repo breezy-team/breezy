@@ -1,5 +1,5 @@
-Configuring authentication
-==========================
+Authentication Settings
+=======================
 
 
 Intent
@@ -112,7 +112,7 @@ File format
 The general rules for `configuration files`_ apply except for the variable
 policies.
 
-.. _configuration files: #configuration-reference
+.. _configuration files: #configuration-settings
 
 Each section describes an authentication definition.
 
