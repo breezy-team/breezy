@@ -877,6 +877,10 @@ class cmd_branch(Command):
         br_from = Branch.open(from_location)
         br_from.lock_read()
         try:
+            accelerator_tree = br_from.bzrdir.open_workingtree()
+        except (errors.NoWorkingTree, errors.NotLocalUrl):
+            accelerator_tree = None
+        try:
             if len(revision) == 1 and revision[0] is not None:
                 revision_id = revision[0].in_history(br_from)[1]
             else:
@@ -902,7 +906,8 @@ class cmd_branch(Command):
             try:
                 # preserve whatever source format we have.
                 dir = br_from.bzrdir.sprout(to_transport.base, revision_id,
-                                            possible_transports=[to_transport])
+                                            possible_transports=[to_transport],
+                                            accelerator_tree=accelerator_tree)
                 branch = dir.open_branch()
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')

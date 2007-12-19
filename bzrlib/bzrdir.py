@@ -788,7 +788,8 @@ class BzrDir(object):
         return self.cloning_metadir()
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
-               recurse='down', possible_transports=None):
+               recurse='down', possible_transports=None,
+               accelerator_tree=None):
         """Create a copy of this bzrdir prepared for use as a new line of
         development.
 
@@ -845,11 +846,7 @@ class BzrDir(object):
             result.create_branch()
         if isinstance(target_transport, LocalTransport) and (
             result_repo is None or result_repo.make_working_trees()):
-            try:
-                self_wt = self.open_workingtree()
-            except (errors.NoWorkingTree, errors.NotLocalUrl):
-                self_wt = None
-            wt = result.create_workingtree(accelerator_tree=self_wt)
+            wt = result.create_workingtree(accelerator_tree=accelerator_tree)
             wt.lock_write()
             try:
                 if wt.path2id('') is None:
@@ -1016,7 +1013,7 @@ class BzrDirPreSplitOut(BzrDir):
         return format.open(self, _found=True)
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
-               possible_transports=None):
+               possible_transports=None, accelerator_tree=None):
         """See BzrDir.sprout()."""
         from bzrlib.workingtree import WorkingTreeFormat2
         self._make_tail(url)
@@ -1030,7 +1027,8 @@ class BzrDirPreSplitOut(BzrDir):
         except errors.NotBranchError:
             pass
         # we always want a working tree
-        WorkingTreeFormat2().initialize(result)
+        WorkingTreeFormat2().initialize(result,
+                                        accelerator_tree=accelerator_tree)
         return result
 
 
