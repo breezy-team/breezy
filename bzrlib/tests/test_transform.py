@@ -1506,7 +1506,6 @@ class TestBuildTree(tests.TestCaseWithTransport):
         source.add(['file1', 'file2'], ['file1-id', 'file2-id'])
         source.commit('commit files')
         self.build_tree_contents([('source/file2', 'C')])
-        source_tree = source.basis_tree()
         calls = []
         real_source_get_file = source.get_file
         def get_file(file_id, path=None):
@@ -1514,8 +1513,19 @@ class TestBuildTree(tests.TestCaseWithTransport):
             return real_source_get_file(file_id, path)
         source.get_file = get_file
         target = self.make_branch_and_tree('target')
-        build_tree(source_tree, target, source)
+        build_tree(source.basis_tree(), target, source)
         self.assertEqual(['file1-id'], calls)
+
+    def test_build_tree_accelerator_tree_missing_file(self):
+        source = self.make_branch_and_tree('source')
+        self.build_tree_contents([('source/file1', 'A')])
+        self.build_tree_contents([('source/file2', 'B')])
+        source.add(['file1', 'file2'])
+        source.commit('commit files')
+        os.unlink('source/file1')
+        source.remove(['file2'])
+        target = self.make_branch_and_tree('target')
+        build_tree(source.basis_tree(), target, source)
 
 
 class MockTransform(object):

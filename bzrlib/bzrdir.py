@@ -845,14 +845,16 @@ class BzrDir(object):
             result.create_branch()
         if isinstance(target_transport, LocalTransport) and (
             result_repo is None or result_repo.make_working_trees()):
-            wt = result.create_workingtree()
+            try:
+                self_wt = self.open_workingtree()
+            except (errors.NoWorkingTree, errors.NotLocalUrl):
+                self_wt = None
+            wt = result.create_workingtree(accelerator_tree=self_wt)
             wt.lock_write()
             try:
                 if wt.path2id('') is None:
-                    try:
-                        wt.set_root_id(self.open_workingtree.get_root_id())
-                    except errors.NoWorkingTree:
-                        pass
+                    if self_wt is not None:
+                        wt.set_root_id(self_wt.get_root_id())
             finally:
                 wt.unlock()
         else:

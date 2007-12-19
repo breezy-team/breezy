@@ -1432,14 +1432,19 @@ def _build_tree(tree, wt, accelerator_tree):
             if accelerator_tree is not None:
                 new_deferred_contents = []
                 for file_id, trans_id in deferred_contents:
-                    if (accelerator_tree.get_file_sha1(file_id) ==
-                        tree.get_file_sha1(file_id)):
-                        contents = accelerator_tree.get_file(file_id)
-                        try:
-                            tt.create_file(contents, trans_id)
-                        finally:
-                            contents.close()    
-                    else:
+                    defer = True
+                    try:
+                        if (accelerator_tree.get_file_sha1(file_id) ==
+                            tree.get_file_sha1(file_id)):
+                            contents = accelerator_tree.get_file(file_id)
+                            try:
+                                tt.create_file(contents, trans_id)
+                                defer = False
+                            finally:
+                                contents.close()    
+                    except errors.NoSuchId:
+                        pass
+                    if defer:
                         new_deferred_contents.append((file_id, trans_id))
                 deferred_contents = new_deferred_contents
             for num, (trans_id, bytes) in enumerate(
