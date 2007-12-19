@@ -85,6 +85,39 @@ IN DEVELOPMENT
 
   TESTING:
 
+   * Modules can now customise their tests by defining a ``load_tests``
+     attribute. ``pydoc bzrlib.tests.TestUtil.TestLoader.loadTestsFromModule``
+     for the documentation on this attribute. (Robert Collins)
+
+   * New helper function ``bzrlib.tests.condition_id_re`` which helps
+     filter tests based on a regular expression search on the tests id.
+     (Robert Collins)
+    
+   * New helper function ``bzrlib.tests.condition_isinstance`` which helps
+     filter tests based on class. (Robert Collins)
+    
+   * New helper function ``bzrlib.tests.exclude_suite_by_condition`` which
+     generalises the ``exclude_suite_by_re`` function. (Robert Collins)
+
+   * New helper function ``bzrlib.tests.filter_suite_by_condition`` which
+     generalises the ``filter_suite_by_re`` function. (Robert Collins)
+
+   * New helper method ``bzrlib.tests.exclude_tests_by_re`` which gives a new
+     TestSuite that does not contain tests from the input that matched a
+     regular expression. (Robert Collins)
+
+   * New helper method ``bzrlib.tests.randomise_suite`` which returns a
+     randomised copy of the input suite. (Robert Collins)
+
+   * New helper method ``bzrlib.tests.split_suite_by_re`` which splits a test
+     suite into two according to a regular expression. (Robert Collins)
+
+   * The ``exclude_pattern`` and ``random_order`` parameters to the function
+     ``bzrlib.tests.filter_suite_by_re`` have been deprecated. (Robert Collins)
+
+   * The method ``bzrlib.tests.sort_suite_by_re`` has been deprecated. It is 
+     replaced by the new helper methods added in this release. (Robert Collins)
+
 
 bzr 1.0 2007-12-14
 ==================
