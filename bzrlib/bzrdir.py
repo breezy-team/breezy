@@ -666,6 +666,34 @@ class BzrDir(object):
                 raise errors.NotBranchError(path=url)
             a_transport = new_t
 
+    def _get_tree_branch(self):
+        """Return the branch and tree, if any, for this bzrdir.
+
+        Return None for tree if not present.
+        Raise NotBranchError if no branch is present.
+        :return: (tree, branch)
+        """
+        try:
+            tree = self.open_workingtree()
+        except (errors.NoWorkingTree, errors.NotLocalUrl):
+            tree = None
+            branch = self.open_branch()
+        else:
+            branch = tree.branch
+        return tree, branch
+
+    @classmethod
+    def open_tree_or_branch(klass, location):
+        """Return the branch and working tree at a location.
+
+        If there is no tree at the location, tree will be None.
+        If there is no branch at the location, an exception will be
+        raised
+        :return: (tree, branch)
+        """
+        bzrdir = klass.open(location)
+        return bzrdir._get_tree_branch()
+
     @classmethod
     def open_containing_tree_or_branch(klass, location):
         """Return the branch and working tree contained by a location.
@@ -677,13 +705,7 @@ class BzrDir(object):
         relpath is the portion of the path that is contained by the branch.
         """
         bzrdir, relpath = klass.open_containing(location)
-        try:
-            tree = bzrdir.open_workingtree()
-        except (errors.NoWorkingTree, errors.NotLocalUrl):
-            tree = None
-            branch = bzrdir.open_branch()
-        else:
-            branch = tree.branch
+        tree, branch = bzrdir._get_tree_branch()
         return tree, branch, relpath
 
     def open_repository(self, _unsupported=False):

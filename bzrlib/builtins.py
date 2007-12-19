@@ -874,12 +874,9 @@ class cmd_branch(Command):
             raise errors.BzrCommandError(
                 'bzr branch --revision takes exactly 1 revision value')
 
-        br_from = Branch.open(from_location)
+        accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
+            from_location)
         br_from.lock_read()
-        try:
-            accelerator_tree = br_from.bzrdir.open_workingtree()
-        except (errors.NoWorkingTree, errors.NotLocalUrl):
-            accelerator_tree = None
         try:
             if len(revision) == 1 and revision[0] is not None:
                 revision_id = revision[0].in_history(br_from)[1]
