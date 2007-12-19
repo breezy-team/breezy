@@ -829,6 +829,9 @@ class DiffTree(object):
                 return path.encode(self.path_encoding, "replace")
         for (file_id, paths, changed_content, versioned, parent, name, kind,
              executable) in sorted(iterator, key=changes_key):
+            if parent == (None, None):
+                continue
+            oldpath, newpath = paths
             oldpath_encoded = get_encoded_path(paths[0])
             newpath_encoded = get_encoded_path(paths[1])
             old_present = (kind[0] is not None and versioned[0])
@@ -838,9 +841,11 @@ class DiffTree(object):
             if (old_present, new_present) == (True, False):
                 self.to_file.write("=== removed %s '%s'\n" %
                                    (kind[0], oldpath_encoded))
+                newpath = oldpath
             elif (old_present, new_present) == (False, True):
                 self.to_file.write("=== added %s '%s'\n" %
                                    (kind[1], newpath_encoded))
+                oldpath = newpath
             elif renamed:
                 self.to_file.write("=== renamed %s '%s' => '%s'%s\n" %
                     (kind[0], oldpath_encoded, newpath_encoded, prop_str))
@@ -850,7 +855,7 @@ class DiffTree(object):
                 self.to_file.write("=== modified %s '%s'%s\n" % (kind[0],
                                    newpath_encoded, prop_str))
             if changed_content:
-                self.diff(file_id, paths[0], paths[1])
+                self.diff(file_id, oldpath, newpath)
                 has_changes = 1
             if renamed:
                 has_changes = 1
