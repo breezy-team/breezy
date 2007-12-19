@@ -25,12 +25,17 @@ test_transport_implementations. The tests here are about the variations in HTTP
 protocol implementation to guarantee the robustness of our transports.
 """
 
+import socket
+
+import bzrlib
 from bzrlib import (
     errors,
     tests,
+    transport,
     )
 from bzrlib.tests import (
     http_server,
+    http_utils,
     )
 from bzrlib.transport.http._urllib import HttpTransport_urllib
 
@@ -103,5 +108,85 @@ class TestHttpTransportUrls(tests.TestCase):
             self.assertTrue(url.startswith('%s://' % self._qualified_prefix))
         finally:
             server.tearDown()
+
+
+class TestHttpConnections(http_utils.TestCaseWithWebserver):
+    """Test the http connections."""
+
+    def setUp(self):
+        http_utils.TestCaseWithWebserver.setUp(self)
+        self.build_tree(['foo/', 'foo/bar'], line_endings='binary',
+                        transport=self.get_transport())
+
+    def test_http_has(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        self.assertEqual(t.has('foo/bar'), True)
+        self.assertEqual(len(server.logs), 1)
+        self.assertContainsRe(server.logs[0],
+            r'"HEAD /foo/bar HTTP/1.." (200|302) - "-" "bzr/')
+
+    def test_http_has_not_found(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        self.assertEqual(t.has('not-found'), False)
+        self.assertContainsRe(server.logs[1],
+            r'"HEAD /not-found HTTP/1.." 404 - "-" "bzr/')
+
+    def test_http_get(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        fp = t.get('foo/bar')
+        self.assertEqualDiff(
+            fp.read(),
+            'contents of foo/bar\n')
+        self.assertEqual(len(server.logs), 1)
+        self.assertTrue(server.logs[0].find(
+            '"GET /foo/bar HTTP/1.1" 200 - "-" "bzr/%s'
+            % bzrlib.__version__) > -1)
+
+    def test_get_smart_medium(self):
+        # For HTTP, get_smart_medium should return the transport object.
+        server = self.get_readonly_server()
+        http_transport = self._transport(server.get_url())
+        medium = http_transport.get_smart_medium()
+        self.assertIs(medium, http_transport)
+
+    def test_has_on_bogus_host(self):
+        # Get a free address and don't 'accept' on it, so that we
+        # can be sure there is no http handler there, but set a
+        # reasonable timeout to not slow down tests too much.
+        default_timeout = socket.getdefaulttimeout()
+        try:
+            socket.setdefaulttimeout(2)
+            s = socket.socket()
+            s.bind(('localhost', 0))
+            t = self._transport('http://%s:%s/' % s.getsockname())
+            self.assertRaises(errors.ConnectionError, t.has, 'foo/bar')
+        finally:
+            socket.setdefaulttimeout(default_timeout)
+
+
+class TestPost(tests.TestCase):
+
+    def test_post_body_is_received(self):
+        server = http_utils.RecordingServer(expect_body_tail='end-of-body')
+        server.setUp()
+        self.addCleanup(server.tearDown)
+        scheme = self._qualified_prefix
+        url = '%s://%s:%s/' % (scheme, server.host, server.port)
+        try:
+            http_transport = transport.get_transport(url)
+        except errors.UnsupportedProtocol:
+            raise tests.TestSkipped('%s not available' % scheme)
+        code, response = http_transport._post('abc def end-of-body')
+        self.assertTrue(
+            server.received_bytes.startswith('POST /.bzr/smart HTTP/1.'))
+        self.assertTrue('content-length: 19\r' in server.received_bytes.lower())
+        # The transport should not be assuming that the server can accept
+        # chunked encoding the first time it connects, because HTTP/1.1, so we
+        # check for the literal string.
+        self.assertTrue(
+            server.received_bytes.endswith('\r\n\r\nabc def end-of-body'))
 
 
