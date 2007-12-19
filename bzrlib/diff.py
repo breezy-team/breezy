@@ -844,7 +844,9 @@ class DiffTree(object):
             elif renamed:
                 self.to_file.write("=== renamed %s '%s' => '%s'%s\n" %
                     (kind[0], oldpath_encoded, newpath_encoded, prop_str))
-            elif changed_content:
+            else:
+                # if it was produced by _iter_changes, it must be
+                # modified *somehow*, either content or execute bit.
                 self.to_file.write("=== modified %s '%s'%s\n" % (kind[0],
                                    newpath_encoded, prop_str))
             if changed_content:
