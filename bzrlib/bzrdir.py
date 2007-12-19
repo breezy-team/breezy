@@ -850,8 +850,10 @@ class BzrDir(object):
             wt.lock_write()
             try:
                 if wt.path2id('') is None:
-                    if self_wt is not None:
-                        wt.set_root_id(self_wt.get_root_id())
+                    try:
+                        wt.set_root_id(self.open_workingtree.get_root_id())
+                    except errors.NoWorkingTree:
+                        pass
             finally:
                 wt.unlock()
         else:
