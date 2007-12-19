@@ -445,6 +445,7 @@ class HttpServer(transport.Server):
         self._local_path_parts = self._home_dir.split(os.path.sep)
         self._http_base_url = None
 
+        # Create the server thread
         self._http_starting = threading.Lock()
         self._http_starting.acquire()
         self._http_thread = threading.Thread(target=self._http_start)

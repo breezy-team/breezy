@@ -226,62 +226,7 @@ class TestHttpUrls(tests.TestCase):
                           f.credentials[0])
 
 
-class TestHttpTransportUrls(object):
-    """Test the http urls.
-
-    This MUST be used by daughter classes that also inherit from
-    TestCase.
-
-    We can't inherit directly from TestCase or the
-    test framework will try to create an instance which cannot
-    run, its implementation being incomplete.
-    """
-
-    def test_abs_url(self):
-        """Construction of absolute http URLs"""
-        t = self._transport('http://bazaar-vcs.org/bzr/bzr.dev/')
-        eq = self.assertEqualDiff
-        eq(t.abspath('.'), 'http://bazaar-vcs.org/bzr/bzr.dev')
-        eq(t.abspath('foo/bar'), 'http://bazaar-vcs.org/bzr/bzr.dev/foo/bar')
-        eq(t.abspath('.bzr'), 'http://bazaar-vcs.org/bzr/bzr.dev/.bzr')
-        eq(t.abspath('.bzr/1//2/./3'),
-           'http://bazaar-vcs.org/bzr/bzr.dev/.bzr/1/2/3')
-
-    def test_invalid_http_urls(self):
-        """Trap invalid construction of urls"""
-        t = self._transport('http://bazaar-vcs.org/bzr/bzr.dev/')
-        self.assertRaises(errors.InvalidURL,
-                          self._transport,
-                          'http://http://bazaar-vcs.org/bzr/bzr.dev/')
-
-    def test_http_root_urls(self):
-        """Construction of URLs from server root"""
-        t = self._transport('http://bzr.ozlabs.org/')
-        eq = self.assertEqualDiff
-        eq(t.abspath('.bzr/tree-version'),
-           'http://bzr.ozlabs.org/.bzr/tree-version')
-
-    def test_http_impl_urls(self):
-        """There are servers which ask for particular clients to connect"""
-        server = self._server()
-        try:
-            server.setUp()
-            url = server.get_url()
-            self.assertTrue(url.startswith('%s://' % self._qualified_prefix))
-        finally:
-            server.tearDown()
-
-
-class TestHttpUrls_urllib(TestHttpTransportUrls, tests.TestCase):
-    """Test http urls with urllib"""
-
-    _transport = HttpTransport_urllib
-    _server = http_server.HttpServer_urllib
-    _qualified_prefix = 'http+urllib'
-
-
-class TestHttpUrls_pycurl(TestWithTransport_pycurl, TestHttpTransportUrls,
-                          tests.TestCase):
+class TestHttpUrls_pycurl(TestWithTransport_pycurl, tests.TestCase):
     """Test http urls with pycurl"""
 
     _server = http_server.HttpServer_PyCurl
