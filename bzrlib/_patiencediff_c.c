@@ -74,7 +74,7 @@ struct line {
     Py_ssize_t next;   /* next line from the same equivalence class */
     Py_ssize_t equiv;  /* equivalence class */
     Py_ssize_t len;
-    const PyObject *data;
+    PyObject *data;
 };
 
 
@@ -152,7 +152,7 @@ static inline int
 compare_lines(struct line *a, struct line *b)
 {
     return ((a->hash != b->hash) || (a->len != b->len)
-            || PyObject_Compare((PyObject *)a->data, (PyObject *)b->data));
+            || PyObject_Compare(a->data, b->data));
 }
 
 
