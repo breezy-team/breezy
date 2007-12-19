@@ -73,7 +73,6 @@ struct line {
     long hash;         /* hash code of the string/object */
     Py_ssize_t next;   /* next line from the same equivalence class */
     Py_ssize_t equiv;  /* equivalence class */
-    Py_ssize_t len;
     PyObject *data;
 };
 
@@ -151,7 +150,7 @@ bisect_left(Py_ssize_t *list, Py_ssize_t item, Py_ssize_t lo, Py_ssize_t hi)
 static inline int
 compare_lines(struct line *a, struct line *b)
 {
-    return ((a->hash != b->hash) || (a->len != b->len)
+    return ((a->hash != b->hash)
             || PyObject_Compare(a->data, b->data));
 }
 
@@ -545,9 +544,9 @@ error:
 static Py_ssize_t
 load_lines(PyObject *orig, struct line **lines)
 {
-    Py_ssize_t size, i, j, tuple_len, cur_len, total_len;
+    Py_ssize_t size, i;
     struct line *line;
-    PyObject *seq, *item, *subitem;
+    PyObject *seq, *item;
 
     seq = PySequence_Fast(orig, "sequence expected");
     if (seq == NULL) {
@@ -570,49 +569,7 @@ load_lines(PyObject *orig, struct line **lines)
     for (i = 0; i < size; i++) {
         item = PySequence_Fast_GET_ITEM(seq, i);
         line->data = item;
-        if (PyString_Check(item)) {
-            long hash;
-            const char *p;
-            /* we could use the 'djb2' hash here if we find it is better than
-               PyObject_Hash, however it seems measurably slower to compute,
-               and doesn't give particularly better results
-             */
-            line->len = PyString_GET_SIZE(item);
-            p = PyString_AS_STRING(item);
-            /* 'djb2' hash. This gives us a nice compromise between fast hash
-                function and a hash with less collisions. The algorithm doesn't
-                use the hash for actual lookups, only for building the table
-                so a better hash function wouldn't bring us much benefit, but
-                would make this loading code slower. */
-            hash = 5381;
-            for (j = 0; j < line->len; j++)
-                hash = ((hash << 5) + hash) + *p++;
-            line->hash = hash;
-            // line->hash = PyObject_Hash(item);
-        } else if (PyTuple_Check(item)) {
-            total_len = 0;
-            tuple_len = PyObject_Length(item);
-            for (j = 0; j < tuple_len; ++j) {
-                subitem = PySequence_Fast_GET_ITEM(item, j);
-                cur_len = PyObject_Length(subitem);
-                if (cur_len == -1) {
-                    size = -1;
-                    goto cleanup;
-                }
-                total_len += cur_len;
-            }
-            line->len = total_len;
-            line->hash = PyObject_Hash(item);
-        } else {
-            /* Generic length */
-            cur_len = PyObject_Length(item);
-            if (cur_len == -1) {
-                size = -1;
-                goto cleanup;
-            }
-            line->len = cur_len;
-            line->hash = PyObject_Hash(item);
-        }
+        line->hash = PyObject_Hash(item);
         if (line->hash == (-1)) {
             /* Propogate the hash exception */
             size = -1;
