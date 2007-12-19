@@ -21,6 +21,8 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+   * ``bzr diff`` now sorts files in alphabetical order.  (Aaron Bentley)
+
    * ``bzr diff`` now works on branches without working trees. Tree-less
      branches can also be compared to each other and to working trees using
      the new diff options ``--old`` and ``--new``. Diffing between branches,
