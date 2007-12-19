@@ -1468,10 +1468,11 @@ def _iter_files_bytes_accelerated(tree, accelerator_tree, desired_files):
                     tree.get_file_sha1(file_id)):
                     contents = accelerator_tree.get_file(file_id)
                     try:
-                        yield identifier, (contents.read(),)
                         want_new = False
+                        contents_bytes = (contents.read(),)
                     finally:
                         contents.close()
+                    yield identifier, contents_bytes
             except errors.NoSuchId:
                 pass
             if want_new:
