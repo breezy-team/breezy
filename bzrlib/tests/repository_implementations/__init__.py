@@ -880,10 +880,10 @@ def test_suite():
     module_name_list = [prefix + module_name
                         for module_name in test_repository_modules]
 
-    # Parameterise repository_implementations test modules by format.
+    # Parameterize repository_implementations test modules by format.
     result = multiply_tests_from_modules(module_name_list, format_scenarios)
 
-    # test_check_reconcile needs to be parameterised by format *and* by broken
+    # test_check_reconcile needs to be parameterized by format *and* by broken
     # repository scenario.
     broken_scenarios = [(s.__name__, {'scenario_class': s})
                         for s in all_broken_scenario_classes]

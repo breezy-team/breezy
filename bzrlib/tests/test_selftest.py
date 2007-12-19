@@ -530,7 +530,7 @@ class TestInterTreeProviderAdapter(TestCase):
         # because each optimiser can be direction specific, we need to test
         # each optimiser in its chosen direction.
         # unlike the TestProviderAdapter we dont want to automatically add a
-        # parameterised one for WorkingTree - the optimisers will tell us what
+        # parameterized one for WorkingTree - the optimisers will tell us what
         # ones to add.
         from bzrlib.tests.tree_implementations import (
             return_parameter,
