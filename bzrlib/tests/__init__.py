@@ -84,6 +84,7 @@ from bzrlib.symbol_versioning import (
     deprecated_passed,
     zero_ninetyone,
     zero_ninetytwo,
+    one_zero,
     )
 import bzrlib.trace
 from bzrlib.transport import get_transport
@@ -2299,16 +2300,16 @@ def filter_suite_by_re(suite, pattern, exclude_pattern=DEPRECATED_PARAMETER,
     :param suite:           the source suite
     :param pattern:         pattern that names must match
     :param exclude_pattern: A pattern that names must not match. This parameter
-        is deprecated as of bzrlib 0.92. Please use the separate function
+        is deprecated as of bzrlib 1.0. Please use the separate function
         exclude_tests_by_re instead.
     :param random_order:    If True, tests in the new suite will be put in
-        random order. This parameter is deprecated as of bzrlib 0.92. Please
-        use the separate function randomise_suite instead.
+        random order. This parameter is deprecated as of bzrlib 1.0. Please
+        use the separate function randomize_suite instead.
     :returns: the newly created suite
     """ 
     if deprecated_passed(exclude_pattern):
         symbol_versioning.warn(
-            zero_ninetytwo % "passing exclude_pattern to filter_suite_by_re",
+            one_zero % "passing exclude_pattern to filter_suite_by_re",
                 DeprecationWarning, stacklevel=2)
         if exclude_pattern is not None:
             suite = exclude_tests_by_re(suite, exclude_pattern)
@@ -2316,10 +2317,10 @@ def filter_suite_by_re(suite, pattern, exclude_pattern=DEPRECATED_PARAMETER,
     result_suite = filter_suite_by_condition(suite, condition)
     if deprecated_passed(random_order):
         symbol_versioning.warn(
-            zero_ninetytwo % "passing random_order to filter_suite_by_re",
+            one_zero % "passing random_order to filter_suite_by_re",
                 DeprecationWarning, stacklevel=2)
         if random_order:
-            result_suite = randomise_suite(result_suite)
+            result_suite = randomize_suite(result_suite)
     return result_suite
 
 
@@ -2345,7 +2346,7 @@ def preserve_input(something):
     return something
 
 
-def randomise_suite(suite):
+def randomize_suite(suite):
     """Return a new TestSuite with suite's tests in random order.
     
     The tests in the input suite are flattened into a single suite in order to
@@ -2357,7 +2358,7 @@ def randomise_suite(suite):
     return TestUtil.TestSuite(tests)
 
 
-@deprecated_function(zero_ninetytwo)
+@deprecated_function(one_zero)
 def sort_suite_by_re(suite, pattern, exclude_pattern=None,
                      random_order=False, append_rest=True):
     """DEPRECATED: Create a test suite by sorting another one.
@@ -2366,7 +2367,7 @@ def sort_suite_by_re(suite, pattern, exclude_pattern=None,
     called directly:
      - filter_suite_by_re
      - exclude_tests_by_re
-     - randomise_suite
+     - randomize_suite
      - split_suite_by_re
     
     :param suite:           the source suite
@@ -2383,7 +2384,7 @@ def sort_suite_by_re(suite, pattern, exclude_pattern=None,
     if exclude_pattern is not None:
         suite = exclude_tests_by_re(suite, exclude_pattern)
     if random_order:
-        order_changer = randomise_suite
+        order_changer = randomize_suite
     else:
         order_changer = preserve_input
     if append_rest:
@@ -2459,7 +2460,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
     if exclude_pattern is not None:
         suite = exclude_tests_by_re(suite, exclude_pattern)
     if random_order:
-        order_changer = randomise_suite
+        order_changer = randomize_suite
     else:
         order_changer = preserve_input
     if pattern != '.*' or random_order:

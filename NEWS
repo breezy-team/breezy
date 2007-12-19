@@ -106,8 +106,8 @@ IN DEVELOPMENT
      TestSuite that does not contain tests from the input that matched a
      regular expression. (Robert Collins)
 
-   * New helper method ``bzrlib.tests.randomise_suite`` which returns a
-     randomised copy of the input suite. (Robert Collins)
+   * New helper method ``bzrlib.tests.randomize_suite`` which returns a
+     randomized copy of the input suite. (Robert Collins)
 
    * New helper method ``bzrlib.tests.split_suite_by_re`` which splits a test
      suite into two according to a regular expression. (Robert Collins)

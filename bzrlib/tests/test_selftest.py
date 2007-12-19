@@ -36,10 +36,10 @@ from bzrlib import (
 from bzrlib.progress import _BaseProgressBar
 from bzrlib.repofmt import weaverepo
 from bzrlib.symbol_versioning import (
-        zero_eleven,
-        zero_ninetytwo,
-        zero_ten,
-        )
+    one_zero,
+    zero_eleven,
+    zero_ten,
+    )
 from bzrlib.tests import (
                           ChrootedTestCase,
                           ExtendedTestResult,
@@ -63,7 +63,7 @@ from bzrlib.tests import (
                           filter_suite_by_re,
                           iter_suite_tests,
                           preserve_input,
-                          randomise_suite,
+                          randomize_suite,
                           sort_suite_by_re,
                           split_suite_by_re,
                           test_lsprof,
@@ -1732,24 +1732,24 @@ class TestSelftestFiltering(TestCase):
         self.assertTrue(self.suite is preserve_input(self.suite))
         self.assertTrue("@#$" is preserve_input("@#$"))
 
-    def test_randomise_suite(self):
-        randomised_suite = randomise_suite(self.suite)
-        # randomising should not add or remove test names.
+    def test_randomize_suite(self):
+        randomized_suite = randomize_suite(self.suite)
+        # randomizing should not add or remove test names.
         self.assertEqual(set(self._test_ids(self.suite)),
-            set(self._test_ids(randomised_suite)))
+            set(self._test_ids(randomized_suite)))
         # Technically, this *can* fail, because random.shuffle(list) can be
         # equal to list. Trying multiple times just pushes the frequency back.
         # As its len(self.all_names)!:1, the failure frequency should be low
         # enough to ignore. RBC 20071021.
         # It should change the order.
-        self.assertNotEqual(self.all_names, self._test_ids(randomised_suite))
+        self.assertNotEqual(self.all_names, self._test_ids(randomized_suite))
         # But not the length. (Possibly redundant with the set test, but not
         # necessarily.)
         self.assertEqual(len(self.all_names),
-            len(self._test_ids(randomised_suite)))
+            len(self._test_ids(randomized_suite)))
 
     def test_sort_suite_by_re(self):
-        sorted_suite = self.applyDeprecated(zero_ninetytwo,
+        sorted_suite = self.applyDeprecated(one_zero,
             sort_suite_by_re, self.suite, 'test_filter_suite_by_r')
         sorted_names = self._test_ids(sorted_suite)
         self.assertEqual(sorted_names[0], 'bzrlib.tests.test_selftest.'
