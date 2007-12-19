@@ -38,6 +38,9 @@ IN DEVELOPMENT
 
    * ``-l`` is now a short form for ``--limit`` in ``log``.  (Matt Nordhoff)
 
+   * ``split`` now supported, to enable splitting large trees into smaller
+     pieces.  (Aaron Bentley)
+
   BUGFIXES:
 
    * Fixed Unicode encoding error in ``ignored`` when the output is
