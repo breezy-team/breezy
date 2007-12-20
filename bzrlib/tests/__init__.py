@@ -78,9 +78,13 @@ from bzrlib.revision import common_ancestor
 import bzrlib.store
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
+    DEPRECATED_PARAMETER,
+    deprecated_function,
     deprecated_method,
+    deprecated_passed,
     zero_ninetyone,
     zero_ninetytwo,
+    one_zero,
     )
 import bzrlib.trace
 from bzrlib.transport import get_transport
@@ -95,8 +99,8 @@ from bzrlib.tests.TestUtil import (
                           TestSuite,
                           TestLoader,
                           )
-from bzrlib.tests.EncodingAdapter import EncodingTestAdapter
 from bzrlib.tests.treeshape import build_tree_contents
+import bzrlib.version_info_formats.format_custom
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
 
 # Mark this python module as being part of the implementation
@@ -117,6 +121,7 @@ MODULES_TO_DOCTEST = [
         bzrlib.merge3,
         bzrlib.option,
         bzrlib.store,
+        bzrlib.version_info_formats.format_custom,
         # quoted to avoid module-loading circularity
         'bzrlib.tests',
         ]
@@ -1715,8 +1720,8 @@ class TestCaseWithMemoryTransport(TestCase):
     _TEST_NAME = 'test'
 
     def __init__(self, methodName='runTest'):
-        # allow test parameterisation after test construction and before test
-        # execution. Variables that the parameteriser sets need to be 
+        # allow test parameterization after test construction and before test
+        # execution. Variables that the parameterizer sets need to be 
         # ones that are not set by setUp, or setUp will trash them.
         super(TestCaseWithMemoryTransport, self).__init__(methodName)
         self.vfs_transport_factory = default_transport
@@ -2232,51 +2237,185 @@ class ChrootedTestCase(TestCaseWithTransport):
             self.transport_readonly_server = HttpServer
 
 
-def filter_suite_by_re(suite, pattern, exclude_pattern=None,
-                       random_order=False):
+def condition_id_re(pattern):
+    """Create a condition filter which performs a re check on a test's id.
+    
+    :param pattern: A regular expression string.
+    :return: A callable that returns True if the re matches.
+    """
+    filter_re = re.compile(pattern)
+    def condition(test):
+        test_id = test.id()
+        return filter_re.search(test_id)
+    return condition
+
+
+def condition_isinstance(klass_or_klass_list):
+    """Create a condition filter which returns isinstance(param, klass).
+    
+    :return: A callable which when called with one parameter obj return the
+        result of isinstance(obj, klass_or_klass_list).
+    """
+    def condition(obj):
+        return isinstance(obj, klass_or_klass_list)
+    return condition
+
+
+def exclude_tests_by_condition(suite, condition):
+    """Create a test suite which excludes some tests from suite.
+
+    :param suite: The suite to get tests from.
+    :param condition: A callable whose result evaluates True when called with a
+        test case which should be excluded from the result.
+    :return: A suite which contains the tests found in suite that fail
+        condition.
+    """
+    result = []
+    for test in iter_suite_tests(suite):
+        if not condition(test):
+            result.append(test)
+    return TestUtil.TestSuite(result)
+
+
+def filter_suite_by_condition(suite, condition):
+    """Create a test suite by filtering another one.
+    
+    :param suite: The source suite.
+    :param condition: A callable whose result evaluates True when called with a
+        test case which should be included in the result.
+    :return: A suite which contains the tests found in suite that pass
+        condition.
+    """ 
+    result = []
+    for test in iter_suite_tests(suite):
+        if condition(test):
+            result.append(test)
+    return TestUtil.TestSuite(result)
+
+
+def filter_suite_by_re(suite, pattern, exclude_pattern=DEPRECATED_PARAMETER,
+                       random_order=DEPRECATED_PARAMETER):
     """Create a test suite by filtering another one.
     
     :param suite:           the source suite
     :param pattern:         pattern that names must match
-    :param exclude_pattern: pattern that names must not match, if any
-    :param random_order:    if True, tests in the new suite will be put in
-                            random order
+    :param exclude_pattern: A pattern that names must not match. This parameter
+        is deprecated as of bzrlib 1.0. Please use the separate function
+        exclude_tests_by_re instead.
+    :param random_order:    If True, tests in the new suite will be put in
+        random order. This parameter is deprecated as of bzrlib 1.0. Please
+        use the separate function randomize_suite instead.
     :returns: the newly created suite
     """ 
-    return sort_suite_by_re(suite, pattern, exclude_pattern,
-        random_order, False)
+    if deprecated_passed(exclude_pattern):
+        symbol_versioning.warn(
+            one_zero % "passing exclude_pattern to filter_suite_by_re",
+                DeprecationWarning, stacklevel=2)
+        if exclude_pattern is not None:
+            suite = exclude_tests_by_re(suite, exclude_pattern)
+    condition = condition_id_re(pattern)
+    result_suite = filter_suite_by_condition(suite, condition)
+    if deprecated_passed(random_order):
+        symbol_versioning.warn(
+            one_zero % "passing random_order to filter_suite_by_re",
+                DeprecationWarning, stacklevel=2)
+        if random_order:
+            result_suite = randomize_suite(result_suite)
+    return result_suite
 
 
+def exclude_tests_by_re(suite, pattern):
+    """Create a test suite which excludes some tests from suite.
+
+    :param suite: The suite to get tests from.
+    :param pattern: A regular expression string. Test ids that match this
+        pattern will be excluded from the result.
+    :return: A TestSuite that contains all the tests from suite without the
+        tests that matched pattern. The order of tests is the same as it was in
+        suite.
+    """
+    return exclude_tests_by_condition(suite, condition_id_re(pattern))
+
+
+def preserve_input(something):
+    """A helper for performing test suite transformation chains.
+
+    :param something: Anything you want to preserve.
+    :return: Something.
+    """
+    return something
+
+
+def randomize_suite(suite):
+    """Return a new TestSuite with suite's tests in random order.
+    
+    The tests in the input suite are flattened into a single suite in order to
+    accomplish this. Any nested TestSuites are removed to provide global
+    randomness.
+    """
+    tests = list(iter_suite_tests(suite))
+    random.shuffle(tests)
+    return TestUtil.TestSuite(tests)
+
+
+@deprecated_function(one_zero)
 def sort_suite_by_re(suite, pattern, exclude_pattern=None,
                      random_order=False, append_rest=True):
-    """Create a test suite by sorting another one.
+    """DEPRECATED: Create a test suite by sorting another one.
+
+    This method has been decomposed into separate helper methods that should be
+    called directly:
+     - filter_suite_by_re
+     - exclude_tests_by_re
+     - randomize_suite
+     - split_suite_by_re
     
     :param suite:           the source suite
     :param pattern:         pattern that names must match in order to go
                             first in the new suite
     :param exclude_pattern: pattern that names must not match, if any
     :param random_order:    if True, tests in the new suite will be put in
-                            random order
+                            random order (with all tests matching pattern
+                            first).
     :param append_rest:     if False, pattern is a strict filter and not
                             just an ordering directive
     :returns: the newly created suite
     """ 
-    first = []
-    second = []
-    filter_re = re.compile(pattern)
     if exclude_pattern is not None:
-        exclude_re = re.compile(exclude_pattern)
+        suite = exclude_tests_by_re(suite, exclude_pattern)
+    if random_order:
+        order_changer = randomize_suite
+    else:
+        order_changer = preserve_input
+    if append_rest:
+        suites = map(order_changer, split_suite_by_re(suite, pattern))
+        return TestUtil.TestSuite(suites)
+    else:
+        return order_changer(filter_suite_by_re(suite, pattern))
+
+
+def split_suite_by_re(suite, pattern):
+    """Split a test suite into two by a regular expression.
+    
+    :param suite: The suite to split.
+    :param pattern: A regular expression string. Test ids that match this
+        pattern will be in the first test suite returned, and the others in the
+        second test suite returned.
+    :return: A tuple of two test suites, where the first contains tests from
+        suite matching pattern, and the second contains the remainder from
+        suite. The order within each output suite is the same as it was in
+        suite.
+    """ 
+    matched = []
+    did_not_match = []
+    filter_re = re.compile(pattern)
     for test in iter_suite_tests(suite):
         test_id = test.id()
-        if exclude_pattern is None or not exclude_re.search(test_id):
-            if filter_re.search(test_id):
-                first.append(test)
-            elif append_rest:
-                second.append(test)
-    if random_order:
-        random.shuffle(first)
-        random.shuffle(second)
-    return TestUtil.TestSuite(first + second)
+        if filter_re.search(test_id):
+            matched.append(test)
+        else:
+            did_not_match.append(test)
+    return TestUtil.TestSuite(matched), TestUtil.TestSuite(did_not_match)
 
 
 def run_suite(suite, name='test', verbose=False, pattern=".*",
@@ -2318,14 +2457,20 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
             (random_seed))
         random.seed(random_seed)
     # Customise the list of tests if requested
-    if pattern != '.*' or exclude_pattern is not None or random_order:
+    if exclude_pattern is not None:
+        suite = exclude_tests_by_re(suite, exclude_pattern)
+    if random_order:
+        order_changer = randomize_suite
+    else:
+        order_changer = preserve_input
+    if pattern != '.*' or random_order:
         if matching_tests_first:
-            suite = sort_suite_by_re(suite, pattern, exclude_pattern,
-                random_order)
+            suites = map(order_changer, split_suite_by_re(suite, pattern))
+            suite = TestUtil.TestSuite(suites)
         else:
-            suite = filter_suite_by_re(suite, pattern, exclude_pattern,
-                random_order)
+            suite = order_changer(filter_suite_by_re(suite, pattern))
 
+    # Activate code coverage.
     if coverage_dir is not None:
         tracer = trace.Trace(count=1, trace=0)
         sys.settrace(tracer.globaltrace)
@@ -2532,10 +2677,6 @@ def test_suite():
     from bzrlib.tests.test_transport_implementations import TransportTestProviderAdapter
     adapter = TransportTestProviderAdapter()
     adapt_modules(test_transport_implementations, adapter, loader, suite)
-    adapt_tests(
-        ["bzrlib.tests.test_msgeditor.MsgEditorTest."
-         "test__create_temp_file_with_commit_template_in_unicode_dir"],
-        EncodingTestAdapter(), loader, suite)
     for package in packages_to_test():
         suite.addTest(package.test_suite())
     for m in MODULES_TO_TEST:
