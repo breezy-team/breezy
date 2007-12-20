@@ -171,24 +171,30 @@ class TestHttps_pycurl(TestWithTransport_pycurl, tests.TestCase):
             import pycurl
         except ImportError:
             raise tests.TestSkipped('pycurl not present')
-        # Now that we have pycurl imported, we can fake its version_info
-        # This was taken from a windows pycurl without SSL
-        # (thanks to bialix)
-        pycurl.version_info = lambda : (2,
-                                        '7.13.2',
-                                        462082,
-                                        'i386-pc-win32',
-                                        2576,
-                                        None,
-                                        0,
-                                        None,
-                                        ('ftp', 'gopher', 'telnet',
-                                         'dict', 'ldap', 'http', 'file'),
-                                        None,
-                                        0,
-                                        None)
-        self.assertRaises(errors.DependencyNotPresent, self._transport,
-                          'https://launchpad.net')
+
+        version_info_orig = pycurl.version_info
+        try:
+            # Now that we have pycurl imported, we can fake its version_info
+            # This was taken from a windows pycurl without SSL
+            # (thanks to bialix)
+            pycurl.version_info = lambda : (2,
+                                            '7.13.2',
+                                            462082,
+                                            'i386-pc-win32',
+                                            2576,
+                                            None,
+                                            0,
+                                            None,
+                                            ('ftp', 'gopher', 'telnet',
+                                             'dict', 'ldap', 'http', 'file'),
+                                            None,
+                                            0,
+                                            None)
+            self.assertRaises(errors.DependencyNotPresent, self._transport,
+                              'https://launchpad.net')
+        finally:
+            # Restore the right function
+            pycurl.version_info = version_info_orig
 
 class TestRangeHeader(tests.TestCase):
     """Test range_header method"""
