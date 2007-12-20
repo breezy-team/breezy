@@ -1395,19 +1395,17 @@ class TestProxyAuth(TestAuth):
             osutils.set_or_unset_env(name, value)
 
 
-class TestHTTPBasicAuth(TestHTTPAuth, TestCaseWithWebserver):
+class TestHTTPBasicAuth(TestWithTransport_pycurl, TestHTTPAuth,
+                        TestCaseWithWebserver):
     """Test http basic authentication scheme"""
-
-    _transport = HttpTransport_urllib
 
     def create_transport_readonly_server(self):
         return HTTPBasicAuthServer()
 
 
-class TestHTTPProxyBasicAuth(TestProxyAuth, TestCaseWithWebserver):
+class TestHTTPProxyBasicAuth(TestWithTransport_pycurl, 
+                             TestProxyAuth, TestCaseWithWebserver):
     """Test proxy basic authentication scheme"""
-
-    _transport = HttpTransport_urllib
 
     def create_transport_readonly_server(self):
         return ProxyBasicAuthServer()
@@ -1432,20 +1430,17 @@ class TestDigestAuth(object):
         self.assertEqual(2, self.server.auth_required_errors)
 
 
-class TestHTTPDigestAuth(TestHTTPAuth, TestDigestAuth, TestCaseWithWebserver):
+class TestHTTPDigestAuth(TestWithTransport_pycurl,
+                         TestHTTPAuth, TestDigestAuth, TestCaseWithWebserver):
     """Test http digest authentication scheme"""
-
-    _transport = HttpTransport_urllib
 
     def create_transport_readonly_server(self):
         return HTTPDigestAuthServer()
 
 
-class TestHTTPProxyDigestAuth(TestProxyAuth, TestDigestAuth,
-                              TestCaseWithWebserver):
+class TestHTTPProxyDigestAuth(TestWithTransport_pycurl, TestProxyAuth,
+                              TestDigestAuth, TestCaseWithWebserver):
     """Test proxy digest authentication scheme"""
-
-    _transport = HttpTransport_urllib
 
     def create_transport_readonly_server(self):
         return ProxyDigestAuthServer()
