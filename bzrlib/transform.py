@@ -1354,7 +1354,7 @@ def build_tree(tree, wt, accelerator_tree=None, hardlink=False):
         contents more quickly than tree itself, i.e. a workingtree.  tree
         will be used for cases where accelerator_tree's content is different.
     :param hardlink: If true, hard-link files to accelerator_tree, where
-        possible.  accelerator_tree must implement id2abspath, i.e. be a
+        possible.  accelerator_tree must implement abspath, i.e. be a
         working tree.
     """
     wt.lock_tree_write()
@@ -1492,7 +1492,7 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
                 continue
             pb.update('Adding file contents', count+offset, total)
             if hardlink:
-                tt.create_hardlink(accelerator_tree.id2abspath(file_id),
+                tt.create_hardlink(accelerator_tree.abspath(accelerator_path),
                                    trans_id)
             else:
                 contents = accelerator_tree.get_file(file_id, accelerator_path)
