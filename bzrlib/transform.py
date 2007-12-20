@@ -997,6 +997,7 @@ class TreeTransform(object):
         new_paths = self.new_paths()
         modified_paths = []
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        completed_new = []
         try:
             for num, (path, trans_id) in enumerate(new_paths):
                 new_entry = None
@@ -1019,7 +1020,7 @@ class TreeTransform(object):
                             self.rename_count += 1
                     if trans_id in self._new_contents:
                         modified_paths.append(full_path)
-                        del self._new_contents[trans_id]
+                        completed_new.append(trans_id)
 
                 if trans_id in self._new_id:
                     if kind is None:
@@ -1064,6 +1065,8 @@ class TreeTransform(object):
                                             new_entry))
         finally:
             child_pb.finished()
+        for trans_id in completed_new:
+            del self._new_contents[trans_id]
         return modified_paths
 
     def _set_executability(self, path, entry, trans_id):

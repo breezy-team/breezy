@@ -653,7 +653,7 @@ class NoRepositoryPresent(BzrError):
 
 class FileInWrongBranch(BzrError):
 
-    _fmt = 'File "%(path)s" in not in branch %(branch_base)s.'
+    _fmt = 'File "%(path)s" is not in branch %(branch_base)s.'
 
     def __init__(self, branch, path):
         BzrError.__init__(self)
@@ -1461,11 +1461,10 @@ class ConnectionReset(TransportError):
 
 class InvalidRange(TransportError):
 
-    _fmt = "Invalid range access in %(path)s at %(offset)s."
-    
-    def __init__(self, path, offset):
-        TransportError.__init__(self, ("Invalid range access in %s at %d"
-                                       % (path, offset)))
+    _fmt = "Invalid range access in %(path)s at %(offset)s: %(msg)s"
+
+    def __init__(self, path, offset, msg=None):
+        TransportError.__init__(self, msg)
         self.path = path
         self.offset = offset
 
@@ -1482,7 +1481,7 @@ class InvalidHttpResponse(TransportError):
 class InvalidHttpRange(InvalidHttpResponse):
 
     _fmt = "Invalid http range %(range)r for %(path)s: %(msg)s"
-    
+
     def __init__(self, path, range, msg):
         self.range = range
         InvalidHttpResponse.__init__(self, path, msg)
@@ -1491,7 +1490,7 @@ class InvalidHttpRange(InvalidHttpResponse):
 class InvalidHttpContentType(InvalidHttpResponse):
 
     _fmt = 'Invalid http Content-type "%(ctype)s" for %(path)s: %(msg)s'
-    
+
     def __init__(self, path, ctype, msg):
         self.ctype = ctype
         InvalidHttpResponse.__init__(self, path, msg)
@@ -2493,6 +2492,14 @@ class UncommittedChanges(BzrError):
         display_url = urlutils.unescape_for_display(
             tree.bzrdir.root_transport.base, 'ascii')
         BzrError.__init__(self, tree=tree, display_url=display_url)
+
+
+class MissingTemplateVariable(BzrError):
+
+    _fmt = 'Variable {%(name)s} is not available.'
+
+    def __init__(self, name):
+        self.name = name
 
 
 class UnableCreateSymlink(BzrError):

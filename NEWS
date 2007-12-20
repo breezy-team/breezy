@@ -9,10 +9,178 @@ IN DEVELOPMENT
 
   CHANGES:
    
+   * The syntax ``bzr diff branch1 branch2`` is no longer supported.
+     Use ``bzr diff branch1 --new branch2`` instead. This change has
+     been made to remove the ambiguity where ``branch2`` is in fact a
+     specific file to diff within ``branch1``.
+
+  FEATURES:
+
+   * New option to use custom template-based formats in  ``bzr version-info``.
+     (Lukáš Lalinský)
+
+  IMPROVEMENTS:
+
+   * ``bzr diff`` now sorts files in alphabetical order.  (Aaron Bentley)
+
+   * ``bzr diff`` now works on branches without working trees. Tree-less
+     branches can also be compared to each other and to working trees using
+     the new diff options ``--old`` and ``--new``. Diffing between branches,
+     with or without trees, now supports specific file filtering as well.
+     (Ian Clatworthy, #6700)
+
+   * ``bzr pack`` now orders revision texts in topological order, with newest
+     at the start of the file, promoting linear reads for ``bzr log`` and the
+     like. This partially fixes #154129. (Robert Collins)
+
+   * Merge directives now fetch prerequisites from the target branch if
+     needed.  (Aaron Bentley)
+
+   * ``reconfigure`` can now convert from repositories.  (Aaron Bentley)
+
+   * ``-l`` is now a short form for ``--limit`` in ``log``.  (Matt Nordhoff)
+
+   * ``split`` now supported, to enable splitting large trees into smaller
+     pieces.  (Aaron Bentley)
+
+  BUGFIXES:
+
+   * Fixed Unicode encoding error in ``ignored`` when the output is
+     redirected to a pipe. (Lukáš Lalinský)
+
+   * Fix traceback when sending large response bodies over the smart protocol
+     on Windows. (Andrew Bennetts, #115781)
+
+   * Transform failures no longer cause ImmortalLimbo errors (Aaron Bentley,
+     #137681)
+
+   * ``uncommit`` works even when the commit messages of revisions to be
+     removed use characters not supported in the terminal encoding.
+     (Aaron Bentley)
+
+   * When dumb http servers return whole files instead of the requested ranges,
+     read the remaining bytes by chunks to avoid overflowing network buffers.
+     (Vincent Ladeuil, #175886)
+
+   * ``reconfigure`` is able to convert trees into lightweight checkouts.
+     (Aaron Bentley)
+
+  DOCUMENTATION:
+
+   * Reference material has now be moved out of the User Guide and added
+     to the User Reference. The User Reference has gained 4 sections as
+     a result: Authenication Settings, Configuration Settings, Conflicts
+     and Hooks. All help topics are now dumped into text format in the
+     doc/en/user-reference directory for those who like browsing that
+     information in their editor. (Ian Clatworthy)
+
+  INTERNALS:
+
+    * Help topics can now be loaded from files. 
+      (Ian Clatworthy, Alexander Belchenko)
+
+    * Parent Providers should now implement ``get_parent_map`` returning a
+      dictionary instead of ``get_parents`` returning a list.
+      ``get_parents`` is now considered deprecated.  (John Arbash Meinel)
+
+    * Patience Diff now supports arbitrary python objects, as long as they
+      support ``hash()``. (John Arbash Meinel)
+
+  API BREAKS:
+
+  TESTING:
+
+   * Modules can now customise their tests by defining a ``load_tests``
+     attribute. ``pydoc bzrlib.tests.TestUtil.TestLoader.loadTestsFromModule``
+     for the documentation on this attribute. (Robert Collins)
+
+   * New helper function ``bzrlib.tests.condition_id_re`` which helps
+     filter tests based on a regular expression search on the tests id.
+     (Robert Collins)
+    
+   * New helper function ``bzrlib.tests.condition_isinstance`` which helps
+     filter tests based on class. (Robert Collins)
+    
+   * New helper function ``bzrlib.tests.exclude_suite_by_condition`` which
+     generalises the ``exclude_suite_by_re`` function. (Robert Collins)
+
+   * New helper function ``bzrlib.tests.filter_suite_by_condition`` which
+     generalises the ``filter_suite_by_re`` function. (Robert Collins)
+
+   * New helper method ``bzrlib.tests.exclude_tests_by_re`` which gives a new
+     TestSuite that does not contain tests from the input that matched a
+     regular expression. (Robert Collins)
+
+   * New helper method ``bzrlib.tests.randomize_suite`` which returns a
+     randomized copy of the input suite. (Robert Collins)
+
+   * New helper method ``bzrlib.tests.split_suite_by_re`` which splits a test
+     suite into two according to a regular expression. (Robert Collins)
+
+   * The ``exclude_pattern`` and ``random_order`` parameters to the function
+     ``bzrlib.tests.filter_suite_by_re`` have been deprecated. (Robert Collins)
+
+   * The method ``bzrlib.tests.sort_suite_by_re`` has been deprecated. It is 
+     replaced by the new helper methods added in this release. (Robert Collins)
+
+
+bzr 1.0 2007-12-14
+==================
+
+  DOCUMENTATION:
+
+   * More improvements and fixes to the User Guide.  (Ian Clatworthy)
+
+   * Add information on cherrypicking/rebasing to the User Guide.
+     (Ian Clatworthy)
+
+   * Improve bug tracker integration documentation. (Ian Clatworthy)
+
+   * Minor edits to ``Bazaar in five minutes`` from David Roberts and
+     to the rebasing section of the User Guide from Aaron Bentley.
+     (Ian Clatworthy)
+
+
+bzr 1.0rc3 2007-12-11
+=====================
+
+  CHANGES:
+   
    * If a traceback occurs, users are now asked to report the bug 
      through Launchpad (https://bugs.launchpad.net/bzr/), rather than 
      by mail to the mailing list.
      (Martin Pool)
+
+  BUGFIXES:
+
+   * Fix Makefile rules for doc generation. (Ian Clatworthy, #175207)
+
+   * Give more feedback during long http downloads by making readv deliver data
+     as it arrives for urllib, and issue more requests for pycurl. High latency
+     networks are better handled by urllib, the pycurl implementation give more
+     feedback but also incur more latency.
+     (Vincent Ladeuil, #173010)
+
+   * Implement _make_parents_provider on RemoteRepository, allowing generating
+     bundles against branches on a smart server.  (Andrew Bennetts, #147836)
+
+  DOCUMENTATION:
+
+   * Improved user guide.  (Ian Clatworthy)
+
+   * The single-page quick reference guide is now available as a PDF.
+     (Ian Clatworthy)
+
+  INTERNALS:
+
+    * readv urllib http implementation is now a real iterator above the
+      underlying socket and deliver data as soon as it arrives. 'get' still
+      wraps its output in a StringIO.
+      (Vincent Ladeuil)
+
+
+bzr 1.0rc2 2007-12-07
+=====================
 
   IMPROVEMENTS:
 
@@ -76,14 +244,10 @@ IN DEVELOPMENT
    * Fall back to showing e-mail in ``log --short/--line`` if the 
      committer/author has only e-mail. (Lukáš Lalinský, #157026)
 
-   * Implement _make_parents_provider on RemoteRepository, allowing generating
-     bundles against branches on a smart server.  (Andrew Bennetts, #147836)
-
   API BREAKS:
 
    * Deprecate not passing a ``location`` argument to commit reporters'
      ``started`` methods. (Matt Nordhoff)
-
 
 
 bzr 1.0rc1 2007-11-30

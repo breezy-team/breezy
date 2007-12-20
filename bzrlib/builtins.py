@@ -1390,10 +1390,14 @@ class cmd_init_repository(Command):
 
 
 class cmd_diff(Command):
-    """Show differences in the working tree or between revisions.
+    """Show differences in the working tree, between revisions or branches.
     
-    If files are listed, only the changes in those files are listed.
-    Otherwise, all changes for the tree are listed.
+    If no arguments are given, all changes for the current tree are listed.
+    If files are given, only the changes in those files are listed.
+    Remote and multiple branches can be compared by using the --old and
+    --new options. If not provided, the default for both is derived from
+    the first argument, if any, or the current tree if no arguments are
+    given.
 
     "bzr diff -p1" is equivalent to "bzr diff --prefix old/:new/", and
     produces patches suitable for "patch -p1".
@@ -1417,17 +1421,29 @@ class cmd_diff(Command):
 
             bzr diff -r1..2
 
+        Difference between revision 2 and revision 1 for branch xxx::
+
+            bzr diff -r1..2 xxx
+
+        Show just the differences for file NEWS::
+
+            bzr diff NEWS
+
+        Show the differences in working tree xxx for file NEWS::
+
+            bzr diff xxx/NEWS
+
+        Show the differences from branch xxx to this working tree:
+
+            bzr diff --old xxx
+
+        Show the differences between two branches for file NEWS::
+
+            bzr diff --old xxx --new yyy NEWS
+
         Same as 'bzr diff' but prefix paths with old/ and new/::
 
             bzr diff --prefix old/:new/
-
-        Show the differences between the two working trees::
-
-            bzr diff bzr.mine bzr.dev
-
-        Show just the differences for 'foo.c'::
-
-            bzr diff foo.c
     """
     # TODO: Option to use external diff command; could be GNU diff, wdiff,
     #       or a graphical diff.
@@ -1449,6 +1465,14 @@ class cmd_diff(Command):
                short_name='p',
                help='Set prefixes added to old and new filenames, as '
                     'two values separated by a colon. (eg "old/:new/").'),
+        Option('old',
+            help='Branch/tree to compare from.',
+            type=unicode,
+            ),
+        Option('new',
+            help='Branch/tree to compare to.',
+            type=unicode,
+            ),
         'revision',
         'change',
         ]
@@ -1457,8 +1481,8 @@ class cmd_diff(Command):
 
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None,
-            prefix=None):
-        from bzrlib.diff import diff_cmd_helper, show_diff_trees
+            prefix=None, old=None, new=None):
+        from bzrlib.diff import _get_trees_to_diff, show_diff_trees
 
         if (prefix is None) or (prefix == '0'):
             # diff -p0 format
@@ -1478,47 +1502,13 @@ class cmd_diff(Command):
             raise errors.BzrCommandError('bzr diff --revision takes exactly'
                                          ' one or two revision specifiers')
 
-        try:
-            tree1, file_list = internal_tree_files(file_list)
-            tree2 = None
-            b = None
-            b2 = None
-        except errors.FileInWrongBranch:
-            if len(file_list) != 2:
-                raise errors.BzrCommandError("Files are in different branches")
-
-            tree1, file1 = WorkingTree.open_containing(file_list[0])
-            tree2, file2 = WorkingTree.open_containing(file_list[1])
-            if file1 != "" or file2 != "":
-                # FIXME diff those two files. rbc 20051123
-                raise errors.BzrCommandError("Files are in different branches")
-            file_list = None
-        except errors.NotBranchError:
-            if (revision is not None and len(revision) == 2
-                and not revision[0].needs_branch()
-                and not revision[1].needs_branch()):
-                # If both revision specs include a branch, we can
-                # diff them without needing a local working tree
-                tree1, tree2 = None, None
-            else:
-                raise
-
-        if tree2 is not None:
-            if revision is not None:
-                # FIXME: but there should be a clean way to diff between
-                # non-default versions of two trees, it's not hard to do
-                # internally...
-                raise errors.BzrCommandError(
-                        "Sorry, diffing arbitrary revisions across branches "
-                        "is not implemented yet")
-            return show_diff_trees(tree1, tree2, sys.stdout, 
-                                   specific_files=file_list,
-                                   external_diff_options=diff_options,
-                                   old_label=old_label, new_label=new_label)
-
-        return diff_cmd_helper(tree1, file_list, diff_options,
-                               revision_specs=revision,
-                               old_label=old_label, new_label=new_label)
+        old_tree, new_tree, specific_files, extra_trees = \
+                _get_trees_to_diff(file_list, revision, old, new)
+        return show_diff_trees(old_tree, new_tree, sys.stdout, 
+                               specific_files=specific_files,
+                               external_diff_options=diff_options,
+                               old_label=old_label, new_label=new_label,
+                               extra_trees=extra_trees)
 
 
 class cmd_deleted(Command):
@@ -1666,6 +1656,7 @@ class cmd_log(Command):
                         'regular expression.',
                    type=str),
             Option('limit',
+                   short_name='l',
                    help='Limit the output to the first N revisions.',
                    argname='N',
                    type=_parse_limit),
@@ -2009,7 +2000,9 @@ class cmd_ignored(Command):
     """List ignored files and the patterns that matched them.
     """
 
+    encoding_type = 'replace'
     _see_also = ['ignore']
+
     @display_command
     def run(self):
         tree = WorkingTree.open_containing(u'.')[0]
@@ -2020,7 +2013,7 @@ class cmd_ignored(Command):
                     continue
                 ## XXX: Slightly inefficient since this was already calculated
                 pat = tree.is_ignored(path)
-                print '%-50s %s' % (path, pat)
+                self.outf.write('%-50s %s\n' % (path, pat))
         finally:
             tree.unlock()
 
@@ -2231,7 +2224,7 @@ class cmd_commit(Command):
                     "files in the working tree."),
              ListOption('fixes', type=str,
                     help="Mark a bug as being fixed by this revision."),
-             Option('author', type=str,
+             Option('author', type=unicode,
                     help="Set the author's name, if it's different "
                          "from the committer."),
              Option('local',
@@ -2605,7 +2598,7 @@ class cmd_selftest(Command):
                      Option('strict', help='Fail on missing dependencies or '
                             'known failures.'),
                      Option('coverage', type=str, argname="DIRECTORY",
-                            help='Generate line coverage report in this'
+                            help='Generate line coverage report in this '
                                  'directory.'),
                      ]
     encoding_type = 'replace'
@@ -3576,6 +3569,7 @@ class cmd_uncommit(Command):
                     Option('force', help='Say yes to all questions.')]
     takes_args = ['location?']
     aliases = []
+    encoding_type = 'replace'
 
     def run(self, location=None,
             dry_run=False, verbose=False,
@@ -3807,22 +3801,20 @@ class cmd_join(Command):
 
 
 class cmd_split(Command):
-    """Split a tree into two trees.
+    """Split a subdirectory of a tree into a separate tree.
 
-    This command is for experimental use only.  It requires the target tree
-    to be in dirstate-with-subtree format, which cannot be converted into
-    earlier formats.
+    This command will produce a target tree in a format that supports
+    rich roots, like 'rich-root' or 'rich-root-pack'.  These formats cannot be
+    converted into earlier formats like 'dirstate-tags'.
 
     The TREE argument should be a subdirectory of a working tree.  That
     subdirectory will be converted into an independent tree, with its own
     branch.  Commits in the top-level tree will not apply to the new subtree.
-    If you want that behavior, do "bzr join --reference TREE".
     """
 
-    _see_also = ['join']
+    # join is not un-hidden yet
+    #_see_also = ['join']
     takes_args = ['tree']
-
-    hidden = True
 
     def run(self, tree):
         containing_tree, subdir = WorkingTree.open_containing(tree)
@@ -3833,7 +3825,6 @@ class cmd_split(Command):
             containing_tree.extract(sub_id)
         except errors.RootNotRich:
             raise errors.UpgradeRequired(containing_tree.branch.base)
-
 
 
 class cmd_merge_directive(Command):
@@ -4022,17 +4013,17 @@ class cmd_send(Command):
     def _run(self, submit_branch, revision, public_branch, remember, format,
              no_bundle, no_patch, output, from_, mail_to, message):
         from bzrlib.revision import NULL_REVISION
+        branch = Branch.open_containing(from_)[0]
         if output is None:
             outfile = StringIO()
         elif output == '-':
             outfile = self.outf
         else:
             outfile = open(output, 'wb')
+        # we may need to write data into branch's repository to calculate
+        # the data to send.
+        branch.lock_write()
         try:
-            branch = Branch.open_containing(from_)[0]
-            # we may need to write data into branch's repository to calculate
-            # the data to send.
-            branch.lock_write()
             if output is None:
                 config = branch.get_config()
                 if mail_to is None:

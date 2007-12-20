@@ -234,6 +234,10 @@ class _CoalescedOffset(object):
         return cmp((self.start, self.length, self.ranges),
                    (other.start, other.length, other.ranges))
 
+    def __repr__(self):
+        return '%s(%r, %r, %r)' % (self.__class__.__name__,
+            self.start, self.length, self.ranges)
+
 
 class LateReadError(object):
     """A helper for transports which pretends to be a readable file.
@@ -788,7 +792,7 @@ class Transport(object):
         return offsets
 
     @staticmethod
-    def _coalesce_offsets(offsets, limit, fudge_factor):
+    def _coalesce_offsets(offsets, limit=0, fudge_factor=0, max_size=0):
         """Yield coalesced offsets.
 
         With a long list of neighboring requests, combine them
@@ -797,13 +801,21 @@ class Transport(object):
         Turns  [(15, 10), (25, 10)] => [(15, 20, [(0, 10), (10, 10)])]
 
         :param offsets: A list of (start, length) pairs
-        :param limit: Only combine a maximum of this many pairs
-                      Some transports penalize multiple reads more than
-                      others, and sometimes it is better to return early.
-                      0 means no limit
+
+        :param limit: Only combine a maximum of this many pairs Some transports
+                penalize multiple reads more than others, and sometimes it is
+                better to return early.
+                0 means no limit
+
         :param fudge_factor: All transports have some level of 'it is
                 better to read some more data and throw it away rather 
                 than seek', so collapse if we are 'close enough'
+
+        :param max_size: Create coalesced offsets no bigger than this size.
+                When a single offset is bigger than 'max_size', it will keep
+                its size and be alone in the coalesced offset.
+                0 means no maximum size.
+
         :return: yield _CoalescedOffset objects, which have members for where
                 to start, how much to read, and how to split those 
                 chunks back up
@@ -813,10 +825,11 @@ class Transport(object):
 
         for start, size in offsets:
             end = start + size
-            if (last_end is not None 
+            if (last_end is not None
                 and start <= last_end + fudge_factor
                 and start >= cur.start
-                and (limit <= 0 or len(cur.ranges) < limit)):
+                and (limit <= 0 or len(cur.ranges) < limit)
+                and (max_size <= 0 or end - cur.start <= max_size)):
                 cur.length = end - cur.start
                 cur.ranges.append((start-cur.start, size))
             else:

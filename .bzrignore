@@ -46,3 +46,5 @@ doc/en/user-reference/bzr_man.txt
 # built extension modules
 bzrlib/_*_c.so
 bzrlib/_*_c.pyd
+# generated help topics
+doc/en/user-reference/*.txt

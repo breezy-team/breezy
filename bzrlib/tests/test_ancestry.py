@@ -23,7 +23,7 @@ from bzrlib.tests import TestCaseWithMemoryTransport
 from bzrlib.branch import Branch
 from bzrlib.branchbuilder import BranchBuilder
 from bzrlib.revision import is_ancestor
-from bzrlib.symbol_versioning import zero_ninetythree
+from bzrlib.symbol_versioning import one_zero
 
 
 class TestAncestry(TestCaseWithMemoryTransport):
@@ -45,7 +45,7 @@ class TestAncestry(TestCaseWithMemoryTransport):
 
     def test_none_is_ancestor_empty_branch(self):
         branch = self.make_branch('.')
-        self.assertTrue(self.applyDeprecated(zero_ninetythree,
+        self.assertTrue(self.applyDeprecated(one_zero,
                         is_ancestor, 'null:', 'null:', branch))
 
     def test_none_is_ancestor_non_empty_branch(self):
@@ -54,11 +54,11 @@ class TestAncestry(TestCaseWithMemoryTransport):
         branch = builder.get_branch()
         branch.lock_read()
         self.addCleanup(branch.unlock)
-        self.assertTrue(self.applyDeprecated(zero_ninetythree,
+        self.assertTrue(self.applyDeprecated(one_zero,
                         is_ancestor, 'null:', 'null:', branch))
-        self.assertTrue(self.applyDeprecated(zero_ninetythree,
+        self.assertTrue(self.applyDeprecated(one_zero,
                         is_ancestor, rev_id, 'null:',  branch))
-        self.assertFalse(self.applyDeprecated(zero_ninetythree,
+        self.assertFalse(self.applyDeprecated(one_zero,
                          is_ancestor, 'null:', rev_id, branch))
 
 
