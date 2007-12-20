@@ -522,18 +522,15 @@ class ChrootedTests(TestCaseWithTransport):
                          local_branch_path(branch))
         self.assertIs(tree.bzrdir, branch.bzrdir)
         # opening from non-local should not return the tree
-        tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(
-            self.get_readonly_url('topdir/foo'))
+        tree, branch = bzrdir.BzrDir.open_tree_or_branch(
+            self.get_readonly_url('topdir'))
         self.assertEqual(None, tree)
-        self.assertEqual('foo', relpath)
         # without a tree:
         self.make_branch('topdir/foo')
-        tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(
-            'topdir/foo')
+        tree, branch = bzrdir.BzrDir.open_tree_or_branch('topdir/foo')
         self.assertIs(tree, None)
         self.assertEqual(os.path.realpath('topdir/foo'),
                          local_branch_path(branch))
-        self.assertEqual('', relpath)
 
     def test_open_from_transport(self):
         # transport pointing at bzrdir should give a bzrdir with root transport
