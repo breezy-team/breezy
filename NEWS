@@ -40,6 +40,9 @@ IN DEVELOPMENT
 
    * ``-l`` is now a short form for ``--limit`` in ``log``.  (Matt Nordhoff)
 
+   * ``merge`` now warns when merge directives cause cherrypicks.
+     (Aaron Bentley)
+
    * ``split`` now supported, to enable splitting large trees into smaller
      pieces.  (Aaron Bentley)
 

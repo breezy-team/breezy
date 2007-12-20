@@ -301,9 +301,10 @@ class TestMerge(ExternalBase):
         target.commit('empty commit')
         self.write_directive('directive', source.branch, 'target', 'rev2',
                              'rev1')
-        self.run_bzr('merge -d target directive')
+        out, err = self.run_bzr('merge -d target directive')
         self.failIfExists('target/a')
         self.failUnlessExists('target/b')
+        self.assertContainsRe(err, 'Performing cherrypick')
 
     def write_directive(self, filename, source, target, revision_id,
                         base_revision_id=None, mangle_patch=False):
