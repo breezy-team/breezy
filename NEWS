@@ -25,6 +25,9 @@ IN DEVELOPMENT
      to speed up the process.  For checkout, this requires the new
      --files-from flag.  (Aaron Bentley)
 
+   * ``branch`` and ``checkout`` can hard-link working tree files, which is
+     faster and saves space.  (Aaron Bentley)
+
    * ``bzr diff`` now sorts files in alphabetical order.  (Aaron Bentley)
 
    * ``bzr diff`` now works on branches without working trees. Tree-less

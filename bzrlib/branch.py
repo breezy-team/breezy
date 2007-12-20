@@ -757,7 +757,8 @@ class Branch(object):
         return format
 
     def create_checkout(self, to_location, revision_id=None,
-                        lightweight=False, accelerator_tree=None):
+                        lightweight=False, accelerator_tree=None,
+                        hardlink=False):
         """Create a checkout of a branch.
         
         :param to_location: The url to produce the checkout at
@@ -768,6 +769,8 @@ class Branch(object):
             contents more quickly than the revision tree, i.e. a workingtree.
             The revision tree will be used for cases where accelerator_tree's
             content is different.
+        :param hardlink: If true, hard-link files from accelerator_tree,
+            where possible.
         :return: The tree of the created checkout
         """
         t = transport.get_transport(to_location)
@@ -788,7 +791,8 @@ class Branch(object):
             from_branch=None
         tree = checkout.create_workingtree(revision_id,
                                            from_branch=from_branch,
-                                           accelerator_tree=accelerator_tree)
+                                           accelerator_tree=accelerator_tree,
+                                           hardlink=hardlink)
         basis_tree = tree.basis_tree()
         basis_tree.lock_read()
         try:

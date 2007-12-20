@@ -382,7 +382,7 @@ class BzrDir(object):
         return bzrdir.create_workingtree()
 
     def create_workingtree(self, revision_id=None, from_branch=None,
-        accelerator_tree=None):
+        accelerator_tree=None, hardlink=False):
         """Create a working tree at this BzrDir.
         
         :param revision_id: create it as of this revision id.
@@ -816,7 +816,7 @@ class BzrDir(object):
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
                recurse='down', possible_transports=None,
-               accelerator_tree=None):
+               accelerator_tree=None, hardlink=False):
         """Create a copy of this bzrdir prepared for use as a new line of
         development.
 
@@ -833,6 +833,8 @@ class BzrDir(object):
             contents more quickly than the revision tree, i.e. a workingtree.
             The revision tree will be used for cases where accelerator_tree's
             content is different.
+        :param hardlink: If true, hard-link files from accelerator_tree,
+            where possible.
         """
         target_transport = get_transport(url, possible_transports)
         target_transport.ensure_base()
@@ -877,7 +879,8 @@ class BzrDir(object):
             result.create_branch()
         if isinstance(target_transport, LocalTransport) and (
             result_repo is None or result_repo.make_working_trees()):
-            wt = result.create_workingtree(accelerator_tree=accelerator_tree)
+            wt = result.create_workingtree(accelerator_tree=accelerator_tree,
+                hardlink=hardlink)
             wt.lock_write()
             try:
                 if wt.path2id('') is None:
@@ -972,7 +975,7 @@ class BzrDirPreSplitOut(BzrDir):
         raise errors.UnsupportedOperation(self.destroy_repository, self)
 
     def create_workingtree(self, revision_id=None, from_branch=None,
-                           accelerator_tree=None):
+                           accelerator_tree=None, hardlink=False):
         """See BzrDir.create_workingtree."""
         # this looks buggy but is not -really-
         # because this format creates the workingtree when the bzrdir is
@@ -1046,7 +1049,8 @@ class BzrDirPreSplitOut(BzrDir):
         return format.open(self, _found=True)
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
-               possible_transports=None, accelerator_tree=None):
+               possible_transports=None, accelerator_tree=None,
+               hardlink=False):
         """See BzrDir.sprout()."""
         from bzrlib.workingtree import WorkingTreeFormat2
         self._make_tail(url)
@@ -1061,7 +1065,8 @@ class BzrDirPreSplitOut(BzrDir):
             pass
         # we always want a working tree
         WorkingTreeFormat2().initialize(result,
-                                        accelerator_tree=accelerator_tree)
+                                        accelerator_tree=accelerator_tree,
+                                        hardlink=hardlink)
         return result
 
 
@@ -1156,11 +1161,11 @@ class BzrDirMeta1(BzrDir):
         self.transport.delete_tree('repository')
 
     def create_workingtree(self, revision_id=None, from_branch=None,
-                           accelerator_tree=None):
+                           accelerator_tree=None, hardlink=False):
         """See BzrDir.create_workingtree."""
         return self._format.workingtree_format.initialize(
             self, revision_id, from_branch=from_branch,
-            accelerator_tree=accelerator_tree)
+            accelerator_tree=accelerator_tree, hardlink=hardlink)
 
     def destroy_workingtree(self):
         """See BzrDir.destroy_workingtree."""
