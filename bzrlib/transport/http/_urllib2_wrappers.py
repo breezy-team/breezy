@@ -1037,7 +1037,7 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         contains all the needed parts.
 
         Also, hhtp and proxy AuthHandlers present different prompts to the
-        user. The daughter classes hosuld implements a public
+        user. The daughter classes should implements a public
         build_password_prompt using this method.
         """
         prompt = '%s' % auth['protocol'].upper() + ' %(user)s@%(host)s'

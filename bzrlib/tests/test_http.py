@@ -1321,7 +1321,7 @@ class TestAuth(object):
         self.assertEquals(expected_prompt, actual_prompt)
 
     def test_no_prompt_for_password_when_using_auth_config(self):
-        user =' joe'
+        user ='joe'
         password = 'foo'
         stdin_content = 'bar\n'  # Not the right password
         self.server.add_user(user, password)
@@ -1395,17 +1395,19 @@ class TestProxyAuth(TestAuth):
             osutils.set_or_unset_env(name, value)
 
 
-class TestHTTPBasicAuth(TestWithTransport_pycurl, TestHTTPAuth,
-                        TestCaseWithWebserver):
+class TestHTTPBasicAuth(TestHTTPAuth, TestCaseWithWebserver):
     """Test http basic authentication scheme"""
+
+    _transport = HttpTransport_urllib
 
     def create_transport_readonly_server(self):
         return HTTPBasicAuthServer()
 
 
-class TestHTTPProxyBasicAuth(TestWithTransport_pycurl, 
-                             TestProxyAuth, TestCaseWithWebserver):
+class TestHTTPProxyBasicAuth(TestProxyAuth, TestCaseWithWebserver):
     """Test proxy basic authentication scheme"""
+
+    _transport = HttpTransport_urllib
 
     def create_transport_readonly_server(self):
         return ProxyBasicAuthServer()
@@ -1430,18 +1432,63 @@ class TestDigestAuth(object):
         self.assertEqual(2, self.server.auth_required_errors)
 
 
-class TestHTTPDigestAuth(TestWithTransport_pycurl,
-                         TestHTTPAuth, TestDigestAuth, TestCaseWithWebserver):
+class TestHTTPDigestAuth(TestHTTPAuth, TestDigestAuth, TestCaseWithWebserver):
     """Test http digest authentication scheme"""
+
+    _transport = HttpTransport_urllib
 
     def create_transport_readonly_server(self):
         return HTTPDigestAuthServer()
 
 
-class TestHTTPProxyDigestAuth(TestWithTransport_pycurl, TestProxyAuth,
-                              TestDigestAuth, TestCaseWithWebserver):
+class TestHTTPProxyDigestAuth(TestProxyAuth, TestDigestAuth,
+                              TestCaseWithWebserver):
     """Test proxy digest authentication scheme"""
+
+    _transport = HttpTransport_urllib
 
     def create_transport_readonly_server(self):
         return ProxyDigestAuthServer()
+
+
+class TestAuth_pycurl(object):
+    "Tests that can't be applied to pycurl."""
+
+    def test_prompt_for_password(self):
+        raise tests.KnownFailure(
+            'pycurl cannot prompt, it handles auth by embedding'
+            ' user:pass in urls only')
+
+    def test_no_prompt_for_password_when_using_auth_config(self):
+        raise tests.KnownFailure(
+            'pycurl does not support authentication.conf'
+            ' since it cannot prompt')
+
+
+class TestHTTPBasicAuth_pycurl(TestWithTransport_pycurl, TestAuth_pycurl,
+                               TestHTTPBasicAuth):
+     """Test http basic authentication scheme for pycurl"""
+
+
+class TestHTTPProxyBasicAuth_pycurl(TestWithTransport_pycurl, TestAuth_pycurl,
+                                    TestHTTPProxyBasicAuth):
+     """Test proxy basic authentication scheme for pycurl"""
+
+
+class TestHTTPDigestAuth_pycurl(TestWithTransport_pycurl, TestAuth_pycurl,
+                                TestHTTPDigestAuth):
+     """Test http digest authentication scheme for pycurl"""
+
+     def test_changing_nonce(self):
+         raise tests.KnownFailure(
+             'pycurl does not handle a nonce change')
+
+
+class TestHTTPProxyDigestAuth_pycurl(TestWithTransport_pycurl, TestAuth_pycurl,
+                                     TestHTTPProxyDigestAuth):
+     """Test http digest authentication scheme for pycurl"""
+
+     def test_changing_nonce(self):
+         raise tests.KnownFailure(
+             'pycurl does not handle a nonce change')
 

@@ -114,15 +114,6 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         else:
             self._range_hint = 'multi'
 
-    def _remote_path(self, relpath):
-        """Produce absolute path, adjusting protocol."""
-        relative = urlutils.unescape(relpath).encode('utf-8')
-        path = self._combine_paths(self._path, relative)
-        return self._unsplit_url(self._unqualified_scheme,
-                                 self._user, self._password,
-                                 self._host, self._port,
-                                 path)
-
     def has(self, relpath):
         raise NotImplementedError("has() is abstract on %r" % self)
 
@@ -150,6 +141,24 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         :returns: (http_code, result_file)
         """
         raise NotImplementedError(self._get)
+
+    def _remote_path(self, relpath):
+        """See ConnectedTransport._remote_path.
+
+        user and passwords are not embedded in the path provided to the server.
+        """
+        relative = urlutils.unescape(relpath).encode('utf-8')
+        path = self._combine_paths(self._path, relative)
+        return self._unsplit_url(self._unqualified_scheme,
+                                 None, None, self._host, self._port, path)
+
+    def _create_auth(self):
+        """Returns a dict returning the credentials provided at build time."""
+        auth = dict(host=self._host, port=self._port,
+                    user=self._user, password=self._password,
+                    protocol=self._unqualified_scheme,
+                    path=self._path)
+        return auth
 
     def get_request(self):
         return SmartClientHTTPMediumRequest(self)
