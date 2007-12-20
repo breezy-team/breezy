@@ -94,7 +94,8 @@ class SampleTreeFormat(workingtree.WorkingTreeFormat):
         """See WorkingTreeFormat.get_format_string()."""
         return "Sample tree format."
 
-    def initialize(self, a_bzrdir, revision_id=None, from_branch=None):
+    def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
+                   accelerator_tree=None):
         """Sample branches cannot be created."""
         t = a_bzrdir.get_workingtree_transport(self)
         t.put_bytes('format', self.get_format_string())

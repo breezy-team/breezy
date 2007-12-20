@@ -874,7 +874,8 @@ class cmd_branch(Command):
             raise errors.BzrCommandError(
                 'bzr branch --revision takes exactly 1 revision value')
 
-        br_from = Branch.open(from_location)
+        accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
+            from_location)
         br_from.lock_read()
         try:
             if len(revision) == 1 and revision[0] is not None:
@@ -902,7 +903,8 @@ class cmd_branch(Command):
             try:
                 # preserve whatever source format we have.
                 dir = br_from.bzrdir.sprout(to_transport.base, revision_id,
-                                            possible_transports=[to_transport])
+                                            possible_transports=[to_transport],
+                                            accelerator_tree=accelerator_tree)
                 branch = dir.open_branch()
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
@@ -947,11 +949,17 @@ class cmd_checkout(Command):
                                  "common operations like diff and status without "
                                  "such access, and also support local commits."
                             ),
+                     Option('files-from',
+                            help="Get file contents from this tree.", type=str)
                      ]
     aliases = ['co']
 
     def run(self, branch_location=None, to_location=None, revision=None,
-            lightweight=False):
+            lightweight=False, files_from=None):
+        if files_from is not None:
+            accelerator_tree = WorkingTree.open(files_from)
+        else:
+            accelerator_tree = None
         if revision is None:
             revision = [None]
         elif len(revision) > 1:
@@ -978,7 +986,8 @@ class cmd_checkout(Command):
             except errors.NoWorkingTree:
                 source.bzrdir.create_workingtree(revision_id)
                 return
-        source.create_checkout(to_location, revision_id, lightweight)
+        source.create_checkout(to_location, revision_id, lightweight,
+                               accelerator_tree)
 
 
 class cmd_renames(Command):
