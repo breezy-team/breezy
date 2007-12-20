@@ -937,6 +937,9 @@ class TestAuth(http_utils.TestCaseWithWebserver):
             server = http_utils.HTTPDigestAuthServer()
         return server
 
+    def _testing_pycurl(self):
+        return pycurl_present and self._transport == PyCurlTransport
+
     def get_user_url(self, user=None, password=None):
         """Build an url embedding user and password"""
         url = '%s://' % self.server._url_protocol
@@ -959,6 +962,10 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         self.assertEqual(1, self.server.auth_required_errors)
 
     def test_empty_pass(self):
+        if self._testing_pycurl() and self._proxy:
+            raise tests.KnownFailure(
+                'some versions of pycurl does not handle empty proxy passwords')
+
         self.server.add_user('joe', '')
         t = self.get_user_transport('joe', '')
         self.assertEqual('contents of a\n', t.get('a').read())
@@ -990,6 +997,11 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         self.assertEqual(2, self.server.auth_required_errors)
 
     def test_prompt_for_password(self):
+        if self._testing_pycurl():
+            raise tests.TestNotApplicable(
+                'pycurl cannot prompt, it handles auth by embedding'
+                ' user:pass in urls only')
+
         self.server.add_user('joe', 'foo')
         t = self.get_user_transport('joe', None)
         stdout = tests.StringIOWrapper()
@@ -1017,6 +1029,11 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         self.assertEquals(expected_prompt, actual_prompt)
 
     def test_no_prompt_for_password_when_using_auth_config(self):
+        if self._testing_pycurl():
+            raise tests.TestNotApplicable(
+                'pycurl does not support authentication.conf'
+                ' since it cannot prompt')
+
         user =' joe'
         password = 'foo'
         stdin_content = 'bar\n'  # Not the right password
@@ -1078,4 +1095,10 @@ class TestProxyAuth(TestAuth):
         for name, value in self._old_env.iteritems():
             osutils.set_or_unset_env(name, value)
 
+    def test_empty_pass(self):
+        if self._testing_pycurl():
+            import pycurl
+            if pycurl.version_info()[1] < '7.16.0':
+                raise tests.KnownFailure(
+                    'pycurl < 7.16.0 does not handle empty proxy passwords')
 
