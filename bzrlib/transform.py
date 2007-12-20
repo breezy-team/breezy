@@ -427,6 +427,18 @@ class TreeTransform(object):
         if typefunc(mode):
             os.chmod(self._limbo_name(trans_id), mode)
 
+    def create_hardlink(self, path, trans_id):
+        """Schedule creation of a hard link"""
+        name = self._limbo_name(trans_id)
+        os.link(path, name)
+        try:
+            unique_add(self._new_contents, trans_id, 'file')
+        except:
+            # Clean up the file, it never got registered so
+            # TreeTransform.finalize() won't clean it up.
+            os.unlink(name)
+            raise
+
     def create_directory(self, trans_id):
         """Schedule creation of a new directory.
         

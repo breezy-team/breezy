@@ -850,6 +850,13 @@ def has_symlinks():
         return False
 
 
+def has_hardlinks():
+    if getattr(os, 'link', None) is not None:
+        return True
+    else:
+        return False
+
+
 def contains_whitespace(s):
     """True if there are any whitespace characters in s."""
     # string.whitespace can include '\xa0' in certain locales, because it is

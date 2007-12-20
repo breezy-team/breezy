@@ -37,6 +37,7 @@ from bzrlib.osutils import file_kind, pathjoin
 from bzrlib.merge import Merge3Merger
 from bzrlib.tests import (
     CaseInsensitiveFilesystemFeature,
+    HardlinkFeature,
     SymlinkFeature,
     TestCase,
     TestCaseInTempDir,
@@ -127,6 +128,21 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         # is it safe to finalize repeatedly?
         transform.finalize()
         transform.finalize()
+
+    def test_hardlink(self):
+        self.requireFeature(HardlinkFeature)
+        transform, root = self.get_transform()
+        transform.new_file('file1', root, 'contents')
+        transform.apply()
+        target = self.make_branch_and_tree('target')
+        target_transform = TreeTransform(target)
+        trans_id = target_transform.create_path('file1', target_transform.root)
+        target_transform.create_hardlink(self.wt.abspath('file1'), trans_id)
+        target_transform.apply()
+        self.failUnlessExists('target/file1')
+        source_stat = os.stat(self.wt.abspath('file1'))
+        target_stat = os.stat('target/file1')
+        self.assertEqual(source_stat, target_stat)
 
     def test_convenience(self):
         transform, root = self.get_transform()
