@@ -1515,8 +1515,14 @@ class TestBuildTree(tests.TestCaseWithTransport):
         source.lock_read()
         self.addCleanup(source.unlock)
         target = self.make_branch_and_tree('target')
-        build_tree(source.basis_tree(), target, source)
+        revision_tree = source.basis_tree()
+        revision_tree.lock_read()
+        self.addCleanup(revision_tree.unlock)
+        build_tree(revision_tree, target, source)
         self.assertEqual(['file1-id'], calls)
+        target.lock_read()
+        self.addCleanup(target.unlock)
+        self.assertEqual([], list(target._iter_changes(revision_tree)))
 
     def test_build_tree_accelerator_tree_missing_file(self):
         source = self.make_branch_and_tree('source')
@@ -1527,7 +1533,13 @@ class TestBuildTree(tests.TestCaseWithTransport):
         os.unlink('source/file1')
         source.remove(['file2'])
         target = self.make_branch_and_tree('target')
-        build_tree(source.basis_tree(), target, source)
+        revision_tree = source.basis_tree()
+        revision_tree.lock_read()
+        self.addCleanup(revision_tree.unlock)
+        build_tree(revision_tree, target, source)
+        target.lock_read()
+        self.addCleanup(target.unlock)
+        self.assertEqual([], list(target._iter_changes(revision_tree)))
 
     def test_build_tree_accelerator_wrong_kind(self):
         source = self.make_branch_and_tree('source')
@@ -1548,8 +1560,14 @@ class TestBuildTree(tests.TestCaseWithTransport):
         source.lock_read()
         self.addCleanup(source.unlock)
         target = self.make_branch_and_tree('target')
-        build_tree(source.basis_tree(), target, source)
+        revision_tree = source.basis_tree()
+        revision_tree.lock_read()
+        self.addCleanup(revision_tree.unlock)
+        build_tree(revision_tree, target, source)
         self.assertEqual([], calls)
+        target.lock_read()
+        self.addCleanup(target.unlock)
+        self.assertEqual([], list(target._iter_changes(revision_tree)))
 
 
 class MockTransform(object):
