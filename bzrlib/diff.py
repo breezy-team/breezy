@@ -38,7 +38,7 @@ from bzrlib import (
 
 from bzrlib.symbol_versioning import (
         deprecated_function,
-        zero_ninetythree,
+        one_zero,
         )
 from bzrlib.trace import mutter, warning
 
@@ -272,7 +272,7 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
                         new_abspath, e)
 
 
-@deprecated_function(zero_ninetythree)
+@deprecated_function(one_zero)
 def diff_cmd_helper(tree, specific_files, external_diff_options, 
                     old_revision_spec=None, new_revision_spec=None,
                     revision_specs=None,
@@ -813,45 +813,52 @@ class DiffTree(object):
         """
         # TODO: Generation of pseudo-diffs for added/deleted files could
         # be usefully made into a much faster special case.
-
-        delta = self.new_tree.changes_from(self.old_tree,
-            specific_files=specific_files,
-            extra_trees=extra_trees, require_versioned=True)
-
+        iterator = self.new_tree._iter_changes(self.old_tree,
+                                               specific_files=specific_files,
+                                               extra_trees=extra_trees,
+                                               require_versioned=True)
         has_changes = 0
-        for path, file_id, kind in delta.removed:
-            has_changes = 1
-            path_encoded = path.encode(self.path_encoding, "replace")
-            self.to_file.write("=== removed %s '%s'\n" % (kind, path_encoded))
-            self.diff(file_id, path, path)
-
-        for path, file_id, kind in delta.added:
-            has_changes = 1
-            path_encoded = path.encode(self.path_encoding, "replace")
-            self.to_file.write("=== added %s '%s'\n" % (kind, path_encoded))
-            self.diff(file_id, path, path)
-        for (old_path, new_path, file_id, kind,
-             text_modified, meta_modified) in delta.renamed:
-            has_changes = 1
-            prop_str = get_prop_change(meta_modified)
-            oldpath_encoded = old_path.encode(self.path_encoding, "replace")
-            newpath_encoded = new_path.encode(self.path_encoding, "replace")
-            self.to_file.write("=== renamed %s '%s' => '%s'%s\n" % (kind,
-                                oldpath_encoded, newpath_encoded, prop_str))
-            if text_modified:
-                self.diff(file_id, old_path, new_path)
-        for path, file_id, kind, text_modified, meta_modified in\
-            delta.modified:
-            has_changes = 1
-            prop_str = get_prop_change(meta_modified)
-            path_encoded = path.encode(self.path_encoding, "replace")
-            self.to_file.write("=== modified %s '%s'%s\n" % (kind,
-                                path_encoded, prop_str))
-            # The file may be in a different location in the old tree (because
-            # the containing dir was renamed, but the file itself was not)
-            if text_modified:
-                old_path = self.old_tree.id2path(file_id)
-                self.diff(file_id, old_path, path)
+        def changes_key(change):
+            old_path, new_path = change[1]
+            path = new_path
+            if path is None:
+                path = old_path
+            return path
+        def get_encoded_path(path):
+            if path is not None:
+                return path.encode(self.path_encoding, "replace")
+        for (file_id, paths, changed_content, versioned, parent, name, kind,
+             executable) in sorted(iterator, key=changes_key):
+            if parent == (None, None):
+                continue
+            oldpath, newpath = paths
+            oldpath_encoded = get_encoded_path(paths[0])
+            newpath_encoded = get_encoded_path(paths[1])
+            old_present = (kind[0] is not None and versioned[0])
+            new_present = (kind[1] is not None and versioned[1])
+            renamed = (parent[0], name[0]) != (parent[1], name[1])
+            prop_str = get_prop_change(executable[0] != executable[1])
+            if (old_present, new_present) == (True, False):
+                self.to_file.write("=== removed %s '%s'\n" %
+                                   (kind[0], oldpath_encoded))
+                newpath = oldpath
+            elif (old_present, new_present) == (False, True):
+                self.to_file.write("=== added %s '%s'\n" %
+                                   (kind[1], newpath_encoded))
+                oldpath = newpath
+            elif renamed:
+                self.to_file.write("=== renamed %s '%s' => '%s'%s\n" %
+                    (kind[0], oldpath_encoded, newpath_encoded, prop_str))
+            else:
+                # if it was produced by _iter_changes, it must be
+                # modified *somehow*, either content or execute bit.
+                self.to_file.write("=== modified %s '%s'%s\n" % (kind[0],
+                                   newpath_encoded, prop_str))
+            if changed_content:
+                self.diff(file_id, oldpath, newpath)
+                has_changes = 1
+            if renamed:
+                has_changes = 1
         return has_changes
 
     def diff(self, file_id, old_path, new_path):

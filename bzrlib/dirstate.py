@@ -250,7 +250,7 @@ class DirState(object):
 
     A dirstate is a specialised data structure for managing local working
     tree state information. Its not yet well defined whether it is platform
-    specific, and if it is how we detect/parameterise that.
+    specific, and if it is how we detect/parameterize that.
 
     Dirstates use the usual lock_write, lock_read and unlock mechanisms.
     Unlike most bzr disk formats, DirStates must be locked for reading, using

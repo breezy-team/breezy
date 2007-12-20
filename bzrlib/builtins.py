@@ -2009,7 +2009,9 @@ class cmd_ignored(Command):
     """List ignored files and the patterns that matched them.
     """
 
+    encoding_type = 'replace'
     _see_also = ['ignore']
+
     @display_command
     def run(self):
         tree = WorkingTree.open_containing(u'.')[0]
@@ -2020,7 +2022,7 @@ class cmd_ignored(Command):
                     continue
                 ## XXX: Slightly inefficient since this was already calculated
                 pat = tree.is_ignored(path)
-                print '%-50s %s' % (path, pat)
+                self.outf.write('%-50s %s\n' % (path, pat))
         finally:
             tree.unlock()
 
@@ -3030,10 +3032,6 @@ class cmd_remerge(Command):
                                              " merges.  Not cherrypicking or"
                                              " multi-merges.")
             repository = tree.branch.repository
-            graph = repository.get_graph()
-            base_revision = graph.find_unique_lca(parents[0], parents[1])
-            base_tree = repository.revision_tree(base_revision)
-            other_tree = repository.revision_tree(parents[1])
             interesting_ids = None
             new_conflicts = []
             conflicts = tree.conflicts()
@@ -3069,18 +3067,19 @@ class cmd_remerge(Command):
             # list, we imply that the working tree text has seen and rejected
             # all the changes from the other tree, when in fact those changes
             # have not yet been seen.
+            pb = ui.ui_factory.nested_progress_bar()
             tree.set_parent_ids(parents[:1])
             try:
-                conflicts = _mod_merge.merge_inner(
-                                          tree.branch, other_tree, base_tree,
-                                          this_tree=tree,
-                                          interesting_ids=interesting_ids,
-                                          other_rev_id=parents[1],
-                                          merge_type=merge_type,
-                                          show_base=show_base,
-                                          reprocess=reprocess)
+                merger = _mod_merge.Merger.from_revision_ids(pb,
+                                                             tree, parents[1])
+                merger.interesting_ids = interesting_ids
+                merger.merge_type = merge_type
+                merger.show_base = show_base
+                merger.reprocess = reprocess
+                conflicts = merger.do_merge()
             finally:
                 tree.set_parent_ids(parents)
+                pb.finished()
         finally:
             tree.unlock()
         if conflicts > 0:
@@ -3811,22 +3810,20 @@ class cmd_join(Command):
 
 
 class cmd_split(Command):
-    """Split a tree into two trees.
+    """Split a subdirectory of a tree into a separate tree.
 
-    This command is for experimental use only.  It requires the target tree
-    to be in dirstate-with-subtree format, which cannot be converted into
-    earlier formats.
+    This command will produce a target tree in a format that supports
+    rich roots, like 'rich-root' or 'rich-root-pack'.  These formats cannot be
+    converted into earlier formats like 'dirstate-tags'.
 
     The TREE argument should be a subdirectory of a working tree.  That
     subdirectory will be converted into an independent tree, with its own
     branch.  Commits in the top-level tree will not apply to the new subtree.
-    If you want that behavior, do "bzr join --reference TREE".
     """
 
-    _see_also = ['join']
+    # join is not un-hidden yet
+    #_see_also = ['join']
     takes_args = ['tree']
-
-    hidden = True
 
     def run(self, tree):
         containing_tree, subdir = WorkingTree.open_containing(tree)
@@ -3837,7 +3834,6 @@ class cmd_split(Command):
             containing_tree.extract(sub_id)
         except errors.RootNotRich:
             raise errors.UpgradeRequired(containing_tree.branch.base)
-
 
 
 class cmd_merge_directive(Command):

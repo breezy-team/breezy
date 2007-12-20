@@ -517,10 +517,15 @@ class _PlanMergeVersionedFile(object):
         self._parents = {}
         self._lines = {}
 
-    def plan_merge(self, ver_a, ver_b):
+    def plan_merge(self, ver_a, ver_b, base=None):
         """See VersionedFile.plan_merge"""
         from merge import _PlanMerge
-        return _PlanMerge(ver_a, ver_b, self).plan_merge()
+        if base is None:
+            return _PlanMerge(ver_a, ver_b, self).plan_merge()
+        old_plan = list(_PlanMerge(ver_a, base, self).plan_merge())
+        new_plan = list(_PlanMerge(ver_a, ver_b, self).plan_merge())
+        return _PlanMerge._subtract_plans(old_plan, new_plan)
+
 
     def add_lines(self, version_id, parents, lines):
         """See VersionedFile.add_lines

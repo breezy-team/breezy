@@ -2035,9 +2035,16 @@ class ConvertBzrDir4To5(Converter):
         del ie.text_id
         assert getattr(ie, 'revision', None) is not None
 
+    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
     def get_parents(self, revision_ids):
         for revision_id in revision_ids:
             yield self.revisions[revision_id].parent_ids
+
+    def get_parent_map(self, revision_ids):
+        """See graph._StackedParentsProvider.get_parent_map"""
+        return dict((revision_id, self.revisions[revision_id])
+                    for revision_id in revision_ids
+                     if revision_id in self.revisions)
 
     def snapshot_ie(self, previous_revisions, ie, w, rev_id):
         # TODO: convert this logic, which is ~= snapshot to
