@@ -1262,6 +1262,10 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
 
         :param revision_id: allows creating a working tree at a different
         revision than the branch is at.
+        :param accelerator_tree: A tree which can be used for retrieving file
+            contents more quickly than the revision tree, i.e. a workingtree.
+            The revision tree will be used for cases where accelerator_tree's
+            content is different.
 
         These trees get an initial random root id, if their repository supports
         rich root data, TREE_ROOT otherwise.

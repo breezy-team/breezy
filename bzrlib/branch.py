@@ -764,6 +764,10 @@ class Branch(object):
         :param revision_id: The revision to check out
         :param lightweight: If True, produce a lightweight checkout, otherwise,
         produce a bound branch (heavyweight checkout)
+        :param accelerator_tree: A tree which can be used for retrieving file
+            contents more quickly than the revision tree, i.e. a workingtree.
+            The revision tree will be used for cases where accelerator_tree's
+            content is different.
         :return: The tree of the created checkout
         """
         t = transport.get_transport(to_location)

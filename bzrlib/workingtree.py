@@ -2832,8 +2832,12 @@ class WorkingTreeFormat3(WorkingTreeFormat):
                    accelerator_tree=None):
         """See WorkingTreeFormat.initialize().
         
-        revision_id allows creating a working tree at a different
-        revision than the branch is at.
+        :param revision_id: if supplied, create a working tree at a different
+            revision than the branch is at.
+        :param accelerator_tree: A tree which can be used for retrieving file
+            contents more quickly than the revision tree, i.e. a workingtree.
+            The revision tree will be used for cases where accelerator_tree's
+            content is different.
         """
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)

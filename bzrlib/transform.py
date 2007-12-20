@@ -1335,6 +1335,12 @@ def build_tree(tree, wt, accelerator_tree=None):
     - Otherwise, if the content on disk matches the content we are building,
       it is silently replaced.
     - Otherwise, conflict resolution will move the old file to 'oldname.moved'.
+
+    :param tree: The tree to convert wt into a copy of
+    :param wt: The working tree that files will be placed into
+    :param accelerator_tree: A tree which can be used for retrieving file
+        contents more quickly than tree itself, i.e. a workingtree.  tree
+        will be used for cases where accelerator_tree's content is different.
     """
     wt.lock_tree_write()
     try:

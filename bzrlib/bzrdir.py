@@ -381,11 +381,16 @@ class BzrDir(object):
                                                format=format).bzrdir
         return bzrdir.create_workingtree()
 
-    def create_workingtree(self, revision_id=None, from_branch=None):
+    def create_workingtree(self, revision_id=None, from_branch=None,
+        accelerator_tree=None):
         """Create a working tree at this BzrDir.
         
         :param revision_id: create it as of this revision id.
         :param from_branch: override bzrdir branch (for lightweight checkouts)
+        :param accelerator_tree: A tree which can be used for retrieving file
+            contents more quickly than the revision tree, i.e. a workingtree.
+            The revision tree will be used for cases where accelerator_tree's
+            content is different.
         """
         raise NotImplementedError(self.create_workingtree)
 
@@ -824,6 +829,10 @@ class BzrDir(object):
 
         if revision_id is not None, then the clone operation may tune
             itself to download less data.
+        :param accelerator_tree: A tree which can be used for retrieving file
+            contents more quickly than the revision tree, i.e. a workingtree.
+            The revision tree will be used for cases where accelerator_tree's
+            content is different.
         """
         target_transport = get_transport(url, possible_transports)
         target_transport.ensure_base()
