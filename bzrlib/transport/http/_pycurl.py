@@ -123,7 +123,10 @@ class PyCurlTransport(HttpTransportBase):
             # connect to the http server until the first request (which had
             # just called us).
             connection = pycurl.Curl()
-            self._set_connection(connection, None)
+            # First request, initialize credentials.
+            auth = self._create_auth()
+            # Proxy handling is out of reach, so we punt
+            self._set_connection(connection, auth)
         return connection
 
     def has(self, relpath):
@@ -295,6 +298,18 @@ class PyCurlTransport(HttpTransportBase):
         curl.setopt(pycurl.USERAGENT, ua_str)
         if self.cabundle:
             curl.setopt(pycurl.CAINFO, self.cabundle)
+        # Set accepted auth methods
+        curl.setopt(pycurl.HTTPAUTH, pycurl.HTTPAUTH_ANY)
+        curl.setopt(pycurl.PROXYAUTH, pycurl.HTTPAUTH_ANY)
+        auth = self._get_credentials()
+        user = auth.get('user', None)
+        password = auth.get('password', None)
+        userpass = None
+        if user is not None:
+            userpass = user + ':'
+            if password is not None: # '' is a valid password
+                userpass += password
+            curl.setopt(pycurl.USERPWD, userpass)
 
     def _curl_perform(self, curl, header, more_headers=[]):
         """Perform curl operation and translate exceptions."""

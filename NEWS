@@ -21,6 +21,8 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+   * ``bzr diff`` now sorts files in alphabetical order.  (Aaron Bentley)
+
    * ``bzr diff`` now works on branches without working trees. Tree-less
      branches can also be compared to each other and to working trees using
      the new diff options ``--old`` and ``--new``. Diffing between branches,
@@ -34,9 +36,15 @@ IN DEVELOPMENT
    * Merge directives now fetch prerequisites from the target branch if
      needed.  (Aaron Bentley)
 
+   * pycurl now handles digest authentication.
+     (Vincent Ladeuil)
+
    * ``reconfigure`` can now convert from repositories.  (Aaron Bentley)
 
    * ``-l`` is now a short form for ``--limit`` in ``log``.  (Matt Nordhoff)
+
+   * ``merge`` now warns when merge directives cause cherrypicks.
+     (Aaron Bentley)
 
    * ``split`` now supported, to enable splitting large trees into smaller
      pieces.  (Aaron Bentley)
@@ -48,6 +56,10 @@ IN DEVELOPMENT
 
    * Fix traceback when sending large response bodies over the smart protocol
      on Windows. (Andrew Bennetts, #115781)
+
+   * pycurl authentication handling was broken and incomplete. Fix handling of
+     user:pass embedded in the urls.
+     (Vincent Ladeuil, #177643)
 
    * Transform failures no longer cause ImmortalLimbo errors (Aaron Bentley,
      #137681)
@@ -80,6 +92,9 @@ IN DEVELOPMENT
     * Parent Providers should now implement ``get_parent_map`` returning a
       dictionary instead of ``get_parents`` returning a list.
       ``get_parents`` is now considered deprecated.  (John Arbash Meinel)
+
+    * Patience Diff now supports arbitrary python objects, as long as they
+      support ``hash()``. (John Arbash Meinel)
 
   API BREAKS:
 
@@ -180,6 +195,9 @@ bzr 1.0rc2 2007-12-07
   IMPROVEMENTS:
 
    * Added a --coverage option to selftest. (Andrew Bennetts)
+
+   * Annotate merge (merge-type=weave) now supports cherrypicking.
+     (Aaron Bentley)
 
    * ``bzr commit`` now doesn't print the revision number twice. (Matt
      Nordhoff, #172612)

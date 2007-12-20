@@ -723,6 +723,15 @@ class TestDiffTree(TestCaseWithTransport):
         self.assertContainsRe(differ.to_file.getvalue(),
                               'was: old\nis: new\n')
 
+    def test_alphabetical_order(self):
+        self.build_tree(['new-tree/a-file'])
+        self.new_tree.add('a-file')
+        self.build_tree(['old-tree/b-file'])
+        self.old_tree.add('b-file')
+        self.differ.show_diff(None)
+        self.assertContainsRe(self.differ.to_file.getvalue(),
+            '.*a-file(.|\n)*b-file')
+
 
 class TestPatienceDiffLib(TestCase):
 
@@ -774,37 +783,43 @@ class TestPatienceDiffLib(TestCase):
         # This is what it currently gives:
         test_one('aBccDe', 'abccde', [(0,0), (5,5)])
 
-    def test_matching_blocks(self):
-        def chk_blocks(a, b, expected_blocks):
-            # difflib always adds a signature of the total
-            # length, with no matching entries at the end
-            s = self._PatienceSequenceMatcher(None, a, b)
-            blocks = s.get_matching_blocks()
-            self.assertEquals((len(a), len(b), 0), blocks[-1])
-            self.assertEquals(expected_blocks, blocks[:-1])
+    def assertDiffBlocks(self, a, b, expected_blocks):
+        """Check that the sequence matcher returns the correct blocks.
 
+        :param a: A sequence to match
+        :param b: Another sequence to match
+        :param expected_blocks: The expected output, not including the final
+            matching block (len(a), len(b), 0)
+        """
+        matcher = self._PatienceSequenceMatcher(None, a, b)
+        blocks = matcher.get_matching_blocks()
+        last = blocks.pop()
+        self.assertEqual((len(a), len(b), 0), last)
+        self.assertEqual(expected_blocks, blocks)
+
+    def test_matching_blocks(self):
         # Some basic matching tests
-        chk_blocks('', '', [])
-        chk_blocks([], [], [])
-        chk_blocks('abc', '', [])
-        chk_blocks('', 'abc', [])
-        chk_blocks('abcd', 'abcd', [(0, 0, 4)])
-        chk_blocks('abcd', 'abce', [(0, 0, 3)])
-        chk_blocks('eabc', 'abce', [(1, 0, 3)])
-        chk_blocks('eabce', 'abce', [(1, 0, 4)])
-        chk_blocks('abcde', 'abXde', [(0, 0, 2), (3, 3, 2)])
-        chk_blocks('abcde', 'abXYZde', [(0, 0, 2), (3, 5, 2)])
-        chk_blocks('abde', 'abXYZde', [(0, 0, 2), (2, 5, 2)])
-        # This may check too much, but it checks to see that 
+        self.assertDiffBlocks('', '', [])
+        self.assertDiffBlocks([], [], [])
+        self.assertDiffBlocks('abc', '', [])
+        self.assertDiffBlocks('', 'abc', [])
+        self.assertDiffBlocks('abcd', 'abcd', [(0, 0, 4)])
+        self.assertDiffBlocks('abcd', 'abce', [(0, 0, 3)])
+        self.assertDiffBlocks('eabc', 'abce', [(1, 0, 3)])
+        self.assertDiffBlocks('eabce', 'abce', [(1, 0, 4)])
+        self.assertDiffBlocks('abcde', 'abXde', [(0, 0, 2), (3, 3, 2)])
+        self.assertDiffBlocks('abcde', 'abXYZde', [(0, 0, 2), (3, 5, 2)])
+        self.assertDiffBlocks('abde', 'abXYZde', [(0, 0, 2), (2, 5, 2)])
+        # This may check too much, but it checks to see that
         # a copied block stays attached to the previous section,
         # not the later one.
         # difflib would tend to grab the trailing longest match
         # which would make the diff not look right
-        chk_blocks('abcdefghijklmnop', 'abcdefxydefghijklmnop',
-                   [(0, 0, 6), (6, 11, 10)])
+        self.assertDiffBlocks('abcdefghijklmnop', 'abcdefxydefghijklmnop',
+                              [(0, 0, 6), (6, 11, 10)])
 
         # make sure it supports passing in lists
-        chk_blocks(
+        self.assertDiffBlocks(
                    ['hello there\n',
                     'world\n',
                     'how are you today?\n'],
@@ -814,21 +829,45 @@ class TestPatienceDiffLib(TestCase):
 
         # non unique lines surrounded by non-matching lines
         # won't be found
-        chk_blocks('aBccDe', 'abccde', [(0,0,1), (5,5,1)])
+        self.assertDiffBlocks('aBccDe', 'abccde', [(0,0,1), (5,5,1)])
 
         # But they only need to be locally unique
-        chk_blocks('aBcDec', 'abcdec', [(0,0,1), (2,2,1), (4,4,2)])
+        self.assertDiffBlocks('aBcDec', 'abcdec', [(0,0,1), (2,2,1), (4,4,2)])
 
         # non unique blocks won't be matched
-        chk_blocks('aBcdEcdFg', 'abcdecdfg', [(0,0,1), (8,8,1)])
+        self.assertDiffBlocks('aBcdEcdFg', 'abcdecdfg', [(0,0,1), (8,8,1)])
 
         # but locally unique ones will
-        chk_blocks('aBcdEeXcdFg', 'abcdecdfg', [(0,0,1), (2,2,2),
+        self.assertDiffBlocks('aBcdEeXcdFg', 'abcdecdfg', [(0,0,1), (2,2,2),
                                               (5,4,1), (7,5,2), (10,8,1)])
 
-        chk_blocks('abbabbXd', 'cabbabxd', [(7,7,1)])
-        chk_blocks('abbabbbb', 'cabbabbc', [])
-        chk_blocks('bbbbbbbb', 'cbbbbbbc', [])
+        self.assertDiffBlocks('abbabbXd', 'cabbabxd', [(7,7,1)])
+        self.assertDiffBlocks('abbabbbb', 'cabbabbc', [])
+        self.assertDiffBlocks('bbbbbbbb', 'cbbbbbbc', [])
+
+    def test_matching_blocks_tuples(self):
+        # Some basic matching tests
+        self.assertDiffBlocks([], [], [])
+        self.assertDiffBlocks([('a',), ('b',), ('c,')], [], [])
+        self.assertDiffBlocks([], [('a',), ('b',), ('c,')], [])
+        self.assertDiffBlocks([('a',), ('b',), ('c,')],
+                              [('a',), ('b',), ('c,')],
+                              [(0, 0, 3)])
+        self.assertDiffBlocks([('a',), ('b',), ('c,')],
+                              [('a',), ('b',), ('d,')],
+                              [(0, 0, 2)])
+        self.assertDiffBlocks([('d',), ('b',), ('c,')],
+                              [('a',), ('b',), ('c,')],
+                              [(1, 1, 2)])
+        self.assertDiffBlocks([('d',), ('a',), ('b',), ('c,')],
+                              [('a',), ('b',), ('c,')],
+                              [(1, 0, 3)])
+        self.assertDiffBlocks([('a', 'b'), ('c', 'd'), ('e', 'f')],
+                              [('a', 'b'), ('c', 'X'), ('e', 'f')],
+                              [(0, 0, 1), (2, 2, 1)])
+        self.assertDiffBlocks([('a', 'b'), ('c', 'd'), ('e', 'f')],
+                              [('a', 'b'), ('c', 'dX'), ('e', 'f')],
+                              [(0, 0, 1), (2, 2, 1)])
 
     def test_opcodes(self):
         def chk_ops(a, b, expected_codes):
@@ -946,25 +985,16 @@ class TestPatienceDiffLib(TestCase):
     def test_multiple_ranges(self):
         # There was an earlier bug where we used a bad set of ranges,
         # this triggers that specific bug, to make sure it doesn't regress
-        def chk_blocks(a, b, expected_blocks):
-            # difflib always adds a signature of the total
-            # length, with no matching entries at the end
-            s = self._PatienceSequenceMatcher(None, a, b)
-            blocks = s.get_matching_blocks()
-            x = blocks.pop()
-            self.assertEquals(x, (len(a), len(b), 0))
-            self.assertEquals(expected_blocks, blocks)
+        self.assertDiffBlocks('abcdefghijklmnop',
+                              'abcXghiYZQRSTUVWXYZijklmnop',
+                              [(0, 0, 3), (6, 4, 3), (9, 20, 7)])
 
-        chk_blocks('abcdefghijklmnop'
-                 , 'abcXghiYZQRSTUVWXYZijklmnop'
-                 , [(0, 0, 3), (6, 4, 3), (9, 20, 7)])
-
-        chk_blocks('ABCd efghIjk  L'
-                 , 'AxyzBCn mo pqrstuvwI1 2  L'
-                 , [(0,0,1), (1, 4, 2), (9, 19, 1), (12, 23, 3)])
+        self.assertDiffBlocks('ABCd efghIjk  L',
+                              'AxyzBCn mo pqrstuvwI1 2  L',
+                              [(0,0,1), (1, 4, 2), (9, 19, 1), (12, 23, 3)])
 
         # These are rot13 code snippets.
-        chk_blocks('''\
+        self.assertDiffBlocks('''\
     trg nqqrq jura lbh nqq n svyr va gur qverpgbel.
     """
     gnxrf_netf = ['svyr*']
@@ -1076,6 +1106,19 @@ class TestPatienceDiffLib_c(TestPatienceDiffLib):
         self._recurse_matches = bzrlib._patiencediff_c.recurse_matches_c
         self._PatienceSequenceMatcher = \
             bzrlib._patiencediff_c.PatienceSequenceMatcher_c
+
+    def test_unhashable(self):
+        """We should get a proper exception here."""
+        # We need to be able to hash items in the sequence, lists are
+        # unhashable, and thus cannot be diffed
+        e = self.assertRaises(TypeError, self._PatienceSequenceMatcher,
+                                         None, [[]], [])
+        e = self.assertRaises(TypeError, self._PatienceSequenceMatcher,
+                                         None, ['valid', []], [])
+        e = self.assertRaises(TypeError, self._PatienceSequenceMatcher,
+                                         None, ['valid'], [[]])
+        e = self.assertRaises(TypeError, self._PatienceSequenceMatcher,
+                                         None, ['valid'], ['valid', []])
 
 
 class TestPatienceDiffLibFiles(TestCaseInTempDir):
