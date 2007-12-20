@@ -1036,7 +1036,7 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         the prompt, so we build the prompt from the authentication dict which
         contains all the needed parts.
 
-        Also, hhtp and proxy AuthHandlers present different prompts to the
+        Also, http and proxy AuthHandlers present different prompts to the
         user. The daughter classes should implements a public
         build_password_prompt using this method.
         """
