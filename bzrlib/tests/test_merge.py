@@ -289,6 +289,16 @@ class TestMerge(TestCaseWithTransport):
         self.assertEqual(tree_a.get_parent_ids(), [tree_b.last_revision()])
 
     def prepare_cherrypick(self):
+        """Prepare a pair of trees for cherrypicking tests.
+
+        Both trees have a file, 'file'.
+        rev1 sets content to 'a'.
+        rev2b adds 'b'.
+        rev3b adds 'c'.
+        A full merge of rev2b and rev3b into this_tree would add both 'b' and
+        'c'.  A successful cherrypick of rev2b-rev3b into this_tree will add
+        'c', but not 'b'.
+        """
         this_tree = self.make_branch_and_tree('this')
         self.build_tree_contents([('this/file', "a\n")])
         this_tree.add('file')
