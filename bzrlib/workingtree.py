@@ -281,6 +281,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         else:
             self.case_sensitive = False
 
+        self._setup_directory_is_tree_reference()
+
     branch = property(
         fget=lambda self: self._branch,
         doc="""The branch this WorkingTree is connected to.
@@ -990,7 +992,18 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             other_tree.unlock()
         other_tree.bzrdir.retire_bzrdir()
 
-    def _directory_is_tree_reference(self, relpath):
+    def _setup_directory_is_tree_reference(self):
+        if self._branch.repository._format.supports_tree_reference:
+            self._directory_is_tree_reference = \
+                self._directory_may_be_tree_reference
+        else:
+            self._directory_is_tree_reference = \
+                self._directory_is_never_tree_reference
+
+    def _directory_is_never_tree_reference(self, relpath):
+        return False
+
+    def _directory_may_be_tree_reference(self, relpath):
         # as a special case, if a directory contains control files then 
         # it's a tree reference, except that the root of the tree is not
         return relpath and osutils.isdir(self.abspath(relpath) + u"/.bzr")
