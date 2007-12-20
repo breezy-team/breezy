@@ -956,10 +956,6 @@ class cmd_checkout(Command):
 
     def run(self, branch_location=None, to_location=None, revision=None,
             lightweight=False, files_from=None):
-        if files_from is not None:
-            accelerator_tree = WorkingTree.open(files_from)
-        else:
-            accelerator_tree = None
         if revision is None:
             revision = [None]
         elif len(revision) > 1:
@@ -968,7 +964,10 @@ class cmd_checkout(Command):
         if branch_location is None:
             branch_location = osutils.getcwd()
             to_location = branch_location
-        source = Branch.open(branch_location)
+        accelerator_tree, source = bzrdir.BzrDir.open_tree_or_branch(
+            branch_location)
+        if files_from is not None:
+            accelerator_tree = WorkingTree.open(files_from)
         if len(revision) == 1 and revision[0] is not None:
             revision_id = _mod_revision.ensure_null(
                 revision[0].in_history(source)[1])
