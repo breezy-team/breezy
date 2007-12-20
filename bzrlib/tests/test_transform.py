@@ -1529,6 +1529,28 @@ class TestBuildTree(tests.TestCaseWithTransport):
         target = self.make_branch_and_tree('target')
         build_tree(source.basis_tree(), target, source)
 
+    def test_build_tree_accelerator_wrong_kind(self):
+        source = self.make_branch_and_tree('source')
+        self.build_tree_contents([('source/file1', '')])
+        self.build_tree_contents([('source/file2', '')])
+        source.add(['file1', 'file2'], ['file1-id', 'file2-id'])
+        source.commit('commit files')
+        os.unlink('source/file2')
+        self.build_tree_contents([('source/file2/', 'C')])
+        os.unlink('source/file1')
+        os.symlink('file2', 'source/file1')
+        calls = []
+        real_source_get_file = source.get_file
+        def get_file(file_id, path=None):
+            calls.append(file_id)
+            return real_source_get_file(file_id, path)
+        source.get_file = get_file
+        source.lock_read()
+        self.addCleanup(source.unlock)
+        target = self.make_branch_and_tree('target')
+        build_tree(source.basis_tree(), target, source)
+        self.assertEqual([], calls)
+
 
 class MockTransform(object):
 
