@@ -57,7 +57,21 @@ def get_default_plugin_path():
     """Get the DEFAULT_PLUGIN_PATH"""
     global DEFAULT_PLUGIN_PATH
     if DEFAULT_PLUGIN_PATH is None:
-        DEFAULT_PLUGIN_PATH = osutils.pathjoin(config.config_dir(), 'plugins')
+        path = [osutils.pathjoin(config.config_dir(), 'plugins')]
+        if getattr(sys, 'frozen', None):    # bzr.exe
+            # We need to use relative path to system-wide plugin
+            # directory because bzrlib from standalone bzr.exe
+            # could be imported by another standalone program
+            # (e.g. bzr-config; or TortoiseBzr/Olive if/when they
+            # will become standalone exe). [bialix 20071123]
+            # __file__ typically is
+            # C:\Program Files\Bazaar\lib\library.zip\bzrlib\plugin.pyc
+            # then plugins directory is
+            # C:\Program Files\Bazaar\plugins
+            # so relative path is ../../../plugins
+            path.append(osutils.abspath(osutils.pathjoin(
+                osutils.dirname(__file__), '../../../plugins')))
+        DEFAULT_PLUGIN_PATH = os.pathsep.join(path)
     return DEFAULT_PLUGIN_PATH
 
 
@@ -77,8 +91,10 @@ def disable_plugins():
     global _loaded
     _loaded = True
 
+
 def _strip_trailing_sep(path):
     return path.rstrip("\\/")
+
 
 def set_plugins_path():
     """Set the path for plugins to be loaded from."""
@@ -141,7 +157,6 @@ def load_from_path(dirs):
         else:
             # it might be a zip: try loading from the zip.
             load_from_zip(d)
-            continue
 
 
 # backwards compatability: load_from_dirs was the old name
@@ -191,8 +206,10 @@ def load_from_dir(d):
         except Exception, e:
             ## import pdb; pdb.set_trace()
             if re.search('\.|-| ', name):
-                warning('Unable to load plugin %r from %r: '
-                    'It is not a valid python module name.' % (name, d))
+                sanitised_name = re.sub('[-. ]', '_', name)
+                warning("Unable to load %r in %r as a plugin because file path"
+                        " isn't a valid module name; try renaming it to %r."
+                        % (name, d, sanitised_name))
             else:
                 warning('Unable to load plugin %r from %r' % (name, d))
             log_exception_quietly()

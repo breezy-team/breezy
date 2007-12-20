@@ -134,6 +134,16 @@ class TestFileParentReconciliation(TestCaseWithRepository):
                     % (when_description, version, found_parents,
                        expected_parents))
 
+    def prepare_test_repository(self):
+        """Prepare a repository to test with from the test scenario.
+
+        :return: A repository, and the scenario instance.
+        """
+        scenario = self.scenario_class(self)
+        repo = self.make_populated_repository(scenario.populate_repository)
+        self.require_repo_suffers_text_parent_corruption(repo)
+        return repo, scenario
+
     def shas_for_versions_of_file(self, repo, versions):
         """Get the SHA-1 hashes of the versions of 'a-file' in the repository.
         
@@ -149,9 +159,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         """Populate a repository and reconcile it, verifying the state before
         and after.
         """
-        scenario = self.scenario_class(self)
-        repo = self.make_populated_repository(scenario.populate_repository)
-        self.require_repo_suffers_text_parent_corruption(repo)
+        repo, scenario = self.prepare_test_repository()
         repo.lock_read()
         try:
             self.assertParentsMatch(scenario.populated_parents(), repo,
@@ -183,9 +191,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
 
     def test_check_behaviour(self):
         """Populate a repository and check it, and verify the output."""
-        scenario = self.scenario_class(self)
-        repo = self.make_populated_repository(scenario.populate_repository)
-        self.require_repo_suffers_text_parent_corruption(repo)
+        repo, scenario = self.prepare_test_repository()
         check_result = repo.check()
         check_result.report_results(verbose=True)
         for pattern in scenario.check_regexes(repo):
@@ -193,3 +199,18 @@ class TestFileParentReconciliation(TestCaseWithRepository):
                 self._get_log(keep_log_file=True),
                 pattern)
 
+    def test_find_text_key_references(self):
+        """Test that find_text_key_references finds erroneous references."""
+        repo, scenario = self.prepare_test_repository()
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        self.assertEqual(scenario.repository_text_key_references(),
+            repo.find_text_key_references())
+
+    def test__generate_text_key_index(self):
+        """Test that the generated text key index has all entries."""
+        repo, scenario = self.prepare_test_repository()
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        self.assertEqual(scenario.repository_text_key_index(),
+            repo._generate_text_key_index())

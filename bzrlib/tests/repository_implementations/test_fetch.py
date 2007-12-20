@@ -20,6 +20,7 @@ from bzrlib import (
     bzrdir,
     errors,
     gpg,
+    repository,
     )
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.repository_implementations import TestCaseWithRepository
@@ -68,7 +69,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
         # disk.
         knit3_repo = b_bzrdir.open_repository()
         rev1_tree = knit3_repo.revision_tree('rev1')
-        lines = rev1_tree.get_file_lines(rev1_tree.inventory.root.file_id)
+        lines = rev1_tree.get_file_lines(rev1_tree.get_root_id())
         self.assertEqual([], lines)
         b_branch = b_bzrdir.create_branch()
         b_branch.pull(tree_a.branch)
@@ -80,6 +81,31 @@ class TestFetchSameRepository(TestCaseWithRepository):
         tree_b.commit('no change', rev_id='rev2')
         rev2_tree = knit3_repo.revision_tree('rev2')
         self.assertEqual('rev1', rev2_tree.inventory.root.revision)
+
+    def test_fetch_all_from_self(self):
+        tree = self.make_branch_and_tree('.')
+        rev_id = tree.commit('one')
+        # This needs to be a new copy of the repository, if this changes, the
+        # test needs to be rewritten
+        repo = tree.branch.repository.bzrdir.open_repository()
+        # This fetch should be a no-op see bug #158333
+        tree.branch.repository.fetch(repo, None)
+
+    def test_fetch_from_self(self):
+        tree = self.make_branch_and_tree('.')
+        rev_id = tree.commit('one')
+        repo = tree.branch.repository.bzrdir.open_repository()
+        # This fetch should be a no-op see bug #158333
+        tree.branch.repository.fetch(repo, rev_id)
+
+    def test_fetch_missing_from_self(self):
+        tree = self.make_branch_and_tree('.')
+        rev_id = tree.commit('one')
+        # Even though the fetch() is a NO-OP it should assert the revision id
+        # is present
+        repo = tree.branch.repository.bzrdir.open_repository()
+        self.assertRaises(errors.NoSuchRevision, tree.branch.repository.fetch,
+                          repo, 'no-such-revision')
 
     def makeARepoWithSignatures(self):
         wt = self.make_branch_and_tree('a-repo-with-sigs')

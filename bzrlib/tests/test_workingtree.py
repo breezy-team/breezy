@@ -94,7 +94,7 @@ class SampleTreeFormat(workingtree.WorkingTreeFormat):
         """See WorkingTreeFormat.get_format_string()."""
         return "Sample tree format."
 
-    def initialize(self, a_bzrdir, revision_id=None):
+    def initialize(self, a_bzrdir, revision_id=None, from_branch=None):
         """Sample branches cannot be created."""
         t = a_bzrdir.get_workingtree_transport(self)
         t.put_bytes('format', self.get_format_string())
@@ -307,6 +307,25 @@ class TestInstrumentedTree(TestCase):
         self.assertEqual(['t', 'u'], tree._locks)
         self.assertRaises(TypeError, tree.method_that_raises, 'foo')
         self.assertEqual(['t', 'u', 't', 'u'], tree._locks)
+
+
+class TestRevert(TestCaseWithTransport):
+
+    def test_revert_conflicts_recursive(self):
+        this_tree = self.make_branch_and_tree('this-tree')
+        self.build_tree_contents([('this-tree/foo/',),
+                                  ('this-tree/foo/bar', 'bar')])
+        this_tree.add(['foo', 'foo/bar'])
+        this_tree.commit('created foo/bar')
+        other_tree = this_tree.bzrdir.sprout('other-tree').open_workingtree()
+        self.build_tree_contents([('other-tree/foo/bar', 'baz')])
+        other_tree.commit('changed bar')
+        self.build_tree_contents([('this-tree/foo/bar', 'qux')])
+        this_tree.commit('changed qux')
+        this_tree.merge_from_branch(other_tree.branch)
+        self.assertEqual(1, len(this_tree.conflicts()))
+        this_tree.revert(['foo'])
+        self.assertEqual(0, len(this_tree.conflicts()))
 
 
 class TestAutoResolve(TestCaseWithTransport):

@@ -201,6 +201,14 @@ class TestRegisteredTopic(tests.TestCase):
             '\n'
             'See also: bar, foo\n')
 
+    def test_get_help_text_loaded_from_file(self):
+        # Pick a known topic stored in an external file
+        topic = help_topics.RegisteredTopic('hooks')
+        self.assertStartsWith(topic.get_help_text(),
+            'Hooks\n'
+            '=====\n'
+            '\n')
+
     def test_get_help_topic(self):
         """The help topic for a RegisteredTopic is its topic from construction."""
         topic = help_topics.RegisteredTopic('foobar')

@@ -20,6 +20,7 @@ Based on medusa: http://www.amk.ca/python/code/medusa.html
 """
 
 import asyncore
+import errno
 import os
 import select
 import stat
@@ -190,9 +191,9 @@ class FTPServer(transport.Server):
         """Calculate an ftp url to this server."""
         return 'ftp://foo:bar@localhost:%d/' % (self._port)
 
-#    def get_bogus_url(self):
-#        """Return a URL which cannot be connected to."""
-#        return 'ftp://127.0.0.1:1'
+    def get_bogus_url(self):
+        """Return a URL which cannot be connected to."""
+        return 'ftp://127.0.0.1:1'
 
     def log(self, message):
         """This is used by medusa.ftp_server to log connections, etc."""

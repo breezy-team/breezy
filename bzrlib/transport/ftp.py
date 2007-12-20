@@ -27,9 +27,11 @@ active, in which case aftp:// will be your friend.
 from cStringIO import StringIO
 import errno
 import ftplib
+import getpass
 import os
 import os.path
 import urlparse
+import socket
 import stat
 import time
 import random
@@ -141,6 +143,10 @@ class FtpTransport(ConnectedTransport):
                                              port=self._port)
             connection.login(user=user, passwd=password)
             connection.set_pasv(not self.is_active)
+        except socket.error, e:
+            raise errors.SocketConnectionError(self._host, self._port,
+                                               msg='Unable to connect to',
+                                               orig_error= e)
         except ftplib.error_perm, e:
             raise errors.TransportError(msg="Error setting up connection:"
                                         " %s" % str(e), orig_error=e)

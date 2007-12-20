@@ -432,19 +432,22 @@ class KnitRepositoryStreamTests(test_knit.KnitTests):
             ('text-d', ['text-c'], test_knit.TEXT_1),
             ('text-m', ['text-b', 'text-d'], test_knit.TEXT_1),
            ]
+        # This test is actually a bit strict as the order in which they're
+        # returned is not defined.  This matches the current (deterministic)
+        # behaviour.
         expected_data_list = [
             # version, options, parents
             ('text-a', ['fulltext'], []),
             ('text-b', ['line-delta'], ['text-a']),
+            ('text-m', ['line-delta'], ['text-b', 'text-d']),
             ('text-c', ['fulltext'], []),
             ('text-d', ['line-delta'], ['text-c']),
-            ('text-m', ['line-delta'], ['text-b', 'text-d']),
             ]
         for version_id, parents, lines in test_data:
             k1.add_lines(version_id, parents, test_knit.split_lines(lines))
 
         bytes = knitrepo._get_stream_as_bytes(
-            k1, ['text-a', 'text-b', 'text-c', 'text-d', 'text-m'])
+            k1, ['text-a', 'text-b', 'text-m', 'text-c', 'text-d', ])
 
         data = bencode.bdecode(bytes)
         format = data.pop(0)
@@ -765,7 +768,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
 class TestKnitPackNoSubtrees(TestCaseWithTransport):
 
     def get_format(self):
-        return bzrdir.format_registry.make_bzrdir('knitpack-experimental')
+        return bzrdir.format_registry.make_bzrdir('pack-0.92')
 
     def test_disk_layout(self):
         format = self.get_format()
@@ -888,6 +891,9 @@ class TestKnitPackNoSubtrees(TestCaseWithTransport):
         # there should be 9 packs:
         index = GraphIndex(trans, 'pack-names', None)
         self.assertEqual(9, len(list(index.iter_all_entries())))
+        # insert some files in obsolete_packs which should be removed by pack.
+        trans.put_bytes('obsolete_packs/foo', '123')
+        trans.put_bytes('obsolete_packs/bar', '321')
         # committing one more should coalesce to 1 of 10.
         tree.commit('commit triggering pack')
         index = GraphIndex(trans, 'pack-names', None)
@@ -896,6 +902,11 @@ class TestKnitPackNoSubtrees(TestCaseWithTransport):
         tree = tree.bzrdir.open_workingtree()
         check_result = tree.branch.repository.check(
             [tree.branch.last_revision()])
+        # We should have 50 (10x5) files in the obsolete_packs directory.
+        obsolete_files = list(trans.list_dir('obsolete_packs'))
+        self.assertFalse('foo' in obsolete_files)
+        self.assertFalse('bar' in obsolete_files)
+        self.assertEqual(50, len(obsolete_files))
         # XXX: Todo check packs obsoleted correctly - old packs and indices
         # in the obsolete_packs directory.
         large_pack_name = list(index.iter_all_entries())[0][1][0]
@@ -917,6 +928,26 @@ class TestKnitPackNoSubtrees(TestCaseWithTransport):
         index = GraphIndex(trans, 'pack-names', None)
         self.assertEqual(1, len(list(index.iter_all_entries())))
         self.assertEqual(2, len(tree.branch.repository.all_revision_ids()))
+
+    def test_pack_layout(self):
+        format = self.get_format()
+        tree = self.make_branch_and_tree('.', format=format)
+        trans = tree.branch.repository.bzrdir.get_repository_transport(None)
+        tree.commit('start', rev_id='1')
+        tree.commit('more work', rev_id='2')
+        tree.branch.repository.pack()
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        pack = tree.branch.repository._pack_collection.get_pack_by_name(
+            tree.branch.repository._pack_collection.names()[0])
+        # revision access tends to be tip->ancestor, so ordering that way on 
+        # disk is a good idea.
+        for _1, key, val, refs in pack.revision_index.iter_all_entries():
+            if key == ('1',):
+                pos_1 = int(val[1:].split()[0])
+            else:
+                pos_2 = int(val[1:].split()[0])
+        self.assertTrue(pos_2 < pos_1)
 
     def test_pack_repositories_support_multiple_write_locks(self):
         format = self.get_format()
@@ -1139,7 +1170,7 @@ class TestKnitPackSubtrees(TestKnitPackNoSubtrees):
 
     def get_format(self):
         return bzrdir.format_registry.make_bzrdir(
-            'knitpack-subtree-experimental')
+            'pack-0.92-subtree')
 
     def check_format(self, t):
         self.assertEqualDiff(
@@ -1150,7 +1181,7 @@ class TestKnitPackSubtrees(TestKnitPackNoSubtrees):
 class TestRepositoryPackCollection(TestCaseWithTransport):
 
     def get_format(self):
-        return bzrdir.format_registry.make_bzrdir('knitpack-experimental')
+        return bzrdir.format_registry.make_bzrdir('pack-0.92')
 
     def test__max_pack_count(self):
         """The maximum pack count is a function of the number of revisions."""
@@ -1184,7 +1215,13 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         repo = self.make_repository('.', format=format)
         packs = repo._pack_collection
         self.assertEqual([0], packs.pack_distribution(0))
-        
+
+    def test_ensure_loaded_unlocked(self):
+        format = self.get_format()
+        repo = self.make_repository('.', format=format)
+        self.assertRaises(errors.ObjectNotLocked,
+                          repo._pack_collection.ensure_loaded)
+
     def test_pack_distribution_one_to_nine(self):
         format = self.get_format()
         repo = self.make_repository('.', format=format)

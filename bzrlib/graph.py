@@ -16,10 +16,11 @@
 
 from bzrlib import (
     errors,
+    revision,
+    symbol_versioning,
     tsort,
     )
 from bzrlib.deprecated_graph import (node_distances, select_farthest)
-from bzrlib.revision import NULL_REVISION
 
 # DIAGRAM of terminology
 #       A
@@ -44,6 +45,23 @@ from bzrlib.revision import NULL_REVISION
 # 2. Since len(['D', 'E']) > 1, find_lca('D', 'E') => ['A']
 
 
+class DictParentsProvider(object):
+
+    def __init__(self, ancestry):
+        self.ancestry = ancestry
+
+    def __repr__(self):
+        return 'DictParentsProvider(%r)' % self.ancestry
+
+    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
+    def get_parents(self, revisions):
+        return [self.ancestry.get(r, None) for r in revisions]
+
+    def get_parent_map(self, keys):
+        """See _StackedParentsProvider.get_parent_map"""
+        ancestry = self.ancestry
+        return dict((k, ancestry[k]) for k in keys if k in ancestry)
+
 
 class _StackedParentsProvider(object):
 
@@ -53,6 +71,7 @@ class _StackedParentsProvider(object):
     def __repr__(self):
         return "_StackedParentsProvider(%r)" % self._parent_providers
 
+    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
     def get_parents(self, revision_ids):
         """Find revision ids of the parents of a list of revisions
 
@@ -65,16 +84,76 @@ class _StackedParentsProvider(object):
         If the revision is not present (i.e. a ghost), None is used in place
         of the list of parents.
         """
-        found = {}
-        for parents_provider in self._parent_providers:
-            pending_revisions = [r for r in revision_ids if r not in found]
-            parent_list = parents_provider.get_parents(pending_revisions)
-            new_found = dict((k, v) for k, v in zip(pending_revisions,
-                             parent_list) if v is not None)
-            found.update(new_found)
-            if len(found) == len(revision_ids):
-                break
+        found = self.get_parent_map(revision_ids)
         return [found.get(r, None) for r in revision_ids]
+
+    def get_parent_map(self, keys):
+        """Get a mapping of keys => parents
+
+        A dictionary is returned with an entry for each key present in this
+        source. If this source doesn't have information about a key, it should
+        not include an entry.
+
+        [NULL_REVISION] is used as the parent of the first user-committed
+        revision.  Its parent list is empty.
+
+        :param keys: An iterable returning keys to check (eg revision_ids)
+        :return: A dictionary mapping each key to its parents
+        """
+        found = {}
+        remaining = set(keys)
+        for parents_provider in self._parent_providers:
+            new_found = parents_provider.get_parent_map(remaining)
+            found.update(new_found)
+            remaining.difference_update(new_found)
+            if not remaining:
+                break
+        return found
+
+
+class CachingParentsProvider(object):
+    """A parents provider which will cache the revision => parents in a dict.
+
+    This is useful for providers that have an expensive lookup.
+    """
+
+    def __init__(self, parent_provider):
+        self._real_provider = parent_provider
+        # Theoretically we could use an LRUCache here
+        self._cache = {}
+
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self._real_provider)
+
+    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
+    def get_parents(self, revision_ids):
+        """See _StackedParentsProvider.get_parents"""
+        found = self.get_parent_map(revision_ids)
+        return [found.get(r, None) for r in revision_ids]
+
+    def get_parent_map(self, keys):
+        """See _StackedParentsProvider.get_parent_map"""
+        needed = set()
+        # If the _real_provider doesn't have a key, we cache a value of None,
+        # which we then later use to realize we cannot provide a value for that
+        # key.
+        parent_map = {}
+        cache = self._cache
+        for key in keys:
+            if key in cache:
+                value = cache[key]
+                if value is not None:
+                    parent_map[key] = value
+            else:
+                needed.add(key)
+
+        if needed:
+            new_parents = self._real_provider.get_parent_map(needed)
+            cache.update(new_parents)
+            parent_map.update(new_parents)
+            needed.difference_update(new_parents)
+            cache.update(dict.fromkeys(needed, None))
+        return parent_map
 
 
 class Graph(object):
@@ -95,6 +174,7 @@ class Graph(object):
             conforming to the behavior of StackedParentsProvider.get_parents
         """
         self.get_parents = parents_provider.get_parents
+        self.get_parent_map = parents_provider.get_parent_map
         self._parents_provider = parents_provider
 
     def __repr__(self):
@@ -231,6 +311,11 @@ class Graph(object):
             order if they need it.
         """
         candidate_heads = set(keys)
+        if revision.NULL_REVISION in candidate_heads:
+            # NULL_REVISION is only a head if it is the only entry
+            candidate_heads.remove(revision.NULL_REVISION)
+            if not candidate_heads:
+                return set([revision.NULL_REVISION])
         if len(candidate_heads) < 2:
             return candidate_heads
         searchers = dict((c, self._make_breadth_first_searcher([c]))
@@ -299,7 +384,8 @@ class Graph(object):
             common_walker.start_searching(new_common)
         return candidate_heads
 
-    def find_unique_lca(self, left_revision, right_revision):
+    def find_unique_lca(self, left_revision, right_revision,
+                        count_steps=False):
         """Find a unique LCA.
 
         Find lowest common ancestors.  If there is no unique  common
@@ -310,12 +396,22 @@ class Graph(object):
 
         Note that None is not an acceptable substitute for NULL_REVISION.
         in the input for this method.
+
+        :param count_steps: If True, the return value will be a tuple of
+            (unique_lca, steps) where steps is the number of times that
+            find_lca was run.  If False, only unique_lca is returned.
         """
         revisions = [left_revision, right_revision]
+        steps = 0
         while True:
+            steps += 1
             lca = self.find_lca(*revisions)
             if len(lca) == 1:
-                return lca.pop()
+                result = lca.pop()
+                if count_steps:
+                    return result, steps
+                else:
+                    return result
             if len(lca) == 0:
                 raise errors.NoCommonAncestor(left_revision, right_revision)
             revisions = lca
@@ -327,14 +423,14 @@ class Graph(object):
         An ancestor may sort after a descendant if the relationship is not
         visible in the supplied list of revisions.
         """
-        sorter = tsort.TopoSorter(zip(revisions, self.get_parents(revisions)))
+        sorter = tsort.TopoSorter(self.get_parent_map(revisions))
         return sorter.iter_topo_order()
 
     def is_ancestor(self, candidate_ancestor, candidate_descendant):
         """Determine whether a revision is an ancestor of another.
 
         We answer this using heads() as heads() has the logic to perform the
-        smallest number of parent looksup to determine the ancestral
+        smallest number of parent lookups to determine the ancestral
         relationship between N revisions.
         """
         return set([candidate_descendant]) == self.heads(
@@ -405,11 +501,15 @@ class _BreadthFirstSearcher(object):
         self._start = set(revisions)
         self._search_revisions = None
         self.seen = set(revisions)
-        self._parents_provider = parents_provider 
+        self._parents_provider = parents_provider
 
     def __repr__(self):
-        return ('_BreadthFirstSearcher(self._search_revisions=%r,'
-                ' self.seen=%r)' % (self._search_revisions, self.seen))
+        if self._search_revisions is not None:
+            search = 'searching=%r' % (list(self._search_revisions),)
+        else:
+            search = 'starting=%r' % (list(self._start),)
+        return ('_BreadthFirstSearcher(%s,'
+                ' seen=%r)' % (search, list(self.seen)))
 
     def next(self):
         """Return the next ancestors of this revision.
@@ -421,10 +521,9 @@ class _BreadthFirstSearcher(object):
             self._search_revisions = self._start
         else:
             new_search_revisions = set()
-            for parents in self._parents_provider.get_parents(
-                self._search_revisions):
-                if parents is None:
-                    continue
+            parent_map = self._parents_provider.get_parent_map(
+                            self._search_revisions)
+            for parents in parent_map.itervalues():
                 new_search_revisions.update(p for p in parents if
                                             p not in self.seen)
             self._search_revisions = new_search_revisions

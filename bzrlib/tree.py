@@ -277,6 +277,10 @@ class Tree(object):
         """
         raise NotImplementedError(self.get_symlink_target)
 
+    def get_root_id(self):
+        """Return the file_id for the root of this tree."""
+        raise NotImplementedError(self.get_root_id)
+
     def annotate_iter(self, file_id):
         """Return an iterator of revision_id, line tuples.
 
@@ -287,7 +291,7 @@ class Tree(object):
         """
         raise NotImplementedError(self.annotate_iter)
 
-    def plan_file_merge(self, file_id, other):
+    def plan_file_merge(self, file_id, other, base=None):
         """Generate a merge plan based on annotations.
 
         If the file contains uncommitted changes in this tree, they will be
@@ -295,14 +299,45 @@ class Tree(object):
         uncommitted changes in the other tree, they will be assigned to the
         'other:' pseudo-revision.
         """
-        from bzrlib import merge
-        annotated_a = list(self.annotate_iter(file_id,
-                                              _mod_revision.CURRENT_REVISION))
-        annotated_b = list(other.annotate_iter(file_id, 'other:'))
-        ancestors_a = self._get_ancestors(_mod_revision.CURRENT_REVISION)
-        ancestors_b = other._get_ancestors('other:')
-        return merge._plan_annotate_merge(annotated_a, annotated_b,
-                                          ancestors_a, ancestors_b)
+        from bzrlib import merge, versionedfile
+        vf = versionedfile._PlanMergeVersionedFile(file_id)
+        last_revision_a = self._get_file_revision(file_id, vf, 'this:')
+        last_revision_b = other._get_file_revision(file_id, vf, 'other:')
+        if base is None:
+            last_revision_base = None
+        else:
+            last_revision_base = base._get_file_revision(file_id, vf, 'base:')
+        return vf.plan_merge(last_revision_a, last_revision_b,
+                             last_revision_base)
+
+    def _get_file_revision(self, file_id, vf, tree_revision):
+        def file_revision(revision_tree):
+            revision_tree.lock_read()
+            try:
+                return revision_tree.inventory[file_id].revision
+            finally:
+                revision_tree.unlock()
+
+        def iter_parent_trees():
+            for revision_id in self.get_parent_ids():
+                try:
+                    yield self.revision_tree(revision_id)
+                except:
+                    yield self.repository.revision_tree(revision_id)
+
+        if getattr(self, '_get_weave', None) is None:
+            last_revision = tree_revision
+            parent_revisions = [file_revision(t) for t in iter_parent_trees()]
+            vf.add_lines(last_revision, parent_revisions,
+                         self.get_file(file_id).readlines())
+            repo = self.branch.repository
+            transaction = repo.get_transaction()
+            base_vf = repo.weave_store.get_weave(file_id, transaction)
+        else:
+            last_revision = file_revision(self)
+            base_vf = self._get_weave(file_id)
+        vf.fallback_versionedfiles.append(base_vf)
+        return last_revision
 
     inventory = property(_get_inventory,
                          doc="Inventory of this Tree")

@@ -48,25 +48,25 @@ class TestOutsideWT(ChrootedTestCase):
                                '--unchanged', 'branch1'])
         self.run_bzr(['commit', '-m', 'nothing',
                                '--unchanged', 'branch1'])
+        this_dir = getcwd()
+        branch2 = "%s/branch2" % (this_dir,)
         # -r X..Y
         out, err = self.run_bzr('diff -r revno:2:branch2..revno:1', retcode=3)
         self.assertEquals('', out)
-        self.assertEqual(u'bzr: ERROR: Not a branch: "%s/".\n' % (getcwd(),),
+        self.assertEqual(u'bzr: ERROR: Not a branch: "%s/".\n' % (branch2,),
                          err)
         # -r X
         out, err = self.run_bzr('diff -r revno:2:branch2', retcode=3)
         self.assertEquals('', out)
-        self.assertEqual(u'bzr: ERROR: Not a branch: "%s/".\n' % (getcwd(),),
+        self.assertEqual(u'bzr: ERROR: Not a branch: "%s/".\n' % (branch2,),
                          err)
         # -r X..
         out, err = self.run_bzr('diff -r revno:2:branch2..', retcode=3)
         self.assertEquals('', out)
-        self.assertEqual(u'bzr: ERROR: Not a branch: "%s/".\n' % (getcwd(),),
+        self.assertEqual(u'bzr: ERROR: Not a branch: "%s/".\n' % (branch2,),
                          err)
         # no -r at all.
         out, err = self.run_bzr('diff', retcode=3)
         self.assertEquals('', out)
-        self.assertEqual(u'bzr: ERROR: Not a branch: "%s/".\n' % (getcwd(),),
+        self.assertEqual(u'bzr: ERROR: Not a branch: "%s/".\n' % (this_dir,),
                          err)
-
-

@@ -148,24 +148,30 @@ class SubdirCommit(TestCaseInTempDir):
 
         old = b.repository.revision_tree(b.get_rev_id(1))
         new = b.repository.revision_tree(b.get_rev_id(2))
+        new.lock_read()
 
         eq(new.get_file_by_path('b/two').read(), 'old contents')
         eq(new.get_file_by_path('top').read(), 'old contents')
         eq(new.get_file_by_path('a/one').read(), 'new contents')
+        new.unlock()
 
         os.chdir('a')
         # commit from here should do nothing
         run_bzr(['commit', '.', '-m', 'commit subdir only', '--unchanged'])
         v3 = b.repository.revision_tree(b.get_rev_id(3))
+        v3.lock_read()
         eq(v3.get_file_by_path('b/two').read(), 'old contents')
         eq(v3.get_file_by_path('top').read(), 'old contents')
         eq(v3.get_file_by_path('a/one').read(), 'new contents')
+        v3.unlock()
 
         # commit in subdirectory commits whole tree
         run_bzr(['commit', '-m', 'commit whole tree from subdir'])
         v4 = b.repository.revision_tree(b.get_rev_id(4))
+        v4.lock_read()
         eq(v4.get_file_by_path('b/two').read(), 'new contents')
         eq(v4.get_file_by_path('top').read(), 'new contents')
+        v4.unlock()
 
         # TODO: factor out some kind of assert_tree_state() method
 

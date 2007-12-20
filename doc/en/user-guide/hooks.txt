@@ -1,14 +1,17 @@
-###########
 Using hooks
-###########
+===========
+
+What is a hook?
+---------------
 
 One way to customize Bazaar's behaviour is with *hooks*.  Hooks allow you to
 perform actions before or after certain Bazaar operations.  The operations
 include ``commit``, ``push``, ``pull``, and ``uncommit``.
 
-Using Hooks
-###########
-To use a hook, you should write a `plugin <plugins.html>`_.  Instead of
+Using hooks
+-----------
+
+To use a hook, you should `write a plugin <#writing-a-plugin>`_.  Instead of
 creating a new command, this plugin will define and install the hook.  Here's
 an example::
 
@@ -41,5 +44,8 @@ Of course, hooks can be much more elaborate than this, because you have the
 full power of Python at your disposal.  Now that you know how to use hooks,
 what you do with them is up to you.
 
-For a complete list of hooks and their parameters, see the `Hooks Reference
-<../user-reference/hooks.html>`_.
+Standard hooks
+--------------
+
+For a complete list of hooks and their parameters, see `Hooks
+<../user-reference/bzr_man.html#hooks>`_ in the User Reference.
