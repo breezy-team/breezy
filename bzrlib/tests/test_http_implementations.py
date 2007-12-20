@@ -962,10 +962,6 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         self.assertEqual(1, self.server.auth_required_errors)
 
     def test_empty_pass(self):
-        if self._testing_pycurl() and self._proxy:
-            raise tests.KnownFailure(
-                'some versions of pycurl does not handle empty proxy passwords')
-
         self.server.add_user('joe', '')
         t = self.get_user_transport('joe', '')
         self.assertEqual('contents of a\n', t.get('a').read())
@@ -1101,4 +1097,5 @@ class TestProxyAuth(TestAuth):
             if pycurl.version_info()[1] < '7.16.0':
                 raise tests.KnownFailure(
                     'pycurl < 7.16.0 does not handle empty proxy passwords')
+        super(TestProxyAuth, self).test_empty_pass()
 
