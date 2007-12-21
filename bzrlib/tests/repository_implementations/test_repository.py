@@ -636,6 +636,39 @@ class TestRepository(TestCaseWithRepository):
         repo = self.make_repository('repo')
         repo._make_parents_provider().get_parent_map
 
+    def make_repository_and_foo_bar(self, shared):
+        made_control = self.make_bzrdir('repository')
+        repo = made_control.create_repository(shared=shared)
+        bzrdir.BzrDir.create_branch_convenience(self.get_url('repository/foo'),
+                                                force_new_repo=False)
+        bzrdir.BzrDir.create_branch_convenience(self.get_url('repository/bar'),
+                                                force_new_repo=True)
+        return repo
+
+    def test_find_branches(self):
+        repo = self.make_repository_and_foo_bar(shared=False)
+        branches = repo.find_branches()
+        self.assertContainsRe(branches[-1].base, 'repository/foo/$')
+        self.assertContainsRe(branches[-2].base, 'repository/bar/$')
+        # in some formats, creating a repo creates a branch
+        if len(branches) == 3:
+            self.assertContainsRe(branches[-3].base, 'repository/$')
+        else:
+            self.assertEqual(2, len(branches))
+
+    def test_find_branches_using(self):
+        try:
+            repo = self.make_repository_and_foo_bar(shared=True)
+        except errors.IncompatibleFormat:
+            raise TestNotApplicable
+        branches = repo.find_branches(using=True)
+        self.assertContainsRe(branches[-1].base, 'repository/foo/$')
+        # in some formats, creating a repo creates a branch
+        if len(branches) == 2:
+            self.assertContainsRe(branches[-2].base, 'repository/$')
+        else:
+            self.assertEqual(1, len(branches))
+
 
 class TestRepositoryLocking(TestCaseWithRepository):
 
