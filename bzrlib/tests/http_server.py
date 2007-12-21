@@ -77,11 +77,13 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         try:
             SimpleHTTPServer.SimpleHTTPRequestHandler.handle_one_request(self)
         except socket.error, e:
-            if (len(e.args) > 0
-                and e.args[0] in (errno.EPIPE, errno.ECONNRESET,
-                                  errno.ECONNABORTED,)):
-                self.close_connection = 1
-            else:
+            # Any socket error should close the connection, but some are due to
+            # the client closing early and we don't want to pollute test
+            # results, so we raise only the others.
+            self.close_connection = 1
+            if (len(e.args) == 0
+                or e.args[0] not in (errno.EPIPE, errno.ECONNRESET,
+                                     errno.ECONNABORTED, errno.EBADF)):
                 raise
 
     _range_regexp = re.compile(r'^(?P<start>\d+)-(?P<end>\d+)$')
@@ -154,6 +156,9 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             self.send_range_content(file, start, end - start + 1)
         # Final boundary
         self.wfile.write("--%s\r\n" % boundary)
+        # Close the connection since we didn't specify the Content-Length
+        # FIXME: This is not 1.1 friendly
+        self.close_connection = 1
 
     def do_GET(self):
         """Serve a GET request.

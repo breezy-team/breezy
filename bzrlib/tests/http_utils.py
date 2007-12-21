@@ -134,6 +134,8 @@ class RedirectRequestHandler(http_server.TestingHTTPRequestHandler):
                 # Redirect as instructed
                 self.send_response(code)
                 self.send_header('Location', target)
+                # We do not send a body
+                self.send_header('Content-Length', '0')
                 self.end_headers()
                 return False # The job is done
             else:
@@ -230,6 +232,8 @@ class AuthRequestHandler(http_server.TestingHTTPRequestHandler):
             tcs.auth_required_errors += 1
             self.send_response(tcs.auth_error_code)
             self.send_header_auth_reqed()
+            # We do not send a body
+            self.send_header('Content-Length', '0')
             self.end_headers()
             return
 

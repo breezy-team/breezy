@@ -27,6 +27,7 @@ from cStringIO import StringIO
 import httplib
 import os
 import select
+import SimpleHTTPServer
 import socket
 import sys
 import threading
@@ -45,9 +46,8 @@ from bzrlib.tests import (
     http_server,
     http_utils,
     )
-
+from bzrlib.transport import http
 from bzrlib.transport.http import (
-    extract_auth,
     _urllib,
     _urllib2_wrappers,
     )
@@ -259,10 +259,10 @@ class TestHttpUrls(tests.TestCase):
 
     def test_url_parsing(self):
         f = FakeManager()
-        url = extract_auth('http://example.com', f)
+        url = http.extract_auth('http://example.com', f)
         self.assertEquals('http://example.com', url)
         self.assertEquals(0, len(f.credentials))
-        url = extract_auth('http://user:pass@www.bazaar-vcs.org/bzr/bzr.dev', f)
+        url = http.extract_auth('http://user:pass@www.bazaar-vcs.org/bzr/bzr.dev', f)
         self.assertEquals('http://www.bazaar-vcs.org/bzr/bzr.dev', url)
         self.assertEquals(1, len(f.credentials))
         self.assertEquals([None, 'www.bazaar-vcs.org', 'user', 'pass'],
@@ -442,7 +442,7 @@ class TestRangeHeader(tests.TestCase):
         offsets = [ (start, end - start + 1) for start, end in ranges]
         coalesce = transport.Transport._coalesce_offsets
         coalesced = list(coalesce(offsets, limit=0, fudge_factor=0))
-        range_header = HttpTransportBase._range_header
+        range_header = http.HttpTransportBase._range_header
         self.assertEqual(value, range_header(coalesced, tail))
 
     def test_range_header_single(self):
@@ -476,6 +476,9 @@ class TestSpecificRequestHandler(http_utils.TestCaseWithWebserver):
     def create_transport_readonly_server(self):
         return http_server.HttpServer(self._req_handler_class,
                                       protocol_version=self._protocol_version)
+
+    def _testing_pycurl(self):
+        return pycurl_present and self._transport == PyCurlTransport
 
 
 class WallRequestHandler(http_server.TestingHTTPRequestHandler):
@@ -515,27 +518,8 @@ class BadStatusRequestHandler(http_server.TestingHTTPRequestHandler):
     def parse_request(self):
         """Fakes handling a single HTTP request, returns a bad status"""
         ignored = http_server.TestingHTTPRequestHandler.parse_request(self)
-        try:
-            self.send_response(0, "Bad status")
-            self.end_headers()
-        except socket.error, e:
-            # We don't want to pollute the test results with
-            # spurious server errors while test succeed. In our
-            # case, it may occur that the test has already read
-            # the 'Bad Status' and closed the socket while we are
-            # still trying to send some headers... So the test is
-            # ok, but if we raise the exception, the output is
-            # dirty. So we don't raise, but we close the
-            # connection, just to be safe :)
-            spurious = [errno.EPIPE,
-                        errno.ECONNRESET,
-                        errno.ECONNABORTED,
-                        ]
-            if (len(e.args) > 0) and (e.args[0] in spurious):
-                self.close_connection = 1
-                pass
-            else:
-                raise
+        self.send_response(0, "Bad status")
+        self.close_connection = 1
         return False
 
 
@@ -556,7 +540,7 @@ class TestBadStatusServer(TestSpecificRequestHandler):
 
 
 class InvalidStatusRequestHandler(http_server.TestingHTTPRequestHandler):
-    """Whatever request comes in, returns am invalid status"""
+    """Whatever request comes in, returns an invalid status"""
 
     def parse_request(self):
         """Fakes handling a single HTTP request, returns a bad status"""
@@ -572,6 +556,16 @@ class TestInvalidStatusServer(TestBadStatusServer):
     """
 
     _req_handler_class = InvalidStatusRequestHandler
+
+    def test_http_has(self):
+        if self._testing_pycurl() and self._protocol_version == 'HTTP/1.1':
+            raise tests.KnownFailure('pycurl hangs if the server send back garbage')
+        super(TestInvalidStatusServer, self).test_http_has()
+
+    def test_http_get(self):
+        if self._testing_pycurl() and self._protocol_version == 'HTTP/1.1':
+            raise tests.KnownFailure('pycurl hangs if the server send back garbage')
+        super(TestInvalidStatusServer, self).test_http_get()
 
 
 class BadProtocolRequestHandler(http_server.TestingHTTPRequestHandler):
@@ -880,8 +874,8 @@ class TestHttpProxyWhiteBox(tests.TestCase):
             osutils.set_or_unset_env(name, value)
 
     def _proxied_request(self):
-        handler = ProxyHandler()
-        request = Request('GET','http://baz/buzzle')
+        handler = _urllib2_wrappers.ProxyHandler()
+        request = _urllib2_wrappers.Request('GET','http://baz/buzzle')
         handler.set_proxy(request, 'http')
         return request
 
@@ -1170,13 +1164,13 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
                                        self.old_server.port)
         new_prefix = 'http://%s:%s' % (self.new_server.host,
                                        self.new_server.port)
-        self.old_server.redirections = \
-            [('/1(.*)', r'%s/2\1' % (old_prefix), 302),
-             ('/2(.*)', r'%s/3\1' % (old_prefix), 303),
-             ('/3(.*)', r'%s/4\1' % (old_prefix), 307),
-             ('/4(.*)', r'%s/5\1' % (new_prefix), 301),
-             ('(/[^/]+)', r'%s/1\1' % (old_prefix), 301),
-             ]
+        self.old_server.redirections = [
+            ('/1(.*)', r'%s/2\1' % (old_prefix), 302),
+            ('/2(.*)', r'%s/3\1' % (old_prefix), 303),
+            ('/3(.*)', r'%s/4\1' % (old_prefix), 307),
+            ('/4(.*)', r'%s/5\1' % (new_prefix), 301),
+            ('(/[^/]+)', r'%s/1\1' % (old_prefix), 301),
+            ]
         self.assertEquals('redirected 5 times',t._perform(req).read())
 
 
