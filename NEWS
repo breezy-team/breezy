@@ -40,6 +40,9 @@ IN DEVELOPMENT
    * Merge directives now fetch prerequisites from the target branch if
      needed.  (Aaron Bentley)
 
+   * pycurl now handles digest authentication.
+     (Vincent Ladeuil)
+
    * ``reconfigure`` can now convert from repositories.  (Aaron Bentley)
 
    * ``-l`` is now a short form for ``--limit`` in ``log``.  (Matt Nordhoff)
@@ -52,11 +55,18 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+   * build_tree acceleration uses the correct path when a file has been moved.
+     (Aaron Bentley)
+
    * Fixed Unicode encoding error in ``ignored`` when the output is
      redirected to a pipe. (Lukáš Lalinský)
 
    * Fix traceback when sending large response bodies over the smart protocol
      on Windows. (Andrew Bennetts, #115781)
+
+   * pycurl authentication handling was broken and incomplete. Fix handling of
+     user:pass embedded in the urls.
+     (Vincent Ladeuil, #177643)
 
    * Transform failures no longer cause ImmortalLimbo errors (Aaron Bentley,
      #137681)
@@ -71,6 +81,9 @@ IN DEVELOPMENT
 
    * ``reconfigure`` is able to convert trees into lightweight checkouts.
      (Aaron Bentley)
+
+   * Reduce lockdir timeout to 0 when running ``bzr serve``.  (Andrew Bennetts,
+     #148087)
 
   DOCUMENTATION:
 
