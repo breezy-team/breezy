@@ -65,7 +65,7 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 self.address_string(),
                 self.log_date_time_string(),
                 format % args,
-                self.headers.get('referrer', '-'),
+                self.headers.get('referer', '-'),
                 self.headers.get('user-agent', '-'))
 
     def handle_one_request(self):
