@@ -36,6 +36,9 @@ IN DEVELOPMENT
    * Merge directives now fetch prerequisites from the target branch if
      needed.  (Aaron Bentley)
 
+   * ``merge`` now prefers to use the submit location, but will fall back to
+     parent location.  (Aaron Bentley)
+
    * ``reconfigure`` can now convert from repositories.  (Aaron Bentley)
 
    * ``-l`` is now a short form for ``--limit`` in ``log``.  (Matt Nordhoff)
