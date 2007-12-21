@@ -245,6 +245,48 @@ class BzrDir(object):
             format = BzrDirFormat.get_default_format()
         return format.initialize_on_transport(t)
 
+    @staticmethod
+    def find_bzrdirs(transport, evaluate=None, list_current=None):
+        """Find bzrdirs recursively from current location.
+
+        This is intended primarily as a building block for more sophisticated
+        functionality, like finding trees under a directory, or finding
+        branches that use a given repository.
+        :param evaluate: An optional callable that yields recurse, value,
+            where recurse controls whether this bzrdir is recursed into
+            and value is the value to yield.  By default, all bzrdirs
+            are recursed into, and the return value is the bzrdir.
+        :param list_current: if supplied, use this function to list the current
+            directory, instead of Transport.list_dir
+        :return: a generator of found bzrdirs, or whatever evaluate returns.
+        """
+        if list_current is None:
+            def list_current(transport):
+                return transport.list_dir('')
+        if evaluate is None:
+            def evaluate(bzrdir):
+                return True, bzrdir
+
+        pending = [transport]
+        while len(pending) > 0:
+            current_transport = pending.pop()
+            recurse = True
+            try:
+                bzrdir = BzrDir.open_from_transport(current_transport)
+            except errors.NotBranchError:
+                pass
+            else:
+                recurse, value = evaluate(bzrdir)
+                yield value
+            try:
+                subdirs = list_current(current_transport)
+            except errors.NoSuchFile:
+                continue
+            if recurse:
+                for subdir in sorted(subdirs, reverse=True):
+                    pending.append(current_transport.clone(subdir))
+
+
     def destroy_repository(self):
         """Destroy the repository in this BzrDir"""
         raise NotImplementedError(self.destroy_repository)
