@@ -20,6 +20,8 @@ bzr-svn 0.4.6	UNRELEASED
 
    * Improved compatibility with Subversion 1.5.
 
+   * Actually set symlink target when pushing commits that add or change symlinks.
+
 bzr-svn 0.4.5	2007-12-01
 
   IMPROVEMENTS

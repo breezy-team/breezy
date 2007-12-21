@@ -570,7 +570,8 @@ def replay_delta(builder, old_tree, new_tree):
                 builder.modified_directory(id, [])
             id = builder.new_inventory[id].parent_id
 
-        if ie.kind == 'link':
+        assert ie.kind in ('symlink', 'file', 'directory')
+        if ie.kind == 'symlink':
             builder.modified_link(ie.file_id, [], ie.symlink_target)
         elif ie.kind == 'file':
             def get_text():
