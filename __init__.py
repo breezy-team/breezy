@@ -40,6 +40,8 @@ min_compatible_bzr_version = (0, 92)
 def check_bzrlib_version(desired):
     """Check that bzrlib is compatible.
 
+    :param desired: Desired version.
+
     If version is < all compatible version, assume incompatible.
     """
     import bzrlib
@@ -56,6 +58,12 @@ def check_bzrlib_version(desired):
 check_bzrlib_version(min_compatible_bzr_version)
 
 def find_last_common_revid(revhistory1, revhistory2):
+    """Find the last revision two revision histories have in common.
+
+    :param revhistory1: First revision history (list of revids)
+    :param revhistory2: First revision history (list of revids)
+    :return: The last common revision id
+    """
     for revid in reversed(revhistory1):
         if revid in revhistory2:
             return revid
@@ -354,6 +362,7 @@ for cmd in [cmd_replay, cmd_rebase, cmd_rebase_abort, cmd_rebase_continue,
 
 
 def test_suite():
+    """Determine the testsuite for bzr-rebase."""
     from unittest import TestSuite
     from bzrlib.tests import TestUtil
 

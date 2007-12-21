@@ -384,6 +384,15 @@ def commit_rebase(wt, oldrev, newrevid):
 
 
 def replay_determine_base(graph, oldrevid, oldparents, newrevid, newparents):
+    """Determine the base for replaying a revision using merge.
+
+    :param graph: Revision graph.
+    :param oldrevid: Revid of old revision.
+    :param oldparents: List of old parents revids.
+    :param newrevid: Revid of new revision.
+    :param newparents: List of new parents revids.
+    :return: Revision id of the new new revision.
+    """
     # If this was the first commit, no base is needed
     if len(oldparents) == 0:
         return NULL_REVISION
@@ -508,6 +517,7 @@ def complete_revert(wt, newparents):
 
 
 class ReplaySnapshotError(BzrError):
+    """Raised when replaying a snapshot failed."""
     _fmt = """Replaying the snapshot failed: %(message)s."""
 
     def __init__(self, message):
@@ -516,6 +526,7 @@ class ReplaySnapshotError(BzrError):
 
 
 class ReplayParentsInconsistent(BzrError):
+    """Raised when parents were inconsistent."""
     _fmt = """Parents were inconsistent while replaying commit for file id %(fileid)s, revision %(revid)s."""
 
     def __init__(self, fileid, revid):
