@@ -92,6 +92,14 @@ class TestHTTPServer(tests.TestCase):
             server.tearDown()
             self.fail('HTTP Server creation did not raise UnknownProtocol')
 
+    def test_force_invalid_protocol(self):
+        server = http_server.HttpServer(protocol_version='HTTP/0.1')
+        try:
+            self.assertRaises(httplib.UnknownProtocol,server.setUp)
+        except:
+            server.tearDown()
+            self.fail('HTTP Server creation did not raise UnknownProtocol')
+
     def test_server_start_and_stop(self):
         server = http_server.HttpServer()
         server.setUp()
@@ -106,10 +114,8 @@ class TestHTTPServer(tests.TestCase):
 
         server = http_server.HttpServer(RequestHandlerOneZero)
         server.setUp()
-        try:
-            self.assertIsInstance(server._httpd, http_server.TestingHTTPServer)
-        finally:
-            server.tearDown()
+        self.addCleanup(server.tearDown)
+        self.assertIsInstance(server._httpd, http_server.TestingHTTPServer)
 
     def test_create_http_server_one_one(self):
         class RequestHandlerOneOne(http_server.TestingHTTPRequestHandler):
@@ -118,11 +124,33 @@ class TestHTTPServer(tests.TestCase):
 
         server = http_server.HttpServer(RequestHandlerOneOne)
         server.setUp()
-        try:
-            self.assertIsInstance(server._httpd,
-                                  http_server.TestingThreadingHTTPServer)
-        finally:
-            server.tearDown()
+        self.addCleanup(server.tearDown)
+        self.assertIsInstance(server._httpd,
+                              http_server.TestingThreadingHTTPServer)
+
+    def test_create_http_server_force_one_one(self):
+        class RequestHandlerOneZero(http_server.TestingHTTPRequestHandler):
+
+            protocol_version = 'HTTP/1.0'
+
+        server = http_server.HttpServer(RequestHandlerOneZero,
+                                        protocol_version='HTTP/1.1')
+        server.setUp()
+        self.addCleanup(server.tearDown)
+        self.assertIsInstance(server._httpd,
+                              http_server.TestingThreadingHTTPServer)
+
+    def test_create_http_server_force_one_zero(self):
+        class RequestHandlerOneOne(http_server.TestingHTTPRequestHandler):
+
+            protocol_version = 'HTTP/1.1'
+
+        server = http_server.HttpServer(RequestHandlerOneOne,
+                                        protocol_version='HTTP/1.0')
+        server.setUp()
+        self.addCleanup(server.tearDown)
+        self.assertIsInstance(server._httpd,
+                              http_server.TestingHTTPServer)
 
 
 class TestWithTransport_pycurl(object):
