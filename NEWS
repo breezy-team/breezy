@@ -65,6 +65,15 @@ IN DEVELOPMENT
      user:pass embedded in the urls.
      (Vincent Ladeuil, #177643)
 
+   * ``reconfigure`` is able to convert trees into lightweight checkouts.
+     (Aaron Bentley)
+
+   * Reduce lockdir timeout to 0 when running ``bzr serve``.  (Andrew Bennetts,
+     #148087)
+
+   * Test that the old ``version_info_format`` functions still work, even
+     though they are deprecated. (John Arbash Meinel, ShenMaq, #177872)
+
    * Transform failures no longer cause ImmortalLimbo errors (Aaron Bentley,
      #137681)
 
@@ -75,12 +84,6 @@ IN DEVELOPMENT
    * When dumb http servers return whole files instead of the requested ranges,
      read the remaining bytes by chunks to avoid overflowing network buffers.
      (Vincent Ladeuil, #175886)
-
-   * ``reconfigure`` is able to convert trees into lightweight checkouts.
-     (Aaron Bentley)
-
-   * Reduce lockdir timeout to 0 when running ``bzr serve``.  (Andrew Bennetts,
-     #148087)
 
   DOCUMENTATION:
 
