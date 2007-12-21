@@ -3724,6 +3724,7 @@ class cmd_serve(Command):
         ]
 
     def run(self, port=None, inet=False, directory=None, allow_writes=False):
+        from bzrlib import lockdir
         from bzrlib.smart import medium, server
         from bzrlib.transport import get_transport
         from bzrlib.transport.chroot import ChrootServer
@@ -3754,11 +3755,14 @@ class cmd_serve(Command):
         # be changed with care though, as we dont want to use bandwidth sending
         # progress over stderr to smart server clients!
         old_factory = ui.ui_factory
+        old_lockdir_timeout = lockdir._DEFAULT_TIMEOUT_SECONDS
         try:
             ui.ui_factory = ui.SilentUIFactory()
+            lockdir._DEFAULT_TIMEOUT_SECONDS = 0
             smart_server.serve()
         finally:
             ui.ui_factory = old_factory
+            lockdir._DEFAULT_TIMEOUT_SECONDS = old_lockdir_timeout
 
 
 class cmd_join(Command):
