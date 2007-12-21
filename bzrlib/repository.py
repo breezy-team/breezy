@@ -1964,7 +1964,7 @@ class RepositoryFormat(object):
     _matchingbzrdir - the bzrdir format that the repository format was
     originally written to work with. This can be used if manually
     constructing a bzrdir and repository, or more commonly for test suite
-    parameterisation.
+    parameterization.
     """
 
     # Set to True or False in derived classes. True indicates that the format

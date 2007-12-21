@@ -371,7 +371,7 @@ class TestRepository(TestCaseWithRepository):
     def test_format_attributes(self):
         """All repository formats should have some basic attributes."""
         # create a repository to get a real format instance, not the 
-        # template from the test suite parameterisation.
+        # template from the test suite parameterization.
         repo = self.make_repository('.')
         repo._format.rich_root_data
         repo._format.supports_tree_reference

@@ -381,11 +381,16 @@ class BzrDir(object):
                                                format=format).bzrdir
         return bzrdir.create_workingtree()
 
-    def create_workingtree(self, revision_id=None, from_branch=None):
+    def create_workingtree(self, revision_id=None, from_branch=None,
+        accelerator_tree=None):
         """Create a working tree at this BzrDir.
         
         :param revision_id: create it as of this revision id.
         :param from_branch: override bzrdir branch (for lightweight checkouts)
+        :param accelerator_tree: A tree which can be used for retrieving file
+            contents more quickly than the revision tree, i.e. a workingtree.
+            The revision tree will be used for cases where accelerator_tree's
+            content is different.
         """
         raise NotImplementedError(self.create_workingtree)
 
@@ -666,6 +671,34 @@ class BzrDir(object):
                 raise errors.NotBranchError(path=url)
             a_transport = new_t
 
+    def _get_tree_branch(self):
+        """Return the branch and tree, if any, for this bzrdir.
+
+        Return None for tree if not present.
+        Raise NotBranchError if no branch is present.
+        :return: (tree, branch)
+        """
+        try:
+            tree = self.open_workingtree()
+        except (errors.NoWorkingTree, errors.NotLocalUrl):
+            tree = None
+            branch = self.open_branch()
+        else:
+            branch = tree.branch
+        return tree, branch
+
+    @classmethod
+    def open_tree_or_branch(klass, location):
+        """Return the branch and working tree at a location.
+
+        If there is no tree at the location, tree will be None.
+        If there is no branch at the location, an exception will be
+        raised
+        :return: (tree, branch)
+        """
+        bzrdir = klass.open(location)
+        return bzrdir._get_tree_branch()
+
     @classmethod
     def open_containing_tree_or_branch(klass, location):
         """Return the branch and working tree contained by a location.
@@ -677,13 +710,7 @@ class BzrDir(object):
         relpath is the portion of the path that is contained by the branch.
         """
         bzrdir, relpath = klass.open_containing(location)
-        try:
-            tree = bzrdir.open_workingtree()
-        except (errors.NoWorkingTree, errors.NotLocalUrl):
-            tree = None
-            branch = bzrdir.open_branch()
-        else:
-            branch = tree.branch
+        tree, branch = bzrdir._get_tree_branch()
         return tree, branch, relpath
 
     def open_repository(self, _unsupported=False):
@@ -788,7 +815,8 @@ class BzrDir(object):
         return self.cloning_metadir()
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
-               recurse='down', possible_transports=None):
+               recurse='down', possible_transports=None,
+               accelerator_tree=None):
         """Create a copy of this bzrdir prepared for use as a new line of
         development.
 
@@ -801,6 +829,10 @@ class BzrDir(object):
 
         if revision_id is not None, then the clone operation may tune
             itself to download less data.
+        :param accelerator_tree: A tree which can be used for retrieving file
+            contents more quickly than the revision tree, i.e. a workingtree.
+            The revision tree will be used for cases where accelerator_tree's
+            content is different.
         """
         target_transport = get_transport(url, possible_transports)
         target_transport.ensure_base()
@@ -845,7 +877,7 @@ class BzrDir(object):
             result.create_branch()
         if isinstance(target_transport, LocalTransport) and (
             result_repo is None or result_repo.make_working_trees()):
-            wt = result.create_workingtree()
+            wt = result.create_workingtree(accelerator_tree=accelerator_tree)
             wt.lock_write()
             try:
                 if wt.path2id('') is None:
@@ -939,7 +971,8 @@ class BzrDirPreSplitOut(BzrDir):
         """See BzrDir.destroy_repository."""
         raise errors.UnsupportedOperation(self.destroy_repository, self)
 
-    def create_workingtree(self, revision_id=None, from_branch=None):
+    def create_workingtree(self, revision_id=None, from_branch=None,
+                           accelerator_tree=None):
         """See BzrDir.create_workingtree."""
         # this looks buggy but is not -really-
         # because this format creates the workingtree when the bzrdir is
@@ -1013,7 +1046,7 @@ class BzrDirPreSplitOut(BzrDir):
         return format.open(self, _found=True)
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
-               possible_transports=None):
+               possible_transports=None, accelerator_tree=None):
         """See BzrDir.sprout()."""
         from bzrlib.workingtree import WorkingTreeFormat2
         self._make_tail(url)
@@ -1027,7 +1060,8 @@ class BzrDirPreSplitOut(BzrDir):
         except errors.NotBranchError:
             pass
         # we always want a working tree
-        WorkingTreeFormat2().initialize(result)
+        WorkingTreeFormat2().initialize(result,
+                                        accelerator_tree=accelerator_tree)
         return result
 
 
@@ -1121,10 +1155,12 @@ class BzrDirMeta1(BzrDir):
         """See BzrDir.destroy_repository."""
         self.transport.delete_tree('repository')
 
-    def create_workingtree(self, revision_id=None, from_branch=None):
+    def create_workingtree(self, revision_id=None, from_branch=None,
+                           accelerator_tree=None):
         """See BzrDir.create_workingtree."""
         return self._format.workingtree_format.initialize(
-            self, revision_id, from_branch=from_branch)
+            self, revision_id, from_branch=from_branch,
+            accelerator_tree=accelerator_tree)
 
     def destroy_workingtree(self):
         """See BzrDir.destroy_workingtree."""

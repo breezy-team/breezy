@@ -874,7 +874,8 @@ class cmd_branch(Command):
             raise errors.BzrCommandError(
                 'bzr branch --revision takes exactly 1 revision value')
 
-        br_from = Branch.open(from_location)
+        accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
+            from_location)
         br_from.lock_read()
         try:
             if len(revision) == 1 and revision[0] is not None:
@@ -902,7 +903,8 @@ class cmd_branch(Command):
             try:
                 # preserve whatever source format we have.
                 dir = br_from.bzrdir.sprout(to_transport.base, revision_id,
-                                            possible_transports=[to_transport])
+                                            possible_transports=[to_transport],
+                                            accelerator_tree=accelerator_tree)
                 branch = dir.open_branch()
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
@@ -947,11 +949,17 @@ class cmd_checkout(Command):
                                  "common operations like diff and status without "
                                  "such access, and also support local commits."
                             ),
+                     Option('files-from',
+                            help="Get file contents from this tree.", type=str)
                      ]
     aliases = ['co']
 
     def run(self, branch_location=None, to_location=None, revision=None,
-            lightweight=False):
+            lightweight=False, files_from=None):
+        if files_from is not None:
+            accelerator_tree = WorkingTree.open(files_from)
+        else:
+            accelerator_tree = None
         if revision is None:
             revision = [None]
         elif len(revision) > 1:
@@ -978,7 +986,8 @@ class cmd_checkout(Command):
             except errors.NoWorkingTree:
                 source.bzrdir.create_workingtree(revision_id)
                 return
-        source.create_checkout(to_location, revision_id, lightweight)
+        source.create_checkout(to_location, revision_id, lightweight,
+                               accelerator_tree)
 
 
 class cmd_renames(Command):
@@ -3023,10 +3032,6 @@ class cmd_remerge(Command):
                                              " merges.  Not cherrypicking or"
                                              " multi-merges.")
             repository = tree.branch.repository
-            graph = repository.get_graph()
-            base_revision = graph.find_unique_lca(parents[0], parents[1])
-            base_tree = repository.revision_tree(base_revision)
-            other_tree = repository.revision_tree(parents[1])
             interesting_ids = None
             new_conflicts = []
             conflicts = tree.conflicts()
@@ -3062,18 +3067,19 @@ class cmd_remerge(Command):
             # list, we imply that the working tree text has seen and rejected
             # all the changes from the other tree, when in fact those changes
             # have not yet been seen.
+            pb = ui.ui_factory.nested_progress_bar()
             tree.set_parent_ids(parents[:1])
             try:
-                conflicts = _mod_merge.merge_inner(
-                                          tree.branch, other_tree, base_tree,
-                                          this_tree=tree,
-                                          interesting_ids=interesting_ids,
-                                          other_rev_id=parents[1],
-                                          merge_type=merge_type,
-                                          show_base=show_base,
-                                          reprocess=reprocess)
+                merger = _mod_merge.Merger.from_revision_ids(pb,
+                                                             tree, parents[1])
+                merger.interesting_ids = interesting_ids
+                merger.merge_type = merge_type
+                merger.show_base = show_base
+                merger.reprocess = reprocess
+                conflicts = merger.do_merge()
             finally:
                 tree.set_parent_ids(parents)
+                pb.finished()
         finally:
             tree.unlock()
         if conflicts > 0:
@@ -3712,6 +3718,7 @@ class cmd_serve(Command):
         ]
 
     def run(self, port=None, inet=False, directory=None, allow_writes=False):
+        from bzrlib import lockdir
         from bzrlib.smart import medium, server
         from bzrlib.transport import get_transport
         from bzrlib.transport.chroot import ChrootServer
@@ -3742,11 +3749,14 @@ class cmd_serve(Command):
         # be changed with care though, as we dont want to use bandwidth sending
         # progress over stderr to smart server clients!
         old_factory = ui.ui_factory
+        old_lockdir_timeout = lockdir._DEFAULT_TIMEOUT_SECONDS
         try:
             ui.ui_factory = ui.SilentUIFactory()
+            lockdir._DEFAULT_TIMEOUT_SECONDS = 0
             smart_server.serve()
         finally:
             ui.ui_factory = old_factory
+            lockdir._DEFAULT_TIMEOUT_SECONDS = old_lockdir_timeout
 
 
 class cmd_join(Command):

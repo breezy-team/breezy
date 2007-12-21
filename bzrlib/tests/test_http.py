@@ -1321,7 +1321,7 @@ class TestAuth(object):
         self.assertEquals(expected_prompt, actual_prompt)
 
     def test_no_prompt_for_password_when_using_auth_config(self):
-        user =' joe'
+        user ='joe'
         password = 'foo'
         stdin_content = 'bar\n'  # Not the right password
         self.server.add_user(user, password)
@@ -1449,4 +1449,54 @@ class TestHTTPProxyDigestAuth(TestProxyAuth, TestDigestAuth,
 
     def create_transport_readonly_server(self):
         return ProxyDigestAuthServer()
+
+
+class TestAuth_pycurl(object):
+    "Tests that can't be applied to pycurl."""
+
+    def test_prompt_for_password(self):
+        raise tests.TestNotApplicable(
+            'pycurl cannot prompt, it handles auth by embedding'
+            ' user:pass in urls only')
+
+    def test_no_prompt_for_password_when_using_auth_config(self):
+        raise tests.TestNotApplicable(
+            'pycurl does not support authentication.conf'
+            ' since it cannot prompt')
+
+
+class TestHTTPBasicAuth_pycurl(TestWithTransport_pycurl, TestAuth_pycurl,
+                               TestHTTPBasicAuth):
+     """Test http basic authentication scheme for pycurl"""
+
+
+class TestHTTPProxyBasicAuth_pycurl(TestWithTransport_pycurl, TestAuth_pycurl,
+                                    TestHTTPProxyBasicAuth):
+     """Test proxy basic authentication scheme for pycurl"""
+
+     def test_empty_pass(self):
+         raise tests.KnownFailure(
+             'some versions of pycurl does not handle empty proxy passwords')
+
+
+class TestHTTPDigestAuth_pycurl(TestWithTransport_pycurl, TestAuth_pycurl,
+                                TestHTTPDigestAuth):
+     """Test http digest authentication scheme for pycurl"""
+
+     def test_changing_nonce(self):
+         raise tests.KnownFailure(
+             'pycurl does not handle a nonce change')
+
+
+class TestHTTPProxyDigestAuth_pycurl(TestWithTransport_pycurl, TestAuth_pycurl,
+                                     TestHTTPProxyDigestAuth):
+     """Test http digest authentication scheme for pycurl"""
+
+     def test_empty_pass(self):
+         raise tests.KnownFailure(
+             'some versions of pycurl does not handle empty proxy passwords')
+
+     def test_changing_nonce(self):
+         raise tests.KnownFailure(
+             'pycurl does not handle a nonce change')
 

@@ -2129,7 +2129,7 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
 
 
 class RepositoryFormatKnitPack1(RepositoryFormatPack):
-    """A no-subtrees parameterised Pack repository.
+    """A no-subtrees parameterized Pack repository.
 
     This format was introduced in 0.92.
     """
@@ -2159,7 +2159,7 @@ class RepositoryFormatKnitPack1(RepositoryFormatPack):
 
 
 class RepositoryFormatKnitPack3(RepositoryFormatPack):
-    """A subtrees parameterised Pack repository.
+    """A subtrees parameterized Pack repository.
 
     This repository format uses the xml7 serializer to get:
      - support for recording full info about the tree root
@@ -2201,7 +2201,7 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
 
 
 class RepositoryFormatKnitPack4(RepositoryFormatPack):
-    """A rich-root, no subtrees parameterised Pack repository.
+    """A rich-root, no subtrees parameterized Pack repository.
 
     This repository format uses the xml6 serializer to get:
      - support for recording full info about the tree root

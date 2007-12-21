@@ -1322,7 +1322,7 @@ def topology_sorted_ids(tree):
     return file_ids
 
 
-def build_tree(tree, wt):
+def build_tree(tree, wt, accelerator_tree=None):
     """Create working tree for a branch, using a TreeTransform.
     
     This function should be used on empty trees, having a tree root at most.
@@ -1335,19 +1335,31 @@ def build_tree(tree, wt):
     - Otherwise, if the content on disk matches the content we are building,
       it is silently replaced.
     - Otherwise, conflict resolution will move the old file to 'oldname.moved'.
+
+    :param tree: The tree to convert wt into a copy of
+    :param wt: The working tree that files will be placed into
+    :param accelerator_tree: A tree which can be used for retrieving file
+        contents more quickly than tree itself, i.e. a workingtree.  tree
+        will be used for cases where accelerator_tree's content is different.
     """
     wt.lock_tree_write()
     try:
         tree.lock_read()
         try:
-            return _build_tree(tree, wt)
+            if accelerator_tree is not None:
+                accelerator_tree.lock_read()
+            try:
+                return _build_tree(tree, wt, accelerator_tree)
+            finally:
+                if accelerator_tree is not None:
+                    accelerator_tree.unlock()
         finally:
             tree.unlock()
     finally:
         wt.unlock()
 
 
-def _build_tree(tree, wt):
+def _build_tree(tree, wt, accelerator_tree):
     """See build_tree."""
     if len(wt.inventory) > 1:  # more than just a root
         raise errors.WorkingTreeAlreadyPopulated(base=wt.basedir)
@@ -1424,7 +1436,8 @@ def _build_tree(tree, wt):
                     old_parent = tt.trans_id_tree_path(tree_path)
                     _reparent_children(tt, old_parent, new_trans_id)
             for num, (trans_id, bytes) in enumerate(
-                tree.iter_files_bytes(deferred_contents)):
+                _iter_files_bytes_accelerated(tree, accelerator_tree,
+                                              deferred_contents)):
                 tt.create_file(bytes, trans_id)
                 pb.update('Adding file contents',
                           (num + len(tree.inventory) - len(deferred_contents)),
@@ -1442,11 +1455,35 @@ def _build_tree(tree, wt):
             wt.add_conflicts(conflicts)
         except errors.UnsupportedOperation:
             pass
-        result = tt.apply()
+        result = tt.apply(no_conflicts=True)
     finally:
         tt.finalize()
         top_pb.finished()
     return result
+
+
+def _iter_files_bytes_accelerated(tree, accelerator_tree, desired_files):
+    if accelerator_tree is None:
+        new_desired_files = desired_files
+    else:
+        iter = accelerator_tree._iter_changes(tree, include_unchanged=True)
+        unchanged = dict((f, p[1]) for (f, p, c, v, d, n, k, e)
+                         in iter if not c)
+        new_desired_files = []
+        for file_id, identifier in desired_files:
+            accelerator_path = unchanged.get(file_id)
+            if accelerator_path is None:
+                new_desired_files.append((file_id, identifier))
+                continue
+            contents = accelerator_tree.get_file(file_id, accelerator_path)
+            try:
+                want_new = False
+                contents_bytes = (contents.read(),)
+            finally:
+                contents.close()
+            yield identifier, contents_bytes
+    for result in tree.iter_files_bytes(new_desired_files):
+        yield result
 
 
 def _reparent_children(tt, old_parent, new_parent):

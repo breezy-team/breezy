@@ -281,6 +281,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         else:
             self.case_sensitive = False
 
+        self._setup_directory_is_tree_reference()
+
     branch = property(
         fget=lambda self: self._branch,
         doc="""The branch this WorkingTree is connected to.
@@ -990,7 +992,18 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             other_tree.unlock()
         other_tree.bzrdir.retire_bzrdir()
 
-    def _directory_is_tree_reference(self, relpath):
+    def _setup_directory_is_tree_reference(self):
+        if self._branch.repository._format.supports_tree_reference:
+            self._directory_is_tree_reference = \
+                self._directory_may_be_tree_reference
+        else:
+            self._directory_is_tree_reference = \
+                self._directory_is_never_tree_reference
+
+    def _directory_is_never_tree_reference(self, relpath):
+        return False
+
+    def _directory_may_be_tree_reference(self, relpath):
         # as a special case, if a directory contains control files then 
         # it's a tree reference, except that the root of the tree is not
         return relpath and osutils.isdir(self.abspath(relpath) + u"/.bzr")
@@ -2733,7 +2746,8 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         control_files.put_bytes('pending-merges', '')
         
 
-    def initialize(self, a_bzrdir, revision_id=None, from_branch=None):
+    def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
+                   accelerator_tree=None):
         """See WorkingTreeFormat.initialize()."""
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
@@ -2825,11 +2839,16 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         return LockableFiles(transport, self._lock_file_name, 
                              self._lock_class)
 
-    def initialize(self, a_bzrdir, revision_id=None, from_branch=None):
+    def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
+                   accelerator_tree=None):
         """See WorkingTreeFormat.initialize().
         
-        revision_id allows creating a working tree at a different
-        revision than the branch is at.
+        :param revision_id: if supplied, create a working tree at a different
+            revision than the branch is at.
+        :param accelerator_tree: A tree which can be used for retrieving file
+            contents more quickly than the revision tree, i.e. a workingtree.
+            The revision tree will be used for cases where accelerator_tree's
+            content is different.
         """
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
