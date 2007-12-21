@@ -769,6 +769,8 @@ class Repository(object):
     def find_branches(self, using=False):
         """Find branches underneath this repository.
 
+        This will include branches inside other branches.
+
         :param using: If True, list only branches using this repository.
         """
 

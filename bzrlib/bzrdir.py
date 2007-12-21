@@ -288,6 +288,15 @@ class BzrDir(object):
 
     @staticmethod
     def find_branches(transport):
+        """Find all branches under a transport.
+
+        This will find all branches below the transport, including branches
+        inside other branches.  Where possible, it will use
+        Repository.find_branches.
+
+        To list all the branches that use a particular Repository, see
+        Repository.find_branches
+        """
         def evaluate(bzrdir):
             try:
                 repository = bzrdir.open_repository()
