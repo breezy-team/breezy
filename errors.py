@@ -134,3 +134,11 @@ class InvalidFileName(BzrError):
     def __init__(self, path):
         BzrError.__init__(self)
         self.path = path
+
+
+class CorruptMappingData(BzrError):
+    _fmt = """An invalid change was made to the bzr-specific properties in %(path)s."""
+
+    def __init__(self, path):
+        BzrError.__init__(self)
+        self.path = path
