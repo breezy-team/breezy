@@ -424,6 +424,7 @@ class WeaveRevisionBuildEditor(RevisionBuildEditor):
         self.weave_store = target.weave_store
 
     def _start_revision(self):
+        self._write_group_active = True
         self.target.start_write_group()
 
     def _store_directory(self, file_id, parents):
@@ -449,9 +450,12 @@ class WeaveRevisionBuildEditor(RevisionBuildEditor):
                 self.target.serialise_inventory(self.inventory))
         self.target.add_revision(self.revid, rev, self.inventory)
         self.target.commit_write_group()
+        self._write_group_active = False
 
     def abort_edit(self):
-        self.target.abort_write_group()
+        if self._write_group_active:
+            self.target.abort_write_group()
+            self._write_group_active = False
 
 
 class PackRevisionBuildEditor(WeaveRevisionBuildEditor):

@@ -4,7 +4,7 @@ bzr-svn 0.4.6	UNRELEASED
   
    * Remember where revids have already been detected. Makes incremental
      push a lot faster, in particular in Subversion repositories 
-	 with a lot of branches. (#139364)
+     with a lot of branches. (#139364)
 
    * Work around memory leak in the Python Subversion bindings of svn.ra.get_log(). 
 
@@ -21,6 +21,8 @@ bzr-svn 0.4.6	UNRELEASED
    * Improved compatibility with Subversion 1.5.
 
    * Actually set symlink target when pushing commits that add or change symlinks. (#177890)
+
+   * Don't mask exception in fetch code. (#165177)
 
 bzr-svn 0.4.5	2007-12-01
 
