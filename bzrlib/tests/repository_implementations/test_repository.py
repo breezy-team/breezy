@@ -645,21 +645,23 @@ class TestRepository(TestCaseWithRepository):
                                                 force_new_repo=True)
         baz = self.make_bzrdir('repository/baz')
         qux = self.make_branch('repository/baz/qux')
+        quxx = self.make_branch('repository/baz/qux/quxx')
         return repo
 
     def test_find_branches(self):
         repo = self.make_repository_and_foo_bar(shared=False)
         branches = repo.find_branches()
         self.assertContainsRe(branches[-1].base, 'repository/foo/$')
-        self.assertContainsRe(branches[-2].base, 'repository/baz/qux/$')
+        self.assertContainsRe(branches[-3].base, 'repository/baz/qux/$')
+        self.assertContainsRe(branches[-2].base, 'repository/baz/qux/quxx/$')
         # in some formats, creating a repo creates a branch
-        if len(branches) == 5:
-            self.assertContainsRe(branches[-3].base, 'repository/baz/$')
-            self.assertContainsRe(branches[-4].base, 'repository/bar/$')
-            self.assertContainsRe(branches[-5].base, 'repository/$')
+        if len(branches) == 6:
+            self.assertContainsRe(branches[-4].base, 'repository/baz/$')
+            self.assertContainsRe(branches[-5].base, 'repository/bar/$')
+            self.assertContainsRe(branches[-6].base, 'repository/$')
         else:
-            self.assertEqual(3, len(branches))
-            self.assertContainsRe(branches[-3].base, 'repository/bar/$')
+            self.assertEqual(4, len(branches))
+            self.assertContainsRe(branches[-4].base, 'repository/bar/$')
 
     def test_find_branches_using(self):
         try:
