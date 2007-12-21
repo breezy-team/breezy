@@ -186,7 +186,7 @@ def register_builder(format, module, class_name):
         can be found
     :param class_name: The string name of the class to instantiate
     """
-    format_registry.regiser_lazy(format, module, class_names)
+    format_registry.register_lazy(format, module, class_name)
 
 
 @deprecated_function(one_zero)
