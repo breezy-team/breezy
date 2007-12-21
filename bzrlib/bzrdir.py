@@ -286,6 +286,29 @@ class BzrDir(object):
                 for subdir in sorted(subdirs, reverse=True):
                     pending.append(current_transport.clone(subdir))
 
+    @staticmethod
+    def find_branches(transport):
+        def evaluate(bzrdir):
+            try:
+                repository = bzrdir.open_repository()
+            except errors.NoRepositoryPresent:
+                pass
+            else:
+                return False, (None, repository)
+            try:
+                branch = bzrdir.open_branch()
+            except errors.NotBranchError:
+                return True, (None, None)
+            else:
+                return True, (branch, None)
+        branches = []
+        for branch, repo in BzrDir.find_bzrdirs(transport, evaluate=evaluate):
+            if repo is not None:
+                branches.extend(repo.find_branches())
+            if branch is not None:
+                branches.append(branch)
+        return branches
+
 
     def destroy_repository(self):
         """Destroy the repository in this BzrDir"""

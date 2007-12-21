@@ -643,18 +643,23 @@ class TestRepository(TestCaseWithRepository):
                                                 force_new_repo=False)
         bzrdir.BzrDir.create_branch_convenience(self.get_url('repository/bar'),
                                                 force_new_repo=True)
+        baz = self.make_bzrdir('repository/baz')
+        qux = self.make_branch('repository/baz/qux')
         return repo
 
     def test_find_branches(self):
         repo = self.make_repository_and_foo_bar(shared=False)
         branches = repo.find_branches()
         self.assertContainsRe(branches[-1].base, 'repository/foo/$')
-        self.assertContainsRe(branches[-2].base, 'repository/bar/$')
+        self.assertContainsRe(branches[-2].base, 'repository/baz/qux/$')
         # in some formats, creating a repo creates a branch
-        if len(branches) == 3:
-            self.assertContainsRe(branches[-3].base, 'repository/$')
+        if len(branches) == 5:
+            self.assertContainsRe(branches[-3].base, 'repository/baz/$')
+            self.assertContainsRe(branches[-4].base, 'repository/bar/$')
+            self.assertContainsRe(branches[-5].base, 'repository/$')
         else:
-            self.assertEqual(2, len(branches))
+            self.assertEqual(3, len(branches))
+            self.assertContainsRe(branches[-3].base, 'repository/bar/$')
 
     def test_find_branches_using(self):
         try:

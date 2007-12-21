@@ -592,7 +592,7 @@ class ChrootedTests(TestCaseWithTransport):
         self.failIfExists('repo/tree2/subtree/file')
 
     def make_foo_bar_baz(self):
-        foo = self.make_branch('foo').bzrdir
+        foo = bzrdir.BzrDir.create_branch_convenience('foo').bzrdir
         bar = self.make_branch('foo/bar').bzrdir
         baz = self.make_branch('baz').bzrdir
         return foo, bar, baz
@@ -635,6 +635,21 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(len(first), len(second))
         for x, y in zip(first, second):
             self.assertEqual(x.root_transport.base, y.root_transport.base)
+
+    def test_find_branches(self):
+        root = self.make_repository('', shared=True)
+        foo, bar, baz = self.make_foo_bar_baz()
+        qux = self.make_bzrdir('foo/qux')
+        transport = get_transport(self.get_url())
+        branches = bzrdir.BzrDir.find_branches(transport)
+        self.assertEqual(baz.root_transport.base, branches[0].base)
+        self.assertEqual(foo.root_transport.base, branches[1].base)
+        self.assertEqual(bar.root_transport.base, branches[2].base)
+
+        # ensure this works without a top-level repo
+        branches = bzrdir.BzrDir.find_branches(transport.clone('foo'))
+        self.assertEqual(foo.root_transport.base, branches[0].base)
+        self.assertEqual(bar.root_transport.base, branches[1].base)
 
 
 class TestMeta1DirFormat(TestCaseWithTransport):
