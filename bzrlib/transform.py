@@ -1481,7 +1481,7 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
         new_desired_files = desired_files
     else:
         iter = accelerator_tree._iter_changes(tree, include_unchanged=True)
-        unchanged = dict((f, p[0]) for (f, p, c, v, d, n, k, e)
+        unchanged = dict((f, p[1]) for (f, p, c, v, d, n, k, e)
                          in iter if not (c or e[0] != e[1]))
         new_desired_files = []
         count = 0

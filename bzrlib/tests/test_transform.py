@@ -1609,6 +1609,23 @@ class TestBuildTree(tests.TestCaseWithTransport):
         target2_stat = os.stat('target2/file1')
         self.assertNotEqual(source_stat, target2_stat)
 
+    def test_build_tree_accelerator_tree_moved(self):
+        source = self.make_branch_and_tree('source')
+        self.build_tree_contents([('source/file1', 'A')])
+        source.add(['file1'], ['file1-id'])
+        source.commit('commit files')
+        source.rename_one('file1', 'file2')
+        source.lock_read()
+        self.addCleanup(source.unlock)
+        target = self.make_branch_and_tree('target')
+        revision_tree = source.basis_tree()
+        revision_tree.lock_read()
+        self.addCleanup(revision_tree.unlock)
+        build_tree(revision_tree, target, source)
+        target.lock_read()
+        self.addCleanup(target.unlock)
+        self.assertEqual([], list(target._iter_changes(revision_tree)))
+
     def test_build_tree_hardlinks_preserve_execute(self):
         self.requireFeature(HardlinkFeature)
         source = self.create_ab_tree()
