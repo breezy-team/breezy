@@ -301,9 +301,10 @@ class TestMerge(ExternalBase):
         target.commit('empty commit')
         self.write_directive('directive', source.branch, 'target', 'rev2',
                              'rev1')
-        self.run_bzr('merge -d target directive')
+        out, err = self.run_bzr('merge -d target directive')
         self.failIfExists('target/a')
         self.failUnlessExists('target/b')
+        self.assertContainsRe(err, 'Performing cherrypick')
 
     def write_directive(self, filename, source, target, revision_id,
                         base_revision_id=None, mangle_patch=False):
@@ -406,3 +407,16 @@ class TestMerge(ExternalBase):
         graph = tree_a.branch.repository.get_graph(tree_b.branch.repository)
         out, err = self.run_bzr(['merge', '-d', 'a', 'b'])
         self.assertContainsRe(err, 'Warning: criss-cross merge encountered.')
+
+    def test_weave_cherrypick(self):
+        this_tree = self.make_branch_and_tree('this')
+        self.build_tree_contents([('this/file', "a\n")])
+        this_tree.add('file')
+        this_tree.commit('rev1')
+        other_tree = this_tree.bzrdir.sprout('other').open_workingtree()
+        self.build_tree_contents([('other/file', "a\nb\n")])
+        other_tree.commit('rev2b')
+        self.build_tree_contents([('other/file', "c\na\nb\n")])
+        other_tree.commit('rev3b')
+        self.run_bzr('merge --weave -d this other -r -2..-1')
+        self.assertFileEqual('c\na\n', 'this/file')

@@ -91,10 +91,7 @@ Appendices
 
 .. include:: specifying_revisions.txt
 .. include:: shared_repository_layouts.txt
-.. include:: conflicts.txt
-.. include:: configuration.txt
 .. include:: setting_up_email.txt
-.. include:: authentication_conf.txt
 .. include:: http_smart_server.txt
 .. include:: writing_a_plugin.txt
 

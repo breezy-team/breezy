@@ -1101,6 +1101,12 @@ class UnrelatedBranches(BzrError):
             " no merge base revision was specified.")
 
 
+class CannotReverseCherrypick(BzrError):
+
+    _fmt = ('Selected merge cannot perform reverse cherrypicks.  Try merge3'
+            ' or diff3.')
+
+
 class NoCommonAncestor(BzrError):
     
     _fmt = "Revisions have no common ancestor: %(revision_a)s %(revision_b)s"
@@ -2486,6 +2492,14 @@ class UncommittedChanges(BzrError):
         display_url = urlutils.unescape_for_display(
             tree.bzrdir.root_transport.base, 'ascii')
         BzrError.__init__(self, tree=tree, display_url=display_url)
+
+
+class MissingTemplateVariable(BzrError):
+
+    _fmt = 'Variable {%(name)s} is not available.'
+
+    def __init__(self, name):
+        self.name = name
 
 
 class UnableCreateSymlink(BzrError):

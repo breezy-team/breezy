@@ -119,6 +119,8 @@ class Merger(object):
             tree.branch.repository.get_graph().is_ancestor(
             base_revision_id, tree.branch.last_revision())):
             base_revision_id = None
+        else:
+            warning('Performing cherrypick')
         merger = klass.from_revision_ids(pb, tree, other_revision_id,
                                          base_revision_id)
         return merger, verified
@@ -368,6 +370,12 @@ class Merger(object):
         elif self.show_base:
             raise BzrError("Showing base is not supported for this"
                                   " merge type. %s" % self.merge_type)
+        if (not getattr(self.merge_type, 'supports_reverse_cherrypick', True)
+            and not self.base_is_other_ancestor):
+            raise errors.CannotReverseCherrypick()
+        if self.merge_type.history_based:
+            kwargs['cherrypick'] = (not self.base_is_ancestor or
+                                    not self.base_is_other_ancestor)
         self.this_tree.lock_tree_write()
         if self.base_tree is not None:
             self.base_tree.lock_read()
@@ -415,6 +423,7 @@ class Merge3Merger(object):
     supports_reprocess = True
     supports_show_base = True
     history_based = False
+    supports_reverse_cherrypick = True
     winner_idx = {"this": 2, "other": 1, "conflict": 1}
 
     def __init__(self, working_tree, this_tree, base_tree, other_tree, 
@@ -977,11 +986,14 @@ class WeaveMerger(Merge3Merger):
     """Three-way tree merger, text weave merger."""
     supports_reprocess = True
     supports_show_base = False
+    supports_reverse_cherrypick = False
+    history_based = True
 
     def __init__(self, working_tree, this_tree, base_tree, other_tree, 
                  interesting_ids=None, pb=DummyProgress(), pp=None,
                  reprocess=False, change_reporter=None,
-                 interesting_files=None):
+                 interesting_files=None, cherrypick=False):
+        self.cherrypick = cherrypick
         super(WeaveMerger, self).__init__(working_tree, this_tree, 
                                           base_tree, other_tree, 
                                           interesting_ids=interesting_ids, 
@@ -993,7 +1005,12 @@ class WeaveMerger(Merge3Merger):
         There is no distinction between lines that are meant to contain <<<<<<<
         and conflicts.
         """
-        plan = self.this_tree.plan_file_merge(file_id, self.other_tree)
+        if self.cherrypick:
+            base = self.base_tree
+        else:
+            base = None
+        plan = self.this_tree.plan_file_merge(file_id, self.other_tree,
+                                              base=base)
         if 'merge' in debug.debug_flags:
             plan = list(plan)
             trans_id = self.tt.trans_id_file_id(file_id)
@@ -1263,3 +1280,21 @@ class _PlanMerge(object):
             else:
                 new.intersection_update(result)
         return new
+
+    @staticmethod
+    def _subtract_plans(old_plan, new_plan):
+        matcher = patiencediff.PatienceSequenceMatcher(None, old_plan,
+                                                       new_plan)
+        last_j = 0
+        for i, j, n in matcher.get_matching_blocks():
+            for jj in range(last_j, j):
+                yield new_plan[jj]
+            for jj in range(j, j+n):
+                plan_line = new_plan[jj]
+                if plan_line[0] == 'new-b':
+                    pass
+                elif plan_line[0] == 'killed-b':
+                    yield 'unchanged', plan_line[1]
+                else:
+                    yield plan_line
+            last_j = j + n

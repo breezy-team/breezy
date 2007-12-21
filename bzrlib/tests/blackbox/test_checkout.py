@@ -137,3 +137,8 @@ class TestCheckout(ExternalBase):
         branch.bzrdir.destroy_workingtree()
         self.run_bzr('checkout -r 0')
         self.assertEqual('null:', tree.last_revision())
+
+    def test_checkout_files_from(self):
+        branch = _mod_branch.Branch.open('branch')
+        self.run_bzr(['checkout', 'branch', 'branch2', '--files-from',
+                      'branch'])

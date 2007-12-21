@@ -288,6 +288,52 @@ class TestMerge(TestCaseWithTransport):
         merger.do_merge()
         self.assertEqual(tree_a.get_parent_ids(), [tree_b.last_revision()])
 
+    def prepare_cherrypick(self):
+        """Prepare a pair of trees for cherrypicking tests.
+
+        Both trees have a file, 'file'.
+        rev1 sets content to 'a'.
+        rev2b adds 'b'.
+        rev3b adds 'c'.
+        A full merge of rev2b and rev3b into this_tree would add both 'b' and
+        'c'.  A successful cherrypick of rev2b-rev3b into this_tree will add
+        'c', but not 'b'.
+        """
+        this_tree = self.make_branch_and_tree('this')
+        self.build_tree_contents([('this/file', "a\n")])
+        this_tree.add('file')
+        this_tree.commit('rev1')
+        other_tree = this_tree.bzrdir.sprout('other').open_workingtree()
+        self.build_tree_contents([('other/file', "a\nb\n")])
+        other_tree.commit('rev2b', rev_id='rev2b')
+        self.build_tree_contents([('other/file', "c\na\nb\n")])
+        other_tree.commit('rev3b', rev_id='rev3b')
+        this_tree.lock_write()
+        self.addCleanup(this_tree.unlock)
+        return this_tree, other_tree
+
+    def test_weave_cherrypick(self):
+        this_tree, other_tree = self.prepare_cherrypick()
+        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+            this_tree, 'rev3b', 'rev2b', other_tree.branch)
+        merger.merge_type = _mod_merge.WeaveMerger
+        merger.do_merge()
+        self.assertFileEqual('c\na\n', 'this/file')
+
+    def test_weave_cannot_reverse_cherrypick(self):
+        this_tree, other_tree = self.prepare_cherrypick()
+        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+            this_tree, 'rev2b', 'rev3b', other_tree.branch)
+        merger.merge_type = _mod_merge.WeaveMerger
+        self.assertRaises(errors.CannotReverseCherrypick, merger.do_merge)
+
+    def test_merge3_can_reverse_cherrypick(self):
+        this_tree, other_tree = self.prepare_cherrypick()
+        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+            this_tree, 'rev2b', 'rev3b', other_tree.branch)
+        merger.merge_type = _mod_merge.Merge3Merger
+        merger.do_merge()
+
 
 class TestPlanMerge(TestCaseWithMemoryTransport):
 
@@ -368,3 +414,46 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
                           ('killed-a', 'b\n'),
                           ('unchanged', 'g\n')],
                          list(plan))
+
+    def test_subtract_plans(self):
+        old_plan = [
+        ('unchanged', 'a\n'),
+        ('new-a', 'b\n'),
+        ('killed-a', 'c\n'),
+        ('new-b', 'd\n'),
+        ('new-b', 'e\n'),
+        ('killed-b', 'f\n'),
+        ('killed-b', 'g\n'),
+        ]
+        new_plan = [
+        ('unchanged', 'a\n'),
+        ('new-a', 'b\n'),
+        ('killed-a', 'c\n'),
+        ('new-b', 'd\n'),
+        ('new-b', 'h\n'),
+        ('killed-b', 'f\n'),
+        ('killed-b', 'i\n'),
+        ]
+        subtracted_plan = [
+        ('unchanged', 'a\n'),
+        ('new-a', 'b\n'),
+        ('killed-a', 'c\n'),
+        ('new-b', 'h\n'),
+        ('unchanged', 'f\n'),
+        ('killed-b', 'i\n'),
+        ]
+        self.assertEqual(subtracted_plan,
+            list(_PlanMerge._subtract_plans(old_plan, new_plan)))
+
+    def test_plan_merge_with_base(self):
+        self.add_version('COMMON', [], 'abc')
+        self.add_version('THIS', ['COMMON'], 'abcd')
+        self.add_version('BASE', ['COMMON'], 'eabc')
+        self.add_version('OTHER', ['BASE'], 'eafb')
+        plan = self.plan_merge_vf.plan_merge('THIS', 'OTHER', 'BASE')
+        self.assertEqual([('unchanged', 'a\n'),
+                          ('new-b', 'f\n'),
+                          ('unchanged', 'b\n'),
+                          ('killed-b', 'c\n'),
+                          ('new-a', 'd\n')
+                         ], list(plan))

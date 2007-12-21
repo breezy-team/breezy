@@ -1,4 +1,4 @@
-Conflicts types
+Conflicts Types
 ===============
 
 Some operations, like merge, revert and pull, modify the contents of your
