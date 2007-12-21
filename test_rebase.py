@@ -635,6 +635,9 @@ class ReplayDetermineBaseTests(TestCase):
     def setUp(self):
         self.graph = Graph(self)
 
+    def get_parent_map(self, keys):
+        return dict((revid, self._parent_dict[revid]) for k in self._parent_dict if k in keys)
+
     def get_parents(self, revid):
         return self._parent_dict[revid]
 
