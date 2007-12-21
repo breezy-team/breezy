@@ -46,8 +46,10 @@ class BadWebserverPath(ValueError):
 class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     """Handles one request.
 
-    A TestingHTTPRequestHandler is instantiated for every request
-    received by the associated server.
+    A TestingHTTPRequestHandler is instantiated for every request received by
+    the associated server. Note that 'request' here is inherited from the base
+    TCPServer class, for the HTTP server it is really a connection which itself
+    will handle one or several HTTP requests.
     """
     # The Message-like class used to parse the request headers
     MessageClass = httplib.HTTPMessage
@@ -395,9 +397,14 @@ class HttpServer(transport.Server):
     def _get_httpd(self):
         if self._httpd is None:
             rhandler = self.request_handler
+            # Depending on the protocol version, we will create the approriate
+            # server
             if self.protocol_version is None:
+                # Use the request handler one
                 proto_vers = rhandler.protocol_version
             else:
+                # Use our own, it will be used to override the request handler
+                # one too.
                 proto_vers = self.protocol_version
             # Create the appropriate server for the required protocol
             serv_cls = self.http_server_class.get(proto_vers, None)
@@ -482,6 +489,7 @@ class HttpServer(transport.Server):
         self._http_starting.acquire()
 
         if self._http_exception is not None:
+            # Something went wrong during server start
             exc_class, exc_value, exc_tb = self._http_exception
             raise exc_class, exc_value, exc_tb
         self._http_starting.release()
@@ -491,6 +499,8 @@ class HttpServer(transport.Server):
         """See bzrlib.transport.Server.tearDown."""
         self._httpd.server_close()
         self._http_running = False
+        # FIXME: ensure that all threads have been shut down for the 1.1
+        # server.
         self._http_thread.join()
 
     def get_url(self):
