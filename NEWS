@@ -99,6 +99,9 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * find_* methods available for BzrDirs, Branches and WorkingTrees.
+      (Aaron Bentley)
+
     * Help topics can now be loaded from files. 
       (Ian Clatworthy, Alexander Belchenko)
 
