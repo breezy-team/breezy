@@ -17,7 +17,6 @@
 from cStringIO import StringIO
 import errno
 import md5
-from SimpleHTTPServer import SimpleHTTPRequestHandler
 import re
 import sha
 import socket
@@ -26,35 +25,33 @@ import time
 import urllib2
 import urlparse
 
+
+from bzrlib import (
+    tests,
+    transport,
+    )
 from bzrlib.smart import protocol
-from bzrlib.tests import TestCaseWithTransport
-from bzrlib.tests.http_server import (
-    HttpServer,
-    TestingHTTPRequestHandler,
-    )
-from bzrlib.transport import (
-    get_transport,
-    )
+from bzrlib.tests import http_server
 
 
-class HTTPServerWithSmarts(HttpServer):
+class HTTPServerWithSmarts(http_server.HttpServer):
     """HTTPServerWithSmarts extends the HttpServer with POST methods that will
     trigger a smart server to execute with a transport rooted at the rootdir of
     the HTTP server.
     """
 
     def __init__(self):
-        HttpServer.__init__(self, SmartRequestHandler)
+        http_server.HttpServer.__init__(self, SmartRequestHandler)
 
 
-class SmartRequestHandler(TestingHTTPRequestHandler):
+class SmartRequestHandler(http_server.TestingHTTPRequestHandler):
     """Extend TestingHTTPRequestHandler to support smart client POSTs."""
 
     def do_POST(self):
         """Hand the request off to a smart server instance."""
         self.send_response(200)
         self.send_header("Content-type", "application/octet-stream")
-        transport = get_transport(self.server.test_case_server._home_dir)
+        t = transport.get_transport(self.server.test_case_server._home_dir)
         # TODO: We might like to support streaming responses.  1.0 allows no
         # Content-length in this case, so for integrity we should perform our
         # own chunking within the stream.
@@ -64,7 +61,7 @@ class SmartRequestHandler(TestingHTTPRequestHandler):
         # HTTP trailer facility which may not be widely available.
         out_buffer = StringIO()
         smart_protocol_request = protocol.SmartServerRequestProtocolOne(
-                transport, out_buffer.write)
+                t, out_buffer.write)
         # if this fails, we should return 400 bad request, but failure is
         # failure for now - RBC 20060919
         data_length = int(self.headers['Content-Length'])
@@ -79,7 +76,7 @@ class SmartRequestHandler(TestingHTTPRequestHandler):
         self.wfile.write(out_buffer.getvalue())
 
 
-class TestCaseWithWebserver(TestCaseWithTransport):
+class TestCaseWithWebserver(tests.TestCaseWithTransport):
     """A support class that provides readonly urls that are http://.
 
     This is done by forcing the readonly server to be an http
@@ -88,7 +85,7 @@ class TestCaseWithWebserver(TestCaseWithTransport):
     """
     def setUp(self):
         super(TestCaseWithWebserver, self).setUp()
-        self.transport_readonly_server = HttpServer
+        self.transport_readonly_server = http_server.HttpServer
 
 
 class TestCaseWithTwoWebservers(TestCaseWithWebserver):
@@ -99,7 +96,7 @@ class TestCaseWithTwoWebservers(TestCaseWithWebserver):
     """
     def setUp(self):
         super(TestCaseWithTwoWebservers, self).setUp()
-        self.transport_secondary_server = HttpServer
+        self.transport_secondary_server = http_server.HttpServer
         self.__secondary_server = None
 
     def create_transport_secondary_server(self):
@@ -118,18 +115,18 @@ class TestCaseWithTwoWebservers(TestCaseWithWebserver):
         return self.__secondary_server
 
 
-class ProxyServer(HttpServer):
+class ProxyServer(http_server.HttpServer):
     """A proxy test server for http transports."""
 
     proxy_requests = True
 
 
-class RedirectRequestHandler(TestingHTTPRequestHandler):
+class RedirectRequestHandler(http_server.TestingHTTPRequestHandler):
     """Redirect all request to the specified server"""
 
     def parse_request(self):
         """Redirect a single HTTP request to another host"""
-        valid = TestingHTTPRequestHandler.parse_request(self)
+        valid = http_server.TestingHTTPRequestHandler.parse_request(self)
         if valid:
             tcs = self.server.test_case_server
             code, target = tcs.is_redirected(self.path)
@@ -145,11 +142,11 @@ class RedirectRequestHandler(TestingHTTPRequestHandler):
         return valid
 
 
-class HTTPServerRedirecting(HttpServer):
+class HTTPServerRedirecting(http_server.HttpServer):
     """An HttpServer redirecting to another server """
 
     def __init__(self, request_handler=RedirectRequestHandler):
-        HttpServer.__init__(self, request_handler)
+        http_server.HttpServer.__init__(self, request_handler)
         # redirections is a list of tuples (source, target, code)
         # - source is a regexp for the paths requested
         # - target is a replacement for re.sub describing where
@@ -207,7 +204,7 @@ class TestCaseWithRedirectedWebserver(TestCaseWithTwoWebservers):
        self.old_server = self.get_secondary_server()
 
 
-class AuthRequestHandler(TestingHTTPRequestHandler):
+class AuthRequestHandler(http_server.TestingHTTPRequestHandler):
     """Requires an authentication to process requests.
 
     This is intended to be used with a server that always and
@@ -222,7 +219,7 @@ class AuthRequestHandler(TestingHTTPRequestHandler):
 
     def do_GET(self):
         if self.authorized():
-            return TestingHTTPRequestHandler.do_GET(self)
+            return http_server.TestingHTTPRequestHandler.do_GET(self)
         else:
             # Note that we must update test_case_server *before*
             # sending the error or the client may try to read it
@@ -293,7 +290,7 @@ class DigestAuthRequestHandler(AuthRequestHandler):
         self.send_header(tcs.auth_header_sent,header)
 
 
-class AuthServer(HttpServer):
+class AuthServer(http_server.HttpServer):
     """Extends HttpServer with a dictionary of passwords.
 
     This is used as a base class for various schemes which should
@@ -311,7 +308,7 @@ class AuthServer(HttpServer):
     auth_realm = "Thou should not pass"
 
     def __init__(self, request_handler, auth_scheme):
-        HttpServer.__init__(self, request_handler)
+        http_server.HttpServer.__init__(self, request_handler)
         self.auth_scheme = auth_scheme
         self.password_of = {}
         self.auth_required_errors = 0
