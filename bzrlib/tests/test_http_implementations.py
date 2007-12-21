@@ -56,28 +56,47 @@ except errors.DependencyNotPresent:
     pycurl_present = False
 
 
-class HTTPImplementationsTestProviderAdapter(tests.TestScenarioApplier):
+class TransportAdapter(tests.TestScenarioApplier):
+    """Generate the same test for each transport implementation."""
 
     def __init__(self):
         transport_scenarios = [
-            ('urllib',
-             dict(_transport=_urllib.HttpTransport_urllib,
-                  _server=http_server.HttpServer_urllib,
-                  _qualified_prefix='http+urllib',
-                  )),]
+            ('urllib', dict(_transport=_urllib.HttpTransport_urllib,
+                            _server=http_server.HttpServer_urllib,
+                            _qualified_prefix='http+urllib',)),
+            ]
         if pycurl_present:
             transport_scenarios.append(
                 ('pycurl', dict(_transport=PyCurlTransport,
                                 _server=http_server.HttpServer_PyCurl,
-                                _qualified_prefix='http+pycurl',
-                                )))
+                                _qualified_prefix='http+pycurl',)))
         self.scenarios = transport_scenarios
 
 
-class AuthenticationTestProviderAdapter(HTTPImplementationsTestProviderAdapter):
+class TransportProtocolAdapter(TransportAdapter):
+    """Generate the same test for each protocol implementation.
+
+    In addition to the transport adaptatation that we inherit from.
+    """
 
     def __init__(self):
-        super(AuthenticationTestProviderAdapter, self).__init__()
+        super(TransportProtocolAdapter, self).__init__()
+        protocol_scenarios = [
+            ('HTTP/1.0',  dict(_protocol_version='HTTP/1.0')),
+            ('HTTP/1.1',  dict(_protocol_version='HTTP/1.1')),
+            ]
+        self.scenarios = tests.multiply_scenarios(self.scenarios,
+                                                  protocol_scenarios)
+
+
+class TransportProtocolAuthenticationAdapter(TransportProtocolAdapter):
+    """Generate the same test for each authentication scheme implementation.
+
+    In addition to the protocol adaptatation that we inherit from.
+    """
+
+    def __init__(self):
+        super(TransportProtocolAuthenticationAdapter, self).__init__()
         auth_scheme_scenarios = [
             ('basic', dict(_auth_scheme='basic')),
             ('digest', dict(_auth_scheme='digest')),
@@ -86,17 +105,48 @@ class AuthenticationTestProviderAdapter(HTTPImplementationsTestProviderAdapter):
         self.scenarios = tests.multiply_scenarios(self.scenarios,
                                                   auth_scheme_scenarios)
 
-
 def load_tests(standard_tests, module, loader):
     """Multiply tests for http clients and protocol versions."""
-    http_adapter = HTTPImplementationsTestProviderAdapter()
-    auth_adapter = AuthenticationTestProviderAdapter()
+    # one for each transport
+    t_adapter = TransportAdapter()
+    t_classes= (TestHttpTransportRegistration,
+                TestHttpTransportUrls,
+                )
+    is_testing_for_transports = tests.condition_isinstance(t_classes)
+
+    # multiplied by one for each protocol version
+    tp_adapter = TransportProtocolAdapter()
+    tp_classes= (TestDoCatchRedirections,
+                 TestHTTPConnections,
+                 TestHTTPRedirections,
+                 TestHTTPSilentRedirections,
+                 TestLimitedRangeRequestServer,
+                 TestPost,
+                 TestProxyHttpServer,
+                 TestRanges,
+                 TestSpecificRequestHandler,
+                 )
+    is_also_testing_for_protocols = tests.condition_isinstance(tp_classes)
+
+    # multiplied by one for each authentication scheme
+    tpa_adapter = TransportProtocolAuthenticationAdapter()
+    tpa_classes = (TestAuth,
+                   )
+    is_also_testing_for_authentication = tests.condition_isinstance(tpa_classes)
+
     result = loader.suiteClass()
     for test in tests.iter_suite_tests(standard_tests):
-        if isinstance(test, TestAuth):
-            result.addTests(auth_adapter.adapt(test))
+        # Each test is either standalone or testing for some combination of
+        # transport, protocol version, authentication scheme. Use the right
+        # adpater (or none) depending on the class.
+        if is_testing_for_transports(test):
+            result.addTests(t_adapter.adapt(test))
+        elif is_also_testing_for_protocols(test):
+            result.addTests(tp_adapter.adapt(test))
+        elif is_also_testing_for_authentication(test):
+            result.addTests(tpa_adapter.adapt(test))
         else:
-            result.addTests(http_adapter.adapt(test))
+            result.addTests(test)
     return result
 
 
@@ -138,7 +188,7 @@ class TestHttpTransportUrls(tests.TestCase):
             server.tearDown()
 
 
-class TestHttpConnections(http_utils.TestCaseWithWebserver):
+class TestHTTPConnections(http_utils.TestCaseWithWebserver):
     """Test the http connections."""
 
     def setUp(self):
@@ -203,10 +253,7 @@ class TestPost(tests.TestCase):
         self.addCleanup(server.tearDown)
         scheme = self._qualified_prefix
         url = '%s://%s:%s/' % (scheme, server.host, server.port)
-        try:
-            http_transport = transport.get_transport(url)
-        except errors.UnsupportedProtocol:
-            raise tests.TestSkipped('%s not available' % scheme)
+        http_transport = self._transport(url)
         code, response = http_transport._post('abc def end-of-body')
         self.assertTrue(
             server.received_bytes.startswith('POST /.bzr/smart HTTP/1.'))
@@ -238,7 +285,8 @@ class TestSpecificRequestHandler(http_utils.TestCaseWithWebserver):
     _req_handler_class = http_server.TestingHTTPRequestHandler
 
     def create_transport_readonly_server(self):
-        return http_server.HttpServer(self._req_handler_class)
+        return http_server.HttpServer(self._req_handler_class,
+                                      protocol_version=self._protocol_version)
 
 
 class WallRequestHandler(http_server.TestingHTTPRequestHandler):
@@ -585,8 +633,10 @@ class LimitedRangeHTTPServer(http_server.HttpServer):
     """An HttpServer erroring out on requests with too much range specifiers"""
 
     def __init__(self, request_handler=LimitedRangeRequestHandler,
+                 protocol_version=None,
                  range_limit=None):
-        http_server.HttpServer.__init__(self, request_handler)
+        http_server.HttpServer.__init__(self, request_handler,
+                                        protocol_version=protocol_version)
         self.range_limit = range_limit
 
 
@@ -597,7 +647,8 @@ class TestLimitedRangeRequestServer(http_utils.TestCaseWithWebserver):
 
     def create_transport_readonly_server(self):
         # Requests with more range specifiers will error out
-        return LimitedRangeHTTPServer(range_limit=self.range_limit)
+        return LimitedRangeHTTPServer(range_limit=self.range_limit,
+                                      protocol_version=self._protocol_version)
 
     def get_transport(self):
         return self._transport(self.get_readonly_server().get_url())
@@ -666,7 +717,7 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
         """Creates an http server that will serve files with
         '-proxied' appended to their names.
         """
-        return http_utils.ProxyServer()
+        return http_utils.ProxyServer(protocol_version=self._protocol_version)
 
     def _install_env(self, env):
         for name, value in env.iteritems():
@@ -750,7 +801,8 @@ class TestHTTPRedirections(http_utils.TestCaseWithRedirectedWebserver):
         """Create the secondary server redirecting to the primary server"""
         new = self.get_readonly_server()
 
-        redirecting = http_utils.HTTPServerRedirecting()
+        redirecting = http_utils.HTTPServerRedirecting(
+            protocol_version=self._protocol_version)
         redirecting.redirect_to(new.host, new.port)
         return redirecting
 
@@ -837,7 +889,8 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
 
     def create_transport_secondary_server(self):
         """Create the secondary server, redirections are defined in the tests"""
-        return http_utils.HTTPServerRedirecting()
+        return http_utils.HTTPServerRedirecting(
+            protocol_version=self._protocol_version)
 
     def test_one_redirection(self):
         t = self.old_transport
@@ -929,12 +982,14 @@ class TestAuth(http_utils.TestCaseWithWebserver):
 
     def create_transport_readonly_server(self):
         if self._auth_scheme == 'basic':
-            server = http_utils.HTTPBasicAuthServer()
+            server = http_utils.HTTPBasicAuthServer(
+                protocol_version=self._protocol_version)
         else:
             if self._auth_scheme != 'digest':
                 raise AssertionError('Unknown auth scheme: %r'
                                      % self._auth_scheme)
-            server = http_utils.HTTPDigestAuthServer()
+            server = http_utils.HTTPDigestAuthServer(
+                protocol_version=self._protocol_version)
         return server
 
     def _testing_pycurl(self):
@@ -1071,12 +1126,14 @@ class TestProxyAuth(TestAuth):
 
     def create_transport_readonly_server(self):
         if self._auth_scheme == 'basic':
-            server = http_utils.ProxyBasicAuthServer()
+            server = http_utils.ProxyBasicAuthServer(
+                protocol_version=self._protocol_version)
         else:
             if self._auth_scheme != 'digest':
                 raise AssertionError('Unknown auth scheme: %r'
                                      % self._auth_scheme)
-            server = http_utils.ProxyDigestAuthServer()
+            server = http_utils.ProxyDigestAuthServer(
+                protocol_version=self._protocol_version)
         return server
 
     def get_user_transport(self, user=None, password=None):

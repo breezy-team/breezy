@@ -145,8 +145,10 @@ class RedirectRequestHandler(http_server.TestingHTTPRequestHandler):
 class HTTPServerRedirecting(http_server.HttpServer):
     """An HttpServer redirecting to another server """
 
-    def __init__(self, request_handler=RedirectRequestHandler):
-        http_server.HttpServer.__init__(self, request_handler)
+    def __init__(self, request_handler=RedirectRequestHandler,
+                 protocol_version=None):
+        http_server.HttpServer.__init__(self, request_handler,
+                                        protocol_version=protocol_version)
         # redirections is a list of tuples (source, target, code)
         # - source is a regexp for the paths requested
         # - target is a replacement for re.sub describing where
@@ -307,8 +309,10 @@ class AuthServer(http_server.HttpServer):
     auth_error_code = None
     auth_realm = "Thou should not pass"
 
-    def __init__(self, request_handler, auth_scheme):
-        http_server.HttpServer.__init__(self, request_handler)
+    def __init__(self, request_handler, auth_scheme,
+                 protocol_version=None):
+        http_server.HttpServer.__init__(self, request_handler,
+                                        protocol_version=protocol_version)
         self.auth_scheme = auth_scheme
         self.password_of = {}
         self.auth_required_errors = 0
@@ -337,8 +341,10 @@ class DigestAuthServer(AuthServer):
 
     auth_nonce = 'now!'
 
-    def __init__(self, request_handler, auth_scheme):
-        AuthServer.__init__(self, request_handler, auth_scheme)
+    def __init__(self, request_handler, auth_scheme,
+                 protocol_version=None):
+        AuthServer.__init__(self, request_handler, auth_scheme,
+                            protocol_version=protocol_version)
 
     def digest_authorized(self, auth, command):
         nonce = auth['nonce']
@@ -399,32 +405,36 @@ class ProxyAuthServer(AuthServer):
 class HTTPBasicAuthServer(HTTPAuthServer):
     """An HTTP server requiring basic authentication"""
 
-    def __init__(self):
-        HTTPAuthServer.__init__(self, BasicAuthRequestHandler, 'basic')
+    def __init__(self, protocol_version=None):
+        HTTPAuthServer.__init__(self, BasicAuthRequestHandler, 'basic',
+                                protocol_version=protocol_version)
         self.init_http_auth()
 
 
 class HTTPDigestAuthServer(DigestAuthServer, HTTPAuthServer):
     """An HTTP server requiring digest authentication"""
 
-    def __init__(self):
-        DigestAuthServer.__init__(self, DigestAuthRequestHandler, 'digest')
+    def __init__(self, protocol_version=None):
+        DigestAuthServer.__init__(self, DigestAuthRequestHandler, 'digest',
+                                  protocol_version=protocol_version)
         self.init_http_auth()
 
 
 class ProxyBasicAuthServer(ProxyAuthServer):
     """A proxy server requiring basic authentication"""
 
-    def __init__(self):
-        ProxyAuthServer.__init__(self, BasicAuthRequestHandler, 'basic')
+    def __init__(self, protocol_version=None):
+        ProxyAuthServer.__init__(self, BasicAuthRequestHandler, 'basic',
+                                 protocol_version=protocol_version)
         self.init_proxy_auth()
 
 
 class ProxyDigestAuthServer(DigestAuthServer, ProxyAuthServer):
     """A proxy server requiring basic authentication"""
 
-    def __init__(self):
-        ProxyAuthServer.__init__(self, DigestAuthRequestHandler, 'digest')
+    def __init__(self, protocol_version=None):
+        ProxyAuthServer.__init__(self, DigestAuthRequestHandler, 'digest',
+                                 protocol_version=protocol_version)
         self.init_proxy_auth()
 
 
