@@ -52,6 +52,13 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     # The Message-like class used to parse the request headers
     MessageClass = httplib.HTTPMessage
 
+    def setup(self):
+        SimpleHTTPServer.SimpleHTTPRequestHandler.setup(self)
+        tcs = self.server.test_case_server
+        if tcs.protocol_version is not None:
+            # If the test server forced a protocol version, use it
+            self.protocol_version = tcs.protocol_version
+
     def log_message(self, format, *args):
         tcs = self.server.test_case_server
         tcs.log('webserver - %s - - [%s] %s "%s" "%s"',
@@ -361,19 +368,32 @@ class HttpServer(transport.Server):
     _url_protocol = 'http'
 
     # Subclasses can provide a specific request handler
-    def __init__(self, request_handler=TestingHTTPRequestHandler):
+    def __init__(self, request_handler=TestingHTTPRequestHandler,
+                 protocol_version=None):
+        """Constructor.
+
+        :param request_handler: a class that will be instantiated to handle an
+            http connection (one or several requests).
+
+        :param protocol_version: if specified, will override the protocol
+            version of the request handler.
+        """
         transport.Server.__init__(self)
         self.request_handler = request_handler
         self.host = 'localhost'
         self.port = 0
         self._httpd = None
+        self.protocol_version = protocol_version
         # Allows tests to verify number of GET requests issued
         self.GET_request_nb = 0
 
     def _get_httpd(self):
         if self._httpd is None:
             rhandler = self.request_handler
-            proto_vers = rhandler.protocol_version
+            if self.protocol_version is None:
+                proto_vers = rhandler.protocol_version
+            else:
+                proto_vers = self.protocol_version
             # Create the appropriate server for the required protocol
             serv_cls = self.http_server_class.get(proto_vers, None)
             if serv_cls is None:
