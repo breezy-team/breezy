@@ -79,6 +79,9 @@ IN DEVELOPMENT
    * ``reconfigure`` is able to convert trees into lightweight checkouts.
      (Aaron Bentley)
 
+   * Reduce lockdir timeout to 0 when running ``bzr serve``.  (Andrew Bennetts,
+     #148087)
+
   DOCUMENTATION:
 
    * Reference material has now be moved out of the User Guide and added
