@@ -1467,7 +1467,7 @@ def _iter_files_bytes_accelerated(tree, accelerator_tree, desired_files):
         new_desired_files = desired_files
     else:
         iter = accelerator_tree._iter_changes(tree, include_unchanged=True)
-        unchanged = dict((f, p[0]) for (f, p, c, v, d, n, k, e)
+        unchanged = dict((f, p[1]) for (f, p, c, v, d, n, k, e)
                          in iter if not c)
         new_desired_files = []
         for file_id, identifier in desired_files:

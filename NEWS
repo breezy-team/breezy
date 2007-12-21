@@ -55,6 +55,9 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+   * build_tree acceleration uses the correct path when a file has been moved.
+     (Aaron Bentley)
+
    * Fixed Unicode encoding error in ``ignored`` when the output is
      redirected to a pipe. (Lukáš Lalinský)
 
