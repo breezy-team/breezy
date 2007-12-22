@@ -1,11 +1,11 @@
-====================
+--------------------
 Bazaar Release Notes
-====================
+--------------------
 
 .. contents::
 
 IN DEVELOPMENT
-==============
+--------------
 
   CHANGES:
    
@@ -71,6 +71,15 @@ IN DEVELOPMENT
      user:pass embedded in the urls.
      (Vincent Ladeuil, #177643)
 
+   * ``reconfigure`` is able to convert trees into lightweight checkouts.
+     (Aaron Bentley)
+
+   * Reduce lockdir timeout to 0 when running ``bzr serve``.  (Andrew Bennetts,
+     #148087)
+
+   * Test that the old ``version_info_format`` functions still work, even
+     though they are deprecated. (John Arbash Meinel, ShenMaq, #177872)
+
    * Transform failures no longer cause ImmortalLimbo errors (Aaron Bentley,
      #137681)
 
@@ -81,12 +90,6 @@ IN DEVELOPMENT
    * When dumb http servers return whole files instead of the requested ranges,
      read the remaining bytes by chunks to avoid overflowing network buffers.
      (Vincent Ladeuil, #175886)
-
-   * ``reconfigure`` is able to convert trees into lightweight checkouts.
-     (Aaron Bentley)
-
-   * Reduce lockdir timeout to 0 when running ``bzr serve``.  (Andrew Bennetts,
-     #148087)
 
   DOCUMENTATION:
 
@@ -151,7 +154,7 @@ IN DEVELOPMENT
 
 
 bzr 1.0 2007-12-14
-==================
+------------------
 
   DOCUMENTATION:
 
@@ -168,7 +171,7 @@ bzr 1.0 2007-12-14
 
 
 bzr 1.0rc3 2007-12-11
-=====================
+---------------------
 
   CHANGES:
    
@@ -206,7 +209,7 @@ bzr 1.0rc3 2007-12-11
 
 
 bzr 1.0rc2 2007-12-07
-=====================
+---------------------
 
   IMPROVEMENTS:
 
@@ -277,7 +280,7 @@ bzr 1.0rc2 2007-12-07
 
 
 bzr 1.0rc1 2007-11-30
-=====================
+---------------------
 
   NOTES WHEN UPGRADING:
 
@@ -548,7 +551,7 @@ bzr 1.0rc1 2007-11-30
 
 
 bzr 0.92 2007-11-05
-===================
+-------------------
 
   CHANGES:
 
@@ -556,7 +559,7 @@ bzr 0.92 2007-11-05
 
 
 bzr 0.92rc1 2007-10-29
-======================
+----------------------
 
   NOTES WHEN UPGRADING:
 
@@ -870,7 +873,7 @@ bzr 0.92rc1 2007-10-29
 
 
 bzr 0.91 2007-09-26
-===================
+-------------------
 
   BUG FIXES:
 
@@ -891,14 +894,14 @@ bzr 0.91 2007-09-26
 
 
 bzr 0.91rc2 2007-09-11
-======================
+----------------------
 
    * Replaced incorrect tarball for previous release; a debug statement was left 
      in bzrlib/remote.py.
 
 
 bzr 0.91rc1 2007-09-11
-======================
+----------------------
 
   CHANGES:
 
@@ -1219,7 +1222,7 @@ bzr 0.91rc1 2007-09-11
 
 
 bzr 0.90 2007-08-28
-===================
+-------------------
 
   IMPROVEMENTS:
 
@@ -1241,7 +1244,7 @@ bzr 0.90 2007-08-28
 
 
 bzr 0.90rc1 2007-08-14
-======================
+----------------------
 
   BUGFIXES:
 
@@ -1509,7 +1512,7 @@ bzr 0.90rc1 2007-08-14
 
 
 bzr 0.18  2007-07-17
-====================
+--------------------
 
   BUGFIXES:
 
@@ -1517,7 +1520,7 @@ bzr 0.18  2007-07-17
 
 
 bzr 0.18rc1  2007-07-10
-=======================
+-----------------------
 
   BUGFIXES:
 
@@ -1764,7 +1767,7 @@ bzr 0.18rc1  2007-07-10
 
 
 bzr 0.17  2007-06-18
-====================
+--------------------
 
   BUGFIXES:
 
@@ -1776,7 +1779,7 @@ bzr 0.17  2007-06-18
 
 
 bzr 0.17rc1  2007-06-12
-=======================
+-----------------------
 
   NOTES WHEN UPGRADING:
 
@@ -1874,7 +1877,7 @@ bzr 0.17rc1  2007-06-12
       mainline). (John Arbash Meinel, #115343)
 
 bzr 0.16  2007-05-07
-====================
+--------------------
   
   BUGFIXES:
 
@@ -1903,7 +1906,7 @@ bzr 0.16  2007-05-07
       both. (John Arbash Meinel)
 
 bzr 0.16rc2  2007-04-30
-=======================
+-----------------------
 
   BUGFIXES:
 
@@ -1926,7 +1929,7 @@ bzr 0.16rc2  2007-04-30
       directories. (John Arbash Meinel, #110399)
 
 bzr 0.16rc1  2007-04-26
-=======================
+-----------------------
 
   NOTES WHEN UPGRADING:
 
@@ -2229,7 +2232,7 @@ bzr 0.16rc1  2007-04-26
       (Vincent Ladeuil)
 
 bzr 0.15 2007-04-01
-===================
+-------------------
 
   BUGFIXES:
 
@@ -2241,7 +2244,7 @@ bzr 0.15 2007-04-01
       (Martin Pool)
 
 bzr 0.15rc3  2007-03-26
-=======================
+-----------------------
 
   CHANGES:
  
@@ -2313,7 +2316,7 @@ bzr 0.15rc3  2007-03-26
       (vila, #88780)
 
 bzr 0.15rc2  2007-03-14
-=======================
+-----------------------
 
   NOTES WHEN UPGRADING:
         
@@ -2363,7 +2366,7 @@ bzr 0.15rc2  2007-03-14
 
 
 bzr 0.15rc1  2007-03-07
-=======================
+-----------------------
 
   SURPRISES:
 
@@ -2589,7 +2592,7 @@ bzr 0.15rc1  2007-03-07
 
 
 bzr 0.14  2007-01-23
-====================
+--------------------
 
   IMPROVEMENTS:
 
@@ -2607,7 +2610,7 @@ bzr 0.14  2007-01-23
 
 
 bzr 0.14rc1  2007-01-16
-=======================
+-----------------------
 
   IMPROVEMENTS:
 
@@ -2739,12 +2742,12 @@ bzr 0.14rc1  2007-01-16
 
 
 bzr 0.13  2006-12-05
-====================
+--------------------
     
   No changes from 0.13rc1
     
 bzr 0.13rc1  2006-11-27
-=======================
+-----------------------
 
   IMPROVEMENTS:
 
@@ -2866,7 +2869,7 @@ bzr 0.13rc1  2006-11-27
       (previously it was ignoring it and returning the whole file,).
 
 bzr 0.12  2006-10-30
-====================
+--------------------
 
   INTERNALS:
 
@@ -2875,7 +2878,7 @@ bzr 0.12  2006-10-30
       (John Arbash Meinel)
   
 bzr 0.12rc1  2006-10-23
-=======================
+-----------------------
 
   IMPROVEMENTS:
 
@@ -2992,12 +2995,12 @@ bzr 0.12rc1  2006-10-23
       created objects. (Robert Collins, John Arbash Meinel)
 
 bzr 0.11  2006-10-02
-====================
+--------------------
 
     * Smart server transport test failures on windows fixed. (Lukáš Lalinský).
 
 bzr 0.11rc2  2006-09-27
-=======================
+-----------------------
 
   BUG FIXES:
 
@@ -3007,7 +3010,7 @@ bzr 0.11rc2  2006-09-27
       Arbash Meinel).
 
 bzr 0.11rc1  2006-09-25
-=======================
+-----------------------
 
   IMPROVEMENTS:
 
@@ -3196,7 +3199,7 @@ bzr 0.11rc1  2006-09-25
       Transport. (Andrew Bennetts, Martin Pool)
 
 bzr 0.10  2006-08-29
-====================
+--------------------
   
   IMPROVEMENTS:
     * 'merge' now takes --uncommitted, to apply uncommitted changes from a
@@ -3271,7 +3274,7 @@ bzr 0.10  2006-08-29
       easier. (John Arbash Meinel)
 
 bzr 0.9.0  2006-08-11
-=====================
+---------------------
 
   SURPRISES:
 
@@ -3535,14 +3538,14 @@ bzr 0.9.0  2006-08-11
     * "RevisionTree" is now in bzrlib/revisiontree.py. (Robert Collins)
 
 bzr 0.8.2  2006-05-17
-=====================
+---------------------
   
   BUG FIXES:
    
     * setup.py failed to install launchpad plugin.  (Martin Pool)
 
 bzr 0.8.1  2006-05-16
-=====================
+---------------------
 
   BUG FIXES:
 
@@ -3590,7 +3593,7 @@ bzr 0.8.1  2006-05-16
       uses bzrlib api now. (Olaf Conradi)
 
 bzr 0.8  2006-05-08
-===================
+-------------------
 
   NOTES WHEN UPGRADING:
 
@@ -3847,7 +3850,7 @@ bzr 0.8  2006-05-08
       parameter which will provide String("foo") to the command as its stdin.
 
 bzr 0.7 2006-01-09
-==================
+------------------
 
   CHANGES:
 
@@ -4138,7 +4141,7 @@ bzr 0.7 2006-01-09
       for functions that need unicode strings. (Robert Collins)
 
 bzr 0.6 2005-10-28
-==================
+------------------
 
   IMPROVEMENTS:
   
@@ -4350,7 +4353,7 @@ bzr 0.6 2005-10-28
 
 
 bzr 0.1.1 2005-10-12
-====================
+--------------------
 
   BUG FIXES:
 
@@ -4366,7 +4369,7 @@ bzr 0.1.1 2005-10-12
 
 
 bzr 0.1 2005-10-11
-==================
+------------------
 
   NOTES:
 
@@ -4491,7 +4494,7 @@ bzr 0.1 2005-10-11
 
       
 bzr 0.0.9 2005-09-23
-====================
+--------------------
 
   BUG FIXES:
 
@@ -4530,7 +4533,7 @@ bzr 0.0.9 2005-09-23
 
 
 bzr 0.0.8 2005-09-20
-====================
+--------------------
 
   IMPROVEMENTS:
 
@@ -4577,7 +4580,7 @@ bzr 0.0.8 2005-09-20
 
 
 bzr-0.0.7 2005-09-02
-====================
+--------------------
 
   NEW FEATURES:
 
@@ -4627,7 +4630,7 @@ bzr-0.0.7 2005-09-02
 
 
 bzr-0.0.6 2005-08-18
-====================
+--------------------
 
   NEW FEATURES:
 
@@ -4709,7 +4712,7 @@ bzr-0.0.6 2005-08-18
 
 
 bzr-0.0.5  2005-06-15
-=====================
+---------------------
   
   CHANGES:
 
@@ -4845,7 +4848,7 @@ bzr-0.0.5  2005-06-15
 
 
 bzr-0.0.4  2005-04-22
-=====================
+---------------------
 
   ENHANCEMENTS:
 
@@ -4909,7 +4912,7 @@ bzr-0.0.4  2005-04-22
 
 
 bzr-0.0.3  2005-04-06
-=====================
+---------------------
 
   ENHANCEMENTS:
 
@@ -4950,7 +4953,7 @@ bzr-0.0.3  2005-04-06
 
 
 bzr-0.0.2.1
-===========
+-----------
 
   PORTABILITY:
 
@@ -4958,7 +4961,7 @@ bzr-0.0.2.1
 
 
 bzr-0.0.2  "black cube"  2005-03-31
-===================================
+-----------------------------------
 
   ENHANCEMENTS:
 
@@ -4986,7 +4989,7 @@ bzr-0.0.2  "black cube"  2005-03-31
 
 
 bzr-0.0.1  2005-03-26
-=====================
+---------------------
 
   ENHANCEMENTS:
 
@@ -5013,7 +5016,7 @@ bzr-0.0.1  2005-03-26
 
 
 bzr-0.0.0.69  2005-03-22
-========================
+------------------------
 
   ENHANCEMENTS:
 
