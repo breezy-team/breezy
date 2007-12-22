@@ -371,11 +371,13 @@ class RevisionBuildEditor(svn.delta.Editor):
         ie.revision = self.revid
 
         if self.is_symlink:
+            ie.kind = 'symlink'
             ie.symlink_target = lines[0][len("link "):]
             ie.text_sha1 = None
             ie.text_size = None
             ie.text_id = None
         else:
+            ie.kind = 'file'
             ie.text_sha1 = osutils.sha_strings(lines)
             ie.text_size = sum(map(len, lines))
             if self.is_executable is not None:

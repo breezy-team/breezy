@@ -24,6 +24,8 @@ bzr-svn 0.4.6	UNRELEASED
 
    * Don't mask exception in fetch code. (#165177)
 
+   * Deal with kind changes that don't change file contents. (#178149)
+
 bzr-svn 0.4.5	2007-12-01
 
   IMPROVEMENTS

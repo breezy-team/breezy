@@ -1352,6 +1352,35 @@ Node-copyfrom-path: x
         self.assertEqual('symlink', inv1[inv1.path2id("mylink")].kind)
         self.assertEqual('bla', inv1[inv1.path2id("mylink")].symlink_target)
 
+    def test_fetch_symlink_kind_change(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/bla': "data", "dc/mylink": "link bla"})
+        self.client_add("dc/bla")
+        self.client_add("dc/mylink")
+        self.client_commit("dc", "My Message")
+        ra = SvnRaTransport(repos_url)
+        def done(rev, date, author):
+            pass
+        editor = ra.get_commit_editor({"svn:log": "msg"}, done, None, False)
+        root_baton = editor.open_root(1)
+        baton = editor.open_file("mylink", root_baton, 1)
+        editor.change_file_prop(baton, "svn:special", "*")
+        editor.close_file(baton, None)
+        editor.close_directory(root_baton)
+        editor.close()
+        oldrepos = Repository.open("svn+"+repos_url)
+        dir = BzrDir.create("f",format.get_rich_root_format())
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+        self.assertTrue(newrepos.has_revision(
+            oldrepos.generate_revision_id(1, "", "none")))
+        inv1 = newrepos.get_inventory(
+                oldrepos.generate_revision_id(1, "", "none"))
+        inv2 = newrepos.get_inventory(
+                oldrepos.generate_revision_id(2, "", "none"))
+        self.assertEqual('file', inv1[inv1.path2id("mylink")].kind)
+        self.assertEqual('symlink', inv2[inv2.path2id("mylink")].kind)
+        self.assertEqual('bla', inv2[inv2.path2id("mylink")].symlink_target)
 
     def test_fetch_executable_separate(self):
         repos_url = self.make_client('d', 'dc')
