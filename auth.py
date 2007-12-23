@@ -56,9 +56,10 @@ class SubversionAuthenticationConfig(AuthenticationConfig):
         :param pool: Allocation pool, is ignored.
         """
         simple_cred = svn_auth_cred_simple_t()
-        simple_cred.username = username or self.get_username(realm, may_save, pool)
+        simple_cred.username = username or self.get_username(realm, may_save, pool, prompt="%s password" % realm)
         simple_cred.password = self.get_password(self.scheme, host=self.host, 
-                                    user=simple_cred.username, realm=realm)
+                                    user=simple_cred.username, realm=realm,
+                                    prompt="%s password" % realm)
         simple_cred.may_save = False
         return simple_cred
 
