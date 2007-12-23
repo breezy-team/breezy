@@ -559,12 +559,14 @@ class TestInvalidStatusServer(TestBadStatusServer):
 
     def test_http_has(self):
         if self._testing_pycurl() and self._protocol_version == 'HTTP/1.1':
-            raise tests.KnownFailure('pycurl hangs if the server send back garbage')
+            raise tests.KnownFailure(
+                'pycurl hangs if the server send back garbage')
         super(TestInvalidStatusServer, self).test_http_has()
 
     def test_http_get(self):
         if self._testing_pycurl() and self._protocol_version == 'HTTP/1.1':
-            raise tests.KnownFailure('pycurl hangs if the server send back garbage')
+            raise tests.KnownFailure(
+                'pycurl hangs if the server send back garbage')
         super(TestInvalidStatusServer, self).test_http_get()
 
 
@@ -815,10 +817,10 @@ class LimitedRangeHTTPServer(http_server.HttpServer):
 class TestLimitedRangeRequestServer(http_utils.TestCaseWithWebserver):
     """Tests readv requests against a server erroring out on too much ranges."""
 
+    # Requests with more range specifiers will error out
     range_limit = 3
 
     def create_transport_readonly_server(self):
-        # Requests with more range specifiers will error out
         return LimitedRangeHTTPServer(range_limit=self.range_limit,
                                       protocol_version=self._protocol_version)
 
@@ -1012,6 +1014,9 @@ class TestRanges(http_utils.TestCaseWithWebserver):
         self.build_tree_contents([('a', '0123456789')],)
         server = self.get_readonly_server()
         self.transport = self._transport(server.get_url())
+
+    def create_transport_readonly_server(self):
+        return http_server.HttpServer(protocol_version=self._protocol_version)
 
     def _file_contents(self, relpath, ranges):
         offsets = [ (start, end - start + 1) for start, end in ranges]

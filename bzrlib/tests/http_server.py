@@ -283,33 +283,16 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             return path
 
 
-class TestingHTTPServerWrapper(object):
-    """Isolate the wrapper itself to make the server use transparent.
+class TestingHTTPServerMixin:
 
-    Daughter classes can override any method and/or directly call the _server
-    methods.
-    """
-
-    def __init__(self, server_class, test_case_server,
-                 server_address, request_handler_class):
-        self._server = server_class(server_address, request_handler_class)
+    def __init__(self, test_case_server):
         # test_case_server can be used to communicate between the
         # tests and the server (or the request handler and the
         # server), allowing dynamic behaviors to be defined from
         # the tests cases.
-        self._server.test_case_server = test_case_server
+        self.test_case_server = test_case_server
 
-    def __getattr__(self, name):
-        return getattr(self._server, name)
-
-    def server_bind(self):
-        """Override server_bind to store the server name."""
-        self._server.server_bind()
-        host, port = self._server.socket.getsockname()[:2]
-        self._server.server_name = socket.getfqdn(host)
-        self._server.server_port = port
-
-    def server_close(self):
+    def tearDown(self):
          """Called to clean-up the server.
  
          Since the server may be (surely is, even) in a blocking listen, we
@@ -317,28 +300,31 @@ class TestingHTTPServerWrapper(object):
          """
          # Note that is this executed as part of the implicit tear down in the
          # main thread while the server runs in its own thread. The clean way
-         # to tear down the server will be to instruct him to stop accepting
-         # connections and wait for the current connection to end naturally. To
-         # end the connection naturally, the http transports should close their
-         # socket when they do not need to talk to the server anymore.  We
-         # don't want to impose such a constraint on the http transports (and
-         # we can't anyway ;). So we must tear down here, from the main thread,
-         # when the test have ended.  Note that since the server is in a
-         # blocking operation and since python use select internally, shutting
-         # down the socket is reliable and relatively clean.
-         self._server.socket.shutdown(socket.SHUT_RDWR)
+         # to tear down the server is to instruct him to stop accepting
+         # connections and wait for the current connection(s) to end
+         # naturally. To end the connection naturally, the http transports
+         # should close their socket when they do not need to talk to the
+         # server anymore. This happens naturally during the garbage collection
+         # phase of the test transport objetcs (the server clients), so we
+         # don't have to worry about them.  So, for the server, we must tear
+         # down here, from the main thread, when the test have ended.  Note
+         # that since the server is in a blocking operation and since python
+         # use select internally, shutting down the socket is reliable and
+         # relatively clean.
+         self.socket.shutdown(socket.SHUT_RDWR)
          # Let the server properly close the socket
-         self._server.server_close()
+         self.server_close()
 
-class TestingHTTPServer(TestingHTTPServerWrapper):
+class TestingHTTPServer(SocketServer.TCPServer, TestingHTTPServerMixin):
 
     def __init__(self, server_address, request_handler_class, test_case_server):
-        super(TestingHTTPServer, self).__init__(
-            SocketServer.TCPServer, test_case_server,
-            server_address, request_handler_class)
+        TestingHTTPServerMixin.__init__(self, test_case_server)
+        SocketServer.TCPServer.__init__(self, server_address,
+                                        request_handler_class)
 
 
-class TestingThreadingHTTPServer(TestingHTTPServerWrapper):
+class TestingThreadingHTTPServer(SocketServer.ThreadingTCPServer,
+                                 TestingHTTPServerMixin):
     """A threading HTTP test server for HTTP 1.1.
 
     Since tests can initiate several concurrent connections to the same http
@@ -347,13 +333,13 @@ class TestingThreadingHTTPServer(TestingHTTPServerWrapper):
     """
 
     def __init__(self, server_address, request_handler_class, test_case_server):
-        super(TestingThreadingHTTPServer, self).__init__(
-            SocketServer.ThreadingTCPServer, test_case_server,
-            server_address, request_handler_class)
+        TestingHTTPServerMixin.__init__(self, test_case_server)
+        SocketServer.ThreadingTCPServer.__init__(self, server_address,
+                                                 request_handler_class)
         # Decides how threads will act upon termination of the main
         # process. This is prophylactic as we should not leave the threads
         # lying around.
-        self._server.daemon_threads = True
+        self.daemon_threads = True
 
 
 class HttpServer(transport.Server):
@@ -374,7 +360,6 @@ class HttpServer(transport.Server):
     # used to form the url that connects to this server
     _url_protocol = 'http'
 
-    # Subclasses can provide a specific request handler
     def __init__(self, request_handler=TestingHTTPRequestHandler,
                  protocol_version=None):
         """Constructor.
@@ -497,10 +482,8 @@ class HttpServer(transport.Server):
 
     def tearDown(self):
         """See bzrlib.transport.Server.tearDown."""
-        self._httpd.server_close()
+        self._httpd.tearDown()
         self._http_running = False
-        # FIXME: ensure that all threads have been shut down for the 1.1
-        # server.
         self._http_thread.join()
 
     def get_url(self):
