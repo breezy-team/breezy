@@ -599,7 +599,14 @@ class LogFormatter(object):
         only relevant if supports_merge_revisions is not True.
     - supports_tags must be True if this log formatter supports tags.
         Otherwise the tags attribute may not be populated.
+
+    Plugins can register functions to show custom revision properties using
+    the class method add_show_properties(function). The registered function
+    must respect the following interface description:
+        def my_show_properties(to_file, properties_dict):
+            # code that use to_file.write() to send the correct output
     """
+    registered_show_properties = []
 
     def __init__(self, to_file, show_ids=False, show_timezone='original'):
         self.to_file = to_file
@@ -631,6 +638,18 @@ class LogFormatter(object):
         if name:
             return name
         return address
+
+    @classmethod
+    def add_show_properties(child=None, func=None):
+        if not func is None:
+            LogFormatter.registered_show_properties.append(func)
+
+    def show_properties(self, properties):
+        filtered_props = properties.copy()
+        if filtered_props.has_key('branch-nick'): 
+            filtered_props.__delitem__('branch-nick')
+        for func in LogFormatter.registered_show_properties:
+            func(self.to_file, filtered_props)
 
 
 class LongLogFormatter(LogFormatter):
@@ -664,6 +683,8 @@ class LongLogFormatter(LogFormatter):
             to_file.write('\n')
             for parent_id in revision.rev.parent_ids:
                 to_file.write(indent + 'parent: %s\n' % (parent_id,))
+        
+        self.show_properties(revision.rev.properties)
 
         author = revision.rev.properties.get('author', None)
         if author is not None:
