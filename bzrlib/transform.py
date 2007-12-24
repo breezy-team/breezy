@@ -674,7 +674,7 @@ class TreeTransform(object):
         try:
             children = os.listdir(self._tree.abspath(path))
         except OSError, e:
-            if e.errno != errno.ENOENT and e.errno != errno.ESRCH:
+            if e.errno not in (errno.ENOENT, errno.ESRCH, errno.ENOTDIR):
                 raise
             return
             

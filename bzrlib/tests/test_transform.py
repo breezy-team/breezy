@@ -623,6 +623,15 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertEqual(conflicts_s[6], 'Conflict moving oz/emeraldcity into'
                                          ' oz/emeraldcity.  Cancelled move.')
 
+    def test_find_conflicts_wrong_parent_kind(self):
+        tt, root = self.get_transform()
+        tt.new_file('parent', root, 'contents', 'parent-id')
+        tt.apply()
+        tt, root = self.get_transform()
+        parent_id = tt.trans_id_file_id('parent-id')
+        tt.new_file('child,', parent_id, 'contents2', 'file-id')
+        tt.find_conflicts()
+
     def test_moving_versioned_directories(self):
         create, root = self.get_transform()
         kansas = create.new_directory('kansas', root, 'kansas-id')
