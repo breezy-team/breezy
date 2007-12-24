@@ -1366,6 +1366,26 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         # Only one 'Authentication Required' error should occur
         self.assertEqual(1, self.server.auth_required_errors)
 
+    def test_changing_nonce(self):
+        if self._auth_scheme != 'digest':
+            raise tests.TestNotApplicable('HTTP auth digest only test')
+        if self._testing_pycurl():
+            raise tests.KnownFailure(
+                'pycurl does not handle a nonce change')
+        self.server.add_user('joe', 'foo')
+        t = self.get_user_transport('joe', 'foo')
+        self.assertEqual('contents of a\n', t.get('a').read())
+        self.assertEqual('contents of b\n', t.get('b').read())
+        # Only one 'Authentication Required' error should have
+        # occured so far
+        self.assertEqual(1, self.server.auth_required_errors)
+        # The server invalidates the current nonce
+        self.server.auth_nonce = self.server.auth_nonce + '. No, now!'
+        self.assertEqual('contents of a\n', t.get('a').read())
+        # Two 'Authentication Required' errors should occur (the
+        # initial 'who are you' and a second 'who are you' with the new nonce)
+        self.assertEqual(2, self.server.auth_required_errors)
+
 
 
 class TestProxyAuth(TestAuth):
