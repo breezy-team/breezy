@@ -145,9 +145,9 @@ class Response(httplib.HTTPResponse):
                 pending += len(data)
             if pending:
                 trace.mutter(
-                    # FIXME: this message is bogus if the server didn't give the
-                    # length, there is no way we can know how many bytes are
-                    # left !
+                    # FIXME: this message is bogus if the server didn't give
+                    # the length, there is no way we can know how many bytes
+                    # are left !
                     "bogus http server didn't give body length,"
                     "%s bytes left on the socket",
                     pending)
@@ -181,7 +181,7 @@ class AbstractHTTPConnection:
         return self._response
 
     def cleanup_pipe(self):
-        """Make the connection believe the response has been fully processed."""
+        """Read the remaining bytes of the last response if any."""
         if self._response is not None:
             pending = self._response.finish()
             # Warn the user (once)

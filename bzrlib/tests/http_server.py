@@ -14,7 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import BaseHTTPServer
 import errno
 import httplib
 import os
@@ -51,11 +50,11 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     TCPServer class, for the HTTP server it is really a connection which itself
     will handle one or several HTTP requests.
     """
-    # The Message-like class used to parse the request headers
-    MessageClass = httplib.HTTPMessage
-
     # Default protocol version
     protocol_version = 'HTTP/1.1'
+
+    # The Message-like class used to parse the request headers
+    MessageClass = httplib.HTTPMessage
 
     def setup(self):
         SimpleHTTPServer.SimpleHTTPRequestHandler.setup(self)
@@ -82,8 +81,8 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         try:
             SimpleHTTPServer.SimpleHTTPRequestHandler.handle_one_request(self)
         except socket.error, e:
-            # Any socket error should close the connection, but some are due to
-            # the client closing early and we don't want to pollute test
+            # Any socket error should close the connection, but some errors are
+            # due to the client closing early and we don't want to pollute test
             # results, so we raise only the others.
             self.close_connection = 1
             if (len(e.args) == 0

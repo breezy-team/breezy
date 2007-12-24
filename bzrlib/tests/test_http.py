@@ -139,18 +139,18 @@ def load_tests(standard_tests, module, loader):
     is_also_testing_for_authentication = tests.condition_isinstance(tpa_classes)
 
     result = loader.suiteClass()
-    for test in tests.iter_suite_tests(standard_tests):
+    for test_class in tests.iter_suite_tests(standard_tests):
         # Each test class is either standalone or testing for some combination
         # of transport, protocol version, authentication scheme. Use the right
         # adpater (or none) depending on the class.
-        if is_testing_for_transports(test):
-            result.addTests(t_adapter.adapt(test))
-        elif is_also_testing_for_protocols(test):
-            result.addTests(tp_adapter.adapt(test))
-        elif is_also_testing_for_authentication(test):
-            result.addTests(tpa_adapter.adapt(test))
+        if is_testing_for_transports(test_class):
+            result.addTests(t_adapter.adapt(test_class))
+        elif is_also_testing_for_protocols(test_class):
+            result.addTests(tp_adapter.adapt(test_class))
+        elif is_also_testing_for_authentication(test_class):
+            result.addTests(tpa_adapter.adapt(test_class))
         else:
-            result.addTest(test)
+            result.addTest(test_class)
     return result
 
 
