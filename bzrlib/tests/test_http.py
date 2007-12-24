@@ -46,7 +46,10 @@ from bzrlib.tests import (
     http_server,
     http_utils,
     )
-from bzrlib.transport import http
+from bzrlib.transport import (
+    http,
+    remote,
+    )
 from bzrlib.transport.http import (
     _urllib,
     _urllib2_wrappers,
@@ -120,7 +123,8 @@ def load_tests(standard_tests, module, loader):
 
     # multiplied by one for each protocol version
     tp_adapter = TransportProtocolAdapter()
-    tp_classes= (TestDoCatchRedirections,
+    tp_classes= (SmartHTTPTunnellingTest,
+                 TestDoCatchRedirections,
                  TestHTTPConnections,
                  TestHTTPRedirections,
                  TestHTTPSilentRedirections,
@@ -1412,4 +1416,91 @@ class TestProxyAuth(TestAuth):
                 raise tests.KnownFailure(
                     'pycurl < 7.16.0 does not handle empty proxy passwords')
         super(TestProxyAuth, self).test_empty_pass()
+
+
+class SampleSocket(object):
+    """A socket-like object for use in testing the HTTP request handler."""
+
+    def __init__(self, socket_read_content):
+        """Constructs a sample socket.
+
+        :param socket_read_content: a byte sequence
+        """
+        # Use plain python StringIO so we can monkey-patch the close method to
+        # not discard the contents.
+        from StringIO import StringIO
+        self.readfile = StringIO(socket_read_content)
+        self.writefile = StringIO()
+        self.writefile.close = lambda: None
+
+    def makefile(self, mode='r', bufsize=None):
+        if 'r' in mode:
+            return self.readfile
+        else:
+            return self.writefile
+
+
+class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(SmartHTTPTunnellingTest, self).setUp()
+        # We use the VFS layer as part of HTTP tunnelling tests.
+        self._captureVar('BZR_NO_SMART_VFS', None)
+        self.transport_readonly_server = http_utils.HTTPServerWithSmarts
+
+    def create_transport_readonly_server(self):
+        return http_utils.HTTPServerWithSmarts(
+            protocol_version=self._protocol_version)
+
+    def test_bulk_data(self):
+        # We should be able to send and receive bulk data in a single message.
+        # The 'readv' command in the smart protocol both sends and receives
+        # bulk data, so we use that.
+        self.build_tree(['data-file'])
+        http_server = self.get_readonly_server()
+        http_transport = self._transport(http_server.get_url())
+        medium = http_transport.get_smart_medium()
+        # Since we provide the medium, the url below will be mostly ignored
+        # during the test, as long as the path is '/'.
+        remote_transport = remote.RemoteTransport('bzr://fake_host/',
+                                                  medium=medium)
+        self.assertEqual(
+            [(0, "c")], list(remote_transport.readv("data-file", [(0,1)])))
+
+    def test_http_send_smart_request(self):
+
+        post_body = 'hello\n'
+        expected_reply_body = 'ok\x012\n'
+
+        http_server = self.get_readonly_server()
+        http_transport = self._transport(http_server.get_url())
+        medium = http_transport.get_smart_medium()
+        response = medium.send_http_smart_request(post_body)
+        reply_body = response.read()
+        self.assertEqual(expected_reply_body, reply_body)
+
+    def test_smart_http_server_post_request_handler(self):
+        httpd = self.get_readonly_server()._get_httpd()
+
+        socket = SampleSocket(
+            'POST /.bzr/smart %s \r\n' % self._protocol_version
+            # HTTP/1.1 posts must have a Content-Length (but it doesn't hurt
+            # for 1.0)
+            + 'Content-Length: 6\r\n'
+            '\r\n'
+            'hello\n')
+        # Beware: the ('localhost', 80) below is the
+        # client_address parameter, but we don't have one because
+        # we have defined a socket which is not bound to an
+        # address. The test framework never uses this client
+        # address, so far...
+        request_handler = http_utils.SmartRequestHandler(socket,
+                                                         ('localhost', 80),
+                                                         httpd)
+        response = socket.writefile.getvalue()
+        self.assertStartsWith(response, '%s 200 ' % self._protocol_version)
+        # This includes the end of the HTTP headers, and all the body.
+        expected_end_of_response = '\r\n\r\nok\x012\n'
+        self.assertEndsWith(response, expected_end_of_response)
+
 

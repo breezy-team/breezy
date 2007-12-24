@@ -40,8 +40,9 @@ class HTTPServerWithSmarts(http_server.HttpServer):
     the HTTP server.
     """
 
-    def __init__(self):
-        http_server.HttpServer.__init__(self, SmartRequestHandler)
+    def __init__(self, protocol_version=None):
+        http_server.HttpServer.__init__(self, SmartRequestHandler,
+                                        protocol_version=protocol_version)
 
 
 class SmartRequestHandler(http_server.TestingHTTPRequestHandler):
