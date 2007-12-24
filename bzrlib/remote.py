@@ -415,6 +415,12 @@ class RemoteRepository(object):
 
         return result
 
+    def find_branches(self, using=False):
+        """See Repository.find_branches()."""
+        # should be an API call to the server.
+        self._ensure_real()
+        return self._real_repository.find_branches(using=using)
+
     def get_physical_lock_status(self):
         """See Repository.get_physical_lock_status()."""
         # should be an API call to the server.

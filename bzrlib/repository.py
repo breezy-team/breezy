@@ -766,6 +766,45 @@ class Repository(object):
             result['size'] = t
         return result
 
+    def find_branches(self, using=False):
+        """Find branches underneath this repository.
+
+        This will include branches inside other branches.
+
+        :param using: If True, list only branches using this repository.
+        """
+
+        class Evaluator(object):
+
+            def __init__(self):
+                self.first_call = True
+
+            def __call__(self, bzrdir):
+                # On the first call, the parameter is always the bzrdir
+                # containing the current repo.
+                if not self.first_call:
+                    try:
+                        repository = bzrdir.open_repository()
+                    except errors.NoRepositoryPresent:
+                        pass
+                    else:
+                        return False, (None, repository)
+                self.first_call = False
+                try:
+                    value = (bzrdir.open_branch(), None)
+                except errors.NotBranchError:
+                    value = (None, None)
+                return True, value
+
+        branches = []
+        for branch, repository in bzrdir.BzrDir.find_bzrdirs(
+                self.bzrdir.root_transport, evaluate=Evaluator()):
+            if branch is not None:
+                branches.append(branch)
+            if not using and repository is not None:
+                branches.extend(repository.find_branches())
+        return branches
+
     def get_data_stream(self, revision_ids):
         raise NotImplementedError(self.get_data_stream)
 
