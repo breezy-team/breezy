@@ -54,6 +54,9 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     # The Message-like class used to parse the request headers
     MessageClass = httplib.HTTPMessage
 
+    # Default protocol version
+    protocol_version = 'HTTP/1.1'
+
     def setup(self):
         SimpleHTTPServer.SimpleHTTPRequestHandler.setup(self)
         tcs = self.server.test_case_server
@@ -123,6 +126,22 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                     # Syntactically invalid range
                     return 0, []
         return tail, ranges
+
+    def send_head(self):
+        """Overrides base implementation to work around a bug in python2.5."""
+        path = self.translate_path(self.path)
+        if os.path.isdir(path) and not self.path.endswith('/'):
+            # redirect browser - doing basically what apache does when
+            # DirectorySlash option is On which is quite common (braindead, but
+            # common)
+            self.send_response(301)
+            self.send_header("Location", self.path + "/")
+            # Indicates that the body is empty for HTTP/1.1 clients 
+            self.send_header('Content-Length', '0')
+            self.end_headers()
+            return None
+
+        return SimpleHTTPServer.SimpleHTTPRequestHandler.send_head(self)
 
     def send_range_content(self, file, start, length):
         file.seek(start)
