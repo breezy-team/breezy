@@ -380,6 +380,29 @@ class TestMerge(TestCaseWithTransport):
         finally:
             preview_file.close()
 
+    def test_do_merge(self):
+        this_tree = self.make_branch_and_tree('this')
+        self.build_tree_contents([('this/file', '1\n')])
+        this_tree.add('file', 'file-id')
+        this_tree.commit('rev1', rev_id='rev1')
+        other_tree = this_tree.bzrdir.sprout('other').open_workingtree()
+        self.build_tree_contents([('this/file', '1\n2a\n')])
+        this_tree.commit('rev2', rev_id='rev2a')
+        self.build_tree_contents([('other/file', '2b\n1\n')])
+        other_tree.commit('rev2', rev_id='rev2b')
+        this_tree.lock_write()
+        self.addCleanup(this_tree.unlock)
+        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+            this_tree, 'rev2b', other_branch=other_tree.branch)
+        merger.merge_type = _mod_merge.Merge3Merger
+        tree_merger = merger.make_merger()
+        tt = tree_merger.do_merge()
+        tree_file = this_tree.get_file('file-id')
+        try:
+            self.assertEqual('2b\n1\n2a\n', tree_file.read())
+        finally:
+            tree_file.close()
+
 
 class TestPlanMerge(TestCaseWithMemoryTransport):
 
