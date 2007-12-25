@@ -1371,11 +1371,13 @@ class _PreviewTree(object):
         return self._transform.final_kind(trans_id)
 
     def get_file_mtime(self, file_id, path=None):
+        """See Tree.get_file_mtime"""
         trans_id = self._transform.trans_id_file_id(file_id)
         name = self._transform._limbo_name(trans_id)
         return os.stat(name).st_mtime
 
     def get_file(self, file_id):
+        """See Tree.get_file"""
         trans_id = self._transform.trans_id_file_id(file_id)
         name = self._transform._limbo_name(trans_id)
         return open(name, 'rb')
