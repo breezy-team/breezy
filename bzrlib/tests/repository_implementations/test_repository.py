@@ -28,8 +28,15 @@ from bzrlib import (
     )
 from bzrlib.delta import TreeDelta
 from bzrlib.inventory import Inventory, InventoryDirectory
+from bzrlib.repofmt.weaverepo import (
+    RepositoryFormat5,
+    RepositoryFormat6,
+    RepositoryFormat7,
+    )
 from bzrlib.revision import NULL_REVISION, Revision
+from bzrlib.smart import server
 from bzrlib.tests import (
+    KnownFailure,
     TestCaseWithTransport,
     TestNotApplicable,
     TestSkipped,
@@ -364,7 +371,7 @@ class TestRepository(TestCaseWithRepository):
     def test_format_attributes(self):
         """All repository formats should have some basic attributes."""
         # create a repository to get a real format instance, not the 
-        # template from the test suite parameterisation.
+        # template from the test suite parameterization.
         repo = self.make_repository('.')
         repo._format.rich_root_data
         repo._format.supports_tree_reference
@@ -572,6 +579,103 @@ class TestRepository(TestCaseWithRepository):
         repository.install_revisions(repo2, [(revision, tree, signature)])
         self.assertEqual(revision, repo2.get_revision('A'))
         self.assertEqual(signature, repo2.get_signature_text('A'))
+
+    # XXX: this helper duplicated from tests.test_repository
+    def make_remote_repository(self, path):
+        """Make a RemoteRepository object backed by a real repository that will
+        be created at the given path."""
+        repo = self.make_repository(path)
+        smart_server = server.SmartTCPServer_for_testing()
+        smart_server.setUp(self.get_server())
+        remote_transport = get_transport(smart_server.get_url()).clone(path)
+        self.addCleanup(smart_server.tearDown)
+        remote_bzrdir = bzrdir.BzrDir.open_from_transport(remote_transport)
+        remote_repo = remote_bzrdir.open_repository()
+        return remote_repo
+
+    def test_sprout_from_hpss_preserves_format(self):
+        """repo.sprout from a smart server preserves the repository format."""
+        if self.repository_format == RepositoryFormat7():
+            raise KnownFailure(
+                "Cannot fetch weaves over smart protocol.")
+        remote_repo = self.make_remote_repository('remote')
+        local_bzrdir = self.make_bzrdir('local')
+        try:
+            local_repo = remote_repo.sprout(local_bzrdir)
+        except errors.TransportNotPossible:
+            raise TestNotApplicable(
+                "Cannot lock_read old formats like AllInOne over HPSS.")
+        remote_backing_repo = bzrdir.BzrDir.open(
+            self.get_vfs_only_url('remote')).open_repository()
+        self.assertEqual(remote_backing_repo._format, local_repo._format)
+
+    def test_sprout_branch_from_hpss_preserves_repo_format(self):
+        """branch.sprout from a smart server preserves the repository format.
+        """
+        weave_formats = [RepositoryFormat5(), RepositoryFormat6(),
+                         RepositoryFormat7()]
+        if self.repository_format in weave_formats:
+            raise KnownFailure(
+                "Cannot fetch weaves over smart protocol.")
+        remote_repo = self.make_remote_repository('remote')
+        remote_branch = remote_repo.bzrdir.create_branch()
+        try:
+            local_bzrdir = remote_branch.bzrdir.sprout('local')
+        except errors.TransportNotPossible:
+            raise TestNotApplicable(
+                "Cannot lock_read old formats like AllInOne over HPSS.")
+        local_repo = local_bzrdir.open_repository()
+        remote_backing_repo = bzrdir.BzrDir.open(
+            self.get_vfs_only_url('remote')).open_repository()
+        self.assertEqual(remote_backing_repo._format, local_repo._format)
+
+    def test__make_parents_provider(self):
+        """Repositories must have a _make_parents_provider method that returns
+        an object with a get_parent_map method.
+        """
+        repo = self.make_repository('repo')
+        repo._make_parents_provider().get_parent_map
+
+    def make_repository_and_foo_bar(self, shared):
+        made_control = self.make_bzrdir('repository')
+        repo = made_control.create_repository(shared=shared)
+        bzrdir.BzrDir.create_branch_convenience(self.get_url('repository/foo'),
+                                                force_new_repo=False)
+        bzrdir.BzrDir.create_branch_convenience(self.get_url('repository/bar'),
+                                                force_new_repo=True)
+        baz = self.make_bzrdir('repository/baz')
+        qux = self.make_branch('repository/baz/qux')
+        quxx = self.make_branch('repository/baz/qux/quxx')
+        return repo
+
+    def test_find_branches(self):
+        repo = self.make_repository_and_foo_bar(shared=False)
+        branches = repo.find_branches()
+        self.assertContainsRe(branches[-1].base, 'repository/foo/$')
+        self.assertContainsRe(branches[-3].base, 'repository/baz/qux/$')
+        self.assertContainsRe(branches[-2].base, 'repository/baz/qux/quxx/$')
+        # in some formats, creating a repo creates a branch
+        if len(branches) == 6:
+            self.assertContainsRe(branches[-4].base, 'repository/baz/$')
+            self.assertContainsRe(branches[-5].base, 'repository/bar/$')
+            self.assertContainsRe(branches[-6].base, 'repository/$')
+        else:
+            self.assertEqual(4, len(branches))
+            self.assertContainsRe(branches[-4].base, 'repository/bar/$')
+
+    def test_find_branches_using(self):
+        try:
+            repo = self.make_repository_and_foo_bar(shared=True)
+        except errors.IncompatibleFormat:
+            raise TestNotApplicable
+        branches = repo.find_branches(using=True)
+        self.assertContainsRe(branches[-1].base, 'repository/foo/$')
+        # in some formats, creating a repo creates a branch
+        if len(branches) == 2:
+            self.assertContainsRe(branches[-2].base, 'repository/$')
+        else:
+            self.assertEqual(1, len(branches))
+
 
 class TestRepositoryLocking(TestCaseWithRepository):
 

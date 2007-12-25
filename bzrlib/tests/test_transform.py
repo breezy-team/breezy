@@ -38,6 +38,7 @@ from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
 from bzrlib.osutils import file_kind, pathjoin
 from bzrlib.merge import Merge3Merger
 from bzrlib.tests import (
+    CaseInsensitiveFilesystemFeature,
     SymlinkFeature,
     TestCase,
     TestCaseInTempDir,
@@ -1099,8 +1100,62 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.callDeprecated([txt], change_entry, None, None, None, None, None,
             None, None, None)
 
+    def test_case_insensitive_clash(self):
+        self.requireFeature(CaseInsensitiveFilesystemFeature)
+        def tt_helper():
+            wt = self.make_branch_and_tree('.')
+            tt = TreeTransform(wt)  # TreeTransform obtains write lock
+            try:
+                tt.new_file('foo', tt.root, 'bar')
+                tt.new_file('Foo', tt.root, 'spam')
+                # Lie to tt that we've already resolved all conflicts.
+                tt.apply(no_conflicts=True)
+            except:
+                wt.unlock()
+                raise
+        err = self.assertRaises(errors.FileExists, tt_helper)
+        self.assertContainsRe(str(err),
+            "^File exists: .+/foo")
+
+    def test_two_directories_clash(self):
+        def tt_helper():
+            wt = self.make_branch_and_tree('.')
+            tt = TreeTransform(wt)  # TreeTransform obtains write lock
+            try:
+                foo_1 = tt.new_directory('foo', tt.root)
+                tt.new_directory('bar', foo_1)
+                foo_2 = tt.new_directory('foo', tt.root)
+                tt.new_directory('baz', foo_2)
+                # Lie to tt that we've already resolved all conflicts.
+                tt.apply(no_conflicts=True)
+            except:
+                wt.unlock()
+                raise
+        err = self.assertRaises(errors.FileExists, tt_helper)
+        self.assertContainsRe(str(err),
+            "^File exists: .+/foo")
+
+    def test_two_directories_clash_finalize(self):
+        def tt_helper():
+            wt = self.make_branch_and_tree('.')
+            tt = TreeTransform(wt)  # TreeTransform obtains write lock
+            try:
+                foo_1 = tt.new_directory('foo', tt.root)
+                tt.new_directory('bar', foo_1)
+                foo_2 = tt.new_directory('foo', tt.root)
+                tt.new_directory('baz', foo_2)
+                # Lie to tt that we've already resolved all conflicts.
+                tt.apply(no_conflicts=True)
+            except:
+                tt.finalize()
+                raise
+        err = self.assertRaises(errors.FileExists, tt_helper)
+        self.assertContainsRe(str(err),
+            "^File exists: .+/foo")
+
 
 class TransformGroup(object):
+
     def __init__(self, dirname, root_id):
         self.name = dirname
         os.mkdir(dirname)
@@ -1456,6 +1511,93 @@ class TestBuildTree(tests.TestCaseWithTransport):
         # children of non-root directories should not be renamed
         self.assertEqual(2, transform_result.rename_count)
 
+    def test_build_tree_accelerator_tree(self):
+        source = self.make_branch_and_tree('source')
+        self.build_tree_contents([('source/file1', 'A')])
+        self.build_tree_contents([('source/file2', 'B')])
+        source.add(['file1', 'file2'], ['file1-id', 'file2-id'])
+        source.commit('commit files')
+        self.build_tree_contents([('source/file2', 'C')])
+        calls = []
+        real_source_get_file = source.get_file
+        def get_file(file_id, path=None):
+            calls.append(file_id)
+            return real_source_get_file(file_id, path)
+        source.get_file = get_file
+        source.lock_read()
+        self.addCleanup(source.unlock)
+        target = self.make_branch_and_tree('target')
+        revision_tree = source.basis_tree()
+        revision_tree.lock_read()
+        self.addCleanup(revision_tree.unlock)
+        build_tree(revision_tree, target, source)
+        self.assertEqual(['file1-id'], calls)
+        target.lock_read()
+        self.addCleanup(target.unlock)
+        self.assertEqual([], list(target._iter_changes(revision_tree)))
+
+    def test_build_tree_accelerator_tree_missing_file(self):
+        source = self.make_branch_and_tree('source')
+        self.build_tree_contents([('source/file1', 'A')])
+        self.build_tree_contents([('source/file2', 'B')])
+        source.add(['file1', 'file2'])
+        source.commit('commit files')
+        os.unlink('source/file1')
+        source.remove(['file2'])
+        target = self.make_branch_and_tree('target')
+        revision_tree = source.basis_tree()
+        revision_tree.lock_read()
+        self.addCleanup(revision_tree.unlock)
+        build_tree(revision_tree, target, source)
+        target.lock_read()
+        self.addCleanup(target.unlock)
+        self.assertEqual([], list(target._iter_changes(revision_tree)))
+
+    def test_build_tree_accelerator_wrong_kind(self):
+        source = self.make_branch_and_tree('source')
+        self.build_tree_contents([('source/file1', '')])
+        self.build_tree_contents([('source/file2', '')])
+        source.add(['file1', 'file2'], ['file1-id', 'file2-id'])
+        source.commit('commit files')
+        os.unlink('source/file2')
+        self.build_tree_contents([('source/file2/', 'C')])
+        os.unlink('source/file1')
+        os.symlink('file2', 'source/file1')
+        calls = []
+        real_source_get_file = source.get_file
+        def get_file(file_id, path=None):
+            calls.append(file_id)
+            return real_source_get_file(file_id, path)
+        source.get_file = get_file
+        source.lock_read()
+        self.addCleanup(source.unlock)
+        target = self.make_branch_and_tree('target')
+        revision_tree = source.basis_tree()
+        revision_tree.lock_read()
+        self.addCleanup(revision_tree.unlock)
+        build_tree(revision_tree, target, source)
+        self.assertEqual([], calls)
+        target.lock_read()
+        self.addCleanup(target.unlock)
+        self.assertEqual([], list(target._iter_changes(revision_tree)))
+
+    def test_build_tree_accelerator_tree_moved(self):
+        source = self.make_branch_and_tree('source')
+        self.build_tree_contents([('source/file1', 'A')])
+        source.add(['file1'], ['file1-id'])
+        source.commit('commit files')
+        source.rename_one('file1', 'file2')
+        source.lock_read()
+        self.addCleanup(source.unlock)
+        target = self.make_branch_and_tree('target')
+        revision_tree = source.basis_tree()
+        revision_tree.lock_read()
+        self.addCleanup(revision_tree.unlock)
+        build_tree(revision_tree, target, source)
+        target.lock_read()
+        self.addCleanup(target.unlock)
+        self.assertEqual([], list(target._iter_changes(revision_tree)))
+
 
 class MockTransform(object):
 
@@ -1473,6 +1615,7 @@ class MockEntry(object):
     def __init__(self):
         object.__init__(self)
         self.name = "name"
+
 
 class TestGetBackupName(TestCase):
     def test_get_backup_name(self):
@@ -1533,7 +1676,7 @@ class TestFileMover(tests.TestCaseWithTransport):
         mover.rename('c/e', 'c/d')
         try:
             mover.rename('a', 'c')
-        except OSError, e:
+        except errors.FileExists, e:
             mover.rollback()
         self.failUnlessExists('a')
         self.failUnlessExists('c/d')

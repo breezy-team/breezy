@@ -30,6 +30,7 @@ import sys
 
 from bzrlib import (
     errors,
+    osutils,
     symbol_versioning,
     )
 from bzrlib.smart.protocol import (
@@ -37,12 +38,7 @@ from bzrlib.smart.protocol import (
     SmartServerRequestProtocolOne,
     SmartServerRequestProtocolTwo,
     )
-
-try:
-    from bzrlib.transport import ssh
-except errors.ParamikoNotPresent:
-    # no paramiko.  SmartSSHClientMedium will break.
-    pass
+from bzrlib.transport import ssh
 
 
 class SmartServerStreamMedium(object):
@@ -182,7 +178,7 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         self.finished = True
 
     def _write_out(self, bytes):
-        self.socket.sendall(bytes)
+        osutils.send_all(self.socket, bytes)
 
 
 class SmartServerPipeStreamMedium(SmartServerStreamMedium):
@@ -529,7 +525,7 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
     def _accept_bytes(self, bytes):
         """See SmartClientMedium.accept_bytes."""
         self._ensure_connection()
-        self._socket.sendall(bytes)
+        osutils.send_all(self._socket, bytes)
 
     def disconnect(self):
         """See SmartClientMedium.disconnect()."""

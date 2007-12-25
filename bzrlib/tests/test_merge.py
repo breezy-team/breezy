@@ -20,17 +20,19 @@ from StringIO import StringIO
 from bzrlib import (
     conflicts,
     errors,
+    knit,
     merge as _mod_merge,
     option,
     progress,
+    versionedfile,
     )
 from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList, TextConflict
 from bzrlib.errors import UnrelatedBranches, NoCommits, BzrCommandError
-from bzrlib.merge import transform_tree, merge_inner
+from bzrlib.merge import transform_tree, merge_inner, _PlanMerge
 from bzrlib.osutils import pathjoin, file_kind
 from bzrlib.revision import common_ancestor
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import TestCaseWithTransport, TestCaseWithMemoryTransport
 from bzrlib.trace import (enable_test_log, disable_test_log)
 from bzrlib.workingtree import WorkingTree
 
@@ -285,3 +287,173 @@ class TestMerge(TestCaseWithTransport):
         merger.merge_type = _mod_merge.Merge3Merger
         merger.do_merge()
         self.assertEqual(tree_a.get_parent_ids(), [tree_b.last_revision()])
+
+    def prepare_cherrypick(self):
+        """Prepare a pair of trees for cherrypicking tests.
+
+        Both trees have a file, 'file'.
+        rev1 sets content to 'a'.
+        rev2b adds 'b'.
+        rev3b adds 'c'.
+        A full merge of rev2b and rev3b into this_tree would add both 'b' and
+        'c'.  A successful cherrypick of rev2b-rev3b into this_tree will add
+        'c', but not 'b'.
+        """
+        this_tree = self.make_branch_and_tree('this')
+        self.build_tree_contents([('this/file', "a\n")])
+        this_tree.add('file')
+        this_tree.commit('rev1')
+        other_tree = this_tree.bzrdir.sprout('other').open_workingtree()
+        self.build_tree_contents([('other/file', "a\nb\n")])
+        other_tree.commit('rev2b', rev_id='rev2b')
+        self.build_tree_contents([('other/file', "c\na\nb\n")])
+        other_tree.commit('rev3b', rev_id='rev3b')
+        this_tree.lock_write()
+        self.addCleanup(this_tree.unlock)
+        return this_tree, other_tree
+
+    def test_weave_cherrypick(self):
+        this_tree, other_tree = self.prepare_cherrypick()
+        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+            this_tree, 'rev3b', 'rev2b', other_tree.branch)
+        merger.merge_type = _mod_merge.WeaveMerger
+        merger.do_merge()
+        self.assertFileEqual('c\na\n', 'this/file')
+
+    def test_weave_cannot_reverse_cherrypick(self):
+        this_tree, other_tree = self.prepare_cherrypick()
+        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+            this_tree, 'rev2b', 'rev3b', other_tree.branch)
+        merger.merge_type = _mod_merge.WeaveMerger
+        self.assertRaises(errors.CannotReverseCherrypick, merger.do_merge)
+
+    def test_merge3_can_reverse_cherrypick(self):
+        this_tree, other_tree = self.prepare_cherrypick()
+        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+            this_tree, 'rev2b', 'rev3b', other_tree.branch)
+        merger.merge_type = _mod_merge.Merge3Merger
+        merger.do_merge()
+
+
+class TestPlanMerge(TestCaseWithMemoryTransport):
+
+    def setUp(self):
+        TestCaseWithMemoryTransport.setUp(self)
+        self.vf = knit.KnitVersionedFile('root', self.get_transport(),
+                                         create=True)
+        self.plan_merge_vf = versionedfile._PlanMergeVersionedFile('root',
+                                                                   [self.vf])
+
+    def add_version(self, version_id, parents, text):
+        self.vf.add_lines(version_id, parents, [c+'\n' for c in text])
+
+    def add_uncommitted_version(self, version_id, parents, text):
+        self.plan_merge_vf.add_lines(version_id, parents,
+                                     [c+'\n' for c in text])
+
+    def setup_plan_merge(self):
+        self.add_version('A', [], 'abc')
+        self.add_version('B', ['A'], 'acehg')
+        self.add_version('C', ['A'], 'fabg')
+        return _PlanMerge('B', 'C', self.plan_merge_vf)
+
+    def setup_plan_merge_uncommitted(self):
+        self.add_version('A', [], 'abc')
+        self.add_uncommitted_version('B:', ['A'], 'acehg')
+        self.add_uncommitted_version('C:', ['A'], 'fabg')
+        return _PlanMerge('B:', 'C:', self.plan_merge_vf)
+
+    def test_unique_lines(self):
+        plan = self.setup_plan_merge()
+        self.assertEqual(plan._unique_lines(
+            plan._get_matching_blocks('B', 'C')),
+            ([1, 2, 3], [0, 2]))
+
+    def test_find_new(self):
+        plan = self.setup_plan_merge()
+        self.assertEqual(set([2, 3, 4]), plan._find_new('B'))
+        self.assertEqual(set([0, 3]), plan._find_new('C'))
+
+    def test_find_new2(self):
+        self.add_version('A', [], 'abc')
+        self.add_version('B', ['A'], 'abcde')
+        self.add_version('C', ['A'], 'abcefg')
+        self.add_version('D', ['A', 'B', 'C'], 'abcdegh')
+        my_plan = _PlanMerge('B', 'D', self.plan_merge_vf)
+        self.assertEqual(set([5, 6]), my_plan._find_new('D'))
+        self.assertEqual(set(), my_plan._find_new('A'))
+
+    def test_find_new_no_ancestors(self):
+        self.add_version('A', [], 'abc')
+        self.add_version('B', [], 'xyz')
+        my_plan = _PlanMerge('A', 'B', self.vf)
+        self.assertEqual(set([0, 1, 2]), my_plan._find_new('A'))
+
+    def test_plan_merge(self):
+        self.setup_plan_merge()
+        plan = self.plan_merge_vf.plan_merge('B', 'C')
+        self.assertEqual([
+                          ('new-b', 'f\n'),
+                          ('unchanged', 'a\n'),
+                          ('killed-b', 'c\n'),
+                          ('new-a', 'e\n'),
+                          ('new-a', 'h\n'),
+                          ('killed-a', 'b\n'),
+                          ('unchanged', 'g\n')],
+                         list(plan))
+
+    def test_plan_merge_uncommitted_files(self):
+        self.setup_plan_merge_uncommitted()
+        plan = self.plan_merge_vf.plan_merge('B:', 'C:')
+        self.assertEqual([
+                          ('new-b', 'f\n'),
+                          ('unchanged', 'a\n'),
+                          ('killed-b', 'c\n'),
+                          ('new-a', 'e\n'),
+                          ('new-a', 'h\n'),
+                          ('killed-a', 'b\n'),
+                          ('unchanged', 'g\n')],
+                         list(plan))
+
+    def test_subtract_plans(self):
+        old_plan = [
+        ('unchanged', 'a\n'),
+        ('new-a', 'b\n'),
+        ('killed-a', 'c\n'),
+        ('new-b', 'd\n'),
+        ('new-b', 'e\n'),
+        ('killed-b', 'f\n'),
+        ('killed-b', 'g\n'),
+        ]
+        new_plan = [
+        ('unchanged', 'a\n'),
+        ('new-a', 'b\n'),
+        ('killed-a', 'c\n'),
+        ('new-b', 'd\n'),
+        ('new-b', 'h\n'),
+        ('killed-b', 'f\n'),
+        ('killed-b', 'i\n'),
+        ]
+        subtracted_plan = [
+        ('unchanged', 'a\n'),
+        ('new-a', 'b\n'),
+        ('killed-a', 'c\n'),
+        ('new-b', 'h\n'),
+        ('unchanged', 'f\n'),
+        ('killed-b', 'i\n'),
+        ]
+        self.assertEqual(subtracted_plan,
+            list(_PlanMerge._subtract_plans(old_plan, new_plan)))
+
+    def test_plan_merge_with_base(self):
+        self.add_version('COMMON', [], 'abc')
+        self.add_version('THIS', ['COMMON'], 'abcd')
+        self.add_version('BASE', ['COMMON'], 'eabc')
+        self.add_version('OTHER', ['BASE'], 'eafb')
+        plan = self.plan_merge_vf.plan_merge('THIS', 'OTHER', 'BASE')
+        self.assertEqual([('unchanged', 'a\n'),
+                          ('new-b', 'f\n'),
+                          ('unchanged', 'b\n'),
+                          ('killed-b', 'c\n'),
+                          ('new-a', 'd\n')
+                         ], list(plan))

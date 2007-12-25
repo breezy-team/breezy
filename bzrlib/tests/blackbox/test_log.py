@@ -168,9 +168,16 @@ class TestLog(ExternalBase):
     def test_log_limit(self):
         self._prepare()
         log = self.run_bzr("log --limit 2")[0]
-        self.assertTrue('revno: 1\n' not in log)
-        self.assertTrue('revno: 2\n' in log)
-        self.assertTrue('revno: 3\n' in log)
+        self.assertNotContainsRe(log, r'revno: 1\n')
+        self.assertContainsRe(log, r'revno: 2\n')
+        self.assertContainsRe(log, r'revno: 3\n')
+
+    def test_log_limit_short(self):
+        self._prepare()
+        log = self.run_bzr("log -l 2")[0]
+        self.assertNotContainsRe(log, r'revno: 1\n')
+        self.assertContainsRe(log, r'revno: 2\n')
+        self.assertContainsRe(log, r'revno: 3\n')
 
 class TestLogMerges(ExternalBase):
 
@@ -285,8 +292,8 @@ message:
     def test_merges_nonsupporting_formatter(self):
         self._prepare()
         err_msg = 'Selected log formatter only supports mainline revisions.'
-        out,err = self.run_bzr('log --short -r1.1.2', retcode=3)
-        self.assertContainsRe(err, err_msg)
+        # The single revision case is tested in the core tests
+        # since all standard formatters support single merge revisions.
         out,err = self.run_bzr('log --short -r1..1.1.2', retcode=3)
         self.assertContainsRe(err, err_msg)
         out,err = self.run_bzr('log --short -r1.1.1..1.1.2', retcode=3)

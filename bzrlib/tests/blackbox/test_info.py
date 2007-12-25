@@ -1146,12 +1146,15 @@ Repository:
             except errors.PathNotChild:
                 return path
 
-        if tree_locked and sys.platform == 'win32':
-            # We expect this to fail because of locking errors. (A write-locked
-            # file cannot be read-locked in the same process).
+        if tree_locked:
+            # We expect this to fail because of locking errors.
+            # (A write-locked file cannot be read-locked
+            # in the different process -- either on win32 or on linux).
             # This should be removed when the locking errors are fixed.
-            self.run_bzr_error([], 'info ' + command_string)
-            return
+            self.expectFailure('OS locks are exclusive '
+                'for different processes (Bug #174055)',
+                self.run_bzr_subprocess,
+                'info ' + command_string)
         out, err = self.run_bzr('info %s' % command_string)
         description = {
             (True, True): 'Lightweight checkout',
