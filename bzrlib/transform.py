@@ -1341,22 +1341,11 @@ class _PreviewTree(object):
         self._transform = transform
 
     def lock_read(self):
+        # Perhaps in theory, this should lock the TreeTransform?
         pass
 
     def unlock(self):
         pass
-
-    def changes_from(self, other, want_unchanged=False, specific_files=None,
-        extra_trees=None, require_versioned=False, include_root=False,
-        want_unversioned=False):
-        return tree.InterTree.get(other, self).compare(
-            want_unchanged=want_unchanged,
-            specific_files=specific_files,
-            extra_trees=extra_trees,
-            require_versioned=require_versioned,
-            include_root=include_root,
-            want_unversioned=want_unversioned,
-            )
 
     def _iter_changes(self, from_tree, include_unchanged=False,
                       specific_files=None, pb=None, extra_trees=None,

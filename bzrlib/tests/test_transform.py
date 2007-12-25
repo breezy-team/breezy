@@ -23,6 +23,7 @@ from bzrlib import (
     errors,
     generate_ids,
     progress,
+    revision as _mod_revision,
     symbol_versioning,
     tests,
     urlutils,
@@ -1769,6 +1770,11 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         tree.commit('rev1', rev_id='rev1')
         return tree.branch.repository.revision_tree('rev1')
 
+    def get_empty_preview(self):
+        repository = self.make_repository('repo')
+        tree = repository.revision_tree(_mod_revision.NULL_REVISION)
+        return TransformPreview(tree)
+
     def test_transform_preview(self):
         revision_tree = self.create_tree()
         preview = TransformPreview(revision_tree)
@@ -1841,3 +1847,31 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview_tree._iter_changes(revision_tree, require_versioned=False)
         # pb could be supported, but TT.iter_changes doesn't support it.
         preview_tree._iter_changes(revision_tree, pb=progress.DummyProgress())
+
+    def test_kind(self):
+        revision_tree = self.create_tree()
+        preview = TransformPreview(revision_tree)
+        preview.new_file('file', preview.root, 'contents', 'file-id')
+        preview.new_directory('directory', preview.root, 'dir-id')
+        preview_tree = preview.get_preview_tree()
+        self.assertEqual('file', preview_tree.kind('file-id'))
+        self.assertEqual('directory', preview_tree.kind('dir-id'))
+
+    def test_get_file_mtime(self):
+        preview = self.get_empty_preview()
+        file_trans_id = preview.new_file('file', preview.root, 'contents',
+                                         'file-id')
+        limbo_path = preview._limbo_name(file_trans_id)
+        preview_tree = preview.get_preview_tree()
+        self.assertEqual(os.stat(limbo_path).st_mtime,
+                         preview_tree.get_file_mtime('file-id'))
+
+    def test_get_file(self):
+        preview = self.get_empty_preview()
+        preview.new_file('file', preview.root, 'contents', 'file-id')
+        preview_tree = preview.get_preview_tree()
+        tree_file = preview_tree.get_file('file-id')
+        try:
+            self.assertEqual('contents', tree_file.read())
+        finally:
+            tree_file.close()
