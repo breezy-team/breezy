@@ -1042,19 +1042,19 @@ class TreeTransformBase(object):
 
 class TreeTransform(TreeTransformBase):
     """Represent a tree transformation.
-    
+
     This object is designed to support incremental generation of the transform,
     in any order.
 
     However, it gives optimum performance when parent directories are created
     before their contents.  The transform is then able to put child files
     directly in their parent directory, avoiding later renames.
-    
+
     It is easy to produce malformed transforms, but they are generally
     harmless.  Attempting to apply a malformed transform will cause an
-    exception to be raised before any modifications are made to the tree.  
+    exception to be raised before any modifications are made to the tree.
 
-    Many kinds of malformed transforms can be corrected with the 
+    Many kinds of malformed transforms can be corrected with the
     resolve_conflicts function.  The remaining ones indicate programming error,
     such as trying to create a file with no path.
 
@@ -1103,7 +1103,7 @@ class TreeTransform(TreeTransformBase):
     This temporary directory is used by _FileMover for storing files that are
     about to be deleted.  In case of rollback, the files will be restored.
     FileMover does not delete files until it is sure that a rollback will not
-    happen.  
+    happen.
     """
     def __init__(self, tree, pb=DummyProgress()):
         """Note: a tree_write lock is taken on the tree.
@@ -1138,7 +1138,7 @@ class TreeTransform(TreeTransformBase):
 
     def apply(self, no_conflicts=False, _mover=None):
         """Apply all changes to the inventory and filesystem.
-        
+
         If filesystem or inventory conflicts are present, MalformedTransform
         will be thrown.
 
@@ -1181,7 +1181,7 @@ class TreeTransform(TreeTransformBase):
 
     def _apply_removals(self, inv, inventory_delta, mover):
         """Perform tree operations that remove directory/inventory names.
-        
+
         That is, delete files that are to be deleted, and put any files that
         need renaming into limbo.  This must be done in strict child-to-parent
         order.
@@ -1218,7 +1218,7 @@ class TreeTransform(TreeTransformBase):
 
     def _apply_insertions(self, inv, inventory_delta, mover):
         """Perform tree operations that insert directory/inventory names.
-        
+
         That is, create any files that need to be created, and restore from
         limbo any files that needed renaming.  This must be done in strict
         parent-to-child order.
@@ -1257,7 +1257,7 @@ class TreeTransform(TreeTransformBase):
                     if trans_id in self._new_reference_revision:
                         new_entry = inventory.TreeReference(
                             self._new_id[trans_id],
-                            self._new_name[trans_id], 
+                            self._new_name[trans_id],
                             self.final_file_id(self._new_parent[trans_id]),
                             None, self._new_reference_revision[trans_id])
                     else:
