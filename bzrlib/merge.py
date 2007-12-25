@@ -485,7 +485,7 @@ class Merge3Merger(object):
         self.tt = TreeTransform(self.this_tree, self.pb)
         try:
             self.pp.next_phase()
-            self.compute_transform()
+            self._compute_transform()
             self.pp.next_phase()
             results = self.tt.apply(no_conflicts=True)
             self.write_modified(results)
@@ -506,7 +506,7 @@ class Merge3Merger(object):
         self.tt = TransformPreview(self.this_tree)
         try:
             self.pp.next_phase()
-            self.compute_transform()
+            self._compute_transform()
             self.pp.next_phase()
         finally:
             self.other_tree.unlock()
@@ -514,7 +514,7 @@ class Merge3Merger(object):
             self.pb.clear()
         return self.tt
 
-    def compute_transform(self):
+    def _compute_transform(self):
         entries = self._entries3()
         child_pb = ui.ui_factory.nested_progress_bar()
         try:
