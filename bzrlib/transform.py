@@ -1032,7 +1032,13 @@ class TreeTransformBase(object):
         return iter(sorted(results, key=lambda x:x[1]))
 
     def get_preview_tree(self):
-        return PreviewTree(self)
+        """Return a tree representing the result of the transform.
+
+        This tree only supports the subset of Tree functionality required
+        by show_diff_trees.  It must only be compared to tt._tree.
+        """
+        return _PreviewTree(self)
+
 
 class TreeTransform(TreeTransformBase):
     """Represent a tree transformation.
@@ -1329,7 +1335,7 @@ class TransformPreview(TreeTransformBase):
             childpath = joinpath(path, child)
             yield self.trans_id_tree_path(childpath)
 
-class PreviewTree(object):
+class _PreviewTree(object):
 
     def __init__(self, transform):
         self._transform = transform
@@ -1352,10 +1358,23 @@ class PreviewTree(object):
             want_unversioned=want_unversioned,
             )
 
-    def _iter_changes(self, include_unchanged=False, specific_files=None,
-                      pb=None, extra_trees=[], require_versioned=True,
-                      want_unversioned=False):
-        # FIXME: should error out when inputs aren't acceptable
+    def _iter_changes(self, from_tree, include_unchanged=False,
+                      specific_files=None, pb=None, extra_trees=None,
+                      require_versioned=True, want_unversioned=False):
+        """See InterTree._iter_changes.
+
+        This implementation does not support include_unchanged, specific_files,
+        or want_unversioned.  extra_trees, require_versioned, and pb are
+        ignored.
+        """
+        if from_tree is not self._transform._tree:
+            raise ValueError('from_tree must be transform source tree.')
+        if include_unchanged:
+            raise ValueError('include_unchanged is not supported')
+        if specific_files is not None:
+            raise ValueError('specific_files is not supported')
+        if want_unversioned:
+            raise ValueError('want_unversioned is not supported')
         return self._transform._iter_changes()
 
     def kind(self, file_id):
