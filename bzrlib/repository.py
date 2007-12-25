@@ -773,7 +773,11 @@ class Repository(object):
 
         :param using: If True, list only branches using this repository.
         """
-
+        if using and not self.is_shared():
+            try:
+                return [self.bzrdir.open_branch()]
+            except errors.NotBranchError:
+                return []
         class Evaluator(object):
 
             def __init__(self):
