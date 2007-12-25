@@ -71,6 +71,9 @@ IN DEVELOPMENT
      user:pass embedded in the urls.
      (Vincent Ladeuil, #177643)
 
+   * Files inside non-directories are now handled like other conflict types.
+     (Aaron Bentley, #177390)
+
    * ``reconfigure`` is able to convert trees into lightweight checkouts.
      (Aaron Bentley)
 
