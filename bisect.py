@@ -21,6 +21,7 @@ import bzrlib.bzrdir
 import bzrlib.tests
 from bzrlib.commands import Command, register_command
 from bzrlib.errors import BzrCommandError
+from bzrlib.option import Option
 
 bisect_info_path = ".bzr/bisect"
 bisect_rev_path = ".bzr/bisect_revid"
