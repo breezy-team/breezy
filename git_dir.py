@@ -24,7 +24,7 @@ from bzrlib import (
     )
 
 lazy_import(globals(), """
-from bzrlib.plugins.git.gitlib import (
+from bzrlib.plugins.git import (
     errors,
     git_branch,
     git_repository,

@@ -21,7 +21,7 @@ import subprocess
 from bzrlib import bzrdir
 
 from bzrlib.plugins.git import tests
-from bzrlib.plugins.git.gitlib import git_dir
+from bzrlib.plugins.git import git_dir
 
 
 class TestGitDir(tests.TestCaseInTempDir):

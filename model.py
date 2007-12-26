@@ -19,7 +19,7 @@
 import os
 import subprocess
 
-from bzrlib.plugins.git.gitlib import errors
+from bzrlib.plugins.git import errors
 
 
 class GitModel(object):

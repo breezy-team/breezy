@@ -25,7 +25,7 @@ from bzrlib import (
     )
 
 bzrdir.format_registry.register_lazy('git',
-    'bzrlib.plugins.git.gitlib.git_dir', 'GitDirFormat',
+    'bzrlib.plugins.git.git_dir', 'GitDirFormat',
     help='GIT - the stupid content tracker.',
     native=False, hidden=True, experimental=True,
     )

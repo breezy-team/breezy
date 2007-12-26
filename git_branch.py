@@ -23,7 +23,7 @@ from bzrlib import (
     )
 from bzrlib.decorators import needs_read_lock
 
-from bzrlib.plugins.git.gitlib import ids
+from bzrlib.plugins.git import ids
 
 
 class GitBranchConfig(config.BranchConfig):
@@ -49,7 +49,7 @@ class GitBranch(branch.Branch):
     """An adapter to git repositories for bzr Branch objects."""
 
     def __init__(self, gitdir, lockfiles):
-        from bzrlib.plugins.git.gitlib import git_repository
+        from bzrlib.plugins.git import git_repository
         self.bzrdir = gitdir
         self.control_files = lockfiles
         self.repository = git_repository.GitRepository(gitdir, lockfiles)

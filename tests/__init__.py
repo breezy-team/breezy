@@ -24,7 +24,7 @@ from bzrlib import (
     tests,
     trace,
     )
-from  bzrlib.plugins.git.gitlib import errors
+from  bzrlib.plugins.git import errors
 
 TestCase = tests.TestCase
 TestCaseInTempDir = tests.TestCaseInTempDir

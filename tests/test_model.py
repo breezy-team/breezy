@@ -17,7 +17,7 @@
 """Test the model for interacting with the git process, etc."""
 
 from bzrlib.plugins.git import tests
-from bzrlib.plugins.git.gitlib import (
+from bzrlib.plugins.git import (
     errors,
     model,
     )

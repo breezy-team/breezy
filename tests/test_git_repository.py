@@ -21,7 +21,7 @@ import subprocess
 from bzrlib import repository
 
 from bzrlib.plugins.git import tests
-from bzrlib.plugins.git.gitlib import (
+from bzrlib.plugins.git import (
     git_repository,
     ids,
     model,

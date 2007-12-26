@@ -22,7 +22,7 @@ from bzrlib import (
     urlutils,
     )
 
-from bzrlib.plugins.git.gitlib import (
+from bzrlib.plugins.git import (
     ids,
     model,
     )
