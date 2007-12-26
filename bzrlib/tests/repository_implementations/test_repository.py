@@ -371,7 +371,7 @@ class TestRepository(TestCaseWithRepository):
     def test_format_attributes(self):
         """All repository formats should have some basic attributes."""
         # create a repository to get a real format instance, not the 
-        # template from the test suite parameterisation.
+        # template from the test suite parameterization.
         repo = self.make_repository('.')
         repo._format.rich_root_data
         repo._format.supports_tree_reference
@@ -631,10 +631,50 @@ class TestRepository(TestCaseWithRepository):
 
     def test__make_parents_provider(self):
         """Repositories must have a _make_parents_provider method that returns
-        an object with a get_parents method.
+        an object with a get_parent_map method.
         """
         repo = self.make_repository('repo')
-        repo._make_parents_provider().get_parents
+        repo._make_parents_provider().get_parent_map
+
+    def make_repository_and_foo_bar(self, shared):
+        made_control = self.make_bzrdir('repository')
+        repo = made_control.create_repository(shared=shared)
+        bzrdir.BzrDir.create_branch_convenience(self.get_url('repository/foo'),
+                                                force_new_repo=False)
+        bzrdir.BzrDir.create_branch_convenience(self.get_url('repository/bar'),
+                                                force_new_repo=True)
+        baz = self.make_bzrdir('repository/baz')
+        qux = self.make_branch('repository/baz/qux')
+        quxx = self.make_branch('repository/baz/qux/quxx')
+        return repo
+
+    def test_find_branches(self):
+        repo = self.make_repository_and_foo_bar(shared=False)
+        branches = repo.find_branches()
+        self.assertContainsRe(branches[-1].base, 'repository/foo/$')
+        self.assertContainsRe(branches[-3].base, 'repository/baz/qux/$')
+        self.assertContainsRe(branches[-2].base, 'repository/baz/qux/quxx/$')
+        # in some formats, creating a repo creates a branch
+        if len(branches) == 6:
+            self.assertContainsRe(branches[-4].base, 'repository/baz/$')
+            self.assertContainsRe(branches[-5].base, 'repository/bar/$')
+            self.assertContainsRe(branches[-6].base, 'repository/$')
+        else:
+            self.assertEqual(4, len(branches))
+            self.assertContainsRe(branches[-4].base, 'repository/bar/$')
+
+    def test_find_branches_using(self):
+        try:
+            repo = self.make_repository_and_foo_bar(shared=True)
+        except errors.IncompatibleFormat:
+            raise TestNotApplicable
+        branches = repo.find_branches(using=True)
+        self.assertContainsRe(branches[-1].base, 'repository/foo/$')
+        # in some formats, creating a repo creates a branch
+        if len(branches) == 2:
+            self.assertContainsRe(branches[-2].base, 'repository/$')
+        else:
+            self.assertEqual(1, len(branches))
 
 
 class TestRepositoryLocking(TestCaseWithRepository):

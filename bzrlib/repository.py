@@ -766,6 +766,45 @@ class Repository(object):
             result['size'] = t
         return result
 
+    def find_branches(self, using=False):
+        """Find branches underneath this repository.
+
+        This will include branches inside other branches.
+
+        :param using: If True, list only branches using this repository.
+        """
+
+        class Evaluator(object):
+
+            def __init__(self):
+                self.first_call = True
+
+            def __call__(self, bzrdir):
+                # On the first call, the parameter is always the bzrdir
+                # containing the current repo.
+                if not self.first_call:
+                    try:
+                        repository = bzrdir.open_repository()
+                    except errors.NoRepositoryPresent:
+                        pass
+                    else:
+                        return False, (None, repository)
+                self.first_call = False
+                try:
+                    value = (bzrdir.open_branch(), None)
+                except errors.NotBranchError:
+                    value = (None, None)
+                return True, value
+
+        branches = []
+        for branch, repository in bzrdir.BzrDir.find_bzrdirs(
+                self.bzrdir.root_transport, evaluate=Evaluator()):
+            if branch is not None:
+                branches.append(branch)
+            if not using and repository is not None:
+                branches.extend(repository.find_branches())
+        return branches
+
     def get_data_stream(self, revision_ids):
         raise NotImplementedError(self.get_data_stream)
 
@@ -1643,22 +1682,28 @@ class Repository(object):
     def revision_parents(self, revision_id):
         return self.get_inventory_weave().parent_names(revision_id)
 
+    @deprecated_method(symbol_versioning.one_one)
     def get_parents(self, revision_ids):
         """See StackedParentsProvider.get_parents"""
-        parents_list = []
-        for revision_id in revision_ids:
+        parent_map = self.get_parent_map(revision_ids)
+        return [parent_map.get(r, None) for r in revision_ids]
+
+    def get_parent_map(self, keys):
+        """See graph._StackedParentsProvider.get_parent_map"""
+        parent_map = {}
+        for revision_id in keys:
             if revision_id == _mod_revision.NULL_REVISION:
-                parents = []
+                parent_map[revision_id] = []
             else:
                 try:
-                    parents = self.get_revision(revision_id).parent_ids
+                    parent_ids = self.get_revision(revision_id).parent_ids
                 except errors.NoSuchRevision:
-                    parents = None
+                    pass
                 else:
-                    if len(parents) == 0:
-                        parents = [_mod_revision.NULL_REVISION]
-            parents_list.append(parents)
-        return parents_list
+                    if len(parent_ids) == 0:
+                        parent_ids = [_mod_revision.NULL_REVISION]
+                    parent_map[revision_id] = parent_ids
+        return parent_map
 
     def _make_parents_provider(self):
         return self
@@ -1958,7 +2003,7 @@ class RepositoryFormat(object):
     _matchingbzrdir - the bzrdir format that the repository format was
     originally written to work with. This can be used if manually
     constructing a bzrdir and repository, or more commonly for test suite
-    parameterisation.
+    parameterization.
     """
 
     # Set to True or False in derived classes. True indicates that the format

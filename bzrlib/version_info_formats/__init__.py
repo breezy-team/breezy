@@ -22,7 +22,7 @@ from bzrlib.osutils import local_time_offset, format_date
 from bzrlib import registry
 from bzrlib.symbol_versioning import (
     deprecated_function,
-    zero_ninetythree,
+    one_zero,
     )
 
 
@@ -176,7 +176,7 @@ class VersionInfoBuilder(object):
 format_registry = registry.Registry()
 
 
-@deprecated_function(zero_ninetythree)
+@deprecated_function(one_zero)
 def register_builder(format, module, class_name):
     """Register a version info format.
 
@@ -186,10 +186,10 @@ def register_builder(format, module, class_name):
         can be found
     :param class_name: The string name of the class to instantiate
     """
-    format_registry.regiser_lazy(format, module, class_names)
+    format_registry.register_lazy(format, module, class_name)
 
 
-@deprecated_function(zero_ninetythree)
+@deprecated_function(one_zero)
 def get_builder(format):
     """Get a handle to the version info builder class
 
@@ -199,7 +199,7 @@ def get_builder(format):
     return format_registry.get(format)
 
 
-@deprecated_function(zero_ninetythree)
+@deprecated_function(one_zero)
 def get_builder_formats():
     """Get the possible list of formats"""
     return format_registry.keys()
