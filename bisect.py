@@ -205,8 +205,9 @@ class cmd_bisect(Command):
     bzr bisect reset
         Clear out a bisection in progress.
 
-    bzr bisect log
-        Output a log of the current bisection to standard output.
+    bzr bisect log [-o file]
+        Output a log of the current bisection to standard output, or
+        to the specified file.
 
     bzr bisect replay <logfile>
         Replay a previously-saved bisect log, forgetting any bisection
@@ -214,7 +215,9 @@ class cmd_bisect(Command):
     """
 
     takes_args = ['subcommand', 'args*']
-    takes_options = ['revision']
+    takes_options = [Option('output', short_name='o',
+                            help='Write log to this file.', type=unicode),
+                     'revision']
 
     def _check(self):
         # Conditions that must be true for most operations to
@@ -232,7 +235,7 @@ class cmd_bisect(Command):
         bl.bisect()
         bl.save()
 
-    def run(self, subcommand, args_list, revision=None):
+    def run(self, subcommand, args_list, revision=None, output=None):
         # Handle subcommand parameters.
 
         log_fn = None
@@ -258,7 +261,7 @@ class cmd_bisect(Command):
         elif subcommand == "reset":
             self.reset()
         elif subcommand == "log":
-            self.log(None)
+            self.log(output)
         elif subcommand == "replay":
             self.replay(log_fn)
 
@@ -451,10 +454,7 @@ class BisectFuncTests(BisectTestCase):
 
         # Now save the log.
 
-        log_data = self.capture('bisect log')
-        f = open("bisect_log", "w")
-        f.write(log_data)
-        f.close()
+        self.run_bzr(['bisect', 'log', '-o', 'bisect_log'])
 
         # Reset.
 
