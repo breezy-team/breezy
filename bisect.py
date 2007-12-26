@@ -397,15 +397,15 @@ class BisectFuncTests(BisectTestCase):
         # Start up the bisection.  When the two ends are set, we should
         # end up in the middle.
 
-        self.run_bzr('bisect', 'start')
-        self.run_bzr('bisect', 'yes')
-        self.run_bzr('bisect', 'no', '-r', '1')
+        self.run_bzr(['bisect', 'start'])
+        self.run_bzr(['bisect', 'yes'])
+        self.run_bzr(['bisect', 'no', '-r', '1'])
         self.assertRevno(3)
 
         # Mark feature as present in the middle.  Should move us
         # halfway back between the current middle and the start.
 
-        self.run_bzr('bisect', 'yes')
+        self.run_bzr(['bisect', 'yes'])
         self.assertRevno(2)
 
         # Mark feature as not present.  Since this is only one
@@ -413,41 +413,41 @@ class BisectFuncTests(BisectTestCase):
         # the process should end, with the current rev set to the
         # rev following.
 
-        self.run_bzr('bisect', 'no')
+        self.run_bzr(['bisect', 'no'])
         self.assertRevno(3)
 
     def testMove(self):
         # Set up a bisection in progress.
 
-        self.run_bzr('bisect', 'start')
-        self.run_bzr('bisect', 'yes')
-        self.run_bzr('bisect', 'no', '-r', '1')
+        self.run_bzr(['bisect', 'start'])
+        self.run_bzr(['bisect', 'yes'])
+        self.run_bzr(['bisect', 'no', '-r', '1'])
 
         # Move.
 
-        self.run_bzr('bisect', 'move', '-r', '2')
+        self.run_bzr(['bisect', 'move', '-r', '2'])
         self.assertRevno(2)
 
     def testReset(self):
         # Set up a bisection in progress.
 
-        self.run_bzr('bisect', 'start')
-        self.run_bzr('bisect', 'yes')
-        self.run_bzr('bisect', 'no', '-r', '1')
-        self.run_bzr('bisect', 'yes')
+        self.run_bzr(['bisect', 'start'])
+        self.run_bzr(['bisect', 'yes'])
+        self.run_bzr(['bisect', 'no', '-r', '1'])
+        self.run_bzr(['bisect', 'yes'])
 
         # Now reset.
 
-        self.run_bzr('bisect', 'reset')
+        self.run_bzr(['bisect', 'reset'])
         self.assertRevno(5)
 
     def testLog(self):
         # Set up a bisection in progress.
 
-        self.run_bzr('bisect', 'start')
-        self.run_bzr('bisect', 'yes')
-        self.run_bzr('bisect', 'no', '-r', '1')
-        self.run_bzr('bisect', 'yes')
+        self.run_bzr(['bisect', 'start'])
+        self.run_bzr(['bisect', 'yes'])
+        self.run_bzr(['bisect', 'no', '-r', '1'])
+        self.run_bzr(['bisect', 'yes'])
 
         # Now save the log.
 
@@ -458,17 +458,17 @@ class BisectFuncTests(BisectTestCase):
 
         # Reset.
 
-        self.run_bzr('bisect', 'reset')
+        self.run_bzr(['bisect', 'reset'])
 
         # Read it back in.
 
-        self.run_bzr('bisect', 'replay', 'bisect_log')
+        self.run_bzr(['bisect', 'replay', 'bisect_log'])
         self.assertRevno(2)
 
         # Mark another state, and see if the bisect moves in the
         # right way.
 
-        self.run_bzr('bisect', 'no')
+        self.run_bzr(['bisect', 'no'])
         self.assertRevno(3)
 
 def test_suite():
