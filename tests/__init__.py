@@ -18,9 +18,9 @@
 
 import subprocess
 import time
-import tempfile
 
 from bzrlib import (
+    osutils,
     tests,
     trace,
     )
@@ -69,14 +69,14 @@ class GitBranchBuilder(object):
         self._counter = 0
         self._branch = 'refs/head/master'
         if stream is None:
-            self._marks_file = tempfile.NamedTemporaryFile(
-                prefix='tmp-git-marks')
+            # Write the marks file into the git sandbox.
+            self._marks_file_name = osutils.abspath('marks')
             self._process = subprocess.Popen(
                 ['git', 'fast-import', '--quiet',
                  # GIT doesn't support '--export-marks foo'
                  # it only supports '--export-marks=foo'
                  # And gives a 'unknown option' otherwise.
-                 '--export-marks='+self._marks_file.name,
+                 '--export-marks=' + self._marks_file_name,
                 ],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -189,13 +189,13 @@ class GitBranchBuilder(object):
             raise errors.GitCommandError(self._process.returncode,
                                          'git fast-import',
                                          self._process.stderr.read())
-        self._marks_file.seek(0)
+        marks_file = open(self._marks_file_name)
         mapping = {}
-        for line in self._marks_file:
+        for line in marks_file:
             mark, shasum = line.split()
             assert mark.startswith(':')
             mapping[int(mark[1:])] = shasum
-        self._marks_file.close()
+        marks_file.close()
         return mapping
 
 
