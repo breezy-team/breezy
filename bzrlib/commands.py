@@ -627,6 +627,11 @@ def apply_lsprofiled(filename, the_callable, *args, **kwargs):
     return ret
 
 
+def shlex_split_unicode(unsplit):
+    import shlex
+    return [u.decode('utf-8') for u in shlex.split(unsplit.encode('utf-8'))]
+
+
 def get_alias(cmd, config=None):
     """Return an expanded alias, or None if no alias exists.
 
@@ -642,8 +647,7 @@ def get_alias(cmd, config=None):
         config = bzrlib.config.GlobalConfig()
     alias = config.get_alias(cmd)
     if (alias):
-        import shlex
-        return [a.decode('utf-8') for a in shlex.split(alias.encode('utf-8'))]
+        return shliex_split_unicode(alias)
     return None
 
 
