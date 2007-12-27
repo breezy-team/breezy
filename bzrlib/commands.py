@@ -647,7 +647,7 @@ def get_alias(cmd, config=None):
         config = bzrlib.config.GlobalConfig()
     alias = config.get_alias(cmd)
     if (alias):
-        return shliex_split_unicode(alias)
+        return shlex_split_unicode(alias)
     return None
 
 
