@@ -778,8 +778,21 @@ class DiffFromTool(DiffPath):
         self.to_file.write(proc.stdout.read())
         return proc.wait()
 
+    def _try_symlink_root(self, tree, prefix):
+        if not (getattr(tree, 'abspath', None) is not None
+                and osutils.has_symlinks()):
+            return False
+        try:
+            os.symlink(tree.abspath(''), osutils.pathjoin(self._root, prefix))
+        except OSError, e:
+            if e.errno != errno.EEXIST:
+                raise
+        return True
+
     def _write_file(self, file_id, tree, prefix, relpath):
         full_path = osutils.pathjoin(self._root, prefix, relpath)
+        if self._try_symlink_root(tree, prefix):
+            return full_path
         parent_dir = osutils.dirname(full_path)
         try:
             os.makedirs(parent_dir)
