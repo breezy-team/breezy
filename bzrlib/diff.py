@@ -799,7 +799,7 @@ class DiffFromTool(DiffPath):
         except OSError, e:
             if e.errno != errno.EEXIST:
                 raise
-        source = tree.get_file(file_id)
+        source = tree.get_file(file_id, relpath)
         try:
             target = open(full_path, 'wb')
             try:
