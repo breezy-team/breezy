@@ -45,7 +45,7 @@ class GitRepository(repository.Repository):
         else:
             git_revisions = None
         for lines in self._git.ancestor_lines(git_revisions):
-            yield self.parse_rev(lines)
+            yield self._parse_rev(lines)
 
     def is_shared(self):
         return True
@@ -82,7 +82,7 @@ class GitRepository(repository.Repository):
         raw = self._git.rev_list(
             [ids.convert_revision_id_bzr_to_git(revision_id)],
             max_count=1, header=True)
-        return self.parse_rev(raw)
+        return self._parse_rev(raw)
 
     def has_revision(self, revision_id):
         try:
@@ -95,7 +95,7 @@ class GitRepository(repository.Repository):
     def get_revisions(self, revisions):
         return [self.get_revision(r) for r in revisions]
 
-    def parse_rev(self, raw):
+    def _parse_rev(self, raw):
         # first field is the rev itself.
         # then its 'field value'
         # until the EOF??
