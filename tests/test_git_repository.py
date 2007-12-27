@@ -32,6 +32,7 @@ from bzrlib.plugins.git import (
 
 
 class TestGitRepository(tests.TestCaseInTempDir):
+    """Feature tests for GitRepository."""
 
     _test_needs_features = [tests.GitCommandFeature]
 
@@ -85,12 +86,12 @@ class TestGitRepository(tests.TestCaseInTempDir):
                          repo.get_revision_graph(bzr_revisions[3]))
 
     def test_get_revision(self):
-        # Test that GitRepository.get_revision gives a Revision object.
+        # GitRepository.get_revision gives a Revision object.
 
         # Create a git repository with a revision.
         tests.run_git('init')
         builder = tests.GitBranchBuilder()
-        file_handle = builder.set_file('a', 'text for a\n', False)
+        builder.set_file('a', 'text for a\n', False)
         commit_handle = builder.commit('Joe Foo <joe@foo.com>', u'message')
         mapping = builder.finish()
         commit_id = mapping[commit_handle]
@@ -100,3 +101,85 @@ class TestGitRepository(tests.TestCaseInTempDir):
         repo = repository.Repository.open('.')
         rev = repo.get_revision(revid)
         self.assertIsInstance(rev, revision.Revision)
+
+
+class TestGitRepositoryParseRev(tests.TestCase):
+    """Unit tests for GitRepository._parse_rev."""
+
+    def test_base_commit(self):
+        # GitRepository._parse_rev works for a simple base commit.
+        rev = git_repository.GitRepository._parse_rev([
+            "873a8ae0d682b0e63e9795bc53056d32ed3de93f\n",
+            "tree aaff74984cccd156a469afa7d9ab10e4777beb24\n",
+            "author Jane Bar <jane@bar.com> 1198784533 +0200\n",
+            "committer Joe Foo <joe@foo.com> 1198784532 +0100\n",
+            "\n",
+            "    message\n",
+            "\x00"])
+        self.assertEqual(
+            rev.revision_id, 'git1r-873a8ae0d682b0e63e9795bc53056d32ed3de93f')
+        self.assertEqual(rev.parent_ids, [])
+        self.assertEqual(rev.committer, 'Joe Foo <joe@foo.com>')
+        self.assertEqual(rev.timestamp, 1198784532.0)
+        self.assertEqual(rev.timezone, '+0100')
+        self.assertEqual(rev.message, 'message\n')
+        self.assertEqual(
+            rev.properties,
+            {'git-tree-id': 'aaff74984cccd156a469afa7d9ab10e4777beb24',
+             'author': 'Jane Bar <jane@bar.com>',
+             'git-author-timestamp': '1198784533',
+             'git-author-timezone': '+0200'})
+
+    def test_merge_commit(self):
+        # Multi-parent commits (merges) are parsed correctly.
+        rev = git_repository.GitRepository._parse_rev([
+            "873a8ae0d682b0e63e9795bc53056d32ed3de93f\n",
+            "tree aaff74984cccd156a469afa7d9ab10e4777beb24\n",
+            "parent 263ed20f0d4898be994404ca418bafe8e89abb8a\n",
+            "parent 546563eb8f3e94a557f3bb779b6e5a2bd9658752\n",
+            "parent 3116d42db7b5c5e69e58f651721e179791479c23\n",
+            "author Jane Bar <jane@bar.com> 1198784533 +0200\n",
+            "committer Joe Foo <joe@foo.com> 1198784532 +0100\n",
+            "\n",
+            "    message\n",
+            "\x00"])
+        # Git records merges in the same way as bzr. The first parent is the
+        # commit base, the following parents are the ordered merged revisions.
+        self.assertEqual(
+            rev.parent_ids,
+            ['git1r-263ed20f0d4898be994404ca418bafe8e89abb8a',
+             'git1r-546563eb8f3e94a557f3bb779b6e5a2bd9658752',
+             'git1r-3116d42db7b5c5e69e58f651721e179791479c23'])
+
+    def test_redundant_spaces(self):
+        # Redundant spaces in author and committer are preserved.
+        rev = git_repository.GitRepository._parse_rev([
+            "873a8ae0d682b0e63e9795bc53056d32ed3de93f\n",
+            "tree aaff74984cccd156a469afa7d9ab10e4777beb24\n",
+            "author  Jane  Bar  <jane@bar.com>  1198784533 +0200\n",
+            "committer  Joe  Foo  <joe@foo.com>  1198784532 +0100\n",
+            "\n",
+            "    message\n",
+            "\x00"])
+        self.assertEqual(rev.committer, ' Joe  Foo  <joe@foo.com> ')
+        self.assertEqual(
+            rev.properties['author'], ' Jane  Bar  <jane@bar.com> ')
+
+    def test_no_committer(self):
+        # If committer is not set, then author is used.
+        #
+        # Folks in #git say that git fsck would likely accept commits that do
+        # not set committer, but that author is a mandatory value.
+        rev = git_repository.GitRepository._parse_rev([
+            "873a8ae0d682b0e63e9795bc53056d32ed3de93f\n",
+            "tree aaff74984cccd156a469afa7d9ab10e4777beb24\n",
+            "author Jane Bar <jane@bar.com> 1198784533 +0200\n",
+            "\n",
+            "    message\n",
+            "\x00"])
+        self.assertEqual(rev.committer, 'Jane Bar <jane@bar.com>')
+        self.assertEqual(rev.timestamp, 1198784533.0)
+        self.assertEqual(rev.timezone, '+0200')
+        self.assertEqual(rev.properties['author'], 'Jane Bar <jane@bar.com>')
+        self.assertEqual(rev.properties['git-author-timestamp'], '1198784533')
+        self.assertEqual(rev.properties['git-author-timezone'], '+0200')

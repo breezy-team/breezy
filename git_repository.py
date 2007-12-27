@@ -95,44 +95,66 @@ class GitRepository(repository.Repository):
     def get_revisions(self, revisions):
         return [self.get_revision(r) for r in revisions]
 
-    def _parse_rev(self, raw):
-        # first field is the rev itself.
-        # then its 'field value'
-        # until the EOF??
-        parents = []
-        log = []
-        in_log = False
-        committer = None
-        revision_id = ids.convert_revision_id_git_to_bzr(raw[0][:-1])
-        for field in raw[1:]:
-            #if field.startswith('author '):
-            #    committer = field[7:]
-            if field.startswith('parent '):
-                parents.append(
-                    ids.convert_revision_id_git_to_bzr(field.split()[1]))
-            elif field.startswith('committer '):
-                commit_fields = field.split()
-                if committer is None:
-                    committer = ' '.join(commit_fields[1:-3])
-                timestamp = commit_fields[-2]
-                timezone = commit_fields[-1]
-            elif field.startswith('tree '):
-                tree_id = field.split()[1]
-            elif in_log:
-                log.append(field[4:])
-            elif field == '\n':
-                in_log = True
+    @classmethod
+    def _parse_rev(klass, raw):
+        """Parse a single git revision.
 
-        log = ''.join(log)
-        result = revision.Revision(revision_id)
-        result.parent_ids = parents
-        result.message = log
-        result.inventory_sha1 = ""
-        result.timezone = timezone and int(timezone)
-        result.timestamp = float(timestamp)
-        result.committer = committer
-        result.properties['git-tree-id'] = tree_id
-        return result
+        * The first line is the git commit id.
+        * Following lines conform to the 'name value' structure, until the
+          first blank line.
+        * All lines after the first blank line and until the NULL line have 4
+          leading spaces and constitute the commit message.
+
+        :param raw: sequence of newline-terminated strings, its last item is a
+            single NULL character.
+        :return: a `bzrlib.revision.Revision` object.
+        """
+        parents = []
+        message_lines = []
+        in_message = False
+        committer_was_set = False
+        revision_id = ids.convert_revision_id_git_to_bzr(raw[0][:-1])
+        rev = revision.Revision(revision_id)
+        rev.inventory_sha1 = ""
+        assert raw[-1] == '\x00', (
+            "Last item of raw was not a single NULL character.")
+        for line in raw[1:-1]:
+            if in_message:
+                assert line[:4] == '    ', (
+                    "Unexpected line format in commit message: %r" % line)
+                message_lines.append(line[4:])
+                continue
+            if line == '\n':
+                in_message = True
+                continue
+            name, value = line[:-1].split(' ', 1)
+            if name == 'parent':
+                rev.parent_ids.append(
+                    ids.convert_revision_id_git_to_bzr(value))
+                continue
+            if name == 'author':
+                author, timestamp, timezone = value.rsplit(' ', 2)
+                rev.properties['author'] = author
+                rev.properties['git-author-timestamp'] = timestamp
+                rev.properties['git-author-timezone'] = timezone
+                if not committer_was_set:
+                    rev.committer = author
+                    rev.timestamp = float(timestamp)
+                    rev.timezone = timezone
+                continue
+            if name == 'committer':
+                committer_was_set = True
+                committer, timestamp, timezone = value.rsplit(' ', 2)
+                rev.committer = committer
+                rev.timestamp = float(timestamp)
+                rev.timezone = timezone
+                continue
+            if name == 'tree':
+                rev.properties['git-tree-id'] = value
+                continue
+
+        rev.message = ''.join(message_lines)
+        return rev
 
     def revision_trees(self, revids):
         for revid in revids:
