@@ -50,11 +50,11 @@ class TestGitRepository(tests.TestCaseInTempDir):
     def test_revision_graph(self):
         tests.run_git('init')
         builder = tests.GitBranchBuilder()
-        file_handle = builder.set_file('a', 'text for a\n', False)
+        builder.set_file('a', 'text for a\n', False)
         commit1_handle = builder.commit('Joe Foo <joe@foo.com>', u'message')
-        file2_handle = builder.set_file('a', 'new a\n', False)
+        builder.set_file('a', 'new a\n', False)
         commit2_handle = builder.commit('Joe Foo <joe@foo.com>', u'new a')
-        file3_handle = builder.set_file('b', 'text for b\n', False)
+        builder.set_file('b', 'text for b\n', False)
         commit3_handle = builder.commit('Jerry Bar <jerry@foo.com>', u'b',
                                         base=commit1_handle)
         commit4_handle = builder.commit('Jerry Bar <jerry@foo.com>', u'merge',
