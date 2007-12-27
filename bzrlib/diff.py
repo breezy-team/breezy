@@ -808,6 +808,7 @@ class DiffFromTool(DiffPath):
                 target.close()
         finally:
             source.close()
+        osutils.make_readonly(full_path)
         mtime = tree.get_file_mtime(file_id)
         os.utime(full_path, (mtime, mtime))
         return full_path
