@@ -19,6 +19,7 @@
 from bzrlib import (
     deprecated_graph,
     repository,
+    revision,
     urlutils,
     )
 
@@ -78,8 +79,9 @@ class GitRepository(repository.Repository):
     def get_revision(self, revision_id):
         if revision_id in self._revision_cache:
             return self._revision_cache[revision_id]
-        raw = self._git.rev_list([gitrevid_from_bzr(revision_id)], max_count=1,
-                                 header=True)
+        raw = self._git.rev_list(
+            [ids.convert_revision_id_bzr_to_git(revision_id)],
+            max_count=1, header=True)
         return self.parse_rev(raw)
 
     def has_revision(self, revision_id):
@@ -101,12 +103,13 @@ class GitRepository(repository.Repository):
         log = []
         in_log = False
         committer = None
-        revision_id = bzrrevid_from_git(raw[0][:-1])
+        revision_id = ids.convert_revision_id_git_to_bzr(raw[0][:-1])
         for field in raw[1:]:
             #if field.startswith('author '):
             #    committer = field[7:]
             if field.startswith('parent '):
-                parents.append(bzrrevid_from_git(field.split()[1]))
+                parents.append(
+                    ids.convert_revision_id_git_to_bzr(field.split()[1]))
             elif field.startswith('committer '):
                 commit_fields = field.split()
                 if committer is None:
@@ -121,7 +124,7 @@ class GitRepository(repository.Repository):
                 in_log = True
 
         log = ''.join(log)
-        result = Revision(revision_id)
+        result = revision.Revision(revision_id)
         result.parent_ids = parents
         result.message = log
         result.inventory_sha1 = ""

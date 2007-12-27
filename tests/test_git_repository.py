@@ -18,7 +18,10 @@
 
 import subprocess
 
-from bzrlib import repository
+from bzrlib import (
+    repository,
+    revision,
+    )
 
 from bzrlib.plugins.git import tests
 from bzrlib.plugins.git import (
@@ -80,3 +83,20 @@ class TestGitRepository(tests.TestCaseInTempDir):
         self.assertEqual(graph, repo.get_revision_graph(bzr_revisions[0]))
         self.assertEqual({bzr_revisions[3]:[]},
                          repo.get_revision_graph(bzr_revisions[3]))
+
+    def test_get_revision(self):
+        # Test that GitRepository.get_revision gives a Revision object.
+
+        # Create a git repository with a revision.
+        tests.run_git('init')
+        builder = tests.GitBranchBuilder()
+        file_handle = builder.set_file('a', 'text for a\n', False)
+        commit_handle = builder.commit('Joe Foo <joe@foo.com>', u'message')
+        mapping = builder.finish()
+        commit_id = mapping[commit_handle]
+
+        # Get the corresponding Revision object.
+        revid = ids.convert_revision_id_git_to_bzr(commit_id)
+        repo = repository.Repository.open('.')
+        rev = repo.get_revision(revid)
+        self.assertIsInstance(rev, revision.Revision)
