@@ -1263,11 +1263,13 @@ class TestDiffFromTool(TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/file', 'oldcontent')])
         tree.add('file', 'file-id')
-        tree.commit('old tree')
+        tree.commit('old tree', timestamp=0)
         self.build_tree_contents([('tree/file', 'newcontent')])
         old_tree = tree.basis_tree()
         old_tree.lock_read()
         self.addCleanup(old_tree.unlock)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
         diff_obj = DiffFromTool(['python', '-c',
                                  'print "%(old_path)s %(new_path)s"'],
                                 old_tree, tree, output)
@@ -1276,6 +1278,7 @@ class TestDiffFromTool(TestCaseWithTransport):
         old_path, new_path = diff_obj._prepare_files('file-id', 'oldname',
                                                      'newname')
         self.assertContainsRe(old_path, 'old/oldname$')
+        self.assertEqual(0, os.stat(old_path).st_mtime)
         self.assertContainsRe(new_path, 'new/newname$')
         self.assertFileEqual('oldcontent', old_path)
         self.assertFileEqual('newcontent', new_path)

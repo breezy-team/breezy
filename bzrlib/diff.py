@@ -778,9 +778,9 @@ class DiffFromTool(DiffPath):
         self.to_file.write(proc.stdout.read())
         return proc.wait()
 
-    def _write_file(self, file_id, tree, prefix, old_path):
-        full_old_path = osutils.pathjoin(self._root, prefix, old_path)
-        parent_dir = osutils.dirname(full_old_path)
+    def _write_file(self, file_id, tree, prefix, relpath):
+        full_path = osutils.pathjoin(self._root, prefix, relpath)
+        parent_dir = osutils.dirname(full_path)
         try:
             os.makedirs(parent_dir)
         except OSError, e:
@@ -788,14 +788,16 @@ class DiffFromTool(DiffPath):
                 raise
         source = tree.get_file(file_id)
         try:
-            target = open(full_old_path, 'wb')
+            target = open(full_path, 'wb')
             try:
                 osutils.pumpfile(source, target)
             finally:
                 target.close()
         finally:
             source.close()
-        return full_old_path
+        mtime = tree.get_file_mtime(file_id)
+        os.utime(full_path, (mtime, mtime))
+        return full_path
 
     def _prepare_files(self, file_id, old_path, new_path):
         old_disk_path = self._write_file(file_id, self.old_tree, 'old',
