@@ -18,21 +18,16 @@
 
 """A GIT branch and repository format implementation for bzr."""
 
-from bzrlib import (
-#    branch,
-    bzrdir,
-#    repository,
-    )
+from bzrlib import bzrdir
+from bzrlib.plugins.git.git_dir import GitBzrDirFormat
 
-bzrdir.format_registry.register_lazy('git',
-    'bzrlib.plugins.git.git_dir', 'GitDirFormat',
+bzrdir.format_registry.register(
+    'git', GitBzrDirFormat,
     help='GIT - the stupid content tracker.',
     native=False, hidden=True, experimental=True,
     )
 
-# formats which have no format string are not discoverable
-# and not independently creatable, so are not registered.
-
+bzrdir.BzrDirFormat.register_control_format(GitBzrDirFormat)
 
 def test_suite():
     from bzrlib.plugins.git import tests

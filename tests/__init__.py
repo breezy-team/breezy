@@ -233,6 +233,7 @@ def test_suite():
         'test_git_repository',
         'test_model',
         'test_ids',
+        'test_blackbox',
         ]
     testmod_names = ['%s.%s' % (__name__, t) for t in testmod_names]
     suite.addTests(loader.loadTestsFromModuleNames(testmod_names))

@@ -21,6 +21,7 @@ from bzrlib import (
     inventory,
     repository,
     revision,
+    revisiontree,
     urlutils,
     )
 
@@ -177,6 +178,11 @@ class GitRepository(repository.Repository):
         return GitRevisionTree(self, revision_id)
 
     def get_inventory(self, revision_id):
+        if revision_id is None:
+            revision_id = revision.NULL_REVISION
+        if revision_id == revision.NULL_REVISION:
+            return inventory.Inventory(
+                revision_id=revision_id, root_id=None)
         git_commit = ids.convert_revision_id_bzr_to_git(revision_id)
         git_inventory = self._git.get_inventory(git_commit)
         return self._parse_inventory(revision_id, git_inventory)
@@ -212,19 +218,16 @@ class GitRepository(repository.Repository):
             entry.executable = executable
         return inv
 
-class GitRevisionTree(object):
+
+class GitRevisionTree(revisiontree.RevisionTree):
 
     def __init__(self, repository, revision_id):
-        self.repository = repository
-        self.revision_id = revision_id
-        self.inventory = repository.get_inventory(revision_id)
-
-    def get_file(self, file_id):
-        return iterablefile.IterableFile(self.get_file_lines(file_id))
+        if revision_id is None:
+            revision_id = revision.NULL_REVISION
+        self._inventory = repository.get_inventory(revision_id)
+        self._repository = repository
+        self._revision_id = revision_id
 
     def get_file_lines(self, file_id):
-        obj_id = self.inventory[file_id].text_sha1
-        return self.repository._git.cat_file('blob', obj_id)
-
-    def is_executable(self, file_id):
-        return self.inventory[file_id].executable
+        obj_id = self._inventory[file_id].text_sha1
+        return self._repository._git.cat_file('blob', obj_id)
