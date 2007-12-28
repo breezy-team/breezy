@@ -1454,17 +1454,6 @@ class cmd_diff(Command):
 
             bzr diff --prefix old/:new/
     """
-    # TODO: Option to use external diff command; could be GNU diff, wdiff,
-    #       or a graphical diff.
-
-    # TODO: Python difflib is not exactly the same as unidiff; should
-    #       either fix it up or prefer to use an external diff.
-
-    # TODO: Selected-file diff is inefficient and doesn't show you
-    #       deleted files.
-
-    # TODO: This probably handles non-Unix newlines poorly.
-
     _see_also = ['status']
     takes_args = ['file*']
     takes_options = [
@@ -1484,13 +1473,17 @@ class cmd_diff(Command):
             ),
         'revision',
         'change',
+        Option('using',
+            help='Use this command to compare files.',
+            type=unicode,
+            ),
         ]
     aliases = ['di', 'dif']
     encoding_type = 'exact'
 
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None,
-            prefix=None, old=None, new=None):
+            prefix=None, old=None, new=None, using=None):
         from bzrlib.diff import _get_trees_to_diff, show_diff_trees
 
         if (prefix is None) or (prefix == '0'):
@@ -1517,7 +1510,7 @@ class cmd_diff(Command):
                                specific_files=specific_files,
                                external_diff_options=diff_options,
                                old_label=old_label, new_label=new_label,
-                               extra_trees=extra_trees)
+                               extra_trees=extra_trees, using=using)
 
 
 class cmd_deleted(Command):

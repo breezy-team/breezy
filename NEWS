@@ -19,6 +19,9 @@ IN DEVELOPMENT
    * New option to use custom template-based formats in  ``bzr version-info``.
      (Lukáš Lalinský)
 
+   * diff '--using' allows an external diff tool to be used for files.
+     (Aaron Bentley)
+
   IMPROVEMENTS:
 
    * ``branch`` and ``checkout`` can now use files from a working tree to
