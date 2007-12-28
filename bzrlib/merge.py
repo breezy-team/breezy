@@ -1227,13 +1227,19 @@ class _PlanMergeBase(object):
         for i, j, n in blocks:
             for a_index in range(last_i, i):
                 if a_index in new_a:
-                    yield 'new-a', self.lines_a[a_index]
-                if a_index in killed_b:
+                    if a_index in killed_b:
+                        yield 'conflicted-a', self.lines_a[a_index]
+                    else:
+                        yield 'new-a', self.lines_a[a_index]
+                else:
                     yield 'killed-b', self.lines_a[a_index]
             for b_index in range(last_j, j):
                 if b_index in new_b:
-                    yield 'new-b', self.lines_b[b_index]
-                if b_index in killed_a:
+                    if b_index in killed_a:
+                        yield 'conflicted-b', self.lines_b[a_index]
+                    else:
+                        yield 'new-b', self.lines_b[b_index]
+                else:
                     yield 'killed-a', self.lines_b[b_index]
             # handle common lines
             for a_index in range(i, i+n):

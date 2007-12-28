@@ -669,6 +669,12 @@ class PlanWeaveMerge(TextMerge):
             elif state == 'new-b':
                 ch_b = True
                 lines_b.append(line)
+            elif state == 'conflicted-a':
+                ch_b = ch_a = True
+                lines_a.append(line)
+            elif state == 'conflicted-b':
+                ch_b = ch_a = True
+                lines_b.append(line)
             else:
                 assert state in ('irrelevant', 'ghost-a', 'ghost-b', 
                                  'killed-base', 'killed-both'), state

@@ -449,5 +449,5 @@ class TestMerge(ExternalBase):
         tree_b.commit('', rev_id='rev3b')
         out, err = self.run_bzr(['merge', '-d', 'a', 'b', '--lca'], retcode=1)
         self.assertFileEqual('base-contents\n<<<<<<< TREE\nthis-contents\n'
-                             '=======\nother-contents\n>>>>>>> MERGE-SOURCE',
+                             '=======\nother-contents\n>>>>>>> MERGE-SOURCE\n',
                              'a/file')
