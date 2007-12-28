@@ -52,6 +52,9 @@ class GitRepository(repository.Repository):
     def is_shared(self):
         return True
 
+    def supports_rich_root(self):
+        return False
+
     def get_revision_graph(self, revision_id=None):
         result = {}
         if revision_id is not None:

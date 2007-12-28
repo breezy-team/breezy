@@ -145,6 +145,12 @@ class TestGitRepository(tests.TestCaseInTempDir):
             " u'subfile', parent_id='subdir',"
             " sha1='0ddb53cbe2dd209f550dd8d7f1287a5ed9b1ee8b', len=None))")
 
+    def test_supports_rich_root(self):
+        # GitRepository.supports_rich_root is False, at least for now.
+        tests.run_git('init')
+        repo = repository.Repository.open('.')
+        self.assertEqual(repo.supports_rich_root(), False)
+
 
 class TestGitRepositoryParseRev(tests.TestCase):
     """Unit tests for GitRepository._parse_rev."""
