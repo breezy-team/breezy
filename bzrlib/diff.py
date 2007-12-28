@@ -780,6 +780,8 @@ class DiffFromTool(DiffPath):
         except OSError, e:
             if e.errno == errno.ENOENT:
                 raise errors.ExecutableMissing(command[0])
+            else:
+                raise
         self.to_file.write(proc.stdout.read())
         return proc.wait()
 
