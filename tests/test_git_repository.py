@@ -19,6 +19,7 @@
 import subprocess
 
 from bzrlib import (
+    inventory,
     repository,
     revision,
     )
@@ -101,6 +102,48 @@ class TestGitRepository(tests.TestCaseInTempDir):
         repo = repository.Repository.open('.')
         rev = repo.get_revision(revid)
         self.assertIsInstance(rev, revision.Revision)
+
+    def test_get_inventory(self):
+        # GitRepository.get_inventory gives a GitInventory object with
+        # plausible entries for typical cases.
+
+        # Create a git repository with some interesting files in a revision.
+        tests.run_git('init')
+        builder = tests.GitBranchBuilder()
+        builder.set_file('data', 'text\n', False)
+        builder.set_file('executable', 'content', True)
+        builder.set_link('link', 'broken')
+        builder.set_file('subdir/subfile', 'subdir text\n', False)
+        commit_handle = builder.commit('Joe Foo <joe@foo.com>', u'message')
+        mapping = builder.finish()
+        commit_id = mapping[commit_handle]
+
+        # Get the corresponding Inventory object.
+        revid = ids.convert_revision_id_git_to_bzr(commit_id)
+        repo = repository.Repository.open('.')
+        inv = repo.get_inventory(revid)
+        self.assertIsInstance(inv, inventory.Inventory)
+        entries = list(inv.iter_entries())
+        printed_inv = '\n'.join(
+            repr((path, entry.executable, entry))
+            for path, entry in inv.iter_entries())
+        self.assertEqualDiff(
+            printed_inv,
+            "('', False, InventoryDirectory('TREE_ROOT', u'', parent_id=None,"
+            " revision=None))\n"
+            "(u'data', False, InventoryFile('data', u'data',"
+            " parent_id='TREE_ROOT',"
+            " sha1='8e27be7d6154a1f68ea9160ef0e18691d20560dc', len=None))\n"
+            "(u'executable', True, InventoryFile('executable', u'executable',"
+            " parent_id='TREE_ROOT',"
+            " sha1='6b584e8ece562ebffc15d38808cd6b98fc3d97ea', len=None))\n"
+            "(u'link', False, InventoryLink('link', u'link',"
+            " parent_id='TREE_ROOT', revision=None))\n"
+            "(u'subdir', False, InventoryDirectory('subdir', u'subdir',"
+            " parent_id='TREE_ROOT', revision=None))\n"
+            "(u'subdir/subfile', False, InventoryFile('subdir/subfile',"
+            " u'subfile', parent_id='subdir',"
+            " sha1='0ddb53cbe2dd209f550dd8d7f1287a5ed9b1ee8b', len=None))")
 
 
 class TestGitRepositoryParseRev(tests.TestCase):

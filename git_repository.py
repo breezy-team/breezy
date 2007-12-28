@@ -18,6 +18,7 @@
 
 from bzrlib import (
     deprecated_graph,
+    inventory,
     repository,
     revision,
     urlutils,
@@ -176,26 +177,40 @@ class GitRepository(repository.Repository):
         return GitRevisionTree(self, revision_id)
 
     def get_inventory(self, revision_id):
-        revision = self.get_revision(revision_id)
-        inventory = GitInventory(revision_id)
-        tree_id = revision.properties['git-tree-id']
-        type_map = {'blob': 'file', 'tree': 'directory' }
-        def get_inventory(tree_id, prefix):
-            for perms, type, obj_id, name in self._git.get_inventory(tree_id):
-                full_path = prefix + name
-                if type == 'blob':
-                    text_sha1 = obj_id
-                else:
-                    text_sha1 = None
-                executable = (perms[-3] in ('1', '3', '5', '7'))
-                entry = GitEntry(full_path, type_map[type], revision_id,
-                                 text_sha1, executable)
-                inventory.entries[full_path] = entry
-                if type == 'tree':
-                    get_inventory(obj_id, full_path+'/')
-        get_inventory(tree_id, '')
-        return inventory
+        git_commit = ids.convert_revision_id_bzr_to_git(revision_id)
+        git_inventory = self._git.get_inventory(git_commit)
+        return self._parse_inventory(revision_id, git_inventory)
 
+    @classmethod
+    def _parse_inventory(klass, revid, git_inv):
+        # For now, git inventory do not have root ids. It is not clear that we
+        # can reliably support root ids. -- David Allouche 2007-12-28
+        inv = inventory.Inventory(revision_id=revid)
+        for perms, git_kind, git_id, path in git_inv:
+            text_sha1 = None
+            executable = False
+            if git_kind == 'blob':
+                text_sha1 = git_id
+                if perms[1] == '0':
+                    kind = 'file'
+                    executable = bool(int(perms[-3:], 8) & 0111)
+                elif perms[1] == '2':
+                    kind = 'symlink'
+                else:
+                    raise AssertionError(
+                        "Unknown blob kind, perms=%r." % (perms,))
+            elif git_kind == 'tree':
+                kind = 'directory'
+            else:
+                raise AssertionError(
+                    "Unknown git entry kind: %r" % (git_kind,))
+            # XXX: Maybe the file id should be prefixed by file kind, so when
+            # the kind of path changes, the id changes too.
+            # -- David Allouche 2007-12-28.
+            entry = inv.add_path(path, kind, file_id=path.encode('utf-8'))
+            entry.text_sha1 = text_sha1
+            entry.executable = executable
+        return inv
 
 class GitRevisionTree(object):
 
@@ -213,48 +228,3 @@ class GitRevisionTree(object):
 
     def is_executable(self, file_id):
         return self.inventory[file_id].executable
-
-
-class GitInventory(object):
-
-    def __init__(self, revision_id):
-        self.entries = {}
-        self.root = GitEntry('', 'directory', revision_id)
-        self.entries[''] = self.root
-
-    def __getitem__(self, key):
-        return self.entries[key]
-
-    def iter_entries(self):
-        return iter(sorted(self.entries.items()))
-
-    def iter_entries_by_dir(self):
-        return self.iter_entries()
-
-    def __len__(self):
-        return len(self.entries)
-
-
-class GitEntry(object):
-
-    def __init__(self, path, kind, revision, text_sha1=None, executable=False,
-                 text_size=None):
-        self.path = path
-        self.file_id = path
-        self.kind = kind
-        self.executable = executable
-        self.name = osutils.basename(path)
-        if path == '':
-            self.parent_id = None
-        else:
-            self.parent_id = osutils.dirname(path)
-        self.revision = revision
-        self.symlink_target = None
-        self.text_sha1 = text_sha1
-        self.text_size = None
-
-    def __repr__(self):
-        return "GitEntry(%r, %r, %r, %r)" % (self.path, self.kind,
-                                             self.revision, self.parent_id)
-
-
