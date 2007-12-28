@@ -180,6 +180,19 @@ class GitBranchBuilder(object):
         self.commit_info = []
         return mark
 
+    def reset(self, ref=None, mark=None):
+        """Create or recreate the named branch.
+
+        :param ref: branch name, defaults to the current branch.
+        :param mark: commit the branch will point to.
+        """
+        if ref is None:
+            ref = self._branch
+        self._write('reset %s\n' % (ref,))
+        if mark is not None:
+            self._write('from :%d\n' % mark)
+        self._write('\n')
+
     def finish(self):
         """We are finished building, close the stream, get the id mapping"""
         self.stream.close()

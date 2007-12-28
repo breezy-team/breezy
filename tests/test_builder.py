@@ -182,6 +182,27 @@ class TestGitBranchBuilder(tests.TestCase):
         self.assertContainsRe(stream.getvalue(),
                               r'committer Joe Foo <joe@foo\.com> \d+ \+0000')
 
+    def test_reset(self):
+        stream = StringIO()
+        builder = tests.GitBranchBuilder(stream)
+        builder.reset()
+        self.assertEqualDiff('reset refs/heads/master\n\n', stream.getvalue())
+
+    def test_reset_named_ref(self):
+        stream = StringIO()
+        builder = tests.GitBranchBuilder(stream)
+        builder.reset('refs/heads/branch')
+        self.assertEqualDiff('reset refs/heads/branch\n\n', stream.getvalue())
+
+    def test_reset_revision(self):
+        stream = StringIO()
+        builder = tests.GitBranchBuilder(stream)
+        builder.reset(mark=123)
+        self.assertEqualDiff(
+            'reset refs/heads/master\n'
+            'from :123\n'
+            '\n', stream.getvalue())
+
 
 class TestGitBranchBuilderReal(tests.TestCaseInTempDir):
 
