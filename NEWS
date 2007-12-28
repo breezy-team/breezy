@@ -22,6 +22,9 @@ IN DEVELOPMENT
    * diff '--using' allows an external diff tool to be used for files.
      (Aaron Bentley)
 
+   * New "lca" merge-type for fast everyday merging that also supports
+     criss-cross merges.  (Aaron Bentley)
+
   IMPROVEMENTS:
 
    * ``branch`` and ``checkout`` can now use files from a working tree to
