@@ -67,6 +67,5 @@ class TestModel(tests.TestCaseInTempDir):
                 }
 
         themodel = model.GitModel('.git')
-        tests.run_git('reset', '--hard', commit4_id)
         self.assertEqual(revisions[0], themodel.get_head())
         self.assertEqual(graph, themodel.ancestry([revisions[0]]))

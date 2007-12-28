@@ -67,7 +67,7 @@ class GitBranchBuilder(object):
         self.stream = stream
         self._process = None
         self._counter = 0
-        self._branch = 'refs/head/master'
+        self._branch = 'refs/heads/master'
         if stream is None:
             # Write the marks file into the git sandbox.
             self._marks_file_name = osutils.abspath('marks')
