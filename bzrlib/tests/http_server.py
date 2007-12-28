@@ -350,7 +350,8 @@ class TestingHTTPServerMixin:
 
 class TestingHTTPServer(SocketServer.TCPServer, TestingHTTPServerMixin):
 
-    def __init__(self, server_address, request_handler_class, test_case_server):
+    def __init__(self, server_address, request_handler_class,
+                 test_case_server):
         TestingHTTPServerMixin.__init__(self, test_case_server)
         SocketServer.TCPServer.__init__(self, server_address,
                                         request_handler_class)
@@ -365,7 +366,8 @@ class TestingThreadingHTTPServer(SocketServer.ThreadingTCPServer,
     by spawning a new thread for each connection.
     """
 
-    def __init__(self, server_address, request_handler_class, test_case_server):
+    def __init__(self, server_address, request_handler_class,
+                 test_case_server):
         TestingHTTPServerMixin.__init__(self, test_case_server)
         SocketServer.ThreadingTCPServer.__init__(self, server_address,
                                                  request_handler_class)

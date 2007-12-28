@@ -14,10 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests for HTTP test framework and implementation neutral code.
+"""Tests for HTTP implementations.
 
-Code that need to be tested against implementations or variations of the HTTP
-protocol should go in test_http_implementations.py
+This module defines a load_tests() method that parametrize tests classes for
+transport implementation, http protocol versions and authentication schemes.
 """
 
 # TODO: Should be renamed to bzrlib.transport.http.tests?
@@ -140,7 +140,8 @@ def load_tests(standard_tests, module, loader):
     tpa_adapter = TransportProtocolAuthenticationAdapter()
     tpa_classes = (TestAuth,
                    )
-    is_also_testing_for_authentication = tests.condition_isinstance(tpa_classes)
+    is_also_testing_for_authentication = tests.condition_isinstance(
+        tpa_classes)
 
     result = loader.suiteClass()
     for test_class in tests.iter_suite_tests(standard_tests):
@@ -323,7 +324,8 @@ class TestHttpUrls(tests.TestCase):
         url = http.extract_auth('http://example.com', f)
         self.assertEquals('http://example.com', url)
         self.assertEquals(0, len(f.credentials))
-        url = http.extract_auth('http://user:pass@www.bazaar-vcs.org/bzr/bzr.dev', f)
+        url = http.extract_auth(
+            'http://user:pass@www.bazaar-vcs.org/bzr/bzr.dev', f)
         self.assertEquals('http://www.bazaar-vcs.org/bzr/bzr.dev', url)
         self.assertEquals(1, len(f.credentials))
         self.assertEquals([None, 'www.bazaar-vcs.org', 'user', 'pass'],

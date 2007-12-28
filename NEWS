@@ -67,6 +67,9 @@ IN DEVELOPMENT
    * Fix traceback when sending large response bodies over the smart protocol
      on Windows. (Andrew Bennetts, #115781)
 
+   * HTTP test servers are now compatible with the http protocol version 1.1.
+     (Vincent Ladeuil, #175524)
+
    * pycurl authentication handling was broken and incomplete. Fix handling of
      user:pass embedded in the urls.
      (Vincent Ladeuil, #177643)
@@ -145,6 +148,10 @@ IN DEVELOPMENT
 
    * New helper method ``bzrlib.tests.split_suite_by_re`` which splits a test
      suite into two according to a regular expression. (Robert Collins)
+
+   * Parametrize all http tests for the transport implementations, the http
+     protocol versions (1.0 and 1.1) and the authentication schemes.
+     (Vincent Ladeuil) 
 
    * The ``exclude_pattern`` and ``random_order`` parameters to the function
      ``bzrlib.tests.filter_suite_by_re`` have been deprecated. (Robert Collins)

@@ -32,9 +32,6 @@ And a custom Request class that lets us track redirections, and
 handle authentication schemes.
 """
 
-# TODO: now that we have -Dhttp most of the needs should be covered in a more
-# accessible way (i.e. no need to edit the source), if experience confirms
-# that, delete all DEBUG uses -- vila20071130 (happy birthday).
 DEBUG = 0
 
 # FIXME: Oversimplifying, two kind of exceptions should be
