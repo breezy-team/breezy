@@ -1041,6 +1041,30 @@ class WeaveMerger(Merge3Merger):
             file_group.append(trans_id)
 
 
+class LCAMerger(WeaveMerger):
+
+    def _merged_lines(self, file_id):
+        """Generate the merged lines.
+        There is no distinction between lines that are meant to contain <<<<<<<
+        and conflicts.
+        """
+        if self.cherrypick:
+            base = self.base_tree
+        else:
+            base = None
+        plan = self.this_tree.plan_file_lca_merge(file_id, self.other_tree,
+                                                  base=base)
+        if 'merge' in debug.debug_flags:
+            plan = list(plan)
+            trans_id = self.tt.trans_id_file_id(file_id)
+            name = self.tt.final_name(trans_id) + '.plan'
+            contents = ('%10s|%s' % l for l in plan)
+            self.tt.new_file(name, self.tt.final_parent(trans_id), contents)
+        textmerge = PlanWeaveMerge(plan, '<<<<<<< TREE\n',
+            '>>>>>>> MERGE-SOURCE\n')
+        return textmerge.merge_lines(self.reprocess)
+
+
 class Diff3Merger(Merge3Merger):
     """Three-way merger using external diff3 for text merging"""
 
@@ -1165,8 +1189,7 @@ def _plan_annotate_merge(annotated_a, annotated_b, ancestors_a, ancestors_b):
             yield "unchanged", text_a
 
 
-class _PlanMerge(object):
-    """Plan an annotate merge using on-the-fly annotation"""
+class _PlanMergeBase(object):
 
     def __init__(self, a_rev, b_rev, vf):
         """Contructor.
@@ -1180,9 +1203,6 @@ class _PlanMerge(object):
         self.lines_a = vf.get_lines(a_rev)
         self.lines_b = vf.get_lines(b_rev)
         self.vf = vf
-        a_ancestry = set(vf.get_ancestry(a_rev, topo_sorted=False))
-        b_ancestry = set(vf.get_ancestry(b_rev, topo_sorted=False))
-        self.uncommon = a_ancestry.symmetric_difference(b_ancestry)
         self._last_lines = None
         self._last_lines_revision_id = None
 
@@ -1196,29 +1216,28 @@ class _PlanMerge(object):
         VersionedFile.plan_merge
         """
         blocks = self._get_matching_blocks(self.a_rev, self.b_rev)
-        new_a = self._find_new(self.a_rev)
-        new_b = self._find_new(self.b_rev)
+        unique_a, unique_b = self._unique_lines(blocks)
+        new_a, killed_b = self._determine_status(self.a_rev, unique_a)
+        new_b, killed_a = self._determine_status(self.b_rev, unique_b)
+        return self._iter_plan(blocks, new_a, killed_b, new_b, killed_a)
+
+    def _iter_plan(self, blocks, new_a, killed_b, new_b, killed_a):
         last_i = 0
         last_j = 0
-        a_lines = self.vf.get_lines(self.a_rev)
-        b_lines = self.vf.get_lines(self.b_rev)
         for i, j, n in blocks:
-            # determine why lines aren't common
             for a_index in range(last_i, i):
                 if a_index in new_a:
-                    cause = 'new-a'
-                else:
-                    cause = 'killed-b'
-                yield cause, a_lines[a_index]
+                    yield 'new-a', self.lines_a[a_index]
+                if a_index in killed_b:
+                    yield 'killed-b', self.lines_a[a_index]
             for b_index in range(last_j, j):
                 if b_index in new_b:
-                    cause = 'new-b'
-                else:
-                    cause = 'killed-a'
-                yield cause, b_lines[b_index]
+                    yield 'new-b', self.lines_b[b_index]
+                if b_index in killed_a:
+                    yield 'killed-a', self.lines_b[b_index]
             # handle common lines
             for a_index in range(i, i+n):
-                yield 'unchanged', a_lines[a_index]
+                yield 'unchanged', self.lines_a[a_index]
             last_i = i+n
             last_j = j+n
 
@@ -1255,6 +1274,47 @@ class _PlanMerge(object):
             last_j = j + n
         return unique_left, unique_right
 
+    @staticmethod
+    def _subtract_plans(old_plan, new_plan):
+        matcher = patiencediff.PatienceSequenceMatcher(None, old_plan,
+                                                       new_plan)
+        last_j = 0
+        for i, j, n in matcher.get_matching_blocks():
+            for jj in range(last_j, j):
+                yield new_plan[jj]
+            for jj in range(j, j+n):
+                plan_line = new_plan[jj]
+                if plan_line[0] == 'new-b':
+                    pass
+                elif plan_line[0] == 'killed-b':
+                    yield 'unchanged', plan_line[1]
+                else:
+                    yield plan_line
+            last_j = j + n
+
+
+class _PlanMerge(_PlanMergeBase):
+    """Plan an annotate merge using on-the-fly annotation"""
+
+    def __init__(self, a_rev, b_rev, vf):
+       _PlanMergeBase.__init__(self, a_rev, b_rev, vf)
+       a_ancestry = set(vf.get_ancestry(a_rev, topo_sorted=False))
+       b_ancestry = set(vf.get_ancestry(b_rev, topo_sorted=False))
+       self.uncommon = a_ancestry.symmetric_difference(b_ancestry)
+
+    def _determine_status(self, revision_id, unique_lines):
+        """Determines the status unique lines versus all lcas.
+
+        Basically, determines why the line is unique to this revision.
+
+        A line may be determined new or killed, but not both.
+
+        :return a tuple of (new_this, killed_other):
+        """
+        new = self._find_new(revision_id)
+        killed = set(unique_lines).difference(new)
+        return new, killed
+
     def _find_new(self, version_id):
         """Determine which lines are new in the ancestry of this version.
 
@@ -1281,20 +1341,46 @@ class _PlanMerge(object):
                 new.intersection_update(result)
         return new
 
-    @staticmethod
-    def _subtract_plans(old_plan, new_plan):
-        matcher = patiencediff.PatienceSequenceMatcher(None, old_plan,
-                                                       new_plan)
-        last_j = 0
-        for i, j, n in matcher.get_matching_blocks():
-            for jj in range(last_j, j):
-                yield new_plan[jj]
-            for jj in range(j, j+n):
-                plan_line = new_plan[jj]
-                if plan_line[0] == 'new-b':
-                    pass
-                elif plan_line[0] == 'killed-b':
-                    yield 'unchanged', plan_line[1]
-                else:
-                    yield plan_line
-            last_j = j + n
+
+class _PlanLCAMerge(_PlanMergeBase):
+    """
+    This implementation differs from _PlanMerge.plan_merge in that:
+    1. comparisons are done against LCAs only
+    2. cases where a contested line is new versus one LCA but old versus
+       another are marked as conflicts, by emitting the line as both new-a and
+       killed-b (or new-b, killed-a).
+
+    This is faster, and hopefully produces more useful output.
+    """
+
+    def __init__(self, a_rev, b_rev, vf, graph):
+       _PlanMergeBase.__init__(self, a_rev, b_rev, vf)
+       self.lcas = graph.find_lca(a_rev, b_rev)
+
+    def _determine_status(self, revision_id, unique_lines):
+        """Determines the status unique lines versus all lcas.
+
+        Basically, determines why the line is unique to this revision.
+
+        A line may be determined new, killed, or both.
+
+        If a line is determined new, that means it was not present at least one
+        LCA, and is not present in the other merge revision.
+
+        If a line is determined killed, that means the line was present in
+        at least one LCA.
+
+        If a line is killed and new, this indicates that the two merge
+        revisions contain differing conflict resolutions.
+
+        :return a tuple of (new_this, killed_other):
+        """
+        new = set()
+        killed = set()
+        unique_lines = set(unique_lines)
+        for lca in self.lcas:
+            blocks = self._get_matching_blocks(revision_id, lca)
+            unique_vs_lca, _ignored = self._unique_lines(blocks)
+            new.update(unique_lines.intersection(unique_vs_lca))
+            killed.update(unique_lines.difference(unique_vs_lca))
+        return new, killed

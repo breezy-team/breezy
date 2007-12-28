@@ -526,6 +526,14 @@ class _PlanMergeVersionedFile(object):
         new_plan = list(_PlanMerge(ver_a, ver_b, self).plan_merge())
         return _PlanMerge._subtract_plans(old_plan, new_plan)
 
+    def plan_lca_merge(self, ver_a, ver_b, base=None):
+        from merge import _PlanLCAMerge
+        graph = self._get_graph()
+        new_plan = _PlanLCAMerge(ver_a, ver_b, self, graph).plan_merge()
+        if base is None:
+            return new_plan
+        old_plan = _PlanLCAMerge(ver_a, base, self, graph).plan_merge()
+        return _PlanLCAMerge._subtract_plans(list(old_plan), list(new_plan))
 
     def add_lines(self, version_id, parents, lines):
         """See VersionedFile.add_lines
@@ -594,6 +602,14 @@ class _PlanMergeVersionedFile(object):
                 continue
         else:
             raise errors.RevisionNotPresent(version_id, self._file_id)
+
+    def _get_graph(self):
+        from graph import DictParentsProvider, Graph, _StackedParentsProvider
+        from repofmt.knitrepo import _KnitParentsProvider
+        parent_providers = [DictParentsProvider(self._parents)]
+        for vf in self.fallback_versionedfiles:
+            parent_providers.append(_KnitParentsProvider(vf))
+        return Graph(_StackedParentsProvider(parent_providers))
 
 
 class PlanWeaveMerge(TextMerge):
