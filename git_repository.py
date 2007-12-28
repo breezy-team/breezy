@@ -140,14 +140,14 @@ class GitRepository(repository.Repository):
                 if not committer_was_set:
                     rev.committer = author
                     rev.timestamp = float(timestamp)
-                    rev.timezone = timezone
+                    rev.timezone = klass._parse_tz(timezone)
                 continue
             if name == 'committer':
                 committer_was_set = True
                 committer, timestamp, timezone = value.rsplit(' ', 2)
                 rev.committer = committer
                 rev.timestamp = float(timestamp)
-                rev.timezone = timezone
+                rev.timezone = klass._parse_tz(timezone)
                 continue
             if name == 'tree':
                 rev.properties['git-tree-id'] = value
@@ -155,6 +155,18 @@ class GitRepository(repository.Repository):
 
         rev.message = ''.join(message_lines)
         return rev
+
+    @classmethod
+    def _parse_tz(klass, tz):
+        """Parse a timezone specification in the [+|-]HHMM format.
+
+        :return: the timezone offset in seconds.
+        """
+        assert len(tz) == 5
+        sign = {'+': +1, '-': -1}[tz[0]]
+        hours = int(tz[1:3])
+        minutes = int(tz[3:])
+        return float(sign * 60 * (60 * hours + minutes))
 
     def revision_trees(self, revids):
         for revid in revids:

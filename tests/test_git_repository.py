@@ -121,7 +121,7 @@ class TestGitRepositoryParseRev(tests.TestCase):
         self.assertEqual(rev.parent_ids, [])
         self.assertEqual(rev.committer, 'Joe Foo <joe@foo.com>')
         self.assertEqual(rev.timestamp, 1198784532.0)
-        self.assertEqual(rev.timezone, '+0100')
+        self.assertEqual(rev.timezone, 3600.0)
         self.assertEqual(rev.message, 'message\n')
         self.assertEqual(
             rev.properties,
@@ -179,7 +179,19 @@ class TestGitRepositoryParseRev(tests.TestCase):
             "\x00"])
         self.assertEqual(rev.committer, 'Jane Bar <jane@bar.com>')
         self.assertEqual(rev.timestamp, 1198784533.0)
-        self.assertEqual(rev.timezone, '+0200')
+        self.assertEqual(rev.timezone, 7200.0)
         self.assertEqual(rev.properties['author'], 'Jane Bar <jane@bar.com>')
         self.assertEqual(rev.properties['git-author-timestamp'], '1198784533')
         self.assertEqual(rev.properties['git-author-timezone'], '+0200')
+
+    def test_parse_tz(self):
+        # Simple tests for the _parse_tz helper.
+        parse_tz = git_repository.GitRepository._parse_tz
+        self.assertEqual(parse_tz('+0000'), 0.0)
+        self.assertEqual(parse_tz('+0001'), 60.0)
+        self.assertEqual(parse_tz('-0001'), -60.0)
+        self.assertEqual(parse_tz('+0100'), 3600.0)
+        self.assertEqual(parse_tz('-0100'), -3600.0)
+        self.assertEqual(parse_tz('+9959'), 359940.0)
+        self.assertEqual(parse_tz('-9959'), -359940.0)
+
