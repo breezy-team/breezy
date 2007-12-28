@@ -69,3 +69,36 @@ class TestModel(tests.TestCaseInTempDir):
         themodel = model.GitModel('.git')
         self.assertEqual(revisions[0], themodel.get_head())
         self.assertEqual(graph, themodel.ancestry([revisions[0]]))
+
+    def test_get_inventory(self):
+        # Create a git repository with some interesting files in a revision.
+        tests.run_git('init')
+        builder = tests.GitBranchBuilder()
+        builder.set_file('data', 'text\n', False)
+        builder.set_file('data-multi\nline', 'text\n', False)
+        builder.set_file(u'data-unic\xb5de', 'text\n', False)
+        builder.set_file('executable', 'content', True)
+        builder.set_link('link', 'broken')
+        builder.set_file('subdir/subfile', 'subdir text\n', False)
+        commit_handle = builder.commit('Joe Foo <joe@foo.com>', u'message')
+        mapping = builder.finish()
+        commit_id = mapping[commit_handle]
+
+        # Get the corresponding git inventory.
+        themodel = model.GitModel('.git')
+        git_inventory = list(themodel.get_inventory(commit_id))
+        self.assertEqual(git_inventory,
+            [('100644', 'blob', '8e27be7d6154a1f68ea9160ef0e18691d20560dc',
+              u'data'),
+             ('100644', 'blob', '8e27be7d6154a1f68ea9160ef0e18691d20560dc',
+              u'data-multi\nline'),
+             ('100644', 'blob', '8e27be7d6154a1f68ea9160ef0e18691d20560dc',
+              u'data-unic\xb5de'),
+             ('100755', 'blob', '6b584e8ece562ebffc15d38808cd6b98fc3d97ea',
+              u'executable'),
+             ('120000', 'blob', '86a410dd1d337c4f9f59e2aa35bc188f18ad08e4',
+              u'link'),
+             ('040000', 'tree', 'ccf7f8fa4e6eee68d761f36556d9896938b32e7f',
+              u'subdir'),
+             ('100644', 'blob', '0ddb53cbe2dd209f550dd8d7f1287a5ed9b1ee8b',
+              u'subdir/subfile')])

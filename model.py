@@ -103,10 +103,14 @@ class GitModel(object):
         assert revision_lines == ['']
 
     def get_inventory(self, tree_id):
-        for line in self.cat_file('tree', tree_id, True):
-            sections = line.split(' ', 2)
-            obj_id, name = sections[2].split('\t', 1)
-            name = name.rstrip('\n')
+        for line in self.git_lines('ls-tree', ['-r', '-t', tree_id]):
+            # Ideally, we would use -z so we would not have to handle escaped
+            # file names. But then we could not use readlines() to split the
+            # data as it is read.
+            permissions, type, hash_and_path = line.split(' ', 2)
+            hash, name = hash_and_path.split('\t', 1)
+            name = name[:-1] # strip trailing newline
             if name.startswith('"'):
-                name = name[1:-1].decode('string_escape').decode('utf-8')
-            yield (sections[0], sections[1], obj_id, name)
+                name = name[1:-1].decode('string_escape')
+            name = name.decode('utf-8')
+            yield permissions, type, hash, name
