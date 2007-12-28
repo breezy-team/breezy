@@ -127,17 +127,26 @@ class GitBranchBuilder(object):
         else:
             mode = '100644'
         self.commit_info.append('M %s :%d %s\n'
-                                % (mode, mark, path.encode('utf-8')))
+                                % (mode, mark, self._encode_path(path)))
 
     def set_link(self, path, link_target):
         """Create or update a link at a given path."""
         mark = self._create_blob(link_target)
         self.commit_info.append('M 120000 :%d %s\n'
-                                % (mark, path.encode('utf-8')))
+                                % (mark, self._encode_path(path)))
 
     def delete_entry(self, path):
         """This will delete files or symlinks at the given location."""
-        self.commit_info.append('D %s\n' % (path.encode('utf-8'),))
+        self.commit_info.append('D %s\n' % (self._encode_path(path),))
+
+    @staticmethod
+    def _encode_path(path):
+        if '\n' in path or path[0] == '"':
+            path = path.replace('\\', '\\\\')
+            path = path.replace('\n', '\\n')
+            path = path.replace('"', '\\"')
+            path = '"' + path + '"'
+        return path.encode('utf-8')
 
     # TODO: Author
     # TODO: Author timestamp+timezone

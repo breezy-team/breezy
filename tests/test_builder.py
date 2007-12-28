@@ -46,6 +46,14 @@ class TestGitBranchBuilder(tests.TestCase):
                              stream.getvalue())
         self.assertEqual(['M 100644 :1 f\xc2\xb5/bar\n'], builder.commit_info)
 
+    def test_set_file_newline(self):
+        stream = StringIO()
+        builder = tests.GitBranchBuilder(stream)
+        builder.set_file(u'foo\nbar', 'contents\nbar\n', False)
+        self.assertEqualDiff('blob\nmark :1\ndata 13\ncontents\nbar\n\n',
+                             stream.getvalue())
+        self.assertEqual(['M 100644 :1 "foo\\nbar"\n'], builder.commit_info)
+
     def test_set_file_executable(self):
         stream = StringIO()
         builder = tests.GitBranchBuilder(stream)
@@ -62,11 +70,40 @@ class TestGitBranchBuilder(tests.TestCase):
                              stream.getvalue())
         self.assertEqual(['M 120000 :1 f\xc2\xb5/bar\n'], builder.commit_info)
 
+    def test_set_link_newline(self):
+        stream = StringIO()
+        builder = tests.GitBranchBuilder(stream)
+        builder.set_link(u'foo\nbar', 'link/contents')
+        self.assertEqualDiff('blob\nmark :1\ndata 13\nlink/contents\n',
+                             stream.getvalue())
+        self.assertEqual(['M 120000 :1 "foo\\nbar"\n'], builder.commit_info)
+
     def test_delete_entry(self):
         stream = StringIO()
         builder = tests.GitBranchBuilder(stream)
         builder.delete_entry(u'path/to/f\xb5')
         self.assertEqual(['D path/to/f\xc2\xb5\n'], builder.commit_info)
+
+    def test_delete_entry_newline(self):
+        stream = StringIO()
+        builder = tests.GitBranchBuilder(stream)
+        builder.delete_entry(u'path/to/foo\nbar')
+        self.assertEqual(['D "path/to/foo\\nbar"\n'], builder.commit_info)
+
+    def test_encode_path(self):
+        encode = tests.GitBranchBuilder._encode_path
+        # Unicode is encoded to utf-8
+        self.assertEqual(encode(u'f\xb5'), 'f\xc2\xb5')
+        # The name must be quoted if it starts by a double quote or contains a
+        # newline.
+        self.assertEqual(encode(u'"foo'), '"\\"foo"')
+        self.assertEqual(encode(u'fo\no'), '"fo\\no"')
+        # When the name is quoted, all backslash and quote chars must be
+        # escaped.
+        self.assertEqual(encode(u'fo\\o\nbar'), '"fo\\\\o\\nbar"')
+        self.assertEqual(encode(u'fo"o"\nbar'), '"fo\\"o\\"\\nbar"')
+        # Other control chars, such as \r, need not be escaped.
+        self.assertEqual(encode(u'foo\r\nbar'), '"foo\r\\nbar"')
 
     def test_add_and_commit(self):
         stream = StringIO()
