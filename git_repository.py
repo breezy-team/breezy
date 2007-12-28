@@ -64,7 +64,8 @@ class GitRepository(repository.Repository):
             param = [ids.convert_revision_id_bzr_to_git(revision_id)]
         else:
             param = None
-        for node, parents in self._git.ancestry(param).iteritems():
+        git_graph = self._git.get_revision_graph(param)
+        for node, parents in git_graph.iteritems():
             bzr_node = ids.convert_revision_id_git_to_bzr(node)
             bzr_parents = [ids.convert_revision_id_git_to_bzr(n)
                            for n in parents]
@@ -76,7 +77,8 @@ class GitRepository(repository.Repository):
         if revision_ids is not None:
             revision_ids = [ids.convert_revision_id_bzr_to_git(r)
                             for r in revision_ids]
-        for node, parents in self._git.ancestry(revision_ids).iteritems():
+        git_graph = self._git.get_revision_graph(revision_ids)
+        for node, parents in git_graph.iteritems():
             bzr_node = ids.convert_revision_id_git_to_bzr(node)
             bzr_parents = [ids.convert_revision_id_git_to_bzr(n)
                            for n in parents]

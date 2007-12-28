@@ -85,7 +85,7 @@ class GitModel(object):
                 return None
             raise
 
-    def ancestry(self, revisions):
+    def get_revision_graph(self, revisions):
         ancestors = {}
         for line in self.rev_list(revisions, parents=True):
             entries = line.split()

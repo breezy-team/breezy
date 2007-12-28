@@ -34,7 +34,7 @@ class TestModel(tests.TestCaseInTempDir):
         themodel = model.GitModel('.git')
         self.assertRaises(errors.GitCommandError, themodel.get_head)
 
-    def test_ancestors(self):
+    def test_get_revision_graph(self):
         tests.run_git('init')
         builder = tests.GitBranchBuilder()
         file_handle = builder.set_file('a', 'text for a\n', False)
@@ -68,7 +68,7 @@ class TestModel(tests.TestCaseInTempDir):
 
         themodel = model.GitModel('.git')
         self.assertEqual(revisions[0], themodel.get_head())
-        self.assertEqual(graph, themodel.ancestry([revisions[0]]))
+        self.assertEqual(graph, themodel.get_revision_graph([revisions[0]]))
 
     def test_get_inventory(self):
         # Create a git repository with some interesting files in a revision.
