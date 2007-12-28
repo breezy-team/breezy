@@ -34,6 +34,9 @@ from bzrlib.plugins.git import (
 class GitRepository(repository.Repository):
     """An adapter to git repositories for bzr."""
 
+    # To make bzrlib happy
+    _serializer = None
+
     def __init__(self, gitdir, lockfiles):
         self.bzrdir = gitdir
         self.control_files = lockfiles
