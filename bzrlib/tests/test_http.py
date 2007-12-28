@@ -728,7 +728,7 @@ class TestRangeRequestServer(TestSpecificRequestHandler):
         t = self._transport(server.get_url())
         # force transport to issue multiple requests by limiting the number of
         # bytes by request. Note that this apply to coalesced offsets only, a
-        # single range ill keep its size even if bigger than the limit.
+        # single range will keep its size even if bigger than the limit.
         t._get_max_size = 2
         l = list(t.readv('a', ((0, 1), (1, 1), (2, 4), (6, 4))))
         self.assertEqual(l[0], (0, '0'))
@@ -737,6 +737,33 @@ class TestRangeRequestServer(TestSpecificRequestHandler):
         self.assertEqual(l[3], (6, '6789'))
         # The server should have issued 3 requests
         self.assertEqual(3, server.GET_request_nb)
+
+    def test_complete_readv_leave_pipe_clean(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        # force transport to issue multiple requests
+        t._get_max_size = 2
+        l = list(t.readv('a', ((0, 1), (1, 1), (2, 4), (6, 4))))
+        # The server should have issued 3 requests
+        self.assertEqual(3, server.GET_request_nb)
+        self.assertEqual('0123456789', t.get_bytes('a'))
+        self.assertEqual(4, server.GET_request_nb)
+
+    def test_incomplete_readv_leave_pipe_clean(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        # force transport to issue multiple requests
+        t._get_max_size = 2
+        # Don't collapse readv results into a list so that we leave unread
+        # bytes on the socket
+        ireadv = iter(t.readv('a', ((0, 1), (1, 1), (2, 4), (6, 4))))
+        self.assertEqual((0, '0'), ireadv.next())
+        # The server should have issued one request so far 
+        self.assertEqual(1, server.GET_request_nb)
+        self.assertEqual('0123456789', t.get_bytes('a'))
+        # get_bytes issued an additional request, the readv pending ones are
+        # lost
+        self.assertEqual(2, server.GET_request_nb)
 
 
 class SingleRangeRequestHandler(http_server.TestingHTTPRequestHandler):
@@ -791,6 +818,33 @@ class TestNoRangeRequestServer(TestRangeRequestServer):
 
     _req_handler_class = NoRangeRequestHandler
 
+
+class MultipleRangeWithoutContentLengthRequestHandler(
+    http_server.TestingHTTPRequestHandler):
+    """Reply to multiple range requests without content length header."""
+
+    def get_multiple_ranges(self, file, file_size, ranges):
+        self.send_response(206)
+        self.send_header('Accept-Ranges', 'bytes')
+        boundary = "%d" % random.randint(0,0x7FFFFFFF)
+        self.send_header("Content-Type",
+                         "multipart/byteranges; boundary=%s" % boundary)
+        self.end_headers()
+        for (start, end) in ranges:
+            self.wfile.write("--%s\r\n" % boundary)
+            self.send_header("Content-type", 'application/octet-stream')
+            self.send_header("Content-Range", "bytes %d-%d/%d" % (start,
+                                                                  end,
+                                                                  file_size))
+            self.end_headers()
+            self.send_range_content(file, start, end - start + 1)
+        # Final boundary
+        self.wfile.write("--%s\r\n" % boundary)
+
+
+class TestMultipleRangeWithoutContentLengthServer(TestRangeRequestServer):
+
+    _req_handler_class = MultipleRangeWithoutContentLengthRequestHandler
 
 class LimitedRangeRequestHandler(http_server.TestingHTTPRequestHandler):
     """Errors out when range specifiers exceed the limit"""

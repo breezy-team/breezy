@@ -145,11 +145,7 @@ class Response(httplib.HTTPResponse):
                 pending += len(data)
             if pending:
                 trace.mutter(
-                    # FIXME: this message is bogus if the server didn't give
-                    # the length, there is no way we can know how many bytes
-                    # are left !
-                    "bogus http server didn't give body length,"
-                    "%s bytes left on the socket",
+                    "%s bytes left on the HTTP socket",
                     pending)
             self.close()
         return pending
