@@ -167,6 +167,63 @@ class FakeManager(object):
         self.credentials.append([realm, host, username, password])
 
 
+class RecordingServer(object):
+    """A fake HTTP server.
+    
+    It records the bytes sent to it, and replies with a 200.
+    """
+
+    def __init__(self, expect_body_tail=None):
+        """Constructor.
+
+        :type expect_body_tail: str
+        :param expect_body_tail: a reply won't be sent until this string is
+            received.
+        """
+        self._expect_body_tail = expect_body_tail
+        self.host = None
+        self.port = None
+        self.received_bytes = ''
+
+    def setUp(self):
+        self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._sock.bind(('127.0.0.1', 0))
+        self.host, self.port = self._sock.getsockname()
+        self._ready = threading.Event()
+        self._thread = threading.Thread(target=self._accept_read_and_reply)
+        self._thread.setDaemon(True)
+        self._thread.start()
+        self._ready.wait(5)
+
+    def _accept_read_and_reply(self):
+        self._sock.listen(1)
+        self._ready.set()
+        self._sock.settimeout(5)
+        try:
+            conn, address = self._sock.accept()
+            # On win32, the accepted connection will be non-blocking to start
+            # with because we're using settimeout.
+            conn.setblocking(True)
+            while not self.received_bytes.endswith(self._expect_body_tail):
+                self.received_bytes += conn.recv(4096)
+            conn.sendall('HTTP/1.1 200 OK\r\n')
+        except socket.timeout:
+            # Make sure the client isn't stuck waiting for us to e.g. accept.
+            self._sock.close()
+        except socket.error:
+            # The client may have already closed the socket.
+            pass
+
+    def tearDown(self):
+        try:
+            self._sock.close()
+        except socket.error:
+            # We might have already closed it.  We don't care.
+            pass
+        self.host = None
+        self.port = None
+
+
 class TestHTTPServer(tests.TestCase):
     """Test the HTTP servers implementations."""
 
@@ -422,7 +479,7 @@ class TestHttpTransportRegistration(tests.TestCase):
 class TestPost(tests.TestCase):
 
     def test_post_body_is_received(self):
-        server = http_utils.RecordingServer(expect_body_tail='end-of-body')
+        server = RecordingServer(expect_body_tail='end-of-body')
         server.setUp()
         self.addCleanup(server.tearDown)
         scheme = self._qualified_prefix
@@ -639,13 +696,13 @@ class TestForbiddenServer(TestSpecificRequestHandler):
 class TestRecordingServer(tests.TestCase):
 
     def test_create(self):
-        server = http_utils.RecordingServer(expect_body_tail=None)
+        server = RecordingServer(expect_body_tail=None)
         self.assertEqual('', server.received_bytes)
         self.assertEqual(None, server.host)
         self.assertEqual(None, server.port)
 
     def test_setUp_and_tearDown(self):
-        server = http_utils.RecordingServer(expect_body_tail=None)
+        server = RecordingServer(expect_body_tail=None)
         server.setUp()
         try:
             self.assertNotEqual(None, server.host)
@@ -656,7 +713,7 @@ class TestRecordingServer(tests.TestCase):
         self.assertEqual(None, server.port)
 
     def test_send_receive_bytes(self):
-        server = http_utils.RecordingServer(expect_body_tail='c')
+        server = RecordingServer(expect_body_tail='c')
         server.setUp()
         self.addCleanup(server.tearDown)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
