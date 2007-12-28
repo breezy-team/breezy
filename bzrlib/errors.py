@@ -1870,6 +1870,14 @@ class NoDiffFound(BzrError):
         BzrError.__init__(self, path)
 
 
+class ExecutableMissing(BzrError):
+
+    _fmt = "%(exe_name)s could not be found on this machine"
+
+    def __init__(self, exe_name):
+        BzrError.__init__(self, exe_name=exe_name)
+
+
 class NoDiff(BzrError):
 
     _fmt = "Diff is not installed on this machine: %(msg)s"
