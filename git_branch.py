@@ -49,6 +49,7 @@ class GitBranch(branch.Branch):
     """An adapter to git repositories for bzr Branch objects."""
 
     def __init__(self, gitdir, lockfiles):
+        super(GitBranch, self).__init__()
         from bzrlib.plugins.git import git_repository
         self.bzrdir = gitdir
         self.control_files = lockfiles
@@ -102,3 +103,6 @@ class GitBranch(branch.Branch):
         """See Branch.set_push_location."""
         self.get_config().set_user_option('push_location', location,
                                           local=True)
+
+    def supports_tags(self):
+        return False

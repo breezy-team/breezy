@@ -16,7 +16,7 @@
 
 """Converters, etc for going between Bazaar and Git ids."""
 
-_namespace_prefix = 'git1'
+_namespace_prefix = 'git-experimental'
 _revision_id_prefix = _namespace_prefix + 'r-'
 _file_id_prefix = _namespace_prefix + 'f-'
 

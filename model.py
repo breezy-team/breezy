@@ -18,6 +18,7 @@
 
 import os
 import subprocess
+import tarfile
 
 from bzrlib.plugins.git import errors
 
@@ -58,7 +59,8 @@ class GitModel(object):
         args.append(object_id)
         return self.git_lines('cat-file', args)
 
-    def rev_list(self, heads, max_count=None, header=False, parents=False):
+    def rev_list(self, heads, max_count=None, header=False, parents=False,
+                 topo_order=False, paths=None):
         args = []
         if max_count is not None:
             args.append('--max-count=%d' % max_count)
@@ -66,10 +68,15 @@ class GitModel(object):
             args.append('--header')
         if parents:
             args.append('--parents')
+        if topo_order:
+            args.append('--topo-order')
         if heads is None:
             args.append('--all')
         else:
             args.extend(heads)
+        if paths is not None:
+            args.append('--')
+            args.extend(paths)
         return self.git_lines('rev-list', args)
 
     def rev_parse(self, git_id):
@@ -91,6 +98,10 @@ class GitModel(object):
             entries = line.split()
             ancestors[entries[0]] = entries[1:]
         return ancestors
+
+    def get_ancestry(self, revisions):
+        args = ['--topo-order', '--reverse'] + revisions
+        return [line[:-1] for line in self.git_lines('rev-list', args)]
 
     def ancestor_lines(self, revisions):
         revision_lines = []
@@ -114,3 +125,31 @@ class GitModel(object):
                 name = name[1:-1].decode('string_escape')
             name = name.decode('utf-8')
             yield permissions, type, hash, name
+
+    def get_tarpipe(self, tree_id):
+        cmd = self.git_command('archive', [tree_id])
+        env = os.environ.copy()
+        env['GIT_DIR'] = self.git_dir
+        p = subprocess.Popen(cmd,
+                             stdin=subprocess.PIPE,
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE,
+                             env=env)
+        p.stdin.close()
+        tarpipe = TarPipe.open(mode='r|', fileobj=p.stdout)
+        def close_callback():
+            if p.wait() != 0:
+                raise errors.GitCommandError(cmd, p.returncode,
+                                             p.stderr.read().strip())
+        tarpipe.set_close_callback(close_callback)
+        return tarpipe
+
+
+class TarPipe(tarfile.TarFile):
+
+    def set_close_callback(self, close_callback):
+        self.__close_callback = close_callback
+
+    def close(self):
+        super(TarPipe, self).close()
+        self.__close_callback()
