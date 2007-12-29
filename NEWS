@@ -22,6 +22,9 @@ IN DEVELOPMENT
    * diff '--using' allows an external diff tool to be used for files.
      (Aaron Bentley)
 
+   * ``merge --preview`` produces a diff of the changes merge would make,
+     but does not actually perform the merge.  (Aaron Bentley)
+
   IMPROVEMENTS:
 
    * ``branch`` and ``checkout`` can now use files from a working tree to
