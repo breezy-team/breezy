@@ -1256,7 +1256,7 @@ class TestDiffFromTool(TestCaseWithTransport):
                                 None, None, output)
         self.addCleanup(diff_obj.finish)
         diff_obj._execute('old', 'new')
-        self.assertEqual(output.getvalue(), 'old new\n')
+        self.assertEqual(output.getvalue().rstrip(), 'old new')
 
     def test_prepare_files(self):
         output = StringIO()
