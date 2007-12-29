@@ -18,7 +18,6 @@
 
 import os
 import subprocess
-import tarfile
 
 from bzrlib.plugins.git import errors
 
@@ -125,31 +124,3 @@ class GitModel(object):
                 name = name[1:-1].decode('string_escape')
             name = name.decode('utf-8')
             yield permissions, type, hash, name
-
-    def get_tarpipe(self, tree_id):
-        cmd = self.git_command('archive', [tree_id])
-        env = os.environ.copy()
-        env['GIT_DIR'] = self.git_dir
-        p = subprocess.Popen(cmd,
-                             stdin=subprocess.PIPE,
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE,
-                             env=env)
-        p.stdin.close()
-        tarpipe = TarPipe.open(mode='r|', fileobj=p.stdout)
-        def close_callback():
-            if p.wait() != 0:
-                raise errors.GitCommandError(cmd, p.returncode,
-                                             p.stderr.read().strip())
-        tarpipe.set_close_callback(close_callback)
-        return tarpipe
-
-
-class TarPipe(tarfile.TarFile):
-
-    def set_close_callback(self, close_callback):
-        self.__close_callback = close_callback
-
-    def close(self):
-        super(TarPipe, self).close()
-        self.__close_callback()

@@ -47,7 +47,6 @@ class GitRepository(repository.Repository):
         self._revision_cache = {}
         self._blob_cache = {}
         self._entry_revision_cache = {}
-        self._inventory_cache = {}
 
     def _ancestor_revisions(self, revision_ids):
         if revision_ids is not None:
@@ -321,144 +320,12 @@ class GitRepository(repository.Repository):
         # print "fetched file revision", line[:-1], path
         return result
 
-    # The various version of _get_entry_revision can be tested by pulling from
-    # the git repo of git itself. First pull up to r700, then r702 to
-    # reproduce the RevisionNotPresent errors.
-
-    def _set_entry_revision_unoptimized(self, entry, revid, path, git_id):
-        # This is unusably slow and will lead to recording a few unnecessary
-        # duplicated file texts. But it seems to be consistent enough to let
-        # pulls resume without causing RevisionNotPresent errors.
-        entry.revision = self._get_file_revision(revid, path)
-
-    def _set_entry_revision_optimized1(self, entry, revid, path, git_id):
-        # This is much faster, produces fewer unique file texts, but will
-        # cause RevisionNotPresent errors when resuming pull.
-        #
-        # Oops, this does not account for changes in executable bit. That is
-        # probably why it produces fewer unique texts.
-        cached = self._entry_revision_cache.get((revid, path, git_id))
-        if cached is not None:
-            entry.revision = cached
-            return
-        revision = self.get_revision(revid)
-        for parent_id in revision.parent_ids:
-            entry_rev = self._entry_revision_cache.get((parent_id, path, git_id))
-            if entry_rev is not None:
-                break
-        else:
-            entry_rev = self._get_file_revision(revid, path)
-        self._entry_revision_cache[(revid, path, git_id)] = entry_rev
-        entry.revision = entry_rev
-
-    def _set_entry_revision_optimized2(self, entry, revid, path, git_id):
-        # This is slower than the previous one, and does not appear to have a
-        # subtantially different effect. Same number of unique texts, same
-        # RevisionNotPresent error.
-        #
-        # Oops, this does not account for changes in executable bit. That is
-        # probably why it produces fewer unique texts.
-        cached = self._entry_revision_cache.get((revid, path, git_id))
-        if cached is not None:
-            entry.revision = cached
-            return
-        revision = self.get_revision(revid)
-        parent_hits = []
-        for parent_id in revision.parent_ids:
-            entry_rev = self._entry_revision_cache.get((parent_id, path, git_id))
-            if entry_rev is not None:
-                parent_hits.append(entry_rev)
-        if len(parent_hits) == len(revision.parent_ids) and len(set(parent_hits)) == 1:
-            entry_rev = parent_hits[0]
-        else:
-            entry_rev = self._get_file_revision(revid, path)
-        self._entry_revision_cache[(revid, path, git_id)] = entry_rev
-        entry.revision = entry_rev
-
-    _original_get_inventory = get_inventory
-    def _get_inventory_caching(self, revid):
-        if revid in self._inventory_cache:
-            return self._inventory_cache[revid]
-        inv = self._original_get_inventory(revid)
-        self._inventory_cache[revid] = inv
-        return inv
-
-    def _set_entry_revision_optimized3(self, entry, revid, path, git_id):
-        # Depends on _get_inventory_caching.
-
-        # Set the revision of directories to the current revision. It's not
-        # accurate, but we cannot compare directory contents from here.
-        if entry.kind == 'directory':
-            entry.revision = revid
-            return
-        # Build ancestral inventories by walking parents depth first. Ideally
-        # this should be done in an inter-repository, where already imported
-        # data can be used as reference.
-        current_revid = revid
-        revision = self.get_revision(revid)
-        pending_revids = list(reversed(revision.parent_ids))
-        while pending_revids:
-            revid = pending_revids.pop()
-            if revid in self._inventory_cache:
-                continue
-            # Not in cache, ensure parents are in cache first.
-            pending_revids.append(revid)
-            revision = self.get_revision(revid)
-            for parent_id in reversed(revision.parent_ids):
-                if parent_id not in self._inventory_cache:
-                    pending_revids.extend(reversed(revision.parent_ids))
-                    break
-            else:
-                # All parents are in cache, we can now build this inventory.
-                revid = pending_revids.pop()
-                self.get_inventory(revid) # populate cache
-        # We now have all ancestral inventories in the cache. Get entries by
-        # the same file_id in parent inventories, and use the revision of the
-        # first one that has the same text_sha1 and executable bit.
-        revision = self.get_revision(current_revid)
-        for revid in revision.parent_ids:
-            inventory = self.get_inventory(revid)
-            if entry.file_id in inventory:
-                parent_entry = inventory[entry.file_id]
-                if (parent_entry.text_sha1 == entry.text_sha1
-                        and parent_entry.executable == entry.executable):
-                    entry.revision = parent_entry.revision
-                    return
-        # If we get here, that means we found no matching parent entry, use
-        # the current revision.
-        entry.revision = current_revid
-
-    def _set_entry_revision_optimized4(self, entry, revid, path, git_id):
-        # Same as optimized1, but uses the executable bit in the cache index.
-        # That appears to have the same behaviour as the unoptimized version.
-        cached = self._entry_revision_cache.get(
-            (revid, path, git_id, entry.executable))
-        if cached is not None:
-            entry.revision = cached
-            return
-        revision = self.get_revision(revid)
-        for parent_id in revision.parent_ids:
-            entry_rev = self._entry_revision_cache.get(
-                (parent_id, path, git_id, entry.executable))
-            if entry_rev is not None:
-                break
-        else:
-            entry_rev = self._get_file_revision(revid, path)
-        self._entry_revision_cache[
-            (revid, path, git_id, entry.executable)] = entry_rev
-        entry.revision = entry_rev
-
-    def _set_entry_revision_optimized5(self, entry, revid, path, git_id):
-        # Same as optimized4, but makes get_inventory non-reentrant, and uses
-        # a more structured cache.
-        #
-        # cache[revision][path, git_id, executable] -> revision
-        #
+    def _set_entry_revision(self, entry, revid, path, git_id):
         # If a revision is in the cache, we assume it contains entries for the
         # whole inventory. So if all parent revisions are in the cache, but no
         # parent entry is present, then the entry revision is the current
-        # revision. That amortizes the number of git calls for large pulls to
-        # zero.
+        # revision. That amortizes the number of _get_file_revision calls for
+        # large pulls to a "small number".
         cached = self._entry_revision_cache.get(revid, {}).get(
             (path, git_id, entry.executable))
         if cached is not None:
@@ -482,9 +349,6 @@ class GitRepository(repository.Repository):
         self._entry_revision_cache.setdefault(
             revid, {})[(path, git_id, entry.executable)] = entry_rev
         entry.revision = entry_rev
-
-    _set_entry_revision = _set_entry_revision_optimized5
-    #get_inventory = _get_inventory_caching
 
 
 def escape_file_id(file_id):
