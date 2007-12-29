@@ -434,3 +434,16 @@ class TestMerge(ExternalBase):
         out, err = self.run_bzr(['merge', '-d', 'b', 'a'])
         self.assertEqual(tree_b.branch.get_submit_branch(),
                          tree_a.bzrdir.root_transport.base)
+
+    def test_weave_cherrypick(self):
+        this_tree = self.make_branch_and_tree('this')
+        self.build_tree_contents([('this/file', "a\n")])
+        this_tree.add('file')
+        this_tree.commit('rev1')
+        other_tree = this_tree.bzrdir.sprout('other').open_workingtree()
+        self.build_tree_contents([('other/file', "a\nb\n")])
+        other_tree.commit('rev2b')
+        self.build_tree_contents([('other/file', "c\na\nb\n")])
+        other_tree.commit('rev3b')
+        self.run_bzr('merge --weave -d this other -r -2..-1')
+        self.assertFileEqual('c\na\n', 'this/file')
