@@ -2759,6 +2759,7 @@ class cmd_merge(Command):
             bzr merge -r 81..82 ../bzr.dev
     """
 
+    encoding_type = 'exact'
     _see_also = ['update', 'remerge', 'status-flags']
     takes_args = ['branch?']
     takes_options = [
