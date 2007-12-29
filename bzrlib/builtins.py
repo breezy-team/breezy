@@ -956,10 +956,6 @@ class cmd_checkout(Command):
 
     def run(self, branch_location=None, to_location=None, revision=None,
             lightweight=False, files_from=None):
-        if files_from is not None:
-            accelerator_tree = WorkingTree.open(files_from)
-        else:
-            accelerator_tree = None
         if revision is None:
             revision = [None]
         elif len(revision) > 1:
@@ -968,7 +964,10 @@ class cmd_checkout(Command):
         if branch_location is None:
             branch_location = osutils.getcwd()
             to_location = branch_location
-        source = Branch.open(branch_location)
+        accelerator_tree, source = bzrdir.BzrDir.open_tree_or_branch(
+            branch_location)
+        if files_from is not None:
+            accelerator_tree = WorkingTree.open(files_from)
         if len(revision) == 1 and revision[0] is not None:
             revision_id = _mod_revision.ensure_null(
                 revision[0].in_history(source)[1])
@@ -1454,17 +1453,6 @@ class cmd_diff(Command):
 
             bzr diff --prefix old/:new/
     """
-    # TODO: Option to use external diff command; could be GNU diff, wdiff,
-    #       or a graphical diff.
-
-    # TODO: Python difflib is not exactly the same as unidiff; should
-    #       either fix it up or prefer to use an external diff.
-
-    # TODO: Selected-file diff is inefficient and doesn't show you
-    #       deleted files.
-
-    # TODO: This probably handles non-Unix newlines poorly.
-
     _see_also = ['status']
     takes_args = ['file*']
     takes_options = [
@@ -1484,13 +1472,17 @@ class cmd_diff(Command):
             ),
         'revision',
         'change',
+        Option('using',
+            help='Use this command to compare files.',
+            type=unicode,
+            ),
         ]
     aliases = ['di', 'dif']
     encoding_type = 'exact'
 
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None,
-            prefix=None, old=None, new=None):
+            prefix=None, old=None, new=None, using=None):
         from bzrlib.diff import _get_trees_to_diff, show_diff_trees
 
         if (prefix is None) or (prefix == '0'):
@@ -1517,7 +1509,7 @@ class cmd_diff(Command):
                                specific_files=specific_files,
                                external_diff_options=diff_options,
                                old_label=old_label, new_label=new_label,
-                               extra_trees=extra_trees)
+                               extra_trees=extra_trees, using=using)
 
 
 class cmd_deleted(Command):

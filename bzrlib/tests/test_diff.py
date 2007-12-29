@@ -21,13 +21,14 @@ import subprocess
 from tempfile import TemporaryFile
 
 from bzrlib.diff import (
-    internal_diff,
-    external_diff,
+    DiffFromTool,
     DiffPath,
-    show_diff_trees,
     DiffSymlink,
     DiffTree,
     DiffText,
+    external_diff,
+    internal_diff,
+    show_diff_trees,
     )
 from bzrlib.errors import BinaryFile, NoDiff
 import bzrlib.osutils as osutils
@@ -1233,3 +1234,50 @@ class TestUsingCompiledIfAvailable(TestCase):
             from bzrlib._patiencediff_py import recurse_matches_py
             self.assertIs(recurse_matches_py,
                           bzrlib.patiencediff.recurse_matches)
+
+
+class TestDiffFromTool(TestCaseWithTransport):
+
+    def test_from_string(self):
+        diff_obj = DiffFromTool.from_string('diff', None, None, None)
+        self.addCleanup(diff_obj.finish)
+        self.assertEqual(['diff', '%(old_path)s', '%(new_path)s'],
+            diff_obj.command_template)
+        diff_obj = DiffFromTool.from_string('diff -u\\ 5', None, None, None)
+        self.assertEqual(['diff', '-u 5', '%(old_path)s', '%(new_path)s'],
+                         diff_obj.command_template)
+        self.assertEqual(['diff', '-u 5', 'old-path', 'new-path'],
+                         diff_obj._get_command('old-path', 'new-path'))
+
+    def test_execute(self):
+        output = StringIO()
+        diff_obj = DiffFromTool(['python', '-c',
+                                 'print "%(old_path)s %(new_path)s"'],
+                                None, None, output)
+        self.addCleanup(diff_obj.finish)
+        diff_obj._execute('old', 'new')
+        self.assertEqual(output.getvalue(), 'old new\n')
+
+    def test_prepare_files(self):
+        output = StringIO()
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file', 'oldcontent')])
+        tree.add('file', 'file-id')
+        tree.commit('old tree')
+        self.build_tree_contents([('tree/file', 'newcontent')])
+        old_tree = tree.basis_tree()
+        old_tree.lock_read()
+        self.addCleanup(old_tree.unlock)
+        diff_obj = DiffFromTool(['python', '-c',
+                                 'print "%(old_path)s %(new_path)s"'],
+                                old_tree, tree, output)
+        self.addCleanup(diff_obj.finish)
+        self.assertContainsRe(diff_obj._root, 'bzr-diff-[^/]*')
+        old_path, new_path = diff_obj._prepare_files('file-id', 'oldname',
+                                                     'newname')
+        self.assertContainsRe(old_path, 'old/oldname$')
+        self.assertContainsRe(new_path, 'new/newname$')
+        self.assertFileEqual('oldcontent', old_path)
+        self.assertFileEqual('newcontent', new_path)
+        # make sure we can create files with the same parent directories
+        diff_obj._prepare_files('file-id', 'oldname2', 'newname2')
