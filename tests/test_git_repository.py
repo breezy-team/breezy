@@ -169,8 +169,8 @@ class TestGitRepositoryParseRev(tests.TestCase):
             rev.revision_id, 'git1r-873a8ae0d682b0e63e9795bc53056d32ed3de93f')
         self.assertEqual(rev.parent_ids, [])
         self.assertEqual(rev.committer, 'Joe Foo <joe@foo.com>')
-        self.assertEqual(rev.timestamp, 1198784532.0)
-        self.assertEqual(rev.timezone, 3600.0)
+        self.assertEqual(repr(rev.timestamp), '1198784532.0')
+        self.assertEqual(repr(rev.timezone), '3600')
         self.assertEqual(rev.message, 'message\n')
         self.assertEqual(
             rev.properties,
@@ -227,8 +227,8 @@ class TestGitRepositoryParseRev(tests.TestCase):
             "    message\n",
             "\x00"])
         self.assertEqual(rev.committer, 'Jane Bar <jane@bar.com>')
-        self.assertEqual(rev.timestamp, 1198784533.0)
-        self.assertEqual(rev.timezone, 7200.0)
+        self.assertEqual(repr(rev.timestamp), '1198784533.0')
+        self.assertEqual(repr(rev.timezone), '7200')
         self.assertEqual(rev.properties['author'], 'Jane Bar <jane@bar.com>')
         self.assertEqual(rev.properties['git-author-timestamp'], '1198784533')
         self.assertEqual(rev.properties['git-author-timezone'], '+0200')
@@ -236,11 +236,11 @@ class TestGitRepositoryParseRev(tests.TestCase):
     def test_parse_tz(self):
         # Simple tests for the _parse_tz helper.
         parse_tz = git_repository.GitRepository._parse_tz
-        self.assertEqual(parse_tz('+0000'), 0.0)
-        self.assertEqual(parse_tz('+0001'), 60.0)
-        self.assertEqual(parse_tz('-0001'), -60.0)
-        self.assertEqual(parse_tz('+0100'), 3600.0)
-        self.assertEqual(parse_tz('-0100'), -3600.0)
-        self.assertEqual(parse_tz('+9959'), 359940.0)
-        self.assertEqual(parse_tz('-9959'), -359940.0)
+        self.assertEqual(repr(parse_tz('+0000')), '0')
+        self.assertEqual(repr(parse_tz('+0001')), '60')
+        self.assertEqual(repr(parse_tz('-0001')), '-60')
+        self.assertEqual(repr(parse_tz('+0100')), '3600')
+        self.assertEqual(repr(parse_tz('-0100')), '-3600')
+        self.assertEqual(repr(parse_tz('+9959')), '359940')
+        self.assertEqual(repr(parse_tz('-9959')), '-359940')
 

@@ -176,7 +176,7 @@ class GitRepository(repository.Repository):
         sign = {'+': +1, '-': -1}[tz[0]]
         hours = int(tz[1:3])
         minutes = int(tz[3:])
-        return float(sign * 60 * (60 * hours + minutes))
+        return sign * 60 * (60 * hours + minutes)
 
     def revision_trees(self, revids):
         for revid in revids:
