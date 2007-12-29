@@ -1805,7 +1805,8 @@ class TestBlackboxSupport(TestCase):
         # code.
         out, err = self.run_bzr(["log", "/nonexistantpath"], retcode=3)
         self.assertEqual(out, '')
-        self.assertEqual(err, 'bzr: ERROR: Not a branch: "/nonexistantpath/".\n')
+        self.assertContainsRe(err,
+            'bzr: ERROR: Not a branch: ".*nonexistantpath/".\n')
 
 
 class TestTestLoader(TestCase):
