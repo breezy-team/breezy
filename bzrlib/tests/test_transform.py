@@ -1542,6 +1542,7 @@ class TestBuildTree(tests.TestCaseWithTransport):
         self.assertEqual([], list(target._iter_changes(revision_tree)))
 
     def test_build_tree_accelerator_wrong_kind(self):
+        self.requireFeature(SymlinkFeature)
         source = self.make_branch_and_tree('source')
         self.build_tree_contents([('source/file1', '')])
         self.build_tree_contents([('source/file2', '')])
