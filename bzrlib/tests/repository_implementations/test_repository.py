@@ -526,6 +526,18 @@ class TestRepository(TestCaseWithRepository):
         self.addCleanup(repo.unlock)
         repo.get_graph()
 
+    def test_graph_ghost_handling(self):
+        tree = self.make_branch_and_tree('here')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.commit('initial commit', rev_id='rev1')
+        tree.add_parent_tree_id('ghost')
+        tree.commit('commit-with-ghost', rev_id='rev2')
+        graph = tree.branch.repository.get_graph()
+        parents = graph.get_parent_map(['ghost', 'rev2'])
+        self.assertTrue('ghost' not in parents)
+        self.assertEqual(tuple(parents['rev2']), ('rev1', 'ghost'))
+
     def test_implements_revision_graph_can_have_wrong_parents(self):
         """All repositories should implement
         revision_graph_can_have_wrong_parents, so that check and reconcile can

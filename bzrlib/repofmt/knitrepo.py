@@ -75,7 +75,7 @@ class _KnitParentsProvider(object):
                 try:
                     parents = self._knit.get_parents_with_ghosts(revision_id)
                 except errors.RevisionNotPresent:
-                    pass
+                    continue
                 else:
                     if len(parents) == 0:
                         parents = [_mod_revision.NULL_REVISION]
