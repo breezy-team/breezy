@@ -94,7 +94,7 @@ from bzrlib.transport.memory import MemoryServer
 from bzrlib.transport.readonly import ReadonlyServer
 from bzrlib.trace import mutter, note
 from bzrlib.tests import TestUtil
-from bzrlib.tests.HttpServer import HttpServer
+from bzrlib.tests.http_server import HttpServer
 from bzrlib.tests.TestUtil import (
                           TestSuite,
                           TestLoader,
@@ -2580,6 +2580,7 @@ def test_suite():
                    'bzrlib.tests.test_help',
                    'bzrlib.tests.test_hooks',
                    'bzrlib.tests.test_http',
+                   'bzrlib.tests.test_http_implementations',
                    'bzrlib.tests.test_http_response',
                    'bzrlib.tests.test_https_ca_bundle',
                    'bzrlib.tests.test_identitymap',

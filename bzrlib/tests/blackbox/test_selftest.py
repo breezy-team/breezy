@@ -174,7 +174,7 @@ class TestBenchmarkTests(TestCaseWithTransport):
     def test_benchmark_runs_benchmark_tests(self):
         """bzr selftest --benchmark should not run the default test suite."""
         # We test this by passing a regression test name to --benchmark, which
-        # should result in 0 rests run.
+        # should result in 0 tests run.
         old_root = TestCaseWithMemoryTransport.TEST_ROOT
         try:
             TestCaseWithMemoryTransport.TEST_ROOT = None
