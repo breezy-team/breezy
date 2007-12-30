@@ -89,6 +89,38 @@ class Merger(object):
         self.recurse = recurse
         self.change_reporter = change_reporter
         self._cached_trees = {}
+        self._revision_graph = None
+        self._base_is_ancestor = None
+        self._base_is_other_ancestor = None
+
+    @property
+    def revision_graph(self):
+        if self._revision_graph is None:
+            self._revision_graph = this_repo.get_graph()
+        return self._revision_graph
+
+    def _set_base_is_ancestor(self, value):
+        self._base_is_ancestor = value
+
+    def _get_base_is_ancestor(self):
+        if self._base_is_ancestor is None:
+            self._base_is_ancestor = self.revision_graph.is_ancestor(
+                self.base_rev_id, self.this_basis)
+        return self._base_is_ancestor
+
+    base_is_ancestor = property(_get_base_is_ancestor, _set_base_is_ancestor)
+
+    def _set_base_is_other_ancestor(self, value):
+        self._base_is_other_ancestor = value
+
+    def _get_base_is_other_ancestor(self):
+        if self._base_is_other_ancestor is None:
+            self.base_is_other_ancestor = graph.is_ancestor(self.base_rev_id,
+                                                            self.other_basis)
+        return self._base_is_other_ancestor
+
+    base_is_other_ancestor = property(_get_base_is_other_ancestor,
+                                      _set_base_is_other_ancestor)
 
     @staticmethod
     def from_uncommitted(tree, other_tree, pb):
@@ -102,6 +134,7 @@ class Merger(object):
                         pb)
         merger.base_rev_id = merger.base_tree.get_revision_id()
         merger.other_rev_id = None
+        merger.other_basis = merger.base_rev_id
         return merger
 
     @classmethod
@@ -299,11 +332,6 @@ class Merger(object):
         self.base_branch = branch
         self._maybe_fetch(branch, self.this_branch, revision_id)
         self.base_tree = self.revision_tree(revision_id)
-        graph = self.this_branch.repository.get_graph()
-        self.base_is_ancestor = graph.is_ancestor(self.base_rev_id,
-                                                  self.this_basis)
-        self.base_is_other_ancestor = graph.is_ancestor(self.base_rev_id,
-                                                        self.other_basis)
 
     def _maybe_fetch(self, source, target, revision_id):
         if not source.repository.has_same_location(target.repository):
@@ -311,14 +339,13 @@ class Merger(object):
 
     def find_base(self):
         this_repo = self.this_branch.repository
-        graph = this_repo.get_graph()
         revisions = [ensure_null(self.this_basis),
                      ensure_null(self.other_basis)]
         if NULL_REVISION in revisions:
             self.base_rev_id = NULL_REVISION
         else:
-            self.base_rev_id, steps = graph.find_unique_lca(revisions[0],
-                revisions[1], count_steps=True)
+            self.base_rev_id, steps = self.revision_graph.find_unique_lca(
+                revisions[0], revisions[1], count_steps=True)
             if self.base_rev_id == NULL_REVISION:
                 raise UnrelatedBranches()
             if steps > 1:
@@ -346,11 +373,6 @@ class Merger(object):
                 self.base_rev_id = _mod_revision.ensure_null(
                     base_branch.get_rev_id(base_revision[1]))
             self._maybe_fetch(base_branch, self.this_branch, self.base_rev_id)
-            graph = self.this_branch.repository.get_graph()
-            self.base_is_ancestor = graph.is_ancestor(self.base_rev_id,
-                                                      self.this_basis)
-            self.base_is_other_ancestor = graph.is_ancestor(self.base_rev_id,
-                                                            self.other_basis)
 
     def do_merge(self):
         kwargs = {'working_tree':self.this_tree, 'this_tree': self.this_tree,
