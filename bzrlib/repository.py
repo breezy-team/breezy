@@ -1848,7 +1848,7 @@ def install_revision(repository, rev, revision_tree):
     install_revisions(repository, [(rev, revision_tree, None)])
 
 
-def install_revisions(repository, iterable):
+def install_revisions(repository, iterable, num_revisions=None, pb=None):
     """Install all revision data into a repository.
 
     Accepts an iterable of revision, tree, signature tuples.  The signature
@@ -1856,8 +1856,10 @@ def install_revisions(repository, iterable):
     """
     repository.start_write_group()
     try:
-        for revision, revision_tree, signature in iterable:
+        for n, (revision, revision_tree, signature) in enumerate(iterable):
             _install_revision(repository, revision, revision_tree, signature)
+            if pb is not None:
+                pb.update('Transferring revisions', n + 1, num_revisions)
     except:
         repository.abort_write_group()
         raise
@@ -2771,7 +2773,17 @@ class InterDifferingSerializer(InterKnitRepo):
                 except errors.NoSuchRevision:
                     signature = None
                 yield revision, tree, signature
-        install_revisions(self.target, revisions_iterator())
+        if pb is None:
+            my_pb = ui.ui_factory.nested_progress_bar()
+            pb = my_pb
+        else:
+            my_pb = None
+        try:
+            install_revisions(self.target, revisions_iterator(),
+                              len(revision_ids), pb)
+        finally:
+            if my_pb is not None:
+                my_pb.finished()
         return len(revision_ids), 0
 
 
