@@ -65,7 +65,7 @@ def transform_tree(from_tree, to_tree, interesting_ids=None):
 class Merger(object):
     def __init__(self, this_branch, other_tree=None, base_tree=None,
                  this_tree=None, pb=DummyProgress(), change_reporter=None,
-                 recurse='down'):
+                 recurse='down', revision_graph=None):
         object.__init__(self)
         assert this_tree is not None, "this_tree is required"
         self.this_branch = this_branch
@@ -89,14 +89,14 @@ class Merger(object):
         self.recurse = recurse
         self.change_reporter = change_reporter
         self._cached_trees = {}
-        self._revision_graph = None
+        self._revision_graph = revision_graph
         self._base_is_ancestor = None
         self._base_is_other_ancestor = None
 
     @property
     def revision_graph(self):
         if self._revision_graph is None:
-            self._revision_graph = this_repo.get_graph()
+            self._revision_graph = self.this_branch.repository.get_graph()
         return self._revision_graph
 
     def _set_base_is_ancestor(self, value):
@@ -115,8 +115,8 @@ class Merger(object):
 
     def _get_base_is_other_ancestor(self):
         if self._base_is_other_ancestor is None:
-            self.base_is_other_ancestor = graph.is_ancestor(self.base_rev_id,
-                                                            self.other_basis)
+            self.base_is_other_ancestor = self.revision_graph.is_ancestor(
+                self.base_rev_id, self.other_basis)
         return self._base_is_other_ancestor
 
     base_is_other_ancestor = property(_get_base_is_other_ancestor,
@@ -148,19 +148,21 @@ class Merger(object):
         mergeable.install_revisions(tree.branch.repository)
         base_revision_id, other_revision_id, verified =\
             mergeable.get_merge_request(tree.branch.repository)
+        revision_graph = tree.branch.repository.get_graph()
         if (base_revision_id != _mod_revision.NULL_REVISION and
-            tree.branch.repository.get_graph().is_ancestor(
+            revision_graph.is_ancestor(
             base_revision_id, tree.branch.last_revision())):
             base_revision_id = None
         else:
             warning('Performing cherrypick')
         merger = klass.from_revision_ids(pb, tree, other_revision_id,
-                                         base_revision_id)
+                                         base_revision_id, revision_graph=
+                                         revision_graph)
         return merger, verified
 
     @staticmethod
     def from_revision_ids(pb, this, other, base=None, other_branch=None,
-                          base_branch=None):
+                          base_branch=None, revision_graph=None):
         """Return a Merger for revision-ids.
 
         :param tree: The tree to merge changes into
@@ -173,7 +175,8 @@ class Merger(object):
             not supplied, other_branch or this.branch will be used.
         :param pb: A progress indicator
         """
-        merger = Merger(this.branch, this_tree=this, pb=pb)
+        merger = Merger(this.branch, this_tree=this, pb=pb,
+                        revision_graph=revision_graph)
         if other_branch is None:
             other_branch = this.branch
         merger.set_other_revision(other, other_branch)
@@ -338,7 +341,6 @@ class Merger(object):
             target.fetch(source, revision_id)
 
     def find_base(self):
-        this_repo = self.this_branch.repository
         revisions = [ensure_null(self.this_basis),
                      ensure_null(self.other_basis)]
         if NULL_REVISION in revisions:
