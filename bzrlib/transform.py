@@ -890,7 +890,7 @@ class TreeTransform(object):
                 mover = _mover
             try:
                 child_pb.update('Apply phase', 0, 2)
-                self._apply_removals(inv, inventory_delta, mover)
+                self._apply_removals(inventory_delta, mover)
                 child_pb.update('Apply phase', 1, 2)
                 modified_paths = self._apply_insertions(inv, inventory_delta,
                                                         mover)
@@ -950,7 +950,7 @@ class TreeTransform(object):
         self._limbo_files[trans_id] = limbo_name
         return limbo_name
 
-    def _apply_removals(self, inv, inventory_delta, mover):
+    def _apply_removals(self, inventory_delta, mover):
         """Perform tree operations that remove directory/inventory names.
         
         That is, delete files that are to be deleted, and put any files that
