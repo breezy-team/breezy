@@ -16,6 +16,9 @@
 
 """An adapter between a Git Repository and a Bazaar Branch"""
 
+import os
+
+import bzrlib
 from bzrlib import (
     deprecated_graph,
     errors,
@@ -26,27 +29,57 @@ from bzrlib import (
     revisiontree,
     urlutils,
     )
+from bzrlib.transport import get_transport
 
 from bzrlib.plugins.git import (
+    cache,
     ids,
     model,
     )
 
 
+cachedbs = {}
+
+
 class GitRepository(repository.Repository):
     """An adapter to git repositories for bzr."""
 
-    # To make bzrlib happy
     _serializer = None
 
     def __init__(self, gitdir, lockfiles):
         self.bzrdir = gitdir
         self.control_files = lockfiles
         gitdirectory = gitdir.transport.local_abspath('.')
+        self.base = gitdirectory
         self._git = model.GitModel(gitdirectory)
         self._revision_cache = {}
         self._blob_cache = {}
-        self._entry_revision_cache = {}
+        self._blob_info_cache = {}
+        cache_dir = cache.create_cache_dir()
+        cachedir_transport = get_transport(cache_dir)
+        cache_file = os.path.join(cache_dir, 'cache-%s' % ids.NAMESPACE)
+        if not cachedbs.has_key(cache_file):
+            cachedbs[cache_file] = cache.sqlite3.connect(cache_file)
+        self.cachedb = cachedbs[cache_file]
+        self._init_cachedb()
+
+    def _init_cachedb(self):
+        self.cachedb.executescript("""
+        create table if not exists inventory (
+            revid blob);
+        create unique index if not exists inventory_revid
+            on inventory (revid);
+        create table if not exists entry_revision (
+            inventory blob,
+            path blob,
+            gitid blob,
+            executable integer,
+            revision blob);
+        create unique index if not exists entry_revision_revid_path
+            on entry_revision (inventory, path);
+        """)
+        self.cachedb.commit()
+
 
     def _ancestor_revisions(self, revision_ids):
         if revision_ids is not None:
@@ -104,29 +137,6 @@ class GitRepository(repository.Repository):
     def get_signature_text(self, revision_id):
         raise errors.NoSuchRevision(self, revision_id)
 
-    def get_inventory_xml(self, revision_id):
-        """See Repository.get_inventory_xml()."""
-        return bzrlib.xml5.serializer_v5.write_inventory_to_string(
-            self.get_inventory(revision_id))
-
-    def get_inventory_sha1(self, revision_id):
-        """Get the sha1 for the XML representation of an inventory.
-
-        :param revision_id: Revision id of the inventory for which to return 
-         the SHA1.
-        :return: XML string
-        """
-
-        return osutils.sha_string(self.get_inventory_xml(revision_id))
-
-    def get_revision_xml(self, revision_id):
-        """Return the XML representation of a revision.
-
-        :param revision_id: Revision for which to return the XML.
-        :return: XML string
-        """
-        return bzrlib.xml5.serializer_v5.write_revision_to_string(
-            self.get_revision(revision_id))
 
     def get_revision(self, revision_id):
         if revision_id in self._revision_cache:
@@ -208,6 +218,15 @@ class GitRepository(repository.Repository):
                 continue
 
         rev.message = ''.join(message_lines)
+
+        # XXX: That should not be needed, but current revision serializers do
+        # not know how how to handle text that is illegal in xml. Note: when
+        # this is fixed, we will need to rev up the revision namespace when
+        # removing the escaping code. -- David Allouche 2007-12-30
+        rev.message = escape_for_xml(rev.message)
+        rev.committer = escape_for_xml(rev.committer)
+        rev.properties['author'] = escape_for_xml(rev.properties['author'])
+
         return rev
 
     @classmethod
@@ -238,6 +257,16 @@ class GitRepository(repository.Repository):
             self._blob_cache[git_id] = blob
             return blob
 
+    def _get_blob_info(self, git_id):
+        try:
+            return self._blob_info_cache[git_id]
+        except KeyError:
+            lines = self._get_blob(git_id)
+            size = sum(len(line) for line in lines)
+            sha1 = osutils.sha_strings(lines)
+            self._blob_info_cache[git_id] = (size, sha1)
+            return size, sha1
+
     def get_inventory(self, revision_id):
         if revision_id is None:
             revision_id = revision.NULL_REVISION
@@ -266,6 +295,13 @@ class GitRepository(repository.Repository):
             entry = inv[file_id]
             path = inv.id2path(file_id)
             self._set_entry_revision(entry, revision_id, path, git_id)
+
+        # At this point the entry_revision table is fully populated for this
+        # revision. So record that we have inventory data for this revision.
+        self.cachedb.execute(
+            "insert or ignore into inventory (revid) values (?)",
+            (revision_id,))
+        self.cachedb.commit()
         return inv
 
     @classmethod
@@ -304,9 +340,10 @@ class GitRepository(repository.Repository):
     def _set_entry_text_info(self, inv, entry, git_id):
         if entry.kind == 'directory':
             return
+        size, sha1 = self._get_blob_info(git_id)
+        entry.text_size = size
+        entry.text_sha1 = sha1
         lines = self._get_blob(git_id)
-        entry.text_size = sum(len(line) for line in lines)
-        entry.text_sha1 = osutils.sha_strings(lines)
         if entry.kind == 'symlink':
             entry.symlink_target = ''.join(lines)
         inv.git_file_data[entry.file_id] = lines
@@ -317,8 +354,34 @@ class GitRepository(repository.Repository):
             max_count=1, topo_order=True, paths=[path])
         [line] = lines
         result = ids.convert_revision_id_git_to_bzr(line[:-1])
-        # print "fetched file revision", line[:-1], path
+        print "fetched file revision", line[:-1], path
         return result
+
+    def _get_entry_revision_from_db(self, revid, path, git_id, executable):
+        result = self.cachedb.execute(
+            "select revision from entry_revision where"
+            " inventory=? and path=? and gitid=? and executable=?",
+            (revid, path, git_id, executable)).fetchone()
+        if result is None:
+            return None
+        [revision] = result
+        return revision
+
+    def _set_entry_revision_in_db(self, revid, path, git_id, executable, revision):
+        self.cachedb.execute(
+            "insert into entry_revision"
+            " (inventory, path, gitid, executable, revision)"
+            " values (?, ?, ?, ?, ?)",
+            (revid, path, git_id, executable, revision))
+
+    def _all_inventories_in_db(self, revids):
+        for revid in revids:
+            result = self.cachedb.execute(
+                "select count(*) from inventory where revid = ?",
+                (revid,)).fetchone()
+            if result is None:
+                return False
+        return True
 
     def _set_entry_revision(self, entry, revid, path, git_id):
         # If a revision is in the cache, we assume it contains entries for the
@@ -326,33 +389,55 @@ class GitRepository(repository.Repository):
         # parent entry is present, then the entry revision is the current
         # revision. That amortizes the number of _get_file_revision calls for
         # large pulls to a "small number".
-        cached = self._entry_revision_cache.get(revid, {}).get(
-            (path, git_id, entry.executable))
-        if cached is not None:
-            entry.revision = cached
+        entry_rev = self._get_entry_revision_from_db(
+            revid, path, git_id, entry.executable)
+        if entry_rev is not None:
+            entry.revision = entry_rev
             return
+
         revision = self.get_revision(revid)
-        all_parents_in_cache = True
         for parent_id in revision.parent_ids:
-            if parent_id not in self._entry_revision_cache:
-                all_parents_in_cache = False
-                continue
-            entry_rev = self._entry_revision_cache[parent_id].get(
-                (path, git_id, entry.executable))
+            entry_rev = self._get_entry_revision_from_db(
+                parent_id, path, git_id, entry.executable)
             if entry_rev is not None:
                 break
         else:
-            if all_parents_in_cache:
+            if self._all_inventories_in_db(revision.parent_ids):
                 entry_rev = revid
             else:
                 entry_rev = self._get_file_revision(revid, path)
-        self._entry_revision_cache.setdefault(
-            revid, {})[(path, git_id, entry.executable)] = entry_rev
+        self._set_entry_revision_in_db(
+            revid, path, git_id, entry.executable, entry_rev)
+        #self.cachedb.commit()
         entry.revision = entry_rev
 
 
 def escape_file_id(file_id):
     return file_id.replace('_', '__').replace(' ', '_s')
+
+
+def escape_for_xml(message):
+    """Replace xml-incompatible control characters."""
+    # Copied from _escape_commit_message from bzr-svn.
+    # -- David Allouche 2007-12-29.
+    if message is None:
+        return None
+    import re
+    # FIXME: RBC 20060419 this should be done by the revision
+    # serialiser not by commit. Then we can also add an unescaper
+    # in the deserializer and start roundtripping revision messages
+    # precisely. See repository_implementations/test_repository.py
+    
+    # Python strings can include characters that can't be
+    # represented in well-formed XML; escape characters that
+    # aren't listed in the XML specification
+    # (http://www.w3.org/TR/REC-xml/#NT-Char).
+    message, _ = re.subn(
+        u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
+        lambda match: match.group(0).encode('unicode_escape'),
+        message)
+    return message
+
 
 class GitRevisionTree(revisiontree.RevisionTree):
 

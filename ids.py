@@ -16,9 +16,8 @@
 
 """Converters, etc for going between Bazaar and Git ids."""
 
-_namespace_prefix = 'git-experimental'
-_revision_id_prefix = _namespace_prefix + 'r-'
-_file_id_prefix = _namespace_prefix + 'f-'
+NAMESPACE = 'git-experimental'
+_revision_id_prefix = NAMESPACE + '-r:'
 
 
 def convert_revision_id_git_to_bzr(git_rev_id):
