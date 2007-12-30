@@ -16,6 +16,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
+import shutil
+import bzrlib.bzrdir
 import bzrlib.tests
 import bzrlib.plugins.bisect as bisect
 
@@ -33,7 +35,9 @@ class BisectTestCase(bzrlib.tests.TestCaseWithTransport):
     def setUp(self):
         bzrlib.tests.TestCaseWithTransport.setUp(self)
 
-        # These tests assume a branch with five revisions.
+        # These tests assume a branch with five revisions, and
+        # a branch from version 1 containing three revisions
+        # merged at version 2.
 
         self.tree = self.make_branch_and_tree(".")
 
@@ -43,7 +47,23 @@ class BisectTestCase(bzrlib.tests.TestCaseWithTransport):
         self.tree.add(self.tree.relpath(os.path.join(os.getcwd(), 'test_file')))
         self.tree.commit(message = "add test file")
 
-        file_contents = ["two", "three", "four", "five"]
+        bzrlib.bzrdir.BzrDir.open(".").sprout("../temp-clone")
+        clone_bzrdir = bzrlib.bzrdir.BzrDir.open("../temp-clone")
+        clone_tree = clone_bzrdir.open_workingtree()
+        for content in ["one dot one", "one dot two", "one dot three"]:
+            f = open("../temp-clone/test_file", "w")
+            f.write(content)
+            f.close()
+            clone_tree.commit(message = "make branch test change")
+
+        self.tree.merge_from_branch(clone_tree.branch)
+        f = open("test_file", "w")
+        f.write("two")
+        f.close()
+        self.tree.commit(message = "merge external branch")
+        shutil.rmtree("../temp-clone")
+
+        file_contents = ["three", "four", "five"]
         for content in file_contents:
             f = open("test_file", "w")
             f.write(content)
