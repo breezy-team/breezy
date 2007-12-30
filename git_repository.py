@@ -143,7 +143,7 @@ class GitRepository(repository.Repository):
             return self._revision_cache[revision_id]
         git_commit_id = ids.convert_revision_id_bzr_to_git(revision_id)
         raw = self._git.rev_list([git_commit_id], max_count=1, header=True)
-        # print "fetched revision:", git_commit_id
+        print "fetched revision:", git_commit_id
         revision = self._parse_rev(raw)
         self._revision_cache[revision_id] = revision
         return revision
@@ -248,14 +248,26 @@ class GitRepository(repository.Repository):
     def revision_tree(self, revision_id):
         return GitRevisionTree(self, revision_id)
 
+    def _fetch_blob(self, git_id):
+        lines = self._git.cat_file('blob', git_id)
+        print "fetched blob:", git_id
+        if self._building_inventory is not None:
+            self._building_inventory.git_file_data[git_id] = lines
+        return lines
+
     def _get_blob(self, git_id):
         try:
             return self._blob_cache[git_id]
         except KeyError:
-            blob = self._git.cat_file('blob', git_id)
-            # print "fetched blob:", git_id
-            self._blob_cache[git_id] = blob
-            return blob
+            return self._fetch_blob(git_id)
+
+    def _get_blob_caching(self, git_id):
+        try:
+            return self._blob_cache[git_id]
+        except KeyError:
+            lines = self._fetch_blob(git_id)
+            self._blob_cache[git_id] = lines
+            return lines
 
     def _get_blob_info(self, git_id):
         try:
@@ -285,7 +297,8 @@ class GitRepository(repository.Repository):
         # Second pass at building the inventory. There we retrieve additional
         # data that bzrlib requires: text sizes, sha1s, symlink targets and
         # revisions that introduced inventory entries
-        inv.git_file_data = {}
+        self._building_inventory = inv
+        self._building_inventory.git_file_data = {}
         for file_id in sorted(inv.git_ids.iterkeys()):
             git_id = inv.git_ids[file_id]
             entry = inv[file_id]
@@ -302,6 +315,7 @@ class GitRepository(repository.Repository):
             "insert or ignore into inventory (revid) values (?)",
             (revision_id,))
         self.cachedb.commit()
+        self._building_inventory = None
         return inv
 
     @classmethod
@@ -343,10 +357,9 @@ class GitRepository(repository.Repository):
         size, sha1 = self._get_blob_info(git_id)
         entry.text_size = size
         entry.text_sha1 = sha1
-        lines = self._get_blob(git_id)
         if entry.kind == 'symlink':
+            lines = self._get_blob_caching(git_id)
             entry.symlink_target = ''.join(lines)
-        inv.git_file_data[entry.file_id] = lines
 
     def _get_file_revision(self, revision_id, path):
         lines = self._git.rev_list(
@@ -451,9 +464,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def get_file_lines(self, file_id):
         entry = self._inventory[file_id]
         if entry.kind == 'directory': return []
-        return self._inventory.git_file_data[file_id]
-        
-        obj_id = self._inventory.git_ids[file_id]
-        assert obj_id is not None, (
-            "git_id must not be None: %r" % (self._inventory[file_id],))
-        return self._repository._git.cat_file('blob', obj_id)
+        git_id = self._inventory.git_ids[file_id]
+        if git_id in self._inventory.git_file_data:
+            return self._inventory.git_file_data[git_id]
+        return self._repository._get_blob(git_id)
