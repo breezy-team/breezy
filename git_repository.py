@@ -60,6 +60,7 @@ class GitRepository(repository.Repository):
             cachedbs[cache_file] = cache.sqlite3.connect(cache_file)
         self.cachedb = cachedbs[cache_file]
         self._init_cachedb()
+        self._format = GitFormat()
 
     def _init_cachedb(self):
         self.cachedb.executescript("""
@@ -472,3 +473,8 @@ class GitRevisionTree(revisiontree.RevisionTree):
         if git_id in self._inventory.git_file_data:
             return self._inventory.git_file_data[git_id]
         return self._repository._get_blob(git_id)
+
+
+class GitFormat(object):
+
+    supports_tree_reference = False
