@@ -87,9 +87,12 @@ class GitDir(bzrdir.BzrDir):
         """'open' a repository for this dir."""
         return self._gitrepository_class(self, self._lockfiles)
 
-    def open_workingtree(self):
+    def open_workingtree(self, recommend_upgrade=True):
         loc = urlutils.unescape_for_display(self.root_transport.base, 'ascii')
         raise errors.bzr_errors.NoWorkingTree(loc)
+
+    def cloning_metadir(self):
+        return bzrdir.BzrDirFormat.get_default_format()
 
 
 class GitBzrDirFormat(bzrdir.BzrDirFormat):
