@@ -29,7 +29,7 @@ from  bzrlib.plugins.git import errors
 TestCase = tests.TestCase
 TestCaseInTempDir = tests.TestCaseInTempDir
 TestCaseWithTransport = tests.TestCaseWithTransport
-
+TestCaseWithMemoryTransport = tests.TestCaseWithMemoryTransport
 
 class _GitCommandFeature(tests.Feature):
 
