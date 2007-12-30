@@ -323,7 +323,7 @@ class TreeTransform(object):
         This reflects only files that already exist, not ones that will be
         added by transactions.
         """
-        path = self._tree.inventory.id2path(inventory_id)
+        path = self._tree.id2path(inventory_id)
         return self.trans_id_tree_path(path)
 
     def trans_id_file_id(self, file_id):
@@ -1361,7 +1361,7 @@ def build_tree(tree, wt, accelerator_tree=None):
 
 def _build_tree(tree, wt, accelerator_tree):
     """See build_tree."""
-    if len(wt.inventory) > 1:  # more than just a root
+    if len(list(wt)) > 1:  # more than just a root
         raise errors.WorkingTreeAlreadyPopulated(base=wt.basedir)
     file_trans_id = {}
     top_pb = bzrlib.ui.ui_factory.nested_progress_bar()
