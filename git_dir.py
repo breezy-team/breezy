@@ -58,6 +58,8 @@ class GitLockableFiles(lockable_files.LockableFiles):
 class GitDir(bzrdir.BzrDir):
     """An adapter to the '.git' dir used by git."""
 
+    _gitrepository_class = git_repository.GitRepository
+
     def __init__(self, transport, lockfiles, format):
         self._format = format
         self.root_transport = transport
@@ -83,7 +85,7 @@ class GitDir(bzrdir.BzrDir):
 
     def open_repository(self, shared=False):
         """'open' a repository for this dir."""
-        return git_repository.GitRepository(self, self._lockfiles)
+        return self._gitrepository_class(self, self._lockfiles)
 
     def open_workingtree(self):
         loc = urlutils.unescape_for_display(self.root_transport.base, 'ascii')
@@ -92,6 +94,8 @@ class GitDir(bzrdir.BzrDir):
 
 class GitBzrDirFormat(bzrdir.BzrDirFormat):
     """The .git directory control format."""
+
+    _gitdir_class = GitDir
 
     @classmethod
     def _known_formats(self):
@@ -106,11 +110,10 @@ class GitBzrDirFormat(bzrdir.BzrDirFormat):
         url = transport.base
         if url.startswith('readonly+'):
             url = url[len('readonly+'):]
-        path = urlutils.local_path_from_url(url)
         if not transport.has('.git'):
             raise errors.bzr_errors.NotBranchError(path=transport.base)
         lockfiles = GitLockableFiles(GitLock())
-        return GitDir(transport, lockfiles, self)
+        return self._gitdir_class(transport, lockfiles, self)
 
     @classmethod
     def probe_transport(klass, transport):

@@ -26,13 +26,14 @@ from bzrlib import (
 
 from bzrlib.plugins.git import tests
 from bzrlib.plugins.git import (
+    git_dir,
     git_repository,
     ids,
     model,
     )
 
 
-class TestGitRepository(tests.TestCaseInTempDir):
+class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
     """Feature tests for GitRepository."""
 
     _test_needs_features = [tests.GitCommandFeature]
@@ -145,11 +146,58 @@ class TestGitRepository(tests.TestCaseInTempDir):
             " u'subfile', parent_id='subdir',"
             " sha1='0ddb53cbe2dd209f550dd8d7f1287a5ed9b1ee8b', len=None))")
 
+
+class MemoryGitRepository(git_repository.GitRepository):
+    """A git repository without real git data on disk."""
+
+    @classmethod
+    def _make_model(klass, transport):
+        return None
+
+
+class MemoryGitDir(git_dir.GitDir):
+    """A git tree with real data on disk."""
+
+    _gitrepository_class = MemoryGitRepository
+
+
+class MemoryGitBzrDirFormat(git_dir.GitBzrDirFormat):
+    """Format for a git tree without real data on disk."""
+
+    _gitdir_class = MemoryGitDir
+
+
+class TestGitRepository(tests.TestCaseWithMemoryTransport):
+
+    def setUp(self):
+        tests.TestCaseWithMemoryTransport.setUp(self)
+        self.transport = self.get_transport()
+        self.transport.mkdir('.git')
+        self.git_dir = MemoryGitBzrDirFormat().open(self.transport)
+        self.git_repo = self.git_dir.open_repository()
+
     def test_supports_rich_root(self):
         # GitRepository.supports_rich_root is False, at least for now.
-        tests.run_git('init')
-        repo = repository.Repository.open('.')
+        repo = self.git_repo
         self.assertEqual(repo.supports_rich_root(), False)
+
+    def assertIsNullInventory(self, inv):
+        self.assertEqual(inv.root, None)
+        self.assertEqual(inv.revision_id, revision.NULL_REVISION)
+        self.assertEqual(list(inv.iter_entries()), [])
+
+    def test_get_inventory_none(self):
+        # GitRepository.get_inventory(None) returns the null inventory.
+        repo = self.git_repo
+        inv = repo.get_inventory(None)
+        self.assertIsNullInventory(inv)
+
+    def test_revision_tree_none(self):
+        # GitRepository.revision_tree(None) returns the null tree.
+        repo = self.git_repo
+        tree = repo.revision_tree(None)
+        self.assertEqual(tree.get_revision_id(), revision.NULL_REVISION)
+        self.assertIsNullInventory(tree.inventory)
 
 
 class TestGitRepositoryParseRev(tests.TestCase):

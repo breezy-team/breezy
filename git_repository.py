@@ -40,9 +40,14 @@ class GitRepository(repository.Repository):
     def __init__(self, gitdir, lockfiles):
         self.bzrdir = gitdir
         self.control_files = lockfiles
-        gitdirectory = gitdir.transport.local_abspath('.')
-        self._git = model.GitModel(gitdirectory)
+        self._git = self._make_model(gitdir.transport)
         self._revision_cache = {}
+
+    @classmethod
+    def _make_model(klass, transport):
+        gitdirectory = transport.local_abspath('.')
+        return model.GitModel(gitdirectory)
+
 
     def _ancestor_revisions(self, revision_ids):
         if revision_ids is not None:
