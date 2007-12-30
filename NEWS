@@ -70,6 +70,8 @@ IN DEVELOPMENT
    * Fix traceback when sending large response bodies over the smart protocol
      on Windows. (Andrew Bennetts, #115781)
 
+   * ``merge --weave --uncommitted`` now works.  (Aaron Bentley)
+
    * pycurl authentication handling was broken and incomplete. Fix handling of
      user:pass embedded in the urls.
      (Vincent Ladeuil, #177643)
