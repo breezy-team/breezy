@@ -823,7 +823,7 @@ class TreeTransform(object):
         conflicts = []
         removed_tree_ids = set((self.tree_file_id(trans_id) for trans_id in
                                 self._removed_id))
-        active_tree_ids = set((f for f in self._tree.inventory if
+        active_tree_ids = set((f for f in self._tree.iter_all_file_ids() if
                                f not in removed_tree_ids))
         for trans_id, file_id in self._new_id.iteritems():
             if file_id in active_tree_ids:

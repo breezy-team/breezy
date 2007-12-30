@@ -121,6 +121,14 @@ class TestFileIds(TestCaseWithTree):
         finally:
             tree.unlock()
 
+    def test_iter_all_file_ids(self):
+        work_tree = self.make_branch_and_tree('wt')
+        tree = self.get_tree_no_parents_abc_content(work_tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEqual(set(tree.iter_all_file_ids()),
+                         set(['b-id', 'root-id', 'c-id', 'a-id']))
+
 
 class TestFileContent(TestCaseWithTree):
 

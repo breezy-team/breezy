@@ -499,6 +499,14 @@ class WorkingTree4(WorkingTree3):
             mode = os.lstat(self.abspath(path)).st_mode
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
+    def iter_all_file_ids(self):
+        """See Tree.iter_all_file_ids"""
+        self._must_be_locked()
+        for key, tree_details in self.current_dirstate()._iter_entries():
+            if tree_details[0][0] in ('a', 'r'): # relocated
+                continue
+            yield key[2]
+
     @needs_read_lock
     def __iter__(self):
         """Iterate through file_ids for this tree.
