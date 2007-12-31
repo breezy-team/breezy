@@ -111,40 +111,45 @@ class BisectLog(object):
 
     def _find_middle_revid(self):
         self._load_bzr_tree()
-
-        high_revno = None
-        low_revno = None
-        middle_revno = None
         self._middle_revid = None
-        revno = 1
+
+        last_revid = self._bzrbranch.last_revision()
+        high_revid = None
+        low_revid = None
+        between_revs = []
         for revision in self._bzrbranch.revision_history():
+            between_revs.append(revision)
             matches = [x[1] for x in self._items 
                        if x[0] == revision and x[1] in ('yes', 'no')]
             if not matches:
-                revno = revno + 1
                 continue
             if len(matches) > 1:
-                raise RuntimeError("revision %s (revno %d) duplicated"
-                                   % (revision, revno))
+                raise RuntimeError("revision %s duplicated" % revision)
             if matches[0] == "yes":
-                high_revno = revno
+                high_revid = revision
+                del between_revs[-1]
                 break
             elif matches[0] == "no":
-                low_revno = revno
-            revno = revno + 1
+                low_revid = revision
+                between_revs = []
 
-        if not high_revno or not low_revno:
-            return
+        if not high_revid:
+            high_revid = last_revid
 
-        spread = high_revno - low_revno
-        if spread < 0:
-            raise RuntimeError("negative spread")
-        if spread < 3:
-            middle_revno = low_revno + 1
+        # The spread must include the high revision, to bias
+        # odd numbers of intervening revisions towards the high
+        # side.
+
+        spread = len(between_revs) + 1
+        if spread < 2:
+            middle_index = 0
         else:
-            middle_revno = low_revno + (spread / 2)
+            middle_index = (spread / 2) - 1
 
-        self._middle_revid = self._bzrbranch.get_rev_id(middle_revno)
+        if len(between_revs) > 0:
+            self._middle_revid = between_revs[middle_index]
+        else:
+            self._middle_revid = high_revid
 
     def _switch_wc_to_revno(self, revno):
         self._current.switch(revno)
