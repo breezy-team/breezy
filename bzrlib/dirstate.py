@@ -1194,7 +1194,7 @@ class DirState(object):
                     child_basename = child[0][1]
                     minikind = child[1][0][0]
                     fingerprint = child[1][0][4]
-                    executable = inv_entry.executable
+                    executable = child[1][0][3]
                     old_child_path = osutils.pathjoin(child[0][0],
                                                       child[0][1])
                     deletes[child[0][2]] = (old_child_path, child[0][2])
