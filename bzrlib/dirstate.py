@@ -1040,10 +1040,7 @@ class DirState(object):
             entire_entry[tree_offset + 2] = str(tree_data[2])
             # executable
             entire_entry[tree_offset + 3] = DirState._to_yesno[tree_data[3]]
-        try:
-            return '\0'.join(entire_entry)
-        except TypeError:
-            raise
+        return '\0'.join(entire_entry)
 
     def _fields_per_entry(self):
         """How many null separated fields should be in each entry row.
