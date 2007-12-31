@@ -1207,6 +1207,7 @@ class DirState(object):
                                          fingerprint, new_child_path)
         self._apply_removals(deletes.values())
         self._apply_insertions(adds.values())
+        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
 
     def _apply_removals(self, removals):
         for path, file_id in sorted(removals, reverse=True):

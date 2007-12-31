@@ -1225,7 +1225,9 @@ class WorkingTree4(WorkingTree3):
     @needs_tree_write_lock
     def apply_inventory_delta(self, changes):
         """See MutableTree.apply_inventory_delta"""
-        self.current_dirstate().update_by_delta(changes, self.basedir)
+        state = self.current_dirstate()
+        state.update_by_delta(changes, self.basedir)
+        self._make_dirty(reset_inventory=True)
 
     def update_basis_by_delta(self, new_revid, delta):
         """See MutableTree.update_basis_by_delta."""
