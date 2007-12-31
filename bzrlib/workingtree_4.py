@@ -1609,6 +1609,10 @@ class DirStateRevisionTree(Tree):
             raise errors.NoSuchId(tree=self, file_id=file_id)
         return dirstate.DirState._minikind_to_kind[entry[1][0]]
 
+    def stored_kind(self, file_id):
+        """See Tree.stored_kind"""
+        return self.kind(file_id)
+
     def path_content_summary(self, path):
         """See Tree.path_content_summary."""
         id = self.inventory.path2id(path)

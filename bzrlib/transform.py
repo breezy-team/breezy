@@ -880,7 +880,6 @@ class TreeTransform(object):
             conflicts = self.find_conflicts()
             if len(conflicts) != 0:
                 raise MalformedTransform(conflicts=conflicts)
-        inv = self._tree.inventory
         inventory_delta = []
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
@@ -892,8 +891,7 @@ class TreeTransform(object):
                 child_pb.update('Apply phase', 0, 2)
                 self._apply_removals(inventory_delta, mover)
                 child_pb.update('Apply phase', 1, 2)
-                modified_paths = self._apply_insertions(inv, inventory_delta,
-                                                        mover)
+                modified_paths = self._apply_insertions(inventory_delta, mover)
             except:
                 mover.rollback()
                 raise
@@ -987,7 +985,7 @@ class TreeTransform(object):
         finally:
             child_pb.finished()
 
-    def _apply_insertions(self, inv, inventory_delta, mover):
+    def _apply_insertions(self, inventory_delta, mover):
         """Perform tree operations that insert directory/inventory names.
         
         That is, create any files that need to be created, and restore from
@@ -1002,10 +1000,6 @@ class TreeTransform(object):
             for num, (path, trans_id) in enumerate(new_paths):
                 new_entry = None
                 child_pb.update('adding file', num, len(new_paths))
-                try:
-                    kind = self._new_contents[trans_id]
-                except KeyError:
-                    kind = contents = None
                 if trans_id in self._new_contents or \
                     self.path_changed(trans_id):
                     full_path = self._tree.abspath(path)
@@ -1021,13 +1015,17 @@ class TreeTransform(object):
                     if trans_id in self._new_contents:
                         modified_paths.append(full_path)
                         completed_new.append(trans_id)
-
-                if trans_id in self._new_id:
-                    if kind is None:
-                        kind = file_kind(self._tree.abspath(path))
+                file_id = self.final_file_id(trans_id)
+                if file_id is not None and (trans_id in self._new_id or
+                    trans_id in self._new_name or trans_id in self._new_parent
+                    or trans_id in self._new_executability):
+                    try:
+                        kind = self.final_kind(trans_id)
+                    except NoSuchFile:
+                        kind = self._tree.stored_kind(file_id)
                     if trans_id in self._new_reference_revision:
                         new_entry = inventory.TreeReference(
-                            self._new_id[trans_id],
+                            self.final_file_id(trans_id),
                             self._new_name[trans_id], 
                             self.final_file_id(self._new_parent[trans_id]),
                             None, self._new_reference_revision[trans_id])
@@ -1035,34 +1033,16 @@ class TreeTransform(object):
                         new_entry = inventory.make_entry(kind,
                             self.final_name(trans_id),
                             self.final_file_id(self.final_parent(trans_id)),
-                            self._new_id[trans_id])
-                else:
-                    if trans_id in self._new_name or trans_id in\
-                        self._new_parent or\
-                        trans_id in self._new_executability:
-                        file_id = self.final_file_id(trans_id)
-                        if file_id is not None:
-                            entry = inv[file_id]
-                            new_entry = entry.copy()
-
-                    if trans_id in self._new_name or trans_id in\
-                        self._new_parent:
-                            if new_entry is not None:
-                                new_entry.name = self.final_name(trans_id)
-                                parent = self.final_parent(trans_id)
-                                parent_id = self.final_file_id(parent)
-                                new_entry.parent_id = parent_id
+                            self.final_file_id(trans_id))
+                    try:
+                        old_path = self._tree.id2path(new_entry.file_id)
+                    except errors.NoSuchId:
+                        old_path = None
+                    inventory_delta.append((old_path, path, new_entry.file_id,
+                                            new_entry))
 
                 if trans_id in self._new_executability:
                     self._set_executability(path, new_entry, trans_id)
-                if new_entry is not None:
-                    if new_entry.file_id in inv:
-                        old_path = inv.id2path(new_entry.file_id)
-                    else:
-                        old_path = None
-                    inventory_delta.append((old_path, path,
-                                            new_entry.file_id,
-                                            new_entry))
         finally:
             child_pb.finished()
         for trans_id in completed_new:

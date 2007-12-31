@@ -189,6 +189,14 @@ class Tree(object):
         raise NotImplementedError("Tree subclass %s must implement kind"
             % self.__class__.__name__)
 
+    def stored_kind(self, file_id):
+        """File kind stored for this file_id.
+
+        May not match kind on disk for working trees.  Always available,
+        even for missing files.
+        """
+        return self.kind(file_id)
+
     def path_content_summary(self, path):
         """Get a summary of the information about path.
         

@@ -1702,6 +1702,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def kind(self, file_id):
         return file_kind(self.id2abspath(file_id))
 
+    def stored_kind(self, file_id):
+        """See Tree.stored_kind"""
+        return self.inventory[file_id].kind
+
     def _comparison_data(self, entry, path):
         abspath = self.abspath(path)
         try:
