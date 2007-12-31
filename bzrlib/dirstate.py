@@ -1040,7 +1040,10 @@ class DirState(object):
             entire_entry[tree_offset + 2] = str(tree_data[2])
             # executable
             entire_entry[tree_offset + 3] = DirState._to_yesno[tree_data[3]]
-        return '\0'.join(entire_entry)
+        try:
+            return '\0'.join(entire_entry)
+        except TypeError:
+            raise
 
     def _fields_per_entry(self):
         """How many null separated fields should be in each entry row.
@@ -1167,7 +1170,6 @@ class DirState(object):
         self._read_dirblocks_if_needed()
         adds = {}
         deletes = {}
-        inv_to_entry = self._inv_entry_to_working_details
         handled = set()
         for old_path, new_path, file_id, inv_entry in sorted(delta,
                                                              reverse=True):
@@ -1185,9 +1187,6 @@ class DirState(object):
                     fingerprint = inv_entry.reference_revision
                 else:
                     fingerprint = ''
-                size = inv_entry.text_size
-                if size is None:
-                    size = 0
                 adds[file_id] = (key, minikind, inv_entry.executable,
                                  fingerprint, new_path)
             if None not in (old_path, new_path):
@@ -1199,7 +1198,6 @@ class DirState(object):
                     minikind = child[1][0][0]
                     fingerprint = child[1][0][4]
                     executable = inv_entry.executable
-                    size = child[1][0][1]
                     old_child_path = osutils.pathjoin(child[0][0],
                                                       child[0][1])
                     deletes[child[0][2]] = (old_child_path, child[0][2])
@@ -1219,7 +1217,7 @@ class DirState(object):
             block_i, entry_i, d_present, f_present = \
                 self._get_block_entry_index(dirname, basename, 0)
             entry = self._dirblocks[block_i][1][entry_i]
-            entry[1][0] = ('a', '', 0, False)
+            entry[1][0] = ('a', '', 0, False, '')
 
     def _apply_insertions(self, adds):
         for key, minikind, executable, fingerprint, path_utf8 in sorted(adds):
@@ -1832,39 +1830,6 @@ class DirState(object):
         else:
             raise Exception("can't pack %s" % inv_entry)
         return (minikind, fingerprint, size, executable, tree_data)
-
-    def _inv_entry_to_working_details(self, inv_entry, stat):
-        """Convert an inventory entry to working details.
-
-        :param inv_entry: An inventory entry.
-        :return: A details tuple - the details for a single tree at a path +
-            id.
-        """
-        kind = inv_entry.kind
-        minikind = DirState._kind_to_minikind[kind]
-        if stat is None:
-            packed_stat = ''
-        else:
-            packed_stat = pack_stat(stat)
-        if kind == 'directory':
-            fingerprint = ''
-            size = 0
-            executable = False
-        elif kind == 'symlink':
-            fingerprint = inv_entry.symlink_target or ''
-            size = 0
-            executable = False
-        elif kind == 'file':
-            fingerprint = inv_entry.text_sha1 or ''
-            size = inv_entry.text_size or 0
-            executable = inv_entry.executable
-        elif kind == 'tree-reference':
-            fingerprint = inv_entry.reference_revision or ''
-            size = 0
-            executable = False
-        else:
-            raise Exception("can't pack %s" % inv_entry)
-        return (minikind, fingerprint, size, executable)
 
     def _iter_child_entries(self, tree_index, path_utf8):
         """Iterate over all the entries that are children of path_utf.
