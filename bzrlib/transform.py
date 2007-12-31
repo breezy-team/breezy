@@ -981,6 +981,9 @@ class TreeTransform(object):
                     else:
                         file_id = self.tree_file_id(trans_id)
                     assert file_id is not None
+                    # File-id isn't really being deleted, just moved
+                    if file_id in self._r_new_id:
+                        continue
                     inventory_delta.append((path, None, file_id, None))
         finally:
             child_pb.finished()

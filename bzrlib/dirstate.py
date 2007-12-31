@@ -1165,35 +1165,53 @@ class DirState(object):
 
     def update_by_delta(self, delta, root_dir):
         self._read_dirblocks_if_needed()
-        adds = []
-        deletes = []
-        changes = []
+        adds = {}
+        deletes = {}
         inv_to_entry = self._inv_entry_to_working_details
-        for old_path, new_path, file_id, inv_entry in delta:
-            if old_path != new_path:
-                if old_path is not None:
-                    deletes.append((old_path, file_id))
-                if new_path is not None:
-                    try:
-                        abspath = osutils.pathjoin(root_dir, new_path)
-                        stat = self._lstat(abspath, None)
-                    except OSError, e:
-                        if e.errno != errno.ENOENT:
-                            raise
-                        stat = None
-                    adds.append((new_path, file_id, inv_entry))
-                if None not in (old_path, new_path):
-                    for child in self._iter_child_entries(0, old_path):
-                        old_child_path = osutils.pathjoin(child[0][0],
-                            child[0][1])
-                        child_suffix = old_child_path[len(old_path):]
-                        new_child_path = new_path + child_suffix
-                        deletes.append((old_child_path, child[0][2]))
-            else:
-                changes.append((old_path, file_id, inv_to_entry))
-        self._apply_removals(deletes)
-        self._apply_changes(changes)
-        self._apply_insertions(adds)
+        handled = set()
+        for old_path, new_path, file_id, inv_entry in sorted(delta,
+                                                             reverse=True):
+            assert file_id not in adds
+            assert file_id not in deletes
+            if old_path is not None:
+                old_path = old_path.encode('utf-8')
+                deletes[file_id] = (old_path, file_id)
+            if new_path is not None:
+                new_path = new_path.encode('utf-8')
+                dirname, basename = osutils.split(new_path)
+                key = (dirname, basename, file_id)
+                minikind = DirState._kind_to_minikind[inv_entry.kind]
+                if minikind == 't':
+                    fingerprint = inv_entry.reference_revision
+                else:
+                    fingerprint = ''
+                size = inv_entry.text_size
+                if size is None:
+                    size = 0
+                adds[file_id] = (key, minikind, inv_entry.executable,
+                                 fingerprint, new_path)
+            if None not in (old_path, new_path):
+                for child in self._iter_child_entries(0, old_path):
+                    if child[0][2] in adds or child[0][2] in deletes:
+                        continue
+                    last_child_dirname = child[0][0]
+                    child_basename = child[0][1]
+                    minikind = child[1][0][0]
+                    fingerprint = child[1][0][4]
+                    executable = inv_entry.executable
+                    size = child[1][0][1]
+                    old_child_path = osutils.pathjoin(child[0][0],
+                                                      child[0][1])
+                    deletes[child[0][2]] = (old_child_path, child[0][2])
+                    last_child_suffix = last_child_dirname[len(old_path):]
+                    new_child_dirname = (new_path + last_child_suffix)
+                    key = (new_child_dirname, child_basename, child[0][2])
+                    new_child_path = os.path.join(new_child_dirname,
+                                                  child_basename)
+                    adds[child[0][2]] = (key, minikind, executable,
+                                         fingerprint, new_child_path)
+        self._apply_removals(deletes.values())
+        self._apply_insertions(adds.values())
 
     def _apply_removals(self, removals):
         for path, file_id in sorted(removals, reverse=True):
@@ -1203,24 +1221,10 @@ class DirState(object):
             entry = self._dirblocks[block_i][1][entry_i]
             entry[1][0] = ('a', '', 0, False)
 
-    def _apply_changes(self, changes):
-        for path, file_id, entry in changes:
-            dirname, basename = osutils.split(path)
-            block_i, entry_i, d_present, f_present = \
-                self._get_block_entry_index(dirname, basename, 0)
-            entry = self._dirblocks[block_i][1][entry_i]
-            entry[1][0] = entry
-
     def _apply_insertions(self, adds):
-        for path, file_id, inv_entry in sorted(adds):
-            dirname, basename = osutils.split(path)
-            key = (dirname, basename, file_id)
-            minikind = DirState._kind_to_minikind[inv_entry.kind]
-            size = inv_entry.text_size
-            if size is None:
-                size = 0
-            self.update_minimal(key, minikind, inv_entry.executable,
-                                size=size, path_utf8=path.encode('utf-8'))
+        for key, minikind, executable, fingerprint, path_utf8 in sorted(adds):
+            self.update_minimal(key, minikind, executable, fingerprint,
+                                path_utf8=path_utf8)
 
     def update_basis_by_delta(self, delta, new_revid):
         """Update the parents of this tree after a commit.
