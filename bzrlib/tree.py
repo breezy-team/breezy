@@ -192,8 +192,8 @@ class Tree(object):
     def stored_kind(self, file_id):
         """File kind stored for this file_id.
 
-        May not match kind on disk for working trees.  Always available,
-        even for missing files.
+        May not match kind on disk for working trees.  Always available
+        for versioned files, even when the file itself is missing.
         """
         return self.kind(file_id)
 

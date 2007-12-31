@@ -1232,7 +1232,7 @@ class WorkingTree4(WorkingTree3):
     def apply_inventory_delta(self, changes):
         """See MutableTree.apply_inventory_delta"""
         state = self.current_dirstate()
-        state.update_by_delta(changes, self.basedir)
+        state.update_by_delta(changes)
         self._make_dirty(reset_inventory=True)
 
     def update_basis_by_delta(self, new_revid, delta):

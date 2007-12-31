@@ -1163,7 +1163,12 @@ class DirState(object):
             raise
         return result
 
-    def update_by_delta(self, delta, root_dir):
+    def update_by_delta(self, delta):
+        """Apply an inventory delta to the dirstate for tree 0
+
+        :param delta: An inventory delta.  See Inventory.apply_delta for
+            details.
+        """
         self._read_dirblocks_if_needed()
         insertions = {}
         removals = {}
