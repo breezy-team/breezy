@@ -1167,7 +1167,6 @@ class DirState(object):
         self._read_dirblocks_if_needed()
         insertions = {}
         removals = {}
-        handled = set()
         for old_path, new_path, file_id, inv_entry in sorted(delta,
                                                              reverse=True):
             assert file_id not in insertions
