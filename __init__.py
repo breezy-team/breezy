@@ -197,7 +197,7 @@ class cmd_bisect(Command):
 
     bzr bisect no [-r rev]
         The specified revision (or the current revision, if not given)
-        does not have the charactistic we're looking for,
+        does not have the characteristic we're looking for,
 
     bzr bisect move -r rev
         Switch to a different revision manually.  Use if the bisect
