@@ -88,8 +88,7 @@ class BisectLog(object):
         self._items = []
         self._current = BisectCurrent()
         self._bzrdir = None
-        self._low_revno = None
-        self._middle_revno = None
+        self._middle_revid = None
         self.change_file_name(filename)
         self.load()
 
@@ -110,12 +109,13 @@ class BisectLog(object):
             self._bzrdir = bzrlib.bzrdir.BzrDir.open_containing('.')[0]
             self._bzrbranch = self._bzrdir.open_branch()
 
-    def _find_current_range(self):
+    def _find_middle_revid(self):
         self._load_bzr_tree()
 
-        self._high_revno = None
-        self._low_revno = None
-        self._middle_revno = None
+        high_revno = None
+        low_revno = None
+        middle_revno = None
+        self._middle_revid = None
         revno = 1
         for revision in self._bzrbranch.revision_history():
             matches = [x[1] for x in self._items 
@@ -127,22 +127,24 @@ class BisectLog(object):
                 raise RuntimeError("revision %s (revno %d) duplicated"
                                    % (revision, revno))
             if matches[0] == "yes":
-                self._high_revno = revno
+                high_revno = revno
                 break
             elif matches[0] == "no":
-                self._low_revno = revno
+                low_revno = revno
             revno = revno + 1
 
-        if not self._high_revno or not self._low_revno:
+        if not high_revno or not low_revno:
             return
 
-        spread = self._high_revno - self._low_revno
+        spread = high_revno - low_revno
         if spread < 0:
             raise RuntimeError("negative spread")
         if spread < 3:
-            self._middle_revno = self._low_revno + 1
+            middle_revno = low_revno + 1
         else:
-            self._middle_revno = self._low_revno + (spread / 2)
+            middle_revno = low_revno + (spread / 2)
+
+        self._middle_revid = self._bzrbranch.get_rev_id(middle_revno)
 
     def _switch_wc_to_revno(self, revno):
         self._current.switch(revno)
@@ -176,9 +178,9 @@ class BisectLog(object):
         self._set_status(self._current.get_current_revid(), status)
 
     def bisect(self):
-        self._find_current_range()
-        if self._middle_revno:
-            self._switch_wc_to_revno(self._middle_revno)
+        self._find_middle_revid()
+        if self._middle_revid:
+            self._switch_wc_to_revno(self._middle_revid)
 
 class cmd_bisect(Command):
     """Find an interesting commit using a binary search.
