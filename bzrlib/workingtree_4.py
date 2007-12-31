@@ -1223,6 +1223,12 @@ class WorkingTree4(WorkingTree3):
                 self._inventory.remove_recursive_id(file_id)
 
     @needs_tree_write_lock
+    def rename_one(self, from_rel, to_rel, after=False):
+        """See WorkingTree.rename_one"""
+        self.flush()
+        WorkingTree.rename_one(self, from_rel, to_rel, after)
+
+    @needs_tree_write_lock
     def apply_inventory_delta(self, changes):
         """See MutableTree.apply_inventory_delta"""
         state = self.current_dirstate()
