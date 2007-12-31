@@ -25,12 +25,13 @@ class BisectTestCase(bzrlib.tests.TestCaseWithTransport):
     def assertRevno(self, rev):
         "Make sure we're at the right revision."
 
-        rev_contents = { 1: "one", 2: "two", 3: "three",
+        rev_contents = { 1: "one", 1.1: "one dot one", 1.2: "one dot two",
+                         1.3: "one dot three", 2: "two", 3: "three",
                          4: "four", 5: "five" }
 
         f = open("test_file")
         if f.read() != rev_contents[rev]:
-            raise AssertionError("not at revision %d" % rev)
+            raise AssertionError("not at revision %0.1f" % rev)
 
     def setUp(self):
         bzrlib.tests.TestCaseWithTransport.setUp(self)
@@ -135,6 +136,34 @@ class BisectFuncTests(BisectTestCase):
 
         self.run_bzr(['bisect', 'no'])
         self.assertRevno(3)
+
+    def testWorkflowSubtree(self):
+        # Similar to testWorkflow, but make sure the plugin traverses
+        # subtrees when the "final" revision is a merge point.
+
+        # This part is similar to testWorkflow.
+
+        self.run_bzr(['bisect', 'start'])
+        self.run_bzr(['bisect', 'yes'])
+        self.run_bzr(['bisect', 'no', '-r', '1'])
+        self.run_bzr(['bisect', 'yes'])
+
+        # Check to make sure we're where we expect to be.
+
+        self.assertRevno(2)
+
+        # Now, mark the merge point revno, meaning the feature
+        # appeared at a merge point.
+
+        self.run_bzr(['bisect', 'yes'])
+        self.assertRevno(1.2)
+
+        # Continue bisecting along the subtree to the real conclusion.
+
+        self.run_bzr(['bisect', 'yes'])
+        self.assertRevno(1.1)
+        self.run_bzr(['bisect', 'yes'])
+        self.assertRevno(1.1)
 
     def testMove(self):
         # Set up a bisection in progress.
