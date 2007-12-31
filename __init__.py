@@ -114,11 +114,12 @@ class BisectLog(object):
         self._middle_revid = None
 
         last_revid = self._bzrbranch.last_revision()
+        rev_sequence = self._bzrbranch.repository.iter_reverse_revision_history(last_revid)
         high_revid = None
         low_revid = None
         between_revs = []
-        for revision in self._bzrbranch.revision_history():
-            between_revs.append(revision)
+        for revision in rev_sequence:
+            between_revs.insert(0, revision)
             matches = [x[1] for x in self._items 
                        if x[0] == revision and x[1] in ('yes', 'no')]
             if not matches:
@@ -127,11 +128,11 @@ class BisectLog(object):
                 raise RuntimeError("revision %s duplicated" % revision)
             if matches[0] == "yes":
                 high_revid = revision
-                del between_revs[-1]
-                break
+                between_revs = []
             elif matches[0] == "no":
                 low_revid = revision
-                between_revs = []
+                del between_revs[0]
+                break
 
         if not high_revid:
             high_revid = last_revid
