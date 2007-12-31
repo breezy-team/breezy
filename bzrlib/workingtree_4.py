@@ -1222,6 +1222,11 @@ class WorkingTree4(WorkingTree3):
             for file_id in file_ids:
                 self._inventory.remove_recursive_id(file_id)
 
+    @needs_tree_write_lock
+    def apply_inventory_delta(self, changes):
+        """See MutableTree.apply_inventory_delta"""
+        self.current_dirstate().update_by_delta(changes, self.basedir)
+
     def update_basis_by_delta(self, new_revid, delta):
         """See MutableTree.update_basis_by_delta."""
         assert self.last_revision() != new_revid

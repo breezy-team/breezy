@@ -1163,6 +1163,65 @@ class DirState(object):
             raise
         return result
 
+    def update_by_delta(self, delta, root_dir):
+        self._read_dirblocks_if_needed()
+        adds = []
+        deletes = []
+        changes = []
+        inv_to_entry = self._inv_entry_to_working_details
+        for old_path, new_path, file_id, inv_entry in delta:
+            if old_path != new_path:
+                if old_path is not None:
+                    deletes.append((old_path, file_id))
+                if new_path is not None:
+                    try:
+                        abspath = osutils.pathjoin(root_dir, new_path)
+                        stat = self._lstat(abspath, None)
+                    except OSError, e:
+                        if e.errno != errno.ENOENT:
+                            raise
+                        stat = None
+                    adds.append((new_path, file_id, inv_entry))
+                if None not in (old_path, new_path):
+                    for child in self._iter_child_entries(0, old_path):
+                        old_child_path = osutils.pathjoin(child[0][0],
+                            child[0][1])
+                        child_suffix = old_child_path[len(old_path):]
+                        new_child_path = new_path + child_suffix
+                        deletes.append((old_child_path, child[0][2]))
+            else:
+                changes.append((old_path, file_id, inv_to_entry))
+        self._apply_removals(deletes)
+        self._apply_changes(changes)
+        self._apply_insertions(adds)
+
+    def _apply_removals(self, removals):
+        for path, file_id in sorted(removals, reverse=True):
+            dirname, basename = osutils.split(path)
+            block_i, entry_i, d_present, f_present = \
+                self._get_block_entry_index(dirname, basename, 0)
+            entry = self._dirblocks[block_i][1][entry_i]
+            entry[1][0] = ('a', '', 0, False)
+
+    def _apply_changes(self, changes):
+        for path, file_id, entry in changes:
+            dirname, basename = osutils.split(path)
+            block_i, entry_i, d_present, f_present = \
+                self._get_block_entry_index(dirname, basename, 0)
+            entry = self._dirblocks[block_i][1][entry_i]
+            entry[1][0] = entry
+
+    def _apply_insertions(self, adds):
+        for path, file_id, inv_entry in sorted(adds):
+            dirname, basename = osutils.split(path)
+            key = (dirname, basename, file_id)
+            minikind = DirState._kind_to_minikind[inv_entry.kind]
+            size = inv_entry.text_size
+            if size is None:
+                size = 0
+            self.update_minimal(key, minikind, inv_entry.executable,
+                                size=size, path_utf8=path.encode('utf-8'))
+
     def update_basis_by_delta(self, delta, new_revid):
         """Update the parents of this tree after a commit.
 
@@ -1769,6 +1828,39 @@ class DirState(object):
         else:
             raise Exception("can't pack %s" % inv_entry)
         return (minikind, fingerprint, size, executable, tree_data)
+
+    def _inv_entry_to_working_details(self, inv_entry, stat):
+        """Convert an inventory entry to working details.
+
+        :param inv_entry: An inventory entry.
+        :return: A details tuple - the details for a single tree at a path +
+            id.
+        """
+        kind = inv_entry.kind
+        minikind = DirState._kind_to_minikind[kind]
+        if stat is None:
+            packed_stat = ''
+        else:
+            packed_stat = pack_stat(stat)
+        if kind == 'directory':
+            fingerprint = ''
+            size = 0
+            executable = False
+        elif kind == 'symlink':
+            fingerprint = inv_entry.symlink_target or ''
+            size = 0
+            executable = False
+        elif kind == 'file':
+            fingerprint = inv_entry.text_sha1 or ''
+            size = inv_entry.text_size or 0
+            executable = inv_entry.executable
+        elif kind == 'tree-reference':
+            fingerprint = inv_entry.reference_revision or ''
+            size = 0
+            executable = False
+        else:
+            raise Exception("can't pack %s" % inv_entry)
+        return (minikind, fingerprint, size, executable)
 
     def _iter_child_entries(self, tree_index, path_utf8):
         """Iterate over all the entries that are children of path_utf.
