@@ -1190,7 +1190,7 @@ class DirState(object):
                 for child in self._iter_child_entries(0, old_path):
                     if child[0][2] in adds or child[0][2] in deletes:
                         continue
-                    last_child_dirname = child[0][0]
+                    child_dirname = child[0][0]
                     child_basename = child[0][1]
                     minikind = child[1][0][0]
                     fingerprint = child[1][0][4]
@@ -1198,8 +1198,8 @@ class DirState(object):
                     old_child_path = osutils.pathjoin(child[0][0],
                                                       child[0][1])
                     deletes[child[0][2]] = (old_child_path, child[0][2])
-                    last_child_suffix = last_child_dirname[len(old_path):]
-                    new_child_dirname = (new_path + last_child_suffix)
+                    child_suffix = child_dirname[len(old_path):]
+                    new_child_dirname = (new_path + child_suffix)
                     key = (new_child_dirname, child_basename, child[0][2])
                     new_child_path = os.path.join(new_child_dirname,
                                                   child_basename)
