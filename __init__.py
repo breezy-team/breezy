@@ -151,6 +151,8 @@ class BisectLog(object):
         self._current.show_rev_log()
 
     def _set_status(self, revid, status):
+        if revid in [x[0] for x in self._items if x[1] in ['yes', 'no']]:
+            raise RuntimeError, "attempting to add revid %s twice" % revid
         self._items.append((revid, status))
 
     def change_file_name(self, filename):
