@@ -90,6 +90,13 @@ class BisectCurrentUnitTests(BisectTestCase):
         self.assertRevno(5)
         assert not os.path.exists(bisect.bisect_rev_path)
 
+    def testIsMergePoint(self):
+        bc = bisect.BisectCurrent()
+        self.assertRevno(5)
+        assert not bc.is_merge_point()
+        bc.switch(2)
+        assert bc.is_merge_point()
+
 class BisectLogUnitTests(BisectTestCase):
     def testCreateBlank(self):
         bl = bisect.BisectLog()

@@ -49,6 +49,10 @@ class BisectCurrent(object):
     def get_current_revid(self):
         return self._revid
 
+    def is_merge_point(self):
+        "Is the current revision a merge point?"
+        return False
+
     def show_rev_log(self, out = sys.stdout):
         from bzrlib.log import ShortLogFormatter, show_log
         lf = ShortLogFormatter(out, show_ids = True)
