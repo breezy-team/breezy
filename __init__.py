@@ -366,16 +366,7 @@ class cmd_bisect(Command):
 
 register_command(cmd_bisect)
 
-# Tests.
-
 
 def test_suite():
-    from bzrlib.tests.TestUtil import TestLoader, TestSuite
     from bzrlib.plugins.bisect import tests
-    suite = TestSuite()
-    suite.addTest(TestLoader().loadTestsFromTestCase(tests.BisectHarnessTests))
-    suite.addTest(TestLoader().loadTestsFromTestCase(tests.BisectFuncTests))
-    suite.addTest(TestLoader().loadTestsFromTestCase(
-        tests.BisectCurrentUnitTests))
-    suite.addTest(TestLoader().loadTestsFromTestCase(tests.BisectLogUnitTests))
-    return suite
+    return tests.test_suite()

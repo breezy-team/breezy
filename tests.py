@@ -270,3 +270,15 @@ class BisectFuncTests(BisectTestCase):
 
         self.run_bzr(['bisect', 'no'])
         self.assertRevno(3)
+
+
+def test_suite():
+    from bzrlib.tests.TestUtil import TestLoader, TestSuite
+    from bzrlib.plugins.bisect import tests
+    suite = TestSuite()
+    suite.addTest(TestLoader().loadTestsFromTestCase(tests.BisectHarnessTests))
+    suite.addTest(TestLoader().loadTestsFromTestCase(tests.BisectFuncTests))
+    suite.addTest(TestLoader().loadTestsFromTestCase(
+        tests.BisectCurrentUnitTests))
+    suite.addTest(TestLoader().loadTestsFromTestCase(tests.BisectLogUnitTests))
+    return suite
