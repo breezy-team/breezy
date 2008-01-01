@@ -19,6 +19,7 @@ import os
 import shutil
 import bzrlib.bzrdir
 import bzrlib.tests
+import bzrlib.revisionspec
 import bzrlib.plugins.bisect as bisect
 
 class BisectTestCase(bzrlib.tests.TestCaseWithTransport):
@@ -56,6 +57,7 @@ class BisectTestCase(bzrlib.tests.TestCaseWithTransport):
             f.write(content)
             f.close()
             clone_tree.commit(message = "make branch test change")
+            saved_subtree_revid = clone_tree.branch.last_revision()
 
         self.tree.merge_from_branch(clone_tree.branch)
         f = open("test_file", "w")
@@ -64,6 +66,8 @@ class BisectTestCase(bzrlib.tests.TestCaseWithTransport):
         self.tree.commit(message = "merge external branch")
         shutil.rmtree("../temp-clone")
 
+        self.subtree_rev = saved_subtree_revid
+
         file_contents = ["three", "four", "five"]
         for content in file_contents:
             f = open("test_file", "w")
@@ -71,11 +75,35 @@ class BisectTestCase(bzrlib.tests.TestCaseWithTransport):
             f.close()
             self.tree.commit(message = "make test change")
 
+class BisectHarnessTests(BisectTestCase):
+    def testLastRev(self):
+        top_revtree = self.tree.branch.repository.revision_tree(self.tree.last_revision())
+        top_revtree.lock_read()
+        top_file = top_revtree.get_file(top_revtree.path2id("test_file"))
+        test_content = top_file.read().strip()
+        top_file.close()
+        top_revtree.unlock()
+        assert test_content == "five"
+
+    def testSubtreeRev(self):
+        sub_revtree = self.tree.branch.repository.revision_tree(self.subtree_rev)
+        sub_revtree.lock_read()
+        sub_file = sub_revtree.get_file(sub_revtree.path2id("test_file"))
+        test_content = sub_file.read().strip()
+        sub_file.close()
+        sub_revtree.unlock()
+        assert test_content == "one dot three"
+
 class BisectCurrentUnitTests(BisectTestCase):
     def testShowLog(self):
         # Not a very good test; just makes sure the code doesn't fail,
         # not that the output makes any sense.
         bisect.BisectCurrent().show_rev_log()
+
+    def testShowLogSubtree(self):
+        bc = bisect.BisectCurrent()
+        bc.switch(self.subtree_rev)
+        bc.show_rev_log()
 
     def testSwitchVersions(self):
         bc = bisect.BisectCurrent()
