@@ -49,19 +49,17 @@ class BisectCurrent(object):
     def get_current_revid(self):
         return self._revid
 
-    def _get_parent_revids(self):
+    def get_parent_revids(self):
         return self._bzrbranch.repository.get_parents([self._revid])[0]
 
     def is_merge_point(self):
         "Is the current revision a merge point?"
-        return len(self._get_parent_revids()) > 1
+        return len(self.get_parent_revids()) > 1
 
     def show_rev_log(self, out = sys.stdout):
-        from bzrlib.log import ShortLogFormatter, show_log
-        lf = ShortLogFormatter(out, show_ids = True)
-        revno = self._bzrbranch.revision_id_to_revno(self._revid)
-        show_log(self._bzrbranch, lf,
-                 start_revision = revno, end_revision = revno)
+        rev = self._bzrbranch.repository.get_revision(self._revid)
+        sys.stdout.write("On revision ?? (%s):\n%s\n" % (rev.revision_id,
+                                                         rev.message))
 
     def switch(self, revid):
         wt = self._bzrdir.open_workingtree()
@@ -88,6 +86,8 @@ class BisectLog(object):
         self._items = []
         self._current = BisectCurrent()
         self._bzrdir = None
+        self._high_revid = None
+        self._low_revid = None
         self._middle_revid = None
         self.change_file_name(filename)
         self.load()
@@ -109,11 +109,15 @@ class BisectLog(object):
             self._bzrdir = bzrlib.bzrdir.BzrDir.open_containing('.')[0]
             self._bzrbranch = self._bzrdir.open_branch()
 
-    def _find_middle_revid(self):
+    def _find_range_and_middle(self, branch_last_rev = None):
         self._load_bzr_tree()
         self._middle_revid = None
 
-        last_revid = self._bzrbranch.last_revision()
+        if not branch_last_rev:
+            last_revid = self._bzrbranch.last_revision()
+        else:
+            last_revid = branch_last_rev
+
         rev_sequence = self._bzrbranch.repository.iter_reverse_revision_history(last_revid)
         high_revid = None
         low_revid = None
@@ -136,6 +140,8 @@ class BisectLog(object):
 
         if not high_revid:
             high_revid = last_revid
+        if not low_revid:
+            low_revid = self._bzrbranch.get_rev_id(1)
 
         # The spread must include the high revision, to bias
         # odd numbers of intervening revisions towards the high
@@ -151,6 +157,9 @@ class BisectLog(object):
             self._middle_revid = between_revs[middle_index]
         else:
             self._middle_revid = high_revid
+
+        self._high_revid = high_revid
+        self._low_revid = low_revid
 
     def _switch_wc_to_revno(self, revno):
         self._current.switch(revno)
@@ -186,9 +195,21 @@ class BisectLog(object):
         self._set_status(self._current.get_current_revid(), status)
 
     def bisect(self):
-        self._find_middle_revid()
-        if self._middle_revid:
-            self._switch_wc_to_revno(self._middle_revid)
+        self._find_range_and_middle()
+        self._switch_wc_to_revno(self._middle_revid)
+
+        # If we've found the "final" revision, check for a
+        # merge point.
+
+        if self._middle_revid == self._high_revid and \
+           self._current.is_merge_point():
+            for parent in self._current.get_parent_revids():
+                if parent == self._low_revid:
+                    continue
+                else:
+                    self._find_range_and_middle(parent)
+                    self._switch_wc_to_revno(self._middle_revid)
+                    break
 
 class cmd_bisect(Command):
     """Find an interesting commit using a binary search.
@@ -345,6 +366,7 @@ def test_suite():
     from bzrlib.tests.TestUtil import TestLoader, TestSuite
     from bzrlib.plugins.bisect import tests
     suite = TestSuite()
+    suite.addTest(TestLoader().loadTestsFromTestCase(tests.BisectHarnessTests))
     suite.addTest(TestLoader().loadTestsFromTestCase(tests.BisectFuncTests))
     suite.addTest(TestLoader().loadTestsFromTestCase(tests.BisectCurrentUnitTests))
     suite.addTest(TestLoader().loadTestsFromTestCase(tests.BisectLogUnitTests))
