@@ -27,6 +27,7 @@ from bzrlib.option import Option
 bisect_info_path = ".bzr/bisect"
 bisect_rev_path = ".bzr/bisect_revid"
 
+
 class BisectCurrent(object):
     "Bisect class for managing the current revision."
 
@@ -79,6 +80,7 @@ class BisectCurrent(object):
         if os.path.exists(bisect_rev_path):
             os.unlink(bisect_rev_path)
 
+
 class BisectLog(object):
     "Bisect log file handler."
 
@@ -118,13 +120,14 @@ class BisectLog(object):
         else:
             last_revid = branch_last_rev
 
-        rev_sequence = self._bzrbranch.repository.iter_reverse_revision_history(last_revid)
+        repo = self._bzrbranch.repository
+        rev_sequence = repo.iter_reverse_revision_history(last_revid)
         high_revid = None
         low_revid = None
         between_revs = []
         for revision in rev_sequence:
             between_revs.insert(0, revision)
-            matches = [x[1] for x in self._items 
+            matches = [x[1] for x in self._items
                        if x[0] == revision and x[1] in ('yes', 'no')]
             if not matches:
                 continue
@@ -167,7 +170,7 @@ class BisectLog(object):
 
     def _set_status(self, revid, status):
         if revid in [x[0] for x in self._items if x[1] in ['yes', 'no']]:
-            raise RuntimeError, "attempting to add revid %s twice" % revid
+            raise RuntimeError("attempting to add revid %s twice" % revid)
         self._items.append((revid, status))
 
     def change_file_name(self, filename):
@@ -210,6 +213,7 @@ class BisectLog(object):
                     self._find_range_and_middle(parent)
                     self._switch_wc_to_revno(self._middle_revid)
                     break
+
 
 class cmd_bisect(Command):
     """Find an interesting commit using a binary search.
@@ -284,9 +288,11 @@ class cmd_bisect(Command):
         elif subcommand in ('replay',) and args_list and len(args_list) == 1:
             log_fn = args_list[0]
         elif subcommand in ('move',) and not revision:
-            raise BzrCommandError("The 'bisect move' command requires a revision.")
+            raise BzrCommandError(
+                "The 'bisect move' command requires a revision.")
         elif args_list or revision:
-            raise BzrCommandError("Improper arguments to bisect " + subcommand)
+            raise BzrCommandError(
+                "Improper arguments to bisect " + subcommand)
 
         # Dispatch.
 
@@ -362,12 +368,14 @@ register_command(cmd_bisect)
 
 # Tests.
 
+
 def test_suite():
     from bzrlib.tests.TestUtil import TestLoader, TestSuite
     from bzrlib.plugins.bisect import tests
     suite = TestSuite()
     suite.addTest(TestLoader().loadTestsFromTestCase(tests.BisectHarnessTests))
     suite.addTest(TestLoader().loadTestsFromTestCase(tests.BisectFuncTests))
-    suite.addTest(TestLoader().loadTestsFromTestCase(tests.BisectCurrentUnitTests))
+    suite.addTest(TestLoader().loadTestsFromTestCase(
+        tests.BisectCurrentUnitTests))
     suite.addTest(TestLoader().loadTestsFromTestCase(tests.BisectLogUnitTests))
     return suite

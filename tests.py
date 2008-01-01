@@ -22,13 +22,15 @@ import bzrlib.tests
 import bzrlib.revisionspec
 import bzrlib.plugins.bisect as bisect
 
+
 class BisectTestCase(bzrlib.tests.TestCaseWithTransport):
+
     def assertRevno(self, rev):
         "Make sure we're at the right revision."
 
-        rev_contents = { 1: "one", 1.1: "one dot one", 1.2: "one dot two",
-                         1.3: "one dot three", 2: "two", 3: "three",
-                         4: "four", 5: "five" }
+        rev_contents = {1: "one", 1.1: "one dot one", 1.2: "one dot two",
+                        1.3: "one dot three", 2: "two", 3: "three",
+                        4: "four", 5: "five"}
 
         f = open("test_file")
         content = f.read().strip()
@@ -50,7 +52,8 @@ class BisectTestCase(bzrlib.tests.TestCaseWithTransport):
         f = open("test_file", "w")
         f.write("one")
         f.close()
-        self.tree.add(self.tree.relpath(os.path.join(os.getcwd(), 'test_file')))
+        self.tree.add(self.tree.relpath(os.path.join(os.getcwd(),
+                                                     'test_file')))
         self.tree.commit(message = "add test file")
 
         bzrlib.bzrdir.BzrDir.open(".").sprout("../temp-clone")
@@ -79,9 +82,12 @@ class BisectTestCase(bzrlib.tests.TestCaseWithTransport):
             f.close()
             self.tree.commit(message = "make test change")
 
+
 class BisectHarnessTests(BisectTestCase):
+
     def testLastRev(self):
-        top_revtree = self.tree.branch.repository.revision_tree(self.tree.last_revision())
+        repo = self.tree.branch.repository
+        top_revtree = repo.revision_tree(self.tree.last_revision())
         top_revtree.lock_read()
         top_file = top_revtree.get_file(top_revtree.path2id("test_file"))
         test_content = top_file.read().strip()
@@ -90,7 +96,8 @@ class BisectHarnessTests(BisectTestCase):
         assert test_content == "five"
 
     def testSubtreeRev(self):
-        sub_revtree = self.tree.branch.repository.revision_tree(self.subtree_rev)
+        repo = self.tree.branch.repository
+        sub_revtree = repo.revision_tree(self.subtree_rev)
         sub_revtree.lock_read()
         sub_file = sub_revtree.get_file(sub_revtree.path2id("test_file"))
         test_content = sub_file.read().strip()
@@ -98,7 +105,9 @@ class BisectHarnessTests(BisectTestCase):
         sub_revtree.unlock()
         assert test_content == "one dot three"
 
+
 class BisectCurrentUnitTests(BisectTestCase):
+
     def testShowLog(self):
         # Not a very good test; just makes sure the code doesn't fail,
         # not that the output makes any sense.
@@ -129,14 +138,18 @@ class BisectCurrentUnitTests(BisectTestCase):
         bc.switch(2)
         assert bc.is_merge_point()
 
+
 class BisectLogUnitTests(BisectTestCase):
+
     def testCreateBlank(self):
         bl = bisect.BisectLog()
         bl.save()
         assert os.path.exists(bisect.bisect_info_path)
 
     def testLoad(self):
-        open(bisect.bisect_info_path, "w").write("rev1 yes\nrev2 no\nrev3 yes\n")
+        f = open(bisect.bisect_info_path, "w")
+        f.write("rev1 yes\nrev2 no\nrev3 yes\n")
+        f.close()
 
         bl = bisect.BisectLog()
         assert len(bl._items) == 3
@@ -152,7 +165,9 @@ class BisectLogUnitTests(BisectTestCase):
         f = open(bisect.bisect_info_path)
         assert f.read() == "rev1 yes\nrev2 no\nrev3 yes\n"
 
+
 class BisectFuncTests(BisectTestCase):
+
     def testWorkflow(self):
         # Start up the bisection.  When the two ends are set, we should
         # end up in the middle.
