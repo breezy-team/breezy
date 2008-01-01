@@ -31,8 +31,12 @@ class BisectTestCase(bzrlib.tests.TestCaseWithTransport):
                          4: "four", 5: "five" }
 
         f = open("test_file")
-        if f.read() != rev_contents[rev]:
-            raise AssertionError("not at revision %0.1f" % rev)
+        content = f.read().strip()
+        if content != rev_contents[rev]:
+            rev_ids = dict((rev_contents[k], k) for k in rev_contents.keys())
+            found_rev = rev_ids[content]
+            raise AssertionError("expected rev %0.1f, found rev %0.1f"
+                                 % (rev, found_rev))
 
     def setUp(self):
         bzrlib.tests.TestCaseWithTransport.setUp(self)
