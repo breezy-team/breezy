@@ -191,7 +191,7 @@ def open_tracefile(tracefilename=None):
             tf.write("bug reports to https://bugs.launchpad.net/bzr/+filebug\n\n")
         _file_handler = logging.StreamHandler(tf)
         fmt = r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s'
-        datefmt = r'%a %H:%M:%S'
+        datefmt = r'%Y-%m-%d %H:%M:%S'
         _file_handler.setFormatter(logging.Formatter(fmt, datefmt))
         _file_handler.setLevel(logging.DEBUG)
         logging.getLogger('').addHandler(_file_handler)
