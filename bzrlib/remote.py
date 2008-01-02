@@ -26,7 +26,7 @@ from bzrlib import (
     repository,
     revision,
 )
-from bzrlib.branch import Branch, BranchReferenceFormat
+from bzrlib.branch import BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, RemoteBzrDirFormat
 from bzrlib.config import BranchConfig, TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
@@ -34,10 +34,6 @@ from bzrlib.errors import NoSuchRevision
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.pack import ContainerPushParser
 from bzrlib.smart import client, vfs
-from bzrlib.symbol_versioning import (
-    deprecated_method,
-    zero_ninetyone,
-    )
 from bzrlib.trace import note
 
 # Note: RemoteBzrDirFormat is in bzrdir.py
@@ -777,7 +773,6 @@ class RemoteRepository(object):
         from bzrlib import osutils
         import tarfile
         import tempfile
-        from StringIO import StringIO
         # TODO: Maybe a progress bar while streaming the tarball?
         note("Copying repository content as tarball...")
         tar_file = self._get_tarball('bz2')
