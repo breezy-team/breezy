@@ -30,7 +30,7 @@ from bzrlib.diff import (
     internal_diff,
     show_diff_trees,
     )
-from bzrlib.errors import BinaryFile, NoDiff
+from bzrlib.errors import BinaryFile, NoDiff, ExecutableMissing
 import bzrlib.osutils as osutils
 import bzrlib.patiencediff
 import bzrlib._patiencediff_py
@@ -1257,6 +1257,15 @@ class TestDiffFromTool(TestCaseWithTransport):
         self.addCleanup(diff_obj.finish)
         diff_obj._execute('old', 'new')
         self.assertEqual(output.getvalue(), 'old new\n')
+
+    def test_excute_missing(self):
+        diff_obj = DiffFromTool(['a-tool-which-is-unlikely-to-exist'],
+                                None, None, None)
+        self.addCleanup(diff_obj.finish)
+        e = self.assertRaises(ExecutableMissing, diff_obj._execute, 'old',
+                              'new')
+        self.assertEqual('a-tool-which-is-unlikely-to-exist could not be found'
+                         ' on this machine', str(e))
 
     def test_prepare_files(self):
         output = StringIO()

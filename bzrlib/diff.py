@@ -773,8 +773,15 @@ class DiffFromTool(DiffPath):
         return [t % my_map for t in self.command_template]
 
     def _execute(self, old_path, new_path):
-        proc = subprocess.Popen(self._get_command(old_path, new_path),
-                                stdout=subprocess.PIPE, cwd=self._root)
+        command = self._get_command(old_path, new_path)
+        try:
+            proc = subprocess.Popen(command, stdout=subprocess.PIPE,
+                                    cwd=self._root)
+        except OSError, e:
+            if e.errno == errno.ENOENT:
+                raise errors.ExecutableMissing(command[0])
+            else:
+                raise
         self.to_file.write(proc.stdout.read())
         return proc.wait()
 
