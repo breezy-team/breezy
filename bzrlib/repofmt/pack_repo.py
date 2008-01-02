@@ -1912,7 +1912,7 @@ class KnitPackRepository(KnitRepository):
         keys = set(keys)
         if _mod_revision.NULL_REVISION in keys:
             keys.discard(_mod_revision.NULL_REVISION)
-            found_parents = {_mod_revision.NULL_REVISION:[]}
+            found_parents = {_mod_revision.NULL_REVISION:()}
         else:
             found_parents = {}
         search_keys = set((revision_id,) for revision_id in keys)

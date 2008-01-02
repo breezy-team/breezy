@@ -115,6 +115,8 @@ IN DEVELOPMENT
     * Help topics can now be loaded from files. 
       (Ian Clatworthy, Alexander Belchenko)
 
+    * get_parent_map now always provides tuples as its output.  (Aaron Bentley)
+
     * Parent Providers should now implement ``get_parent_map`` returning a
       dictionary instead of ``get_parents`` returning a list.
       ``get_parents`` is now considered deprecated.  (John Arbash Meinel)
