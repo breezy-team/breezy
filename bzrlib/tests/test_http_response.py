@@ -249,7 +249,7 @@ class TestRangeFileSingleRange(tests.TestCase, TestRangeFileMixin):
         f._pos = 0 # Force an invalid pos
         self.assertRaises(errors.InvalidRange, f.read, 2)
 
-class TestRangeFilMultipleRanges(tests.TestCase, TestRangeFileMixin):
+class TestRangeFileMultipleRanges(tests.TestCase, TestRangeFileMixin):
     """Test a RangeFile for multiple ranges.
 
     The RangeFile used for the tests contains three ranges:
@@ -263,7 +263,7 @@ class TestRangeFilMultipleRanges(tests.TestCase, TestRangeFileMixin):
     """
 
     def setUp(self):
-        super(TestRangeFilMultipleRanges, self).setUp()
+        super(TestRangeFileMultipleRanges, self).setUp()
 
         boundary = 'separation'
 
@@ -358,6 +358,14 @@ class TestRangeFilMultipleRanges(tests.TestCase, TestRangeFileMixin):
     def test_seek_across_ranges(self):
         f = self._file
         start = self.first_range_start
+        f.seek(126) # skip the two first ranges
+        self.assertEquals('AB', f.read(2))
+
+    def test_checked_read_dont_overflow_buffers(self):
+        f = self._file
+        start = self.first_range_start
+        # We force a very low value to exercise all code paths in _checked_read
+        f._discarded_buf_size = 8
         f.seek(126) # skip the two first ranges
         self.assertEquals('AB', f.read(2))
 

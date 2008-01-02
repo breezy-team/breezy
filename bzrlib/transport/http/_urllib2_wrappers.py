@@ -134,16 +134,16 @@ class Response(httplib.HTTPResponse):
         if not self.isclosed():
             # Make sure nothing was left to be read on the socket
             pending = 0
-            while self.length and self.length > self._discarded_buf_size:
+            data = True
+            while (data and self.length
+                   and self.length > self._discarded_buf_size):
                 data = self.read(self._discarded_buf_size)
                 pending += len(data)
-            if self.length:
+            if data and self.length:
                 data = self.read(self.length)
                 pending += len(data)
             if pending:
-                trace.mutter(
-                    "%s bytes left on the HTTP socket",
-                    pending)
+                trace.mutter("%s bytes left on the HTTP socket", pending)
             self.close()
         return pending
 

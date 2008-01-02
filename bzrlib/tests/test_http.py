@@ -905,6 +905,88 @@ class TestMultipleRangeWithoutContentLengthServer(TestRangeRequestServer):
 
     _req_handler_class = MultipleRangeWithoutContentLengthRequestHandler
 
+
+class TruncatedMultipleRangeRequestHandler(
+    http_server.TestingHTTPRequestHandler):
+    """Reply to multiple range requests truncating the last ones.
+
+    This server generates responses whose Content-Length describes all the
+    ranges, but fail to include the last ones leading to client short reads.
+    This has been observed randomly with lighttpd (bug #179368).
+    """
+
+    _truncated_ranges = 2
+
+    def get_multiple_ranges(self, file, file_size, ranges):
+        self.send_response(206)
+        self.send_header('Accept-Ranges', 'bytes')
+        boundary = 'tagada'
+        self.send_header('Content-Type',
+                         'multipart/byteranges; boundary=%s' % boundary)
+        boundary_line = '--%s\r\n' % boundary
+        # Calculate the Content-Length
+        content_length = 0
+        for (start, end) in ranges:
+            content_length += len(boundary_line)
+            content_length += self._header_line_length(
+                'Content-type', 'application/octet-stream')
+            content_length += self._header_line_length(
+                'Content-Range', 'bytes %d-%d/%d' % (start, end, file_size))
+            content_length += len('\r\n') # end headers
+            content_length += end - start # + 1
+        content_length += len(boundary_line)
+        self.send_header('Content-length', content_length)
+        self.end_headers()
+
+        # Send the multipart body
+        cur = 0
+        for (start, end) in ranges:
+            self.wfile.write(boundary_line)
+            self.send_header('Content-type', 'application/octet-stream')
+            self.send_header('Content-Range', 'bytes %d-%d/%d'
+                             % (start, end, file_size))
+            self.end_headers()
+            if cur + self._truncated_ranges >= len(ranges):
+                # Abruptly ends the response and close the connection
+                self.close_connection = 1
+                return
+            self.send_range_content(file, start, end - start + 1)
+            cur += 1
+        # No final boundary
+        self.wfile.write(boundary_line)
+
+
+class TestTruncatedMultipleRangeServer(TestSpecificRequestHandler):
+
+    _req_handler_class = TruncatedMultipleRangeRequestHandler
+
+    def setUp(self):
+        super(TestTruncatedMultipleRangeServer, self).setUp()
+        self.build_tree_contents([('a', '0123456789')],)
+
+    def test_readv_with_short_reads(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        # Force separate ranges for each offset
+        t._bytes_to_read_before_seek = 0
+        ireadv = iter(t.readv('a', ((0, 1), (2, 1), (4, 2), (9, 1))))
+        self.assertEqual((0, '0'), ireadv.next())
+        self.assertEqual((2, '2'), ireadv.next())
+        if not self._testing_pycurl():
+            # Only one request have been issued so far (except for pycurl that
+            # try to read the whole response at once)
+            self.assertEqual(1, server.GET_request_nb)
+        self.assertEqual((4, '45'), ireadv.next())
+        self.assertEqual((9, '9'), ireadv.next())
+        # Both implementations issue 3 requests but:
+        # - urllib does two multiple (4 ranges, then 2 ranges) then a single
+        #   range,
+        # - pycurl does two multiple (4 ranges, 4 ranges) then a single range
+        self.assertEqual(3, server.GET_request_nb)
+        # Finally the client have tried a single range request and stays in
+        # that mode
+        self.assertEqual('single', t._range_hint)
+
 class LimitedRangeRequestHandler(http_server.TestingHTTPRequestHandler):
     """Errors out when range specifiers exceed the limit"""
 
