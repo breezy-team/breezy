@@ -107,6 +107,8 @@ IN DEVELOPMENT
      doc/en/user-reference directory for those who like browsing that
      information in their editor. (Ian Clatworthy)
 
+   * *Using Bazaar with Launchpad* tutorial added. (Ian Clatworthy)
+
   INTERNALS:
 
     * find_* methods available for BzrDirs, Branches and WorkingTrees.
