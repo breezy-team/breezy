@@ -14,6 +14,12 @@ IN DEVELOPMENT
      been made to remove the ambiguity where ``branch2`` is in fact a
      specific file to diff within ``branch1``.
 
+   * A new repository format 'development' has been added. This format will
+     represent the latest 'in-progress' format that the bzr developers are
+     interested in getting early-adopter testing and feedback on.
+     ``doc/developers/development-repo.txt`` has detailed information.
+     (Robert Collins)
+
   FEATURES:
 
    * New option to use custom template-based formats in  ``bzr version-info``.
