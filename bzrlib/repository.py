@@ -766,6 +766,49 @@ class Repository(object):
             result['size'] = t
         return result
 
+    def find_branches(self, using=False):
+        """Find branches underneath this repository.
+
+        This will include branches inside other branches.
+
+        :param using: If True, list only branches using this repository.
+        """
+        if using and not self.is_shared():
+            try:
+                return [self.bzrdir.open_branch()]
+            except errors.NotBranchError:
+                return []
+        class Evaluator(object):
+
+            def __init__(self):
+                self.first_call = True
+
+            def __call__(self, bzrdir):
+                # On the first call, the parameter is always the bzrdir
+                # containing the current repo.
+                if not self.first_call:
+                    try:
+                        repository = bzrdir.open_repository()
+                    except errors.NoRepositoryPresent:
+                        pass
+                    else:
+                        return False, (None, repository)
+                self.first_call = False
+                try:
+                    value = (bzrdir.open_branch(), None)
+                except errors.NotBranchError:
+                    value = (None, None)
+                return True, value
+
+        branches = []
+        for branch, repository in bzrdir.BzrDir.find_bzrdirs(
+                self.bzrdir.root_transport, evaluate=Evaluator()):
+            if branch is not None:
+                branches.append(branch)
+            if not using and repository is not None:
+                branches.extend(repository.find_branches())
+        return branches
+
     def get_data_stream(self, revision_ids):
         raise NotImplementedError(self.get_data_stream)
 
@@ -1654,15 +1697,17 @@ class Repository(object):
         parent_map = {}
         for revision_id in keys:
             if revision_id == _mod_revision.NULL_REVISION:
-                parent_map[revision_id] = []
+                parent_map[revision_id] = ()
             else:
                 try:
-                    parent_ids = self.get_revision(revision_id).parent_ids
+                    parent_id_list = self.get_revision(revision_id).parent_ids
                 except errors.NoSuchRevision:
                     pass
                 else:
-                    if len(parent_ids) == 0:
-                        parent_ids = [_mod_revision.NULL_REVISION]
+                    if len(parent_id_list) == 0:
+                        parent_ids = (_mod_revision.NULL_REVISION,)
+                    else:
+                        parent_ids = tuple(parent_id_list)
                     parent_map[revision_id] = parent_ids
         return parent_map
 

@@ -359,6 +359,22 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         """
         return WorkingTree.open(path, _unsupported=True)
 
+    @staticmethod
+    def find_trees(location):
+        def list_current(transport):
+            return [d for d in transport.list_dir('') if d != '.bzr']
+        def evaluate(bzrdir):
+            try:
+                tree = bzrdir.open_workingtree()
+            except errors.NoWorkingTree:
+                return True, None
+            else:
+                return True, tree
+        transport = get_transport(location)
+        iterator = bzrdir.BzrDir.find_bzrdirs(transport, evaluate=evaluate,
+                                              list_current=list_current)
+        return [t for t in iterator if t is not None]
+
     # should be deprecated - this is slow and in any case treating them as a
     # container is (we now know) bad style -- mbp 20070302
     ## @deprecated_method(zero_fifteen)

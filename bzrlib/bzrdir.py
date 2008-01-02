@@ -245,6 +245,80 @@ class BzrDir(object):
             format = BzrDirFormat.get_default_format()
         return format.initialize_on_transport(t)
 
+    @staticmethod
+    def find_bzrdirs(transport, evaluate=None, list_current=None):
+        """Find bzrdirs recursively from current location.
+
+        This is intended primarily as a building block for more sophisticated
+        functionality, like finding trees under a directory, or finding
+        branches that use a given repository.
+        :param evaluate: An optional callable that yields recurse, value,
+            where recurse controls whether this bzrdir is recursed into
+            and value is the value to yield.  By default, all bzrdirs
+            are recursed into, and the return value is the bzrdir.
+        :param list_current: if supplied, use this function to list the current
+            directory, instead of Transport.list_dir
+        :return: a generator of found bzrdirs, or whatever evaluate returns.
+        """
+        if list_current is None:
+            def list_current(transport):
+                return transport.list_dir('')
+        if evaluate is None:
+            def evaluate(bzrdir):
+                return True, bzrdir
+
+        pending = [transport]
+        while len(pending) > 0:
+            current_transport = pending.pop()
+            recurse = True
+            try:
+                bzrdir = BzrDir.open_from_transport(current_transport)
+            except errors.NotBranchError:
+                pass
+            else:
+                recurse, value = evaluate(bzrdir)
+                yield value
+            try:
+                subdirs = list_current(current_transport)
+            except errors.NoSuchFile:
+                continue
+            if recurse:
+                for subdir in sorted(subdirs, reverse=True):
+                    pending.append(current_transport.clone(subdir))
+
+    @staticmethod
+    def find_branches(transport):
+        """Find all branches under a transport.
+
+        This will find all branches below the transport, including branches
+        inside other branches.  Where possible, it will use
+        Repository.find_branches.
+
+        To list all the branches that use a particular Repository, see
+        Repository.find_branches
+        """
+        def evaluate(bzrdir):
+            try:
+                repository = bzrdir.open_repository()
+            except errors.NoRepositoryPresent:
+                pass
+            else:
+                return False, (None, repository)
+            try:
+                branch = bzrdir.open_branch()
+            except errors.NotBranchError:
+                return True, (None, None)
+            else:
+                return True, (branch, None)
+        branches = []
+        for branch, repo in BzrDir.find_bzrdirs(transport, evaluate=evaluate):
+            if repo is not None:
+                branches.extend(repo.find_branches())
+            if branch is not None:
+                branches.append(branch)
+        return branches
+
+
     def destroy_repository(self):
         """Destroy the repository in this BzrDir"""
         raise NotImplementedError(self.destroy_repository)
@@ -2591,10 +2665,8 @@ format_registry.register_metadir('pack-0.92-subtree',
 format_registry.register_metadir('rich-root-pack',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack4',
     help='New in 1.0: Pack-based format with data compatible with '
-        'rich-root format repositories. Interoperates with '
-        'bzr repositories before 0.92 but cannot be read by bzr < 1.0. '
-        'NOTE: This format is experimental. Before using it, please read '
-        'http://doc.bazaar-vcs.org/latest/developers/packrepo.html.',
+        'rich-root format repositories. Incompatible with'
+        ' bzr < 1.0',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=False,
