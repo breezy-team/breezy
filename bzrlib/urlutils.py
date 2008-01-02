@@ -370,6 +370,11 @@ def relative_url(base, other):
     other_scheme = other[:other_first_slash]
     if base_scheme != other_scheme:
         return other
+    elif sys.platform == 'win32' and base_scheme == 'file://':
+        base_drive = base[base_first_slash+1:base_first_slash+3]
+        other_drive = other[other_first_slash+1:other_first_slash+3]
+        if base_drive != other_drive:
+            return other
 
     base_path = base[base_first_slash+1:]
     other_path = other[other_first_slash+1:]
