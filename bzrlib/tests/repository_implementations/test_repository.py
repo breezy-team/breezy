@@ -688,6 +688,26 @@ class TestRepository(TestCaseWithRepository):
         else:
             self.assertEqual(1, len(branches))
 
+    def test_find_branches_using_standalone(self):
+        branch = self.make_branch('branch')
+        contained = self.make_branch('branch/contained')
+        branches = branch.repository.find_branches(using=True)
+        self.assertEqual([branch.base], [b.base for b in branches])
+        branches = branch.repository.find_branches(using=False)
+        self.assertEqual([branch.base, contained.base],
+                         [b.base for b in branches])
+
+    def test_find_branches_using_empty_standalone_repo(self):
+        repo = self.make_repository('repo')
+        self.assertFalse(repo.is_shared())
+        try:
+            repo.bzrdir.open_branch()
+        except errors.NotBranchError:
+            self.assertEqual([], repo.find_branches(using=True))
+        else:
+            self.assertEqual([repo.bzrdir.root_transport.base],
+                             [b.base for b in repo.find_branches(using=True)])
+
 
 class TestRepositoryLocking(TestCaseWithRepository):
 
