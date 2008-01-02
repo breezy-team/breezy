@@ -200,6 +200,11 @@ where `project-name` is the Launchpad project ID. Here are some examples::
 You can then browse the code locally using your favorite editor or IDE and
 change the code if you wish.
 
+If a project has multiple series registered (e.g. a development series and a
+maintenance series), the latest code for a given series can be fetched using::
+
+  bzr branch lp:project-name/series
+
 Publishing your changes
 -----------------------
 
@@ -208,15 +213,18 @@ wanted, it's time to impress your friends and make the world a better
 place by making your code available to others. As explained earlier,
 Launchpad is a free Bazaar code hosting service so you can push your
 branch to it and others can access your code from there. For example,
-assuming you are a member of the relevant team,
-you can push your changes to a team branch like this::
+assuming you are a member of the relevant team, login to launchpad like this::
 
-  bzr push bzr+ssh://userid@bazaar.launchpad.net/~team-name/project-name/branch-name
+  bzr launchpad-login userid
 
 where `userid` is your Launchpad user ID.
+You can then push your changes to a team branch like this::
+
+  bzr push lp:~team-name/project-name/branch-name
+
 Others can then download your code like this::
 
-  bzr branch http://bazaar.launchpad.net/~team-name/project-name/branch-name
+  bzr branch lp:~team-name/project-name/branch-name
 
 
 Personal branches
@@ -225,12 +233,11 @@ Personal branches
 Even if you are not a member of a team, Launchpad can be used to publish
 your changes. In this case, simply create a personal branch like this::
 
-  bzr push bzr+ssh://userid@bazaar.launchpad.net/~userid/+junk/my-project
+  bzr push lp:~userid/project-name/branch-name
 
-where `my-project` is a name you select to uniquely identify the branch.
 Others can then download your code like this::
 
-  bzr branch http://bazaar.launchpad.net/~userid/+junk/my-project
+  bzr branch lp:~userid/project-name/branch-name
 
 Note: Even when publishing to a personal branch, it is polite to notify the
 upstream developers about your branch so they can pull your changes from
