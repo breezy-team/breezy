@@ -845,7 +845,7 @@ class RemoteRepository(object):
         return self._real_repository.has_signature_for_revision_id(revision_id)
 
     def get_data_stream(self, revision_ids):
-        REQUEST_NAME = 'Repository.chunked_stream_knit_data_for_revisions'
+        REQUEST_NAME = 'Repository.stream_revisions_chunked'
         path = self.bzrdir._path_for_remote_call(self._client)
         response, protocol = self._client.call_expecting_body(
             REQUEST_NAME, path, *revision_ids)

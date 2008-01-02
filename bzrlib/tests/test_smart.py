@@ -797,6 +797,45 @@ class TestSmartServerRepositoryStreamKnitData(tests.TestCaseWithTransport):
         response = request.execute(backing.local_abspath(''), rev_id2_utf8)
         self.assertEqual(('ok',), response.args)
         from cStringIO import StringIO
+        unpacker = pack.ContainerReader(StringIO(response.body))
+        names = []
+        for [name], read_bytes in unpacker.iter_records():
+            names.append(name)
+            bytes = read_bytes(None)
+            # The bytes should be a valid bencoded string.
+            bencode.bdecode(bytes)
+            # XXX: assert that the bencoded knit records have the right
+            # contents?
+        
+    def test_no_such_revision_error(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryStreamKnitDataForRevisions(backing)
+        repo = self.make_repository('.')
+        rev_id1_utf8 = u'\xc8'.encode('utf-8')
+        response = request.execute(backing.local_abspath(''), rev_id1_utf8)
+        self.assertEqual(
+            SmartServerResponse(('NoSuchRevision', rev_id1_utf8)),
+            response)
+
+
+class TestSmartServerRepositoryStreamRevisionsChunked(tests.TestCaseWithTransport):
+
+    def test_fetch_revisions(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryStreamRevisionsChunked(
+            backing)
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
+        rev_id1_utf8 = u'\xc8'.encode('utf-8')
+        rev_id2_utf8 = u'\xc9'.encode('utf-8')
+        r1 = tree.commit('1st commit', rev_id=rev_id1_utf8)
+        r1 = tree.commit('2nd commit', rev_id=rev_id2_utf8)
+        tree.unlock()
+
+        response = request.execute(backing.local_abspath(''), rev_id2_utf8)
+        self.assertEqual(('ok',), response.args)
+        from cStringIO import StringIO
         parser = pack.ContainerPushParser()
         names = []
         for stream_bytes in response.body_stream:
@@ -810,7 +849,8 @@ class TestSmartServerRepositoryStreamKnitData(tests.TestCaseWithTransport):
         
     def test_no_such_revision_error(self):
         backing = self.get_transport()
-        request = smart.repository.SmartServerRepositoryStreamKnitDataForRevisions(backing)
+        request = smart.repository.SmartServerRepositoryStreamRevisionsChunked(
+            backing)
         repo = self.make_repository('.')
         rev_id1_utf8 = u'\xc8'.encode('utf-8')
         response = request.execute(backing.local_abspath(''), rev_id1_utf8)

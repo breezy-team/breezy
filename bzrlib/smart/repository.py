@@ -24,7 +24,7 @@ import tarfile
 
 from bzrlib import errors
 from bzrlib.bzrdir import BzrDir
-from bzrlib.pack import ContainerSerialiser
+from bzrlib.pack import ContainerSerialiser, ContainerWriter
 from bzrlib.smart.request import (
     FailedSmartServerResponse,
     SmartServerRequest,
@@ -248,6 +248,29 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
 
 
 class SmartServerRepositoryStreamKnitDataForRevisions(SmartServerRepositoryRequest):
+
+    def do_repository_request(self, repository, *revision_ids):
+        repository.lock_read()
+        try:
+            return self._do_repository_request(repository, revision_ids)
+        finally:
+            repository.unlock()
+
+    def _do_repository_request(self, repository, revision_ids):
+        stream = repository.get_data_stream(revision_ids)
+        filelike = StringIO()
+        pack = ContainerWriter(filelike.write)
+        pack.begin()
+        try:
+            for name_tuple, bytes in stream:
+                pack.add_bytes_record(bytes, [name_tuple])
+        except errors.RevisionNotPresent, e:
+            return FailedSmartServerResponse(('NoSuchRevision', e.revision_id))
+        pack.end()
+        return SuccessfulSmartServerResponse(('ok',), filelike.getvalue())
+
+
+class SmartServerRepositoryStreamRevisionsChunked(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository, *revision_ids):
         repository.lock_read()
