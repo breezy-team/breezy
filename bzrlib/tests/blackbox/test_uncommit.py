@@ -60,6 +60,12 @@ class TestUncommit(TestCaseWithTransport):
         out, err = self.run_bzr('status')
         self.assertEquals(out, 'modified:\n  a\n')
 
+    def test_uncommit_no_history(self):
+        wt = self.make_branch_and_tree('tree')
+        out, err = self.run_bzr('uncommit --force', retcode=1)
+        self.assertEqual('', err)
+        self.assertEqual('No revisions to uncommit.\n', out)
+
     def test_uncommit_checkout(self):
         wt = self.create_simple_tree()
         checkout_tree = wt.branch.create_checkout('checkout')
@@ -221,3 +227,9 @@ class TestUncommit(TestCaseWithTransport):
         out, err = self.run_bzr('uncommit --force -r 2')
 
         self.assertEqual(['a2', 'b3', 'c3', 'c4', 'b4'], wt.get_parent_ids())
+
+    def test_uncommit_nonascii(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.commit(u'\u1234 message')
+        out, err = self.run_bzr('uncommit --force tree', encoding='ascii')
+        self.assertContainsRe(out, r'\? message')

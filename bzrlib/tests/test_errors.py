@@ -26,7 +26,6 @@ from bzrlib import (
 from bzrlib.tests import TestCase, TestCaseWithTransport
 
 
-
 class TestErrors(TestCaseWithTransport):
 
     def test_disabled_method(self):
@@ -57,6 +56,20 @@ class TestErrors(TestCaseWithTransport):
             "The transport 'fpp' is only accessible within this process.",
             str(error))
 
+    def test_invalid_http_range(self):
+        error = errors.InvalidHttpRange('path',
+                                        'Content-Range: potatoes 0-00/o0oo0',
+                                        'bad range')
+        self.assertEquals("Invalid http range"
+                          " 'Content-Range: potatoes 0-00/o0oo0'"
+                          " for path: bad range",
+                          str(error))
+
+    def test_invalid_range(self):
+        error = errors.InvalidRange('path', 12, 'bad range')
+        self.assertEquals("Invalid range access in path at 12: bad range",
+                          str(error))
+
     def test_inventory_modified(self):
         error = errors.InventoryModified("a tree to be repred")
         self.assertEqualDiff("The current inventory for the tree 'a tree to "
@@ -85,6 +98,12 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqual('Cannot insert knit data stream of format '
                          '"stream format" into knit of format '
                          '"target format".', str(error))
+
+    def test_knit_data_stream_unknown(self):
+        error = errors.KnitDataStreamUnknown(
+            'stream format')
+        self.assertEqual('Cannot parse knit data stream of format '
+                         '"stream format".', str(error))
 
     def test_knit_header_error(self):
         error = errors.KnitHeaderError('line foo\n', 'path/to/file')
@@ -381,6 +400,35 @@ class TestErrors(TestCaseWithTransport):
         e = errors.RepositoryDataStreamError(u"my reason")
         self.assertEqual(
             "Corrupt or incompatible data stream: my reason", str(e))
+
+    def test_immortal_pending_deletion_message(self):
+        err = errors.ImmortalPendingDeletion('foo')
+        self.assertEquals(
+            "Unable to delete transform temporary directory foo.  "
+            "Please examine foo to see if it contains any files "
+            "you wish to keep, and delete it when you are done.",
+            str(err))
+
+    def test_unable_create_symlink(self):
+        err = errors.UnableCreateSymlink()
+        self.assertEquals(
+            "Unable to create symlink on this platform",
+            str(err))
+        err = errors.UnableCreateSymlink(path=u'foo')
+        self.assertEquals(
+            "Unable to create symlink 'foo' on this platform",
+            str(err))
+        err = errors.UnableCreateSymlink(path=u'\xb5')
+        self.assertEquals(
+            "Unable to create symlink u'\\xb5' on this platform",
+            str(err))
+
+    def test_incorrect_url(self):
+        err = errors.InvalidBugTrackerURL('foo', 'http://bug.com/')
+        self.assertEquals(
+            ("The URL for bug tracker \"foo\" doesn't contain {id}: "
+             "http://bug.com/"),
+            str(err))
 
 
 class PassThroughError(errors.BzrError):

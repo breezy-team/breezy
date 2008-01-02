@@ -123,7 +123,7 @@ class RepoFetcher(object):
         self.from_weaves = self.from_repository.weave_store
         self.count_total = 0
         self.file_ids_names = {}
-        pp = ProgressPhase('Fetch phase', 4, self.pb)
+        pp = ProgressPhase('Transferring', 4, self.pb)
         try:
             pp.next_phase()
             revs = self._revids_to_fetch()
@@ -347,7 +347,7 @@ class Inter1and2Helper(object):
         to_store = self.target.weave_store
         for tree in self.iter_rev_trees(revs):
             revision_id = tree.inventory.root.revision
-            root_id = tree.inventory.root.file_id
+            root_id = tree.get_root_id()
             parents = inventory_weave.get_parents(revision_id)
             if root_id not in versionedfile:
                 versionedfile[root_id] = to_store.get_weave_or_empty(root_id, 

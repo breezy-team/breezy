@@ -50,7 +50,7 @@ from bzrlib.errors import (
     BzrCheckError,
     BzrError,
     )
-from bzrlib.symbol_versioning import deprecated_method, zero_ninetyone
+from bzrlib.symbol_versioning import deprecated_method
 from bzrlib.trace import mutter
 
 
@@ -142,6 +142,7 @@ class InventoryEntry(object):
         """
         return False, False
 
+    @deprecated_method(symbol_versioning.one_zero)
     def diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
              output_to, reverse=False):
         """Perform a diff from this to to_entry.
@@ -197,7 +198,7 @@ class InventoryEntry(object):
                     candidates[ie.revision] = ie
         return candidates
 
-    @deprecated_method(zero_ninetyone)
+    @deprecated_method(symbol_versioning.zero_ninetyone)
     def find_previous_heads(self, previous_inventories,
                             versioned_file_store,
                             transaction,
@@ -619,25 +620,19 @@ class InventoryFile(InventoryEntry):
     def _diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
              output_to, reverse=False):
         """See InventoryEntry._diff."""
-        try:
-            from_text = tree.get_file(self.file_id).readlines()
-            if to_entry:
-                to_text = to_tree.get_file(to_entry.file_id).readlines()
-            else:
-                to_text = []
-            if not reverse:
-                text_diff(from_label, from_text,
-                          to_label, to_text, output_to)
-            else:
-                text_diff(to_label, to_text,
-                          from_label, from_text, output_to)
-        except errors.BinaryFile:
-            if reverse:
-                label_pair = (to_label, from_label)
-            else:
-                label_pair = (from_label, to_label)
-            output_to.write(
-                  ("Binary files %s and %s differ\n" % label_pair).encode('utf8'))
+        from bzrlib.diff import DiffText
+        from_file_id = self.file_id
+        if to_entry:
+            to_file_id = to_entry.file_id
+        else:
+            to_file_id = None
+        if reverse:
+            to_file_id, from_file_id = from_file_id, to_file_id
+            tree, to_tree = to_tree, tree
+            from_label, to_label = to_label, from_label
+        differ = DiffText(tree, to_tree, output_to, 'utf-8', '', '',
+                          text_diff)
+        return differ.diff_text(from_file_id, to_file_id, from_label, to_label)
 
     def has_text(self):
         """See InventoryEntry.has_text."""
@@ -735,19 +730,21 @@ class InventoryLink(InventoryEntry):
     def _diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
              output_to, reverse=False):
         """See InventoryEntry._diff."""
-        from_text = self.symlink_target
+        from bzrlib.diff import DiffSymlink
+        old_target = self.symlink_target
         if to_entry is not None:
-            to_text = to_entry.symlink_target
-            if reverse:
-                temp = from_text
-                from_text = to_text
-                to_text = temp
-            output_to.write('=== target changed %r => %r\n' % (from_text, to_text))
+            new_target = to_entry.symlink_target
         else:
-            if not reverse:
-                output_to.write('=== target was %r\n' % self.symlink_target)
-            else:
-                output_to.write('=== target is %r\n' % self.symlink_target)
+            new_target = None
+        if not reverse:
+            old_tree = tree
+            new_tree = to_tree
+        else:
+            old_tree = to_tree
+            new_tree = tree
+            new_target, old_target = old_target, new_target
+        differ = DiffSymlink(old_tree, new_tree, output_to)
+        return differ.diff_symlink(old_target, new_target)
 
     def __init__(self, file_id, name, parent_id):
         super(InventoryLink, self).__init__(file_id, name, parent_id)

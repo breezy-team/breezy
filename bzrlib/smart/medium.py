@@ -30,6 +30,7 @@ import sys
 
 from bzrlib import (
     errors,
+    osutils,
     symbol_versioning,
     )
 from bzrlib.smart.protocol import (
@@ -37,12 +38,7 @@ from bzrlib.smart.protocol import (
     SmartServerRequestProtocolOne,
     SmartServerRequestProtocolTwo,
     )
-
-try:
-    from bzrlib.transport import ssh
-except errors.ParamikoNotPresent:
-    # no paramiko.  SmartSSHClientMedium will break.
-    pass
+from bzrlib.transport import ssh
 
 
 class SmartServerStreamMedium(object):
@@ -182,7 +178,7 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         self.finished = True
 
     def _write_out(self, bytes):
-        self.socket.sendall(bytes)
+        osutils.send_all(self.socket, bytes)
 
 
 class SmartServerPipeStreamMedium(SmartServerStreamMedium):
@@ -510,6 +506,11 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         return self._read_from.read(count)
 
 
+# Port 4155 is the default port for bzr://, registered with IANA.
+BZR_DEFAULT_INTERFACE = '0.0.0.0'
+BZR_DEFAULT_PORT = 4155
+
+
 class SmartTCPClientMedium(SmartClientStreamMedium):
     """A client medium using TCP."""
     
@@ -524,7 +525,7 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
     def _accept_bytes(self, bytes):
         """See SmartClientMedium.accept_bytes."""
         self._ensure_connection()
-        self._socket.sendall(bytes)
+        osutils.send_all(self._socket, bytes)
 
     def disconnect(self):
         """See SmartClientMedium.disconnect()."""
@@ -540,10 +541,14 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
             return
         self._socket = socket.socket()
         self._socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        result = self._socket.connect_ex((self._host, int(self._port)))
+        if self._port is None:
+            port = BZR_DEFAULT_PORT
+        else:
+            port = int(self._port)
+        result = self._socket.connect_ex((self._host, port))
         if result:
             raise errors.ConnectionError("failed to connect to %s:%d: %s" %
-                    (self._host, self._port, os.strerror(result)))
+                    (self._host, port, os.strerror(result)))
         self._connected = True
 
     def _flush(self):

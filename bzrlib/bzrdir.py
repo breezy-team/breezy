@@ -29,6 +29,7 @@ objects returned.
 
 from cStringIO import StringIO
 import os
+import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -48,10 +49,11 @@ from bzrlib import (
     symbol_versioning,
     ui,
     urlutils,
-    xml4,
-    xml5,
+    win32utils,
     workingtree,
     workingtree_4,
+    xml4,
+    xml5,
     )
 from bzrlib.osutils import (
     sha_strings,
@@ -209,9 +211,14 @@ class BzrDir(object):
         except errors.NotBranchError:
             pass
         try:
-            self.open_workingtree().clone(result)
-        except (errors.NoWorkingTree, errors.NotLocalUrl):
-            pass
+            result_repo = result.find_repository()
+        except errors.NoRepositoryPresent:
+            result_repo = None
+        if result_repo is None or result_repo.make_working_trees():
+            try:
+                self.open_workingtree().clone(result)
+            except (errors.NoWorkingTree, errors.NotLocalUrl):
+                pass
         return result
 
     # TODO: This should be given a Transport, and should chdir up; otherwise
@@ -237,6 +244,84 @@ class BzrDir(object):
         if format is None:
             format = BzrDirFormat.get_default_format()
         return format.initialize_on_transport(t)
+
+    @staticmethod
+    def find_bzrdirs(transport, evaluate=None, list_current=None):
+        """Find bzrdirs recursively from current location.
+
+        This is intended primarily as a building block for more sophisticated
+        functionality, like finding trees under a directory, or finding
+        branches that use a given repository.
+        :param evaluate: An optional callable that yields recurse, value,
+            where recurse controls whether this bzrdir is recursed into
+            and value is the value to yield.  By default, all bzrdirs
+            are recursed into, and the return value is the bzrdir.
+        :param list_current: if supplied, use this function to list the current
+            directory, instead of Transport.list_dir
+        :return: a generator of found bzrdirs, or whatever evaluate returns.
+        """
+        if list_current is None:
+            def list_current(transport):
+                return transport.list_dir('')
+        if evaluate is None:
+            def evaluate(bzrdir):
+                return True, bzrdir
+
+        pending = [transport]
+        while len(pending) > 0:
+            current_transport = pending.pop()
+            recurse = True
+            try:
+                bzrdir = BzrDir.open_from_transport(current_transport)
+            except errors.NotBranchError:
+                pass
+            else:
+                recurse, value = evaluate(bzrdir)
+                yield value
+            try:
+                subdirs = list_current(current_transport)
+            except errors.NoSuchFile:
+                continue
+            if recurse:
+                for subdir in sorted(subdirs, reverse=True):
+                    pending.append(current_transport.clone(subdir))
+
+    @staticmethod
+    def find_branches(transport):
+        """Find all branches under a transport.
+
+        This will find all branches below the transport, including branches
+        inside other branches.  Where possible, it will use
+        Repository.find_branches.
+
+        To list all the branches that use a particular Repository, see
+        Repository.find_branches
+        """
+        def evaluate(bzrdir):
+            try:
+                repository = bzrdir.open_repository()
+            except errors.NoRepositoryPresent:
+                pass
+            else:
+                return False, (None, repository)
+            try:
+                branch = bzrdir.open_branch()
+            except errors.NotBranchError:
+                return True, (None, None)
+            else:
+                return True, (branch, None)
+        branches = []
+        for branch, repo in BzrDir.find_bzrdirs(transport, evaluate=evaluate):
+            if repo is not None:
+                branches.extend(repo.find_branches())
+            if branch is not None:
+                branches.append(branch)
+        return branches
+
+
+    def destroy_repository(self):
+        """Destroy the repository in this BzrDir"""
+        raise NotImplementedError(self.destroy_repository)
 
     def create_branch(self):
         """Create a branch in this BzrDir.
@@ -370,10 +455,16 @@ class BzrDir(object):
                                                format=format).bzrdir
         return bzrdir.create_workingtree()
 
-    def create_workingtree(self, revision_id=None):
+    def create_workingtree(self, revision_id=None, from_branch=None,
+        accelerator_tree=None):
         """Create a working tree at this BzrDir.
         
-        revision_id: create it as of this revision id.
+        :param revision_id: create it as of this revision id.
+        :param from_branch: override bzrdir branch (for lightweight checkouts)
+        :param accelerator_tree: A tree which can be used for retrieving file
+            contents more quickly than the revision tree, i.e. a workingtree.
+            The revision tree will be used for cases where accelerator_tree's
+            content is different.
         """
         raise NotImplementedError(self.create_workingtree)
 
@@ -654,6 +745,34 @@ class BzrDir(object):
                 raise errors.NotBranchError(path=url)
             a_transport = new_t
 
+    def _get_tree_branch(self):
+        """Return the branch and tree, if any, for this bzrdir.
+
+        Return None for tree if not present.
+        Raise NotBranchError if no branch is present.
+        :return: (tree, branch)
+        """
+        try:
+            tree = self.open_workingtree()
+        except (errors.NoWorkingTree, errors.NotLocalUrl):
+            tree = None
+            branch = self.open_branch()
+        else:
+            branch = tree.branch
+        return tree, branch
+
+    @classmethod
+    def open_tree_or_branch(klass, location):
+        """Return the branch and working tree at a location.
+
+        If there is no tree at the location, tree will be None.
+        If there is no branch at the location, an exception will be
+        raised
+        :return: (tree, branch)
+        """
+        bzrdir = klass.open(location)
+        return bzrdir._get_tree_branch()
+
     @classmethod
     def open_containing_tree_or_branch(klass, location):
         """Return the branch and working tree contained by a location.
@@ -665,13 +784,7 @@ class BzrDir(object):
         relpath is the portion of the path that is contained by the branch.
         """
         bzrdir, relpath = klass.open_containing(location)
-        try:
-            tree = bzrdir.open_workingtree()
-        except (errors.NoWorkingTree, errors.NotLocalUrl):
-            tree = None
-            branch = bzrdir.open_branch()
-        else:
-            branch = tree.branch
+        tree, branch = bzrdir._get_tree_branch()
         return tree, branch, relpath
 
     def open_repository(self, _unsupported=False):
@@ -687,13 +800,14 @@ class BzrDir(object):
         raise NotImplementedError(self.open_repository)
 
     def open_workingtree(self, _unsupported=False,
-            recommend_upgrade=True):
+                         recommend_upgrade=True, from_branch=None):
         """Open the workingtree object at this BzrDir if one is present.
 
         :param recommend_upgrade: Optional keyword parameter, when True (the
             default), emit through the ui module a recommendation that the user
             upgrade the working tree when the workingtree being opened is old
             (but still fully supported).
+        :param from_branch: override bzrdir branch (for lightweight checkouts)
         """
         raise NotImplementedError(self.open_workingtree)
 
@@ -775,7 +889,8 @@ class BzrDir(object):
         return self.cloning_metadir()
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
-               recurse='down', possible_transports=None):
+               recurse='down', possible_transports=None,
+               accelerator_tree=None):
         """Create a copy of this bzrdir prepared for use as a new line of
         development.
 
@@ -788,6 +903,10 @@ class BzrDir(object):
 
         if revision_id is not None, then the clone operation may tune
             itself to download less data.
+        :param accelerator_tree: A tree which can be used for retrieving file
+            contents more quickly than the revision tree, i.e. a workingtree.
+            The revision tree will be used for cases where accelerator_tree's
+            content is different.
         """
         target_transport = get_transport(url, possible_transports)
         target_transport.ensure_base()
@@ -832,7 +951,7 @@ class BzrDir(object):
             result.create_branch()
         if isinstance(target_transport, LocalTransport) and (
             result_repo is None or result_repo.make_working_trees()):
-            wt = result.create_workingtree()
+            wt = result.create_workingtree(accelerator_tree=accelerator_tree)
             wt.lock_write()
             try:
                 if wt.path2id('') is None:
@@ -922,7 +1041,12 @@ class BzrDirPreSplitOut(BzrDir):
             raise errors.IncompatibleFormat('shared repository', self._format)
         return self.open_repository()
 
-    def create_workingtree(self, revision_id=None):
+    def destroy_repository(self):
+        """See BzrDir.destroy_repository."""
+        raise errors.UnsupportedOperation(self.destroy_repository, self)
+
+    def create_workingtree(self, revision_id=None, from_branch=None,
+                           accelerator_tree=None):
         """See BzrDir.create_workingtree."""
         # this looks buggy but is not -really-
         # because this format creates the workingtree when the bzrdir is
@@ -996,7 +1120,7 @@ class BzrDirPreSplitOut(BzrDir):
         return format.open(self, _found=True)
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
-               possible_transports=None):
+               possible_transports=None, accelerator_tree=None):
         """See BzrDir.sprout()."""
         from bzrlib.workingtree import WorkingTreeFormat2
         self._make_tail(url)
@@ -1010,7 +1134,8 @@ class BzrDirPreSplitOut(BzrDir):
         except errors.NotBranchError:
             pass
         # we always want a working tree
-        WorkingTreeFormat2().initialize(result)
+        WorkingTreeFormat2().initialize(result,
+                                        accelerator_tree=accelerator_tree)
         return result
 
 
@@ -1100,10 +1225,16 @@ class BzrDirMeta1(BzrDir):
         """See BzrDir.create_repository."""
         return self._format.repository_format.initialize(self, shared)
 
-    def create_workingtree(self, revision_id=None):
+    def destroy_repository(self):
+        """See BzrDir.destroy_repository."""
+        self.transport.delete_tree('repository')
+
+    def create_workingtree(self, revision_id=None, from_branch=None,
+                           accelerator_tree=None):
         """See BzrDir.create_workingtree."""
-        from bzrlib.workingtree import WorkingTreeFormat
-        return self._format.workingtree_format.initialize(self, revision_id)
+        return self._format.workingtree_format.initialize(
+            self, revision_id, from_branch=from_branch,
+            accelerator_tree=accelerator_tree)
 
     def destroy_workingtree(self):
         """See BzrDir.destroy_workingtree."""
@@ -1348,6 +1479,8 @@ class BzrDirFormat(object):
                                       # FIXME: RBC 20060121 don't peek under
                                       # the covers
                                       mode=temp_control._dir_mode)
+        if sys.platform == 'win32' and isinstance(transport, LocalTransport):
+            win32utils.set_file_attr_hidden(transport._abspath('.bzr'))
         file_mode = temp_control._file_mode
         del temp_control
         mutter('created control directory in ' + transport.base)
@@ -1710,7 +1843,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
         return RepositoryFormat.get_default_format()
 
     def __set_repository_format(self, value):
-        """Allow changint the repository format for metadir formats."""
+        """Allow changing the repository format for metadir formats."""
         self._repository_format = value
 
     repository_format = property(__return_repository_format, __set_repository_format)
@@ -1976,9 +2109,16 @@ class ConvertBzrDir4To5(Converter):
         del ie.text_id
         assert getattr(ie, 'revision', None) is not None
 
+    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
     def get_parents(self, revision_ids):
         for revision_id in revision_ids:
             yield self.revisions[revision_id].parent_ids
+
+    def get_parent_map(self, revision_ids):
+        """See graph._StackedParentsProvider.get_parent_map"""
+        return dict((revision_id, self.revisions[revision_id])
+                    for revision_id in revision_ids
+                     if revision_id in self.revisions)
 
     def snapshot_ie(self, previous_revisions, ie, w, rev_id):
         # TODO: convert this logic, which is ~= snapshot to
@@ -2480,6 +2620,14 @@ format_registry.register_metadir('dirstate-tags',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
+format_registry.register_metadir('rich-root',
+    'bzrlib.repofmt.knitrepo.RepositoryFormatKnit4',
+    help='New in 1.0.  Better handling of tree roots.  Incompatible with'
+        ' bzr < 1.0',
+    branch_format='bzrlib.branch.BzrBranchFormat6',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    hidden=False,
+    )
 format_registry.register_metadir('dirstate-with-subtree',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
     help='New in 0.15: Fast local operations and improved scaling for '
@@ -2489,27 +2637,39 @@ format_registry.register_metadir('dirstate-with-subtree',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=True,
     )
-format_registry.register_metadir('knitpack-experimental',
+format_registry.register_metadir('pack-0.92',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack1',
     help='New in 0.92: Pack-based format with data compatible with '
         'dirstate-tags format repositories. Interoperates with '
         'bzr repositories before 0.92 but cannot be read by bzr < 0.92. '
-        'NOTE: This format is experimental. Before using it, please read '
-        'http://doc.bazaar-vcs.org/latest/developers/knitpack.html.',
+        'Previously called knitpack-experimental.  '
+        'For more information, see '
+        'http://doc.bazaar-vcs.org/latest/developers/packrepo.html.',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     experimental=True,
     )
-format_registry.register_metadir('knitpack-subtree-experimental',
+format_registry.register_metadir('pack-0.92-subtree',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack3',
     help='New in 0.92: Pack-based format with data compatible with '
         'dirstate-with-subtree format repositories. Interoperates with '
         'bzr repositories before 0.92 but cannot be read by bzr < 0.92. '
-        'NOTE: This format is experimental. Before using it, please read '
-        'http://doc.bazaar-vcs.org/latest/developers/knitpack.html.',
+        'Previously called knitpack-experimental.  '
+        'For more information, see '
+        'http://doc.bazaar-vcs.org/latest/developers/packrepo.html.',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=True,
     experimental=True,
     )
-format_registry.set_default('dirstate-tags')
+format_registry.register_metadir('rich-root-pack',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack4',
+    help='New in 1.0: Pack-based format with data compatible with '
+        'rich-root format repositories. Incompatible with'
+        ' bzr < 1.0',
+    branch_format='bzrlib.branch.BzrBranchFormat6',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    hidden=False,
+    experimental=True,
+    )
+format_registry.set_default('pack-0.92')

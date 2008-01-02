@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib import (
+    errors,
     mail_client,
     tests,
     urlutils,
@@ -50,9 +51,13 @@ class TestXDGEmail(tests.TestCase):
 
     def test_commandline(self):
         xdg_email = mail_client.XDGEmail(None)
-        commandline = xdg_email._get_compose_commandline(None, None,
-                                                         'file%')
-        self.assertEqual([None, '--attach', 'file%'], commandline)
+        self.assertRaises(errors.NoMailAddressSpecified,
+                          xdg_email._get_compose_commandline,
+                          None, None, 'file%')
+        commandline = xdg_email._get_compose_commandline(
+            'jrandom@example.org', None, 'file%')
+        self.assertEqual(['jrandom@example.org', '--attach', 'file%'],
+                         commandline)
         commandline = xdg_email._get_compose_commandline(
             'jrandom@example.org', 'Hi there!', None)
         self.assertEqual(['jrandom@example.org', '--subject', 'Hi there!'],

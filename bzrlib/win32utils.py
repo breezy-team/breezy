@@ -64,6 +64,11 @@ else:
     else:
         create_buffer = ctypes.create_unicode_buffer
         suffix = 'W'
+try:
+    import win32file
+    has_win32file = True
+except ImportError:
+    has_win32file = False
 
 
 # Special Win32 API constants
@@ -319,3 +324,9 @@ def get_app_path(appname):
         _winreg.CloseKey(hkey)
 
     return fullpath
+
+
+def set_file_attr_hidden(path):
+    """Set file attributes to hidden if possible"""
+    if has_win32file:
+        win32file.SetFileAttributes(path, win32file.FILE_ATTRIBUTE_HIDDEN)

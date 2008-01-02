@@ -19,6 +19,7 @@ import os
 
 import bzrlib
 from bzrlib import (
+    bzrdir,
     errors,
     lockdir,
     osutils,
@@ -95,11 +96,16 @@ class TestCommit(TestCaseWithTransport):
         eq(rev.message, 'add hello')
 
         tree1 = b.repository.revision_tree(rh[0])
+        tree1.lock_read()
         text = tree1.get_file_text(file_id)
-        eq(text, 'hello world')
+        tree1.unlock()
+        self.assertEqual('hello world', text)
 
         tree2 = b.repository.revision_tree(rh[1])
-        eq(tree2.get_file_text(file_id), 'version 2')
+        tree2.lock_read()
+        text = tree2.get_file_text(file_id)
+        tree2.unlock()
+        self.assertEqual('version 2', text)
 
     def test_delete_commit(self):
         """Test a commit with a deleted file"""
@@ -168,11 +174,15 @@ class TestCommit(TestCaseWithTransport):
         eq(b.revno(), 3)
 
         tree2 = b.repository.revision_tree('test@rev-2')
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
         self.assertTrue(tree2.has_filename('hello'))
         self.assertEquals(tree2.get_file_text('hello-id'), 'hello')
         self.assertEquals(tree2.get_file_text('buongia-id'), 'new text')
         
         tree3 = b.repository.revision_tree('test@rev-3')
+        tree3.lock_read()
+        self.addCleanup(tree3.unlock)
         self.assertFalse(tree3.has_filename('hello'))
         self.assertEquals(tree3.get_file_text('buongia-id'), 'new text')
 
@@ -189,6 +199,8 @@ class TestCommit(TestCaseWithTransport):
 
         eq = self.assertEquals
         tree1 = b.repository.revision_tree('test@rev-1')
+        tree1.lock_read()
+        self.addCleanup(tree1.unlock)
         eq(tree1.id2path('hello-id'), 'hello')
         eq(tree1.get_file_text('hello-id'), 'contents of hello\n')
         self.assertFalse(tree1.has_filename('fruity'))
@@ -197,6 +209,8 @@ class TestCommit(TestCaseWithTransport):
         eq(ie.revision, 'test@rev-1')
 
         tree2 = b.repository.revision_tree('test@rev-2')
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
         eq(tree2.id2path('hello-id'), 'fruity')
         eq(tree2.get_file_text('hello-id'), 'contents of hello\n')
         self.check_inventory_shape(tree2.inventory, ['fruity'])
@@ -727,3 +741,11 @@ class TestCommit(TestCaseWithTransport):
         rev = tree.branch.repository.get_revision(rev_id)
         self.assertEqual('John Doe <jdoe@example.com>',
                          rev.properties['author'])
+
+    def test_commit_with_checkout_and_branch_sharing_repo(self):
+        repo = self.make_repository('repo', shared=True)
+        # make_branch_and_tree ignores shared repos
+        branch = bzrdir.BzrDir.create_branch_convenience('repo/branch')
+        tree2 = branch.create_checkout('repo/tree2')
+        tree2.commit('message', rev_id='rev1')
+        self.assertTrue(tree2.branch.repository.has_revision('rev1'))

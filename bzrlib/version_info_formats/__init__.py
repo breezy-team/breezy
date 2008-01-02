@@ -19,11 +19,12 @@
 import time
 
 from bzrlib.osutils import local_time_offset, format_date
+from bzrlib import registry
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    one_zero,
+    )
 
-
-# This contains a map of format id => formatter
-# None is considered the default formatter
-_version_formats = {}
 
 def create_date_str(timestamp=None, offset=None):
     """Just a wrapper around format_date to provide the right format.
@@ -48,7 +49,7 @@ class VersionInfoBuilder(object):
                 check_for_clean=False,
                 include_revision_history=False,
                 include_file_revisions=False,
-                ):
+                template=None):
         """Build up information about the given branch.
         If working_tree is given, it can be checked for changes.
 
@@ -62,12 +63,15 @@ class VersionInfoBuilder(object):
             date and message
         :param include_file_revisions: The output should
             include the explicit last-changed revision for each file.
+        :param template: Template for the output formatting, not used by
+            all builders.
         """
         self._branch = branch
         self._working_tree = working_tree
         self._check = check_for_clean
         self._include_history = include_revision_history
         self._include_file_revs = include_file_revisions
+        self._template = template
 
         self._clean = None
         self._file_revisions = {}
@@ -169,7 +173,10 @@ class VersionInfoBuilder(object):
         raise NotImplementedError(VersionInfoBuilder.generate)
 
 
+format_registry = registry.Registry()
 
+
+@deprecated_function(one_zero)
 def register_builder(format, module, class_name):
     """Register a version info format.
 
@@ -179,34 +186,38 @@ def register_builder(format, module, class_name):
         can be found
     :param class_name: The string name of the class to instantiate
     """
-    if len(_version_formats) == 0:
-        _version_formats[None] = (module, class_name)
-    _version_formats[format] = (module, class_name)
+    format_registry.register_lazy(format, module, class_name)
 
 
+@deprecated_function(one_zero)
 def get_builder(format):
     """Get a handle to the version info builder class
 
     :param format: The lookup key supplied to register_builder
     :return: A class, which follows the VersionInfoBuilder api.
     """
-    builder_module, builder_class_name = _version_formats[format]
-    module = __import__(builder_module, globals(), locals(),
-                        [builder_class_name])
-    klass = getattr(module, builder_class_name)
-    return klass
+    return format_registry.get(format)
 
 
+@deprecated_function(one_zero)
 def get_builder_formats():
     """Get the possible list of formats"""
-    formats = _version_formats.keys()
-    formats.remove(None)
-    return formats
+    return format_registry.keys()
 
 
-register_builder('rio',
-                 'bzrlib.version_info_formats.format_rio',
-                 'RioVersionInfoBuilder')
-register_builder('python',
-                 'bzrlib.version_info_formats.format_python',
-                 'PythonVersionInfoBuilder')
+format_registry.register_lazy(
+    'rio',
+    'bzrlib.version_info_formats.format_rio',
+    'RioVersionInfoBuilder',
+    'Version info in RIO format.')
+format_registry.default_key = 'rio'
+format_registry.register_lazy(
+    'python',
+    'bzrlib.version_info_formats.format_python',
+    'PythonVersionInfoBuilder',
+    'Version info in Python format.')
+format_registry.register_lazy(
+    'custom',
+    'bzrlib.version_info_formats.format_custom',
+    'CustomVersionInfoBuilder',
+    'Version info in Custom template-based format.')

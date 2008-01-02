@@ -72,31 +72,35 @@ class LaunchpadService(object):
         else:
             return self.DEFAULT_SERVICE_URL
 
-    def get_proxy(self):
+    def get_proxy(self, authenticated):
         """Return the proxy for XMLRPC requests."""
-        # auth info must be in url
-        # TODO: if there's no registrant email perhaps we should just connect
-        # anonymously?
-        scheme, hostinfo, path = urlsplit(self.service_url)[:3]
-        assert '@' not in hostinfo
-        assert self.registrant_email is not None
-        assert self.registrant_password is not None
-        # TODO: perhaps fully quote the password to make it very slightly
-        # obscured
-        # TODO: can we perhaps add extra Authorization headers directly to the 
-        # request, rather than putting this into the url?  perhaps a bit more 
-        # secure against accidentally revealing it.  std66 s3.2.1 discourages putting
-        # the password in the url.
-        hostinfo = '%s:%s@%s' % (urllib.quote(self.registrant_email),
-                                 urllib.quote(self.registrant_password),
-                                 hostinfo)
-        url = urlunsplit((scheme, hostinfo, path, '', ''))
+        if authenticated:
+            # auth info must be in url
+            # TODO: if there's no registrant email perhaps we should
+            # just connect anonymously?
+            scheme, hostinfo, path = urlsplit(self.service_url)[:3]
+            assert '@' not in hostinfo
+            assert self.registrant_email is not None
+            assert self.registrant_password is not None
+            # TODO: perhaps fully quote the password to make it very slightly
+            # obscured
+            # TODO: can we perhaps add extra Authorization headers
+            # directly to the request, rather than putting this into
+            # the url?  perhaps a bit more secure against accidentally
+            # revealing it.  std66 s3.2.1 discourages putting the
+            # password in the url.
+            hostinfo = '%s:%s@%s' % (urllib.quote(self.registrant_email),
+                                     urllib.quote(self.registrant_password),
+                                     hostinfo)
+            url = urlunsplit((scheme, hostinfo, path, '', ''))
+        else:
+            url = self.service_url
         return xmlrpclib.ServerProxy(url, transport=self.transport)
 
     def gather_user_credentials(self):
         """Get the password from the user."""
-        config = config.GlobalConfig()
-        self.registrant_email = config.user_email()
+        the_config = config.GlobalConfig()
+        self.registrant_email = the_config.user_email()
         if self.registrant_password is None:
             auth = config.AuthenticationConfig()
             scheme, hostinfo = urlsplit(self.service_url)[:2]
@@ -105,10 +109,11 @@ class LaunchpadService(object):
             # We will reuse http[s] credentials if we can, prompt user
             # otherwise
             self.registrant_password = auth.get_password(scheme, hostinfo,
+                                                         self.registrant_email,
                                                          prompt=prompt)
 
-    def send_request(self, method_name, method_params):
-        proxy = self.get_proxy()
+    def send_request(self, method_name, method_params, authenticated):
+        proxy = self.get_proxy(authenticated)
         assert method_name
         method = getattr(proxy, method_name)
         try:
@@ -134,6 +139,7 @@ class BaseRequest(object):
 
     # Set this to the XMLRPC method name.
     _methodname = None
+    _authenticated = True
 
     def _request_params(self):
         """Return the arguments to pass to the method"""
@@ -145,7 +151,8 @@ class BaseRequest(object):
         :param service: LaunchpadService indicating where to send
             the request and the authentication credentials.
         """
-        return service.send_request(self._methodname, self._request_params())
+        return service.send_request(self._methodname, self._request_params(),
+                                    self._authenticated)
 
 
 class DryRunLaunchpadService(LaunchpadService):
@@ -154,7 +161,7 @@ class DryRunLaunchpadService(LaunchpadService):
     The dummy service does not need authentication.
     """
 
-    def send_request(self, method_name, method_params):
+    def send_request(self, method_name, method_params, authenticated):
         pass
 
     def gather_user_credentials(self):
@@ -216,3 +223,18 @@ class BranchBugLinkRequest(BaseRequest):
         # This must match the parameter tuple expected by Launchpad for this
         # method
         return (self.branch_url, self.bug_id, '')
+
+
+class ResolveLaunchpadPathRequest(BaseRequest):
+    """Request to resolve the path component of an lp: URL."""
+
+    _methodname = 'resolve_lp_path'
+    _authenticated = False
+
+    def __init__(self, path):
+        assert path
+        self.path = path
+
+    def _request_params(self):
+        """Return xmlrpc request parameters"""
+        return (self.path,)

@@ -29,10 +29,11 @@ from bzrlib import (
 """)
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, NotVersionedError, CantMoveRoot,
-                           ExistingLimbo, ImmortalLimbo, NoFinalPath)
+                           ExistingLimbo, ImmortalLimbo, NoFinalPath,
+                           UnableCreateSymlink)
 from bzrlib.inventory import InventoryEntry
 from bzrlib.osutils import (file_kind, supports_executable, pathjoin, lexists,
-                            delete_any)
+                            delete_any, has_symlinks)
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.symbol_versioning import (
         deprecated_function,
@@ -89,6 +90,42 @@ class TreeTransform(object):
      * create_file or create_directory or create_symlink
      * version_file
      * set_executability
+
+    Transform/Transaction ids
+    -------------------------
+    trans_ids are temporary ids assigned to all files involved in a transform.
+    It's possible, even common, that not all files in the Tree have trans_ids.
+
+    trans_ids are used because filenames and file_ids are not good enough
+    identifiers; filenames change, and not all files have file_ids.  File-ids
+    are also associated with trans-ids, so that moving a file moves its
+    file-id.
+
+    trans_ids are only valid for the TreeTransform that generated them.
+
+    Limbo
+    -----
+    Limbo is a temporary directory use to hold new versions of files.
+    Files are added to limbo by create_file, create_directory, create_symlink,
+    and their convenience variants (new_*).  Files may be removed from limbo
+    using cancel_creation.  Files are renamed from limbo into their final
+    location as part of TreeTransform.apply
+
+    Limbo must be cleaned up, by either calling TreeTransform.apply or
+    calling TreeTransform.finalize.
+
+    Files are placed into limbo inside their parent directories, where
+    possible.  This reduces subsequent renames, and makes operations involving
+    lots of files faster.  This optimization is only possible if the parent
+    directory is created *before* creating any of its children, so avoid
+    creating children before parents, where possible.
+
+    Pending-deletion
+    ----------------
+    This temporary directory is used by _FileMover for storing files that are
+    about to be deleted.  In case of rollback, the files will be restored.
+    FileMover does not delete files until it is sure that a rollback will not
+    happen.  
     """
     def __init__(self, tree, pb=DummyProgress()):
         """Note: a tree_write lock is taken on the tree.
@@ -120,9 +157,13 @@ class TreeTransform(object):
             self._tree.unlock()
             raise
 
+        # counter used to generate trans-ids (which are locally unique)
         self._id_number = 0
+        # mapping of trans_id -> new basename
         self._new_name = {}
+        # mapping of trans_id -> new parent trans_id
         self._new_parent = {}
+        # mapping of trans_id with new contents -> new file_kind
         self._new_contents = {}
         # A mapping of transform ids to their limbo filename
         self._limbo_files = {}
@@ -133,22 +174,35 @@ class TreeTransform(object):
         self._limbo_children_names = {}
         # List of transform ids that need to be renamed from limbo into place
         self._needs_rename = set()
+        # Set of trans_ids whose contents will be removed
         self._removed_contents = set()
+        # Mapping of trans_id -> new execute-bit value
         self._new_executability = {}
+        # Mapping of trans_id -> new tree-reference value
         self._new_reference_revision = {}
+        # Mapping of trans_id -> new file_id
         self._new_id = {}
+        # Mapping of old file-id -> trans_id
         self._non_present_ids = {}
+        # Mapping of new file_id -> trans_id
         self._r_new_id = {}
+        # Set of file_ids that will be removed
         self._removed_id = set()
+        # Mapping of path in old tree -> trans_id
         self._tree_path_ids = {}
+        # Mapping trans_id -> path in old tree
         self._tree_id_paths = {}
         # Cache of realpath results, to speed up canonical_path
         self._realpaths = {}
         # Cache of relpath results, to speed up canonical_path
         self._relpaths = {}
+        # The trans_id that will be used as the tree root
         self._new_root = self.trans_id_tree_file_id(tree.get_root_id())
+        # Indictor of whether the transform has been applied
         self.__done = False
+        # A progress bar
         self._pb = pb
+        # A counter of how many files have been renamed
         self.rename_count = 0
 
     def __get_root(self):
@@ -387,8 +441,15 @@ class TreeTransform(object):
         target is a bytestring.
         See also new_symlink.
         """
-        os.symlink(target, self._limbo_name(trans_id))
-        unique_add(self._new_contents, trans_id, 'symlink')
+        if has_symlinks():
+            os.symlink(target, self._limbo_name(trans_id))
+            unique_add(self._new_contents, trans_id, 'symlink')
+        else:
+            try:
+                path = FinalPaths(self).get_path(trans_id)
+            except KeyError:
+                path = None
+            raise UnableCreateSymlink(path=path)
 
     def cancel_creation(self, trans_id):
         """Cancel the creation of new file contents."""
@@ -495,7 +556,7 @@ class TreeTransform(object):
             return None
         # the file is old; the old id is still valid
         if self._new_root == trans_id:
-            return self._tree.inventory.root.file_id
+            return self._tree.get_root_id()
         return self._tree.inventory.path2id(path)
 
     def final_file_id(self, trans_id):
@@ -737,6 +798,8 @@ class TreeTransform(object):
             return conflicts
         for children in by_parent.itervalues():
             name_ids = [(self.final_name(t), t) for t in children]
+            if not self._tree.case_sensitive:
+                name_ids = [(n.lower(), t) for n, t in name_ids]
             name_ids.sort()
             last_name = None
             last_trans_id = None
@@ -863,9 +926,20 @@ class TreeTransform(object):
                 # the direct path can only be used if no other file has
                 # already taken this pathname, i.e. if the name is unused, or
                 # if it is already associated with this trans_id.
-                elif (self._limbo_children_names[parent].get(filename)
-                      in (trans_id, None)):
-                    use_direct_path = True
+                elif self._tree.case_sensitive:
+                    if (self._limbo_children_names[parent].get(filename)
+                        in (trans_id, None)):
+                        use_direct_path = True
+                else:
+                    for l_filename, l_trans_id in\
+                        self._limbo_children_names[parent].iteritems():
+                        if l_trans_id == trans_id:
+                            continue
+                        if l_filename.lower() == filename.lower():
+                            break
+                    else:
+                        use_direct_path = True
+
         if use_direct_path:
             limbo_name = pathjoin(self._limbo_files[parent], filename)
             self._limbo_children[parent].add(trans_id)
@@ -905,7 +979,7 @@ class TreeTransform(object):
                         self.rename_count += 1
                 if trans_id in self._removed_id:
                     if trans_id == self._new_root:
-                        file_id = self._tree.inventory.root.file_id
+                        file_id = self._tree.get_root_id()
                     else:
                         file_id = self.tree_file_id(trans_id)
                     assert file_id is not None
@@ -923,6 +997,7 @@ class TreeTransform(object):
         new_paths = self.new_paths()
         modified_paths = []
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        completed_new = []
         try:
             for num, (path, trans_id) in enumerate(new_paths):
                 new_entry = None
@@ -945,7 +1020,7 @@ class TreeTransform(object):
                             self.rename_count += 1
                     if trans_id in self._new_contents:
                         modified_paths.append(full_path)
-                        del self._new_contents[trans_id]
+                        completed_new.append(trans_id)
 
                 if trans_id in self._new_id:
                     if kind is None:
@@ -990,6 +1065,8 @@ class TreeTransform(object):
                                             new_entry))
         finally:
             child_pb.finished()
+        for trans_id in completed_new:
+            del self._new_contents[trans_id]
         return modified_paths
 
     def _set_executability(self, path, entry, trans_id):
@@ -1237,6 +1314,7 @@ class FinalPaths(object):
             self._known_paths[trans_id] = self._determine_path(trans_id)
         return self._known_paths[trans_id]
 
+
 def topology_sorted_ids(tree):
     """Determine the topological order of the ids in a tree"""
     file_ids = list(tree)
@@ -1244,7 +1322,7 @@ def topology_sorted_ids(tree):
     return file_ids
 
 
-def build_tree(tree, wt):
+def build_tree(tree, wt, accelerator_tree=None):
     """Create working tree for a branch, using a TreeTransform.
     
     This function should be used on empty trees, having a tree root at most.
@@ -1257,18 +1335,31 @@ def build_tree(tree, wt):
     - Otherwise, if the content on disk matches the content we are building,
       it is silently replaced.
     - Otherwise, conflict resolution will move the old file to 'oldname.moved'.
+
+    :param tree: The tree to convert wt into a copy of
+    :param wt: The working tree that files will be placed into
+    :param accelerator_tree: A tree which can be used for retrieving file
+        contents more quickly than tree itself, i.e. a workingtree.  tree
+        will be used for cases where accelerator_tree's content is different.
     """
     wt.lock_tree_write()
     try:
         tree.lock_read()
         try:
-            return _build_tree(tree, wt)
+            if accelerator_tree is not None:
+                accelerator_tree.lock_read()
+            try:
+                return _build_tree(tree, wt, accelerator_tree)
+            finally:
+                if accelerator_tree is not None:
+                    accelerator_tree.unlock()
         finally:
             tree.unlock()
     finally:
         wt.unlock()
 
-def _build_tree(tree, wt):
+
+def _build_tree(tree, wt, accelerator_tree):
     """See build_tree."""
     if len(wt.inventory) > 1:  # more than just a root
         raise errors.WorkingTreeAlreadyPopulated(base=wt.basedir)
@@ -1283,8 +1374,8 @@ def _build_tree(tree, wt):
         # is set within the tree, nor setting the root and thus
         # marking the tree as dirty, because we use two different
         # idioms here: tree interfaces and inventory interfaces.
-        if wt.path2id('') != tree.inventory.root.file_id:
-            wt.set_root_id(tree.inventory.root.file_id)
+        if wt.get_root_id() != tree.get_root_id():
+            wt.set_root_id(tree.get_root_id())
             wt.flush()
     tt = TreeTransform(wt)
     divert = set()
@@ -1345,7 +1436,8 @@ def _build_tree(tree, wt):
                     old_parent = tt.trans_id_tree_path(tree_path)
                     _reparent_children(tt, old_parent, new_trans_id)
             for num, (trans_id, bytes) in enumerate(
-                tree.iter_files_bytes(deferred_contents)):
+                _iter_files_bytes_accelerated(tree, accelerator_tree,
+                                              deferred_contents)):
                 tt.create_file(bytes, trans_id)
                 pb.update('Adding file contents',
                           (num + len(tree.inventory) - len(deferred_contents)),
@@ -1363,11 +1455,35 @@ def _build_tree(tree, wt):
             wt.add_conflicts(conflicts)
         except errors.UnsupportedOperation:
             pass
-        result = tt.apply()
+        result = tt.apply(no_conflicts=True)
     finally:
         tt.finalize()
         top_pb.finished()
     return result
+
+
+def _iter_files_bytes_accelerated(tree, accelerator_tree, desired_files):
+    if accelerator_tree is None:
+        new_desired_files = desired_files
+    else:
+        iter = accelerator_tree._iter_changes(tree, include_unchanged=True)
+        unchanged = dict((f, p[1]) for (f, p, c, v, d, n, k, e)
+                         in iter if not c)
+        new_desired_files = []
+        for file_id, identifier in desired_files:
+            accelerator_path = unchanged.get(file_id)
+            if accelerator_path is None:
+                new_desired_files.append((file_id, identifier))
+                continue
+            contents = accelerator_tree.get_file(file_id, accelerator_path)
+            try:
+                want_new = False
+                contents_bytes = (contents.read(),)
+            finally:
+                contents.close()
+            yield identifier, contents_bytes
+    for result in tree.iter_files_bytes(new_desired_files):
+        yield result
 
 
 def _reparent_children(tt, old_parent, new_parent):
@@ -1438,6 +1554,7 @@ def new_by_entry(tt, entry, parent_id, tree):
     else:
         raise errors.BadFileKindError(name, kind)
 
+
 def create_by_entry(tt, entry, tree, trans_id, lines=None, mode_id=None):
     """Create new file contents according to an inventory entry."""
     if entry.kind == "file":
@@ -1448,6 +1565,7 @@ def create_by_entry(tt, entry, tree, trans_id, lines=None, mode_id=None):
         tt.create_symlink(tree.get_symlink_target(entry.file_id), trans_id)
     elif entry.kind == "directory":
         tt.create_directory(trans_id)
+
 
 def create_entry_executability(tt, entry, trans_id):
     """Set the executability of a trans_id according to an inventory entry"""
@@ -1576,7 +1694,8 @@ def revert(working_tree, target_tree, filenames, backups=False,
         pp.next_phase()
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
-            raw_conflicts = resolve_conflicts(tt, child_pb)
+            raw_conflicts = resolve_conflicts(tt, child_pb,
+                lambda t, c: conflict_pass(t, c, target_tree))
         finally:
             child_pb.finished()
         conflicts = cook_conflicts(raw_conflicts, tt)
@@ -1721,16 +1840,15 @@ def conflict_pass(tt, conflicts, path_tree=None):
                                conflict[1], conflict[2], ))
         elif c_type == 'duplicate':
             # files that were renamed take precedence
-            new_name = tt.final_name(conflict[1])+'.moved'
             final_parent = tt.final_parent(conflict[1])
             if tt.path_changed(conflict[1]):
-                tt.adjust_path(new_name, final_parent, conflict[2])
-                new_conflicts.add((c_type, 'Moved existing file to', 
-                                   conflict[2], conflict[1]))
+                existing_file, new_file = conflict[2], conflict[1]
             else:
-                tt.adjust_path(new_name, final_parent, conflict[1])
-                new_conflicts.add((c_type, 'Moved existing file to', 
-                                  conflict[1], conflict[2]))
+                existing_file, new_file = conflict[1], conflict[2]
+            new_name = tt.final_name(existing_file)+'.moved'
+            tt.adjust_path(new_name, final_parent, existing_file)
+            new_conflicts.add((c_type, 'Moved existing file to', 
+                               existing_file, new_file))
         elif c_type == 'parent loop':
             # break the loop by undoing one of the ops that caused the loop
             cur = conflict[1]
@@ -1752,10 +1870,11 @@ def conflict_pass(tt, conflicts, path_tree=None):
                 try:
                     tt.final_name(trans_id)
                 except NoFinalPath:
-                    file_id = tt.final_file_id(trans_id)
-                    entry = path_tree.inventory[file_id]
-                    parent_trans_id = tt.trans_id_file_id(entry.parent_id)
-                    tt.adjust_path(entry.name, parent_trans_id, trans_id)
+                    if path_tree is not None:
+                        file_id = tt.final_file_id(trans_id)
+                        entry = path_tree.inventory[file_id]
+                        parent_trans_id = tt.trans_id_file_id(entry.parent_id)
+                        tt.adjust_path(entry.name, parent_trans_id, trans_id)
         elif c_type == 'unversioned parent':
             tt.version_file(tt.inactive_file_id(conflict[1]), conflict[1])
             new_conflicts.add((c_type, 'Versioned directory', conflict[1]))
@@ -1799,7 +1918,12 @@ class _FileMover(object):
 
     def rename(self, from_, to):
         """Rename a file from one path to another.  Functions like os.rename"""
-        os.rename(from_, to)
+        try:
+            os.rename(from_, to)
+        except OSError, e:
+            if e.errno in (errno.EEXIST, errno.ENOTEMPTY):
+                raise errors.FileExists(to, str(e))
+            raise
         self.past_renames.append((from_, to))
 
     def pre_delete(self, from_, to):
