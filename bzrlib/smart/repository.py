@@ -252,16 +252,14 @@ class SmartServerRepositoryStreamKnitDataForRevisions(SmartServerRepositoryReque
     def do_repository_request(self, repository, *revision_ids):
         repository.lock_read()
         try:
-            return self._do_repository_request(repository, revision_ids)
-        finally:
+            stream = repository.get_data_stream(revision_ids)
+        except Exception:
             repository.unlock()
-
-    def _do_repository_request(self, repository, revision_ids):
-        stream = repository.get_data_stream(revision_ids)
+            raise
         return SuccessfulSmartServerResponse(('ok',),
-            body_stream=self.body_stream(stream))
+            body_stream=self.body_stream(stream, repository))
 
-    def body_stream(self, stream):
+    def body_stream(self, stream, repository):
         pack = ContainerSerialiser()
         yield pack.begin()
         try:
@@ -269,5 +267,6 @@ class SmartServerRepositoryStreamKnitDataForRevisions(SmartServerRepositoryReque
                 yield pack.bytes_record(bytes, [name_tuple])
         except errors.RevisionNotPresent, e:
             yield FailedSmartServerResponse(('NoSuchRevision', e.revision_id))
+        repository.unlock()
         pack.end()
 
