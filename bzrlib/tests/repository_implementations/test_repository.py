@@ -536,7 +536,18 @@ class TestRepository(TestCaseWithRepository):
         graph = tree.branch.repository.get_graph()
         parents = graph.get_parent_map(['ghost', 'rev2'])
         self.assertTrue('ghost' not in parents)
-        self.assertEqual(tuple(parents['rev2']), ('rev1', 'ghost'))
+        self.assertEqual(parents['rev2'], ('rev1', 'ghost'))
+
+    def test_parent_map_type(self):
+        tree = self.make_branch_and_tree('here')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.commit('initial commit', rev_id='rev1')
+        tree.commit('next commit', rev_id='rev2')
+        graph = tree.branch.repository.get_graph()
+        parents = graph.get_parent_map([NULL_REVISION, 'rev1', 'rev2'])
+        for value in parents.values():
+            self.assertIsInstance(value, tuple)
 
     def test_implements_revision_graph_can_have_wrong_parents(self):
         """All repositories should implement
