@@ -2515,3 +2515,12 @@ class UnableCreateSymlink(BzrError):
                 path_str = repr(path)
             path_str += ' '
         self.path_str = path_str
+
+
+class UnsupportedTimezoneFormat(BzrError):
+
+    _fmt = ('Unsupported timezone format "%(timezone)s", '
+            'options are "utc", "original", "local".')
+
+    def __init__(self, timezone):
+        self.timezone = timezone
