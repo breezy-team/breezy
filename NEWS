@@ -64,6 +64,9 @@ IN DEVELOPMENT
    * ``commit`` now succeeds when a checkout and its master branch share a
      repository.  (Aaron Bentley, #177592)
 
+   * Fixed error reporting of unsupported timezone format in
+     ``log --timezone``. (Lukáš Lalinský, #178722)
+
    * Fixed Unicode encoding error in ``ignored`` when the output is
      redirected to a pipe. (Lukáš Lalinský)
 
