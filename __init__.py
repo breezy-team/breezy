@@ -173,7 +173,7 @@ class cmd_rebase(Command):
                 common_revid = find_last_common_revid(revhistory, 
                                                  upstream.revision_history())
                 if common_revid == upstream.last_revision():
-                    self.outf.write("No revisions to rebase.")
+                    self.outf.write("No revisions to rebase.\n")
                     return
                 try:
                     start_revid = wt.branch.get_rev_id(
