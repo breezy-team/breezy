@@ -75,6 +75,12 @@ class Response(httplib.HTTPResponse):
     # Some responses have bodies in which we have no interest
     _body_ignored_responses = [301,302, 303, 307, 401, 403, 404]
 
+    # in finish() below, we may have to discard several MB in the worst
+    # case. To avoid buffering that much, we read and discard by chunks
+    # instead. The underlying file is either a socket or a StringIO, so reading
+    # 8k chunks should be fine.
+    _discarded_buf_size = 8192
+
     def begin(self):
         """Begin to read the response from the server.
 
@@ -113,12 +119,6 @@ class Response(httplib.HTTPResponse):
             # below we keep the socket with the server opened.
             self.will_close = False
 
-    # in finish() below, we may have to discard several MB in the worst
-    # case. To avoid buffering that much, we read and discard by chunks
-    # instead. The underlying file is either a socket or a StringIO, so reading
-    # 8k chunks should be fine.
-    _discarded_buf_size = 8192
-
     def finish(self):
         """Finish reading the body.
 
@@ -135,12 +135,9 @@ class Response(httplib.HTTPResponse):
             # Make sure nothing was left to be read on the socket
             pending = 0
             data = True
-            while (data and self.length
-                   and self.length > self._discarded_buf_size):
-                data = self.read(self._discarded_buf_size)
-                pending += len(data)
-            if data and self.length:
-                data = self.read(self.length)
+            while data and self.length:
+                # read() will update self.length
+                data = self.read(min(self.length, self._discarded_buf_size))
                 pending += len(data)
             if pending:
                 trace.mutter("%s bytes left on the HTTP socket", pending)
