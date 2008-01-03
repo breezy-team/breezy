@@ -529,8 +529,7 @@ class TestRangeHeader(tests.TestCase):
 class TestSpecificRequestHandler(http_utils.TestCaseWithWebserver):
     """Tests a specific request handler.
 
-
-    Daughter class are expected to override _req_handler_class
+    Daughter classes are expected to override _req_handler_class
     """
 
     # Provide a useful default
