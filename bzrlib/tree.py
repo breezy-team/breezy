@@ -145,9 +145,9 @@ class Tree(object):
     def __iter__(self):
         return iter(self.inventory)
 
-    def iter_all_file_ids(self):
+    def all_file_ids(self):
         """Iterate through all file ids, including ids for missing files."""
-        return iter(self)
+        return set(self.inventory)
 
     def id2path(self, file_id):
         """Return the path for a file id.

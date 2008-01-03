@@ -389,9 +389,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             if osutils.lexists(self.abspath(path)):
                 yield ie.file_id
 
-    def iter_all_file_ids(self):
+    def all_file_ids(self):
         """See Tree.iter_all_file_ids"""
-        return iter(self.inventory)
+        return set(self.inventory)
 
     def __repr__(self):
         return "<%s of %s>" % (self.__class__.__name__,

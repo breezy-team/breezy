@@ -823,8 +823,8 @@ class TreeTransform(object):
         conflicts = []
         removed_tree_ids = set((self.tree_file_id(trans_id) for trans_id in
                                 self._removed_id))
-        active_tree_ids = set((f for f in self._tree.iter_all_file_ids() if
-                               f not in removed_tree_ids))
+        all_ids = self._tree.all_file_ids()
+        active_tree_ids = all_ids.difference(removed_tree_ids)
         for trans_id, file_id in self._new_id.iteritems():
             if file_id in active_tree_ids:
                 old_trans_id = self.trans_id_tree_file_id(file_id)
@@ -1344,8 +1344,9 @@ def build_tree(tree, wt, accelerator_tree=None):
 
 def _build_tree(tree, wt, accelerator_tree):
     """See build_tree."""
-    if len(list(wt)) > 1:  # more than just a root
-        raise errors.WorkingTreeAlreadyPopulated(base=wt.basedir)
+    for num, _unused in enumerate(wt):
+        if num > 0:  # more than just a root
+            raise errors.WorkingTreeAlreadyPopulated(base=wt.basedir)
     file_trans_id = {}
     top_pb = bzrlib.ui.ui_factory.nested_progress_bar()
     pp = ProgressPhase("Build phase", 2, top_pb)

@@ -1211,7 +1211,6 @@ class DirState(object):
                                                fingerprint, new_child_path)
         self._apply_removals(removals.values())
         self._apply_insertions(insertions.values())
-        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
 
     def _apply_removals(self, removals):
         for path in sorted(removals, reverse=True):
@@ -1219,7 +1218,7 @@ class DirState(object):
             block_i, entry_i, d_present, f_present = \
                 self._get_block_entry_index(dirname, basename, 0)
             entry = self._dirblocks[block_i][1][entry_i]
-            entry[1][0] = ('a', '', 0, False, '')
+            self._make_absent(entry)
 
     def _apply_insertions(self, adds):
         for key, minikind, executable, fingerprint, path_utf8 in sorted(adds):
