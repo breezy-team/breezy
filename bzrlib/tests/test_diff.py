@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
+import os.path
 from cStringIO import StringIO
 import errno
 import subprocess
@@ -1270,13 +1271,16 @@ class TestDiffFromTool(TestCaseWithTransport):
     def test_prepare_files(self):
         output = StringIO()
         tree = self.make_branch_and_tree('tree')
-        self.build_tree_contents([('tree/file', 'oldcontent')])
-        tree.add('file', 'file-id')
-        tree.commit('old tree')
-        self.build_tree_contents([('tree/file', 'newcontent')])
+        self.build_tree_contents([('tree/oldname', 'oldcontent')])
+        tree.add('oldname', 'file-id')
+        tree.commit('old tree', timestamp=0)
+        tree.rename_one('oldname', 'newname')
+        self.build_tree_contents([('tree/newname', 'newcontent')])
         old_tree = tree.basis_tree()
         old_tree.lock_read()
         self.addCleanup(old_tree.unlock)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
         diff_obj = DiffFromTool(['python', '-c',
                                  'print "%(old_path)s %(new_path)s"'],
                                 old_tree, tree, output)
@@ -1285,8 +1289,11 @@ class TestDiffFromTool(TestCaseWithTransport):
         old_path, new_path = diff_obj._prepare_files('file-id', 'oldname',
                                                      'newname')
         self.assertContainsRe(old_path, 'old/oldname$')
+        self.assertEqual(0, os.stat(old_path).st_mtime)
         self.assertContainsRe(new_path, 'new/newname$')
         self.assertFileEqual('oldcontent', old_path)
         self.assertFileEqual('newcontent', new_path)
+        if osutils.has_symlinks():
+            self.assertTrue(os.path.samefile('tree/newname', new_path))
         # make sure we can create files with the same parent directories
         diff_obj._prepare_files('file-id', 'oldname2', 'newname2')
