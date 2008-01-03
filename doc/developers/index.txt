@@ -33,6 +33,8 @@ Specifications
 
 * `Network protocol <network-protocol.html>`_ |--| Custom network protocol.
 
+* `LCA merge <lca-merge.html>`_ |--| A nice new merge algorithm.
+
 Data formats
 ============
 
