@@ -93,6 +93,8 @@ IN DEVELOPMENT
      correctly, instead of erroring or attributing incorrect parents to ghosts.
      (Aaron Bentley)
 
+   * ``merge --weave --uncommitted`` now works.  (Aaron Bentley)
+
    * pycurl authentication handling was broken and incomplete. Fix handling of
      user:pass embedded in the urls.
      (Vincent Ladeuil, #177643)
