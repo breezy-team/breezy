@@ -519,7 +519,7 @@ class _PlanMergeVersionedFile(object):
 
     def plan_merge(self, ver_a, ver_b, base=None):
         """See VersionedFile.plan_merge"""
-        from merge import _PlanMerge
+        from bzrlib.merge import _PlanMerge
         if base is None:
             return _PlanMerge(ver_a, ver_b, self).plan_merge()
         old_plan = list(_PlanMerge(ver_a, base, self).plan_merge())
@@ -527,7 +527,7 @@ class _PlanMergeVersionedFile(object):
         return _PlanMerge._subtract_plans(old_plan, new_plan)
 
     def plan_lca_merge(self, ver_a, ver_b, base=None):
-        from merge import _PlanLCAMerge
+        from bzrlib.merge import _PlanLCAMerge
         graph = self._get_graph()
         new_plan = _PlanLCAMerge(ver_a, ver_b, self, graph).plan_merge()
         if base is None:
@@ -604,8 +604,12 @@ class _PlanMergeVersionedFile(object):
             raise errors.RevisionNotPresent(version_id, self._file_id)
 
     def _get_graph(self):
-        from graph import DictParentsProvider, Graph, _StackedParentsProvider
-        from repofmt.knitrepo import _KnitParentsProvider
+        from bzrlib.graph import (
+            DictParentsProvider,
+            Graph,
+            _StackedParentsProvider,
+            )
+        from bzrlib.repofmt.knitrepo import _KnitParentsProvider
         parent_providers = [DictParentsProvider(self._parents)]
         for vf in self.fallback_versionedfiles:
             parent_providers.append(_KnitParentsProvider(vf))

@@ -435,8 +435,6 @@ class TestMerge(ExternalBase):
         self.build_tree_contents([('b/file',
                                    'base-contents\nother-contents\n')])
         tree_b.commit('', rev_id='rev2b')
-        self.build_tree_contents([('a/file',
-                                   'base-contents\nthis-contents\n')])
         tree_a.merge_from_branch(tree_b.branch)
         self.build_tree_contents([('a/file',
                                    'base-contents\nthis-contents\n')])

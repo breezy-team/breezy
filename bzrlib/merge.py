@@ -1205,6 +1205,7 @@ class _PlanMergeBase(object):
         self.vf = vf
         self._last_lines = None
         self._last_lines_revision_id = None
+        self._cached_matching_blocks = {}
 
     def plan_merge(self):
         """Generate a 'plan' for merging the two revisions.
@@ -1252,6 +1253,10 @@ class _PlanMergeBase(object):
 
         See SequenceMatcher.get_matching_blocks
         """
+        cached = self._cached_matching_blocks.get((left_revision,
+                                                   right_revision))
+        if cached is not None:
+            return cached
         if self._last_lines_revision_id == left_revision:
             left_lines = self._last_lines
         else:
@@ -1282,6 +1287,19 @@ class _PlanMergeBase(object):
 
     @staticmethod
     def _subtract_plans(old_plan, new_plan):
+        """Remove changes from new_plan that came from old_plan.
+
+        It is assumed that the difference between the old_plan and new_plan
+        is their choice of 'b' text.
+
+        All lines from new_plan that differ from old_plan are emitted
+        verbatim.  All lines from new_plan that match old_plan but are
+        not about the 'b' revision are emitted verbatim.
+
+        Lines that match and are about the 'b' revision are the lines we
+        don't want, so we convert 'killed-b' -> 'unchanged', and 'new-b'
+        is skipped entirely.
+        """
         matcher = patiencediff.PatienceSequenceMatcher(None, old_plan,
                                                        new_plan)
         last_j = 0
@@ -1308,17 +1326,20 @@ class _PlanMerge(_PlanMergeBase):
        b_ancestry = set(vf.get_ancestry(b_rev, topo_sorted=False))
        self.uncommon = a_ancestry.symmetric_difference(b_ancestry)
 
-    def _determine_status(self, revision_id, unique_lines):
+    def _determine_status(self, revision_id, unique_line_numbers):
         """Determines the status unique lines versus all lcas.
 
         Basically, determines why the line is unique to this revision.
 
         A line may be determined new or killed, but not both.
 
+        :param revision_id: The id of the revision in which the lines are
+            unique
+        :param unique_line_numbers: The line numbers of unique lines.
         :return a tuple of (new_this, killed_other):
         """
         new = self._find_new(revision_id)
-        killed = set(unique_lines).difference(new)
+        killed = set(unique_line_numbers).difference(new)
         return new, killed
 
     def _find_new(self, version_id):
@@ -1350,43 +1371,55 @@ class _PlanMerge(_PlanMergeBase):
 
 class _PlanLCAMerge(_PlanMergeBase):
     """
-    This implementation differs from _PlanMerge.plan_merge in that:
+    This merge algorithm differs from _PlanMerge in that:
     1. comparisons are done against LCAs only
     2. cases where a contested line is new versus one LCA but old versus
-       another are marked as conflicts, by emitting the line as both new-a and
-       killed-b (or new-b, killed-a).
+       another are marked as conflicts, by emitting the line as conflicted-a
+       or conflicted-b.
 
     This is faster, and hopefully produces more useful output.
     """
 
     def __init__(self, a_rev, b_rev, vf, graph):
-       _PlanMergeBase.__init__(self, a_rev, b_rev, vf)
-       self.lcas = graph.find_lca(a_rev, b_rev)
+        _PlanMergeBase.__init__(self, a_rev, b_rev, vf)
+        self.lcas = graph.find_lca(a_rev, b_rev)
+        for lca in self.lcas:
+            lca_lines = self.vf.get_lines(lca)
+            matcher = patiencediff.PatienceSequenceMatcher(None, self.lines_a,
+                                                           lca_lines)
+            blocks = list(matcher.get_matching_blocks())
+            self._cached_matching_blocks[(a_rev, lca)] = blocks
+            matcher = patiencediff.PatienceSequenceMatcher(None, self.lines_b,
+                                                           lca_lines)
+            blocks = list(matcher.get_matching_blocks())
+            self._cached_matching_blocks[(b_rev, lca)] = blocks
 
-    def _determine_status(self, revision_id, unique_lines):
+    def _determine_status(self, revision_id, unique_line_numbers):
         """Determines the status unique lines versus all lcas.
 
         Basically, determines why the line is unique to this revision.
 
         A line may be determined new, killed, or both.
 
-        If a line is determined new, that means it was not present at least one
-        LCA, and is not present in the other merge revision.
+        If a line is determined new, that means it was not present in at least
+        one LCA, and is not present in the other merge revision.
 
         If a line is determined killed, that means the line was present in
         at least one LCA.
 
         If a line is killed and new, this indicates that the two merge
         revisions contain differing conflict resolutions.
-
+        :param revision_id: The id of the revision in which the lines are
+            unique
+        :param unique_line_numbers: The line numbers of unique lines.
         :return a tuple of (new_this, killed_other):
         """
         new = set()
         killed = set()
-        unique_lines = set(unique_lines)
+        unique_line_numbers = set(unique_line_numbers)
         for lca in self.lcas:
             blocks = self._get_matching_blocks(revision_id, lca)
             unique_vs_lca, _ignored = self._unique_lines(blocks)
-            new.update(unique_lines.intersection(unique_vs_lca))
-            killed.update(unique_lines.difference(unique_vs_lca))
+            new.update(unique_line_numbers.intersection(unique_vs_lca))
+            killed.update(unique_line_numbers.difference(unique_vs_lca))
         return new, killed
