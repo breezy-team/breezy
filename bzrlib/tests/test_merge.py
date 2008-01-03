@@ -460,15 +460,70 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
         self.assertEqual(subtracted_plan,
             list(_PlanMerge._subtract_plans(old_plan, new_plan)))
 
-    def test_plan_merge_with_base(self):
+    def setup_merge_with_base(self):
         self.add_version('COMMON', [], 'abc')
         self.add_version('THIS', ['COMMON'], 'abcd')
         self.add_version('BASE', ['COMMON'], 'eabc')
         self.add_version('OTHER', ['BASE'], 'eafb')
+
+    def test_plan_merge_with_base(self):
+        self.setup_merge_with_base()
         plan = self.plan_merge_vf.plan_merge('THIS', 'OTHER', 'BASE')
         self.assertEqual([('unchanged', 'a\n'),
                           ('new-b', 'f\n'),
                           ('unchanged', 'b\n'),
                           ('killed-b', 'c\n'),
                           ('new-a', 'd\n')
+                         ], list(plan))
+
+    def test_plan_lca_merge(self):
+        self.setup_plan_merge()
+        plan = self.plan_merge_vf.plan_lca_merge('B', 'C')
+        self.assertEqual([
+                          ('new-b', 'f\n'),
+                          ('unchanged', 'a\n'),
+                          ('killed-b', 'c\n'),
+                          ('new-a', 'e\n'),
+                          ('new-a', 'h\n'),
+                          ('killed-a', 'b\n'),
+                          ('unchanged', 'g\n')],
+                         list(plan))
+
+    def test_plan_lca_merge_uncommitted_files(self):
+        self.setup_plan_merge_uncommitted()
+        plan = self.plan_merge_vf.plan_lca_merge('B:', 'C:')
+        self.assertEqual([
+                          ('new-b', 'f\n'),
+                          ('unchanged', 'a\n'),
+                          ('killed-b', 'c\n'),
+                          ('new-a', 'e\n'),
+                          ('new-a', 'h\n'),
+                          ('killed-a', 'b\n'),
+                          ('unchanged', 'g\n')],
+                         list(plan))
+
+    def test_plan_lca_merge_with_base(self):
+        self.setup_merge_with_base()
+        plan = self.plan_merge_vf.plan_lca_merge('THIS', 'OTHER', 'BASE')
+        self.assertEqual([('unchanged', 'a\n'),
+                          ('new-b', 'f\n'),
+                          ('unchanged', 'b\n'),
+                          ('killed-b', 'c\n'),
+                          ('new-a', 'd\n')
+                         ], list(plan))
+
+    def test_plan_lca_merge_with_criss_cross(self):
+        self.add_version('ROOT', [], 'abc')
+        # each side makes a change
+        self.add_version('REV1', ['ROOT'], 'abcd')
+        self.add_version('REV2', ['ROOT'], 'abce')
+        # both sides merge, discarding others' changes
+        self.add_version('LCA1', ['REV1', 'REV2'], 'abcd')
+        self.add_version('LCA2', ['REV1', 'REV2'], 'abce')
+        plan = self.plan_merge_vf.plan_lca_merge('LCA1', 'LCA2')
+        self.assertEqual([('unchanged', 'a\n'),
+                          ('unchanged', 'b\n'),
+                          ('unchanged', 'c\n'),
+                          ('conflicted-a', 'd\n'),
+                          ('conflicted-b', 'e\n'),
                          ], list(plan))
