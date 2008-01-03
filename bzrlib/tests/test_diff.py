@@ -21,6 +21,7 @@ import errno
 import subprocess
 from tempfile import TemporaryFile
 
+from bzrlib import tests
 from bzrlib.diff import (
     DiffFromTool,
     DiffPath,
@@ -664,6 +665,7 @@ class TestDiffTree(TestCaseWithTransport):
              ' \@\@\n-old\n\+new\n\n')
 
     def test_diff_kind_change(self):
+        self.requireFeature(tests.SymlinkFeature)
         self.build_tree_contents([('old-tree/olddir/',),
                                   ('old-tree/olddir/oldfile', 'old\n')])
         self.old_tree.add('olddir')
@@ -1257,7 +1259,7 @@ class TestDiffFromTool(TestCaseWithTransport):
                                 None, None, output)
         self.addCleanup(diff_obj.finish)
         diff_obj._execute('old', 'new')
-        self.assertEqual(output.getvalue(), 'old new\n')
+        self.assertEqual(output.getvalue().rstrip(), 'old new')
 
     def test_excute_missing(self):
         diff_obj = DiffFromTool(['a-tool-which-is-unlikely-to-exist'],

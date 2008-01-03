@@ -759,6 +759,8 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform, root = self.get_transform()
         transform.new_file('file1', root, 'contents', 'file1-id', True)
         transform.apply()
+        self.wt.lock_write()
+        self.addCleanup(self.wt.unlock)
         self.assertTrue(self.wt.is_executable('file1-id'))
         transform, root = self.get_transform()
         file1_id = transform.trans_id_tree_file_id('file1-id')
@@ -1598,6 +1600,7 @@ class TestBuildTree(tests.TestCaseWithTransport):
         self.assertEqual([], list(target._iter_changes(revision_tree)))
 
     def test_build_tree_accelerator_wrong_kind(self):
+        self.requireFeature(SymlinkFeature)
         source = self.make_branch_and_tree('source')
         self.build_tree_contents([('source/file1', '')])
         self.build_tree_contents([('source/file2', '')])

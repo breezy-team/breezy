@@ -138,6 +138,8 @@ class TestMerge(TestCaseWithTransport):
         tree_a.commit(message="hello")
         dir_b = tree_a.bzrdir.sprout('b')
         tree_b = dir_b.open_workingtree()
+        tree_b.lock_write()
+        self.addCleanup(tree_b.unlock)
         tree_a.commit(message="hello again")
         log = StringIO()
         merge_inner(tree_b.branch, tree_a, tree_b.basis_tree(), 
