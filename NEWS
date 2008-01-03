@@ -64,6 +64,9 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+   * Better handle short reads when processing multiple range requests.
+     (Vincent Ladeuil, #179368)
+
    * build_tree acceleration uses the correct path when a file has been moved.
      (Aaron Bentley)
 
