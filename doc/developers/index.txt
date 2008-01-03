@@ -33,6 +33,8 @@ Specifications
 
 * `Network protocol <network-protocol.html>`_ |--| Custom network protocol.
 
+* `Inventories <inventory.html>`_ |--| Tree shape abstraction.
+
 Data formats
 ============
 
