@@ -703,6 +703,8 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform, root = self.get_transform()
         transform.new_file('file1', root, 'contents', 'file1-id', True)
         transform.apply()
+        self.wt.lock_write()
+        self.addCleanup(self.wt.unlock)
         self.assertTrue(self.wt.is_executable('file1-id'))
         transform, root = self.get_transform()
         file1_id = transform.trans_id_tree_file_id('file1-id')
