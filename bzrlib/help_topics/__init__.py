@@ -615,8 +615,8 @@ topic_registry.register('status-flags', _status_flags,
                         "Help on status flags")
 def get_bugs_topic(topic):
     from bzrlib import bugtracker
-    return "Bug Tracker Settings\n\n" + \
-        bugtracker.tracker_registry.help_topic(topic)
+    return ("Bug Tracker Settings\n\n" + 
+        bugtracker.tracker_registry.help_topic(topic))
 topic_registry.register('bugs', get_bugs_topic, 'Bug tracker settings')
 topic_registry.register('env-variables', _env_variables,
                         'Environment variable names and values')

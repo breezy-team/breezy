@@ -43,13 +43,14 @@ _bugs_help = \
 """When making a commit, metadata about bugs fixed by that change can be
 recorded by using the --fixes option. For each bug marked as fixed, an
 entry is included in the 'bugs' revision property stating '<url> <status>'.
+(The only ``status`` value currently supported is ``fixed.``)
 Support for Launchpad's central bug tracker is built in. For other bug
 trackers, configuration is required in advance so that the correct URL
 can be recorded.
 
 In addition to Launchpad, Bazaar directly supports the generation of
 URLs appropriate for Bugzilla and Trac. If your project uses a different
-bug tracker, it is easy to add support for it by writing a plugin, say.
+bug tracker, it is easy to add support for it.
 If you use Bugzilla or Trac, then you only need to set a configuration
 variable which contains the base URL of the bug tracker. These options
 can go into ``bazaar.conf``, ``branch.conf`` or into a branch-specific
