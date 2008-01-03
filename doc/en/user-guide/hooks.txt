@@ -11,7 +11,7 @@ include ``commit``, ``push``, ``pull``, and ``uncommit``.
 Using hooks
 -----------
 
-To use a hook, you should write a `plugin <plugins.html>`_.  Instead of
+To use a hook, you should `write a plugin <#writing-a-plugin>`_.  Instead of
 creating a new command, this plugin will define and install the hook.  Here's
 an example::
 
@@ -47,5 +47,5 @@ what you do with them is up to you.
 Standard hooks
 --------------
 
-For a complete list of hooks and their parameters, see the `Hooks Reference
-<../user-reference/hooks.html>`_.
+For a complete list of hooks and their parameters, see `Hooks
+<../user-reference/bzr_man.html#hooks>`_ in the User Reference.

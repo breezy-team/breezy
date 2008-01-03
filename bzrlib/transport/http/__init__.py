@@ -114,15 +114,6 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         else:
             self._range_hint = 'multi'
 
-    def _remote_path(self, relpath):
-        """Produce absolute path, adjusting protocol."""
-        relative = urlutils.unescape(relpath).encode('utf-8')
-        path = self._combine_paths(self._path, relative)
-        return self._unsplit_url(self._unqualified_scheme,
-                                 self._user, self._password,
-                                 self._host, self._port,
-                                 path)
-
     def has(self, relpath):
         raise NotImplementedError("has() is abstract on %r" % self)
 
@@ -139,7 +130,6 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         # time of this writing it's even the only known client -- vila20071203
         return StringIO(response_file.read())
 
-    # TODO: Add tests for tail_amount or deprecate it
     def _get(self, relpath, ranges, tail_amount=0):
         """Get a file, or part of a file.
 
@@ -151,6 +141,24 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         :returns: (http_code, result_file)
         """
         raise NotImplementedError(self._get)
+
+    def _remote_path(self, relpath):
+        """See ConnectedTransport._remote_path.
+
+        user and passwords are not embedded in the path provided to the server.
+        """
+        relative = urlutils.unescape(relpath).encode('utf-8')
+        path = self._combine_paths(self._path, relative)
+        return self._unsplit_url(self._unqualified_scheme,
+                                 None, None, self._host, self._port, path)
+
+    def _create_auth(self):
+        """Returns a dict returning the credentials provided at build time."""
+        auth = dict(host=self._host, port=self._port,
+                    user=self._user, password=self._password,
+                    protocol=self._unqualified_scheme,
+                    path=self._path)
+        return auth
 
     def get_request(self):
         return SmartClientHTTPMediumRequest(self)
@@ -204,7 +212,7 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         :param return: A list or generator of (offset, data) tuples
         """
 
-        # offsets may be a genarator, we will iterate it several times, so
+        # offsets may be a generator, we will iterate it several times, so
         # build a list
         offsets = list(offsets)
 
@@ -227,7 +235,7 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
             # Cache the data read, but only until it's been used
             data_map = {}
             # We will iterate on the data received from the GET requests and
-            # serve the corresponding offsets repecting the initial order. We
+            # serve the corresponding offsets respecting the initial order. We
             # need an offset iterator for that.
             iter_offsets = iter(offsets)
             cur_offset_and_size = iter_offsets.next()
@@ -275,7 +283,7 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         def get_and_yield(relpath, coalesced):
             if coalesced:
                 # Note that the _get below may raise
-                # errors.InvalidHttpRange. It's the caller's responsability to
+                # errors.InvalidHttpRange. It's the caller's responsibility to
                 # decide how to retry since it may provide different coalesced
                 # offsets.
                 code, rfile = self._get(relpath, coalesced)
@@ -290,8 +298,11 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
             total = len(coalesced)
             if self._range_hint == 'multi':
                 max_ranges = self._max_get_ranges
-            else: # self._range_hint == 'single'
+            elif self._range_hint == 'single':
                 max_ranges = total
+            else:
+                raise AssertionError("Unknown _range_hint %r"
+                                     % (self._range_hint,))
             # TODO: Some web servers may ignore the range requests and return
             # the whole file, we may want to detect that and avoid further
             # requests.

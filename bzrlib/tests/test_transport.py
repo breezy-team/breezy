@@ -180,7 +180,7 @@ class TestCoalesceOffsets(TestCase):
         self.check([(0, 20, [(0, 10), (10, 10)])],
                    [(0, 10), (10, 10)])
 
-    # XXX: scary, http.readv() can't handle that
+    # XXX: scary, http.readv() can't handle that --vila20071209
     def test_coalesce_overlapped(self):
         self.check([(0, 15, [(0, 10), (5, 10)])],
                    [(0, 10), (5, 10)])

@@ -23,10 +23,10 @@ import time
 from bzrlib import (
         debug,
         osutils,
+        graph,
         pack,
         ui,
         )
-from bzrlib.graph import Graph
 from bzrlib.index import (
     CombinedGraphIndex,
     InMemoryGraphIndex,
@@ -47,6 +47,7 @@ from bzrlib import (
     lockable_files,
     lockdir,
     osutils,
+    symbol_versioning,
     transactions,
     xml5,
     xml6,
@@ -80,7 +81,7 @@ class PackCommitBuilder(CommitBuilder):
         CommitBuilder.__init__(self, repository, parents, config,
             timestamp=timestamp, timezone=timezone, committer=committer,
             revprops=revprops, revision_id=revision_id)
-        self._file_graph = Graph(
+        self._file_graph = graph.Graph(
             repository._pack_collection.text_index.combined_index)
 
     def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
@@ -106,7 +107,7 @@ class PackRootCommitBuilder(RootCommitBuilder):
         CommitBuilder.__init__(self, repository, parents, config,
             timestamp=timestamp, timezone=timezone, committer=committer,
             revprops=revprops, revision_id=revision_id)
-        self._file_graph = Graph(
+        self._file_graph = graph.Graph(
             repository._pack_collection.text_index.combined_index)
 
     def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
@@ -609,8 +610,9 @@ class Packer(object):
         revision_nodes = self._pack_collection._index_contents(revision_index_map, revision_keys)
         # copy revision keys and adjust values
         self.pb.update("Copying revision texts", 1)
-        list(self._copy_nodes_graph(revision_nodes, revision_index_map,
-            self.new_pack._writer, self.new_pack.revision_index))
+        total_items, readv_group_iter = self._revision_node_readv(revision_nodes)
+        list(self._copy_nodes_graph(revision_index_map, self.new_pack._writer,
+            self.new_pack.revision_index, readv_group_iter, total_items))
         if 'pack' in debug.debug_flags:
             mutter('%s: create_pack: revisions copied: %s%s %d items t+%6.3fs',
                 time.ctime(), self._pack_collection._upload_transport.base,
@@ -638,8 +640,10 @@ class Packer(object):
         # XXX: Should be a helper function to allow different inv representation
         # at this point.
         self.pb.update("Copying inventory texts", 2)
-        inv_lines = self._copy_nodes_graph(inv_nodes, inventory_index_map,
-            self.new_pack._writer, self.new_pack.inventory_index, output_lines=True)
+        total_items, readv_group_iter = self._least_readv_node_readv(inv_nodes)
+        inv_lines = self._copy_nodes_graph(inventory_index_map,
+            self.new_pack._writer, self.new_pack.inventory_index,
+            readv_group_iter, total_items, output_lines=True)
         if self.revision_ids:
             self._process_inventory_lines(inv_lines)
         else:
@@ -674,8 +678,9 @@ class Packer(object):
                     a_missing_key[0])
         # copy text keys and adjust values
         self.pb.update("Copying content texts", 3)
-        list(self._copy_nodes_graph(text_nodes, text_index_map,
-            self.new_pack._writer, self.new_pack.text_index))
+        total_items, readv_group_iter = self._least_readv_node_readv(text_nodes)
+        list(self._copy_nodes_graph(text_index_map, self.new_pack._writer,
+            self.new_pack.text_index, readv_group_iter, total_items))
         self._log_copied_texts()
 
     def _check_references(self):
@@ -786,8 +791,8 @@ class Packer(object):
                 pb.update("Copied record", record_index)
                 record_index += 1
 
-    def _copy_nodes_graph(self, nodes, index_map, writer, write_index,
-        output_lines=False):
+    def _copy_nodes_graph(self, index_map, writer, write_index,
+        readv_group_iter, total_items, output_lines=False):
         """Copy knit nodes between packs.
 
         :param output_lines: Return lines present in the copied data as
@@ -795,8 +800,8 @@ class Packer(object):
         """
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            for result in self._do_copy_nodes_graph(nodes, index_map, writer,
-                write_index, output_lines, pb):
+            for result in self._do_copy_nodes_graph(index_map, writer,
+                write_index, output_lines, pb, readv_group_iter, total_items):
                 yield result
         except Exception:
             # Python 2.4 does not permit try:finally: in a generator.
@@ -805,42 +810,21 @@ class Packer(object):
         else:
             pb.finished()
 
-    def _do_copy_nodes_graph(self, nodes, index_map, writer, write_index,
-        output_lines, pb):
+    def _do_copy_nodes_graph(self, index_map, writer, write_index,
+        output_lines, pb, readv_group_iter, total_items):
         # for record verification
         knit_data = _KnitData(None)
         # for line extraction when requested (inventories only)
         if output_lines:
             factory = knit.KnitPlainFactory()
-        # plan a readv on each source pack:
-        # group by pack
-        nodes = sorted(nodes)
-        # how to map this into knit.py - or knit.py into this?
-        # we don't want the typical knit logic, we want grouping by pack
-        # at this point - perhaps a helper library for the following code 
-        # duplication points?
-        request_groups = {}
         record_index = 0
-        pb.update("Copied record", record_index, len(nodes))
-        for index, key, value, references in nodes:
-            if index not in request_groups:
-                request_groups[index] = []
-            request_groups[index].append((key, value, references))
-        for index, items in request_groups.iteritems():
-            pack_readv_requests = []
-            for key, value, references in items:
-                # ---- KnitGraphIndex.get_position
-                bits = value[1:].split(' ')
-                offset, length = int(bits[0]), int(bits[1])
-                pack_readv_requests.append((offset, length, (key, value[0], references)))
-            # linear scan up the pack
-            pack_readv_requests.sort()
+        pb.update("Copied record", record_index, total_items)
+        for index, readv_vector, node_vector in readv_group_iter:
             # copy the data
             transport, path = index_map[index]
-            reader = pack.make_readv_reader(transport, path,
-                [offset[0:2] for offset in pack_readv_requests])
-            for (names, read_func), (_1, _2, (key, eol_flag, references)) in \
-                izip(reader.iter_records(), pack_readv_requests):
+            reader = pack.make_readv_reader(transport, path, readv_vector)
+            for (names, read_func), (key, eol_flag, references) in \
+                izip(reader.iter_records(), node_vector):
                 raw_data = read_func(None)
                 version_id = key[-1]
                 if output_lines:
@@ -867,6 +851,43 @@ class Packer(object):
         return text_index_map, self._pack_collection._index_contents(text_index_map,
             self._text_filter)
 
+    def _least_readv_node_readv(self, nodes):
+        """Generate request groups for nodes using the least readv's.
+        
+        :param nodes: An iterable of graph index nodes.
+        :return: Total node count and an iterator of the data needed to perform
+            readvs to obtain the data for nodes. Each item yielded by the
+            iterator is a tuple with:
+            index, readv_vector, node_vector. readv_vector is a list ready to
+            hand to the transport readv method, and node_vector is a list of
+            (key, eol_flag, references) for the the node retrieved by the
+            matching readv_vector.
+        """
+        # group by pack so we do one readv per pack
+        nodes = sorted(nodes)
+        total = len(nodes)
+        request_groups = {}
+        for index, key, value, references in nodes:
+            if index not in request_groups:
+                request_groups[index] = []
+            request_groups[index].append((key, value, references))
+        result = []
+        for index, items in request_groups.iteritems():
+            pack_readv_requests = []
+            for key, value, references in items:
+                # ---- KnitGraphIndex.get_position
+                bits = value[1:].split(' ')
+                offset, length = int(bits[0]), int(bits[1])
+                pack_readv_requests.append(
+                    ((offset, length), (key, value[0], references)))
+            # linear scan up the pack to maximum range combining.
+            pack_readv_requests.sort()
+            # split out the readv and the node data.
+            pack_readv = [readv for readv, node in pack_readv_requests]
+            node_vector = [node for readv, node in pack_readv_requests]
+            result.append((index, pack_readv, node_vector))
+        return total, result
+
     def _log_copied_texts(self):
         if 'pack' in debug.debug_flags:
             mutter('%s: create_pack: file texts copied: %s%s %d items t+%6.3fs',
@@ -885,6 +906,15 @@ class Packer(object):
             text_filter.extend([(fileid, file_revid) for file_revid in file_revids])
         self._text_filter = text_filter
 
+    def _revision_node_readv(self, revision_nodes):
+        """Return the total revisions and the readv's to issue.
+
+        :param revision_nodes: The revision index contents for the packs being
+            incorporated into the new pack.
+        :return: As per _least_readv_node_readv.
+        """
+        return self._least_readv_node_readv(revision_nodes)
+
     def _use_pack(self, new_pack):
         """Return True if new_pack should be used.
 
@@ -892,6 +922,40 @@ class Packer(object):
         :return: True if the pack should be used.
         """
         return new_pack.data_inserted()
+
+
+class OptimisingPacker(Packer):
+    """A packer which spends more time to create better disk layouts."""
+
+    def _revision_node_readv(self, revision_nodes):
+        """Return the total revisions and the readv's to issue.
+
+        This sort places revisions in topological order with the ancestors
+        after the children.
+
+        :param revision_nodes: The revision index contents for the packs being
+            incorporated into the new pack.
+        :return: As per _least_readv_node_readv.
+        """
+        # build an ancestors dict
+        ancestors = {}
+        by_key = {}
+        for index, key, value, references in revision_nodes:
+            ancestors[key] = references[0]
+            by_key[key] = (index, value, references)
+        order = tsort.topo_sort(ancestors)
+        total = len(order)
+        # Single IO is pathological, but it will work as a starting point.
+        requests = []
+        for key in reversed(order):
+            index, value, references = by_key[key]
+            # ---- KnitGraphIndex.get_position
+            bits = value[1:].split(' ')
+            offset, length = int(bits[0]), int(bits[1])
+            requests.append(
+                (index, [(offset, length)], [(key, value[0], references)]))
+        # TODO: combine requests in the same index that are in ascending order.
+        return total, requests
 
 
 class ReconcilePacker(Packer):
@@ -967,8 +1031,9 @@ class ReconcilePacker(Packer):
         del ideal_index
         del text_nodes
         # 3) bulk copy the ok data
-        list(self._copy_nodes_graph(ok_nodes, text_index_map,
-            self.new_pack._writer, self.new_pack.text_index))
+        total_items, readv_group_iter = self._least_readv_node_readv(ok_nodes)
+        list(self._copy_nodes_graph(text_index_map, self.new_pack._writer,
+            self.new_pack.text_index, readv_group_iter, total_items))
         # 4) adhoc copy all the other texts.
         # We have to topologically insert all texts otherwise we can fail to
         # reconcile when parts of a single delta chain are preserved intact,
@@ -1163,17 +1228,18 @@ class RepositoryPackCollection(object):
         self._execute_pack_operations(pack_operations)
         return True
 
-    def _execute_pack_operations(self, pack_operations):
+    def _execute_pack_operations(self, pack_operations, _packer_class=Packer):
         """Execute a series of pack operations.
 
         :param pack_operations: A list of [revision_count, packs_to_combine].
+        :param _packer_class: The class of packer to use (default: Packer).
         :return: None.
         """
         for revision_count, packs in pack_operations:
             # we may have no-ops from the setup logic
             if len(packs) == 0:
                 continue
-            Packer(self, packs, '.autopack').pack()
+            _packer_class(self, packs, '.autopack').pack()
             for pack in packs:
                 self._remove_pack_from_memory(pack)
         # record the newly available packs and stop advertising the old
@@ -1196,6 +1262,9 @@ class RepositoryPackCollection(object):
         self.ensure_loaded()
         total_packs = len(self._names)
         if total_packs < 2:
+            # This is arguably wrong because we might not be optimal, but for
+            # now lets leave it in. (e.g. reconcile -> one pack. But not
+            # optimal.
             return
         total_revisions = self.revision_index.combined_index.key_count()
         # XXX: the following may want to be a class, to pack with a given
@@ -1207,10 +1276,9 @@ class RepositoryPackCollection(object):
         pack_distribution = [1]
         pack_operations = [[0, []]]
         for pack in self.all_packs():
-            revision_count = pack.get_revision_count()
-            pack_operations[-1][0] += revision_count
+            pack_operations[-1][0] += pack.get_revision_count()
             pack_operations[-1][1].append(pack)
-        self._execute_pack_operations(pack_operations)
+        self._execute_pack_operations(pack_operations, OptimisingPacker)
 
     def plan_autopack_combinations(self, existing_packs, pack_distribution):
         """Plan a pack operation.
@@ -1826,19 +1894,27 @@ class KnitPackRepository(KnitRepository):
             pb.finished()
         return result
 
+    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
     def get_parents(self, revision_ids):
-        """See StackedParentsProvider.get_parents.
-        
+        """See graph._StackedParentsProvider.get_parents."""
+        parent_map = self.get_parent_map(revision_ids)
+        return [parent_map.get(r, None) for r in revision_ids]
+
+    def get_parent_map(self, keys):
+        """See graph._StackedParentsProvider.get_parent_map
+
         This implementation accesses the combined revision index to provide
         answers.
         """
         self._pack_collection.ensure_loaded()
         index = self._pack_collection.revision_index.combined_index
-        search_keys = set()
-        for revision_id in revision_ids:
-            if revision_id != _mod_revision.NULL_REVISION:
-                search_keys.add((revision_id,))
-        found_parents = {_mod_revision.NULL_REVISION:[]}
+        keys = set(keys)
+        if _mod_revision.NULL_REVISION in keys:
+            keys.discard(_mod_revision.NULL_REVISION)
+            found_parents = {_mod_revision.NULL_REVISION:()}
+        else:
+            found_parents = {}
+        search_keys = set((revision_id,) for revision_id in keys)
         for index, key, value, refs in index.iter_entries(search_keys):
             parents = refs[0]
             if not parents:
@@ -1846,16 +1922,10 @@ class KnitPackRepository(KnitRepository):
             else:
                 parents = tuple(parent[0] for parent in parents)
             found_parents[key[0]] = parents
-        result = []
-        for revision_id in revision_ids:
-            try:
-                result.append(found_parents[revision_id])
-            except KeyError:
-                result.append(None)
-        return result
+        return found_parents
 
     def _make_parents_provider(self):
-        return self
+        return graph.CachingParentsProvider(self)
 
     def _refresh_data(self):
         if self._write_lock_count == 1 or (
@@ -2058,7 +2128,7 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
 
 
 class RepositoryFormatKnitPack1(RepositoryFormatPack):
-    """A no-subtrees parameterised Pack repository.
+    """A no-subtrees parameterized Pack repository.
 
     This format was introduced in 0.92.
     """
@@ -2088,7 +2158,7 @@ class RepositoryFormatKnitPack1(RepositoryFormatPack):
 
 
 class RepositoryFormatKnitPack3(RepositoryFormatPack):
-    """A subtrees parameterised Pack repository.
+    """A subtrees parameterized Pack repository.
 
     This repository format uses the xml7 serializer to get:
      - support for recording full info about the tree root
@@ -2130,7 +2200,7 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
 
 
 class RepositoryFormatKnitPack4(RepositoryFormatPack):
-    """A rich-root, no subtrees parameterised Pack repository.
+    """A rich-root, no subtrees parameterized Pack repository.
 
     This repository format uses the xml6 serializer to get:
      - support for recording full info about the tree root

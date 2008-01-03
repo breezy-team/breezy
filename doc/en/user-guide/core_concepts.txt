@@ -38,6 +38,9 @@ by a *revision-id*. An example revision-id is::
 While these identifiers are necessary for internal use and external tool
 integration, branch-specific *revision numbers* are the preferred
 interface for humans. Typical revision numbers are 1, 42 and 2977.1.59.
+See `Specifying revisions`_ in the appendices for a closer look at
+the numerous ways that revisions and ranges of revisions can be specified
+in Bazaar.
 
 .. *TODO: add diagram*
 

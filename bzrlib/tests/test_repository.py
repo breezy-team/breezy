@@ -929,6 +929,26 @@ class TestKnitPackNoSubtrees(TestCaseWithTransport):
         self.assertEqual(1, len(list(index.iter_all_entries())))
         self.assertEqual(2, len(tree.branch.repository.all_revision_ids()))
 
+    def test_pack_layout(self):
+        format = self.get_format()
+        tree = self.make_branch_and_tree('.', format=format)
+        trans = tree.branch.repository.bzrdir.get_repository_transport(None)
+        tree.commit('start', rev_id='1')
+        tree.commit('more work', rev_id='2')
+        tree.branch.repository.pack()
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        pack = tree.branch.repository._pack_collection.get_pack_by_name(
+            tree.branch.repository._pack_collection.names()[0])
+        # revision access tends to be tip->ancestor, so ordering that way on 
+        # disk is a good idea.
+        for _1, key, val, refs in pack.revision_index.iter_all_entries():
+            if key == ('1',):
+                pos_1 = int(val[1:].split()[0])
+            else:
+                pos_2 = int(val[1:].split()[0])
+        self.assertTrue(pos_2 < pos_1)
+
     def test_pack_repositories_support_multiple_write_locks(self):
         format = self.get_format()
         self.make_repository('.', shared=True, format=format)

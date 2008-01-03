@@ -30,7 +30,7 @@ from bzrlib import (
     )
 
 
-# A RangeFile epxects the following grammar (simplified to outline the
+# A RangeFile expects the following grammar (simplified to outline the
 # assumptions we rely upon).
 
 # file: whole_file
@@ -80,7 +80,7 @@ class RangeFile(object):
     def set_boundary(self, boundary):
         """Define the boundary used in a multi parts message.
         
-        The file should be at the beggining of the body, the first range
+        The file should be at the beginning of the body, the first range
         definition is read and taken into account.
         """
         self._boundary = boundary
@@ -92,7 +92,7 @@ class RangeFile(object):
         """Read the boundary headers defining a new range"""
         boundary_line = '\r\n'
         while boundary_line == '\r\n':
-            # RFC2616 19.2 Additional CRLFs may preceed the first boundary
+            # RFC2616 19.2 Additional CRLFs may precede the first boundary
             # string entity.
             # To be on the safe side we allow it before any boundary line
             boundary_line = self._file.readline()
@@ -154,6 +154,17 @@ class RangeFile(object):
         self._pos += data_len
         return data
 
+    def _seek_to_next_range(self):
+        # We will cross range boundaries
+        if self._boundary is None:
+            # If we don't have a boundary, we can't find another range
+            raise errors.InvalidRange(
+                self._path, self._pos,
+                "Range (%s, %s) exhausted"
+                % (self._start, self._size))
+        self.read_boundary()
+        self.read_range_definition()
+
     def read(self, size=-1):
         """Read size bytes from the current position in the file.
 
@@ -162,10 +173,17 @@ class RangeFile(object):
         the final boundary line of a multipart response or for any range
         request not entirely consumed by the client (due to offset coalescing)
         """
-        if self._pos < self._start:
-            raise errors.InvalidRange(self._path, self._pos,
-                                      "Can't read before range (%s, %s)"
-                                      % (self._start, self._size))
+        if (self._size > 0
+            and self._pos == self._start + self._size):
+            if size == 0:
+                return ''
+            else:
+                self._seek_to_next_range()
+        elif self._pos < self._start:
+            raise errors.InvalidRange(
+                self._path, self._pos,
+                "Can't read %s bytes before range (%s, %s)"
+                % (size, self._start, self._size))
         if self._size > 0:
             if size > 0 and self._pos + size > self._start + self._size:
                 raise errors.InvalidRange(
@@ -176,11 +194,13 @@ class RangeFile(object):
         if self._size > 0:
             # Don't read past the range definition
             limited = self._start + self._size - self._pos
-            if size > 0:
+            if size >= 0:
                 limited = min(limited, size)
             data = self._file.read(limited)
         else:
-            # Size of file unknown
+            # Size of file unknown, the user may have specified a size or not,
+            # we delegate that to the filesocket object (-1 means read until
+            # EOF)
             data = self._file.read(size)
         # Update _pos respecting the data effectively read
         self._pos += len(data)
@@ -210,19 +230,13 @@ class RangeFile(object):
 
         if self._size > 0:
             cur_limit = self._start + self._size
-            while final_pos >= cur_limit:
+            while final_pos > cur_limit:
                 # We will cross range boundaries
                 remain = cur_limit - self._pos
                 if remain > 0:
                     # Finish reading the current range
                     self._checked_read(remain)
-                if self._boundary is None:
-                    # If we don't have a boundary, we can't find another range
-                    raise errors.InvalidRange(self._path, self._pos,
-                                              'Range (%s, %s) exhausted'
-                                              % (self._start, self._size))
-                self.read_boundary()
-                self.read_range_definition()
+                self._seek_to_next_range()
                 cur_limit = self._start + self._size
 
         size = final_pos - self._pos
