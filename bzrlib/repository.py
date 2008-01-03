@@ -773,7 +773,11 @@ class Repository(object):
 
         :param using: If True, list only branches using this repository.
         """
-
+        if using and not self.is_shared():
+            try:
+                return [self.bzrdir.open_branch()]
+            except errors.NotBranchError:
+                return []
         class Evaluator(object):
 
             def __init__(self):
@@ -1693,15 +1697,17 @@ class Repository(object):
         parent_map = {}
         for revision_id in keys:
             if revision_id == _mod_revision.NULL_REVISION:
-                parent_map[revision_id] = []
+                parent_map[revision_id] = ()
             else:
                 try:
-                    parent_ids = self.get_revision(revision_id).parent_ids
+                    parent_id_list = self.get_revision(revision_id).parent_ids
                 except errors.NoSuchRevision:
                     pass
                 else:
-                    if len(parent_ids) == 0:
-                        parent_ids = [_mod_revision.NULL_REVISION]
+                    if len(parent_id_list) == 0:
+                        parent_ids = (_mod_revision.NULL_REVISION,)
+                    else:
+                        parent_ids = tuple(parent_id_list)
                     parent_map[revision_id] = parent_ids
         return parent_map
 

@@ -344,7 +344,14 @@ class TestingHTTPServerMixin:
          # that since the server is in a blocking operation and since python
          # use select internally, shutting down the socket is reliable and
          # relatively clean.
-         self.socket.shutdown(socket.SHUT_RDWR)
+         try:
+             self.socket.shutdown(socket.SHUT_RDWR)
+         except socket.error, e:
+             # WSAENOTCONN (10057) 'Socket is not connected' is harmless on
+             # windows (occurs before the first connection attempt
+             # vila--20071230)
+             if not len(e.args) or e.args[0] != 10057:
+                 raise
          # Let the server properly close the socket
          self.server_close()
 

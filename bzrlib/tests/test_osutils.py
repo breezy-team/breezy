@@ -260,6 +260,10 @@ class TestOSUtils(TestCaseInTempDir):
         self.assertFormatedDelta('1 second in the future', -1)
         self.assertFormatedDelta('2 seconds in the future', -2)
 
+    def test_format_date(self):
+        self.assertRaises(errors.UnsupportedTimezoneFormat,
+            osutils.format_date, 0, timezone='foo')
+
     def test_dereference_path(self):
         self.requireFeature(SymlinkFeature)
         cwd = osutils.realpath('.')
