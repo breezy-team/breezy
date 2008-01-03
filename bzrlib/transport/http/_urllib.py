@@ -163,6 +163,6 @@ class HttpTransport_urllib(http.HttpTransportBase):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from bzrlib.tests.HttpServer import HttpServer_urllib
+    from bzrlib.tests.http_server import HttpServer_urllib
     return [(HttpTransport_urllib, HttpServer_urllib),
             ]

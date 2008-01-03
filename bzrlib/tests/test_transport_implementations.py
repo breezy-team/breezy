@@ -215,8 +215,8 @@ class TransportTests(TestTransportImplementation):
         except (errors.PathError, errors.RedirectRequested):
             # early failure return immediately.
             return
-        # having got a file, read() must either work (i.e. http reading a dir listing) or
-        # fail with ReadError
+        # having got a file, read() must either work (i.e. http reading a dir
+        # listing) or fail with ReadError
         try:
             a_file.read()
         except errors.ReadError:
