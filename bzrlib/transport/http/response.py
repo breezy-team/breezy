@@ -55,6 +55,12 @@ class RangeFile(object):
     should happen with monotonically increasing offsets.
     """
 
+    # in _checked_read() below, we may have to discard several MB in the worst
+    # case. To avoid buffering that much, we read and discard by chunks
+    # instead. The underlying file is either a socket or a StringIO, so reading
+    # 8k chunks should be fine.
+    _discarded_buf_size = 8192
+
     def __init__(self, path, infile):
         """Constructor.
 
@@ -145,23 +151,27 @@ class RangeFile(object):
         self.set_range(start, size)
 
     def _checked_read(self, size):
-        """Read the file checking for short reads"""
+        """Read the file checking for short reads.
+
+        The data read is discarded along the way.
+        """
         pos = self._pos
-        data = self._file.read(size)
-        data_len = len(data)
-        if size > 0 and data_len != size:
-            raise errors.ShortReadvError(self._path, pos, size, data_len)
-        self._pos += data_len
-        return data
+        remaining = size
+        while remaining > 0:
+            data = self._file.read(min(remaining, self._discarded_buf_size))
+            remaining -= len(data)
+            if not data:
+                raise errors.ShortReadvError(self._path, pos, size,
+                                             size - remaining)
+        self._pos += size
 
     def _seek_to_next_range(self):
         # We will cross range boundaries
         if self._boundary is None:
             # If we don't have a boundary, we can't find another range
-            raise errors.InvalidRange(
-                self._path, self._pos,
-                "Range (%s, %s) exhausted"
-                % (self._start, self._size))
+            raise errors.InvalidRange(self._path, self._pos,
+                                      "Range (%s, %s) exhausted"
+                                      % (self._start, self._size))
         self.read_boundary()
         self.read_range_definition()
 

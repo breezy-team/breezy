@@ -656,7 +656,7 @@ class TestTestCaseWithTransport(TestCaseWithTransport):
         self.assertEqual(t2.base[:-1], t.abspath('foo/bar'))
 
     def test_get_readonly_url_http(self):
-        from bzrlib.tests.HttpServer import HttpServer
+        from bzrlib.tests.http_server import HttpServer
         from bzrlib.transport import get_transport
         from bzrlib.transport.local import LocalURLServer
         from bzrlib.transport.http import HttpTransportBase
@@ -1805,7 +1805,8 @@ class TestBlackboxSupport(TestCase):
         # code.
         out, err = self.run_bzr(["log", "/nonexistantpath"], retcode=3)
         self.assertEqual(out, '')
-        self.assertEqual(err, 'bzr: ERROR: Not a branch: "/nonexistantpath/".\n')
+        self.assertContainsRe(err,
+            'bzr: ERROR: Not a branch: ".*nonexistantpath/".\n')
 
 
 class TestTestLoader(TestCase):
