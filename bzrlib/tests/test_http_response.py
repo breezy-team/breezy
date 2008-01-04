@@ -44,7 +44,56 @@ from bzrlib import (
     errors,
     tests,
     )
-from bzrlib.transport.http import response
+from bzrlib.transport.http import (
+    response,
+    _urllib2_wrappers,
+    )
+
+
+class ReadSocket(object):
+    """A socket-like object that can be given a predefined content."""
+
+    def __init__(self, data):
+        self.readfile = StringIO(data)
+
+    def makefile(self, mode='r', bufsize=None):
+        return self.readfile
+
+class FakeHTTPConnection(_urllib2_wrappers.HTTPConnection):
+
+    def __init__(self, sock):
+        _urllib2_wrappers.HTTPConnection.__init__(self, 'localhost')
+        # Set the socket to bypass the connection
+        self.sock = sock
+
+    def send(self, str):
+        """Ignores the writes on the socket."""
+        pass
+
+
+class TestHTTPConnection(tests.TestCase):
+
+    def test_cleanup_pipe(self):
+        sock = ReadSocket("""HTTP/1.1 200 OK\r
+Content-Type: text/plain; charset=UTF-8\r
+Content-Length: 18
+\r
+0123456789
+garbage""")
+        conn = FakeHTTPConnection(sock)
+        # Simulate the request sending so that the connection will be able to
+        # read the response.
+        conn.putrequest('GET', 'http://localhost/fictious')
+        conn.endheaders()
+        # Now, get the response
+        resp = conn.getresponse()
+        # Read part of the response
+        self.assertEquals('0123456789\n', resp.read(11))
+        # Override the thresold to force the warning emission
+        conn._range_warning_thresold = 6 # There are 7 bytes pending
+        conn.cleanup_pipe()
+        self.assertContainsRe(self._get_log(keep_log_file=True),
+                              'Got a 200 response when asking')
 
 
 class TestRangeFileMixin(object):
@@ -200,7 +249,7 @@ class TestRangeFileSingleRange(tests.TestCase, TestRangeFileMixin):
         f._pos = 0 # Force an invalid pos
         self.assertRaises(errors.InvalidRange, f.read, 2)
 
-class TestRangeFilMultipleRanges(tests.TestCase, TestRangeFileMixin):
+class TestRangeFileMultipleRanges(tests.TestCase, TestRangeFileMixin):
     """Test a RangeFile for multiple ranges.
 
     The RangeFile used for the tests contains three ranges:
@@ -214,7 +263,7 @@ class TestRangeFilMultipleRanges(tests.TestCase, TestRangeFileMixin):
     """
 
     def setUp(self):
-        super(TestRangeFilMultipleRanges, self).setUp()
+        super(TestRangeFileMultipleRanges, self).setUp()
 
         boundary = 'separation'
 
@@ -309,6 +358,14 @@ class TestRangeFilMultipleRanges(tests.TestCase, TestRangeFileMixin):
     def test_seek_across_ranges(self):
         f = self._file
         start = self.first_range_start
+        f.seek(126) # skip the two first ranges
+        self.assertEquals('AB', f.read(2))
+
+    def test_checked_read_dont_overflow_buffers(self):
+        f = self._file
+        start = self.first_range_start
+        # We force a very low value to exercise all code paths in _checked_read
+        f._discarded_buf_size = 8
         f.seek(126) # skip the two first ranges
         self.assertEquals('AB', f.read(2))
 

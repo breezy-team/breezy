@@ -21,9 +21,15 @@ import imp
 import os
 import sys
 
+from bzrlib import (
+    symbol_versioning,
+    tests,
+    version_info_formats,
+    )
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.rio import read_stanzas
 
+from bzrlib.version_info_formats.format_custom import CustomVersionInfoBuilder
 from bzrlib.version_info_formats.format_rio import RioVersionInfoBuilder
 from bzrlib.version_info_formats.format_python import PythonVersionInfoBuilder
 
@@ -222,4 +228,77 @@ class TestVersionInfo(TestCaseWithTransport):
         self.assertEqual('unversioned', tvi.file_revisions['c'])
         self.assertEqual('removed', tvi.file_revisions['d'])
 
+    def test_custom_version_text(self):
+        wt = self.create_branch()
 
+        def regen(tpl, **kwargs):
+            sio = StringIO()
+            builder = CustomVersionInfoBuilder(wt.branch, working_tree=wt,
+                                               template=tpl, **kwargs)
+            builder.generate(sio)
+            val = sio.getvalue()
+            return val
+
+        val = regen('build-date: "{build_date}"\ndate: "{date}"')
+        self.assertContainsRe(val, 'build-date: "[0-9-+: ]+"')
+        self.assertContainsRe(val, 'date: "[0-9-+: ]+"')
+
+        val = regen('revno: {revno}')
+        self.assertEqual(val, 'revno: 3')
+
+        val = regen('revision-id: {revision_id}')
+        self.assertEqual(val, 'revision-id: r3')
+
+        val = regen('clean: {clean}', check_for_clean=True)
+        self.assertEqual(val, 'clean: 1')
+
+        self.build_tree(['branch/c'])
+        val = regen('clean: {clean}', check_for_clean=True)
+        self.assertEqual(val, 'clean: 0')
+        os.remove('branch/c')
+
+
+class TestBuilder(version_info_formats.VersionInfoBuilder):
+    pass
+
+
+class TestVersionInfoFormatRegistry(tests.TestCase):
+
+    def setUp(self):
+        super(TestVersionInfoFormatRegistry, self).setUp()
+        registry = version_info_formats.format_registry
+        self._default_key = registry._default_key
+        self._dict = registry._dict.copy()
+        self._help_dict = registry._help_dict.copy()
+        self._info_dict = registry._info_dict.copy()
+        self.addCleanup(self._cleanup)
+
+    def _cleanup(self):
+        # Restore the registry to pristine state after the test runs
+        registry = version_info_formats.format_registry
+        registry._default_key = self._default_key
+        registry._dict = self._dict
+        registry._help_dict = self._help_dict
+        registry._info_dict = self._info_dict
+
+    def test_register_remove(self):
+        registry = version_info_formats.format_registry
+        registry.register('testbuilder',
+            TestBuilder, 'a simple test builder')
+        self.assertIs(TestBuilder, registry.get('testbuilder'))
+        self.assertEqual('a simple test builder',
+                         registry.get_help('testbuilder'))
+        registry.remove('testbuilder')
+        self.assertRaises(KeyError, registry.get, 'testbuilder')
+
+    def test_old_functions(self):
+        self.applyDeprecated(symbol_versioning.one_zero,
+            version_info_formats.register_builder,
+            'test-builder', __name__, 'TestBuilder')
+        formats = self.applyDeprecated(symbol_versioning.one_zero,
+            version_info_formats.get_builder_formats)
+        self.failUnless('test-builder' in formats)
+        self.assertIs(TestBuilder,
+            self.applyDeprecated(symbol_versioning.one_zero,
+                version_info_formats.get_builder, 'test-builder'))
+        version_info_formats.format_registry.remove('test-builder')

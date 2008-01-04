@@ -154,7 +154,7 @@ class TestAppPaths(TestCase):
         for a in ('iexplore', 'iexplore.exe'):
             p = get_app_path(a)
             d, b = os.path.split(p)
-            self.assertEquals('iexplore.exe', b)
+            self.assertEquals('iexplore.exe', b.lower())
             self.assertNotEquals('', d)
 
     def test_not_existing(self):

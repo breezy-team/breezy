@@ -874,7 +874,8 @@ class cmd_branch(Command):
             raise errors.BzrCommandError(
                 'bzr branch --revision takes exactly 1 revision value')
 
-        br_from = Branch.open(from_location)
+        accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
+            from_location)
         br_from.lock_read()
         try:
             if len(revision) == 1 and revision[0] is not None:
@@ -902,7 +903,8 @@ class cmd_branch(Command):
             try:
                 # preserve whatever source format we have.
                 dir = br_from.bzrdir.sprout(to_transport.base, revision_id,
-                                            possible_transports=[to_transport])
+                                            possible_transports=[to_transport],
+                                            accelerator_tree=accelerator_tree)
                 branch = dir.open_branch()
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
@@ -947,11 +949,13 @@ class cmd_checkout(Command):
                                  "common operations like diff and status without "
                                  "such access, and also support local commits."
                             ),
+                     Option('files-from',
+                            help="Get file contents from this tree.", type=str)
                      ]
     aliases = ['co']
 
     def run(self, branch_location=None, to_location=None, revision=None,
-            lightweight=False):
+            lightweight=False, files_from=None):
         if revision is None:
             revision = [None]
         elif len(revision) > 1:
@@ -960,7 +964,10 @@ class cmd_checkout(Command):
         if branch_location is None:
             branch_location = osutils.getcwd()
             to_location = branch_location
-        source = Branch.open(branch_location)
+        accelerator_tree, source = bzrdir.BzrDir.open_tree_or_branch(
+            branch_location)
+        if files_from is not None:
+            accelerator_tree = WorkingTree.open(files_from)
         if len(revision) == 1 and revision[0] is not None:
             revision_id = _mod_revision.ensure_null(
                 revision[0].in_history(source)[1])
@@ -978,7 +985,8 @@ class cmd_checkout(Command):
             except errors.NoWorkingTree:
                 source.bzrdir.create_workingtree(revision_id)
                 return
-        source.create_checkout(to_location, revision_id, lightweight)
+        source.create_checkout(to_location, revision_id, lightweight,
+                               accelerator_tree)
 
 
 class cmd_renames(Command):
@@ -1390,10 +1398,14 @@ class cmd_init_repository(Command):
 
 
 class cmd_diff(Command):
-    """Show differences in the working tree or between revisions.
+    """Show differences in the working tree, between revisions or branches.
     
-    If files are listed, only the changes in those files are listed.
-    Otherwise, all changes for the tree are listed.
+    If no arguments are given, all changes for the current tree are listed.
+    If files are given, only the changes in those files are listed.
+    Remote and multiple branches can be compared by using the --old and
+    --new options. If not provided, the default for both is derived from
+    the first argument, if any, or the current tree if no arguments are
+    given.
 
     "bzr diff -p1" is equivalent to "bzr diff --prefix old/:new/", and
     produces patches suitable for "patch -p1".
@@ -1417,29 +1429,30 @@ class cmd_diff(Command):
 
             bzr diff -r1..2
 
+        Difference between revision 2 and revision 1 for branch xxx::
+
+            bzr diff -r1..2 xxx
+
+        Show just the differences for file NEWS::
+
+            bzr diff NEWS
+
+        Show the differences in working tree xxx for file NEWS::
+
+            bzr diff xxx/NEWS
+
+        Show the differences from branch xxx to this working tree:
+
+            bzr diff --old xxx
+
+        Show the differences between two branches for file NEWS::
+
+            bzr diff --old xxx --new yyy NEWS
+
         Same as 'bzr diff' but prefix paths with old/ and new/::
 
             bzr diff --prefix old/:new/
-
-        Show the differences between the two working trees::
-
-            bzr diff bzr.mine bzr.dev
-
-        Show just the differences for 'foo.c'::
-
-            bzr diff foo.c
     """
-    # TODO: Option to use external diff command; could be GNU diff, wdiff,
-    #       or a graphical diff.
-
-    # TODO: Python difflib is not exactly the same as unidiff; should
-    #       either fix it up or prefer to use an external diff.
-
-    # TODO: Selected-file diff is inefficient and doesn't show you
-    #       deleted files.
-
-    # TODO: This probably handles non-Unix newlines poorly.
-
     _see_also = ['status']
     takes_args = ['file*']
     takes_options = [
@@ -1449,16 +1462,28 @@ class cmd_diff(Command):
                short_name='p',
                help='Set prefixes added to old and new filenames, as '
                     'two values separated by a colon. (eg "old/:new/").'),
+        Option('old',
+            help='Branch/tree to compare from.',
+            type=unicode,
+            ),
+        Option('new',
+            help='Branch/tree to compare to.',
+            type=unicode,
+            ),
         'revision',
         'change',
+        Option('using',
+            help='Use this command to compare files.',
+            type=unicode,
+            ),
         ]
     aliases = ['di', 'dif']
     encoding_type = 'exact'
 
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None,
-            prefix=None):
-        from bzrlib.diff import diff_cmd_helper, show_diff_trees
+            prefix=None, old=None, new=None, using=None):
+        from bzrlib.diff import _get_trees_to_diff, show_diff_trees
 
         if (prefix is None) or (prefix == '0'):
             # diff -p0 format
@@ -1478,47 +1503,13 @@ class cmd_diff(Command):
             raise errors.BzrCommandError('bzr diff --revision takes exactly'
                                          ' one or two revision specifiers')
 
-        try:
-            tree1, file_list = internal_tree_files(file_list)
-            tree2 = None
-            b = None
-            b2 = None
-        except errors.FileInWrongBranch:
-            if len(file_list) != 2:
-                raise errors.BzrCommandError("Files are in different branches")
-
-            tree1, file1 = WorkingTree.open_containing(file_list[0])
-            tree2, file2 = WorkingTree.open_containing(file_list[1])
-            if file1 != "" or file2 != "":
-                # FIXME diff those two files. rbc 20051123
-                raise errors.BzrCommandError("Files are in different branches")
-            file_list = None
-        except errors.NotBranchError:
-            if (revision is not None and len(revision) == 2
-                and not revision[0].needs_branch()
-                and not revision[1].needs_branch()):
-                # If both revision specs include a branch, we can
-                # diff them without needing a local working tree
-                tree1, tree2 = None, None
-            else:
-                raise
-
-        if tree2 is not None:
-            if revision is not None:
-                # FIXME: but there should be a clean way to diff between
-                # non-default versions of two trees, it's not hard to do
-                # internally...
-                raise errors.BzrCommandError(
-                        "Sorry, diffing arbitrary revisions across branches "
-                        "is not implemented yet")
-            return show_diff_trees(tree1, tree2, sys.stdout, 
-                                   specific_files=file_list,
-                                   external_diff_options=diff_options,
-                                   old_label=old_label, new_label=new_label)
-
-        return diff_cmd_helper(tree1, file_list, diff_options,
-                               revision_specs=revision,
-                               old_label=old_label, new_label=new_label)
+        old_tree, new_tree, specific_files, extra_trees = \
+                _get_trees_to_diff(file_list, revision, old, new)
+        return show_diff_trees(old_tree, new_tree, sys.stdout, 
+                               specific_files=specific_files,
+                               external_diff_options=diff_options,
+                               old_label=old_label, new_label=new_label,
+                               extra_trees=extra_trees, using=using)
 
 
 class cmd_deleted(Command):
@@ -1666,6 +1657,7 @@ class cmd_log(Command):
                         'regular expression.',
                    type=str),
             Option('limit',
+                   short_name='l',
                    help='Limit the output to the first N revisions.',
                    argname='N',
                    type=_parse_limit),
@@ -2009,7 +2001,9 @@ class cmd_ignored(Command):
     """List ignored files and the patterns that matched them.
     """
 
+    encoding_type = 'replace'
     _see_also = ['ignore']
+
     @display_command
     def run(self):
         tree = WorkingTree.open_containing(u'.')[0]
@@ -2020,7 +2014,7 @@ class cmd_ignored(Command):
                     continue
                 ## XXX: Slightly inefficient since this was already calculated
                 pat = tree.is_ignored(path)
-                print '%-50s %s' % (path, pat)
+                self.outf.write('%-50s %s\n' % (path, pat))
         finally:
             tree.unlock()
 
@@ -3030,10 +3024,6 @@ class cmd_remerge(Command):
                                              " merges.  Not cherrypicking or"
                                              " multi-merges.")
             repository = tree.branch.repository
-            graph = repository.get_graph()
-            base_revision = graph.find_unique_lca(parents[0], parents[1])
-            base_tree = repository.revision_tree(base_revision)
-            other_tree = repository.revision_tree(parents[1])
             interesting_ids = None
             new_conflicts = []
             conflicts = tree.conflicts()
@@ -3069,18 +3059,19 @@ class cmd_remerge(Command):
             # list, we imply that the working tree text has seen and rejected
             # all the changes from the other tree, when in fact those changes
             # have not yet been seen.
+            pb = ui.ui_factory.nested_progress_bar()
             tree.set_parent_ids(parents[:1])
             try:
-                conflicts = _mod_merge.merge_inner(
-                                          tree.branch, other_tree, base_tree,
-                                          this_tree=tree,
-                                          interesting_ids=interesting_ids,
-                                          other_rev_id=parents[1],
-                                          merge_type=merge_type,
-                                          show_base=show_base,
-                                          reprocess=reprocess)
+                merger = _mod_merge.Merger.from_revision_ids(pb,
+                                                             tree, parents[1])
+                merger.interesting_ids = interesting_ids
+                merger.merge_type = merge_type
+                merger.show_base = show_base
+                merger.reprocess = reprocess
+                conflicts = merger.do_merge()
             finally:
                 tree.set_parent_ids(parents)
+                pb.finished()
         finally:
             tree.unlock()
         if conflicts > 0:
@@ -3417,9 +3408,12 @@ class cmd_annotate(Command):
     def run(self, filename, all=False, long=False, revision=None,
             show_ids=False):
         from bzrlib.annotate import annotate_file
-        tree, relpath = WorkingTree.open_containing(filename)
-        branch = tree.branch
-        branch.lock_read()
+        wt, branch, relpath = \
+            bzrdir.BzrDir.open_containing_tree_or_branch(filename)
+        if wt is not None:
+            wt.lock_read()
+        else:
+            branch.lock_read()
         try:
             if revision is None:
                 revision_id = branch.last_revision()
@@ -3427,15 +3421,21 @@ class cmd_annotate(Command):
                 raise errors.BzrCommandError('bzr annotate --revision takes exactly 1 argument')
             else:
                 revision_id = revision[0].in_history(branch).rev_id
-            file_id = tree.path2id(relpath)
+            tree = branch.repository.revision_tree(revision_id)
+            if wt is not None:
+                file_id = wt.path2id(relpath)
+            else:
+                file_id = tree.path2id(relpath)
             if file_id is None:
                 raise errors.NotVersionedError(filename)
-            tree = branch.repository.revision_tree(revision_id)
             file_version = tree.inventory[file_id].revision
             annotate_file(branch, file_version, file_id, long, all, self.outf,
                           show_ids=show_ids)
         finally:
-            branch.unlock()
+            if wt is not None:
+                wt.unlock()
+            else:
+                branch.unlock()
 
 
 class cmd_re_sign(Command):
@@ -3719,6 +3719,7 @@ class cmd_serve(Command):
         ]
 
     def run(self, port=None, inet=False, directory=None, allow_writes=False):
+        from bzrlib import lockdir
         from bzrlib.smart import medium, server
         from bzrlib.transport import get_transport
         from bzrlib.transport.chroot import ChrootServer
@@ -3749,11 +3750,14 @@ class cmd_serve(Command):
         # be changed with care though, as we dont want to use bandwidth sending
         # progress over stderr to smart server clients!
         old_factory = ui.ui_factory
+        old_lockdir_timeout = lockdir._DEFAULT_TIMEOUT_SECONDS
         try:
             ui.ui_factory = ui.SilentUIFactory()
+            lockdir._DEFAULT_TIMEOUT_SECONDS = 0
             smart_server.serve()
         finally:
             ui.ui_factory = old_factory
+            lockdir._DEFAULT_TIMEOUT_SECONDS = old_lockdir_timeout
 
 
 class cmd_join(Command):
@@ -3811,22 +3815,20 @@ class cmd_join(Command):
 
 
 class cmd_split(Command):
-    """Split a tree into two trees.
+    """Split a subdirectory of a tree into a separate tree.
 
-    This command is for experimental use only.  It requires the target tree
-    to be in dirstate-with-subtree format, which cannot be converted into
-    earlier formats.
+    This command will produce a target tree in a format that supports
+    rich roots, like 'rich-root' or 'rich-root-pack'.  These formats cannot be
+    converted into earlier formats like 'dirstate-tags'.
 
     The TREE argument should be a subdirectory of a working tree.  That
     subdirectory will be converted into an independent tree, with its own
     branch.  Commits in the top-level tree will not apply to the new subtree.
-    If you want that behavior, do "bzr join --reference TREE".
     """
 
-    _see_also = ['join']
+    # join is not un-hidden yet
+    #_see_also = ['join']
     takes_args = ['tree']
-
-    hidden = True
 
     def run(self, tree):
         containing_tree, subdir = WorkingTree.open_containing(tree)
@@ -3837,7 +3839,6 @@ class cmd_split(Command):
             containing_tree.extract(sub_id)
         except errors.RootNotRich:
             raise errors.UpgradeRequired(containing_tree.branch.base)
-
 
 
 class cmd_merge_directive(Command):
@@ -4026,17 +4027,17 @@ class cmd_send(Command):
     def _run(self, submit_branch, revision, public_branch, remember, format,
              no_bundle, no_patch, output, from_, mail_to, message):
         from bzrlib.revision import NULL_REVISION
+        branch = Branch.open_containing(from_)[0]
         if output is None:
             outfile = StringIO()
         elif output == '-':
             outfile = self.outf
         else:
             outfile = open(output, 'wb')
+        # we may need to write data into branch's repository to calculate
+        # the data to send.
+        branch.lock_write()
         try:
-            branch = Branch.open_containing(from_)[0]
-            # we may need to write data into branch's repository to calculate
-            # the data to send.
-            branch.lock_write()
             if output is None:
                 config = branch.get_config()
                 if mail_to is None:

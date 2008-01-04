@@ -387,6 +387,12 @@ class RemoteTransport(transport.ConnectedTransport):
             else:
                 error_path = resp[1]
             raise errors.ReadError(error_path)
+        elif what == "PermissionDenied":
+            if orig_path is not None:
+                error_path = orig_path
+            else:
+                error_path = resp[1]
+            raise errors.PermissionDenied(error_path)
         else:
             raise errors.SmartProtocolError('unexpected smart server error: %r' % (resp,))
 

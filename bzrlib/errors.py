@@ -653,7 +653,7 @@ class NoRepositoryPresent(BzrError):
 
 class FileInWrongBranch(BzrError):
 
-    _fmt = 'File "%(path)s" in not in branch %(branch_base)s.'
+    _fmt = 'File "%(path)s" is not in branch %(branch_base)s.'
 
     def __init__(self, branch, path):
         BzrError.__init__(self)
@@ -1099,6 +1099,12 @@ class UnrelatedBranches(BzrError):
 
     _fmt = ("Branches have no common ancestor, and"
             " no merge base revision was specified.")
+
+
+class CannotReverseCherrypick(BzrError):
+
+    _fmt = ('Selected merge cannot perform reverse cherrypicks.  Try merge3'
+            ' or diff3.')
 
 
 class NoCommonAncestor(BzrError):
@@ -1864,6 +1870,14 @@ class NoDiffFound(BzrError):
         BzrError.__init__(self, path)
 
 
+class ExecutableMissing(BzrError):
+
+    _fmt = "%(exe_name)s could not be found on this machine"
+
+    def __init__(self, exe_name):
+        BzrError.__init__(self, exe_name=exe_name)
+
+
 class NoDiff(BzrError):
 
     _fmt = "Diff is not installed on this machine: %(msg)s"
@@ -2488,6 +2502,14 @@ class UncommittedChanges(BzrError):
         BzrError.__init__(self, tree=tree, display_url=display_url)
 
 
+class MissingTemplateVariable(BzrError):
+
+    _fmt = 'Variable {%(name)s} is not available.'
+
+    def __init__(self, name):
+        self.name = name
+
+
 class UnableCreateSymlink(BzrError):
 
     _fmt = 'Unable to create symlink %(path_str)son this platform'
@@ -2501,3 +2523,12 @@ class UnableCreateSymlink(BzrError):
                 path_str = repr(path)
             path_str += ' '
         self.path_str = path_str
+
+
+class UnsupportedTimezoneFormat(BzrError):
+
+    _fmt = ('Unsupported timezone format "%(timezone)s", '
+            'options are "utc", "original", "local".')
+
+    def __init__(self, timezone):
+        self.timezone = timezone

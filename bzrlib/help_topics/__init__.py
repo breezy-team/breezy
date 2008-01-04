@@ -33,7 +33,13 @@ be used in the help text, producing sensible input to a manual while
 rendering on the screen naturally.
 """
 
-from bzrlib import registry
+import sys
+
+import bzrlib
+from bzrlib import (
+    osutils,
+    registry,
+    )
 
 
 # Section identifiers (map topics to the right place in the manual)
@@ -126,6 +132,15 @@ def _help_on_topics(dummy):
         summary = topic_registry.get_summary(topic)
         out.append("%-*s %s\n" % (lmax, topic, summary))
     return ''.join(out)
+
+
+def _load_from_file(topic_name):
+    """Load help from a file.
+
+    Topics are expected to be txt files in bzrlib.help_topics.
+    """
+    resource_name = osutils.pathjoin("en", "%s.txt" % (topic_name,))
+    return osutils.resource_string('bzrlib.help_topics', resource_name)
 
 
 def _help_on_revisionspec(name):
@@ -600,12 +615,23 @@ topic_registry.register('status-flags', _status_flags,
                         "Help on status flags")
 def get_bugs_topic(topic):
     from bzrlib import bugtracker
-    return "Bug Trackers\n\n" + bugtracker.tracker_registry.help_topic(topic)
-topic_registry.register('bugs', get_bugs_topic, 'Bug tracker support')
+    return ("Bug Tracker Settings\n\n" + 
+        bugtracker.tracker_registry.help_topic(topic))
+topic_registry.register('bugs', get_bugs_topic, 'Bug tracker settings')
 topic_registry.register('env-variables', _env_variables,
                         'Environment variable names and values')
 topic_registry.register('files', _files,
                         'Information on configuration and log files')
+
+# Load some of the help topics from files
+topic_registry.register('authentication', _load_from_file,
+                        'Information on configuring authentication')
+topic_registry.register('configuration', _load_from_file,
+                        'Details on the configuration settings available')
+topic_registry.register('conflicts', _load_from_file,
+                        'Types of conflicts and what to do about them')
+topic_registry.register('hooks', _load_from_file,
+                        'Points at which custom processing can be added')
 
 
 # Register concept topics.

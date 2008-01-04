@@ -498,6 +498,13 @@ class BundleTester(object):
         sure everything matches the builtin branch.
         """
         to_tree = self.get_checkout(base_rev_id, checkout_dir=checkout_dir)
+        to_tree.lock_write()
+        try:
+            self._valid_apply_bundle(base_rev_id, info, to_tree)
+        finally:
+            to_tree.unlock()
+
+    def _valid_apply_bundle(self, base_rev_id, info, to_tree):
         original_parents = to_tree.get_parent_ids()
         repository = to_tree.branch.repository
         original_parents = to_tree.get_parent_ids()

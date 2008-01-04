@@ -151,6 +151,7 @@ class WorkingTree4(WorkingTree3):
         self._dirstate = None
         self._inventory = None
         #-------------
+        self._setup_directory_is_tree_reference()
         self._detect_case_handling()
 
     @needs_tree_write_lock
@@ -493,6 +494,7 @@ class WorkingTree4(WorkingTree3):
 
             Note: The caller is expected to take a read-lock before calling this.
             """
+            self._must_be_locked()
             if not path:
                 path = self.id2path(file_id)
             mode = os.lstat(self.abspath(path)).st_mode
@@ -1256,11 +1258,16 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         """See WorkingTreeFormat.get_format_description()."""
         return "Working tree format 4"
 
-    def initialize(self, a_bzrdir, revision_id=None, from_branch=None):
+    def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
+                   accelerator_tree=None):
         """See WorkingTreeFormat.initialize().
 
         :param revision_id: allows creating a working tree at a different
         revision than the branch is at.
+        :param accelerator_tree: A tree which can be used for retrieving file
+            contents more quickly than the revision tree, i.e. a workingtree.
+            The revision tree will be used for cases where accelerator_tree's
+            content is different.
 
         These trees get an initial random root id, if their repository supports
         rich root data, TREE_ROOT otherwise.
@@ -1297,17 +1304,31 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
                 else:
                     wt._set_root_id(ROOT_ID)
                 wt.flush()
-            wt.set_last_revision(revision_id)
-            wt.flush()
-            basis = wt.basis_tree()
+            basis = None
+            # frequently, we will get here due to branching.  The accelerator
+            # tree will be the tree from the branch, so the desired basis
+            # tree will often be a parent of the accelerator tree.
+            if accelerator_tree is not None:
+                try:
+                    basis = accelerator_tree.revision_tree(revision_id)
+                except errors.NoSuchRevision:
+                    pass
+            if basis is None:
+                basis = branch.repository.revision_tree(revision_id)
+            if revision_id == NULL_REVISION:
+                parents_list = []
+            else:
+                parents_list = [(revision_id, basis)]
             basis.lock_read()
+            wt.set_parent_trees(parents_list, allow_leftmost_as_ghost=True)
+            wt.flush()
             # if the basis has a root id we have to use that; otherwise we use
             # a new random one
             basis_root_id = basis.get_root_id()
             if basis_root_id is not None:
                 wt._set_root_id(basis_root_id)
                 wt.flush()
-            transform.build_tree(basis, wt)
+            transform.build_tree(basis, wt, accelerator_tree)
             basis.unlock()
         finally:
             control_files.unlock()
@@ -1735,10 +1756,7 @@ class InterDirStateTree(InterTree):
         # NB: show_status depends on being able to pass in non-versioned files
         # and report them as unknown
         # TODO: handle extra trees in the dirstate.
-        # TODO: handle comparisons as an empty tree as a different special
-        # case? mbp 20070226
-        if (extra_trees or (self.source._revision_id == NULL_REVISION)
-            or specific_files == []):
+        if (extra_trees or specific_files == []):
             # we can't fast-path these cases (yet)
             for f in super(InterDirStateTree, self)._iter_changes(
                 include_unchanged, specific_files, pb, extra_trees,
@@ -1746,7 +1764,8 @@ class InterDirStateTree(InterTree):
                 yield f
             return
         parent_ids = self.target.get_parent_ids()
-        assert (self.source._revision_id in parent_ids), \
+        assert (self.source._revision_id in parent_ids
+                or self.source._revision_id == NULL_REVISION), \
                 "revision {%s} is not stored in {%s}, but %s " \
                 "can only be used for trees stored in the dirstate" \
                 % (self.source._revision_id, self.target, self._iter_changes)
@@ -1759,7 +1778,7 @@ class InterDirStateTree(InterTree):
                 "Failure: source._revision_id: %s not in target.parent_ids(%s)" % (
                 self.source._revision_id, parent_ids)
             source_index = 1 + parent_ids.index(self.source._revision_id)
-            indices = (source_index,target_index)
+            indices = (source_index, target_index)
         # -- make all specific_files utf8 --
         if specific_files:
             specific_files_utf8 = set()

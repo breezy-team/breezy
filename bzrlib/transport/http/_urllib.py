@@ -49,17 +49,6 @@ class HttpTransport_urllib(http.HttpTransportBase):
         else:
             self._opener = self._opener_class()
 
-    def _remote_path(self, relpath):
-        """Produce absolute path, adjusting protocol."""
-        relative = urlutils.unescape(relpath).encode('utf-8')
-        path = self._combine_paths(self._path, relative)
-        # urllib2 will be confused if it find authentication
-        # info (user, password) in the urls. So we handle them separatly.
-
-        # rhaaaa ! confused where ? confused when ? --vila 20070922
-        return self._unsplit_url(self._unqualified_scheme,
-                                 None, None, self._host, self._port, path)
-
     def _perform(self, request):
         """Send the request to the server and handles common errors.
 
@@ -74,15 +63,10 @@ class HttpTransport_urllib(http.HttpTransportBase):
             # request couldn't do it
             connection.cleanup_pipe()
         else:
-            # First request, intialize credentials.
+            # First request, initialize credentials.
             # scheme and realm will be set by the _urllib2_wrappers.AuthHandler
-            user = self._user
-            password = self._password
-            auth = dict(host=self._host, port=self._port,
-                        user=user, password=password,
-                        protocol=self._unqualified_scheme,
-                        path=self._path)
-            # Proxy initialization will be done by first proxied request
+            auth = self._create_auth()
+            # Proxy initialization will be done by the first proxied request
             proxy_auth = dict()
         # Ensure authentication info is provided
         request.auth = auth
@@ -179,6 +163,6 @@ class HttpTransport_urllib(http.HttpTransportBase):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from bzrlib.tests.HttpServer import HttpServer_urllib
+    from bzrlib.tests.http_server import HttpServer_urllib
     return [(HttpTransport_urllib, HttpServer_urllib),
             ]

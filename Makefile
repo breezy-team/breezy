@@ -75,7 +75,7 @@ tags:
 ifdef PRETTY
 rst2html := $(PYTHON) tools/rst2prettyhtml.py doc/bazaar-vcs.org.kid 
 else
-rst2html := $(PYTHON) tools/rst2html.py --link-stylesheet --footnote-references=superscript 
+rst2html := $(PYTHON) tools/rst2html.py --link-stylesheet --footnote-references=superscript --halt=warning
 endif
 
 # translate txt docs to html
@@ -87,7 +87,6 @@ doc_dir := doc/en/tutorials
 txt_files := $(wildcard $(addsuffix /*.txt, $(doc_dir))) $(derived_txt_files) \
 	doc/en/user-guide/index.txt \
 	doc/en/mini-tutorial/index.txt \
-	doc/en/user-reference/hooks.txt \
 	doc/index.txt
 non_txt_files := \
        doc/default.css \
@@ -114,12 +113,14 @@ doc/index.html: doc/index.txt
 MAN_DEPENDENCIES = bzrlib/builtins.py \
 		 bzrlib/bundle/commands.py \
 		 bzrlib/conflicts.py \
-		 bzrlib/help_topics.py \
+		 bzrlib/help_topics/__init__.py \
 		 bzrlib/sign_my_commits.py \
+		 bzrlib/bugtracker.py \
 		 generate_docs.py \
 		 tools/doc_generate/__init__.py \
 		 tools/doc_generate/autodoc_man.py \
-		 tools/doc_generate/autodoc_rstx.py
+		 tools/doc_generate/autodoc_rstx.py \
+		 $(wildcard $(addsuffix /*.txt, bzrlib/help_topics/en)) 
 
 doc/en/user-reference/bzr_man.txt: $(MAN_DEPENDENCIES)
 	$(PYTHON) generate_docs.py -o $@ rstx

@@ -35,7 +35,11 @@ from bzrlib.bisect_multi import bisect_multi_bytes
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 """)
-from bzrlib import debug, errors
+from bzrlib import (
+    debug,
+    errors,
+    symbol_versioning,
+    )
 
 _HEADER_READV = (0, 200)
 _OPTION_KEY_ELEMENTS = "key_elements="
@@ -995,8 +999,9 @@ class CombinedGraphIndex(object):
                 self.__class__.__name__,
                 ', '.join(map(repr, self._indices)))
 
+    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
     def get_parents(self, revision_ids):
-        """See StackedParentsProvider.get_parents.
+        """See graph._StackedParentsProvider.get_parents.
         
         This implementation thunks the graph.Graph.get_parents api across to
         GraphIndex.
@@ -1008,21 +1013,23 @@ class CombinedGraphIndex(object):
              * (NULL_REVISION,) when the key has no parents.
              * (parent_key, parent_key...) otherwise.
         """
-        search_keys = set(revision_ids)
-        search_keys.discard(NULL_REVISION)
-        found_parents = {NULL_REVISION:[]}
+        parent_map = self.get_parent_map(revision_ids)
+        return [parent_map.get(r, None) for r in revision_ids]
+
+    def get_parent_map(self, keys):
+        """See graph._StackedParentsProvider.get_parent_map"""
+        search_keys = set(keys)
+        if NULL_REVISION in search_keys:
+            search_keys.discard(NULL_REVISION)
+            found_parents = {NULL_REVISION:[]}
+        else:
+            found_parents = {}
         for index, key, value, refs in self.iter_entries(search_keys):
             parents = refs[0]
             if not parents:
                 parents = (NULL_REVISION,)
             found_parents[key] = parents
-        result = []
-        for key in revision_ids:
-            try:
-                result.append(found_parents[key])
-            except KeyError:
-                result.append(None)
-        return result
+        return found_parents
 
     def insert_index(self, pos, index):
         """Insert a new index in the list of indices to query.
