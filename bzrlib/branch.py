@@ -757,13 +757,17 @@ class Branch(object):
         return format
 
     def create_checkout(self, to_location, revision_id=None,
-                        lightweight=False):
+                        lightweight=False, accelerator_tree=None):
         """Create a checkout of a branch.
         
         :param to_location: The url to produce the checkout at
         :param revision_id: The revision to check out
         :param lightweight: If True, produce a lightweight checkout, otherwise,
         produce a bound branch (heavyweight checkout)
+        :param accelerator_tree: A tree which can be used for retrieving file
+            contents more quickly than the revision tree, i.e. a workingtree.
+            The revision tree will be used for cases where accelerator_tree's
+            content is different.
         :return: The tree of the created checkout
         """
         t = transport.get_transport(to_location)
@@ -783,7 +787,8 @@ class Branch(object):
             checkout_branch.pull(self, stop_revision=revision_id)
             from_branch=None
         tree = checkout.create_workingtree(revision_id,
-                                           from_branch=from_branch)
+                                           from_branch=from_branch,
+                                           accelerator_tree=accelerator_tree)
         basis_tree = tree.basis_tree()
         basis_tree.lock_read()
         try:
@@ -867,6 +872,19 @@ class BranchFormat(object):
         :return: None if the branch is not a reference branch.
         """
         return None
+
+    @classmethod
+    def set_reference(self, a_bzrdir, to_branch):
+        """Set the target reference of the branch in a_bzrdir.
+
+        format probing must have been completed before calling
+        this method - it is assumed that the format of the branch
+        in a_bzrdir is correct.
+
+        :param a_bzrdir: The bzrdir to set the branch reference for.
+        :param to_branch: branch that the checkout is to reference
+        """
+        raise NotImplementedError(self.set_reference)
 
     def get_format_string(self):
         """Return the ASCII format string that identifies this format."""
@@ -1197,6 +1215,11 @@ class BranchReferenceFormat(BranchFormat):
         """See BranchFormat.get_reference()."""
         transport = a_bzrdir.get_branch_transport(None)
         return transport.get('location').read()
+
+    def set_reference(self, a_bzrdir, to_branch):
+        """See BranchFormat.set_reference()."""
+        transport = a_bzrdir.get_branch_transport(None)
+        location = transport.put_bytes('location', to_branch.base)
 
     def initialize(self, a_bzrdir, target_branch=None):
         """Create a branch of this format in a_bzrdir."""
@@ -1776,22 +1799,6 @@ class BzrBranch5(BzrBranch):
         # last_rev is not in the other_last_rev history, AND
         # other_last_rev is not in our history, and do it without pulling
         # history around
-        last_rev = _mod_revision.ensure_null(self.last_revision())
-        if last_rev != _mod_revision.NULL_REVISION:
-            other.lock_read()
-            try:
-                other_last_rev = other.last_revision()
-                if not _mod_revision.is_null(other_last_rev):
-                    # neither branch is new, we have to do some work to
-                    # ascertain diversion.
-                    remote_graph = other.repository.get_revision_graph(
-                        other_last_rev)
-                    local_graph = self.repository.get_revision_graph(last_rev)
-                    if (last_rev not in remote_graph and
-                        other_last_rev not in local_graph):
-                        raise errors.DivergedBranches(self, other)
-            finally:
-                other.unlock()
         self.set_bound_location(other.base)
 
     @needs_write_lock
@@ -1858,6 +1865,19 @@ class BzrBranchExperimental(BzrBranch5):
         :return: None if the branch is not a reference branch.
         """
         return None
+
+    @classmethod
+    def set_reference(self, a_bzrdir, to_branch):
+        """Set the target reference of the branch in a_bzrdir.
+
+        format probing must have been completed before calling
+        this method - it is assumed that the format of the branch
+        in a_bzrdir is correct.
+
+        :param a_bzrdir: The bzrdir to set the branch reference for.
+        :param to_branch: branch that the checkout is to reference
+        """
+        raise NotImplementedError(self.set_reference)
 
     @classmethod
     def _initialize_control_files(cls, a_bzrdir, utf8_files, lock_filename,

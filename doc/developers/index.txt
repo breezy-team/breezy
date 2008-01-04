@@ -29,14 +29,18 @@ Specifications
 
 * `Indices <indices.html>`_ |--| The index facilities available within bzrlib.
 
-* `Repositories <repository.html>`_ |--| What repositories do and are used for.
+* `Inventories <inventory.html>`_ |--| Tree shape abstraction.
+
+* `LCA merge <lca-merge.html>`_ |--| A nice new merge algorithm.
 
 * `Network protocol <network-protocol.html>`_ |--| Custom network protocol.
+
+* `Repositories <repository.html>`_ |--| What repositories do and are used for.
 
 Data formats
 ============
 
-* `Knit pack repositories <knitpack.html>`_ |--| KnitPack repositories 
+* `Knit pack repositories <packrepo.html>`_ |--| KnitPack repositories 
   (new in Bazaar 0.92).
 
 

@@ -16,59 +16,42 @@
 
 # Original author: David Allouche
 
-from bzrlib import errors, merge
+from bzrlib import errors, merge, revision
 from bzrlib.branch import Branch, BranchFormat, BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir
 from bzrlib.trace import note
 
 
-def switch(control_dir, to_branch):
+def switch(control_dir, to_branch, force=False):
     """Switch the branch associated with a checkout.
 
     :param control_dir: BzrDir of the checkout to change
     :param to_branch: branch that the checkout is to reference
+    :param force: skip the check for local commits in a heavy checkout
     """
-    _check_switch_branch_format(control_dir)
-    _check_pending_merges(control_dir)
+    _check_pending_merges(control_dir, force)
     try:
         source_repository = control_dir.open_branch().repository
     except errors.NotBranchError:
         source_repository = to_branch.repository
-    _set_branch_location(control_dir, to_branch)
+    _set_branch_location(control_dir, to_branch, force)
     tree = control_dir.open_workingtree()
     _update(tree, source_repository)
 
 
-def _check_switch_branch_format(control):
-    """Check that the branch format supports the switch operation.
-
-    Note: Only lightweight checkouts are currently supported.
-    This may change in the future though.
-
-    :param control: BzrDir of the branch to check
-    """
-    branch_format = BranchFormat.find_format(control)
-    format_string = branch_format.get_format_string()
-    if not format_string.startswith("Bazaar-NG Branch Reference Format "):
-        raise errors.BzrCommandError(
-            'The switch command can only be used on a lightweight checkout.\n'
-            'Expected branch reference, found %s at %s' % (
-            format_string.strip(), control.root_transport.base))
-    if not format_string == BranchReferenceFormat().get_format_string():
-        raise errors.BzrCommandError(
-            'Unsupported: %r' % (format_string.strip(),))        
-
-
-def _check_pending_merges(control):
+def _check_pending_merges(control, force=False):
     """Check that there are no outstanding pending merges before switching.
 
     :param control: BzrDir of the branch to check
     """
     try:
         tree = control.open_workingtree()
-    except errors.NotBranchError:
-        # old branch is gone
-        return
+    except errors.NotBranchError, ex:
+        # Lightweight checkout and branch is no longer there
+        if force:
+            return
+        else:
+            raise ex
     # XXX: Should the tree be locked for get_parent_ids?
     existing_pending_merges = tree.get_parent_ids()[1:]
     if len(existing_pending_merges) > 0:
@@ -76,14 +59,57 @@ def _check_pending_merges(control):
             'committed or reverted before using switch.')
 
 
-def _set_branch_location(control, to_branch):
+def _set_branch_location(control, to_branch, force=False):
     """Set location value of a branch reference.
 
     :param control: BzrDir of the checkout to change
     :param to_branch: branch that the checkout is to reference
+    :param force: skip the check for local commits in a heavy checkout
     """
-    transport = control.get_branch_transport(None)
-    location = transport.put_bytes('location', to_branch.base)
+    branch_format = control.find_branch_format()
+    if branch_format.get_reference(control) is not None:
+        # Lightweight checkout: update the branch reference
+        branch_format.set_reference(control, to_branch)
+    else:
+        b = control.open_branch()
+        bound_branch = b.get_bound_location()
+        if bound_branch is not None:
+            # Heavyweight checkout: check all local commits
+            # have been pushed to the current bound branch then
+            # synchronise the local branch with the new remote branch
+            # and bind to it
+            possible_transports = []
+            if not force and _any_local_commits(b, possible_transports):
+                raise errors.BzrCommandError(
+                    'Cannot switch as local commits found in the checkout. '
+                    'Commit these to the bound branch or use --force to '
+                    'throw them away.')
+            b.set_bound_location(None)
+            b.pull(to_branch, overwrite=True,
+                possible_transports=possible_transports)
+            b.set_bound_location(to_branch.base)
+        else:
+            raise errors.BzrCommandError('Cannot switch a branch, '
+                'only a checkout.')
+
+
+def _any_local_commits(this_branch, possible_transports):
+    """Does this branch have any commits not in the master branch?"""
+    last_rev = revision.ensure_null(this_branch.last_revision())
+    if last_rev != revision.NULL_REVISION:
+        other_branch = this_branch.get_master_branch(possible_transports)
+        this_branch.lock_read()
+        other_branch.lock_read()
+        try:
+            other_last_rev = other_branch.last_revision()
+            graph = this_branch.repository.get_graph(
+                other_branch.repository)
+            if not graph.is_ancestor(last_rev, other_last_rev):
+                return True
+        finally:
+            other_branch.unlock()
+            this_branch.unlock()
+    return False
 
 
 def _update(tree, source_repository):

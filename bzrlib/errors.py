@@ -655,7 +655,7 @@ class NoRepositoryPresent(BzrError):
 
 class FileInWrongBranch(BzrError):
 
-    _fmt = 'File "%(path)s" in not in branch %(branch_base)s.'
+    _fmt = 'File "%(path)s" is not in branch %(branch_base)s.'
 
     def __init__(self, branch, path):
         BzrError.__init__(self)
@@ -1103,6 +1103,12 @@ class UnrelatedBranches(BzrError):
             " no merge base revision was specified.")
 
 
+class CannotReverseCherrypick(BzrError):
+
+    _fmt = ('Selected merge cannot perform reverse cherrypicks.  Try merge3'
+            ' or diff3.')
+
+
 class NoCommonAncestor(BzrError):
     
     _fmt = "Revisions have no common ancestor: %(revision_a)s %(revision_b)s"
@@ -1457,11 +1463,10 @@ class ConnectionReset(TransportError):
 
 class InvalidRange(TransportError):
 
-    _fmt = "Invalid range access in %(path)s at %(offset)s."
-    
-    def __init__(self, path, offset):
-        TransportError.__init__(self, ("Invalid range access in %s at %d"
-                                       % (path, offset)))
+    _fmt = "Invalid range access in %(path)s at %(offset)s: %(msg)s"
+
+    def __init__(self, path, offset, msg=None):
+        TransportError.__init__(self, msg)
         self.path = path
         self.offset = offset
 
@@ -1478,7 +1483,7 @@ class InvalidHttpResponse(TransportError):
 class InvalidHttpRange(InvalidHttpResponse):
 
     _fmt = "Invalid http range %(range)r for %(path)s: %(msg)s"
-    
+
     def __init__(self, path, range, msg):
         self.range = range
         InvalidHttpResponse.__init__(self, path, msg)
@@ -1487,7 +1492,7 @@ class InvalidHttpRange(InvalidHttpResponse):
 class InvalidHttpContentType(InvalidHttpResponse):
 
     _fmt = 'Invalid http Content-type "%(ctype)s" for %(path)s: %(msg)s'
-    
+
     def __init__(self, path, ctype, msg):
         self.ctype = ctype
         InvalidHttpResponse.__init__(self, path, msg)
@@ -1865,6 +1870,14 @@ class NoDiffFound(BzrError):
 
     def __init__(self, path):
         BzrError.__init__(self, path)
+
+
+class ExecutableMissing(BzrError):
+
+    _fmt = "%(exe_name)s could not be found on this machine"
+
+    def __init__(self, exe_name):
+        BzrError.__init__(self, exe_name=exe_name)
 
 
 class NoDiff(BzrError):
@@ -2491,6 +2504,14 @@ class UncommittedChanges(BzrError):
         BzrError.__init__(self, tree=tree, display_url=display_url)
 
 
+class MissingTemplateVariable(BzrError):
+
+    _fmt = 'Variable {%(name)s} is not available.'
+
+    def __init__(self, name):
+        self.name = name
+
+
 class UnableCreateSymlink(BzrError):
 
     _fmt = 'Unable to create symlink %(path_str)son this platform'
@@ -2504,3 +2525,12 @@ class UnableCreateSymlink(BzrError):
                 path_str = repr(path)
             path_str += ' '
         self.path_str = path_str
+
+
+class UnsupportedTimezoneFormat(BzrError):
+
+    _fmt = ('Unsupported timezone format "%(timezone)s", '
+            'options are "utc", "original", "local".')
+
+    def __init__(self, timezone):
+        self.timezone = timezone

@@ -28,7 +28,7 @@ from bzrlib.revision import (find_present_ancestors, combined_graph,
                              common_ancestor,
                              is_ancestor, MultipleRevisionSources,
                              NULL_REVISION)
-from bzrlib.symbol_versioning import zero_ninetythree
+from bzrlib.symbol_versioning import one_zero
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
@@ -134,26 +134,27 @@ class TestIsAncestor(TestCaseWithTransport):
         sources = br1
 
         br1.lock_read()
+        br2.lock_read()
         self.addCleanup(br1.unlock)
         br2.lock_read()
         self.addCleanup(br2.unlock)
 
-        self.assertTrue(self.applyDeprecated(zero_ninetythree,
+        self.assertTrue(self.applyDeprecated(one_zero,
                         is_ancestor, revisions[0], revisions[0], br1))
-        self.assertTrue(self.applyDeprecated(zero_ninetythree,
+        self.assertTrue(self.applyDeprecated(one_zero,
                         is_ancestor, revisions[1], revisions[0], sources))
-        self.assertFalse(self.applyDeprecated(zero_ninetythree,
+        self.assertFalse(self.applyDeprecated(one_zero,
                          is_ancestor, revisions[0], revisions[1], sources))
-        self.assertTrue(self.applyDeprecated(zero_ninetythree,
+        self.assertTrue(self.applyDeprecated(one_zero,
                         is_ancestor, revisions_2[3], revisions[0], sources))
         # disabled mbp 20050914, doesn't seem to happen anymore
         ## self.assertRaises(NoSuchRevision, is_ancestor, revisions_2[3],
-        ##                  revisions[0], br1)        
-        self.assertTrue(self.applyDeprecated(zero_ninetythree,
+        ##                  revisions[0], br1)
+        self.assertTrue(self.applyDeprecated(one_zero,
                         is_ancestor, revisions[3], revisions_2[4], sources))
-        self.assertTrue(self.applyDeprecated(zero_ninetythree,
+        self.assertTrue(self.applyDeprecated(one_zero,
                         is_ancestor, revisions[3], revisions_2[4], br1))
-        self.assertTrue(self.applyDeprecated(zero_ninetythree,
+        self.assertTrue(self.applyDeprecated(one_zero,
                         is_ancestor, revisions[3], revisions_2[3], sources))
         ## self.assert_(not is_ancestor(revisions[3], revisions_2[3], br1))
 

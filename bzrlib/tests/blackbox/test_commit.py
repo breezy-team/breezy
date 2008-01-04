@@ -520,11 +520,12 @@ class TestCommit(ExternalBase):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
-        self.run_bzr("commit -m hello --author='John Doe <jdoe@example.com>' "
-                     "tree/hello.txt")
+        self.run_bzr(["commit", '-m', 'hello',
+                      '--author', u'John D\xf6 <jdoe@example.com>',
+                     "tree/hello.txt"])
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         properties = last_rev.properties
-        self.assertEqual('John Doe <jdoe@example.com>', properties['author'])
+        self.assertEqual(u'John D\xf6 <jdoe@example.com>', properties['author'])
 
     def test_author_no_email(self):
         """Author's name without an email address is allowed, too."""

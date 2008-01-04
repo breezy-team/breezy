@@ -188,10 +188,10 @@ def open_tracefile(tracefilename=None):
         if tf.tell() <= 2:
             tf.write("this is a debug log for diagnosing/reporting problems in bzr\n")
             tf.write("you can delete or truncate this file, or include sections in\n")
-            tf.write("bug reports to bazaar@lists.canonical.com\n\n")
+            tf.write("bug reports to https://bugs.launchpad.net/bzr/+filebug\n\n")
         _file_handler = logging.StreamHandler(tf)
         fmt = r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s'
-        datefmt = r'%a %H:%M:%S'
+        datefmt = r'%Y-%m-%d %H:%M:%S'
         _file_handler.setFormatter(logging.Formatter(fmt, datefmt))
         _file_handler.setLevel(logging.DEBUG)
         logging.getLogger('').addHandler(_file_handler)
@@ -382,8 +382,9 @@ def report_bug(exc_info, err_file):
         err_file.write("  %-20s %s [%s]\n" %
             (name, a_plugin.path(), a_plugin.__version__))
     err_file.write(
-        "\n"
-        "** Please send this report to bazaar@lists.ubuntu.com\n"
-        "   with a description of what you were doing when the\n"
-        "   error occurred.\n"
-        )
+"""\
+*** Bazaar has encountered an internal error.
+    Please report a bug at https://bugs.launchpad.net/bzr/+filebug
+    including this traceback, and a description of what you
+    were doing when the error occurred.
+""")

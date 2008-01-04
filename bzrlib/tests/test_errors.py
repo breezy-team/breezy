@@ -56,6 +56,20 @@ class TestErrors(TestCaseWithTransport):
             "The transport 'fpp' is only accessible within this process.",
             str(error))
 
+    def test_invalid_http_range(self):
+        error = errors.InvalidHttpRange('path',
+                                        'Content-Range: potatoes 0-00/o0oo0',
+                                        'bad range')
+        self.assertEquals("Invalid http range"
+                          " 'Content-Range: potatoes 0-00/o0oo0'"
+                          " for path: bad range",
+                          str(error))
+
+    def test_invalid_range(self):
+        error = errors.InvalidRange('path', 12, 'bad range')
+        self.assertEquals("Invalid range access in path at 12: bad range",
+                          str(error))
+
     def test_inventory_modified(self):
         error = errors.InventoryModified("a tree to be repred")
         self.assertEqualDiff("The current inventory for the tree 'a tree to "
