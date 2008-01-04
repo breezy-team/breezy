@@ -1648,9 +1648,10 @@ class RepositoryPackCollection(object):
     def _abort_write_group(self):
         # FIXME: just drop the transient index.
         # forget what names there are
-        self._new_pack.abort()
-        self._remove_pack_indices(self._new_pack)
-        self._new_pack = None
+        if self._new_pack is not None:
+            self._new_pack.abort()
+            self._remove_pack_indices(self._new_pack)
+            self._new_pack = None
         self.repo._text_knit = None
 
     def _commit_write_group(self):
