@@ -64,6 +64,9 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+   * Avoid AttributeError when unlocking a pack repository when an error occurs.
+     (Martin Pool, #180208)
+
    * Better handle short reads when processing multiple range requests.
      (Vincent Ladeuil, #179368)
 
