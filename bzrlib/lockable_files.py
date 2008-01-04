@@ -132,7 +132,11 @@ class LockableFiles(object):
             self._dir_mode = 0755
             self._file_mode = 0644
         else:
-            self._dir_mode = st.st_mode & 07777
+            # Check the directory mode, but also make sure the created
+            # directories and files are read-write for this user. This is
+            # mostly a workaround for filesystems which lie about being able to
+            # write to a directory (cygwin & win32)
+            self._dir_mode = (st.st_mode & 07777) | 00700
             # Remove the sticky and execute bits for files
             self._file_mode = self._dir_mode & ~07111
         if not self._set_dir_mode:

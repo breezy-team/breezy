@@ -47,6 +47,7 @@ from bzrlib import (
     bzrdir,
     errors,
     inventory,
+    progress,
     repository,
     revision as _mod_revision,
     symbol_versioning,
@@ -929,6 +930,26 @@ class TestKnitPackNoSubtrees(TestCaseWithTransport):
         self.assertEqual(1, len(list(index.iter_all_entries())))
         self.assertEqual(2, len(tree.branch.repository.all_revision_ids()))
 
+    def test_pack_layout(self):
+        format = self.get_format()
+        tree = self.make_branch_and_tree('.', format=format)
+        trans = tree.branch.repository.bzrdir.get_repository_transport(None)
+        tree.commit('start', rev_id='1')
+        tree.commit('more work', rev_id='2')
+        tree.branch.repository.pack()
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        pack = tree.branch.repository._pack_collection.get_pack_by_name(
+            tree.branch.repository._pack_collection.names()[0])
+        # revision access tends to be tip->ancestor, so ordering that way on 
+        # disk is a good idea.
+        for _1, key, val, refs in pack.revision_index.iter_all_entries():
+            if key == ('1',):
+                pos_1 = int(val[1:].split()[0])
+            else:
+                pos_2 = int(val[1:].split()[0])
+        self.assertTrue(pos_2 < pos_1)
+
     def test_pack_repositories_support_multiple_write_locks(self):
         format = self.get_format()
         self.make_repository('.', shared=True, format=format)
@@ -1411,3 +1432,24 @@ class TestPacker(TestCaseWithTransport):
 
     # To date, this class has been factored out and nothing new added to it;
     # thus there are not yet any tests.
+
+
+class TestInterDifferingSerializer(TestCaseWithTransport):
+
+    def test_progress_bar(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.commit('rev1', rev_id='rev-1')
+        tree.commit('rev2', rev_id='rev-2')
+        tree.commit('rev3', rev_id='rev-3')
+        repo = self.make_repository('repo')
+        inter_repo = repository.InterDifferingSerializer(
+            tree.branch.repository, repo)
+        pb = progress.InstrumentedProgress(to_file=StringIO())
+        pb.never_throttle = True
+        inter_repo.fetch('rev-1', pb)
+        self.assertEqual('Transferring revisions', pb.last_msg)
+        self.assertEqual(1, pb.last_cnt)
+        self.assertEqual(1, pb.last_total)
+        inter_repo.fetch('rev-3', pb)
+        self.assertEqual(2, pb.last_cnt)
+        self.assertEqual(2, pb.last_total)

@@ -57,7 +57,7 @@ import bzrlib
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
     deprecated_function,
-    zero_ninetythree,
+    one_zero,
     )
 from bzrlib.trace import mutter
 
@@ -468,7 +468,7 @@ def normalizepath(f):
         return pathjoin(F(p), e)
 
 
-@deprecated_function(zero_ninetythree)
+@deprecated_function(one_zero)
 def backup_file(fn):
     """Copy a file to a backup.
 
@@ -670,8 +670,7 @@ def format_date(t, offset=0, timezone='original', date_fmt=None,
         tt = time.localtime(t)
         offset = local_time_offset(t)
     else:
-        raise errors.BzrError("unsupported timezone format %r" % timezone,
-                              ['options are "utc", "original", "local"'])
+        raise errors.UnsupportedTimezoneFormat(timezone)
     if date_fmt is None:
         date_fmt = "%a %Y-%m-%d %H:%M:%S"
     if show_offset:
@@ -1406,6 +1405,18 @@ def recv_all(socket, bytes):
         b += new
     return b
 
+
+def send_all(socket, bytes):
+    """Send all bytes on a socket.
+
+    Regular socket.sendall() can give socket error 10053 on Windows.  This
+    implementation sends no more than 64k at a time, which avoids this problem.
+    """
+    chunk_size = 2**16
+    for pos in xrange(0, len(bytes), chunk_size):
+        socket.sendall(bytes[pos:pos+chunk_size])
+
+
 def dereference_path(path):
     """Determine the real path to a file.
 
@@ -1423,3 +1434,32 @@ def dereference_path(path):
 def supports_mapi():
     """Return True if we can use MAPI to launch a mail client."""
     return sys.platform == "win32"
+
+
+def resource_string(package, resource_name):
+    """Load a resource from a package and return it as a string.
+
+    Note: Only packages that start with bzrlib are currently supported.
+
+    This is designed to be a lightweight implementation of resource
+    loading in a way which is API compatible with the same API from
+    pkg_resources. See
+    http://peak.telecommunity.com/DevCenter/PkgResources#basic-resource-access.
+    If and when pkg_resources becomes a standard library, this routine
+    can delegate to it.
+    """
+    # Check package name is within bzrlib
+    if package == "bzrlib":
+        resource_relpath = resource_name
+    elif package.startswith("bzrlib."):
+        package = package[len("bzrlib."):].replace('.', os.sep)
+        resource_relpath = pathjoin(package, resource_name)
+    else:
+        raise errors.BzrError('resource package %s not in bzrlib' % package)
+
+    # Map the resource to a file and read its contents
+    base = dirname(bzrlib.__file__)
+    if getattr(sys, 'frozen', None):    # bzr.exe
+        base = abspath(pathjoin(base, '..', '..'))
+    filename = pathjoin(base, resource_relpath)
+    return open(filename, 'rU').read()

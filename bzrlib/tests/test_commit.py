@@ -19,6 +19,7 @@ import os
 
 import bzrlib
 from bzrlib import (
+    bzrdir,
     errors,
     lockdir,
     osutils,
@@ -740,3 +741,11 @@ class TestCommit(TestCaseWithTransport):
         rev = tree.branch.repository.get_revision(rev_id)
         self.assertEqual('John Doe <jdoe@example.com>',
                          rev.properties['author'])
+
+    def test_commit_with_checkout_and_branch_sharing_repo(self):
+        repo = self.make_repository('repo', shared=True)
+        # make_branch_and_tree ignores shared repos
+        branch = bzrdir.BzrDir.create_branch_convenience('repo/branch')
+        tree2 = branch.create_checkout('repo/tree2')
+        tree2.commit('message', rev_id='rev1')
+        self.assertTrue(tree2.branch.repository.has_revision('rev1'))

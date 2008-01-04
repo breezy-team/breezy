@@ -80,6 +80,12 @@ class TestLog(ExternalBase):
         self.run_bzr_error('bzr: ERROR: Logging revision 0 is invalid.',
                            ['log', '-r-2..0'])
 
+    def test_log_unsupported_timezone(self):
+        self._prepare()
+        self.run_bzr_error('bzr: ERROR: Unsupported timezone format "foo", '
+                           'options are "utc", "original", "local".',
+                           ['log', '--timezone', 'foo'])
+
     def test_log_negative_begin_revspec_full_log(self):
         self._prepare()
         log = self.run_bzr("log -r -3..")[0]
@@ -168,9 +174,16 @@ class TestLog(ExternalBase):
     def test_log_limit(self):
         self._prepare()
         log = self.run_bzr("log --limit 2")[0]
-        self.assertTrue('revno: 1\n' not in log)
-        self.assertTrue('revno: 2\n' in log)
-        self.assertTrue('revno: 3\n' in log)
+        self.assertNotContainsRe(log, r'revno: 1\n')
+        self.assertContainsRe(log, r'revno: 2\n')
+        self.assertContainsRe(log, r'revno: 3\n')
+
+    def test_log_limit_short(self):
+        self._prepare()
+        log = self.run_bzr("log -l 2")[0]
+        self.assertNotContainsRe(log, r'revno: 1\n')
+        self.assertContainsRe(log, r'revno: 2\n')
+        self.assertContainsRe(log, r'revno: 3\n')
 
 class TestLogMerges(ExternalBase):
 

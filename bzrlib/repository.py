@@ -766,6 +766,49 @@ class Repository(object):
             result['size'] = t
         return result
 
+    def find_branches(self, using=False):
+        """Find branches underneath this repository.
+
+        This will include branches inside other branches.
+
+        :param using: If True, list only branches using this repository.
+        """
+        if using and not self.is_shared():
+            try:
+                return [self.bzrdir.open_branch()]
+            except errors.NotBranchError:
+                return []
+        class Evaluator(object):
+
+            def __init__(self):
+                self.first_call = True
+
+            def __call__(self, bzrdir):
+                # On the first call, the parameter is always the bzrdir
+                # containing the current repo.
+                if not self.first_call:
+                    try:
+                        repository = bzrdir.open_repository()
+                    except errors.NoRepositoryPresent:
+                        pass
+                    else:
+                        return False, (None, repository)
+                self.first_call = False
+                try:
+                    value = (bzrdir.open_branch(), None)
+                except errors.NotBranchError:
+                    value = (None, None)
+                return True, value
+
+        branches = []
+        for branch, repository in bzrdir.BzrDir.find_bzrdirs(
+                self.bzrdir.root_transport, evaluate=Evaluator()):
+            if branch is not None:
+                branches.append(branch)
+            if not using and repository is not None:
+                branches.extend(repository.find_branches())
+        return branches
+
     def get_data_stream(self, revision_ids):
         raise NotImplementedError(self.get_data_stream)
 
@@ -1643,22 +1686,30 @@ class Repository(object):
     def revision_parents(self, revision_id):
         return self.get_inventory_weave().parent_names(revision_id)
 
+    @deprecated_method(symbol_versioning.one_one)
     def get_parents(self, revision_ids):
         """See StackedParentsProvider.get_parents"""
-        parents_list = []
-        for revision_id in revision_ids:
+        parent_map = self.get_parent_map(revision_ids)
+        return [parent_map.get(r, None) for r in revision_ids]
+
+    def get_parent_map(self, keys):
+        """See graph._StackedParentsProvider.get_parent_map"""
+        parent_map = {}
+        for revision_id in keys:
             if revision_id == _mod_revision.NULL_REVISION:
-                parents = []
+                parent_map[revision_id] = ()
             else:
                 try:
-                    parents = self.get_revision(revision_id).parent_ids
+                    parent_id_list = self.get_revision(revision_id).parent_ids
                 except errors.NoSuchRevision:
-                    parents = None
+                    pass
                 else:
-                    if len(parents) == 0:
-                        parents = [_mod_revision.NULL_REVISION]
-            parents_list.append(parents)
-        return parents_list
+                    if len(parent_id_list) == 0:
+                        parent_ids = (_mod_revision.NULL_REVISION,)
+                    else:
+                        parent_ids = tuple(parent_id_list)
+                    parent_map[revision_id] = parent_ids
+        return parent_map
 
     def _make_parents_provider(self):
         return self
@@ -1803,7 +1854,7 @@ def install_revision(repository, rev, revision_tree):
     install_revisions(repository, [(rev, revision_tree, None)])
 
 
-def install_revisions(repository, iterable):
+def install_revisions(repository, iterable, num_revisions=None, pb=None):
     """Install all revision data into a repository.
 
     Accepts an iterable of revision, tree, signature tuples.  The signature
@@ -1811,8 +1862,10 @@ def install_revisions(repository, iterable):
     """
     repository.start_write_group()
     try:
-        for revision, revision_tree, signature in iterable:
+        for n, (revision, revision_tree, signature) in enumerate(iterable):
             _install_revision(repository, revision, revision_tree, signature)
+            if pb is not None:
+                pb.update('Transferring revisions', n + 1, num_revisions)
     except:
         repository.abort_write_group()
         raise
@@ -1958,7 +2011,7 @@ class RepositoryFormat(object):
     _matchingbzrdir - the bzrdir format that the repository format was
     originally written to work with. This can be used if manually
     constructing a bzrdir and repository, or more commonly for test suite
-    parameterisation.
+    parameterization.
     """
 
     # Set to True or False in derived classes. True indicates that the format
@@ -2726,7 +2779,17 @@ class InterDifferingSerializer(InterKnitRepo):
                 except errors.NoSuchRevision:
                     signature = None
                 yield revision, tree, signature
-        install_revisions(self.target, revisions_iterator())
+        if pb is None:
+            my_pb = ui.ui_factory.nested_progress_bar()
+            pb = my_pb
+        else:
+            my_pb = None
+        try:
+            install_revisions(self.target, revisions_iterator(),
+                              len(revision_ids), pb)
+        finally:
+            if my_pb is not None:
+                my_pb.finished()
         return len(revision_ids), 0
 
 

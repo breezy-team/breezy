@@ -70,6 +70,8 @@ class TestMerge(ExternalBase):
         a_tree.revert(backups=False)
         self.run_bzr('merge ../b -r last:1..last:1 --merge-type weave')
         a_tree.revert(backups=False)
+        self.run_bzr('merge ../b -r last:1..last:1 --merge-type lca')
+        a_tree.revert(backups=False)
         self.run_bzr_error(['Show-base is not supported for this merge type'],
                            'merge ../b -r last:1..last:1 --merge-type weave'
                            ' --show-base')
@@ -301,9 +303,10 @@ class TestMerge(ExternalBase):
         target.commit('empty commit')
         self.write_directive('directive', source.branch, 'target', 'rev2',
                              'rev1')
-        self.run_bzr('merge -d target directive')
+        out, err = self.run_bzr('merge -d target directive')
         self.failIfExists('target/a')
         self.failUnlessExists('target/b')
+        self.assertContainsRe(err, 'Performing cherrypick')
 
     def write_directive(self, filename, source, target, revision_id,
                         base_revision_id=None, mangle_patch=False):
@@ -406,3 +409,43 @@ class TestMerge(ExternalBase):
         graph = tree_a.branch.repository.get_graph(tree_b.branch.repository)
         out, err = self.run_bzr(['merge', '-d', 'a', 'b'])
         self.assertContainsRe(err, 'Warning: criss-cross merge encountered.')
+
+    def test_weave_cherrypick(self):
+        this_tree = self.make_branch_and_tree('this')
+        self.build_tree_contents([('this/file', "a\n")])
+        this_tree.add('file')
+        this_tree.commit('rev1')
+        other_tree = this_tree.bzrdir.sprout('other').open_workingtree()
+        self.build_tree_contents([('other/file', "a\nb\n")])
+        other_tree.commit('rev2b')
+        self.build_tree_contents([('other/file', "c\na\nb\n")])
+        other_tree.commit('rev3b')
+        self.run_bzr('merge --weave -d this other -r -2..-1')
+        self.assertFileEqual('c\na\n', 'this/file')
+
+    def test_lca_merge_criss_cross(self):
+        tree_a = self.make_branch_and_tree('a')
+        self.build_tree_contents([('a/file', 'base-contents\n')])
+        tree_a.add('file')
+        tree_a.commit('', rev_id='rev1')
+        tree_b = tree_a.bzrdir.sprout('b').open_workingtree()
+        self.build_tree_contents([('a/file',
+                                   'base-contents\nthis-contents\n')])
+        tree_a.commit('', rev_id='rev2a')
+        self.build_tree_contents([('b/file',
+                                   'base-contents\nother-contents\n')])
+        tree_b.commit('', rev_id='rev2b')
+        tree_a.merge_from_branch(tree_b.branch)
+        self.build_tree_contents([('a/file',
+                                   'base-contents\nthis-contents\n')])
+        tree_a.set_conflicts(ConflictList())
+        tree_b.merge_from_branch(tree_a.branch)
+        self.build_tree_contents([('b/file',
+                                   'base-contents\nother-contents\n')])
+        tree_b.set_conflicts(ConflictList())
+        tree_a.commit('', rev_id='rev3a')
+        tree_b.commit('', rev_id='rev3b')
+        out, err = self.run_bzr(['merge', '-d', 'a', 'b', '--lca'], retcode=1)
+        self.assertFileEqual('base-contents\n<<<<<<< TREE\nthis-contents\n'
+                             '=======\nother-contents\n>>>>>>> MERGE-SOURCE\n',
+                             'a/file')

@@ -198,8 +198,6 @@ class TestBoundBranches(TestCaseWithTransport):
         child_tree.commit(message='child')
         self.check_revno(2)
 
-        self.run_bzr('bind', retcode=3)
-
     def test_commit_remote_bound(self):
         # It is not possible to commit to a branch
         # which is bound to a branch which is bound
@@ -247,12 +245,11 @@ class TestBoundBranches(TestCaseWithTransport):
         self.check_revno(2, 'base')
 
         os.chdir('child')
-        # These branches have diverged
-        self.run_bzr('bind ../base', retcode=3)
+        # These branches have diverged, but bind should succeed anyway
+        self.run_bzr('bind ../base')
 
-        # TODO: In the future, this might require actual changes
-        # to have occurred, rather than just a new revision entry
-        child_tree.merge_from_branch(base_branch)
+        # This should turn the local commit into a merge
+        child_tree.update()
         child_tree.commit(message='merged')
         self.check_revno(3)
 
@@ -260,16 +257,6 @@ class TestBoundBranches(TestCaseWithTransport):
         # take a copy before
         base_history = base_branch.revision_history()
         child_history = child_branch.revision_history()
-
-        # After a merge, trying to bind again should succeed
-        # keeping the new change as a local commit.
-        self.run_bzr('bind ../base')
-        self.check_revno(3)
-        self.check_revno(2, '../base')
-
-        # and compare the revision history now
-        self.assertEqual(base_history, base_branch.revision_history())
-        self.assertEqual(child_history, child_branch.revision_history())
 
     def test_bind_parent_ahead(self):
         base_tree = self.create_branches()[0]
@@ -321,6 +308,14 @@ class TestBoundBranches(TestCaseWithTransport):
         self.check_revno(1, '../base')
         self.run_bzr('bind ../base')
         self.check_revno(1, '../base')
+
+    def test_bind_fail_if_missing(self):
+        """We should not be able to bind to a missing branch."""
+        tree = self.make_branch_and_tree('tree_1')
+        tree.commit('dummy commit')
+        self.run_bzr_error(['Not a branch.*no-such-branch/'], ['bind', '../no-such-branch'],
+                            working_dir='tree_1')
+        self.assertIs(None, tree.branch.get_bound_location())
 
     def test_commit_after_merge(self):
         base_tree, child_tree = self.create_branches()

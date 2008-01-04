@@ -17,7 +17,11 @@ repository is usually creating using the ``no-trees`` option, e.g.::
   bzr init-repo --no-trees sftp://centralhost/srv/bzr/X-repo/
 
 You can think of this step as similar to setting up a new cvsroot or
-Subversion repository.
+Subversion repository. However, Bazaar gives you more flexibility
+in how branches may be organised in your repository. See
+`Choosing a shared repository layout`_ in the appendices for
+guidelines and examples.
+
 
 Starting a central branch
 -------------------------
