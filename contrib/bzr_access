@@ -207,7 +207,7 @@ def main():
     if not os.environ.has_key("SSH_ORIGINAL_COMMAND"):
         error("Environment variable SSH_ORIGINAL_COMMAND missing.", EXIT_BADENV)
     directory = get_directory(os.environ["SSH_ORIGINAL_COMMAND"])
-    if not len(directory):
+    if len(directory) == 0:
         error("Bad directory name.", EXIT_BADDIR)
 
     # Control user name
