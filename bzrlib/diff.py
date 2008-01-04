@@ -388,9 +388,11 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url):
 
     other_paths = []
     make_paths_wt_relative = True
+    consider_relpath = True
     if path_list is None or len(path_list) == 0:
-        # If no path is given, assume the current directory
+        # If no path is given, the current working tree is used
         default_location = u'.'
+        consider_relpath = False
     elif old_url is not None and new_url is not None:
         other_paths = path_list
         make_paths_wt_relative = False
@@ -404,7 +406,7 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url):
         old_url = default_location
     working_tree, branch, relpath = \
         bzrdir.BzrDir.open_containing_tree_or_branch(old_url)
-    if relpath != '':
+    if consider_relpath and relpath != '':
         specific_files.append(relpath)
     old_tree = _get_tree_to_diff(old_revision_spec, working_tree, branch)
 
@@ -414,7 +416,7 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url):
     if new_url != old_url:
         working_tree, branch, relpath = \
             bzrdir.BzrDir.open_containing_tree_or_branch(new_url)
-        if relpath != '':
+        if consider_relpath and relpath != '':
             specific_files.append(relpath)
     new_tree = _get_tree_to_diff(new_revision_spec, working_tree, branch,
         basis_is_default=working_tree is None)
