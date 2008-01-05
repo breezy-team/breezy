@@ -22,10 +22,16 @@ IN DEVELOPMENT
    * diff '--using' allows an external diff tool to be used for files.
      (Aaron Bentley)
 
+   * New "lca" merge-type for fast everyday merging that also supports
+     criss-cross merges.  (Aaron Bentley)
+
    * ``merge --preview`` produces a diff of the changes merge would make,
      but does not actually perform the merge.  (Aaron Bentley)
 
   IMPROVEMENTS:
+
+   * ``annotate`` now doesn't require a working tree. (Lukáš Lalinský,
+     #90049)
 
    * ``branch`` and ``checkout`` can now use files from a working tree to
      to speed up the process.  For checkout, this requires the new
@@ -61,11 +67,17 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+   * Better handle short reads when processing multiple range requests.
+     (Vincent Ladeuil, #179368)
+
    * build_tree acceleration uses the correct path when a file has been moved.
      (Aaron Bentley)
 
    * ``commit`` now succeeds when a checkout and its master branch share a
      repository.  (Aaron Bentley, #177592)
+
+   * Fixed error reporting of unsupported timezone format in
+     ``log --timezone``. (Lukáš Lalinský, #178722)
 
    * Fixed Unicode encoding error in ``ignored`` when the output is
      redirected to a pipe. (Lukáš Lalinský)
@@ -73,9 +85,25 @@ IN DEVELOPMENT
    * Fix traceback when sending large response bodies over the smart protocol
      on Windows. (Andrew Bennetts, #115781)
 
+   * Fix ``urlutils.relative_url`` for the case of two ``file:///`` URLs
+     pointed to different logical drives on Windows.
+     (Alexander Belchenko, #90847)
+
+   * HTTP test servers are now compatible with the http protocol version 1.1.
+     (Vincent Ladeuil, #175524)
+
+   * _KnitParentsProvider.get_parent_map now handles requests for ghosts
+     correctly, instead of erroring or attributing incorrect parents to ghosts.
+     (Aaron Bentley)
+
+   * ``merge --weave --uncommitted`` now works.  (Aaron Bentley)
+
    * pycurl authentication handling was broken and incomplete. Fix handling of
      user:pass embedded in the urls.
      (Vincent Ladeuil, #177643)
+
+   * Files inside non-directories are now handled like other conflict types.
+     (Aaron Bentley, #177390)
 
    * ``reconfigure`` is able to convert trees into lightweight checkouts.
      (Aaron Bentley)
@@ -99,12 +127,17 @@ IN DEVELOPMENT
 
   DOCUMENTATION:
 
+   * Minor tweaks made to the bug tracker integration documentation.
+     (Ian Clatworthy)
+
    * Reference material has now be moved out of the User Guide and added
      to the User Reference. The User Reference has gained 4 sections as
      a result: Authenication Settings, Configuration Settings, Conflicts
      and Hooks. All help topics are now dumped into text format in the
      doc/en/user-reference directory for those who like browsing that
      information in their editor. (Ian Clatworthy)
+
+   * *Using Bazaar with Launchpad* tutorial added. (Ian Clatworthy)
 
   INTERNALS:
 
@@ -113,6 +146,8 @@ IN DEVELOPMENT
 
     * Help topics can now be loaded from files. 
       (Ian Clatworthy, Alexander Belchenko)
+
+    * get_parent_map now always provides tuples as its output.  (Aaron Bentley)
 
     * Parent Providers should now implement ``get_parent_map`` returning a
       dictionary instead of ``get_parents`` returning a list.
@@ -151,6 +186,10 @@ IN DEVELOPMENT
 
    * New helper method ``bzrlib.tests.split_suite_by_re`` which splits a test
      suite into two according to a regular expression. (Robert Collins)
+
+   * Parametrize all http tests for the transport implementations, the http
+     protocol versions (1.0 and 1.1) and the authentication schemes.
+     (Vincent Ladeuil) 
 
    * The ``exclude_pattern`` and ``random_order`` parameters to the function
      ``bzrlib.tests.filter_suite_by_re`` have been deprecated. (Robert Collins)

@@ -30,7 +30,8 @@ from bzrlib import (
     )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.conflicts import (DuplicateEntry, DuplicateID, MissingParent,
-                              UnversionedParent, ParentLoop, DeletingParent,)
+                              UnversionedParent, ParentLoop, DeletingParent,
+                              NonDirectoryParent)
 from bzrlib.diff import show_diff_trees
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, CantMoveRoot, 
@@ -636,6 +637,61 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertEqual(conflicts_s[6], 'Conflict moving oz/emeraldcity into'
                                          ' oz/emeraldcity.  Cancelled move.')
 
+    def prepare_wrong_parent_kind(self):
+        tt, root = self.get_transform()
+        tt.new_file('parent', root, 'contents', 'parent-id')
+        tt.apply()
+        tt, root = self.get_transform()
+        parent_id = tt.trans_id_file_id('parent-id')
+        tt.new_file('child,', parent_id, 'contents2', 'file-id')
+        return tt
+
+    def test_find_conflicts_wrong_parent_kind(self):
+        tt = self.prepare_wrong_parent_kind()
+        tt.find_conflicts()
+
+    def test_resolve_conflicts_wrong_existing_parent_kind(self):
+        tt = self.prepare_wrong_parent_kind()
+        raw_conflicts = resolve_conflicts(tt)
+        self.assertEqual(set([('non-directory parent', 'Created directory',
+                         'new-3')]), raw_conflicts)
+        cooked_conflicts = cook_conflicts(raw_conflicts, tt)
+        self.assertEqual([NonDirectoryParent('Created directory', 'parent.new',
+        'parent-id')], cooked_conflicts)
+        tt.apply()
+        self.assertEqual(None, self.wt.path2id('parent'))
+        self.assertEqual('parent-id', self.wt.path2id('parent.new'))
+
+    def test_resolve_conflicts_wrong_new_parent_kind(self):
+        tt, root = self.get_transform()
+        parent_id = tt.new_directory('parent', root, 'parent-id')
+        tt.new_file('child,', parent_id, 'contents2', 'file-id')
+        tt.apply()
+        tt, root = self.get_transform()
+        parent_id = tt.trans_id_file_id('parent-id')
+        tt.delete_contents(parent_id)
+        tt.create_file('contents', parent_id)
+        raw_conflicts = resolve_conflicts(tt)
+        self.assertEqual(set([('non-directory parent', 'Created directory',
+                         'new-3')]), raw_conflicts)
+        tt.apply()
+        self.assertEqual(None, self.wt.path2id('parent'))
+        self.assertEqual('parent-id', self.wt.path2id('parent.new'))
+
+    def test_resolve_conflicts_wrong_parent_kind_unversioned(self):
+        tt, root = self.get_transform()
+        parent_id = tt.new_directory('parent', root)
+        tt.new_file('child,', parent_id, 'contents2')
+        tt.apply()
+        tt, root = self.get_transform()
+        parent_id = tt.trans_id_tree_path('parent')
+        tt.delete_contents(parent_id)
+        tt.create_file('contents', parent_id)
+        resolve_conflicts(tt)
+        tt.apply()
+        self.assertIs(None, self.wt.path2id('parent'))
+        self.assertIs(None, self.wt.path2id('parent.new'))
+
     def test_moving_versioned_directories(self):
         create, root = self.get_transform()
         kansas = create.new_directory('kansas', root, 'kansas-id')
@@ -716,6 +772,8 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform, root = self.get_transform()
         transform.new_file('file1', root, 'contents', 'file1-id', True)
         transform.apply()
+        self.wt.lock_write()
+        self.addCleanup(self.wt.unlock)
         self.assertTrue(self.wt.is_executable('file1-id'))
         transform, root = self.get_transform()
         file1_id = transform.trans_id_tree_file_id('file1-id')
@@ -1556,6 +1614,7 @@ class TestBuildTree(tests.TestCaseWithTransport):
         self.assertEqual([], list(target._iter_changes(revision_tree)))
 
     def test_build_tree_accelerator_wrong_kind(self):
+        self.requireFeature(SymlinkFeature)
         source = self.make_branch_and_tree('source')
         self.build_tree_contents([('source/file1', '')])
         self.build_tree_contents([('source/file2', '')])

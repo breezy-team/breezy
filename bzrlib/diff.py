@@ -388,9 +388,11 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url):
 
     other_paths = []
     make_paths_wt_relative = True
+    consider_relpath = True
     if path_list is None or len(path_list) == 0:
-        # If no path is given, assume the current directory
+        # If no path is given, the current working tree is used
         default_location = u'.'
+        consider_relpath = False
     elif old_url is not None and new_url is not None:
         other_paths = path_list
         make_paths_wt_relative = False
@@ -404,7 +406,7 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url):
         old_url = default_location
     working_tree, branch, relpath = \
         bzrdir.BzrDir.open_containing_tree_or_branch(old_url)
-    if relpath != '':
+    if consider_relpath and relpath != '':
         specific_files.append(relpath)
     old_tree = _get_tree_to_diff(old_revision_spec, working_tree, branch)
 
@@ -414,7 +416,7 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url):
     if new_url != old_url:
         working_tree, branch, relpath = \
             bzrdir.BzrDir.open_containing_tree_or_branch(new_url)
-        if relpath != '':
+        if consider_relpath and relpath != '':
             specific_files.append(relpath)
     new_tree = _get_tree_to_diff(new_revision_spec, working_tree, branch,
         basis_is_default=working_tree is None)
@@ -773,29 +775,52 @@ class DiffFromTool(DiffPath):
         return [t % my_map for t in self.command_template]
 
     def _execute(self, old_path, new_path):
-        proc = subprocess.Popen(self._get_command(old_path, new_path),
-                                stdout=subprocess.PIPE, cwd=self._root)
+        command = self._get_command(old_path, new_path)
+        try:
+            proc = subprocess.Popen(command, stdout=subprocess.PIPE,
+                                    cwd=self._root)
+        except OSError, e:
+            if e.errno == errno.ENOENT:
+                raise errors.ExecutableMissing(command[0])
+            else:
+                raise
         self.to_file.write(proc.stdout.read())
         return proc.wait()
 
-    def _write_file(self, file_id, tree, prefix, old_path):
-        full_old_path = osutils.pathjoin(self._root, prefix, old_path)
-        parent_dir = osutils.dirname(full_old_path)
+    def _try_symlink_root(self, tree, prefix):
+        if not (getattr(tree, 'abspath', None) is not None
+                and osutils.has_symlinks()):
+            return False
+        try:
+            os.symlink(tree.abspath(''), osutils.pathjoin(self._root, prefix))
+        except OSError, e:
+            if e.errno != errno.EEXIST:
+                raise
+        return True
+
+    def _write_file(self, file_id, tree, prefix, relpath):
+        full_path = osutils.pathjoin(self._root, prefix, relpath)
+        if self._try_symlink_root(tree, prefix):
+            return full_path
+        parent_dir = osutils.dirname(full_path)
         try:
             os.makedirs(parent_dir)
         except OSError, e:
             if e.errno != errno.EEXIST:
                 raise
-        source = tree.get_file(file_id)
+        source = tree.get_file(file_id, relpath)
         try:
-            target = open(full_old_path, 'wb')
+            target = open(full_path, 'wb')
             try:
                 osutils.pumpfile(source, target)
             finally:
                 target.close()
         finally:
             source.close()
-        return full_old_path
+        osutils.make_readonly(full_path)
+        mtime = tree.get_file_mtime(file_id)
+        os.utime(full_path, (mtime, mtime))
+        return full_path
 
     def _prepare_files(self, file_id, old_path, new_path):
         old_disk_path = self._write_file(file_id, self.old_tree, 'old',
@@ -805,7 +830,7 @@ class DiffFromTool(DiffPath):
         return old_disk_path, new_disk_path
 
     def finish(self):
-        shutil.rmtree(self._root)
+        osutils.rmtree(self._root)
 
     def diff(self, file_id, old_path, new_path, old_kind, new_kind):
         if (old_kind, new_kind) != ('file', 'file'):

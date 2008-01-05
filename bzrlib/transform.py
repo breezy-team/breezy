@@ -572,7 +572,10 @@ class TreeTransformBase(object):
                         self.tree_kind(t) == 'directory'])
         for trans_id in self._removed_id:
             file_id = self.tree_file_id(trans_id)
-            if self._tree.inventory[file_id].kind == 'directory':
+            if file_id is not None:
+                if self._tree.inventory[file_id].kind == 'directory':
+                    parents.append(trans_id)
+            elif self.tree_kind(trans_id) == 'directory':
                 parents.append(trans_id)
 
         for parent_id in parents:
@@ -588,7 +591,7 @@ class TreeTransformBase(object):
         try:
             children = os.listdir(self._tree.abspath(path))
         except OSError, e:
-            if e.errno != errno.ENOENT and e.errno != errno.ESRCH:
+            if e.errno not in (errno.ENOENT, errno.ESRCH, errno.ENOTDIR):
                 raise
             return
             
@@ -1211,8 +1214,8 @@ class TreeTransform(TreeTransformBase):
                         file_id = self._tree.get_root_id()
                     else:
                         file_id = self.tree_file_id(trans_id)
-                    assert file_id is not None
-                    inventory_delta.append((path, None, file_id, None))
+                    if file_id is not None:
+                        inventory_delta.append((path, None, file_id, None))
         finally:
             child_pb.finished()
 
@@ -1597,6 +1600,10 @@ def _reparent_children(tt, old_parent, new_parent):
     for child in tt.iter_tree_children(old_parent):
         tt.adjust_path(tt.final_name(child), new_parent, child)
 
+def _reparent_transform_children(tt, old_parent, new_parent):
+    by_parent = tt.by_parent()
+    for child in by_parent[old_parent]:
+        tt.adjust_path(tt.final_name(child), new_parent, child)
 
 def _content_match(tree, entry, file_id, kind, target_path):
     if entry.kind != kind:
@@ -1985,6 +1992,16 @@ def conflict_pass(tt, conflicts, path_tree=None):
         elif c_type == 'unversioned parent':
             tt.version_file(tt.inactive_file_id(conflict[1]), conflict[1])
             new_conflicts.add((c_type, 'Versioned directory', conflict[1]))
+        elif c_type == 'non-directory parent':
+            parent_id = conflict[1]
+            parent_parent = tt.final_parent(parent_id)
+            parent_name = tt.final_name(parent_id)
+            parent_file_id = tt.final_file_id(parent_id)
+            new_parent_id = tt.new_directory(parent_name + '.new',
+                parent_parent, parent_file_id)
+            _reparent_transform_children(tt, parent_id, new_parent_id)
+            tt.unversion_file(parent_id)
+            new_conflicts.add((c_type, 'Created directory', new_parent_id))
     return new_conflicts
 
 
