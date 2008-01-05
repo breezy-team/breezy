@@ -105,7 +105,7 @@ ssl_params=dict(
     server_locality='LocalHost',
     server_organization='Testing Ltd',
     server_section='https server',
-    server_name='127.0.0.1', # Always accessed under that name
+    server_name='localhost', # Always accessed under that name
     server_email='https_server@locahost',
     server_optional_company_name='',
     )
