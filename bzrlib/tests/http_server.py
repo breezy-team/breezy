@@ -38,6 +38,10 @@ class BadWebserverPath(ValueError):
         return 'path %s is not in %s' % self.args
 
 
+def _quote_html(html):
+    return html.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
 class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     """Handles one request.
 
@@ -126,6 +130,33 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         header_line = '%s: %s\r\n' % (keyword, value)
         return len(header_line)
 
+    def send_error(self, code, message=None):
+        """Overrides base implementation to work around bugs in python2.5.
+
+
+        To be 1.1 compliant, we need to specify a Content-Length or 1.1 clients
+        may hang.
+        """
+        try:
+            short, long = self.responses[code]
+        except KeyError:
+            short, long = '???', '???'
+        if message is None:
+            message = short
+        explain = long
+        self.log_error("code %d, message %s", code, message)
+        # using _quote_html to prevent Cross Site Scripting attacks (see bug
+        # #1100201)
+        content = (self.error_message_format %
+                   {'code': code, 'message': _quote_html(message),
+                    'explain': explain})
+        self.send_response(code, message)
+        self.send_header("Content-Type", "text/html")
+        self.send_header('Content-Length', len(content))
+        self.end_headers()
+        if self.command != 'HEAD' and code >= 200 and code not in (204, 304):
+            self.wfile.write(content)
+
     def send_head(self):
         """Overrides base implementation to work around a bug in python2.5."""
         path = self.translate_path(self.path)
@@ -175,7 +206,7 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             content_length += self._header_line_length(
                 'Content-Range', 'bytes %d-%d/%d' % (start, end, file_size))
             content_length += len('\r\n') # end headers
-            content_length += end - start # + 1
+            content_length += end - start + 1
         content_length += len(boundary_line)
         self.send_header('Content-length', content_length)
         self.end_headers()
@@ -417,9 +448,8 @@ class HttpServer(transport.Server):
         # Allows tests to verify number of GET requests issued
         self.GET_request_nb = 0
 
-    def create_httpd(self):
-        return TestingHTTPServer((self.host, self.port), self.request_handler,
-                                 self)
+    def create_httpd(self, serv_cls, rhandler_cls):
+        return serv_cls((self.host, self.port), self.request_handler, self)
 
     def _get_httpd(self):
         if self._httpd is None:
@@ -438,7 +468,7 @@ class HttpServer(transport.Server):
             if serv_cls is None:
                 raise httplib.UnknownProtocol(proto_vers)
             else:
-                self._httpd = serv_cls((self.host, self.port), rhandler, self)
+                self._httpd = self.create_httpd(serv_cls, rhandler)
             host, self.port = self._httpd.socket.getsockname()
         return self._httpd
 

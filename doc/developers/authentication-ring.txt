@@ -205,7 +205,7 @@ Each section could define:
   * ``port``: the port the server is listening,
 
   * ``verify_certificates``: to control certificate verification (useful
-    for self certified hosts). This applies to HTTP[S] only. Accepted values
+    for self certified hosts). This applies to HTTPS only. Accepted values
     are yes and no, default to yes.
 
   * ``path``: the branch location,

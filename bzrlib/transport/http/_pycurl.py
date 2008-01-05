@@ -86,12 +86,13 @@ def _get_pycurl_errcode(symbol, default):
     """
     return pycurl.__dict__.get(symbol, default)
 
-CURLE_SSL_CACERT_BADFILE = _get_pycurl_errcode('E_SSL_CACERT_BADFILE', 77)
 CURLE_COULDNT_CONNECT = _get_pycurl_errcode('E_COULDNT_CONNECT', 7)
 CURLE_COULDNT_RESOLVE_HOST = _get_pycurl_errcode('E_COULDNT_RESOLVE_HOST', 6)
 CURLE_COULDNT_RESOLVE_PROXY = _get_pycurl_errcode('E_COULDNT_RESOLVE_PROXY', 5)
 CURLE_GOT_NOTHING = _get_pycurl_errcode('E_GOT_NOTHING', 52)
 CURLE_PARTIAL_FILE = _get_pycurl_errcode('E_PARTIAL_FILE', 18)
+CURLE_SSL_CACERT = _get_pycurl_errcode('E_SSL_CACERT', 60)
+CURLE_SSL_CACERT_BADFILE = _get_pycurl_errcode('E_SSL_CACERT_BADFILE', 77)
 
 
 class PyCurlTransport(HttpTransportBase):
@@ -310,6 +311,9 @@ class PyCurlTransport(HttpTransportBase):
             if password is not None: # '' is a valid password
                 userpass += password
             curl.setopt(pycurl.USERPWD, userpass)
+        # XXX: Temporarily disable peer verification
+#        curl.setopt(pycurl.SSL_VERIFYHOST, 2)
+        curl.setopt(pycurl.SSL_VERIFYPEER, 0)
 
     def _curl_perform(self, curl, header, more_headers=[]):
         """Perform curl operation and translate exceptions."""
@@ -327,11 +331,13 @@ class PyCurlTransport(HttpTransportBase):
             url = curl.getinfo(pycurl.EFFECTIVE_URL)
             mutter('got pycurl error: %s, %s, %s, url: %s ',
                     e[0], e[1], e, url)
-            if e[0] in (CURLE_SSL_CACERT_BADFILE,
-                        CURLE_COULDNT_RESOLVE_HOST,
+            if e[0] in (CURLE_COULDNT_RESOLVE_HOST,
+                        CURLE_COULDNT_RESOLVE_PROXY,
                         CURLE_COULDNT_CONNECT,
                         CURLE_GOT_NOTHING,
-                        CURLE_COULDNT_RESOLVE_PROXY,):
+                        CURLE_SSL_CACERT,
+                        CURLE_SSL_CACERT_BADFILE,
+                        ):
                 raise errors.ConnectionError(
                     'curl connection error (%s)\non %s' % (e[1], url))
             elif e[0] == CURLE_PARTIAL_FILE:
@@ -356,6 +362,11 @@ class PyCurlTransport(HttpTransportBase):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from bzrlib.tests.http_server import HttpServer_PyCurl
-    return [(PyCurlTransport, HttpServer_PyCurl),
-            ]
+    from bzrlib import tests
+    from bzrlib.tests import http_server
+    permutations = [(PyCurlTransport, http_server.HttpServer_PyCurl),]
+    if tests.HTTPSServerFeature.available():
+        from bzrlib.tests import https_server
+        permutations.append((PyCurlTransport,
+                             https_server.HTTPSServer_PyCurl))
+    return permutations

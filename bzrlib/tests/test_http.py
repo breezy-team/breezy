@@ -593,7 +593,6 @@ class TestBadStatusServer(TestSpecificRequestHandler):
     def test_http_has(self):
         server = self.get_readonly_server()
         t = self._transport(server.get_url())
-        import pdb; pdb.set_trace()
         self.assertRaises(errors.InvalidHttpResponse, t.has, 'foo/bar')
 
     def test_http_get(self):
