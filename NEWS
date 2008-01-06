@@ -135,6 +135,11 @@ IN DEVELOPMENT
     * Patience Diff now supports arbitrary python objects, as long as they
       support ``hash()``. (John Arbash Meinel)
 
+    * The bzrdir format registry now accepts an ``alias`` keyword to
+      register_metadir, used to indicate that a format name is an alias for
+      some other format and thus should not be reported when describing the
+      format. (Robert Collins)
+
   API BREAKS:
 
   TESTING:
