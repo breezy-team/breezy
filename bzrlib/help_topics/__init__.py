@@ -271,6 +271,7 @@ command.  (e.g. "bzr --profile help").
                "callgrind.out" or end with ".callgrind", the output will be
                formatted for use with KCacheGrind. Otherwise, the output
                will be a pickle.
+--coverage     Generate line coverage report in the specified directory.
 
 See doc/developers/profiling.txt for more information on profiling.
 A number of debug flags are also available to assist troubleshooting and

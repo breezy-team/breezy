@@ -2598,9 +2598,6 @@ class cmd_selftest(Command):
                                  ' expression.'),
                      Option('strict', help='Fail on missing dependencies or '
                             'known failures.'),
-                     Option('coverage', type=str, argname="DIRECTORY",
-                            help='Generate line coverage report in this '
-                                 'directory.'),
                      ]
     encoding_type = 'replace'
 
@@ -2608,7 +2605,7 @@ class cmd_selftest(Command):
             transport=None, benchmark=None,
             lsprof_timed=None, cache_dir=None,
             first=False, list_only=False,
-            randomize=None, exclude=None, strict=False, coverage=None):
+            randomize=None, exclude=None, strict=False):
         import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
@@ -2650,7 +2647,6 @@ class cmd_selftest(Command):
                               random_seed=randomize,
                               exclude_pattern=exclude,
                               strict=strict,
-                              coverage_dir=coverage,
                               )
         finally:
             if benchfile is not None:

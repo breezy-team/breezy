@@ -62,6 +62,9 @@ IN DEVELOPMENT
    * ``split`` now supported, to enable splitting large trees into smaller
      pieces.  (Aaron Bentley)
 
+   * The ``--coverage`` option is now global, rather specific to ``bzr
+     selftest``.  (Andrew Bennetts)
+
   BUGFIXES:
 
    * Avoid AttributeError when unlocking a pack repository when an error occurs.
