@@ -502,7 +502,8 @@ class Repository(object):
         :param parents: The revision ids of the parents that revision_id
                         is known to have and are in the repository already.
 
-        returns the sha1 of the serialized inventory.
+        :returns: The validator(which is a sha1 digest, though what is sha'd is
+            repository format specific) of the serialized inventory.
         """
         assert self.is_in_write_group()
         _mod_revision.check_not_reserved_id(revision_id)
@@ -1450,9 +1451,27 @@ class Repository(object):
 
     @needs_read_lock
     def get_inventory(self, revision_id):
-        """Get Inventory object by hash."""
-        return self.deserialise_inventory(
-            revision_id, self.get_inventory_xml(revision_id))
+        """Get Inventory object by revision id."""
+        return self.iter_inventories([revision_id]).next()
+
+    def iter_inventories(self, revision_ids):
+        """Get many inventories by revision_ids.
+
+        This will buffer some or all of the texts used in constructing the
+        inventories in memory, but will only parse a single inventory at a
+        time.
+
+        :return: An iterator of inventories.
+        """
+        assert None not in revision_ids
+        assert _mod_revision.NULL_REVISION not in revision_ids
+        return self._iter_inventories(revision_ids)
+
+    def _iter_inventories(self, revision_ids):
+        """single-document based inventory iteration."""
+        texts = self.get_inventory_weave().get_texts(revision_ids)
+        for text, revision_id in zip(texts, revision_ids):
+            yield self.deserialise_inventory(revision_id, text)
 
     def deserialise_inventory(self, revision_id, xml):
         """Transform the xml into an inventory object. 
@@ -1626,12 +1645,9 @@ class Repository(object):
         """Return Tree for a revision on this branch.
 
         `revision_id` may not be None or 'null:'"""
-        assert None not in revision_ids
-        assert _mod_revision.NULL_REVISION not in revision_ids
-        texts = self.get_inventory_weave().get_texts(revision_ids)
-        for text, revision_id in zip(texts, revision_ids):
-            inv = self.deserialise_inventory(revision_id, text)
-            yield RevisionTree(self, inv, revision_id)
+        inventories = self.iter_inventories(revision_ids)
+        for inv in inventories:
+            yield RevisionTree(self, inv, inv.revision_id)
 
     @needs_read_lock
     def get_ancestry(self, revision_id, topo_sorted=True):
