@@ -156,6 +156,9 @@ IN DEVELOPMENT
     * Patience Diff now supports arbitrary python objects, as long as they
       support ``hash()``. (John Arbash Meinel)
 
+    * Reduce selftest overhead to establish test names by memoization.
+      (Vincent Ladeuil)
+
   API BREAKS:
 
   TESTING:
