@@ -19,7 +19,12 @@
 from bzrlib.errors import (InvalidRevisionId, NoSuchRevision)
 
 MAPPING_VERSION = 3
-REVISION_ID_PREFIX = "svn-v%d-" % MAPPING_VERSION
+
+from bzrlib.plugins.svn import version_info
+if version_info[2] == "exp":
+    REVISION_ID_PREFIX = "svn-experimental"
+else:
+    REVISION_ID_PREFIX = "svn-v%d-" % MAPPING_VERSION
 
 import urllib
 
