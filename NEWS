@@ -18,6 +18,8 @@ bzr-svn 0.4.6	2008-01-08
 
   BUG FIXES
 
+   * Fix compatibility with Bazaar 1.1.
+
    * Improved compatibility with Subversion 1.5.
 
    * Actually set symlink target when pushing commits that add or change symlinks. (#177890)
