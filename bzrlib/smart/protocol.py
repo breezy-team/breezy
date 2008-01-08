@@ -543,8 +543,11 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
             return self._body_buffer.read(count)
         _body_decoder = LengthPrefixedBodyDecoder()
 
+        # Read no more than 64k at a time so that we don't risk error 10055 (no
+        # buffer space available) on Windows.
+        max_read = 64 * 1024
         while not _body_decoder.finished_reading:
-            bytes_wanted = _body_decoder.next_read_size()
+            bytes_wanted = min(_body_decoder.next_read_size(), max_read)
             bytes = self._request.read_bytes(bytes_wanted)
             _body_decoder.accept_bytes(bytes)
         self._request.finished_reading()
@@ -627,9 +630,12 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
     def read_streamed_body(self):
         """Read bytes from the body, decoding into a byte stream.
         """
+        # Read no more than 64k at a time so that we don't risk error 10055 (no
+        # buffer space available) on Windows.
+        max_read = 64 * 1024
         _body_decoder = ChunkedBodyDecoder()
         while not _body_decoder.finished_reading:
-            bytes_wanted = _body_decoder.next_read_size()
+            bytes_wanted = min(_body_decoder.next_read_size(), max_read)
             bytes = self._request.read_bytes(bytes_wanted)
             _body_decoder.accept_bytes(bytes)
             for body_bytes in iter(_body_decoder.read_next_chunk, None):
