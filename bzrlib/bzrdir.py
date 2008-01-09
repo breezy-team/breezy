@@ -2659,7 +2659,6 @@ format_registry.register_metadir('pack-0.92-subtree',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=True,
-    experimental=True,
     )
 format_registry.register_metadir('rich-root-pack',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack4',
@@ -2669,6 +2668,5 @@ format_registry.register_metadir('rich-root-pack',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=False,
-    experimental=True,
     )
 format_registry.set_default('pack-0.92')
