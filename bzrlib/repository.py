@@ -1479,7 +1479,9 @@ class Repository(object):
         :param revision_id: The expected revision id of the inventory.
         :param xml: A serialised inventory.
         """
-        return self._serializer.read_inventory_from_string(xml, revision_id)
+        result = self._serializer.read_inventory_from_string(xml, revision_id)
+        assert result.revision_id == revision_id
+        return result
 
     def serialise_inventory(self, inv):
         return self._serializer.write_inventory_to_string(inv)
