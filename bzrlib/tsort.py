@@ -192,7 +192,7 @@ class MergeSorter(object):
     __slots__ = ['_node_name_stack',
                  '_node_merge_depth_stack',
                  '_pending_parents_stack',
-                 '_assigned_sequence_stack',
+                 '_first_child_stack',
                  '_left_subtree_pushed_stack',
                  '_generate_revno',
                  '_graph',
@@ -200,7 +200,7 @@ class MergeSorter(object):
                  '_stop_revision',
                  '_original_graph',
                  '_revnos',
-                 '_root_sequence',
+                 '_revno_to_branch_count',
                  '_completed_node_names',
                  '_scheduled_nodes',
                 ]
@@ -362,15 +362,15 @@ class MergeSorter(object):
         self._original_graph = dict(self._graph.items())
         # we need to know the revision numbers of revisions to determine
         # the revision numbers of their descendants
-        # this is a graph from node to [revno_tuple, sequence_number]
-        # where sequence is the number of branches made from the node,
+        # this is a graph from node to [revno_tuple, first_child]
+        # where first_child is True if no other children have seen this node
         # and revno_tuple is the tuple that was assigned to the node.
         # we dont know revnos to start with, so we start it seeded with
-        # [None, 0]
-        self._revnos = dict((revision, [None, 0]) for revision in self._graph)
-        # the global implicit root node has revno 0, but we need to know
-        # the sequence number for it too:
-        self._root_sequence = 0
+        # [None, True]
+        self._revnos = dict((revision, [None, True])
+                            for revision in self._graph)
+        # Each mainline revision counts how many child branches have spawned from it.
+        self._revno_to_branch_count = {}
         
         # this is a stack storing the depth first search into the graph.
         self._node_name_stack = []
@@ -382,7 +382,7 @@ class MergeSorter(object):
         self._pending_parents_stack = []
         # When we first look at a node we assign it a seqence number from its
         # leftmost parent.
-        self._assigned_sequence_stack = []
+        self._first_child_stack = []
         # this is a set of the nodes who have been completely analysed for fast
         # membership checking
         self._completed_node_names = set()
@@ -439,8 +439,7 @@ class MergeSorter(object):
                       node_merge_depth_stack_append=node_merge_depth_stack.append,
                       left_subtree_pushed_stack_append=left_subtree_pushed_stack.append,
                       pending_parents_stack_append=pending_parents_stack.append,
-                      assigned_sequence_stack_append=self._assigned_sequence_stack.append,
-                      original_graph=self._original_graph,
+                      first_child_stack_append=self._first_child_stack.append,
                       revnos=self._revnos,
                       ):
             """Add node_name to the pending node stack.
@@ -455,28 +454,28 @@ class MergeSorter(object):
             node_merge_depth_stack_append(merge_depth)
             left_subtree_pushed_stack_append(False)
             pending_parents_stack_append(list(parents))
-            # as we push it, assign it a sequence number against its parent:
-            parents = original_graph[node_name]
+            # as we push it, check if it is the first child
             if parents:
                 # node has parents, assign from the left most parent.
-                parent_revno = revnos[parents[0]]
-                sequence = parent_revno[1]
-                parent_revno[1] += 1
+                parent_info = revnos[parents[0]]
+                first_child = parent_info[1]
+                parent_info[1] = False
             else:
-                # no parents, use the root sequence
-                sequence = self._root_sequence
-                self._root_sequence +=1
-            assigned_sequence_stack_append(sequence)
+                # We don't use the same algorithm here, but we need to keep the
+                # stack in line
+                first_child = None
+            first_child_stack_append(first_child)
 
         def pop_node(node_name_stack_pop=node_name_stack.pop,
                      node_merge_depth_stack_pop=node_merge_depth_stack.pop,
-                     assigned_sequence_stack_pop=self._assigned_sequence_stack.pop,
+                     first_child_stack_pop=self._first_child_stack.pop,
                      left_subtree_pushed_stack_pop=left_subtree_pushed_stack.pop,
                      pending_parents_stack_pop=pending_parents_stack.pop,
                      original_graph=self._original_graph,
                      revnos=self._revnos,
                      completed_node_names_add=self._completed_node_names.add,
                      scheduled_nodes_append=scheduled_nodes.append,
+                     revno_to_branch_count=self._revno_to_branch_count,
                     ):
             """Pop the top node off the stack
 
@@ -486,7 +485,7 @@ class MergeSorter(object):
             # pop off the local variables
             node_name = node_name_stack_pop()
             merge_depth = node_merge_depth_stack_pop()
-            sequence = assigned_sequence_stack_pop()
+            first_child = first_child_stack_pop()
             # remove this node from the pending lists:
             left_subtree_pushed_stack_pop()
             pending_parents_stack_pop()
@@ -494,20 +493,28 @@ class MergeSorter(object):
             parents = original_graph[node_name]
             if parents:
                 # node has parents, assign from the left most parent.
-                parent_revno = revnos[parents[0]]
-                if sequence:
+                parent_revno = revnos[parents[0]][0]
+                if not first_child:
                     # not the first child, make a new branch
-                    revno = parent_revno[0] + (sequence, 1)
+                    base_revno = parent_revno[0]
+                    branch_count = revno_to_branch_count.get(base_revno, 0)
+                    branch_count += 1
+                    revno_to_branch_count[base_revno] = branch_count
+                    revno = (parent_revno[0], branch_count, 1)
+                    # revno = (parent_revno[0], branch_count, parent_revno[-1]+1)
                 else:
-                    # increment the sequence number within the branch
-                    revno = parent_revno[0][:-1] + (parent_revno[0][-1] + 1,)
+                    # as the first child, we just increase the final revision
+                    # number
+                    revno = parent_revno[:-1] + (parent_revno[-1] + 1,)
             else:
                 # no parents, use the root sequence
-                if sequence:
-                    # make a parallel import revision number
-                    revno = (0, sequence, 1)
+                root_count = revno_to_branch_count.get(0, 0)
+                if root_count:
+                    revno = (0, root_count, 1)
                 else:
                     revno = (1,)
+                root_count += 1
+                revno_to_branch_count[0] = root_count
 
             # store the revno for this node for future reference
             revnos[node_name][0] = revno
@@ -610,18 +617,18 @@ class MergeSorter(object):
         self._node_merge_depth_stack.append(merge_depth)
         self._left_subtree_pushed_stack.append(False)
         self._pending_parents_stack.append(list(parents))
-        # as we push it, assign it a sequence number against its parent:
+        # as we push it, figure out if this is the first child
         parents = self._original_graph[node_name]
         if parents:
             # node has parents, assign from the left most parent.
-            parent_revno = self._revnos[parents[0]]
-            sequence = parent_revno[1]
-            parent_revno[1] += 1
+            parent_info = self._revnos[parents[0]]
+            first_child = parent_info[1]
+            parent_info[1] = False
         else:
-            # no parents, use the root sequence
-            sequence = self._root_sequence
-            self._root_sequence +=1
-        self._assigned_sequence_stack.append(sequence)
+            # We don't use the same algorithm here, but we need to keep the
+            # stack in line
+            first_child = None
+        self._first_child_stack.append(first_child)
 
     def _pop_node(self):
         """Pop the top node off the stack 
@@ -632,7 +639,7 @@ class MergeSorter(object):
         # pop off the local variables
         node_name = self._node_name_stack.pop()
         merge_depth = self._node_merge_depth_stack.pop()
-        sequence = self._assigned_sequence_stack.pop()
+        first_child = self._first_child_stack.pop()
         # remove this node from the pending lists:
         self._left_subtree_pushed_stack.pop()
         self._pending_parents_stack.pop()
@@ -640,20 +647,28 @@ class MergeSorter(object):
         parents = self._original_graph[node_name]
         if parents:
             # node has parents, assign from the left most parent.
-            parent_revno = self._revnos[parents[0]]
-            if sequence:
+            parent_revno = self._revnos[parents[0]][0]
+            if not first_child:
                 # not the first child, make a new branch
-                revno = parent_revno[0] + (sequence, 1)
+                base_revno = parent_revno[0]
+                branch_count = self._revno_to_branch_count.get(base_revno, 0)
+                branch_count += 1
+                self._revno_to_branch_count[base_revno] = branch_count
+                revno = (parent_revno[0], branch_count, 1)
+                # revno = (parent_revno[0], branch_count, parent_revno[-1]+1)
             else:
-                # increment the sequence number within the branch
-                revno = parent_revno[0][:-1] + (parent_revno[0][-1] + 1,)
+                # as the first child, we just increase the final revision
+                # number
+                revno = parent_revno[:-1] + (parent_revno[-1] + 1,)
         else:
             # no parents, use the root sequence
-            if sequence:
-                # make a parallel import revision number
-                revno = (0, sequence, 1)
+            root_count = self._revno_to_branch_count.get(0, 0)
+            if root_count:
+                revno = (0, root_count, 1)
             else:
                 revno = (1,)
+            root_count += 1
+            self._revno_to_branch_count[0] = root_count
 
         # store the revno for this node for future reference
         self._revnos[node_name][0] = revno
