@@ -152,6 +152,9 @@ IN DEVELOPMENT
 
    * get_parent_map now always provides tuples as its output.  (Aaron Bentley)
 
+   * ``Graph`` no longer requires the ``parents_provider`` to have a
+     ``get_parents`` attribute. (Robert Collins)
+
    * New method ``iter_inventories`` on Repository for access to many
      inventories. This is primarily used by the ``revision_trees`` method, as
      direct access to inventories is discouraged. (Robert Collins)

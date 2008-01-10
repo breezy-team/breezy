@@ -173,7 +173,9 @@ class Graph(object):
         :param parents_provider: An object providing a get_parents call
             conforming to the behavior of StackedParentsProvider.get_parents
         """
-        self.get_parents = parents_provider.get_parents
+        # get_parents is deprecated and we don't use it, so don't require it on
+        # providers.
+        self.get_parents = getattr(parents_provider, 'get_parents', None)
         self.get_parent_map = parents_provider.get_parent_map
         self._parents_provider = parents_provider
 
