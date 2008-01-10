@@ -398,7 +398,9 @@ class TestFormatKnit1(TestCaseWithTransport):
         # Arguably, the deserialise_inventory should detect a mismatch, and
         # raise an error, rather than silently using one revision_id over the
         # other.
-        inv = repo.deserialise_inventory('test-rev-id', inv_xml)
+        self.assertRaises(AssertionError, repo.deserialise_inventory,
+            'test-rev-id', inv_xml)
+        inv = repo.deserialise_inventory('other-rev-id', inv_xml)
         self.assertEqual('other-rev-id', inv.root.revision)
 
 
