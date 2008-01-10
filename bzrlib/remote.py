@@ -22,6 +22,7 @@ from cStringIO import StringIO
 from bzrlib import (
     branch,
     errors,
+    graph,
     lockdir,
     repository,
     revision,
@@ -381,8 +382,13 @@ class RemoteRepository(object):
         
     def get_graph(self, other_repository=None):
         """Return the graph for this repository format"""
-        self._ensure_real()
-        return self._real_repository.get_graph(other_repository)
+        parents_provider = self
+        if (other_repository is not None and
+            other_repository.bzrdir.transport.base !=
+            self.bzrdir.transport.base):
+            parents_provider = graph._StackedParentsProvider(
+                [parents_provider, other_repository._make_parents_provider()])
+        return graph.Graph(parents_provider)
 
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""
@@ -906,8 +912,13 @@ class RemoteRepository(object):
         return self._real_repository._check_for_inconsistent_revision_parents()
 
     def _make_parents_provider(self):
+        return self
+
+    def get_parent_map(self, keys):
+        # Thunk across to real for now.
         self._ensure_real()
-        return self._real_repository._make_parents_provider()
+        return self._real_repository._make_parents_provider().get_parent_map(
+            keys)
 
 
 class RemoteBranchLockableFiles(LockableFiles):

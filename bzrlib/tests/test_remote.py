@@ -478,6 +478,18 @@ class TestRemoteRepository(tests.TestCase):
         return repo, client
 
 
+class TestRepositoryGetGraph(TestRemoteRepository):
+
+    def test_get_graph(self):
+        # get_graph returns a graph with get_parent_map as the repository.
+        responses = []
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(
+            responses, transport_path)
+        graph = repo.get_graph()
+        self.assertEqual(graph._parents_provider, repo)
+
+
 class TestRepositoryGatherStats(TestRemoteRepository):
 
     def test_revid_none(self):
