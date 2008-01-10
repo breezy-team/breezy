@@ -1480,7 +1480,9 @@ class Repository(object):
         :param xml: A serialised inventory.
         """
         result = self._serializer.read_inventory_from_string(xml, revision_id)
-        assert result.revision_id == revision_id
+        if result.revision_id != revision_id:
+            raise AssertionError('revision id mismatch %s != %s' % (
+                result.revision_id, revision_id))
         return result
 
     def serialise_inventory(self, inv):
