@@ -181,7 +181,55 @@ class MergeSortTests(TestCase):
              ],
             True
             )
-        
+
+    def test_merge_sort_race(self):
+        # A
+        # |
+        # B-.
+        # |\ \
+        # | | C
+        # | |/
+        # | D
+        # |/
+        # F
+        graph = {'A': [],
+                 'B': ['A'],
+                 'C': ['B'],
+                 'D': ['B', 'C'],
+                 'F': ['B', 'D'],
+                 }
+        self.assertSortAndIterate(graph, 'F',
+            [(0, 'F', 0, (3,), False),
+             (1, 'D', 1, (2,2,1), False),
+             (2, 'C', 1, (2,1,1), True),
+             (3, 'B', 0, (2,), False),
+             (4, 'A', 0, (1,), True),
+             ], True)
+        # A
+        # |
+        # B-.
+        # |\ \
+        # | X C
+        # | |/
+        # | D
+        # |/
+        # F
+        graph = {'A': [],
+                 'B': ['A'],
+                 'C': ['B'],
+                 'X': ['B'],
+                 'D': ['X', 'C'],
+                 'F': ['B', 'D'],
+                 }
+        self.assertSortAndIterate(graph, 'F',
+            [(0, 'F', 0, (3,), False),
+             (1, 'D', 1, (2,1,2), False),
+             (2, 'C', 2, (2,2,1), True),
+             (3, 'X', 1, (2,1,1), True),
+             (4, 'B', 0, (2,), False),
+             (5, 'A', 0, (1,), True),
+             ], True)
+
     def test_merge_depth_with_nested_merges(self):
         # the merge depth marker should reflect the depth of the revision
         # in terms of merges out from the mainline
@@ -228,11 +276,11 @@ class MergeSortTests(TestCase):
              }.items(),
             'A',
             [(0, 'A', 0, (3,),  False),
-             (1, 'B', 1, (1,2,2), False),
-             (2, 'C', 1, (1,2,1), True),
+             (1, 'B', 1, (1,3,2), False),
+             (2, 'C', 1, (1,3,1), True),
              (3, 'D', 0, (2,), False),
              (4, 'E', 1, (1,1,2), False),
-             (5, 'F', 2, (1,1,1,1,1), True),
+             (5, 'F', 2, (1,2,1), True),
              (6, 'G', 1, (1,1,1), True),
              (7, 'H', 0, (1,), True),
              ],
@@ -390,11 +438,11 @@ class MergeSortTests(TestCase):
              },
             'A',
             [(0, 'A', 0, (2,), False),
-             (1, 'B', 1, (1,2,2), False),
-             (2, 'C', 2, (1,2,1,1,1), True),
-             (3, 'D', 1, (1,2,1), True),
+             (1, 'B', 1, (1,3,2), False),
+             (2, 'C', 2, (1,4,1), True),
+             (3, 'D', 1, (1,3,1), True),
              (4, 'E', 1, (1,1,2), False),
-             (5, 'F', 2, (1,1,1,1,1), True),
+             (5, 'F', 2, (1,2,1), True),
              (6, 'G', 1, (1,1,1), True),
              (7, 'H', 0, (1,), True),
              ],
