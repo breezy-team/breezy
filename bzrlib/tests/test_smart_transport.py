@@ -2277,6 +2277,8 @@ class TestSuccessfulSmartServerResponse(tests.TestCase):
             ('foo', 'bar'), 'bytes')
         self.assertEqual(('foo', 'bar'), response.args)
         self.assertEqual('bytes', response.body)
+        # repr(response) doesn't trigger exceptions.
+        repr(response)
 
     def test_construct_with_body_stream(self):
         bytes_iterable = ['abc']
@@ -2306,6 +2308,8 @@ class TestFailedSmartServerResponse(tests.TestCase):
         response = request.FailedSmartServerResponse(('foo', 'bar'), 'bytes')
         self.assertEqual(('foo', 'bar'), response.args)
         self.assertEqual('bytes', response.body)
+        # repr(response) doesn't trigger exceptions.
+        repr(response)
 
     def test_is_successful(self):
         """is_successful should return False for FailedSmartServerResponse."""
