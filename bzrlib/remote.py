@@ -26,18 +26,14 @@ from bzrlib import (
     repository,
     revision,
 )
-from bzrlib.branch import Branch, BranchReferenceFormat
+from bzrlib.branch import BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, RemoteBzrDirFormat
 from bzrlib.config import BranchConfig, TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import NoSuchRevision
 from bzrlib.lockable_files import LockableFiles
-from bzrlib.pack import ContainerReader
+from bzrlib.pack import ContainerPushParser
 from bzrlib.smart import client, vfs
-from bzrlib.symbol_versioning import (
-    deprecated_method,
-    zero_ninetyone,
-    )
 from bzrlib.trace import note
 
 # Note: RemoteBzrDirFormat is in bzrdir.py
@@ -781,7 +777,6 @@ class RemoteRepository(object):
         from bzrlib import osutils
         import tarfile
         import tempfile
-        from StringIO import StringIO
         # TODO: Maybe a progress bar while streaming the tarball?
         note("Copying repository content as tarball...")
         tar_file = self._get_tarball('bz2')
@@ -854,15 +849,17 @@ class RemoteRepository(object):
         return self._real_repository.has_signature_for_revision_id(revision_id)
 
     def get_data_stream(self, revision_ids):
+        REQUEST_NAME = 'Repository.stream_revisions_chunked'
         path = self.bzrdir._path_for_remote_call(self._client)
         response, protocol = self._client.call_expecting_body(
-            'Repository.stream_knit_data_for_revisions', path, *revision_ids)
+            REQUEST_NAME, path, *revision_ids)
+
         if response == ('ok',):
             return self._deserialise_stream(protocol)
         elif (response == ('error', "Generic bzr smart protocol error: "
-                "bad request 'Repository.stream_knit_data_for_revisions'") or
+                "bad request '%s'" % REQUEST_NAME) or
               response == ('error', "Generic bzr smart protocol error: "
-                "bad request u'Repository.stream_knit_data_for_revisions'")):
+                "bad request u'%s'" % REQUEST_NAME)):
             protocol.cancel_read_body()
             self._ensure_real()
             return self._real_repository.get_data_stream(revision_ids)
@@ -870,18 +867,20 @@ class RemoteRepository(object):
             raise errors.UnexpectedSmartServerResponse(response)
 
     def _deserialise_stream(self, protocol):
-        buffer = StringIO(protocol.read_body_bytes())
-        reader = ContainerReader(buffer)
-        for record_names, read_bytes in reader.iter_records():
-            try:
-                # These records should have only one name, and that name
-                # should be a one-element tuple.
-                [name_tuple] = record_names
-            except ValueError:
-                raise errors.SmartProtocolError(
-                    'Repository data stream had invalid record name %r'
-                    % (record_names,))
-            yield name_tuple, read_bytes(None)
+        stream = protocol.read_streamed_body()
+        container_parser = ContainerPushParser()
+        for bytes in stream:
+            container_parser.accept_bytes(bytes)
+            records = container_parser.read_pending_records()
+            for record_names, record_bytes in records:
+                if len(record_names) != 1:
+                    # These records should have only one name, and that name
+                    # should be a one-element tuple.
+                    raise errors.SmartProtocolError(
+                        'Repository data stream had invalid record name %r'
+                        % (record_names,))
+                name_tuple = record_names[0]
+                yield name_tuple, record_bytes
 
     def insert_data_stream(self, stream):
         self._ensure_real()
