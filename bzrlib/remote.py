@@ -34,6 +34,11 @@ from bzrlib.errors import NoSuchRevision
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.pack import ContainerPushParser
 from bzrlib.smart import client, vfs
+from bzrlib.symbol_versioning import (
+    deprecated_method,
+    zero_ninetyone,
+    )
+from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import note
 
 # Note: RemoteBzrDirFormat is in bzrdir.py
@@ -363,13 +368,21 @@ class RemoteRepository(object):
 
     def has_revision(self, revision_id):
         """See Repository.has_revision()."""
-        if revision_id is None:
+        if revision_id == NULL_REVISION:
             # The null revision is always present.
             return True
         path = self.bzrdir._path_for_remote_call(self._client)
         response = self._client.call('Repository.has_revision', path, revision_id)
         assert response[0] in ('yes', 'no'), 'unexpected response code %s' % (response,)
         return response[0] == 'yes'
+
+    def has_revisions(self, revision_ids):
+        """See Repository.has_revisions()."""
+        result = set()
+        for revision_id in revision_ids:
+            if self.has_revision(revision_id):
+                result.add(revision_id)
+        return result
 
     def has_same_location(self, other):
         return (self.__class__ == other.__class__ and

@@ -1026,8 +1026,16 @@ class Repository(object):
     @needs_read_lock
     def has_revision(self, revision_id):
         """True if this repository has a copy of the revision."""
-        if 'evil' in debug.debug_flags:
-            mutter_callsite(3, "has_revision is a LBYL symptom.")
+        return revision_id in self.has_revisions((revision_id,))
+
+    def has_revisions(self, revision_ids):
+        """Probe to find out the presence of multiple revisions.
+
+        :param revision_ids: An iterable of revision_ids.
+        :return: A set of the revision_ids that were present.
+        """
+        raise NotImplementedError(self.has_revisions)
+
         return self._revision_store.has_revision_id(revision_id,
                                                     self.get_transaction())
 
@@ -2656,8 +2664,6 @@ class InterPackRepo(InterSameDataRepository):
             graph = self.source.get_graph()
             missing_revs = set()
             searcher = graph._make_breadth_first_searcher([revision_id])
-            target_index = \
-                self.target._pack_collection.revision_index.combined_index
             null_set = frozenset([_mod_revision.NULL_REVISION])
             while True:
                 try:
@@ -2665,9 +2671,7 @@ class InterPackRepo(InterSameDataRepository):
                 except StopIteration:
                     break
                 next_revs.difference_update(null_set)
-                target_keys = [(key,) for key in next_revs]
-                have_revs = frozenset(node[1][0] for node in
-                    target_index.iter_entries(target_keys))
+                have_revs = self.target.has_revisions(next_revs)
                 missing_revs.update(next_revs - have_revs)
                 searcher.stop_searching_any(have_revs)
             if next_revs - have_revs == set([revision_id]):
