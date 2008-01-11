@@ -51,6 +51,9 @@ IN DEVELOPMENT
      at the start of the file, promoting linear reads for ``bzr log`` and the
      like. This partially fixes #154129. (Robert Collins)
 
+   * Fetching between different repository formats with compatible models now
+     takes advantage of the smart method to stream revisions.  (Andrew Bennetts)
+
    * Merge directives now fetch prerequisites from the target branch if
      needed.  (Aaron Bentley)
 
