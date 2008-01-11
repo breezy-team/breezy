@@ -707,7 +707,7 @@ class TestRepositoryHasRevision(TestRemoteRepository):
             responses, transport_path)
 
         # The null revision is always there, so has_revision(None) == True.
-        self.assertEqual(True, repo.has_revision(None))
+        self.assertEqual(True, repo.has_revision(NULL_REVISION))
 
         # The remote repo shouldn't be accessed.
         self.assertEqual([], client._calls)
