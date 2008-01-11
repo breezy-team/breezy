@@ -158,7 +158,8 @@ IN DEVELOPMENT
 
    * Parent Providers should now implement ``get_parent_map`` returning a
      dictionary instead of ``get_parents`` returning a list.
-     ``get_parents`` is now considered deprecated.  (John Arbash Meinel)
+     ``Graph.get_parents`` is now deprecated. (John Arbash Meinel,
+     Robert Collins)
 
    * Patience Diff now supports arbitrary python objects, as long as they
      support ``hash()``. (John Arbash Meinel)
