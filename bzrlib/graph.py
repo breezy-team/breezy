@@ -17,6 +17,7 @@
 from bzrlib import (
     errors,
     revision,
+    symbol_versioning,
     tsort,
     )
 from bzrlib.deprecated_graph import (node_distances, select_farthest)
@@ -45,6 +46,7 @@ from bzrlib.deprecated_graph import (node_distances, select_farthest)
 
 
 class DictParentsProvider(object):
+    """A parents provider for Graph objects."""
 
     def __init__(self, ancestry):
         self.ancestry = ancestry
@@ -52,8 +54,10 @@ class DictParentsProvider(object):
     def __repr__(self):
         return 'DictParentsProvider(%r)' % self.ancestry
 
-    def get_parents(self, revisions):
-        return [self.ancestry.get(r, None) for r in revisions]
+    def get_parent_map(self, keys):
+        """See _StackedParentsProvider.get_parent_map"""
+        ancestry = self.ancestry
+        return dict((k, ancestry[k]) for k in keys if k in ancestry)
 
 
 class _StackedParentsProvider(object):
@@ -64,28 +68,67 @@ class _StackedParentsProvider(object):
     def __repr__(self):
         return "_StackedParentsProvider(%r)" % self._parent_providers
 
-    def get_parents(self, revision_ids):
-        """Find revision ids of the parents of a list of revisions
+    def get_parent_map(self, keys):
+        """Get a mapping of keys => parents
 
-        A list is returned of the same length as the input.  Each entry
-        is a list of parent ids for the corresponding input revision.
+        A dictionary is returned with an entry for each key present in this
+        source. If this source doesn't have information about a key, it should
+        not include an entry.
 
         [NULL_REVISION] is used as the parent of the first user-committed
         revision.  Its parent list is empty.
 
-        If the revision is not present (i.e. a ghost), None is used in place
-        of the list of parents.
+        :param keys: An iterable returning keys to check (eg revision_ids)
+        :return: A dictionary mapping each key to its parents
         """
         found = {}
+        remaining = set(keys)
         for parents_provider in self._parent_providers:
-            pending_revisions = [r for r in revision_ids if r not in found]
-            parent_list = parents_provider.get_parents(pending_revisions)
-            new_found = dict((k, v) for k, v in zip(pending_revisions,
-                             parent_list) if v is not None)
+            new_found = parents_provider.get_parent_map(remaining)
             found.update(new_found)
-            if len(found) == len(revision_ids):
+            remaining.difference_update(new_found)
+            if not remaining:
                 break
-        return [found.get(r, None) for r in revision_ids]
+        return found
+
+
+class CachingParentsProvider(object):
+    """A parents provider which will cache the revision => parents in a dict.
+
+    This is useful for providers that have an expensive lookup.
+    """
+
+    def __init__(self, parent_provider):
+        self._real_provider = parent_provider
+        # Theoretically we could use an LRUCache here
+        self._cache = {}
+
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self._real_provider)
+
+    def get_parent_map(self, keys):
+        """See _StackedParentsProvider.get_parent_map"""
+        needed = set()
+        # If the _real_provider doesn't have a key, we cache a value of None,
+        # which we then later use to realize we cannot provide a value for that
+        # key.
+        parent_map = {}
+        cache = self._cache
+        for key in keys:
+            if key in cache:
+                value = cache[key]
+                if value is not None:
+                    parent_map[key] = value
+            else:
+                needed.add(key)
+
+        if needed:
+            new_parents = self._real_provider.get_parent_map(needed)
+            cache.update(new_parents)
+            parent_map.update(new_parents)
+            needed.difference_update(new_parents)
+            cache.update(dict.fromkeys(needed, None))
+        return parent_map
 
 
 class Graph(object):
@@ -100,12 +143,16 @@ class Graph(object):
 
         This should not normally be invoked directly, because there may be
         specialized implementations for particular repository types.  See
-        Repository.get_graph()
+        Repository.get_graph().
 
-        :param parents_provider: An object providing a get_parents call
-            conforming to the behavior of StackedParentsProvider.get_parents
+        :param parents_provider: An object providing a get_parent_map call
+            conforming to the behavior of
+            StackedParentsProvider.get_parent_map.
         """
-        self.get_parents = parents_provider.get_parents
+        if getattr(parents_provider, 'get_parents', None) is not None:
+            self.get_parents = parents_provider.get_parents
+        if getattr(parents_provider, 'get_parent_map', None) is not None:
+            self.get_parent_map = parents_provider.get_parent_map
         self._parents_provider = parents_provider
 
     def __repr__(self):
@@ -156,6 +203,36 @@ class Graph(object):
             [left_revision, right_revision])
         return (left.difference(right).difference(common),
                 right.difference(left).difference(common))
+
+    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
+    def get_parents(self, revisions):
+        """Find revision ids of the parents of a list of revisions
+
+        A list is returned of the same length as the input.  Each entry
+        is a list of parent ids for the corresponding input revision.
+
+        [NULL_REVISION] is used as the parent of the first user-committed
+        revision.  Its parent list is empty.
+
+        If the revision is not present (i.e. a ghost), None is used in place
+        of the list of parents.
+
+        Deprecated in bzr 1.2 - please see get_parent_map.
+        """
+        parents = self.get_parent_map(revisions)
+        return [parent.get(r, None) for r in revisions]
+
+    def get_parent_map(self, revisions):
+        """Get a map of key:parent_list for revisions.
+
+        This implementation delegates to get_parents, for old parent_providers
+        that do not supply get_parent_map.
+        """
+        result = {}
+        for rev, parents in self.get_parents(revisions):
+            if parents is not None:
+                result[rev] = parents
+        return result
 
     def _make_breadth_first_searcher(self, revisions):
         return _BreadthFirstSearcher(revisions, self)
@@ -354,7 +431,7 @@ class Graph(object):
         An ancestor may sort after a descendant if the relationship is not
         visible in the supplied list of revisions.
         """
-        sorter = tsort.TopoSorter(zip(revisions, self.get_parents(revisions)))
+        sorter = tsort.TopoSorter(self.get_parent_map(revisions))
         return sorter.iter_topo_order()
 
     def is_ancestor(self, candidate_ancestor, candidate_descendant):
@@ -432,11 +509,15 @@ class _BreadthFirstSearcher(object):
         self._start = set(revisions)
         self._search_revisions = None
         self.seen = set(revisions)
-        self._parents_provider = parents_provider 
+        self._parents_provider = parents_provider
 
     def __repr__(self):
-        return ('_BreadthFirstSearcher(self._search_revisions=%r,'
-                ' self.seen=%r)' % (self._search_revisions, self.seen))
+        if self._search_revisions is not None:
+            search = 'searching=%r' % (list(self._search_revisions),)
+        else:
+            search = 'starting=%r' % (list(self._start),)
+        return ('_BreadthFirstSearcher(%s,'
+                ' seen=%r)' % (search, list(self.seen)))
 
     def next(self):
         """Return the next ancestors of this revision.
@@ -448,10 +529,9 @@ class _BreadthFirstSearcher(object):
             self._search_revisions = self._start
         else:
             new_search_revisions = set()
-            for parents in self._parents_provider.get_parents(
-                self._search_revisions):
-                if parents is None:
-                    continue
+            parent_map = self._parents_provider.get_parent_map(
+                            self._search_revisions)
+            for parents in parent_map.itervalues():
                 new_search_revisions.update(p for p in parents if
                                             p not in self.seen)
             self._search_revisions = new_search_revisions

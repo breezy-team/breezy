@@ -108,10 +108,13 @@ class FakeProtocol(object):
     """Lookalike SmartClientRequestProtocolOne allowing body reading tests."""
 
     def __init__(self, body, fake_client):
-        self._body_buffer = StringIO(body)
+        self.body = body
+        self._body_buffer = None
         self._fake_client = fake_client
 
     def read_body_bytes(self, count=-1):
+        if self._body_buffer is None:
+            self._body_buffer = StringIO(self.body)
         bytes = self._body_buffer.read(count)
         if self._body_buffer.tell() == len(self._body_buffer.getvalue()):
             self._fake_client.expecting_body = False
@@ -119,6 +122,9 @@ class FakeProtocol(object):
 
     def cancel_read_body(self):
         self._fake_client.expecting_body = False
+
+    def read_streamed_body(self):
+        return self.body
 
 
 class FakeClient(_SmartClient):
@@ -701,7 +707,7 @@ class TestRepositoryHasRevision(TestRemoteRepository):
             responses, transport_path)
 
         # The null revision is always there, so has_revision(None) == True.
-        self.assertEqual(True, repo.has_revision(None))
+        self.assertEqual(True, repo.has_revision(NULL_REVISION))
 
         # The remote repo shouldn't be accessed.
         self.assertEqual([], client._calls)
@@ -775,6 +781,13 @@ class TestRepositoryStreamKnitData(TestRemoteRepository):
         pack_file.seek(0)
         return pack_file
 
+    def make_pack_stream(self, records):
+        pack_serialiser = pack.ContainerSerialiser()
+        yield pack_serialiser.begin()
+        for bytes, names in records:
+            yield pack_serialiser.bytes_record(bytes, names)
+        yield pack_serialiser.end()
+
     def test_bad_pack_from_server(self):
         """A response with invalid data (e.g. it has a record with multiple
         names) triggers an exception.
@@ -783,8 +796,8 @@ class TestRepositoryStreamKnitData(TestRemoteRepository):
         malformed data should be.
         """
         record = ('bytes', [('name1',), ('name2',)])
-        pack_file = self.make_pack_file([record])
-        responses = [(('ok',), pack_file.getvalue()), ]
+        pack_stream = self.make_pack_stream([record])
+        responses = [(('ok',), pack_stream), ]
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(
             responses, transport_path)
@@ -795,7 +808,7 @@ class TestRepositoryStreamKnitData(TestRemoteRepository):
         """If the server doesn't recognise this request, fallback to VFS."""
         error_msg = (
             "Generic bzr smart protocol error: "
-            "bad request 'Repository.stream_knit_data_for_revisions'")
+            "bad request 'Repository.stream_revisions_chunked'")
         responses = [
             (('error', error_msg), '')]
         repo, client = self.setup_fake_client_and_repository(

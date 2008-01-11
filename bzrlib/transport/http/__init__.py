@@ -114,15 +114,6 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         else:
             self._range_hint = 'multi'
 
-    def _remote_path(self, relpath):
-        """Produce absolute path, adjusting protocol."""
-        relative = urlutils.unescape(relpath).encode('utf-8')
-        path = self._combine_paths(self._path, relative)
-        return self._unsplit_url(self._unqualified_scheme,
-                                 self._user, self._password,
-                                 self._host, self._port,
-                                 path)
-
     def has(self, relpath):
         raise NotImplementedError("has() is abstract on %r" % self)
 
@@ -150,6 +141,24 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         :returns: (http_code, result_file)
         """
         raise NotImplementedError(self._get)
+
+    def _remote_path(self, relpath):
+        """See ConnectedTransport._remote_path.
+
+        user and passwords are not embedded in the path provided to the server.
+        """
+        relative = urlutils.unescape(relpath).encode('utf-8')
+        path = self._combine_paths(self._path, relative)
+        return self._unsplit_url(self._unqualified_scheme,
+                                 None, None, self._host, self._port, path)
+
+    def _create_auth(self):
+        """Returns a dict returning the credentials provided at build time."""
+        auth = dict(host=self._host, port=self._port,
+                    user=self._user, password=self._password,
+                    protocol=self._unqualified_scheme,
+                    path=self._path)
+        return auth
 
     def get_request(self):
         return SmartClientHTTPMediumRequest(self)
@@ -208,6 +217,7 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         offsets = list(offsets)
 
         try_again = True
+        retried_offset = None
         while try_again:
             try_again = False
 
@@ -262,10 +272,20 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
 
             except (errors.ShortReadvError, errors.InvalidRange,
                     errors.InvalidHttpRange), e:
-                self._degrade_range_hint(relpath, coalesced, sys.exc_info())
+                mutter('Exception %r: %s during http._readv',e, e)
+                if (not isinstance(e, errors.ShortReadvError)
+                    or retried_offset == cur_offset_and_size):
+                    # We don't degrade the range hint for ShortReadvError since
+                    # they do not indicate a problem with the server ability to
+                    # handle ranges. Except when we fail to get back a required
+                    # offset twice in a row. In that case, falling back to
+                    # single range or whole file should help or end up in a
+                    # fatal exception.
+                    self._degrade_range_hint(relpath, coalesced, sys.exc_info())
                 # Some offsets may have been already processed, so we retry
                 # only the unsuccessful ones.
                 offsets = [cur_offset_and_size] + [o for o in iter_offsets]
+                retried_offset = cur_offset_and_size
                 try_again = True
 
     def _coalesce_readv(self, relpath, coalesced):

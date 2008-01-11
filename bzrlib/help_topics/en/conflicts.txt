@@ -1,4 +1,4 @@
-Conflicts types
+Conflicts Types
 ===============
 
 Some operations, like merge, revert and pull, modify the contents of your
@@ -172,6 +172,29 @@ For example::
 In this situation, Bazaar will cancel the move, and leave "a" in "b".
 You can rename the directories if you like, and once you have, run "bzr resolve
 FILE" to mark the conflict as resolved.
+
+Non-directory parent
+--------------------
+
+Typical message::
+
+  Conflict: FILE.new is not a directory, but has files in it.
+  Created directory.
+
+This happens when one side has added files to a directory, and the othe side
+has changed the directory into a file or symlink.  For example::
+
+  $ bzr init
+  $ bzr mkdir a
+  $ bzr commit -m "BASE"
+  $ bzr branch . ../other
+  $ rmdir a
+  $ touch a
+  $ bzr commit -m "THIS"
+  $ bzr mkdir ../other/a/b
+  $ bzr commit ../other -m "OTHER"
+  $ bzr merge ../other
+
 
 MalformedTransform
 ------------------

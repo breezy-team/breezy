@@ -94,7 +94,8 @@ class SampleTreeFormat(workingtree.WorkingTreeFormat):
         """See WorkingTreeFormat.get_format_string()."""
         return "Sample tree format."
 
-    def initialize(self, a_bzrdir, revision_id=None, from_branch=None):
+    def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
+                   accelerator_tree=None):
         """Sample branches cannot be created."""
         t = a_bzrdir.get_workingtree_transport(self)
         t.put_bytes('format', self.get_format_string())
@@ -375,3 +376,15 @@ class TestAutoResolve(TestCaseWithTransport):
         file_conflict = conflicts.TextConflict('file', None, 'hello-id')
         tree.set_conflicts(conflicts.ConflictList([file_conflict]))
         tree.auto_resolve()
+
+
+class TestFindTrees(TestCaseWithTransport):
+
+    def test_find_trees(self):
+        self.make_branch_and_tree('foo')
+        self.make_branch_and_tree('foo/bar')
+        # Sticking a tree inside a control dir is heinous, so let's skip it
+        self.make_branch_and_tree('foo/.bzr/baz')
+        self.make_branch('qux')
+        trees = workingtree.WorkingTree.find_trees('.')
+        self.assertEqual(2, len(list(trees)))

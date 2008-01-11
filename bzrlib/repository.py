@@ -502,7 +502,8 @@ class Repository(object):
         :param parents: The revision ids of the parents that revision_id
                         is known to have and are in the repository already.
 
-        returns the sha1 of the serialized inventory.
+        :returns: The validator(which is a sha1 digest, though what is sha'd is
+            repository format specific) of the serialized inventory.
         """
         assert self.is_in_write_group()
         _mod_revision.check_not_reserved_id(revision_id)
@@ -766,6 +767,49 @@ class Repository(object):
             result['size'] = t
         return result
 
+    def find_branches(self, using=False):
+        """Find branches underneath this repository.
+
+        This will include branches inside other branches.
+
+        :param using: If True, list only branches using this repository.
+        """
+        if using and not self.is_shared():
+            try:
+                return [self.bzrdir.open_branch()]
+            except errors.NotBranchError:
+                return []
+        class Evaluator(object):
+
+            def __init__(self):
+                self.first_call = True
+
+            def __call__(self, bzrdir):
+                # On the first call, the parameter is always the bzrdir
+                # containing the current repo.
+                if not self.first_call:
+                    try:
+                        repository = bzrdir.open_repository()
+                    except errors.NoRepositoryPresent:
+                        pass
+                    else:
+                        return False, (None, repository)
+                self.first_call = False
+                try:
+                    value = (bzrdir.open_branch(), None)
+                except errors.NotBranchError:
+                    value = (None, None)
+                return True, value
+
+        branches = []
+        for branch, repository in bzrdir.BzrDir.find_bzrdirs(
+                self.bzrdir.root_transport, evaluate=Evaluator()):
+            if branch is not None:
+                branches.append(branch)
+            if not using and repository is not None:
+                branches.extend(repository.find_branches())
+        return branches
+
     def get_data_stream(self, revision_ids):
         raise NotImplementedError(self.get_data_stream)
 
@@ -798,8 +842,14 @@ class Repository(object):
             for version, options, parents, some_bytes in decoded_list:
                 data_list.append((version, options, len(some_bytes), parents))
                 knit_bytes += some_bytes
+            buffer = StringIO(knit_bytes)
+            def reader_func(count):
+                if count is None:
+                    return buffer.read()
+                else:
+                    return buffer.read(count)
             knit.insert_data_stream(
-                (format, data_list, StringIO(knit_bytes).read))
+                (format, data_list, reader_func))
 
     @needs_read_lock
     def missing_revision_ids(self, other, revision_id=None, find_ghosts=True):
@@ -976,8 +1026,16 @@ class Repository(object):
     @needs_read_lock
     def has_revision(self, revision_id):
         """True if this repository has a copy of the revision."""
-        if 'evil' in debug.debug_flags:
-            mutter_callsite(3, "has_revision is a LBYL symptom.")
+        return revision_id in self.has_revisions((revision_id,))
+
+    def has_revisions(self, revision_ids):
+        """Probe to find out the presence of multiple revisions.
+
+        :param revision_ids: An iterable of revision_ids.
+        :return: A set of the revision_ids that were present.
+        """
+        raise NotImplementedError(self.has_revisions)
+
         return self._revision_store.has_revision_id(revision_id,
                                                     self.get_transaction())
 
@@ -1407,9 +1465,27 @@ class Repository(object):
 
     @needs_read_lock
     def get_inventory(self, revision_id):
-        """Get Inventory object by hash."""
-        return self.deserialise_inventory(
-            revision_id, self.get_inventory_xml(revision_id))
+        """Get Inventory object by revision id."""
+        return self.iter_inventories([revision_id]).next()
+
+    def iter_inventories(self, revision_ids):
+        """Get many inventories by revision_ids.
+
+        This will buffer some or all of the texts used in constructing the
+        inventories in memory, but will only parse a single inventory at a
+        time.
+
+        :return: An iterator of inventories.
+        """
+        assert None not in revision_ids
+        assert _mod_revision.NULL_REVISION not in revision_ids
+        return self._iter_inventories(revision_ids)
+
+    def _iter_inventories(self, revision_ids):
+        """single-document based inventory iteration."""
+        texts = self.get_inventory_weave().get_texts(revision_ids)
+        for text, revision_id in zip(texts, revision_ids):
+            yield self.deserialise_inventory(revision_id, text)
 
     def deserialise_inventory(self, revision_id, xml):
         """Transform the xml into an inventory object. 
@@ -1417,7 +1493,11 @@ class Repository(object):
         :param revision_id: The expected revision id of the inventory.
         :param xml: A serialised inventory.
         """
-        return self._serializer.read_inventory_from_string(xml, revision_id)
+        result = self._serializer.read_inventory_from_string(xml, revision_id)
+        if result.revision_id != revision_id:
+            raise AssertionError('revision id mismatch %s != %s' % (
+                result.revision_id, revision_id))
+        return result
 
     def serialise_inventory(self, inv):
         return self._serializer.write_inventory_to_string(inv)
@@ -1583,12 +1663,9 @@ class Repository(object):
         """Return Tree for a revision on this branch.
 
         `revision_id` may not be None or 'null:'"""
-        assert None not in revision_ids
-        assert _mod_revision.NULL_REVISION not in revision_ids
-        texts = self.get_inventory_weave().get_texts(revision_ids)
-        for text, revision_id in zip(texts, revision_ids):
-            inv = self.deserialise_inventory(revision_id, text)
-            yield RevisionTree(self, inv, revision_id)
+        inventories = self.iter_inventories(revision_ids)
+        for inv in inventories:
+            yield RevisionTree(self, inv, inv.revision_id)
 
     @needs_read_lock
     def get_ancestry(self, revision_id, topo_sorted=True):
@@ -1643,22 +1720,30 @@ class Repository(object):
     def revision_parents(self, revision_id):
         return self.get_inventory_weave().parent_names(revision_id)
 
+    @deprecated_method(symbol_versioning.one_one)
     def get_parents(self, revision_ids):
         """See StackedParentsProvider.get_parents"""
-        parents_list = []
-        for revision_id in revision_ids:
+        parent_map = self.get_parent_map(revision_ids)
+        return [parent_map.get(r, None) for r in revision_ids]
+
+    def get_parent_map(self, keys):
+        """See graph._StackedParentsProvider.get_parent_map"""
+        parent_map = {}
+        for revision_id in keys:
             if revision_id == _mod_revision.NULL_REVISION:
-                parents = []
+                parent_map[revision_id] = ()
             else:
                 try:
-                    parents = self.get_revision(revision_id).parent_ids
+                    parent_id_list = self.get_revision(revision_id).parent_ids
                 except errors.NoSuchRevision:
-                    parents = None
+                    pass
                 else:
-                    if len(parents) == 0:
-                        parents = [_mod_revision.NULL_REVISION]
-            parents_list.append(parents)
-        return parents_list
+                    if len(parent_id_list) == 0:
+                        parent_ids = (_mod_revision.NULL_REVISION,)
+                    else:
+                        parent_ids = tuple(parent_id_list)
+                    parent_map[revision_id] = parent_ids
+        return parent_map
 
     def _make_parents_provider(self):
         return self
@@ -1803,7 +1888,7 @@ def install_revision(repository, rev, revision_tree):
     install_revisions(repository, [(rev, revision_tree, None)])
 
 
-def install_revisions(repository, iterable):
+def install_revisions(repository, iterable, num_revisions=None, pb=None):
     """Install all revision data into a repository.
 
     Accepts an iterable of revision, tree, signature tuples.  The signature
@@ -1811,8 +1896,10 @@ def install_revisions(repository, iterable):
     """
     repository.start_write_group()
     try:
-        for revision, revision_tree, signature in iterable:
+        for n, (revision, revision_tree, signature) in enumerate(iterable):
             _install_revision(repository, revision, revision_tree, signature)
+            if pb is not None:
+                pb.update('Transferring revisions', n + 1, num_revisions)
     except:
         repository.abort_write_group()
         raise
@@ -1958,7 +2045,7 @@ class RepositoryFormat(object):
     _matchingbzrdir - the bzrdir format that the repository format was
     originally written to work with. This can be used if manually
     constructing a bzrdir and repository, or more commonly for test suite
-    parameterisation.
+    parameterization.
     """
 
     # Set to True or False in derived classes. True indicates that the format
@@ -2577,8 +2664,6 @@ class InterPackRepo(InterSameDataRepository):
             graph = self.source.get_graph()
             missing_revs = set()
             searcher = graph._make_breadth_first_searcher([revision_id])
-            target_index = \
-                self.target._pack_collection.revision_index.combined_index
             null_set = frozenset([_mod_revision.NULL_REVISION])
             while True:
                 try:
@@ -2586,9 +2671,7 @@ class InterPackRepo(InterSameDataRepository):
                 except StopIteration:
                     break
                 next_revs.difference_update(null_set)
-                target_keys = [(key,) for key in next_revs]
-                have_revs = frozenset(node[1][0] for node in
-                    target_index.iter_entries(target_keys))
+                have_revs = self.target.has_revisions(next_revs)
                 missing_revs.update(next_revs - have_revs)
                 searcher.stop_searching_any(have_revs)
             if next_revs - have_revs == set([revision_id]):
@@ -2726,7 +2809,17 @@ class InterDifferingSerializer(InterKnitRepo):
                 except errors.NoSuchRevision:
                     signature = None
                 yield revision, tree, signature
-        install_revisions(self.target, revisions_iterator())
+        if pb is None:
+            my_pb = ui.ui_factory.nested_progress_bar()
+            pb = my_pb
+        else:
+            my_pb = None
+        try:
+            install_revisions(self.target, revisions_iterator(),
+                              len(revision_ids), pb)
+        finally:
+            if my_pb is not None:
+                my_pb.finished()
         return len(revision_ids), 0
 
 
@@ -2740,14 +2833,12 @@ class InterRemoteToOther(InterRepository):
     def is_compatible(source, target):
         if not isinstance(source, remote.RemoteRepository):
             return False
+        # Is source's model compatible with target's model?
         source._ensure_real()
         real_source = source._real_repository
-        # Is source's model compatible with target's model, and are they the
-        # same format?  Currently we can only optimise fetching from an
-        # identical model & format repo.
         assert not isinstance(real_source, remote.RemoteRepository), (
             "We don't support remote repos backed by remote repos yet.")
-        return real_source._format == target._format
+        return InterRepository._same_model(real_source, target)
 
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):

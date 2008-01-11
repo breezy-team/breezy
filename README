@@ -26,17 +26,17 @@ command in the bzrtools plugin.)
 Bazaar highlights
 =================
 
-  * Easy to use and intuitive.
+ * Easy to use and intuitive.
 
-    Only five commands are needed to do all basic operations, and all
-    commands have documentation accessible via 'bzr help command'.
-    Bazaar's interface is also easy to learn for CVS and Subversion users.
+   Only five commands are needed to do all basic operations, and all
+   commands have documentation accessible via 'bzr help command'.
+   Bazaar's interface is also easy to learn for CVS and Subversion users.
 
-  * Robust and reliable.
+ * Robust and reliable.
 
-    Bazaar is developed under an extensive test suite. Branches can be
-    checked and verified for integrity at any time, and revisions can be
-    signed with PGP/GnuPG.
+   Bazaar is developed under an extensive test suite. Branches can be
+   checked and verified for integrity at any time, and revisions can be
+   signed with PGP/GnuPG.
 
  * Publish branches with HTTP.
 
@@ -57,8 +57,8 @@ Bazaar highlights
 
  * Smart merging.
 
-    Changes will never be merged more than once, conflicts will be
-    minimized, and identical changes are dealt with well.
+   Changes will never be merged more than once, conflicts will be
+   minimized, and identical changes are dealt with well.
 
  * Vibrant and active community.
 

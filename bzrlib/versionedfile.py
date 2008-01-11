@@ -517,10 +517,23 @@ class _PlanMergeVersionedFile(object):
         self._parents = {}
         self._lines = {}
 
-    def plan_merge(self, ver_a, ver_b):
+    def plan_merge(self, ver_a, ver_b, base=None):
         """See VersionedFile.plan_merge"""
-        from merge import _PlanMerge
-        return _PlanMerge(ver_a, ver_b, self).plan_merge()
+        from bzrlib.merge import _PlanMerge
+        if base is None:
+            return _PlanMerge(ver_a, ver_b, self).plan_merge()
+        old_plan = list(_PlanMerge(ver_a, base, self).plan_merge())
+        new_plan = list(_PlanMerge(ver_a, ver_b, self).plan_merge())
+        return _PlanMerge._subtract_plans(old_plan, new_plan)
+
+    def plan_lca_merge(self, ver_a, ver_b, base=None):
+        from bzrlib.merge import _PlanLCAMerge
+        graph = self._get_graph()
+        new_plan = _PlanLCAMerge(ver_a, ver_b, self, graph).plan_merge()
+        if base is None:
+            return new_plan
+        old_plan = _PlanLCAMerge(ver_a, base, self, graph).plan_merge()
+        return _PlanLCAMerge._subtract_plans(list(old_plan), list(new_plan))
 
     def add_lines(self, version_id, parents, lines):
         """See VersionedFile.add_lines
@@ -590,6 +603,18 @@ class _PlanMergeVersionedFile(object):
         else:
             raise errors.RevisionNotPresent(version_id, self._file_id)
 
+    def _get_graph(self):
+        from bzrlib.graph import (
+            DictParentsProvider,
+            Graph,
+            _StackedParentsProvider,
+            )
+        from bzrlib.repofmt.knitrepo import _KnitParentsProvider
+        parent_providers = [DictParentsProvider(self._parents)]
+        for vf in self.fallback_versionedfiles:
+            parent_providers.append(_KnitParentsProvider(vf))
+        return Graph(_StackedParentsProvider(parent_providers))
+
 
 class PlanWeaveMerge(TextMerge):
     """Weave merge that takes a plan as its input.
@@ -647,6 +672,12 @@ class PlanWeaveMerge(TextMerge):
                 lines_a.append(line)
             elif state == 'new-b':
                 ch_b = True
+                lines_b.append(line)
+            elif state == 'conflicted-a':
+                ch_b = ch_a = True
+                lines_a.append(line)
+            elif state == 'conflicted-b':
+                ch_b = ch_a = True
                 lines_b.append(line)
             else:
                 assert state in ('irrelevant', 'ghost-a', 'ghost-b', 

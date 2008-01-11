@@ -39,7 +39,7 @@ from bzrlib.smart import (
         server,
         vfs,
 )
-from bzrlib.tests.HTTPTestUtil import (
+from bzrlib.tests.http_utils import (
         HTTPServerWithSmarts,
         SmartRequestHandler,
         )
@@ -2277,6 +2277,8 @@ class TestSuccessfulSmartServerResponse(tests.TestCase):
             ('foo', 'bar'), 'bytes')
         self.assertEqual(('foo', 'bar'), response.args)
         self.assertEqual('bytes', response.body)
+        # repr(response) doesn't trigger exceptions.
+        repr(response)
 
     def test_construct_with_body_stream(self):
         bytes_iterable = ['abc']
@@ -2306,6 +2308,8 @@ class TestFailedSmartServerResponse(tests.TestCase):
         response = request.FailedSmartServerResponse(('foo', 'bar'), 'bytes')
         self.assertEqual(('foo', 'bar'), response.args)
         self.assertEqual('bytes', response.body)
+        # repr(response) doesn't trigger exceptions.
+        repr(response)
 
     def test_is_successful(self):
         """is_successful should return False for FailedSmartServerResponse."""
@@ -2322,37 +2326,12 @@ class FakeHTTPMedium(object):
         return None
 
 
-class HTTPTunnellingSmokeTest(tests.TestCaseWithTransport):
-    
+class HTTPTunnellingSmokeTest(tests.TestCase):
+
     def setUp(self):
         super(HTTPTunnellingSmokeTest, self).setUp()
         # We use the VFS layer as part of HTTP tunnelling tests.
         self._captureVar('BZR_NO_SMART_VFS', None)
-
-    def _test_bulk_data(self, url_protocol):
-        # We should be able to send and receive bulk data in a single message.
-        # The 'readv' command in the smart protocol both sends and receives bulk
-        # data, so we use that.
-        self.build_tree(['data-file'])
-        self.transport_readonly_server = HTTPServerWithSmarts
-
-        http_transport = self.get_readonly_transport()
-        medium = http_transport.get_smart_medium()
-        # Since we provide the medium, the url below will be mostly ignored
-        # during the test, as long as the path is '/'.
-        remote_transport = remote.RemoteTransport('bzr://fake_host/',
-                                                  medium=medium)
-        self.assertEqual(
-            [(0, "c")], list(remote_transport.readv("data-file", [(0,1)])))
-
-    def test_bulk_data_pycurl(self):
-        try:
-            self._test_bulk_data('http+pycurl')
-        except errors.UnsupportedProtocol, e:
-            raise tests.TestSkipped(str(e))
-    
-    def test_bulk_data_urllib(self):
-        self._test_bulk_data('http+urllib')
 
     def test_smart_http_medium_request_accept_bytes(self):
         medium = FakeHTTPMedium()
@@ -2362,85 +2341,6 @@ class HTTPTunnellingSmokeTest(tests.TestCaseWithTransport):
         self.assertEqual(None, medium.written_request)
         request.finished_writing()
         self.assertEqual('abcdef', medium.written_request)
-
-    def _test_http_send_smart_request(self, url_protocol):
-        http_server = HTTPServerWithSmarts()
-        http_server._url_protocol = url_protocol
-        http_server.setUp(self.get_vfs_only_server())
-        self.addCleanup(http_server.tearDown)
-
-        post_body = 'hello\n'
-        expected_reply_body = 'ok\x012\n'
-
-        http_transport = get_transport(http_server.get_url())
-        medium = http_transport.get_smart_medium()
-        response = medium.send_http_smart_request(post_body)
-        reply_body = response.read()
-        self.assertEqual(expected_reply_body, reply_body)
-
-    def test_http_send_smart_request_pycurl(self):
-        try:
-            self._test_http_send_smart_request('http+pycurl')
-        except errors.UnsupportedProtocol, e:
-            raise tests.TestSkipped(str(e))
-
-    def test_http_send_smart_request_urllib(self):
-        self._test_http_send_smart_request('http+urllib')
-
-    def test_http_server_with_smarts(self):
-        self.transport_readonly_server = HTTPServerWithSmarts
-
-        post_body = 'hello\n'
-        expected_reply_body = 'ok\x012\n'
-
-        smart_server_url = self.get_readonly_url('.bzr/smart')
-        reply = urllib2.urlopen(smart_server_url, post_body).read()
-
-        self.assertEqual(expected_reply_body, reply)
-
-    def test_smart_http_server_post_request_handler(self):
-        self.transport_readonly_server = HTTPServerWithSmarts
-        httpd = self.get_readonly_server()._get_httpd()
-
-        socket = SampleSocket(
-            'POST /.bzr/smart HTTP/1.0\r\n'
-            # HTTP/1.0 posts must have a Content-Length.
-            'Content-Length: 6\r\n'
-            '\r\n'
-            'hello\n')
-        # Beware: the ('localhost', 80) below is the
-        # client_address parameter, but we don't have one because
-        # we have defined a socket which is not bound to an
-        # address. The test framework never uses this client
-        # address, so far...
-        request_handler = SmartRequestHandler(socket, ('localhost', 80), httpd)
-        response = socket.writefile.getvalue()
-        self.assertStartsWith(response, 'HTTP/1.0 200 ')
-        # This includes the end of the HTTP headers, and all the body.
-        expected_end_of_response = '\r\n\r\nok\x012\n'
-        self.assertEndsWith(response, expected_end_of_response)
-
-
-class SampleSocket(object):
-    """A socket-like object for use in testing the HTTP request handler."""
-    
-    def __init__(self, socket_read_content):
-        """Constructs a sample socket.
-
-        :param socket_read_content: a byte sequence
-        """
-        # Use plain python StringIO so we can monkey-patch the close method to
-        # not discard the contents.
-        from StringIO import StringIO
-        self.readfile = StringIO(socket_read_content)
-        self.writefile = StringIO()
-        self.writefile.close = lambda: None
-        
-    def makefile(self, mode='r', bufsize=None):
-        if 'r' in mode:
-            return self.readfile
-        else:
-            return self.writefile
 
 
 class RemoteHTTPTransportTestCase(tests.TestCase):

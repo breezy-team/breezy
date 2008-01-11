@@ -23,7 +23,7 @@ import os
 from bzrlib.diff import internal_diff
 from bzrlib.mutabletree import MutableTree
 from bzrlib.osutils import has_symlinks
-from bzrlib.symbol_versioning import zero_ninetyone, zero_ninetythree
+from bzrlib.symbol_versioning import zero_ninetyone, one_zero
 from bzrlib.tests import SymlinkFeature, TestSkipped
 from bzrlib.tests.tree_implementations import TestCaseWithTree
 from bzrlib.uncommit import uncommit
@@ -64,7 +64,7 @@ class TestEntryDiffing(TestCaseWithTree):
 
     def test_file_diff_deleted(self):
         output = StringIO()
-        self.applyDeprecated(zero_ninetythree,
+        self.applyDeprecated(one_zero,
                              self.file_1.diff,
                              internal_diff,
                              "old_label", self.tree_1,
@@ -78,7 +78,7 @@ class TestEntryDiffing(TestCaseWithTree):
 
     def test_file_diff_added(self):
         output = StringIO()
-        self.applyDeprecated(zero_ninetythree,
+        self.applyDeprecated(one_zero,
                              self.file_1.diff,
                              internal_diff,
                              "new_label", self.tree_1,
@@ -92,7 +92,7 @@ class TestEntryDiffing(TestCaseWithTree):
 
     def test_file_diff_changed(self):
         output = StringIO()
-        self.applyDeprecated(zero_ninetythree,
+        self.applyDeprecated(one_zero,
                              self.file_1.diff,
                              internal_diff,
                              "/dev/null", self.tree_1,
@@ -107,7 +107,7 @@ class TestEntryDiffing(TestCaseWithTree):
         
     def test_file_diff_binary(self):
         output = StringIO()
-        self.applyDeprecated(zero_ninetythree,
+        self.applyDeprecated(one_zero,
                              self.file_1.diff,
                              internal_diff,
                              "/dev/null", self.tree_1,
@@ -119,7 +119,7 @@ class TestEntryDiffing(TestCaseWithTree):
     def test_link_diff_deleted(self):
         self.requireFeature(SymlinkFeature)
         output = StringIO()
-        self.applyDeprecated(zero_ninetythree,
+        self.applyDeprecated(one_zero,
                              self.link_1.diff,
                              internal_diff, "old_label",
                              self.tree_1, "/dev/null", None, None,
@@ -130,7 +130,7 @@ class TestEntryDiffing(TestCaseWithTree):
     def test_link_diff_added(self):
         self.requireFeature(SymlinkFeature)
         output = StringIO()
-        self.applyDeprecated(zero_ninetythree,
+        self.applyDeprecated(one_zero,
                              self.link_1.diff,
                              internal_diff,
                              "new_label", self.tree_1,
@@ -142,7 +142,7 @@ class TestEntryDiffing(TestCaseWithTree):
     def test_link_diff_changed(self):
         self.requireFeature(SymlinkFeature)
         output = StringIO()
-        self.applyDeprecated(zero_ninetythree,
+        self.applyDeprecated(one_zero,
                              self.link_1.diff,
                              internal_diff,
                              "/dev/null", self.tree_1,

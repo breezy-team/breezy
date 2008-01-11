@@ -77,6 +77,19 @@ class TestRepository(TestCaseWithRepository):
         tree_b.get_file_text('file1')
         rev1 = repo_b.get_revision('rev1')
 
+    def test_iter_inventories_is_ordered(self):
+        # just a smoke test
+        tree = self.make_branch_and_tree('a')
+        first_revision = tree.commit('')
+        second_revision = tree.commit('')
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        revs = (first_revision, second_revision)
+        invs = tree.branch.repository.iter_inventories(revs)
+        for rev_id, inv in zip(revs, invs):
+            self.assertEqual(rev_id, inv.revision_id)
+            self.assertIsInstance(inv, Inventory)
+
     def test_supports_rich_root(self):
         tree = self.make_branch_and_tree('a')
         tree.commit('')
@@ -371,7 +384,7 @@ class TestRepository(TestCaseWithRepository):
     def test_format_attributes(self):
         """All repository formats should have some basic attributes."""
         # create a repository to get a real format instance, not the 
-        # template from the test suite parameterisation.
+        # template from the test suite parameterization.
         repo = self.make_repository('.')
         repo._format.rich_root_data
         repo._format.supports_tree_reference
@@ -526,6 +539,29 @@ class TestRepository(TestCaseWithRepository):
         self.addCleanup(repo.unlock)
         repo.get_graph()
 
+    def test_graph_ghost_handling(self):
+        tree = self.make_branch_and_tree('here')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.commit('initial commit', rev_id='rev1')
+        tree.add_parent_tree_id('ghost')
+        tree.commit('commit-with-ghost', rev_id='rev2')
+        graph = tree.branch.repository.get_graph()
+        parents = graph.get_parent_map(['ghost', 'rev2'])
+        self.assertTrue('ghost' not in parents)
+        self.assertEqual(parents['rev2'], ('rev1', 'ghost'))
+
+    def test_parent_map_type(self):
+        tree = self.make_branch_and_tree('here')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.commit('initial commit', rev_id='rev1')
+        tree.commit('next commit', rev_id='rev2')
+        graph = tree.branch.repository.get_graph()
+        parents = graph.get_parent_map([NULL_REVISION, 'rev1', 'rev2'])
+        for value in parents.values():
+            self.assertIsInstance(value, tuple)
+
     def test_implements_revision_graph_can_have_wrong_parents(self):
         """All repositories should implement
         revision_graph_can_have_wrong_parents, so that check and reconcile can
@@ -631,10 +667,70 @@ class TestRepository(TestCaseWithRepository):
 
     def test__make_parents_provider(self):
         """Repositories must have a _make_parents_provider method that returns
-        an object with a get_parents method.
+        an object with a get_parent_map method.
         """
         repo = self.make_repository('repo')
-        repo._make_parents_provider().get_parents
+        repo._make_parents_provider().get_parent_map
+
+    def make_repository_and_foo_bar(self, shared):
+        made_control = self.make_bzrdir('repository')
+        repo = made_control.create_repository(shared=shared)
+        bzrdir.BzrDir.create_branch_convenience(self.get_url('repository/foo'),
+                                                force_new_repo=False)
+        bzrdir.BzrDir.create_branch_convenience(self.get_url('repository/bar'),
+                                                force_new_repo=True)
+        baz = self.make_bzrdir('repository/baz')
+        qux = self.make_branch('repository/baz/qux')
+        quxx = self.make_branch('repository/baz/qux/quxx')
+        return repo
+
+    def test_find_branches(self):
+        repo = self.make_repository_and_foo_bar(shared=False)
+        branches = repo.find_branches()
+        self.assertContainsRe(branches[-1].base, 'repository/foo/$')
+        self.assertContainsRe(branches[-3].base, 'repository/baz/qux/$')
+        self.assertContainsRe(branches[-2].base, 'repository/baz/qux/quxx/$')
+        # in some formats, creating a repo creates a branch
+        if len(branches) == 6:
+            self.assertContainsRe(branches[-4].base, 'repository/baz/$')
+            self.assertContainsRe(branches[-5].base, 'repository/bar/$')
+            self.assertContainsRe(branches[-6].base, 'repository/$')
+        else:
+            self.assertEqual(4, len(branches))
+            self.assertContainsRe(branches[-4].base, 'repository/bar/$')
+
+    def test_find_branches_using(self):
+        try:
+            repo = self.make_repository_and_foo_bar(shared=True)
+        except errors.IncompatibleFormat:
+            raise TestNotApplicable
+        branches = repo.find_branches(using=True)
+        self.assertContainsRe(branches[-1].base, 'repository/foo/$')
+        # in some formats, creating a repo creates a branch
+        if len(branches) == 2:
+            self.assertContainsRe(branches[-2].base, 'repository/$')
+        else:
+            self.assertEqual(1, len(branches))
+
+    def test_find_branches_using_standalone(self):
+        branch = self.make_branch('branch')
+        contained = self.make_branch('branch/contained')
+        branches = branch.repository.find_branches(using=True)
+        self.assertEqual([branch.base], [b.base for b in branches])
+        branches = branch.repository.find_branches(using=False)
+        self.assertEqual([branch.base, contained.base],
+                         [b.base for b in branches])
+
+    def test_find_branches_using_empty_standalone_repo(self):
+        repo = self.make_repository('repo')
+        self.assertFalse(repo.is_shared())
+        try:
+            repo.bzrdir.open_branch()
+        except errors.NotBranchError:
+            self.assertEqual([], repo.find_branches(using=True))
+        else:
+            self.assertEqual([repo.bzrdir.root_transport.base],
+                             [b.base for b in repo.find_branches(using=True)])
 
 
 class TestRepositoryLocking(TestCaseWithRepository):

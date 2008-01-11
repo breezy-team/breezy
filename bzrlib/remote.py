@@ -26,18 +26,19 @@ from bzrlib import (
     repository,
     revision,
 )
-from bzrlib.branch import Branch, BranchReferenceFormat
+from bzrlib.branch import BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, RemoteBzrDirFormat
 from bzrlib.config import BranchConfig, TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import NoSuchRevision
 from bzrlib.lockable_files import LockableFiles
-from bzrlib.pack import ContainerReader
+from bzrlib.pack import ContainerPushParser
 from bzrlib.smart import client, vfs
 from bzrlib.symbol_versioning import (
     deprecated_method,
     zero_ninetyone,
     )
+from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import note
 
 # Note: RemoteBzrDirFormat is in bzrdir.py
@@ -197,7 +198,7 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
     Instances of this repository are represented by RemoteRepository
     instances.
 
-    The RemoteRepositoryFormat is parameterised during construction
+    The RemoteRepositoryFormat is parameterized during construction
     to reflect the capabilities of the real, remote format. Specifically
     the attributes rich_root_data and supports_tree_reference are set
     on a per instance basis, and are not set (and should not be) at
@@ -367,13 +368,21 @@ class RemoteRepository(object):
 
     def has_revision(self, revision_id):
         """See Repository.has_revision()."""
-        if revision_id is None:
+        if revision_id == NULL_REVISION:
             # The null revision is always present.
             return True
         path = self.bzrdir._path_for_remote_call(self._client)
         response = self._client.call('Repository.has_revision', path, revision_id)
         assert response[0] in ('yes', 'no'), 'unexpected response code %s' % (response,)
         return response[0] == 'yes'
+
+    def has_revisions(self, revision_ids):
+        """See Repository.has_revisions()."""
+        result = set()
+        for revision_id in revision_ids:
+            if self.has_revision(revision_id):
+                result.add(revision_id)
+        return result
 
     def has_same_location(self, other):
         return (self.__class__ == other.__class__ and
@@ -414,6 +423,12 @@ class RemoteRepository(object):
                 result[key] = (float(values[0]), long(values[1]))
 
         return result
+
+    def find_branches(self, using=False):
+        """See Repository.find_branches()."""
+        # should be an API call to the server.
+        self._ensure_real()
+        return self._real_repository.find_branches(using=using)
 
     def get_physical_lock_status(self):
         """See Repository.get_physical_lock_status()."""
@@ -638,6 +653,10 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.get_inventory(revision_id)
 
+    def iter_inventories(self, revision_ids):
+        self._ensure_real()
+        return self._real_repository.iter_inventories(revision_ids)
+
     @needs_read_lock
     def get_revision(self, revision_id):
         self._ensure_real()
@@ -771,7 +790,6 @@ class RemoteRepository(object):
         from bzrlib import osutils
         import tarfile
         import tempfile
-        from StringIO import StringIO
         # TODO: Maybe a progress bar while streaming the tarball?
         note("Copying repository content as tarball...")
         tar_file = self._get_tarball('bz2')
@@ -844,15 +862,17 @@ class RemoteRepository(object):
         return self._real_repository.has_signature_for_revision_id(revision_id)
 
     def get_data_stream(self, revision_ids):
+        REQUEST_NAME = 'Repository.stream_revisions_chunked'
         path = self.bzrdir._path_for_remote_call(self._client)
         response, protocol = self._client.call_expecting_body(
-            'Repository.stream_knit_data_for_revisions', path, *revision_ids)
+            REQUEST_NAME, path, *revision_ids)
+
         if response == ('ok',):
             return self._deserialise_stream(protocol)
         elif (response == ('error', "Generic bzr smart protocol error: "
-                "bad request 'Repository.stream_knit_data_for_revisions'") or
+                "bad request '%s'" % REQUEST_NAME) or
               response == ('error', "Generic bzr smart protocol error: "
-                "bad request u'Repository.stream_knit_data_for_revisions'")):
+                "bad request u'%s'" % REQUEST_NAME)):
             protocol.cancel_read_body()
             self._ensure_real()
             return self._real_repository.get_data_stream(revision_ids)
@@ -860,18 +880,20 @@ class RemoteRepository(object):
             raise errors.UnexpectedSmartServerResponse(response)
 
     def _deserialise_stream(self, protocol):
-        buffer = StringIO(protocol.read_body_bytes())
-        reader = ContainerReader(buffer)
-        for record_names, read_bytes in reader.iter_records():
-            try:
-                # These records should have only one name, and that name
-                # should be a one-element tuple.
-                [name_tuple] = record_names
-            except ValueError:
-                raise errors.SmartProtocolError(
-                    'Repository data stream had invalid record name %r'
-                    % (record_names,))
-            yield name_tuple, read_bytes(None)
+        stream = protocol.read_streamed_body()
+        container_parser = ContainerPushParser()
+        for bytes in stream:
+            container_parser.accept_bytes(bytes)
+            records = container_parser.read_pending_records()
+            for record_names, record_bytes in records:
+                if len(record_names) != 1:
+                    # These records should have only one name, and that name
+                    # should be a one-element tuple.
+                    raise errors.SmartProtocolError(
+                        'Repository data stream had invalid record name %r'
+                        % (record_names,))
+                name_tuple = record_names[0]
+                yield name_tuple, record_bytes
 
     def insert_data_stream(self, stream):
         self._ensure_real()

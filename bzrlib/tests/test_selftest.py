@@ -36,9 +36,10 @@ from bzrlib import (
 from bzrlib.progress import _BaseProgressBar
 from bzrlib.repofmt import weaverepo
 from bzrlib.symbol_versioning import (
-        zero_ten,
-        zero_eleven,
-        )
+    one_zero,
+    zero_eleven,
+    zero_ten,
+    )
 from bzrlib.tests import (
                           ChrootedTestCase,
                           ExtendedTestResult,
@@ -54,9 +55,17 @@ from bzrlib.tests import (
                           TestUtil,
                           TextTestRunner,
                           UnavailableFeature,
-                          iter_suite_tests,
+                          condition_id_re,
+                          condition_isinstance,
+                          exclude_tests_by_condition,
+                          exclude_tests_by_re,
+                          filter_suite_by_condition,
                           filter_suite_by_re,
+                          iter_suite_tests,
+                          preserve_input,
+                          randomize_suite,
                           sort_suite_by_re,
+                          split_suite_by_re,
                           test_lsprof,
                           test_suite,
                           )
@@ -521,7 +530,7 @@ class TestInterTreeProviderAdapter(TestCase):
         # because each optimiser can be direction specific, we need to test
         # each optimiser in its chosen direction.
         # unlike the TestProviderAdapter we dont want to automatically add a
-        # parameterised one for WorkingTree - the optimisers will tell us what
+        # parameterized one for WorkingTree - the optimisers will tell us what
         # ones to add.
         from bzrlib.tests.tree_implementations import (
             return_parameter,
@@ -647,7 +656,7 @@ class TestTestCaseWithTransport(TestCaseWithTransport):
         self.assertEqual(t2.base[:-1], t.abspath('foo/bar'))
 
     def test_get_readonly_url_http(self):
-        from bzrlib.tests.HttpServer import HttpServer
+        from bzrlib.tests.http_server import HttpServer
         from bzrlib.transport import get_transport
         from bzrlib.transport.local import LocalURLServer
         from bzrlib.transport.http import HttpTransportBase
@@ -1660,20 +1669,103 @@ class TestSelftestFiltering(TestCase):
         self.loader = TestUtil.TestLoader()
         self.suite.addTest(self.loader.loadTestsFromModuleNames([
             'bzrlib.tests.test_selftest']))
-        self.all_names = [t.id() for t in iter_suite_tests(self.suite)]
+        self.all_names = self._test_ids(self.suite)
+
+    def _test_ids(self, test_suite):
+        """Get the ids for the tests in a test suite."""
+        return [t.id() for t in iter_suite_tests(test_suite)]
+
+    def test_condition_id_re(self):
+        test_name = ('bzrlib.tests.test_selftest.TestSelftestFiltering.'
+            'test_condition_id_re')
+        filtered_suite = filter_suite_by_condition(self.suite,
+            condition_id_re('test_condition_id_re'))
+        self.assertEqual([test_name], self._test_ids(filtered_suite))
+
+    def test_condition_isinstance(self):
+        filtered_suite = filter_suite_by_condition(self.suite,
+            condition_isinstance(self.__class__))
+        class_pattern = 'bzrlib.tests.test_selftest.TestSelftestFiltering.'
+        re_filtered = filter_suite_by_re(self.suite, class_pattern)
+        self.assertEqual(self._test_ids(re_filtered),
+            self._test_ids(filtered_suite))
+
+    def test_exclude_tests_by_condition(self):
+        excluded_name = ('bzrlib.tests.test_selftest.TestSelftestFiltering.'
+            'test_exclude_tests_by_condition')
+        filtered_suite = exclude_tests_by_condition(self.suite,
+            lambda x:x.id() == excluded_name)
+        self.assertEqual(len(self.all_names) - 1,
+            filtered_suite.countTestCases())
+        self.assertFalse(excluded_name in self._test_ids(filtered_suite))
+        remaining_names = list(self.all_names)
+        remaining_names.remove(excluded_name)
+        self.assertEqual(remaining_names, self._test_ids(filtered_suite))
+
+    def test_exclude_tests_by_re(self):
+        self.all_names = self._test_ids(self.suite)
+        filtered_suite = exclude_tests_by_re(self.suite, 'exclude_tests_by_re')
+        excluded_name = ('bzrlib.tests.test_selftest.TestSelftestFiltering.'
+            'test_exclude_tests_by_re')
+        self.assertEqual(len(self.all_names) - 1,
+            filtered_suite.countTestCases())
+        self.assertFalse(excluded_name in self._test_ids(filtered_suite))
+        remaining_names = list(self.all_names)
+        remaining_names.remove(excluded_name)
+        self.assertEqual(remaining_names, self._test_ids(filtered_suite))
+
+    def test_filter_suite_by_condition(self):
+        test_name = ('bzrlib.tests.test_selftest.TestSelftestFiltering.'
+            'test_filter_suite_by_condition')
+        filtered_suite = filter_suite_by_condition(self.suite,
+            lambda x:x.id() == test_name)
+        self.assertEqual([test_name], self._test_ids(filtered_suite))
 
     def test_filter_suite_by_re(self):
-        filtered_suite = filter_suite_by_re(self.suite, 'test_filter')
-        filtered_names = [t.id() for t in iter_suite_tests(filtered_suite)]
+        filtered_suite = filter_suite_by_re(self.suite, 'test_filter_suite_by_r')
+        filtered_names = self._test_ids(filtered_suite)
         self.assertEqual(filtered_names, ['bzrlib.tests.test_selftest.'
             'TestSelftestFiltering.test_filter_suite_by_re'])
-            
+
+    def test_preserve_input(self):
+        # NB: Surely this is something in the stdlib to do this?
+        self.assertTrue(self.suite is preserve_input(self.suite))
+        self.assertTrue("@#$" is preserve_input("@#$"))
+
+    def test_randomize_suite(self):
+        randomized_suite = randomize_suite(self.suite)
+        # randomizing should not add or remove test names.
+        self.assertEqual(set(self._test_ids(self.suite)),
+            set(self._test_ids(randomized_suite)))
+        # Technically, this *can* fail, because random.shuffle(list) can be
+        # equal to list. Trying multiple times just pushes the frequency back.
+        # As its len(self.all_names)!:1, the failure frequency should be low
+        # enough to ignore. RBC 20071021.
+        # It should change the order.
+        self.assertNotEqual(self.all_names, self._test_ids(randomized_suite))
+        # But not the length. (Possibly redundant with the set test, but not
+        # necessarily.)
+        self.assertEqual(len(self.all_names),
+            len(self._test_ids(randomized_suite)))
+
     def test_sort_suite_by_re(self):
-        sorted_suite = sort_suite_by_re(self.suite, 'test_filter')
-        sorted_names = [t.id() for t in iter_suite_tests(sorted_suite)]
+        sorted_suite = self.applyDeprecated(one_zero,
+            sort_suite_by_re, self.suite, 'test_filter_suite_by_r')
+        sorted_names = self._test_ids(sorted_suite)
         self.assertEqual(sorted_names[0], 'bzrlib.tests.test_selftest.'
             'TestSelftestFiltering.test_filter_suite_by_re')
         self.assertEquals(sorted(self.all_names), sorted(sorted_names))
+
+    def test_split_suit_by_re(self):
+        self.all_names = self._test_ids(self.suite)
+        split_suite = split_suite_by_re(self.suite, 'test_filter_suite_by_r')
+        filtered_name = ('bzrlib.tests.test_selftest.TestSelftestFiltering.'
+            'test_filter_suite_by_re')
+        self.assertEqual([filtered_name], self._test_ids(split_suite[0]))
+        self.assertFalse(filtered_name in self._test_ids(split_suite[1]))
+        remaining_names = list(self.all_names)
+        remaining_names.remove(filtered_name)
+        self.assertEqual(remaining_names, self._test_ids(split_suite[1]))
 
 
 class TestCheckInventoryShape(TestCaseWithTransport):
@@ -1713,4 +1805,40 @@ class TestBlackboxSupport(TestCase):
         # code.
         out, err = self.run_bzr(["log", "/nonexistantpath"], retcode=3)
         self.assertEqual(out, '')
-        self.assertEqual(err, 'bzr: ERROR: Not a branch: "/nonexistantpath/".\n')
+        self.assertContainsRe(err,
+            'bzr: ERROR: Not a branch: ".*nonexistantpath/".\n')
+
+
+class TestTestLoader(TestCase):
+    """Tests for the test loader."""
+
+    def _get_loader_and_module(self):
+        """Gets a TestLoader and a module with one test in it."""
+        loader = TestUtil.TestLoader()
+        module = {}
+        class Stub(TestCase):
+            def test_foo(self):
+                pass
+        class MyModule(object):
+            pass
+        MyModule.a_class = Stub
+        module = MyModule()
+        return loader, module
+
+    def test_module_no_load_tests_attribute_loads_classes(self):
+        loader, module = self._get_loader_and_module()
+        self.assertEqual(1, loader.loadTestsFromModule(module).countTestCases())
+
+    def test_module_load_tests_attribute_gets_called(self):
+        loader, module = self._get_loader_and_module()
+        # 'self' is here because we're faking the module with a class. Regular
+        # load_tests do not need that :)
+        def load_tests(self, standard_tests, module, loader):
+            result = loader.suiteClass()
+            for test in iter_suite_tests(standard_tests):
+                result.addTests([test, test])
+            return result
+        # add a load_tests() method which multiplies the tests from the module.
+        module.__class__.load_tests = load_tests
+        self.assertEqual(2, loader.loadTestsFromModule(module).countTestCases())
+

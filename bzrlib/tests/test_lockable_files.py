@@ -17,11 +17,13 @@
 from StringIO import StringIO
 
 import bzrlib
-import bzrlib.errors as errors
+from bzrlib import (
+    errors,
+    lockdir,
+    osutils,
+    )
 from bzrlib.errors import BzrBadParameterNotString, NoSuchFile, ReadOnlyError
 from bzrlib.lockable_files import LockableFiles, TransportLock
-from bzrlib import lockdir
-from bzrlib.lockdir import LockDir
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.tests.test_smart import TestCaseWithSmartMedium
 from bzrlib.tests.test_transactions import DummyWeave
@@ -347,7 +349,7 @@ class TestLockableFiles_LockDir(TestCaseInTempDir,
         self.lockable.create_lock()
 
     def get_lockable(self):
-        return LockableFiles(self.transport, 'my-lock', LockDir)
+        return LockableFiles(self.transport, 'my-lock', lockdir.LockDir)
 
     def test_lock_created(self):
         self.assertTrue(self.transport.has('my-lock'))
@@ -357,10 +359,16 @@ class TestLockableFiles_LockDir(TestCaseInTempDir,
         self.assertFalse(self.transport.has('my-lock/held/info'))
         self.assertTrue(self.transport.has('my-lock'))
 
+    def test__file_modes(self):
+        self.transport.mkdir('readonly')
+        osutils.make_readonly('readonly')
+        lockable = LockableFiles(self.transport.clone('readonly'), 'test-lock',
+                                 lockdir.LockDir)
+        # The directory mode should be read-write-execute for the current user
+        self.assertEqual(00700, lockable._dir_mode & 00700)
+        # Files should be read-write for the current user
+        self.assertEqual(00600, lockable._file_mode & 00700)
 
-    # TODO: Test the lockdir inherits the right file and directory permissions
-    # from the LockableFiles.
-        
 
 class TestLockableFiles_RemoteLockDir(TestCaseWithSmartMedium,
                               _TestLockableFiles_mixin):

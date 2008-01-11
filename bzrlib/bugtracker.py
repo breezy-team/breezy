@@ -43,13 +43,14 @@ _bugs_help = \
 """When making a commit, metadata about bugs fixed by that change can be
 recorded by using the --fixes option. For each bug marked as fixed, an
 entry is included in the 'bugs' revision property stating '<url> <status>'.
+(The only ``status`` value currently supported is ``fixed.``)
 Support for Launchpad's central bug tracker is built in. For other bug
 trackers, configuration is required in advance so that the correct URL
 can be recorded.
 
 In addition to Launchpad, Bazaar directly supports the generation of
 URLs appropriate for Bugzilla and Trac. If your project uses a different
-bug tracker, it is easy to add support for it by writing a plugin, say.
+bug tracker, it is easy to add support for it.
 If you use Bugzilla or Trac, then you only need to set a configuration
 variable which contains the base URL of the bug tracker. These options
 can go into ``bazaar.conf``, ``branch.conf`` or into a branch-specific
@@ -60,7 +61,7 @@ Note: As you provide a short name for each tracker, you can specify one or
 more bugs in one or more trackers at commit time if you wish.
 
 bugzilla_<tracker_abbreviation>_url
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------------------
 
 If present, the location of the Bugzilla bug tracker referred to by
 <tracker_abbreviation>. This option can then be used together with ``bzr commit
@@ -73,7 +74,7 @@ would allow ``bzr commit --fixes squid:1234`` to mark Squid's bug 1234 as
 fixed.
 
 trac_<tracker_abbrevation>_url
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------------
 
 If present, the location of the Trac instance referred to by
 <tracker_abbreviation>. This option can then be used together with ``bzr commit
@@ -86,7 +87,8 @@ would allow ``bzr commit --fixes twisted:1234`` to mark Twisted's bug 1234 as
 fixed.
 
 bugtracker_<tracker_abbrevation>_url
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------------------
+
 If present, the location of a generic bug tracker instance referred to by
 <tracker_abbreviation>. The location must contain an ``{id}`` placeholder,
 which will be replaced by a specific bug ID. This option can then be used

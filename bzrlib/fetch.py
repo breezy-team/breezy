@@ -362,9 +362,8 @@ class Inter1and2Helper(object):
         stored in the target (reserializing it in a different format).
         :param revs: The revisions to include
         """
-        inventory_weave = self.source.get_inventory_weave()
         for tree in self.iter_rev_trees(revs):
-            parents = inventory_weave.get_parents(tree.get_revision_id())
+            parents = tree.get_parent_ids()
             self.target.add_inventory(tree.get_revision_id(), tree.inventory,
                                       parents)
 
@@ -372,7 +371,7 @@ class Inter1and2Helper(object):
 class Model1toKnit2Fetcher(GenericRepoFetcher):
     """Fetch from a Model1 repository into a Knit2 repository
     """
-    def __init__(self, to_repository, from_repository, last_revision=None, 
+    def __init__(self, to_repository, from_repository, last_revision=None,
                  pb=None):
         self.helper = Inter1and2Helper(from_repository, to_repository)
         GenericRepoFetcher.__init__(self, to_repository, from_repository,
