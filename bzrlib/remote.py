@@ -869,14 +869,13 @@ class RemoteRepository(object):
             container_parser.accept_bytes(bytes)
             records = container_parser.read_pending_records()
             for record_names, record_bytes in records:
-                try:
+                if len(record_names) != 1:
                     # These records should have only one name, and that name
                     # should be a one-element tuple.
-                    [name_tuple] = record_names
-                except ValueError:
                     raise errors.SmartProtocolError(
                         'Repository data stream had invalid record name %r'
                         % (record_names,))
+                name_tuple = record_names[0]
                 yield name_tuple, record_bytes
 
     def insert_data_stream(self, stream):
