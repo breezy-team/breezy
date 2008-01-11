@@ -265,6 +265,15 @@ class KnitRepository(MetaDirRepository):
         """
         return self._get_revision_vf()
 
+    def has_revisions(self, revision_ids):
+        """See Repository.has_revisions()."""
+        result = set()
+        transaction = self.get_transaction()
+        for revision_id in revision_ids:
+            if self._revision_store.has_revision_id(revision_id, transaction):
+                result.add(revision_id)
+        return result
+
     @needs_write_lock
     def reconcile(self, other=None, thorough=False):
         """Reconcile this repository."""

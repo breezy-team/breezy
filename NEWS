@@ -19,6 +19,11 @@ IN DEVELOPMENT
    * New option to use custom template-based formats in  ``bzr version-info``.
      (Lukáš Lalinský)
 
+   * New smart method, ``Repository.stream_revisions_chunked``, for fetching
+     revision data that streams revision data via a chunked encoding.  This
+     avoids buffering large amounts of revision data on the server and on the
+     client.  (Andrew Bennetts, #178353)
+
    * diff '--using' allows an external diff tool to be used for files.
      (Aaron Bentley)
 
@@ -166,6 +171,11 @@ IN DEVELOPMENT
 
    * Reduce selftest overhead to establish test names by memoization.
      (Vincent Ladeuil)
+
+   * Repository has a new method ``has_revisions`` which signals the presence
+     of many revisions by returning a set of the revisions listed which are
+     present. This can be done by index queries without reading data for parent
+     revision names etc. (Robert Collins)
 
   API BREAKS:
 
