@@ -46,16 +46,13 @@ from bzrlib.deprecated_graph import (node_distances, select_farthest)
 
 
 class DictParentsProvider(object):
+    """A parents provider for Graph objects."""
 
     def __init__(self, ancestry):
         self.ancestry = ancestry
 
     def __repr__(self):
         return 'DictParentsProvider(%r)' % self.ancestry
-
-    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
-    def get_parents(self, revisions):
-        return [self.ancestry.get(r, None) for r in revisions]
 
     def get_parent_map(self, keys):
         """See _StackedParentsProvider.get_parent_map"""
@@ -70,22 +67,6 @@ class _StackedParentsProvider(object):
 
     def __repr__(self):
         return "_StackedParentsProvider(%r)" % self._parent_providers
-
-    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
-    def get_parents(self, revision_ids):
-        """Find revision ids of the parents of a list of revisions
-
-        A list is returned of the same length as the input.  Each entry
-        is a list of parent ids for the corresponding input revision.
-
-        [NULL_REVISION] is used as the parent of the first user-committed
-        revision.  Its parent list is empty.
-
-        If the revision is not present (i.e. a ghost), None is used in place
-        of the list of parents.
-        """
-        found = self.get_parent_map(revision_ids)
-        return [found.get(r, None) for r in revision_ids]
 
     def get_parent_map(self, keys):
         """Get a mapping of keys => parents
@@ -125,12 +106,6 @@ class CachingParentsProvider(object):
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self._real_provider)
 
-    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
-    def get_parents(self, revision_ids):
-        """See _StackedParentsProvider.get_parents"""
-        found = self.get_parent_map(revision_ids)
-        return [found.get(r, None) for r in revision_ids]
-
     def get_parent_map(self, keys):
         """See _StackedParentsProvider.get_parent_map"""
         needed = set()
@@ -168,15 +143,16 @@ class Graph(object):
 
         This should not normally be invoked directly, because there may be
         specialized implementations for particular repository types.  See
-        Repository.get_graph()
+        Repository.get_graph().
 
-        :param parents_provider: An object providing a get_parents call
-            conforming to the behavior of StackedParentsProvider.get_parents
+        :param parents_provider: An object providing a get_parent_map call
+            conforming to the behavior of
+            StackedParentsProvider.get_parent_map.
         """
-        # get_parents is deprecated and we don't use it, so don't require it on
-        # providers.
-        self.get_parents = getattr(parents_provider, 'get_parents', None)
-        self.get_parent_map = parents_provider.get_parent_map
+        if getattr(parents_provider, 'get_parents', None) is not None:
+            self.get_parents = parents_provider.get_parents
+        if getattr(parents_provider, 'get_parent_map', None) is not None:
+            self.get_parent_map = parents_provider.get_parent_map
         self._parents_provider = parents_provider
 
     def __repr__(self):
@@ -227,6 +203,36 @@ class Graph(object):
             [left_revision, right_revision])
         return (left.difference(right).difference(common),
                 right.difference(left).difference(common))
+
+    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
+    def get_parents(self, revisions):
+        """Find revision ids of the parents of a list of revisions
+
+        A list is returned of the same length as the input.  Each entry
+        is a list of parent ids for the corresponding input revision.
+
+        [NULL_REVISION] is used as the parent of the first user-committed
+        revision.  Its parent list is empty.
+
+        If the revision is not present (i.e. a ghost), None is used in place
+        of the list of parents.
+
+        Deprecated in bzr 1.2 - please see get_parent_map.
+        """
+        parents = self.get_parent_map(revisions)
+        return [parent.get(r, None) for r in revisions]
+
+    def get_parent_map(self, revisions):
+        """Get a map of key:parent_list for revisions.
+
+        This implementation delegates to get_parents, for old parent_providers
+        that do not supply get_parent_map.
+        """
+        result = {}
+        for rev, parents in self.get_parents(revisions):
+            if parents is not None:
+                result[rev] = parents
+        return result
 
     def _make_breadth_first_searcher(self, revisions):
         return _BreadthFirstSearcher(revisions, self)
