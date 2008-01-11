@@ -1,5 +1,10 @@
 0.4		UNRELEASED
 
+ ENHANCEMENTS
+
+  * Set author property to preserve committer and original author of the commit.
+    (Lukáš Lalinský)
+
 0.3		2007-12-06
 
  ENHANCEMENTS
