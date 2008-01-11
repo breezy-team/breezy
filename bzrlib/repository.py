@@ -2312,7 +2312,31 @@ class InterRepository(InterObject):
 
         :param revision_id: only return revision ids included by this
                             revision_id.
+        :param find_ghosts: If True find missing revisions in deep history
+            rather than just finding the surface difference.
         """
+        # stop searching at found target revisions.
+        if not find_ghosts and revision_id is not None:
+            graph = self.source.get_graph()
+            missing_revs = set()
+            searcher = graph._make_breadth_first_searcher([revision_id])
+            null_set = frozenset([_mod_revision.NULL_REVISION])
+            while True:
+                try:
+                    next_revs = set(searcher.next())
+                except StopIteration:
+                    break
+                next_revs.difference_update(null_set)
+                have_revs = self.target.has_revisions(next_revs)
+                missing_revs.update(next_revs - have_revs)
+                searcher.stop_searching_any(have_revs)
+            if next_revs - have_revs == set([revision_id]):
+                # we saw the start rev itself, but no parents from it (or
+                # next_revs would have been updated to e.g. set(). We remove
+                # have_revs because if we found revision_id locally we
+                # stop_searching at the first time around.
+                raise errors.NoSuchRevision(self.source, revision_id)
+            return missing_revs
         # generic, possibly worst case, slow code path.
         target_ids = set(self.target.all_revision_ids())
         if revision_id is not None:
@@ -2390,7 +2414,7 @@ class InterSameDataRepository(InterRepository):
         f = GenericRepoFetcher(to_repository=self.target,
                                from_repository=self.source,
                                last_revision=revision_id,
-                               pb=pb)
+                               pb=pb, find_ghosts=find_ghosts)
         return f.count_copied, f.failed_revisions
 
 
@@ -2468,7 +2492,7 @@ class InterWeaveRepo(InterSameDataRepository):
         f = GenericRepoFetcher(to_repository=self.target,
                                from_repository=self.source,
                                last_revision=revision_id,
-                               pb=pb)
+                               pb=pb, find_ghosts=find_ghosts)
         return f.count_copied, f.failed_revisions
 
     @needs_read_lock
@@ -2546,7 +2570,7 @@ class InterKnitRepo(InterSameDataRepository):
         f = KnitRepoFetcher(to_repository=self.target,
                             from_repository=self.source,
                             last_revision=revision_id,
-                            pb=pb)
+                            pb=pb, find_ghosts=find_ghosts)
         return f.count_copied, f.failed_revisions
 
     @needs_read_lock
@@ -2651,7 +2675,7 @@ class InterPackRepo(InterSameDataRepository):
     def missing_revision_ids(self, revision_id=None, find_ghosts=True):
         """See InterRepository.missing_revision_ids().
         
-        :param find_ghosts: Find ghosts throughough the ancestry of
+        :param find_ghosts: Find ghosts throughout the ancestry of
             revision_id.
         """
         if not find_ghosts and revision_id is not None:
@@ -2709,7 +2733,7 @@ class InterModel1and2(InterRepository):
         f = Model1toKnit2Fetcher(to_repository=self.target,
                                  from_repository=self.source,
                                  last_revision=revision_id,
-                                 pb=pb)
+                                 pb=pb, find_ghosts=find_ghosts)
         return f.count_copied, f.failed_revisions
 
     @needs_write_lock
@@ -2766,7 +2790,7 @@ class InterKnit1and2(InterKnitRepo):
         f = Knit1to2Fetcher(to_repository=self.target,
                             from_repository=self.source,
                             last_revision=revision_id,
-                            pb=pb)
+                            pb=pb, find_ghosts=find_ghosts)
         return f.count_copied, f.failed_revisions
 
 
@@ -2792,7 +2816,7 @@ class InterDifferingSerializer(InterKnitRepo):
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         """See InterRepository.fetch()."""
         revision_ids = self.target.missing_revision_ids(self.source,
-                                                        revision_id)
+            revision_id, find_ghosts=find_ghosts)
         def revisions_iterator():
             for current_revision_id in revision_ids:
                 revision = self.source.get_revision(current_revision_id)
@@ -2847,7 +2871,7 @@ class InterRemoteToOther(InterRepository):
         f = RemoteToOtherFetcher(to_repository=self.target,
                                  from_repository=self.source,
                                  last_revision=revision_id,
-                                 pb=pb)
+                                 pb=pb, find_ghosts=find_ghosts)
         return f.count_copied, f.failed_revisions
 
     @classmethod
@@ -2879,7 +2903,8 @@ class InterOtherToRemote(InterRepository):
 
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         self._ensure_real_inter()
-        self._real_inter.fetch(revision_id=revision_id, pb=pb)
+        self._real_inter.fetch(revision_id=revision_id, pb=pb,
+            find_ghosts=find_ghosts)
 
     @classmethod
     def _get_repo_format_to_test(self):
