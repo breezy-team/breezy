@@ -265,6 +265,8 @@ class RemoteRepository(object):
         self._lock_token = None
         self._lock_count = 0
         self._leave_lock = False
+        # A cache of looked up revision parent data; reset at unlock time.
+        self._parents_map = None
         # For tests:
         # These depend on the actual remote format, so force them off for
         # maximum compatibility. XXX: In future these should depend on the
@@ -468,6 +470,7 @@ class RemoteRepository(object):
         if not self._lock_mode:
             self._lock_mode = 'r'
             self._lock_count = 1
+            self._parents_map = {}
             if self._real_repository is not None:
                 self._real_repository.lock_read()
         else:
@@ -505,6 +508,7 @@ class RemoteRepository(object):
                 self._leave_lock = False
             self._lock_mode = 'w'
             self._lock_count = 1
+            self._parents_map = {}
         elif self._lock_mode == 'r':
             raise errors.ReadOnlyError(self)
         else:
@@ -564,6 +568,7 @@ class RemoteRepository(object):
         self._lock_count -= 1
         if self._lock_count > 0:
             return
+        self._parents_map = None
         old_mode = self._lock_mode
         self._lock_mode = None
         try:
@@ -731,6 +736,15 @@ class RemoteRepository(object):
         """
         self._ensure_real()
         return self._real_repository.iter_files_bytes(desired_files)
+
+    def get_parent_map(self, keys):
+        """See bzrlib.Graph.get_parent_map()."""
+        # Hack to build up the caching logic.
+        ancestry = self._parents_map
+        missing_revisions = set(key for key in keys if key not in ancestry)
+        if missing_revisions:
+            self._parents_map.update(self.get_revision_graph())
+        return dict((k, ancestry[k]) for k in keys if k in ancestry)
 
     @needs_read_lock
     def get_signature_text(self, revision_id):
@@ -925,12 +939,6 @@ class RemoteRepository(object):
 
     def _make_parents_provider(self):
         return self
-
-    def get_parent_map(self, keys):
-        # Thunk across to real for now.
-        self._ensure_real()
-        return self._real_repository._make_parents_provider().get_parent_map(
-            keys)
 
 
 class RemoteBranchLockableFiles(LockableFiles):

@@ -484,18 +484,6 @@ class TestRemoteRepository(tests.TestCase):
         return repo, client
 
 
-class TestRepositoryGetGraph(TestRemoteRepository):
-
-    def test_get_graph(self):
-        # get_graph returns a graph with get_parent_map as the repository.
-        responses = []
-        transport_path = 'quack'
-        repo, client = self.setup_fake_client_and_repository(
-            responses, transport_path)
-        graph = repo.get_graph()
-        self.assertEqual(graph._parents_provider, repo)
-
-
 class TestRepositoryGatherStats(TestRemoteRepository):
 
     def test_revid_none(self):
@@ -554,6 +542,61 @@ class TestRepositoryGatherStats(TestRemoteRepository):
                           'firstrev': (123456.300, 3600),
                           'latestrev': (654231.400, 0),},
                          result)
+
+
+class TestRepositoryGetGraph(TestRemoteRepository):
+
+    def test_get_graph(self):
+        # get_graph returns a graph with get_parent_map as the repository.
+        responses = []
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(
+            responses, transport_path)
+        graph = repo.get_graph()
+        self.assertEqual(graph._parents_provider, repo)
+
+
+class TestRepositoryGetParentMap(TestRemoteRepository):
+
+    def test_get_parent_map_caching(self):
+        # get_parent_map returns from cache until unlock()
+        # setup a reponse with two revisions
+        r1 = u'\u0e33'.encode('utf8')
+        r2 = u'\u0dab'.encode('utf8')
+        lines = [' '.join([r2, r1]), r1]
+        encoded_body = '\n'.join(lines)
+        responses = [(('ok', ), encoded_body), (('ok', ), encoded_body)]
+
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(
+            responses, transport_path)
+        repo.lock_read()
+        graph = repo.get_graph()
+        parents = graph.get_parent_map([r2])
+        self.assertEqual({r2: (r1,)}, parents)
+        # locking and unlocking deeper should not reset
+        repo.lock_read()
+        repo.unlock()
+        parents = graph.get_parent_map([r1])
+        self.assertEqual({r1: ()}, parents)
+        self.assertEqual(
+            [('call_expecting_body', 'Repository.get_revision_graph',
+             ('///quack/', ''))],
+            client._calls)
+        repo.unlock()
+        # now we call again, and it should use the second response.
+        repo.lock_read()
+        graph = repo.get_graph()
+        parents = graph.get_parent_map([r2])
+        self.assertEqual({r2: (r1,)}, parents)
+        self.assertEqual(
+            [('call_expecting_body', 'Repository.get_revision_graph',
+              ('///quack/', '')),
+             ('call_expecting_body', 'Repository.get_revision_graph',
+              ('///quack/', ''))
+            ],
+            client._calls)
+        repo.unlock()
 
 
 class TestRepositoryGetRevisionGraph(TestRemoteRepository):
@@ -719,7 +762,7 @@ class TestRepositoryHasRevision(TestRemoteRepository):
             responses, transport_path)
 
         # The null revision is always there, so has_revision(None) == True.
-        self.assertEqual(True, repo.has_revision(None))
+        self.assertEqual(True, repo.has_revision(NULL_REVISION))
 
         # The remote repo shouldn't be accessed.
         self.assertEqual([], client._calls)
