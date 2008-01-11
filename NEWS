@@ -14,6 +14,9 @@ IN DEVELOPMENT
      been made to remove the ambiguity where ``branch2`` is in fact a
      specific file to diff within ``branch1``.
 
+   * Fetching via bzr+ssh will no longer fill ghosts by default (this is
+     consistent with pack-0.92 fetching over SFTP). (Robert Collins)
+
   FEATURES:
 
    * New option to use custom template-based formats in  ``bzr version-info``.
@@ -144,6 +147,11 @@ IN DEVELOPMENT
    * Add -Dtimes debug flag, which records a timestamp against each mutter to
      the trace file, relative to the first mutter.  (Andrew Bennetts)
    
+   * Fetching now passes the find_ghosts flag through to the 
+     ``InterRepository.missing_revision_ids`` call consistently for all
+     repository types. This will enable faster missing revision discovery with
+     bzr+ssh. (Robert Collins)
+
    * find_* methods available for BzrDirs, Branches and WorkingTrees.
      (Aaron Bentley)
 
