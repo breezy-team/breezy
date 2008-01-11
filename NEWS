@@ -116,6 +116,9 @@ IN DEVELOPMENT
    * ``reconfigure`` is able to convert trees into lightweight checkouts.
      (Aaron Bentley)
 
+   * ``reconfigure`` can safely be interrupted while fetching.
+     (Aaron Bentley, #179316)
+
    * Reduce lockdir timeout to 0 when running ``bzr serve``.  (Andrew Bennetts,
      #148087)
 
