@@ -518,7 +518,7 @@ class TestReplayWorkingtree(TestCaseWithTransport):
         wt.add(["afile"], ids=["originalid"])
         wt.commit("bla", rev_id="oldparent")
         file("old/afile", "w").write("bloe")
-        wt.commit("bla", rev_id="oldcommit")
+        wt.commit("bla", rev_id="oldcommit", committer="c")
         wt = wt.bzrdir.sprout("new").open_workingtree()
         self.build_tree(['new/bfile'])
         wt.add(["bfile"], ids=["newid"])
@@ -533,6 +533,7 @@ class TestReplayWorkingtree(TestCaseWithTransport):
         self.assertEquals("newcommit", newrev.revision_id)
         self.assertEquals(oldrev.timestamp, newrev.timestamp)
         self.assertEquals(oldrev.timezone, newrev.timezone)
+        self.assertEquals("c", newrev.get_apparent_author())
 
     def test_multiple(self):
         wt = self.make_branch_and_tree("old")
