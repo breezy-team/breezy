@@ -244,10 +244,6 @@ class InstrumentedParentsProvider(object):
         self.calls = []
         self._real_parents_provider = parents_provider
 
-    def get_parents(self, nodes):
-        self.calls.extend(nodes)
-        return self._real_parents_provider.get_parents(nodes)
-
     def get_parent_map(self, nodes):
         self.calls.extend(nodes)
         return self._real_parents_provider.get_parent_map(nodes)
@@ -450,23 +446,6 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual((set(['e']), set(['f', 'g'])),
                          graph.find_difference('e', 'f'))
 
-    def test_stacked_parents_provider_get_parents(self):
-        parents1 = _mod_graph.DictParentsProvider({'rev2': ['rev3']})
-        parents2 = _mod_graph.DictParentsProvider({'rev1': ['rev4']})
-        stacked = _mod_graph._StackedParentsProvider([parents1, parents2])
-        self.assertEqual([['rev4',], ['rev3']],
-             self.applyDeprecated(symbol_versioning.one_one,
-                                  stacked.get_parents, ['rev1', 'rev2']))
-        self.assertEqual([['rev3',], ['rev4']],
-             self.applyDeprecated(symbol_versioning.one_one,
-                                  stacked.get_parents, ['rev2', 'rev1']))
-        self.assertEqual([['rev3',], ['rev3']],
-             self.applyDeprecated(symbol_versioning.one_one,
-                         stacked.get_parents, ['rev2', 'rev2']))
-        self.assertEqual([['rev4',], ['rev4']],
-             self.applyDeprecated(symbol_versioning.one_one,
-                         stacked.get_parents, ['rev1', 'rev1']))
-
     def test_stacked_parents_provider(self):
         parents1 = _mod_graph.DictParentsProvider({'rev2': ['rev3']})
         parents2 = _mod_graph.DictParentsProvider({'rev1': ['rev4']})
@@ -626,13 +605,6 @@ class TestGraph(TestCaseWithMemoryTransport):
         """
         class stub(object):
             pass
-        def get_parents(keys):
-            result = []
-            for key in keys:
-                if key == 'deeper':
-                    self.fail('key deeper was accessed')
-                result.append(graph_dict[key])
-            return result
         def get_parent_map(keys):
             result = {}
             for key in keys:
@@ -641,7 +613,6 @@ class TestGraph(TestCaseWithMemoryTransport):
                 result[key] = graph_dict[key]
             return result
         an_obj = stub()
-        an_obj.get_parents = get_parents
         an_obj.get_parent_map = get_parent_map
         graph = _mod_graph.Graph(an_obj)
         return graph.heads(search)
@@ -689,20 +660,6 @@ class TestCachingParentsProvider(tests.TestCase):
         dict_pp = _mod_graph.DictParentsProvider({'a':('b',)})
         self.inst_pp = InstrumentedParentsProvider(dict_pp)
         self.caching_pp = _mod_graph.CachingParentsProvider(self.inst_pp)
-
-    def test_get_parents(self):
-        """Requesting the same revision should be returned from cache"""
-        self.assertEqual({}, self.caching_pp._cache)
-        self.assertEqual([('b',)],
-            self.applyDeprecated(symbol_versioning.one_one,
-            self.caching_pp.get_parents, ['a']))
-        self.assertEqual(['a'], self.inst_pp.calls)
-        self.assertEqual([('b',)],
-            self.applyDeprecated(symbol_versioning.one_one,
-            self.caching_pp.get_parents, ['a']))
-        # No new call, as it should have been returned from the cache
-        self.assertEqual(['a'], self.inst_pp.calls)
-        self.assertEqual({'a':('b',)}, self.caching_pp._cache)
 
     def test_get_parent_map(self):
         """Requesting the same revision should be returned from cache"""
