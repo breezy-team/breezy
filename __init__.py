@@ -324,7 +324,7 @@ register_command(cmd_svn_push)
 class cmd_svn_branching_scheme(Command):
     """Show or change the branching scheme for a Subversion repository.
 
-    See 'bzr help svn-branching-scheme' for details.
+    See 'bzr help svn-branching-schemes' for details.
     """
     takes_args = ['location?']
     takes_options = [
