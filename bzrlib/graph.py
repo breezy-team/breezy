@@ -46,16 +46,13 @@ from bzrlib.deprecated_graph import (node_distances, select_farthest)
 
 
 class DictParentsProvider(object):
+    """A parents provider for Graph objects."""
 
     def __init__(self, ancestry):
         self.ancestry = ancestry
 
     def __repr__(self):
         return 'DictParentsProvider(%r)' % self.ancestry
-
-    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
-    def get_parents(self, revisions):
-        return [self.ancestry.get(r, None) for r in revisions]
 
     def get_parent_map(self, keys):
         """See _StackedParentsProvider.get_parent_map"""
@@ -70,22 +67,6 @@ class _StackedParentsProvider(object):
 
     def __repr__(self):
         return "_StackedParentsProvider(%r)" % self._parent_providers
-
-    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
-    def get_parents(self, revision_ids):
-        """Find revision ids of the parents of a list of revisions
-
-        A list is returned of the same length as the input.  Each entry
-        is a list of parent ids for the corresponding input revision.
-
-        [NULL_REVISION] is used as the parent of the first user-committed
-        revision.  Its parent list is empty.
-
-        If the revision is not present (i.e. a ghost), None is used in place
-        of the list of parents.
-        """
-        found = self.get_parent_map(revision_ids)
-        return [found.get(r, None) for r in revision_ids]
 
     def get_parent_map(self, keys):
         """Get a mapping of keys => parents
@@ -125,12 +106,6 @@ class CachingParentsProvider(object):
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self._real_provider)
 
-    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
-    def get_parents(self, revision_ids):
-        """See _StackedParentsProvider.get_parents"""
-        found = self.get_parent_map(revision_ids)
-        return [found.get(r, None) for r in revision_ids]
-
     def get_parent_map(self, keys):
         """See _StackedParentsProvider.get_parent_map"""
         needed = set()
@@ -168,13 +143,16 @@ class Graph(object):
 
         This should not normally be invoked directly, because there may be
         specialized implementations for particular repository types.  See
-        Repository.get_graph()
+        Repository.get_graph().
 
-        :param parents_provider: An object providing a get_parents call
-            conforming to the behavior of StackedParentsProvider.get_parents
+        :param parents_provider: An object providing a get_parent_map call
+            conforming to the behavior of
+            StackedParentsProvider.get_parent_map.
         """
-        self.get_parents = parents_provider.get_parents
-        self.get_parent_map = parents_provider.get_parent_map
+        if getattr(parents_provider, 'get_parents', None) is not None:
+            self.get_parents = parents_provider.get_parents
+        if getattr(parents_provider, 'get_parent_map', None) is not None:
+            self.get_parent_map = parents_provider.get_parent_map
         self._parents_provider = parents_provider
 
     def __repr__(self):
@@ -225,6 +203,36 @@ class Graph(object):
             [left_revision, right_revision])
         return (left.difference(right).difference(common),
                 right.difference(left).difference(common))
+
+    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
+    def get_parents(self, revisions):
+        """Find revision ids of the parents of a list of revisions
+
+        A list is returned of the same length as the input.  Each entry
+        is a list of parent ids for the corresponding input revision.
+
+        [NULL_REVISION] is used as the parent of the first user-committed
+        revision.  Its parent list is empty.
+
+        If the revision is not present (i.e. a ghost), None is used in place
+        of the list of parents.
+
+        Deprecated in bzr 1.2 - please see get_parent_map.
+        """
+        parents = self.get_parent_map(revisions)
+        return [parent.get(r, None) for r in revisions]
+
+    def get_parent_map(self, revisions):
+        """Get a map of key:parent_list for revisions.
+
+        This implementation delegates to get_parents, for old parent_providers
+        that do not supply get_parent_map.
+        """
+        result = {}
+        for rev, parents in self.get_parents(revisions):
+            if parents is not None:
+                result[rev] = parents
+        return result
 
     def _make_breadth_first_searcher(self, revisions):
         return _BreadthFirstSearcher(revisions, self)
@@ -498,39 +506,83 @@ class _BreadthFirstSearcher(object):
     """
 
     def __init__(self, revisions, parents_provider):
-        self._start = set(revisions)
-        self._search_revisions = None
-        self.seen = set(revisions)
+        self._iterations = 0
+        self._next_query = set(revisions)
+        self.seen = set()
         self._parents_provider = parents_provider
+        self._returning = 'checked'
 
     def __repr__(self):
-        if self._search_revisions is not None:
-            search = 'searching=%r' % (list(self._search_revisions),)
+        if self._iterations:
+            prefix = "searching"
         else:
-            search = 'starting=%r' % (list(self._start),)
-        return ('_BreadthFirstSearcher(%s,'
-                ' seen=%r)' % (search, list(self.seen)))
+            prefix = "starting"
+        search = '%s=%r' % (prefix, list(self._next_query))
+        return ('_BreadthFirstSearcher(iterations=%d, %s,'
+                ' seen=%r)' % (self._iterations, search, list(self.seen)))
 
     def next(self):
         """Return the next ancestors of this revision.
 
         Ancestors are returned in the order they are seen in a breadth-first
-        traversal.  No ancestor will be returned more than once.
+        traversal.  No ancestor will be returned more than once. Ancestors are
+        returned before their parentage is queried, so ghosts and missing
+        revisions (including the start revisions) are included in the result.
+        This can save a round trip in LCA style calculation by allowing
+        convergence to be detected without reading the data for the revision
+        the convergence occurs on.
+
+        :return: A set of revision_ids.
         """
-        if self._search_revisions is None:
-            self._search_revisions = self._start
+        if self._returning != 'query':
+            # switch to returning the query, not the results.
+            self._returning = 'query'
+            self._iterations += 1
+            self.seen.update(self._next_query)
         else:
-            new_search_revisions = set()
-            parent_map = self._parents_provider.get_parent_map(
-                            self._search_revisions)
-            for parents in parent_map.itervalues():
-                new_search_revisions.update(p for p in parents if
-                                            p not in self.seen)
-            self._search_revisions = new_search_revisions
-        if len(self._search_revisions) == 0:
+            self._advance()
+        if len(self._next_query) == 0:
             raise StopIteration()
-        self.seen.update(self._search_revisions)
-        return self._search_revisions
+        return self._next_query
+
+    def next_with_ghosts(self):
+        """Return the next found ancestors, with ghosts split out.
+        
+        Ancestors are returned in the order they are seen in a breadth-first
+        traversal.  No ancestor will be returned more than once. Ancestors are
+        returned only after asking for their parents, which can
+
+        :return: A tuple with (present ancestors, ghost ancestors) sets.
+        """
+        if self._returning != 'checked':
+            # switch to returning the results, not the current query.
+            self._returning = 'checked'
+            self._advance()
+        if len(self._next_query) == 0:
+            raise StopIteration()
+        self._advance()
+        return self._current_present, self._current_ghosts
+
+    def _advance(self):
+        """Advance the search.
+
+        Updates self.seen, self._next_query, self._current_present,
+        self._current_ghosts.
+        """
+        self._iterations += 1
+        found_parents = set()
+        new_search_revisions = set()
+        parent_map = self._parents_provider.get_parent_map(
+                        self._next_query)
+        for rev_id, parents in parent_map.iteritems():
+            found_parents.add(rev_id)
+            new_search_revisions.update(p for p in parents if
+                                        p not in self.seen)
+        ghost_parents = self._next_query - found_parents
+        self._next_query = new_search_revisions
+        self.seen.update(self._next_query)
+        self._current_present = found_parents
+        self._current_ghosts = ghost_parents
 
     def __iter__(self):
         return self
@@ -554,13 +606,10 @@ class _BreadthFirstSearcher(object):
         None of the specified revisions are required to be present in the
         search list.  In this case, the call is a no-op.
         """
-        stopped = self._search_revisions.intersection(revisions)
-        self._search_revisions = self._search_revisions.difference(revisions)
+        stopped = self._next_query.intersection(revisions)
+        self._next_query = self._next_query.difference(revisions)
         return stopped
 
     def start_searching(self, revisions):
-        if self._search_revisions is None:
-            self._start = set(revisions)
-        else:
-            self._search_revisions.update(revisions.difference(self.seen))
+        self._next_query.update(revisions.difference(self.seen))
         self.seen.update(revisions)

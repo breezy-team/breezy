@@ -200,6 +200,21 @@ class TestReconfigure(tests.TestCaseWithTransport):
         self.assertRaises(errors.NoRepositoryPresent,
                           child.bzrdir.open_repository)
 
+    def test_branch_to_lightweight_checkout_failure(self):
+        parent = self.make_branch('parent')
+        child = parent.bzrdir.sprout('child').open_workingtree()
+        child.commit('test', rev_id='new-commit')
+        reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
+            child.bzrdir)
+        old_Repository_fetch = repository.Repository.fetch
+        repository.Repository.fetch = None
+        try:
+            self.assertRaises(TypeError, reconfiguration.apply)
+        finally:
+            repository.Repository.fetch = old_Repository_fetch
+        child = _mod_branch.Branch.open('child')
+        self.assertContainsRe(child.base, 'child/$')
+
     def test_lightweight_checkout_to_lightweight_checkout(self):
         parent = self.make_branch('parent')
         checkout = parent.create_checkout('checkout', lightweight=True)

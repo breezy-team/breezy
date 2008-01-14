@@ -287,6 +287,7 @@ development.
 -Dhpss         Trace smart protocol requests and responses.
 -Dhttp         Trace http connections, requests and responses
 -Dindex        Trace major index operations.
+-Dknit         Trace knit operations.
 -Dlock         Trace when lockdir locks are taken or released.
 -Dmerge        Emit information for debugging merges.
 -Dtimes        Record timestamps from program start in trace file.

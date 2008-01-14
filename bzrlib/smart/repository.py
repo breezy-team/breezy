@@ -24,7 +24,7 @@ import tarfile
 
 from bzrlib import errors
 from bzrlib.bzrdir import BzrDir
-from bzrlib.pack import ContainerWriter
+from bzrlib.pack import ContainerSerialiser
 from bzrlib.smart.request import (
     FailedSmartServerResponse,
     SmartServerRequest,
@@ -258,14 +258,38 @@ class SmartServerRepositoryStreamKnitDataForRevisions(SmartServerRepositoryReque
 
     def _do_repository_request(self, repository, revision_ids):
         stream = repository.get_data_stream(revision_ids)
-        filelike = StringIO()
-        pack = ContainerWriter(filelike.write)
-        pack.begin()
+        buffer = StringIO()
+        pack = ContainerSerialiser()
+        buffer.write(pack.begin())
         try:
             for name_tuple, bytes in stream:
-                pack.add_bytes_record(bytes, [name_tuple])
+                buffer.write(pack.bytes_record(bytes, [name_tuple]))
         except errors.RevisionNotPresent, e:
             return FailedSmartServerResponse(('NoSuchRevision', e.revision_id))
+        buffer.write(pack.end())
+        return SuccessfulSmartServerResponse(('ok',), buffer.getvalue())
+
+
+class SmartServerRepositoryStreamRevisionsChunked(SmartServerRepositoryRequest):
+
+    def do_repository_request(self, repository, *revision_ids):
+        repository.lock_read()
+        try:
+            stream = repository.get_data_stream(revision_ids)
+        except Exception:
+            repository.unlock()
+            raise
+        return SuccessfulSmartServerResponse(('ok',),
+            body_stream=self.body_stream(stream, repository))
+
+    def body_stream(self, stream, repository):
+        pack = ContainerSerialiser()
+        yield pack.begin()
+        try:
+            for name_tuple, bytes in stream:
+                yield pack.bytes_record(bytes, [name_tuple])
+        except errors.RevisionNotPresent, e:
+            yield FailedSmartServerResponse(('NoSuchRevision', e.revision_id))
+        repository.unlock()
         pack.end()
-        return SuccessfulSmartServerResponse(('ok',), filelike.getvalue())
 

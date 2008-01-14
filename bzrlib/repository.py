@@ -842,8 +842,14 @@ class Repository(object):
             for version, options, parents, some_bytes in decoded_list:
                 data_list.append((version, options, len(some_bytes), parents))
                 knit_bytes += some_bytes
+            buffer = StringIO(knit_bytes)
+            def reader_func(count):
+                if count is None:
+                    return buffer.read()
+                else:
+                    return buffer.read(count)
             knit.insert_data_stream(
-                (format, data_list, StringIO(knit_bytes).read))
+                (format, data_list, reader_func))
 
     @needs_read_lock
     def missing_revision_ids(self, other, revision_id=None, find_ghosts=True):
@@ -2851,14 +2857,12 @@ class InterRemoteToOther(InterRepository):
     def is_compatible(source, target):
         if not isinstance(source, remote.RemoteRepository):
             return False
+        # Is source's model compatible with target's model?
         source._ensure_real()
         real_source = source._real_repository
-        # Is source's model compatible with target's model, and are they the
-        # same format?  Currently we can only optimise fetching from an
-        # identical model & format repo.
         assert not isinstance(real_source, remote.RemoteRepository), (
             "We don't support remote repos backed by remote repos yet.")
-        return real_source._format == target._format
+        return InterRepository._same_model(real_source, target)
 
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):

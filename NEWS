@@ -22,6 +22,11 @@ IN DEVELOPMENT
    * New option to use custom template-based formats in  ``bzr version-info``.
      (Lukáš Lalinský)
 
+   * New smart method, ``Repository.stream_revisions_chunked``, for fetching
+     revision data that streams revision data via a chunked encoding.  This
+     avoids buffering large amounts of revision data on the server and on the
+     client.  (Andrew Bennetts, #178353)
+
    * diff '--using' allows an external diff tool to be used for files.
      (Aaron Bentley)
 
@@ -48,6 +53,9 @@ IN DEVELOPMENT
    * ``bzr pack`` now orders revision texts in topological order, with newest
      at the start of the file, promoting linear reads for ``bzr log`` and the
      like. This partially fixes #154129. (Robert Collins)
+
+   * Fetching between different repository formats with compatible models now
+     takes advantage of the smart method to stream revisions.  (Andrew Bennetts)
 
    * Merge directives now fetch prerequisites from the target branch if
      needed.  (Aaron Bentley)
@@ -111,6 +119,9 @@ IN DEVELOPMENT
    * ``reconfigure`` is able to convert trees into lightweight checkouts.
      (Aaron Bentley)
 
+   * ``reconfigure`` can safely be interrupted while fetching.
+     (Aaron Bentley, #179316)
+
    * Reduce lockdir timeout to 0 when running ``bzr serve``.  (Andrew Bennetts,
      #148087)
 
@@ -164,9 +175,15 @@ IN DEVELOPMENT
      inventories. This is primarily used by the ``revision_trees`` method, as
      direct access to inventories is discouraged. (Robert Collins)
 
+   * New method ``next_with_ghosts`` on the Graph breadth-first-search objects
+     which will split out ghosts and present parents into two separate sets,
+     useful for code which needs to be aware of ghosts (e.g. fetching data
+     cares about ghosts during revision selection). (Robert Collins)
+
    * Parent Providers should now implement ``get_parent_map`` returning a
      dictionary instead of ``get_parents`` returning a list.
-     ``get_parents`` is now considered deprecated.  (John Arbash Meinel)
+     ``Graph.get_parents`` is now deprecated. (John Arbash Meinel,
+     Robert Collins)
 
    * Patience Diff now supports arbitrary python objects, as long as they
      support ``hash()``. (John Arbash Meinel)
