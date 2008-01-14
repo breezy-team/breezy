@@ -570,19 +570,28 @@ class _BreadthFirstSearcher(object):
         self._current_ghosts.
         """
         self._iterations += 1
+        found, ghosts, next, parents = self._do_query(self._next_query)
+        self._current_present = found
+        self._current_ghosts = ghosts
+        self._next_query = next
+        self._current_parents = parents
+
+    def _do_query(self, revisions):
+        """Query for revisions.
+
+        :param revisions: Revisions to query.
+        :return: A tuple: (set(found_revisions), set(ghost_revisions),
+           set(parents_of_found_revisions), dict(found_revisions:parents)).
+        """
         found_parents = set()
-        new_search_revisions = set()
-        parent_map = self._parents_provider.get_parent_map(
-                        self._next_query)
+        parents_of_found = set()
+        parent_map = self._parents_provider.get_parent_map(revisions)
         for rev_id, parents in parent_map.iteritems():
             found_parents.add(rev_id)
-            new_search_revisions.update(p for p in parents if
-                                        p not in self.seen)
-        ghost_parents = self._next_query - found_parents
-        self._next_query = new_search_revisions
-        self.seen.update(self._next_query)
-        self._current_present = found_parents
-        self._current_ghosts = ghost_parents
+            parents_of_found.update(p for p in parents if p not in self.seen)
+        ghost_parents = revisions - found_parents
+        self.seen.update(parents_of_found)
+        return found_parents, ghost_parents, parents_of_found, parent_map
 
     def __iter__(self):
         return self
@@ -606,10 +615,56 @@ class _BreadthFirstSearcher(object):
         None of the specified revisions are required to be present in the
         search list.  In this case, the call is a no-op.
         """
-        stopped = self._next_query.intersection(revisions)
-        self._next_query = self._next_query.difference(revisions)
+        revisions = frozenset(revisions)
+        if self._returning == 'query':
+            stopped = self._next_query.intersection(revisions)
+            self._next_query = self._next_query.difference(revisions)
+        else:
+            stopped = set()
+            stopped.update(self._current_present.intersection(revisions))
+            stopped.update(self._current_ghosts.intersection(revisions))
+            self._current_present.difference_update(stopped)
+            self._current_ghosts.difference_update(stopped)
+            # stopping 'x' should stop returning parents of 'x', but 
+            # not if 'y' always references those same parents
+            stop_rev_references = {}
+            for rev in stopped:
+                for parent_id in self._current_parents[rev]:
+                    if parent_id not in stop_rev_references:
+                        stop_rev_references[parent_id] = 0
+                    stop_rev_references[parent_id] += 1
+            # if only the stopped revisions reference it, the ref count will be
+            # 0 after this loop
+            for rev, parents in self._current_parents.iteritems():
+                for parent_id in parents:
+                    try:
+                        stop_rev_references[parent_id] -= 1
+                    except KeyError:
+                        pass
+            stop_parents = set()
+            for rev_id, refs in stop_rev_references.iteritems():
+                if refs == 0:
+                    stop_parents.add(rev_id)
+            self._next_query.difference_update(stop_parents)
         return stopped
 
     def start_searching(self, revisions):
-        self._next_query.update(revisions.difference(self.seen))
-        self.seen.update(revisions)
+        """Add revisions to the search.
+
+        The parents of revisions will be returned from the next call to next()
+        or next_with_ghosts(). If next_with_ghosts was the most recently used
+        next* call then the return value is the result of looking up the
+        ghost/not ghost status of revisions. (A tuple (present, ghosted)).
+        """
+        revisions = frozenset(revisions)
+        if self._returning == 'query':
+            self._next_query.update(revisions.difference(self.seen))
+            self.seen.update(revisions)
+        else:
+            # perform a query on revisions
+            revs, ghosts, query, parents = self._do_query(revisions)
+            self._current_present.update(revs)
+            self._current_ghosts.update(ghosts)
+            self._next_query.update(query)
+            self._current_parents.update(parents)
+            return revs, ghosts
