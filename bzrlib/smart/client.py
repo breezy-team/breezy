@@ -47,7 +47,7 @@ class _SmartClient(object):
             body = smart_protocol.read_body_bytes()
         """
         request = self.get_smart_medium().get_request()
-        smart_protocol = protocol.SmartClientRequestProtocolOne(request)
+        smart_protocol = protocol.SmartClientRequestProtocolTwo(request)
         smart_protocol.call(method, *args)
         return smart_protocol.read_response_tuple(expect_body=True), smart_protocol
 

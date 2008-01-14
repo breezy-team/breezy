@@ -216,6 +216,11 @@ class Reconfigure(object):
         if self._create_branch and self.referenced_branch is not None:
             repo.fetch(self.referenced_branch.repository,
                        self.referenced_branch.last_revision())
+        if self._create_reference:
+            reference_branch = branch.Branch.open(self._select_bind_location())
+        if self._destroy_repository:
+            if self._create_reference:
+                reference_branch.repository.fetch(self.repository)
         last_revision_info = None
         if self._destroy_reference:
             last_revision_info = self.referenced_branch.last_revision_info()
@@ -230,7 +235,6 @@ class Reconfigure(object):
         else:
             local_branch = self.local_branch
         if self._create_reference:
-            reference_branch = branch.Branch.open(self._select_bind_location())
             format = branch.BranchReferenceFormat().initialize(self.bzrdir,
                 reference_branch)
         if self._destroy_tree:
@@ -243,6 +247,4 @@ class Reconfigure(object):
             bind_location = self._select_bind_location()
             local_branch.bind(branch.Branch.open(bind_location))
         if self._destroy_repository:
-            if self._create_reference:
-                reference_branch.repository.fetch(self.repository)
             self.bzrdir.destroy_repository()

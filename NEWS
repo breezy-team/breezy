@@ -19,6 +19,11 @@ IN DEVELOPMENT
    * New option to use custom template-based formats in  ``bzr version-info``.
      (Lukáš Lalinský)
 
+   * New smart method, ``Repository.stream_revisions_chunked``, for fetching
+     revision data that streams revision data via a chunked encoding.  This
+     avoids buffering large amounts of revision data on the server and on the
+     client.  (Andrew Bennetts, #178353)
+
    * diff '--using' allows an external diff tool to be used for files.
      (Aaron Bentley)
 
@@ -46,6 +51,9 @@ IN DEVELOPMENT
      at the start of the file, promoting linear reads for ``bzr log`` and the
      like. This partially fixes #154129. (Robert Collins)
 
+   * Fetching between different repository formats with compatible models now
+     takes advantage of the smart method to stream revisions.  (Andrew Bennetts)
+
    * Merge directives now fetch prerequisites from the target branch if
      needed.  (Aaron Bentley)
 
@@ -63,6 +71,9 @@ IN DEVELOPMENT
      pieces.  (Aaron Bentley)
 
   BUGFIXES:
+
+   * Avoid AttributeError when unlocking a pack repository when an error occurs.
+     (Martin Pool, #180208)
 
    * Better handle short reads when processing multiple range requests.
      (Vincent Ladeuil, #179368)
@@ -105,6 +116,9 @@ IN DEVELOPMENT
    * ``reconfigure`` is able to convert trees into lightweight checkouts.
      (Aaron Bentley)
 
+   * ``reconfigure`` can safely be interrupted while fetching.
+     (Aaron Bentley, #179316)
+
    * Reduce lockdir timeout to 0 when running ``bzr serve``.  (Andrew Bennetts,
      #148087)
 
@@ -138,20 +152,36 @@ IN DEVELOPMENT
 
   INTERNALS:
 
-    * find_* methods available for BzrDirs, Branches and WorkingTrees.
-      (Aaron Bentley)
+   * Add -Dtimes debug flag, which records a timestamp against each mutter to
+     the trace file, relative to the first mutter.  (Andrew Bennetts)
+   
+   * find_* methods available for BzrDirs, Branches and WorkingTrees.
+     (Aaron Bentley)
 
-    * Help topics can now be loaded from files. 
-      (Ian Clatworthy, Alexander Belchenko)
+   * Help topics can now be loaded from files. 
+     (Ian Clatworthy, Alexander Belchenko)
 
-    * get_parent_map now always provides tuples as its output.  (Aaron Bentley)
+   * get_parent_map now always provides tuples as its output.  (Aaron Bentley)
 
-    * Parent Providers should now implement ``get_parent_map`` returning a
-      dictionary instead of ``get_parents`` returning a list.
-      ``get_parents`` is now considered deprecated.  (John Arbash Meinel)
+   * New method ``iter_inventories`` on Repository for access to many
+     inventories. This is primarily used by the ``revision_trees`` method, as
+     direct access to inventories is discouraged. (Robert Collins)
 
-    * Patience Diff now supports arbitrary python objects, as long as they
-      support ``hash()``. (John Arbash Meinel)
+   * Parent Providers should now implement ``get_parent_map`` returning a
+     dictionary instead of ``get_parents`` returning a list.
+     ``Graph.get_parents`` is now deprecated. (John Arbash Meinel,
+     Robert Collins)
+
+   * Patience Diff now supports arbitrary python objects, as long as they
+     support ``hash()``. (John Arbash Meinel)
+
+   * Reduce selftest overhead to establish test names by memoization.
+     (Vincent Ladeuil)
+
+   * Repository has a new method ``has_revisions`` which signals the presence
+     of many revisions by returning a set of the revisions listed which are
+     present. This can be done by index queries without reading data for parent
+     revision names etc. (Robert Collins)
 
   API BREAKS:
 
