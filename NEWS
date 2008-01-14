@@ -54,6 +54,9 @@ IN DEVELOPMENT
      at the start of the file, promoting linear reads for ``bzr log`` and the
      like. This partially fixes #154129. (Robert Collins)
 
+   * Fetching between different repository formats with compatible models now
+     takes advantage of the smart method to stream revisions.  (Andrew Bennetts)
+
    * Merge directives now fetch prerequisites from the target branch if
      needed.  (Aaron Bentley)
 
@@ -116,6 +119,9 @@ IN DEVELOPMENT
    * ``reconfigure`` is able to convert trees into lightweight checkouts.
      (Aaron Bentley)
 
+   * ``reconfigure`` can safely be interrupted while fetching.
+     (Aaron Bentley, #179316)
+
    * Reduce lockdir timeout to 0 when running ``bzr serve``.  (Andrew Bennetts,
      #148087)
 
@@ -168,6 +174,11 @@ IN DEVELOPMENT
    * New method ``iter_inventories`` on Repository for access to many
      inventories. This is primarily used by the ``revision_trees`` method, as
      direct access to inventories is discouraged. (Robert Collins)
+
+   * New method ``next_with_ghosts`` on the Graph breadth-first-search objects
+     which will split out ghosts and present parents into two separate sets,
+     useful for code which needs to be aware of ghosts (e.g. fetching data
+     cares about ghosts during revision selection). (Robert Collins)
 
    * Parent Providers should now implement ``get_parent_map`` returning a
      dictionary instead of ``get_parents`` returning a list.
