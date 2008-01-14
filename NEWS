@@ -81,6 +81,9 @@ IN DEVELOPMENT
    * build_tree acceleration uses the correct path when a file has been moved.
      (Aaron Bentley)
 
+   * Calculate remote path relative to the shared medium in _SmartClient.  This
+     is related to the problem in bug #124089.  (Andrew Bennetts)
+
    * ``commit`` now succeeds when a checkout and its master branch share a
      repository.  (Aaron Bentley, #177592)
 
