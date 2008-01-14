@@ -69,10 +69,10 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
         from revision_ids is returned.
 
         :param repository: The repository to query in.
-        :param revision_id:s The utf8 encoded revision_id to answer.
+        :param revision_ids: The utf8 encoded revision_id to answer for.
         :return: A smart server response where the body contains an utf8
-            encoded flattened list of the revision graph, (the same format as
-            Repository.get_revision_graph).
+            encoded flattened list of the parents of the revisions, (the same
+            format as Repository.get_revision_graph).
         """
         lines = []
         repo_graph = repository.get_graph()
@@ -93,6 +93,7 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
                 result[revision_id] = parents
                 # prepare the next query
                 next_revs.update(parents)
+                # Approximate the serialized cost of this revision_id.
                 size_so_far += 2 + len(revision_id) + sum(map(len, parents))
                 # get all the directly asked for parents, and then flesh out to
                 # 64K or so.

@@ -746,6 +746,24 @@ class RemoteRepository(object):
             self._parents_map.update(self._get_parent_map(missing_revisions))
         return dict((k, ancestry[k]) for k in keys if k in ancestry)
 
+    def _response_is_unknown_method(self, response, verb):
+        """Return True if response is an unknonwn method response to verb.
+        
+        :param response: The response from a smart client call_expecting_body
+            call.
+        :param verb: The verb used in that call.
+        :return: True if an unknown method was encountered.
+        """
+        # This might live better on
+        # bzrlib.smart.protocol.SmartClientRequestProtocolOne
+        if (response[0] == ('error', "Generic bzr smart protocol error: "
+                "bad request '%s'" % verb) or
+              response[0] == ('error', "Generic bzr smart protocol error: "
+                "bad request u'%s'" % verb)):
+           response[1].cancel_read_body()
+           return True
+        return False
+
     def _get_parent_map(self, keys):
         """Helper for get_parent_map that performs the RPC."""
         keys = set(keys)
@@ -759,9 +777,18 @@ class RemoteRepository(object):
         path = self.bzrdir._path_for_remote_call(self._client)
         for key in keys:
             assert type(key) is str
+        verb = 'Repository.get_parent_map'
         response = self._client.call_expecting_body(
-            'Repository.get_parent_map', path, *keys)
-        if response[0][0] not in ['ok']:
+            verb, path, *keys)
+        if self._response_is_unknown_method(response, verb):
+            # Server that does not support this method, get the whole graph.
+            response = self._client.call_expecting_body(
+                'Repository.get_revision_graph', path, '')
+            if response[0][0] not in ['ok', 'nosuchrevision']:
+                reponse[1].cancel_read_body()
+                raise errors.UnexpectedSmartServerResponse(response[0])
+        elif response[0][0] not in ['ok']:
+            reponse[1].cancel_read_body()
             raise errors.UnexpectedSmartServerResponse(response[0])
         if response[0][0] == 'ok':
             coded = response[1].read_body_bytes()

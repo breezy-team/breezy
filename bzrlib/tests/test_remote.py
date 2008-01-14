@@ -547,7 +547,8 @@ class TestRepositoryGatherStats(TestRemoteRepository):
 class TestRepositoryGetGraph(TestRemoteRepository):
 
     def test_get_graph(self):
-        # get_graph returns a graph with get_parent_map as the repository.
+        # get_graph returns a graph with the repository as the
+        # parents_provider.
         responses = []
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(
