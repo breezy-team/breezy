@@ -336,6 +336,8 @@ class Inter1and2Helper(object):
 
         :param revs: A list of revision ids
         """
+        # In case that revs is not a list.
+        revs = list(revs)
         while revs:
             for tree in self.source.revision_trees(revs[:100]):
                 if tree.inventory.revision_id is None:

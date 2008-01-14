@@ -2309,6 +2309,39 @@ class InterRepository(InterObject):
         (copied, failures).
         """
         raise NotImplementedError(self.fetch)
+
+    def _walk_to_common_revisions(self, revision_ids):
+        """Walk out from revision_ids in source to revisions target has.
+
+        :param revision_ids: The start point for the search.
+        :return: A set of revision ids.
+        """
+        graph = self.source.get_graph()
+        missing_revs = set()
+        # ensure we don't pay silly lookup costs.
+        revision_ids = frozenset(revision_ids)
+        searcher = graph._make_breadth_first_searcher(revision_ids)
+        null_set = frozenset([_mod_revision.NULL_REVISION])
+        while True:
+            try:
+                next_revs, ghosts = searcher.next_with_ghosts()
+            except StopIteration:
+                break
+            if revision_ids.intersection(ghosts):
+                absent_ids = set(revision_ids.intersection(ghosts))
+                # If all absent_ids are present in target, no error is needed.
+                absent_ids.difference_update(
+                    self.target.has_revisions(absent_ids))
+                if absent_ids:
+                    raise errors.NoSuchRevision(self.source, absent_ids.pop())
+            # we don't care about other ghosts as we can't fetch them and
+            # haven't been asked to.
+            next_revs = set(next_revs)
+            next_revs.difference_update(null_set)
+            have_revs = self.target.has_revisions(next_revs)
+            missing_revs.update(next_revs - have_revs)
+            searcher.stop_searching_any(have_revs)
+        return missing_revs
    
     @needs_read_lock
     def missing_revision_ids(self, revision_id=None, find_ghosts=True):
@@ -2323,26 +2356,7 @@ class InterRepository(InterObject):
         """
         # stop searching at found target revisions.
         if not find_ghosts and revision_id is not None:
-            graph = self.source.get_graph()
-            missing_revs = set()
-            searcher = graph._make_breadth_first_searcher([revision_id])
-            null_set = frozenset([_mod_revision.NULL_REVISION])
-            while True:
-                try:
-                    next_revs = set(searcher.next())
-                except StopIteration:
-                    break
-                next_revs.difference_update(null_set)
-                have_revs = self.target.has_revisions(next_revs)
-                missing_revs.update(next_revs - have_revs)
-                searcher.stop_searching_any(have_revs)
-            if next_revs - have_revs == set([revision_id]):
-                # we saw the start rev itself, but no parents from it (or
-                # next_revs would have been updated to e.g. set(). We remove
-                # have_revs because if we found revision_id locally we
-                # stop_searching at the first time around.
-                raise errors.NoSuchRevision(self.source, revision_id)
-            return missing_revs
+            return self._walk_to_common_revisions([revision_id])
         # generic, possibly worst case, slow code path.
         target_ids = set(self.target.all_revision_ids())
         if revision_id is not None:
@@ -2685,26 +2699,7 @@ class InterPackRepo(InterSameDataRepository):
             revision_id.
         """
         if not find_ghosts and revision_id is not None:
-            graph = self.source.get_graph()
-            missing_revs = set()
-            searcher = graph._make_breadth_first_searcher([revision_id])
-            null_set = frozenset([_mod_revision.NULL_REVISION])
-            while True:
-                try:
-                    next_revs = set(searcher.next())
-                except StopIteration:
-                    break
-                next_revs.difference_update(null_set)
-                have_revs = self.target.has_revisions(next_revs)
-                missing_revs.update(next_revs - have_revs)
-                searcher.stop_searching_any(have_revs)
-            if next_revs - have_revs == set([revision_id]):
-                # we saw the start rev itself, but no parents from it (or
-                # next_revs would have been updated to e.g. set(). We remove
-                # have_revs because if we found revision_id locally we
-                # stop_searching at the first time around.
-                raise errors.NoSuchRevision(self.source, revision_id)
-            return missing_revs
+            return self._walk_to_common_revisions([revision_id])
         elif revision_id is not None:
             source_ids = self.source.get_ancestry(revision_id)
             assert source_ids[0] is None
