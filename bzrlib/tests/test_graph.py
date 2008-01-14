@@ -691,8 +691,8 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertRaises(StopIteration, search.next)
 
     def test_breadth_first_search_change_next_to_next_with_ghosts(self):
-        # To make the API robust, we allow changing from next() to
-        # next_with_ghosts() and vice verca.
+        # To make the API robust, we allow calling both next() and
+        # next_with_ghosts() on the same searcher.
         parent_graph = {
             'head':['present'],
             'present':['child', 'ghost'],
@@ -701,14 +701,14 @@ class TestGraph(TestCaseWithMemoryTransport):
         parents_provider = InstrumentedParentsProvider(
             _mod_graph.DictParentsProvider(parent_graph))
         graph = _mod_graph.Graph(parents_provider)
-        # with_ghosts reports the ghosts
+        # start with next_with_ghosts
         search = graph._make_breadth_first_searcher(['head'])
         self.assertEqual((set(['head']), set()), search.next_with_ghosts())
         self.assertEqual(set(['present']), search.next())
         self.assertEqual((set(['child']), set(['ghost'])),
             search.next_with_ghosts())
         self.assertRaises(StopIteration, search.next)
-        # next includes them
+        # start with next
         search = graph._make_breadth_first_searcher(['head'])
         self.assertEqual(set(['head']), search.next())
         self.assertEqual((set(['present']), set()), search.next_with_ghosts())
@@ -717,8 +717,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertRaises(StopIteration, search.next_with_ghosts)
 
     def test_breadth_first_change_search(self):
-        # To make the API robust, we allow changing from next() to
-        # next_with_ghosts() and vice verca.
+        # Changing the search should work with both next and next_with_ghosts.
         parent_graph = {
             'head':['present'],
             'present':['stopped'],
