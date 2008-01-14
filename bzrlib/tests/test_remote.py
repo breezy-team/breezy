@@ -578,22 +578,22 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         repo.lock_read()
         repo.unlock()
         parents = graph.get_parent_map([r1])
-        self.assertEqual({r1: ()}, parents)
+        self.assertEqual({r1: (NULL_REVISION,)}, parents)
         self.assertEqual(
-            [('call_expecting_body', 'Repository.get_revision_graph',
-             ('///quack/', ''))],
+            [('call_expecting_body', 'Repository.get_parent_map',
+             ('///quack/', r2))],
             client._calls)
         repo.unlock()
         # now we call again, and it should use the second response.
         repo.lock_read()
         graph = repo.get_graph()
-        parents = graph.get_parent_map([r2])
-        self.assertEqual({r2: (r1,)}, parents)
+        parents = graph.get_parent_map([r1])
+        self.assertEqual({r1: (NULL_REVISION,)}, parents)
         self.assertEqual(
-            [('call_expecting_body', 'Repository.get_revision_graph',
-              ('///quack/', '')),
-             ('call_expecting_body', 'Repository.get_revision_graph',
-              ('///quack/', ''))
+            [('call_expecting_body', 'Repository.get_parent_map',
+              ('///quack/', r2)),
+             ('call_expecting_body', 'Repository.get_parent_map',
+              ('///quack/', r1))
             ],
             client._calls)
         repo.unlock()
