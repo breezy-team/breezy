@@ -135,6 +135,9 @@ IN DEVELOPMENT
      removed use characters not supported in the terminal encoding.
      (Aaron Bentley)
 
+   * Unknown hostnames when connecting to a ``bzr://`` URL no longer cause
+     tracebacks.  (Andrew Bennetts, #182849)
+
    * When dumb http servers return whole files instead of the requested ranges,
      read the remaining bytes by chunks to avoid overflowing network buffers.
      (Vincent Ladeuil, #175886)
