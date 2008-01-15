@@ -2040,7 +2040,7 @@ class ConvertBzrDir4To5(Converter):
     def _load_updated_inventory(self, rev_id):
         assert rev_id in self.converted_revs
         inv_xml = self.inv_weave.get_text(rev_id)
-        inv = xml5.serializer_v5.read_inventory_from_string(inv_xml)
+        inv = xml5.serializer_v5.read_inventory_from_string(inv_xml, rev_id)
         return inv
 
     def _convert_one_rev(self, rev_id):

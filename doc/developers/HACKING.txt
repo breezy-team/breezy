@@ -1781,18 +1781,190 @@ Feature Freeze
 TODO: Get material from http://bazaar-vcs.org/FeatureFreeze.
 
 
-Release Candidates
-------------------
 
-TODO: Get material from http://bazaar-vcs.org/ReleaseChecklist and clean
-it up to make it clearer what the RC vs final vs both tasks are.
+Making a Release or Release Candidate
+-------------------------------------
+
+.. Was previously at http://bazaar-vcs.org/ReleaseChecklist
+
+.. TODO: Still needs more clarity on what's in a RC versus a final
+.. release?
+
+This is the procedure for making a new bzr release:
+
+#. If the release is the first candidate, make a new branch in PQM. (Contact RobertCollins for this step).
+
+   Register the branch at https://launchpad.net/products/bzr/+addbranch
+
+#. Run the automatic test suite and any non-automated tests.  (For example, try a download over http; these should eventually be scripted though not automatically run.). Try to have all optional dependencies installed so that there are no tests skipped. Also make sure that you have the c extensions compiled (``make`` or ``python setup.py build_ext -i``).
+
+#. In the release branch, update  ``version_info`` in ``./bzrlib/__init__.py``
+
+#. Add the date and release number to ``./NEWS``.
+
+#. Update the release number in the README. (It's not there as of 0.15, but please check).
+
+#. Commit these changes to the release branch, using a command like::
+    
+     bzr commit -m "(jam) Release 0.12rc1." 
+   
+   The diff before you commit will be something like::
+
+       === modified file 'NEWS'
+       --- NEWS        2006-10-23 13:11:17 +0000
+       +++ NEWS        2006-10-23 22:50:50 +0000
+       @@ -1,4 +1,4 @@
+       -IN DEVELOPMENT
+       +bzr 0.12rc1  2006-10-23
+
+          IMPROVEMENTS:
 
 
-The Final Release
------------------
+       === modified file 'bzrlib/__init__.py'
+       --- bzrlib/__init__.py  2006-10-16 01:47:43 +0000
+       +++ bzrlib/__init__.py  2006-10-23 22:49:46 +0000
+       @@ -35,7 +35,7 @@
+        # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
+        # releaselevel of 'dev' for unreleased under-development code.
 
-TODO: Get material from http://bazaar-vcs.org/ReleaseChecklist and clean
-it up to make it clearer what the RC vs final vs both tasks are.
+       -version_info = (0, 12, 0, 'dev', 0)
+       +version_info = (0, 12, 0, 'candidate', 1)
+
+        if version_info[3] == 'final':
+            version_string = '%d.%d.%d' % version_info[:3]
+
+#. Send the changes to PQM, to update the official master branch.
+
+#. When PQM succeeds, pull down the master release branch.
+
+#. Merge the release branch back into the trunk.  Check that changes in NEWS were merged into the right sections.  If it's not already done, advance the version number in bzr and bzrlib/__init__.py Submit this back into pqm for bzr.dev.
+
+#. Make a distribution directory by running e.g. ``bzr export /tmp/bzr-<version>/`` in the working directory.
+
+#. Run make in /tmp/bzr-<version>. This creates the extensions from the pyrex source.
+
+#. Run the test suite in the distribution directory
+
+#. Run ``setup.py install`` --root=prefix to do a test install into your system directory, home directory, or some other prefix.  Check the install worked and that the installed version is usable. (run the bzr script from the installed path with PYTHONPATH set to the site-packages directory it created). i.e. ::
+
+    python setup.py install --root=installed
+    PYTHONPATH=installed/usr/lib/python2.4/site-packages installed/usr/bin/bzr
+
+#. Clean the tree to get rid of .pyc files etc: make clean && rm -rf build && rm bzrlib/_*.c bzrlib/_*.so
+
+#. Generate the reference documentation in text format: make doc/en/user-reference/bzr_man.txt.
+
+#. Change back to your original branch and then run: make clean && make to create the compiled pyrex extensions.  You then need to copy the .c files over to the exported directory. 
+   
+   ``find . -name "*.c"`` will tell you which files you need.
+
+#. Create the release tarball::
+   
+     cd /tmp && tar czf bzr-<version>.tar.gz bzr-<version>
+
+#. Sign the tarball with e.g. ``gpg --detach-sign bzr-0.10rc1.tar.gz``
+
+#. Upload to sftp://escudero.ubuntu.com/srv/bazaar.canonical.com/www/releases/src
+   or, add a download file in https://edge.launchpad.net/bzr/+download and use that address below...
+
+#. Link from http://bazaar-vcs.org/Download
+
+#. Announce to ``bazaar-announce`` and ``bazaar`` mailing lists. 
+   The announce mail will look something like this:
+   
+    | Subject: bzr 0.11 release candidate 1
+    | 
+    | INTRO HERE. Mention the release number and date, and why the release. (i.e. release candidate for testing, final release of a version, backport/bugfix etc).
+    | 
+    | Tarballs:
+    | http://bazaar-vcs.org/releases/src/bzr-VERSION.tar.gz
+    | and GPG signature:
+    | http://bazaar-vcs.org/releases/src/bzr-VERSION.tar.gz.sig
+    | 
+    | DESCRIBE-CHANGES-IN-OVERVIEW-HERE
+    | 
+    | DESCRIBE-when the next release will be (if there is another - i.e. this is a release candidate)
+    | 
+    | Many thanks to all the contributors to this release! I've included the
+    | contents of NEWS for VERSION below:
+
+To generate the data from NEWS, just copy and paste the relevant news section and clean it up as appropriate. The main clean-up task is to confirm that all major changes are indeed covered. This can be done by running ``bzr log`` back to the point when the branch was opened and cross checking the changes against the NEWS entries.
+
+ * For point releases (i.e. a release candidate, or an incremental fix to a released version) take everything in the relevant NEWS secion : for 0.11rc2 take everything in NEWS from the bzr 0.11rc2 line to the bzr 0.11rc1 line further down.
+ * For major releases (i.e. 0.11, 0.12 etc), take all the combined NEWS sections from within that version: for 0.11 take all of the 0.11 specific section, plus 0.11rc2, plus 0.11rc1 etc.
+
+#. Announce on the `Bazaar home page`__
+   
+ __ http://bazaar-vcs.org/
+
+#. Update the `news side menu`__ -- this currently requires downloading the file, editing it, deleting it, and uploading a replacement.
+
+ __ http://bazaar-vcs.org/site/menu?action=AttachFile&do=view&target=news.html
+
+#. Update the IRC channel topic. Use the ``/topic`` command to do this, ensuring the new topic text keeps the project name, web site link, etc.
+
+#. Announce on http://freshmeat.net/projects/bzr/
+   
+   This should be done for both release candidates and final releases. If you do not have a Freshmeat account yet, ask one of the existing admins.
+
+#. Update http://en.wikipedia.org/wiki/Bzr -- this should be done for final releases but not Release Candidates.
+
+#. Update https://launchpad.net/products/bzr/ -- add a release on the right series for the product.
+
+#. Update http://doc.bazaar-vcs.org/  
+
+   **TODO** Explain how.
+
+#. Package maintainers should update packages when they see the
+   announcement.
+
+#. RC announcements should remind plugin maintainers to update their
+   plugins.
+
+#. Blog about it.
+
+#. Post to http://mail.python.org/mailman/listinfo/python-announce-list for major releases
+
+#. Update the python package index: http://pypi.python.org/pypi/bzr
+
+
+Making Win32 installers
+-----------------------
+
+Alexander Belchenko has been very good about getting packaged installers compiled (see Win32ReleaseChecklist for details). He generally e-mails John Arbash Meinel when they are ready. This is just a brief checklist of what needs to be done.
+
+#. Download and verify the sha1 sums and gpg signatures. Frequently the sha1 files are in dos mode, and need to be converted to unix mode (strip off the trailing ``\r``) before they veryify correctly.
+
+#. Upload to escudero (to the b.c.c/www/releases/win32 directory) using sftp, lftp or rsync
+
+#. Cat the contents of the .sha1 files into the SHA1SUM.
+
+#. Update the SHA1SUM and MD5SUM files using something like ``md5sum bzr-0.14.0.win32.exe >> MD5SUM``. Make sure you use append (>>) rather than overwrite (>).
+
+#. Verify once again that everything is correct with ``sha1sum -c SHA1SUM`` and ``md5sum -c MD5SUM``.
+
+#. Update ``.htaccess`` so that the 'bzr-latest.win32.exe' links point to the latest release. This is not done for candidate releases, only for final releases. (example: bzr-0.14.0, but not bzr-0.14.0rc1).
+
+#. Make sure these urls work as expected:
+
+   http://bazaar-vcs.org/releases/win32/bzr-latest.win32-py2.5.exe
+
+   http://bazaar-vcs.org/releases/win32/bzr-latest.win32-py2.5.exe.asc
+
+   http://bazaar-vcs.org/releases/win32/bzr-latest.win32-py2.4.exe
+
+   http://bazaar-vcs.org/releases/win32/bzr-latest.win32-py2.4.exe.asc
+
+   http://bazaar-vcs.org/releases/win32/bzr-setup-latest.exe
+
+   http://bazaar-vcs.org/releases/win32/bzr-setup-latest.exe.asc
+   
+They should all try to download a file with the correct version number.
+
+#. Update http://bazaar-vcs.org/Download to indicate the newly available versions.
+
+#. Update http://bazaar-vcs.org/WindowsDownloads to have the correct version number as well as the correct sha1sum displayed.
+
 
 ..
    vim: ft=rst tw=74 ai

@@ -375,7 +375,16 @@ request_handlers.register_lazy('Repository.gather_stats',
                                'bzrlib.smart.repository',
                                'SmartServerRepositoryGatherStats')
 request_handlers.register_lazy(
-    'Repository.stream_knit_data_for_revisions', 'bzrlib.smart.repository',
+    'Repository.stream_knit_data_for_revisions',
+    'bzrlib.smart.repository',
+    'SmartServerRepositoryStreamKnitDataForRevisions')
+request_handlers.register_lazy(
+    'Repository.stream_revisions_chunked',
+    'bzrlib.smart.repository',
+    'SmartServerRepositoryStreamRevisionsChunked')
+request_handlers.register_lazy(
+    'Repository.chunked_stream_knit_data_for_revisions',
+    'bzrlib.smart.repository',
     'SmartServerRepositoryStreamKnitDataForRevisions')
 request_handlers.register_lazy(
     'Repository.get_revision_graph', 'bzrlib.smart.repository', 'SmartServerRepositoryGetRevisionGraph')

@@ -2277,6 +2277,8 @@ class TestSuccessfulSmartServerResponse(tests.TestCase):
                                                               'bytes')
         self.assertEqual(('foo', 'bar'), response.args)
         self.assertEqual('bytes', response.body)
+        # repr(response) doesn't trigger exceptions.
+        repr(response)
 
     def test_construct_with_body_stream(self):
         bytes_iterable = ['abc']
@@ -2306,6 +2308,8 @@ class TestFailedSmartServerResponse(tests.TestCase):
         response = _mod_request.FailedSmartServerResponse(('foo', 'bar'), 'bytes')
         self.assertEqual(('foo', 'bar'), response.args)
         self.assertEqual('bytes', response.body)
+        # repr(response) doesn't trigger exceptions.
+        repr(response)
 
     def test_is_successful(self):
         """is_successful should return False for FailedSmartServerResponse."""
@@ -2353,20 +2357,6 @@ class RemoteHTTPTransportTestCase(tests.TestCase):
         self.assertEqual(base_transport._http_transport,
                          new_transport._http_transport)
         self.assertEqual('child_dir/foo', new_transport._remote_path('foo'))
-
-    def test_remote_path_after_clone_parent(self):
-        # However, accessing a parent directory should go direct to the parent's
-        # URL.  We don't send relpaths like "../foo" in smart requests.
-        base_transport = remote.RemoteHTTPTransport('bzr+http://host/path1/path2')
-        new_transport = base_transport.clone('..')
-        self.assertEqual('foo', new_transport._remote_path('foo'))
-        new_transport = base_transport.clone('../')
-        self.assertEqual('foo', new_transport._remote_path('foo'))
-        new_transport = base_transport.clone('../abc')
-        self.assertEqual('foo', new_transport._remote_path('foo'))
-        # "abc/../.." should be equivalent to ".."
-        new_transport = base_transport.clone('abc/../..')
-        self.assertEqual('foo', new_transport._remote_path('foo'))
 
     def test_remote_path_unnormal_base(self):
         # If the transport's base isn't normalised, the _remote_path should

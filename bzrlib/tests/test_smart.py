@@ -24,7 +24,7 @@ properties.
 Tests for low-level protocol encoding are found in test_smart_transport.
 """
 
-from StringIO import StringIO
+from cStringIO import StringIO
 import tarfile
 
 from bzrlib import (
@@ -36,10 +36,6 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.branch import BranchReferenceFormat
-# Some imports so that "smart.branch.foo", etc, work correctly.
-import bzrlib.smart.branch
-import bzrlib.smart.bzrdir
-import bzrlib.smart.repository
 from bzrlib.smart.request import (
     FailedSmartServerResponse,
     SmartServerRequest,
@@ -855,7 +851,6 @@ class TestSmartServerRepositoryStreamKnitData(tests.TestCaseWithMemoryTransport)
 
         response = request.execute('', rev_id2_utf8)
         self.assertEqual(('ok',), response.args)
-        from cStringIO import StringIO
         unpacker = pack.ContainerReader(StringIO(response.body))
         names = []
         for [name], read_bytes in unpacker.iter_records():
@@ -875,6 +870,53 @@ class TestSmartServerRepositoryStreamKnitData(tests.TestCaseWithMemoryTransport)
         self.assertEqual(
             SmartServerResponse(('NoSuchRevision', rev_id1_utf8)),
             response)
+
+
+class TestSmartServerRepositoryStreamRevisionsChunked(tests.TestCaseWithMemoryTransport):
+
+    def test_fetch_revisions(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryStreamRevisionsChunked(
+            backing)
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
+        rev_id1_utf8 = u'\xc8'.encode('utf-8')
+        rev_id2_utf8 = u'\xc9'.encode('utf-8')
+        r1 = tree.commit('1st commit', rev_id=rev_id1_utf8)
+        r1 = tree.commit('2nd commit', rev_id=rev_id2_utf8)
+        tree.unlock()
+
+        response = request.execute('', rev_id2_utf8)
+        self.assertEqual(('ok',), response.args)
+        parser = pack.ContainerPushParser()
+        names = []
+        for stream_bytes in response.body_stream:
+            parser.accept_bytes(stream_bytes)
+            for [name], record_bytes in parser.read_pending_records():
+                names.append(name)
+                # The bytes should be a valid bencoded string.
+                bencode.bdecode(record_bytes)
+                # XXX: assert that the bencoded knit records have the right
+                # contents?
+        
+    def test_no_such_revision_error(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryStreamRevisionsChunked(
+            backing)
+        repo = self.make_repository('.')
+        rev_id1_utf8 = u'\xc8'.encode('utf-8')
+        response = request.execute('', rev_id1_utf8)
+        # There's no error initially.
+        self.assertTrue(response.is_successful())
+        self.assertEqual(('ok',), response.args)
+        # We only get an error while streaming the body.
+        body = list(response.body_stream)
+        last_chunk = body[-1]
+        self.assertIsInstance(last_chunk, FailedSmartServerResponse)
+        self.assertEqual(
+            last_chunk,
+            FailedSmartServerResponse(('NoSuchRevision', rev_id1_utf8)))
 
 
 class TestSmartServerIsReadonly(tests.TestCaseWithMemoryTransport):
@@ -944,7 +986,7 @@ class TestHandlers(tests.TestCase):
             smart.repository.SmartServerRepositoryLockWrite)
         self.assertEqual(
             smart.request.request_handlers.get(
-                'Repository.stream_knit_data_for_revisions'),
+                'Repository.chunked_stream_knit_data_for_revisions'),
             smart.repository.SmartServerRepositoryStreamKnitDataForRevisions)
         self.assertEqual(
             smart.request.request_handlers.get('Repository.tarball'),
