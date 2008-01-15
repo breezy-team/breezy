@@ -509,6 +509,8 @@ class _BreadthFirstSearcher(object):
         self._iterations = 0
         self._next_query = set(revisions)
         self.seen = set()
+        self._started_keys = set(self._next_query)
+        self._stopped_keys = set()
         self._parents_provider = parents_provider
         self._returning = 'next_with_ghosts'
 
@@ -520,6 +522,30 @@ class _BreadthFirstSearcher(object):
         search = '%s=%r' % (prefix, list(self._next_query))
         return ('_BreadthFirstSearcher(iterations=%d, %s,'
                 ' seen=%r)' % (self._iterations, search, list(self.seen)))
+
+    def get_recipe(self):
+        """Return a recipe that can be used to replay this search.
+        
+        :return: A tuple (start_keys_set, exclude_keys_set). To recreate the
+            results of this search, create a breadth first searcher on the same
+            graph starting at start_keys. Then call next() (or
+            next_with_ghosts()) repeatedly, and on every result, call
+            stop_searching_any on any keys from the exclude_keys set.
+        """
+        if self._returning == 'next':
+            # We have to know the current nodes children to be able to list the
+            # exclude keys for them. However, while we could have a second
+            # look-ahead result buffer and shuffle things around, this method
+            # is typically only called once per search - when memoising the
+            # results of the search.
+            found, ghosts, next, parents = self._do_query(self._next_query)
+            # pretend we didn't query: perhaps we should tweak _do_query to be
+            # entirely stateless?
+            self.seen.difference_update(next)
+            next_query = next
+        else:
+            next_query = self._next_query
+        return self._started_keys, self._stopped_keys.union(next_query)
 
     def next(self):
         """Return the next ancestors of this revision.
@@ -538,11 +564,13 @@ class _BreadthFirstSearcher(object):
             # switch to returning the query, not the results.
             self._returning = 'next'
             self._iterations += 1
-            self.seen.update(self._next_query)
         else:
             self._advance()
         if len(self._next_query) == 0:
             raise StopIteration()
+        # We have seen what we're querying at this point as we are returning
+        # the query, not the results.
+        self.seen.update(self._next_query)
         return self._next_query
 
     def next_with_ghosts(self):
@@ -586,12 +614,14 @@ class _BreadthFirstSearcher(object):
         """
         found_parents = set()
         parents_of_found = set()
+        # revisions may contain nodes that point to other nodes in revisions:
+        # we want to filter them out.
+        self.seen.update(revisions)
         parent_map = self._parents_provider.get_parent_map(revisions)
         for rev_id, parents in parent_map.iteritems():
             found_parents.add(rev_id)
             parents_of_found.update(p for p in parents if p not in self.seen)
         ghost_parents = revisions - found_parents
-        self.seen.update(parents_of_found)
         return found_parents, ghost_parents, parents_of_found, parent_map
 
     def __iter__(self):

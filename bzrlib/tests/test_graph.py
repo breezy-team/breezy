@@ -252,13 +252,7 @@ class InstrumentedParentsProvider(object):
 class TestGraph(TestCaseWithMemoryTransport):
 
     def make_graph(self, ancestors):
-        # XXX: This seems valid, is there a reason to actually create a
-        # repository and put things in it?
         return _mod_graph.Graph(_mod_graph.DictParentsProvider(ancestors))
-        tree = self.prepare_memory_tree('.')
-        self.build_ancestry(tree, ancestors)
-        self.addCleanup(tree.unlock)
-        return tree.branch.repository.get_graph()
 
     def prepare_memory_tree(self, location):
         tree = self.make_branch_and_memory_tree(location)
@@ -653,10 +647,7 @@ class TestGraph(TestCaseWithMemoryTransport):
             self._run_heads_break_deeper(graph_dict, ['h1', 'h2']))
 
     def test_breadth_first_search_start_ghosts(self):
-        parent_graph = {}
-        parents_provider = InstrumentedParentsProvider(
-            _mod_graph.DictParentsProvider(parent_graph))
-        graph = _mod_graph.Graph(parents_provider)
+        graph = self.make_graph({})
         # with_ghosts reports the ghosts
         search = graph._make_breadth_first_searcher(['a-ghost'])
         self.assertEqual((set(), set(['a-ghost'])), search.next_with_ghosts())
@@ -667,14 +658,11 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertRaises(StopIteration, search.next)
 
     def test_breadth_first_search_deep_ghosts(self):
-        parent_graph = {
+        graph = self.make_graph({
             'head':['present'],
             'present':['child', 'ghost'],
             'child':[],
-            }
-        parents_provider = InstrumentedParentsProvider(
-            _mod_graph.DictParentsProvider(parent_graph))
-        graph = _mod_graph.Graph(parents_provider)
+            })
         # with_ghosts reports the ghosts
         search = graph._make_breadth_first_searcher(['head'])
         self.assertEqual((set(['head']), set()), search.next_with_ghosts())
@@ -693,14 +681,11 @@ class TestGraph(TestCaseWithMemoryTransport):
     def test_breadth_first_search_change_next_to_next_with_ghosts(self):
         # To make the API robust, we allow calling both next() and
         # next_with_ghosts() on the same searcher.
-        parent_graph = {
+        graph = self.make_graph({
             'head':['present'],
             'present':['child', 'ghost'],
             'child':[],
-            }
-        parents_provider = InstrumentedParentsProvider(
-            _mod_graph.DictParentsProvider(parent_graph))
-        graph = _mod_graph.Graph(parents_provider)
+            })
         # start with next_with_ghosts
         search = graph._make_breadth_first_searcher(['head'])
         self.assertEqual((set(['head']), set()), search.next_with_ghosts())
@@ -718,15 +703,12 @@ class TestGraph(TestCaseWithMemoryTransport):
 
     def test_breadth_first_change_search(self):
         # Changing the search should work with both next and next_with_ghosts.
-        parent_graph = {
+        graph = self.make_graph({
             'head':['present'],
             'present':['stopped'],
             'other':['other_2'],
             'other_2':[],
-            }
-        parents_provider = InstrumentedParentsProvider(
-            _mod_graph.DictParentsProvider(parent_graph))
-        graph = _mod_graph.Graph(parents_provider)
+            })
         search = graph._make_breadth_first_searcher(['head'])
         self.assertEqual((set(['head']), set()), search.next_with_ghosts())
         self.assertEqual((set(['present']), set()), search.next_with_ghosts())
@@ -745,6 +727,38 @@ class TestGraph(TestCaseWithMemoryTransport):
         search.start_searching(['other', 'other_ghost'])
         self.assertEqual(set(['other_2']), search.next())
         self.assertRaises(StopIteration, search.next)
+
+    def assertSeenAndRecipes(self, results, search, next):
+        """Check the results of .seen and get_recipe() for a seach.
+
+        :param results: A list of tuples (seen, get_recipe_result).
+        :param search: The search to use.
+        :param next: A callable to advance the search.
+        """
+        for seen, recipe in results:
+            next()
+            self.assertEqual(recipe, search.get_recipe())
+            self.assertEqual(seen, search.seen)
+
+    def test_breadth_first_get_recipe_excludes_current_pending(self):
+        graph = self.make_graph({
+            'head':['child'],
+            'child':[NULL_REVISION],
+            })
+        search = graph._make_breadth_first_searcher(['head'])
+        # At the start, nothing has been seen, to its all excluded:
+        self.assertEqual((set(['head']), set(['head'])), search.get_recipe())
+        self.assertEqual(set(), search.seen)
+        # using next:
+        expected = [
+            (set(['head']), (set(['head']), set(['child']))),
+            (set(['head', 'child']), (set(['head']), set([NULL_REVISION]))),
+            (set(['head', 'child', NULL_REVISION]), (set(['head']), set())),
+            ]
+        self.assertSeenAndRecipes(expected, search, search.next)
+        # using next_with_ghosts:
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertSeenAndRecipes(expected, search, search.next_with_ghosts)
 
 
 class TestCachingParentsProvider(tests.TestCase):
