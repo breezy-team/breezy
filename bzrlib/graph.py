@@ -510,7 +510,7 @@ class _BreadthFirstSearcher(object):
         self._next_query = set(revisions)
         self.seen = set()
         self._parents_provider = parents_provider
-        self._returning = 'checked'
+        self._returning = 'next_with_ghosts'
 
     def __repr__(self):
         if self._iterations:
@@ -534,9 +534,9 @@ class _BreadthFirstSearcher(object):
 
         :return: A set of revision_ids.
         """
-        if self._returning != 'query':
+        if self._returning != 'next':
             # switch to returning the query, not the results.
-            self._returning = 'query'
+            self._returning = 'next'
             self._iterations += 1
             self.seen.update(self._next_query)
         else:
@@ -550,13 +550,14 @@ class _BreadthFirstSearcher(object):
         
         Ancestors are returned in the order they are seen in a breadth-first
         traversal.  No ancestor will be returned more than once. Ancestors are
-        returned only after asking for their parents, which can
+        returned only after asking for their parents, which allows us to detect
+        which revisions are ghosts and which are not.
 
         :return: A tuple with (present ancestors, ghost ancestors) sets.
         """
-        if self._returning != 'checked':
+        if self._returning != 'next_with_ghosts':
             # switch to returning the results, not the current query.
-            self._returning = 'checked'
+            self._returning = 'next_with_ghosts'
             self._advance()
         if len(self._next_query) == 0:
             raise StopIteration()
@@ -567,7 +568,7 @@ class _BreadthFirstSearcher(object):
         """Advance the search.
 
         Updates self.seen, self._next_query, self._current_present,
-        self._current_ghosts.
+        self._current_ghosts, self._current_parents and self._iterations.
         """
         self._iterations += 1
         found, ghosts, next, parents = self._do_query(self._next_query)
@@ -616,7 +617,7 @@ class _BreadthFirstSearcher(object):
         search list.  In this case, the call is a no-op.
         """
         revisions = frozenset(revisions)
-        if self._returning == 'query':
+        if self._returning == 'next':
             stopped = self._next_query.intersection(revisions)
             self._next_query = self._next_query.difference(revisions)
         else:
@@ -635,7 +636,7 @@ class _BreadthFirstSearcher(object):
                     stop_rev_references[parent_id] += 1
             # if only the stopped revisions reference it, the ref count will be
             # 0 after this loop
-            for rev, parents in self._current_parents.iteritems():
+            for parents in self._current_parents.itervalues():
                 for parent_id in parents:
                     try:
                         stop_rev_references[parent_id] -= 1
@@ -657,7 +658,7 @@ class _BreadthFirstSearcher(object):
         ghost/not ghost status of revisions. (A tuple (present, ghosted)).
         """
         revisions = frozenset(revisions)
-        if self._returning == 'query':
+        if self._returning == 'next':
             self._next_query.update(revisions.difference(self.seen))
             self.seen.update(revisions)
         else:

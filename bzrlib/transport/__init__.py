@@ -1262,7 +1262,7 @@ class Transport(object):
 class _SharedConnection(object):
     """A connection shared between several transports."""
 
-    def __init__(self, connection=None, credentials=None):
+    def __init__(self, connection=None, credentials=None, base=None):
         """Constructor.
 
         :param connection: An opaque object specific to each transport.
@@ -1272,6 +1272,7 @@ class _SharedConnection(object):
         """
         self.connection = connection
         self.credentials = credentials
+        self.base = base
 
 
 class ConnectedTransport(Transport):
