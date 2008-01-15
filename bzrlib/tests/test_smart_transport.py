@@ -2358,20 +2358,6 @@ class RemoteHTTPTransportTestCase(tests.TestCase):
                          new_transport._http_transport)
         self.assertEqual('child_dir/foo', new_transport._remote_path('foo'))
 
-    def test_remote_path_after_clone_parent(self):
-        # However, accessing a parent directory should go direct to the parent's
-        # URL.  We don't send relpaths like "../foo" in smart requests.
-        base_transport = remote.RemoteHTTPTransport('bzr+http://host/path1/path2')
-        new_transport = base_transport.clone('..')
-        self.assertEqual('foo', new_transport._remote_path('foo'))
-        new_transport = base_transport.clone('../')
-        self.assertEqual('foo', new_transport._remote_path('foo'))
-        new_transport = base_transport.clone('../abc')
-        self.assertEqual('foo', new_transport._remote_path('foo'))
-        # "abc/../.." should be equivalent to ".."
-        new_transport = base_transport.clone('abc/../..')
-        self.assertEqual('foo', new_transport._remote_path('foo'))
-
     def test_remote_path_unnormal_base(self):
         # If the transport's base isn't normalised, the _remote_path should
         # still be calculated correctly.
