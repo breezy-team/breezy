@@ -197,7 +197,7 @@ class TestSmartServerRequestInitializeBzrDir(tests.TestCaseWithMemoryTransport):
         backing = self.get_transport()
         request = smart.bzrdir.SmartServerRequestInitializeBzrDir(backing)
         self.assertEqual(SmartServerResponse(('ok', )),
-            request.execute('.'))
+            request.execute(''))
         made_dir = bzrdir.BzrDir.open_from_transport(backing)
         # no branch, tree or repository is expected with the current 
         # default formart.
@@ -229,7 +229,7 @@ class TestSmartServerRequestOpenBranch(TestCaseWithChrootedTransport):
         request = smart.bzrdir.SmartServerRequestOpenBranch(backing)
         self.make_bzrdir('.')
         self.assertEqual(SmartServerResponse(('nobranch', )),
-            request.execute('/'))
+            request.execute(''))
 
     def test_branch(self):
         """When there is a branch, 'ok' is returned."""
@@ -237,7 +237,7 @@ class TestSmartServerRequestOpenBranch(TestCaseWithChrootedTransport):
         request = smart.bzrdir.SmartServerRequestOpenBranch(backing)
         self.make_branch('.')
         self.assertEqual(SmartServerResponse(('ok', '')),
-            request.execute('/'))
+            request.execute(''))
 
     def test_branch_reference(self):
         """When there is a branch reference, the reference URL is returned."""
@@ -248,7 +248,7 @@ class TestSmartServerRequestOpenBranch(TestCaseWithChrootedTransport):
         reference_url = BranchReferenceFormat().get_reference(checkout.bzrdir)
         self.assertFileEqual(reference_url, 'reference/.bzr/branch/location')
         self.assertEqual(SmartServerResponse(('ok', reference_url)),
-            request.execute('/reference'))
+            request.execute('reference'))
 
 
 class TestSmartServerRequestRevisionHistory(tests.TestCaseWithMemoryTransport):
