@@ -652,6 +652,100 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual(set(['h1', 'h2']),
             self._run_heads_break_deeper(graph_dict, ['h1', 'h2']))
 
+    def test_breadth_first_search_start_ghosts(self):
+        parent_graph = {}
+        parents_provider = InstrumentedParentsProvider(
+            _mod_graph.DictParentsProvider(parent_graph))
+        graph = _mod_graph.Graph(parents_provider)
+        # with_ghosts reports the ghosts
+        search = graph._make_breadth_first_searcher(['a-ghost'])
+        self.assertEqual((set(), set(['a-ghost'])), search.next_with_ghosts())
+        self.assertRaises(StopIteration, search.next_with_ghosts)
+        # next includes them
+        search = graph._make_breadth_first_searcher(['a-ghost'])
+        self.assertEqual(set(['a-ghost']), search.next())
+        self.assertRaises(StopIteration, search.next)
+
+    def test_breadth_first_search_deep_ghosts(self):
+        parent_graph = {
+            'head':['present'],
+            'present':['child', 'ghost'],
+            'child':[],
+            }
+        parents_provider = InstrumentedParentsProvider(
+            _mod_graph.DictParentsProvider(parent_graph))
+        graph = _mod_graph.Graph(parents_provider)
+        # with_ghosts reports the ghosts
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertEqual((set(['head']), set()), search.next_with_ghosts())
+        self.assertEqual((set(['present']), set()), search.next_with_ghosts())
+        self.assertEqual((set(['child']), set(['ghost'])),
+            search.next_with_ghosts())
+        self.assertRaises(StopIteration, search.next_with_ghosts)
+        # next includes them
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertEqual(set(['head']), search.next())
+        self.assertEqual(set(['present']), search.next())
+        self.assertEqual(set(['child', 'ghost']),
+            search.next())
+        self.assertRaises(StopIteration, search.next)
+
+    def test_breadth_first_search_change_next_to_next_with_ghosts(self):
+        # To make the API robust, we allow calling both next() and
+        # next_with_ghosts() on the same searcher.
+        parent_graph = {
+            'head':['present'],
+            'present':['child', 'ghost'],
+            'child':[],
+            }
+        parents_provider = InstrumentedParentsProvider(
+            _mod_graph.DictParentsProvider(parent_graph))
+        graph = _mod_graph.Graph(parents_provider)
+        # start with next_with_ghosts
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertEqual((set(['head']), set()), search.next_with_ghosts())
+        self.assertEqual(set(['present']), search.next())
+        self.assertEqual((set(['child']), set(['ghost'])),
+            search.next_with_ghosts())
+        self.assertRaises(StopIteration, search.next)
+        # start with next
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertEqual(set(['head']), search.next())
+        self.assertEqual((set(['present']), set()), search.next_with_ghosts())
+        self.assertEqual(set(['child', 'ghost']),
+            search.next())
+        self.assertRaises(StopIteration, search.next_with_ghosts)
+
+    def test_breadth_first_change_search(self):
+        # Changing the search should work with both next and next_with_ghosts.
+        parent_graph = {
+            'head':['present'],
+            'present':['stopped'],
+            'other':['other_2'],
+            'other_2':[],
+            }
+        parents_provider = InstrumentedParentsProvider(
+            _mod_graph.DictParentsProvider(parent_graph))
+        graph = _mod_graph.Graph(parents_provider)
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertEqual((set(['head']), set()), search.next_with_ghosts())
+        self.assertEqual((set(['present']), set()), search.next_with_ghosts())
+        self.assertEqual(set(['present']),
+            search.stop_searching_any(['present']))
+        self.assertEqual((set(['other']), set(['other_ghost'])),
+            search.start_searching(['other', 'other_ghost']))
+        self.assertEqual((set(['other_2']), set()), search.next_with_ghosts())
+        self.assertRaises(StopIteration, search.next_with_ghosts)
+        # next includes them
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertEqual(set(['head']), search.next())
+        self.assertEqual(set(['present']), search.next())
+        self.assertEqual(set(['present']),
+            search.stop_searching_any(['present']))
+        search.start_searching(['other', 'other_ghost'])
+        self.assertEqual(set(['other_2']), search.next())
+        self.assertRaises(StopIteration, search.next)
+
 
 class TestCachingParentsProvider(tests.TestCase):
 

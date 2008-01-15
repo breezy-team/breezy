@@ -170,6 +170,11 @@ IN DEVELOPMENT
      inventories. This is primarily used by the ``revision_trees`` method, as
      direct access to inventories is discouraged. (Robert Collins)
 
+   * New method ``next_with_ghosts`` on the Graph breadth-first-search objects
+     which will split out ghosts and present parents into two separate sets,
+     useful for code which needs to be aware of ghosts (e.g. fetching data
+     cares about ghosts during revision selection). (Robert Collins)
+
    * Parent Providers should now implement ``get_parent_map`` returning a
      dictionary instead of ``get_parents`` returning a list.
      ``Graph.get_parents`` is now deprecated. (John Arbash Meinel,
