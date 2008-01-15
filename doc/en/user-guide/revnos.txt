@@ -1,14 +1,5 @@
-Revision Numbers
-================
-
-It is often convenient to have a simple way of referencing a revision. Bazaar
-internally tracks all revisions using a unique revision id. For example::
-  pqm@pqm.ubuntu.com-20080104024907-k4ld11wri0m0tvxq
-
-These are not very natural for human beings. So Bazaar provides a
-shortcut. For any given Branch, all revisions in the ancestry will have a
-revision number assigned. The above revision is number 3165 in
-http://bazaar-vcs.org/bzr/bzr.dev.
+Understanding Revision Numbers
+==============================
 
 All revisions in the mainline of a branch will have a simple increasing
 integer. (First commit gets 1, 10th commit gets 10, etc.) This makes them
