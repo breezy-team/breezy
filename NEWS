@@ -197,6 +197,9 @@ IN DEVELOPMENT
    * Reduce selftest overhead to establish test names by memoization.
      (Vincent Ladeuil)
 
+   * RemoteTransport's ``recommended_page_size`` method now returns 64k, like
+     SFTPTransport and HttpTransportBase.  (Andrew Bennetts)
+
    * Repository has a new method ``has_revisions`` which signals the presence
      of many revisions by returning a set of the revisions listed which are
      present. This can be done by index queries without reading data for parent
