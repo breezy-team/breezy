@@ -239,7 +239,7 @@ class MergeSorter(object):
            found.
          * revno_sequence: When requested this field provides a sequence of
              revision numbers for all revisions. The format is:
-             REVNO[[.BRANCHREVNO.REVNO] ...]. BRANCHREVNO is the number of the
+             (REVNO, BRANCHNUM, BRANCHREVNO). BRANCHNUM is the number of the
              branch that the revno is on. From left to right the REVNO numbers
              are the sequence numbers within that branch of the revision.
              For instance, the graph {A:[], B:['A'], C:['A', 'B']} will get
