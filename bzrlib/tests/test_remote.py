@@ -554,6 +554,62 @@ class TestRepositoryGatherStats(TestRemoteRepository):
                          result)
 
 
+class TestRepositoryGetGraph(TestRemoteRepository):
+
+    def test_get_graph(self):
+        # get_graph returns a graph with the repository as the
+        # parents_provider.
+        responses = []
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(
+            responses, transport_path)
+        graph = repo.get_graph()
+        self.assertEqual(graph._parents_provider, repo)
+
+
+class TestRepositoryGetParentMap(TestRemoteRepository):
+
+    def test_get_parent_map_caching(self):
+        # get_parent_map returns from cache until unlock()
+        # setup a reponse with two revisions
+        r1 = u'\u0e33'.encode('utf8')
+        r2 = u'\u0dab'.encode('utf8')
+        lines = [' '.join([r2, r1]), r1]
+        encoded_body = '\n'.join(lines)
+        responses = [(('ok', ), encoded_body), (('ok', ), encoded_body)]
+
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(
+            responses, transport_path)
+        repo.lock_read()
+        graph = repo.get_graph()
+        parents = graph.get_parent_map([r2])
+        self.assertEqual({r2: (r1,)}, parents)
+        # locking and unlocking deeper should not reset
+        repo.lock_read()
+        repo.unlock()
+        parents = graph.get_parent_map([r1])
+        self.assertEqual({r1: (NULL_REVISION,)}, parents)
+        self.assertEqual(
+            [('call_expecting_body', 'Repository.get_parent_map',
+             ('quack/', r2))],
+            client._calls)
+        repo.unlock()
+        # now we call again, and it should use the second response.
+        repo.lock_read()
+        graph = repo.get_graph()
+        parents = graph.get_parent_map([r1])
+        self.assertEqual({r1: (NULL_REVISION,)}, parents)
+        self.assertEqual(
+            [('call_expecting_body', 'Repository.get_parent_map',
+              ('quack/', r2)),
+             ('call_expecting_body', 'Repository.get_parent_map',
+              ('quack/', r1))
+            ],
+            client._calls)
+        repo.unlock()
+
+
 class TestRepositoryGetRevisionGraph(TestRemoteRepository):
     
     def test_null_revision(self):

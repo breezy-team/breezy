@@ -30,6 +30,7 @@ from bzrlib.smart.request import (
     SmartServerRequest,
     SuccessfulSmartServerResponse,
     )
+from bzrlib import revision as _mod_revision
 
 
 class SmartServerRepositoryRequest(SmartServerRequest):
@@ -49,6 +50,64 @@ class SmartServerRepositoryRequest(SmartServerRequest):
         bzrdir = BzrDir.open_from_transport(transport)
         repository = bzrdir.open_repository()
         return self.do_repository_request(repository, *args)
+
+
+class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
+    
+    def do_repository_request(self, repository, *revision_ids):
+        repository.lock_read()
+        try:
+            return self._do_repository_request(repository, revision_ids)
+        finally:
+            repository.unlock()
+
+    def _do_repository_request(self, repository, revision_ids):
+        """Get parent details for some revisions.
+        
+        All the parents for revision_ids are returned. Additionally up to 64KB
+        of additional parent data found by performing a breadth first search
+        from revision_ids is returned.
+
+        :param repository: The repository to query in.
+        :param revision_ids: The utf8 encoded revision_id to answer for.
+        :return: A smart server response where the body contains an utf8
+            encoded flattened list of the parents of the revisions, (the same
+            format as Repository.get_revision_graph).
+        """
+        lines = []
+        repo_graph = repository.get_graph()
+        result = {}
+        queried_revs = set()
+        size_so_far = 0
+        next_revs = revision_ids
+        first_loop_done = False
+        while next_revs:
+            queried_revs.update(next_revs)
+            parent_map = repo_graph.get_parent_map(next_revs)
+            next_revs = set()
+            for revision_id, parents in parent_map.iteritems():
+                # adjust for the wire
+                if parents == (_mod_revision.NULL_REVISION,):
+                    parents = ()
+                # add parents to the result
+                result[revision_id] = parents
+                # prepare the next query
+                next_revs.update(parents)
+                # Approximate the serialized cost of this revision_id.
+                size_so_far += 2 + len(revision_id) + sum(map(len, parents))
+                # get all the directly asked for parents, and then flesh out to
+                # 64K or so.
+                if first_loop_done and size_so_far > 65000:
+                    next_revs = set()
+                    break
+            # don't query things we've already queried
+            next_revs.difference_update(queried_revs)
+            first_loop_done = True
+
+        for revision, parents in result.items():
+            lines.append(' '.join((revision, ) + tuple(parents)))
+
+        return SuccessfulSmartServerResponse(('ok', ), '\n'.join(lines))
 
 
 class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryRequest):

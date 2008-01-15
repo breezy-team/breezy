@@ -919,6 +919,9 @@ class TestHandlers(tests.TestCase):
             smart.request.request_handlers.get('Repository.gather_stats'),
             smart.repository.SmartServerRepositoryGatherStats)
         self.assertEqual(
+            smart.request.request_handlers.get('Repository.get_parent_map'),
+            smart.repository.SmartServerRepositoryGetParentMap)
+        self.assertEqual(
             smart.request.request_handlers.get(
                 'Repository.get_revision_graph'),
             smart.repository.SmartServerRepositoryGetRevisionGraph)

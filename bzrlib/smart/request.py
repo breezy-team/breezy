@@ -318,6 +318,9 @@ request_handlers.register_lazy(
 request_handlers.register_lazy('Repository.gather_stats',
                                'bzrlib.smart.repository',
                                'SmartServerRepositoryGatherStats')
+request_handlers.register_lazy('Repository.get_parent_map',
+                               'bzrlib.smart.repository',
+                               'SmartServerRepositoryGetParentMap')
 request_handlers.register_lazy(
     'Repository.stream_knit_data_for_revisions',
     'bzrlib.smart.repository',
