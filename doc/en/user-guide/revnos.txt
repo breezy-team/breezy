@@ -14,7 +14,7 @@ same revision, so they all get a unique number. The third number is the
 number of revisions since the branch started. For example, 3112.1.5 is the
 first branch from revision 3112, the fifth revision on that branch.
 
-Revisions are number in a stable way, such that if two branches have the
+Revisions are numbered in a stable way, such that if two branches have the
 same revision in their mainline, all revisions in the ancestry of that
 revision will have the same revision numbers. (So if Alice and Bob's
 branches agree on revision 10, they will agree on all revisions before

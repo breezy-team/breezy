@@ -201,7 +201,7 @@ class MergeSortTests(TestCase):
         self.assertSortAndIterate(graph, 'F',
             [(0, 'F', 0, (3,), False),
              (1, 'D', 1, (2,2,1), False),
-             (2, 'C', 1, (2,1,1), True),
+             (2, 'C', 1, (2,1,1), True), # XXX: Shouldn't it be merge_depth=2?
              (3, 'B', 0, (2,), False),
              (4, 'A', 0, (1,), True),
              ], True)
