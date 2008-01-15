@@ -513,6 +513,9 @@ class _BreadthFirstSearcher(object):
         self._stopped_keys = set()
         self._parents_provider = parents_provider
         self._returning = 'next_with_ghosts'
+        self._current_present = set()
+        self._current_ghosts = set()
+        self._current_parents = {}
 
     def __repr__(self):
         if self._iterations:
@@ -677,6 +680,7 @@ class _BreadthFirstSearcher(object):
                 if refs == 0:
                     stop_parents.add(rev_id)
             self._next_query.difference_update(stop_parents)
+        self._stopped_keys.update(stopped)
         return stopped
 
     def start_searching(self, revisions):
@@ -688,6 +692,7 @@ class _BreadthFirstSearcher(object):
         ghost/not ghost status of revisions. (A tuple (present, ghosted)).
         """
         revisions = frozenset(revisions)
+        self._started_keys.update(revisions)
         if self._returning == 'next':
             self._next_query.update(revisions.difference(self.seen))
             self.seen.update(revisions)
