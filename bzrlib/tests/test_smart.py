@@ -134,7 +134,7 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithMemoryTransport):
         request = smart.bzrdir.SmartServerRequestFindRepository(backing)
         self.make_bzrdir('.')
         self.assertEqual(SmartServerResponse(('norepository', )),
-            request.execute('/'))
+            request.execute(''))
 
     def test_nonshared_repository(self):
         # nonshared repositorys only allow 'find' to return a handle when the 
