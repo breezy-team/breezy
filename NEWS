@@ -12,6 +12,14 @@ IN DEVELOPMENT
     * Fetching via bzr+ssh will no longer fill ghosts by default (this is
       consistent with pack-0.92 fetching over SFTP). (Robert Collins)
 
+   * ``merge`` now prefers to use the submit branch, but will fall back to
+     parent branch.  For many users, this has no effect.  But some users who
+     pull and merge on the same branch will notice a change.  This change
+     makes it easier to work on a branch on two different machines, pulling
+     between the machines, while merging from the upstream.
+     ``merge --remember`` can now be used to set the submit_branch.
+     (Aaron Bentley)
+
   FEATURES:
 
     * New smart method, ``Repository.stream_revisions_chunked``, for fetching
