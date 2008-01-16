@@ -77,6 +77,19 @@ class TestRepository(TestCaseWithRepository):
         tree_b.get_file_text('file1')
         rev1 = repo_b.get_revision('rev1')
 
+    def test_iter_inventories_is_ordered(self):
+        # just a smoke test
+        tree = self.make_branch_and_tree('a')
+        first_revision = tree.commit('')
+        second_revision = tree.commit('')
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        revs = (first_revision, second_revision)
+        invs = tree.branch.repository.iter_inventories(revs)
+        for rev_id, inv in zip(revs, invs):
+            self.assertEqual(rev_id, inv.revision_id)
+            self.assertIsInstance(inv, Inventory)
+
     def test_supports_rich_root(self):
         tree = self.make_branch_and_tree('a')
         tree.commit('')

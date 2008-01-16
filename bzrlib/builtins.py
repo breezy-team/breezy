@@ -2909,11 +2909,11 @@ class cmd_merge(Command):
         from bzrlib.tag import _merge_tags_if_possible
         assert revision is None or len(revision) < 3
         # find the branch locations
-        other_loc, location = self._select_branch_location(tree, location,
+        other_loc, user_location = self._select_branch_location(tree, location,
             revision, -1)
         if revision is not None and len(revision) == 2:
-            base_loc, location = self._select_branch_location(tree, location,
-                                                              revision, 0)
+            base_loc, _unused = self._select_branch_location(tree,
+                location, revision, 0)
         else:
             base_loc = other_loc
         # Open the branches
@@ -2940,9 +2940,9 @@ class cmd_merge(Command):
         else:
             base_revision_id = None
         # Remember where we merge from
-        if ((tree.branch.get_parent() is None or remember) and
-            other_branch is not None):
-            tree.branch.set_parent(other_branch.base)
+        if ((remember or tree.branch.get_submit_branch() is None) and
+             user_location is not None):
+            tree.branch.set_submit_branch(other_branch.base)
         _merge_tags_if_possible(other_branch, tree.branch)
         merger = _mod_merge.Merger.from_revision_ids(pb, tree,
             other_revision_id, base_revision_id, other_branch, base_branch)
@@ -2953,7 +2953,7 @@ class cmd_merge(Command):
             allow_pending = True
         return merger, allow_pending
 
-    def _select_branch_location(self, tree, location, revision=None,
+    def _select_branch_location(self, tree, user_location, revision=None,
                                 index=None):
         """Select a branch location, according to possible inputs.
 
@@ -2961,34 +2961,35 @@ class cmd_merge(Command):
         ``revision`` and ``index`` must be supplied.)
 
         Otherwise, the ``location`` parameter is used.  If it is None, then the
-        ``parent`` location is used, and a note is printed.
+        ``submit`` or ``parent`` location is used, and a note is printed.
 
         :param tree: The working tree to select a branch for merging into
         :param location: The location entered by the user
         :param revision: The revision parameter to the command
         :param index: The index to use for the revision parameter.  Negative
             indices are permitted.
-        :return: (selected_location, default_location).  The default location
-            will be the user-entered location, if any, or else the remembered
-            location.
+        :return: (selected_location, user_location).  The default location
+            will be the user-entered location.
         """
         if (revision is not None and index is not None
             and revision[index] is not None):
             branch = revision[index].get_branch()
             if branch is not None:
-                return branch, location
-        location = self._get_remembered_parent(tree, location, 'Merging from')
-        return location, location
+                return branch, branch
+        if user_location is None:
+            location = self._get_remembered(tree, 'Merging from')
+        else:
+            location = user_location
+        return location, user_location
 
-    # TODO: move up to common parent; this isn't merge-specific anymore. 
-    def _get_remembered_parent(self, tree, supplied_location, verb_string):
+    def _get_remembered(self, tree, verb_string):
         """Use tree.branch's parent if none was supplied.
 
         Report if the remembered location was used.
         """
-        if supplied_location is not None:
-            return supplied_location
-        stored_location = tree.branch.get_parent()
+        stored_location = tree.branch.get_submit_branch()
+        if stored_location is None:
+            stored_location = tree.branch.get_parent()
         mutter("%s", stored_location)
         if stored_location is None:
             raise errors.BzrCommandError("No location specified or remembered")

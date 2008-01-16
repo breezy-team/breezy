@@ -502,7 +502,8 @@ class Repository(object):
         :param parents: The revision ids of the parents that revision_id
                         is known to have and are in the repository already.
 
-        returns the sha1 of the serialized inventory.
+        :returns: The validator(which is a sha1 digest, though what is sha'd is
+            repository format specific) of the serialized inventory.
         """
         assert self.is_in_write_group()
         _mod_revision.check_not_reserved_id(revision_id)
@@ -841,8 +842,14 @@ class Repository(object):
             for version, options, parents, some_bytes in decoded_list:
                 data_list.append((version, options, len(some_bytes), parents))
                 knit_bytes += some_bytes
+            buffer = StringIO(knit_bytes)
+            def reader_func(count):
+                if count is None:
+                    return buffer.read()
+                else:
+                    return buffer.read(count)
             knit.insert_data_stream(
-                (format, data_list, StringIO(knit_bytes).read))
+                (format, data_list, reader_func))
 
     @needs_read_lock
     def missing_revision_ids(self, other, revision_id=None, find_ghosts=True):
@@ -1019,8 +1026,16 @@ class Repository(object):
     @needs_read_lock
     def has_revision(self, revision_id):
         """True if this repository has a copy of the revision."""
-        if 'evil' in debug.debug_flags:
-            mutter_callsite(3, "has_revision is a LBYL symptom.")
+        return revision_id in self.has_revisions((revision_id,))
+
+    def has_revisions(self, revision_ids):
+        """Probe to find out the presence of multiple revisions.
+
+        :param revision_ids: An iterable of revision_ids.
+        :return: A set of the revision_ids that were present.
+        """
+        raise NotImplementedError(self.has_revisions)
+
         return self._revision_store.has_revision_id(revision_id,
                                                     self.get_transaction())
 
@@ -1450,9 +1465,27 @@ class Repository(object):
 
     @needs_read_lock
     def get_inventory(self, revision_id):
-        """Get Inventory object by hash."""
-        return self.deserialise_inventory(
-            revision_id, self.get_inventory_xml(revision_id))
+        """Get Inventory object by revision id."""
+        return self.iter_inventories([revision_id]).next()
+
+    def iter_inventories(self, revision_ids):
+        """Get many inventories by revision_ids.
+
+        This will buffer some or all of the texts used in constructing the
+        inventories in memory, but will only parse a single inventory at a
+        time.
+
+        :return: An iterator of inventories.
+        """
+        assert None not in revision_ids
+        assert _mod_revision.NULL_REVISION not in revision_ids
+        return self._iter_inventories(revision_ids)
+
+    def _iter_inventories(self, revision_ids):
+        """single-document based inventory iteration."""
+        texts = self.get_inventory_weave().get_texts(revision_ids)
+        for text, revision_id in zip(texts, revision_ids):
+            yield self.deserialise_inventory(revision_id, text)
 
     def deserialise_inventory(self, revision_id, xml):
         """Transform the xml into an inventory object. 
@@ -1460,7 +1493,11 @@ class Repository(object):
         :param revision_id: The expected revision id of the inventory.
         :param xml: A serialised inventory.
         """
-        return self._serializer.read_inventory_from_string(xml, revision_id)
+        result = self._serializer.read_inventory_from_string(xml, revision_id)
+        if result.revision_id != revision_id:
+            raise AssertionError('revision id mismatch %s != %s' % (
+                result.revision_id, revision_id))
+        return result
 
     def serialise_inventory(self, inv):
         return self._serializer.write_inventory_to_string(inv)
@@ -1626,12 +1663,9 @@ class Repository(object):
         """Return Tree for a revision on this branch.
 
         `revision_id` may not be None or 'null:'"""
-        assert None not in revision_ids
-        assert _mod_revision.NULL_REVISION not in revision_ids
-        texts = self.get_inventory_weave().get_texts(revision_ids)
-        for text, revision_id in zip(texts, revision_ids):
-            inv = self.deserialise_inventory(revision_id, text)
-            yield RevisionTree(self, inv, revision_id)
+        inventories = self.iter_inventories(revision_ids)
+        for inv in inventories:
+            yield RevisionTree(self, inv, inv.revision_id)
 
     @needs_read_lock
     def get_ancestry(self, revision_id, topo_sorted=True):
@@ -2275,6 +2309,39 @@ class InterRepository(InterObject):
         (copied, failures).
         """
         raise NotImplementedError(self.fetch)
+
+    def _walk_to_common_revisions(self, revision_ids):
+        """Walk out from revision_ids in source to revisions target has.
+
+        :param revision_ids: The start point for the search.
+        :return: A set of revision ids.
+        """
+        graph = self.source.get_graph()
+        missing_revs = set()
+        # ensure we don't pay silly lookup costs.
+        revision_ids = frozenset(revision_ids)
+        searcher = graph._make_breadth_first_searcher(revision_ids)
+        null_set = frozenset([_mod_revision.NULL_REVISION])
+        while True:
+            try:
+                next_revs, ghosts = searcher.next_with_ghosts()
+            except StopIteration:
+                break
+            if revision_ids.intersection(ghosts):
+                absent_ids = set(revision_ids.intersection(ghosts))
+                # If all absent_ids are present in target, no error is needed.
+                absent_ids.difference_update(
+                    self.target.has_revisions(absent_ids))
+                if absent_ids:
+                    raise errors.NoSuchRevision(self.source, absent_ids.pop())
+            # we don't care about other ghosts as we can't fetch them and
+            # haven't been asked to.
+            next_revs = set(next_revs)
+            next_revs.difference_update(null_set)
+            have_revs = self.target.has_revisions(next_revs)
+            missing_revs.update(next_revs - have_revs)
+            searcher.stop_searching_any(have_revs)
+        return missing_revs
    
     @needs_read_lock
     def missing_revision_ids(self, revision_id=None, find_ghosts=True):
@@ -2284,7 +2351,12 @@ class InterRepository(InterObject):
 
         :param revision_id: only return revision ids included by this
                             revision_id.
+        :param find_ghosts: If True find missing revisions in deep history
+            rather than just finding the surface difference.
         """
+        # stop searching at found target revisions.
+        if not find_ghosts and revision_id is not None:
+            return self._walk_to_common_revisions([revision_id])
         # generic, possibly worst case, slow code path.
         target_ids = set(self.target.all_revision_ids())
         if revision_id is not None:
@@ -2362,7 +2434,7 @@ class InterSameDataRepository(InterRepository):
         f = GenericRepoFetcher(to_repository=self.target,
                                from_repository=self.source,
                                last_revision=revision_id,
-                               pb=pb)
+                               pb=pb, find_ghosts=find_ghosts)
         return f.count_copied, f.failed_revisions
 
 
@@ -2440,7 +2512,7 @@ class InterWeaveRepo(InterSameDataRepository):
         f = GenericRepoFetcher(to_repository=self.target,
                                from_repository=self.source,
                                last_revision=revision_id,
-                               pb=pb)
+                               pb=pb, find_ghosts=find_ghosts)
         return f.count_copied, f.failed_revisions
 
     @needs_read_lock
@@ -2518,7 +2590,7 @@ class InterKnitRepo(InterSameDataRepository):
         f = KnitRepoFetcher(to_repository=self.target,
                             from_repository=self.source,
                             last_revision=revision_id,
-                            pb=pb)
+                            pb=pb, find_ghosts=find_ghosts)
         return f.count_copied, f.failed_revisions
 
     @needs_read_lock
@@ -2623,34 +2695,11 @@ class InterPackRepo(InterSameDataRepository):
     def missing_revision_ids(self, revision_id=None, find_ghosts=True):
         """See InterRepository.missing_revision_ids().
         
-        :param find_ghosts: Find ghosts throughough the ancestry of
+        :param find_ghosts: Find ghosts throughout the ancestry of
             revision_id.
         """
         if not find_ghosts and revision_id is not None:
-            graph = self.source.get_graph()
-            missing_revs = set()
-            searcher = graph._make_breadth_first_searcher([revision_id])
-            target_index = \
-                self.target._pack_collection.revision_index.combined_index
-            null_set = frozenset([_mod_revision.NULL_REVISION])
-            while True:
-                try:
-                    next_revs = set(searcher.next())
-                except StopIteration:
-                    break
-                next_revs.difference_update(null_set)
-                target_keys = [(key,) for key in next_revs]
-                have_revs = frozenset(node[1][0] for node in
-                    target_index.iter_entries(target_keys))
-                missing_revs.update(next_revs - have_revs)
-                searcher.stop_searching_any(have_revs)
-            if next_revs - have_revs == set([revision_id]):
-                # we saw the start rev itself, but no parents from it (or
-                # next_revs would have been updated to e.g. set(). We remove
-                # have_revs because if we found revision_id locally we
-                # stop_searching at the first time around.
-                raise errors.NoSuchRevision(self.source, revision_id)
-            return missing_revs
+            return self._walk_to_common_revisions([revision_id])
         elif revision_id is not None:
             source_ids = self.source.get_ancestry(revision_id)
             assert source_ids[0] is None
@@ -2685,7 +2734,7 @@ class InterModel1and2(InterRepository):
         f = Model1toKnit2Fetcher(to_repository=self.target,
                                  from_repository=self.source,
                                  last_revision=revision_id,
-                                 pb=pb)
+                                 pb=pb, find_ghosts=find_ghosts)
         return f.count_copied, f.failed_revisions
 
     @needs_write_lock
@@ -2742,7 +2791,7 @@ class InterKnit1and2(InterKnitRepo):
         f = Knit1to2Fetcher(to_repository=self.target,
                             from_repository=self.source,
                             last_revision=revision_id,
-                            pb=pb)
+                            pb=pb, find_ghosts=find_ghosts)
         return f.count_copied, f.failed_revisions
 
 
@@ -2768,7 +2817,7 @@ class InterDifferingSerializer(InterKnitRepo):
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         """See InterRepository.fetch()."""
         revision_ids = self.target.missing_revision_ids(self.source,
-                                                        revision_id)
+            revision_id, find_ghosts=find_ghosts)
         def revisions_iterator():
             for current_revision_id in revision_ids:
                 revision = self.source.get_revision(current_revision_id)
@@ -2803,14 +2852,12 @@ class InterRemoteToOther(InterRepository):
     def is_compatible(source, target):
         if not isinstance(source, remote.RemoteRepository):
             return False
+        # Is source's model compatible with target's model?
         source._ensure_real()
         real_source = source._real_repository
-        # Is source's model compatible with target's model, and are they the
-        # same format?  Currently we can only optimise fetching from an
-        # identical model & format repo.
         assert not isinstance(real_source, remote.RemoteRepository), (
             "We don't support remote repos backed by remote repos yet.")
-        return real_source._format == target._format
+        return InterRepository._same_model(real_source, target)
 
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):
@@ -2823,7 +2870,7 @@ class InterRemoteToOther(InterRepository):
         f = RemoteToOtherFetcher(to_repository=self.target,
                                  from_repository=self.source,
                                  last_revision=revision_id,
-                                 pb=pb)
+                                 pb=pb, find_ghosts=find_ghosts)
         return f.count_copied, f.failed_revisions
 
     @classmethod
@@ -2855,7 +2902,8 @@ class InterOtherToRemote(InterRepository):
 
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         self._ensure_real_inter()
-        self._real_inter.fetch(revision_id=revision_id, pb=pb)
+        self._real_inter.fetch(revision_id=revision_id, pb=pb,
+            find_ghosts=find_ghosts)
 
     @classmethod
     def _get_repo_format_to_test(self):

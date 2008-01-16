@@ -75,7 +75,13 @@ class RepoFetcher(object):
     This should not be used directly, it's essential a object to encapsulate
     the logic in InterRepository.fetch().
     """
-    def __init__(self, to_repository, from_repository, last_revision=None, pb=None):
+
+    def __init__(self, to_repository, from_repository, last_revision=None, pb=None,
+        find_ghosts=True):
+        """Create a repo fetcher.
+
+        :param find_ghosts: If True search the entire history for ghosts.
+        """
         # result variables.
         self.failed_revisions = []
         self.count_copied = 0
@@ -88,6 +94,7 @@ class RepoFetcher(object):
         self.from_repository = from_repository
         # must not mutate self._last_revision as its potentially a shared instance
         self._last_revision = last_revision
+        self.find_ghosts = find_ghosts
         if pb is None:
             self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
             self.nested_pb = self.pb
@@ -196,7 +203,7 @@ class RepoFetcher(object):
             # XXX: this gets the full graph on both sides, and will make sure
             # that ghosts are filled whether or not you care about them.
             return self.to_repository.missing_revision_ids(self.from_repository,
-                                                           self._last_revision)
+                self._last_revision, find_ghosts=self.find_ghosts)
         except errors.NoSuchRevision:
             raise InstallFailed([self._last_revision])
 
@@ -329,6 +336,8 @@ class Inter1and2Helper(object):
 
         :param revs: A list of revision ids
         """
+        # In case that revs is not a list.
+        revs = list(revs)
         while revs:
             for tree in self.source.revision_trees(revs[:100]):
                 if tree.inventory.revision_id is None:
@@ -362,9 +371,8 @@ class Inter1and2Helper(object):
         stored in the target (reserializing it in a different format).
         :param revs: The revisions to include
         """
-        inventory_weave = self.source.get_inventory_weave()
         for tree in self.iter_rev_trees(revs):
-            parents = inventory_weave.get_parents(tree.get_revision_id())
+            parents = tree.get_parent_ids()
             self.target.add_inventory(tree.get_revision_id(), tree.inventory,
                                       parents)
 
@@ -372,11 +380,11 @@ class Inter1and2Helper(object):
 class Model1toKnit2Fetcher(GenericRepoFetcher):
     """Fetch from a Model1 repository into a Knit2 repository
     """
-    def __init__(self, to_repository, from_repository, last_revision=None, 
-                 pb=None):
+    def __init__(self, to_repository, from_repository, last_revision=None,
+                 pb=None, find_ghosts=True):
         self.helper = Inter1and2Helper(from_repository, to_repository)
         GenericRepoFetcher.__init__(self, to_repository, from_repository,
-                                    last_revision, pb)
+            last_revision, pb, find_ghosts)
 
     def _generate_root_texts(self, revs):
         self.helper.generate_root_texts(revs)
@@ -389,10 +397,10 @@ class Knit1to2Fetcher(KnitRepoFetcher):
     """Fetch from a Knit1 repository into a Knit2 repository"""
 
     def __init__(self, to_repository, from_repository, last_revision=None, 
-                 pb=None):
+                 pb=None, find_ghosts=True):
         self.helper = Inter1and2Helper(from_repository, to_repository)
         KnitRepoFetcher.__init__(self, to_repository, from_repository,
-                                 last_revision, pb)
+            last_revision, pb, find_ghosts)
 
     def _generate_root_texts(self, revs):
         self.helper.generate_root_texts(revs)

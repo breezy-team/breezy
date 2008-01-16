@@ -868,6 +868,7 @@ def test_suite():
         'test_find_text_key_references',
         'test__generate_text_key_index',
         'test_has_same_location',
+        'test_has_revisions',
         'test_is_write_locked',
         'test_iter_reverse_revision_history',
         'test_pack',
