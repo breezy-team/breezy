@@ -529,6 +529,13 @@ class _BreadthFirstSearcher(object):
     def get_recipe(self):
         """Return a recipe that can be used to replay this search.
         
+        The recipe allows reconstruction of the same results at a later date
+        without knowing all the found keys. The essential elements are a list
+        of keys to start and and to stop at. In order to give reproducible
+        results when ghosts are encountered by a search they are automatically
+        added to the exclude list (or else ghost filling may alter the
+        results).
+
         :return: A tuple (start_keys_set, exclude_keys_set). To recreate the
             results of this search, create a breadth first searcher on the same
             graph starting at start_keys. Then call next() (or
@@ -545,7 +552,7 @@ class _BreadthFirstSearcher(object):
             # pretend we didn't query: perhaps we should tweak _do_query to be
             # entirely stateless?
             self.seen.difference_update(next)
-            next_query = next
+            next_query = next.union(ghosts)
         else:
             next_query = self._next_query
         return self._started_keys, self._stopped_keys.union(next_query)
@@ -607,6 +614,9 @@ class _BreadthFirstSearcher(object):
         self._current_ghosts = ghosts
         self._next_query = next
         self._current_parents = parents
+        # ghosts are implicit stop points, otherwise the search cannot be
+        # repeated when ghosts are filled.
+        self._stopped_keys.update(ghosts)
 
     def _do_query(self, revisions):
         """Query for revisions.

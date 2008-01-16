@@ -751,6 +751,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         graph = self.make_graph({
             'head':['child'],
             'child':[NULL_REVISION],
+            NULL_REVISION:[],
             })
         search = graph._make_breadth_first_searcher(['head'])
         # At the start, nothing has been seen, to its all excluded:
@@ -776,6 +777,7 @@ class TestGraph(TestCaseWithMemoryTransport):
             'otherhead':['otherchild'],
             'otherchild':['excluded'],
             'excluded':[NULL_REVISION],
+            NULL_REVISION:[]
             })
         search = graph._make_breadth_first_searcher([])
         # Starting with nothing and adding a search works:
@@ -803,6 +805,27 @@ class TestGraph(TestCaseWithMemoryTransport):
         # using next_with_ghosts:
         search = graph._make_breadth_first_searcher([])
         search.start_searching(['head'])
+        self.assertSeenAndRecipes(expected, search, search.next_with_ghosts)
+
+    def test_breadth_first_get_recipe_ghosts_are_excluded(self):
+        graph = self.make_graph({
+            'head':['child', 'ghost'],
+            'child':[NULL_REVISION],
+            NULL_REVISION:[],
+            })
+        search = graph._make_breadth_first_searcher(['head'])
+        # using next:
+        expected = [
+            (set(['head']),
+             (set(['head']), set(['ghost', 'child'])),
+             None, None),
+            (set(['head', 'child', 'ghost']),
+             (set(['head']), set([NULL_REVISION, 'ghost'])),
+             None, None),
+            ]
+        self.assertSeenAndRecipes(expected, search, search.next)
+        # using next_with_ghosts:
+        search = graph._make_breadth_first_searcher(['head'])
         self.assertSeenAndRecipes(expected, search, search.next_with_ghosts)
 
 
