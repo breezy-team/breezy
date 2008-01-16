@@ -22,6 +22,9 @@ IN DEVELOPMENT
 
   FEATURES:
 
+    * ``merge --preview`` produces a diff of the changes merge would make,
+      but does not actually perform the merge.  (Aaron Bentley)
+
     * New smart method, ``Repository.stream_revisions_chunked``, for fetching
       revision data that streams revision data via a chunked encoding.  This
       avoids buffering large amounts of revision data on the server and on the
@@ -96,9 +99,6 @@ bzr 1.1rc1 2008-01-05
 
    * New "lca" merge-type for fast everyday merging that also supports
      criss-cross merges.  (Aaron Bentley)
-
-   * ``merge --preview`` produces a diff of the changes merge would make,
-     but does not actually perform the merge.  (Aaron Bentley)
 
   IMPROVEMENTS:
 
