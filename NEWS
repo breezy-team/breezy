@@ -164,6 +164,10 @@ IN DEVELOPMENT
    * Add -Dtimes debug flag, which records a timestamp against each mutter to
      the trace file, relative to the first mutter.  (Andrew Bennetts)
    
+   * Add a new method ``get_result`` to graph search objects. The resulting
+     ``SearchResult`` can be used to recreate the search later, which will
+     be useful in reducing network traffic. (Robert Collins)
+
    * Fetching now passes the find_ghosts flag through to the 
      ``InterRepository.missing_revision_ids`` call consistently for all
      repository types. This will enable faster missing revision discovery with
