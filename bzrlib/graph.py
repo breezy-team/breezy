@@ -621,6 +621,8 @@ class _BreadthFirstSearcher(object):
     def _do_query(self, revisions):
         """Query for revisions.
 
+        Adds revisions to the seen set.
+
         :param revisions: Revisions to query.
         :return: A tuple: (set(found_revisions), set(ghost_revisions),
            set(parents_of_found_revisions), dict(found_revisions:parents)).
@@ -703,12 +705,13 @@ class _BreadthFirstSearcher(object):
         """
         revisions = frozenset(revisions)
         self._started_keys.update(revisions)
+        new_revisions = revisions.difference(self.seen)
+        revs, ghosts, query, parents = self._do_query(revisions)
+        self._stopped_keys.update(ghosts)
         if self._returning == 'next':
-            self._next_query.update(revisions.difference(self.seen))
-            self.seen.update(revisions)
+            self._next_query.update(new_revisions)
         else:
             # perform a query on revisions
-            revs, ghosts, query, parents = self._do_query(revisions)
             self._current_present.update(revs)
             self._current_ghosts.update(ghosts)
             self._next_query.update(query)
