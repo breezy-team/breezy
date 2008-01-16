@@ -59,6 +59,9 @@ IN DEVELOPMENT
       present. This can be done by index queries without reading data for parent
       revision names etc. (Robert Collins)
 
+    * RemoteTransport's ``recommended_page_size`` method now returns 64k, like
+      SFTPTransport and HttpTransportBase.  (Andrew Bennetts)
+
 
 bzr 1.1 2008-01-15
 ------------------
