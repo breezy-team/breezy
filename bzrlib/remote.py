@@ -22,6 +22,7 @@ from cStringIO import StringIO
 from bzrlib import (
     branch,
     errors,
+    graph,
     lockdir,
     repository,
     revision,
@@ -264,6 +265,8 @@ class RemoteRepository(object):
         self._lock_token = None
         self._lock_count = 0
         self._leave_lock = False
+        # A cache of looked up revision parent data; reset at unlock time.
+        self._parents_map = None
         # For tests:
         # These depend on the actual remote format, so force them off for
         # maximum compatibility. XXX: In future these should depend on the
@@ -390,8 +393,13 @@ class RemoteRepository(object):
         
     def get_graph(self, other_repository=None):
         """Return the graph for this repository format"""
-        self._ensure_real()
-        return self._real_repository.get_graph(other_repository)
+        parents_provider = self
+        if (other_repository is not None and
+            other_repository.bzrdir.transport.base !=
+            self.bzrdir.transport.base):
+            parents_provider = graph._StackedParentsProvider(
+                [parents_provider, other_repository._make_parents_provider()])
+        return graph.Graph(parents_provider)
 
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""
@@ -462,6 +470,7 @@ class RemoteRepository(object):
         if not self._lock_mode:
             self._lock_mode = 'r'
             self._lock_count = 1
+            self._parents_map = {}
             if self._real_repository is not None:
                 self._real_repository.lock_read()
         else:
@@ -499,6 +508,7 @@ class RemoteRepository(object):
                 self._leave_lock = False
             self._lock_mode = 'w'
             self._lock_count = 1
+            self._parents_map = {}
         elif self._lock_mode == 'r':
             raise errors.ReadOnlyError(self)
         else:
@@ -558,6 +568,7 @@ class RemoteRepository(object):
         self._lock_count -= 1
         if self._lock_count > 0:
             return
+        self._parents_map = None
         old_mode = self._lock_mode
         self._lock_mode = None
         try:
@@ -725,6 +736,75 @@ class RemoteRepository(object):
         """
         self._ensure_real()
         return self._real_repository.iter_files_bytes(desired_files)
+
+    def get_parent_map(self, keys):
+        """See bzrlib.Graph.get_parent_map()."""
+        # Hack to build up the caching logic.
+        ancestry = self._parents_map
+        missing_revisions = set(key for key in keys if key not in ancestry)
+        if missing_revisions:
+            self._parents_map.update(self._get_parent_map(missing_revisions))
+        return dict((k, ancestry[k]) for k in keys if k in ancestry)
+
+    def _response_is_unknown_method(self, response, verb):
+        """Return True if response is an unknonwn method response to verb.
+        
+        :param response: The response from a smart client call_expecting_body
+            call.
+        :param verb: The verb used in that call.
+        :return: True if an unknown method was encountered.
+        """
+        # This might live better on
+        # bzrlib.smart.protocol.SmartClientRequestProtocolOne
+        if (response[0] == ('error', "Generic bzr smart protocol error: "
+                "bad request '%s'" % verb) or
+              response[0] == ('error', "Generic bzr smart protocol error: "
+                "bad request u'%s'" % verb)):
+           response[1].cancel_read_body()
+           return True
+        return False
+
+    def _get_parent_map(self, keys):
+        """Helper for get_parent_map that performs the RPC."""
+        keys = set(keys)
+        if NULL_REVISION in keys:
+            keys.discard(NULL_REVISION)
+            found_parents = {NULL_REVISION:()}
+            if not keys:
+                return found_parents
+        else:
+            found_parents = {}
+        path = self.bzrdir._path_for_remote_call(self._client)
+        for key in keys:
+            assert type(key) is str
+        verb = 'Repository.get_parent_map'
+        response = self._client.call_expecting_body(
+            verb, path, *keys)
+        if self._response_is_unknown_method(response, verb):
+            # Server that does not support this method, get the whole graph.
+            response = self._client.call_expecting_body(
+                'Repository.get_revision_graph', path, '')
+            if response[0][0] not in ['ok', 'nosuchrevision']:
+                reponse[1].cancel_read_body()
+                raise errors.UnexpectedSmartServerResponse(response[0])
+        elif response[0][0] not in ['ok']:
+            reponse[1].cancel_read_body()
+            raise errors.UnexpectedSmartServerResponse(response[0])
+        if response[0][0] == 'ok':
+            coded = response[1].read_body_bytes()
+            if coded == '':
+                # no revisions found
+                return {}
+            lines = coded.split('\n')
+            revision_graph = {}
+            for line in lines:
+                d = tuple(line.split())
+                if len(d) > 1:
+                    revision_graph[d[0]] = d[1:]
+                else:
+                    # No parents - so give the Graph result (NULL_REVISION,).
+                    revision_graph[d[0]] = (NULL_REVISION,)
+            return revision_graph
 
     @needs_read_lock
     def get_signature_text(self, revision_id):
@@ -918,8 +998,7 @@ class RemoteRepository(object):
         return self._real_repository._check_for_inconsistent_revision_parents()
 
     def _make_parents_provider(self):
-        self._ensure_real()
-        return self._real_repository._make_parents_provider()
+        return self
 
 
 class RemoteBranchLockableFiles(LockableFiles):
