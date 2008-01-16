@@ -81,6 +81,11 @@ bzr 1.1rc1 2008-01-05
 
   CHANGES:
    
+   * Dotted revision numbers have been revised. Instead of growing longer with
+     nested branches the branch number just increases. (eg instead of 1.1.1.1.1
+     we now report 1.2.1.) This helps scale long lived branches which have many
+     feature branches merged between them. (John Arbash Meinel)
+
    * The syntax ``bzr diff branch1 branch2`` is no longer supported.
      Use ``bzr diff branch1 --new branch2`` instead. This change has
      been made to remove the ambiguity where ``branch2`` is in fact a
