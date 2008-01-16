@@ -13,15 +13,77 @@ import bzrlib
 
 ##
 # META INFORMATION FOR SETUP
+# see http://docs.python.org/dist/meta-data.html
+META_INFO = {
+    'name':         'bzr',
+    'version':      bzrlib.__version__,
+    'author':       'Canonical Ltd',
+    'author_email': 'bazaar@lists.canonical.com',
+    'url':          'http://www.bazaar-vcs.org/',
+    'description':  'Friendly distributed version control system',
+    'license':      'GNU GPL v2',
+    'download_url': 'http://bazaar-vcs.org/Download',
+    # ReST description, should be kept up-to-date with README
+    'long_description': """\
+Bazaar (``bzr``) is a decentralized revision control system, designed to be
+easy for developers and end users alike.
 
-META_INFO = {'name':         'bzr',
-             'version':      bzrlib.__version__,
-             'author':       'Canonical Ltd',
-             'author_email': 'bazaar@lists.canonical.com',
-             'url':          'http://www.bazaar-vcs.org/',
-             'description':  'Friendly distributed version control system',
-             'license':      'GNU GPL v2',
-            }
+Bazaar highlights
+=================
+
+* Easy to use and intuitive.
+
+  Only five commands are needed to do all basic operations, and all
+  commands have documentation accessible via 'bzr help command'.
+  Bazaar's interface is also easy to learn for CVS and Subversion users.
+
+* Robust and reliable.
+
+  Bazaar is developed under an extensive test suite. Branches can be
+  checked and verified for integrity at any time, and revisions can be
+  signed with PGP/GnuPG.
+
+* Publish branches with HTTP.
+
+  Branches can be hosted on an HTTP server with no need for special
+  software on the server side. Branches can be uploaded by bzr itself
+  over SSH (SFTP), or with rsync.
+
+* Adapts to multiple environments.
+
+  Bazaar runs on Linux and Windows, fully supports Unicode filenames,
+  and suits different development models, including centralized.
+
+* Easily extended and customized.
+
+  A rich Python interface is provided for extending and embedding,
+  including a plugin interface. There are already many available plugins,
+  most of them registered at http://bazaar-vcs.org/PluginRegistry.
+
+* Smart merging.
+
+  Changes will never be merged more than once, conflicts will be
+  minimized, and identical changes are dealt with well.
+
+* Vibrant and active community.
+
+  Help with Bazaar is obtained easily, via the mailing list, or the IRC
+  channel.
+"""
+    'classifiers': [
+        'Development Status :: 6 - Mature',
+        'Environment :: Console',
+        'Intended Audience :: Developers',
+        'Intended Audience :: System Administrators',
+        'License :: OSI Approved :: GNU General Public License (GPL)',
+        'Operating System :: Microsoft :: Windows',
+        'Operating System :: OS Independent',
+        'Operating System :: POSIX',
+        'Programming Language :: Python',
+        'Programming Language :: C',
+        'Topic :: Software Development :: Version Control',
+        ],
+    }
 
 # The list of packages is automatically generated later. Add other things
 # that are part of BZRLIB here.
