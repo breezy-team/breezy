@@ -27,7 +27,7 @@ from bzrlib.transport import chroot, get_transport
 from bzrlib.urlutils import local_path_to_url
     
 
-def make_app(root, prefix, path_var, readonly=True):
+def make_app(root, prefix, path_var='REQUEST_URI', readonly=True):
     """Convenience function to construct a WSGI bzr smart server.
     
     :param root: a local path that requests will be relative to.
