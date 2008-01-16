@@ -102,7 +102,8 @@ class RemoteTransport(transport.ConnectedTransport):
                     trace.mutter('hpss: Built a new medium: %s',
                                  medium.__class__.__name__)
             self._shared_connection = transport._SharedConnection(medium,
-                                                                  credentials)
+                                                                  credentials,
+                                                                  self.base)
 
         if _client is None:
             self._client = client._SmartClient(self.get_shared_medium())
@@ -282,6 +283,10 @@ class RemoteTransport(transport.ConnectedTransport):
         # the external path for RemoteTransports is the base
         return self.base
 
+    def recommended_page_size(self):
+        """Return the recommended page size for this transport."""
+        return 64 * 1024
+        
     def _readv(self, relpath, offsets):
         if not offsets:
             return
@@ -386,6 +391,12 @@ class RemoteTransport(transport.ConnectedTransport):
             else:
                 error_path = resp[1]
             raise errors.ReadError(error_path)
+        elif what == "PermissionDenied":
+            if orig_path is not None:
+                error_path = orig_path
+            else:
+                error_path = resp[1]
+            raise errors.PermissionDenied(error_path)
         else:
             raise errors.SmartProtocolError('unexpected smart server error: %r' % (resp,))
 
@@ -496,7 +507,7 @@ class RemoteHTTPTransport(RemoteTransport):
         """After connecting, HTTP Transport only deals in relative URLs."""
         # Adjust the relpath based on which URL this smart transport is
         # connected to.
-        http_base = urlutils.normalize_url(self._http_transport.base)
+        http_base = urlutils.normalize_url(self.get_smart_medium().base)
         url = urlutils.join(self.base[len('bzr+'):], relpath)
         url = urlutils.normalize_url(url)
         return urlutils.relative_url(http_base, url)
@@ -513,26 +524,14 @@ class RemoteHTTPTransport(RemoteTransport):
         smart requests may be different).  This is so that the server doesn't
         have to handle .bzr/smart requests at arbitrary places inside .bzr
         directories, just at the initial URL the user uses.
-
-        The exception is parent paths (i.e. relative_url of "..").
         """
         if relative_url:
             abs_url = self.abspath(relative_url)
         else:
             abs_url = self.base
-        # We either use the exact same http_transport (for child locations), or
-        # a clone of the underlying http_transport (for parent locations).  This
-        # means we share the connection.
-        norm_base = urlutils.normalize_url(self.base)
-        norm_abs_url = urlutils.normalize_url(abs_url)
-        normalized_rel_url = urlutils.relative_url(norm_base, norm_abs_url)
-        if normalized_rel_url == ".." or normalized_rel_url.startswith("../"):
-            http_transport = self._http_transport.clone(normalized_rel_url)
-        else:
-            http_transport = self._http_transport
         return RemoteHTTPTransport(abs_url,
                                    _from_transport=self,
-                                   http_transport=http_transport)
+                                   http_transport=self._http_transport)
 
 
 def get_test_permutations():

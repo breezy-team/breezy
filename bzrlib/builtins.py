@@ -3409,9 +3409,12 @@ class cmd_annotate(Command):
     def run(self, filename, all=False, long=False, revision=None,
             show_ids=False):
         from bzrlib.annotate import annotate_file
-        tree, relpath = WorkingTree.open_containing(filename)
-        branch = tree.branch
-        branch.lock_read()
+        wt, branch, relpath = \
+            bzrdir.BzrDir.open_containing_tree_or_branch(filename)
+        if wt is not None:
+            wt.lock_read()
+        else:
+            branch.lock_read()
         try:
             if revision is None:
                 revision_id = branch.last_revision()
@@ -3419,15 +3422,21 @@ class cmd_annotate(Command):
                 raise errors.BzrCommandError('bzr annotate --revision takes exactly 1 argument')
             else:
                 revision_id = revision[0].in_history(branch).rev_id
-            file_id = tree.path2id(relpath)
+            tree = branch.repository.revision_tree(revision_id)
+            if wt is not None:
+                file_id = wt.path2id(relpath)
+            else:
+                file_id = tree.path2id(relpath)
             if file_id is None:
                 raise errors.NotVersionedError(filename)
-            tree = branch.repository.revision_tree(revision_id)
             file_version = tree.inventory[file_id].revision
             annotate_file(branch, file_version, file_id, long, all, self.outf,
                           show_ids=show_ids)
         finally:
-            branch.unlock()
+            if wt is not None:
+                wt.unlock()
+            else:
+                branch.unlock()
 
 
 class cmd_re_sign(Command):

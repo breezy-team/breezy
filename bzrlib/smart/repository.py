@@ -24,12 +24,13 @@ import tarfile
 
 from bzrlib import errors
 from bzrlib.bzrdir import BzrDir
-from bzrlib.pack import ContainerWriter
+from bzrlib.pack import ContainerSerialiser
 from bzrlib.smart.request import (
     FailedSmartServerResponse,
     SmartServerRequest,
     SuccessfulSmartServerResponse,
     )
+from bzrlib import revision as _mod_revision
 
 
 class SmartServerRepositoryRequest(SmartServerRequest):
@@ -49,6 +50,64 @@ class SmartServerRepositoryRequest(SmartServerRequest):
         bzrdir = BzrDir.open_from_transport(transport)
         repository = bzrdir.open_repository()
         return self.do_repository_request(repository, *args)
+
+
+class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
+    
+    def do_repository_request(self, repository, *revision_ids):
+        repository.lock_read()
+        try:
+            return self._do_repository_request(repository, revision_ids)
+        finally:
+            repository.unlock()
+
+    def _do_repository_request(self, repository, revision_ids):
+        """Get parent details for some revisions.
+        
+        All the parents for revision_ids are returned. Additionally up to 64KB
+        of additional parent data found by performing a breadth first search
+        from revision_ids is returned.
+
+        :param repository: The repository to query in.
+        :param revision_ids: The utf8 encoded revision_id to answer for.
+        :return: A smart server response where the body contains an utf8
+            encoded flattened list of the parents of the revisions, (the same
+            format as Repository.get_revision_graph).
+        """
+        lines = []
+        repo_graph = repository.get_graph()
+        result = {}
+        queried_revs = set()
+        size_so_far = 0
+        next_revs = revision_ids
+        first_loop_done = False
+        while next_revs:
+            queried_revs.update(next_revs)
+            parent_map = repo_graph.get_parent_map(next_revs)
+            next_revs = set()
+            for revision_id, parents in parent_map.iteritems():
+                # adjust for the wire
+                if parents == (_mod_revision.NULL_REVISION,):
+                    parents = ()
+                # add parents to the result
+                result[revision_id] = parents
+                # prepare the next query
+                next_revs.update(parents)
+                # Approximate the serialized cost of this revision_id.
+                size_so_far += 2 + len(revision_id) + sum(map(len, parents))
+                # get all the directly asked for parents, and then flesh out to
+                # 64K or so.
+                if first_loop_done and size_so_far > 65000:
+                    next_revs = set()
+                    break
+            # don't query things we've already queried
+            next_revs.difference_update(queried_revs)
+            first_loop_done = True
+
+        for revision, parents in result.items():
+            lines.append(' '.join((revision, ) + tuple(parents)))
+
+        return SuccessfulSmartServerResponse(('ok', ), '\n'.join(lines))
 
 
 class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryRequest):
@@ -258,14 +317,38 @@ class SmartServerRepositoryStreamKnitDataForRevisions(SmartServerRepositoryReque
 
     def _do_repository_request(self, repository, revision_ids):
         stream = repository.get_data_stream(revision_ids)
-        filelike = StringIO()
-        pack = ContainerWriter(filelike.write)
-        pack.begin()
+        buffer = StringIO()
+        pack = ContainerSerialiser()
+        buffer.write(pack.begin())
         try:
             for name_tuple, bytes in stream:
-                pack.add_bytes_record(bytes, [name_tuple])
+                buffer.write(pack.bytes_record(bytes, [name_tuple]))
         except errors.RevisionNotPresent, e:
             return FailedSmartServerResponse(('NoSuchRevision', e.revision_id))
+        buffer.write(pack.end())
+        return SuccessfulSmartServerResponse(('ok',), buffer.getvalue())
+
+
+class SmartServerRepositoryStreamRevisionsChunked(SmartServerRepositoryRequest):
+
+    def do_repository_request(self, repository, *revision_ids):
+        repository.lock_read()
+        try:
+            stream = repository.get_data_stream(revision_ids)
+        except Exception:
+            repository.unlock()
+            raise
+        return SuccessfulSmartServerResponse(('ok',),
+            body_stream=self.body_stream(stream, repository))
+
+    def body_stream(self, stream, repository):
+        pack = ContainerSerialiser()
+        yield pack.begin()
+        try:
+            for name_tuple, bytes in stream:
+                yield pack.bytes_record(bytes, [name_tuple])
+        except errors.RevisionNotPresent, e:
+            yield FailedSmartServerResponse(('NoSuchRevision', e.revision_id))
+        repository.unlock()
         pack.end()
-        return SuccessfulSmartServerResponse(('ok',), filelike.getvalue())
 

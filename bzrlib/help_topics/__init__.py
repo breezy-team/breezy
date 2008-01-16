@@ -281,13 +281,16 @@ development.
                error.
 -Devil         Capture call sites that do expensive or badly-scaling
                operations.
+-Dfetch        Trace history copying between repositories.
 -Dhashcache    Log every time a working file is read to determine its hash.
 -Dhooks        Trace hook execution.
--Dhttp         Trace http connections, requests and responses
 -Dhpss         Trace smart protocol requests and responses.
+-Dhttp         Trace http connections, requests and responses
 -Dindex        Trace major index operations.
+-Dknit         Trace knit operations.
 -Dlock         Trace when lockdir locks are taken or released.
 -Dmerge        Emit information for debugging merges.
+-Dtimes        Record timestamps from program start in trace file.
 """
 
 _standard_options = \
@@ -615,8 +618,8 @@ topic_registry.register('status-flags', _status_flags,
                         "Help on status flags")
 def get_bugs_topic(topic):
     from bzrlib import bugtracker
-    return "Bug Tracker Settings\n\n" + \
-        bugtracker.tracker_registry.help_topic(topic)
+    return ("Bug Tracker Settings\n\n" + 
+        bugtracker.tracker_registry.help_topic(topic))
 topic_registry.register('bugs', get_bugs_topic, 'Bug tracker settings')
 topic_registry.register('env-variables', _env_variables,
                         'Environment variable names and values')

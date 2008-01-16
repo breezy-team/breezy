@@ -262,24 +262,6 @@ class TestInterRepository(TestCaseWithInterRepository):
         to_repo = self.make_to_repository('to')
         to_repo.fetch(from_tree.branch.repository, from_tree.get_parent_ids()[0])
 
-    def test_fetch_no_inventory_revision(self):
-        """Old inventories lack revision_ids, so simulate this"""
-        from_tree = self.make_branch_and_tree('tree')
-        if sys.platform == 'win32':
-            from_repo = from_tree.branch.repository
-            check_repo_format_for_funky_id_on_win32(from_repo)
-        self.build_tree(['tree/filename'])
-        from_tree.add('filename', 'funky-chars<>%&;"\'')
-        from_tree.commit('commit filename')
-        old_deserialise = from_tree.branch.repository.deserialise_inventory
-        def deserialise(revision_id, text):
-            inventory = old_deserialise(revision_id, text)
-            inventory.revision_id = None
-            return inventory
-        from_tree.branch.repository.deserialise_inventory = deserialise
-        to_repo = self.make_to_repository('to')
-        to_repo.fetch(from_tree.branch.repository, from_tree.last_revision())
-
 
 class TestCaseWithComplexRepository(TestCaseWithInterRepository):
 

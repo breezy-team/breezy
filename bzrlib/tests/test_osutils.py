@@ -260,6 +260,10 @@ class TestOSUtils(TestCaseInTempDir):
         self.assertFormatedDelta('1 second in the future', -1)
         self.assertFormatedDelta('2 seconds in the future', -2)
 
+    def test_format_date(self):
+        self.assertRaises(errors.UnsupportedTimezoneFormat,
+            osutils.format_date, 0, timezone='foo')
+
     def test_dereference_path(self):
         self.requireFeature(SymlinkFeature)
         cwd = osutils.realpath('.')
@@ -1092,7 +1096,7 @@ r'''# Copyright (C) 2005, 2006 Canonical Ltd
 
 
 # NOTE: If update these, please also update the help for global-options in
-#       bzrlib/help_topics.py.
+#       bzrlib/help_topics/__init__.py
 
 debug_flags = set()
 """Set of flags that enable different debug behaviour.
@@ -1105,12 +1109,15 @@ Options include:
  * error - show stack traces for all top level exceptions
  * evil - capture call sites that do expensive or badly-scaling operations.
  * fetch - trace history copying between repositories
+ * hashcache - log every time a working file is read to determine its hash
  * hooks - trace hook execution
  * hpss - trace smart protocol requests and responses
  * http - trace http connections, requests and responses
  * index - trace major index operations
+ * knit - trace knit operations
  * lock - trace when lockdir locks are taken or released
  * merge - emit information for debugging merges
+ * times - record timestamps from program start in trace file
 
 """
 '''

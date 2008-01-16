@@ -244,10 +244,6 @@ class InstrumentedParentsProvider(object):
         self.calls = []
         self._real_parents_provider = parents_provider
 
-    def get_parents(self, nodes):
-        self.calls.extend(nodes)
-        return self._real_parents_provider.get_parents(nodes)
-
     def get_parent_map(self, nodes):
         self.calls.extend(nodes)
         return self._real_parents_provider.get_parent_map(nodes)
@@ -450,23 +446,6 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual((set(['e']), set(['f', 'g'])),
                          graph.find_difference('e', 'f'))
 
-    def test_stacked_parents_provider_get_parents(self):
-        parents1 = _mod_graph.DictParentsProvider({'rev2': ['rev3']})
-        parents2 = _mod_graph.DictParentsProvider({'rev1': ['rev4']})
-        stacked = _mod_graph._StackedParentsProvider([parents1, parents2])
-        self.assertEqual([['rev4',], ['rev3']],
-             self.applyDeprecated(symbol_versioning.one_one,
-                                  stacked.get_parents, ['rev1', 'rev2']))
-        self.assertEqual([['rev3',], ['rev4']],
-             self.applyDeprecated(symbol_versioning.one_one,
-                                  stacked.get_parents, ['rev2', 'rev1']))
-        self.assertEqual([['rev3',], ['rev3']],
-             self.applyDeprecated(symbol_versioning.one_one,
-                         stacked.get_parents, ['rev2', 'rev2']))
-        self.assertEqual([['rev4',], ['rev4']],
-             self.applyDeprecated(symbol_versioning.one_one,
-                         stacked.get_parents, ['rev1', 'rev1']))
-
     def test_stacked_parents_provider(self):
         parents1 = _mod_graph.DictParentsProvider({'rev2': ['rev3']})
         parents2 = _mod_graph.DictParentsProvider({'rev1': ['rev4']})
@@ -626,13 +605,6 @@ class TestGraph(TestCaseWithMemoryTransport):
         """
         class stub(object):
             pass
-        def get_parents(keys):
-            result = []
-            for key in keys:
-                if key == 'deeper':
-                    self.fail('key deeper was accessed')
-                result.append(graph_dict[key])
-            return result
         def get_parent_map(keys):
             result = {}
             for key in keys:
@@ -641,7 +613,6 @@ class TestGraph(TestCaseWithMemoryTransport):
                 result[key] = graph_dict[key]
             return result
         an_obj = stub()
-        an_obj.get_parents = get_parents
         an_obj.get_parent_map = get_parent_map
         graph = _mod_graph.Graph(an_obj)
         return graph.heads(search)
@@ -681,6 +652,100 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual(set(['h1', 'h2']),
             self._run_heads_break_deeper(graph_dict, ['h1', 'h2']))
 
+    def test_breadth_first_search_start_ghosts(self):
+        parent_graph = {}
+        parents_provider = InstrumentedParentsProvider(
+            _mod_graph.DictParentsProvider(parent_graph))
+        graph = _mod_graph.Graph(parents_provider)
+        # with_ghosts reports the ghosts
+        search = graph._make_breadth_first_searcher(['a-ghost'])
+        self.assertEqual((set(), set(['a-ghost'])), search.next_with_ghosts())
+        self.assertRaises(StopIteration, search.next_with_ghosts)
+        # next includes them
+        search = graph._make_breadth_first_searcher(['a-ghost'])
+        self.assertEqual(set(['a-ghost']), search.next())
+        self.assertRaises(StopIteration, search.next)
+
+    def test_breadth_first_search_deep_ghosts(self):
+        parent_graph = {
+            'head':['present'],
+            'present':['child', 'ghost'],
+            'child':[],
+            }
+        parents_provider = InstrumentedParentsProvider(
+            _mod_graph.DictParentsProvider(parent_graph))
+        graph = _mod_graph.Graph(parents_provider)
+        # with_ghosts reports the ghosts
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertEqual((set(['head']), set()), search.next_with_ghosts())
+        self.assertEqual((set(['present']), set()), search.next_with_ghosts())
+        self.assertEqual((set(['child']), set(['ghost'])),
+            search.next_with_ghosts())
+        self.assertRaises(StopIteration, search.next_with_ghosts)
+        # next includes them
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertEqual(set(['head']), search.next())
+        self.assertEqual(set(['present']), search.next())
+        self.assertEqual(set(['child', 'ghost']),
+            search.next())
+        self.assertRaises(StopIteration, search.next)
+
+    def test_breadth_first_search_change_next_to_next_with_ghosts(self):
+        # To make the API robust, we allow calling both next() and
+        # next_with_ghosts() on the same searcher.
+        parent_graph = {
+            'head':['present'],
+            'present':['child', 'ghost'],
+            'child':[],
+            }
+        parents_provider = InstrumentedParentsProvider(
+            _mod_graph.DictParentsProvider(parent_graph))
+        graph = _mod_graph.Graph(parents_provider)
+        # start with next_with_ghosts
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertEqual((set(['head']), set()), search.next_with_ghosts())
+        self.assertEqual(set(['present']), search.next())
+        self.assertEqual((set(['child']), set(['ghost'])),
+            search.next_with_ghosts())
+        self.assertRaises(StopIteration, search.next)
+        # start with next
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertEqual(set(['head']), search.next())
+        self.assertEqual((set(['present']), set()), search.next_with_ghosts())
+        self.assertEqual(set(['child', 'ghost']),
+            search.next())
+        self.assertRaises(StopIteration, search.next_with_ghosts)
+
+    def test_breadth_first_change_search(self):
+        # Changing the search should work with both next and next_with_ghosts.
+        parent_graph = {
+            'head':['present'],
+            'present':['stopped'],
+            'other':['other_2'],
+            'other_2':[],
+            }
+        parents_provider = InstrumentedParentsProvider(
+            _mod_graph.DictParentsProvider(parent_graph))
+        graph = _mod_graph.Graph(parents_provider)
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertEqual((set(['head']), set()), search.next_with_ghosts())
+        self.assertEqual((set(['present']), set()), search.next_with_ghosts())
+        self.assertEqual(set(['present']),
+            search.stop_searching_any(['present']))
+        self.assertEqual((set(['other']), set(['other_ghost'])),
+            search.start_searching(['other', 'other_ghost']))
+        self.assertEqual((set(['other_2']), set()), search.next_with_ghosts())
+        self.assertRaises(StopIteration, search.next_with_ghosts)
+        # next includes them
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertEqual(set(['head']), search.next())
+        self.assertEqual(set(['present']), search.next())
+        self.assertEqual(set(['present']),
+            search.stop_searching_any(['present']))
+        search.start_searching(['other', 'other_ghost'])
+        self.assertEqual(set(['other_2']), search.next())
+        self.assertRaises(StopIteration, search.next)
+
 
 class TestCachingParentsProvider(tests.TestCase):
 
@@ -689,20 +754,6 @@ class TestCachingParentsProvider(tests.TestCase):
         dict_pp = _mod_graph.DictParentsProvider({'a':('b',)})
         self.inst_pp = InstrumentedParentsProvider(dict_pp)
         self.caching_pp = _mod_graph.CachingParentsProvider(self.inst_pp)
-
-    def test_get_parents(self):
-        """Requesting the same revision should be returned from cache"""
-        self.assertEqual({}, self.caching_pp._cache)
-        self.assertEqual([('b',)],
-            self.applyDeprecated(symbol_versioning.one_one,
-            self.caching_pp.get_parents, ['a']))
-        self.assertEqual(['a'], self.inst_pp.calls)
-        self.assertEqual([('b',)],
-            self.applyDeprecated(symbol_versioning.one_one,
-            self.caching_pp.get_parents, ['a']))
-        # No new call, as it should have been returned from the cache
-        self.assertEqual(['a'], self.inst_pp.calls)
-        self.assertEqual({'a':('b',)}, self.caching_pp._cache)
 
     def test_get_parent_map(self):
         """Requesting the same revision should be returned from cache"""

@@ -8,6 +8,70 @@ IN DEVELOPMENT
 --------------
 
   CHANGES:
+
+    * Fetching via bzr+ssh will no longer fill ghosts by default (this is
+      consistent with pack-0.92 fetching over SFTP). (Robert Collins)
+
+  FEATURES:
+
+    * New smart method, ``Repository.stream_revisions_chunked``, for fetching
+      revision data that streams revision data via a chunked encoding.  This
+      avoids buffering large amounts of revision data on the server and on the
+      client.  (Andrew Bennetts, #178353)
+
+  IMPROVEMENTS:
+
+    * Fetching between different repository formats with compatible models now
+      takes advantage of the smart method to stream revisions.  (Andrew Bennetts)
+
+  BUGFIXES:
+
+    * Calculate remote path relative to the shared medium in _SmartClient.  This
+      is related to the problem in bug #124089.  (Andrew Bennetts)
+
+    * ``reconfigure`` can safely be interrupted while fetching.
+      (Aaron Bentley, #179316)
+
+    * Unknown hostnames when connecting to a ``bzr://`` URL no longer cause
+      tracebacks.  (Andrew Bennetts, #182849)
+
+  INTERNALS:
+
+    * Add -Dtimes debug flag, which records a timestamp against each mutter to
+      the trace file, relative to the first mutter.  (Andrew Bennetts)
+     
+    * Fetching now passes the find_ghosts flag through to the 
+      ``InterRepository.missing_revision_ids`` call consistently for all
+      repository types. This will enable faster missing revision discovery with
+      bzr+ssh. (Robert Collins)
+
+    * New method ``iter_inventories`` on Repository for access to many
+      inventories. This is primarily used by the ``revision_trees`` method, as
+      direct access to inventories is discouraged. (Robert Collins)
+
+    * New method ``next_with_ghosts`` on the Graph breadth-first-search objects
+      which will split out ghosts and present parents into two separate sets,
+      useful for code which needs to be aware of ghosts (e.g. fetching data
+      cares about ghosts during revision selection). (Robert Collins)
+
+    * Repository has a new method ``has_revisions`` which signals the presence
+      of many revisions by returning a set of the revisions listed which are
+      present. This can be done by index queries without reading data for parent
+      revision names etc. (Robert Collins)
+
+    * RemoteTransport's ``recommended_page_size`` method now returns 64k, like
+      SFTPTransport and HttpTransportBase.  (Andrew Bennetts)
+
+
+bzr 1.1 2008-01-15
+------------------
+
+(no changes from 1.1rc1)
+
+bzr 1.1rc1 2008-01-05
+---------------------
+
+  CHANGES:
    
    * The syntax ``bzr diff branch1 branch2`` is no longer supported.
      Use ``bzr diff branch1 --new branch2`` instead. This change has
@@ -22,7 +86,13 @@ IN DEVELOPMENT
    * diff '--using' allows an external diff tool to be used for files.
      (Aaron Bentley)
 
+   * New "lca" merge-type for fast everyday merging that also supports
+     criss-cross merges.  (Aaron Bentley)
+
   IMPROVEMENTS:
+
+   * ``annotate`` now doesn't require a working tree. (Lukáš Lalinský,
+     #90049)
 
    * ``branch`` and ``checkout`` can now use files from a working tree to
      to speed up the process.  For checkout, this requires the new
@@ -61,11 +131,20 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+   * Avoid AttributeError when unlocking a pack repository when an error occurs.
+     (Martin Pool, #180208)
+
+   * Better handle short reads when processing multiple range requests.
+     (Vincent Ladeuil, #179368)
+
    * build_tree acceleration uses the correct path when a file has been moved.
      (Aaron Bentley)
 
    * ``commit`` now succeeds when a checkout and its master branch share a
      repository.  (Aaron Bentley, #177592)
+
+   * Fixed error reporting of unsupported timezone format in
+     ``log --timezone``. (Lukáš Lalinský, #178722)
 
    * Fixed Unicode encoding error in ``ignored`` when the output is
      redirected to a pipe. (Lukáš Lalinský)
@@ -73,9 +152,25 @@ IN DEVELOPMENT
    * Fix traceback when sending large response bodies over the smart protocol
      on Windows. (Andrew Bennetts, #115781)
 
+   * Fix ``urlutils.relative_url`` for the case of two ``file:///`` URLs
+     pointed to different logical drives on Windows.
+     (Alexander Belchenko, #90847)
+
+   * HTTP test servers are now compatible with the http protocol version 1.1.
+     (Vincent Ladeuil, #175524)
+
+   * _KnitParentsProvider.get_parent_map now handles requests for ghosts
+     correctly, instead of erroring or attributing incorrect parents to ghosts.
+     (Aaron Bentley)
+
+   * ``merge --weave --uncommitted`` now works.  (Aaron Bentley)
+
    * pycurl authentication handling was broken and incomplete. Fix handling of
      user:pass embedded in the urls.
      (Vincent Ladeuil, #177643)
+
+   * Files inside non-directories are now handled like other conflict types.
+     (Aaron Bentley, #177390)
 
    * ``reconfigure`` is able to convert trees into lightweight checkouts.
      (Aaron Bentley)
@@ -99,12 +194,17 @@ IN DEVELOPMENT
 
   DOCUMENTATION:
 
+   * Minor tweaks made to the bug tracker integration documentation.
+     (Ian Clatworthy)
+
    * Reference material has now be moved out of the User Guide and added
      to the User Reference. The User Reference has gained 4 sections as
      a result: Authenication Settings, Configuration Settings, Conflicts
      and Hooks. All help topics are now dumped into text format in the
      doc/en/user-reference directory for those who like browsing that
      information in their editor. (Ian Clatworthy)
+
+   * *Using Bazaar with Launchpad* tutorial added. (Ian Clatworthy)
 
   INTERNALS:
 
@@ -114,12 +214,18 @@ IN DEVELOPMENT
     * Help topics can now be loaded from files. 
       (Ian Clatworthy, Alexander Belchenko)
 
+    * get_parent_map now always provides tuples as its output.  (Aaron Bentley)
+
     * Parent Providers should now implement ``get_parent_map`` returning a
       dictionary instead of ``get_parents`` returning a list.
-      ``get_parents`` is now considered deprecated.  (John Arbash Meinel)
+      ``Graph.get_parents`` is now deprecated. (John Arbash Meinel,
+      Robert Collins)
 
     * Patience Diff now supports arbitrary python objects, as long as they
       support ``hash()``. (John Arbash Meinel)
+
+    * Reduce selftest overhead to establish test names by memoization.
+      (Vincent Ladeuil)
 
   API BREAKS:
 
@@ -151,6 +257,10 @@ IN DEVELOPMENT
 
    * New helper method ``bzrlib.tests.split_suite_by_re`` which splits a test
      suite into two according to a regular expression. (Robert Collins)
+
+   * Parametrize all http tests for the transport implementations, the http
+     protocol versions (1.0 and 1.1) and the authentication schemes.
+     (Vincent Ladeuil) 
 
    * The ``exclude_pattern`` and ``random_order`` parameters to the function
      ``bzrlib.tests.filter_suite_by_re`` have been deprecated. (Robert Collins)

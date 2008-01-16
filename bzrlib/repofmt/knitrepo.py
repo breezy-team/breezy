@@ -70,15 +70,16 @@ class _KnitParentsProvider(object):
         parent_map = {}
         for revision_id in keys:
             if revision_id == _mod_revision.NULL_REVISION:
-                parent_map[revision_id] = []
+                parent_map[revision_id] = ()
             else:
                 try:
-                    parents = self._knit.get_parents_with_ghosts(revision_id)
+                    parents = tuple(
+                        self._knit.get_parents_with_ghosts(revision_id))
                 except errors.RevisionNotPresent:
-                    pass
+                    continue
                 else:
                     if len(parents) == 0:
-                        parents = [_mod_revision.NULL_REVISION]
+                        parents = (_mod_revision.NULL_REVISION,)
                 parent_map[revision_id] = parents
         return parent_map
 
@@ -263,6 +264,15 @@ class KnitRepository(MetaDirRepository):
         For knit repositories, this is the revision knit.
         """
         return self._get_revision_vf()
+
+    def has_revisions(self, revision_ids):
+        """See Repository.has_revisions()."""
+        result = set()
+        transaction = self.get_transaction()
+        for revision_id in revision_ids:
+            if self._revision_store.has_revision_id(revision_id, transaction):
+                result.add(revision_id)
+        return result
 
     @needs_write_lock
     def reconcile(self, other=None, thorough=False):

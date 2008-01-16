@@ -47,6 +47,7 @@ from bzrlib import (
     bzrdir,
     errors,
     inventory,
+    progress,
     repository,
     revision as _mod_revision,
     symbol_versioning,
@@ -397,7 +398,9 @@ class TestFormatKnit1(TestCaseWithTransport):
         # Arguably, the deserialise_inventory should detect a mismatch, and
         # raise an error, rather than silently using one revision_id over the
         # other.
-        inv = repo.deserialise_inventory('test-rev-id', inv_xml)
+        self.assertRaises(AssertionError, repo.deserialise_inventory,
+            'test-rev-id', inv_xml)
+        inv = repo.deserialise_inventory('other-rev-id', inv_xml)
         self.assertEqual('other-rev-id', inv.root.revision)
 
 
@@ -1431,3 +1434,24 @@ class TestPacker(TestCaseWithTransport):
 
     # To date, this class has been factored out and nothing new added to it;
     # thus there are not yet any tests.
+
+
+class TestInterDifferingSerializer(TestCaseWithTransport):
+
+    def test_progress_bar(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.commit('rev1', rev_id='rev-1')
+        tree.commit('rev2', rev_id='rev-2')
+        tree.commit('rev3', rev_id='rev-3')
+        repo = self.make_repository('repo')
+        inter_repo = repository.InterDifferingSerializer(
+            tree.branch.repository, repo)
+        pb = progress.InstrumentedProgress(to_file=StringIO())
+        pb.never_throttle = True
+        inter_repo.fetch('rev-1', pb)
+        self.assertEqual('Transferring revisions', pb.last_msg)
+        self.assertEqual(1, pb.last_cnt)
+        self.assertEqual(1, pb.last_total)
+        inter_repo.fetch('rev-3', pb)
+        self.assertEqual(2, pb.last_cnt)
+        self.assertEqual(2, pb.last_total)

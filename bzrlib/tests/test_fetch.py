@@ -32,7 +32,7 @@ from bzrlib.symbol_versioning import (
     zero_ninetyone,
     )
 from bzrlib.tests import TestCaseWithTransport
-from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
+from bzrlib.tests.http_utils import TestCaseWithWebserver
 from bzrlib.tests.test_revision import make_branches
 from bzrlib.trace import mutter
 from bzrlib.upgrade import Convert

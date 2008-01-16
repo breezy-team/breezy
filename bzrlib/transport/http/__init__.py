@@ -217,6 +217,7 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         offsets = list(offsets)
 
         try_again = True
+        retried_offset = None
         while try_again:
             try_again = False
 
@@ -271,10 +272,20 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
 
             except (errors.ShortReadvError, errors.InvalidRange,
                     errors.InvalidHttpRange), e:
-                self._degrade_range_hint(relpath, coalesced, sys.exc_info())
+                mutter('Exception %r: %s during http._readv',e, e)
+                if (not isinstance(e, errors.ShortReadvError)
+                    or retried_offset == cur_offset_and_size):
+                    # We don't degrade the range hint for ShortReadvError since
+                    # they do not indicate a problem with the server ability to
+                    # handle ranges. Except when we fail to get back a required
+                    # offset twice in a row. In that case, falling back to
+                    # single range or whole file should help or end up in a
+                    # fatal exception.
+                    self._degrade_range_hint(relpath, coalesced, sys.exc_info())
                 # Some offsets may have been already processed, so we retry
                 # only the unsuccessful ones.
                 offsets = [cur_offset_and_size] + [o for o in iter_offsets]
+                retried_offset = cur_offset_and_size
                 try_again = True
 
     def _coalesce_readv(self, relpath, coalesced):

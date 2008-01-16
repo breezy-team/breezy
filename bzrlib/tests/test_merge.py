@@ -138,6 +138,8 @@ class TestMerge(TestCaseWithTransport):
         tree_a.commit(message="hello")
         dir_b = tree_a.bzrdir.sprout('b')
         tree_b = dir_b.open_workingtree()
+        tree_b.lock_write()
+        self.addCleanup(tree_b.unlock)
         tree_a.commit(message="hello again")
         log = StringIO()
         merge_inner(tree_b.branch, tree_a, tree_b.basis_tree(), 
@@ -285,6 +287,21 @@ class TestMerge(TestCaseWithTransport):
         merger = _mod_merge.Merger.from_uncommitted(tree_a, tree_b,
                                                     progress.DummyProgress())
         merger.merge_type = _mod_merge.Merge3Merger
+        merger.do_merge()
+        self.assertEqual(tree_a.get_parent_ids(), [tree_b.last_revision()])
+
+    def test_merge_uncommitted_otherbasis_ancestor_of_thisbasis_weave(self):
+        tree_a = self.make_branch_and_tree('a')
+        self.build_tree(['a/file_1', 'a/file_2'])
+        tree_a.add(['file_1'])
+        tree_a.commit('commit 1')
+        tree_a.add(['file_2'])
+        tree_a.commit('commit 2')
+        tree_b = tree_a.bzrdir.sprout('b').open_workingtree()
+        tree_b.rename_one('file_1', 'renamed')
+        merger = _mod_merge.Merger.from_uncommitted(tree_a, tree_b,
+                                                    progress.DummyProgress())
+        merger.merge_type = _mod_merge.WeaveMerger
         merger.do_merge()
         self.assertEqual(tree_a.get_parent_ids(), [tree_b.last_revision()])
 
@@ -445,15 +462,70 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
         self.assertEqual(subtracted_plan,
             list(_PlanMerge._subtract_plans(old_plan, new_plan)))
 
-    def test_plan_merge_with_base(self):
+    def setup_merge_with_base(self):
         self.add_version('COMMON', [], 'abc')
         self.add_version('THIS', ['COMMON'], 'abcd')
         self.add_version('BASE', ['COMMON'], 'eabc')
         self.add_version('OTHER', ['BASE'], 'eafb')
+
+    def test_plan_merge_with_base(self):
+        self.setup_merge_with_base()
         plan = self.plan_merge_vf.plan_merge('THIS', 'OTHER', 'BASE')
         self.assertEqual([('unchanged', 'a\n'),
                           ('new-b', 'f\n'),
                           ('unchanged', 'b\n'),
                           ('killed-b', 'c\n'),
                           ('new-a', 'd\n')
+                         ], list(plan))
+
+    def test_plan_lca_merge(self):
+        self.setup_plan_merge()
+        plan = self.plan_merge_vf.plan_lca_merge('B', 'C')
+        self.assertEqual([
+                          ('new-b', 'f\n'),
+                          ('unchanged', 'a\n'),
+                          ('killed-b', 'c\n'),
+                          ('new-a', 'e\n'),
+                          ('new-a', 'h\n'),
+                          ('killed-a', 'b\n'),
+                          ('unchanged', 'g\n')],
+                         list(plan))
+
+    def test_plan_lca_merge_uncommitted_files(self):
+        self.setup_plan_merge_uncommitted()
+        plan = self.plan_merge_vf.plan_lca_merge('B:', 'C:')
+        self.assertEqual([
+                          ('new-b', 'f\n'),
+                          ('unchanged', 'a\n'),
+                          ('killed-b', 'c\n'),
+                          ('new-a', 'e\n'),
+                          ('new-a', 'h\n'),
+                          ('killed-a', 'b\n'),
+                          ('unchanged', 'g\n')],
+                         list(plan))
+
+    def test_plan_lca_merge_with_base(self):
+        self.setup_merge_with_base()
+        plan = self.plan_merge_vf.plan_lca_merge('THIS', 'OTHER', 'BASE')
+        self.assertEqual([('unchanged', 'a\n'),
+                          ('new-b', 'f\n'),
+                          ('unchanged', 'b\n'),
+                          ('killed-b', 'c\n'),
+                          ('new-a', 'd\n')
+                         ], list(plan))
+
+    def test_plan_lca_merge_with_criss_cross(self):
+        self.add_version('ROOT', [], 'abc')
+        # each side makes a change
+        self.add_version('REV1', ['ROOT'], 'abcd')
+        self.add_version('REV2', ['ROOT'], 'abce')
+        # both sides merge, discarding others' changes
+        self.add_version('LCA1', ['REV1', 'REV2'], 'abcd')
+        self.add_version('LCA2', ['REV1', 'REV2'], 'abce')
+        plan = self.plan_merge_vf.plan_lca_merge('LCA1', 'LCA2')
+        self.assertEqual([('unchanged', 'a\n'),
+                          ('unchanged', 'b\n'),
+                          ('unchanged', 'c\n'),
+                          ('conflicted-a', 'd\n'),
+                          ('conflicted-b', 'e\n'),
                          ], list(plan))

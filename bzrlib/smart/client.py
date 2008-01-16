@@ -17,16 +17,20 @@
 from urlparse import urlparse
 
 from bzrlib.smart import protocol
-from bzrlib.urlutils import unescape
+from bzrlib import urlutils
 
 
 class _SmartClient(object):
 
-    def __init__(self, shared_medium):
-        self._shared_medium = shared_medium
+    def __init__(self, shared_connection):
+        """Constructor.
+
+        :param shared_connection: a bzrlib.transport._SharedConnection
+        """
+        self._shared_connection = shared_connection
 
     def get_smart_medium(self):
-        return self._shared_medium.connection
+        return self._shared_connection.connection
 
     def call(self, method, *args):
         """Call a method on the remote server."""
@@ -43,7 +47,7 @@ class _SmartClient(object):
             body = smart_protocol.read_body_bytes()
         """
         request = self.get_smart_medium().get_request()
-        smart_protocol = protocol.SmartClientRequestProtocolOne(request)
+        smart_protocol = protocol.SmartClientRequestProtocolTwo(request)
         smart_protocol.call(method, *args)
         return smart_protocol.read_response_tuple(expect_body=True), smart_protocol
 
@@ -68,4 +72,9 @@ class _SmartClient(object):
         anything but path, so it is only safe to use it in requests sent over
         the medium from the matching transport.
         """
-        return unescape(urlparse(transport.base)[2]).encode('utf8')
+        if self._shared_connection.base.startswith('bzr+http://'):
+            medium_base = self._shared_connection.base
+        else:
+            medium_base = urlutils.join(self._shared_connection.base, '/')
+            
+        return urlutils.relative_url(medium_base, transport.base).encode('utf8')
