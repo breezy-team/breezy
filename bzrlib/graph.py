@@ -526,26 +526,12 @@ class _BreadthFirstSearcher(object):
         return ('_BreadthFirstSearcher(iterations=%d, %s,'
                 ' seen=%r)' % (self._iterations, search, list(self.seen)))
 
-    def get_recipe(self):
-        """Return a recipe that can be used to replay this search.
+    def get_result(self):
+        """Get a SearchResult for the current state of this searcher.
         
-        The recipe allows reconstruction of the same results at a later date
-        without knowing all the found keys. The essential elements are a list
-        of keys to start and and to stop at. In order to give reproducible
-        results when ghosts are encountered by a search they are automatically
-        added to the exclude list (or else ghost filling may alter the
-        results).
-
-        :return: A tuple (start_keys_set, exclude_keys_set, revision_count). To
-            recreate the results of this search, create a breadth first
-            searcher on the same graph starting at start_keys. Then call next()
-            (or next_with_ghosts()) repeatedly, and on every result, call
-            stop_searching_any on any keys from the exclude_keys set. The
-            revision_count value acts as a trivial cross-check - the found
-            revisions of the new search should have as many elements as
-            revision_count. If it does not, then additional revisions have been
-            ghosted since the search was executed the first time and the second
-            time.
+        :return: A SearchResult for this search so far. The SearchResult is
+            static - the search can be advanced and the search result will not
+            be invalidated or altered.
         """
         if self._returning == 'next':
             # We have to know the current nodes children to be able to list the
@@ -561,8 +547,9 @@ class _BreadthFirstSearcher(object):
         else:
             next_query = self._next_query
         excludes = self._stopped_keys.union(next_query)
-        return (self._started_keys, excludes,
-            len(self.seen.difference(excludes)))
+        included_keys = self.seen.difference(excludes)
+        return SearchResult(self._started_keys, excludes, len(included_keys),
+            included_keys)
 
     def next(self):
         """Return the next ancestors of this revision.
@@ -724,3 +711,56 @@ class _BreadthFirstSearcher(object):
             self._next_query.update(query)
             self._current_parents.update(parents)
             return revs, ghosts
+
+
+class SearchResult(object):
+    """The result of a breadth first search.
+
+    A SearchResult provides the ability to reconstruct the search or access a
+    set of the keys the search found.
+    """
+
+    def __init__(self, start_keys, exclude_keys, key_count, keys):
+        """Create a SearchResult.
+
+        :param start_keys: The keys the search started at.
+        :param exclude_keys: The keys the search excludes.
+        :param key_count: The total number of keys (from start to but not
+            including exclude).
+        :param keys: The keys the search found. Note that in future we may get
+            a SearchResult from a smart server, in which case the keys list is
+            not necessarily immediately available.
+        """
+        self._recipe = (start_keys, exclude_keys, key_count)
+        self._keys = frozenset(keys)
+
+    def get_recipe(self):
+        """Return a recipe that can be used to replay this search.
+        
+        The recipe allows reconstruction of the same results at a later date
+        without knowing all the found keys. The essential elements are a list
+        of keys to start and and to stop at. In order to give reproducible
+        results when ghosts are encountered by a search they are automatically
+        added to the exclude list (or else ghost filling may alter the
+        results).
+
+        :return: A tuple (start_keys_set, exclude_keys_set, revision_count). To
+            recreate the results of this search, create a breadth first
+            searcher on the same graph starting at start_keys. Then call next()
+            (or next_with_ghosts()) repeatedly, and on every result, call
+            stop_searching_any on any keys from the exclude_keys set. The
+            revision_count value acts as a trivial cross-check - the found
+            revisions of the new search should have as many elements as
+            revision_count. If it does not, then additional revisions have been
+            ghosted since the search was executed the first time and the second
+            time.
+        """
+        return self._recipe
+
+    def get_keys(self):
+        """Return the keys found in this search.
+
+        :return: A set of keys.
+        """
+        return self._keys
+

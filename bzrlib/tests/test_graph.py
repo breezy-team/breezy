@@ -728,26 +728,30 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual(set(['other_2']), search.next())
         self.assertRaises(StopIteration, search.next)
 
-    def assertSeenAndRecipes(self, instructions, search, next):
-        """Check the results of .seen and get_recipe() for a seach.
+    def assertSeenAndResult(self, instructions, search, next):
+        """Check the results of .seen and get_result() for a seach.
 
-        :param instructions: A list of tuples (seen, get_recipe_result, starts,
-            stops). seen and get_recipe_result are results to check. starts and
-            stops are parameters to pass to start_searching and
-            stop_searching_any during each iteration, if they are not None.
+        :param instructions: A list of tuples:
+            (seen, recipe, included_keys, starts, stops).
+            seen, recipe and included_keys are results to check on the search
+            and the searches get_result(). starts and stops are parameters to
+            pass to start_searching and stop_searching_any during each
+            iteration, if they are not None.
         :param search: The search to use.
         :param next: A callable to advance the search.
         """
-        for seen, recipe, starts, stops in instructions:
+        for seen, recipe, included_keys, starts, stops in instructions:
             next()
             if starts is not None:
                 search.start_searching(starts)
             if stops is not None:
                 search.stop_searching_any(stops)
-            self.assertEqual(recipe, search.get_recipe())
+            result = search.get_result()
+            self.assertEqual(recipe, result.get_recipe())
+            self.assertEqual(set(included_keys), result.get_keys())
             self.assertEqual(seen, search.seen)
 
-    def test_breadth_first_get_recipe_excludes_current_pending(self):
+    def test_breadth_first_get_result_excludes_current_pending(self):
         graph = self.make_graph({
             'head':['child'],
             'child':[NULL_REVISION],
@@ -755,23 +759,26 @@ class TestGraph(TestCaseWithMemoryTransport):
             })
         search = graph._make_breadth_first_searcher(['head'])
         # At the start, nothing has been seen, to its all excluded:
+        result = search.get_result()
         self.assertEqual((set(['head']), set(['head']), 0),
-            search.get_recipe())
+            result.get_recipe())
+        self.assertEqual(set(), result.get_keys())
         self.assertEqual(set(), search.seen)
         # using next:
         expected = [
-            (set(['head']), (set(['head']), set(['child']), 1), None, None),
+            (set(['head']), (set(['head']), set(['child']), 1),
+             ['head'], None, None),
             (set(['head', 'child']), (set(['head']), set([NULL_REVISION]), 2),
-             None, None),
+             ['head', 'child'], None, None),
             (set(['head', 'child', NULL_REVISION]), (set(['head']), set(), 3),
-             None, None),
+             ['head', 'child', NULL_REVISION], None, None),
             ]
-        self.assertSeenAndRecipes(expected, search, search.next)
+        self.assertSeenAndResult(expected, search, search.next)
         # using next_with_ghosts:
         search = graph._make_breadth_first_searcher(['head'])
-        self.assertSeenAndRecipes(expected, search, search.next_with_ghosts)
+        self.assertSeenAndResult(expected, search, search.next_with_ghosts)
 
-    def test_breadth_first_get_recipe_starts_stops(self):
+    def test_breadth_first_get_result_starts_stops(self):
         graph = self.make_graph({
             'head':['child'],
             'child':[NULL_REVISION],
@@ -784,8 +791,10 @@ class TestGraph(TestCaseWithMemoryTransport):
         # Starting with nothing and adding a search works:
         search.start_searching(['head'])
         # head has been seen:
+        result = search.get_result()
         self.assertEqual((set(['head']), set(['child']), 1),
-            search.get_recipe())
+            result.get_recipe())
+        self.assertEqual(set(['head']), result.get_keys())
         self.assertEqual(set(['head']), search.seen)
         # using next:
         expected = [
@@ -794,22 +803,22 @@ class TestGraph(TestCaseWithMemoryTransport):
             # called.
             (set(['head', 'child', 'otherhead']),
              (set(['head', 'otherhead']), set(['child', 'otherchild']), 2),
-             ['otherhead'], ['child']),
+             ['head', 'otherhead'], ['otherhead'], ['child']),
             (set(['head', 'child', 'otherhead', 'otherchild']),
              (set(['head', 'otherhead']), set(['child', 'excluded']), 3),
-             None, None),
+             ['head', 'otherhead', 'otherchild'], None, None),
             # stop searching excluded now
             (set(['head', 'child', 'otherhead', 'otherchild', 'excluded']),
              (set(['head', 'otherhead']), set(['child', 'excluded']), 3),
-             None, ['excluded']),
+             ['head', 'otherhead', 'otherchild'], None, ['excluded']),
             ]
-        self.assertSeenAndRecipes(expected, search, search.next)
+        self.assertSeenAndResult(expected, search, search.next)
         # using next_with_ghosts:
         search = graph._make_breadth_first_searcher([])
         search.start_searching(['head'])
-        self.assertSeenAndRecipes(expected, search, search.next_with_ghosts)
+        self.assertSeenAndResult(expected, search, search.next_with_ghosts)
 
-    def test_breadth_first_get_recipe_ghosts_are_excluded(self):
+    def test_breadth_first_get_result_ghosts_are_excluded(self):
         graph = self.make_graph({
             'head':['child', 'ghost'],
             'child':[NULL_REVISION],
@@ -820,17 +829,17 @@ class TestGraph(TestCaseWithMemoryTransport):
         expected = [
             (set(['head']),
              (set(['head']), set(['ghost', 'child']), 1),
-             None, None),
+             ['head'], None, None),
             (set(['head', 'child', 'ghost']),
              (set(['head']), set([NULL_REVISION, 'ghost']), 2),
-             None, None),
+             ['head', 'child'], None, None),
             ]
-        self.assertSeenAndRecipes(expected, search, search.next)
+        self.assertSeenAndResult(expected, search, search.next)
         # using next_with_ghosts:
         search = graph._make_breadth_first_searcher(['head'])
-        self.assertSeenAndRecipes(expected, search, search.next_with_ghosts)
+        self.assertSeenAndResult(expected, search, search.next_with_ghosts)
 
-    def test_breadth_first_get_recipe_starting_a_ghost_ghost_is_excluded(self):
+    def test_breadth_first_get_result_starting_a_ghost_ghost_is_excluded(self):
         graph = self.make_graph({
             'head':['child'],
             'child':[NULL_REVISION],
@@ -841,15 +850,15 @@ class TestGraph(TestCaseWithMemoryTransport):
         expected = [
             (set(['head', 'ghost']),
              (set(['head', 'ghost']), set(['child', 'ghost']), 1),
-             ['ghost'], None),
+             ['head'], ['ghost'], None),
             (set(['head', 'child', 'ghost']),
              (set(['head', 'ghost']), set([NULL_REVISION, 'ghost']), 2),
-             None, None),
+             ['head', 'child'], None, None),
             ]
-        self.assertSeenAndRecipes(expected, search, search.next)
+        self.assertSeenAndResult(expected, search, search.next)
         # using next_with_ghosts:
         search = graph._make_breadth_first_searcher(['head'])
-        self.assertSeenAndRecipes(expected, search, search.next_with_ghosts)
+        self.assertSeenAndResult(expected, search, search.next_with_ghosts)
 
     def test_breadth_first_revision_count_includes_NULL_REVISION(self):
         graph = self.make_graph({
@@ -861,17 +870,17 @@ class TestGraph(TestCaseWithMemoryTransport):
         expected = [
             (set(['head']),
              (set(['head']), set([NULL_REVISION]), 1),
-             None, None),
+             ['head'], None, None),
             (set(['head', NULL_REVISION]),
              (set(['head']), set([]), 2),
-             None, None),
+             ['head', NULL_REVISION], None, None),
             ]
-        self.assertSeenAndRecipes(expected, search, search.next)
+        self.assertSeenAndResult(expected, search, search.next)
         # using next_with_ghosts:
         search = graph._make_breadth_first_searcher(['head'])
-        self.assertSeenAndRecipes(expected, search, search.next_with_ghosts)
+        self.assertSeenAndResult(expected, search, search.next_with_ghosts)
 
-    def test_breadth_first_search_get_recipe_after_StopIteration(self):
+    def test_breadth_first_search_get_result_after_StopIteration(self):
         # StopIteration should not invalid anything..
         graph = self.make_graph({
             'head':[NULL_REVISION],
@@ -882,24 +891,27 @@ class TestGraph(TestCaseWithMemoryTransport):
         expected = [
             (set(['head']),
              (set(['head']), set([NULL_REVISION]), 1),
-             None, None),
+             ['head'], None, None),
             (set(['head', 'ghost', NULL_REVISION]),
              (set(['head', 'ghost']), set(['ghost']), 2),
-             ['ghost'], None),
+             ['head', NULL_REVISION], ['ghost'], None),
             ]
-        self.assertSeenAndRecipes(expected, search, search.next)
+        self.assertSeenAndResult(expected, search, search.next)
         self.assertRaises(StopIteration, search.next)
         self.assertEqual(set(['head', 'ghost', NULL_REVISION]), search.seen)
+        result = search.get_result()
         self.assertEqual((set(['ghost', 'head']), set(['ghost']), 2),
-            search.get_recipe())
+            result.get_recipe())
+        self.assertEqual(set(['head', NULL_REVISION]), result.get_keys())
         # using next_with_ghosts:
         search = graph._make_breadth_first_searcher(['head'])
-        self.assertSeenAndRecipes(expected, search, search.next_with_ghosts)
+        self.assertSeenAndResult(expected, search, search.next_with_ghosts)
         self.assertRaises(StopIteration, search.next)
         self.assertEqual(set(['head', 'ghost', NULL_REVISION]), search.seen)
+        result = search.get_result()
         self.assertEqual((set(['ghost', 'head']), set(['ghost']), 2),
-            search.get_recipe())
-
+            result.get_recipe())
+        self.assertEqual(set(['head', NULL_REVISION]), result.get_keys())
 
 
 class TestCachingParentsProvider(tests.TestCase):
