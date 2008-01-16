@@ -36,6 +36,9 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.branch import BranchReferenceFormat
+import bzrlib.smart.branch
+import bzrlib.smart.bzrdir
+import bzrlib.smart.repository
 from bzrlib.smart.request import (
     FailedSmartServerResponse,
     SmartServerRequest,
