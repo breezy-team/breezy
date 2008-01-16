@@ -536,11 +536,16 @@ class _BreadthFirstSearcher(object):
         added to the exclude list (or else ghost filling may alter the
         results).
 
-        :return: A tuple (start_keys_set, exclude_keys_set). To recreate the
-            results of this search, create a breadth first searcher on the same
-            graph starting at start_keys. Then call next() (or
-            next_with_ghosts()) repeatedly, and on every result, call
-            stop_searching_any on any keys from the exclude_keys set.
+        :return: A tuple (start_keys_set, exclude_keys_set, revision_count). To
+            recreate the results of this search, create a breadth first
+            searcher on the same graph starting at start_keys. Then call next()
+            (or next_with_ghosts()) repeatedly, and on every result, call
+            stop_searching_any on any keys from the exclude_keys set. The
+            revision_count value acts as a trivial cross-check - the found
+            revisions of the new search should have as many elements as
+            revision_count. If it does not, then additional revisions have been
+            ghosted since the search was executed the first time and the second
+            time.
         """
         if self._returning == 'next':
             # We have to know the current nodes children to be able to list the
@@ -555,7 +560,9 @@ class _BreadthFirstSearcher(object):
             next_query = next.union(ghosts)
         else:
             next_query = self._next_query
-        return self._started_keys, self._stopped_keys.union(next_query)
+        excludes = self._stopped_keys.union(next_query)
+        return (self._started_keys, excludes,
+            len(self.seen.difference(excludes)))
 
     def next(self):
         """Return the next ancestors of this revision.
