@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -64,9 +64,20 @@ class _TransformResults(object):
 
 
 class TreeTransformBase(object):
+    """The base class for TreeTransform and TreeTransformBase"""
 
     def __init__(self, tree, limbodir, pb=DummyProgress(),
                  case_sensitive=True):
+        """Constructor.
+
+        :param tree: The tree that will be transformed, but not necessarily
+            the output tree.
+        :param limbodir: A directory where new files can be stored until
+            they are installed in their proper places
+        :param pb: A ProgressBar indicating how much progress is being made
+        :param case_sensitive: If True, the target of the transform is
+            case sensitive, not just case preserving.
+        """
         object.__init__(self)
         self._tree = tree
         self._limbodir = limbodir
@@ -111,7 +122,7 @@ class TreeTransformBase(object):
         # The trans_id that will be used as the tree root
         self._new_root = self.trans_id_tree_file_id(tree.get_root_id())
         # Indictor of whether the transform has been applied
-        self.__done = False
+        self._done = False
         # A progress bar
         self._pb = pb
         # Whether the target is case sensitive
@@ -544,7 +555,7 @@ class TreeTransformBase(object):
 
     def find_conflicts(self):
         """Find any violations of inventory or filesystem invariants"""
-        if self.__done is True:
+        if self._done is True:
             raise ReusingTransform()
         conflicts = []
         # ensure all children of all existent parents are known
@@ -1177,8 +1188,7 @@ class TreeTransform(TreeTransformBase):
         finally:
             child_pb.finished()
         self._tree.apply_inventory_delta(inventory_delta)
-        # XXX OW!
-        self._TreeTransformBase__done = True
+        self._done = True
         self.finalize()
         return _TransformResults(modified_paths, self.rename_count)
 
@@ -1303,6 +1313,12 @@ class TreeTransform(TreeTransformBase):
 
 
 class TransformPreview(TreeTransformBase):
+    """A TreeTransform for generating preview trees.
+
+    Unlike TreeTransform, this version works when the input tree is a
+    RevisionTree, rather than a WorkingTree.  As a result, it tends to ignore
+    unversioned files in the input tree.
+    """
 
     def __init__(self, tree, pb=DummyProgress(), case_sensitive=True):
         limbodir = tempfile.mkdtemp()
@@ -1338,7 +1354,9 @@ class TransformPreview(TreeTransformBase):
             childpath = joinpath(path, child)
             yield self.trans_id_tree_path(childpath)
 
+
 class _PreviewTree(object):
+    """Partial implementation of Tree to support show_diff_trees"""
 
     def __init__(self, transform):
         self._transform = transform
@@ -1386,6 +1404,7 @@ class _PreviewTree(object):
         return open(name, 'rb')
 
     def paths2ids(self, specific_files, trees=None, require_versioned=False):
+        """See Tree.paths2ids"""
         return 'not_empty'
 
 
