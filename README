@@ -26,44 +26,44 @@ command in the bzrtools plugin.)
 Bazaar highlights
 =================
 
- * Easy to use and intuitive.
+* Easy to use and intuitive.
 
-   Only five commands are needed to do all basic operations, and all
-   commands have documentation accessible via 'bzr help command'.
-   Bazaar's interface is also easy to learn for CVS and Subversion users.
+  Only five commands are needed to do all basic operations, and all
+  commands have documentation accessible via 'bzr help command'.
+  Bazaar's interface is also easy to learn for CVS and Subversion users.
 
- * Robust and reliable.
+* Robust and reliable.
 
-   Bazaar is developed under an extensive test suite. Branches can be
-   checked and verified for integrity at any time, and revisions can be
-   signed with PGP/GnuPG.
+  Bazaar is developed under an extensive test suite. Branches can be
+  checked and verified for integrity at any time, and revisions can be
+  signed with PGP/GnuPG.
 
- * Publish branches with HTTP.
+* Publish branches with HTTP.
 
-   Branches can be hosted on an HTTP server with no need for special
-   software on the server side. Branches can be uploaded by bzr itself
-   over SSH (SFTP), or with rsync.
+  Branches can be hosted on an HTTP server with no need for special
+  software on the server side. Branches can be uploaded by bzr itself
+  over SSH (SFTP), or with rsync.
 
- * Adapts to multiple environments.
+* Adapts to multiple environments.
 
-   Bazaar runs on Linux and Windows, fully supports Unicode filenames,
-   and suits different development models, including centralized.
+  Bazaar runs on Linux and Windows, fully supports Unicode filenames,
+  and suits different development models, including centralized.
 
- * Easily extended and customized.
+* Easily extended and customized.
 
-   A rich Python interface is provided for extending and embedding,
-   including a plugin interface. There are already many available plugins,
-   most of them registered at http://bazaar-vcs.org/PluginRegistry.
+  A rich Python interface is provided for extending and embedding,
+  including a plugin interface. There are already many available plugins,
+  most of them registered at http://bazaar-vcs.org/PluginRegistry.
 
- * Smart merging.
+* Smart merging.
 
-   Changes will never be merged more than once, conflicts will be
-   minimized, and identical changes are dealt with well.
+  Changes will never be merged more than once, conflicts will be
+  minimized, and identical changes are dealt with well.
 
- * Vibrant and active community.
+* Vibrant and active community.
 
-   Help with Bazaar is obtained easily, via the mailing list, or the IRC
-   channel.
+  Help with Bazaar is obtained easily, via the mailing list, or the IRC
+  channel.
 
 
 Registration and Feedback
@@ -72,19 +72,19 @@ Registration and Feedback
 If you encounter any problems with Bazaar, need help understanding it, or would
 like to offer suggestions or feedback, please get in touch with us:
 
- * Ask a question through our web support interface, at 
-   https://answers.launchpad.net/bzr/
+* Ask a question through our web support interface, at 
+  https://answers.launchpad.net/bzr/
 
- * Report bugs at https://bugs.edge.launchpad.net/bzr/+filebug
+* Report bugs at https://bugs.edge.launchpad.net/bzr/+filebug
 
- * Write to us at bazaar@lists.canonical.com 
-   You can join the list at <https://lists.ubuntu.com/mailman/listinfo/bazaar>.
-   You don't need to subscribe to post, but your first post will be held 
-   briefly for manual moderation.
+* Write to us at bazaar@lists.canonical.com 
+  You can join the list at <https://lists.ubuntu.com/mailman/listinfo/bazaar>.
+  You don't need to subscribe to post, but your first post will be held 
+  briefly for manual moderation.
 
- * Talk to us in irc://irc.ubuntu.com/bzr
+* Talk to us in irc://irc.ubuntu.com/bzr
 
- * And see http://bazaar-vcs.org/BzrSupport for more.
+* And see http://bazaar-vcs.org/BzrSupport for more.
 
 If you would like to help us improve Bazaar by telling us about yourself and
 what we could do better, please register and complete the online survey here:
