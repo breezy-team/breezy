@@ -32,7 +32,7 @@ class NotSvnBranchPath(NotBranchError):
 See 'bzr help svn-branching-schemes' for details."""
 
     def __init__(self, branch_path, scheme=None):
-        NotBranchError.__init__(self, branch_path)
+        NotBranchError.__init__(self, urllib.quote(branch_path))
         self.scheme = scheme
 
 
