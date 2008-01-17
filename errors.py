@@ -20,6 +20,7 @@ from bzrlib.errors import (BzrError, ConnectionError, ConnectionReset,
                            DependencyNotPresent, NoRepositoryPresent,
                            TransportError, UnexpectedEndOfContainerError)
 
+import urllib
 import svn.core
 
 # APR define, not in svn.core
@@ -32,6 +33,18 @@ See 'bzr help svn-branching-schemes' for details."""
 
     def __init__(self, branch_path, scheme=None):
         NotBranchError.__init__(self, branch_path)
+        self.scheme = scheme
+
+
+class InvalidSvnBranchPath(NotBranchError):
+    """Error raised when a path was specified that is not a child of or itself
+    a valid branch path in the current branching scheme."""
+    _fmt = """%(path)s is not a valid Subversion branch path in the current 
+branching scheme. See 'bzr help svn-branching schemes' for details."""
+
+    def __init__(self, path, scheme):
+        assert isinstance(path, str)
+        NotBranchError.__init__(self, urllib.quote(path))
         self.scheme = scheme
 
 

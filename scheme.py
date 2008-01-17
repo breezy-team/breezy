@@ -16,8 +16,10 @@
 """Branching scheme implementations."""
 
 from bzrlib import ui
-from bzrlib.errors import NotBranchError, BzrError
+from bzrlib.errors import BzrError
 from bzrlib.trace import mutter
+
+from errors import InvalidSvnBranchPath
 
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 import bz2
@@ -161,12 +163,13 @@ class ListBranchingScheme(BranchingScheme):
 
     def unprefix(self, path):
         """See BranchingScheme.unprefix()."""
+        assert isinstance(path, str)
         parts = path.strip("/").split("/")
         for pattern in self.split_branch_list:
             if self._pattern_cmp(parts[:len(pattern)], pattern):
                 return ("/".join(parts[:len(pattern)]), 
                         "/".join(parts[len(pattern):]))
-        raise NotBranchError(path=path)
+        raise InvalidSvnBranchPath(path=path, scheme=self)
 
     def __eq__(self, other):
         return self.branch_list == other.branch_list
@@ -203,6 +206,7 @@ class NoBranchingScheme(ListBranchingScheme):
 
     def unprefix(self, path):
         """See BranchingScheme.unprefix()."""
+        assert isinstance(path, str)
         return ("", path.strip("/"))
 
     def __str__(self):
@@ -248,9 +252,10 @@ class TrunkBranchingScheme(ListBranchingScheme):
 
     def unprefix(self, path):
         """See BranchingScheme.unprefix()."""
+        assert isinstance(path, str)
         parts = path.strip("/").split("/")
         if len(parts) == 0 or self.level >= len(parts):
-            raise NotBranchError(path=path)
+            raise InvalidSvnBranchPath(path=path, scheme=self)
 
         if parts[self.level] == "trunk" or parts[self.level] == "hooks":
             return ("/".join(parts[0:self.level+1]).strip("/"), 
@@ -260,7 +265,7 @@ class TrunkBranchingScheme(ListBranchingScheme):
             return ("/".join(parts[0:self.level+2]).strip("/"), 
                     "/".join(parts[self.level+2:]).strip("/"))
         else:
-            raise NotBranchError(path=path)
+            raise InvalidSvnBranchPath(path=path, scheme=self)
 
     def __str__(self):
         return "trunk%d" % self.level
@@ -303,9 +308,10 @@ class SingleBranchingScheme(ListBranchingScheme):
 
     def unprefix(self, path):
         """See BranchingScheme.unprefix()."""
+        assert isinstance(path, str)
         path = path.strip("/")
         if not path.startswith(self.path):
-            raise NotBranchError(path=path)
+            raise InvalidSvnBranchPath(path=path, scheme=self)
 
         return (path[0:len(self.path)].strip("/"), 
                 path[len(self.path):].strip("/"))

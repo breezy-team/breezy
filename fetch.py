@@ -77,7 +77,8 @@ def check_filename(path):
     :param path: Path to check
     :raises InvalidFileName:
     """
-    if "\\" in path:
+    assert isinstance(path, unicode)
+    if u"\\" in path:
         raise InvalidFileName(path)
 
 

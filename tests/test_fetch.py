@@ -142,7 +142,6 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         oldrepos.copy_content_into(newrepos)
 
     def test_fetch_special_char_child(self):
-        raise KnownFailure
         repos_url = self.make_client('d', 'dc')
         self.build_tree({u'dc/trunk/é/f\x2cle': "data"})
         self.client_add("dc/trunk")
@@ -154,7 +153,6 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         oldrepos.copy_content_into(newrepos)
 
     def test_fetch_special_char_modify(self):
-        raise KnownFailure
         repos_url = self.make_client('d', 'dc')
         self.build_tree({u'dc/trunk/€\x2c': "data"})
         self.client_add("dc/trunk")

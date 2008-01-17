@@ -1,5 +1,8 @@
 bzr-svn 0.4.7	UNRELEASED
 
+  BUGS
+
+   * Consistently handle unicode characters. (#129334)
 
 bzr-svn 0.4.6	2008-01-08
 
