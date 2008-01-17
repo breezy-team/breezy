@@ -858,27 +858,6 @@ class TestSmartServerRepositoryStreamRevisionsChunked(tests.TestCaseWithTranspor
         response = request.execute(backing.local_abspath(''))
         self.assertEqual(None, response)
         response = request.do_body("%s\n\n1" % (rev_id1_utf8,))
-        self.assertEqual(('ok',), response.args)
-        # There's no error initially.
-        self.assertTrue(response.is_successful())
-        self.assertEqual(('ok',), response.args)
-        # We only get an error while streaming the body.
-        body = list(response.body_stream)
-        last_chunk = body[-1]
-        self.assertIsInstance(last_chunk, FailedSmartServerResponse)
-        self.assertEqual(
-            last_chunk,
-            FailedSmartServerResponse(('NoSuchRevision', rev_id1_utf8)))
-
-    def test_no_such_revision_error(self):
-        backing = self.get_transport()
-        request = smart.repository.SmartServerRepositoryStreamRevisionsChunked(
-            backing)
-        repo = self.make_repository('.')
-        rev_id1_utf8 = u'\xc8'.encode('utf-8')
-        response = request.execute(backing.local_abspath(''))
-        self.assertEqual(None, response)
-        response = request.do_body("%s\n\n1" % (rev_id1_utf8,))
         self.assertEqual(
             FailedSmartServerResponse(('NoSuchRevision', )),
             response)
