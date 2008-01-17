@@ -181,6 +181,11 @@ IN DEVELOPMENT
 
    * get_parent_map now always provides tuples as its output.  (Aaron Bentley)
 
+   * ``InterRepository.missing_revision_ids`` is now deprecated in favour of
+     ``InterRepository.search_missing_revision_ids`` which returns a 
+     ``bzrlib.graph.SearchResult`` suitable for making requests from the smart
+     server. (Robert Collins)
+
    * New method ``iter_inventories`` on Repository for access to many
      inventories. This is primarily used by the ``revision_trees`` method, as
      direct access to inventories is discouraged. (Robert Collins)

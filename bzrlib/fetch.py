@@ -33,8 +33,8 @@ the inventories.
 
 import bzrlib
 import bzrlib.errors as errors
-from bzrlib.errors import (InstallFailed,
-                           )
+from bzrlib.errors import InstallFailed
+from bzrlib.graph import SearchResult
 from bzrlib.progress import ProgressPhase
 from bzrlib.revision import is_null, NULL_REVISION
 from bzrlib.symbol_versioning import (deprecated_function,
@@ -133,8 +133,8 @@ class RepoFetcher(object):
         pp = ProgressPhase('Transferring', 4, self.pb)
         try:
             pp.next_phase()
-            revs = self._revids_to_fetch()
-            if revs is None:
+            revs = self._revids_to_fetch().get_keys()
+            if not revs:
                 return
             self._fetch_everything_for_revisions(revs, pp)
         finally:
@@ -194,16 +194,14 @@ class RepoFetcher(object):
         mutter('fetch up to rev {%s}', self._last_revision)
         if self._last_revision is NULL_REVISION:
             # explicit limit of no revisions needed
-            return None
+            return SearchResult(set(), set(), 0, set())
         if (self._last_revision is not None and
             self.to_repository.has_revision(self._last_revision)):
-            return None
-            
+            return SearchResult(set(), set(), 0, set())
         try:
-            # XXX: this gets the full graph on both sides, and will make sure
-            # that ghosts are filled whether or not you care about them.
-            return self.to_repository.missing_revision_ids(self.from_repository,
-                self._last_revision, find_ghosts=self.find_ghosts)
+            return self.to_repository.search_missing_revision_ids(
+                self.from_repository, self._last_revision,
+                find_ghosts=self.find_ghosts)
         except errors.NoSuchRevision:
             raise InstallFailed([self._last_revision])
 
