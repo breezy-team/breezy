@@ -7,11 +7,23 @@ Run it with
 """
 
 import os
+import os.path
 import sys
 
-# NOTE: This assumes we're being run from the setup.py directory, so it can be
-# loaded from the cwd.
+# NOTE: The directory containing setup.py, whether run by 'python setup.py' or
+# './setup.py' or the equivalent with another path, should always be at the
+# start of the path, so this should find the right one...
 import bzrlib
+
+def get_long_description():
+    dirname = os.path.dirname(__file__)
+    readme = os.path.join(dirname, 'README')
+    f = open(readme, 'rb')
+    try:
+        return f.read()
+    finally:
+        f.close()
+
 
 ##
 # META INFORMATION FOR SETUP
@@ -25,7 +37,7 @@ META_INFO = {
     'description':  'Friendly distributed version control system',
     'license':      'GNU GPL v2',
     'download_url': 'http://bazaar-vcs.org/Download',
-    'long_description': file("README").read(),
+    'long_description': get_long_description(),
     'classifiers': [
         'Development Status :: 6 - Mature',
         'Environment :: Console',
