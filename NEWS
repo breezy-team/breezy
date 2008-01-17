@@ -12,6 +12,9 @@ IN DEVELOPMENT
     * Fetching via bzr+ssh will no longer fill ghosts by default (this is
       consistent with pack-0.92 fetching over SFTP). (Robert Collins)
 
+    * Version number is now shown as "1.2" or "1.2pr2", without zeroed or
+      missing final fields.
+
   FEATURES:
 
     * New smart method, ``Repository.stream_revisions_chunked``, for fetching
