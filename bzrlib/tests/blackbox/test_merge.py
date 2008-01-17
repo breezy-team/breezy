@@ -476,3 +476,19 @@ class TestMerge(ExternalBase):
         self.assertFileEqual('base-contents\n<<<<<<< TREE\nthis-contents\n'
                              '=======\nother-contents\n>>>>>>> MERGE-SOURCE\n',
                              'a/file')
+
+    def test_merge_preview(self):
+        this_tree = self.make_branch_and_tree('this')
+        this_tree.commit('rev1')
+        other_tree = this_tree.bzrdir.sprout('other').open_workingtree()
+        self.build_tree_contents([('other/file', 'new line')])
+        other_tree.add('file')
+        other_tree.commit('rev2a')
+        this_tree.commit('rev2b')
+        out, err = self.run_bzr(['merge', '-d', 'this', 'other', '--preview'])
+        self.assertContainsRe(out, '\+new line')
+        self.assertNotContainsRe(err, '\+N  file\n')
+        this_tree.lock_read()
+        self.addCleanup(this_tree.unlock)
+        self.assertEqual([],
+                         list(this_tree._iter_changes(this_tree.basis_tree())))

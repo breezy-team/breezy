@@ -2759,6 +2759,7 @@ class cmd_merge(Command):
             bzr merge -r 81..82 ../bzr.dev
     """
 
+    encoding_type = 'exact'
     _see_also = ['update', 'remerge', 'status-flags']
     takes_args = ['branch?']
     takes_options = [
@@ -2783,12 +2784,14 @@ class cmd_merge(Command):
                short_name='d',
                type=unicode,
                ),
+        Option('preview', help='Instead of merging, show a diff of the merge.')
     ]
 
     def run(self, branch=None, revision=None, force=False, merge_type=None,
             show_base=False, reprocess=False, remember=False,
             uncommitted=False, pull=False,
             directory=None,
+            preview=False,
             ):
         # This is actually a branch (or merge-directive) *location*.
         location = branch
@@ -2844,7 +2847,6 @@ class cmd_merge(Command):
             merger.merge_type = merge_type
             merger.reprocess = reprocess
             merger.show_base = show_base
-            merger.change_reporter = change_reporter
             self.sanity_check_merger(merger)
             if (merger.base_rev_id == merger.other_rev_id and
                 merger.other_rev_id != None):
@@ -2859,18 +2861,34 @@ class cmd_merge(Command):
                     result.report(self.outf)
                     return 0
             merger.check_basis(not force)
-            conflict_count = merger.do_merge()
-            if allow_pending:
-                merger.set_pending()
-            if verified == 'failed':
-                warning('Preview patch does not match changes')
-            if conflict_count != 0:
-                return 1
+            if preview:
+                return self._do_preview(merger)
             else:
-                return 0
+                return self._do_merge(merger, change_reporter, allow_pending,
+                                      verified)
         finally:
             for cleanup in reversed(cleanups):
                 cleanup()
+
+    def _do_preview(self, merger):
+        from bzrlib.diff import show_diff_trees
+        tree_merger = merger.make_merger()
+        tt = tree_merger.make_preview_transform()
+        result_tree = tt.get_preview_tree()
+        show_diff_trees(merger.this_tree, result_tree, self.outf, old_label='',
+                        new_label='')
+
+    def _do_merge(self, merger, change_reporter, allow_pending, verified):
+        merger.change_reporter = change_reporter
+        conflict_count = merger.do_merge()
+        if allow_pending:
+            merger.set_pending()
+        if verified == 'failed':
+            warning('Preview patch does not match changes')
+        if conflict_count != 0:
+            return 1
+        else:
+            return 0
 
     def sanity_check_merger(self, merger):
         if (merger.show_base and

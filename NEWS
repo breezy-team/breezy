@@ -22,6 +22,9 @@ IN DEVELOPMENT
 
   FEATURES:
 
+    * ``merge --preview`` produces a diff of the changes merge would make,
+      but does not actually perform the merge.  (Aaron Bentley)
+
     * New smart method, ``Repository.stream_revisions_chunked``, for fetching
       revision data that streams revision data via a chunked encoding.  This
       avoids buffering large amounts of revision data on the server and on the
@@ -42,6 +45,11 @@ IN DEVELOPMENT
 
     * Unknown hostnames when connecting to a ``bzr://`` URL no longer cause
       tracebacks.  (Andrew Bennetts, #182849)
+
+  API BREAKS:
+
+    * Classes implementing Merge types like Merge3Merger must now accept (and
+      honour) a do_merge flag in their constructor.  (Aaron Bentley)
 
   INTERNALS:
 
