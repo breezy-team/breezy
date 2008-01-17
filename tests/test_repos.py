@@ -1300,5 +1300,8 @@ class MetadataMarshallerTests(TestCase):
         self.assertRaises(InvalidPropertyValue, 
                 lambda: parse_revid_property("2 "))
 
+    def test_parse_revid_property_newline(self):
+        self.assertRaises(InvalidPropertyValue, 
+                lambda: parse_revid_property("foo\nbar"))
 
 

@@ -149,7 +149,9 @@ def parse_revid_property(line):
     :param line: line to parse
     :return: tuple with (bzr_revno, revid)
     """
-    assert not '\n' in line
+    if '\n' in line:
+        raise errors.InvalidPropertyValue(SVN_PROP_BZR_REVISION_ID, 
+                "newline in revision id property line")
     try:
         (revno, revid) = line.split(' ', 1)
     except ValueError:
