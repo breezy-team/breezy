@@ -813,6 +813,16 @@ class Repository(object):
     def get_data_stream(self, revision_ids):
         raise NotImplementedError(self.get_data_stream)
 
+    def get_data_stream_for_search(self, search_result):
+        """Get a data stream that can be inserted to a repository.
+
+        :param search_result: A bzrlib.graph.SearchResult selecting the
+            revisions to get.
+        :return: A data stream that can be inserted into a repository using
+            insert_data_stream.
+        """
+        raise NotImplementedError(self.get_data_stream_for_search)
+
     def insert_data_stream(self, stream):
         """XXX What does this really do? 
         
@@ -1780,6 +1790,19 @@ class Repository(object):
         """Return an object suitable for checking versioned files."""
         return _VersionedFileChecker(self)
 
+    def revision_ids_to_search_result(self, result_set):
+        """Convert a set of revision ids to a graph SearchResult."""
+        result_parents = set()
+        for parents in self.get_graph().get_parent_map(
+            result_set).itervalues():
+            result_parents.update(parents)
+        included_keys = result_set.intersection(result_parents)
+        start_keys = result_set.difference(included_keys)
+        exclude_keys = result_parents.difference(result_set)
+        result = graph.SearchResult(start_keys, exclude_keys,
+            len(result_set), result_set)
+        return result
+
     @needs_write_lock
     def set_make_working_trees(self, new_value):
         """Set the policy flag for making working trees when creating branches.
@@ -1866,7 +1889,8 @@ class Repository(object):
         depend on the revision index being consistent.
         """
         raise NotImplementedError(self.revision_graph_can_have_wrong_parents)
-        
+
+
 # remove these delegates a while after bzr 0.15
 def __make_delegated(name, from_module):
     def _deprecated_repository_forwarder():
@@ -2398,20 +2422,7 @@ class InterRepository(InterObject):
         else:
             source_ids = self.source.all_revision_ids()
         result_set = set(source_ids).difference(target_ids)
-        return self._set_to_search_result(result_set, self.source)
-
-    def _set_to_search_result(self, result_set, repository):
-        """Convert a set of revision ids to a graph SearchResult."""
-        result_parents = set()
-        for parents in repository.get_graph().get_parent_map(
-            result_set).itervalues():
-            result_parents.update(parents)
-        included_keys = result_set.intersection(result_parents)
-        start_keys = result_set.difference(included_keys)
-        exclude_keys = result_parents.difference(result_set)
-        result = graph.SearchResult(start_keys, exclude_keys,
-            len(result_set), result_set)
-        return result
+        return self.source.revision_ids_to_search_result(result_set)
 
     @staticmethod
     def _same_model(source, target):
@@ -2598,7 +2609,7 @@ class InterWeaveRepo(InterSameDataRepository):
             # that against the revision records.
             result_set = set(
                 self.source._eliminate_revisions_not_present(required_revisions))
-        return self._set_to_search_result(result_set, self.source)
+        return self.source.revision_ids_to_search_result(result_set)
 
 
 class InterKnitRepo(InterSameDataRepository):
@@ -2667,7 +2678,7 @@ class InterKnitRepo(InterSameDataRepository):
             # that against the revision records.
             result_set = set(
                 self.source._eliminate_revisions_not_present(required_revisions))
-        return self._set_to_search_result(result_set, self.source)
+        return self.source.revision_ids_to_search_result(result_set)
 
 
 class InterPackRepo(InterSameDataRepository):
@@ -2758,7 +2769,7 @@ class InterPackRepo(InterSameDataRepository):
         # we do not have a revision as that would be pointless.
         target_ids = set(self.target.all_revision_ids())
         result_set = set(source_ids).difference(target_ids)
-        return self._set_to_search_result(result_set, self.source)
+        return self.source.revision_ids_to_search_result(result_set)
 
 
 class InterModel1and2(InterRepository):
@@ -2863,10 +2874,10 @@ class InterDifferingSerializer(InterKnitRepo):
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         """See InterRepository.fetch()."""
-        revision_ids = self.target.missing_revision_ids(self.source,
+        revision_ids = self.target.search_missing_revision_ids(self.source,
             revision_id, find_ghosts=find_ghosts).get_keys()
         revision_ids = tsort.topo_sort(
-            self.get_graph().get_parent_map(revision_ids))
+            self.source.get_graph().get_parent_map(revision_ids))
         def revisions_iterator():
             for current_revision_id in revision_ids:
                 revision = self.source.get_revision(current_revision_id)

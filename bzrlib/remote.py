@@ -691,6 +691,30 @@ class RemoteRepository(object):
         """RemoteRepositories never create working trees by default."""
         return False
 
+    def revision_ids_to_search_result(self, result_set):
+        """Convert a set of revision ids to a graph SearchResult."""
+        result_parents = set()
+        for parents in self.get_graph().get_parent_map(
+            result_set).itervalues():
+            result_parents.update(parents)
+        included_keys = result_set.intersection(result_parents)
+        start_keys = result_set.difference(included_keys)
+        exclude_keys = result_parents.difference(result_set)
+        result = graph.SearchResult(start_keys, exclude_keys,
+            len(result_set), result_set)
+        return result
+
+    @needs_read_lock
+    def search_missing_revision_ids(self, other, revision_id=None, find_ghosts=True):
+        """Return the revision ids that other has that this does not.
+        
+        These are returned in topological order.
+
+        revision_id: only return revision ids included by revision_id.
+        """
+        return repository.InterRepository.get(
+            other, self).search_missing_revision_ids(revision_id, find_ghosts)
+
     def fetch(self, source, revision_id=None, pb=None):
         if self.has_same_location(source):
             # check that last_revision is in 'from' and then return a
@@ -941,7 +965,8 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.has_signature_for_revision_id(revision_id)
 
-    def get_data_stream(self, revision_ids):
+    def get_data_stream_for_search(self, search):
+        revision_ids = search.get_keys()
         REQUEST_NAME = 'Repository.stream_revisions_chunked'
         path = self.bzrdir._path_for_remote_call(self._client)
         response, protocol = self._client.call_expecting_body(
@@ -955,7 +980,7 @@ class RemoteRepository(object):
                 "bad request u'%s'" % REQUEST_NAME)):
             protocol.cancel_read_body()
             self._ensure_real()
-            return self._real_repository.get_data_stream(revision_ids)
+            return self._real_repository.get_data_stream_for_search(search)
         else:
             raise errors.UnexpectedSmartServerResponse(response)
 

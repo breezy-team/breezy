@@ -34,7 +34,6 @@ the inventories.
 import bzrlib
 import bzrlib.errors as errors
 from bzrlib.errors import InstallFailed
-from bzrlib.graph import SearchResult
 from bzrlib.progress import ProgressPhase
 from bzrlib.revision import is_null, NULL_REVISION
 from bzrlib.symbol_versioning import (deprecated_function,
@@ -133,14 +132,18 @@ class RepoFetcher(object):
         pp = ProgressPhase('Transferring', 4, self.pb)
         try:
             pp.next_phase()
-            revs = self._revids_to_fetch().get_keys()
-            if not revs:
+            search = self._revids_to_fetch()
+            if search is None:
                 return
-            self._fetch_everything_for_revisions(revs, pp)
+            if getattr(self, '_fetch_everything_for_search', None) is not None:
+                self._fetch_everything_for_search(search, pp)
+            else:
+                # backward compatibility
+                self._fetch_everything_for_revisions(search.get_keys, pp)
         finally:
             self.pb.clear()
 
-    def _fetch_everything_for_revisions(self, revs, pp):
+    def _fetch_everything_for_search(self, search, pp):
         """Fetch all data for the given set of revisions."""
         # The first phase is "file".  We pass the progress bar for it directly
         # into item_keys_introduced_by, which has more information about how
@@ -153,6 +156,7 @@ class RepoFetcher(object):
         phase = 'file'
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
+            revs = search.get_keys()
             data_to_fetch = self.from_repository.item_keys_introduced_by(revs, pb)
             for knit_kind, file_id, revisions in data_to_fetch:
                 if knit_kind != phase:
@@ -194,10 +198,10 @@ class RepoFetcher(object):
         mutter('fetch up to rev {%s}', self._last_revision)
         if self._last_revision is NULL_REVISION:
             # explicit limit of no revisions needed
-            return SearchResult(set(), set(), 0, set())
+            return None
         if (self._last_revision is not None and
             self.to_repository.has_revision(self._last_revision)):
-            return SearchResult(set(), set(), 0, set())
+            return None
         try:
             return self.to_repository.search_missing_revision_ids(
                 self.from_repository, self._last_revision,
@@ -409,8 +413,8 @@ class Knit1to2Fetcher(KnitRepoFetcher):
 
 class RemoteToOtherFetcher(GenericRepoFetcher):
 
-    def _fetch_everything_for_revisions(self, revs, pp):
-        data_stream = self.from_repository.get_data_stream(revs)
+    def _fetch_everything_for_search(self, search, pp):
+        data_stream = self.from_repository.get_data_stream_for_search(search)
         self.to_repository.insert_data_stream(data_stream)
 
 

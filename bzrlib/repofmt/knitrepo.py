@@ -157,10 +157,20 @@ class KnitRepository(MetaDirRepository):
         except errors.RevisionNotPresent:
             raise errors.NoSuchRevision(self, revision_id)
 
+    @symbol_versioning.deprecated_method(symbol_versioning.one_two)
     @needs_read_lock
     def get_data_stream(self, revision_ids):
-        """See Repository.get_data_stream."""
-        item_keys = self.item_keys_introduced_by(revision_ids)
+        """See Repository.get_data_stream.
+        
+        Deprecated in 1.2 for get_data_stream_for_search.
+        """
+        search_result = self.revision_ids_to_search_result(set(revision_ids))
+        return self.get_data_stream_for_search(search_result)
+
+    @needs_read_lock
+    def get_data_stream_for_search(self, search):
+        """See Repository.get_data_stream_for_search."""
+        item_keys = self.item_keys_introduced_by(search.get_keys())
         for knit_kind, file_id, versions in item_keys:
             name = (knit_kind,)
             if knit_kind == 'file':

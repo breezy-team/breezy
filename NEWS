@@ -206,6 +206,10 @@ IN DEVELOPMENT
    * Reduce selftest overhead to establish test names by memoization.
      (Vincent Ladeuil)
 
+   * ``Repository.get_data_stream`` is now deprecated in favour of
+     ``Repository.get_data_stream_for_search`` which allows less network
+     traffic when requesting data streams over a smart server. (Robert Collins)
+
    * Repository has a new method ``has_revisions`` which signals the presence
      of many revisions by returning a set of the revisions listed which are
      present. This can be done by index queries without reading data for parent

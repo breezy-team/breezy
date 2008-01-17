@@ -28,6 +28,7 @@ from cStringIO import StringIO
 from bzrlib import (
     bzrdir,
     errors,
+    graph,
     pack,
     remote,
     repository,
@@ -867,7 +868,8 @@ class TestRepositoryStreamKnitData(TestRemoteRepository):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(
             responses, transport_path)
-        stream = repo.get_data_stream(['revid'])
+        search = graph.SearchResult(set(['revid']), set(), 1, set(['revid']))
+        stream = repo.get_data_stream_for_search(search)
         self.assertRaises(errors.SmartProtocolError, list, stream)
     
     def test_backwards_compatibility(self):
@@ -881,7 +883,8 @@ class TestRepositoryStreamKnitData(TestRemoteRepository):
             responses, 'path')
         self.mock_called = False
         repo._real_repository = MockRealRepository(self)
-        repo.get_data_stream(['revid'])
+        search = graph.SearchResult(set(['revid']), set(), 1, set(['revid']))
+        repo.get_data_stream_for_search(search)
         self.assertTrue(self.mock_called)
         self.failIf(client.expecting_body,
             "The protocol has been left in an unclean state that will cause "
@@ -894,8 +897,8 @@ class MockRealRepository(object):
     def __init__(self, test):
         self.test = test
 
-    def get_data_stream(self, revision_ids):
-        self.test.assertEqual(['revid'], revision_ids)
+    def get_data_stream_for_search(self, search):
+        self.test.assertEqual(set(['revid']), search.get_keys())
         self.test.mock_called = True
 
 

@@ -316,7 +316,8 @@ class SmartServerRepositoryStreamKnitDataForRevisions(SmartServerRepositoryReque
             repository.unlock()
 
     def _do_repository_request(self, repository, revision_ids):
-        stream = repository.get_data_stream(revision_ids)
+        stream = repository.get_data_stream_for_search(
+            repository.revision_ids_to_search_result(set(revision_ids)))
         buffer = StringIO()
         pack = ContainerSerialiser()
         buffer.write(pack.begin())
@@ -334,7 +335,8 @@ class SmartServerRepositoryStreamRevisionsChunked(SmartServerRepositoryRequest):
     def do_repository_request(self, repository, *revision_ids):
         repository.lock_read()
         try:
-            stream = repository.get_data_stream(revision_ids)
+            stream = repository.get_data_stream_for_search(
+                repository.revision_ids_to_search_result(set(revision_ids)))
         except Exception:
             repository.unlock()
             raise
