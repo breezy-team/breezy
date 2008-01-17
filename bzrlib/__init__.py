@@ -40,11 +40,31 @@ version_info = (1, 2, 0, 'dev', 0)
 # API compatibility version: bzrlib is currently API compatible with 0.18.
 api_minimum_version = (0, 18, 0)
 
-if version_info[3] == 'final':
-    version_string = '%d.%d.%d' % version_info[:3]
+# this format matches <http://docs.python.org/dist/meta-data.html>
+if version_info[2] == 0:
+    __main_version = '%d.%d' % version_info[:2]
 else:
-    version_string = '%d.%d.%d.%s.%d' % version_info
-__version__ = version_string
+    __main_version = '%d.%d.%d' % version_info[:3]
+
+__release_type = version_info[3]
+__sub = version_info[4]
+
+# check they're consistent
+if __release_type == 'final' and __sub == 0:
+    __sub_string = ''
+elif __release_type == 'dev' and __sub == 0:
+    __sub_string = 'dev'
+elif __release_type in ('alpha', 'beta') and __sub != 0:
+    __sub_string = __release_type[0] + str(__sub)
+elif __release_type == 'candidate' and __sub != 0:
+    __sub_string = 'pr' + str(__sub)
+else:
+    raise AssertionError("version_info %r not valid" % version_info)
+
+version_string = '%d.%d.%d.%s.%d' % version_info
+short_version_string = __main_version + __sub_string
+__version__ = short_version_string
+
 
 # allow bzrlib plugins to be imported.
 import bzrlib.plugin
