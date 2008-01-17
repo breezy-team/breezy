@@ -152,6 +152,13 @@ class FakeClient(_SmartClient):
         self.expecting_body = True
         return result[0], FakeProtocol(result[1], self)
 
+    def call_with_body_bytes_expecting_body(self, method, args, body):
+        self._calls.append(('call_with_body_bytes_expecting_body', method,
+            args, body))
+        result = self.responses.pop(0)
+        self.expecting_body = True
+        return result[0], FakeProtocol(result[1], self)
+
 
 class FakeMedium(object):
 

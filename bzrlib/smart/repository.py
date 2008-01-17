@@ -48,8 +48,15 @@ class SmartServerRepositoryRequest(SmartServerRequest):
         """
         transport = self._backing_transport.clone(path)
         bzrdir = BzrDir.open_from_transport(transport)
-        repository = bzrdir.open_repository()
-        return self.do_repository_request(repository, *args)
+        # Save the repository for use with do_body.
+        self._repository = bzrdir.open_repository()
+        return self.do_repository_request(self._repository, *args)
+
+    def do_repository_request(self, repository, *args):
+        """Override to provide an implementation for a verb."""
+        # No-op for verbs that take bodies (None as a result indicates a body
+        # is expected)
+        return None
 
 
 class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
@@ -307,6 +314,7 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
 
 
 class SmartServerRepositoryStreamKnitDataForRevisions(SmartServerRepositoryRequest):
+    """Bzr <= 1.1 streaming pull, buffers all data on server."""
 
     def do_repository_request(self, repository, *revision_ids):
         repository.lock_read()
@@ -331,12 +339,33 @@ class SmartServerRepositoryStreamKnitDataForRevisions(SmartServerRepositoryReque
 
 
 class SmartServerRepositoryStreamRevisionsChunked(SmartServerRepositoryRequest):
+    """Bzr 1.1+ streaming pull."""
 
-    def do_repository_request(self, repository, *revision_ids):
+    def do_body(self, body_bytes):
+        lines = body_bytes.split('\n')
+        start_keys = set(lines[0].split(' '))
+        exclude_keys = set(lines[1].split(' '))
+        revision_count = int(lines[2])
+        repository = self._repository
         repository.lock_read()
         try:
-            stream = repository.get_data_stream_for_search(
-                repository.revision_ids_to_search_result(set(revision_ids)))
+            search = repository.get_graph()._make_breadth_first_searcher(
+                start_keys)
+            while True:
+                try:
+                    next_revs = search.next()
+                except StopIteration:
+                    break
+                search.stop_searching_any(exclude_keys.intersection(next_revs))
+            search_result = search.get_result()
+            if search_result.get_recipe()[2] != revision_count:
+                # we got back a different amount of data than expected, this
+                # gets reported as NoSuchRevision, because less revisions
+                # indicates missing revisions, and more should never happen as
+                # the excludes list considers ghosts and ensures that ghost
+                # filling races are not a problem.
+                return FailedSmartServerResponse(('NoSuchRevision',))
+            stream = repository.get_data_stream_for_search(search_result)
         except Exception:
             repository.unlock()
             raise
@@ -350,6 +379,8 @@ class SmartServerRepositoryStreamRevisionsChunked(SmartServerRepositoryRequest):
             for name_tuple, bytes in stream:
                 yield pack.bytes_record(bytes, [name_tuple])
         except errors.RevisionNotPresent, e:
+            # This shouldn't be able to happen, but as we don't buffer
+            # everything it can in theory happen.
             yield FailedSmartServerResponse(('NoSuchRevision', e.revision_id))
         repository.unlock()
         pack.end()

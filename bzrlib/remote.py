@@ -966,14 +966,22 @@ class RemoteRepository(object):
         return self._real_repository.has_signature_for_revision_id(revision_id)
 
     def get_data_stream_for_search(self, search):
-        revision_ids = search.get_keys()
         REQUEST_NAME = 'Repository.stream_revisions_chunked'
         path = self.bzrdir._path_for_remote_call(self._client)
-        response, protocol = self._client.call_expecting_body(
-            REQUEST_NAME, path, *revision_ids)
+        recipe = search.get_recipe()
+        start_keys = ' '.join(recipe[0])
+        stop_keys = ' '.join(recipe[1])
+        count = str(recipe[2])
+        body = '\n'.join((start_keys, stop_keys, count))
+        response, protocol = self._client.call_with_body_bytes_expecting_body(
+            REQUEST_NAME, (path,), body)
 
         if response == ('ok',):
             return self._deserialise_stream(protocol)
+        if response == ('NoSuchRevision', ):
+            # We cannot easily identify the revision that is missing in this
+            # situation without doing much more network IO. For now, bail.
+            raise NoSuchRevision(self, "unknown")
         elif (response == ('error', "Generic bzr smart protocol error: "
                 "bad request '%s'" % REQUEST_NAME) or
               response == ('error', "Generic bzr smart protocol error: "

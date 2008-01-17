@@ -25,7 +25,8 @@ IN DEVELOPMENT
    * New smart method, ``Repository.stream_revisions_chunked``, for fetching
      revision data that streams revision data via a chunked encoding.  This
      avoids buffering large amounts of revision data on the server and on the
-     client.  (Andrew Bennetts, #178353)
+     client, and sends less data to the server to request the revisions.
+     (Andrew Bennetts, Robert Collins, #178353)
 
    * diff '--using' allows an external diff tool to be used for files.
      (Aaron Bentley)
