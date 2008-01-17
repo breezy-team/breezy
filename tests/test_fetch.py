@@ -1289,7 +1289,7 @@ Node-copyfrom-path: x
         tree = repos.revision_tree(
              repos.generate_revision_id(3, "branches/foobranch", "trunk0"))
 
-        self.assertEqual(generate_svn_file_id(repos.uuid, 1, "trunk", ""), tree.inventory.root.file_id)
+        self.assertEqual(generate_svn_file_id(repos.uuid, 1, "trunk", u""), tree.inventory.root.file_id)
 
     def test_fetch_odd(self):
         repos_url = self.make_client('d', 'dc')

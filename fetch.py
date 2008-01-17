@@ -148,7 +148,7 @@ class RevisionBuildEditor(svn.delta.Editor):
     def open_root(self, base_revnum, baton):
         if self.old_inventory.root is None:
             # First time the root is set
-            file_id = generate_file_id(self.source, self.revid, "")
+            file_id = generate_file_id(self.source, self.revid, u"")
             self.dir_baserev[file_id] = []
         else:
             assert self.old_inventory.root.revision is not None

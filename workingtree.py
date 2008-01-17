@@ -222,11 +222,11 @@ class SvnWorkingTree(WorkingTree):
         """Generate a bzr file id from a Subversion file name. 
         
         :param revnum: Revision number.
-        :param path: Absolute path.
+        :param path: Absolute path within the Subversion repository.
         :return: Tuple with file id and revision id.
         """
         assert isinstance(revnum, int) and revnum >= 0
-        assert isinstance(path, basestring)
+        assert isinstance(path, str)
 
         rp = self.branch.unprefix(path)
         entry = self.base_tree.id_map[rp]

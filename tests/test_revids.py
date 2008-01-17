@@ -110,16 +110,12 @@ class RevisionIdMappingTest(TestCase):
                   generate_svn_revision_id("myuuid", 5, "branch/path", "undefined"))
 
     def test_generate_revid_special_char(self):
-        self.assertEqual(u"svn-v%d-undefined:myuuid:branch%%2C:5" % MAPPING_VERSION, 
-             generate_svn_revision_id("myuuid", 5, u"branch\x2c", "undefined"))
-
-    def test_generate_revid_special_char_ascii(self):
         self.assertEqual("svn-v%d-undefined:myuuid:branch%%2C:5" % MAPPING_VERSION, 
              generate_svn_revision_id("myuuid", 5, "branch\x2c", "undefined"))
 
     def test_generate_revid_nordic(self):
         self.assertEqual("svn-v%d-undefined:myuuid:branch%%C3%%A6:5" % MAPPING_VERSION, 
-             generate_svn_revision_id("myuuid", 5, u"branch\xe6", "undefined"))
+             generate_svn_revision_id("myuuid", 5, u"branch\xe6".encode("utf-8"), "undefined"))
 
     def test_parse_revid_simple(self):
         self.assertEqual(("uuid", "", 4, "undefined"),

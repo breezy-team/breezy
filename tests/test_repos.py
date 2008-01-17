@@ -109,7 +109,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos_url = self.make_client("a", "dc")
         repos = Repository.open(repos_url)
         revid = repos.generate_revision_id(0, "", "none")
-        self.assertEqual({"": (generate_file_id(MockRepo(repos.uuid), revid, ""), revid)}, repos.get_fileid_map(0, "", NoBranchingScheme()))
+        self.assertEqual({u"": (generate_file_id(MockRepo(repos.uuid), revid, u""), revid)}, repos.get_fileid_map(0, "", NoBranchingScheme()))
 
     def test_generate_revision_id_forced_revid(self):
         repos_url = self.make_client("a", "dc")
@@ -1197,7 +1197,7 @@ class EscapeTest(TestCase):
         self.assertEqual("foobar%b", unescape_svn_path("foobar%25b"))
 
     def test_escape_svn_path_nordic(self):
-        self.assertEqual("foobar%C3%A6", escape_svn_path(u"foobar\xe6"))
+        self.assertEqual("foobar%C3%A6", escape_svn_path(u"foobar\xe6".encode("utf-8")))
 
 
 class SvnRepositoryFormatTests(TestCase):

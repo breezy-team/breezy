@@ -27,26 +27,45 @@ import sha
 
 from revids import escape_svn_path
 
-def generate_svn_file_id(uuid, revnum, branch, path):
+def generate_svn_file_id(uuid, revnum, branch, inv_path):
     """Create a file id identifying a Subversion file.
 
     :param uuid: UUID of the repository
-    :param revnu: Revision number at which the file was introduced.
+    :param revnum: Revision number at which the file was introduced.
     :param branch: Branch path of the branch in which the file was introduced.
-    :param path: Original path of the file within the branch
+    :param inv_path: Original path of the file within the inventory
     """
-    ret = "%d@%s:%s:%s" % (revnum, uuid, escape_svn_path(branch), escape_svn_path(path))
+    assert isinstance(uuid, str)
+    assert isinstance(revnum, int)
+    assert isinstance(branch, str)
+    assert isinstance(inv_path, unicode)
+    inv_path = inv_path.encode("utf-8")
+    ret = "%d@%s:%s:%s" % (revnum, uuid, escape_svn_path(branch), escape_svn_path(inv_path))
     if len(ret) > 150:
         ret = "%d@%s:%s;%s" % (revnum, uuid, 
                             escape_svn_path(branch),
-                            sha.new(path.encode('utf-8')).hexdigest())
+                            sha.new(inv_path).hexdigest())
     assert isinstance(ret, str)
     return osutils.safe_file_id(ret)
 
 
-def generate_file_id(repos, revid, path):
+def generate_file_id(repos, revid, inv_path):
+    """Generate a file id for a path created in a specific revision.
+
+    :note: This should not necessarily be the revnum in which the 
+        node first appeared in Subversion, but the revnum in which 
+        bzr-svn required a new file identity to be created.
+
+    :param repos: Repository object.
+    :param revid: bzr-svn revision id for the revision in which the path first
+                  appeared.
+    :param inv_path: Inventory path in the specified revision.
+    :return: A file id
+    """
+    assert isinstance(revid, str)
+    assert isinstance(inv_path, unicode)
     (branch, revnum, _) = repos.lookup_revision_id(revid)
-    return generate_svn_file_id(repos.uuid, revnum, branch, path)
+    return generate_svn_file_id(repos.uuid, revnum, branch, inv_path)
 
 
 def get_local_changes(paths, scheme, generate_revid, get_children=None):
@@ -143,7 +162,7 @@ class FileIdMap(object):
         next_parent_revs = []
         if revnum == 0:
             assert branch == ""
-            return {"": (generate_svn_file_id(uuid, revnum, branch, ""), 
+            return {"": (generate_svn_file_id(uuid, revnum, branch, u""), 
               self.repos.generate_revision_id(revnum, branch, str(scheme)))}
 
         # No history -> empty map
@@ -165,7 +184,7 @@ class FileIdMap(object):
 
         if len(next_parent_revs) == 0:
             if scheme.is_branch(""):
-                map = {"": (generate_svn_file_id(uuid, 0, "", ""), NULL_REVISION)}
+                map = {u"": (generate_svn_file_id(uuid, 0, "", u""), NULL_REVISION)}
             else:
                 map = {}
 
@@ -233,13 +252,15 @@ class SimpleFileIdMap(FileIdMap):
             data = changes[p]
 
             if data[0] in ('A', 'R'):
-                map[p] = new_file_id(p)
+                inv_p = p.decode("utf-8")
+                map[inv_p] = new_file_id(inv_p)
 
                 if data[1] is not None:
-                    mutter('%r copied from %r:%s' % (p, data[1], data[2]))
+                    mutter('%r copied from %r:%s' % (inv_p, data[1], data[2]))
                     if find_children is not None:
                         for c in find_children(data[1], data[2]):
-                            path = c.replace(data[1], p+"/", 1).replace("//", "/")
+                            inv_c = c.decode("utf-8")
+                            path = c.replace(data[1].decode("utf-8"), inv_p+"/", 1).replace(u"//", u"/")
                             map[path] = new_file_id(path)
                             mutter('added mapping %r -> %r' % (path, map[path]))
 

@@ -34,8 +34,7 @@ def escape_svn_path(x):
     :param x: Path
     :return: Escaped path
     """
-    if isinstance(x, unicode):
-        x = x.encode("utf-8")
+    assert isinstance(x, str)
     return urllib.quote(x, "")
 unescape_svn_path = urllib.unquote
 
@@ -49,7 +48,7 @@ def parse_svn_revision_id(revid):
     """
 
     assert revid is not None
-    assert isinstance(revid, basestring)
+    assert isinstance(revid, str)
 
     if not revid.startswith(REVISION_ID_PREFIX):
         raise InvalidRevisionId(revid, "")
@@ -78,7 +77,7 @@ def generate_svn_revision_id(uuid, revnum, path, scheme):
     :return: New revision id.
     """
     assert isinstance(revnum, int)
-    assert isinstance(path, basestring)
+    assert isinstance(path, str)
     assert revnum >= 0
     assert revnum > 0 or path == "", \
             "Trying to generate revid for (%r,%r)" % (path, revnum)
@@ -138,11 +137,12 @@ class RevidMap(object):
         :return: Tuple with path inside repository, minimum revision number, maximum revision number and 
             branching scheme.
         """
+        assert isinstance(revid, str)
         ret = self.cachedb.execute(
             "select path, min_revnum, max_revnum, scheme from revmap where revid='%s'" % revid).fetchone()
         if ret is None:
             raise NoSuchRevision(self, revid)
-        return (str(ret[0]), ret[1], ret[2], ret[3])
+        return (ret[0].encode("utf-8"), int(ret[1]), int(ret[2]), ret[3].encode("utf-8"))
 
     def lookup_branch_revnum(self, revnum, path, scheme):
         """Lookup a revision by revision number, branch path and branching scheme.
@@ -152,8 +152,8 @@ class RevidMap(object):
         :param scheme: Branching scheme name
         """
         assert isinstance(revnum, int)
-        assert isinstance(path, basestring)
-        assert isinstance(scheme, basestring)
+        assert isinstance(path, str)
+        assert isinstance(scheme, str)
         revid = self.cachedb.execute(
                 "select revid from revmap where max_revnum = min_revnum and min_revnum='%s' and path='%s' and scheme='%s'" % (revnum, path, scheme)).fetchone()
         if revid is not None:
@@ -162,8 +162,23 @@ class RevidMap(object):
 
     def insert_revid(self, revid, branch, min_revnum, max_revnum, scheme, 
                      dist_to_origin=None):
+        """Insert a revision id into the revision id cache.
+
+        :param revid: Revision id for which to insert metadata.
+        :param branch: Branch path at which the revision was seen
+        :param min_revnum: Minimum Subversion revision number in which the 
+                           revid was found
+        :param max_revnum: Maximum Subversion revision number in which the 
+                           revid was found
+        :param scheme: Name of the branching scheme with which the revision 
+                       was found
+        :param dist_to_origin: Optional distance to the origin of this branch.
+        """
         assert revid is not None and revid != ""
-        assert isinstance(scheme, basestring)
+        assert isinstance(scheme, str)
+        assert isinstance(branch, str)
+        assert isinstance(min_revnum, int) and isinstance(max_revnum, int)
+        assert dist_to_origin is None or isinstance(dist_to_origin, int)
         cursor = self.cachedb.execute(
             "update revmap set min_revnum = MAX(min_revnum,?), max_revnum = MIN(max_revnum, ?) WHERE revid=? AND path=? AND scheme=?",
             (min_revnum, max_revnum, revid, branch, scheme))
@@ -177,6 +192,11 @@ class RevidMap(object):
                 (revid, dist_to_origin))
 
     def lookup_dist_to_origin(self, revid):
+        """Lookup the number of lhs revisions between the revid and NULL_REVISIOn.
+        :param revid: Revision id of the revision for which to do the lookup.
+        :return: None if the distance is not known, or an integer.
+        """
+        assert isinstance(revid, str)
         revno = self.cachedb.execute(
                 "select dist_to_origin from revno_cache where revid='%s'" % revid).fetchone()
         if revno is not None and revno[0] is not None:
