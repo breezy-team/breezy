@@ -283,6 +283,10 @@ class RemoteTransport(transport.ConnectedTransport):
         # the external path for RemoteTransports is the base
         return self.base
 
+    def recommended_page_size(self):
+        """Return the recommended page size for this transport."""
+        return 64 * 1024
+        
     def _readv(self, relpath, offsets):
         if not offsets:
             return

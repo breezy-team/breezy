@@ -8,25 +8,115 @@ IN DEVELOPMENT
 --------------
 
   CHANGES:
+
+    * Fetching via bzr+ssh will no longer fill ghosts by default (this is
+      consistent with pack-0.92 fetching over SFTP). (Robert Collins)
+
+   * ``merge`` now prefers to use the submit branch, but will fall back to
+     parent branch.  For many users, this has no effect.  But some users who
+     pull and merge on the same branch will notice a change.  This change
+     makes it easier to work on a branch on two different machines, pulling
+     between the machines, while merging from the upstream.
+     ``merge --remember`` can now be used to set the submit_branch.
+     (Aaron Bentley)
+
+  FEATURES:
+
+    * ``merge --preview`` produces a diff of the changes merge would make,
+      but does not actually perform the merge.  (Aaron Bentley)
+
+    * New smart method, ``Repository.stream_revisions_chunked``, for fetching
+      revision data that streams revision data via a chunked encoding.  This
+      avoids buffering large amounts of revision data on the server and on the
+      client, and sends less data to the server to request the revisions.
+      (Andrew Bennetts, Robert Collins, #178353)
+
+  IMPROVEMENTS:
+
+    * Fetching between different repository formats with compatible models now
+      takes advantage of the smart method to stream revisions.  (Andrew Bennetts)
+
+  BUGFIXES:
+
+    * Calculate remote path relative to the shared medium in _SmartClient.  This
+      is related to the problem in bug #124089.  (Andrew Bennetts)
+
+    * ``reconfigure`` can safely be interrupted while fetching.
+      (Aaron Bentley, #179316)
+
+    * Unknown hostnames when connecting to a ``bzr://`` URL no longer cause
+      tracebacks.  (Andrew Bennetts, #182849)
+
+  API BREAKS:
+
+    * Classes implementing Merge types like Merge3Merger must now accept (and
+      honour) a do_merge flag in their constructor.  (Aaron Bentley)
+
+  INTERNALS:
+
+    * Add -Dtimes debug flag, which records a timestamp against each mutter to
+      the trace file, relative to the first mutter.  (Andrew Bennetts)
+     
+    * Add a new method ``get_result`` to graph search objects. The resulting
+      ``SearchResult`` can be used to recreate the search later, which will
+      be useful in reducing network traffic. (Robert Collins)
+
+    * Fetching now passes the find_ghosts flag through to the 
+      ``InterRepository.missing_revision_ids`` call consistently for all
+      repository types. This will enable faster missing revision discovery with
+      bzr+ssh. (Robert Collins)
+
+    * ``InterRepository.missing_revision_ids`` is now deprecated in favour of
+      ``InterRepository.search_missing_revision_ids`` which returns a 
+      ``bzrlib.graph.SearchResult`` suitable for making requests from the smart
+      server. (Robert Collins)
+ 
+    * New method ``iter_inventories`` on Repository for access to many
+      inventories. This is primarily used by the ``revision_trees`` method, as
+      direct access to inventories is discouraged. (Robert Collins)
+ 
+    * New method ``next_with_ghosts`` on the Graph breadth-first-search objects
+      which will split out ghosts and present parents into two separate sets,
+      useful for code which needs to be aware of ghosts (e.g. fetching data
+      cares about ghosts during revision selection). (Robert Collins)
+ 
+    * ``Repository.get_data_stream`` is now deprecated in favour of
+      ``Repository.get_data_stream_for_search`` which allows less network
+      traffic when requesting data streams over a smart server. (Robert Collins)
+
+    * Repository has a new method ``has_revisions`` which signals the presence
+      of many revisions by returning a set of the revisions listed which are
+      present. This can be done by index queries without reading data for parent
+      revision names etc. (Robert Collins)
+
+    * RemoteTransport's ``recommended_page_size`` method now returns 64k, like
+      SFTPTransport and HttpTransportBase.  (Andrew Bennetts)
+
+
+bzr 1.1 2008-01-15
+------------------
+
+(no changes from 1.1rc1)
+
+bzr 1.1rc1 2008-01-05
+---------------------
+
+  CHANGES:
    
+   * Dotted revision numbers have been revised. Instead of growing longer with
+     nested branches the branch number just increases. (eg instead of 1.1.1.1.1
+     we now report 1.2.1.) This helps scale long lived branches which have many
+     feature branches merged between them. (John Arbash Meinel)
+
    * The syntax ``bzr diff branch1 branch2`` is no longer supported.
      Use ``bzr diff branch1 --new branch2`` instead. This change has
      been made to remove the ambiguity where ``branch2`` is in fact a
      specific file to diff within ``branch1``.
 
-   * Fetching via bzr+ssh will no longer fill ghosts by default (this is
-     consistent with pack-0.92 fetching over SFTP). (Robert Collins)
-
   FEATURES:
 
    * New option to use custom template-based formats in  ``bzr version-info``.
      (Lukáš Lalinský)
-
-   * New smart method, ``Repository.stream_revisions_chunked``, for fetching
-     revision data that streams revision data via a chunked encoding.  This
-     avoids buffering large amounts of revision data on the server and on the
-     client, and sends less data to the server to request the revisions.
-     (Andrew Bennetts, Robert Collins, #178353)
 
    * diff '--using' allows an external diff tool to be used for files.
      (Aaron Bentley)
@@ -55,9 +145,6 @@ IN DEVELOPMENT
      at the start of the file, promoting linear reads for ``bzr log`` and the
      like. This partially fixes #154129. (Robert Collins)
 
-   * Fetching between different repository formats with compatible models now
-     takes advantage of the smart method to stream revisions.  (Andrew Bennetts)
-
    * Merge directives now fetch prerequisites from the target branch if
      needed.  (Aaron Bentley)
 
@@ -84,9 +171,6 @@ IN DEVELOPMENT
 
    * build_tree acceleration uses the correct path when a file has been moved.
      (Aaron Bentley)
-
-   * Calculate remote path relative to the shared medium in _SmartClient.  This
-     is related to the problem in bug #124089.  (Andrew Bennetts)
 
    * ``commit`` now succeeds when a checkout and its master branch share a
      repository.  (Aaron Bentley, #177592)
@@ -123,9 +207,6 @@ IN DEVELOPMENT
    * ``reconfigure`` is able to convert trees into lightweight checkouts.
      (Aaron Bentley)
 
-   * ``reconfigure`` can safely be interrupted while fetching.
-     (Aaron Bentley, #179316)
-
    * Reduce lockdir timeout to 0 when running ``bzr serve``.  (Andrew Bennetts,
      #148087)
 
@@ -138,9 +219,6 @@ IN DEVELOPMENT
    * ``uncommit`` works even when the commit messages of revisions to be
      removed use characters not supported in the terminal encoding.
      (Aaron Bentley)
-
-   * Unknown hostnames when connecting to a ``bzr://`` URL no longer cause
-     tracebacks.  (Andrew Bennetts, #182849)
 
    * When dumb http servers return whole files instead of the requested ranges,
      read the remaining bytes by chunks to avoid overflowing network buffers.
@@ -162,59 +240,24 @@ IN DEVELOPMENT
 
   INTERNALS:
 
-   * Add -Dtimes debug flag, which records a timestamp against each mutter to
-     the trace file, relative to the first mutter.  (Andrew Bennetts)
-   
-   * Add a new method ``get_result`` to graph search objects. The resulting
-     ``SearchResult`` can be used to recreate the search later, which will
-     be useful in reducing network traffic. (Robert Collins)
+    * find_* methods available for BzrDirs, Branches and WorkingTrees.
+      (Aaron Bentley)
 
-   * Fetching now passes the find_ghosts flag through to the 
-     ``InterRepository.missing_revision_ids`` call consistently for all
-     repository types. This will enable faster missing revision discovery with
-     bzr+ssh. (Robert Collins)
+    * Help topics can now be loaded from files. 
+      (Ian Clatworthy, Alexander Belchenko)
 
-   * find_* methods available for BzrDirs, Branches and WorkingTrees.
-     (Aaron Bentley)
+    * get_parent_map now always provides tuples as its output.  (Aaron Bentley)
 
-   * Help topics can now be loaded from files. 
-     (Ian Clatworthy, Alexander Belchenko)
+    * Parent Providers should now implement ``get_parent_map`` returning a
+      dictionary instead of ``get_parents`` returning a list.
+      ``Graph.get_parents`` is now deprecated. (John Arbash Meinel,
+      Robert Collins)
 
-   * get_parent_map now always provides tuples as its output.  (Aaron Bentley)
+    * Patience Diff now supports arbitrary python objects, as long as they
+      support ``hash()``. (John Arbash Meinel)
 
-   * ``InterRepository.missing_revision_ids`` is now deprecated in favour of
-     ``InterRepository.search_missing_revision_ids`` which returns a 
-     ``bzrlib.graph.SearchResult`` suitable for making requests from the smart
-     server. (Robert Collins)
-
-   * New method ``iter_inventories`` on Repository for access to many
-     inventories. This is primarily used by the ``revision_trees`` method, as
-     direct access to inventories is discouraged. (Robert Collins)
-
-   * New method ``next_with_ghosts`` on the Graph breadth-first-search objects
-     which will split out ghosts and present parents into two separate sets,
-     useful for code which needs to be aware of ghosts (e.g. fetching data
-     cares about ghosts during revision selection). (Robert Collins)
-
-   * Parent Providers should now implement ``get_parent_map`` returning a
-     dictionary instead of ``get_parents`` returning a list.
-     ``Graph.get_parents`` is now deprecated. (John Arbash Meinel,
-     Robert Collins)
-
-   * Patience Diff now supports arbitrary python objects, as long as they
-     support ``hash()``. (John Arbash Meinel)
-
-   * Reduce selftest overhead to establish test names by memoization.
-     (Vincent Ladeuil)
-
-   * ``Repository.get_data_stream`` is now deprecated in favour of
-     ``Repository.get_data_stream_for_search`` which allows less network
-     traffic when requesting data streams over a smart server. (Robert Collins)
-
-   * Repository has a new method ``has_revisions`` which signals the presence
-     of many revisions by returning a set of the revisions listed which are
-     present. This can be done by index queries without reading data for parent
-     revision names etc. (Robert Collins)
+    * Reduce selftest overhead to establish test names by memoization.
+      (Vincent Ladeuil)
 
   API BREAKS:
 
