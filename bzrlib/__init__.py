@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -57,7 +57,7 @@ elif __release_type == 'dev' and __sub == 0:
 elif __release_type in ('alpha', 'beta') and __sub != 0:
     __sub_string = __release_type[0] + str(__sub)
 elif __release_type == 'candidate' and __sub != 0:
-    __sub_string = 'pr' + str(__sub)
+    __sub_string = 'rc' + str(__sub)
 else:
     raise AssertionError("version_info %r not valid" % version_info)
 
