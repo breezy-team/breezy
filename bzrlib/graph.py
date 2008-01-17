@@ -660,15 +660,15 @@ class _BreadthFirstSearcher(object):
             stopped = self._next_query.intersection(revisions)
             self._next_query = self._next_query.difference(revisions)
         else:
-            stopped = set()
-            stopped.update(self._current_present.intersection(revisions))
-            stopped.update(self._current_ghosts.intersection(revisions))
+            stopped_present = self._current_present.intersection(revisions)
+            stopped = stopped_present.union(
+                self._current_ghosts.intersection(revisions))
             self._current_present.difference_update(stopped)
             self._current_ghosts.difference_update(stopped)
             # stopping 'x' should stop returning parents of 'x', but 
             # not if 'y' always references those same parents
             stop_rev_references = {}
-            for rev in stopped:
+            for rev in stopped_present:
                 for parent_id in self._current_parents[rev]:
                     if parent_id not in stop_rev_references:
                         stop_rev_references[parent_id] = 0
