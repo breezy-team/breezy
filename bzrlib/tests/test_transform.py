@@ -1872,39 +1872,61 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         trans_id = preview.trans_id_file_id('a-id')
         self.assertEqual('a.moved', preview.final_name(trans_id))
 
-    def test_iter_changes(self):
+    def get_tree_and_preview_tree(self):
         revision_tree = self.create_tree()
-        root = revision_tree.inventory.root.file_id
         preview = TransformPreview(revision_tree)
         a_trans_id = preview.trans_id_file_id('a-id')
         preview.delete_contents(a_trans_id)
         preview.create_file('b content', a_trans_id)
         preview_tree = preview.get_preview_tree()
+        return revision_tree, preview_tree
+
+    def test_iter_changes(self):
+        revision_tree, preview_tree = self.get_tree_and_preview_tree()
+        root = revision_tree.inventory.root.file_id
         self.assertEqual([('a-id', ('a', 'a'), True, (True, True),
                           (root, root), ('a', 'a'), ('file', 'file'),
                           (False, False))],
                           list(preview_tree._iter_changes(revision_tree)))
-        # Test unsupported parameters
+
+    def test_wrong_tree_value_error(self):
+        revision_tree, preview_tree = self.get_tree_and_preview_tree()
         e = self.assertRaises(ValueError, preview_tree._iter_changes,
                               preview_tree)
         self.assertEqual('from_tree must be transform source tree.', str(e))
+
+    def test_include_unchanged_value_error(self):
+        revision_tree, preview_tree = self.get_tree_and_preview_tree()
         e = self.assertRaises(ValueError, preview_tree._iter_changes,
                               revision_tree, include_unchanged=True)
         self.assertEqual('include_unchanged is not supported', str(e))
+
+    def test_specific_files(self):
+        revision_tree, preview_tree = self.get_tree_and_preview_tree()
         e = self.assertRaises(ValueError, preview_tree._iter_changes,
                               revision_tree, specific_files=['pete'])
         self.assertEqual('specific_files is not supported', str(e))
+
+    def test_want_unversioned_value_error(self):
+        revision_tree, preview_tree = self.get_tree_and_preview_tree()
         e = self.assertRaises(ValueError, preview_tree._iter_changes,
                               revision_tree, want_unversioned=True)
         self.assertEqual('want_unversioned is not supported', str(e))
-        # test ignored parameters
 
+    def test_ignore_extra_trees_no_specific_files(self):
         # extra_trees is harmless without specific_files, so we'll silently
         # accept it, even though we won't use it.
+        revision_tree, preview_tree = self.get_tree_and_preview_tree()
         preview_tree._iter_changes(revision_tree, extra_trees=[preview_tree])
+
+    def test_ignore_require_versioned_no_specific_files(self):
         # require_versioned is meaningless without specific_files.
+        revision_tree, preview_tree = self.get_tree_and_preview_tree()
         preview_tree._iter_changes(revision_tree, require_versioned=False)
+
+    def test_ignore_pb(self):
         # pb could be supported, but TT.iter_changes doesn't support it.
+        revision_tree, preview_tree = self.get_tree_and_preview_tree()
         preview_tree._iter_changes(revision_tree, pb=progress.DummyProgress())
 
     def test_kind(self):
