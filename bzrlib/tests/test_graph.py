@@ -818,6 +818,30 @@ class TestGraph(TestCaseWithMemoryTransport):
         search.start_searching(['head'])
         self.assertSeenAndResult(expected, search, search.next_with_ghosts)
 
+    def test_breadth_first_stop_searching_not_queried(self):
+        # A client should be able to say 'stop node X' even if X has not been
+        # returned to the client.
+        graph = self.make_graph({
+            'head':['child', 'ghost1'],
+            'child':[NULL_REVISION],
+            NULL_REVISION:[],
+            })
+        search = graph._make_breadth_first_searcher(['head'])
+        expected = [
+            # NULL_REVISION and ghost1 have not been returned
+            (set(['head']), (set(['head']), set(['child', 'ghost1']), 1),
+             ['head'], None, [NULL_REVISION, 'ghost1']),
+            # ghost1 has been returned, NULL_REVISION is to be returned in the
+            # next iteration.
+            (set(['head', 'child', 'ghost1']),
+             (set(['head']), set(['ghost1', NULL_REVISION]), 2),
+             ['head', 'child'], None, [NULL_REVISION, 'ghost1']),
+            ]
+        self.assertSeenAndResult(expected, search, search.next)
+        # using next_with_ghosts:
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertSeenAndResult(expected, search, search.next_with_ghosts)
+
     def test_breadth_first_get_result_ghosts_are_excluded(self):
         graph = self.make_graph({
             'head':['child', 'ghost'],
