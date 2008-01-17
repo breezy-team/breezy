@@ -9,6 +9,8 @@ Run it with
 import os
 import sys
 
+# NOTE: This assumes we're being run from the setup.py directory, so it can be
+# loaded from the cwd.
 import bzrlib
 
 ##
