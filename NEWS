@@ -49,7 +49,6 @@ IN DEVELOPMENT
     * Unknown hostnames when connecting to a ``bzr://`` URL no longer cause
       tracebacks.  (Andrew Bennetts, #182849)
 
-
   API BREAKS:
 
     * Classes implementing Merge types like Merge3Merger must now accept (and
