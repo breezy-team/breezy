@@ -21,6 +21,7 @@ from cStringIO import StringIO
 
 from bzrlib import (
     branch,
+    debug,
     errors,
     graph,
     lockdir,
@@ -40,7 +41,7 @@ from bzrlib.symbol_versioning import (
     zero_ninetyone,
     )
 from bzrlib.revision import NULL_REVISION
-from bzrlib.trace import note
+from bzrlib.trace import mutter, note
 
 # Note: RemoteBzrDirFormat is in bzrdir.py
 
@@ -767,7 +768,12 @@ class RemoteRepository(object):
         ancestry = self._parents_map
         missing_revisions = set(key for key in keys if key not in ancestry)
         if missing_revisions:
-            self._parents_map.update(self._get_parent_map(missing_revisions))
+            parent_map = self._get_parent_map(missing_revisions)
+            if 'hpss' in debug.debug_flags:
+                mutter('retransmitted revisions: %d of %d',
+                        len(set(self._parents_map).intersection(parent_map)),
+                        len(parent_map))
+            self._parents_map.update(parent_map)
         return dict((k, ancestry[k]) for k in keys if k in ancestry)
 
     def _response_is_unknown_method(self, response, verb):
