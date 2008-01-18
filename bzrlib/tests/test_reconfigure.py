@@ -185,14 +185,20 @@ class TestReconfigure(tests.TestCaseWithTransport):
         self.assertRaises(errors.NoRepositoryPresent,
                           checkout.bzrdir.open_repository)
 
-    def test_branch_to_lightweight_checkout(self):
+    def prepare_branch_to_lightweight_checkout(self):
         parent = self.make_branch('parent')
         child = parent.bzrdir.sprout('child').open_workingtree()
         child.commit('test', rev_id='new-commit')
         child.bzrdir.destroy_workingtree()
         reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
             child.bzrdir)
+        return parent, child, reconfiguration
+
+    def test_branch_to_lightweight_checkout(self):
+        parent, child, reconfiguration = \
+            self.prepare_branch_to_lightweight_checkout()
         reconfiguration.apply()
+        self.assertTrue(reconfiguration._destroy_branch)
         wt = child.bzrdir.open_workingtree()
         self.assertTrue(parent.repository.has_same_location(
             wt.branch.repository))
@@ -201,11 +207,8 @@ class TestReconfigure(tests.TestCaseWithTransport):
                           child.bzrdir.open_repository)
 
     def test_branch_to_lightweight_checkout_failure(self):
-        parent = self.make_branch('parent')
-        child = parent.bzrdir.sprout('child').open_workingtree()
-        child.commit('test', rev_id='new-commit')
-        reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
-            child.bzrdir)
+        parent, child, reconfiguration = \
+            self.prepare_branch_to_lightweight_checkout()
         old_Repository_fetch = repository.Repository.fetch
         repository.Repository.fetch = None
         try:
@@ -214,6 +217,14 @@ class TestReconfigure(tests.TestCaseWithTransport):
             repository.Repository.fetch = old_Repository_fetch
         child = _mod_branch.Branch.open('child')
         self.assertContainsRe(child.base, 'child/$')
+
+    def test_branch_to_lightweight_checkout_fetch_tags(self):
+        parent, child, reconfiguration = \
+            self.prepare_branch_to_lightweight_checkout()
+        child.branch.tags.set_tag('foo', 'bar')
+        reconfiguration.apply()
+        child = _mod_branch.Branch.open('child')
+        self.assertEqual('bar', parent.tags.lookup_tag('foo'))
 
     def test_lightweight_checkout_to_lightweight_checkout(self):
         parent = self.make_branch('parent')
