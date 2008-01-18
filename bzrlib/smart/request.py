@@ -66,6 +66,8 @@ class SmartServerRequest(object):
 
     def do_body(self, body_bytes):
         """Called if the client sends a body with the request.
+
+        The do() method is still called, and must have returned None.
         
         Must return a SmartServerResponse.
         """
@@ -329,10 +331,6 @@ request_handlers.register_lazy(
     'Repository.stream_revisions_chunked',
     'bzrlib.smart.repository',
     'SmartServerRepositoryStreamRevisionsChunked')
-request_handlers.register_lazy(
-    'Repository.chunked_stream_knit_data_for_revisions',
-    'bzrlib.smart.repository',
-    'SmartServerRepositoryStreamKnitDataForRevisions')
 request_handlers.register_lazy(
     'Repository.get_revision_graph', 'bzrlib.smart.repository', 'SmartServerRepositoryGetRevisionGraph')
 request_handlers.register_lazy(

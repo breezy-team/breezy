@@ -23,6 +23,7 @@ import bzrlib
 from bzrlib import (
     bzrdir,
     errors,
+    graph,
     remote,
     repository,
     )
@@ -35,6 +36,7 @@ from bzrlib.repofmt.weaverepo import (
     )
 from bzrlib.revision import NULL_REVISION, Revision
 from bzrlib.smart import server
+from bzrlib.symbol_versioning import one_two
 from bzrlib.tests import (
     KnownFailure,
     TestCaseWithTransport,
@@ -389,7 +391,23 @@ class TestRepository(TestCaseWithRepository):
         repo._format.rich_root_data
         repo._format.supports_tree_reference
 
-    def test_get_data_stream(self):
+    def test_get_data_stream_deprecated(self):
+        # If get_data_stream is present it must be deprecated
+        tree = self.make_branch_and_tree('t')
+        self.build_tree(['t/foo'])
+        tree.add('foo', 'file1')
+        tree.commit('message', rev_id='rev_id')
+        repo = tree.branch.repository
+        try:
+            stream = self.applyDeprecated(one_two, repo.get_data_stream,
+                ['rev_id'])
+        except NotImplementedError:
+            raise TestNotApplicable("%s doesn't support get_data_stream"
+                % repo._format)
+        except AttributeError:
+            pass
+
+    def test_get_data_stream_for_search(self):
         # Make a repo with a revision
         tree = self.make_branch_and_tree('t')
         self.build_tree(['t/foo'])
@@ -398,8 +416,10 @@ class TestRepository(TestCaseWithRepository):
         repo = tree.branch.repository
 
         # Get a data stream (a file-like object) for that revision
+        search = graph.SearchResult(set(['rev_id']), set([NULL_REVISION]), 1,
+            set(['rev_id']))
         try:
-            stream = repo.get_data_stream(['rev_id'])
+            stream = repo.get_data_stream_for_search(search)
         except NotImplementedError:
             raise TestNotApplicable("%s doesn't support get_data_stream"
                 % repo._format)
@@ -441,10 +461,12 @@ class TestRepository(TestCaseWithRepository):
         source_repo = tree.branch.repository
         dest_repo = self.make_repository('dest')
         try:
-            stream = source_repo.get_data_stream(['rev_id'])
+            stream = source_repo.get_data_stream_for_search(
+                dest_repo.search_missing_revision_ids(source_repo,
+                    revision_id='rev_id'))
         except NotImplementedError, e:
             # Not all repositories support streaming.
-            self.assertContainsRe(str(e), 'get_data_stream')
+            self.assertContainsRe(str(e), 'get_data_stream_for_search')
             raise TestSkipped('This format does not support streaming.')
 
         dest_repo.lock_write()

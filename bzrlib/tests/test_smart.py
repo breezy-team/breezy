@@ -829,11 +829,13 @@ class TestSmartServerRepositoryStreamRevisionsChunked(tests.TestCaseWithTranspor
         tree.add('')
         rev_id1_utf8 = u'\xc8'.encode('utf-8')
         rev_id2_utf8 = u'\xc9'.encode('utf-8')
-        r1 = tree.commit('1st commit', rev_id=rev_id1_utf8)
-        r1 = tree.commit('2nd commit', rev_id=rev_id2_utf8)
+        tree.commit('1st commit', rev_id=rev_id1_utf8)
+        tree.commit('2nd commit', rev_id=rev_id2_utf8)
         tree.unlock()
 
-        response = request.execute(backing.local_abspath(''), rev_id2_utf8)
+        response = request.execute(backing.local_abspath(''))
+        self.assertEqual(None, response)
+        response = request.do_body("%s\n%s\n1" % (rev_id2_utf8, rev_id1_utf8))
         self.assertEqual(('ok',), response.args)
         from cStringIO import StringIO
         parser = pack.ContainerPushParser()
@@ -853,17 +855,12 @@ class TestSmartServerRepositoryStreamRevisionsChunked(tests.TestCaseWithTranspor
             backing)
         repo = self.make_repository('.')
         rev_id1_utf8 = u'\xc8'.encode('utf-8')
-        response = request.execute(backing.local_abspath(''), rev_id1_utf8)
-        # There's no error initially.
-        self.assertTrue(response.is_successful())
-        self.assertEqual(('ok',), response.args)
-        # We only get an error while streaming the body.
-        body = list(response.body_stream)
-        last_chunk = body[-1]
-        self.assertIsInstance(last_chunk, FailedSmartServerResponse)
+        response = request.execute(backing.local_abspath(''))
+        self.assertEqual(None, response)
+        response = request.do_body("%s\n\n1" % (rev_id1_utf8,))
         self.assertEqual(
-            last_chunk,
-            FailedSmartServerResponse(('NoSuchRevision', rev_id1_utf8)))
+            FailedSmartServerResponse(('NoSuchRevision', )),
+            response)
 
 
 class TestSmartServerIsReadonly(tests.TestCaseWithTransport):
@@ -934,10 +931,6 @@ class TestHandlers(tests.TestCase):
         self.assertEqual(
             smart.request.request_handlers.get('Repository.lock_write'),
             smart.repository.SmartServerRepositoryLockWrite)
-        self.assertEqual(
-            smart.request.request_handlers.get(
-                'Repository.chunked_stream_knit_data_for_revisions'),
-            smart.repository.SmartServerRepositoryStreamKnitDataForRevisions)
         self.assertEqual(
             smart.request.request_handlers.get('Repository.tarball'),
             smart.repository.SmartServerRepositoryTarball)
