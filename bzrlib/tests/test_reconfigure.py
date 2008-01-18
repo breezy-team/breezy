@@ -60,11 +60,16 @@ class TestReconfigure(tests.TestCaseWithTransport):
         reconfiguration.apply()
         self.assertIs(None, checkout.branch.get_bound_location())
 
-    def test_lightweight_checkout_to_branch(self):
+    def prepare_lightweight_checkout_to_branch(self):
         branch = self.make_branch('branch')
         checkout = branch.create_checkout('checkout', lightweight=True)
         checkout.commit('first commit', rev_id='rev1')
         reconfiguration = reconfigure.Reconfigure.to_branch(checkout.bzrdir)
+        return reconfiguration, checkout
+
+    def test_lightweight_checkout_to_branch(self):
+        reconfiguration, checkout = \
+            self.prepare_lightweight_checkout_to_branch()
         reconfiguration.apply()
         checkout_branch = checkout.bzrdir.open_branch()
         self.assertEqual(checkout_branch.bzrdir.root_transport.base,
@@ -72,6 +77,14 @@ class TestReconfigure(tests.TestCaseWithTransport):
         self.assertEqual('rev1', checkout_branch.last_revision())
         repo = checkout.bzrdir.open_repository()
         repo.get_revision('rev1')
+
+    def test_lightweight_checkout_to_branch_tags(self):
+        reconfiguration, checkout = \
+            self.prepare_lightweight_checkout_to_branch()
+        checkout.branch.tags.set_tag('foo', 'bar')
+        reconfiguration.apply()
+        checkout_branch = checkout.bzrdir.open_branch()
+        self.assertEqual('bar', checkout_branch.tags.lookup_tag('foo'))
 
     def test_lightweight_checkout_to_checkout(self):
         branch = self.make_branch('branch')

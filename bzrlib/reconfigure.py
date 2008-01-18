@@ -236,6 +236,8 @@ class Reconfigure(object):
             local_branch = self.bzrdir.create_branch()
             if last_revision_info is not None:
                 local_branch.set_last_revision_info(*last_revision_info)
+            if self._destroy_reference:
+                self.referenced_branch.tags.merge_to(local_branch.tags)
         else:
             local_branch = self.local_branch
         if self._create_reference:
