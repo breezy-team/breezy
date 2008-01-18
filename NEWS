@@ -11,6 +11,8 @@ bzr-svn 0.4.7	UNRELEASED
 
    * Fix too strict indexing in old existing cache databases. (#165136)
 
+   * Handle children of replaced directories, themselve replaced correctly. (#181790)
+
 bzr-svn 0.4.6	2008-01-08
 
   PERFORMANCE
