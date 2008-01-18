@@ -86,13 +86,26 @@ class TestReconfigure(tests.TestCaseWithTransport):
         checkout_branch = checkout.bzrdir.open_branch()
         self.assertEqual('bar', checkout_branch.tags.lookup_tag('foo'))
 
-    def test_lightweight_checkout_to_checkout(self):
+    def prepare_lightweight_checkout_to_checkout(self):
         branch = self.make_branch('branch')
         checkout = branch.create_checkout('checkout', lightweight=True)
         reconfiguration = reconfigure.Reconfigure.to_checkout(checkout.bzrdir)
+        return reconfiguration, checkout
+
+    def test_lightweight_checkout_to_checkout(self):
+        reconfiguration, checkout = \
+            self.prepare_lightweight_checkout_to_checkout()
         reconfiguration.apply()
         checkout_branch = checkout.bzrdir.open_branch()
         self.assertIsNot(checkout_branch.get_bound_location(), None)
+
+    def test_lightweight_checkout_to_checkout_tags(self):
+        reconfiguration, checkout = \
+            self.prepare_lightweight_checkout_to_checkout()
+        checkout.branch.tags.set_tag('foo', 'bar')
+        reconfiguration.apply()
+        checkout_branch = checkout.bzrdir.open_branch()
+        self.assertEqual('bar', checkout_branch.tags.lookup_tag('foo'))
 
     def test_lightweight_conversion_uses_shared_repo(self):
         parent = self.make_branch('parent')
