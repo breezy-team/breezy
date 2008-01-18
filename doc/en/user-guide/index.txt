@@ -27,6 +27,7 @@ Getting started
 
 .. include:: installing_bazaar.txt
 .. include:: entering_commands.txt
+.. include:: revnos.txt
 .. include:: getting_help.txt
 .. include:: configuring_bazaar.txt
 .. include:: using_aliases.txt
