@@ -9,6 +9,8 @@ bzr-svn 0.4.7	UNRELEASED
    * Handle unicode strings appropriately when reading working tree 
      inventory. (#183853)
 
+   * Fix too strict indexing in old existing cache databases. (#165136)
+
 bzr-svn 0.4.6	2008-01-08
 
   PERFORMANCE
