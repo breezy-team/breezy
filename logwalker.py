@@ -193,6 +193,8 @@ class LogWalker(object):
 
         paths = {}
         for p, act, cf, cr in self.db.execute(query):
+            if cf is not None:
+                cf = cf.encode("utf-8")
             paths[p.encode("utf-8")] = (act, cf, cr)
         return paths
 
