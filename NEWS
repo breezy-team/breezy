@@ -4,6 +4,9 @@ bzr-svn 0.4.7	UNRELEASED
 
    * Consistently handle unicode characters. (#129334, #164381)
 
+   * Handle unicode strings appropriately when reading working tree 
+     inventory. (#183853)
+
 bzr-svn 0.4.6	2008-01-08
 
   PERFORMANCE

@@ -1,4 +1,5 @@
 # Copyright (C) 2006 Jelmer Vernooij <jelmer@samba.org>
+# -*- coding: utf-8 -*-
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -56,6 +57,15 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertIsInstance(inv, Inventory)
         self.assertTrue(inv.has_filename("bl"))
         self.assertFalse(inv.has_filename("aa"))
+
+    def test_special_char(self):
+        self.make_client('a', 'dc')
+        self.build_tree({u"dc/I²C": "data"})
+        self.client_add("dc/I²C")
+        tree = self.open_checkout("dc")
+        inv = tree.read_working_inventory()
+        self.assertIsInstance(inv, Inventory)
+        self.assertTrue(inv.has_filename(u"I²C"))
 
     def test_smart_add_file(self):
         self.make_client('a', 'dc')
