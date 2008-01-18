@@ -2707,6 +2707,28 @@ def test_suite():
     return suite
 
 
+def split_test_list_by_module(test_name_list):
+    by_modules = {}
+    for test_name in test_name_list:
+        if '(' in test_name:
+            # Get read of params in case they contain '.' chars
+            name, params = test_name.split('(')
+        else:
+            name = test_name
+        try:
+            mod_name, klass, meth_name = name.rsplit('.', 2)
+        except ValueError:
+            # Not enough components. Put the test in a special module since we
+            # can't reliably find its associated module.
+            mod_name = ''
+        by_module = by_modules.get(mod_name, None)
+        if by_module is None:
+            by_modules[mod_name] = [test_name]
+        else:
+            by_module.append(test_name)
+    return by_modules
+
+
 def multiply_tests_from_modules(module_name_list, scenario_iter):
     """Adapt all tests in some given modules to given scenarios.
 

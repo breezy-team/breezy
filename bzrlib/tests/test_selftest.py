@@ -32,6 +32,7 @@ from bzrlib import (
     osutils,
     repository,
     symbol_versioning,
+    tests,
     )
 from bzrlib.progress import _BaseProgressBar
 from bzrlib.repofmt import weaverepo
@@ -1841,4 +1842,42 @@ class TestTestLoader(TestCase):
         # add a load_tests() method which multiplies the tests from the module.
         module.__class__.load_tests = load_tests
         self.assertEqual(2, loader.loadTestsFromModule(module).countTestCases())
+
+
+class TestSplitTestListByModules(tests.TestCase):
+
+    def test_empty_list(self):
+        names_by_module = tests.split_test_list_by_module([])
+        self.assertEquals({}, names_by_module)
+
+    def test_valid_list(self):
+        test_list = ['mod1.cl1.meth1', 'mod1.cl1.meth2',
+                     'mod1.cl2.meth1', 'mod1.cl2.meth2',
+                     'mod1.submod2.cl1.meth1', 'mod1.submod2.cl2.meth2',
+                    ]
+        names_by_module = tests.split_test_list_by_module(test_list)
+        self.assertEquals(['mod1', 'mod1.submod2'], names_by_module.keys())
+        self.assertEquals(['mod1.cl1.meth1', 'mod1.cl1.meth2',
+                           'mod1.cl2.meth1', 'mod1.cl2.meth2',],
+                          names_by_module['mod1'])
+        self.assertEquals(['mod1.submod2.cl1.meth1', 'mod1.submod2.cl2.meth2'],
+                          names_by_module['mod1.submod2'])
+
+    def test_too_short_test_name(self):
+        test_list = ['mod1', 'mod2.method1', 'mod3.cl1']
+        names_by_module = tests.split_test_list_by_module(test_list)
+        self.assertEquals([''], names_by_module.keys())
+        self.assertEquals(['mod1', 'mod2.method1', 'mod3.cl1'],
+                          names_by_module[''])
+
+
+    def test_bad_chars_in_params(self):
+        test_list = ['mod1.cl1.meth1(xx.yy)']
+        names_by_module = tests.split_test_list_by_module(test_list)
+        self.assertEquals(['mod1'], names_by_module.keys())
+        self.assertEquals(['mod1.cl1.meth1(xx.yy)'],
+                          names_by_module['mod1'])
+
+# blank line
+# comment
 
