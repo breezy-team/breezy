@@ -2,6 +2,8 @@ bzr-svn 0.4.7	UNRELEASED
 
   BUGS
 
+   * Fix opening unicode file names during fetch. (#162368)
+
    * Consistently handle unicode characters. (#129334, #164381)
 
    * Handle unicode strings appropriately when reading working tree 

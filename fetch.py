@@ -168,19 +168,27 @@ class RevisionBuildEditor(svn.delta.Editor):
         return file_id
 
     def _get_existing_id(self, parent_id, path):
+    	assert isinstance(path, unicode)
+	assert isinstance(parent_id, str)
         if self.id_map.has_key(path):
             return self.id_map[path]
         return self._get_old_id(parent_id, path)
 
     def _get_old_id(self, parent_id, old_path):
+    	assert isinstance(old_path, unicode)
+	assert isinstance(parent_id, str)
         return self.old_inventory[parent_id].children[urlutils.basename(old_path)].file_id
 
     def _get_new_id(self, parent_id, new_path):
+    	assert isinstance(new_path, unicode)
+	assert isinstance(parent_id, str)
         if self.id_map.has_key(new_path):
             return self.id_map[new_path]
         return generate_file_id(self.source, self.revid, new_path)
 
     def _rename(self, file_id, parent_id, path):
+    	assert isinstance(path, unicode)
+	assert isinstance(parent_id, str)
         # Only rename if not right yet
         if (self.inventory[file_id].parent_id == parent_id and 
             self.inventory[file_id].name == urlutils.basename(path)):
@@ -188,6 +196,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.inventory.rename(file_id, parent_id, urlutils.basename(path))
 
     def delete_entry(self, path, revnum, parent_id, pool):
+    	assert isinstance(path, str)
         path = path.decode("utf-8")
         if path in self._premature_deletes:
             # Delete recursively
@@ -206,6 +215,7 @@ class RevisionBuildEditor(svn.delta.Editor):
 
     def add_directory(self, path, parent_id, copyfrom_path, copyfrom_revnum, 
                       pool):
+    	assert isinstance(path, str)
         path = path.decode("utf-8")
         check_filename(path)
         file_id = self._get_new_id(parent_id, path)
@@ -230,6 +240,8 @@ class RevisionBuildEditor(svn.delta.Editor):
         return file_id
 
     def open_directory(self, path, parent_id, base_revnum, pool):
+    	assert isinstance(path, str)
+        path = path.decode("utf-8")
         assert base_revnum >= 0
         base_file_id = self._get_old_id(parent_id, path)
         base_revid = self.old_inventory[base_file_id].revision
@@ -312,6 +324,7 @@ class RevisionBuildEditor(svn.delta.Editor):
             mutter('unsupported file property %r' % name)
 
     def add_file(self, path, parent_id, copyfrom_path, copyfrom_revnum, baton):
+    	assert isinstance(path, str)
         path = path.decode("utf-8")
         check_filename(path)
         self.is_symlink = False
@@ -335,6 +348,8 @@ class RevisionBuildEditor(svn.delta.Editor):
         return path
 
     def open_file(self, path, parent_id, base_revnum, pool):
+    	assert isinstance(path, str)
+        path = path.decode("utf-8")
         base_file_id = self._get_old_id(parent_id, path)
         base_revid = self.old_inventory[base_file_id].revision
         self.file_id = self._get_existing_id(parent_id, path)
@@ -351,6 +366,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         return path
 
     def close_file(self, path, checksum):
+    	assert isinstance(path, unicode)
         if self.file_stream is not None:
             self.file_stream.seek(0)
             lines = osutils.split_lines(self.file_stream.read())
