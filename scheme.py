@@ -54,6 +54,7 @@ class BranchingScheme:
         :param name: Name of branching scheme.
         :return: Branching scheme instance.
         """
+        assert isinstance(name, str)
         if name.startswith("trunk"):
             if name == "trunk":
                 return TrunkBranchingScheme()

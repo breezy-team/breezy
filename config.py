@@ -63,7 +63,7 @@ class SvnRepositoryConfig(IniBasedConfig):
         """
         schemename = self._get_user_option("branching-scheme", use_global=False)
         if schemename is not None:
-            return BranchingScheme.find_scheme(schemename)
+            return BranchingScheme.find_scheme(schemename.encode('ascii'))
         return None
 
     def get_override_svn_revprops(self):
