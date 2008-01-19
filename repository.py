@@ -774,6 +774,8 @@ class SvnRepository(Repository):
             for (branch, revno, _) in self.find_branches(scheme, 
                     self.revmap.last_revnum_checked(str(scheme)),
                     last_revnum):
+                assert isinstance(branch, str)
+                assert isinstance(revno, int)
                 # Look at their bzr:revision-id-vX
                 revids = []
                 try:
