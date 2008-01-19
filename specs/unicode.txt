@@ -49,3 +49,6 @@ Working Trees
 ~~~~~~~~~~~~~
 Bazaars working tree functions assume all relative paths are unicode, 
 so the same convention will be used for bzr-svn's working tree-related code.
+
+..
+    vim: ft=rest

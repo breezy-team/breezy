@@ -49,3 +49,6 @@ New settings
 ~~~~~~~~~~~~
 A new per-Subversion-repository setting `support_legacy` will be added. This setting controls whether 
 file properties should be set when pushing to the specified repository. It defaults to True.
+
+..
+    vim: ft=rest

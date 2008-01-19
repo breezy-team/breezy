@@ -1,8 +1,10 @@
-#FORMAT rst
+Bazaar support for Subversion branches, working trees and repositories
+======================================================================
 
-============
+.. contents::
+
 Introduction
-============
+------------
 
 This directory contains a simple plugin that adds 
 Subversion (http://subversion.tigris.org/) branch support to 
@@ -12,9 +14,8 @@ Bazaar (http://www.bazaar-vcs.org/). This allows ``bzr branch``, ``bzr push``,
 The plugin can at the moment be used to commit to, pull from, merge from, push 
 to and view logs of Subversion branches from Bazaar.
 
-============
 Dependencies
-============
+------------
 
 You will need at least version 0.92 of Bazaar or higher.
 
@@ -31,9 +32,8 @@ In order to be able to use the ``svn-upgrade`` command (for those
 who used earlier versions of bzr-svn), you will need the bzr-rebase 
 plugin (http://bazaar-vcs.org/BzrSvn).
 
-========
 Features
-========
+--------
 
 The following features are currently present:
 
@@ -74,9 +74,8 @@ The following features are currently present:
 - Handles complex operations in Subversion: committing to two branches at 
   once, upgrading directories to branches, copies from early revisions, ...
 
-===================
 Future Enhancements
-===================
+-------------------
 
 In the future, I also hope to support:
 
@@ -136,18 +135,19 @@ Features held back by Subversion:
    
   Spec at https://launchpad.net/products/bzr/+spec/bzr-cpick-data
 
-====
 Bugs
-====
+----
  
 Please file bug reports in launchpad. The product URL for bzr-svn is
 https://launchpad.net/products/bzr-svn/. The wiki for this 
 plugin is at http://bazaar-vcs.org/BzrSvn.
 
-============
 Installation
-============
+------------
 
 Simply place this directory in ~/.bazaar/plugins and you should be able 
 to check out branches from Subversion using bzr. Make sure the directory 
 name is 'svn'.
+
+..
+	vim: ft=rest
