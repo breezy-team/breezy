@@ -1683,6 +1683,16 @@ class TestSelftestFiltering(TestCase):
             condition_id_re('test_condition_id_re'))
         self.assertEqual([test_name], self._test_ids(filtered_suite))
 
+    def test_condition_id_in_list(self):
+        test_names = ['bzrlib.tests.test_selftest.TestSelftestFiltering.'
+                      'test_condition_id_in_list']
+        filtered_suite = filter_suite_by_condition(
+            self.suite, tests.condition_id_in_list(test_names))
+        my_pattern = 'TestSelftestFiltering.*test_condition_id_in_list'
+        re_filtered = filter_suite_by_re(self.suite, my_pattern)
+        self.assertEqual(self._test_ids(re_filtered),
+                         self._test_ids(filtered_suite))
+
     def test_condition_isinstance(self):
         filtered_suite = filter_suite_by_condition(self.suite,
             condition_isinstance(self.__class__))
@@ -1727,6 +1737,17 @@ class TestSelftestFiltering(TestCase):
         filtered_names = self._test_ids(filtered_suite)
         self.assertEqual(filtered_names, ['bzrlib.tests.test_selftest.'
             'TestSelftestFiltering.test_filter_suite_by_re'])
+
+    def test_filter_suite_by_id_list(self):
+        filtered_suite = tests.filter_suite_by_id_list(
+            self.suite,
+            ['bzrlib.tests.test_selftest.'
+             'TestSelftestFiltering.test_filter_suite_by_id_list'])
+        filtered_names = self._test_ids(filtered_suite)
+        self.assertEqual(
+            filtered_names,
+            ['bzrlib.tests.test_selftest.'
+             'TestSelftestFiltering.test_filter_suite_by_id_list'])
 
     def test_preserve_input(self):
         # NB: Surely this is something in the stdlib to do this?

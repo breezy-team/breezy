@@ -2261,6 +2261,17 @@ def condition_isinstance(klass_or_klass_list):
     return condition
 
 
+def condition_id_in_list(name_list):
+    """Create a condition filter which verify that test's id in a list.
+    
+    :param name: A list of test names.
+    :return: A callable that returns True if the test's id appears in the list.
+    """
+    def condition(test):
+        return test.id() in name_list
+    return condition
+
+
 def exclude_tests_by_condition(suite, condition):
     """Create a test suite which excludes some tests from suite.
 
@@ -2321,6 +2332,18 @@ def filter_suite_by_re(suite, pattern, exclude_pattern=DEPRECATED_PARAMETER,
                 DeprecationWarning, stacklevel=2)
         if random_order:
             result_suite = randomize_suite(result_suite)
+    return result_suite
+
+
+def filter_suite_by_id_list(suite, test_id_list):
+    """Create a test suite by filtering another one.
+
+    :param suite: The source suite.
+    :param test_id_list: A list of the test ids to keep as strings.
+    :returns: the newly created suite
+    """
+    condition = condition_id_in_list(test_id_list)
+    result_suite = filter_suite_by_condition(suite, condition)
     return result_suite
 
 
