@@ -30,18 +30,30 @@ from errors import convert_svn_error, NoSvnRepositoryPresent
 
 svn_config = svn.core.svn_config_get_config(None)
 
+def get_client_string():
+    """Return a string that can be send as part of the User Agent string."""
+    return "bzr%s+bzr-svn%s" % (bzrlib.__version__, bzrlib.plugins.svn.__version__)
+
 
 def _create_auth_baton(pool):
     """Create a Subversion authentication baton. """
     # Give the client context baton a suite of authentication
     # providers.h
-    providers = [
+    providers = []
+
+    if svn.core.SVN_VER_MAJOR == 1 and svn.core.SVN_VER_MINOR >= 5:
+        import auth
+        providers += auth.SubversionAuthenticationConfig().get_svn_auth_providers()
+        providers += [auth.get_ssl_client_cert_pw_provider(1)]
+
+    providers += [
         svn.client.get_simple_provider(pool),
         svn.client.get_username_provider(pool),
         svn.client.get_ssl_client_cert_file_provider(pool),
         svn.client.get_ssl_client_cert_pw_file_provider(pool),
         svn.client.get_ssl_server_trust_file_provider(pool),
         ]
+
     return svn.core.svn_auth_open(providers, pool)
 
 

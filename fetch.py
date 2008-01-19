@@ -79,7 +79,8 @@ def check_filename(path):
     :param path: Path to check
     :raises InvalidFileName:
     """
-    if "\\" in path:
+    assert isinstance(path, unicode)
+    if u"\\" in path:
         raise InvalidFileName(path)
 
 
@@ -133,14 +134,16 @@ class RevisionBuildEditor(svn.delta.Editor):
     def open_root(self, base_revnum, baton):
         if self.old_inventory.root is None:
             # First time the root is set
-            file_id = generate_file_id(self.source, self.revid, "")
+            old_file_id = None
+            file_id = generate_file_id(self.source, self.revid, u"")
             self.dir_baserev[file_id] = []
         else:
             assert self.old_inventory.root.revision is not None
+            old_file_id = self.old_inventory.root.file_id
             if self.id_map.has_key(""):
                 file_id = self.id_map[""]
             else:
-                file_id = self.old_inventory.root.file_id
+                file_id = old_file_id
             self.dir_baserev[file_id] = [self.old_inventory.root.revision]
 
         if self.inventory.root is not None and \
@@ -149,29 +152,38 @@ class RevisionBuildEditor(svn.delta.Editor):
         else:
             ie = self.inventory.add_path("", 'directory', file_id)
         ie.revision = self.revid
-        return file_id
+        return (old_file_id, file_id)
 
     def _get_existing_id(self, parent_id, path):
+        assert isinstance(path, unicode)
+        assert isinstance(parent_id, str)
         if self.id_map.has_key(path):
             return self.id_map[path]
         return self._get_old_id(parent_id, path)
 
     def _get_old_id(self, parent_id, old_path):
+        assert isinstance(old_path, unicode)
+        assert isinstance(parent_id, str)
         return self.old_inventory[parent_id].children[urlutils.basename(old_path)].file_id
 
     def _get_new_id(self, parent_id, new_path):
+        assert isinstance(new_path, unicode)
+        assert isinstance(parent_id, str)
         if self.id_map.has_key(new_path):
             return self.id_map[new_path]
         return generate_file_id(self.source, self.revid, new_path)
 
     def _rename(self, file_id, parent_id, path):
+        assert isinstance(path, unicode)
+        assert isinstance(parent_id, str)
         # Only rename if not right yet
         if (self.inventory[file_id].parent_id == parent_id and 
             self.inventory[file_id].name == urlutils.basename(path)):
             return
         self.inventory.rename(file_id, parent_id, urlutils.basename(path))
 
-    def delete_entry(self, path, revnum, parent_id, pool):
+    def delete_entry(self, path, revnum, (old_parent_id, new_parent_id), pool):
+        assert isinstance(path, str)
         path = path.decode("utf-8")
         if path in self._premature_deletes:
             # Delete recursively
@@ -180,19 +192,20 @@ class RevisionBuildEditor(svn.delta.Editor):
                 if p.startswith("%s/" % path):
                     self._premature_deletes.remove(p)
         else:
-            self.inventory.remove_recursive_id(self._get_old_id(parent_id, path))
+            self.inventory.remove_recursive_id(self._get_old_id(new_parent_id, path))
 
-    def close_directory(self, id):
-        self.inventory[id].revision = self.revid
+    def close_directory(self, (old_id, new_id)):
+        self.inventory[new_id].revision = self.revid
 
         # Only record root if the target repository supports it
-        self._store_directory(id, self.dir_baserev[id])
+        self._store_directory(new_id, self.dir_baserev[new_id])
 
-    def add_directory(self, path, parent_id, copyfrom_path, copyfrom_revnum, 
+    def add_directory(self, path, (old_parent_id, new_parent_id), copyfrom_path, copyfrom_revnum, 
                       pool):
+        assert isinstance(path, str)
         path = path.decode("utf-8")
         check_filename(path)
-        file_id = self._get_new_id(parent_id, path)
+        file_id = self._get_new_id(new_parent_id, path)
 
         self.dir_baserev[file_id] = []
         if file_id in self.inventory:
@@ -205,19 +218,23 @@ class RevisionBuildEditor(svn.delta.Editor):
             assert copyfrom_path == self.old_inventory.id2path(file_id)
             assert copyfrom_path not in self._premature_deletes
             self._premature_deletes.add(copyfrom_path)
-            self._rename(file_id, parent_id, path)
+            self._rename(file_id, new_parent_id, path)
             ie = self.inventory[file_id]
+            old_file_id = file_id
         else:
+            old_file_id = None
             ie = self.inventory.add_path(path, 'directory', file_id)
         ie.revision = self.revid
 
-        return file_id
+        return (old_file_id, file_id)
 
-    def open_directory(self, path, parent_id, base_revnum, pool):
+    def open_directory(self, path, (old_parent_id, new_parent_id), base_revnum, pool):
+        assert isinstance(path, str)
+        path = path.decode("utf-8")
         assert base_revnum >= 0
-        base_file_id = self._get_old_id(parent_id, path)
+        base_file_id = self._get_old_id(old_parent_id, path)
         base_revid = self.old_inventory[base_file_id].revision
-        file_id = self._get_existing_id(parent_id, path)
+        file_id = self._get_existing_id(new_parent_id, path)
         if file_id == base_file_id:
             self.dir_baserev[file_id] = [base_revid]
             ie = self.inventory[file_id]
@@ -233,15 +250,15 @@ class RevisionBuildEditor(svn.delta.Editor):
             ie.file_id = file_id
             self.dir_baserev[file_id] = []
         ie.revision = self.revid
-        return file_id
+        return (base_file_id, file_id)
 
-    def change_dir_prop(self, id, name, value, pool):
+    def change_dir_prop(self, (old_id, new_id), name, value, pool):
         if name == SVN_PROP_BZR_BRANCHING_SCHEME:
-            if id != self.inventory.root.file_id:
+            if new_id != self.inventory.root.file_id:
                 mutter('rogue %r on non-root directory' % name)
                 return
         elif name == SVN_PROP_BZR_ANCESTRY+str(self.scheme):
-            if id != self.inventory.root.file_id:
+            if new_id != self.inventory.root.file_id:
                 mutter('rogue %r on non-root directory' % name)
                 return
             
@@ -252,7 +269,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         elif name == SVN_PROP_SVK_MERGE:
             self._svk_merges = None # Force Repository.revision_parents() to look it up
         elif name == SVN_PROP_BZR_REVISION_INFO:
-            if id != self.inventory.root.file_id:
+            if new_id != self.inventory.root.file_id:
                 mutter('rogue %r on non-root directory' % SVN_PROP_BZR_REVISION_INFO)
                 return
  
@@ -295,7 +312,8 @@ class RevisionBuildEditor(svn.delta.Editor):
               name.startswith(SVN_PROP_BZR_PREFIX)):
             mutter('unsupported file property %r' % name)
 
-    def add_file(self, path, parent_id, copyfrom_path, copyfrom_revnum, baton):
+    def add_file(self, path, (old_parent_id, new_parent_id), copyfrom_path, copyfrom_revnum, baton):
+        assert isinstance(path, str)
         path = path.decode("utf-8")
         check_filename(path)
         self.is_symlink = False
@@ -303,7 +321,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.file_data = ""
         self.file_parents = []
         self.file_stream = None
-        self.file_id = self._get_new_id(parent_id, path)
+        self.file_id = self._get_new_id(new_parent_id, path)
         if self.file_id in self.inventory:
             # This file was moved here from somewhere else, but the 
             # other location hasn't been removed yet. 
@@ -315,13 +333,15 @@ class RevisionBuildEditor(svn.delta.Editor):
             assert copyfrom_path not in self._premature_deletes
             self._premature_deletes.add(copyfrom_path)
             # No need to rename if it's already in the right spot
-            self._rename(self.file_id, parent_id, path)
+            self._rename(self.file_id, new_parent_id, path)
         return path
 
-    def open_file(self, path, parent_id, base_revnum, pool):
-        base_file_id = self._get_old_id(parent_id, path)
+    def open_file(self, path, (old_parent_id, new_parent_id), base_revnum, pool):
+        assert isinstance(path, str)
+        path = path.decode("utf-8")
+        base_file_id = self._get_old_id(old_parent_id, path)
         base_revid = self.old_inventory[base_file_id].revision
-        self.file_id = self._get_existing_id(parent_id, path)
+        self.file_id = self._get_existing_id(new_parent_id, path)
         self.is_executable = None
         self.is_symlink = (self.inventory[base_file_id].kind == 'symlink')
         self.file_data = self._get_file_data(base_file_id, base_revid)
@@ -335,6 +355,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         return path
 
     def close_file(self, path, checksum):
+        assert isinstance(path, unicode)
         if self.file_stream is not None:
             self.file_stream.seek(0)
             lines = osutils.split_lines(self.file_stream.read())
@@ -356,11 +377,13 @@ class RevisionBuildEditor(svn.delta.Editor):
         ie.revision = self.revid
 
         if self.is_symlink:
+            ie.kind = 'symlink'
             ie.symlink_target = lines[0][len("link "):]
             ie.text_sha1 = None
             ie.text_size = None
             ie.text_id = None
         else:
+            ie.kind = 'file'
             ie.text_sha1 = osutils.sha_strings(lines)
             ie.text_size = sum(map(len, lines))
             if self.is_executable is not None:
@@ -409,6 +432,7 @@ class WeaveRevisionBuildEditor(RevisionBuildEditor):
         self.weave_store = target.weave_store
 
     def _start_revision(self):
+        self._write_group_active = True
         self.target.start_write_group()
 
     def _store_directory(self, file_id, parents):
@@ -434,9 +458,12 @@ class WeaveRevisionBuildEditor(RevisionBuildEditor):
                 self.target.serialise_inventory(self.inventory))
         self.target.add_revision(self.revid, rev, self.inventory)
         self.target.commit_write_group()
+        self._write_group_active = False
 
     def abort_edit(self):
-        self.target.abort_write_group()
+        if self._write_group_active:
+            self.target.abort_write_group()
+            self._write_group_active = False
 
 
 class PackRevisionBuildEditor(WeaveRevisionBuildEditor):

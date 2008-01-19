@@ -1,4 +1,5 @@
-#FORMAT rst
+Bazaar Subversion Mapping Specification
+=======================================
 
 This document specifies mapping between Subversion and Bazaar semantics.
 
@@ -6,9 +7,10 @@ Revision: 4
 
 Written by Jelmer Vernooij <jelmer@samba.org>
 
-============
+.. contents::
+
 Branch paths
-============
+------------
 
 It is hard to know, given a SVN URL, to figure out what branch a particular 
 file is in. Other then the convention that branches are named 'trunk' and 
@@ -31,9 +33,8 @@ implementation. At the moment, the following branching schemes are available:
 
 The branching scheme can be explicitly specified or automatically guessed. 
 
-============
 Revision ids
-============
+------------
 
 An easy way to generate globally unique and reproducible revision ids is to 
 simply combine the repositories UUID and commit revision number. 
@@ -84,9 +85,8 @@ set to the revision id. The revision property ``bzr:root`` should be set to
 the root path of the revision and revision property ``bzr:scheme`` should be 
 set to the name of the branching scheme.
 
-========
 File ids
-========
+--------
 
 Subversion does not use file ids. It is not possible to know whether a file in 
 revision X and a file in revision Y are the same without traversing over all 
@@ -135,9 +135,8 @@ where <SHA1> is the sha1 of the file's path.
 
 NEXT VERSION: Special rules are applied to make sure that renames are tracked.
 
-==========
 Properties
-==========
+----------
 
 SVN allows setting properties on versioned files and also interprets several 
 of these properties. 
@@ -152,9 +151,8 @@ of these properties.
 
 "svk:merge" is understood and set where possible.
 
-====================
 Ancestry Information
-====================
+--------------------
 
 Ancestry in Subversion is linear. Most revisions have just one parent. Files 
 can be copied, moved or merged from other branches, which can result in partial 
@@ -186,9 +184,8 @@ parents of a commit.
 This means svk and bzr *should be* interoperable. However, there are no tests 
 for this yet. 
 
-===================
 Revision properties
-===================
+-------------------
 
 If possible, the Bazaar revision metadata should be stored in Subversion 
 revision properties. The names of the revision properties are:
@@ -203,16 +200,14 @@ Bazaar revision metadata is also stored in a Subversion revision property
 by version 0.9 of the bundle format.
 
 
-==========
 Signatures
-==========
+----------
 
 NEXT VERSION: GPG Signatures for commits will be stored in the SVN revision 
 property 'bzr:gpg-signature'. 
 
-=========
 Revisions
-=========
+---------
 
 Revision 1 was the original version of this document.
 
@@ -228,8 +223,3 @@ Revision 3 uses real file ids for the tree root rather than the hardcoded
 "TREE_ROOT" and adds the file id map.
 
 Revision 4 adds revision properties in addition to file properties.
-
-=======
-Authors
-=======
-Jelmer Vernooij <jelmer@samba.org>

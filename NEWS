@@ -1,14 +1,49 @@
-bzr-svn 0.4.6	UNRELEASED
+bzr-svn 0.4.7	UNRELEASED
+
+  BUGS
+
+   * Fix opening unicode file names during fetch. (#162368)
+
+   * Consistently handle unicode characters. (#129334, #164381)
+
+   * Handle unicode strings appropriately when reading working tree 
+     inventory. (#183853)
+
+   * Fix too strict indexing in old existing cache databases. (#165136)
+
+   * Handle children of replaced directories, themselve replaced correctly. (#181790)
+
+   * Set revision properties when possible.
+
+bzr-svn 0.4.6	2008-01-08
 
   PERFORMANCE
   
    * Remember where revids have already been detected. Makes incremental
      push a lot faster, in particular in Subversion repositories 
-	 with a lot of branches.
+     with a lot of branches. (#139364)
 
    * Work around memory leak in the Python Subversion bindings of svn.ra.get_log(). 
 
-   * Set revision properties when possible.
+  FEATURES
+
+   * Support retrieving credentials from Bazaar rather than relying on Subversions' cache. (#120768)
+
+  INTERNALS
+  
+   * Added pydoctor configuration file.
+
+  BUG FIXES
+
+   * Fix compatibility with Bazaar 1.1.
+
+   * Improved compatibility with Subversion 1.5.
+
+   * Actually set symlink target when pushing commits that add or change symlinks. (#177890)
+
+   * Don't mask exception in fetch code. (#165177)
+
+   * Deal with kind changes that don't change file contents. (#178149)
 
 bzr-svn 0.4.5	2007-12-01
 

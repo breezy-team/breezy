@@ -222,11 +222,11 @@ class SvnWorkingTree(WorkingTree):
         """Generate a bzr file id from a Subversion file name. 
         
         :param revnum: Revision number.
-        :param path: Absolute path.
+        :param path: Absolute path within the Subversion repository.
         :return: Tuple with file id and revision id.
         """
         assert isinstance(revnum, int) and revnum >= 0
-        assert isinstance(path, basestring)
+        assert isinstance(path, str)
 
         rp = self.branch.unprefix(path)
         entry = self.base_tree.id_map[rp]
@@ -239,6 +239,7 @@ class SvnWorkingTree(WorkingTree):
 
         def add_file_to_inv(relpath, id, revid, parent_id):
             """Add a file to the inventory."""
+            assert isinstance(relpath, unicode)
             if os.path.islink(self.abspath(relpath)):
                 file = InventoryLink(id, os.path.basename(relpath), parent_id)
                 file.revision = revid
@@ -304,6 +305,7 @@ class SvnWorkingTree(WorkingTree):
                 return ("NEW-" + escape_svn_path(entry.url[len(entry.repos):].strip("/")), None)
 
         def add_dir_to_inv(relpath, wc, parent_id):
+            assert isinstance(relpath, unicode)
             entries = svn.wc.entries_read(wc, False)
             entry = entries[""]
             assert parent_id is None or isinstance(parent_id, str), \
@@ -316,7 +318,7 @@ class SvnWorkingTree(WorkingTree):
             assert isinstance(id, str), "%r is not a string" % id
 
             # First handle directory itself
-            inv.add_path(relpath, 'directory', id, parent_id).revision = revid
+            inv.add_path(relpath.decode("utf-8"), 'directory', id, parent_id).revision = revid
             if relpath == "":
                 inv.revision_id = revid
 
@@ -324,7 +326,7 @@ class SvnWorkingTree(WorkingTree):
                 if name == "":
                     continue
 
-                subrelpath = os.path.join(relpath, name)
+                subrelpath = os.path.join(relpath, name.decode("utf-8"))
 
                 entry = entries[name]
                 assert entry
@@ -345,7 +347,7 @@ class SvnWorkingTree(WorkingTree):
 
         rootwc = self._get_wc() 
         try:
-            add_dir_to_inv("", rootwc, None)
+            add_dir_to_inv(u"", rootwc, None)
         finally:
             svn.wc.adm_close(rootwc)
 
@@ -739,7 +741,7 @@ class SvnCheckout(BzrDir):
         return SvnWorkingTree(self, self.local_path, self.open_branch())
 
     def sprout(self, url, revision_id=None, force_new_repo=False, 
-               recurse='down', possible_transports=None):
+               recurse='down', possible_transports=None, accelerator_tree=None):
         # FIXME: honor force_new_repo
         # FIXME: Use recurse
         result = get_rich_root_format().initialize(url)

@@ -150,7 +150,9 @@ def parse_revid_property(line):
     :param line: line to parse
     :return: tuple with (bzr_revno, revid)
     """
-    assert not '\n' in line
+    if '\n' in line:
+        raise errors.InvalidPropertyValue(SVN_PROP_BZR_REVISION_ID, 
+                "newline in revision id property line")
     try:
         (revno, revid) = line.split(' ', 1)
     except ValueError:
@@ -231,6 +233,7 @@ def revision_id_to_svk_feature(revid):
     :param revid: Revision id to convert.
     :return: Matching SVK feature identifier.
     """
+    assert isinstance(revid, str)
     (uuid, branch, revnum, _) = parse_svn_revision_id(revid)
     # TODO: What about renamed revisions? Should use 
     # repository.lookup_revision_id here.
@@ -563,7 +566,7 @@ class SvnRepository(Repository):
         :return: Revision id of the left-hand-side parent or None if 
                   this is the first revision
         """
-        assert isinstance(path, basestring)
+        assert isinstance(path, str)
         assert isinstance(revnum, int)
 
         if not scheme.is_branch(path) and \
@@ -686,7 +689,7 @@ class SvnRepository(Repository):
 
     def get_revision(self, revision_id):
         """See Repository.get_revision."""
-        if not revision_id or not isinstance(revision_id, basestring):
+        if not revision_id or not isinstance(revision_id, str):
             raise InvalidRevisionId(revision_id=revision_id, branch=self)
 
         (path, revnum, _) = self.lookup_revision_id(revision_id)
@@ -775,13 +778,14 @@ class SvnRepository(Repository):
         :return: Tuple with branch path, revision number and scheme.
         """
         def get_scheme(name):
-            assert isinstance(name, basestring)
+            assert isinstance(name, str)
             return BranchingScheme.find_scheme(name)
 
         # Try a simple parse
         try:
             (uuid, branch_path, revnum, schemen) = parse_svn_revision_id(revid)
             assert isinstance(branch_path, str)
+            assert isinstance(schemen, str)
             if uuid == self.uuid:
                 return (branch_path, revnum, get_scheme(schemen))
             # If the UUID doesn't match, this may still be a valid revision
@@ -795,6 +799,7 @@ class SvnRepository(Repository):
             (branch_path, min_revnum, max_revnum, \
                     scheme) = self.revmap.lookup_revid(revid)
             assert isinstance(branch_path, str)
+            assert isinstance(scheme, str)
             # Entry already complete?
             if min_revnum == max_revnum:
                 return (branch_path, min_revnum, get_scheme(scheme))
@@ -843,7 +848,7 @@ class SvnRepository(Repository):
         # Find the branch property between min_revnum and max_revnum that 
         # added revid
         for (bp, rev) in self.follow_branch(branch_path, max_revnum, 
-                                            get_scheme(scheme)):
+                                            get_scheme(str(scheme))):
             try:
                 (entry_revno, entry_revid) = parse_revid_property(
                  self.branchprop_list.get_property_diff(bp, rev, 
@@ -989,7 +994,7 @@ class SvnRepository(Repository):
 
         for (bp, paths, revnum) in self._log.follow_path(branch_path, revnum):
             assert revnum > 0 or bp == ""
-            assert scheme.is_branch(bp) or schee.is_tag(bp)
+            assert scheme.is_branch(bp) or scheme.is_tag(bp)
             # Remove non-bp paths from paths
             for p in paths.keys():
                 if not p.startswith(bp+"/") and bp != p and bp != "":

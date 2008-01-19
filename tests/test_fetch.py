@@ -1,4 +1,5 @@
 # Copyright (C) 2007 Jelmer Vernooij <jelmer@samba.org>
+# *-* coding: utf-8 *-*
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,7 +21,7 @@ from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.repository import Repository
 from bzrlib.revision import NULL_REVISION
-from bzrlib.tests import TestSkipped
+from bzrlib.tests import TestSkipped, KnownFailure
 from bzrlib.trace import mutter
 
 from convert import load_dumpfile
@@ -135,10 +136,51 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         self.client_add("dc/trunk")
         self.client_commit("dc", "My Message")
         oldrepos = Repository.open(repos_url)
-        oldrepos.set_branching_scheme(TrunkBranchingScheme(1))
+        oldrepos.set_branching_scheme(TrunkBranchingScheme(0))
         dir = BzrDir.create("f",format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
+
+    def test_fetch_special_char_edit(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({u'dc/trunk/IöC': None})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "My Message")
+        self.client_update("dc")
+        self.build_tree({u'dc/trunk/IöC/bar': "more data"})
+        self.client_add(u"dc/trunk/IöC/bar".encode("utf-8"))
+        self.client_commit("dc", "My Message")
+        oldrepos = Repository.open(repos_url)
+        oldrepos.set_branching_scheme(TrunkBranchingScheme(0))
+        dir = BzrDir.create("f",format.get_rich_root_format())
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+
+    def test_fetch_special_char_child(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({u'dc/trunk/é/f\x2cle': "data"})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "My Message")
+        oldrepos = Repository.open(repos_url)
+        oldrepos.set_branching_scheme(TrunkBranchingScheme(0))
+        dir = BzrDir.create("f",format.get_rich_root_format())
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+
+    def test_fetch_special_char_modify(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({u'dc/trunk/€\x2c': "data"})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "My Message")
+        self.client_update("dc")
+        self.build_tree({u"dc/trunk/€\x2c": "bar"})
+        revno = self.client_commit("dc", "My Message2")[0]
+        oldrepos = Repository.open(repos_url)
+        oldrepos.set_branching_scheme(TrunkBranchingScheme(0))
+        dir = BzrDir.create("f",format.get_rich_root_format())
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+        self.assertEquals(2, revno)
 
     def test_fetch_delete(self):
         repos_url = self.make_client('d', 'dc')
@@ -1260,7 +1302,7 @@ Node-copyfrom-path: x
         tree = repos.revision_tree(
              repos.generate_revision_id(3, "branches/foobranch", "trunk0"))
 
-        self.assertEqual(generate_svn_file_id(repos.uuid, 1, "trunk", ""), tree.inventory.root.file_id)
+        self.assertEqual(generate_svn_file_id(repos.uuid, 1, "trunk", u""), tree.inventory.root.file_id)
 
     def test_fetch_odd(self):
         repos_url = self.make_client('d', 'dc')
@@ -1352,6 +1394,35 @@ Node-copyfrom-path: x
         self.assertEqual('symlink', inv1[inv1.path2id("mylink")].kind)
         self.assertEqual('bla', inv1[inv1.path2id("mylink")].symlink_target)
 
+    def test_fetch_symlink_kind_change(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/bla': "data", "dc/mylink": "link bla"})
+        self.client_add("dc/bla")
+        self.client_add("dc/mylink")
+        self.client_commit("dc", "My Message")
+        ra = SvnRaTransport(repos_url)
+        def done(rev, date, author):
+            pass
+        editor = ra.get_commit_editor({"svn:log": "msg"}, done, None, False)
+        root_baton = editor.open_root(1)
+        baton = editor.open_file("mylink", root_baton, 1)
+        editor.change_file_prop(baton, "svn:special", "*")
+        editor.close_file(baton, None)
+        editor.close_directory(root_baton)
+        editor.close()
+        oldrepos = Repository.open("svn+"+repos_url)
+        dir = BzrDir.create("f",format.get_rich_root_format())
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+        self.assertTrue(newrepos.has_revision(
+            oldrepos.generate_revision_id(1, "", "none")))
+        inv1 = newrepos.get_inventory(
+                oldrepos.generate_revision_id(1, "", "none"))
+        inv2 = newrepos.get_inventory(
+                oldrepos.generate_revision_id(2, "", "none"))
+        self.assertEqual('file', inv1[inv1.path2id("mylink")].kind)
+        self.assertEqual('symlink', inv2[inv2.path2id("mylink")].kind)
+        self.assertEqual('bla', inv2[inv2.path2id("mylink")].symlink_target)
 
     def test_fetch_executable_separate(self):
         repos_url = self.make_client('d', 'dc')
