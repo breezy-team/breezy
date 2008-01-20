@@ -1063,6 +1063,7 @@ class SvnRepository(Repository):
                             del created_branches[p]
                             j = self._log.find_latest_change(p, i-1, 
                                 include_parents=True, include_children=True)
+                            assert isinstance(j, int)
                             ret.append((p, j, False))
 
                         if paths[p][0] in ('A', 'R'): 
@@ -1077,6 +1078,7 @@ class SvnRepository(Repository):
                                     j = self._log.find_latest_change(c, i-1, 
                                             include_parents=True, 
                                             include_children=True)
+                                    assert isinstance(j, int)
                                     ret.append((c, j, False))
                         if paths[p][0] in ('A', 'R'):
                             parents = [p]
@@ -1101,6 +1103,7 @@ class SvnRepository(Repository):
                                              include_children=True)
             if j is None:
                 j = created_branches[p]
+            assert isinstance(j, int)
             ret.append((p, j, True))
 
         return ret
