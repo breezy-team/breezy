@@ -1970,3 +1970,25 @@ class TestTestIdListFilter(tests.TestCase):
         filter = self._create_filter(test_list)
         mod3_suite = filter.for_module_and_below('mod3', suite)
         self.assertEquals(0, mod3_suite.countTestCases())
+
+    def test_test_suite(self):
+        # This test is slow, so we do a single test with one test in each
+        # category
+        test_list = [
+            # testmod_names
+            'bzrlib.tests.test_selftest.TestTestIdListFilter.test_test_suite',
+            # transport implementations
+            'bzrlib.tests.test_transport_implementations.TransportTests'
+            '.test_abspath(LocalURLServer)',
+            # packages_to_test()
+            'bzrlib.tests.blackbox.test_branch.TestBranch.test_branch',
+            # MODULES_TO_DOCTEST
+            'bzrlib.timestamp.format_highres_date',
+            # plugins (launchpad is included with core, but this may be
+            # fragile)
+            'bzrlib.plugins.launchpad.test_register.TestBranchRegistration'
+            '.test_mock_bug_branch_link',
+            ]
+        suite = tests.test_suite(test_list)
+        self.assertEquals(len(test_list), suite.countTestCases())
+        self.assertEquals(test_list, self._test_ids(suite))

@@ -2629,9 +2629,11 @@ class TestIdListFilter(object):
                                        self.get_tests_under(module_name))
 
 
-def test_suite():
+def test_suite(keep_only=None):
     """Build and return TestSuite for the whole of bzrlib.
-    
+
+    :param keep_only: A list of test ids limiting the suite returned.
+
     This function can be replaced if you need to change the default test
     suite on a global basis, but it is not encouraged.
     """
@@ -2770,22 +2772,67 @@ def test_suite():
         ]
     suite = TestUtil.TestSuite()
     loader = TestUtil.TestLoader()
-    suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
+
+    if keep_only is not None:
+        id_filter = TestIdListFilter(keep_only)
+
+    # modules building their suite with loadTestsFromModuleNames
+    if keep_only is None:
+        suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
+    else:
+        for mod in [m for m in testmod_names
+                    if id_filter.is_module_name_used(m)]:
+            mod_suite = loader.loadTestsFromModuleNames([mod])
+            mod_suite = id_filter.for_module_and_below(mod, mod_suite)
+            suite.addTest(mod_suite)
+
+    # modules adapted for transport implementations
     from bzrlib.tests.test_transport_implementations import TransportTestProviderAdapter
     adapter = TransportTestProviderAdapter()
-    adapt_modules(test_transport_implementations, adapter, loader, suite)
-    for package in packages_to_test():
-        suite.addTest(package.test_suite())
-    for m in MODULES_TO_TEST:
-        suite.addTest(loader.loadTestsFromModule(m))
-    for m in MODULES_TO_DOCTEST:
+    if keep_only is None:
+        adapt_modules(test_transport_implementations, adapter, loader, suite)
+    else:
+        for mod in [m for m in test_transport_implementations
+                    if id_filter.is_module_name_used(m)]:
+            mod_suite = TestUtil.TestSuite()
+            adapt_modules([mod], adapter, loader, mod_suite)
+            mod_suite = id_filter.for_module_and_below(mod, mod_suite)
+            suite.addTest(mod_suite)
+
+    # modules defining their own test_suite()
+    for package in [p for p in packages_to_test()
+                    if (keep_only is None
+                        or id_filter.is_module_name_used(p.__name__))]:
+        pack_suite = package.test_suite()
+        if keep_only is not None:
+            pack_suite = id_filter.for_module_and_below(package.__name__,
+                                                        pack_suite)
+        suite.addTest(pack_suite)
+
+    # XXX: MODULES_TO_TEST should be obsoleted ?
+    for mod in [m for m in MODULES_TO_TEST
+                if keep_only is None or id_filter.is_module_name_used(m)]:
+        mod_suite = loader.loadTestsFromModule(mod)
+        if keep_only is not None:
+            mod_suite = id_filter.for_module_and_below(mod, mod_suite)
+        suite.addTest(mod_suite)
+
+    for mod in MODULES_TO_DOCTEST:
         try:
-            suite.addTest(doctest.DocTestSuite(m))
+            doc_suite = doctest.DocTestSuite(mod)
         except ValueError, e:
-            print '**failed to get doctest for: %s\n%s' %(m,e)
+            print '**failed to get doctest for: %s\n%s' % (mod, e)
             raise
+        if keep_only is not None:
+            # DocTest may used ids which doesn't contain the module name
+            doc_suite = filter_suite_by_id_list(doc_suite, keep_only)
+        suite.addTest(doc_suite)
+
     default_encoding = sys.getdefaultencoding()
-    for name, plugin in bzrlib.plugin.plugins().items():
+    for name, plugin in  [(n, p) for (n, p) in bzrlib.plugin.plugins().items()
+                          if (keep_only is None
+                              or id_filter.is_module_name_used(
+                p.module.__name__))]:
         try:
             plugin_suite = plugin.test_suite()
         except ImportError, e:
@@ -2793,6 +2840,11 @@ def test_suite():
                 'Unable to test plugin "%s": %s', name, e)
         else:
             if plugin_suite is not None:
+                if keep_only is not None:
+                    plugin_suite = id_filter.for_module_and_below(
+                        plugin.module.__name__, plugin_suite)
+                if name == 'multiparent':
+                    import pdb; pdb.set_trace()
                 suite.addTest(plugin_suite)
         if default_encoding != sys.getdefaultencoding():
             bzrlib.trace.warning(
