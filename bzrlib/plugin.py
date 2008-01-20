@@ -57,21 +57,7 @@ def get_default_plugin_path():
     """Get the DEFAULT_PLUGIN_PATH"""
     global DEFAULT_PLUGIN_PATH
     if DEFAULT_PLUGIN_PATH is None:
-        path = [osutils.pathjoin(config.config_dir(), 'plugins')]
-        if getattr(sys, 'frozen', None):    # bzr.exe
-            # We need to use relative path to system-wide plugin
-            # directory because bzrlib from standalone bzr.exe
-            # could be imported by another standalone program
-            # (e.g. bzr-config; or TortoiseBzr/Olive if/when they
-            # will become standalone exe). [bialix 20071123]
-            # __file__ typically is
-            # C:\Program Files\Bazaar\lib\library.zip\bzrlib\plugin.pyc
-            # then plugins directory is
-            # C:\Program Files\Bazaar\plugins
-            # so relative path is ../../../plugins
-            path.append(osutils.abspath(osutils.pathjoin(
-                osutils.dirname(__file__), '../../../plugins')))
-        DEFAULT_PLUGIN_PATH = os.pathsep.join(path)
+        DEFAULT_PLUGIN_PATH = osutils.pathjoin(config.config_dir(), 'plugins')
     return DEFAULT_PLUGIN_PATH
 
 
@@ -100,6 +86,19 @@ def set_plugins_path():
     """Set the path for plugins to be loaded from."""
     path = os.environ.get('BZR_PLUGIN_PATH',
                           get_default_plugin_path()).split(os.pathsep)
+    if getattr(sys, 'frozen', None):    # expand path for bzr.exe
+        # We need to use relative path to system-wide plugin
+        # directory because bzrlib from standalone bzr.exe
+        # could be imported by another standalone program
+        # (e.g. bzr-config; or TortoiseBzr/Olive if/when they
+        # will become standalone exe). [bialix 20071123]
+        # __file__ typically is
+        # C:\Program Files\Bazaar\lib\library.zip\bzrlib\plugin.pyc
+        # then plugins directory is
+        # C:\Program Files\Bazaar\plugins
+        # so relative path is ../../../plugins
+        path.append(osutils.abspath(osutils.pathjoin(
+            osutils.dirname(__file__), '../../../plugins')))
     # Get rid of trailing slashes, since Python can't handle them when
     # it tries to import modules.
     path = map(_strip_trailing_sep, path)
