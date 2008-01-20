@@ -31,7 +31,7 @@ import bzrlib.plugin
 import bzrlib.plugins
 import bzrlib.commands
 import bzrlib.help
-from bzrlib.symbol_versioning import zero_ninetyone
+from bzrlib.symbol_versioning import one_two
 from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.osutils import pathjoin, abspath, normpath
 
@@ -214,30 +214,6 @@ class TestLoadingPlugins(TestCaseInTempDir):
         stream.close()
 
 
-class TestAllPlugins(TestCaseInTempDir):
-
-    def test_plugin_appears_in_all_plugins(self):
-        # This test tests a new plugin appears in bzrlib.plugin.all_plugins().
-        # check the plugin is not loaded already
-        self.failIf(getattr(bzrlib.plugins, 'plugin', None))
-        # write a plugin that _cannot_ fail to load.
-        file('plugin.py', 'w').write("\n")
-        try:
-            bzrlib.plugin.load_from_path(['.'])
-            all_plugins = self.applyDeprecated(zero_ninetyone,
-                bzrlib.plugin.all_plugins)
-            self.failUnless('plugin' in all_plugins)
-            self.failUnless(getattr(bzrlib.plugins, 'plugin', None))
-            self.assertEqual(all_plugins['plugin'], bzrlib.plugins.plugin)
-        finally:
-            # remove the plugin 'plugin'
-            if 'bzrlib.plugins.plugin' in sys.modules:
-                del sys.modules['bzrlib.plugins.plugin']
-            if getattr(bzrlib.plugins, 'plugin', None):
-                del bzrlib.plugins.plugin
-        self.failIf(getattr(bzrlib.plugins, 'plugin', None))
-
-
 class TestPlugins(TestCaseInTempDir):
 
     def setup_plugin(self, source=""):
@@ -386,7 +362,8 @@ class TestPluginFromZip(TestCaseInTempDir):
         try:
             # this is normally done by load_plugins -> set_plugins_path
             bzrlib.plugins.__path__ = [zip_name]
-            bzrlib.plugin.load_from_zip(zip_name)
+            self.applyDeprecated(one_two,
+                bzrlib.plugin.load_from_zip, zip_name)
             self.assertTrue(plugin_name in dir(bzrlib.plugins),
                             'Plugin is not loaded')
         finally:
