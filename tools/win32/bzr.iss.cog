@@ -86,6 +86,7 @@ PrivilegesRequired=none
 Source: "*.*"; DestDir: "{app}"; Flags: ignoreversion;
 Source: "lib\*.*"; DestDir: "{app}\lib"; Flags: createallsubdirs ignoreversion recursesubdirs;
 Source: "doc\*.*"; DestDir: "{app}\doc"; Flags: createallsubdirs ignoreversion recursesubdirs;
+Source: "plugins\*.py"; DestDir: "{app}\plugins"; Components: plugins; Flags: createallsubdirs ignoreversion recursesubdirs;
 ; [[[cog
 ; try:
 ;     import pycurl
@@ -107,6 +108,7 @@ Source: "doc\*.*"; DestDir: "{app}\doc"; Flags: createallsubdirs ignoreversion r
 
 [Components]
 Name: "main"; Description: "Main Files"; Types: full compact custom; Flags: fixed
+Name: "plugins"; Description: "Default plugins"; Types: full custom;
 ; [[[cog
 ; if ca_path:
 ;     cog.outl('Name: "cabundle"; '
