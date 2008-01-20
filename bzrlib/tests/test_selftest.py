@@ -1865,37 +1865,67 @@ class TestTestLoader(TestCase):
         self.assertEqual(2, loader.loadTestsFromModule(module).countTestCases())
 
 
-class TestSplitTestListByModules(tests.TestCase):
+class TestTestIdListFilter(tests.TestCase):
+
+    def _create_filter(self, test_list):
+        return tests.TestIdListFilter(test_list)
 
     def test_empty_list(self):
-        filter = tests.TestIdListFilter([])
+        filter = self._create_filter([])
         self.assertEquals([], filter.used_modules())
 
     def test_valid_list(self):
-        test_list = ['mod1.cl1.meth1', 'mod1.cl1.meth2',
-                     'mod1.cl2.meth1', 'mod1.cl2.meth2',
-                     'mod1.submod2.cl1.meth1', 'mod1.submod2.cl2.meth2',
-                    ]
-        filter = tests.TestIdListFilter(test_list)
+        filter = self._create_filter(
+            ['mod1.cl1.meth1', 'mod1.cl1.meth2',
+             'mod1.cl2.meth1', 'mod1.cl2.meth2',
+             'mod1.submod2.cl1.meth1', 'mod1.submod2.cl2.meth2',
+             ])
         self.assertEquals(['mod1', 'mod1.submod2'], filter.used_modules())
         self.assertEquals(['mod1.cl1.meth1', 'mod1.cl1.meth2',
                            'mod1.cl2.meth1', 'mod1.cl2.meth2',],
-                          filter.module_tests('mod1'))
+                          filter.get_tests('mod1'))
         self.assertEquals(['mod1.submod2.cl1.meth1', 'mod1.submod2.cl2.meth2'],
-                          filter.module_tests('mod1.submod2'))
+                          filter.get_tests('mod1.submod2'))
+
+    def test_get_tests_under(self):
+        filter = self._create_filter(
+            ['mod.cl1.meth1','mod.cl2.meth2',
+             'mod.submod.cl1.meth1', 'mod.submod.cl2.meth2',
+             'mod2.cl1.meth1',
+             ])
+        self.assertEquals(['mod.cl1.meth1', 'mod.cl2.meth2',],
+                          filter.get_tests('mod'))
+        self.assertEquals(['mod.submod.cl1.meth1', 'mod.submod.cl2.meth2'],
+                          filter.get_tests('mod.submod'))
+        self.assertEquals(set(['mod.cl1.meth1','mod.cl2.meth2',
+                           'mod.submod.cl1.meth1', 'mod.submod.cl2.meth2']),
+                          set(filter.get_tests_under('mod')))
+
 
     def test_too_short_test_name(self):
-        test_list = ['mod1', 'mod2.method1', 'mod3.cl1']
-        filter = tests.TestIdListFilter(test_list)
+        filter = self._create_filter(['mod1', 'mod2.method1', 'mod3.cl1'])
         self.assertEquals([''],filter.used_modules())
         self.assertEquals(['mod1', 'mod2.method1', 'mod3.cl1'],
-                          filter.module_tests(''))
+                          filter.get_tests(''))
 
 
     def test_bad_chars_in_params(self):
-        test_list = ['mod1.cl1.meth1(xx.yy)']
-        filter = tests.TestIdListFilter(test_list)
+        filter = self._create_filter(['mod1.cl1.meth1(xx.yy)'])
         self.assertEquals(['mod1'], filter.used_modules())
         self.assertEquals(['mod1.cl1.meth1(xx.yy)'],
-                          filter.module_tests('mod1'))
+                          filter.get_tests('mod1'))
+
+    def test_module_used(self):
+        filter = self._create_filter(['mod.class.meth'])
+        self.assertTrue(filter.is_module_name_used('mod'))
+
+    def test_module_used_includes_sub_modules(self):
+        filter = self._create_filter(['mod.sub_mod.class.meth'])
+        self.assertTrue(filter.is_module_name_used('mod'))
+        self.assertTrue(filter.is_module_name_used('mod.sub_mod'))
+
+    def test_module_used_refuses_class(self):
+        filter = self._create_filter(['mod.sub_mod.class.meth'])
+        self.assertFalse(filter.is_module_name_used('mod.sub_mod.class'))
+
 

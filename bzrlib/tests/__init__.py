@@ -2561,7 +2561,7 @@ class TestIdListFilter(object):
 
     Relying on the assumption that test ids are built as:
     <module>.<class>.<method>[(<param>+)], this class offers methods to :
-    - avoid building a test suite for modules not reffered to in the test list,
+    - avoid building a test suite for modules not refered to in the test list,
     - keep only the tests listed from the module test suite.
     """
 
@@ -2584,13 +2584,41 @@ class TestIdListFilter(object):
                 by_modules[mod_name] = [test_id]
             else:
                 by_module.append(test_id)
-        self.by_modules = by_modules
+        self.tests_by_modules = by_modules
+
+        by_bases = {}
+        for module_name in by_modules.keys():
+            base = module_name
+            while base:
+                by_base = by_bases.get(base, None)
+                if by_base is None:
+                    by_bases[base] = [module_name]
+                else:
+                    by_base.append(module_name)
+                try:
+                    base, sub_mod_name = base.rsplit('.', 1)
+                except ValueError:
+                    base = None
+        self.module_hierarchies = by_bases
 
     def used_modules(self):
-        return self.by_modules.keys()
+        """Return the modules containing the test classes."""
+        return self.tests_by_modules.keys()
 
-    def module_tests(self, module_name):
-        return self.by_modules.get(module_name, None)
+    def get_tests(self, module_name):
+        """Return tests defined in the module itself."""
+        return self.tests_by_modules.get(module_name, [])
+
+    def get_tests_under(self, module_name):
+        """Return tests defined in the module or one of its submodules."""
+        tests_list = []
+        for mod in self.module_hierarchies.get(module_name, []):
+            tests_list.extend(self.get_tests(mod))
+        return tests_list
+
+    def is_module_name_used(self, module_name):
+        """Is there tests for the module or one of its sub modules."""
+        return self.module_hierarchies.has_key(module_name)
 
 
 def test_suite():
