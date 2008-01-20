@@ -1868,37 +1868,34 @@ class TestTestLoader(TestCase):
 class TestSplitTestListByModules(tests.TestCase):
 
     def test_empty_list(self):
-        names_by_module = tests.split_test_list_by_module([])
-        self.assertEquals({}, names_by_module)
+        filter = tests.TestIdListFilter([])
+        self.assertEquals([], filter.used_modules())
 
     def test_valid_list(self):
         test_list = ['mod1.cl1.meth1', 'mod1.cl1.meth2',
                      'mod1.cl2.meth1', 'mod1.cl2.meth2',
                      'mod1.submod2.cl1.meth1', 'mod1.submod2.cl2.meth2',
                     ]
-        names_by_module = tests.split_test_list_by_module(test_list)
-        self.assertEquals(['mod1', 'mod1.submod2'], names_by_module.keys())
+        filter = tests.TestIdListFilter(test_list)
+        self.assertEquals(['mod1', 'mod1.submod2'], filter.used_modules())
         self.assertEquals(['mod1.cl1.meth1', 'mod1.cl1.meth2',
                            'mod1.cl2.meth1', 'mod1.cl2.meth2',],
-                          names_by_module['mod1'])
+                          filter.module_tests('mod1'))
         self.assertEquals(['mod1.submod2.cl1.meth1', 'mod1.submod2.cl2.meth2'],
-                          names_by_module['mod1.submod2'])
+                          filter.module_tests('mod1.submod2'))
 
     def test_too_short_test_name(self):
         test_list = ['mod1', 'mod2.method1', 'mod3.cl1']
-        names_by_module = tests.split_test_list_by_module(test_list)
-        self.assertEquals([''], names_by_module.keys())
+        filter = tests.TestIdListFilter(test_list)
+        self.assertEquals([''],filter.used_modules())
         self.assertEquals(['mod1', 'mod2.method1', 'mod3.cl1'],
-                          names_by_module[''])
+                          filter.module_tests(''))
 
 
     def test_bad_chars_in_params(self):
         test_list = ['mod1.cl1.meth1(xx.yy)']
-        names_by_module = tests.split_test_list_by_module(test_list)
-        self.assertEquals(['mod1'], names_by_module.keys())
+        filter = tests.TestIdListFilter(test_list)
+        self.assertEquals(['mod1'], filter.used_modules())
         self.assertEquals(['mod1.cl1.meth1(xx.yy)'],
-                          names_by_module['mod1'])
-
-# blank line
-# comment
+                          filter.module_tests('mod1'))
 

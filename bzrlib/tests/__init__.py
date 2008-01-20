@@ -2556,6 +2556,43 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
         default_transport = old_transport
 
 
+class TestIdListFilter(object):
+    """Test suite filter against a test id list.
+
+    Relying on the assumption that test ids are built as:
+    <module>.<class>.<method>[(<param>+)], this class offers methods to :
+    - avoid building a test suite for modules not reffered to in the test list,
+    - keep only the tests listed from the module test suite.
+    """
+
+    def __init__(self, test_id_list):
+        by_modules = {}
+        for test_id in test_id_list:
+            if '(' in test_id:
+                # Get read of params in case they contain '.' chars
+                name, params = test_id.split('(')
+            else:
+                name = test_id
+            try:
+                mod_name, klass, meth_name = name.rsplit('.', 2)
+            except ValueError:
+                # Not enough components. Put the test in the "empty" module
+                # since we can't reliably find its associated module.
+                mod_name = ''
+            by_module = by_modules.get(mod_name, None)
+            if by_module is None:
+                by_modules[mod_name] = [test_id]
+            else:
+                by_module.append(test_id)
+        self.by_modules = by_modules
+
+    def used_modules(self):
+        return self.by_modules.keys()
+
+    def module_tests(self, module_name):
+        return self.by_modules.get(module_name, None)
+
+
 def test_suite():
     """Build and return TestSuite for the whole of bzrlib.
     
@@ -2728,28 +2765,6 @@ def test_suite():
             reload(sys)
             sys.setdefaultencoding(default_encoding)
     return suite
-
-
-def split_test_list_by_module(test_name_list):
-    by_modules = {}
-    for test_name in test_name_list:
-        if '(' in test_name:
-            # Get read of params in case they contain '.' chars
-            name, params = test_name.split('(')
-        else:
-            name = test_name
-        try:
-            mod_name, klass, meth_name = name.rsplit('.', 2)
-        except ValueError:
-            # Not enough components. Put the test in a special module since we
-            # can't reliably find its associated module.
-            mod_name = ''
-        by_module = by_modules.get(mod_name, None)
-        if by_module is None:
-            by_modules[mod_name] = [test_name]
-        else:
-            by_module.append(test_name)
-    return by_modules
 
 
 def multiply_tests_from_modules(module_name_list, scenario_iter):
