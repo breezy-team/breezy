@@ -2620,6 +2620,14 @@ class TestIdListFilter(object):
         """Is there tests for the module or one of its sub modules."""
         return self.module_hierarchies.has_key(module_name)
 
+    def for_module_and_below(self, module_name, suite):
+        """Filter a test suite by a module name.
+
+        Returns tests defined in a module or one of its sub modules.
+        """
+        return filter_suite_by_id_list(suite,
+                                       self.get_tests_under(module_name))
+
 
 def test_suite():
     """Build and return TestSuite for the whole of bzrlib.

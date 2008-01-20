@@ -1870,6 +1870,26 @@ class TestTestIdListFilter(tests.TestCase):
     def _create_filter(self, test_list):
         return tests.TestIdListFilter(test_list)
 
+    def _create_suite(self, id_list):
+
+        class Stub(TestCase):
+            def test_foo(self):
+                pass
+
+        def _create_test_id(id):
+            return lambda: id
+
+        suite = TestUtil.TestSuite()
+        for id in id_list:
+            t  = Stub('test_foo')
+            t.id = _create_test_id(id)
+            suite.addTest(t)
+        return suite
+
+    def _test_ids(self, test_suite):
+        """Get the ids for the tests in a test suite."""
+        return [t.id() for t in iter_suite_tests(test_suite)]
+
     def test_empty_list(self):
         filter = self._create_filter([])
         self.assertEquals([], filter.used_modules())
@@ -1901,7 +1921,6 @@ class TestTestIdListFilter(tests.TestCase):
                            'mod.submod.cl1.meth1', 'mod.submod.cl2.meth2']),
                           set(filter.get_tests_under('mod')))
 
-
     def test_too_short_test_name(self):
         filter = self._create_filter(['mod1', 'mod2.method1', 'mod3.cl1'])
         self.assertEquals([''],filter.used_modules())
@@ -1928,4 +1947,26 @@ class TestTestIdListFilter(tests.TestCase):
         filter = self._create_filter(['mod.sub_mod.class.meth'])
         self.assertFalse(filter.is_module_name_used('mod.sub_mod.class'))
 
+    def test_filter_for_module_and_below(self):
+        test_list = ['mod1.cl1.meth1', 'mod1.cl2.meth2',
+                     'mod1.submod2.cl1.meth1',
+                     'mod2.submod2.cl1.meth2',
+                     ]
+        suite = self._create_suite(test_list)
+        filter = self._create_filter(test_list)
+        mod1_suite = filter.for_module_and_below('mod1', suite)
+        self.assertEquals(['mod1.cl1.meth1', 'mod1.cl2.meth2',
+                           'mod1.submod2.cl1.meth1'],
+                          self._test_ids(mod1_suite))
+        mod2_suite = filter.for_module_and_below('mod2', suite)
+        self.assertEquals(['mod2.submod2.cl1.meth2'],
+                          self._test_ids(mod2_suite))
 
+    def test_filter_for_module_and_below_empty_result(self):
+        test_list = ['mod1.cl1.meth1', 'mod1.cl2.meth2',
+                     'mod2.submod2.cl1.meth2',
+                     ]
+        suite = self._create_suite(test_list)
+        filter = self._create_filter(test_list)
+        mod3_suite = filter.for_module_and_below('mod3', suite)
+        self.assertEquals(0, mod3_suite.countTestCases())
