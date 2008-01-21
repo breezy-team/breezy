@@ -36,6 +36,9 @@ IN DEVELOPMENT
     * Fetching between different repository formats with compatible models now
       takes advantage of the smart method to stream revisions.  (Andrew Bennetts)
 
+    * The ``--coverage`` option is now global, rather specific to ``bzr
+      selftest``.  (Andrew Bennetts)
+
   BUGFIXES:
 
     * Calculate remote path relative to the shared medium in _SmartClient.  This
@@ -160,9 +163,6 @@ bzr 1.1rc1 2008-01-05
 
    * ``split`` now supported, to enable splitting large trees into smaller
      pieces.  (Aaron Bentley)
-
-   * The ``--coverage`` option is now global, rather specific to ``bzr
-     selftest``.  (Andrew Bennetts)
 
   BUGFIXES:
 
