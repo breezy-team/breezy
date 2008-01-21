@@ -13,6 +13,8 @@ bzr-svn 0.4.7	UNRELEASED
 
    * Handle children of replaced directories, themselve replaced correctly. (#181790)
 
+   * Handle corner cases tracking branches. (#184457)
+
 bzr-svn 0.4.6	2008-01-08
 
   PERFORMANCE

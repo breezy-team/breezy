@@ -1061,10 +1061,16 @@ class SvnRepository(Repository):
                     if scheme.is_branch(p) or scheme.is_tag(p):
                         if paths[p][0] in ('R', 'D') and p in created_branches:
                             del created_branches[p]
-                            j = self._log.find_latest_change(p, i-1, 
-                                include_parents=True, include_children=True)
-                            assert isinstance(j, int)
-                            ret.append((p, j, False))
+                            if paths[p][1]:
+                                prev_path = paths[p][1]
+                                prev_rev = paths[p][2]
+                            else:
+                                prev_path = p
+                                prev_rev = self._log.find_latest_change(p, 
+                                    i-1, include_parents=True, 
+                                    include_children=True)
+                            assert isinstance(prev_rev, int)
+                            ret.append((prev_path, prev_rev, False))
 
                         if paths[p][0] in ('A', 'R'): 
                             created_branches[p] = i
