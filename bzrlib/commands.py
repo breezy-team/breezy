@@ -775,8 +775,14 @@ def run_bzr(argv):
 
     try:
         if opt_lsprof:
+            if opt_coverage_dir:
+                trace.warning(
+                    '--coverage ignored, because --lsprof is in use.')
             ret = apply_lsprofiled(opt_lsprof_file, run, *run_argv)
         elif opt_profile:
+            if opt_coverage_dir:
+                trace.warning(
+                    '--coverage ignored, because --profile is in use.')
             ret = apply_profiled(run, *run_argv)
         elif opt_coverage_dir:
             ret = apply_coveraged(opt_coverage_dir, run, *run_argv)
