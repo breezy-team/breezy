@@ -26,7 +26,9 @@ For details on specific apis, see pydoc on the api, or read the source.
 
 import doctest
 import os
-    
+
+from bzrlib import tests
+
 def test_suite():
     dir_ = os.path.dirname(__file__)
     if os.path.isdir(dir_):
@@ -35,4 +37,15 @@ def test_suite():
         candidates = []
     scripts = [candidate for candidate in candidates
                if candidate.endswith('.txt')]
-    return doctest.DocFileSuite(*scripts)
+    suite = doctest.DocFileSuite(*scripts)
+    # DocFileCase reduces the test id to the base file name, we want more
+    for t in tests.iter_suite_tests(suite):
+        def make_new_test_id():
+            # While complying with the rule that a test id is
+            # <module>.<class>.<method>[(<param>+)], this does not represent
+            # the python names for class and method but should give enough
+            # hints to find back the source of a failing test.
+            new_id = '%s.DocFileCase.DocFileTest(%s)' % ( __name__, t)
+            return lambda: new_id
+        t.id = make_new_test_id()
+    return suite

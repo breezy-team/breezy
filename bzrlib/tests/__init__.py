@@ -2852,7 +2852,7 @@ def test_suite(keep_only=None):
             print '**failed to get doctest for: %s\n%s' % (mod, e)
             raise
         if keep_only is not None:
-            # DocTest may used ids which doesn't contain the module name
+            # DocTests may use ids which doesn't contain the module name
             doc_suite = filter_suite_by_id_list(doc_suite, keep_only)
         suite.addTest(doc_suite)
 
