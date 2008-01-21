@@ -2556,6 +2556,29 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
         default_transport = old_transport
 
 
+def load_test_id_list(file_name):
+    """Load a test id list from a text file.
+
+    The format is one test id by line.  No special care is taken to impose
+    strict rules, these test ids are used to filter the test suite so a test id
+    that do not match an existing test will do no harm. This allows user to add
+    comments, leave blank lines, etc.
+    """
+    test_list = []
+    try:
+        ftest = open(file_name, 'rt')
+    except IOError, e:
+        if e.errno != errno.ENOENT:
+            raise
+        else:
+            raise errors.NoSuchFile(file_name)
+
+    for test_name in ftest.readlines():
+        test_list.append(test_name.strip())
+    ftest.close()
+    return test_list
+
+
 class TestIdListFilter(object):
     """Test suite filter against a test id list.
 

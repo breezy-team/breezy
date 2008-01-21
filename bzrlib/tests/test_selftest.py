@@ -1992,3 +1992,38 @@ class TestTestIdListFilter(tests.TestCase):
         suite = tests.test_suite(test_list)
         self.assertEquals(len(test_list), suite.countTestCases())
         self.assertEquals(test_list, self._test_ids(suite))
+
+
+class TestLoadTestIdList(tests.TestCaseInTempDir):
+
+    def _create_test_list_file(self, file_name, content):
+        fl = open(file_name, 'wt')
+        fl.write(content)
+        fl.close()
+
+    def test_load_unknown(self):
+        self.assertRaises(errors.NoSuchFile,
+                          tests.load_test_id_list, 'i_do_not_exist')
+
+    def test_load_test_list(self):
+        test_list_fname = 'test.list'
+        self._create_test_list_file(test_list_fname,
+                                    'mod1.cl1.meth1\nmod2.cl2.meth2\n')
+        tlist = tests.load_test_id_list(test_list_fname)
+        self.assertEquals(2, len(tlist))
+        self.assertEquals('mod1.cl1.meth1', tlist[0])
+        self.assertEquals('mod2.cl2.meth2', tlist[1])
+
+    def test_load_dirty_file(self):
+        test_list_fname = 'test.list'
+        self._create_test_list_file(test_list_fname,
+                                    '  mod1.cl1.meth1\n\nmod2.cl2.meth2  \n'
+                                    'bar baz\n')
+        tlist = tests.load_test_id_list(test_list_fname)
+        self.assertEquals(4, len(tlist))
+        self.assertEquals('mod1.cl1.meth1', tlist[0])
+        self.assertEquals('', tlist[1])
+        self.assertEquals('mod2.cl2.meth2', tlist[2])
+        self.assertEquals('bar baz', tlist[3])
+
+
