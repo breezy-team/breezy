@@ -280,7 +280,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEqual(1, len(list(repos.follow_branch_history("branches/brancha",
             2, TrunkBranchingScheme()))))
 
-    def test_find_branches_moved(self):
+    def test_find_branchpaths_moved(self):
         repos_url = self.make_client("a", "dc")
         self.build_tree({
             'dc/tmp/branches/brancha': None,
@@ -297,9 +297,9 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
 
         self.assertEqual([("tags/branchab", 2, True), 
                           ("tags/brancha", 2, True)], 
-                list(repos.find_branches(TrunkBranchingScheme(), to_revnum=2)))
+                list(repos.find_branchpaths(TrunkBranchingScheme(), to_revnum=2)))
 
-    def test_find_branches_start_revno(self):
+    def test_find_branchpaths_start_revno(self):
         repos_url = self.make_client("a", "dc")
         self.build_tree({'dc/branches/brancha': None})
         self.client_add("dc/branches")
@@ -312,10 +312,10 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos.set_branching_scheme(TrunkBranchingScheme())
 
         self.assertEqual([("branches/branchb", 2, True)],
-                list(repos.find_branches(TrunkBranchingScheme(), from_revnum=2, 
+                list(repos.find_branchpaths(TrunkBranchingScheme(), from_revnum=2, 
                     to_revnum=2)))
 
-    def test_find_branches_file_moved_from_nobranch(self):
+    def test_find_branchpaths_file_moved_from_nobranch(self):
         repos_url = self.make_client("a", "dc")
         self.build_tree({
             'dc/tmp/trunk': None,
@@ -327,9 +327,9 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_delete("dc/tmp/branches/somefile")
         self.client_commit("dc", "My Message 2")
 
-        Repository.open(repos_url).find_branches(TrunkBranchingScheme(2))
+        Repository.open(repos_url).find_branchpaths(TrunkBranchingScheme(2))
 
-    def test_find_branches_deleted_from_nobranch(self):
+    def test_find_branchpaths_deleted_from_nobranch(self):
         repos_url = self.make_client("a", "dc")
         self.build_tree({
             'dc/tmp/trunk': None,
@@ -341,9 +341,9 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_delete("dc/tmp/branches/somefile")
         self.client_commit("dc", "My Message 2")
 
-        Repository.open(repos_url).find_branches(TrunkBranchingScheme(1))
+        Repository.open(repos_url).find_branchpaths(TrunkBranchingScheme(1))
 
-    def test_find_branches_moved_nobranch(self):
+    def test_find_branchpaths_moved_nobranch(self):
         repos_url = self.make_client("a", "dc")
         self.build_tree({
             'dc/tmp/nested/foobar': None,
@@ -361,36 +361,36 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
 
         self.assertEqual([("t2/branches/brancha", 2, True), 
                           ("t2/branches/branchab", 2, True)], 
-                list(repos.find_branches(TrunkBranchingScheme(1), to_revnum=2)))
+                list(repos.find_branchpaths(TrunkBranchingScheme(1), to_revnum=2)))
 
-    def test_find_branches_no(self):
+    def test_find_branchpaths_no(self):
         repos_url = self.make_client("a", "dc")
 
         repos = Repository.open(repos_url)
         repos.set_branching_scheme(NoBranchingScheme())
 
         self.assertEqual([("", 0, True)], 
-                list(repos.find_branches(NoBranchingScheme(), to_revnum=0)))
+                list(repos.find_branchpaths(NoBranchingScheme(), to_revnum=0)))
 
-    def test_find_branches_no_later(self):
+    def test_find_branchpaths_no_later(self):
         repos_url = self.make_client("a", "dc")
 
         repos = Repository.open(repos_url)
         repos.set_branching_scheme(NoBranchingScheme())
 
         self.assertEqual([("", 0, True)], 
-                list(repos.find_branches(NoBranchingScheme(), to_revnum=0)))
+                list(repos.find_branchpaths(NoBranchingScheme(), to_revnum=0)))
 
-    def test_find_branches_trunk_empty(self):
+    def test_find_branchpaths_trunk_empty(self):
         repos_url = self.make_client("a", "dc")
 
         repos = Repository.open(repos_url)
         repos.set_branching_scheme(TrunkBranchingScheme())
 
         self.assertEqual([], 
-                list(repos.find_branches(TrunkBranchingScheme(), to_revnum=0)))
+                list(repos.find_branchpaths(TrunkBranchingScheme(), to_revnum=0)))
 
-    def test_find_branches_trunk_one(self):
+    def test_find_branchpaths_trunk_one(self):
         repos_url = self.make_client("a", "dc")
 
         repos = Repository.open(repos_url)
@@ -401,9 +401,9 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My Message")
 
         self.assertEqual([("trunk", 1, True)], 
-                list(repos.find_branches(TrunkBranchingScheme(), to_revnum=1)))
+                list(repos.find_branchpaths(TrunkBranchingScheme(), to_revnum=1)))
 
-    def test_find_branches_removed(self):
+    def test_find_branchpaths_removed(self):
         repos_url = self.make_client("a", "dc")
 
         repos = Repository.open(repos_url)
@@ -417,9 +417,9 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "remove")
 
         self.assertEqual([("trunk", 1, True)], 
-                list(repos.find_branches(TrunkBranchingScheme(), to_revnum=1)))
+                list(repos.find_branchpaths(TrunkBranchingScheme(), to_revnum=1)))
         self.assertEqual([("trunk", 1, False)], 
-                list(repos.find_branches(TrunkBranchingScheme(), to_revnum=2)))
+                list(repos.find_branchpaths(TrunkBranchingScheme(), to_revnum=2)))
 
     def test_url(self):
         """ Test repository URL is kept """

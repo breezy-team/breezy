@@ -771,7 +771,7 @@ class SvnRepository(Repository):
                 # check again.
                 raise e
             found = False
-            for (branch, revno, _) in self.find_branches(scheme, 
+            for (branch, revno, _) in self.find_branchpaths(scheme, 
                     self.revmap.last_revnum_checked(str(scheme)),
                     last_revnum):
                 assert isinstance(branch, str)
@@ -1038,8 +1038,9 @@ class SvnRepository(Repository):
 
         return self._ancestry
 
-    def find_branches(self, scheme, from_revnum=0, to_revnum=None):
-        """Find all branches that were changed in the specified revision number.
+    def find_branchpaths(self, scheme, from_revnum=0, to_revnum=None):
+        """Find all branch paths that were changed in the specified revision 
+        range.
 
         :param revnum: Revision to search for branches.
         :return: iterator that returns tuples with (path, revision number, still exists). The revision number is the revision in which the branch last existed.
