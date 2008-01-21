@@ -3345,8 +3345,10 @@ class cmd_pack(Command):
 class cmd_plugins(Command):
     """List the installed plugins.
     
-    This command displays the list of installed plugins including the
-    path where each one is located and a short description of each.
+    This command displays the list of installed plugins including
+    version of plugin and a short description of each.
+
+    --verbose shows the path where each plugin is located.
 
     A plugin is an external component for Bazaar that extends the
     revision control system, by adding or replacing code in Bazaar.
@@ -3359,12 +3361,12 @@ class cmd_plugins(Command):
     install them. Instructions are also provided there on how to
     write new plugins using the Python programming language.
     """
+    takes_options = ['verbose']
 
     @display_command
-    def run(self):
+    def run(self, verbose=False):
         import bzrlib.plugin
         from inspect import getdoc
-        name_len = 0
         result = []
         for name, plugin in bzrlib.plugin.plugins().items():
             version = plugin.__version__
@@ -3377,10 +3379,12 @@ class cmd_plugins(Command):
             else:
                 doc = '(no description)'
             result.append((name_ver, doc, plugin.path()))
-            name_len = max(name_len, len(name_ver))
-        format = '%%-%ds  %%s\n%s%%s' % (name_len, ' '*(name_len+4))
-        for item in sorted(result):
-            print format % item
+        for name_ver, doc, path in sorted(result):
+            print name_ver
+            print '   ', doc
+            if verbose:
+                print '   ', path
+            print
 
 
 class cmd_testament(Command):
