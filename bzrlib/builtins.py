@@ -3364,11 +3364,23 @@ class cmd_plugins(Command):
     def run(self):
         import bzrlib.plugin
         from inspect import getdoc
+        name_len = 0
+        result = []
         for name, plugin in bzrlib.plugin.plugins().items():
-            print plugin.path(), "[%s]" % plugin.__version__
+            version = plugin.__version__
+            if version == 'unknown':
+                version = ''
+            name_ver = '%s %s' % (name, version)
             d = getdoc(plugin.module)
             if d:
-                print '\t', d.split('\n')[0]
+                doc = d.split('\n')[0]
+            else:
+                doc = '(no description)'
+            result.append((name_ver, doc, plugin.path()))
+            name_len = max(name_len, len(name_ver))
+        format = '%%-%ds  %%s\n%s%%s' % (name_len, ' '*(name_len+4))
+        for item in sorted(result):
+            print format % item
 
 
 class cmd_testament(Command):
