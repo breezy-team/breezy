@@ -1926,7 +1926,7 @@ class TestTestIdList(tests.TestCase):
         # category
         test_list = [
             # testmod_names
-            'bzrlib.tests.test_selftest.TestTestIdListFilter.test_test_suite',
+            'bzrlib.tests.test_selftest.TestTestIdList.test_test_suite',
             # transport implementations
             'bzrlib.tests.test_transport_implementations.TransportTests'
             '.test_abspath(LocalURLServer)',
