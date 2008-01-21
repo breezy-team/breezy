@@ -40,7 +40,8 @@ integration, branch-specific *revision numbers* are the preferred
 interface for humans. Typical revision numbers are 1, 42 and 2977.1.59.
 See `Specifying revisions`_ in the appendices for a closer look at
 the numerous ways that revisions and ranges of revisions can be specified
-in Bazaar.
+in Bazaar, and `Understanding Revision Numbers` for a more details about
+numbering.
 
 .. *TODO: add diagram*
 

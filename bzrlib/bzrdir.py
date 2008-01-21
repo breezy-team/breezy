@@ -2040,7 +2040,7 @@ class ConvertBzrDir4To5(Converter):
     def _load_updated_inventory(self, rev_id):
         assert rev_id in self.converted_revs
         inv_xml = self.inv_weave.get_text(rev_id)
-        inv = xml5.serializer_v5.read_inventory_from_string(inv_xml)
+        inv = xml5.serializer_v5.read_inventory_from_string(inv_xml, rev_id)
         return inv
 
     def _convert_one_rev(self, rev_id):
@@ -2626,7 +2626,6 @@ format_registry.register_metadir('rich-root',
         ' bzr < 1.0',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
-    hidden=False,
     )
 format_registry.register_metadir('dirstate-with-subtree',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
@@ -2635,6 +2634,7 @@ format_registry.register_metadir('dirstate-with-subtree',
         'bzr branches. Incompatible with bzr < 0.15.',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    experimental=True,
     hidden=True,
     )
 format_registry.register_metadir('pack-0.92',
@@ -2647,7 +2647,6 @@ format_registry.register_metadir('pack-0.92',
         'http://doc.bazaar-vcs.org/latest/developers/packrepo.html.',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
-    experimental=True,
     )
 format_registry.register_metadir('pack-0.92-subtree',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack3',
@@ -2669,7 +2668,5 @@ format_registry.register_metadir('rich-root-pack',
         ' bzr < 1.0',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
-    hidden=False,
-    experimental=True,
     )
 format_registry.set_default('pack-0.92')

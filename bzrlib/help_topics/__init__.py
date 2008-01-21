@@ -282,13 +282,16 @@ development.
                error.
 -Devil         Capture call sites that do expensive or badly-scaling
                operations.
+-Dfetch        Trace history copying between repositories.
 -Dhashcache    Log every time a working file is read to determine its hash.
 -Dhooks        Trace hook execution.
--Dhttp         Trace http connections, requests and responses
 -Dhpss         Trace smart protocol requests and responses.
+-Dhttp         Trace http connections, requests and responses
 -Dindex        Trace major index operations.
+-Dknit         Trace knit operations.
 -Dlock         Trace when lockdir locks are taken or released.
 -Dmerge        Emit information for debugging merges.
+-Dtimes        Record timestamps from program start in trace file.
 """
 
 _standard_options = \
