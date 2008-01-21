@@ -2261,14 +2261,14 @@ def condition_isinstance(klass_or_klass_list):
     return condition
 
 
-def condition_id_in_list(name_list):
+def condition_id_in_list(id_list):
     """Create a condition filter which verify that test's id in a list.
     
-    :param name: A list of test names.
+    :param name: A TestIdList object.
     :return: A callable that returns True if the test's id appears in the list.
     """
     def condition(test):
-        return test.id() in name_list
+        return id_list.test_in(test.id())
     return condition
 
 
@@ -2584,77 +2584,48 @@ def load_test_id_list(file_name):
     return test_list
 
 
-class TestIdListFilter(object):
-    """Test suite filter against a test id list.
+class TestIdList(object):
+    """Test id list to filter a test suite.
 
     Relying on the assumption that test ids are built as:
-    <module>.<class>.<method>[(<param>+)], this class offers methods to :
+    <module>[.<class>.<method>][(<param>+)], <module> being in python dotted
+    notation, this class offers methods to :
     - avoid building a test suite for modules not refered to in the test list,
     - keep only the tests listed from the module test suite.
     """
 
     def __init__(self, test_id_list):
-        by_modules = {}
+        # When a test suite needs to be filtered against us we compare test ids
+        # for equality, so a simple dict offers a quick and simple solution.
+        self.tests = dict().fromkeys(test_id_list, True)
+
+        # While unittest.TestCase have ids like:
+        # <module>.<class>.<method>[(<param+)],
+        # doctest.DocTestCase can have ids like:
+        # <module>
+        # <module>.<class>
+        # <module>.<function>
+        # <module>.<class>.<method>
+
+        # Since we can't predict a test class from its name only, we settle on
+        # a simple constraint: a test id always begins with its module name.
+
+        modules = {}
         for test_id in test_id_list:
-            if '(' in test_id:
-                # Get read of params in case they contain '.' chars
-                name, params = test_id.split('(')
-            else:
-                name = test_id
-            try:
-                mod_name, klass, meth_name = name.rsplit('.', 2)
-            except ValueError:
-                # Not enough components. Put the test in the "empty" module
-                # since we can't reliably find its associated module.
-                mod_name = ''
-            by_module = by_modules.get(mod_name, None)
-            if by_module is None:
-                by_modules[mod_name] = [test_id]
-            else:
-                by_module.append(test_id)
-        self.tests_by_modules = by_modules
-
-        by_bases = {}
-        for module_name in by_modules.keys():
-            base = module_name
-            while base:
-                by_base = by_bases.get(base, None)
-                if by_base is None:
-                    by_bases[base] = [module_name]
-                else:
-                    by_base.append(module_name)
-                try:
-                    base, sub_mod_name = base.rsplit('.', 1)
-                except ValueError:
-                    base = None
-        self.module_hierarchies = by_bases
-
-    def used_modules(self):
-        """Return the modules containing the test classes."""
-        return self.tests_by_modules.keys()
-
-    def get_tests(self, module_name):
-        """Return tests defined in the module itself."""
-        return self.tests_by_modules.get(module_name, [])
-
-    def get_tests_under(self, module_name):
-        """Return tests defined in the module or one of its submodules."""
-        tests_list = []
-        for mod in self.module_hierarchies.get(module_name, []):
-            tests_list.extend(self.get_tests(mod))
-        return tests_list
+            parts = test_id.split('.')
+            mod_name = parts.pop(0)
+            modules[mod_name] = True
+            for part in parts:
+                mod_name += '.' + part
+                modules[mod_name] = True
+        self.modules = modules
 
     def is_module_name_used(self, module_name):
         """Is there tests for the module or one of its sub modules."""
-        return self.module_hierarchies.has_key(module_name)
+        return self.modules.has_key(module_name)
 
-    def for_module_and_below(self, module_name, suite):
-        """Filter a test suite by a module name.
-
-        Returns tests defined in a module or one of its sub modules.
-        """
-        return filter_suite_by_id_list(suite,
-                                       self.get_tests_under(module_name))
+    def test_in(self, test_id):
+        return self.tests.has_key(test_id)
 
 
 def test_suite(keep_only=None):
@@ -2802,7 +2773,7 @@ def test_suite(keep_only=None):
     loader = TestUtil.TestLoader()
 
     if keep_only is not None:
-        id_filter = TestIdListFilter(keep_only)
+        id_filter = TestIdList(keep_only)
 
     # modules building their suite with loadTestsFromModuleNames
     if keep_only is None:
@@ -2811,7 +2782,7 @@ def test_suite(keep_only=None):
         for mod in [m for m in testmod_names
                     if id_filter.is_module_name_used(m)]:
             mod_suite = loader.loadTestsFromModuleNames([mod])
-            mod_suite = id_filter.for_module_and_below(mod, mod_suite)
+            mod_suite = filter_suite_by_id_list(mod_suite, id_filter)
             suite.addTest(mod_suite)
 
     # modules adapted for transport implementations
@@ -2824,7 +2795,7 @@ def test_suite(keep_only=None):
                     if id_filter.is_module_name_used(m)]:
             mod_suite = TestUtil.TestSuite()
             adapt_modules([mod], adapter, loader, mod_suite)
-            mod_suite = id_filter.for_module_and_below(mod, mod_suite)
+            mod_suite = filter_suite_by_id_list(mod_suite, id_filter)
             suite.addTest(mod_suite)
 
     # modules defining their own test_suite()
@@ -2833,8 +2804,7 @@ def test_suite(keep_only=None):
                         or id_filter.is_module_name_used(p.__name__))]:
         pack_suite = package.test_suite()
         if keep_only is not None:
-            pack_suite = id_filter.for_module_and_below(package.__name__,
-                                                        pack_suite)
+            pack_suite = filter_suite_by_id_list(pack_suite, id_filter)
         suite.addTest(pack_suite)
 
     # XXX: MODULES_TO_TEST should be obsoleted ?
@@ -2842,7 +2812,7 @@ def test_suite(keep_only=None):
                 if keep_only is None or id_filter.is_module_name_used(m)]:
         mod_suite = loader.loadTestsFromModule(mod)
         if keep_only is not None:
-            mod_suite = id_filter.for_module_and_below(mod, mod_suite)
+            mod_suite = filter_suite_by_id_list(mod_suite, id_filter)
         suite.addTest(mod_suite)
 
     for mod in MODULES_TO_DOCTEST:
@@ -2853,7 +2823,7 @@ def test_suite(keep_only=None):
             raise
         if keep_only is not None:
             # DocTests may use ids which doesn't contain the module name
-            doc_suite = filter_suite_by_id_list(doc_suite, keep_only)
+            doc_suite = filter_suite_by_id_list(doc_suite, id_filter)
         suite.addTest(doc_suite)
 
     default_encoding = sys.getdefaultencoding()
@@ -2869,8 +2839,8 @@ def test_suite(keep_only=None):
         else:
             if plugin_suite is not None:
                 if keep_only is not None:
-                    plugin_suite = id_filter.for_module_and_below(
-                        plugin.module.__name__, plugin_suite)
+                    plugin_suite = filter_suite_by_id_list(plugin_suite,
+                                                           id_filter)
                 suite.addTest(plugin_suite)
         if default_encoding != sys.getdefaultencoding():
             bzrlib.trace.warning(
