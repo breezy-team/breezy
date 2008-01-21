@@ -2601,6 +2601,8 @@ class cmd_selftest(Command):
                      Option('coverage', type=str, argname="DIRECTORY",
                             help='Generate line coverage report in this '
                                  'directory.'),
+                     Option('load-list', type=str, argname='TESTLISTFILE',
+                            help='Load a test id list from a text file.'),
                      ]
     encoding_type = 'replace'
 
@@ -2608,7 +2610,8 @@ class cmd_selftest(Command):
             transport=None, benchmark=None,
             lsprof_timed=None, cache_dir=None,
             first=False, list_only=False,
-            randomize=None, exclude=None, strict=False, coverage=None):
+            randomize=None, exclude=None, strict=False, coverage=None,
+            load_list=None):
         import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
@@ -2651,6 +2654,7 @@ class cmd_selftest(Command):
                               exclude_pattern=exclude,
                               strict=strict,
                               coverage_dir=coverage,
+                              load_list=load_list,
                               )
         finally:
             if benchfile is not None:

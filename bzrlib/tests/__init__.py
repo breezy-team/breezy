@@ -2523,6 +2523,7 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              exclude_pattern=None,
              strict=False,
              coverage_dir=None,
+             load_list=None,
              ):
     """Run the whole test suite under the enhanced runner"""
     # XXX: Very ugly way to do this...
@@ -2537,8 +2538,12 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
     old_transport = default_transport
     default_transport = transport
     try:
+        if load_list is None:
+            keep_only = None
+        else:
+            keep_only = load_test_id_list(load_list)
         if test_suite_factory is None:
-            suite = test_suite()
+            suite = test_suite(keep_only)
         else:
             suite = test_suite_factory()
         return run_suite(suite, 'testbzr', verbose=verbose, pattern=pattern,
@@ -2866,8 +2871,6 @@ def test_suite(keep_only=None):
                 if keep_only is not None:
                     plugin_suite = id_filter.for_module_and_below(
                         plugin.module.__name__, plugin_suite)
-                if name == 'multiparent':
-                    import pdb; pdb.set_trace()
                 suite.addTest(plugin_suite)
         if default_encoding != sys.getdefaultencoding():
             bzrlib.trace.warning(

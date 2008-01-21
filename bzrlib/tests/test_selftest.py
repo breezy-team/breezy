@@ -1984,13 +1984,10 @@ class TestTestIdListFilter(tests.TestCase):
             'bzrlib.tests.blackbox.test_branch.TestBranch.test_branch',
             # MODULES_TO_DOCTEST
             'bzrlib.timestamp.format_highres_date',
-            # plugins (launchpad is included with core, but this may be
-            # fragile)
-            'bzrlib.plugins.launchpad.test_register.TestBranchRegistration'
-            '.test_mock_bug_branch_link',
+            # plugins can't be tested that way since selftest may be run with
+            # --no-plugins
             ]
         suite = tests.test_suite(test_list)
-        self.assertEquals(len(test_list), suite.countTestCases())
         self.assertEquals(test_list, self._test_ids(suite))
 
 
