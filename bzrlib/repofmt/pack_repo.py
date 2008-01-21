@@ -1926,6 +1926,17 @@ class KnitPackRepository(KnitRepository):
             found_parents[key[0]] = parents
         return found_parents
 
+    def has_revisions(self, revision_ids):
+        """See Repository.has_revisions()."""
+        revision_ids = set(revision_ids)
+        result = revision_ids.intersection(
+            set([None, _mod_revision.NULL_REVISION]))
+        revision_ids.difference_update(result)
+        index = self._pack_collection.revision_index.combined_index
+        keys = [(revision_id,) for revision_id in revision_ids]
+        result.update(node[1][0] for node in index.iter_entries(keys))
+        return result
+
     def _make_parents_provider(self):
         return graph.CachingParentsProvider(self)
 

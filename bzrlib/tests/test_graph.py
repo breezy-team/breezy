@@ -244,10 +244,6 @@ class InstrumentedParentsProvider(object):
         self.calls = []
         self._real_parents_provider = parents_provider
 
-    def get_parents(self, nodes):
-        self.calls.extend(nodes)
-        return self._real_parents_provider.get_parents(nodes)
-
     def get_parent_map(self, nodes):
         self.calls.extend(nodes)
         return self._real_parents_provider.get_parent_map(nodes)
@@ -256,13 +252,7 @@ class InstrumentedParentsProvider(object):
 class TestGraph(TestCaseWithMemoryTransport):
 
     def make_graph(self, ancestors):
-        # XXX: This seems valid, is there a reason to actually create a
-        # repository and put things in it?
         return _mod_graph.Graph(_mod_graph.DictParentsProvider(ancestors))
-        tree = self.prepare_memory_tree('.')
-        self.build_ancestry(tree, ancestors)
-        self.addCleanup(tree.unlock)
-        return tree.branch.repository.get_graph()
 
     def prepare_memory_tree(self, location):
         tree = self.make_branch_and_memory_tree(location)
@@ -450,23 +440,6 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual((set(['e']), set(['f', 'g'])),
                          graph.find_difference('e', 'f'))
 
-    def test_stacked_parents_provider_get_parents(self):
-        parents1 = _mod_graph.DictParentsProvider({'rev2': ['rev3']})
-        parents2 = _mod_graph.DictParentsProvider({'rev1': ['rev4']})
-        stacked = _mod_graph._StackedParentsProvider([parents1, parents2])
-        self.assertEqual([['rev4',], ['rev3']],
-             self.applyDeprecated(symbol_versioning.one_one,
-                                  stacked.get_parents, ['rev1', 'rev2']))
-        self.assertEqual([['rev3',], ['rev4']],
-             self.applyDeprecated(symbol_versioning.one_one,
-                                  stacked.get_parents, ['rev2', 'rev1']))
-        self.assertEqual([['rev3',], ['rev3']],
-             self.applyDeprecated(symbol_versioning.one_one,
-                         stacked.get_parents, ['rev2', 'rev2']))
-        self.assertEqual([['rev4',], ['rev4']],
-             self.applyDeprecated(symbol_versioning.one_one,
-                         stacked.get_parents, ['rev1', 'rev1']))
-
     def test_stacked_parents_provider(self):
         parents1 = _mod_graph.DictParentsProvider({'rev2': ['rev3']})
         parents2 = _mod_graph.DictParentsProvider({'rev1': ['rev4']})
@@ -626,13 +599,6 @@ class TestGraph(TestCaseWithMemoryTransport):
         """
         class stub(object):
             pass
-        def get_parents(keys):
-            result = []
-            for key in keys:
-                if key == 'deeper':
-                    self.fail('key deeper was accessed')
-                result.append(graph_dict[key])
-            return result
         def get_parent_map(keys):
             result = {}
             for key in keys:
@@ -641,7 +607,6 @@ class TestGraph(TestCaseWithMemoryTransport):
                 result[key] = graph_dict[key]
             return result
         an_obj = stub()
-        an_obj.get_parents = get_parents
         an_obj.get_parent_map = get_parent_map
         graph = _mod_graph.Graph(an_obj)
         return graph.heads(search)
@@ -681,6 +646,297 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual(set(['h1', 'h2']),
             self._run_heads_break_deeper(graph_dict, ['h1', 'h2']))
 
+    def test_breadth_first_search_start_ghosts(self):
+        graph = self.make_graph({})
+        # with_ghosts reports the ghosts
+        search = graph._make_breadth_first_searcher(['a-ghost'])
+        self.assertEqual((set(), set(['a-ghost'])), search.next_with_ghosts())
+        self.assertRaises(StopIteration, search.next_with_ghosts)
+        # next includes them
+        search = graph._make_breadth_first_searcher(['a-ghost'])
+        self.assertEqual(set(['a-ghost']), search.next())
+        self.assertRaises(StopIteration, search.next)
+
+    def test_breadth_first_search_deep_ghosts(self):
+        graph = self.make_graph({
+            'head':['present'],
+            'present':['child', 'ghost'],
+            'child':[],
+            })
+        # with_ghosts reports the ghosts
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertEqual((set(['head']), set()), search.next_with_ghosts())
+        self.assertEqual((set(['present']), set()), search.next_with_ghosts())
+        self.assertEqual((set(['child']), set(['ghost'])),
+            search.next_with_ghosts())
+        self.assertRaises(StopIteration, search.next_with_ghosts)
+        # next includes them
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertEqual(set(['head']), search.next())
+        self.assertEqual(set(['present']), search.next())
+        self.assertEqual(set(['child', 'ghost']),
+            search.next())
+        self.assertRaises(StopIteration, search.next)
+
+    def test_breadth_first_search_change_next_to_next_with_ghosts(self):
+        # To make the API robust, we allow calling both next() and
+        # next_with_ghosts() on the same searcher.
+        graph = self.make_graph({
+            'head':['present'],
+            'present':['child', 'ghost'],
+            'child':[],
+            })
+        # start with next_with_ghosts
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertEqual((set(['head']), set()), search.next_with_ghosts())
+        self.assertEqual(set(['present']), search.next())
+        self.assertEqual((set(['child']), set(['ghost'])),
+            search.next_with_ghosts())
+        self.assertRaises(StopIteration, search.next)
+        # start with next
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertEqual(set(['head']), search.next())
+        self.assertEqual((set(['present']), set()), search.next_with_ghosts())
+        self.assertEqual(set(['child', 'ghost']),
+            search.next())
+        self.assertRaises(StopIteration, search.next_with_ghosts)
+
+    def test_breadth_first_change_search(self):
+        # Changing the search should work with both next and next_with_ghosts.
+        graph = self.make_graph({
+            'head':['present'],
+            'present':['stopped'],
+            'other':['other_2'],
+            'other_2':[],
+            })
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertEqual((set(['head']), set()), search.next_with_ghosts())
+        self.assertEqual((set(['present']), set()), search.next_with_ghosts())
+        self.assertEqual(set(['present']),
+            search.stop_searching_any(['present']))
+        self.assertEqual((set(['other']), set(['other_ghost'])),
+            search.start_searching(['other', 'other_ghost']))
+        self.assertEqual((set(['other_2']), set()), search.next_with_ghosts())
+        self.assertRaises(StopIteration, search.next_with_ghosts)
+        # next includes them
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertEqual(set(['head']), search.next())
+        self.assertEqual(set(['present']), search.next())
+        self.assertEqual(set(['present']),
+            search.stop_searching_any(['present']))
+        search.start_searching(['other', 'other_ghost'])
+        self.assertEqual(set(['other_2']), search.next())
+        self.assertRaises(StopIteration, search.next)
+
+    def assertSeenAndResult(self, instructions, search, next):
+        """Check the results of .seen and get_result() for a seach.
+
+        :param instructions: A list of tuples:
+            (seen, recipe, included_keys, starts, stops).
+            seen, recipe and included_keys are results to check on the search
+            and the searches get_result(). starts and stops are parameters to
+            pass to start_searching and stop_searching_any during each
+            iteration, if they are not None.
+        :param search: The search to use.
+        :param next: A callable to advance the search.
+        """
+        for seen, recipe, included_keys, starts, stops in instructions:
+            next()
+            if starts is not None:
+                search.start_searching(starts)
+            if stops is not None:
+                search.stop_searching_any(stops)
+            result = search.get_result()
+            self.assertEqual(recipe, result.get_recipe())
+            self.assertEqual(set(included_keys), result.get_keys())
+            self.assertEqual(seen, search.seen)
+
+    def test_breadth_first_get_result_excludes_current_pending(self):
+        graph = self.make_graph({
+            'head':['child'],
+            'child':[NULL_REVISION],
+            NULL_REVISION:[],
+            })
+        search = graph._make_breadth_first_searcher(['head'])
+        # At the start, nothing has been seen, to its all excluded:
+        result = search.get_result()
+        self.assertEqual((set(['head']), set(['head']), 0),
+            result.get_recipe())
+        self.assertEqual(set(), result.get_keys())
+        self.assertEqual(set(), search.seen)
+        # using next:
+        expected = [
+            (set(['head']), (set(['head']), set(['child']), 1),
+             ['head'], None, None),
+            (set(['head', 'child']), (set(['head']), set([NULL_REVISION]), 2),
+             ['head', 'child'], None, None),
+            (set(['head', 'child', NULL_REVISION]), (set(['head']), set(), 3),
+             ['head', 'child', NULL_REVISION], None, None),
+            ]
+        self.assertSeenAndResult(expected, search, search.next)
+        # using next_with_ghosts:
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertSeenAndResult(expected, search, search.next_with_ghosts)
+
+    def test_breadth_first_get_result_starts_stops(self):
+        graph = self.make_graph({
+            'head':['child'],
+            'child':[NULL_REVISION],
+            'otherhead':['otherchild'],
+            'otherchild':['excluded'],
+            'excluded':[NULL_REVISION],
+            NULL_REVISION:[]
+            })
+        search = graph._make_breadth_first_searcher([])
+        # Starting with nothing and adding a search works:
+        search.start_searching(['head'])
+        # head has been seen:
+        result = search.get_result()
+        self.assertEqual((set(['head']), set(['child']), 1),
+            result.get_recipe())
+        self.assertEqual(set(['head']), result.get_keys())
+        self.assertEqual(set(['head']), search.seen)
+        # using next:
+        expected = [
+            # stop at child, and start a new search at otherhead:
+            # - otherhead counts as seen immediately when start_searching is
+            # called.
+            (set(['head', 'child', 'otherhead']),
+             (set(['head', 'otherhead']), set(['child', 'otherchild']), 2),
+             ['head', 'otherhead'], ['otherhead'], ['child']),
+            (set(['head', 'child', 'otherhead', 'otherchild']),
+             (set(['head', 'otherhead']), set(['child', 'excluded']), 3),
+             ['head', 'otherhead', 'otherchild'], None, None),
+            # stop searching excluded now
+            (set(['head', 'child', 'otherhead', 'otherchild', 'excluded']),
+             (set(['head', 'otherhead']), set(['child', 'excluded']), 3),
+             ['head', 'otherhead', 'otherchild'], None, ['excluded']),
+            ]
+        self.assertSeenAndResult(expected, search, search.next)
+        # using next_with_ghosts:
+        search = graph._make_breadth_first_searcher([])
+        search.start_searching(['head'])
+        self.assertSeenAndResult(expected, search, search.next_with_ghosts)
+
+    def test_breadth_first_stop_searching_not_queried(self):
+        # A client should be able to say 'stop node X' even if X has not been
+        # returned to the client.
+        graph = self.make_graph({
+            'head':['child', 'ghost1'],
+            'child':[NULL_REVISION],
+            NULL_REVISION:[],
+            })
+        search = graph._make_breadth_first_searcher(['head'])
+        expected = [
+            # NULL_REVISION and ghost1 have not been returned
+            (set(['head']), (set(['head']), set(['child', 'ghost1']), 1),
+             ['head'], None, [NULL_REVISION, 'ghost1']),
+            # ghost1 has been returned, NULL_REVISION is to be returned in the
+            # next iteration.
+            (set(['head', 'child', 'ghost1']),
+             (set(['head']), set(['ghost1', NULL_REVISION]), 2),
+             ['head', 'child'], None, [NULL_REVISION, 'ghost1']),
+            ]
+        self.assertSeenAndResult(expected, search, search.next)
+        # using next_with_ghosts:
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertSeenAndResult(expected, search, search.next_with_ghosts)
+
+    def test_breadth_first_get_result_ghosts_are_excluded(self):
+        graph = self.make_graph({
+            'head':['child', 'ghost'],
+            'child':[NULL_REVISION],
+            NULL_REVISION:[],
+            })
+        search = graph._make_breadth_first_searcher(['head'])
+        # using next:
+        expected = [
+            (set(['head']),
+             (set(['head']), set(['ghost', 'child']), 1),
+             ['head'], None, None),
+            (set(['head', 'child', 'ghost']),
+             (set(['head']), set([NULL_REVISION, 'ghost']), 2),
+             ['head', 'child'], None, None),
+            ]
+        self.assertSeenAndResult(expected, search, search.next)
+        # using next_with_ghosts:
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertSeenAndResult(expected, search, search.next_with_ghosts)
+
+    def test_breadth_first_get_result_starting_a_ghost_ghost_is_excluded(self):
+        graph = self.make_graph({
+            'head':['child'],
+            'child':[NULL_REVISION],
+            NULL_REVISION:[],
+            })
+        search = graph._make_breadth_first_searcher(['head'])
+        # using next:
+        expected = [
+            (set(['head', 'ghost']),
+             (set(['head', 'ghost']), set(['child', 'ghost']), 1),
+             ['head'], ['ghost'], None),
+            (set(['head', 'child', 'ghost']),
+             (set(['head', 'ghost']), set([NULL_REVISION, 'ghost']), 2),
+             ['head', 'child'], None, None),
+            ]
+        self.assertSeenAndResult(expected, search, search.next)
+        # using next_with_ghosts:
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertSeenAndResult(expected, search, search.next_with_ghosts)
+
+    def test_breadth_first_revision_count_includes_NULL_REVISION(self):
+        graph = self.make_graph({
+            'head':[NULL_REVISION],
+            NULL_REVISION:[],
+            })
+        search = graph._make_breadth_first_searcher(['head'])
+        # using next:
+        expected = [
+            (set(['head']),
+             (set(['head']), set([NULL_REVISION]), 1),
+             ['head'], None, None),
+            (set(['head', NULL_REVISION]),
+             (set(['head']), set([]), 2),
+             ['head', NULL_REVISION], None, None),
+            ]
+        self.assertSeenAndResult(expected, search, search.next)
+        # using next_with_ghosts:
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertSeenAndResult(expected, search, search.next_with_ghosts)
+
+    def test_breadth_first_search_get_result_after_StopIteration(self):
+        # StopIteration should not invalid anything..
+        graph = self.make_graph({
+            'head':[NULL_REVISION],
+            NULL_REVISION:[],
+            })
+        search = graph._make_breadth_first_searcher(['head'])
+        # using next:
+        expected = [
+            (set(['head']),
+             (set(['head']), set([NULL_REVISION]), 1),
+             ['head'], None, None),
+            (set(['head', 'ghost', NULL_REVISION]),
+             (set(['head', 'ghost']), set(['ghost']), 2),
+             ['head', NULL_REVISION], ['ghost'], None),
+            ]
+        self.assertSeenAndResult(expected, search, search.next)
+        self.assertRaises(StopIteration, search.next)
+        self.assertEqual(set(['head', 'ghost', NULL_REVISION]), search.seen)
+        result = search.get_result()
+        self.assertEqual((set(['ghost', 'head']), set(['ghost']), 2),
+            result.get_recipe())
+        self.assertEqual(set(['head', NULL_REVISION]), result.get_keys())
+        # using next_with_ghosts:
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertSeenAndResult(expected, search, search.next_with_ghosts)
+        self.assertRaises(StopIteration, search.next)
+        self.assertEqual(set(['head', 'ghost', NULL_REVISION]), search.seen)
+        result = search.get_result()
+        self.assertEqual((set(['ghost', 'head']), set(['ghost']), 2),
+            result.get_recipe())
+        self.assertEqual(set(['head', NULL_REVISION]), result.get_keys())
+
 
 class TestCachingParentsProvider(tests.TestCase):
 
@@ -689,20 +945,6 @@ class TestCachingParentsProvider(tests.TestCase):
         dict_pp = _mod_graph.DictParentsProvider({'a':('b',)})
         self.inst_pp = InstrumentedParentsProvider(dict_pp)
         self.caching_pp = _mod_graph.CachingParentsProvider(self.inst_pp)
-
-    def test_get_parents(self):
-        """Requesting the same revision should be returned from cache"""
-        self.assertEqual({}, self.caching_pp._cache)
-        self.assertEqual([('b',)],
-            self.applyDeprecated(symbol_versioning.one_one,
-            self.caching_pp.get_parents, ['a']))
-        self.assertEqual(['a'], self.inst_pp.calls)
-        self.assertEqual([('b',)],
-            self.applyDeprecated(symbol_versioning.one_one,
-            self.caching_pp.get_parents, ['a']))
-        # No new call, as it should have been returned from the cache
-        self.assertEqual(['a'], self.inst_pp.calls)
-        self.assertEqual({'a':('b',)}, self.caching_pp._cache)
 
     def test_get_parent_map(self):
         """Requesting the same revision should be returned from cache"""

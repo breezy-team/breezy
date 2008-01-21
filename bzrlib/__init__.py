@@ -26,7 +26,7 @@ IGNORE_FILENAME = ".bzrignore"
 user_encoding = get_user_encoding()
 
 
-__copyright__ = "Copyright 2005, 2006, 2007 Canonical Ltd."
+__copyright__ = "Copyright 2005, 2006, 2007, 2008 Canonical Ltd."
 
 # same format as sys.version_info: "A tuple containing the five components of
 # the version number: major, minor, micro, releaselevel, and serial. All
@@ -35,7 +35,7 @@ __copyright__ = "Copyright 2005, 2006, 2007 Canonical Ltd."
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (1, 1, 0, 'dev', 0)
+version_info = (1, 2, 0, 'dev', 0)
 
 # API compatibility version: bzrlib is currently API compatible with 0.18.
 api_minimum_version = (0, 18, 0)

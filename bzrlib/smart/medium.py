@@ -545,10 +545,17 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
             port = BZR_DEFAULT_PORT
         else:
             port = int(self._port)
-        result = self._socket.connect_ex((self._host, port))
-        if result:
+        try:
+            self._socket.connect((self._host, port))
+        except socket.error, err:
+            # socket errors either have a (string) or (errno, string) as their
+            # args.
+            if type(err.args) is str:
+                err_msg = err.args
+            else:
+                err_msg = err.args[1]
             raise errors.ConnectionError("failed to connect to %s:%d: %s" %
-                    (self._host, port, os.strerror(result)))
+                    (self._host, port, err_msg))
         self._connected = True
 
     def _flush(self):

@@ -65,7 +65,11 @@ class Serializer(object):
         :param xml_string: The xml to read.
         :param revision_id: If not-None, the expected revision id of the
             inventory. Some serialisers use this to set the results' root
-            revision.
+            revision. This should be supplied for deserialising all
+            from-repository inventories so that xml5 inventories that were
+            serialised without a revision identifier can be given the right
+            revision id (but not for working tree inventories where users can
+            edit the data without triggering checksum errors or anything).
         """
         try:
             return self._unpack_inventory(fromstring(xml_string), revision_id)
