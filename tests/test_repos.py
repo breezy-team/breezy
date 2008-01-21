@@ -18,6 +18,7 @@
 
 """Subversion repository tests."""
 
+from bzrlib import urlutils
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir, format_registry
 from bzrlib.config import GlobalConfig
@@ -279,6 +280,24 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
 
         self.assertEqual(1, len(list(repos.follow_branch_history("branches/brancha",
             2, TrunkBranchingScheme()))))
+
+    def test_find_branches(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({
+            'dc/branches/brancha': None,
+            'dc/branches/branchab': None,
+            'dc/branches/brancha/data': "data", 
+            "dc/branches/branchab/data":"data"})
+        self.client_add("dc/branches")
+        self.client_commit("dc", "My Message")
+        repos = Repository.open(repos_url)
+        repos.set_branching_scheme(TrunkBranchingScheme())
+        branches = repos.find_branches()
+        self.assertEquals(2, len(branches))
+        self.assertEquals(urlutils.join(repos.base, "branches/brancha"), 
+                          branches[0].base)
+        self.assertEquals(urlutils.join(repos.base, "branches/branchab"), 
+                          branches[1].base)
 
     def test_find_branchpaths_moved(self):
         repos_url = self.make_client("a", "dc")

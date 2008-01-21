@@ -1,4 +1,8 @@
 bzr-svn 0.4.7	UNRELEASED
+ 
+  FEATURES
+
+   * Implement Repository.find_branches(). (#178108)
 
   BUGS
 

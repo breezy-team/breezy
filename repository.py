@@ -16,8 +16,8 @@
 """Subversion repository access."""
 
 import bzrlib
-from bzrlib import osutils, ui
-from bzrlib.branch import BranchCheckResult
+from bzrlib import osutils, ui, urlutils
+from bzrlib.branch import Branch, BranchCheckResult
 from bzrlib.errors import (InvalidRevisionId, NoSuchRevision, NotBranchError, 
                            UninitializableFormat, UnrelatedBranches)
 from bzrlib.inventory import Inventory
@@ -1037,6 +1037,29 @@ class SvnRepository(Repository):
         self._ancestry[_previous] = []
 
         return self._ancestry
+
+    def find_branches(self, using=False):
+        """Find branches underneath this repository.
+
+        This will include branches inside other branches.
+
+        :param using: If True, list only branches using this repository.
+        """
+        # All branches use this repository, so the using argument can be 
+        # ignored.
+        scheme = self.get_scheme()
+
+        existing_branches = [bp for (bp, revnum, _) in 
+                filter(lambda (bp, rev, exists): exists,
+                       self.find_branchpaths(scheme))]
+
+        branches = []
+        for bp in existing_branches:
+            try:
+                branches.append(Branch.open(urlutils.join(self.base, bp)))
+            except NotBranchError: # Skip non-directories
+                pass
+        return branches
 
     def find_branchpaths(self, scheme, from_revnum=0, to_revnum=None):
         """Find all branch paths that were changed in the specified revision 
