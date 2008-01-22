@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -73,6 +73,7 @@ from bzrlib import (
     errors,
     osutils,
     plugin,
+    symbol_versioning,
     )
 """)
 
@@ -298,11 +299,11 @@ def is_verbose():
     return _verbosity_level > 0
 
 
+@symbol_versioning.deprecated_function(symbol_versioning.zero_two)
 def disable_default_logging():
     """Turn off default log handlers.
 
-    This is intended to be used by the test framework, which doesn't
-    want leakage from the code-under-test into the main logs.
+    Don't call this method, use _push_log_file and _pop_log_file instead.
     """
     l = logging.getLogger('')
     l.removeHandler(_stderr_handler)
