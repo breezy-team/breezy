@@ -57,9 +57,6 @@ IN DEVELOPMENT
 
   INTERNALS:
 
-    * Record a timestamp against each mutter to the trace file, relative to the
-      first import of bzrlib.  (Andrew Bennetts)
-     
     * Add a new method ``get_result`` to graph search objects. The resulting
       ``SearchResult`` can be used to recreate the search later, which will
       be useful in reducing network traffic. (Robert Collins)
@@ -83,6 +80,9 @@ IN DEVELOPMENT
       useful for code which needs to be aware of ghosts (e.g. fetching data
       cares about ghosts during revision selection). (Robert Collins)
  
+    * Record a timestamp against each mutter to the trace file, relative to the
+      first import of bzrlib.  (Andrew Bennetts)
+     
     * ``Repository.get_data_stream`` is now deprecated in favour of
       ``Repository.get_data_stream_for_search`` which allows less network
       traffic when requesting data streams over a smart server. (Robert Collins)
