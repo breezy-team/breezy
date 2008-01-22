@@ -76,17 +76,24 @@ from bzrlib import (
     )
 """)
 
+# TODO: document these!
 _file_handler = None
 _stderr_handler = None
 _verbosity_level = 0
+
+# File-like object where mutter/debug output is currently sent.  Can be
+# changed by _push_log_file etc.
 _trace_file = None
-_trace_depth = 0
+
+# File-like handle and filename for ~/.bzr.log.  These aren't changed even if
+# the log/trace output is redirected elsewhere.
 _bzr_log_file = None
 _bzr_log_filename = None
-_bzr_log_opened = None
 
+# The time the first message was written to the trace file, so that we can
+# show relative times since startup.
+_bzr_log_start_time = None
 
-# configure convenient aliases for output routines
 
 _bzr_logger = logging.getLogger('bzr')
 
@@ -102,6 +109,9 @@ def warning(*args, **kwargs):
     bzrlib.ui.ui_factory.clear_term()
     _bzr_logger.warning(*args, **kwargs)
 
+# configure convenient aliases for output routines
+#
+# TODO: deprecate them, have one name for each.
 info = note
 log_error = _bzr_logger.error
 error =     _bzr_logger.error
@@ -130,12 +140,10 @@ def mutter(fmt, *args):
         out = fmt
     out += '\n'
     if 'times' in debug.debug_flags:
-        global _bzr_log_opened
-        if _bzr_log_opened is None:
-            # This is the first mutter since the process started.  Start the
-            # clock from now.
-            _bzr_log_opened = time.time()
-        timestamp = '%0.3f' % (time.time() - _bzr_log_opened,)
+        global _bzr_log_start_time
+        if _bzr_log_start_time is None:
+            _bzr_log_start_time = time.time()
+        timestamp = '%0.3f' % (time.time() - _bzr_log_start_time,)
         out = '%s %s' % (timestamp, out)
     _trace_file.write(out)
     # TODO: jam 20051227 Consider flushing the trace file to help debugging
@@ -170,9 +178,17 @@ def _rollover_trace_maybe(trace_fname):
 
 
 def open_tracefile(tracefilename=None):
-    # Messages are always written to here, so that we have some
-    # information if something goes wrong.  In a future version this
-    # file will be removed on successful completion.
+    """Open the .bzr.log trace file.  
+
+    If the log is more than a particular length, the old file is renamed to
+    .bzr.log.old and a new file is started.  Otherwise, we append to the
+    existing file.
+
+    This sets the globals _bzr_log_file and _bzr_log_filename, and
+    _file_handler which is a logging.py StreamHandler addressing this file.
+
+    :param tracefilename: Optional path of the trace file, overriding ~/.bzr.log.
+    """
     global _file_handler, _bzr_log_file, _bzr_log_filename
     import codecs
 
