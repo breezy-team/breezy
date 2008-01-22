@@ -359,8 +359,6 @@ def be_quiet(quiet=True):
 
 def _update_logging_level(quiet=True):
     """Hide INFO messages if quiet."""
-    # TODO: if this is not used, remove it.  if it is, maybe set the logger
-    # level, rather than the handler level?
     if quiet:
         _bzr_logger.setLevel(logging.WARNING)
     else:
