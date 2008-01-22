@@ -330,8 +330,14 @@ class SmartServerRepositoryStreamKnitDataForRevisions(SmartServerRepositoryReque
         pack = ContainerSerialiser()
         buffer.write(pack.begin())
         try:
-            for name_tuple, bytes in stream:
-                buffer.write(pack.bytes_record(bytes, [name_tuple]))
+            try:
+                for name_tuple, bytes in stream:
+                    buffer.write(pack.bytes_record(bytes, [name_tuple]))
+            except:
+                # Undo the lock_read that that happens once the iterator from
+                # get_data_stream is started.
+                repository.unlock()
+                raise
         except errors.RevisionNotPresent, e:
             return FailedSmartServerResponse(('NoSuchRevision', e.revision_id))
         buffer.write(pack.end())
