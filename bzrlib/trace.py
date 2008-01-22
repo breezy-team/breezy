@@ -108,6 +108,10 @@ _bzr_logger = logging.getLogger('bzr')
 
 def note(*args, **kwargs):
     # FIXME note always emits utf-8, regardless of the terminal encoding
+    #
+    # FIXME: clearing the ui and then going through the abstract logging
+    # framework is whack; we should probably have a logging Handler that
+    # deals with terminal output if needed.
     import bzrlib.ui
     bzrlib.ui.ui_factory.clear_term()
     _bzr_logger.info(*args, **kwargs)
@@ -250,7 +254,7 @@ def enable_default_logging():
     logging.getLogger('bzr').addHandler(stderr_handler)
 
 
-def _push_log_file(to_file, log_format=None, date_format=None):
+def push_log_file(to_file, log_format=None, date_format=None):
     """Intercept log and trace messages and send them to a file.
 
     :returns: A memento that should be passed to _pop_log_file to restore the 
@@ -284,7 +288,7 @@ def _push_log_file(to_file, log_format=None, date_format=None):
     return ('log_memento', old_handlers, new_handler, old_trace_file, to_file)
 
 
-def _pop_log_file((magic, old_handlers, new_handler, old_trace_file, new_trace_file)):
+def pop_log_file((magic, old_handlers, new_handler, old_trace_file, new_trace_file)):
     """Undo changes to logging/tracing done by _push_log_file.
 
     This flushes, but does not close the trace file.
@@ -302,17 +306,19 @@ def _pop_log_file((magic, old_handlers, new_handler, old_trace_file, new_trace_f
     new_trace_file.flush()
 
 
+@symbol_versioning.deprecated_function(symbol_versioning.one_two)
 def enable_test_log(to_file):
     """Redirect logging to a temporary file for a test
     
     :returns: an opaque reference that should be passed to disable_test_log
     after the test completes.
     """
-    return _push_log_file(to_file)
+    return push_log_file(to_file)
 
 
+@symbol_versioning.deprecated_function(symbol_versioning.one_two)
 def disable_test_log(memento):
-    return _pop_log_file(memento)
+    return pop_log_file(memento)
 
 
 def log_exception_quietly():
