@@ -49,6 +49,11 @@ form.
 # FIXME: Unfortunately it turns out that python's logging module
 # is quite expensive, even when the message is not printed by any handlers.
 # We should perhaps change back to just simply doing it here.
+#
+# On the other hand, as of 1.2 we generally only call the mutter() statement
+# if (according to debug_flags) we actually intend to write it.  So the
+# increased cost of logging.py is not so bad, and we could standardize on
+# that.
 
 import codecs
 import logging
@@ -77,8 +82,6 @@ from bzrlib import (
     )
 """)
 
-# logging Handler writing to stderr
-_stderr_handler = None
 
 # global verbosity for bzrlib; controls the log level for stderr; 0=normal; <0
 # is quiet; >0 is verbose.
@@ -226,25 +229,25 @@ def enable_default_logging():
     """Configure default logging: messages to stderr and debug to .bzr.log
     
     This should only be called once per process.
+
+    Non-command-line programs embedding bzrlib do not need to call this.  They
+    can instead either pass a file to _push_log_file, or act directly on
+    logging.getLogger("bzr").
     
     Output can be redirected away by calling _push_log_file.
     """
-    # TODO: this isn't really appropriate for Launchpad or other bzrlib
-    # users, which might want more control on where the messages go.
-    global _stderr_handler, _trace_file
     # create encoded wrapper around stderr
-    writer_factory = codecs.getwriter(osutils.get_terminal_encoding())
-    encoded_stderr = writer_factory(sys.stderr, errors='replace')
-    # write >=info messages to stderr
-    _stderr_handler = logging.StreamHandler(encoded_stderr)
-    _stderr_handler.setLevel(logging.INFO)
     bzr_log_file = _open_bzr_log()
     _push_log_file(bzr_log_file,
         r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s',
         r'%Y-%m-%d %H:%M:%S')
     # after hooking output into bzr_log, we also need to attach a stderr
-    # handler
-    logging.getLogger('bzr').addHandler(_stderr_handler)
+    # handler, writing only at level info and with encoding
+    writer_factory = codecs.getwriter(osutils.get_terminal_encoding())
+    encoded_stderr = writer_factory(sys.stderr, errors='replace')
+    stderr_handler = logging.StreamHandler(encoded_stderr)
+    stderr_handler.setLevel(logging.INFO)
+    logging.getLogger('bzr').addHandler(stderr_handler)
 
 
 def _push_log_file(to_file, log_format=None, date_format=None):
@@ -353,9 +356,9 @@ def _update_logging_level(quiet=True):
     # TODO: if this is not used, remove it.  if it is, maybe set the logger
     # level, rather than the handler level?
     if quiet:
-        _stderr_handler.setLevel(logging.WARNING)
+        _bzr_logger.setLevel(logging.WARNING)
     else:
-        _stderr_handler.setLevel(logging.INFO)
+        _bzr_logger.setLevel(logging.INFO)
 
 
 def is_quiet():
