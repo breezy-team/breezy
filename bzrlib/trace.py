@@ -90,10 +90,8 @@ _verbosity_level = 0
 # than push/pop_log_file.
 _trace_file = None
 
-# File-like handle and filename for ~/.bzr.log.  These aren't changed even if
-# the log/trace output is redirected elsewhere.  Used to show the location in
-# --version.
-_bzr_log_file = None
+# Absolute path for ~/.bzr.log.  Not changed even if the log/trace output is
+# redirected elsewhere.  Used to show the location in --version.
 _bzr_log_filename = None
 
 # The time the first message was written to the trace file, so that we can
@@ -101,6 +99,7 @@ _bzr_log_filename = None
 _bzr_log_start_time = None
 
 
+# held in a global for quick reference
 _bzr_logger = logging.getLogger('bzr')
 
 
@@ -202,25 +201,25 @@ def _open_bzr_log():
     .bzr.log.old and a new file is started.  Otherwise, we append to the
     existing file.
 
-    This sets the globals _bzr_log_file and _bzr_log_filename.
+    This sets the global _bzr_log_filename.
     """
-    # TODO: What should happen if we fail to open the trace file?  Maybe the
-    # objects should be pointed at /dev/null or the equivalent?
-    global _bzr_log_file, _bzr_log_filename
-
+    global _bzr_log_filename
     _bzr_log_filename = _get_bzr_log_filename()
     _rollover_trace_maybe(_bzr_log_filename)
     try:
-        tf = open(_bzr_log_filename, 'at', 1) # line buffered
-        _bzr_log_file = tf
-        # tf.tell() on windows always return 0 until some writing done
-        tf.write('\n')
-        if tf.tell() <= 2:
-            tf.write("this is a debug log for diagnosing/reporting problems in bzr\n")
-            tf.write("you can delete or truncate this file, or include sections in\n")
-            tf.write("bug reports to https://bugs.launchpad.net/bzr/+filebug\n\n")
+        bzr_log_file = open(_bzr_log_filename, 'at', 1) # line buffered
+        # bzr_log_file.tell() on windows always return 0 until some writing done
+        bzr_log_file.write('\n')
+        if bzr_log_file.tell() <= 2:
+            bzr_log_file.write("this is a debug log for diagnosing/reporting problems in bzr\n")
+            bzr_log_file.write("you can delete or truncate this file, or include sections in\n")
+            bzr_log_file.write("bug reports to https://bugs.launchpad.net/bzr/+filebug\n\n")
+        return bzr_log_file
     except IOError, e:
         warning("failed to open trace file: %s" % (e))
+    # TODO: What should happen if we fail to open the trace file?  Maybe the
+    # objects should be pointed at /dev/null or the equivalent?  Currently
+    # returns None which will cause failures later.
 
 
 def enable_default_logging():
@@ -232,15 +231,15 @@ def enable_default_logging():
     """
     # TODO: this isn't really appropriate for Launchpad or other bzrlib
     # users, which might want more control on where the messages go.
-    global _stderr_handler, _trace_file, _bzr_log_file
+    global _stderr_handler, _trace_file
     # create encoded wrapper around stderr
     writer_factory = codecs.getwriter(osutils.get_terminal_encoding())
     encoded_stderr = writer_factory(sys.stderr, errors='replace')
     # write >=info messages to stderr
     _stderr_handler = logging.StreamHandler(encoded_stderr)
     _stderr_handler.setLevel(logging.INFO)
-    _open_bzr_log()
-    _push_log_file(_bzr_log_file,
+    bzr_log_file = _open_bzr_log()
+    _push_log_file(bzr_log_file,
         r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s',
         r'%Y-%m-%d %H:%M:%S')
     # after hooking output into bzr_log, we also need to attach a stderr
