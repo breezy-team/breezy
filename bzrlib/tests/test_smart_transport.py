@@ -1692,58 +1692,6 @@ class TestSmartProtocolTwo(TestSmartProtocol, CommonSmartProtocolTestMixin):
         self.assertOffsetSerialisation([(1,2), (3,4), (100, 200)],
             '1,2\n3,4\n100,200', self.client_protocol)
 
-    def assertBodyStreamSerialisation(self, expected_serialisation,
-                                      body_stream):
-        """Assert that body_stream is serialised as expected_serialisation."""
-        out_stream = StringIO()
-        protocol._send_stream(body_stream, out_stream.write)
-        self.assertEqual(expected_serialisation, out_stream.getvalue())
-
-    def assertBodyStreamRoundTrips(self, body_stream):
-        """Assert that body_stream is the same after being serialised and
-        deserialised.
-        """
-        out_stream = StringIO()
-        protocol._send_stream(body_stream, out_stream.write)
-        decoder = protocol.ChunkedBodyDecoder()
-        decoder.accept_bytes(out_stream.getvalue())
-        decoded_stream = list(iter(decoder.read_next_chunk, None))
-        self.assertEqual(body_stream, decoded_stream)
-
-    def test_body_stream_serialisation_empty(self):
-        """A body_stream with no bytes can be serialised."""
-        self.assertBodyStreamSerialisation('chunked\nEND\n', [])
-        self.assertBodyStreamRoundTrips([])
-
-    def test_body_stream_serialisation(self):
-        stream = ['chunk one', 'chunk two', 'chunk three']
-        self.assertBodyStreamSerialisation(
-            'chunked\n' + '9\nchunk one' + '9\nchunk two' + 'b\nchunk three' +
-            'END\n',
-            stream)
-        self.assertBodyStreamRoundTrips(stream)
-
-    def test_body_stream_with_empty_element_serialisation(self):
-        """A body stream can include ''.
-
-        The empty string can be transmitted like any other string.
-        """
-        stream = ['', 'chunk']
-        self.assertBodyStreamSerialisation(
-            'chunked\n' + '0\n' + '5\nchunk' + 'END\n', stream)
-        self.assertBodyStreamRoundTrips(stream)
-
-    def test_body_stream_error_serialistion(self):
-        stream = ['first chunk',
-                  request.FailedSmartServerResponse(
-                      ('FailureName', 'failure arg'))]
-        expected_bytes = (
-            'chunked\n' + 'b\nfirst chunk' +
-            'ERR\n' + 'b\nFailureName' + 'b\nfailure arg' +
-            'END\n')
-        self.assertBodyStreamSerialisation(expected_bytes, stream)
-        self.assertBodyStreamRoundTrips(stream)
-
     def test_accept_bytes_of_bad_request_to_protocol(self):
         out_stream = StringIO()
         smart_protocol = protocol.SmartServerRequestProtocolTwo(
@@ -1830,40 +1778,12 @@ class TestSmartProtocolTwo(TestSmartProtocol, CommonSmartProtocolTestMixin):
             request.SuccessfulSmartServerResponse(('x',)))
         self.assertEqual(0, smart_protocol.next_read_size())
 
-    def test__send_response_with_body_stream_sets_finished_reading(self):
-        smart_protocol = protocol.SmartServerRequestProtocolTwo(
-            None, lambda x: None)
-        self.assertEqual(1, smart_protocol.next_read_size())
-        smart_protocol._send_response(
-            request.SuccessfulSmartServerResponse(('x',), body_stream=[]))
-        self.assertEqual(0, smart_protocol.next_read_size())
-
     def test__send_response_errors_with_base_response(self):
         """Ensure that only the Successful/Failed subclasses are used."""
         smart_protocol = protocol.SmartServerRequestProtocolTwo(
             None, lambda x: None)
         self.assertRaises(AttributeError, smart_protocol._send_response,
             request.SmartServerResponse(('x',)))
-
-    def test__send_response_includes_failure_marker(self):
-        """FailedSmartServerResponse have 'failed\n' after the version."""
-        out_stream = StringIO()
-        smart_protocol = protocol.SmartServerRequestProtocolTwo(
-            None, out_stream.write)
-        smart_protocol._send_response(
-            request.FailedSmartServerResponse(('x',)))
-        self.assertEqual(protocol.RESPONSE_VERSION_TWO + 'failed\nx\n',
-                         out_stream.getvalue())
-
-    def test__send_response_includes_success_marker(self):
-        """SuccessfulSmartServerResponse have 'success\n' after the version."""
-        out_stream = StringIO()
-        smart_protocol = protocol.SmartServerRequestProtocolTwo(
-            None, out_stream.write)
-        smart_protocol._send_response(
-            request.SuccessfulSmartServerResponse(('x',)))
-        self.assertEqual(protocol.RESPONSE_VERSION_TWO + 'success\nx\n',
-                         out_stream.getvalue())
 
     def test_query_version(self):
         """query_version on a SmartClientProtocolTwo should return a number.
@@ -1921,17 +1841,6 @@ class TestSmartProtocolTwo(TestSmartProtocol, CommonSmartProtocolTestMixin):
         smart_protocol.call_with_body_readv_array(('foo', ), [(1,2),(5,6)])
         self.assertEqual(expected_bytes, output.getvalue())
 
-    def test_client_read_response_tuple_sets_response_status(self):
-        server_bytes = protocol.RESPONSE_VERSION_TWO + "success\nok\n"
-        input = StringIO(server_bytes)
-        output = StringIO()
-        client_medium = medium.SmartSimplePipesClientMedium(input, output)
-        request = client_medium.get_request()
-        smart_protocol = protocol.SmartClientRequestProtocolTwo(request)
-        smart_protocol.call('foo')
-        smart_protocol.read_response_tuple(False)
-        self.assertEqual(True, smart_protocol.response_status)
-
     def test_client_read_body_bytes_all(self):
         # read_body_bytes should decode the body bytes from the wire into
         # a response.
@@ -1986,6 +1895,97 @@ class TestSmartProtocolTwo(TestSmartProtocol, CommonSmartProtocolTestMixin):
         self.assertRaises(
             errors.ReadingCompleted, smart_protocol.read_body_bytes)
 
+
+class TestSmartProtocolTwoSpecifics(TestSmartProtocol):
+    """Tests for aspects of smart protocol version two that are unique to
+    version two.
+
+    Thus tests involving body streams and success/failure markers belong here.
+    """
+
+    client_protocol_class = protocol.SmartClientRequestProtocolTwo
+    server_protocol_class = protocol.SmartServerRequestProtocolTwo
+
+    def assertBodyStreamSerialisation(self, expected_serialisation,
+                                      body_stream):
+        """Assert that body_stream is serialised as expected_serialisation."""
+        out_stream = StringIO()
+        protocol._send_stream(body_stream, out_stream.write)
+        self.assertEqual(expected_serialisation, out_stream.getvalue())
+
+    def assertBodyStreamRoundTrips(self, body_stream):
+        """Assert that body_stream is the same after being serialised and
+        deserialised.
+        """
+        out_stream = StringIO()
+        protocol._send_stream(body_stream, out_stream.write)
+        decoder = protocol.ChunkedBodyDecoder()
+        decoder.accept_bytes(out_stream.getvalue())
+        decoded_stream = list(iter(decoder.read_next_chunk, None))
+        self.assertEqual(body_stream, decoded_stream)
+
+    def test_body_stream_serialisation_empty(self):
+        """A body_stream with no bytes can be serialised."""
+        self.assertBodyStreamSerialisation('chunked\nEND\n', [])
+        self.assertBodyStreamRoundTrips([])
+
+    def test_body_stream_serialisation(self):
+        stream = ['chunk one', 'chunk two', 'chunk three']
+        self.assertBodyStreamSerialisation(
+            'chunked\n' + '9\nchunk one' + '9\nchunk two' + 'b\nchunk three' +
+            'END\n',
+            stream)
+        self.assertBodyStreamRoundTrips(stream)
+
+    def test_body_stream_with_empty_element_serialisation(self):
+        """A body stream can include ''.
+
+        The empty string can be transmitted like any other string.
+        """
+        stream = ['', 'chunk']
+        self.assertBodyStreamSerialisation(
+            'chunked\n' + '0\n' + '5\nchunk' + 'END\n', stream)
+        self.assertBodyStreamRoundTrips(stream)
+
+    def test_body_stream_error_serialistion(self):
+        stream = ['first chunk',
+                  request.FailedSmartServerResponse(
+                      ('FailureName', 'failure arg'))]
+        expected_bytes = (
+            'chunked\n' + 'b\nfirst chunk' +
+            'ERR\n' + 'b\nFailureName' + 'b\nfailure arg' +
+            'END\n')
+        self.assertBodyStreamSerialisation(expected_bytes, stream)
+        self.assertBodyStreamRoundTrips(stream)
+
+    def test__send_response_includes_failure_marker(self):
+        """FailedSmartServerResponse have 'failed\n' after the version."""
+        out_stream = StringIO()
+        smart_protocol = protocol.SmartServerRequestProtocolTwo(
+            None, out_stream.write)
+        smart_protocol._send_response(
+            request.FailedSmartServerResponse(('x',)))
+        self.assertEqual(protocol.RESPONSE_VERSION_TWO + 'failed\nx\n',
+                         out_stream.getvalue())
+
+    def test__send_response_includes_success_marker(self):
+        """SuccessfulSmartServerResponse have 'success\n' after the version."""
+        out_stream = StringIO()
+        smart_protocol = protocol.SmartServerRequestProtocolTwo(
+            None, out_stream.write)
+        smart_protocol._send_response(
+            request.SuccessfulSmartServerResponse(('x',)))
+        self.assertEqual(protocol.RESPONSE_VERSION_TWO + 'success\nx\n',
+                         out_stream.getvalue())
+
+    def test__send_response_with_body_stream_sets_finished_reading(self):
+        smart_protocol = protocol.SmartServerRequestProtocolTwo(
+            None, lambda x: None)
+        self.assertEqual(1, smart_protocol.next_read_size())
+        smart_protocol._send_response(
+            request.SuccessfulSmartServerResponse(('x',), body_stream=[]))
+        self.assertEqual(0, smart_protocol.next_read_size())
+
     def test_streamed_body_bytes(self):
         body_header = 'chunked\n'
         two_body_chunks = "4\n1234" + "3\n567"
@@ -2025,6 +2025,49 @@ class TestSmartProtocolTwo(TestSmartProtocol, CommonSmartProtocolTestMixin):
             request.FailedSmartServerResponse(('error arg1', 'arg2'))]
         stream = smart_protocol.read_streamed_body()
         self.assertEqual(expected_chunks, list(stream))
+
+    def test_client_read_response_tuple_sets_response_status(self):
+        server_bytes = protocol.RESPONSE_VERSION_TWO + "success\nok\n"
+        input = StringIO(server_bytes)
+        output = StringIO()
+        client_medium = medium.SmartSimplePipesClientMedium(input, output)
+        request = client_medium.get_request()
+        smart_protocol = protocol.SmartClientRequestProtocolTwo(request)
+        smart_protocol.call('foo')
+        smart_protocol.read_response_tuple(False)
+        self.assertEqual(True, smart_protocol.response_status)
+
+
+class TestProtocolTestCoverage(tests.TestCase):
+
+    def assertSetEqual(self, set_a, set_b):
+        if set_a != set_b:
+            missing_from_a = sorted(set_b - set_a)
+            missing_from_b = sorted(set_a - set_b)
+            raise self.failureException(
+                'Sets not equal.\na is missing: %r\nb is missing: %r'
+                % (missing_from_a, missing_from_b))
+
+    def remove_version_specific_tests(self, test_names):
+        return [name for name in test_names
+                if not name.startswith('test_construct_version_')]
+    
+    def test_ensure_consistent_coverage(self):
+        """We should be testing the same set of conditions for all protocol
+        implementations.
+
+        The implementations of those tests may differ (so we can't use simple
+        test parameterisation to keep the tests synchronised), so this test is
+        to ensure that the set of test methods names executed on the
+        TestSmartProtocol{One,Two} classes are the same.
+        """
+        import unittest
+        loader = unittest.TestLoader()
+        names = loader.getTestCaseNames(TestSmartProtocolOne)
+        protocol1_tests = set(self.remove_version_specific_tests(names))
+        names = loader.getTestCaseNames(TestSmartProtocolTwo)
+        protocol2_tests = set(self.remove_version_specific_tests(names))
+        self.assertSetEqual(protocol1_tests, protocol2_tests)
 
 
 class TestSmartClientUnicode(tests.TestCase):
