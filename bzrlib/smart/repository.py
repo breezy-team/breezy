@@ -370,6 +370,7 @@ class SmartServerRepositoryStreamRevisionsChunked(SmartServerRepositoryRequest):
                 # indicates missing revisions, and more should never happen as
                 # the excludes list considers ghosts and ensures that ghost
                 # filling races are not a problem.
+                repository.unlock()
                 return FailedSmartServerResponse(('NoSuchRevision',))
             stream = repository.get_data_stream_for_search(search_result)
         except Exception:
