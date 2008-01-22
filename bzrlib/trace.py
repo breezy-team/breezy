@@ -77,17 +77,22 @@ from bzrlib import (
     )
 """)
 
-# TODO: document these!
-_file_handler = None
+# logging Handler writing to stderr
 _stderr_handler = None
+
+# global verbosity for bzrlib; controls the log level for stderr; 0=normal; <0
+# is quiet; >0 is verbose.
 _verbosity_level = 0
 
 # File-like object where mutter/debug output is currently sent.  Can be
-# changed by _push_log_file etc.
+# changed by _push_log_file etc.  This is directly manipulated by some
+# external code; maybe there should be functions to do that more precisely
+# than push/pop_log_file.
 _trace_file = None
 
 # File-like handle and filename for ~/.bzr.log.  These aren't changed even if
-# the log/trace output is redirected elsewhere.
+# the log/trace output is redirected elsewhere.  Used to show the location in
+# --version.
 _bzr_log_file = None
 _bzr_log_filename = None
 
@@ -105,10 +110,12 @@ def note(*args, **kwargs):
     bzrlib.ui.ui_factory.clear_term()
     _bzr_logger.info(*args, **kwargs)
 
+
 def warning(*args, **kwargs):
     import bzrlib.ui
     bzrlib.ui.ui_factory.clear_term()
     _bzr_logger.warning(*args, **kwargs)
+
 
 # configure convenient aliases for output routines
 #
@@ -178,37 +185,33 @@ def _rollover_trace_maybe(trace_fname):
         return
 
 
-def open_tracefile(tracefilename=None):
+def _get_bzr_log_filename():
+    # TODO: should this be overridden by $BZR_HOME?
+    if sys.platform == 'win32':
+        from bzrlib import win32utils
+        home = win32utils.get_home_location()
+    else:
+        home = os.path.expanduser('~')
+    return os.path.join(home, '.bzr.log')
+
+
+def _open_bzr_log():
     """Open the .bzr.log trace file.  
 
     If the log is more than a particular length, the old file is renamed to
     .bzr.log.old and a new file is started.  Otherwise, we append to the
     existing file.
 
-    This sets the globals _bzr_log_file and _bzr_log_filename, and
-    _file_handler which is a logging.py StreamHandler addressing this file.
-
-    :param tracefilename: Optional path of the trace file, overriding ~/.bzr.log.
+    This sets the globals _bzr_log_file and _bzr_log_filename.
     """
-    global _file_handler, _bzr_log_file, _bzr_log_filename
-    import codecs
+    # TODO: What should happen if we fail to open the trace file?  Maybe the
+    # objects should be pointed at /dev/null or the equivalent?
+    global _bzr_log_file, _bzr_log_filename
 
-    if tracefilename is None:
-        if sys.platform == 'win32':
-            from bzrlib import win32utils
-            home = win32utils.get_home_location()
-        else:
-            home = os.path.expanduser('~')
-        _bzr_log_filename = os.path.join(home, '.bzr.log')
-    else:
-        _bzr_log_filename = tracefilename
-
-    _bzr_log_filename = os.path.expanduser(_bzr_log_filename)
+    _bzr_log_filename = _get_bzr_log_filename()
     _rollover_trace_maybe(_bzr_log_filename)
     try:
-        LINE_BUFFERED = 1
-        #tf = codecs.open(trace_fname, 'at', 'utf8', buffering=LINE_BUFFERED)
-        tf = open(_bzr_log_filename, 'at', LINE_BUFFERED)
+        tf = open(_bzr_log_filename, 'at', 1) # line buffered
         _bzr_log_file = tf
         # tf.tell() on windows always return 0 until some writing done
         tf.write('\n')
@@ -216,105 +219,36 @@ def open_tracefile(tracefilename=None):
             tf.write("this is a debug log for diagnosing/reporting problems in bzr\n")
             tf.write("you can delete or truncate this file, or include sections in\n")
             tf.write("bug reports to https://bugs.launchpad.net/bzr/+filebug\n\n")
-        _file_handler = logging.StreamHandler(tf)
-        fmt = r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s'
-        datefmt = r'%Y-%m-%d %H:%M:%S'
-        _file_handler.setFormatter(logging.Formatter(fmt, datefmt))
-        _file_handler.setLevel(logging.DEBUG)
-        logging.getLogger('').addHandler(_file_handler)
     except IOError, e:
         warning("failed to open trace file: %s" % (e))
 
 
-def log_exception_quietly():
-    """Log the last exception to the trace file only.
-
-    Used for exceptions that occur internally and that may be 
-    interesting to developers but not to users.  For example, 
-    errors loading plugins.
-    """
-    import traceback
-    mutter(traceback.format_exc())
-
-
 def enable_default_logging():
-    """Configure default logging to stderr and .bzr.log"""
-    # FIXME: if this is run twice, things get confused
-    global _stderr_handler, _file_handler, _trace_file, _bzr_log_file
+    """Configure default logging: messages to stderr and debug to .bzr.log
+    
+    This should only be called once per process.
+    
+    Output can be redirected away by calling _push_log_file.
+    """
+    # TODO: this isn't really appropriate for Launchpad or other bzrlib
+    # users, which might want more control on where the messages go.
+    global _stderr_handler, _trace_file, _bzr_log_file
     # create encoded wrapper around stderr
-    stderr = codecs.getwriter(osutils.get_terminal_encoding())(sys.stderr,
-        errors='replace')
-    _stderr_handler = logging.StreamHandler(stderr)
-    logging.getLogger('').addHandler(_stderr_handler)
+    writer_factory = codecs.getwriter(osutils.get_terminal_encoding())
+    encoded_stderr = writer_factory(sys.stderr, errors='replace')
+    # write >=info messages to stderr
+    _stderr_handler = logging.StreamHandler(encoded_stderr)
     _stderr_handler.setLevel(logging.INFO)
-    if not _file_handler:
-        open_tracefile()
-    _trace_file = _bzr_log_file
-    if _file_handler:
-        _file_handler.setLevel(logging.DEBUG)
-    _bzr_logger.setLevel(logging.DEBUG)
+    _open_bzr_log()
+    _push_log_file(_bzr_log_file,
+        r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s',
+        r'%Y-%m-%d %H:%M:%S')
+    # after hooking output into bzr_log, we also need to attach a stderr
+    # handler
+    logging.getLogger('bzr').addHandler(_stderr_handler)
 
 
-def set_verbosity_level(level):
-    """Set the verbosity level.
-
-    :param level: -ve for quiet, 0 for normal, +ve for verbose
-    """
-    global _verbosity_level
-    _verbosity_level = level
-    _update_logging_level(level < 0)
-
-
-def get_verbosity_level():
-    """Get the verbosity level.
-
-    See set_verbosity_level() for values.
-    """
-    return _verbosity_level
-
-
-def be_quiet(quiet=True):
-    # Perhaps this could be deprecated now ...
-    if quiet:
-        set_verbosity_level(-1)
-    else:
-        set_verbosity_level(0)
-
-
-def _update_logging_level(quiet=True):
-    """Hide INFO messages if quiet."""
-    if quiet:
-        _stderr_handler.setLevel(logging.WARNING)
-    else:
-        _stderr_handler.setLevel(logging.INFO)
-
-
-def is_quiet():
-    """Is the verbosity level negative?"""
-    return _verbosity_level < 0
-
-
-def is_verbose():
-    """Is the verbosity level positive?"""
-    return _verbosity_level > 0
-
-
-@symbol_versioning.deprecated_function(symbol_versioning.zero_two)
-def disable_default_logging():
-    """Turn off default log handlers.
-
-    Don't call this method, use _push_log_file and _pop_log_file instead.
-    """
-    l = logging.getLogger('')
-    l.removeHandler(_stderr_handler)
-    if _file_handler:
-        l.removeHandler(_file_handler)
-    # XXX: this is a bug, it's creating a new local not resetting the global
-    # -- mbp 20080122
-    _trace_file = None
-
-
-def _push_log_file(to_file):
+def _push_log_file(to_file, log_format=None, date_format=None):
     """Intercept log and trace messages and send them to a file.
 
     :returns: A memento that should be passed to _pop_log_file to restore the 
@@ -324,7 +258,9 @@ def _push_log_file(to_file):
     # make a new handler
     new_handler = logging.StreamHandler(to_file)
     new_handler.setLevel(logging.DEBUG)
-    new_handler.setFormatter(logging.Formatter('%(levelname)8s  %(message)s'))
+    if log_format is None:
+        log_format = '%(levelname)8s  %(message)s'
+    new_handler.setFormatter(logging.Formatter(log_format, date_format))
     # save and remove any existing log handlers
     bzr_logger = logging.getLogger('bzr')
     old_handlers = bzr_logger.handlers[:]
@@ -377,6 +313,71 @@ def disable_test_log(memento):
     return _pop_log_file(memento)
 
 
+def log_exception_quietly():
+    """Log the last exception to the trace file only.
+
+    Used for exceptions that occur internally and that may be 
+    interesting to developers but not to users.  For example, 
+    errors loading plugins.
+    """
+    mutter(traceback.format_exc())
+
+
+def set_verbosity_level(level):
+    """Set the verbosity level.
+
+    :param level: -ve for quiet, 0 for normal, +ve for verbose
+    """
+    global _verbosity_level
+    _verbosity_level = level
+    _update_logging_level(level < 0)
+
+
+def get_verbosity_level():
+    """Get the verbosity level.
+
+    See set_verbosity_level() for values.
+    """
+    return _verbosity_level
+
+
+def be_quiet(quiet=True):
+    # Perhaps this could be deprecated now ...
+    if quiet:
+        set_verbosity_level(-1)
+    else:
+        set_verbosity_level(0)
+
+
+def _update_logging_level(quiet=True):
+    """Hide INFO messages if quiet."""
+    # TODO: if this is not used, remove it.  if it is, maybe set the logger
+    # level, rather than the handler level?
+    if quiet:
+        _stderr_handler.setLevel(logging.WARNING)
+    else:
+        _stderr_handler.setLevel(logging.INFO)
+
+
+def is_quiet():
+    """Is the verbosity level negative?"""
+    return _verbosity_level < 0
+
+
+def is_verbose():
+    """Is the verbosity level positive?"""
+    return _verbosity_level > 0
+
+
+@symbol_versioning.deprecated_function(symbol_versioning.one_two)
+def disable_default_logging():
+    """Turn off default log handlers.
+
+    Don't call this method, use _push_log_file and _pop_log_file instead.
+    """
+    pass
+
+
 def report_exception(exc_info, err_file):
     """Report an exception to err_file (typically stderr) and to .bzr.log.
 
@@ -421,7 +422,6 @@ def report_user_error(exc_info, err_file):
 
 def report_bug(exc_info, err_file):
     """Report an exception that probably indicates a bug in bzr"""
-    import traceback
     exc_type, exc_object, exc_tb = exc_info
     err_file.write("bzr: ERROR: %s.%s: %s\n" % (
         exc_type.__module__, exc_type.__name__, exc_object))
