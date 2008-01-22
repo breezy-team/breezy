@@ -37,6 +37,5 @@ Options include:
  * knit - trace knit operations
  * lock - trace when lockdir locks are taken or released
  * merge - emit information for debugging merges
- * times - record timestamps from program start in trace file
 
 """

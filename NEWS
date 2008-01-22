@@ -57,8 +57,8 @@ IN DEVELOPMENT
 
   INTERNALS:
 
-    * Add -Dtimes debug flag, which records a timestamp against each mutter to
-      the trace file, relative to the first mutter.  (Andrew Bennetts)
+    * Record a timestamp against each mutter to the trace file, relative to the
+      first import of bzrlib.  (Andrew Bennetts)
      
     * Add a new method ``get_result`` to graph search objects. The resulting
       ``SearchResult`` can be used to recreate the search later, which will

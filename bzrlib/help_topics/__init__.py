@@ -291,7 +291,6 @@ development.
 -Dknit         Trace knit operations.
 -Dlock         Trace when lockdir locks are taken or released.
 -Dmerge        Emit information for debugging merges.
--Dtimes        Record timestamps from program start in trace file.
 """
 
 _standard_options = \
