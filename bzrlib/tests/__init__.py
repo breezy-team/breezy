@@ -1156,7 +1156,7 @@ class TestCase(unittest.TestCase):
         """
         fileno, name = tempfile.mkstemp(suffix='.log', prefix='testbzr')
         self._log_file = os.fdopen(fileno, 'w+')
-        self._log_nonce = bzrlib.trace.enable_test_log(self._log_file)
+        self._log_memento = bzrlib.trace.push_log_file(self._log_file)
         self._log_file_name = name
         self.addCleanup(self._finishLogFile)
 
@@ -1167,7 +1167,7 @@ class TestCase(unittest.TestCase):
         """
         if self._log_file is None:
             return
-        bzrlib.trace.disable_test_log(self._log_nonce)
+        bzrlib.trace.pop_log_file(self._log_memento)
         self._log_file.close()
         self._log_file = None
         if not self._keep_log_file:
