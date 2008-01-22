@@ -32,9 +32,17 @@ from bzrlib import (
 export BZR_LP_XMLRPC_URL=http://xmlrpc.staging.launchpad.net/bazaar/
 '''
 
+class InvalidLaunchpadInstance(errors.BzrError):
+
+    _fmt = "%(lp_instance)s is not a valid Launchpad instance."
+
+    def __init__(self, lp_instance):
+        errors.BzrError.__init__(self, lp_instance=lp_instance)
+
+
 class LaunchpadService(object):
     """A service to talk to Launchpad via XMLRPC.
-    
+
     See http://bazaar-vcs.org/Specs/LaunchpadRpc for the methods we can call.
     """
 
@@ -78,7 +86,10 @@ class LaunchpadService(object):
         if key in os.environ:
             return os.environ[key]
         elif self._lp_instance is not None:
-            return self.LAUNCHPAD_INSTANCE[self._lp_instance]
+            try:
+                return self.LAUNCHPAD_INSTANCE[self._lp_instance]
+            except KeyError:
+                raise InvalidLaunchpadInstance(self._lp_instance)
         else:
             return self.DEFAULT_SERVICE_URL
 
