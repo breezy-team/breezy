@@ -47,6 +47,9 @@ IN DEVELOPMENT
     * ``reconfigure`` can safely be interrupted while fetching.
       (Aaron Bentley, #179316)
 
+    * ``reconfigure`` preserves tags when converting to and from lightweight
+      checkouts.  (Aaron Bentley, #182040)
+
     * Unknown hostnames when connecting to a ``bzr://`` URL no longer cause
       tracebacks.  (Andrew Bennetts, #182849)
 
