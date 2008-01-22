@@ -795,7 +795,6 @@ class TestCase(unittest.TestCase):
     def setUp(self):
         unittest.TestCase.setUp(self)
         self._cleanEnvironment()
-        bzrlib.trace.disable_default_logging()
         self._silenceUI()
         self._startLogFile()
         self._benchcalls = []

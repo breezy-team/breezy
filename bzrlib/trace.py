@@ -288,43 +288,76 @@ def disable_default_logging():
     This is intended to be used by the test framework, which doesn't
     want leakage from the code-under-test into the main logs.
     """
-
     l = logging.getLogger('')
     l.removeHandler(_stderr_handler)
     if _file_handler:
         l.removeHandler(_file_handler)
+    # XXX: this is a bug, it's creating a new local not resetting the global
+    # -- mbp 20080122
     _trace_file = None
+
+
+def _push_log_file(to_file):
+    """Intercept log and trace messages and send them to a file.
+
+    :returns: A memento that should be passed to _pop_log_file to restore the 
+    previously active logging.
+    """
+    global _trace_file
+    # make a new handler
+    new_handler = logging.StreamHandler(to_file)
+    new_handler.setLevel(logging.DEBUG)
+    new_handler.setFormatter(logging.Formatter('%(levelname)8s  %(message)s'))
+    # save and remove any existing log handlers
+    bzr_logger = logging.getLogger('bzr')
+    old_handlers = bzr_logger.handlers[:]
+    del bzr_logger.handlers[:]
+    # set that as the default logger
+    bzr_logger.addHandler(new_handler)
+    bzr_logger.setLevel(logging.DEBUG)
+    # TODO: check if any changes are needed to the root logger
+    #
+    # TODO: also probably need to save and restore the level on bzr_logger.
+    # but maybe we can avoid setting the logger level altogether, and just set
+    # the level on the handler?
+    #
+    # save the old trace file
+    old_trace_file = _trace_file
+    # send traces to the new one
+    _trace_file = to_file
+    result = new_handler, _trace_file
+    return ('log_memento', old_handlers, new_handler, old_trace_file, to_file)
+
+
+def _pop_log_file((magic, old_handlers, new_handler, old_trace_file, new_trace_file)):
+    """Undo changes to logging/tracing done by _push_log_file.
+
+    This flushes, but does not close the trace file.
+    
+    Takes the memento returned from _push_log_file."""
+    assert magic == 'log_memento'
+    global _trace_file
+    _trace_file = old_trace_file
+    bzr_logger = logging.getLogger('bzr')
+    bzr_logger.removeHandler(new_handler)
+    # must be closed, otherwise logging will try to close it atexit, and the
+    # file will likely already be closed underneath.
+    new_handler.close()
+    bzr_logger.handlers = old_handlers
+    new_trace_file.flush()
 
 
 def enable_test_log(to_file):
     """Redirect logging to a temporary file for a test
     
-    returns an opaque reference that should be passed to disable_test_log
+    :returns: an opaque reference that should be passed to disable_test_log
     after the test completes.
     """
-    disable_default_logging()
-    global _trace_file
-    global _trace_depth
-    hdlr = logging.StreamHandler(to_file)
-    hdlr.setLevel(logging.DEBUG)
-    hdlr.setFormatter(logging.Formatter('%(levelname)8s  %(message)s'))
-    _bzr_logger.addHandler(hdlr)
-    _bzr_logger.setLevel(logging.DEBUG)
-    result = hdlr, _trace_file, _trace_depth
-    _trace_file = to_file
-    _trace_depth += 1
-    return result
+    return _push_log_file(to_file)
 
 
-def disable_test_log((test_log_hdlr, old_trace_file, old_trace_depth)):
-    _bzr_logger.removeHandler(test_log_hdlr)
-    test_log_hdlr.close()
-    global _trace_file
-    global _trace_depth
-    _trace_file = old_trace_file
-    _trace_depth = old_trace_depth
-    if not _trace_depth:
-        enable_default_logging()
+def disable_test_log(memento):
+    return _pop_log_file(memento)
 
 
 def report_exception(exc_info, err_file):
