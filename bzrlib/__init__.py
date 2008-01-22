@@ -25,7 +25,6 @@ _start_time = time.time()
 from bzrlib.osutils import get_user_encoding
 
 
-
 IGNORE_FILENAME = ".bzrignore"
 
 
