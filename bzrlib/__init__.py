@@ -16,6 +16,12 @@
 
 """bzr library"""
 
+import time
+
+# Keep track of when bzrlib was first imported, so that we can give rough
+# timestamps relative to program start in the log file kept by bzrlib.trace.
+_start_time = time.time()
+
 from bzrlib.osutils import get_user_encoding
 
 
