@@ -2598,6 +2598,8 @@ class cmd_selftest(Command):
                                  ' expression.'),
                      Option('strict', help='Fail on missing dependencies or '
                             'known failures.'),
+                     Option('load-list', type=str, argname='TESTLISTFILE',
+                            help='Load a test id list from a text file.'),
                      ]
     encoding_type = 'replace'
 
@@ -2605,7 +2607,8 @@ class cmd_selftest(Command):
             transport=None, benchmark=None,
             lsprof_timed=None, cache_dir=None,
             first=False, list_only=False,
-            randomize=None, exclude=None, strict=False):
+            randomize=None, exclude=None, strict=False,
+            load_list=None):
         import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
@@ -2647,6 +2650,7 @@ class cmd_selftest(Command):
                               random_seed=randomize,
                               exclude_pattern=exclude,
                               strict=strict,
+                              load_list=load_list,
                               )
         finally:
             if benchfile is not None:

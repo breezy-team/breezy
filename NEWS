@@ -61,6 +61,12 @@ IN DEVELOPMENT
     * Classes implementing Merge types like Merge3Merger must now accept (and
       honour) a do_merge flag in their constructor.  (Aaron Bentley)
 
+  TESTING:
+
+   * selftest now accepts --load-list <file> to load a test id list. This
+     speeds up running the test suite on a limited set of tests.
+     (Vincent Ladeuil)
+
   INTERNALS:
 
     * Add a new method ``get_result`` to graph search objects. The resulting
