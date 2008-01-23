@@ -44,6 +44,9 @@ IN DEVELOPMENT
     * Calculate remote path relative to the shared medium in _SmartClient.  This
       is related to the problem in bug #124089.  (Andrew Bennetts)
 
+    * Cleanly handle connection errors in smart protocol version two, the same
+      way as they are handled by version one.  (Andrew Bennetts)
+      
     * ``reconfigure`` can safely be interrupted while fetching.
       (Aaron Bentley, #179316)
 
