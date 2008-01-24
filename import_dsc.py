@@ -85,15 +85,11 @@ def do_directory(tt, trans_id, tree, relative_path, path):
         tt.create_directory(trans_id)
 
 
-def should_ignore(relative_path, prefix):
+def should_ignore(relative_path):
   parts = splitpath(relative_path)
   if not parts:
     return False
-  start = 0
-  if prefix is not None and len(parts) > 1:
-    if parts[0] == prefix:
-      start = 1
-  for part in parts[start:]:
+  for part in parts:
     if part in files_to_ignore:
       return True
 
@@ -123,7 +119,7 @@ def import_archive(tree, archive_file, file_ids_from=None):
             relative_path = relative_path.rstrip('/')
         if relative_path == '':
             continue
-        if should_ignore(relative_path, prefix):
+        if should_ignore(relative_path):
             continue
         add_implied_parents(implied_parents, relative_path)
         trans_id = tt.trans_id_tree_path(relative_path)
