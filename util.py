@@ -20,6 +20,7 @@
 
 import shutil
 import os
+import re
 
 from bzrlib.trace import info, mutter
 
@@ -57,7 +58,7 @@ def find_changelog(t, merge):
     try:
       if not t.has_filename(changelog_file):
         if merge:
-          #Assume LartstiQ's layout (.bzr in debian/)
+          #Assume LarstiQ's layout (.bzr in debian/)
           changelog_file = 'changelog'
           larstiq = True
           if not t.has_filename(changelog_file):
@@ -84,5 +85,12 @@ def tarball_name(package, version):
   """Return the name of the .orig.tar.gz for the given pakcage and version."""
 
   return "%s_%s.orig.tar.gz" % (package, str(version))
+
+def get_snapshot_revision(upstream_version):
+  """Return the upstream revision specifier if specified in the upstream version or None. """
+  match = re.search("~bzr(.+)$", upstream_version)
+  if match is None:
+    return None
+  return match.groups()[0]
 
 # vim: ts=2 sts=2 sw=2
