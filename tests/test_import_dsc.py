@@ -71,7 +71,11 @@ class TestDscImporter(TestCaseWithTransport):
 
   def assertRulesExecutable(self, tree):
     """Checks that the debian/rules in the tree is executable"""
-    self.assertTrue(tree.is_executable(tree.path2id('debian/rules')))
+    tree.lock_read()
+    try:
+      self.assertTrue(tree.is_executable(tree.path2id('debian/rules')))
+    finally:
+      tree.unlock()
 
   def make_base_package(self):
     os.mkdir(self.basedir)
@@ -824,8 +828,12 @@ Files:
     return config
 
   def check_is_native_in_config(self, tree):
-    config = self._get_tree_default_config(tree)
-    self.assertEqual(bool(config['BUILDDEB']['native']), True)
+    tree.lock_read()
+    try:
+      config = self._get_tree_default_config(tree)
+      self.assertEqual(bool(config['BUILDDEB']['native']), True)
+    finally:
+      tree.unlock()
 
   def check_is_not_native_in_config(self, tree):
     config = self._get_tree_default_config(tree, fail_on_none=False)

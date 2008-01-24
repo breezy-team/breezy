@@ -27,6 +27,7 @@
 import gzip
 import os
 import stat
+import select
 from subprocess import Popen, PIPE
 import tarfile
 
@@ -335,44 +336,47 @@ class DscImporter(object):
     finally:
       f.close()
 
-  def _filter_patch(self, patch):
+  def _make_filter_proc(self):
+    """Create a filterdiff subprocess."""
     filter_cmd = ['filterdiff', '-x', '*/.bzr/*']
     filter_proc = Popen(filter_cmd, stdin=PIPE, stdout=PIPE)
-    for line in patch:
-      filter_proc.stdin.write(line)
-    filter_proc.stdin.close()
-    r = filter_proc.wait()
-    if r != 0:
-      raise BzrError('filtering patch failed')
-    filtered_patch = filter_proc.stdout.readlines()
-    return filtered_patch
-
+    return filter_proc
 
   def _patch_tree(self, patch, basedir):
+    """Patch a tree located at basedir."""
+    filter_proc = self._make_filter_proc()
     patch_cmd =  ['patch', '--strip', '1', '--quiet', '-f', '--directory',
                   basedir]
-    patch_proc = Popen(patch_cmd, stdin=PIPE)
-    for line in self._filter_patch(patch):
-      patch_proc.stdin.write(line)
-    patch_proc.stdin.close()
+    patch_proc = Popen(patch_cmd, stdin=filter_proc.stdout, close_fds=True)
+    for line in patch:
+      filter_proc.stdin.write(line)
+      filter_proc.stdin.flush()
+    filter_proc.stdin.close()
     r = patch_proc.wait()
     if r != 0:
       raise BzrError('patch failed')
 
   def _get_touched_paths(self, patch):
+    filter_proc = self._make_filter_proc()
     cmd = ['lsdiff', '--strip', '1']
-    child_proc = Popen(cmd, stdin=PIPE, stdout=PIPE)
-    for line in self._filter_patch(patch):
-      child_proc.stdin.write(line)
-    child_proc.stdin.close()
-    r = child_proc.wait()
-    if r != 0:
-      raise BzrError('lsdiff failed')
+    child_proc = Popen(cmd, stdin=filter_proc.stdout, stdout=PIPE,
+                       close_fds=True)
+    output = ''
+    for line in patch:
+      filter_proc.stdin.write(line)
+      filter_proc.stdin.flush()
+      while select.select([child_proc.stdout], [], [], 0)[0]:
+          output += child_proc.stdout.read(1)
+    filter_proc.stdin.close()
+    output += child_proc.stdout.read()
     touched_paths = []
-    for filename in child_proc.stdout.readlines():
+    for filename in output.split('\n'):
       if filename.endswith('\n'):
         filename = filename[:-1]
       touched_paths.append(filename)
+    r = child_proc.wait()
+    if r != 0:
+      raise BzrError('lsdiff failed')
     return touched_paths
 
   def _add_implied_parents(self, tree, implied_parents, path,

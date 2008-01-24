@@ -638,7 +638,7 @@ class TestMergeBuilder(BuilderTestCase):
     self.build_tree(files)
     wt.add(files)
     wt.commit('commit one')
-    self.build_tree(join(basedir, f) for f in ['rules', 'unknown'])
+    self.build_tree(list(join(basedir, f) for f in ['rules', 'unknown']))
     wt.add(join(basedir, 'rules'))
     wt.remove(join(basedir, 'control'))
     builder = self.get_builder(wt=wt)

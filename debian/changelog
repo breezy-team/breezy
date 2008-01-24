@@ -8,8 +8,10 @@ bzr-builddeb (0.93) UNRELEASED; urgency=low
   * Stop specifying a specific branch format when importing a .dsc.
     This improves performance significantly as packs will now be used.
     Require bzr 1.0 so that packs are default.
+  * Fix the import diff code to not deadlock on large diffs. Thanks to
+    Jamie Wilkinson. (Closes: #451248)
 
- -- James Westby <jw2328@dell.linuxdev.us.dell.com>  Thu, 24 Jan 2008 12:47:14 +0000
+ -- James Westby <jw2328@dell.linuxdev.us.dell.com>  Thu, 24 Jan 2008 13:08:46 +0000
 
 bzr-builddeb (0.92) unstable; urgency=low
 
