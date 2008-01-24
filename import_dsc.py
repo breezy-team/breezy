@@ -58,6 +58,18 @@ from merge_upstream import make_upstream_tag, upstream_tag_to_version
 # TODO: support explicit upstream branch.
 # TODO: support incremental importing.
 
+files_to_ignore = set(['.cvsignore', '.arch-inventory', '.bzrignore',
+    '.gitignore', 'CVS', 'RCS', '.deps', '{arch}', '.arch-ids', '.svn',
+    '.hg', '_darcs', '.git', '.shelf', '.bzr', '.bzr.backup', '.bzrtags',
+    '.bzr-builddeb'])
+
+exclude_as_files = ['*/' + x for x in files_to_ignore]
+exclude_as_dirs = ['*/' + x + '/*' for x in files_to_ignore]
+exclude = exclude_as_files + exclude_as_dirs
+underscore_x = ['-x'] * len(exclude)
+ignore_arguments = []
+map(ignore_arguments.extend, zip(underscore_x, exclude))
+
 def import_tar(tree, tar_input, file_ids_from=None):
     """Replace the contents of a working directory with tarfile contents.
     The tarfile may be a gzipped stream.  File ids will be updated.
@@ -71,6 +83,19 @@ def do_directory(tt, trans_id, tree, relative_path, path):
         tt.cancel_deletion(trans_id)
     else:
         tt.create_directory(trans_id)
+
+
+def should_ignore(relative_path, prefix):
+  parts = splitpath(relative_path)
+  if not parts:
+    return False
+  start = 0
+  if prefix is not None and len(parts) > 1:
+    if parts[0] == prefix:
+      start = 1
+  for part in parts[start:]:
+    if part in files_to_ignore:
+      return True
 
 
 def import_archive(tree, archive_file, file_ids_from=None):
@@ -98,13 +123,7 @@ def import_archive(tree, archive_file, file_ids_from=None):
             relative_path = relative_path.rstrip('/')
         if relative_path == '':
             continue
-        parts = splitpath(relative_path)
-        if parts:
-          check_part = parts[0]
-          if prefix is not None and len(parts) > 1:
-            if parts[0] == prefix:
-              check_part = parts[1]
-          if check_part == '.bzr':
+        if should_ignore(relative_path, prefix):
             continue
         add_implied_parents(implied_parents, relative_path)
         trans_id = tt.trans_id_tree_path(relative_path)
@@ -338,7 +357,7 @@ class DscImporter(object):
 
   def _make_filter_proc(self):
     """Create a filterdiff subprocess."""
-    filter_cmd = ['filterdiff', '-x', '*/.bzr/*']
+    filter_cmd = ['filterdiff'] + ignore_arguments
     filter_proc = Popen(filter_cmd, stdin=PIPE, stdout=PIPE)
     return filter_proc
 

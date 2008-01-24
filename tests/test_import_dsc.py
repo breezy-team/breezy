@@ -29,7 +29,7 @@ from bzrlib.tests import TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 
 from errors import ImportError, OnlyImportSingleDsc
-from import_dsc import DscImporter
+from import_dsc import DscImporter, files_to_ignore
 
 def write_to_file(filename, contents):
   f = open(filename, 'wb')
@@ -82,11 +82,16 @@ class TestDscImporter(TestCaseWithTransport):
     write_to_file(os.path.join(self.basedir, 'README'), 'hello\n')
     write_to_file(os.path.join(self.basedir, 'CHANGELOG'), 'version 1\n')
     write_to_file(os.path.join(self.basedir, 'Makefile'), 'bad command\n')
+    for filename in files_to_ignore:
+      write_to_file(os.path.join(self.basedir, filename),
+          "you ain't seen me, right?")
 
   def extend_base_package(self):
     write_to_file(os.path.join(self.basedir, 'NEWS'), 'new release\n')
     write_to_file(os.path.join(self.basedir, 'Makefile'), 'good command\n')
     write_to_file(os.path.join(self.basedir, 'from_debian'), 'from debian\n')
+    for filename in files_to_ignore:
+      os.unlink(os.path.join(self.basedir, filename))
 
   def extend_base_package2(self):
     write_to_file(os.path.join(self.basedir, 'NEW_IN_3'), 'new release\n')
@@ -101,10 +106,6 @@ class TestDscImporter(TestCaseWithTransport):
 
   def make_orig_2(self):
     self.extend_base_package()
-    if not os.path.exists(os.path.join(self.basedir, '.bzr')):
-      os.mkdir(os.path.join(self.basedir, '.bzr'))
-      write_to_file(os.path.join(self.basedir, '.bzr', 'branch-format'),
-          'broken format')
     tar = tarfile.open(self.orig_2, 'w:gz')
     try:
       tar.add(self.basedir)
@@ -113,7 +114,6 @@ class TestDscImporter(TestCaseWithTransport):
 
   def make_orig_3(self):
     self.extend_base_package2()
-    shutil.rmtree(os.path.join(self.basedir, '.bzr'))
     tar = tarfile.open(self.orig_3, 'w:gz')
     try:
       tar.add(self.basedir)
@@ -158,6 +158,9 @@ class TestDscImporter(TestCaseWithTransport):
                   'version 1-1\nversion 1-2\nversion 1-3\nversion 2-1\n')
     write_to_file(os.path.join(diffdir, 'debian', 'install'), 'install\n')
     write_to_file(os.path.join(diffdir, 'debian', 'rules'), '\n')
+    for filename in files_to_ignore:
+      write_to_file(os.path.join(diffdir, filename),
+          "i'm like some annoying puppy")
     os.system('diff -Nru %s %s | gzip -9 - > %s' % (self.basedir, diffdir,
                                                    self.diff_2))
 
@@ -569,9 +572,6 @@ Files:
   def make_native_dsc_1(self):
     self.make_base_package()
     self._add_debian_to_native()
-    os.mkdir(os.path.join(self.basedir, '.bzr'))
-    write_to_file(os.path.join(self.basedir, '.bzr', 'branch-format'),
-        'broken format')
     self._make_native(self.native_1, self.native_dsc_1)
 
   def make_native_dsc_2(self):

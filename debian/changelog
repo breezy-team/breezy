@@ -10,12 +10,13 @@ bzr-builddeb (0.93) UNRELEASED; urgency=low
     Require bzr 1.0 so that packs are default.
   * Fix the import diff code to not deadlock on large diffs. Thanks to
     Jamie Wilkinson. (Closes: #451248)
+  * Exclude more files/directories than just .bzr when importing.
 
   [ Jelmer Vernooij ]
   * Allow building snapshots of packages based on version in changelog.
     (Closes: #452130)
 
- -- James Westby <jw2328@dell.linuxdev.us.dell.com>  Thu, 24 Jan 2008 13:08:46 +0000
+ -- James Westby <jw2328@dell.linuxdev.us.dell.com>  Thu, 24 Jan 2008 18:08:16 +0000
 
 bzr-builddeb (0.92) unstable; urgency=low
 
