@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import urllib
 from urlparse import urlparse
 
 from bzrlib.smart import protocol
@@ -92,4 +93,4 @@ class _SmartClient(object):
             medium_base = urlutils.join(self._shared_connection.base, '/')
             
         rel_url = urlutils.relative_url(medium_base, transport.base)
-        return urlutils.unescape(rel_url).encode('utf8')
+        return urllib.unquote(rel_url)
