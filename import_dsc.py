@@ -527,7 +527,7 @@ class DscImporter(object):
       dsc = self.cache.get_dsc(dscname)
       self._decode_dsc(dsc, dscname)
     os.mkdir(target_dir)
-    format = bzrdir.format_registry.make_bzrdir('dirstate-tags')
+    format = bzrdir.format_registry.make_bzrdir('default')
     branch  = bzrdir.BzrDir.create_branch_convenience(target_dir,
                                                       format=format)
     tree = branch.bzrdir.open_workingtree()
