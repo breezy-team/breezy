@@ -57,6 +57,9 @@ IN DEVELOPMENT
     * ``reconfigure`` preserves tags when converting to and from lightweight
       checkouts.  (Aaron Bentley, #182040)
 
+    * The launchpad plugin now uses the ``edge`` xmlrpc server to avoid
+      interacting badly with a bug on the launchpad side. (Robert Collins)
+
     * Unknown hostnames when connecting to a ``bzr://`` URL no longer cause
       tracebacks.  (Andrew Bennetts, #182849)
 

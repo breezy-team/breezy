@@ -40,7 +40,11 @@ class LaunchpadService(object):
 
     # NB: this should always end in a slash to avoid xmlrpclib appending
     # '/RPC2'
-    DEFAULT_SERVICE_URL = 'https://xmlrpc.launchpad.net/bazaar/'
+    # We use edge because:
+    # Beta users get redirected to it
+    # All users can use it
+    # There is a bug in the launchpad side where redirection causes an OOPS.
+    DEFAULT_SERVICE_URL = 'https://xmlrpc.edge.launchpad.net/bazaar/'
 
     transport = None
     registrant_email = None
