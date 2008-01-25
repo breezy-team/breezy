@@ -39,13 +39,13 @@ class cmd_register_branch(Command):
     branch belongs, and create an account for yourself on launchpad.net.
 
     arguments:
-        public_url: The publicly visible url for the branch.
+        public_url: The publicly visible url for the branch to register.
                     This must be an http or https url (which Launchpad can read
                     from to access the branch). Local file urls, SFTP urls, and
                     bzr+ssh urls will not work.
                     If no public_url is provided, bzr will use the configured
-                    public_url if there is one for the branch, and error if
-                    none is configured.
+                    public_url if there is one for the current branch, and
+                    otherwise error.
 
     example:
         bzr register-branch http://foo.com/bzr/fooproduct.mine \\
