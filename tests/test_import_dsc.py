@@ -1106,6 +1106,26 @@ Files:
     self.failUnlessExists(self.target)
     self.failIfExists(os.path.join(self.target, dir))
 
+  def test_import_absolute_path(self):
+    dir = 'dir'
+    os.mkdir(dir)
+    write_to_file(os.path.join(dir, 'README'), 'hello\n')
+    write_to_file(os.path.join(dir, 'NEWS'), 'bye bye\n')
+    tar = tarfile.open(self.native_1, 'w:gz')
+    try:
+      tar.addfile(_TarInfo(dir))
+      tar.addfile(_TarInfo('/' + os.path.join(dir, 'README')))
+      tar.addfile(_TarInfo(os.path.join(dir, 'NEWS')))
+    finally:
+      tar.close()
+      shutil.rmtree(dir)
+    self.make_dsc(self.native_dsc_1, '0.1', self.native_1)
+    DscImporter([self.native_dsc_1]).import_dsc(self.target)
+    self.failUnlessExists(self.target)
+    self.failIfExists(os.path.join(self.target, dir))
+    self.failUnlessExists(os.path.join(self.target, 'README'))
+    self.failUnlessExists(os.path.join(self.target, 'NEWS'))
+
   def test_import_with_rcs(self):
     write_to_file('README', 'hello\n')
     write_to_file('README,v', 'bye bye\n')
