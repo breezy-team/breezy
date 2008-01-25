@@ -79,4 +79,10 @@ class HookFailedError(BzrError):
 class OnlyImportSingleDsc(BzrError):
   _fmt = """You are only allowed to import one version in incremental mode."""
 
+class UnknownType(BzrError):
+  _fmt = """Cannot extract "%(path)s" from archive as it is an unknown type."""
+
+  def __init__(self, path):
+    self.path = path
+
 # vim: ts=2 sts=2 sw=2

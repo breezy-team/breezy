@@ -19,8 +19,10 @@ bzr-builddeb (0.93) gutsy; urgency=low
     dsc to avoid errors on strange tarballs.
   * Treat hardlinks in tarballs as a copy of the file. This at least
     gets the data, and is representable in bzr.
+  * Don't silently skip unkown types when extracting a tarball, error
+    instead.
 
- -- James Westby <jw+debian@jameswestby.net>  Fri, 25 Jan 2008 16:48:56 +0000
+ -- James Westby <jw+debian@jameswestby.net>  Fri, 25 Jan 2008 18:14:55 +0000
 
 bzr-builddeb (0.92) unstable; urgency=low
 

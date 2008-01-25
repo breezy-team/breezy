@@ -53,7 +53,7 @@ from bzrlib.plugins.bzrtools.upstream_import import (
                                                      add_implied_parents,
                                                      )
 
-from errors import ImportError, OnlyImportSingleDsc
+from errors import ImportError, OnlyImportSingleDsc, UnknownType
 from merge_upstream import make_upstream_tag, upstream_tag_to_version
 
 # TODO: support explicit upstream branch.
@@ -167,9 +167,7 @@ def import_archive(tree, archive_file, file_ids_from=None):
         elif member.issym():
             tt.create_symlink(member.linkname, trans_id)
         else:
-            warning('skipping creation of "%s" as it is an unsupported type' \
-                    % relative_path)
-            continue
+            raise UnknownType(relative_path)
         if tt.tree_file_id(trans_id) is None:
             if (file_ids_from is not None and
                 file_ids_from.has_filename(relative_path)):
