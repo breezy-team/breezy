@@ -1052,5 +1052,21 @@ Files:
     self.check_revision_message(tree, merged_parents[0],
                           'import upstream from %s' % self.orig_2)
 
+  def test_import_no_prefix(self):
+    write_to_file('README', 'hello\n')
+    write_to_file('NEWS', 'bye bye\n')
+    tar = tarfile.open(self.native_1, 'w:gz')
+    try:
+      tar.add('./', recursive=False)
+      tar.add('README')
+      tar.add('NEWS')
+    finally:
+      tar.close()
+      os.unlink('README')
+      os.unlink('NEWS')
+    self.make_dsc(self.native_dsc_1, '0.1', self.native_1)
+    DscImporter([self.native_dsc_1]).import_dsc(self.target)
+    self.failUnlessExists(self.target)
+
 # vim: sw=2 sts=2 ts=2 
 

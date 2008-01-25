@@ -113,10 +113,10 @@ def import_archive(tree, archive_file, file_ids_from=None):
             # type 'g' is a header
             continue
         relative_path = member.name
+        relative_path = relative_path.rstrip('/')
         if prefix is not None:
             relative_path = relative_path[len(prefix)+1:]
-            relative_path = relative_path.rstrip('/')
-        if relative_path == '':
+        if relative_path == '' or relative_path == '.':
             continue
         if should_ignore(relative_path):
             continue
