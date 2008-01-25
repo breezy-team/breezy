@@ -1143,6 +1143,25 @@ diff -Nru package/file package-0.2/file
     DscImporter([self.native_dsc_1]).import_dsc(self.target)
     self.failUnlessExists(self.target)
 
+  def test_import_hardlink(self):
+    write_to_file('README', 'hello\n')
+    os.system('ln README NEWS')
+    tar = tarfile.open(self.native_1, 'w:gz')
+    try:
+      tar.add('./', recursive=False)
+      tar.add('./README')
+      tar.add('./NEWS')
+    finally:
+      tar.close()
+      os.unlink('README')
+      os.unlink('NEWS')
+    self.make_dsc(self.native_dsc_1, '0.1', self.native_1)
+    DscImporter([self.native_dsc_1]).import_dsc(self.target)
+    self.failUnlessExists(self.target)
+    self.failUnlessExists(os.path.join(self.target, 'NEWS'))
+    self.failUnlessExists(os.path.join(self.target, 'README'))
+
+
 class _TarInfo(tarfile.TarInfo):
     """Subclass TarInfo to stop it normalising its path. Sorry Mum."""
 

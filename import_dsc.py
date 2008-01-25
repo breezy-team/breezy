@@ -153,7 +153,7 @@ def import_archive(tree, archive_file, file_ids_from=None):
                 tt.set_executability(None, trans_id)
             tt.cancel_creation(trans_id)
         seen.add(member.name)
-        if member.isreg():
+        if member.isreg() or member.islnk():
             tt.create_file(file_iterator(archive_file.extractfile(member)),
                            trans_id)
             executable = (member.mode & 0111) != 0
@@ -163,6 +163,8 @@ def import_archive(tree, archive_file, file_ids_from=None):
         elif member.issym():
             tt.create_symlink(member.linkname, trans_id)
         else:
+            warning('skipping creation of "%s" as it is an unsupported type' \
+                    % relative_path)
             continue
         if tt.tree_file_id(trans_id) is None:
             if (file_ids_from is not None and

@@ -17,8 +17,10 @@ bzr-builddeb (0.93) gutsy; urgency=low
   * Exclude more files/directories than just .bzr when importing.
   * Normalise filenames from the tarballs when extracting to import a
     dsc to avoid errors on strange tarballs.
+  * Treat hardlinks in tarballs as a copy of the file. This at least
+    gets the data, and is representable in bzr.
 
- -- James Westby <jw+debian@jameswestby.net>  Fri, 25 Jan 2008 11:16:09 +0000
+ -- James Westby <jw+debian@jameswestby.net>  Fri, 25 Jan 2008 16:48:56 +0000
 
 bzr-builddeb (0.92) unstable; urgency=low
 
