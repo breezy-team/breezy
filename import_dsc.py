@@ -56,7 +56,6 @@ from errors import ImportError, OnlyImportSingleDsc
 from merge_upstream import make_upstream_tag, upstream_tag_to_version
 
 # TODO: support explicit upstream branch.
-# TODO: support incremental importing.
 
 files_to_ignore = set(['.cvsignore', '.arch-inventory', '.bzrignore',
     '.gitignore', 'CVS', 'RCS', '.deps', '{arch}', '.arch-ids', '.svn',
