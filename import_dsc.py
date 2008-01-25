@@ -69,6 +69,7 @@ exclude = exclude_as_files + exclude_as_dirs
 underscore_x = ['-x'] * len(exclude)
 ignore_arguments = []
 map(ignore_arguments.extend, zip(underscore_x, exclude))
+ignore_arguments = ignore_arguments + ['-x', '*,v']
 
 def import_tar(tree, tar_input, file_ids_from=None):
     """Replace the contents of a working directory with tarfile contents.
@@ -91,6 +92,8 @@ def should_ignore(relative_path):
     return False
   for part in parts:
     if part in files_to_ignore:
+      return True
+    if part.endswith(',v'):
       return True
 
 

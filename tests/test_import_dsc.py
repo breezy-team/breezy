@@ -18,6 +18,7 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+import gzip
 import os
 import shutil
 import tarfile
@@ -1067,6 +1068,50 @@ Files:
     self.make_dsc(self.native_dsc_1, '0.1', self.native_1)
     DscImporter([self.native_dsc_1]).import_dsc(self.target)
     self.failUnlessExists(self.target)
+
+  def test_import_with_rcs(self):
+    write_to_file('README', 'hello\n')
+    write_to_file('README,v', 'bye bye\n')
+    tar = tarfile.open(self.native_1, 'w:gz')
+    try:
+      tar.add('README')
+      tar.add('README,v')
+    finally:
+      tar.close()
+      os.unlink('README')
+      os.unlink('README,v')
+    self.make_dsc(self.native_dsc_1, '0.1', self.native_1)
+    DscImporter([self.native_dsc_1]).import_dsc(self.target)
+    self.failUnlessExists(self.target)
+    self.failIfExists(os.path.join(self.target, 'README,v'))
+
+  def test_patch_with_rcs(self):
+    self.make_orig_1()
+    diffdir = 'package-0.1'
+    shutil.copytree(self.basedir, diffdir)
+    f = gzip.open(self.diff_1, 'w')
+    try:
+      f.write(
+"""diff -Nru package/file,v package-0.2/file,v
+--- package/file,v      1970-01-01 01:00:00.000000000 +0100
++++ package-0.2/file,v  2008-01-25 12:48:26.823475582 +0000
+@@ -0,0 +1 @@
++with a passion
+\ No newline at end of file
+diff -Nru package/file package-0.2/file
+--- package/file      1970-01-01 01:00:00.000000000 +0100
++++ package-0.2/file  2008-01-25 12:48:26.823475582 +0000
+@@ -0,0 +1 @@
++with a passion
+\ No newline at end of file
+""")
+    finally:
+      f.close()
+    self.make_dsc(self.dsc_1, '0.1-1', self.orig_1, [self.diff_1])
+    DscImporter([self.dsc_1]).import_dsc(self.target)
+    self.failUnlessExists(self.target)
+    self.failIfExists(os.path.join(self.target, 'changelog'))
+    self.failIfExists(os.path.join(self.target, 'changelog,v'))
 
   def test_import_extra_slash(self):
     tar = tarfile.open(self.native_1, 'w:gz')
