@@ -1069,6 +1069,24 @@ Files:
     DscImporter([self.native_dsc_1]).import_dsc(self.target)
     self.failUnlessExists(self.target)
 
+  def test_import_dot_prefix(self):
+    write_to_file('README', 'hello\n')
+    write_to_file('NEWS', 'bye bye\n')
+    tar = tarfile.open(self.native_1, 'w:gz')
+    try:
+      tar.addfile(_TarInfo('./'))
+      tar.addfile(_TarInfo('./README'))
+      tar.addfile(_TarInfo('./NEWS'))
+    finally:
+      tar.close()
+      os.unlink('README')
+      os.unlink('NEWS')
+    self.make_dsc(self.native_dsc_1, '0.1', self.native_1)
+    DscImporter([self.native_dsc_1]).import_dsc(self.target)
+    self.failUnlessExists(self.target)
+    self.failIfExists(os.path.join(self.target, 'ADME'))
+    self.failUnlessExists(os.path.join(self.target, 'README'))
+
   def test_import_with_rcs(self):
     write_to_file('README', 'hello\n')
     write_to_file('README,v', 'bye bye\n')

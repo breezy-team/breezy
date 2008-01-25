@@ -48,7 +48,7 @@ from bzrlib.transform import TreeTransform, cook_conflicts, resolve_conflicts
 from bzrlib.transport import get_transport
 from bzrlib.workingtree import WorkingTree
 
-from bzrlib.plugins.bzrtools.upstream_import import (common_directory,
+from bzrlib.plugins.bzrtools.upstream_import import (
                                                      names_of_files,
                                                      add_implied_parents,
                                                      )
@@ -95,6 +95,35 @@ def should_ignore(relative_path):
       return True
     if part.endswith(',v'):
       return True
+
+
+def top_directory(path):
+    """Return the top directory given in a path."""
+    append = ''
+    if path.endswith('/'):
+      append = '/'
+    dirname = os.path.dirname(osutils.normpath(path) + append)
+    last_dirname = dirname
+    while True:
+        dirname = os.path.dirname(dirname)
+        if dirname == '' or dirname == last_dirname:
+            return last_dirname
+        last_dirname = dirname
+
+
+def common_directory(names):
+    """Determine a single directory prefix from a list of names"""
+    possible_prefix = None
+    for name in names:
+        name_top = top_directory(name)
+        if name_top == '':
+            return None
+        if possible_prefix is None:
+            possible_prefix = name_top
+        else:
+            if name_top != possible_prefix:
+                return None
+    return possible_prefix
 
 
 def import_archive(tree, archive_file, file_ids_from=None):
