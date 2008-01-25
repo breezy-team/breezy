@@ -39,6 +39,10 @@ IN DEVELOPMENT
     * The ``--coverage`` option is now global, rather specific to ``bzr
       selftest``.  (Andrew Bennetts)
 
+    * The ``register-branch`` command will now use the public url of the branch
+      containing the current directory, if one has been set and no explicit branch is provided.
+      (Robert Collins)
+
   BUGFIXES:
 
     * Calculate remote path relative to the shared medium in _SmartClient.  This
@@ -82,6 +86,9 @@ IN DEVELOPMENT
       ``InterRepository.search_missing_revision_ids`` which returns a 
       ``bzrlib.graph.SearchResult`` suitable for making requests from the smart
       server. (Robert Collins)
+
+    * New error ``NoPublicBranch`` for commands that need a public branch to
+      operate. (Robert Collins)
  
     * New method ``iter_inventories`` on Repository for access to many
       inventories. This is primarily used by the ``revision_trees`` method, as

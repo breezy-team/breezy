@@ -180,7 +180,7 @@ class BranchRegistrationRequest(BaseRequest):
                  author_email='',
                  product_name='',
                  ):
-        assert branch_url
+        assert branch_url, 'branch_url %r is invalid' % branch_url
         self.branch_url = branch_url
         if branch_name:
             self.branch_name = branch_name

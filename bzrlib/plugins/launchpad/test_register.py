@@ -26,7 +26,7 @@ from bzrlib import (
     tests,
     ui,
     )
-from bzrlib.tests import TestCase, TestSkipped
+from bzrlib.tests import TestCaseWithTransport, TestSkipped
 
 # local import
 from bzrlib.plugins.launchpad.lp_registration import (
@@ -129,7 +129,7 @@ class MockLaunchpadService(LaunchpadService):
         self.called_authenticated = authenticated
 
 
-class TestBranchRegistration(TestCase):
+class TestBranchRegistration(TestCaseWithTransport):
     SAMPLE_URL = 'http://bazaar-vcs.org/bzr/bzr.dev/'
     SAMPLE_OWNER = 'jhacker@foo.com'
     SAMPLE_BRANCH_ID = 'bzr.dev'
@@ -144,9 +144,26 @@ class TestBranchRegistration(TestCase):
         out, err = self.run_bzr(['register-branch', '--help'])
         self.assertContainsRe(out, r'Register a branch')
 
-    def test_register_no_url(self):
+    def test_register_no_url_no_branch(self):
         """register-branch command requires parameters"""
-        self.run_bzr('register-branch', retcode=3)
+        self.make_repository('.')
+        self.run_bzr_error(
+            ['register-branch requires a public branch url - '
+             'see bzr help register-branch'],
+            'register-branch')
+
+    def test_register_no_url_in_published_branch_no_error(self):
+        b = self.make_branch('.')
+        b.set_public_branch('http://test-server.com/bzr/branch')
+        out, err = self.run_bzr(['register-branch', '--dry-run'])
+        self.assertEqual('Branch registered.\n', out)
+        self.assertEqual('', err)
+
+    def test_register_no_url_in_unpublished_branch_errors(self):
+        b = self.make_branch('.')
+        out, err = self.run_bzr_error(['no public branch'],
+            ['register-branch', '--dry-run'])
+        self.assertEqual('', out)
 
     def test_register_dry_run(self):
         out, err = self.run_bzr(['register-branch',
