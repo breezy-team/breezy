@@ -99,31 +99,23 @@ def should_ignore(relative_path):
 
 def top_directory(path):
     """Return the top directory given in a path."""
-    append = ''
-    if path.endswith('/'):
-      append = '/'
-    dirname = os.path.dirname(osutils.normpath(path) + append)
-    last_dirname = dirname
-    while True:
-        dirname = os.path.dirname(dirname)
-        if dirname == '' or dirname == last_dirname:
-            return last_dirname
-        last_dirname = dirname
+    parts = osutils.splitpath(osutils.normpath(path))
+    if len(parts) > 0:
+      return parts[0]
+    return ''
+
 
 
 def common_directory(names):
     """Determine a single directory prefix from a list of names"""
-    possible_prefix = None
-    for name in names:
-        name_top = top_directory(name)
-        if name_top == '':
-            return None
-        if possible_prefix is None:
-            possible_prefix = name_top
-        else:
-            if name_top != possible_prefix:
-                return None
-    return possible_prefix
+    prefixes = set()
+    prefixes.update(map(top_directory, names))
+    if len(prefixes) != 1:
+      return None
+    prefix = prefixes.pop()
+    if prefix == '':
+      return None
+    return prefix
 
 
 def import_archive(tree, archive_file, file_ids_from=None):
