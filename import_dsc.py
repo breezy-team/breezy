@@ -109,6 +109,8 @@ def common_directory(names):
     """Determine a single directory prefix from a list of names"""
     prefixes = set()
     prefixes.update(map(top_directory, names))
+    if '' in prefixes:
+      prefixes.remove('')
     if len(prefixes) != 1:
       return None
     prefix = prefixes.pop()
