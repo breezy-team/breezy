@@ -558,3 +558,20 @@ class TestSelftestListOnly(TestCase):
             out_rand2.splitlines(), 2)
         self.assertEqual(tests_rand, tests_rand2)
 
+
+class TestSelftestWithIdList(TestCaseInTempDir):
+
+    def test_load_list(self):
+        # We don't want to call selftest for the whole suite, so we start with
+        # a reduced list.
+        test_list_fname = 'test.list'
+        fl = open(test_list_fname, 'wt')
+        fl.write('%s\n' % self.id())
+        fl.close()
+        out, err = self.run_bzr(
+            ['selftest', '--load-list', test_list_fname, '--list'])
+        self.assertContainsRe(out, "Listed 1 test in")
+
+    def test_load_unknown(self):
+        out, err = self.run_bzr('selftest --load-list I_do_not_exist ',
+                                retcode=3)
