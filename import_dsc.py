@@ -105,7 +105,6 @@ def top_directory(path):
     return ''
 
 
-
 def common_directory(names):
     """Determine a single directory prefix from a list of names"""
     prefixes = set()
@@ -384,8 +383,8 @@ class DscImporter(object):
   def _patch_tree(self, patch, basedir):
     """Patch a tree located at basedir."""
     filter_proc = self._make_filter_proc()
-    patch_cmd =  ['patch', '--strip', '1', '--quiet', '-f', '--directory',
-                  basedir]
+    patch_cmd =  ['patch', '-g', '0', '--strip', '1', '--quiet', '-f',
+                  '--directory', basedir]
     patch_proc = Popen(patch_cmd, stdin=filter_proc.stdout, close_fds=True)
     for line in patch:
       filter_proc.stdin.write(line)
