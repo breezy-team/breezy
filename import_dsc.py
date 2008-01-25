@@ -36,6 +36,7 @@ from debian_bundle.changelog import Version
 
 from bzrlib import (bzrdir,
                     generate_ids,
+                    osutils,
                     urlutils,
                     )
 from bzrlib.config import ConfigObj
@@ -113,7 +114,7 @@ def import_archive(tree, archive_file, file_ids_from=None):
             # type 'g' is a header
             continue
         relative_path = member.name
-        relative_path = relative_path.rstrip('/')
+        relative_path = osutils.normpath(relative_path)
         if prefix is not None:
             relative_path = relative_path[len(prefix)+1:]
         if relative_path == '' or relative_path == '.':

@@ -1068,5 +1068,92 @@ Files:
     DscImporter([self.native_dsc_1]).import_dsc(self.target)
     self.failUnlessExists(self.target)
 
+  def test_import_extra_slash(self):
+    tar = tarfile.open(self.native_1, 'w:gz')
+    try:
+      tar.addfile(_TarInfo('root//'))
+      tar.addfile(_TarInfo('root//README'))
+      tar.addfile(_TarInfo('root//NEWS'))
+    finally:
+      tar.close()
+    self.make_dsc(self.native_dsc_1, '0.1', self.native_1)
+    DscImporter([self.native_dsc_1]).import_dsc(self.target)
+    self.failUnlessExists(self.target)
+
+class _TarInfo(tarfile.TarInfo):
+    """Subclass TarInfo to stop it normalising its path. Sorry Mum."""
+
+    def tobuf(self, posix=False):
+        """Return a tar header as a string of 512 byte blocks.
+        """
+        buf = ""
+        type = self.type
+        prefix = ""
+
+        if self.name.endswith("/"):
+            type = tarfile.DIRTYPE
+
+        name = self.name
+
+        if type == tarfile.DIRTYPE:
+            # directories should end with '/'
+            name += "/"
+
+        linkname = self.linkname
+        if linkname:
+            # if linkname is empty we end up with a '.'
+            linkname = normpath(linkname)
+
+        if posix:
+            if self.size > tarfile.MAXSIZE_MEMBER:
+                raise ValueError("file is too large (>= 8 GB)")
+
+            if len(self.linkname) > tarfile.LENGTH_LINK:
+                raise ValueError("linkname is too long (>%d)" % (LENGTH_LINK))
+
+            if len(name) > tarfile.LENGTH_NAME:
+                prefix = name[:tarfile.LENGTH_PREFIX + 1]
+                while prefix and prefix[-1] != "/":
+                    prefix = prefix[:-1]
+
+                name = name[len(prefix):]
+                prefix = prefix[:-1]
+
+                if not prefix or len(name) > tarfile.LENGTH_NAME:
+                    raise ValueError("name is too long")
+
+        else:
+            if len(self.linkname) > tarfile.LENGTH_LINK:
+                buf += self._create_gnulong(self.linkname,
+                                            tarfile.GNUTYPE_LONGLINK)
+
+            if len(name) > tarfile.LENGTH_NAME:
+                buf += self._create_gnulong(name, tarfile.GNUTYPE_LONGNAME)
+
+        parts = [
+            tarfile.stn(name, 100),
+            tarfile.itn(self.mode & 07777, 8, posix),
+            tarfile.itn(self.uid, 8, posix),
+            tarfile.itn(self.gid, 8, posix),
+            tarfile.itn(self.size, 12, posix),
+            tarfile.itn(self.mtime, 12, posix),
+            "        ", # checksum field
+            type,
+            tarfile.stn(self.linkname, 100),
+            tarfile.stn(tarfile.MAGIC, 6),
+            tarfile.stn(tarfile.VERSION, 2),
+            tarfile.stn(self.uname, 32),
+            tarfile.stn(self.gname, 32),
+            tarfile.itn(self.devmajor, 8, posix),
+            tarfile.itn(self.devminor, 8, posix),
+            tarfile.stn(prefix, 155)
+        ]
+
+        buf += "".join(parts).ljust(tarfile.BLOCKSIZE, tarfile.NUL)
+        chksum = tarfile.calc_chksums(buf[-tarfile.BLOCKSIZE:])[0]
+        buf = buf[:-364] + "%06o\0" % chksum + buf[-357:]
+        self.buf = buf
+        return buf
+
 # vim: sw=2 sts=2 ts=2 
 
