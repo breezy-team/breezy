@@ -140,8 +140,7 @@ def import_archive(tree, archive_file, file_ids_from=None):
             continue
         relative_path = member.name
         relative_path = osutils.normpath(relative_path)
-        while relative_path.startswith('/'):
-          relative_path = relative_path.lstrip('/')
+        relative_path = relative_path.lstrip('/')
         if prefix is not None:
             relative_path = relative_path[len(prefix)+1:]
         if relative_path == '' or relative_path == '.':
