@@ -4,6 +4,8 @@ bzr-svn 0.4.7	UNRELEASED
 
    * Implement Repository.find_branches(). (#178108)
 
+   * Warn about location when initializing Subversion repository cache.
+
   BUGS
 
    * Fix opening unicode file names during fetch. (#162368)

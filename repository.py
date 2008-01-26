@@ -26,7 +26,7 @@ from bzrlib.repository import Repository, RepositoryFormat
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.revision import Revision, NULL_REVISION
 from bzrlib.transport import Transport, get_transport
-from bzrlib.trace import mutter
+from bzrlib.trace import info, mutter
 
 from svn.core import SubversionException, Pool
 import svn.core
@@ -295,6 +295,8 @@ class SvnRepository(Repository):
         cachedir_transport = get_transport(cache_dir)
         cache_file = os.path.join(cache_dir, 'cache-v%d' % MAPPING_VERSION)
         if not cachedbs.has_key(cache_file):
+            if not os.path.exists(cache_file):
+                info("Initialising Subversion metadata cache in %s" % cache_file)
             cachedbs[cache_file] = sqlite3.connect(cache_file)
         self.cachedb = cachedbs[cache_file]
 
