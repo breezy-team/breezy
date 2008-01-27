@@ -60,6 +60,9 @@ IN DEVELOPMENT
     * Unknown hostnames when connecting to a ``bzr://`` URL no longer cause
       tracebacks.  (Andrew Bennetts, #182849)
 
+    * ``bzr mv a b`` can be now used also to rename previously renamed
+      directories, not only files. (Lukáš Lalinský, #107967)
+
   API BREAKS:
 
     * Classes implementing Merge types like Merge3Merger must now accept (and

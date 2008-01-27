@@ -371,3 +371,26 @@ class TestMove(TestCaseWithTransport):
         self.failUnlessExists('sub/a2')
         self.assertInWorkingTree('sub/a1')
         self.assertInWorkingTree('sub/a2')
+
+    def test_mv_already_moved_directory(self):
+        """Use `bzr mv a b` to mark a directory as renamed.
+
+        https://bugs.launchpad.net/bzr/+bug/107967/
+        """
+        self.build_tree(['a/', 'c/'])
+        tree = self.make_branch_and_tree('.')
+        tree.add(['a', 'c'])
+        osutils.rename('a', 'b')
+        osutils.rename('c', 'd')
+        # mv a b should work just like it does for already renamed files
+        self.run_bzr('mv a b')
+        self.failIfExists('a')
+        self.assertNotInWorkingTree('a')
+        self.failUnlessExists('b')
+        self.assertInWorkingTree('b')
+        # and --after should work, too (technically it's ignored)
+        self.run_bzr('mv --after c d')
+        self.failIfExists('c')
+        self.assertNotInWorkingTree('c')
+        self.failUnlessExists('d')
+        self.assertInWorkingTree('d')

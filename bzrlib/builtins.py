@@ -534,8 +534,25 @@ class cmd_mv(Command):
         if len(names_list) < 2:
             raise errors.BzrCommandError("missing file argument")
         tree, rel_names = tree_files(names_list)
-        
-        if os.path.isdir(names_list[-1]):
+        tree.lock_write()
+        try:
+            self._run(tree, names_list, rel_names, after)
+        finally:
+            tree.unlock()
+
+    def _run(self, tree, names_list, rel_names, after):
+        into_existing = osutils.isdir(names_list[-1])
+        if into_existing and len(names_list) == 2:
+            # if the source used to be a directory, but now doesn't exist
+            # in the working tree and the target is an existing directory,
+            # just rename it
+            inv = tree.inventory
+            from_id = tree.path2id(rel_names[0])
+            if (not osutils.lexists(names_list[0]) and
+                from_id and inv.get_file_kind(from_id) == "directory"):
+                into_existing = False
+
+        if into_existing:
             # move into existing directory
             for pair in tree.move(rel_names[:-1], rel_names[-1], after=after):
                 self.outf.write("%s => %s\n" % pair)
