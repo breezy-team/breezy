@@ -359,7 +359,7 @@ class cmd_svn_branching_scheme(Command):
             if repository_wide:
                 repos.set_property_scheme(scheme)
             else:
-                repos.set_branching_scheme(scheme)
+                repos.set_branching_scheme(scheme, mandatory=True)
         elif scheme is not None:
             info(scheme_str(scheme))
 

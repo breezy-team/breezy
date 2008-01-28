@@ -21,6 +21,9 @@ bzr-svn 0.4.7	UNRELEASED
 
    * Handle corner cases tracking branches. (#184457)
 
+   * Avoid errors about invalid branching paths unless the branching scheme 
+     was specified explicitly.
+
 bzr-svn 0.4.6	2008-01-08
 
   PERFORMANCE

@@ -322,28 +322,46 @@ class SvnRepository(Repository):
     def get_transaction(self):
         raise NotImplementedError(self.get_transaction)
 
+    def get_stored_scheme(self):
+        """Retrieve the stored branching scheme, either in the repository 
+        or in the configuration file.
+        """
+        scheme = self.get_config().get_branching_scheme()
+        if scheme is not None:
+            return (scheme, self.get_config().branching_scheme_is_mandatory())
+
+        last_revnum = self.transport.get_latest_revnum()
+        scheme = self._get_property_scheme(last_revnum)
+        if scheme is not None:
+            return (scheme, True)
+
+        return (None, False)
+
     def get_scheme(self):
         """Determine the branching scheme to use for this repository.
 
         :return: Branching scheme.
         """
+        # First, try to use the branching scheme we already know
         if self._scheme is not None:
             return self._scheme
 
-        scheme = self.get_config().get_branching_scheme()
-        if scheme is not None:
+        (scheme, mandatory) = self.get_stored_scheme()
+        if mandatory:
             self._scheme = scheme
             return scheme
 
-        last_revnum = self.transport.get_latest_revnum()
-        scheme = self._get_property_scheme(last_revnum)
         if scheme is not None:
-            self.set_branching_scheme(scheme)
-            return scheme
+            if (self._hinted_branch_path is None or 
+                scheme.is_branch(self._hinted_branch_path)):
+                self._scheme = scheme
+                return scheme
 
+        last_revnum = self.transport.get_latest_revnum()
         self.set_branching_scheme(
             self._guess_scheme(last_revnum, self._hinted_branch_path),
-            store=(last_revnum > 20))
+            store=(last_revnum > 20),
+            mandatory=False)
 
         return self._scheme
 
@@ -375,10 +393,11 @@ class SvnRepository(Repository):
         mutter("Guessed branching scheme: %r" % scheme)
         return scheme
 
-    def set_branching_scheme(self, scheme, store=True):
+    def set_branching_scheme(self, scheme, store=True, mandatory=False):
         self._scheme = scheme
         if store:
-            self.get_config().set_branching_scheme(str(scheme))
+            self.get_config().set_branching_scheme(str(scheme), 
+                                                   mandatory=mandatory)
 
     def _warn_if_deprecated(self):
         # This class isn't deprecated

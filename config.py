@@ -41,12 +41,13 @@ class SvnRepositoryConfig(IniBasedConfig):
         if not self.uuid in self._get_parser():
             self._get_parser()[self.uuid] = {}
 
-    def set_branching_scheme(self, scheme):
+    def set_branching_scheme(self, scheme, mandatory=False):
         """Change the branching scheme.
 
         :param scheme: New branching scheme.
         """
         self.set_user_option('branching-scheme', str(scheme))
+        self.set_user_option('branching-scheme-mandatory', str(mandatory))
 
     def _get_user_option(self, name, use_global=True):
         try:
@@ -65,6 +66,16 @@ class SvnRepositoryConfig(IniBasedConfig):
         if schemename is not None:
             return BranchingScheme.find_scheme(schemename.encode('ascii'))
         return None
+
+    def branching_scheme_is_mandatory(self):
+        """Check whether or not the branching scheme for this repository 
+        is mandatory.
+        """
+        mandatory = self._get_user_option("branching-scheme-mandatory", 
+                                           use_global=False)
+        if mandatory is not None:
+            return bool(mandatory)
+        return False
 
     def get_override_svn_revprops(self):
         """Check whether or not bzr-svn should attempt to override Subversion revision 
