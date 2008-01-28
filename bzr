@@ -98,7 +98,7 @@ import bzrlib.trace
 
 
 if __name__ == '__main__':
-    bzrlib.trace.enable_default_logging()
+    bzrlib.trace.enable_default_logging(os.environ.get('BZR_LOG'))
     exit_val = bzrlib.commands.main(sys.argv)
 
     if profiling:

@@ -35,8 +35,9 @@ IN DEVELOPMENT
       client, and sends less data to the server to request the revisions.
       (Andrew Bennetts, Robert Collins, #178353)
 
-    * ``BZR_LOG=disable`` suppresses writing messages to .bzr.log.
-      (Alexander Belchenko)
+    * BZR_LOG environment variable controls location of .bzr.log trace file. 
+      User can suppress writing messages to .bzr.log by using '/dev/null'
+      filename (on Linux) or 'NUL' (on Windows). (Alexander Belchenko)
 
   IMPROVEMENTS:
 

@@ -169,9 +169,6 @@ def open_tracefile(tracefilename=None):
     global _file_handler, _bzr_log_file, _bzr_log_filename
     import codecs
 
-    if os.environ.get('BZR_LOG','').lower() == 'disable':
-        return
-
     if tracefilename is None:
         if sys.platform == 'win32':
             from bzrlib import win32utils
@@ -180,6 +177,12 @@ def open_tracefile(tracefilename=None):
             home = os.path.expanduser('~')
         _bzr_log_filename = os.path.join(home, '.bzr.log')
     else:
+        if sys.platform == 'win32':
+            if tracefilename.lower() == 'nul':
+                return
+        else:
+            if tracefilename == '/dev/null':
+                return
         _bzr_log_filename = tracefilename
 
     _bzr_log_filename = os.path.expanduser(_bzr_log_filename)
@@ -216,7 +219,7 @@ def log_exception_quietly():
     mutter(traceback.format_exc())
 
 
-def enable_default_logging():
+def enable_default_logging(tracefilename=None):
     """Configure default logging to stderr and .bzr.log"""
     # FIXME: if this is run twice, things get confused
     global _stderr_handler, _file_handler, _trace_file, _bzr_log_file
@@ -227,7 +230,7 @@ def enable_default_logging():
     logging.getLogger('').addHandler(_stderr_handler)
     _stderr_handler.setLevel(logging.INFO)
     if not _file_handler:
-        open_tracefile()
+        open_tracefile(tracefilename)
     _trace_file = _bzr_log_file
     if _file_handler:
         _file_handler.setLevel(logging.DEBUG)
