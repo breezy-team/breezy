@@ -271,6 +271,7 @@ command.  (e.g. "bzr --profile help").
                "callgrind.out" or end with ".callgrind", the output will be
                formatted for use with KCacheGrind. Otherwise, the output
                will be a pickle.
+--coverage     Generate line coverage report in the specified directory.
 
 See doc/developers/profiling.txt for more information on profiling.
 A number of debug flags are also available to assist troubleshooting and
@@ -290,7 +291,6 @@ development.
 -Dknit         Trace knit operations.
 -Dlock         Trace when lockdir locks are taken or released.
 -Dmerge        Emit information for debugging merges.
--Dtimes        Record timestamps from program start in trace file.
 """
 
 _standard_options = \

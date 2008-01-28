@@ -12,13 +12,17 @@ IN DEVELOPMENT
     * Fetching via bzr+ssh will no longer fill ghosts by default (this is
       consistent with pack-0.92 fetching over SFTP). (Robert Collins)
 
-   * ``merge`` now prefers to use the submit branch, but will fall back to
-     parent branch.  For many users, this has no effect.  But some users who
-     pull and merge on the same branch will notice a change.  This change
-     makes it easier to work on a branch on two different machines, pulling
-     between the machines, while merging from the upstream.
-     ``merge --remember`` can now be used to set the submit_branch.
-     (Aaron Bentley)
+    * Formatting of ``bzr plugins`` output is changed to be more human-
+      friendly. Full path of plugins locations will be shown only with
+      ``--verbose`` command-line option. (Alexander Belchenko)
+
+    * ``merge`` now prefers to use the submit branch, but will fall back to
+      parent branch.  For many users, this has no effect.  But some users who
+      pull and merge on the same branch will notice a change.  This change
+      makes it easier to work on a branch on two different machines, pulling
+      between the machines, while merging from the upstream.
+      ``merge --remember`` can now be used to set the submit_branch.
+      (Aaron Bentley)
 
   FEATURES:
 
@@ -36,16 +40,25 @@ IN DEVELOPMENT
     * Fetching between different repository formats with compatible models now
       takes advantage of the smart method to stream revisions.  (Andrew Bennetts)
 
+    * The ``--coverage`` option is now global, rather specific to ``bzr
+      selftest``.  (Andrew Bennetts)
+
   BUGFIXES:
 
     * Calculate remote path relative to the shared medium in _SmartClient.  This
       is related to the problem in bug #124089.  (Andrew Bennetts)
 
+    * Cleanly handle connection errors in smart protocol version two, the same
+      way as they are handled by version one.  (Andrew Bennetts)
+      
     * List possible values for BZR_SSH environment variable in env-variables
       help topic. (Alexander Belchenko, #181842)
 
     * ``reconfigure`` can safely be interrupted while fetching.
       (Aaron Bentley, #179316)
+
+    * ``reconfigure`` preserves tags when converting to and from lightweight
+      checkouts.  (Aaron Bentley, #182040)
 
     * Unknown hostnames when connecting to a ``bzr://`` URL no longer cause
       tracebacks.  (Andrew Bennetts, #182849)
@@ -55,11 +68,14 @@ IN DEVELOPMENT
     * Classes implementing Merge types like Merge3Merger must now accept (and
       honour) a do_merge flag in their constructor.  (Aaron Bentley)
 
+  TESTING:
+
+   * selftest now accepts --load-list <file> to load a test id list. This
+     speeds up running the test suite on a limited set of tests.
+     (Vincent Ladeuil)
+
   INTERNALS:
 
-    * Add -Dtimes debug flag, which records a timestamp against each mutter to
-      the trace file, relative to the first mutter.  (Andrew Bennetts)
-     
     * Add a new method ``get_result`` to graph search objects. The resulting
       ``SearchResult`` can be used to recreate the search later, which will
       be useful in reducing network traffic. (Robert Collins)
@@ -83,6 +99,9 @@ IN DEVELOPMENT
       useful for code which needs to be aware of ghosts (e.g. fetching data
       cares about ghosts during revision selection). (Robert Collins)
  
+    * Record a timestamp against each mutter to the trace file, relative to the
+      first import of bzrlib.  (Andrew Bennetts)
+     
     * ``Repository.get_data_stream`` is now deprecated in favour of
       ``Repository.get_data_stream_for_search`` which allows less network
       traffic when requesting data streams over a smart server. (Robert Collins)
