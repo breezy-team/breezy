@@ -83,7 +83,7 @@ _trace_file = None
 _trace_depth = 0
 _bzr_log_file = None
 _bzr_log_filename = None
-_bzr_log_opened = None
+_start_time = bzrlib._start_time
 
 
 # configure convenient aliases for output routines
@@ -128,15 +128,8 @@ def mutter(fmt, *args):
         out = fmt % tuple(real_args)
     else:
         out = fmt
-    out += '\n'
-    if 'times' in debug.debug_flags:
-        global _bzr_log_opened
-        if _bzr_log_opened is None:
-            # This is the first mutter since the process started.  Start the
-            # clock from now.
-            _bzr_log_opened = time.time()
-        timestamp = '%0.3f' % (time.time() - _bzr_log_opened,)
-        out = '%s %s' % (timestamp, out)
+    timestamp = '%0.3f  ' % (time.time() - _start_time,)
+    out = timestamp + out + '\n'
     _trace_file.write(out)
     # TODO: jam 20051227 Consider flushing the trace file to help debugging
     #_trace_file.flush()

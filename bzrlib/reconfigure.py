@@ -133,6 +133,8 @@ class Reconfigure(object):
         if self.referenced_branch is None:
             if want_reference:
                 self._create_reference = True
+                if self.local_branch is not None:
+                    self._destroy_branch = True
         else:
             if not want_reference:
                 self._destroy_reference = True
@@ -227,11 +229,15 @@ class Reconfigure(object):
             self.bzrdir.destroy_branch()
         if self._destroy_branch:
             last_revision_info = self.local_branch.last_revision_info()
+            if self._create_reference:
+                self.local_branch.tags.merge_to(reference_branch.tags)
             self.bzrdir.destroy_branch()
         if self._create_branch:
             local_branch = self.bzrdir.create_branch()
             if last_revision_info is not None:
                 local_branch.set_last_revision_info(*last_revision_info)
+            if self._destroy_reference:
+                self.referenced_branch.tags.merge_to(local_branch.tags)
         else:
             local_branch = self.local_branch
         if self._create_reference:
