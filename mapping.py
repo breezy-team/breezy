@@ -13,21 +13,50 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from bzrlib import registry
+from bzrlib import errors, registry
 
-from revids import parse_svn_revision_id, unescape_svn_path
+import urllib
+
+def escape_svn_path(x):
+    """Escape a Subversion path for use in a revision identifier.
+
+    :param x: Path
+    :return: Escaped path
+    """
+    assert isinstance(x, str)
+    return urllib.quote(x, "")
+unescape_svn_path = urllib.unquote
 
 class BzrSvnMapping:
     """Class that maps between Subversion and Bazaar semantics."""
 
     @staticmethod
     def parse_revision_id(revid):
+        """Parse an existing Subversion-based revision id.
+
+        :param revid: The revision id.
+        :raises: InvalidRevisionId
+        :return: Tuple with uuid, branch path, revision number and scheme.
+        """
         raise NotImplementedError(self.parse_revision_id)
+
+    def generate_revision_id(uuid, revnum, path, scheme):
+        """Generate a unambiguous revision id. 
+        
+        :param uuid: UUID of the repository.
+        :param revnum: Subversion revision number.
+        :param path: Branch path.
+        :param scheme: Name of the branching scheme in use
+
+        :return: New revision id.
+        """
+        raise NotImplementedError(self.generate_revision_id)
 
 
 class BzrSvnMappingv1(BzrSvnMapping):
     @staticmethod
     def parse_revision_id(revid):
+        assert revid.startswith("svn-v1:")
         revid = revid[len("svn-v1:"):]
         at = revid.index("@")
         fash = revid.rindex("-")
@@ -41,6 +70,7 @@ class BzrSvnMappingv1(BzrSvnMapping):
 class BzrSvnMappingv2(BzrSvnMapping):
     @staticmethod
     def parse_revision_id(revid):
+        assert revid.startswith("svn-v2:")
         revid = revid[len("svn-v2:"):]
         at = revid.index("@")
         fash = revid.rindex("-")
@@ -52,13 +82,37 @@ class BzrSvnMappingv2(BzrSvnMapping):
 
 
 class BzrSvnMappingv3(BzrSvnMapping):
-    @staticmethod
-    def parse_revision_id(revid):
-        (uuid, bp, rev, scheme) = parse_svn_revision_id(revid)
+    revid_prefix = "svn-v3-"
+
+    @classmethod
+    def parse_revision_id(cls, revid):
+        assert revid is not None
+        assert isinstance(revid, str)
+
+        if not revid.startswith(cls.revid_prefix):
+            raise errors.InvalidRevisionId(revid, "")
+
+        try:
+            (version, uuid, branch_path, srevnum) = revid.split(":")
+        except ValueError:
+            raise errors.InvalidRevisionId(revid, "")
+
+        scheme = version[len(cls.revid_prefix):]
+
         if scheme == "undefined":
             scheme = None
-        return (uuid, bp, rev, scheme)
 
+        return (uuid, unescape_svn_path(branch_path), int(srevnum), scheme)
+
+    @classmethod
+    def generate_revision_id(cls, uuid, revnum, path, scheme):
+        assert isinstance(revnum, int)
+        assert isinstance(path, str)
+        assert revnum >= 0
+        assert revnum > 0 or path == "", \
+                "Trying to generate revid for (%r,%r)" % (path, revnum)
+        return "%s%s:%s:%s:%d" % (cls.revid_prefix, scheme, uuid, \
+                       escape_svn_path(path.strip("/")), revnum)
 
 class BzrSvnMappingRegistry(registry.Registry):
     def register(self, key, factory, help):
@@ -85,3 +139,5 @@ mapping_registry.register('v2', BzrSvnMappingv2,
 mapping_registry.register('v3', BzrSvnMappingv3,
         'Third format')
 mapping_registry.set_default('v3')
+
+default_mapping = BzrSvnMappingv3

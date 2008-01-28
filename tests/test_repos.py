@@ -35,6 +35,7 @@ import svn.fs
 from errors import InvalidPropertyValue
 from fileids import generate_svn_file_id, generate_file_id
 import format
+from mapping import escape_svn_path, unescape_svn_path
 from scheme import (TrunkBranchingScheme, NoBranchingScheme, 
                     ListBranchingScheme)
 from transport import SvnRaTransport
@@ -44,8 +45,8 @@ from repository import (revision_id_to_svk_feature,
                         SvnRepositoryFormat, SVN_PROP_BZR_REVISION_ID,
                         generate_revision_metadata, parse_revision_metadata,
                         parse_revid_property, SVN_PROP_BZR_BRANCHING_SCHEME)
-from revids import (MAPPING_VERSION, escape_svn_path, unescape_svn_path,
-                    parse_svn_revision_id, generate_svn_revision_id)
+from revids import (MAPPING_VERSION, parse_svn_revision_id, 
+                    generate_svn_revision_id)
 
 
 class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):

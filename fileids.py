@@ -25,7 +25,7 @@ import urllib
 
 import sha
 
-from revids import escape_svn_path
+from mapping import escape_svn_path
 
 def generate_svn_file_id(uuid, revnum, branch, inv_path):
     """Create a file id identifying a Subversion file.
