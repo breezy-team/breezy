@@ -29,7 +29,7 @@ import svn.wc
 
 import os
 
-from mapping import MAPPING_VERSION
+from mapping import MAPPING_VERSION, default_mapping
 from transport import svn_config
 from tests import TestCaseWithSubversionRepository, RENAMES
 
