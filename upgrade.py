@@ -20,6 +20,7 @@ from bzrlib.trace import info, mutter
 import bzrlib.ui as ui
 
 from errors import RebaseNotPresent
+from mapping import mapping_registry
 from revids import (generate_svn_revision_id, parse_svn_revision_id, 
                     MAPPING_VERSION,  unescape_svn_path)
 from scheme import BranchingScheme, guess_scheme_from_branch_path
@@ -38,29 +39,12 @@ def parse_legacy_revision_id(revid):
     :param revid: Revision id to parse
     :return: tuple with (uuid, branch_path, revision number, scheme, mapping version)
     """
-    if revid.startswith("svn-v1:"):
-        revid = revid[len("svn-v1:"):]
-        at = revid.index("@")
-        fash = revid.rindex("-")
-        uuid = revid[at+1:fash]
-        branch_path = unescape_svn_path(revid[fash+1:])
-        revnum = int(revid[0:at])
-        assert revnum >= 0
-        return (uuid, branch_path, revnum, None, 1)
-    elif revid.startswith("svn-v2:"):
-        revid = revid[len("svn-v2:"):]
-        at = revid.index("@")
-        fash = revid.rindex("-")
-        uuid = revid[at+1:fash]
-        branch_path = unescape_svn_path(revid[fash+1:])
-        revnum = int(revid[0:at])
-        assert revnum >= 0
-        return (uuid, branch_path, revnum, None, 2)
-    elif revid.startswith("svn-v3-"):
-        (uuid, bp, rev, scheme) = parse_svn_revision_id(revid)
-        if scheme == "undefined":
-            scheme = None
-        return (uuid, bp, rev, scheme, 3)
+    if revid.startswith("svn-"):
+        try:
+            mapping = mapping_registry.get(revid[len("svn-"):len("svn-vx")])
+            return mapping.parse_revision_id(revid)
+        except KeyError:
+            pass
 
     raise InvalidRevisionId(revid, None)
 
