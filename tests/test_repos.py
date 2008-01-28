@@ -35,7 +35,7 @@ import svn.fs
 from errors import InvalidPropertyValue
 from fileids import generate_svn_file_id, generate_file_id
 import format
-from mapping import escape_svn_path, unescape_svn_path
+from mapping import default_mapping, escape_svn_path, unescape_svn_path
 from scheme import (TrunkBranchingScheme, NoBranchingScheme, 
                     ListBranchingScheme)
 from transport import SvnRaTransport
@@ -45,8 +45,7 @@ from repository import (revision_id_to_svk_feature,
                         SvnRepositoryFormat, SVN_PROP_BZR_REVISION_ID,
                         generate_revision_metadata, parse_revision_metadata,
                         parse_revid_property, SVN_PROP_BZR_BRANCHING_SCHEME)
-from revids import (MAPPING_VERSION, parse_svn_revision_id, 
-                    generate_svn_revision_id)
+from revids import MAPPING_VERSION
 
 
 class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
@@ -478,7 +477,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         bzrdir = self.make_client_and_bzrdir('d', 'dc')
         repository = bzrdir.find_repository()
         self.assertFalse(repository.has_revision(
-            generate_svn_revision_id(repository.uuid, 5, "", "none")))
+            default_mapping.generate_revision_id(repository.uuid, 5, "", "none")))
 
     def test_revision_parents(self):
         repos_url = self.make_client('d', 'dc')
@@ -584,7 +583,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_update("dc")
         (num, date, author) = self.client_commit("dc", "Second Message")
         repository = Repository.open("svn+%s" % repos_url)
-        revid = generate_svn_revision_id(repository.uuid, 2, "", "none")
+        revid = default_mapping.generate_revision_id(repository.uuid, 2, "", "none")
         rev = repository.get_revision("myrevid")
         self.assertEqual([repository.generate_revision_id(1, "", "none")],
                 rev.parent_ids)
@@ -845,7 +844,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "foobar")
         repository = Repository.open("svn+%s" % repos_url)
         self.assertEqual(("", 1), repository.lookup_revision_id( 
-            generate_svn_revision_id(repository.uuid, 1, "", "none"))[:2])
+            default_mapping.generate_revision_id(repository.uuid, 1, "", "none"))[:2])
         self.assertEqual(("", 1), 
                 repository.lookup_revision_id("myid")[:2])
 
@@ -858,7 +857,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "foobar")
         repository = Repository.open("svn+%s" % repos_url)
         self.assertEqual(("", 1), repository.lookup_revision_id( 
-            generate_svn_revision_id(repository.uuid, 1, "", "none"))[:2])
+            default_mapping.generate_revision_id(repository.uuid, 1, "", "none"))[:2])
         self.assertRaises(NoSuchRevision, repository.lookup_revision_id, 
             "corrupt-entry")
 
@@ -876,9 +875,9 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "foobar")
         repository = Repository.open("svn+%s" % repos_url)
         self.assertEqual(("", 2), repository.lookup_revision_id( 
-            generate_svn_revision_id(repository.uuid, 2, "", "none"))[:2])
+            default_mapping.generate_revision_id(repository.uuid, 2, "", "none"))[:2])
         self.assertEqual(("", 1), repository.lookup_revision_id( 
-            generate_svn_revision_id(repository.uuid, 1, "", "none"))[:2])
+            default_mapping.generate_revision_id(repository.uuid, 1, "", "none"))[:2])
         self.assertEqual(("", 2), repository.lookup_revision_id( 
             "corrupt-entry")[:2])
 
@@ -918,7 +917,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repository = Repository.open("svn+%s" % repos_url)
         self.assertRaises(NoSuchRevision, 
             repository.lookup_revision_id, 
-                generate_svn_revision_id("invaliduuid", 0, "", "none"))
+                default_mapping.generate_revision_id("invaliduuid", 0, "", "none"))
         
     def test_check(self):
         repos_url = self.make_client('d', 'dc')
@@ -952,7 +951,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertTrue(repository.has_revision(
             repository.generate_revision_id(1, "", "none")))
         self.assertFalse(repository.has_revision(
-            generate_svn_revision_id(repository.uuid, 4, "", "trunk0")))
+            default_mapping.generate_revision_id(repository.uuid, 4, "", "trunk0")))
 
     def test_is_shared(self):
         repos_url = self.make_client('d', 'dc')

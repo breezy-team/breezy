@@ -28,7 +28,8 @@ from unittest import TestCase
 from branch import FakeControlFiles, SvnBranchFormat
 from convert import load_dumpfile
 from fileids import generate_svn_file_id
-from repository import MAPPING_VERSION, generate_svn_revision_id, SVN_PROP_BZR_REVISION_ID
+from mapping import default_mapping
+from repository import MAPPING_VERSION, SVN_PROP_BZR_REVISION_ID
 from tests import TestCaseWithSubversionRepository
 
 class WorkingSubversionBranch(TestCaseWithSubversionRepository):
@@ -490,15 +491,15 @@ foohosts""")
         uuid = "6f95bc5c-e18d-4021-aca8-49ed51dbcb75"
         newbranch.lock_read()
         tree = newbranch.repository.revision_tree(
-                generate_svn_revision_id(uuid, 7, "branches/foobranch", 
+                default_mapping.generate_revision_id(uuid, 7, "branches/foobranch", 
                 "trunk0"))
 
         weave = newbranch.repository.weave_store.get_weave(
             tree.inventory.path2id("hosts"),
             newbranch.repository.get_transaction())
         self.assertEqual(set([
-            generate_svn_revision_id(uuid, 6, "branches/foobranch", "trunk0"),
-            generate_svn_revision_id(uuid, 7, "branches/foobranch", "trunk0")]),
+            default_mapping.generate_revision_id(uuid, 6, "branches/foobranch", "trunk0"),
+            default_mapping.generate_revision_id(uuid, 7, "branches/foobranch", "trunk0")]),
                           set(weave.versions()))
         newbranch.unlock()
  
@@ -539,16 +540,16 @@ foohosts""")
 
         uuid = olddir.find_repository().uuid
         tree = newbranch.repository.revision_tree(
-             generate_svn_revision_id(uuid, 6, "branches/foobranch", "trunk0"))
+             default_mapping.generate_revision_id(uuid, 6, "branches/foobranch", "trunk0"))
         transaction = newbranch.repository.get_transaction()
         newbranch.repository.lock_read()
         weave = newbranch.repository.weave_store.get_weave(
                 tree.inventory.path2id("hosts"), transaction)
         self.assertEqual(set([
-            generate_svn_revision_id(uuid, 1, "trunk", "trunk0"),
-            generate_svn_revision_id(uuid, 2, "trunk", "trunk0"),
-            generate_svn_revision_id(uuid, 3, "trunk", "trunk0"),
-            generate_svn_revision_id(uuid, 6, "branches/foobranch", "trunk0")]),
+            default_mapping.generate_revision_id(uuid, 1, "trunk", "trunk0"),
+            default_mapping.generate_revision_id(uuid, 2, "trunk", "trunk0"),
+            default_mapping.generate_revision_id(uuid, 3, "trunk", "trunk0"),
+            default_mapping.generate_revision_id(uuid, 6, "branches/foobranch", "trunk0")]),
                           set(weave.versions()))
         newbranch.repository.unlock()
 

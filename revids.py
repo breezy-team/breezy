@@ -22,34 +22,6 @@ MAPPING_VERSION = 3
 
 from mapping import default_mapping
 
-from bzrlib.plugins.svn import version_info
-if version_info[3] == "exp":
-    REVISION_ID_PREFIX = "svn-experimental-"
-else:
-    REVISION_ID_PREFIX = "svn-v%d-" % MAPPING_VERSION
-
-def parse_svn_revision_id(revid):
-    """Parse an existing Subversion-based revision id.
-
-    :param revid: The revision id.
-    :raises: InvalidRevisionId
-    :return: Tuple with uuid, branch path, revision number and scheme.
-    """
-    return default_mapping.parse_revision_id(revid)
-
-def generate_svn_revision_id(uuid, revnum, path, scheme):
-    """Generate a unambiguous revision id. 
-    
-    :param uuid: UUID of the repository.
-    :param revnum: Subversion revision number.
-    :param path: Branch path.
-    :param scheme: Name of the branching scheme in use
-
-    :return: New revision id.
-    """
-    return default_mapping.generate_revision_id(uuid, revnum, path, scheme)
-
-
 class RevidMap(object):
     """Revision id mapping store. 
 

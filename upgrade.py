@@ -20,9 +20,8 @@ from bzrlib.trace import info, mutter
 import bzrlib.ui as ui
 
 from errors import RebaseNotPresent
-from mapping import mapping_registry, unescape_svn_path
-from revids import (generate_svn_revision_id, parse_svn_revision_id, 
-                    MAPPING_VERSION)
+from mapping import default_mapping, mapping_registry, unescape_svn_path
+from revids import MAPPING_VERSION
 from scheme import BranchingScheme, guess_scheme_from_branch_path
 
 class UpgradeChangesContent(BzrError):
@@ -116,7 +115,7 @@ def generate_upgrade_map(revs):
                 continue
             if scheme is None:
                 scheme = guess_scheme_from_branch_path(bp)
-            newrevid = generate_svn_revision_id(uuid, rev, bp, scheme)
+            newrevid = default_mapping.generate_revision_id(uuid, rev, bp, scheme)
             if revid == newrevid:
                 continue
             rename_map[revid] = newrevid
@@ -210,7 +209,7 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
                 return revid
             if scheme is None:
                 scheme = guess_scheme_from_branch_path(bp)
-            return generate_svn_revision_id(uuid, rev, bp, scheme)
+            return default_mapping.generate_revision_id(uuid, rev, bp, scheme)
         def replay(repository, oldrevid, newrevid, new_parents):
             return replay_snapshot(repository, oldrevid, newrevid, new_parents,
                                    revid_renames, fix_revid)

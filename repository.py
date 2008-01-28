@@ -39,8 +39,8 @@ import calendar
 from config import SvnRepositoryConfig
 import errors
 import logwalker
-from revids import (generate_svn_revision_id, parse_svn_revision_id, 
-                    MAPPING_VERSION, RevidMap)
+from mapping import default_mapping
+from revids import (MAPPING_VERSION, RevidMap)
 from scheme import (BranchingScheme, ListBranchingScheme, 
                     parse_list_scheme_text, guess_scheme_from_history)
 from tree import SvnRevisionTree
@@ -233,7 +233,7 @@ def revision_id_to_svk_feature(revid):
     :return: Matching SVK feature identifier.
     """
     assert isinstance(revid, str)
-    (uuid, branch, revnum, _) = parse_svn_revision_id(revid)
+    (uuid, branch, revnum, _) = default_mapping.parse_revision_id(revid)
     # TODO: What about renamed revisions? Should use 
     # repository.lookup_revision_id here.
     return "%s:/%s:%d" % (uuid, branch, revnum)
@@ -730,8 +730,8 @@ class SvnRepository(Repository):
                 SVN_PROP_BZR_REVISION_ID+str(scheme)).strip("\n")
         # Or generate it
         if line == "":
-            revid = generate_svn_revision_id(self.uuid, revnum, path, 
-                                             scheme)
+            revid = default_mapping.generate_revision_id(
+                        self.uuid, revnum, path, scheme)
         else:
             try:
                 (bzr_revno, revid) = parse_revid_property(line)
@@ -739,8 +739,8 @@ class SvnRepository(Repository):
                         scheme, bzr_revno)
             except errors.InvalidPropertyValue, e:
                 mutter(str(e))
-                revid = generate_svn_revision_id(self.uuid, revnum, path, 
-                                                 scheme)
+                revid = default_mapping.generate_revision_id(self.uuid, 
+                            revnum, path, scheme)
                 self.revmap.insert_revid(revid, path, revnum, revnum, 
                         scheme)
 
@@ -761,7 +761,7 @@ class SvnRepository(Repository):
 
         # Try a simple parse
         try:
-            (uuid, branch_path, revnum, schemen) = parse_svn_revision_id(revid)
+            (uuid, branch_path, revnum, schemen) = default_mapping.parse_revision_id(revid)
             assert isinstance(branch_path, str)
             assert isinstance(schemen, str)
             if uuid == self.uuid:
