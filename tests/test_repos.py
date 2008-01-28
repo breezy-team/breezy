@@ -33,7 +33,7 @@ import os
 import svn.fs
 
 from errors import InvalidPropertyValue
-from fileids import generate_svn_file_id, generate_file_id
+from fileids import generate_file_id
 import format
 from mapping import default_mapping, escape_svn_path, unescape_svn_path
 from scheme import (TrunkBranchingScheme, NoBranchingScheme, 

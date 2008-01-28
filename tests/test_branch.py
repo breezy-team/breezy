@@ -27,7 +27,6 @@ from unittest import TestCase
 
 from branch import FakeControlFiles, SvnBranchFormat
 from convert import load_dumpfile
-from fileids import generate_svn_file_id
 from mapping import default_mapping
 from repository import MAPPING_VERSION, SVN_PROP_BZR_REVISION_ID
 from tests import TestCaseWithSubversionRepository

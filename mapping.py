@@ -13,8 +13,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from bzrlib import errors, registry
+from bzrlib import errors, osutils, registry
 
+import sha
 import urllib
 
 def escape_svn_path(x):
@@ -51,6 +52,17 @@ class BzrSvnMapping:
         :return: New revision id.
         """
         raise NotImplementedError(self.generate_revision_id)
+
+    @staticmethod
+    def generate_file_id(uuid, revnum, branch, inv_path):
+        """Create a file id identifying a Subversion file.
+
+        :param uuid: UUID of the repository
+        :param revnum: Revision number at which the file was introduced.
+        :param branch: Branch path of the branch in which the file was introduced.
+        :param inv_path: Original path of the file within the inventory
+        """
+        raise NotImplementedError(self.generate_file_id)
 
 
 class BzrSvnMappingv1(BzrSvnMapping):
@@ -113,6 +125,23 @@ class BzrSvnMappingv3(BzrSvnMapping):
                 "Trying to generate revid for (%r,%r)" % (path, revnum)
         return "%s%s:%s:%s:%d" % (cls.revid_prefix, scheme, uuid, \
                        escape_svn_path(path.strip("/")), revnum)
+
+    @staticmethod
+    def generate_file_id(uuid, revnum, branch, inv_path):
+        assert isinstance(uuid, str)
+        assert isinstance(revnum, int)
+        assert isinstance(branch, str)
+        assert isinstance(inv_path, unicode)
+        inv_path = inv_path.encode("utf-8")
+        ret = "%d@%s:%s:%s" % (revnum, uuid, escape_svn_path(branch), escape_svn_path(inv_path))
+        if len(ret) > 150:
+            ret = "%d@%s:%s;%s" % (revnum, uuid, 
+                                escape_svn_path(branch),
+                                sha.new(inv_path).hexdigest())
+        assert isinstance(ret, str)
+        return osutils.safe_file_id(ret)
+
+
 
 class BzrSvnMappingRegistry(registry.Registry):
     def register(self, key, factory, help):

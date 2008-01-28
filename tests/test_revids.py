@@ -119,12 +119,12 @@ class RevisionIdMappingTest(TestCase):
              default_mapping.generate_revision_id("myuuid", 5, u"branch\xe6".encode("utf-8"), "undefined"))
 
     def test_parse_revid_simple(self):
-        self.assertEqual(("uuid", "", 4, "undefined"),
+        self.assertEqual(("uuid", "", 4, None),
                          default_mapping.parse_revision_id(
                              "svn-v%d-undefined:uuid::4" % MAPPING_VERSION))
 
     def test_parse_revid_nested(self):
-        self.assertEqual(("uuid", "bp/data", 4, "undefined"),
+        self.assertEqual(("uuid", "bp/data", 4, None),
                          default_mapping.parse_revision_id(
                      "svn-v%d-undefined:uuid:bp%%2Fdata:4" % MAPPING_VERSION))
 

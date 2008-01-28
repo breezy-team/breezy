@@ -22,8 +22,8 @@ from bzrlib.repository import Repository
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 
 from errors import RebaseNotPresent
-from fileids import generate_svn_file_id
 from format import get_rich_root_format
+from mapping import default_mapping
 from repository import MAPPING_VERSION
 from tests import TestCaseWithSubversionRepository
 from upgrade import (upgrade_repository, upgrade_branch,
@@ -157,7 +157,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
 
         tree = newrepos.revision_tree("customrev-svn%d-upgrade" % MAPPING_VERSION)
         self.assertEqual("specificid", tree.inventory.path2id("a"))
-        self.assertEqual(generate_svn_file_id(oldrepos.uuid, 1, "", u"a"), 
+        self.assertEqual(default_mapping.generate_file_id(oldrepos.uuid, 1, "", u"a"), 
                          tree.inventory.path2id("b"))
 
     @skip_no_rebase
