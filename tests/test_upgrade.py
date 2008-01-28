@@ -39,19 +39,19 @@ class TestUpgradeChangesContent(TestCase):
 
 class ParserTests(TestCase):
     def test_current(self):
-        self.assertEqual(("uuid", "trunk", 1, "trunk0", 3), 
+        self.assertEqual(("uuid", "trunk", 1, "trunk0", 'v3'), 
                 parse_legacy_revision_id("svn-v3-trunk0:uuid:trunk:1"))
 
     def test_current_undefined(self):
-        self.assertEqual(("uuid", "trunk", 1, None, 3), 
+        self.assertEqual(("uuid", "trunk", 1, None, 'v3'), 
                 parse_legacy_revision_id("svn-v3-undefined:uuid:trunk:1"))
 
     def test_legacy2(self):
-        self.assertEqual(("uuid", "trunk", 1, None, 2), 
+        self.assertEqual(("uuid", "trunk", 1, None, 'v2'), 
                          parse_legacy_revision_id("svn-v2:1@uuid-trunk"))
 
     def test_legacy(self):
-        self.assertEqual(("uuid", "trunk", 1, None, 1), 
+        self.assertEqual(("uuid", "trunk", 1, None, 'v1'), 
                          parse_legacy_revision_id("svn-v1:1@uuid-trunk"))
 
     def test_except(self):

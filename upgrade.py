@@ -41,8 +41,10 @@ def parse_legacy_revision_id(revid):
     """
     if revid.startswith("svn-"):
         try:
-            mapping = mapping_registry.get(revid[len("svn-"):len("svn-vx")])
-            return mapping.parse_revision_id(revid)
+            mapping_version = revid[len("svn-"):len("svn-vx")]
+            mapping = mapping_registry.get(mapping_version)
+            (uuid, bp, rev, scheme) = mapping.parse_revision_id(revid)
+            return (uuid, bp, rev, scheme, mapping_version)
         except KeyError:
             pass
 

@@ -35,7 +35,7 @@ class BzrSvnMappingv1(BzrSvnMapping):
         branch_path = unescape_svn_path(revid[fash+1:])
         revnum = int(revid[0:at])
         assert revnum >= 0
-        return (uuid, branch_path, revnum, None, 1)
+        return (uuid, branch_path, revnum, None)
 
 
 class BzrSvnMappingv2(BzrSvnMapping):
@@ -48,7 +48,7 @@ class BzrSvnMappingv2(BzrSvnMapping):
         branch_path = unescape_svn_path(revid[fash+1:])
         revnum = int(revid[0:at])
         assert revnum >= 0
-        return (uuid, branch_path, revnum, None, 2)
+        return (uuid, branch_path, revnum, None)
 
 
 class BzrSvnMappingv3(BzrSvnMapping):
@@ -57,7 +57,7 @@ class BzrSvnMappingv3(BzrSvnMapping):
         (uuid, bp, rev, scheme) = parse_svn_revision_id(revid)
         if scheme == "undefined":
             scheme = None
-        return (uuid, bp, rev, scheme, 3)
+        return (uuid, bp, rev, scheme)
 
 
 class BzrSvnMappingRegistry(registry.Registry):
