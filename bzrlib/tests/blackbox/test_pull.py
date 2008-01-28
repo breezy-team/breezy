@@ -305,3 +305,20 @@ class TestPull(ExternalBase):
         self.assertContainsRe(out, 'bar')
         self.assertNotContainsRe(out, 'added:')
         self.assertNotContainsRe(out, 'foo')
+
+    def test_pull_quiet(self):
+        """Check that bzr pull --quiet does not print anything"""
+        tree_a = self.make_branch_and_tree('tree_a')
+        self.build_tree(['tree_a/foo'])
+        tree_a.add('foo')
+        tree_a.commit('bar')
+        tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
+        out, err = self.run_bzr('pull --quiet -d tree_b')
+        self.assertEqual(out, '')
+        self.assertEqual(err, '')
+        self.build_tree(['tree_a/moo'])
+        tree_a.add('moo')
+        tree_a.commit('quack')
+        out, err = self.run_bzr('pull --quiet -d tree_b')
+        self.assertEqual(out, '')
+        self.assertEqual(err, '')

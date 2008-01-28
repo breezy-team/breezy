@@ -56,6 +56,10 @@ IN DEVELOPMENT
     * Unknown hostnames when connecting to a ``bzr://`` URL no longer cause
       tracebacks.  (Andrew Bennetts, #182849)
 
+    * pull --quiet is now more quiet, in particular a message is no longer
+      printed when the remembered pull location is used. (James Westby,
+      #185907)
+
   API BREAKS:
 
     * Classes implementing Merge types like Merge3Merger must now accept (and

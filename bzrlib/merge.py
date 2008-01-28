@@ -47,7 +47,7 @@ from bzrlib.osutils import rename, pathjoin
 from progress import DummyProgress, ProgressPhase
 from bzrlib.revision import (NULL_REVISION, ensure_null)
 from bzrlib.textfile import check_text_lines
-from bzrlib.trace import mutter, warning, note
+from bzrlib.trace import mutter, warning, note, is_quiet
 from bzrlib.transform import (TransformPreview, TreeTransform,
                               resolve_conflicts, cook_conflicts,
                               conflict_pass, FinalPaths, create_by_entry,
@@ -439,7 +439,7 @@ class Merger(object):
                 self.base_tree.unlock()
             self.this_tree.unlock()
         if len(merge.cooked_conflicts) == 0:
-            if not self.ignore_zero:
+            if not self.ignore_zero and not is_quiet():
                 note("All changes applied successfully.")
         else:
             note("%d conflicts encountered." % len(merge.cooked_conflicts))
