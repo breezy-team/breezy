@@ -169,6 +169,8 @@ def show_pending_merges(new, to_file, short=False):
         try:
             from bzrlib.osutils import terminal_width
             width = terminal_width()
+            if short:
+                width -= 1
             m_revision = branch.repository.get_revision(merge)
             if short:
                 prefix = 'P  '
