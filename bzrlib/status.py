@@ -168,15 +168,15 @@ def show_pending_merges(new, to_file, short=False):
         ignore.add(merge)
         try:
             from bzrlib.osutils import terminal_width
-            width = terminal_width()
-            if short:
-                width -= 1
+            width = terminal_width() - 1    # we need one extra space to avoid
+                                            # extra blank lines
             m_revision = branch.repository.get_revision(merge)
             if short:
-                prefix = 'P  '
+                prefix = 'P   '
             else:
-                prefix = ' '
-            to_file.write(prefix + ' ' + line_log(m_revision, width - 4))
+                prefix = '  '
+            to_file.write(prefix)
+            to_file.write(line_log(m_revision, width - len(prefix)))
             to_file.write('\n')
             inner_merges = branch.repository.get_ancestry(merge)
             assert inner_merges[0] is None
@@ -187,10 +187,11 @@ def show_pending_merges(new, to_file, short=False):
                     continue
                 mm_revision = branch.repository.get_revision(mmerge)
                 if short:
-                    prefix = 'P.  '
+                    prefix = 'P.   '
                 else:
-                    prefix = '   '
-                to_file.write(prefix + ' ' + line_log(mm_revision, width - 5))
+                    prefix = '    '
+                to_file.write(prefix)
+                to_file.write(line_log(mm_revision, width - len(prefix)))
                 to_file.write('\n')
                 ignore.add(mmerge)
         except errors.NoSuchRevision:
