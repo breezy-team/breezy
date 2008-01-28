@@ -590,6 +590,20 @@ def _match_argform(cmd, takes_args, args):
 
     return argdict
 
+def apply_coveraged(dirname, the_callable, *args, **kwargs):
+    # Cannot use "import trace", as that would import bzrlib.trace instead of
+    # the standard library's trace.
+    trace = __import__('trace')
+
+    tracer = trace.Trace(count=1, trace=0)
+    sys.settrace(tracer.globaltrace)
+
+    ret = the_callable(*args, **kwargs)
+
+    sys.settrace(None)
+    results = tracer.results()
+    results.write_results(show_missing=1, summary=False,
+                          coverdir=dirname)
 
 
 def apply_profiled(the_callable, *args, **kwargs):
@@ -682,13 +696,16 @@ def run_bzr(argv):
 
     --lsprof
         Run under the Python lsprof profiler.
+
+    --coverage
+        Generate line coverage report in the specified directory.
     """
     argv = list(argv)
     trace.mutter("bzr arguments: %r", argv)
 
     opt_lsprof = opt_profile = opt_no_plugins = opt_builtin =  \
                 opt_no_aliases = False
-    opt_lsprof_file = None
+    opt_lsprof_file = opt_coverage_dir = None
 
     # --no-plugins is handled specially at a very early stage. We need
     # to load plugins before doing other command parsing so that they
@@ -712,6 +729,9 @@ def run_bzr(argv):
             opt_no_aliases = True
         elif a == '--builtin':
             opt_builtin = True
+        elif a == '--coverage':
+            opt_coverage_dir = argv[i + 1]
+            i += 1
         elif a.startswith('-D'):
             debug.debug_flags.add(a[2:])
         else:
@@ -755,9 +775,17 @@ def run_bzr(argv):
 
     try:
         if opt_lsprof:
+            if opt_coverage_dir:
+                trace.warning(
+                    '--coverage ignored, because --lsprof is in use.')
             ret = apply_lsprofiled(opt_lsprof_file, run, *run_argv)
         elif opt_profile:
+            if opt_coverage_dir:
+                trace.warning(
+                    '--coverage ignored, because --profile is in use.')
             ret = apply_profiled(run, *run_argv)
+        elif opt_coverage_dir:
+            ret = apply_coveraged(opt_coverage_dir, run, *run_argv)
         else:
             ret = run(*run_argv)
         return ret or 0
