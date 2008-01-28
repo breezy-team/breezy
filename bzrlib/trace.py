@@ -176,6 +176,9 @@ def open_tracefile(tracefilename=None):
     global _file_handler, _bzr_log_file, _bzr_log_filename
     import codecs
 
+    if os.environ.get('BZR_LOG','').lower() == 'disable':
+        return
+
     if tracefilename is None:
         if sys.platform == 'win32':
             from bzrlib import win32utils

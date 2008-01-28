@@ -31,6 +31,9 @@ IN DEVELOPMENT
       client, and sends less data to the server to request the revisions.
       (Andrew Bennetts, Robert Collins, #178353)
 
+    * ``BZR_LOG=disable`` suppresses writing messages to .bzr.log.
+      (Alexander Belchenko)
+
   IMPROVEMENTS:
 
     * Fetching between different repository formats with compatible models now
