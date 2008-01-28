@@ -27,7 +27,7 @@ from bzrlib.workingtree import WorkingTree
 from commit import set_svn_revprops
 from copy import copy
 from errors import RevpropChangeFailed
-from repository import MAPPING_VERSION
+from mapping import MAPPING_VERSION
 import os
 from remote import SvnRaTransport
 from tests import TestCaseWithSubversionRepository

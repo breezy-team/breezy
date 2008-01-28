@@ -39,31 +39,18 @@ import calendar
 from config import SvnRepositoryConfig
 import errors
 import logwalker
-from mapping import default_mapping
-from revids import (MAPPING_VERSION, RevidMap)
+from mapping import (default_mapping, SVN_PROP_BZR_REVISION_ID, MAPPING_VERSION,
+                     SVN_PROP_BZR_REVISION_INFO, SVN_PROP_BZR_BRANCHING_SCHEME,
+                     SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS)
+                      
+from revids import RevidMap
 from scheme import (BranchingScheme, ListBranchingScheme, 
                     parse_list_scheme_text, guess_scheme_from_history)
 from tree import SvnRevisionTree
 import time
 import urllib
 
-SVN_PROP_BZR_PREFIX = 'bzr:'
-SVN_PROP_BZR_ANCESTRY = 'bzr:ancestry:v%d-' % MAPPING_VERSION
-SVN_PROP_BZR_FILEIDS = 'bzr:file-ids'
-SVN_PROP_BZR_MERGE = 'bzr:merge'
 SVN_PROP_SVK_MERGE = 'svk:merge'
-SVN_PROP_BZR_REVISION_INFO = 'bzr:revision-info'
-SVN_PROP_BZR_REVISION_ID = 'bzr:revision-id:v%d-' % MAPPING_VERSION
-SVN_PROP_BZR_BRANCHING_SCHEME = 'bzr:branching-scheme'
-
-SVN_REVPROP_BZR_COMMITTER = 'bzr:committer'
-SVN_REVPROP_BZR_FILEIDS = 'bzr:file-ids'
-SVN_REVPROP_BZR_MERGE = 'bzr:merge'
-SVN_REVPROP_BZR_REVISION_ID = 'bzr:revision-id'
-SVN_REVPROP_BZR_REVPROP_PREFIX = 'bzr:revprop:'
-SVN_REVPROP_BZR_ROOT = 'bzr:root'
-SVN_REVPROP_BZR_SCHEME = 'bzr:scheme'
-SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
 
 # The following two functions don't use day names (which can vary by 
 # locale) unlike the alternatives in bzrlib.timestamp

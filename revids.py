@@ -18,8 +18,6 @@
 
 from bzrlib.errors import (InvalidRevisionId, NoSuchRevision)
 
-MAPPING_VERSION = 3
-
 from mapping import default_mapping
 
 class RevidMap(object):

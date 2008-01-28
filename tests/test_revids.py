@@ -18,9 +18,9 @@ from bzrlib.errors import NoSuchRevision, InvalidRevisionId
 from bzrlib.repository import Repository
 from bzrlib.tests import TestCase
 
-from mapping import default_mapping
-from repository import (MAPPING_VERSION, parse_svk_feature, 
-                        revision_id_to_svk_feature, parse_merge_property)
+from mapping import default_mapping, MAPPING_VERSION
+from repository import (parse_svk_feature, revision_id_to_svk_feature, 
+                        parse_merge_property)
 from revids import RevidMap
 from tests import TestCaseWithSubversionRepository
 

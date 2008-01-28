@@ -23,8 +23,7 @@ from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 
 from errors import RebaseNotPresent
 from format import get_rich_root_format
-from mapping import default_mapping
-from repository import MAPPING_VERSION
+from mapping import default_mapping, MAPPING_VERSION
 from tests import TestCaseWithSubversionRepository
 from upgrade import (upgrade_repository, upgrade_branch,
                      upgrade_workingtree, UpgradeChangesContent, 

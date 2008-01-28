@@ -35,17 +35,18 @@ import svn.fs
 from errors import InvalidPropertyValue
 from fileids import generate_file_id
 import format
-from mapping import default_mapping, escape_svn_path, unescape_svn_path
+from mapping import (default_mapping, escape_svn_path, unescape_svn_path, 
+                     SVN_PROP_BZR_REVISION_ID, SVN_PROP_BZR_BRANCHING_SCHEME,
+                     MAPPING_VERSION)
 from scheme import (TrunkBranchingScheme, NoBranchingScheme, 
                     ListBranchingScheme)
 from transport import SvnRaTransport
 from tests import TestCaseWithSubversionRepository
 from tests.test_fileids import MockRepo
 from repository import (revision_id_to_svk_feature,
-                        SvnRepositoryFormat, SVN_PROP_BZR_REVISION_ID,
+                        SvnRepositoryFormat, 
                         generate_revision_metadata, parse_revision_metadata,
-                        parse_revid_property, SVN_PROP_BZR_BRANCHING_SCHEME)
-from revids import MAPPING_VERSION
+                        parse_revid_property)
 
 
 class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):

@@ -35,11 +35,11 @@ from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 from branch import SvnBranch
 from convert import SvnConverter
 from errors import LocalCommitsUnsupported, NoSvnRepositoryPresent
+from mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS, 
+                     SVN_PROP_BZR_REVISION_ID, SVN_PROP_BZR_REVISION_INFO)
 from remote import SvnRemoteAccess
-from repository import (SvnRepository, SVN_PROP_BZR_ANCESTRY,
-                        SVN_PROP_SVK_MERGE, SVN_PROP_BZR_FILEIDS, 
-                        SVN_PROP_BZR_REVISION_ID, SVN_PROP_BZR_REVISION_INFO,
-                        revision_id_to_svk_feature, generate_revision_metadata) 
+from repository import (SvnRepository, revision_id_to_svk_feature, 
+                        generate_revision_metadata, SVN_PROP_SVK_MERGE) 
 from mapping import escape_svn_path
 from scheme import BranchingScheme
 from transport import (SvnRaTransport, bzr_to_svn_url, create_svn_client,

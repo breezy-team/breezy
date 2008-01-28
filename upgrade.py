@@ -20,8 +20,8 @@ from bzrlib.trace import info, mutter
 import bzrlib.ui as ui
 
 from errors import RebaseNotPresent
-from mapping import default_mapping, mapping_registry, unescape_svn_path
-from revids import MAPPING_VERSION
+from mapping import (default_mapping, mapping_registry, unescape_svn_path, 
+                     MAPPING_VERSION)
 from scheme import BranchingScheme, guess_scheme_from_branch_path
 
 class UpgradeChangesContent(BzrError):

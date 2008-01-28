@@ -18,6 +18,26 @@ from bzrlib import errors, osutils, registry
 import sha
 import urllib
 
+MAPPING_VERSION = 3
+
+SVN_PROP_BZR_PREFIX = 'bzr:'
+SVN_PROP_BZR_ANCESTRY = 'bzr:ancestry:v%d-' % MAPPING_VERSION
+SVN_PROP_BZR_FILEIDS = 'bzr:file-ids'
+SVN_PROP_BZR_MERGE = 'bzr:merge'
+SVN_PROP_BZR_REVISION_INFO = 'bzr:revision-info'
+SVN_PROP_BZR_REVISION_ID = 'bzr:revision-id:v%d-' % MAPPING_VERSION
+SVN_PROP_BZR_BRANCHING_SCHEME = 'bzr:branching-scheme'
+
+SVN_REVPROP_BZR_COMMITTER = 'bzr:committer'
+SVN_REVPROP_BZR_FILEIDS = 'bzr:file-ids'
+SVN_REVPROP_BZR_MERGE = 'bzr:merge'
+SVN_REVPROP_BZR_REVISION_ID = 'bzr:revision-id'
+SVN_REVPROP_BZR_REVPROP_PREFIX = 'bzr:revprop:'
+SVN_REVPROP_BZR_ROOT = 'bzr:root'
+SVN_REVPROP_BZR_SCHEME = 'bzr:scheme'
+SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
+
+
 def escape_svn_path(x):
     """Escape a Subversion path for use in a revision identifier.
 
@@ -27,6 +47,7 @@ def escape_svn_path(x):
     assert isinstance(x, str)
     return urllib.quote(x, "")
 unescape_svn_path = urllib.unquote
+
 
 class BzrSvnMapping:
     """Class that maps between Subversion and Bazaar semantics."""

@@ -221,8 +221,9 @@ class NoBranchingScheme(ListBranchingScheme):
 
 
 class TrunkBranchingScheme(ListBranchingScheme):
-    """Standard Subversion repository layout. Each project contains three 
-    directories `trunk', `tags' and `branches'. 
+    """Standard Subversion repository layout. 
+    
+    Each project contains three directories `trunk`, `tags` and `branches`. 
     """
     def __init__(self, level=0):
         self.level = level
