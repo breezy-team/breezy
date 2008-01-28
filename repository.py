@@ -39,7 +39,7 @@ import calendar
 from config import SvnRepositoryConfig
 import errors
 import logwalker
-from mapping import (default_mapping, SVN_PROP_BZR_REVISION_ID, MAPPING_VERSION,
+from mapping import (default_mapping, SVN_PROP_BZR_REVISION_ID, 
                      SVN_PROP_BZR_REVISION_INFO, SVN_PROP_BZR_BRANCHING_SCHEME,
                      SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS)
                       
@@ -250,6 +250,8 @@ class SvnRepositoryFormat(RepositoryFormat):
     def check_conversion_target(self, target_repo_format):
         return target_repo_format.rich_root_data
 
+CACHE_DB_VERSION = 3
+
 cachedbs = {}
 
 class SvnRepository(Repository):
@@ -280,7 +282,7 @@ class SvnRepository(Repository):
         self.get_config().add_location(self.base)
         cache_dir = self.create_cache_dir()
         cachedir_transport = get_transport(cache_dir)
-        cache_file = os.path.join(cache_dir, 'cache-v%d' % MAPPING_VERSION)
+        cache_file = os.path.join(cache_dir, 'cache-v%d' % CACHE_DB_VERSION)
         if not cachedbs.has_key(cache_file):
             if not os.path.exists(cache_file):
                 info("Initialising Subversion metadata cache in %s" % cache_file)
