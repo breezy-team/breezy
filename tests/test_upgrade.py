@@ -22,9 +22,8 @@ from bzrlib.repository import Repository
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 
 from errors import RebaseNotPresent
-from fileids import generate_svn_file_id
 from format import get_rich_root_format
-from repository import MAPPING_VERSION
+from mapping import default_mapping, MAPPING_VERSION
 from tests import TestCaseWithSubversionRepository
 from upgrade import (upgrade_repository, upgrade_branch,
                      upgrade_workingtree, UpgradeChangesContent, 
@@ -39,19 +38,19 @@ class TestUpgradeChangesContent(TestCase):
 
 class ParserTests(TestCase):
     def test_current(self):
-        self.assertEqual(("uuid", "trunk", 1, "trunk0", 3), 
+        self.assertEqual(("uuid", "trunk", 1, "trunk0", 'v3'), 
                 parse_legacy_revision_id("svn-v3-trunk0:uuid:trunk:1"))
 
     def test_current_undefined(self):
-        self.assertEqual(("uuid", "trunk", 1, None, 3), 
+        self.assertEqual(("uuid", "trunk", 1, None, 'v3'), 
                 parse_legacy_revision_id("svn-v3-undefined:uuid:trunk:1"))
 
     def test_legacy2(self):
-        self.assertEqual(("uuid", "trunk", 1, None, 2), 
+        self.assertEqual(("uuid", "trunk", 1, None, 'v2'), 
                          parse_legacy_revision_id("svn-v2:1@uuid-trunk"))
 
     def test_legacy(self):
-        self.assertEqual(("uuid", "trunk", 1, None, 1), 
+        self.assertEqual(("uuid", "trunk", 1, None, 'v1'), 
                          parse_legacy_revision_id("svn-v1:1@uuid-trunk"))
 
     def test_except(self):
@@ -157,7 +156,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
 
         tree = newrepos.revision_tree("customrev-svn%d-upgrade" % MAPPING_VERSION)
         self.assertEqual("specificid", tree.inventory.path2id("a"))
-        self.assertEqual(generate_svn_file_id(oldrepos.uuid, 1, "", u"a"), 
+        self.assertEqual(default_mapping.generate_file_id(oldrepos.uuid, 1, "", u"a"), 
                          tree.inventory.path2id("b"))
 
     @skip_no_rebase

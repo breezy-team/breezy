@@ -30,16 +30,18 @@ from bzrlib.trace import mutter
 from copy import deepcopy
 from cStringIO import StringIO
 from errors import ChangesRootLHSHistory, MissingPrefix, RevpropChangeFailed
-from repository import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS,
-                        SVN_PROP_SVK_MERGE, SVN_PROP_BZR_REVISION_INFO, 
-                        SVN_PROP_BZR_REVISION_ID, revision_id_to_svk_feature,
+from repository import (SVN_PROP_SVK_MERGE, revision_id_to_svk_feature,
                         generate_revision_metadata, SvnRepositoryFormat, 
-                        SvnRepository, MAPPING_VERSION,
-                        SVN_REVPROP_BZR_COMMITTER, SVN_REVPROP_BZR_FILEIDS,
-                        SVN_REVPROP_BZR_MERGE, SVN_REVPROP_BZR_REVISION_ID,
-                        SVN_REVPROP_BZR_REVPROP_PREFIX, SVN_REVPROP_BZR_ROOT,
-                        SVN_REVPROP_BZR_TIMESTAMP, SVN_REVPROP_BZR_MAPPING_VERSION,
-                        format_highres_date)
+                        SvnRepository, format_highres_date)
+from mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS,
+                     SVN_PROP_BZR_REVISION_INFO, SVN_PROP_BZR_REVISION_ID, 
+                     SVN_REVPROP_BZR_COMMITTER, SVN_REVPROP_BZR_FILEIDS,
+                     SVN_REVPROP_BZR_MERGE, SVN_REVPROP_BZR_REVISION_ID,
+                     SVN_REVPROP_BZR_REVPROP_PREFIX, SVN_REVPROP_BZR_ROOT,
+                     SVN_REVPROP_BZR_TIMESTAMP, SVN_REVPROP_BZR_MAPPING_VERSION,
+                     MAPPING_VERSION)
+from repository import (revision_id_to_svk_feature, generate_revision_metadata, 
+                        SvnRepositoryFormat, SvnRepository, SVN_PROP_SVK_MERGE)
 import urllib
 
 
@@ -580,7 +582,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             commit.
         :param path: The path the entry is at in the tree.
         :param tree: The tree which contains this entry and should be used to 
-        obtain content.
+            obtain content.
         :param content_summary: Summary data from the tree about the paths
                 content - stat, length, exec, sha/link target. This is only
                 accessed when the entry has a revision of None - that is when 

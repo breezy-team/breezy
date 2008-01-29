@@ -18,72 +18,7 @@
 
 from bzrlib.errors import (InvalidRevisionId, NoSuchRevision)
 
-MAPPING_VERSION = 3
-
-from bzrlib.plugins.svn import version_info
-if version_info[3] == "exp":
-    REVISION_ID_PREFIX = "svn-experimental-"
-else:
-    REVISION_ID_PREFIX = "svn-v%d-" % MAPPING_VERSION
-
-import urllib
-
-def escape_svn_path(x):
-    """Escape a Subversion path for use in a revision identifier.
-
-    :param x: Path
-    :return: Escaped path
-    """
-    assert isinstance(x, str)
-    return urllib.quote(x, "")
-unescape_svn_path = urllib.unquote
-
-
-def parse_svn_revision_id(revid):
-    """Parse an existing Subversion-based revision id.
-
-    :param revid: The revision id.
-    :raises: InvalidRevisionId
-    :return: Tuple with uuid, branch path, revision number and scheme.
-    """
-
-    assert revid is not None
-    assert isinstance(revid, str)
-
-    if not revid.startswith(REVISION_ID_PREFIX):
-        raise InvalidRevisionId(revid, "")
-
-    try:
-        (version, uuid, branch_path, srevnum) = revid.split(":")
-    except ValueError:
-        raise InvalidRevisionId(revid, "")
-
-    if not version.startswith(REVISION_ID_PREFIX):
-        raise InvalidRevisionId(revid, "")
-
-    scheme = version[len(REVISION_ID_PREFIX):]
-
-    return (uuid, unescape_svn_path(branch_path), int(srevnum), scheme)
-
-
-def generate_svn_revision_id(uuid, revnum, path, scheme):
-    """Generate a unambiguous revision id. 
-    
-    :param uuid: UUID of the repository.
-    :param revnum: Subversion revision number.
-    :param path: Branch path.
-    :param scheme: Name of the branching scheme in use
-
-    :return: New revision id.
-    """
-    assert isinstance(revnum, int)
-    assert isinstance(path, str)
-    assert revnum >= 0
-    assert revnum > 0 or path == "", \
-            "Trying to generate revid for (%r,%r)" % (path, revnum)
-    return "%s%s:%s:%s:%d" % (REVISION_ID_PREFIX, scheme, uuid, \
-                   escape_svn_path(path.strip("/")), revnum)
-
+from mapping import default_mapping
 
 class RevidMap(object):
     """Revision id mapping store. 

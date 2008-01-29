@@ -103,3 +103,12 @@ I converted my Subversion repository using svn-import, but now all branches are 
 bzr-svn does not create working trees by default. If you need 
 the working trees, run "bzr checkout" in the branch or 
 specify --trees to svn-import.
+
+=================================================================================
+bzr-svn did a replace operation when I tried to push a merge commit to Subversion
+=================================================================================
+Yes, this is because bzr-svn has to preserve the left-hand side history of your 
+branch. 
+
+If you would like to avoid this, use a checkout and merge into that ("bzr co") or 
+rebase on trunk rather than merge it.

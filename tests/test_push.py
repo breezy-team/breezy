@@ -33,8 +33,7 @@ import svn.core
 from bzrlib.plugins.svn.errors import ChangesRootLHSHistory, MissingPrefix
 from time import sleep
 from commit import push
-from repository import MAPPING_VERSION, SVN_PROP_BZR_REVISION_ID
-from revids import generate_svn_revision_id
+from mapping import MAPPING_VERSION, SVN_PROP_BZR_REVISION_ID
 from tests import TestCaseWithSubversionRepository
 
 class TestPush(TestCaseWithSubversionRepository):

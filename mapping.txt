@@ -223,3 +223,6 @@ Revision 3 uses real file ids for the tree root rather than the hardcoded
 "TREE_ROOT" and adds the file id map.
 
 Revision 4 adds revision properties in addition to file properties.
+
+..
+	vim: ft=rest

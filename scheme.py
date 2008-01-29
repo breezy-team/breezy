@@ -54,6 +54,7 @@ class BranchingScheme:
         :param name: Name of branching scheme.
         :return: Branching scheme instance.
         """
+        assert isinstance(name, str)
         if name.startswith("trunk"):
             if name == "trunk":
                 return TrunkBranchingScheme()
@@ -220,8 +221,9 @@ class NoBranchingScheme(ListBranchingScheme):
 
 
 class TrunkBranchingScheme(ListBranchingScheme):
-    """Standard Subversion repository layout. Each project contains three 
-    directories `trunk', `tags' and `branches'. 
+    """Standard Subversion repository layout. 
+    
+    Each project contains three directories `trunk`, `tags` and `branches`. 
     """
     def __init__(self, level=0):
         self.level = level

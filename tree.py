@@ -107,7 +107,7 @@ class TreeBuildEditor(svn.delta.Editor):
         return file_id
 
     def change_dir_prop(self, id, name, value, pool):
-        from repository import (SVN_PROP_BZR_ANCESTRY, 
+        from mapping import (SVN_PROP_BZR_ANCESTRY, 
                         SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVISION_INFO, 
                         SVN_PROP_BZR_FILEIDS, SVN_PROP_BZR_REVISION_ID,
                         SVN_PROP_BZR_BRANCHING_SCHEME, SVN_PROP_BZR_MERGE)
@@ -142,7 +142,7 @@ class TreeBuildEditor(svn.delta.Editor):
             mutter('unsupported dir property %r' % name)
 
     def change_file_prop(self, id, name, value, pool):
-        from repository import SVN_PROP_BZR_PREFIX
+        from mapping import SVN_PROP_BZR_PREFIX
 
         if name == svn.core.SVN_PROP_EXECUTABLE:
             self.is_executable = (value != None)

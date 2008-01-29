@@ -26,7 +26,7 @@ from bzrlib.trace import mutter
 import os
 from convert import convert_repository, NotDumpFile, load_dumpfile
 from format import get_rich_root_format
-from repository import generate_svn_revision_id
+from mapping import default_mapping
 from scheme import TrunkBranchingScheme, NoBranchingScheme
 from tests import TestCaseWithSubversionRepository
 
@@ -347,5 +347,5 @@ data
                            TrunkBranchingScheme())
         branch = Branch.open(os.path.join(self.test_dir, "e", "trunk"))
         self.assertEqual("file://%s/e/trunk" % self.test_dir, branch.base.rstrip("/"))
-        self.assertEqual(generate_svn_revision_id("6987ef2d-cd6b-461f-9991-6f1abef3bd59", 1, 'trunk', "trunk0"), branch.last_revision())
+        self.assertEqual(default_mapping.generate_revision_id("6987ef2d-cd6b-461f-9991-6f1abef3bd59", 1, 'trunk', "trunk0"), branch.last_revision())
 

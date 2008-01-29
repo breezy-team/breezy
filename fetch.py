@@ -30,14 +30,14 @@ import svn.core
 
 from bzrlib.plugins.svn.errors import InvalidFileName
 from fileids import generate_file_id
-from repository import (SvnRepository, SVN_PROP_BZR_ANCESTRY, 
-                SVN_PROP_SVK_MERGE, SVN_PROP_BZR_MERGE,
-                SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVISION_INFO, 
-                SVN_PROP_BZR_BRANCHING_SCHEME, SVN_PROP_BZR_REVISION_ID,
-                SVN_REVPROP_BZR_MAPPING_VERSION, MAPPING_VERSION,
-                SVN_PROP_BZR_FILEIDS, SvnRepositoryFormat, 
-                parse_revision_metadata, parse_merge_property,
-                revision_parse_svn_revprops)
+from mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_MERGE, 
+                     SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVISION_INFO, 
+                     SVN_PROP_BZR_BRANCHING_SCHEME, SVN_PROP_BZR_REVISION_ID,
+                     SVN_PROP_BZR_FILEIDS, SVN_REVPROP_BZR_MAPPING_VERSION, 
+                     MAPPING_VERSION)
+from repository import (SvnRepository, SvnRepositoryFormat, 
+                        parse_revision_metadata, parse_merge_property, 
+                        SVN_PROP_SVK_MERGE, revision_parse_svn_revprops)
 from tree import apply_txdelta_handler
 
 

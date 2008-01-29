@@ -1,4 +1,12 @@
 bzr-svn 0.4.7	UNRELEASED
+ 
+  FEATURES
+
+   * Implement Repository.find_branches(). (#178108)
+
+   * Warn about location when initializing Subversion repository cache.
+
+   * Set revision properties when possible.
 
   BUGS
 
@@ -13,7 +21,10 @@ bzr-svn 0.4.7	UNRELEASED
 
    * Handle children of replaced directories, themselve replaced correctly. (#181790)
 
-   * Set revision properties when possible.
+   * Handle corner cases tracking branches. (#184457)
+
+   * Avoid errors about invalid branching paths unless the branching scheme 
+     was specified explicitly.
 
 bzr-svn 0.4.6	2008-01-08
 
