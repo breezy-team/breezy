@@ -152,7 +152,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
 
         repos = Repository.open(repos_url)
 
-        self.assertEqual("SvnRepository('file://%s/')" % os.path.join(self.test_dir, "a"), repos.__repr__())
+        self.assertEqual("SvnRepository('file://%s/')" % urlutils.join(self.test_dir, "a"), repos.__repr__())
 
     def test_get_branch_invalid_revision(self):
         repos_url = self.make_client("a", "dc")

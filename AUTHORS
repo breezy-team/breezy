@@ -1,10 +1,11 @@
 Jelmer Vernooij <jelmer@samba.org>
 
-Thanks to David Allouche, Erik Bågfors, Andrew Bennetts, Aaron Bentley, 
-Max Bowser, Jerry Carter, Robert Collins, David Foerster, Wouter van Heyst, 
-Michael Hudson, David James, Jan Kneschke, Luká¿ Lalinský, Matthias Klose, 
-Roland Mas, John Arbash Meinel, Stefan Metzmacher, Andrew Mitchell, 
-Gustavo Niemeyer, Martin Pool, Garrett Rooney, Johan Rydberg, Peter Samuelson, 
-Mark Shuttleworth, Adeodato Simó, Mikhail Sobolev and Reinhard Tartler for 
-comments, code reviews, funding, bug reports, testing, committing 
-patches/bundles and generally keeping up while I was asking annoying questions.
+Thanks to David Allouche, Erik Bågfors, Alexander Belchenko, Andrew Bennetts, 
+Aaron Bentley, Max Bowser, Jerry Carter, Robert Collins, David Foerster, 
+Wouter van Heyst, Michael Hudson, David James, Matthias Klose, Jan Kneschke, 
+Lukás Lalinský, Kevin Light, Roland Mas, John Arbash Meinel, Stefan Metzmacher, 
+Andrew Mitchell, Gustavo Niemeyer, Martin Pool, Garrett Rooney, Johan Rydberg, 
+Peter Samuelson, Mark Shuttleworth, Adeodato Simó, Mikhail Sobolev and 
+Reinhard Tartler for comments, code reviews, funding, bug reports, testing, 
+committing patches/bundles and generally keeping up while I was asking 
+annoying questions.

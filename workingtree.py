@@ -759,7 +759,8 @@ class SvnCheckout(BzrDir):
         raise NoRepositoryPresent(self)
 
     def find_repository(self):
-        return SvnRepository(self, self.svn_root_transport, self.remote_bzrdir.branch_path)
+        return SvnRepository(self, self.svn_root_transport, 
+                             self.remote_bzrdir.branch_path)
 
     def needs_format_conversion(self, format=None):
         if format is None:

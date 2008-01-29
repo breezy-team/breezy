@@ -533,8 +533,8 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
     def test_status(self):
         self.make_client('a', 'dc')
         tree = self.open_checkout("dc")
-        self.assertTrue(os.path.exists("dc/.svn"))
-        self.assertFalse(os.path.exists("dc/.bzr"))
+        self.assertTrue(os.path.exists(os.path.join("dc", ".svn")))
+        self.assertFalse(os.path.exists(os.path.join("dc", ".bzr")))
         tree.read_working_inventory()
 
     def test_update(self):
@@ -545,14 +545,14 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.client_commit("dc", "msg")
         tree = self.open_checkout("de")
         tree.update()
-        self.assertTrue(os.path.exists("de/.svn"))
-        self.assertTrue(os.path.exists("de/bla"))
+        self.assertTrue(os.path.exists(os.path.join("de", ".svn")))
+        self.assertTrue(os.path.exists(os.path.join("de", "bla")))
 
     def test_status_bzrdir(self):
         self.make_client('a', 'dc')
         bzrdir = self.open_checkout_bzrdir("dc")
-        self.assertTrue(os.path.exists("dc/.svn"))
-        self.assertTrue(not os.path.exists("dc/.bzr"))
+        self.assertTrue(os.path.exists(os.path.join("dc", ".svn")))
+        self.assertTrue(not os.path.exists(os.path.join("dc", ".bzr")))
         bzrdir.open_workingtree()
 
     def test_file_id_consistent(self):
