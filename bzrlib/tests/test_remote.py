@@ -26,7 +26,6 @@ These tests correspond to tests.test_smart, which exercises the server side.
 from cStringIO import StringIO
 
 from bzrlib import (
-    bzrdir,
     errors,
     graph,
     pack,
@@ -166,6 +165,19 @@ class FakeMedium(object):
         self.base = base
 
 
+class TestVfsHas(tests.TestCase):
+
+    def test_unicode_path(self):
+        client = FakeClient([(('yes',), )], '/')
+        transport = RemoteTransport('bzr://localhost/', _client=client)
+        filename = u'/hell\u00d8'.encode('utf8')
+        result = transport.has(filename)
+        self.assertEqual(
+            [('call', 'has', (filename,))],
+            client._calls)
+        self.assertTrue(result)
+
+
 class TestBzrDirOpenBranch(tests.TestCase):
 
     def test_branch_present(self):
@@ -192,6 +204,19 @@ class TestBzrDirOpenBranch(tests.TestCase):
         self.assertRaises(errors.NotBranchError, bzrdir.open_branch)
         self.assertEqual(
             [('call', 'BzrDir.open_branch', ('quack/',))],
+            client._calls)
+
+    def test_url_quoting_of_path(self):
+        # Relpaths on the wire should not be URL-escaped.  So "~" should be
+        # transmitted as "~", not "%7E".
+        transport = RemoteTransport('bzr://localhost/~hello/')
+        client = FakeClient([(('ok', ''), ), (('ok', '', 'no', 'no'), )],
+                            transport.base)
+        bzrdir = RemoteBzrDir(transport, _client=client)
+        result = bzrdir.open_branch()
+        self.assertEqual(
+            [('call', 'BzrDir.open_branch', ('~hello/',)),
+             ('call', 'BzrDir.find_repository', ('~hello/',))],
             client._calls)
 
     def check_open_repository(self, rich_root, subtrees):
