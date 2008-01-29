@@ -1048,6 +1048,22 @@ class TestCase(unittest.TestCase):
             f.close()
         self.assertEqualDiff(content, s)
 
+    def failUnlessExists(self, path):
+        """Fail unless path or paths, which may be abs or relative, exist."""
+        if not isinstance(path, basestring):
+            for p in path:
+                self.failUnlessExists(p)
+        else:
+            self.failUnless(osutils.lexists(path),path+" does not exist")
+
+    def failIfExists(self, path):
+        """Fail if path or paths, which may be abs or relative, exist."""
+        if not isinstance(path, basestring):
+            for p in path:
+                self.failIfExists(p)
+        else:
+            self.failIf(osutils.lexists(path),path+" exists")
+
     def _capture_deprecation_warnings(self, a_callable, *args, **kwargs):
         """A helper for callDeprecated and applyDeprecated.
 
@@ -2092,22 +2108,6 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
 
     def build_tree_contents(self, shape):
         build_tree_contents(shape)
-
-    def failUnlessExists(self, path):
-        """Fail unless path or paths, which may be abs or relative, exist."""
-        if not isinstance(path, basestring):
-            for p in path:
-                self.failUnlessExists(p)
-        else:
-            self.failUnless(osutils.lexists(path),path+" does not exist")
-
-    def failIfExists(self, path):
-        """Fail if path or paths, which may be abs or relative, exist."""
-        if not isinstance(path, basestring):
-            for p in path:
-                self.failIfExists(p)
-        else:
-            self.failIf(osutils.lexists(path),path+" exists")
 
     def assertInWorkingTree(self, path, root_path='.', tree=None):
         """Assert whether path or paths are in the WorkingTree"""
