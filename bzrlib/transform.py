@@ -1321,7 +1321,7 @@ class TransformPreview(TreeTransformBase):
     """
 
     def __init__(self, tree, pb=DummyProgress(), case_sensitive=True):
-        limbodir = tempfile.mkdtemp()
+        limbodir = tempfile.mkdtemp(prefix='bzr-limbo-')
         TreeTransformBase.__init__(self, tree, limbodir, pb, case_sensitive)
 
     def canonical_path(self, path):
