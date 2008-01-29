@@ -242,7 +242,7 @@ def enable_default_logging():
     """
     # create encoded wrapper around stderr
     bzr_log_file = _open_bzr_log()
-    _push_log_file(bzr_log_file,
+    push_log_file(bzr_log_file,
         r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s',
         r'%Y-%m-%d %H:%M:%S')
     # after hooking output into bzr_log, we also need to attach a stderr
@@ -256,6 +256,8 @@ def enable_default_logging():
 
 def push_log_file(to_file, log_format=None, date_format=None):
     """Intercept log and trace messages and send them to a file.
+
+    :param to_file: A file-like object to which messages will be sent.
 
     :returns: A memento that should be passed to _pop_log_file to restore the 
     previously active logging.
