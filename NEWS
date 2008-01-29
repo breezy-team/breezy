@@ -98,6 +98,14 @@ IN DEVELOPMENT
 
    * ``merge --weave --uncommitted`` now works.  (Aaron Bentley)
 
+   * New methods ``push_log_file`` and ``pop_log_file`` to intercept messages:
+     popping the log redirection now precisely restores the previous state,
+     which makes it easier to use bzr log output from other programs.
+     TestCaseInTempDir no longer depends on a log redirection being established
+     by the test framework, which lets bzr tests cleanly run from a normal
+     unittest runner.
+     (#124153, #124849, Martin Pool, Jonathan Lange)
+
    * pycurl authentication handling was broken and incomplete. Fix handling of
      user:pass embedded in the urls.
      (Vincent Ladeuil, #177643)
