@@ -485,6 +485,26 @@ class TestRepository(TestCaseWithRepository):
         dest_repo = dest_repo.bzrdir.open_repository()
         self.assertTrue(dest_repo.has_revision('rev_id'))
 
+        # insert the same data stream again, should be no-op
+        stream = source_repo.get_data_stream(['rev_id'])
+        dest_repo.lock_write()
+        try:
+            dest_repo.start_write_group()
+            try:
+                dest_repo.insert_data_stream(stream)
+            except:
+                dest_repo.abort_write_group()
+                raise
+            else:
+                dest_repo.commit_write_group()
+        finally:
+            dest_repo.unlock()
+
+        # try to insert data stream with invalid key
+        stream = [[('bogus-key',), '']]
+        self.assertRaises(errors.RepositoryDataStreamError,
+                          dest_repo.insert_data_stream, stream)
+
     def test_get_serializer_format(self):
         repo = self.make_repository('.')
         format = repo.get_serializer_format()
