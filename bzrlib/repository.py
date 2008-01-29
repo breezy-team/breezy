@@ -495,7 +495,6 @@ class Repository(object):
         attempted.
         """
 
-    @needs_write_lock
     def add_inventory(self, revision_id, inv, parents):
         """Add the inventory inv to the repository as revision_id.
         
@@ -526,7 +525,6 @@ class Repository(object):
         return inv_vf.add_lines(revision_id, final_parents, lines,
             check_content=check_content)[0]
 
-    @needs_write_lock
     def add_revision(self, revision_id, rev, inv=None, config=None):
         """Add rev to the revision store as revision_id.
 
