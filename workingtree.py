@@ -693,6 +693,9 @@ class SvnWorkingTree(WorkingTree):
         finally:
             self.branch.unlock()
 
+    def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
+        file_id = self.basis_tree().path2(path)
+        return self.basis_tree()._inventory[file_id].executable
 
 
 class SvnWorkingTreeFormat(WorkingTreeFormat):
