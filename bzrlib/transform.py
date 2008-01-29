@@ -81,6 +81,7 @@ class TreeTransformBase(object):
         object.__init__(self)
         self._tree = tree
         self._limbodir = limbodir
+        self._deletiondir = None
         self._id_number = 0
         # mapping of trans_id -> new basename
         self._new_name = {}
@@ -158,7 +159,8 @@ class TreeTransformBase(object):
                 # We don't especially care *why* the dir is immortal.
                 raise ImmortalLimbo(self._limbodir)
             try:
-                os.rmdir(self._deletiondir)
+                if self._deletiondir is not None:
+                    os.rmdir(self._deletiondir)
             except OSError:
                 raise errors.ImmortalPendingDeletion(self._deletiondir)
         finally:
@@ -1136,19 +1138,20 @@ class TreeTransform(TreeTransformBase):
             except OSError, e:
                 if e.errno == errno.EEXIST:
                     raise ExistingLimbo(limbodir)
-            self._deletiondir = urlutils.local_path_from_url(
+            deletiondir = urlutils.local_path_from_url(
                 control_files.controlfilename('pending-deletion'))
             try:
-                os.mkdir(self._deletiondir)
+                os.mkdir(deletiondir)
             except OSError, e:
                 if e.errno == errno.EEXIST:
-                    raise errors.ExistingPendingDeletion(self._deletiondir)
+                    raise errors.ExistingPendingDeletion(deletiondir)
         except:
             tree.unlock()
             raise
 
         TreeTransformBase.__init__(self, tree, limbodir, pb,
                                    tree.case_sensitive)
+        self._deletiondir = deletiondir
 
     def apply(self, no_conflicts=False, _mover=None):
         """Apply all changes to the inventory and filesystem.
@@ -1321,6 +1324,7 @@ class TransformPreview(TreeTransformBase):
     """
 
     def __init__(self, tree, pb=DummyProgress(), case_sensitive=True):
+        tree.lock_read()
         limbodir = tempfile.mkdtemp(prefix='bzr-limbo-')
         TreeTransformBase.__init__(self, tree, limbodir, pb, case_sensitive)
 

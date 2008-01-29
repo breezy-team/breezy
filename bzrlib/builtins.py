@@ -2877,6 +2877,7 @@ class cmd_merge(Command):
         result_tree = tt.get_preview_tree()
         show_diff_trees(merger.this_tree, result_tree, self.outf, old_label='',
                         new_label='')
+        tt.finalize()
 
     def _do_merge(self, merger, change_reporter, allow_pending, verified):
         merger.change_reporter = change_reporter
