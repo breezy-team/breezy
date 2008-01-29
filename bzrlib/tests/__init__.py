@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1037,6 +1037,16 @@ class TestCase(unittest.TestCase):
             raise KnownFailure(reason)
         else:
             self.fail('Unexpected success.  Should have failed: %s' % reason)
+
+    def assertFileEqual(self, content, path):
+        """Fail if path does not contain 'content'."""
+        self.failUnlessExists(path)
+        f = file(path, 'rb')
+        try:
+            s = f.read()
+        finally:
+            f.close()
+        self.assertEqualDiff(content, s)
 
     def _capture_deprecation_warnings(self, a_callable, *args, **kwargs):
         """A helper for callDeprecated and applyDeprecated.
@@ -2082,16 +2092,6 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
 
     def build_tree_contents(self, shape):
         build_tree_contents(shape)
-
-    def assertFileEqual(self, content, path):
-        """Fail if path does not contain 'content'."""
-        self.failUnlessExists(path)
-        f = file(path, 'rb')
-        try:
-            s = f.read()
-        finally:
-            f.close()
-        self.assertEqualDiff(content, s)
 
     def failUnlessExists(self, path):
         """Fail unless path or paths, which may be abs or relative, exist."""
