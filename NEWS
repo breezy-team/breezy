@@ -56,6 +56,9 @@ IN DEVELOPMENT
     * Unknown hostnames when connecting to a ``bzr://`` URL no longer cause
       tracebacks.  (Andrew Bennetts, #182849)
 
+    * Stop polluting /tmp when running selftest.
+      (Vincent Ladeuil, #123623)
+
   API BREAKS:
 
     * Classes implementing Merge types like Merge3Merger must now accept (and
