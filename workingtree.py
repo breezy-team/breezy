@@ -112,7 +112,7 @@ class SvnWorkingTree(WorkingTree):
                                         self.abspath(prefix).rstrip("/"), wc)
             if ignorestr is not None:
                 for pat in ignorestr.splitlines():
-                    ignores.add("./"+os.path.join(prefix, pat))
+                    ignores.add("./"+urlutils.join(prefix, pat))
 
             entries = svn.wc.entries_read(wc, False)
             for entry in entries:
