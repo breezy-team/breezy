@@ -53,9 +53,13 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         svn.repos.create(abspath, '', '', None, None)
 
         if allow_revprop_changes:
-            revprop_hook = os.path.join(abspath, "hooks", "pre-revprop-change")
-            open(revprop_hook, 'w').write("#!/bin/sh")
-            os.chmod(revprop_hook, os.stat(revprop_hook).st_mode | 0111)
+            if os.name == 'win32':
+                revprop_hook = os.path.join(abspath, "hooks", "pre-revprop-change.bat")
+                open(revprop_hook, 'w').write("exit 0\n")
+            else:
+                revprop_hook = os.path.join(abspath, "hooks", "pre-revprop-change")
+                open(revprop_hook, 'w').write("#!/bin/sh\n")
+                os.chmod(revprop_hook, os.stat(revprop_hook).st_mode | 0111)
 
         return repos_url
 
