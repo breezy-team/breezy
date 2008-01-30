@@ -60,6 +60,10 @@ IN DEVELOPMENT
     * ``reconfigure`` preserves tags when converting to and from lightweight
       checkouts.  (Aaron Bentley, #182040)
 
+    * Switch from NFKC => NFC for normalization checks. NFC allows a few
+      more characters which should be considered valid.
+      (John Arbash Meinel, #185458)
+
     * Unknown hostnames when connecting to a ``bzr://`` URL no longer cause
       tracebacks.  (Andrew Bennetts, #182849)
 
