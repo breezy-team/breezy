@@ -1221,6 +1221,12 @@ class TestRunner(TestCase):
             revision_id = workingtree.get_parent_ids()[0]
             self.assertEndsWith(output_string.rstrip(), revision_id)
 
+    def assertLogDeleted(self, test):
+        log = test._get_log()
+        self.assertEqual("DELETED log file to reduce memory footprint", log)
+        self.assertEqual('', test._log_contents)
+        self.assertIs(None, test._log_file_name)
+
     def test_success_log_deleted(self):
         """Successful tests have their log deleted"""
 
@@ -1234,10 +1240,55 @@ class TestRunner(TestCase):
         test = LogTester('test_success')
         result = self.run_test_runner(runner, test)
 
-        log = test._get_log()
-        self.assertEqual("DELETED log file to reduce memory footprint", log)
-        self.assertEqual('', test._log_contents)
-        self.assertIs(None, test._log_file_name)
+        self.assertLogDeleted(test)
+
+    def test_skipped_log_deleted(self):
+        """Skipped tests have their log deleted"""
+
+        class LogTester(TestCase):
+
+            def test_skipped(self):
+                self.log('this will be removed\n')
+                raise tests.TestSkipped()
+
+        sio = cStringIO.StringIO()
+        runner = TextTestRunner(stream=sio)
+        test = LogTester('test_skipped')
+        result = self.run_test_runner(runner, test)
+
+        self.assertLogDeleted(test)
+
+    def test_not_aplicable_log_deleted(self):
+        """Not applicable tests have their log deleted"""
+
+        class LogTester(TestCase):
+
+            def test_not_applicable(self):
+                self.log('this will be removed\n')
+                raise tests.TestNotApplicable()
+
+        sio = cStringIO.StringIO()
+        runner = TextTestRunner(stream=sio)
+        test = LogTester('test_not_applicable')
+        result = self.run_test_runner(runner, test)
+
+        self.assertLogDeleted(test)
+
+    def test_known_failure_log_deleted(self):
+        """Know failure tests have their log deleted"""
+
+        class LogTester(TestCase):
+
+            def test_known_failure(self):
+                self.log('this will be removed\n')
+                raise tests.KnownFailure()
+
+        sio = cStringIO.StringIO()
+        runner = TextTestRunner(stream=sio)
+        test = LogTester('test_known_failure')
+        result = self.run_test_runner(runner, test)
+
+        self.assertLogDeleted(test)
 
     def test_fail_log_kept(self):
         """Failed tests have their log kept"""
