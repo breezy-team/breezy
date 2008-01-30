@@ -460,10 +460,10 @@ class TestRepository(TestCaseWithRepository):
         tree.commit('message', rev_id='rev_id')
         source_repo = tree.branch.repository
         dest_repo = self.make_repository('dest')
+        search = dest_repo.search_missing_revision_ids(source_repo,
+            revision_id='rev_id')
         try:
-            stream = source_repo.get_data_stream_for_search(
-                dest_repo.search_missing_revision_ids(source_repo,
-                    revision_id='rev_id'))
+            stream = source_repo.get_data_stream_for_search(search)
         except NotImplementedError, e:
             # Not all repositories support streaming.
             self.assertContainsRe(str(e), 'get_data_stream_for_search')
@@ -486,7 +486,7 @@ class TestRepository(TestCaseWithRepository):
         self.assertTrue(dest_repo.has_revision('rev_id'))
 
         # insert the same data stream again, should be no-op
-        stream = source_repo.get_data_stream(['rev_id'])
+        stream = source_repo.get_data_stream_for_search(search)
         dest_repo.lock_write()
         try:
             dest_repo.start_write_group()
