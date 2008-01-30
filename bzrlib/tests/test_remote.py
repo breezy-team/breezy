@@ -26,8 +26,8 @@ These tests correspond to tests.test_smart, which exercises the server side.
 from cStringIO import StringIO
 
 from bzrlib import (
-    bzrdir,
     errors,
+    graph,
     pack,
     remote,
     repository,
@@ -151,11 +151,31 @@ class FakeClient(_SmartClient):
         self.expecting_body = True
         return result[0], FakeProtocol(result[1], self)
 
+    def call_with_body_bytes_expecting_body(self, method, args, body):
+        self._calls.append(('call_with_body_bytes_expecting_body', method,
+            args, body))
+        result = self.responses.pop(0)
+        self.expecting_body = True
+        return result[0], FakeProtocol(result[1], self)
+
 
 class FakeMedium(object):
 
     def __init__(self, base):
         self.base = base
+
+
+class TestVfsHas(tests.TestCase):
+
+    def test_unicode_path(self):
+        client = FakeClient([(('yes',), )], '/')
+        transport = RemoteTransport('bzr://localhost/', _client=client)
+        filename = u'/hell\u00d8'.encode('utf8')
+        result = transport.has(filename)
+        self.assertEqual(
+            [('call', 'has', (filename,))],
+            client._calls)
+        self.assertTrue(result)
 
 
 class TestBzrDirOpenBranch(tests.TestCase):
@@ -184,6 +204,19 @@ class TestBzrDirOpenBranch(tests.TestCase):
         self.assertRaises(errors.NotBranchError, bzrdir.open_branch)
         self.assertEqual(
             [('call', 'BzrDir.open_branch', ('quack/',))],
+            client._calls)
+
+    def test_url_quoting_of_path(self):
+        # Relpaths on the wire should not be URL-escaped.  So "~" should be
+        # transmitted as "~", not "%7E".
+        transport = RemoteTransport('bzr://localhost/~hello/')
+        client = FakeClient([(('ok', ''), ), (('ok', '', 'no', 'no'), )],
+                            transport.base)
+        bzrdir = RemoteBzrDir(transport, _client=client)
+        result = bzrdir.open_branch()
+        self.assertEqual(
+            [('call', 'BzrDir.open_branch', ('~hello/',)),
+             ('call', 'BzrDir.find_repository', ('~hello/',))],
             client._calls)
 
     def check_open_repository(self, rich_root, subtrees):
@@ -554,6 +587,62 @@ class TestRepositoryGatherStats(TestRemoteRepository):
                          result)
 
 
+class TestRepositoryGetGraph(TestRemoteRepository):
+
+    def test_get_graph(self):
+        # get_graph returns a graph with the repository as the
+        # parents_provider.
+        responses = []
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(
+            responses, transport_path)
+        graph = repo.get_graph()
+        self.assertEqual(graph._parents_provider, repo)
+
+
+class TestRepositoryGetParentMap(TestRemoteRepository):
+
+    def test_get_parent_map_caching(self):
+        # get_parent_map returns from cache until unlock()
+        # setup a reponse with two revisions
+        r1 = u'\u0e33'.encode('utf8')
+        r2 = u'\u0dab'.encode('utf8')
+        lines = [' '.join([r2, r1]), r1]
+        encoded_body = '\n'.join(lines)
+        responses = [(('ok', ), encoded_body), (('ok', ), encoded_body)]
+
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(
+            responses, transport_path)
+        repo.lock_read()
+        graph = repo.get_graph()
+        parents = graph.get_parent_map([r2])
+        self.assertEqual({r2: (r1,)}, parents)
+        # locking and unlocking deeper should not reset
+        repo.lock_read()
+        repo.unlock()
+        parents = graph.get_parent_map([r1])
+        self.assertEqual({r1: (NULL_REVISION,)}, parents)
+        self.assertEqual(
+            [('call_expecting_body', 'Repository.get_parent_map',
+             ('quack/', r2))],
+            client._calls)
+        repo.unlock()
+        # now we call again, and it should use the second response.
+        repo.lock_read()
+        graph = repo.get_graph()
+        parents = graph.get_parent_map([r1])
+        self.assertEqual({r1: (NULL_REVISION,)}, parents)
+        self.assertEqual(
+            [('call_expecting_body', 'Repository.get_parent_map',
+              ('quack/', r2)),
+             ('call_expecting_body', 'Repository.get_parent_map',
+              ('quack/', r1))
+            ],
+            client._calls)
+        repo.unlock()
+
+
 class TestRepositoryGetRevisionGraph(TestRemoteRepository):
     
     def test_null_revision(self):
@@ -811,7 +900,8 @@ class TestRepositoryStreamKnitData(TestRemoteRepository):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(
             responses, transport_path)
-        stream = repo.get_data_stream(['revid'])
+        search = graph.SearchResult(set(['revid']), set(), 1, set(['revid']))
+        stream = repo.get_data_stream_for_search(search)
         self.assertRaises(errors.SmartProtocolError, list, stream)
     
     def test_backwards_compatibility(self):
@@ -825,7 +915,8 @@ class TestRepositoryStreamKnitData(TestRemoteRepository):
             responses, 'path')
         self.mock_called = False
         repo._real_repository = MockRealRepository(self)
-        repo.get_data_stream(['revid'])
+        search = graph.SearchResult(set(['revid']), set(), 1, set(['revid']))
+        repo.get_data_stream_for_search(search)
         self.assertTrue(self.mock_called)
         self.failIf(client.expecting_body,
             "The protocol has been left in an unclean state that will cause "
@@ -838,8 +929,8 @@ class MockRealRepository(object):
     def __init__(self, test):
         self.test = test
 
-    def get_data_stream(self, revision_ids):
-        self.test.assertEqual(['revid'], revision_ids)
+    def get_data_stream_for_search(self, search):
+        self.test.assertEqual(set(['revid']), search.get_keys())
         self.test.mock_called = True
 
 

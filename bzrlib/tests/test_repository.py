@@ -32,6 +32,7 @@ from bzrlib.errors import (NotBranchError,
                            UnknownFormatError,
                            UnsupportedFormatError,
                            )
+from bzrlib import graph
 from bzrlib.index import GraphIndex, InMemoryGraphIndex
 from bzrlib.repository import RepositoryFormat
 from bzrlib.smart import server
@@ -757,7 +758,9 @@ class TestWithBrokenRepo(TestCaseWithTransport):
         """
         broken_repo = self.make_broken_repository()
         empty_repo = self.make_repository('empty-repo')
-        stream = broken_repo.get_data_stream(['rev1a', 'rev2', 'rev3'])
+        search = graph.SearchResult(set(['rev1a', 'rev2', 'rev3']),
+            set(), 3, ['rev1a', 'rev2', 'rev3'])
+        stream = broken_repo.get_data_stream_for_search(search)
         empty_repo.lock_write()
         self.addCleanup(empty_repo.unlock)
         empty_repo.start_write_group()

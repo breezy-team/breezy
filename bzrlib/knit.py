@@ -748,7 +748,7 @@ class KnitVersionedFile(VersionedFile):
             if self.has_version(version_id):
                 # First check: the list of parents.
                 my_parents = self.get_parents_with_ghosts(version_id)
-                if my_parents != parents:
+                if tuple(my_parents) != tuple(parents):
                     # XXX: KnitCorrupt is not quite the right exception here.
                     raise KnitCorrupt(
                         self.filename,

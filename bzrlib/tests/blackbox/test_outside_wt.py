@@ -21,18 +21,23 @@
 import os
 import tempfile
 
-from bzrlib.tests import ChrootedTestCase
-from bzrlib.osutils import getcwd
-import bzrlib.urlutils as urlutils
+from bzrlib import (
+    osutils,
+    tests,
+    urlutils,
+    )
 
 
-class TestOutsideWT(ChrootedTestCase):
+class TestOutsideWT(tests.ChrootedTestCase):
     """Test that bzr gives proper errors outside of a working tree."""
 
     def test_cwd_log(self):
-        os.chdir(tempfile.mkdtemp())
+        tmp_dir = tempfile.mkdtemp()
+        self.addCleanup(lambda: osutils.rmtree(tmp_dir))
+        os.chdir(tmp_dir)
         out, err = self.run_bzr('log', retcode=3)
-        self.assertEqual(u'bzr: ERROR: Not a branch: "%s/".\n' % (getcwd(),),
+        self.assertEqual(u'bzr: ERROR: Not a branch: "%s/".\n'
+                         % (osutils.getcwd(),),
                          err)
 
     def test_url_log(self):
@@ -41,14 +46,16 @@ class TestOutsideWT(ChrootedTestCase):
         self.assertEqual(u'bzr: ERROR: Not a branch:'
                          u' "%s".\n' % url, err)
 
-    def test_diff_ouside_tree(self):
-        os.chdir(tempfile.mkdtemp())
+    def test_diff_outside_tree(self):
+        tmp_dir = tempfile.mkdtemp()
+        self.addCleanup(lambda: osutils.rmtree(tmp_dir))
+        os.chdir(tmp_dir)
         self.run_bzr('init branch1')
         self.run_bzr(['commit', '-m', 'nothing',
                                '--unchanged', 'branch1'])
         self.run_bzr(['commit', '-m', 'nothing',
                                '--unchanged', 'branch1'])
-        this_dir = getcwd()
+        this_dir = osutils.getcwd()
         branch2 = "%s/branch2" % (this_dir,)
         # -r X..Y
         out, err = self.run_bzr('diff -r revno:2:branch2..revno:1', retcode=3)

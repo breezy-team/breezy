@@ -80,6 +80,30 @@ class StringIOSSHConnection(object):
         return self.vendor.read_from, self.vendor.write_to
 
 
+class _InvalidHostnameFeature(tests.Feature):
+    """Does 'non_existent.invalid' fail to resolve?
+    
+    RFC 2606 states that .invalid is reserved for invalid domain names, and
+    also underscores are not a valid character in domain names.  Despite this,
+    it's possible a badly misconfigured name server might decide to always
+    return an address for any name, so this feature allows us to distinguish a
+    broken system from a broken test.
+    """
+
+    def _probe(self):
+        try:
+            socket.gethostbyname('non_existent.invalid')
+        except socket.gaierror:
+            # The host name failed to resolve.  Good.
+            return True
+        else:
+            return False
+
+    def feature_name(self):
+        return 'invalid hostname'
+
+InvalidHostnameFeature = _InvalidHostnameFeature()
+
 
 class SmartClientMediumTests(tests.TestCase):
     """Tests for SmartClientMedium.
@@ -442,6 +466,13 @@ class SmartClientMediumTests(tests.TestCase):
         # now disconnect again : this should not do anything, if disconnection
         # really did disconnect.
         medium.disconnect()
+
+    def test_tcp_client_host_unknown_connection_error(self):
+        self.requireFeature(InvalidHostnameFeature)
+        client_medium = medium.SmartTCPClientMedium(
+            'non_existent.invalid', 4155)
+        self.assertRaises(
+            errors.ConnectionError, client_medium._ensure_connection)
 
 
 class TestSmartClientStreamMediumRequest(tests.TestCase):
@@ -1389,6 +1420,19 @@ class CommonSmartProtocolTestMixin(object):
         self.assertContainsRe(test_log, 'Traceback')
         self.assertContainsRe(test_log, 'SmartProtocolError')
 
+    def test_connection_closed_reporting(self):
+        input = StringIO()
+        output = StringIO()
+        client_medium = medium.SmartSimplePipesClientMedium(input, output)
+        request = client_medium.get_request()
+        smart_protocol = self.client_protocol_class(request)
+        smart_protocol.call('hello')
+        ex = self.assertRaises(errors.ConnectionReset, 
+            smart_protocol.read_response_tuple)
+        self.assertEqual("Connection closed: "
+            "please check connectivity and permissions "
+            "(and try -Dhpss if further diagnosis is required)", str(ex))
+
 
 class TestSmartProtocolOne(TestSmartProtocol, CommonSmartProtocolTestMixin):
     """Tests for the smart protocol version one."""
@@ -1423,19 +1467,6 @@ class TestSmartProtocolOne(TestSmartProtocol, CommonSmartProtocolTestMixin):
             self.client_protocol)
         self.assertOffsetSerialisation([(1,2), (3,4), (100, 200)],
             '1,2\n3,4\n100,200', self.client_protocol)
-
-    def test_connection_closed_reporting(self):
-        input = StringIO()
-        output = StringIO()
-        client_medium = medium.SmartSimplePipesClientMedium(input, output)
-        request = client_medium.get_request()
-        smart_protocol = protocol.SmartClientRequestProtocolOne(request)
-        smart_protocol.call('hello')
-        ex = self.assertRaises(errors.ConnectionReset, 
-            smart_protocol.read_response_tuple)
-        self.assertEqual("Connection closed: "
-            "please check connectivity and permissions "
-            "(and try -Dhpss if further diagnosis is required)", str(ex))
 
     def test_accept_bytes_of_bad_request_to_protocol(self):
         out_stream = StringIO()
