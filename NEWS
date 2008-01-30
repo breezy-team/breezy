@@ -43,6 +43,10 @@ IN DEVELOPMENT
     * The ``--coverage`` option is now global, rather specific to ``bzr
       selftest``.  (Andrew Bennetts)
 
+    * Tweak the ``reannotate`` code path to optimize the 2-parent case.
+      Speeds up ``bzr annotate`` with a pack repository by approx 3:2.
+      (John Arbash Meinel)
+
   BUGFIXES:
 
     * Calculate remote path relative to the shared medium in _SmartClient.  This
