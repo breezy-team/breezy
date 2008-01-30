@@ -89,6 +89,8 @@ IN DEVELOPMENT
       repository types. This will enable faster missing revision discovery with
       bzr+ssh. (Robert Collins)
 
+    * Fix error handling in Repository.insert_data_stream. (Lukas Lalinsky)
+
     * ``InterRepository.missing_revision_ids`` is now deprecated in favour of
       ``InterRepository.search_missing_revision_ids`` which returns a 
       ``bzrlib.graph.SearchResult`` suitable for making requests from the smart

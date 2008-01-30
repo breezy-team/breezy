@@ -841,7 +841,7 @@ class Repository(object):
                 knit = self._revision_store.get_signature_file(
                     self.get_transaction())
             else:
-                raise RepositoryDataStreamError(
+                raise errors.RepositoryDataStreamError(
                     "Unrecognised data stream key '%s'" % (item_key,))
             decoded_list = bencode.bdecode(bytes)
             format = decoded_list.pop(0)
