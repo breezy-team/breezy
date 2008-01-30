@@ -28,6 +28,12 @@ from bzrlib.tests import TestCase, TestCaseWithTransport
 
 class TestErrors(TestCaseWithTransport):
 
+    def test_corrupt_dirstate(self):
+        error = errors.CorruptDirstate('path/to/dirstate', 'the reason why')
+        self.assertEqualDiff("There is an inconsistency with your dirstate file at path"
+                             " path/to/dirstate.\n"
+                             "Error: the reason why", str(error))
+
     def test_disabled_method(self):
         error = errors.DisabledMethod("class name")
         self.assertEqualDiff(

@@ -1951,6 +1951,11 @@ class InterDirStateTree(InterTree):
                                                  path_utf8=old_path)
                     # update the source details variable to be the real
                     # location.
+                    if old_entry == (None, None):
+                        raise errors.CorruptDirstate(state,
+                            "entry '%s/%s' is considered renamed from %r"
+                            " but source does not exist\n"
+                            "entry: %s" % (entry[0][0], entry[0][1], old_path, entry))
                     source_details = old_entry[1][source_index]
                     source_minikind = source_details[0]
                 else:

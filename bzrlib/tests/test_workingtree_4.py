@@ -574,3 +574,29 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         changes = [c[1] for c in tree._iter_changes(basis)]
         self.assertEqual([], changes)
         self.assertEqual(['', 'versioned', 'versioned2'], returned)
+
+
+class TestCorruptDirstate(TestCaseWithTransport):
+    """Tests for how we handle when the dirstate has been corrupted."""
+
+    def create_wt4(self):
+        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
+        control.create_repository()
+        control.create_branch()
+        tree = workingtree_4.WorkingTreeFormat4().initialize(control)
+        return tree
+
+    def test_invalid_rename(self):
+        tree = self.create_wt4()
+        # Create a corrupted dirstate
+        tree.lock_write()
+        tree.commit('init') # We need a parent, or we always compare with NULL
+        self.addCleanup(tree.unlock)
+        state = tree.current_dirstate()
+        state._read_dirblocks_if_needed()
+        # Now add in an invalid entry, a rename with a dangling pointer
+        state._dirblocks[1][1].append((('', 'foo', 'foo-id'),
+                                        [('f', '', 0, False, ''),
+                                         ('r', 'bar', 0 , False, '')]))
+        self.assertListRaises(errors.CorruptDirstate,
+                              tree._iter_changes, tree.basis_tree())
