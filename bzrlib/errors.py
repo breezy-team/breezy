@@ -2510,6 +2510,11 @@ class MissingTemplateVariable(BzrError):
         self.name = name
 
 
+class NoTemplate(BzrError):
+
+    _fmt = 'No template specified.'
+
+
 class UnableCreateSymlink(BzrError):
 
     _fmt = 'Unable to create symlink %(path_str)son this platform'
