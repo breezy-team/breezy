@@ -206,7 +206,7 @@ def reannotate(parents_lines, new_lines, new_revision_id,
                 if len(origins) == 2 and new_revision_id in origins:
                     origins.remove(new_revision_id)
                 if len(origins) == 1:
-                    lines.append(origins.pop(), line))
+                    lines.append((origins.pop(), line))
                 else:
                     lines.append((new_revision_id, line))
     return lines
