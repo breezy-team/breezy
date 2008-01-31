@@ -41,7 +41,7 @@ from bzrlib.tests import (
     TestCase,
     TestSkipped,
     )
-from bzrlib.tests.HttpServer import HttpServer
+from bzrlib.tests.http_server import HttpServer
 from bzrlib.transport import get_transport
 import bzrlib.transport.http
 

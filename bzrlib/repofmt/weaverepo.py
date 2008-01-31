@@ -176,6 +176,15 @@ class AllInOneRepository(Repository):
                         pending.add(revision_id)
             return result
 
+    def has_revisions(self, revision_ids):
+        """See Repository.has_revisions()."""
+        result = set()
+        transaction = self.get_transaction()
+        for revision_id in revision_ids:
+            if self._revision_store.has_revision_id(revision_id, transaction):
+                result.add(revision_id)
+        return result
+
     @needs_read_lock
     def is_shared(self):
         """AllInOne repositories cannot be shared."""
@@ -307,6 +316,15 @@ class WeaveMetaDirRepository(MetaDirRepository):
                     if revision_id not in result:
                         pending.add(revision_id)
             return result
+
+    def has_revisions(self, revision_ids):
+        """See Repository.has_revisions()."""
+        result = set()
+        transaction = self.get_transaction()
+        for revision_id in revision_ids:
+            if self._revision_store.has_revision_id(revision_id, transaction):
+                result.add(revision_id)
+        return result
 
     def revision_graph_can_have_wrong_parents(self):
         # XXX: This is an old format that we don't support full checking on, so

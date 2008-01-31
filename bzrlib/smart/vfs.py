@@ -75,6 +75,8 @@ class GetRequest(VfsRequest):
         except errors.ReadError:
             # cannot read the file
             return request.FailedSmartServerResponse(('ReadError', ))
+        except errors.PermissionDenied:
+            return request.FailedSmartServerResponse(('PermissionDenied',))
         return request.SuccessfulSmartServerResponse(('ok',), backing_bytes)
 
 

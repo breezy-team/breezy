@@ -43,7 +43,6 @@ from subprocess import Popen, PIPE
 import sys
 import tempfile
 import time
-import trace
 import unittest
 import warnings
 
@@ -94,7 +93,7 @@ from bzrlib.transport.memory import MemoryServer
 from bzrlib.transport.readonly import ReadonlyServer
 from bzrlib.trace import mutter, note
 from bzrlib.tests import TestUtil
-from bzrlib.tests.HttpServer import HttpServer
+from bzrlib.tests.http_server import HttpServer
 from bzrlib.tests.TestUtil import (
                           TestSuite,
                           TestLoader,
@@ -2261,6 +2260,17 @@ def condition_isinstance(klass_or_klass_list):
     return condition
 
 
+def condition_id_in_list(id_list):
+    """Create a condition filter which verify that test's id in a list.
+    
+    :param name: A TestIdList object.
+    :return: A callable that returns True if the test's id appears in the list.
+    """
+    def condition(test):
+        return id_list.test_in(test.id())
+    return condition
+
+
 def exclude_tests_by_condition(suite, condition):
     """Create a test suite which excludes some tests from suite.
 
@@ -2321,6 +2331,18 @@ def filter_suite_by_re(suite, pattern, exclude_pattern=DEPRECATED_PARAMETER,
                 DeprecationWarning, stacklevel=2)
         if random_order:
             result_suite = randomize_suite(result_suite)
+    return result_suite
+
+
+def filter_suite_by_id_list(suite, test_id_list):
+    """Create a test suite by filtering another one.
+
+    :param suite: The source suite.
+    :param test_id_list: A list of the test ids to keep as strings.
+    :returns: the newly created suite
+    """
+    condition = condition_id_in_list(test_id_list)
+    result_suite = filter_suite_by_condition(suite, condition)
     return result_suite
 
 
@@ -2425,9 +2447,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
               list_only=False,
               random_seed=None,
               exclude_pattern=None,
-              strict=False,
-              coverage_dir=None,
-              ):
+              strict=False):
     TestCase._gather_lsprof_in_benchmarks = lsprof_timed
     if verbose:
         verbosity = 2
@@ -2470,18 +2490,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
         else:
             suite = order_changer(filter_suite_by_re(suite, pattern))
 
-    # Activate code coverage.
-    if coverage_dir is not None:
-        tracer = trace.Trace(count=1, trace=0)
-        sys.settrace(tracer.globaltrace)
-
     result = runner.run(suite)
-
-    if coverage_dir is not None:
-        sys.settrace(None)
-        results = tracer.results()
-        results.write_results(show_missing=1, summary=False,
-                              coverdir=coverage_dir)
 
     if strict:
         return result.wasStrictlySuccessful()
@@ -2499,7 +2508,7 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              random_seed=None,
              exclude_pattern=None,
              strict=False,
-             coverage_dir=None,
+             load_list=None,
              ):
     """Run the whole test suite under the enhanced runner"""
     # XXX: Very ugly way to do this...
@@ -2514,8 +2523,12 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
     old_transport = default_transport
     default_transport = transport
     try:
+        if load_list is None:
+            keep_only = None
+        else:
+            keep_only = load_test_id_list(load_list)
         if test_suite_factory is None:
-            suite = test_suite()
+            suite = test_suite(keep_only)
         else:
             suite = test_suite_factory()
         return run_suite(suite, 'testbzr', verbose=verbose, pattern=pattern,
@@ -2527,15 +2540,83 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
                      list_only=list_only,
                      random_seed=random_seed,
                      exclude_pattern=exclude_pattern,
-                     strict=strict,
-                     coverage_dir=coverage_dir)
+                     strict=strict)
     finally:
         default_transport = old_transport
 
 
-def test_suite():
+def load_test_id_list(file_name):
+    """Load a test id list from a text file.
+
+    The format is one test id by line.  No special care is taken to impose
+    strict rules, these test ids are used to filter the test suite so a test id
+    that do not match an existing test will do no harm. This allows user to add
+    comments, leave blank lines, etc.
+    """
+    test_list = []
+    try:
+        ftest = open(file_name, 'rt')
+    except IOError, e:
+        if e.errno != errno.ENOENT:
+            raise
+        else:
+            raise errors.NoSuchFile(file_name)
+
+    for test_name in ftest.readlines():
+        test_list.append(test_name.strip())
+    ftest.close()
+    return test_list
+
+
+class TestIdList(object):
+    """Test id list to filter a test suite.
+
+    Relying on the assumption that test ids are built as:
+    <module>[.<class>.<method>][(<param>+)], <module> being in python dotted
+    notation, this class offers methods to :
+    - avoid building a test suite for modules not refered to in the test list,
+    - keep only the tests listed from the module test suite.
+    """
+
+    def __init__(self, test_id_list):
+        # When a test suite needs to be filtered against us we compare test ids
+        # for equality, so a simple dict offers a quick and simple solution.
+        self.tests = dict().fromkeys(test_id_list, True)
+
+        # While unittest.TestCase have ids like:
+        # <module>.<class>.<method>[(<param+)],
+        # doctest.DocTestCase can have ids like:
+        # <module>
+        # <module>.<class>
+        # <module>.<function>
+        # <module>.<class>.<method>
+
+        # Since we can't predict a test class from its name only, we settle on
+        # a simple constraint: a test id always begins with its module name.
+
+        modules = {}
+        for test_id in test_id_list:
+            parts = test_id.split('.')
+            mod_name = parts.pop(0)
+            modules[mod_name] = True
+            for part in parts:
+                mod_name += '.' + part
+                modules[mod_name] = True
+        self.modules = modules
+
+    def is_module_name_used(self, module_name):
+        """Is there tests for the module or one of its sub modules."""
+        return self.modules.has_key(module_name)
+
+    def test_in(self, test_id):
+        return self.tests.has_key(test_id)
+
+
+def test_suite(keep_only=None):
     """Build and return TestSuite for the whole of bzrlib.
-    
+
+    :param keep_only: A list of test ids limiting the suite returned.
+
     This function can be replaced if you need to change the default test
     suite on a global basis, but it is not encouraged.
     """
@@ -2580,6 +2661,7 @@ def test_suite():
                    'bzrlib.tests.test_help',
                    'bzrlib.tests.test_hooks',
                    'bzrlib.tests.test_http',
+                   'bzrlib.tests.test_http_implementations',
                    'bzrlib.tests.test_http_response',
                    'bzrlib.tests.test_https_ca_bundle',
                    'bzrlib.tests.test_identitymap',
@@ -2673,22 +2755,66 @@ def test_suite():
         ]
     suite = TestUtil.TestSuite()
     loader = TestUtil.TestLoader()
-    suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
+
+    if keep_only is not None:
+        id_filter = TestIdList(keep_only)
+
+    # modules building their suite with loadTestsFromModuleNames
+    if keep_only is None:
+        suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
+    else:
+        for mod in [m for m in testmod_names
+                    if id_filter.is_module_name_used(m)]:
+            mod_suite = loader.loadTestsFromModuleNames([mod])
+            mod_suite = filter_suite_by_id_list(mod_suite, id_filter)
+            suite.addTest(mod_suite)
+
+    # modules adapted for transport implementations
     from bzrlib.tests.test_transport_implementations import TransportTestProviderAdapter
     adapter = TransportTestProviderAdapter()
-    adapt_modules(test_transport_implementations, adapter, loader, suite)
-    for package in packages_to_test():
-        suite.addTest(package.test_suite())
-    for m in MODULES_TO_TEST:
-        suite.addTest(loader.loadTestsFromModule(m))
-    for m in MODULES_TO_DOCTEST:
+    if keep_only is None:
+        adapt_modules(test_transport_implementations, adapter, loader, suite)
+    else:
+        for mod in [m for m in test_transport_implementations
+                    if id_filter.is_module_name_used(m)]:
+            mod_suite = TestUtil.TestSuite()
+            adapt_modules([mod], adapter, loader, mod_suite)
+            mod_suite = filter_suite_by_id_list(mod_suite, id_filter)
+            suite.addTest(mod_suite)
+
+    # modules defining their own test_suite()
+    for package in [p for p in packages_to_test()
+                    if (keep_only is None
+                        or id_filter.is_module_name_used(p.__name__))]:
+        pack_suite = package.test_suite()
+        if keep_only is not None:
+            pack_suite = filter_suite_by_id_list(pack_suite, id_filter)
+        suite.addTest(pack_suite)
+
+    # XXX: MODULES_TO_TEST should be obsoleted ?
+    for mod in [m for m in MODULES_TO_TEST
+                if keep_only is None or id_filter.is_module_name_used(m)]:
+        mod_suite = loader.loadTestsFromModule(mod)
+        if keep_only is not None:
+            mod_suite = filter_suite_by_id_list(mod_suite, id_filter)
+        suite.addTest(mod_suite)
+
+    for mod in MODULES_TO_DOCTEST:
         try:
-            suite.addTest(doctest.DocTestSuite(m))
+            doc_suite = doctest.DocTestSuite(mod)
         except ValueError, e:
-            print '**failed to get doctest for: %s\n%s' %(m,e)
+            print '**failed to get doctest for: %s\n%s' % (mod, e)
             raise
+        if keep_only is not None:
+            # DocTests may use ids which doesn't contain the module name
+            doc_suite = filter_suite_by_id_list(doc_suite, id_filter)
+        suite.addTest(doc_suite)
+
     default_encoding = sys.getdefaultencoding()
-    for name, plugin in bzrlib.plugin.plugins().items():
+    for name, plugin in  [(n, p) for (n, p) in bzrlib.plugin.plugins().items()
+                          if (keep_only is None
+                              or id_filter.is_module_name_used(
+                p.module.__name__))]:
         try:
             plugin_suite = plugin.test_suite()
         except ImportError, e:
@@ -2696,6 +2822,9 @@ def test_suite():
                 'Unable to test plugin "%s": %s', name, e)
         else:
             if plugin_suite is not None:
+                if keep_only is not None:
+                    plugin_suite = filter_suite_by_id_list(plugin_suite,
+                                                           id_filter)
                 suite.addTest(plugin_suite)
         if default_encoding != sys.getdefaultencoding():
             bzrlib.trace.warning(

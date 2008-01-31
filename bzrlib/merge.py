@@ -48,7 +48,8 @@ from progress import DummyProgress, ProgressPhase
 from bzrlib.revision import (NULL_REVISION, ensure_null)
 from bzrlib.textfile import check_text_lines
 from bzrlib.trace import mutter, warning, note
-from bzrlib.transform import (TreeTransform, resolve_conflicts, cook_conflicts,
+from bzrlib.transform import (TransformPreview, TreeTransform,
+                              resolve_conflicts, cook_conflicts,
                               conflict_pass, FinalPaths, create_by_entry,
                               unique_add, ROOT_PARENT)
 from bzrlib.versionedfile import PlanWeaveMerge
@@ -65,7 +66,7 @@ def transform_tree(from_tree, to_tree, interesting_ids=None):
 class Merger(object):
     def __init__(self, this_branch, other_tree=None, base_tree=None,
                  this_tree=None, pb=DummyProgress(), change_reporter=None,
-                 recurse='down'):
+                 recurse='down', revision_graph=None):
         object.__init__(self)
         assert this_tree is not None, "this_tree is required"
         self.this_branch = this_branch
@@ -89,6 +90,38 @@ class Merger(object):
         self.recurse = recurse
         self.change_reporter = change_reporter
         self._cached_trees = {}
+        self._revision_graph = revision_graph
+        self._base_is_ancestor = None
+        self._base_is_other_ancestor = None
+
+    @property
+    def revision_graph(self):
+        if self._revision_graph is None:
+            self._revision_graph = self.this_branch.repository.get_graph()
+        return self._revision_graph
+
+    def _set_base_is_ancestor(self, value):
+        self._base_is_ancestor = value
+
+    def _get_base_is_ancestor(self):
+        if self._base_is_ancestor is None:
+            self._base_is_ancestor = self.revision_graph.is_ancestor(
+                self.base_rev_id, self.this_basis)
+        return self._base_is_ancestor
+
+    base_is_ancestor = property(_get_base_is_ancestor, _set_base_is_ancestor)
+
+    def _set_base_is_other_ancestor(self, value):
+        self._base_is_other_ancestor = value
+
+    def _get_base_is_other_ancestor(self):
+        if self._base_is_other_ancestor is None:
+            self.base_is_other_ancestor = self.revision_graph.is_ancestor(
+                self.base_rev_id, self.other_basis)
+        return self._base_is_other_ancestor
+
+    base_is_other_ancestor = property(_get_base_is_other_ancestor,
+                                      _set_base_is_other_ancestor)
 
     @staticmethod
     def from_uncommitted(tree, other_tree, pb):
@@ -102,6 +135,7 @@ class Merger(object):
                         pb)
         merger.base_rev_id = merger.base_tree.get_revision_id()
         merger.other_rev_id = None
+        merger.other_basis = merger.base_rev_id
         return merger
 
     @classmethod
@@ -115,19 +149,21 @@ class Merger(object):
         mergeable.install_revisions(tree.branch.repository)
         base_revision_id, other_revision_id, verified =\
             mergeable.get_merge_request(tree.branch.repository)
+        revision_graph = tree.branch.repository.get_graph()
         if (base_revision_id != _mod_revision.NULL_REVISION and
-            tree.branch.repository.get_graph().is_ancestor(
+            revision_graph.is_ancestor(
             base_revision_id, tree.branch.last_revision())):
             base_revision_id = None
         else:
             warning('Performing cherrypick')
         merger = klass.from_revision_ids(pb, tree, other_revision_id,
-                                         base_revision_id)
+                                         base_revision_id, revision_graph=
+                                         revision_graph)
         return merger, verified
 
     @staticmethod
     def from_revision_ids(pb, this, other, base=None, other_branch=None,
-                          base_branch=None):
+                          base_branch=None, revision_graph=None):
         """Return a Merger for revision-ids.
 
         :param tree: The tree to merge changes into
@@ -140,7 +176,8 @@ class Merger(object):
             not supplied, other_branch or this.branch will be used.
         :param pb: A progress indicator
         """
-        merger = Merger(this.branch, this_tree=this, pb=pb)
+        merger = Merger(this.branch, this_tree=this, pb=pb,
+                        revision_graph=revision_graph)
         if other_branch is None:
             other_branch = this.branch
         merger.set_other_revision(other, other_branch)
@@ -299,26 +336,19 @@ class Merger(object):
         self.base_branch = branch
         self._maybe_fetch(branch, self.this_branch, revision_id)
         self.base_tree = self.revision_tree(revision_id)
-        graph = self.this_branch.repository.get_graph()
-        self.base_is_ancestor = graph.is_ancestor(self.base_rev_id,
-                                                  self.this_basis)
-        self.base_is_other_ancestor = graph.is_ancestor(self.base_rev_id,
-                                                        self.other_basis)
 
     def _maybe_fetch(self, source, target, revision_id):
         if not source.repository.has_same_location(target.repository):
             target.fetch(source, revision_id)
 
     def find_base(self):
-        this_repo = self.this_branch.repository
-        graph = this_repo.get_graph()
         revisions = [ensure_null(self.this_basis),
                      ensure_null(self.other_basis)]
         if NULL_REVISION in revisions:
             self.base_rev_id = NULL_REVISION
         else:
-            self.base_rev_id, steps = graph.find_unique_lca(revisions[0],
-                revisions[1], count_steps=True)
+            self.base_rev_id, steps = self.revision_graph.find_unique_lca(
+                revisions[0], revisions[1], count_steps=True)
             if self.base_rev_id == NULL_REVISION:
                 raise UnrelatedBranches()
             if steps > 1:
@@ -346,18 +376,14 @@ class Merger(object):
                 self.base_rev_id = _mod_revision.ensure_null(
                     base_branch.get_rev_id(base_revision[1]))
             self._maybe_fetch(base_branch, self.this_branch, self.base_rev_id)
-            graph = self.this_branch.repository.get_graph()
-            self.base_is_ancestor = graph.is_ancestor(self.base_rev_id,
-                                                      self.this_basis)
-            self.base_is_other_ancestor = graph.is_ancestor(self.base_rev_id,
-                                                            self.other_basis)
 
-    def do_merge(self):
+    def make_merger(self):
         kwargs = {'working_tree':self.this_tree, 'this_tree': self.this_tree,
                   'other_tree': self.other_tree,
                   'interesting_ids': self.interesting_ids,
                   'interesting_files': self.interesting_files,
-                  'pp': self.pp}
+                  'pp': self.pp,
+                  'do_merge': False}
         if self.merge_type.requires_base:
             kwargs['base_tree'] = self.base_tree
         if self.merge_type.supports_reprocess:
@@ -369,22 +395,26 @@ class Merger(object):
             kwargs['show_base'] = self.show_base
         elif self.show_base:
             raise BzrError("Showing base is not supported for this"
-                                  " merge type. %s" % self.merge_type)
+                           " merge type. %s" % self.merge_type)
         if (not getattr(self.merge_type, 'supports_reverse_cherrypick', True)
             and not self.base_is_other_ancestor):
             raise errors.CannotReverseCherrypick()
         if self.merge_type.history_based:
             kwargs['cherrypick'] = (not self.base_is_ancestor or
                                     not self.base_is_other_ancestor)
+        return self.merge_type(pb=self._pb,
+                               change_reporter=self.change_reporter,
+                               **kwargs)
+
+    def do_merge(self):
+        merge = self.make_merger()
         self.this_tree.lock_tree_write()
         if self.base_tree is not None:
             self.base_tree.lock_read()
         if self.other_tree is not None:
             self.other_tree.lock_read()
         try:
-            merge = self.merge_type(pb=self._pb,
-                                    change_reporter=self.change_reporter,
-                                    **kwargs)
+            merge.do_merge()
             if self.recurse == 'down':
                 for path, file_id in self.this_tree.iter_references():
                     sub_tree = self.this_tree.get_nested_tree(file_id, path)
@@ -429,7 +459,7 @@ class Merge3Merger(object):
     def __init__(self, working_tree, this_tree, base_tree, other_tree, 
                  interesting_ids=None, reprocess=False, show_base=False,
                  pb=DummyProgress(), pp=None, change_reporter=None,
-                 interesting_files=None):
+                 interesting_files=None, do_merge=True):
         """Initialize the merger object and perform the merge.
 
         :param working_tree: The working tree to apply the merge to
@@ -458,11 +488,8 @@ class Merge3Merger(object):
         self.interesting_ids = interesting_ids
         self.interesting_files = interesting_files
         self.this_tree = working_tree
-        self.this_tree.lock_tree_write()
         self.base_tree = base_tree
-        self.base_tree.lock_read()
         self.other_tree = other_tree
-        self.other_tree.lock_read()
         self._raw_conflicts = []
         self.cooked_conflicts = []
         self.reprocess = reprocess
@@ -472,44 +499,22 @@ class Merge3Merger(object):
         self.change_reporter = change_reporter
         if self.pp is None:
             self.pp = ProgressPhase("Merge phase", 3, self.pb)
+        if do_merge:
+            self.do_merge()
 
-        self.tt = TreeTransform(working_tree, self.pb)
+    def do_merge(self):
+        self.this_tree.lock_tree_write()
+        self.base_tree.lock_read()
+        self.other_tree.lock_read()
+        self.tt = TreeTransform(self.this_tree, self.pb)
         try:
             self.pp.next_phase()
-            entries = self._entries3()
-            child_pb = ui.ui_factory.nested_progress_bar()
-            try:
-                for num, (file_id, changed, parents3, names3,
-                          executable3) in enumerate(entries):
-                    child_pb.update('Preparing file merge', num, len(entries))
-                    self._merge_names(file_id, parents3, names3)
-                    if changed:
-                        file_status = self.merge_contents(file_id)
-                    else:
-                        file_status = 'unmodified'
-                    self._merge_executable(file_id,
-                        executable3, file_status)
-            finally:
-                child_pb.finished()
-            self.fix_root()
-            self.pp.next_phase()
-            child_pb = ui.ui_factory.nested_progress_bar()
-            try:
-                fs_conflicts = resolve_conflicts(self.tt, child_pb,
-                    lambda t, c: conflict_pass(t, c, self.other_tree))
-            finally:
-                child_pb.finished()
-            if change_reporter is not None:
-                from bzrlib import delta
-                delta.report_changes(self.tt._iter_changes(), change_reporter)
-            self.cook_conflicts(fs_conflicts)
-            for conflict in self.cooked_conflicts:
-                warning(conflict)
+            self._compute_transform()
             self.pp.next_phase()
             results = self.tt.apply(no_conflicts=True)
             self.write_modified(results)
             try:
-                working_tree.add_conflicts(self.cooked_conflicts)
+                self.this_tree.add_conflicts(self.cooked_conflicts)
             except UnsupportedOperation:
                 pass
         finally:
@@ -518,6 +523,52 @@ class Merge3Merger(object):
             self.base_tree.unlock()
             self.this_tree.unlock()
             self.pb.clear()
+
+    def make_preview_transform(self):
+        self.base_tree.lock_read()
+        self.other_tree.lock_read()
+        self.tt = TransformPreview(self.this_tree)
+        try:
+            self.pp.next_phase()
+            self._compute_transform()
+            self.pp.next_phase()
+        finally:
+            self.other_tree.unlock()
+            self.base_tree.unlock()
+            self.pb.clear()
+        return self.tt
+
+    def _compute_transform(self):
+        entries = self._entries3()
+        child_pb = ui.ui_factory.nested_progress_bar()
+        try:
+            for num, (file_id, changed, parents3, names3,
+                      executable3) in enumerate(entries):
+                child_pb.update('Preparing file merge', num, len(entries))
+                self._merge_names(file_id, parents3, names3)
+                if changed:
+                    file_status = self.merge_contents(file_id)
+                else:
+                    file_status = 'unmodified'
+                self._merge_executable(file_id,
+                    executable3, file_status)
+        finally:
+            child_pb.finished()
+        self.fix_root()
+        self.pp.next_phase()
+        child_pb = ui.ui_factory.nested_progress_bar()
+        try:
+            fs_conflicts = resolve_conflicts(self.tt, child_pb,
+                lambda t, c: conflict_pass(t, c, self.other_tree))
+        finally:
+            child_pb.finished()
+        if self.change_reporter is not None:
+            from bzrlib import delta
+            delta.report_changes(
+                self.tt._iter_changes(), self.change_reporter)
+        self.cook_conflicts(fs_conflicts)
+        for conflict in self.cooked_conflicts:
+            warning(conflict)
 
     def _entries3(self):
         """Gather data about files modified between three trees.
@@ -992,13 +1043,14 @@ class WeaveMerger(Merge3Merger):
     def __init__(self, working_tree, this_tree, base_tree, other_tree, 
                  interesting_ids=None, pb=DummyProgress(), pp=None,
                  reprocess=False, change_reporter=None,
-                 interesting_files=None, cherrypick=False):
+                 interesting_files=None, cherrypick=False, do_merge=True):
         self.cherrypick = cherrypick
         super(WeaveMerger, self).__init__(working_tree, this_tree, 
                                           base_tree, other_tree, 
                                           interesting_ids=interesting_ids, 
                                           pb=pb, pp=pp, reprocess=reprocess,
-                                          change_reporter=change_reporter)
+                                          change_reporter=change_reporter,
+                                          do_merge=do_merge)
 
     def _merged_lines(self, file_id):
         """Generate the merged lines.

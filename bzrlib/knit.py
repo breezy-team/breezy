@@ -736,7 +736,9 @@ class KnitVersionedFile(VersionedFile):
         :seealso: get_data_stream
         """
         if format != self.get_format_signature():
-            trace.mutter('incompatible format signature inserting to %r', self)
+            if 'knit' in debug.debug_flags:
+                trace.mutter(
+                    'incompatible format signature inserting to %r', self)
             source = self._knit_from_datastream(
                 (format, data_list, reader_callable))
             self.join(source)

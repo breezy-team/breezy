@@ -956,10 +956,6 @@ class cmd_checkout(Command):
 
     def run(self, branch_location=None, to_location=None, revision=None,
             lightweight=False, files_from=None):
-        if files_from is not None:
-            accelerator_tree = WorkingTree.open(files_from)
-        else:
-            accelerator_tree = None
         if revision is None:
             revision = [None]
         elif len(revision) > 1:
@@ -968,7 +964,10 @@ class cmd_checkout(Command):
         if branch_location is None:
             branch_location = osutils.getcwd()
             to_location = branch_location
-        source = Branch.open(branch_location)
+        accelerator_tree, source = bzrdir.BzrDir.open_tree_or_branch(
+            branch_location)
+        if files_from is not None:
+            accelerator_tree = WorkingTree.open(files_from)
         if len(revision) == 1 and revision[0] is not None:
             revision_id = _mod_revision.ensure_null(
                 revision[0].in_history(source)[1])
@@ -2599,9 +2598,8 @@ class cmd_selftest(Command):
                                  ' expression.'),
                      Option('strict', help='Fail on missing dependencies or '
                             'known failures.'),
-                     Option('coverage', type=str, argname="DIRECTORY",
-                            help='Generate line coverage report in this '
-                                 'directory.'),
+                     Option('load-list', type=str, argname='TESTLISTFILE',
+                            help='Load a test id list from a text file.'),
                      ]
     encoding_type = 'replace'
 
@@ -2609,7 +2607,8 @@ class cmd_selftest(Command):
             transport=None, benchmark=None,
             lsprof_timed=None, cache_dir=None,
             first=False, list_only=False,
-            randomize=None, exclude=None, strict=False, coverage=None):
+            randomize=None, exclude=None, strict=False,
+            load_list=None):
         import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
@@ -2651,7 +2650,7 @@ class cmd_selftest(Command):
                               random_seed=randomize,
                               exclude_pattern=exclude,
                               strict=strict,
-                              coverage_dir=coverage,
+                              load_list=load_list,
                               )
         finally:
             if benchfile is not None:
@@ -2760,6 +2759,7 @@ class cmd_merge(Command):
             bzr merge -r 81..82 ../bzr.dev
     """
 
+    encoding_type = 'exact'
     _see_also = ['update', 'remerge', 'status-flags']
     takes_args = ['branch?']
     takes_options = [
@@ -2784,12 +2784,14 @@ class cmd_merge(Command):
                short_name='d',
                type=unicode,
                ),
+        Option('preview', help='Instead of merging, show a diff of the merge.')
     ]
 
     def run(self, branch=None, revision=None, force=False, merge_type=None,
             show_base=False, reprocess=False, remember=False,
             uncommitted=False, pull=False,
             directory=None,
+            preview=False,
             ):
         # This is actually a branch (or merge-directive) *location*.
         location = branch
@@ -2845,7 +2847,6 @@ class cmd_merge(Command):
             merger.merge_type = merge_type
             merger.reprocess = reprocess
             merger.show_base = show_base
-            merger.change_reporter = change_reporter
             self.sanity_check_merger(merger)
             if (merger.base_rev_id == merger.other_rev_id and
                 merger.other_rev_id != None):
@@ -2860,18 +2861,34 @@ class cmd_merge(Command):
                     result.report(self.outf)
                     return 0
             merger.check_basis(not force)
-            conflict_count = merger.do_merge()
-            if allow_pending:
-                merger.set_pending()
-            if verified == 'failed':
-                warning('Preview patch does not match changes')
-            if conflict_count != 0:
-                return 1
+            if preview:
+                return self._do_preview(merger)
             else:
-                return 0
+                return self._do_merge(merger, change_reporter, allow_pending,
+                                      verified)
         finally:
             for cleanup in reversed(cleanups):
                 cleanup()
+
+    def _do_preview(self, merger):
+        from bzrlib.diff import show_diff_trees
+        tree_merger = merger.make_merger()
+        tt = tree_merger.make_preview_transform()
+        result_tree = tt.get_preview_tree()
+        show_diff_trees(merger.this_tree, result_tree, self.outf, old_label='',
+                        new_label='')
+
+    def _do_merge(self, merger, change_reporter, allow_pending, verified):
+        merger.change_reporter = change_reporter
+        conflict_count = merger.do_merge()
+        if allow_pending:
+            merger.set_pending()
+        if verified == 'failed':
+            warning('Preview patch does not match changes')
+        if conflict_count != 0:
+            return 1
+        else:
+            return 0
 
     def sanity_check_merger(self, merger):
         if (merger.show_base and
@@ -2892,11 +2909,11 @@ class cmd_merge(Command):
         from bzrlib.tag import _merge_tags_if_possible
         assert revision is None or len(revision) < 3
         # find the branch locations
-        other_loc, location = self._select_branch_location(tree, location,
+        other_loc, user_location = self._select_branch_location(tree, location,
             revision, -1)
         if revision is not None and len(revision) == 2:
-            base_loc, location = self._select_branch_location(tree, location,
-                                                              revision, 0)
+            base_loc, _unused = self._select_branch_location(tree,
+                location, revision, 0)
         else:
             base_loc = other_loc
         # Open the branches
@@ -2923,9 +2940,9 @@ class cmd_merge(Command):
         else:
             base_revision_id = None
         # Remember where we merge from
-        if ((tree.branch.get_parent() is None or remember) and
-            other_branch is not None):
-            tree.branch.set_parent(other_branch.base)
+        if ((remember or tree.branch.get_submit_branch() is None) and
+             user_location is not None):
+            tree.branch.set_submit_branch(other_branch.base)
         _merge_tags_if_possible(other_branch, tree.branch)
         merger = _mod_merge.Merger.from_revision_ids(pb, tree,
             other_revision_id, base_revision_id, other_branch, base_branch)
@@ -2936,7 +2953,7 @@ class cmd_merge(Command):
             allow_pending = True
         return merger, allow_pending
 
-    def _select_branch_location(self, tree, location, revision=None,
+    def _select_branch_location(self, tree, user_location, revision=None,
                                 index=None):
         """Select a branch location, according to possible inputs.
 
@@ -2944,34 +2961,35 @@ class cmd_merge(Command):
         ``revision`` and ``index`` must be supplied.)
 
         Otherwise, the ``location`` parameter is used.  If it is None, then the
-        ``parent`` location is used, and a note is printed.
+        ``submit`` or ``parent`` location is used, and a note is printed.
 
         :param tree: The working tree to select a branch for merging into
         :param location: The location entered by the user
         :param revision: The revision parameter to the command
         :param index: The index to use for the revision parameter.  Negative
             indices are permitted.
-        :return: (selected_location, default_location).  The default location
-            will be the user-entered location, if any, or else the remembered
-            location.
+        :return: (selected_location, user_location).  The default location
+            will be the user-entered location.
         """
         if (revision is not None and index is not None
             and revision[index] is not None):
             branch = revision[index].get_branch()
             if branch is not None:
-                return branch, location
-        location = self._get_remembered_parent(tree, location, 'Merging from')
-        return location, location
+                return branch, branch
+        if user_location is None:
+            location = self._get_remembered(tree, 'Merging from')
+        else:
+            location = user_location
+        return location, user_location
 
-    # TODO: move up to common parent; this isn't merge-specific anymore. 
-    def _get_remembered_parent(self, tree, supplied_location, verb_string):
+    def _get_remembered(self, tree, verb_string):
         """Use tree.branch's parent if none was supplied.
 
         Report if the remembered location was used.
         """
-        if supplied_location is not None:
-            return supplied_location
-        stored_location = tree.branch.get_parent()
+        stored_location = tree.branch.get_submit_branch()
+        if stored_location is None:
+            stored_location = tree.branch.get_parent()
         mutter("%s", stored_location)
         if stored_location is None:
             raise errors.BzrCommandError("No location specified or remembered")
@@ -3327,8 +3345,10 @@ class cmd_pack(Command):
 class cmd_plugins(Command):
     """List the installed plugins.
     
-    This command displays the list of installed plugins including the
-    path where each one is located and a short description of each.
+    This command displays the list of installed plugins including
+    version of plugin and a short description of each.
+
+    --verbose shows the path where each plugin is located.
 
     A plugin is an external component for Bazaar that extends the
     revision control system, by adding or replacing code in Bazaar.
@@ -3341,16 +3361,30 @@ class cmd_plugins(Command):
     install them. Instructions are also provided there on how to
     write new plugins using the Python programming language.
     """
+    takes_options = ['verbose']
 
     @display_command
-    def run(self):
+    def run(self, verbose=False):
         import bzrlib.plugin
         from inspect import getdoc
+        result = []
         for name, plugin in bzrlib.plugin.plugins().items():
-            print plugin.path(), "[%s]" % plugin.__version__
+            version = plugin.__version__
+            if version == 'unknown':
+                version = ''
+            name_ver = '%s %s' % (name, version)
             d = getdoc(plugin.module)
             if d:
-                print '\t', d.split('\n')[0]
+                doc = d.split('\n')[0]
+            else:
+                doc = '(no description)'
+            result.append((name_ver, doc, plugin.path()))
+        for name_ver, doc, path in sorted(result):
+            print name_ver
+            print '   ', doc
+            if verbose:
+                print '   ', path
+            print
 
 
 class cmd_testament(Command):
@@ -3409,9 +3443,12 @@ class cmd_annotate(Command):
     def run(self, filename, all=False, long=False, revision=None,
             show_ids=False):
         from bzrlib.annotate import annotate_file
-        tree, relpath = WorkingTree.open_containing(filename)
-        branch = tree.branch
-        branch.lock_read()
+        wt, branch, relpath = \
+            bzrdir.BzrDir.open_containing_tree_or_branch(filename)
+        if wt is not None:
+            wt.lock_read()
+        else:
+            branch.lock_read()
         try:
             if revision is None:
                 revision_id = branch.last_revision()
@@ -3419,15 +3456,21 @@ class cmd_annotate(Command):
                 raise errors.BzrCommandError('bzr annotate --revision takes exactly 1 argument')
             else:
                 revision_id = revision[0].in_history(branch).rev_id
-            file_id = tree.path2id(relpath)
+            tree = branch.repository.revision_tree(revision_id)
+            if wt is not None:
+                file_id = wt.path2id(relpath)
+            else:
+                file_id = tree.path2id(relpath)
             if file_id is None:
                 raise errors.NotVersionedError(filename)
-            tree = branch.repository.revision_tree(revision_id)
             file_version = tree.inventory[file_id].revision
             annotate_file(branch, file_version, file_id, long, all, self.outf,
                           show_ids=show_ids)
         finally:
-            branch.unlock()
+            if wt is not None:
+                wt.unlock()
+            else:
+                branch.unlock()
 
 
 class cmd_re_sign(Command):
