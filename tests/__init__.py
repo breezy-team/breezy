@@ -24,8 +24,6 @@ from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
-RENAMES = False
-
 import svn.repos, svn.wc
 from bzrlib.plugins.svn.errors import NoCheckoutSupport
 

@@ -31,7 +31,7 @@ import os
 
 from mapping import MAPPING_VERSION, default_mapping
 from transport import svn_config
-from tests import TestCaseWithSubversionRepository, RENAMES
+from tests import TestCaseWithSubversionRepository
 
 class TestWorkingTree(TestCaseWithSubversionRepository):
     def test_add_duplicate(self):
@@ -327,11 +327,6 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertTrue(inv.has_filename("dir/a"))
         mutter('basis: %r' % basis_inv.entries())
         mutter('working: %r' % inv.entries())
-        if RENAMES:
-            self.assertEqual(basis_inv.path2id("bl"), 
-                             inv.path2id("dir/bl"))
-            self.assertEqual(basis_inv.path2id("a"), 
-                            inv.path2id("dir/a"))
         self.assertFalse(inv.has_filename("bl"))
         self.assertFalse(basis_inv.has_filename("dir/bl"))
 
