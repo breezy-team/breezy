@@ -40,7 +40,6 @@ import errors
 import logwalker
 from mapping import (default_mapping, SVN_PROP_BZR_REVISION_ID, 
                      SVN_PROP_BZR_BRANCHING_SCHEME,
-                     SVN_PROP_BZR_ANCESTRY, 
                      parse_revision_metadata, parse_revid_property, 
                      parse_merge_property)
 from revids import RevidMap
@@ -291,10 +290,9 @@ class SvnRepository(Repository):
 
         ancestry = [revision_id]
 
-        for l in self.branchprop_list.get_property(path, revnum, 
-                                    SVN_PROP_BZR_ANCESTRY+str(scheme), "").splitlines():
-            ancestry.extend(l.split("\n"))
-
+        svn_revprops = self.transport.revprop_list(revnum)
+        get_branch_fileprop = lambda name, default: self.branchprop_list.get_property(path, revnum, name, default)
+        ancestry.extend(default_mapping.get_rhs_ancestors(svn_revprops, get_branch_fileprop))
         if revnum > 0:
             for (branch, rev) in self.follow_branch(path, revnum - 1, scheme):
                 ancestry.append(

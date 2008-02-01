@@ -301,6 +301,13 @@ class BzrSvnMapping:
         raise NotImplementedError(self.get_rhs_parents)
 
     @staticmethod
+    def get_rhs_ancestors(revprops, get_branch_file_property, scheme):
+        """Obtain the right-hand side ancestors for a revision.
+
+        """
+        raise NotImplementedError(self.get_rhs_ancestors)
+
+    @staticmethod
     def get_fileid_map(revprops, get_branch_file_property):
         raise NotImplementedError(self.get_fileid_map)
 
@@ -421,6 +428,13 @@ class BzrSvnMappingv3(BzrSvnMapping):
             _merges = cls._svk_merged_revisions(branch, revnum, scheme)
 
         return []
+
+    @staticmethod
+    def get_rhs_ancestors(revprops, get_branch_file_property, scheme):
+        ancestry = []
+        for l in get_branch_file_property(SVN_PROP_BZR_ANCESTRY+str(scheme), "").splitlines():
+            ancestry.extend(l.split("\n"))
+        return ancestry
 
     @classmethod
     def get_fileid_map(cls, svn_revprops, get_branch_file_property):
