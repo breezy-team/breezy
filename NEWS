@@ -26,6 +26,9 @@ bzr-svn 0.4.7	UNRELEASED
 
    * Change default format to rich-root-pack. (#187008)
 
+   * Fix handling of weird file change after replacing from other branch.
+     (#186876)
+
 bzr-svn 0.4.6	2008-01-08
 
   PERFORMANCE

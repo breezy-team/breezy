@@ -17,6 +17,7 @@
 
 """Subversion fetch tests."""
 
+import shutil
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.repository import Repository
@@ -59,6 +60,50 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My Message")
         oldrepos = Repository.open(repos_url)
         oldrepos.set_branching_scheme(TrunkBranchingScheme(1))
+        dir = BzrDir.create("f",format.get_rich_root_format())
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+
+    def test_replace_from_branch(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/trunk/check/debian': None,
+                         'dc/trunk/check/stamp-h.in': 'foo',
+                         'dc/tags': None})
+        self.client_add("dc/trunk")
+        self.client_add("dc/tags")
+        self.client_commit("dc", "initial commit") #1
+        self.client_update("dc")
+        self.build_tree({'dc/trunk/check/debian/pl': "bar"})
+        self.client_add("dc/trunk/check/debian/pl")
+        self.client_commit("dc", "change") #2
+        self.client_update("dc")
+        self.build_tree({'dc/trunk/check/debian/voo': "bar"})
+        self.client_add("dc/trunk/check/debian/voo")
+        self.client_commit("dc", "change") #3
+        self.client_update("dc")
+        self.build_tree({"dc/trunk/check/debian/blie": "oeh"})
+        self.client_add("dc/trunk/check/debian/blie")
+        self.client_commit("dc", "second commit") #4
+        self.client_update("dc")
+        self.build_tree({"dc/trunk/check/debian/bar": "oeh",
+                         "dc/trunk/check/bar": "bla"})
+        self.client_add("dc/trunk/check/debian/bar")
+        self.client_add("dc/trunk/check/bar")
+        self.client_commit("dc", "make sure revnums are honored") #5
+        self.client_update("dc")
+        self.client_copy("dc/trunk", "dc/tags/R_0_9_2", revnum=2)
+        self.client_delete("dc/tags/R_0_9_2/check/debian")
+        shutil.rmtree("dc/tags/R_0_9_2/check/debian")
+        self.client_copy("dc/trunk/check/debian", "dc/tags/R_0_9_2/check", 
+                         revnum=5)
+        self.client_delete("dc/tags/R_0_9_2/check/stamp-h.in")
+        self.client_copy("dc/trunk/check/stamp-h.in", "dc/tags/R_0_9_2/check", 
+                         revnum=4)
+        self.build_tree({"dc/tags/R_0_9_2/check/debian/blie": "oehha"})
+        self.client_update("dc")
+        self.client_commit("dc", "strange revision")
+        oldrepos = Repository.open(repos_url)
+        oldrepos.set_branching_scheme(TrunkBranchingScheme(0))
         dir = BzrDir.create("f",format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
