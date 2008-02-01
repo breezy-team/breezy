@@ -345,7 +345,7 @@ class SvnRepository(Repository):
         (path, revnum, _) = self.lookup_revision_id(revid)
 
         svn_revprops = self.transport.revprop_list(revnum)
-        return default_mapping.get_fileid_map(svn_revprops, 
+        return default_mapping.import_fileid_map(svn_revprops, 
                 lambda name, default: self.branchprop_list.get_changed_property(path, revnum, name, default)
                 )
 
@@ -465,7 +465,7 @@ class SvnRepository(Repository):
         rev = LazySvnRevision(revision_id=revision_id, parent_ids=parent_ids)
         svn_revprops = self.transport.revprop_list(revnum)
 
-        default_mapping.parse_svn_revision(svn_revprops, 
+        default_mapping.import_revision(svn_revprops, 
                 lambda name, default: self.branchprop_list.get_changed_property(path, revnum, name, default), rev)
 
         return rev
@@ -497,32 +497,15 @@ class SvnRepository(Repository):
 
         # See if there is a bzr:revision-id revprop set
         revprops = self._log._get_transport().revprop_list(revnum)
-        if revprops.has_key(SVN_REVPROP_BZR_MAPPING_VERSION):
-            if revprops[SVN_REVPROP_BZR_ROOT] == path:
-                revid = revprops[SVN_REVPROP_BZR_REVISION_ID]
-            else:
-                revid = generate_svn_revision_id(self.uuid, revnum, path, 
-                                                 scheme)
-        else:
-            # Lookup the revision from the bzr:revision-id-vX property
-            line = self.branchprop_list.get_property_diff(path, revnum, 
-                    SVN_PROP_BZR_REVISION_ID+str(scheme)).strip("\n")
-            # Or generate it
-            if line == "":
-                revid = default_mapping.generate_revision_id(
-                            self.uuid, revnum, path, scheme)
-            else:
-                try:
-                    (bzr_revno, revid) = parse_revid_property(line)
-                    self.revmap.insert_revid(revid, path, revnum, revnum, 
-                            scheme, bzr_revno)
-                except errors.InvalidPropertyValue, e:
-                    mutter(str(e))
-                    revid = default_mapping.generate_revision_id(self.uuid, 
-                                revnum, path, scheme)
-                    self.revmap.insert_revid(revid, path, revnum, revnum, 
-                            scheme)
-
+        (bzr_revno, revid) = default_mapping.get_revision_id(revprops, 
+                lambda name, default: self.branchprop_list.get_changed_property(path, revnum, name, default),
+                scheme)
+        # Or generate it
+        if revid is None:
+            revid = default_mapping.generate_revision_id(
+                        self.uuid, revnum, path, scheme)
+        self.revmap.insert_revid(revid, path, revnum, revnum, 
+                scheme, bzr_revno)
         return revid
 
     def lookup_revision_id(self, revid, scheme=None):

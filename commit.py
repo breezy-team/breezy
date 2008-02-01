@@ -30,7 +30,7 @@ from bzrlib.trace import mutter
 from copy import deepcopy
 from cStringIO import StringIO
 from errors import ChangesRootLHSHistory, MissingPrefix, RevpropChangeFailed
-from mapping import (SVN_PROP_BZR_FILEIDS, SVN_REVPROP_BZR_FILEIDS)
+from mapping import default_mapping
 from repository import (SvnRepositoryFormat, SvnRepository)
 import urllib
 
@@ -107,17 +107,6 @@ class SvnCommitBuilder(RootCommitBuilder):
             (self.base_path, self.base_revnum, self.base_scheme) = \
                 repository.lookup_revision_id(self.base_revid)
 
-        # Determine revisions merged in this one
-        merges = filter(lambda x: x != self.base_revid, parents)
-
-        if len(merges) > 0:
-            self._record_merges(merges)
-
-        # Set appropriate property if revision id was specified by 
-        # caller
-        if revision_id is not None:
-            self._record_revision_id(revision_id)
-
         if old_inv is None:
             if self.base_revid is None:
                 self.old_inv = Inventory(root_id=None)
@@ -129,10 +118,12 @@ class SvnCommitBuilder(RootCommitBuilder):
             # so allow None as well.
             assert self.old_inv.revision_id in (None, self.base_revid)
 
+        # Determine revisions merged in this one
+        merges = filter(lambda x: x != self.base_revid, parents)
+
         self.modified_files = {}
         self.modified_dirs = set()
-        (self._svn_revprops, self._svnprops) = default_mapping.generate_svn_revision(timestamp, timezone, committer, revprops, revision_id)
-        self._svnprops[SVN_PROP_BZR_FILEIDS] = ""
+        (self._svn_revprops, self._svnprops) = default_mapping.export_revision(timestamp, timezone, committer, revprops, revision_id, merges)
 
     def mutter(self, text):
         if 'commit' in debug.debug_flags:
@@ -404,18 +395,16 @@ class SvnCommitBuilder(RootCommitBuilder):
                     child_ie.file_id in self.modified_dirs):
                     _dir_process_file_id(old_inv, new_inv, new_child_path, child_ie.file_id)
 
-        fileids = []
+        fileids = {}
 
         if (self.old_inv.root is None or 
             self.new_inventory.root.file_id != self.old_inv.root.file_id):
-            fileids.append((self.new_inventory.root.file_id, ""))
+            fileids[""] = self.new_inventory.root.file_id
 
-        fileids += list(_dir_process_file_id(self.old_inv, self.new_inventory, "", self.new_inventory.root.file_id))
+        for id, path in _dir_process_file_id(self.old_inv, self.new_inventory, "", self.new_inventory.root.file_id):
+            fileids[path] = id
 
-        if fileids != []:
-            file_id_text = "".join(["%s\t%s\n" % (urllib.quote(path), file_id) for (file_id, path) in fileids])
-            self._svn_revprops[SVN_REVPROP_BZR_FILEIDS] = file_id_text
-            self._svnprops[SVN_PROP_BZR_FILEIDS] = file_id_text
+        export_fileid_map(fileids, self._svn_revprops, self._svnprops)
 
         try:
             existing_bp_parts = _check_dirs_exist(self.repository.transport, 

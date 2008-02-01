@@ -121,9 +121,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         rev = Revision(revision_id=revid, parent_ids=self._get_parent_ids())
 
         svn_revprops = self.source._log._get_transport().revprop_list(self.revnum)
-        default_mapping.parse_svn_revision(svn_revprops, 
-                self._branch_fileprops.get, 
-                rev)
+        default_mapping.import_revision(svn_revprops, self._branch_fileprops.get, rev)
 
         return rev
 
