@@ -40,7 +40,7 @@ class TestRebaseSimple(ExternalBase):
 
     def test_notneeded(self):
         os.chdir('../feature')
-        self.check_output('No revisions to rebase.', 'rebase ../main')
+        self.check_output('No revisions to rebase.\n', 'rebase ../main')
 
     def test_simple_success(self):
         self.make_file('hello', '42')
