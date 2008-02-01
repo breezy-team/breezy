@@ -13,8 +13,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from bzrlib import errors, osutils, registry
+from bzrlib import osutils, registry
+from bzrlib.errors import InvalidRevisionId
 
+import calendar
+import errors
 import sha
 import time
 import urllib
@@ -271,12 +274,12 @@ class BzrSvnMappingv3(BzrSvnMapping):
         assert isinstance(revid, str)
 
         if not revid.startswith(cls.revid_prefix):
-            raise errors.InvalidRevisionId(revid, "")
+            raise InvalidRevisionId(revid, "")
 
         try:
             (version, uuid, branch_path, srevnum) = revid.split(":")
         except ValueError:
-            raise errors.InvalidRevisionId(revid, "")
+            raise InvalidRevisionId(revid, "")
 
         scheme = version[len(cls.revid_prefix):]
 

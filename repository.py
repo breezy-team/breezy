@@ -35,14 +35,14 @@ import os
 
 from branchprops import BranchPropertyList
 from cache import create_cache_dir, sqlite3
-import calendar
 from config import SvnRepositoryConfig
 import errors
 import logwalker
 from mapping import (default_mapping, SVN_PROP_BZR_REVISION_ID, 
                      SVN_PROP_BZR_REVISION_INFO, SVN_PROP_BZR_BRANCHING_SCHEME,
                      SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS,
-                     parse_revision_metadata, parse_revid_property)
+                     parse_revision_metadata, parse_revid_property, 
+                     parse_merge_property)
                       
 from revids import RevidMap
 from scheme import (BranchingScheme, ListBranchingScheme, 
@@ -414,7 +414,7 @@ class SvnRepository(Repository):
         :param scheme: Branching scheme.
         """
         change = self.branchprop_list.get_property_diff(branch, revnum, 
-                                       SVN_PROP_BZR_ANCESTRY+str(scheme)).splitlines()
+                                SVN_PROP_BZR_ANCESTRY+str(scheme)).splitlines()
         if len(change) == 0:
             return []
 

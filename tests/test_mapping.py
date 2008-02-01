@@ -15,9 +15,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from errors import InvalidPropertyValue
 from mapping import (generate_revision_metadata, parse_revision_metadata, 
                      parse_revid_property, parse_merge_property)
 from bzrlib.tests import TestCase
+from bzrlib.revision import Revision
 
 class MetadataMarshallerTests(TestCase):
     def test_generate_revision_metadata_none(self):
