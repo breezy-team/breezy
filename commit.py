@@ -123,7 +123,11 @@ class SvnCommitBuilder(RootCommitBuilder):
 
         self.modified_files = {}
         self.modified_dirs = set()
-        (self._svn_revprops, self._svnprops) = default_mapping.export_revision(timestamp, timezone, committer, revprops, revision_id, merges)
+        def get_branch_file_property(name, default):
+            if self.base_revid is None:
+                return default
+            return self.repository.branchprop_list.get_property(self.base_path, self.base_revnum, name, default)
+        (self._svn_revprops, self._svnprops) = default_mapping.export_revision(self.branch.get_branch_path(), timestamp, timezone, committer, revprops, revision_id, self.base_revno+1, merges, get_branch_file_property, self.base_scheme)
 
     def mutter(self, text):
         if 'commit' in debug.debug_flags:
@@ -404,7 +408,8 @@ class SvnCommitBuilder(RootCommitBuilder):
         for id, path in _dir_process_file_id(self.old_inv, self.new_inventory, "", self.new_inventory.root.file_id):
             fileids[path] = id
 
-        export_fileid_map(fileids, self._svn_revprops, self._svnprops)
+        default_mapping.export_fileid_map(fileids, self._svn_revprops, self._svnprops)
+        self._svn_revprops[svn.core.SVN_PROP_REVISION_LOG] = message.encode("utf-8")
 
         try:
             existing_bp_parts = _check_dirs_exist(self.repository.transport, 

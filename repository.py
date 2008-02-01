@@ -45,7 +45,7 @@ from mapping import (default_mapping, SVN_PROP_BZR_REVISION_ID,
 from revids import RevidMap
 from scheme import (BranchingScheme, ListBranchingScheme, 
                     parse_list_scheme_text, guess_scheme_from_history)
-from svk import parse_svk_feature, SVN_PROP_SVK_MERGE
+from svk import parse_svk_feature, SVN_PROP_SVK_MERGE, generate_svk_feature
 from tree import SvnRevisionTree
 import urllib
 
@@ -60,7 +60,7 @@ def revision_id_to_svk_feature(revid):
     (uuid, branch, revnum, _) = default_mapping.parse_revision_id(revid)
     # TODO: What about renamed revisions? Should use 
     # repository.lookup_revision_id here.
-    return "%s:/%s:%d" % (uuid, branch, revnum)
+    return generate_svk_feature(uuid, branch, revnum)
 
 
 class SvnRepositoryFormat(RepositoryFormat):
@@ -292,7 +292,8 @@ class SvnRepository(Repository):
 
         svn_revprops = self.transport.revprop_list(revnum)
         get_branch_fileprop = lambda name, default: self.branchprop_list.get_property(path, revnum, name, default)
-        ancestry.extend(default_mapping.get_rhs_ancestors(svn_revprops, get_branch_fileprop))
+        ancestry.extend(default_mapping.get_rhs_ancestors(svn_revprops, get_branch_fileprop, scheme))
+
         if revnum > 0:
             for (branch, rev) in self.follow_branch(path, revnum - 1, scheme):
                 ancestry.append(
@@ -396,25 +397,6 @@ class SvnRepository(Repository):
         if not scheme.is_branch(bp) and not scheme.is_tag(bp):
             return None
         return self.generate_revision_id(revnum, bp, str(scheme))
-
-    def _svk_merged_revisions(self, branch, revnum, scheme):
-        """Find out what SVK features were merged in a revision.
-
-        :param branch: Subversion branch path.
-        :param revnum: Subversion revision number.
-        :param scheme: Branching scheme.
-        """
-        current = set(self.branchprop_list.get_property(branch, revnum, SVN_PROP_SVK_MERGE, "").splitlines())
-        (prev_path, prev_revnum) = self._log.get_previous(branch, revnum)
-        if prev_path is None and prev_revnum == -1:
-            previous = set()
-        else:
-            previous = set(self.branchprop_list.get_property(prev_path.encode("utf-8"), 
-                         prev_revnum, SVN_PROP_SVK_MERGE, "").splitlines())
-        for feature in current.difference(previous):
-            revid = self._svk_feature_to_revision_id(scheme, feature)
-            if revid is not None:
-                yield revid
 
     def get_parents(self, revids):
         parents_list = []
