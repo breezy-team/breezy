@@ -107,12 +107,12 @@ class SvnWorkingTree(WorkingTree):
         ignores = set([svn.wc.get_adm_dir()])
         ignores.update(svn.wc.get_default_ignores(svn_config))
 
-        def dir_add(wc, prefix):
+        def dir_add(wc, prefix, patprefix):
             ignorestr = svn.wc.prop_get(svn.core.SVN_PROP_IGNORE, 
                                         self.abspath(prefix).rstrip("/"), wc)
             if ignorestr is not None:
                 for pat in ignorestr.splitlines():
-                    ignores.add("./"+urlutils.join(prefix, pat))
+                    ignores.add(urlutils.joinpath(patprefix, pat))
 
             entries = svn.wc.entries_read(wc, False)
             for entry in entries:
@@ -127,13 +127,13 @@ class SvnWorkingTree(WorkingTree):
                 subwc = svn.wc.adm_open3(wc, self.abspath(subprefix), False, 
                                          0, None)
                 try:
-                    dir_add(subwc, subprefix)
+                    dir_add(subwc, subprefix, urlutils.joinpath(patprefix, entry))
                 finally:
                     svn.wc.adm_close(subwc)
 
         wc = self._get_wc()
         try:
-            dir_add(wc, "")
+            dir_add(wc, "", ".")
         finally:
             svn.wc.adm_close(wc)
 
