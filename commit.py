@@ -552,13 +552,14 @@ class SvnCommitBuilder(RootCommitBuilder):
         assert self._new_revision_id is None or self._new_revision_id == revid
 
         self.mutter('commit %d finished. author: %r, date: %r, revid: %r' % 
-               (self.revision_metadata.revision, self.revision_metadata.author, self.revision_metadata.date, revid))
+               (self.revision_metadata.revision, self.revision_metadata.author, 
+                   self.revision_metadata.date, revid))
 
         if self.repository.get_config().get_override_svn_revprops():
-            set_svn_revprops(self.repository.transport, self.revision_metadata.revision, {
+            set_svn_revprops(self.repository.transport, 
+                 self.revision_metadata.revision, {
                 svn.core.SVN_PROP_REVISION_AUTHOR: self._committer,
-                svn.core.SVN_PROP_REVISION_DATE: svn_time_to_cstring(1000000*self._timestamp)
-                })
+                svn.core.SVN_PROP_REVISION_DATE: svn_time_to_cstring(1000000*self._timestamp)})
 
         try:
             set_svn_revprops(self.repository.transport, self.revision_metadata.revision, 

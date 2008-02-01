@@ -20,6 +20,7 @@ from mapping import (generate_revision_metadata, parse_revision_metadata,
                      parse_revid_property, parse_merge_property)
 from bzrlib.tests import TestCase
 from bzrlib.revision import Revision
+from bzrlib.trace import mutter
 
 class MetadataMarshallerTests(TestCase):
     def test_generate_revision_metadata_none(self):
