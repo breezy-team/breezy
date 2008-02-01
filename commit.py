@@ -55,19 +55,14 @@ def _check_dirs_exist(transport, bp_parts, base_rev):
     return []
 
 
-def set_svn_revprops(transport, revnum, author, timestamp):
+def set_svn_revprops(transport, revnum, revprops):
     """Attempt to change the revision properties on the
     specified revision.
 
     :param transport: SvnRaTransport connected to target repository
     :param revnum: Revision number of revision to change metadata of.
-    :param author: New author
-    :param timestamp: UTC timestamp
+    :param revprops: Dictionary with revision properties to set.
     """
-    revprops = {
-        svn.core.SVN_PROP_REVISION_AUTHOR: author,
-        svn.core.SVN_PROP_REVISION_DATE: svn_time_to_cstring(1000000*timestamp)
-    }
     for (name, value) in revprops.items():
         try:
             transport.change_rev_prop(revnum, name, value)
@@ -511,8 +506,9 @@ class SvnCommitBuilder(RootCommitBuilder):
 
         if self.repository.get_config().get_override_svn_revprops():
             set_svn_revprops(self.repository.transport, 
-                             self.revision_metadata.revision, 
-                             self._committer, self._timestamp)
+                 self.revision_metadata.revision, {
+                svn.core.SVN_PROP_REVISION_AUTHOR: self._committer,
+                svn.core.SVN_PROP_REVISION_DATE: svn_time_to_cstring(1000000*self._timestamp)})
 
         return revid
 
