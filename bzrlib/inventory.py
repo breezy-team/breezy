@@ -1422,7 +1422,7 @@ def ensure_normalized_name(name):
 
     :raises InvalidNormalization: When name is not normalized, and cannot be
         accessed on this platform by the normalized path.
-    :return: The NFC/NFKC normalised version of name.
+    :return: The NFC normalised version of name.
     """
     #------- This has been copied to bzrlib.dirstate.DirState.add, please
     # keep them synchronised.

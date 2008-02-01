@@ -22,6 +22,7 @@ import sys
 from bzrlib import (
     errors,
     generate_ids,
+    osutils,
     progress,
     revision as _mod_revision,
     symbol_versioning,
@@ -1232,6 +1233,7 @@ def conflict_text(tree, merge):
 
 
 class TestTransformMerge(TestCaseInTempDir):
+
     def test_text_merge(self):
         root_id = generate_ids.gen_root_id()
         base = TransformGroup("base", root_id)
@@ -1832,20 +1834,25 @@ class TestTransformPreview(tests.TestCaseWithTransport):
     def get_empty_preview(self):
         repository = self.make_repository('repo')
         tree = repository.revision_tree(_mod_revision.NULL_REVISION)
-        return TransformPreview(tree)
+        preview = TransformPreview(tree)
+        self.addCleanup(preview.finalize)
+        return preview
 
     def test_transform_preview(self):
         revision_tree = self.create_tree()
         preview = TransformPreview(revision_tree)
+        self.addCleanup(preview.finalize)
 
     def test_transform_preview_tree(self):
         revision_tree = self.create_tree()
         preview = TransformPreview(revision_tree)
+        self.addCleanup(preview.finalize)
         preview.get_preview_tree()
 
     def test_transform_new_file(self):
         revision_tree = self.create_tree()
         preview = TransformPreview(revision_tree)
+        self.addCleanup(preview.finalize)
         preview.new_file('file2', preview.root, 'content B\n', 'file2-id')
         preview_tree = preview.get_preview_tree()
         self.assertEqual(preview_tree.kind('file2-id'), 'file')
@@ -1855,6 +1862,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
     def test_diff_preview_tree(self):
         revision_tree = self.create_tree()
         preview = TransformPreview(revision_tree)
+        self.addCleanup(preview.finalize)
         preview.new_file('file2', preview.root, 'content B\n', 'file2-id')
         preview_tree = preview.get_preview_tree()
         out = StringIO()
@@ -1867,6 +1875,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
     def test_transform_conflicts(self):
         revision_tree = self.create_tree()
         preview = TransformPreview(revision_tree)
+        self.addCleanup(preview.finalize)
         preview.new_file('a', preview.root, 'content 2')
         resolve_conflicts(preview)
         trans_id = preview.trans_id_file_id('a-id')
@@ -1875,6 +1884,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
     def get_tree_and_preview_tree(self):
         revision_tree = self.create_tree()
         preview = TransformPreview(revision_tree)
+        self.addCleanup(preview.finalize)
         a_trans_id = preview.trans_id_file_id('a-id')
         preview.delete_contents(a_trans_id)
         preview.create_file('b content', a_trans_id)
@@ -1932,6 +1942,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
     def test_kind(self):
         revision_tree = self.create_tree()
         preview = TransformPreview(revision_tree)
+        self.addCleanup(preview.finalize)
         preview.new_file('file', preview.root, 'contents', 'file-id')
         preview.new_directory('directory', preview.root, 'dir-id')
         preview_tree = preview.get_preview_tree()
