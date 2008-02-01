@@ -266,7 +266,6 @@ class SvnCommitBuilder(RootCommitBuilder):
             # add them if they didn't exist in old_inv 
             if not child_ie.file_id in self.old_inv:
                 self.mutter('adding %s %r' % (child_ie.kind, new_child_path))
-                self._record_file_id(child_ie, new_child_path)
                 child_baton = self.editor.add_file(
                     urlutils.join(self.branch.get_branch_path(), 
                                   new_child_path), baton, None, -1, self.pool)
@@ -278,7 +277,6 @@ class SvnCommitBuilder(RootCommitBuilder):
                 self.mutter('copy %s %r -> %r' % (child_ie.kind, 
                                   self.old_inv.id2path(child_ie.file_id), 
                                   new_child_path))
-                self._record_file_id(child_ie, new_child_path)
                 child_baton = self.editor.add_file(
                     urlutils.join(self.branch.get_branch_path(), new_child_path), baton, 
                     urlutils.join(self.repository.transport.svn_url, self.base_path, self.old_inv.id2path(child_ie.file_id)),
@@ -341,7 +339,6 @@ class SvnCommitBuilder(RootCommitBuilder):
             # add them if they didn't exist in old_inv 
             if not child_ie.file_id in self.old_inv:
                 self.mutter('adding dir %r' % child_ie.name)
-                self._record_file_id(child_ie, new_child_path)
                 child_baton = self.editor.add_directory(
                     urlutils.join(self.branch.get_branch_path(), 
                                   new_child_path), baton, None, -1, self.pool)
@@ -350,7 +347,6 @@ class SvnCommitBuilder(RootCommitBuilder):
             elif self.old_inv.id2path(child_ie.file_id) != new_child_path:
                 old_child_path = self.old_inv.id2path(child_ie.file_id)
                 self.mutter('copy dir %r -> %r' % (old_child_path, new_child_path))
-                self._record_file_id(child_ie, new_child_path)
                 child_baton = self.editor.add_directory(
                     urlutils.join(self.branch.get_branch_path(), new_child_path),
                     baton, 
@@ -443,6 +439,34 @@ class SvnCommitBuilder(RootCommitBuilder):
         repository_latest_revnum = self.repository.transport.get_latest_revnum()
         lock = self.repository.transport.lock_write(".")
 
+        # Store file ids
+        def _dir_process_file_id(old_inv, new_inv, path, file_id):
+            for child_name in new_inv[file_id].children:
+                child_ie = new_inv.get_child(file_id, child_name)
+                new_child_path = new_inv.id2path(child_ie.file_id)
+                assert child_ie is not None
+
+                if (not child_ie.file_id in old_inv or 
+                    old_inv.id2path(child_ie.file_id) != new_child_path or
+                    old_inv[child_ie.file_id].parent_id != child_ie.parent_id):
+                    yield (child_ie.file_id, new_child_path)
+
+                if (child_ie.kind == 'directory' and 
+                    child_ie.file_id in self.modified_dirs):
+                    _dir_process_file_id(old_inv, new_inv, new_child_path, child_ie.file_id)
+
+        fileids = []
+
+        if (self.old_inv.root is None or 
+            self.new_inventory.root.file_id != self.old_inv.root.file_id):
+            fileids.append((self.new_inventory.root.file_id, ""))
+
+        fileids += list(_dir_process_file_id(self.old_inv, self.new_inventory, "", self.new_inventory.root.file_id))
+
+        if fileids != []:
+            file_id_text = "".join(["%s\t%s\n" % (urllib.quote(path), file_id) for (file_id, path) in fileids])
+            self._svnprops[SVN_PROP_BZR_FILEIDS] = file_id_text
+
         try:
             existing_bp_parts = _check_dirs_exist(self.repository.transport, 
                                               bp_parts, -1)
@@ -466,11 +490,6 @@ class SvnCommitBuilder(RootCommitBuilder):
             branch_batons = self.open_branch_batons(root, bp_parts,
                 existing_bp_parts, self.base_path, self.base_revnum, 
                 replace_existing)
-
-            # Make sure the root id is stored properly
-            if (self.old_inv.root is None or 
-                self.new_inventory.root.file_id != self.old_inv.root.file_id):
-                self._record_file_id(self.new_inventory.root, "")
 
             self._dir_process("", self.new_inventory.root.file_id, 
                 branch_batons[-1])
@@ -511,14 +530,6 @@ class SvnCommitBuilder(RootCommitBuilder):
                 svn.core.SVN_PROP_REVISION_DATE: svn_time_to_cstring(1000000*self._timestamp)})
 
         return revid
-
-    def _record_file_id(self, ie, path):
-        """Store the file id of an inventory entry in a file property.
-
-        :param ie: Inventory entry.
-        :param path: Path of the inventory entry.
-        """
-        self._svnprops[SVN_PROP_BZR_FILEIDS] += "%s\t%s\n" % (urllib.quote(path), ie.file_id)
 
     def record_entry_contents(self, ie, parent_invs, path, tree,
                               content_summary):
