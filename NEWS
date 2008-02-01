@@ -58,11 +58,18 @@ IN DEVELOPMENT
     * List possible values for BZR_SSH environment variable in env-variables
       help topic. (Alexander Belchenko, #181842)
 
+    * pull --quiet is now more quiet, in particular a message is no longer
+      printed when the remembered pull location is used. (James Westby,
+      #185907)
+
     * ``reconfigure`` can safely be interrupted while fetching.
       (Aaron Bentley, #179316)
 
     * ``reconfigure`` preserves tags when converting to and from lightweight
       checkouts.  (Aaron Bentley, #182040)
+
+    * Stop polluting /tmp when running selftest.
+      (Vincent Ladeuil, #123623)
 
     * Switch from NFKC => NFC for normalization checks. NFC allows a few
       more characters which should be considered valid.
@@ -70,9 +77,6 @@ IN DEVELOPMENT
 
     * Unknown hostnames when connecting to a ``bzr://`` URL no longer cause
       tracebacks.  (Andrew Bennetts, #182849)
-
-    * Stop polluting /tmp when running selftest.
-      (Vincent Ladeuil, #123623)
 
   API BREAKS:
 
