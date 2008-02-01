@@ -450,7 +450,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             """Callback that is called by the Subversion commit editor 
             once the commit finishes.
 
-            :param revision_metadata: Revision metadata
+            :param revision_data: Revision metadata
             """
             self.revision_metadata = revision_data
         
