@@ -35,7 +35,7 @@ def get_rich_root_format():
         return format
     # Default format does not support rich root data, 
     # fall back to rich-root
-    format = format_registry.make_bzrdir('rich-root')
+    format = format_registry.make_bzrdir('rich-root-pack')
     assert format.repository_format.rich_root_data
     return format
 

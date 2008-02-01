@@ -36,10 +36,11 @@ from branch import SvnBranch
 from convert import SvnConverter
 from errors import LocalCommitsUnsupported, NoSvnRepositoryPresent
 from mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS, 
-                     SVN_PROP_BZR_REVISION_ID, SVN_PROP_BZR_REVISION_INFO)
+                     SVN_PROP_BZR_REVISION_ID, SVN_PROP_BZR_REVISION_INFO,
+                     generate_revision_metadata)
 from remote import SvnRemoteAccess
 from repository import (SvnRepository, revision_id_to_svk_feature, 
-                        generate_revision_metadata, SVN_PROP_SVK_MERGE) 
+                        SVN_PROP_SVK_MERGE) 
 from mapping import escape_svn_path
 from scheme import BranchingScheme
 from transport import (SvnRaTransport, bzr_to_svn_url, create_svn_client,
@@ -107,12 +108,12 @@ class SvnWorkingTree(WorkingTree):
         ignores = set([svn.wc.get_adm_dir()])
         ignores.update(svn.wc.get_default_ignores(svn_config))
 
-        def dir_add(wc, prefix):
+        def dir_add(wc, prefix, patprefix):
             ignorestr = svn.wc.prop_get(svn.core.SVN_PROP_IGNORE, 
                                         self.abspath(prefix).rstrip("/"), wc)
             if ignorestr is not None:
                 for pat in ignorestr.splitlines():
-                    ignores.add("./"+os.path.join(prefix, pat))
+                    ignores.add(urlutils.joinpath(patprefix, pat))
 
             entries = svn.wc.entries_read(wc, False)
             for entry in entries:
@@ -127,13 +128,13 @@ class SvnWorkingTree(WorkingTree):
                 subwc = svn.wc.adm_open3(wc, self.abspath(subprefix), False, 
                                          0, None)
                 try:
-                    dir_add(subwc, subprefix)
+                    dir_add(subwc, subprefix, urlutils.joinpath(patprefix, entry))
                 finally:
                     svn.wc.adm_close(subwc)
 
         wc = self._get_wc()
         try:
-            dir_add(wc, "")
+            dir_add(wc, "", ".")
         finally:
             svn.wc.adm_close(wc)
 
@@ -693,6 +694,9 @@ class SvnWorkingTree(WorkingTree):
         finally:
             self.branch.unlock()
 
+    def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
+        file_id = self.basis_tree().path2(path)
+        return self.basis_tree()._inventory[file_id].executable
 
 
 class SvnWorkingTreeFormat(WorkingTreeFormat):
@@ -756,7 +760,8 @@ class SvnCheckout(BzrDir):
         raise NoRepositoryPresent(self)
 
     def find_repository(self):
-        return SvnRepository(self, self.svn_root_transport, self.remote_bzrdir.branch_path)
+        return SvnRepository(self, self.svn_root_transport, 
+                             self.remote_bzrdir.branch_path)
 
     def needs_format_conversion(self, format=None):
         if format is None:

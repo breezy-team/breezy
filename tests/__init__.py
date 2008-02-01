@@ -24,8 +24,6 @@ from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
-RENAMES = False
-
 import svn.repos, svn.wc
 from bzrlib.plugins.svn.errors import NoCheckoutSupport
 
@@ -53,9 +51,13 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         svn.repos.create(abspath, '', '', None, None)
 
         if allow_revprop_changes:
-            revprop_hook = os.path.join(abspath, "hooks", "pre-revprop-change")
-            open(revprop_hook, 'w').write("#!/bin/sh")
-            os.chmod(revprop_hook, os.stat(revprop_hook).st_mode | 0111)
+            if os.name == 'win32':
+                revprop_hook = os.path.join(abspath, "hooks", "pre-revprop-change.bat")
+                open(revprop_hook, 'w').write("exit 0\n")
+            else:
+                revprop_hook = os.path.join(abspath, "hooks", "pre-revprop-change")
+                open(revprop_hook, 'w').write("#!/bin/sh\n")
+                os.chmod(revprop_hook, os.stat(revprop_hook).st_mode | 0111)
 
         return repos_url
 
@@ -287,6 +289,7 @@ def test_suite():
             'test_fetch',
             'test_fileids', 
             'test_logwalker',
+            'test_mapping',
             'test_push',
             'test_radir',
             'test_repos', 

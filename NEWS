@@ -1,4 +1,6 @@
-bzr-svn 0.4.7	UNRELEASED
+bzr-svn 0.4.8	UNRELEASED
+
+bzr-svn 0.4.7	2008-02-01
  
   FEATURES
 
@@ -25,6 +27,11 @@ bzr-svn 0.4.7	UNRELEASED
 
    * Avoid errors about invalid branching paths unless the branching scheme 
      was specified explicitly.
+
+   * Change default format to rich-root-pack. (#187008)
+
+   * Fix handling of weird file change after replacing from other branch.
+     (#186876)
 
 bzr-svn 0.4.6	2008-01-08
 

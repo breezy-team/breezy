@@ -87,11 +87,10 @@ class SvnRepositoryConfig(IniBasedConfig):
         """Check whether or not the branching scheme for this repository 
         is mandatory.
         """
-        mandatory = self._get_user_option("branching-scheme-mandatory", 
-                                           use_global=False)
-        if mandatory is not None:
-            return bool(mandatory)
-        return False
+        try:
+            return self._get_parser().get_bool(self.uuid, "branching-scheme-mandatory")
+        except KeyError:
+            return False
 
     def get_override_svn_revprops(self):
         """Check whether or not bzr-svn should attempt to override Subversion revision 

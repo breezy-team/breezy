@@ -26,7 +26,7 @@ import sha
 from fileids import SimpleFileIdMap, generate_file_id
 from mapping import default_mapping
 from scheme import TrunkBranchingScheme
-from tests import TestCaseWithSubversionRepository, RENAMES
+from tests import TestCaseWithSubversionRepository
 
 class MockRepo:
     def __init__(self, uuid="uuid"):
@@ -65,8 +65,6 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
                 repository.generate_revision_id(2, "", "none"))
         mutter('inv1: %r' % inv1.entries())
         mutter('inv2: %r' % inv2.entries())
-        if RENAMES:
-            self.assertEqual(inv1.path2id("foo"), inv2.path2id("bar"))
         self.assertNotEqual(None, inv1.path2id("foo"))
         self.assertIs(None, inv2.path2id("foo"))
         self.assertNotEqual(None, inv2.path2id("bar"))

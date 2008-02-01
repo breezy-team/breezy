@@ -31,7 +31,7 @@ import os
 
 from mapping import MAPPING_VERSION, default_mapping
 from transport import svn_config
-from tests import TestCaseWithSubversionRepository, RENAMES
+from tests import TestCaseWithSubversionRepository
 
 class TestWorkingTree(TestCaseWithSubversionRepository):
     def test_add_duplicate(self):
@@ -327,11 +327,6 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertTrue(inv.has_filename("dir/a"))
         mutter('basis: %r' % basis_inv.entries())
         mutter('working: %r' % inv.entries())
-        if RENAMES:
-            self.assertEqual(basis_inv.path2id("bl"), 
-                             inv.path2id("dir/bl"))
-            self.assertEqual(basis_inv.path2id("a"), 
-                            inv.path2id("dir/a"))
         self.assertFalse(inv.has_filename("bl"))
         self.assertFalse(basis_inv.has_filename("dir/bl"))
 
@@ -533,8 +528,8 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
     def test_status(self):
         self.make_client('a', 'dc')
         tree = self.open_checkout("dc")
-        self.assertTrue(os.path.exists("dc/.svn"))
-        self.assertFalse(os.path.exists("dc/.bzr"))
+        self.assertTrue(os.path.exists(os.path.join("dc", ".svn")))
+        self.assertFalse(os.path.exists(os.path.join("dc", ".bzr")))
         tree.read_working_inventory()
 
     def test_update(self):
@@ -545,14 +540,14 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.client_commit("dc", "msg")
         tree = self.open_checkout("de")
         tree.update()
-        self.assertTrue(os.path.exists("de/.svn"))
-        self.assertTrue(os.path.exists("de/bla"))
+        self.assertTrue(os.path.exists(os.path.join("de", ".svn")))
+        self.assertTrue(os.path.exists(os.path.join("de", "bla")))
 
     def test_status_bzrdir(self):
         self.make_client('a', 'dc')
         bzrdir = self.open_checkout_bzrdir("dc")
-        self.assertTrue(os.path.exists("dc/.svn"))
-        self.assertTrue(not os.path.exists("dc/.bzr"))
+        self.assertTrue(os.path.exists(os.path.join("dc", ".svn")))
+        self.assertTrue(not os.path.exists(os.path.join("dc", ".bzr")))
         bzrdir.open_workingtree()
 
     def test_file_id_consistent(self):

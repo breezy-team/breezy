@@ -34,9 +34,9 @@ from mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_MERGE,
                      SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVISION_INFO, 
                      SVN_PROP_BZR_BRANCHING_SCHEME, SVN_PROP_BZR_REVISION_ID,
                      SVN_PROP_BZR_FILEIDS, SVN_REVPROP_BZR_MAPPING_VERSION, 
-                     MAPPING_VERSION)
+                     MAPPING_VERSION, parse_revision_metadata, 
+                     parse_merge_property)
 from repository import (SvnRepository, SvnRepositoryFormat, 
-                        parse_revision_metadata, parse_merge_property, 
                         SVN_PROP_SVK_MERGE, revision_parse_svn_revprops)
 from tree import apply_txdelta_handler
 
@@ -154,12 +154,13 @@ class RevisionBuildEditor(svn.delta.Editor):
         ie.revision = self.revid
         return (old_file_id, file_id)
 
-    def _get_existing_id(self, parent_id, path):
+    def _get_existing_id(self, old_parent_id, new_parent_id, path):
         assert isinstance(path, unicode)
-        assert isinstance(parent_id, str)
+        assert isinstance(old_parent_id, str)
+        assert isinstance(new_parent_id, str)
         if self.id_map.has_key(path):
             return self.id_map[path]
-        return self._get_old_id(parent_id, path)
+        return self.old_inventory[old_parent_id].children[urlutils.basename(path)].file_id
 
     def _get_old_id(self, parent_id, old_path):
         assert isinstance(old_path, unicode)
@@ -234,7 +235,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         assert base_revnum >= 0
         base_file_id = self._get_old_id(old_parent_id, path)
         base_revid = self.old_inventory[base_file_id].revision
-        file_id = self._get_existing_id(new_parent_id, path)
+        file_id = self._get_existing_id(old_parent_id, new_parent_id, path)
         if file_id == base_file_id:
             self.dir_baserev[file_id] = [base_revid]
             ie = self.inventory[file_id]
@@ -341,7 +342,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         path = path.decode("utf-8")
         base_file_id = self._get_old_id(old_parent_id, path)
         base_revid = self.old_inventory[base_file_id].revision
-        self.file_id = self._get_existing_id(new_parent_id, path)
+        self.file_id = self._get_existing_id(old_parent_id, new_parent_id, path)
         self.is_executable = None
         self.is_symlink = (self.inventory[base_file_id].kind == 'symlink')
         self.file_data = self._get_file_data(base_file_id, base_revid)

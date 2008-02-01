@@ -57,6 +57,8 @@ class ReposConfigTests(TestCaseInTempDir):
         c = SvnRepositoryConfig("blabla3")
         c.set_branching_scheme(TrunkBranchingScheme(), mandatory=True)
         self.assertEquals(True, c.branching_scheme_is_mandatory())
+        c.set_branching_scheme(TrunkBranchingScheme(), mandatory=False)
+        self.assertEquals(False, c.branching_scheme_is_mandatory())
 
     def test_override_revprops(self):
         c = SvnRepositoryConfig("blabla2")

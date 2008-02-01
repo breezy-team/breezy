@@ -128,8 +128,10 @@ class UpgradeTests(TestCaseWithSubversionRepository):
 
         self.assertTrue(newrepos.has_revision(oldrepos.generate_revision_id(1, "", "none")))
         self.assertTrue(newrepos.has_revision("customrev-svn%d-upgrade" % MAPPING_VERSION))
+        newrepos.lock_read()
         self.assertTrue((oldrepos.generate_revision_id(1, "", "none"),),
                         tuple(newrepos.revision_parents("customrev-svn%d-upgrade" % MAPPING_VERSION)))
+        newrepos.unlock()
 
     @skip_no_rebase
     def test_single_keep_parent_fileid(self):
@@ -198,8 +200,10 @@ class UpgradeTests(TestCaseWithSubversionRepository):
 
         self.assertTrue(newrepos.has_revision(oldrepos.generate_revision_id(1, "", "none")))
         self.assertTrue(newrepos.has_revision("customrev-svn%d-upgrade" % MAPPING_VERSION))
+        newrepos.lock_read()
         self.assertTrue((oldrepos.generate_revision_id(1, "", "none"),),
                         tuple(newrepos.revision_parents("customrev-svn%d-upgrade" % MAPPING_VERSION)))
+        newrepos.unlock()
 
     @skip_no_rebase
     def test_more_custom(self):
@@ -231,10 +235,12 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         self.assertTrue(newrepos.has_revision(oldrepos.generate_revision_id(1, "", "none")))
         self.assertTrue(newrepos.has_revision("customrev-svn%d-upgrade" % MAPPING_VERSION))
         self.assertTrue(newrepos.has_revision("anotherrev-svn%d-upgrade" % MAPPING_VERSION))
+        newrepos.lock_read()
         self.assertTrue((oldrepos.generate_revision_id(1, "", "none"),),
                         tuple(newrepos.revision_parents("customrev-svn%d-upgrade" % MAPPING_VERSION)))
         self.assertTrue(("customrev-svn%d-upgrade" % MAPPING_VERSION,),
                         tuple(newrepos.revision_parents("anotherrev-svn%d-upgrade" % MAPPING_VERSION)))
+        newrepos.unlock()
 
     @skip_no_rebase
     def test_more_custom_branch(self):

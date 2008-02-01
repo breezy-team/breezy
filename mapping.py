@@ -51,6 +51,74 @@ def escape_svn_path(x):
 unescape_svn_path = urllib.unquote
 
 
+def parse_revision_metadata(text, rev):
+    """Parse a revision info text (as set in bzr:revision-info).
+
+    :param text: text to parse
+    :param rev: Revision object to apply read parameters to
+    """
+    in_properties = False
+    for l in text.splitlines():
+        try:
+            key, value = l.split(": ", 2)
+        except ValueError:
+            raise errors.InvalidPropertyValue(SVN_PROP_BZR_REVISION_INFO, 
+                    "Missing : in revision metadata")
+        if key == "committer":
+            rev.committer = value.decode("utf-8")
+        elif key == "timestamp":
+            (rev.timestamp, rev.timezone) = unpack_highres_date(value)
+        elif key == "properties":
+            in_properties = True
+        elif key[0] == "\t" and in_properties:
+            rev.properties[str(key[1:])] = value.decode("utf-8")
+        else:
+            raise errors.InvalidPropertyValue(SVN_PROP_BZR_REVISION_INFO, 
+                    "Invalid key %r" % key)
+
+
+def parse_revid_property(line):
+    """Parse a (revnum, revid) tuple as set in revision id properties.
+    :param line: line to parse
+    :return: tuple with (bzr_revno, revid)
+    """
+    if '\n' in line:
+        raise errors.InvalidPropertyValue(SVN_PROP_BZR_REVISION_ID, 
+                "newline in revision id property line")
+    try:
+        (revno, revid) = line.split(' ', 1)
+    except ValueError:
+        raise errors.InvalidPropertyValue(SVN_PROP_BZR_REVISION_ID, 
+                "missing space")
+    if revid == "":
+        raise errors.InvalidPropertyValue(SVN_PROP_BZR_REVISION_ID,
+                "empty revision id")
+    return (int(revno), revid)
+
+
+def generate_revision_metadata(timestamp, timezone, committer, revprops):
+    """Generate revision metadata text for the specified revision 
+    properties.
+
+    :param timestamp: timestamp of the revision, in seconds since epoch
+    :param timezone: timezone, specified by offset from GMT in seconds
+    :param committer: name/email of the committer
+    :param revprops: dictionary with custom revision properties
+    :return: text with data to set bzr:revision-info to.
+    """
+    assert timestamp is None or isinstance(timestamp, float)
+    text = ""
+    if timestamp is not None:
+        text += "timestamp: %s\n" % format_highres_date(timestamp, timezone) 
+    if committer is not None:
+        text += "committer: %s\n" % committer
+    if revprops is not None and revprops != {}:
+        text += "properties: \n"
+        for k, v in sorted(revprops.items()):
+            text += "\t%s: %s\n" % (k, v)
+    return text
+
+
 class BzrSvnMapping:
     """Class that maps between Subversion and Bazaar semantics."""
 

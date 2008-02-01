@@ -39,8 +39,8 @@ from mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS,
                      SVN_REVPROP_BZR_MERGE, SVN_REVPROP_BZR_REVISION_ID,
                      SVN_REVPROP_BZR_REVPROP_PREFIX, SVN_REVPROP_BZR_ROOT,
                      SVN_REVPROP_BZR_TIMESTAMP, SVN_REVPROP_BZR_MAPPING_VERSION,
-                     MAPPING_VERSION)
-from repository import (revision_id_to_svk_feature, generate_revision_metadata, 
+                     MAPPING_VERSION, generate_revision_metadata)
+from repository import (revision_id_to_svk_feature, 
                         SvnRepositoryFormat, SvnRepository, SVN_PROP_SVK_MERGE)
 import urllib
 
