@@ -40,8 +40,8 @@ IN DEVELOPMENT
       selftest``.  (Andrew Bennetts)
 
     * The ``register-branch`` command will now use the public url of the branch
-      containing the current directory, if one has been set and no explicit branch is provided.
-      (Robert Collins)
+      containing the current directory, if one has been set and no explicit
+      branch is provided.  (Robert Collins)
 
   BUGFIXES:
 
