@@ -32,8 +32,8 @@ from cStringIO import StringIO
 from errors import ChangesRootLHSHistory, MissingPrefix, RevpropChangeFailed
 from mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS,
                      SVN_PROP_BZR_REVISION_INFO, 
-                     SVN_PROP_BZR_REVISION_ID)
-from repository import (revision_id_to_svk_feature, generate_revision_metadata, 
+                     SVN_PROP_BZR_REVISION_ID, generate_revision_metadata)
+from repository import (revision_id_to_svk_feature, 
                         SvnRepositoryFormat, SvnRepository, SVN_PROP_SVK_MERGE)
 import urllib
 

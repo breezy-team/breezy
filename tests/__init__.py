@@ -289,6 +289,7 @@ def test_suite():
             'test_fetch',
             'test_fileids', 
             'test_logwalker',
+            'test_mapping',
             'test_push',
             'test_radir',
             'test_repos', 
