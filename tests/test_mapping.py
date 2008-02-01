@@ -15,9 +15,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from errors import InvalidPropertyValue
 from mapping import (generate_revision_metadata, parse_revision_metadata, 
-                     parse_revid_property)
+                     parse_revid_property, parse_merge_property)
 from bzrlib.tests import TestCase
+from bzrlib.revision import Revision
 
 class MetadataMarshallerTests(TestCase):
     def test_generate_revision_metadata_none(self):
@@ -100,4 +102,12 @@ class MetadataMarshallerTests(TestCase):
         self.assertRaises(InvalidPropertyValue, 
                 lambda: parse_revid_property("foo\nbar"))
 
+class ParseMergePropertyTestCase(TestCase):
+    def test_parse_merge_space(self):
+        self.assertEqual([], parse_merge_property("bla bla"))
 
+    def test_parse_merge_empty(self):
+        self.assertEqual([], parse_merge_property(""))
+
+    def test_parse_merge_simple(self):
+        self.assertEqual(["bla", "bloe"], parse_merge_property("bla\tbloe"))

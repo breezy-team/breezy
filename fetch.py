@@ -33,7 +33,6 @@ from fileids import generate_file_id
 from mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_MERGE, 
                      SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVISION_INFO, 
                      SVN_PROP_BZR_BRANCHING_SCHEME, SVN_PROP_BZR_REVISION_ID,
-                     SVN_PROP_BZR_FILEIDS, SVN_REVPROP_BZR_MAPPING_VERSION, 
                      MAPPING_VERSION, parse_revision_metadata, 
                      parse_merge_property)
 from repository import (SvnRepository, SvnRepositoryFormat, 
