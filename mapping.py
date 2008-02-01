@@ -15,12 +15,16 @@
 
 from bzrlib import osutils, registry
 from bzrlib.errors import InvalidRevisionId
+from bzrlib.trace import mutter
 
 import calendar
 import errors
 import sha
+import svn
 import time
 import urllib
+
+from svk import SVN_PROP_SVK_MERGE
 
 MAPPING_VERSION = 3
 
@@ -236,6 +240,26 @@ class BzrSvnMapping:
         """
         raise NotImplementedError(self.generate_file_id)
 
+    @staticmethod
+    def parse_svn_revision(revprops, get_branch_file_property, rev):
+        """Update a Revision object from Subversion revision and branch 
+        properties.
+
+        :param revprops: Dictionary with Subversion revision properties.
+        :param get_branch_file_property: Function that takes a string and
+            returns the value of the matching file property set on the branch 
+            path.
+        :param rev: Revision object to import data into.
+        """
+        raise NotImplementedError(self.parse_svn_revision)
+
+    @staticmethod
+    def get_rhs_parents(self, revnum, branch):
+        """Obtain the right-hand side parents for a revision.
+
+        """
+        raise NotImplementedError(self.get_rhs_parents)
+
 
 class BzrSvnMappingv1(BzrSvnMapping):
     """This was the initial version of the mappings as used by bzr-svn
@@ -327,6 +351,42 @@ class BzrSvnMappingv3(BzrSvnMapping):
         assert isinstance(ret, str)
         return osutils.safe_file_id(ret)
 
+    @staticmethod
+    def parse_svn_revision(svn_revprops, get_branch_file_property, rev):
+        if svn_revprops.has_key(svn.core.SVN_PROP_REVISION_AUTHOR):
+            rev.committer = svn_revprops[svn.core.SVN_PROP_REVISION_AUTHOR]
+        else:
+            rev.committer = ""
+
+        rev.message = svn_revprops.get(svn.core.SVN_PROP_REVISION_LOG)
+
+        if rev.message:
+            try:
+                rev.message = rev.message.decode("utf-8")
+            except UnicodeDecodeError:
+                pass
+
+        if svn_revprops.has_key(svn.core.SVN_PROP_REVISION_DATE):
+            rev.timestamp = 1.0 * svn.core.secs_from_timestr(svn_revprops[svn.core.SVN_PROP_REVISION_DATE], None)
+        else:
+            rev.timestamp = 0.0 # FIXME: Obtain repository creation time
+        rev.timezone = None
+        rev.properties = {}
+        parse_revision_metadata(
+                get_branch_file_property(SVN_PROP_BZR_REVISION_INFO, ""), rev)
+
+    @classmethod
+    def get_rhs_parents(cls, revprops, get_branch_file_property, scheme):
+        rhs_parents = []
+        bzr_merges = get_branch_file_property(SVN_PROP_BZR_ANCESTRY+str(scheme), None)
+        if bzr_merges is not None:
+            return parse_merge_property(bzr_merges.splitlines()[-1])
+
+        svk_merges = get_branch_file_property(SVN_PROP_SVK_MERGE, None)
+        if svk_merges is not None:
+            _merges = cls._svk_merged_revisions(branch, revnum, scheme)
+
+        return []
 
 
 class BzrSvnMappingRegistry(registry.Registry):

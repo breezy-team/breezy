@@ -90,6 +90,22 @@ class BranchPropertyList:
 
         return proplist
 
+    def get_changed_property(self, path, revnum, name, default=None):
+        """Get the contents of a Subversion file property.
+
+        Will use the cache.
+
+        :param path: Subversion path.
+        :param revnum: Subversion revision number.
+        :param default: Default value to return if property wasn't found.
+        :return: Contents of property or default if property didn't exist.
+        """
+        assert isinstance(revnum, int)
+        assert isinstance(path, str)
+        if not self.touches_property(path, revnum, name):
+            return default
+        return self.get_property(path, revnum, name, default)
+
     def get_property(self, path, revnum, name, default=None):
         """Get the contents of a Subversion file property.
 
