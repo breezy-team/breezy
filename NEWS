@@ -43,6 +43,10 @@ IN DEVELOPMENT
     * The ``--coverage`` option is now global, rather specific to ``bzr
       selftest``.  (Andrew Bennetts)
 
+    * The ``register-branch`` command will now use the public url of the branch
+      containing the current directory, if one has been set and no explicit
+      branch is provided.  (Robert Collins)
+
     * Tweak the ``reannotate`` code path to optimize the 2-parent case.
       Speeds up ``bzr annotate`` with a pack repository by approx 3:2.
       (John Arbash Meinel)
@@ -74,6 +78,9 @@ IN DEVELOPMENT
     * Switch from NFKC => NFC for normalization checks. NFC allows a few
       more characters which should be considered valid.
       (John Arbash Meinel, #185458)
+
+    * The launchpad plugin now uses the ``edge`` xmlrpc server to avoid
+      interacting badly with a bug on the launchpad side. (Robert Collins)
 
     * Unknown hostnames when connecting to a ``bzr://`` URL no longer cause
       tracebacks.  (Andrew Bennetts, #182849)
@@ -110,6 +117,9 @@ IN DEVELOPMENT
       ``InterRepository.search_missing_revision_ids`` which returns a 
       ``bzrlib.graph.SearchResult`` suitable for making requests from the smart
       server. (Robert Collins)
+
+    * New error ``NoPublicBranch`` for commands that need a public branch to
+      operate. (Robert Collins)
  
     * New method ``iter_inventories`` on Repository for access to many
       inventories. This is primarily used by the ``revision_trees`` method, as

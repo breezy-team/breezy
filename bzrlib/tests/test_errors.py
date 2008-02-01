@@ -22,6 +22,7 @@ from bzrlib import (
     bzrdir,
     errors,
     symbol_versioning,
+    urlutils,
     )
 from bzrlib.tests import TestCase, TestCaseWithTransport
 
@@ -121,7 +122,14 @@ class TestErrors(TestCaseWithTransport):
         error = errors.MediumNotConnected("a medium")
         self.assertEqualDiff(
             "The medium 'a medium' is not connected.", str(error))
-        
+ 
+    def test_no_public_branch(self):
+        b = self.make_branch('.')
+        error = errors.NoPublicBranch(b)
+        url = urlutils.unescape_for_display(b.base, 'ascii')
+        self.assertEqualDiff(
+            'There is no public branch set for "%s".' % url, str(error))
+
     def test_no_repo(self):
         dir = bzrdir.BzrDir.create(self.get_url())
         error = errors.NoRepositoryPresent(dir)

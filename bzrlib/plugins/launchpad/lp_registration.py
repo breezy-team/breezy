@@ -40,7 +40,11 @@ class LaunchpadService(object):
 
     # NB: this should always end in a slash to avoid xmlrpclib appending
     # '/RPC2'
-    DEFAULT_SERVICE_URL = 'https://xmlrpc.launchpad.net/bazaar/'
+    # We use edge because:
+    # Beta users get redirected to it
+    # All users can use it
+    # There is a bug in the launchpad side where redirection causes an OOPS.
+    DEFAULT_SERVICE_URL = 'https://xmlrpc.edge.launchpad.net/bazaar/'
 
     transport = None
     registrant_email = None
@@ -180,7 +184,7 @@ class BranchRegistrationRequest(BaseRequest):
                  author_email='',
                  product_name='',
                  ):
-        assert branch_url
+        assert branch_url, 'branch_url %r is invalid' % branch_url
         self.branch_url = branch_url
         if branch_name:
             self.branch_name = branch_name
