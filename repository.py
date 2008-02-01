@@ -137,8 +137,6 @@ class SvnRepository(Repository):
         cachedir_transport = get_transport(cache_dir)
         cache_file = os.path.join(cache_dir, 'cache-v%d' % CACHE_DB_VERSION)
         if not cachedbs.has_key(cache_file):
-            if not os.path.exists(cache_file):
-                info("Initialising Subversion metadata cache in %s" % cache_file)
             cachedbs[cache_file] = sqlite3.connect(cache_file)
         self.cachedb = cachedbs[cache_file]
 
@@ -253,6 +251,7 @@ class SvnRepository(Repository):
         cache_dir = create_cache_dir()
         dir = os.path.join(cache_dir, self.uuid)
         if not os.path.exists(dir):
+            info("Initialising Subversion metadata cache in %s" % dir)
             os.mkdir(dir)
         return dir
 
