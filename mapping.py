@@ -276,6 +276,12 @@ class BzrSvnMapping:
 
 
 class BzrSvnMappingv1(BzrSvnMapping):
+    """This was the initial version of the mappings as used by bzr-svn
+    0.2.
+    
+    It does not support pushing revisions to Subversion as-is, but only 
+    as part of a merge.
+    """
     @staticmethod
     def parse_revision_id(revid):
         assert revid.startswith("svn-v1:")
@@ -290,6 +296,9 @@ class BzrSvnMappingv1(BzrSvnMapping):
 
 
 class BzrSvnMappingv2(BzrSvnMapping):
+    """The second version of the mappings as used in the 0.3.x series.
+
+    """
     @staticmethod
     def parse_revision_id(revid):
         assert revid.startswith("svn-v2:")
@@ -304,6 +313,9 @@ class BzrSvnMappingv2(BzrSvnMapping):
 
 
 class BzrSvnMappingv3(BzrSvnMapping):
+    """The third version of the mappings as used in the 0.4.x series.
+
+    """
     revid_prefix = "svn-v3-"
 
     @classmethod
@@ -321,6 +333,8 @@ class BzrSvnMappingv3(BzrSvnMapping):
 
         scheme = version[len(cls.revid_prefix):]
 
+        # Some older versions of bzr-svn 0.4 did not always set a branching
+        # scheme but set "undefined" instead.
         if scheme == "undefined":
             scheme = None
 
