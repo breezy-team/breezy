@@ -42,8 +42,7 @@ from mapping import (default_mapping, SVN_PROP_BZR_REVISION_ID,
                      SVN_PROP_BZR_REVISION_INFO, SVN_PROP_BZR_BRANCHING_SCHEME,
                      SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS,
                      parse_revision_metadata, parse_revid_property, 
-                     parse_merge_property)
-                      
+                     parse_merge_property, revision_parse_svn_revprops)
 from revids import RevidMap
 from scheme import (BranchingScheme, ListBranchingScheme, 
                     parse_list_scheme_text, guess_scheme_from_history)
@@ -78,41 +77,6 @@ def revision_id_to_svk_feature(revid):
     # repository.lookup_revision_id here.
     return "%s:/%s:%d" % (uuid, branch, revnum)
 
-
-def revision_parse_svn_revprops(rev, props):
-    """Update a Revision object from a set of Subversion revision properties.
-    
-    :param rev: Revision object
-    :param props: Dictionary with Subversion revision properties.
-    """
-    rev.timezone = None
-
-    if props.has_key(SVN_REVPROP_BZR_TIMESTAMP):
-        (rev.timestamp, rev.timezone) = unpack_highres_date(props[SVN_REVPROP_BZR_TIMESTAMP])
-    elif props.has_key(svn.core.SVN_PROP_REVISION_DATE):
-        rev.timestamp = 1.0 * svn.core.secs_from_timestr(
-            props[svn.core.SVN_PROP_REVISION_DATE], None)
-    else:
-        rev.timestamp = 0 # FIXME: Obtain repository creation time
-
-    if props.has_key(SVN_REVPROP_BZR_COMMITTER):
-        rev.committer = props[SVN_REVPROP_BZR_COMMITTER].decode("utf-8")
-    elif props.has_key(svn.core.SVN_PROP_REVISION_AUTHOR):
-        rev.committer = props[svn.core.SVN_PROP_REVISION_AUTHOR]
-    else:
-        rev.committer = ""
-
-    rev.message = props.get(svn.core.SVN_PROP_REVISION_LOG)
-    if rev.message is not None:
-        assert isinstance(rev.message, str)
-        try:
-            rev.message = rev.message.decode("utf-8")
-        except UnicodeDecodeError:
-            pass
-
-    for name, value in props.items():
-        if name.startswith(SVN_REVPROP_BZR_REVPROP_PREFIX):
-            rev.properties[name[len(SVN_REVPROP_BZR_REVPROP_PREFIX):]] = value
 
 
 class SvnRepositoryFormat(RepositoryFormat):
@@ -372,7 +336,6 @@ class SvnRepository(Repository):
                 return False
             raise
 
-
     def revision_trees(self, revids):
         """See Repository.revision_trees()."""
         for revid in revids:
@@ -525,10 +488,6 @@ class SvnRepository(Repository):
         if mainline_parent is not None:
             parent_ids.append(mainline_parent)
 
-        # if the branch didn't change, bzr:merge or svk:merge can't have changed
-        if not self._log.touches_path(branch, revnum):
-            return parent_ids
-       
         svn_revprops = self.transport.revprop_list(revnum)
         if svn_revprops.has_key(SVN_REVPROP_BZR_MAPPING_VERSION):
             if svn_revprops[SVN_REVPROP_BZR_ROOT] != branch:
@@ -537,6 +496,10 @@ class SvnRepository(Repository):
                 return parent_ids
             return parent_ids + svn_revprops[SVN_REVPROP_BZR_MERGE].splitlines()
 
+        # if the branch didn't change, bzr:merge or svk:merge can't have changed
+        if not self._log.touches_path(branch, revnum):
+            return parent_ids
+ 
         if bzr_merges is None:
             bzr_merges = self._bzr_merged_revisions(branch, revnum, scheme)
 

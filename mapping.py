@@ -202,6 +202,42 @@ def generate_revision_metadata(timestamp, timezone, committer, revprops):
     return text
 
 
+def revision_parse_svn_revprops(rev, props):
+    """Update a Revision object from a set of Subversion revision properties.
+    
+    :param rev: Revision object
+    :param props: Dictionary with Subversion revision properties.
+    """
+    rev.timezone = None
+
+    if props.has_key(SVN_REVPROP_BZR_TIMESTAMP):
+        (rev.timestamp, rev.timezone) = unpack_highres_date(props[SVN_REVPROP_BZR_TIMESTAMP])
+    elif props.has_key(svn.core.SVN_PROP_REVISION_DATE):
+        rev.timestamp = 1.0 * svn.core.secs_from_timestr(
+            props[svn.core.SVN_PROP_REVISION_DATE], None)
+    else:
+        rev.timestamp = 0 # FIXME: Obtain repository creation time
+
+    if props.has_key(SVN_REVPROP_BZR_COMMITTER):
+        rev.committer = props[SVN_REVPROP_BZR_COMMITTER].decode("utf-8")
+    elif props.has_key(svn.core.SVN_PROP_REVISION_AUTHOR):
+        rev.committer = props[svn.core.SVN_PROP_REVISION_AUTHOR]
+    else:
+        rev.committer = ""
+
+    rev.message = props.get(svn.core.SVN_PROP_REVISION_LOG)
+    if rev.message is not None:
+        assert isinstance(rev.message, str)
+        try:
+            rev.message = rev.message.decode("utf-8")
+        except UnicodeDecodeError:
+            pass
+
+    for name, value in props.items():
+        if name.startswith(SVN_REVPROP_BZR_REVPROP_PREFIX):
+            rev.properties[name[len(SVN_REVPROP_BZR_REVPROP_PREFIX):]] = value
+
+
 class BzrSvnMapping:
     """Class that maps between Subversion and Bazaar semantics."""
 

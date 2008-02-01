@@ -34,9 +34,8 @@ from mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_MERGE,
                      SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVISION_INFO, 
                      SVN_PROP_BZR_BRANCHING_SCHEME, SVN_PROP_BZR_REVISION_ID,
                      MAPPING_VERSION, parse_revision_metadata, 
-                     parse_merge_property)
-from repository import (SvnRepository, SvnRepositoryFormat, 
-                        SVN_PROP_SVK_MERGE, revision_parse_svn_revprops)
+                     parse_merge_property, revision_parse_svn_revprops)
+from repository import (SvnRepository, SvnRepositoryFormat, SVN_PROP_SVK_MERGE)
 from tree import apply_txdelta_handler
 
 
