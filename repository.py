@@ -79,6 +79,7 @@ def revision_id_to_svk_feature(revid):
     return "%s:/%s:%d" % (uuid, branch, revnum)
 
 
+
 class SvnRepositoryFormat(RepositoryFormat):
     """Repository format for Subversion repositories (accessed using svn_ra).
     """
@@ -215,7 +216,7 @@ class SvnRepository(Repository):
         return ListBranchingScheme(parse_list_scheme_text(text))
 
     def set_property_scheme(self, scheme):
-        def done(revision, date, author):
+        def done(revmetadata, pool):
             pass
         editor = self.transport.get_commit_editor(
                 {svn.core.SVN_PROP_REVISION_LOG: "Updating branching scheme for Bazaar."},
@@ -335,7 +336,6 @@ class SvnRepository(Repository):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
                 return False
             raise
-
 
     def revision_trees(self, revids):
         """See Repository.revision_trees()."""
