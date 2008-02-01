@@ -610,7 +610,8 @@ class cmd_pull(Command):
             else:
                 display_url = urlutils.unescape_for_display(stored_loc,
                         self.outf.encoding)
-                self.outf.write("Using saved location: %s\n" % display_url)
+                if not is_quiet():
+                    self.outf.write("Using saved location: %s\n" % display_url)
                 location = stored_loc
                 location_transport = transport.get_transport(
                     location, possible_transports=possible_transports)
