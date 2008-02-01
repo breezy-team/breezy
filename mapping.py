@@ -311,6 +311,13 @@ class BzrSvnMapping:
     def get_fileid_map(revprops, get_branch_file_property):
         raise NotImplementedError(self.get_fileid_map)
 
+    @staticmethod
+    def generate_svn_revision(rev):
+        """Determines the revision properties and branch root file 
+        properties.
+        """
+        raise NotImplementedError(self.generate_svn_revision)
+
 
 class BzrSvnMappingv1(BzrSvnMapping):
     """This was the initial version of the mappings as used by bzr-svn
@@ -442,6 +449,79 @@ class BzrSvnMappingv3(BzrSvnMapping):
         if fileids is None:
             return {}
         return parse_fileid_property(fileids)
+
+    def _record_revision_id(self, revid):
+        """Store the revision id in a file property.
+
+        :param revid: The revision id.
+        """
+        if self.base_revid is not None:
+            old = self.repository.branchprop_list.get_property(
+                    self.base_path, self.base_revnum, 
+                        SVN_PROP_BZR_REVISION_ID+str(self.base_scheme), "")
+        else:
+            old = ""
+
+        self._svnprops[SVN_PROP_BZR_REVISION_ID+str(self.base_scheme)] = \
+                old + "%d %s\n" % (self.base_revno+1, revid)
+        self._svn_revprops[SVN_REVPROP_BZR_REVISION_ID] = revid
+
+    def _record_merges(self, merges):
+        """Store the extra merges (non-LHS parents) in a file property.
+
+        :param merges: List of parents.
+        """
+        # Bazaar Parents
+        if self.base_revid is not None:
+            old = self.repository.branchprop_list.get_property(
+                  self.base_path, self.base_revnum, 
+                  SVN_PROP_BZR_ANCESTRY+str(self.base_scheme), "")
+        else:
+            old = ""
+        self._svnprops[SVN_PROP_BZR_ANCESTRY+str(self.base_scheme)] = old + "\t".join(merges) + "\n"
+
+        if self.base_revid is not None:
+            old = self.repository.branchprop_list.get_property(
+                self.base_path, self.base_revnum, SVN_PROP_SVK_MERGE, "")
+        else:
+            old = ""
+
+        new = ""
+        # SVK compatibility
+        for merge in merges:
+            try:
+                new += "%s\n" % revision_id_to_svk_feature(merge)
+            except InvalidRevisionId:
+                pass
+
+        if new != "":
+            self._svnprops[SVN_PROP_SVK_MERGE] = old + new
+
+        self._svn_revprops[SVN_REVPROP_BZR_MERGE] = "".join(map(lambda x: x + "\n", merges))
+ 
+    @staticmethod
+    def generate_svn_revision(timestamp, timezone, committer, message, revprops):
+        # Keep track of what Subversion properties to set later on
+        fileprops = {}
+        fileprops[SVN_PROP_BZR_REVISION_INFO] = generate_revision_metadata(
+            timestamp, timezone, committer, revprops)
+
+        svn_revprops = {SVN_REVPROP_BZR_MAPPING_VERSION: str(MAPPING_VERSION)}
+
+        if timestamp is not None:
+            svn_revprops[SVN_REVPROP_BZR_TIMESTAMP] = format_highres_date(timestamp, timezone)
+
+        if committer is not None:
+            svn_revprops[SVN_REVPROP_BZR_COMMITTER] = committer.encode("utf-8")
+
+        if revprops is not None:
+            for name, value in revprops.items():
+                svn_revprops[SVN_REVPROP_BZR_REVPROP_PREFIX+name] = value
+
+        svn_revprops[SVN_REVPROP_BZR_ROOT] = self.branch.get_branch_path()
+        svn_revprops[svn.core.SVN_PROP_REVISION_LOG] = message.encode("utf-8")
+
+        return (svn_revprops, fileprops)
 
 
 class BzrSvnMappingv4(BzrSvnMappingv3):
