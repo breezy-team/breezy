@@ -48,89 +48,9 @@ from revids import RevidMap
 from scheme import (BranchingScheme, ListBranchingScheme, 
                     parse_list_scheme_text, guess_scheme_from_history)
 from tree import SvnRevisionTree
-import time
 import urllib
 
 SVN_PROP_SVK_MERGE = 'svk:merge'
-
-# The following two functions don't use day names (which can vary by 
-# locale) unlike the alternatives in bzrlib.timestamp
-
-def format_highres_date(t, offset=0):
-    """Format a date, such that it includes higher precision in the
-    seconds field.
-
-    :param t:   The local time in fractional seconds since the epoch
-    :type t: float
-    :param offset:  The timezone offset in integer seconds
-    :type offset: int
-    """
-    assert isinstance(t, float)
-
-    # This has to be formatted for "original" date, so that the
-    # revision XML entry will be reproduced faithfully.
-    if offset is None:
-        offset = 0
-    tt = time.gmtime(t + offset)
-
-    return (time.strftime("%Y-%m-%d %H:%M:%S", tt)
-            # Get the high-res seconds, but ignore the 0
-            + ('%.9f' % (t - int(t)))[1:]
-            + ' %+03d%02d' % (offset / 3600, (offset / 60) % 60))
-
-
-def unpack_highres_date(date):
-    """This takes the high-resolution date stamp, and
-    converts it back into the tuple (timestamp, timezone)
-    Where timestamp is in real UTC since epoch seconds, and timezone is an
-    integer number of seconds offset.
-
-    :param date: A date formated by format_highres_date
-    :type date: string
-    """
-    # skip day if applicable
-    if not date[0].isdigit():
-        space_loc = date.find(' ')
-        if space_loc == -1:
-            raise ValueError("No valid date: %r" % date)
-        date = date[space_loc+1:]
-    # Up until the first period is a datestamp that is generated
-    # as normal from time.strftime, so use time.strptime to
-    # parse it
-    dot_loc = date.find('.')
-    if dot_loc == -1:
-        raise ValueError(
-            'Date string does not contain high-precision seconds: %r' % date)
-    base_time = time.strptime(date[:dot_loc], "%Y-%m-%d %H:%M:%S")
-    fract_seconds, offset = date[dot_loc:].split()
-    fract_seconds = float(fract_seconds)
-
-    offset = int(offset)
-
-    hours = int(offset / 100)
-    minutes = (offset % 100)
-    seconds_offset = (hours * 3600) + (minutes * 60)
-
-    # time.mktime returns localtime, but calendar.timegm returns UTC time
-    timestamp = calendar.timegm(base_time)
-    timestamp -= seconds_offset
-    # Add back in the fractional seconds
-    timestamp += fract_seconds
-    return (timestamp, seconds_offset)
-
-
-def parse_merge_property(line):
-    """Parse a bzr:merge property value.
-
-    :param line: Line to parse
-    :return: List of revisions merged
-    """
-    if ' ' in line:
-        mutter('invalid revision id %r in merged property, skipping' % line)
-        return []
-
-    return filter(lambda x: x != "", line.split("\t"))
-
 
 def parse_svk_feature(feature):
     """Parse a svk feature identifier.
