@@ -15,12 +15,16 @@
 
 from bzrlib import osutils, registry
 from bzrlib.errors import InvalidRevisionId
+from bzrlib.trace import mutter
 
 import calendar
 import errors
 import sha
+import svn
 import time
 import urllib
+
+from svk import SVN_PROP_SVK_MERGE
 
 MAPPING_VERSION = 3
 
@@ -133,6 +137,27 @@ def parse_merge_property(line):
 
     return filter(lambda x: x != "", line.split("\t"))
 
+def parse_svn_revprops(svn_revprops, rev):
+    if svn_revprops.has_key(svn.core.SVN_PROP_REVISION_AUTHOR):
+        rev.committer = svn_revprops[svn.core.SVN_PROP_REVISION_AUTHOR]
+    else:
+        rev.committer = ""
+
+    rev.message = svn_revprops.get(svn.core.SVN_PROP_REVISION_LOG)
+
+    if rev.message:
+        try:
+            rev.message = rev.message.decode("utf-8")
+        except UnicodeDecodeError:
+            pass
+
+    if svn_revprops.has_key(svn.core.SVN_PROP_REVISION_DATE):
+        rev.timestamp = 1.0 * svn.core.secs_from_timestr(svn_revprops[svn.core.SVN_PROP_REVISION_DATE], None)
+    else:
+        rev.timestamp = 0.0 # FIXME: Obtain repository creation time
+    rev.timezone = None
+    rev.properties = {}
+
 
 def parse_revision_metadata(text, rev):
     """Parse a revision info text (as set in bzr:revision-info).
@@ -202,36 +227,17 @@ def generate_revision_metadata(timestamp, timezone, committer, revprops):
     return text
 
 
-def revision_parse_svn_revprops(rev, props):
+def parse_bzr_svn_revprops(props, rev):
     """Update a Revision object from a set of Subversion revision properties.
     
-    :param rev: Revision object
     :param props: Dictionary with Subversion revision properties.
+    :param rev: Revision object
     """
-    rev.timezone = None
-
     if props.has_key(SVN_REVPROP_BZR_TIMESTAMP):
         (rev.timestamp, rev.timezone) = unpack_highres_date(props[SVN_REVPROP_BZR_TIMESTAMP])
-    elif props.has_key(svn.core.SVN_PROP_REVISION_DATE):
-        rev.timestamp = 1.0 * svn.core.secs_from_timestr(
-            props[svn.core.SVN_PROP_REVISION_DATE], None)
-    else:
-        rev.timestamp = 0 # FIXME: Obtain repository creation time
 
     if props.has_key(SVN_REVPROP_BZR_COMMITTER):
         rev.committer = props[SVN_REVPROP_BZR_COMMITTER].decode("utf-8")
-    elif props.has_key(svn.core.SVN_PROP_REVISION_AUTHOR):
-        rev.committer = props[svn.core.SVN_PROP_REVISION_AUTHOR]
-    else:
-        rev.committer = ""
-
-    rev.message = props.get(svn.core.SVN_PROP_REVISION_LOG)
-    if rev.message is not None:
-        assert isinstance(rev.message, str)
-        try:
-            rev.message = rev.message.decode("utf-8")
-        except UnicodeDecodeError:
-            pass
 
     for name, value in props.items():
         if name.startswith(SVN_REVPROP_BZR_REVPROP_PREFIX):
@@ -274,6 +280,30 @@ class BzrSvnMapping:
         """
         raise NotImplementedError(self.generate_file_id)
 
+    @staticmethod
+    def parse_svn_revision(revprops, get_branch_file_property, rev):
+        """Update a Revision object from Subversion revision and branch 
+        properties.
+
+        :param revprops: Dictionary with Subversion revision properties.
+        :param get_branch_file_property: Function that takes a string and
+            returns the value of the matching file property set on the branch 
+            path.
+        :param rev: Revision object to import data into.
+        """
+        raise NotImplementedError(self.parse_svn_revision)
+
+    @staticmethod
+    def get_rhs_parents(revprops, get_branch_file_property, scheme):
+        """Obtain the right-hand side parents for a revision.
+
+        """
+        raise NotImplementedError(self.get_rhs_parents)
+
+    @staticmethod
+    def get_fileid_map(revprops, get_branch_file_property):
+        raise NotImplementedError(self.get_fileid_map)
+
 
 class BzrSvnMappingv1(BzrSvnMapping):
     """This was the initial version of the mappings as used by bzr-svn
@@ -310,6 +340,14 @@ class BzrSvnMappingv2(BzrSvnMapping):
         revnum = int(revid[0:at])
         assert revnum >= 0
         return (uuid, branch_path, revnum, None)
+
+
+def parse_fileid_property(text):
+    ret = {}
+    for line in text.splitlines():
+        (path, key) = line.split("\t", 2)
+        ret[urllib.unquote(path)] = osutils.safe_file_id(key)
+    return ret
 
 
 class BzrSvnMappingv3(BzrSvnMapping):
@@ -365,6 +403,61 @@ class BzrSvnMappingv3(BzrSvnMapping):
         assert isinstance(ret, str)
         return osutils.safe_file_id(ret)
 
+    @staticmethod
+    def parse_svn_revision(svn_revprops, get_branch_file_property, rev):
+        parse_svn_revprops(svn_revprops, rev)
+        parse_revision_metadata(
+                get_branch_file_property(SVN_PROP_BZR_REVISION_INFO, ""), rev)
+
+    @classmethod
+    def get_rhs_parents(cls, revprops, get_branch_file_property, scheme):
+        rhs_parents = []
+        bzr_merges = get_branch_file_property(SVN_PROP_BZR_ANCESTRY+str(scheme), None)
+        if bzr_merges is not None:
+            return parse_merge_property(bzr_merges.splitlines()[-1])
+
+        svk_merges = get_branch_file_property(SVN_PROP_SVK_MERGE, None)
+        if svk_merges is not None:
+            _merges = cls._svk_merged_revisions(branch, revnum, scheme)
+
+        return []
+
+    @classmethod
+    def get_fileid_map(cls, svn_revprops, get_branch_file_property):
+        fileids = get_branch_file_property(SVN_PROP_BZR_FILEIDS, None)
+        if fileids is None:
+            return {}
+        return parse_fileid_property(fileids)
+
+
+class BzrSvnMappingv4(BzrSvnMappingv3):
+    @staticmethod
+    def parse_svn_revision(svn_revprops, get_branch_file_property, rev):
+        parse_svn_revprops(svn_revprops, rev)
+        if svn_revprops.get(SVN_REVPROP_BZR_MAPPING_VERSION) == str(MAPPING_VERSION):
+            parse_bzr_svn_revprops(svn_revprops, rev)
+        elif not svn_revprops.has_key(SVN_REVPROP_BZR_MAPPING_VERSION):
+            parse_revision_metadata(get_branch_file_property(SVN_PROP_BZR_REVISION_INFO, ""), rev)
+
+    @classmethod
+    def get_fileid_map(cls, svn_revprops, get_branch_file_property):
+        if svn_revprops.has_key(SVN_REVPROP_BZR_MAPPING_VERSION):
+            if not svn_revprops.has_key(SVN_REVPROP_BZR_FILEIDS):
+                return {}
+            return parse_fileid_property(svn_revprops[SVN_REVPROP_BZR_FILEIDS])
+        else:
+            return BzrSvnMappingv3.get_fileid_map(svn_revprops, get_branch_file_property)
+
+    @classmethod
+    def get_rhs_parents(cls, svn_revprops, get_branch_file_property, scheme):
+        if svn_revprops.has_key(SVN_REVPROP_BZR_MAPPING_VERSION):
+            if svn_revprops[SVN_REVPROP_BZR_ROOT] != branch:
+                return parent_ids
+            if not svn_revprops.has_key(SVN_REVPROP_BZR_MERGE):
+                return parent_ids
+            return parent_ids + svn_revprops[SVN_REVPROP_BZR_MERGE].splitlines()
+        else:
+            return BzrSvnMappingv3.get_rhs_parents(svn_revprops, get_branch_file_property, scheme)
 
 
 class BzrSvnMappingRegistry(registry.Registry):

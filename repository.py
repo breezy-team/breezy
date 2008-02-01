@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2006-2008 Jelmer Vernooij <jelmer@samba.org>
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -39,30 +39,16 @@ from config import SvnRepositoryConfig
 import errors
 import logwalker
 from mapping import (default_mapping, SVN_PROP_BZR_REVISION_ID, 
-                     SVN_PROP_BZR_REVISION_INFO, SVN_PROP_BZR_BRANCHING_SCHEME,
-                     SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS,
+                     SVN_PROP_BZR_BRANCHING_SCHEME,
+                     SVN_PROP_BZR_ANCESTRY, 
                      parse_revision_metadata, parse_revid_property, 
-                     parse_merge_property, revision_parse_svn_revprops)
+                     parse_merge_property)
 from revids import RevidMap
 from scheme import (BranchingScheme, ListBranchingScheme, 
                     parse_list_scheme_text, guess_scheme_from_history)
+from svk import parse_svk_feature, SVN_PROP_SVK_MERGE
 from tree import SvnRevisionTree
 import urllib
-
-SVN_PROP_SVK_MERGE = 'svk:merge'
-
-def parse_svk_feature(feature):
-    """Parse a svk feature identifier.
-
-    :param feature: The feature identifier as string.
-    :return: tuple with uuid, branch path and revnum
-    """
-    try:
-        (uuid, branch, revnum) = feature.split(":", 3)
-    except ValueError:
-        raise errors.InvalidPropertyValue(SVN_PROP_SVK_MERGE, 
-                "not enough colons")
-    return (uuid, branch.strip("/"), int(revnum))
 
 
 def revision_id_to_svk_feature(revid):
@@ -76,7 +62,6 @@ def revision_id_to_svk_feature(revid):
     # TODO: What about renamed revisions? Should use 
     # repository.lookup_revision_id here.
     return "%s:/%s:%d" % (uuid, branch, revnum)
-
 
 
 class SvnRepositoryFormat(RepositoryFormat):
@@ -362,24 +347,9 @@ class SvnRepository(Repository):
         (path, revnum, _) = self.lookup_revision_id(revid)
 
         svn_revprops = self.transport.revprop_list(revnum)
-        if svn_revprops.has_key(SVN_REVPROP_BZR_MAPPING_VERSION):
-            if not svn_revprops.has_key(SVN_REVPROP_BZR_FILEIDS):
-                return {}
-            fileids = svn_revprops[SVN_REVPROP_BZR_FILEIDS]
-        else:
-            # Only consider bzr:file-ids if this is a bzr revision
-            if not self.branchprop_list.touches_property(path, revnum, 
-                    SVN_PROP_BZR_REVISION_INFO):
-                return {}
-            fileids = self.branchprop_list.get_property(path, revnum, 
-                                                        SVN_PROP_BZR_FILEIDS)
-            if fileids is None:
-                return {}
-        ret = {}
-        for line in fileids.splitlines():
-            (path, key) = line.split("\t", 2)
-            ret[urllib.unquote(path)] = osutils.safe_file_id(key)
-        return ret
+        return default_mapping.get_fileid_map(svn_revprops, 
+                lambda name, default: self.branchprop_list.get_changed_property(path, revnum, name, default)
+                )
 
     def _mainline_revision_parent(self, path, revnum, scheme):
         """Find the mainline parent of the specified revision.
@@ -411,22 +381,6 @@ class SvnRepository(Repository):
         except StopIteration:
             # The specified revision was the first one in the branch
             return None
-
-    def _bzr_merged_revisions(self, branch, revnum, scheme):
-        """Find out what revisions were merged by Bazaar in a revision.
-
-        :param branch: Subversion branch path.
-        :param revnum: Subversion revision number.
-        :param scheme: Branching scheme.
-        """
-        change = self.branchprop_list.get_property_diff(branch, revnum, 
-                                SVN_PROP_BZR_ANCESTRY+str(scheme)).splitlines()
-        if len(change) == 0:
-            return []
-
-        assert len(change) == 1
-
-        return parse_merge_property(change[0])
 
     def _svk_feature_to_revision_id(self, scheme, feature):
         """Convert a SVK feature to a revision id for this repository.
@@ -480,7 +434,7 @@ class SvnRepository(Repository):
             parents_list.append(parents)
         return parents_list
 
-    def revision_parents(self, revision_id, bzr_merges=None, svk_merges=None):
+    def revision_parents(self, revision_id, get_branch_fileprop=None):
         """See Repository.revision_parents()."""
         parent_ids = []
         (branch, revnum, scheme) = self.lookup_revision_id(revision_id)
@@ -488,26 +442,12 @@ class SvnRepository(Repository):
         if mainline_parent is not None:
             parent_ids.append(mainline_parent)
 
+        if get_branch_fileprop is None:
+            get_branch_fileprop = lambda name, default: self.branchprop_list.get_changed_property(branch, revnum, name, default)
+
         svn_revprops = self.transport.revprop_list(revnum)
-        if svn_revprops.has_key(SVN_REVPROP_BZR_MAPPING_VERSION):
-            if svn_revprops[SVN_REVPROP_BZR_ROOT] != branch:
-                return parent_ids
-            if not svn_revprops.has_key(SVN_REVPROP_BZR_MERGE):
-                return parent_ids
-            return parent_ids + svn_revprops[SVN_REVPROP_BZR_MERGE].splitlines()
 
-        # if the branch didn't change, bzr:merge or svk:merge can't have changed
-        if not self._log.touches_path(branch, revnum):
-            return parent_ids
- 
-        if bzr_merges is None:
-            bzr_merges = self._bzr_merged_revisions(branch, revnum, scheme)
-
-        parent_ids.extend(bzr_merges)
-
-        if bzr_merges == [] and svk_merges is None:
-            svk_merges = self._svk_merged_revisions(branch, revnum, scheme)
-            parent_ids.extend(svk_merges)
+        parent_ids.extend(default_mapping.get_rhs_parents(svn_revprops, get_branch_fileprop, scheme))
 
         return parent_ids
 
@@ -525,15 +465,10 @@ class SvnRepository(Repository):
             inventory_sha1 = property(lambda rev: self.get_inventory_sha1(rev.revision_id))
 
         rev = LazySvnRevision(revision_id=revision_id, parent_ids=parent_ids)
-        rev.properties = {}
-
         svn_revprops = self.transport.revprop_list(revnum)
-        revision_parse_svn_revprops(rev, svn_revprops)
 
-        if svn_revprops.get(SVN_REVPROP_BZR_MAPPING_VERSION) != str(MAPPING_VERSION):
-            parse_revision_metadata(
-                self.branchprop_list.get_property(path, revnum, 
-                     SVN_PROP_BZR_REVISION_INFO, ""), rev)
+        default_mapping.parse_svn_revision(svn_revprops, 
+                lambda name, default: self.branchprop_list.get_changed_property(path, revnum, name, default), rev)
 
         return rev
 

@@ -19,7 +19,7 @@ from bzrlib.repository import Repository
 from bzrlib.tests import TestCase
 
 from mapping import default_mapping, MAPPING_VERSION
-from repository import (parse_svk_feature, revision_id_to_svk_feature)
+from repository import revision_id_to_svk_feature
 from revids import RevidMap
 from tests import TestCaseWithSubversionRepository
 
@@ -126,14 +126,6 @@ class RevisionIdMappingTest(TestCase):
         self.assertEqual(("uuid", "bp/data", 4, None),
                          default_mapping.parse_revision_id(
                      "svn-v%d-undefined:uuid:bp%%2Fdata:4" % MAPPING_VERSION))
-
-    def test_parse_svk_feature_root(self):
-        self.assertEqual(("auuid", "", 6), 
-                 parse_svk_feature("auuid:/:6"))
-
-    def test_svk_revid_map_nested(self):
-        self.assertEqual(("auuid", "bp", 6),
-                         parse_svk_feature("auuid:/bp:6"))
 
     def test_revid_svk_map(self):
         self.assertEqual("auuid:/:6", 

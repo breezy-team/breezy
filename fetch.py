@@ -33,9 +33,10 @@ from fileids import generate_file_id
 from mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_MERGE, 
                      SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVISION_INFO, 
                      SVN_PROP_BZR_BRANCHING_SCHEME, SVN_PROP_BZR_REVISION_ID,
-                     MAPPING_VERSION, parse_revision_metadata, 
-                     parse_merge_property, revision_parse_svn_revprops)
-from repository import (SvnRepository, SvnRepositoryFormat, SVN_PROP_SVK_MERGE)
+                     SVN_PROP_BZR_FILEIDS, parse_merge_property, 
+                     default_mapping)
+from repository import (SvnRepository, SvnRepositoryFormat)
+from svk import SVN_PROP_SVK_MERGE
 from tree import apply_txdelta_handler
 
 
@@ -100,17 +101,15 @@ class RevisionBuildEditor(svn.delta.Editor):
                               self.revnum, self.branch_path, changes, renames, 
                               self.scheme)
         self.dir_baserev = {}
-        self._revinfo = None
-        self._bzr_merges = []
-        self._svk_merges = []
         self._premature_deletes = set()
         self.pool = Pool()
         self.old_inventory = prev_inventory
         self.inventory = prev_inventory.copy()
+        self._branch_fileprops = {}
         self._start_revision()
 
     def _get_parent_ids(self):
-        return self.source.revision_parents(self.revid, self._bzr_merges)
+        return self.source.revision_parents(self.revid, self._branch_fileprops.get)
 
     def _get_revision(self, revid):
         """Creates the revision object.
@@ -122,10 +121,9 @@ class RevisionBuildEditor(svn.delta.Editor):
         rev = Revision(revision_id=revid, parent_ids=self._get_parent_ids())
 
         svn_revprops = self.source._log._get_transport().revprop_list(self.revnum)
-        revision_parse_svn_revprops(rev, svn_revprops)
-
-        if self._revinfo and svn_revprops.get(SVN_REVPROP_BZR_MAPPING_VERSION) != str(MAPPING_VERSION):
-            parse_revision_metadata(self._revinfo, rev)
+        default_mapping.parse_svn_revision(svn_revprops, 
+                self._branch_fileprops.get, 
+                rev)
 
         return rev
 
@@ -252,6 +250,9 @@ class RevisionBuildEditor(svn.delta.Editor):
         return (base_file_id, file_id)
 
     def change_dir_prop(self, (old_id, new_id), name, value, pool):
+        if new_id == self.inventory.root.file_id:
+            self._branch_fileprops[name] = value
+
         if name == SVN_PROP_BZR_BRANCHING_SCHEME:
             if new_id != self.inventory.root.file_id:
                 mutter('rogue %r on non-root directory' % name)
@@ -272,7 +273,6 @@ class RevisionBuildEditor(svn.delta.Editor):
                 mutter('rogue %r on non-root directory' % SVN_PROP_BZR_REVISION_INFO)
                 return
  
-            self._revinfo = value
         elif name in (svn.core.SVN_PROP_ENTRY_COMMITTED_DATE,
                       svn.core.SVN_PROP_ENTRY_COMMITTED_REV,
                       svn.core.SVN_PROP_ENTRY_LAST_AUTHOR,
