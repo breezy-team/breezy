@@ -30,9 +30,6 @@ from bzrlib.trace import mutter
 from copy import deepcopy
 from cStringIO import StringIO
 from errors import ChangesRootLHSHistory, MissingPrefix, RevpropChangeFailed
-from repository import (SVN_PROP_SVK_MERGE, revision_id_to_svk_feature,
-                        generate_revision_metadata, SvnRepositoryFormat, 
-                        SvnRepository, format_highres_date)
 from mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS,
                      SVN_PROP_BZR_REVISION_INFO, SVN_PROP_BZR_REVISION_ID, 
                      SVN_REVPROP_BZR_COMMITTER, SVN_REVPROP_BZR_FILEIDS,
@@ -40,7 +37,7 @@ from mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS,
                      SVN_REVPROP_BZR_REVPROP_PREFIX, SVN_REVPROP_BZR_ROOT,
                      SVN_REVPROP_BZR_TIMESTAMP, SVN_REVPROP_BZR_MAPPING_VERSION,
                      MAPPING_VERSION, generate_revision_metadata)
-from repository import (revision_id_to_svk_feature, 
+from repository import (revision_id_to_svk_feature, format_highres_date,
                         SvnRepositoryFormat, SvnRepository, SVN_PROP_SVK_MERGE)
 import urllib
 
