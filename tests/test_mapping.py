@@ -149,6 +149,21 @@ class MappingTestAdapter:
         self.assertEquals(targetrev.timestamp, 432432432.0)
         self.assertEquals(targetrev.timezone, 0)
 
+    def test_revision_id(self):
+        if not self.mapping.supports_roundtripping():
+            raise TestSkipped
+        scheme = NoBranchingScheme()
+        (revprops, fileprops) = self.mapping.export_revision("branchp", 432432432.0, 0, "somebody", 
+
+                                     {}, "arevid", 4, ["merge1"], dict().get, scheme)
+        self.assertEquals((4, "arevid"), self.mapping.get_revision_id(revprops, fileprops.get, scheme))
+    
+    def test_revision_id_none(self):
+        if not self.mapping.supports_roundtripping():
+            raise TestSkipped
+        scheme = NoBranchingScheme()
+        self.assertEquals((None, None), self.mapping.get_revision_id({}, dict().get, scheme))
+
 
 class Mappingv1TestAdapter(MappingTestAdapter,TestCase):
     def setUp(self):
