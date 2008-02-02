@@ -148,7 +148,7 @@ class TestPush(TestCaseWithSubversionRepository):
                         self.svndir.open_branch().last_revision())
 
     def test_symlink(self):
-        if os.name == 'win32':
+        if sys.platform == 'win32':
             return
         os.symlink("bla", "dc/south")
         assert os.path.islink("dc/south")
