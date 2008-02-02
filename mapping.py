@@ -450,7 +450,7 @@ class BzrSvnMappingv3(BzrSvnMapping):
                 get_branch_file_property(SVN_PROP_BZR_REVISION_INFO, ""), rev)
 
     @classmethod
-    def _svk_merged_revisions(cls, revprops, get_branch_file_property):
+    def _svk_merged_revisions(cls, get_branch_file_property, scheme):
         """Find out what SVK features were merged in a revision.
 
         """

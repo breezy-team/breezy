@@ -478,7 +478,12 @@ class SvnRepository(Repository):
             return revid
 
         # See if there is a bzr:revision-id revprop set
-        revprops = self._log._get_transport().revprop_list(revnum)
+        try:
+            revprops = self._log._get_transport().revprop_list(revnum)
+        except SubversionException, (_, num):
+            if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
+                raise NoSuchRevision(path, revnum)
+            raise
         (bzr_revno, revid) = default_mapping.get_revision_id(revprops, 
                 lambda name, default: self.branchprop_list.get_changed_property(path, revnum, name, default),
                 scheme)
