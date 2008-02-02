@@ -16,7 +16,7 @@
 
 """Tests for the bzr-svn plugin."""
 
-import os
+import os, sys
 import bzrlib
 from bzrlib import osutils
 from bzrlib.bzrdir import BzrDir
@@ -51,7 +51,7 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         svn.repos.create(abspath, '', '', None, None)
 
         if allow_revprop_changes:
-            if os.name == 'win32':
+            if sys.platform == 'win32':
                 revprop_hook = os.path.join(abspath, "hooks", "pre-revprop-change.bat")
                 open(revprop_hook, 'w').write("exit 0\n")
             else:
