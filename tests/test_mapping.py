@@ -17,8 +17,9 @@
 
 from errors import InvalidPropertyValue
 from mapping import (generate_revision_metadata, parse_revision_metadata, 
-                     parse_revid_property, parse_merge_property)
-from bzrlib.tests import TestCase
+                     parse_revid_property, parse_merge_property, BzrSvnMappingv1, BzrSvnMappingv2, 
+                          BzrSvnMappingv3, BzrSvnMappingv4, BzrSvnMappingHybrid)
+from bzrlib.tests import (TestCase, adapt_tests)
 from bzrlib.revision import Revision
 from bzrlib.trace import mutter
 
@@ -112,3 +113,35 @@ class ParseMergePropertyTestCase(TestCase):
 
     def test_parse_merge_simple(self):
         self.assertEqual(["bla", "bloe"], parse_merge_property("bla\tbloe"))
+
+
+class MappingTestAdapter:
+    def test_roundtrip_revision(self):
+        revid = self.mapping.generate_revision_id("myuuid", 42, "path", "somescheme")
+        (uuid, path, revnum, scheme) = self.mapping.parse_revision_id(revid)
+        self.assertEquals(uuid, "myuuid")
+        self.assertEquals(revnum, 42)
+        self.assertEquals(path, "path")
+        if scheme is not None:
+            self.assertEquals(scheme, "somescheme")
+
+
+class Mappingv1TestAdapter(MappingTestAdapter,TestCase):
+    def setUp(self):
+        self.mapping = BzrSvnMappingv1
+
+
+class Mappingv2TestAdapter(MappingTestAdapter,TestCase):
+    def setUp(self):
+        self.mapping = BzrSvnMappingv2
+
+
+class Mappingv3TestAdapter(MappingTestAdapter,TestCase):
+    def setUp(self):
+        self.mapping = BzrSvnMappingv3
+
+
+#class Mappingv4TestAdapter(MappingTestAdapter,TestCase):
+#    def setUp(self):
+#        self.mapping = BzrSvnMappingv4
+

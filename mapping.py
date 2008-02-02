@@ -361,6 +361,10 @@ class BzrSvnMappingv1(BzrSvnMapping):
         assert revnum >= 0
         return (uuid, branch_path, revnum, None)
 
+    @staticmethod
+    def generate_revision_id(uuid, revnum, path, scheme):
+        return "svn-v1:%d@%s-%s" % (revnum, uuid, escape_svn_path(path))
+
 
 class BzrSvnMappingv2(BzrSvnMapping):
     """The second version of the mappings as used in the 0.3.x series.
@@ -377,6 +381,10 @@ class BzrSvnMappingv2(BzrSvnMapping):
         revnum = int(revid[0:at])
         assert revnum >= 0
         return (uuid, branch_path, revnum, None)
+
+    @staticmethod
+    def generate_revision_id(uuid, revnum, path, scheme):
+        return "svn-v2:%d@%s-%s" % (revnum, uuid, escape_svn_path(path))
 
 
 def parse_fileid_property(text):
