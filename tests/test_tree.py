@@ -16,6 +16,7 @@
 
 """Basis and revision tree tests."""
 
+from bzrlib.osutils import has_symlinks
 from bzrlib.workingtree import WorkingTree
 
 import os, sys
@@ -44,7 +45,7 @@ class TestBasisTree(TestCaseWithSubversionRepository):
         self.assertFalse(tree.inventory[tree.inventory.path2id("file")].executable)
 
     def test_symlink(self):
-        if sys.platform == 'win32':
+        if not has_symlinks():
             return
         self.make_client("d", "dc")
         os.symlink("target", "dc/file")
@@ -59,7 +60,7 @@ class TestBasisTree(TestCaseWithSubversionRepository):
                          tree.inventory[tree.inventory.path2id("file")].symlink_target)
 
     def test_symlink_next(self):
-        if sys.platform == 'win32':
+        if not has_symlinks():
             return
         self.make_client("d", "dc")
         os.symlink("target", "dc/file")
@@ -77,7 +78,7 @@ class TestBasisTree(TestCaseWithSubversionRepository):
                          tree.inventory[tree.inventory.path2id("file")].symlink_target)
 
     def test_executable_link(self):
-        if sys.platform == 'win32':
+        if not has_symlinks():
             return
         self.make_client("d", "dc")
         os.symlink("target", "dc/file")

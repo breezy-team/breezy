@@ -20,6 +20,7 @@
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoSuchFile, OutOfDateTree
 from bzrlib.inventory import Inventory
+from bzrlib.osutils import has_symlinks
 from bzrlib.tests import KnownFailure
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
@@ -430,7 +431,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertTrue(inv[inv.path2id("bla")].executable)
 
     def test_symlink(self):
-        if sys.platform == 'win32':
+        if not has_symlinks():
             return
         self.make_client('a', 'dc')
         os.symlink("target", "dc/bla")

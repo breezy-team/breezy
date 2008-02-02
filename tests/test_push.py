@@ -21,6 +21,7 @@ from bzrlib.bzrdir import BzrDir, BzrDirFormat
 from bzrlib.errors import AlreadyBranchError, BzrError, DivergedBranches
 from bzrlib.inventory import Inventory
 from bzrlib.merge import Merger, Merge3Merger
+from bzrlib.osutils import has_symlinks
 from bzrlib.progress import DummyProgress
 from bzrlib.repository import Repository
 from bzrlib.tests import KnownFailure, TestCaseWithTransport
@@ -148,7 +149,7 @@ class TestPush(TestCaseWithSubversionRepository):
                         self.svndir.open_branch().last_revision())
 
     def test_symlink(self):
-        if sys.platform == 'win32':
+        if not has_symlinks():
             return
         os.symlink("bla", "dc/south")
         assert os.path.islink("dc/south")
