@@ -252,6 +252,10 @@ class BzrSvnMapping:
     """Class that maps between Subversion and Bazaar semantics."""
 
     @staticmethod
+    def supports_roundtripping():
+        return False
+
+    @staticmethod
     def parse_revision_id(revid):
         """Parse an existing Subversion-based revision id.
 
@@ -402,6 +406,10 @@ class BzrSvnMappingv3(BzrSvnMapping):
 
     """
     revid_prefix = "svn-v3-"
+
+    @staticmethod
+    def supports_roundtripping():
+        return True
 
     @classmethod
     def parse_revision_id(cls, revid):
@@ -573,6 +581,10 @@ class BzrSvnMappingv3(BzrSvnMapping):
 
 class BzrSvnMappingv4:
     @staticmethod
+    def supports_roundtripping():
+        return True
+
+    @staticmethod
     def import_revision(svn_revprops, get_branch_file_property, rev):
         parse_svn_revprops(svn_revprops, rev)
         if svn_revprops.get(SVN_REVPROP_BZR_MAPPING_VERSION) == str(MAPPING_VERSION):
@@ -624,6 +636,8 @@ class BzrSvnMappingv4:
             svn_revprops[SVN_REVPROP_BZR_MERGE] = "".join([x+"\n" for x in merges])
         svn_revprops[SVN_REVPROP_BZR_REVNO] = str(revno)
 
+        return (svn_revprops, {})
+
     @staticmethod
     def export_fileid_map(fileids, revprops, fileprops):
         revprops[SVN_REVPROP_BZR_FILEIDS] = generate_fileid_property(fileids)
@@ -650,6 +664,10 @@ class BzrSvnMappingv4:
 
 
 class BzrSvnMappingHybrid:
+    @staticmethod
+    def supports_roundtripping():
+        return True
+
     @classmethod
     def get_rhs_parents(cls, svn_revprops, get_branch_file_property, scheme):
         if svn_revprops.has_key(SVN_REVPROP_BZR_MAPPING_VERSION):
@@ -674,10 +692,11 @@ class BzrSvnMappingHybrid:
     @classmethod
     def export_revision(cls, branch_root, timestamp, timezone, committer, revprops, revision_id, revno, 
                         merges, get_branch_file_property, scheme):
-        BzrSvnMappingv3.export_revision(branch_root, timestamp, timezone, committer, revprops, revision_id,
-                revno, merges, get_branch_file_property, scheme)
-        BzrSvnMappingv4.export_revision(branch_root, timestamp, timezone, committer, revprops, revision_id,
-                revno, merges, get_branch_file_property, scheme)
+        (_, fileprops) = BzrSvnMappingv3.export_revision(branch_root, timestamp, timezone, committer, 
+                                      revprops, revision_id, revno, merges, get_branch_file_property, scheme)
+        (revprops, _) = BzrSvnMappingv4.export_revision(branch_root, timestamp, timezone, committer, 
+                                      revprops, revision_id, revno, merges, get_branch_file_property, scheme)
+        return (revprops, fileprops)
 
     @staticmethod
     def parse_revision_id(revid):

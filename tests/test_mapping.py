@@ -19,7 +19,9 @@ from errors import InvalidPropertyValue
 from mapping import (generate_revision_metadata, parse_revision_metadata, 
                      parse_revid_property, parse_merge_property, BzrSvnMappingv1, BzrSvnMappingv2, 
                           BzrSvnMappingv3, BzrSvnMappingv4, BzrSvnMappingHybrid)
-from bzrlib.tests import (TestCase, adapt_tests)
+from scheme import NoBranchingScheme
+
+from bzrlib.tests import (TestCase, adapt_tests, TestSkipped)
 from bzrlib.revision import Revision
 from bzrlib.trace import mutter
 
@@ -124,6 +126,28 @@ class MappingTestAdapter:
         self.assertEquals(path, "path")
         if scheme is not None:
             self.assertEquals(scheme, "somescheme")
+
+    def test_fileid_map(self):
+        if not self.mapping.supports_roundtripping():
+            raise TestSkipped
+        revprops = {}
+        fileprops = {}
+        fileids = {"": "some-id", "bla/blie": "other-id"}
+        self.mapping.export_fileid_map(fileids, revprops, fileprops)
+        self.assertEquals(fileids, 
+                self.mapping.import_fileid_map(revprops, fileprops.get))
+
+    def test_revision(self):
+        if not self.mapping.supports_roundtripping():
+            raise TestSkipped
+        (revprops, fileprops) = self.mapping.export_revision("branchp", 432432432.0, 0, "somebody", 
+                                     {"arevprop": "val"}, "arevid", 4, ["merge1"], dict().get, NoBranchingScheme())
+        targetrev = Revision(None)
+        self.mapping.import_revision(revprops, fileprops.get, targetrev)
+        self.assertEquals(targetrev.committer, "somebody")
+        self.assertEquals(targetrev.properties, {"arevprop": "val"})
+        self.assertEquals(targetrev.timestamp, 432432432.0)
+        self.assertEquals(targetrev.timezone, 0)
 
 
 class Mappingv1TestAdapter(MappingTestAdapter,TestCase):
