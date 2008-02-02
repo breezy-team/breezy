@@ -15,11 +15,12 @@
 
 SVN_PROP_SVK_MERGE = 'svk:merge'
 
+parse_svk_features = lambda text: set(text.splitlines())
+
+serialize_svk_features = lambda features: "".join([x+"\n" for x in sorted(features)])
 
 def svk_features_merged_since(new_text, old_text=""):
-    previous = set(old_text.splitlines())
-    current = set(new_text.splitlines())
-    return current.difference(previous)
+    return parse_svk_features(new_text).difference(parse_svk_features(old_text))
 
 
 def parse_svk_feature(feature):
