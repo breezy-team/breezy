@@ -388,7 +388,7 @@ def parse_fileid_property(text):
     return ret
 
 def generate_fileid_property(fileids):
-    return "".join(["%s\t%s\n" % (urllib.quote(path), file_id) for (path, file_id) in fileids.items()])
+    return "".join(["%s\t%s\n" % (urllib.quote(path), fileids[path]) for path in sorted(fileids.keys())])
 
 class BzrSvnMappingv3(BzrSvnMapping):
     """The third version of the mappings as used in the 0.4.x series.
@@ -449,12 +449,12 @@ class BzrSvnMappingv3(BzrSvnMapping):
         parse_revision_metadata(
                 get_branch_file_property(SVN_PROP_BZR_REVISION_INFO, ""), rev)
 
-    @staticmethod
-    def _svk_merged_revisions(revprops, get_branch_file_property):
+    @classmethod
+    def _svk_merged_revisions(cls, revprops, get_branch_file_property):
         """Find out what SVK features were merged in a revision.
 
         """
-        current = self.branchprop_list.get_property(branch, revnum, SVN_PROP_SVK_MERGE, "")
+        current = get_branch_file_property(SVN_PROP_SVK_MERGE, "")
         (prev_path, prev_revnum) = self._log.get_previous(branch, revnum)
         if prev_path is None and prev_revnum == -1:
             previous = ""
