@@ -442,6 +442,7 @@ class SvnCommitBuilder(RootCommitBuilder):
 
         # Store file ids
         def _dir_process_file_id(old_inv, new_inv, path, file_id):
+            ret = []
             for child_name in new_inv[file_id].children:
                 child_ie = new_inv.get_child(file_id, child_name)
                 new_child_path = new_inv.id2path(child_ie.file_id)
@@ -450,11 +451,12 @@ class SvnCommitBuilder(RootCommitBuilder):
                 if (not child_ie.file_id in old_inv or 
                     old_inv.id2path(child_ie.file_id) != new_child_path or
                     old_inv[child_ie.file_id].parent_id != child_ie.parent_id):
-                    yield (child_ie.file_id, new_child_path)
+                    ret.append((child_ie.file_id, new_child_path))
 
                 if (child_ie.kind == 'directory' and 
                     child_ie.file_id in self.modified_dirs):
-                    _dir_process_file_id(old_inv, new_inv, new_child_path, child_ie.file_id)
+                    ret += _dir_process_file_id(old_inv, new_inv, new_child_path, child_ie.file_id)
+            return ret
 
         fileids = []
 
@@ -462,7 +464,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             self.new_inventory.root.file_id != self.old_inv.root.file_id):
             fileids.append((self.new_inventory.root.file_id, ""))
 
-        fileids += list(_dir_process_file_id(self.old_inv, self.new_inventory, "", self.new_inventory.root.file_id))
+        fileids += _dir_process_file_id(self.old_inv, self.new_inventory, "", self.new_inventory.root.file_id)
 
         if fileids != []:
             file_id_text = "".join(["%s\t%s\n" % (urllib.quote(path), file_id) for (file_id, path) in fileids])
