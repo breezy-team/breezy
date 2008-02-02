@@ -590,6 +590,7 @@ class BzrSvnMappingv4:
             revid = revprops[SVN_REVPROP_BZR_REVISION_ID]
             revno = int(revprops[SVN_REVPROP_BZR_REVNO])
             return (revno, revid)
+        return (None, None)
 
     @classmethod
     def export_revision(cls, branch_root, timestamp, timezone, committer, revprops, revision_id, revno, 
