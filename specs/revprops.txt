@@ -66,6 +66,10 @@ the existing file properties. This will iterate over the repository since the
 last revision with revprops set and set matching revision properties for each 
 revision with file props.
 
+Less caching
+~~~~~~~~~~~~
+
+
 New settings
 ~~~~~~~~~~~~
 A new per-Subversion-repository setting `support_legacy` will be added. This 

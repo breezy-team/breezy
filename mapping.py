@@ -475,7 +475,7 @@ class BzrSvnMappingv3(BzrSvnMapping):
 
         svk_merges = get_branch_file_property(SVN_PROP_SVK_MERGE, None)
         if svk_merges is not None:
-            _merges = cls._svk_merged_revisions(get_branch_file_property, scheme)
+            return cls._svk_merged_revisions(get_branch_file_property, scheme)
 
         return []
 

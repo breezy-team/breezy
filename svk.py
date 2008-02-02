@@ -46,7 +46,7 @@ def generate_svk_feature(uuid, branch, revnum):
     """
     assert isinstance(revnum, int)
     assert isinstance(uuid, str)
-    assert isinstance(branch, str) and branch[0] != "/"
+    assert isinstance(branch, str) and (branch == "" or branch[0] != "/")
     return "%s:/%s:%d" % (uuid, branch, revnum)
 
 
