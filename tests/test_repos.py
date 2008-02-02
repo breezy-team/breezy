@@ -24,11 +24,12 @@ from bzrlib.bzrdir import BzrDir, format_registry
 from bzrlib.config import GlobalConfig
 from bzrlib.errors import NoSuchRevision, UninitializableFormat, BzrError
 from bzrlib.inventory import Inventory
+from bzrlib.osutils import has_symlinks
 from bzrlib.repository import Repository
 from bzrlib.revision import NULL_REVISION, Revision
 from bzrlib.tests import TestCase
 
-import os
+import os, sys
 
 import svn.fs
 
@@ -148,6 +149,9 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
 
         repos = Repository.open(repos_url)
 
+        abspath = self.test_dir
+        if sys.platform == 'win32':
+            abspath = '/' + abspath
         self.assertEqual("SvnRepository('file://%s/')" % urlutils.join(self.test_dir, "a"), repos.__repr__())
 
     def test_get_branch_invalid_revision(self):
@@ -1168,6 +1172,8 @@ class TestSvnRevisionTree(TestCaseWithSubversionRepository):
         self.assertTrue(inventory[inventory.path2id("foo/bla")].executable)
 
     def test_symlink(self):
+        if not has_symlinks():
+            return
         os.symlink('foo/bla', 'dc/bar')
         self.client_add('dc/bar')
         self.client_commit("dc", "My Message")

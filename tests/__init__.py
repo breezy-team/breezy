@@ -17,6 +17,7 @@
 """Tests for the bzr-svn plugin."""
 
 import os
+import sys
 import bzrlib
 from bzrlib import osutils
 from bzrlib.bzrdir import BzrDir
@@ -46,18 +47,21 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         :return: Handle to the repository.
         """
         abspath = os.path.join(self.test_dir, relpath)
-        repos_url = "file://%s" % abspath
 
         svn.repos.create(abspath, '', '', None, None)
 
         if allow_revprop_changes:
-            if os.name == 'win32':
+            if sys.platform == 'win32':
                 revprop_hook = os.path.join(abspath, "hooks", "pre-revprop-change.bat")
                 open(revprop_hook, 'w').write("exit 0\n")
             else:
                 revprop_hook = os.path.join(abspath, "hooks", "pre-revprop-change")
                 open(revprop_hook, 'w').write("#!/bin/sh\n")
                 os.chmod(revprop_hook, os.stat(revprop_hook).st_mode | 0111)
+
+        if sys.platform == 'win32':
+            abspath = '/' + abspath # The root of the filesystem on win32 is one level above the "drives"
+        repos_url = "file://%s" % abspath
 
         return repos_url
 
