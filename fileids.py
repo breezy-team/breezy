@@ -55,8 +55,8 @@ def get_local_changes(paths, mapping, generate_revid, get_children=None):
 
 FILEIDMAP_VERSION = 1
 
-class FileIdMap(object):
-    """ File id store. 
+class FileIdMap:
+    """File id store. 
 
     Keeps a map
 

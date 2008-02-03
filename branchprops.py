@@ -19,22 +19,23 @@
 from bzrlib.errors import NoSuchRevision
 from bzrlib.trace import mutter
 
+from cache import CacheTable
+
 from svn.core import SubversionException, Pool
 import svn.core
 
-class BranchPropertyList:
+class BranchPropertyList(CacheTable):
     """Simple class that retrieves file properties set on branches."""
-    def __init__(self, log, cachedb):
+    def __init__(self, log, cachedb=None):
+        super(BranchPropertyList, self).__init__(cachedb)
         self.log = log
-        self.cachedb = cachedb
 
+    def _create_table(self):
         self.cachedb.executescript("""
             create table if not exists branchprop (name text, value text, branchpath text, revnum integer);
             create index if not exists branch_path_revnum on branchprop (branchpath, revnum);
             create index if not exists branch_path_revnum_name on branchprop (branchpath, revnum, name);
         """)
-
-        self.pool = Pool()
 
     def _get_dir_props(self, path, revnum):
         """Obtain all the directory properties set on a path/revnum pair.
@@ -48,7 +49,7 @@ class BranchPropertyList:
 
         try:
             (_, _, props) = self.log._get_transport().get_dir(path, 
-                revnum, pool=self.pool)
+                revnum)
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
                 raise NoSuchRevision(self, revnum)
