@@ -99,3 +99,6 @@ branch.
 
 If you would like to avoid this, use a checkout and merge into that ("bzr co") 
 or rebase on trunk rather than merge it.
+
+..
+	vim: ft=rest
