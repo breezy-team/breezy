@@ -31,6 +31,15 @@ IN DEVELOPMENT
       client, and sends less data to the server to request the revisions.
       (Andrew Bennetts, Robert Collins, #178353)
 
+    * The launchpad plugin now handles lp urls of the form
+      ``lp://staging/``, ``lp://demo/``, ``lp://dev/`` to use the appropriate
+      launchpad instance to do the resolution of the branch identities.
+      This is primarily of use to Launchpad developers, but can also
+      be used by other users who want to try out Launchpad as
+      a branch location without messing up their public Launchpad
+      account.  Branches that are pushed to the staging environment
+      have an expected lifetime of one day. (Tim Penhey)
+
   IMPROVEMENTS:
 
     * Fetching between different repository formats with compatible models now

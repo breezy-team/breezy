@@ -169,8 +169,12 @@ def test_suite():
 
     loader = TestLoader()
     suite = TestSuite()
-    for m in [test_register, test_lp_indirect, test_lp_registration,
-              test_account]:
+    for m in [
+        test_account,
+        test_register,
+        test_lp_indirect,
+        test_lp_registration,
+        ]:
         suite.addTests(loader.loadTestsFromModule(m))
     return suite
 
