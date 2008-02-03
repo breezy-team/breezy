@@ -25,7 +25,7 @@ from mapping import (generate_revision_metadata, parse_revision_metadata,
 from scheme import NoBranchingScheme
 
 from bzrlib.errors import InvalidRevisionId
-from bzrlib.tests import (TestCase, adapt_tests, TestSkipped)
+from bzrlib.tests import (TestCase, adapt_tests, TestNotApplicable)
 from bzrlib.revision import Revision
 from bzrlib.trace import mutter
 
@@ -133,7 +133,7 @@ class MappingTestAdapter:
 
     def test_fileid_map(self):
         if not self.mapping.supports_roundtripping():
-            raise TestSkipped
+            raise TestNotApplicable
         revprops = {}
         fileprops = {}
         fileids = {"": "some-id", "bla/blie": "other-id"}
@@ -143,9 +143,9 @@ class MappingTestAdapter:
 
     def test_revision(self):
         if not self.mapping.supports_roundtripping():
-            raise TestSkipped
+            raise TestNotApplicable
         (revprops, fileprops) = self.mapping.export_revision("branchp", 432432432.0, 0, "somebody", 
-                                     {"arevprop": "val"}, "arevid", 4, ["merge1"], dict().get, NoBranchingScheme())
+                                     {"arevprop": "val"}, "arevid", 4, ["merge1"], dict().get)
         targetrev = Revision(None)
         self.mapping.import_revision(revprops, fileprops.get, targetrev)
         self.assertEquals(targetrev.committer, "somebody")
@@ -155,18 +155,14 @@ class MappingTestAdapter:
 
     def test_revision_id(self):
         if not self.mapping.supports_roundtripping():
-            raise TestSkipped
-        scheme = NoBranchingScheme()
-        (revprops, fileprops) = self.mapping.export_revision("branchp", 432432432.0, 0, "somebody", 
-
-                                     {}, "arevid", 4, ["merge1"], dict().get, scheme)
-        self.assertEquals((4, "arevid"), self.mapping.get_revision_id(revprops, fileprops.get, scheme))
+            raise TestNotApplicable
+        (revprops, fileprops) = self.mapping.export_revision("branchp", 432432432.0, 0, "somebody", {}, "arevid", 4, ["merge1"], dict().get)
+        self.assertEquals((4, "arevid"), self.mapping.get_revision_id(revprops, fileprops.get))
     
     def test_revision_id_none(self):
         if not self.mapping.supports_roundtripping():
-            raise TestSkipped
-        scheme = NoBranchingScheme()
-        self.assertEquals((None, None), self.mapping.get_revision_id({}, dict().get, scheme))
+            raise TestNotApplicable
+        self.assertEquals((None, None), self.mapping.get_revision_id({}, dict().get))
 
     def test_parse_revision_id_unknown(self):
         self.assertRaises(InvalidRevisionId, 
@@ -290,5 +286,3 @@ class ParseRevisionIdTests:
     def test_except_nonsvn(self):
         self.assertRaises(InvalidRevisionId, 
                          parse_revision_id, "blah")
-
-

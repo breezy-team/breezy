@@ -361,7 +361,8 @@ class BzrSvnMappingv1(BzrSvnMapping):
     """
     @classmethod
     def parse_revision_id(cls, revid):
-        assert revid.startswith("svn-v1:")
+        if not revid.startswith("svn-v1:"):
+            raise InvalidRevisionId(revid, "")
         revid = revid[len("svn-v1:"):]
         at = revid.index("@")
         fash = revid.rindex("-")
@@ -384,7 +385,8 @@ class BzrSvnMappingv2(BzrSvnMapping):
     """
     @classmethod
     def parse_revision_id(cls, revid):
-        assert revid.startswith("svn-v2:")
+        if not revid.startswith("svn-v2:"):
+            raise InvalidRevisionId(revid, "")
         revid = revid[len("svn-v2:"):]
         at = revid.index("@")
         fash = revid.rindex("-")

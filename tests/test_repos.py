@@ -106,7 +106,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos_url = self.make_client("a", "dc")
         repos = Repository.open(repos_url)
         mapping = repos.get_mapping()
-        self.assertEqual({u"": (mapping.generate_file_id(repos.uuid, 0, "", u""), revid)}, repos.get_fileid_map(0, "", mapping))
+        self.assertEqual({u"": (mapping.generate_file_id(repos.uuid, 0, "", u""), mapping.generate_revision_id(repos.uuid, 0, ""))}, repos.get_fileid_map(0, "", mapping))
 
     def test_generate_revision_id_forced_revid(self):
         repos_url = self.make_client("a", "dc")
@@ -184,7 +184,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos = Repository.open(repos_url)
 
         self.assertEqual(2, 
-                   len(list(repos.follow_history(1, NoBranchingScheme()))))
+                   len(list(repos.follow_history(1, repos.get_mapping()))))
 
     def test_all_revs_empty(self):
         repos_url = self.make_client("a", "dc")

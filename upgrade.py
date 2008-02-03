@@ -173,7 +173,7 @@ def upgrade_repository(repository, svn_repository, new_mapping=None,
         replay_snapshot, rebase, rebase_todo)
 
     if new_mapping is None:
-        new_mapping = get_default_mapping() # FIXME?
+        new_mapping = svn_repository.get_mapping()
 
     # Find revisions that need to be upgraded, create
     # dictionary with revision ids in key, new parents in value

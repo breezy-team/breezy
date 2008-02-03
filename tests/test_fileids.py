@@ -22,6 +22,7 @@ from bzrlib.trace import mutter
 from bzrlib.tests import TestCase
 
 from fileids import SimpleFileIdMap
+from mapping import BzrSvnMappingv3
 from scheme import TrunkBranchingScheme, NoBranchingScheme
 from tests import TestCaseWithSubversionRepository
 
@@ -161,43 +162,47 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         self.assertEqual(repository.generate_revision_id(1, "trunk", mapping), revid)
 
 class TestFileMapping(TestCase):
+    def setUp(self):
+        self.mapping = BzrSvnMappingv3(NoBranchingScheme())
+
     def apply_mappings(self, mappings, find_children=None, renames={}):
         map = {}
-        revids = mappings.keys()
-        revids.sort()
-        for r in revids:
+        brns = mappings.keys()
+        brns.sort()
+        for r in brns:
+            (revnum, branchpath) = r
             def new_file_id(x):
                 if renames.has_key(r) and renames[r].has_key(x):
                     return renames[r][x]
-                return self.mapping.generate_file_id("uuid", FIXMErevnum, FIXMEbranchpath, x)
+                return self.mapping.generate_file_id("uuid", revnum, branchpath, x)
             revmap = SimpleFileIdMap._apply_changes(new_file_id, mappings[r], find_children)
             map.update(dict([(x, (revmap[x],r)) for x in revmap]))
         return map
 
     def test_simple(self):
-        map = self.apply_mappings({self.mapping.generate_revision_id("uuid", 1, "", "bla"): {"foo": ('A', None, None)}})
+        map = self.apply_mappings({(1, ""): {"foo": ('A', None, None)}})
         self.assertEqual({ 'foo': ("1@uuid::foo",
-                                       self.mapping.generate_revision_id("uuid", 1, "", "bla"))
+                                       (1, ""))
                          }, map)
 
     def test_simple_add(self):
-        map = self.apply_mappings({self.mapping.generate_revision_id("uuid", 1, "", "bla"): {"": ('A', None, None), "foo": ('A', None, None)}})
-        self.assertEqual({'': ('1@uuid::', self.mapping.generate_revision_id("uuid", 1, "", "bla")),
-            'foo': ("1@uuid::foo", 
-                                       self.mapping.generate_revision_id("uuid", 1, "", "bla"))
-                         }, map)
+        map = self.apply_mappings({(1, ""): {"": ('A', None, None), "foo": ('A', None, None)}})
+        self.assertEqual({
+            '': ('1@uuid::', (1, "")),
+            'foo': ("1@uuid::foo", (1, "")) 
+            }, map)
 
     def test_copy(self):
         def find_children(path, revid):
             if path == "foo":
                 yield "foo/blie"
                 yield "foo/bla"
-        map = self.apply_mappings(
-                {self.mapping.generate_revision_id("uuid", 1, "", "bla"): {
+        map = self.apply_mappings({
+                (1, ""): {
                                    "foo": ('A', None, None), 
                                    "foo/blie": ('A', None, None),
                                    "foo/bla": ('A', None, None)},
-                self.mapping.generate_revision_id("uuid", 2, "", "bla"): {
+                (2, ""): {
                                    "foob": ('A', 'foo', 1), 
                                    "foob/bla": ('M', None, None)}
                 }, find_children)
@@ -206,39 +211,39 @@ class TestFileMapping(TestCase):
 
     def test_touchparent(self):
         map = self.apply_mappings(
-                {self.mapping.generate_revision_id("uuid", 1, "", "bla"): {
+                {(1, ""): {
                                    "foo": ('A', None, None), 
                                    "foo/bla": ('A', None, None)},
-                 self.mapping.generate_revision_id("uuid", 2, "", "bla"): {
+                 (2, ""): {
                                    "foo/bla": ('M', None, None)}
                 })
-        self.assertEqual(self.mapping.generate_revision_id("uuid", 1, "", "bla"), 
+        self.assertEqual((1, ""), 
                          map["foo"][1])
-        self.assertEqual(self.mapping.generate_revision_id("uuid", 1, "", "bla"), 
+        self.assertEqual((1, ""), 
                          map["foo/bla"][1])
 
     def test_usemap(self):
         map = self.apply_mappings(
-                {self.mapping.generate_revision_id("uuid", 1, "", "bla"): {
+                {(1, ""): {
                                    "foo": ('A', None, None), 
                                    "foo/bla": ('A', None, None)},
-                 self.mapping.generate_revision_id("uuid", 2, "", "bla"): {
+                 (2, ""): {
                                    "foo/bla": ('M', None, None)}
                  }, 
-                renames={self.mapping.generate_revision_id("uuid", 1, "", "bla"): {"foo": "myid"}})
+                renames={(1, ""): {"foo": "myid"}})
         self.assertEqual("myid", map["foo"][0])
 
     def test_usemap_later(self):
         map = self.apply_mappings(
-                {self.mapping.generate_revision_id("uuid", 1, "", "bla"): {
+                {(1, ""): {
                                    "foo": ('A', None, None), 
                                    "foo/bla": ('A', None, None)},
-                 self.mapping.generate_revision_id("uuid", 2, "", "bla"): {
+                 (2, ""): {
                                    "foo/bla": ('M', None, None)}
                  }, 
-                renames={self.mapping.generate_revision_id("uuid", 2, "", "bla"): {"foo": "myid"}})
+                renames={(2, ""): {"foo": "myid"}})
         self.assertEqual("1@uuid::foo", map["foo"][0])
-        self.assertEqual(self.mapping.generate_revision_id("uuid", 1, "", "bla"), map["foo"][1])
+        self.assertEqual((1, ""), map["foo"][1])
 
 class GetMapTests(TestCaseWithSubversionRepository):
     def setUp(self):
