@@ -20,8 +20,7 @@ from bzrlib.trace import info, mutter
 import bzrlib.ui as ui
 
 from errors import RebaseNotPresent
-from mapping import (default_mapping, mapping_registry, unescape_svn_path, 
-                     MAPPING_VERSION)
+from mapping import (unescape_svn_path, MAPPING_VERSION, get_default_mapping)
 from scheme import BranchingScheme, guess_scheme_from_branch_path
 
 class UpgradeChangesContent(BzrError):
@@ -31,22 +30,6 @@ class UpgradeChangesContent(BzrError):
     def __init__(self, revid):
         self.revid = revid
 
-
-def parse_legacy_revision_id(revid):
-    """Try to parse a legacy Subversion revision id.
-    
-    :param revid: Revision id to parse
-    :return: tuple with (uuid, branch_path, mapping)
-    """
-    if revid.startswith("svn-"):
-        try:
-            mapping_version = revid[len("svn-"):len("svn-vx")]
-            mapping = mapping_registry.get(mapping_version)
-            return mapping.parse_revision_id(revid)
-        except KeyError:
-            pass
-
-    raise InvalidRevisionId(revid, None)
 
 
 def create_upgraded_revid(revid):
@@ -108,7 +91,7 @@ def generate_upgrade_map(new_mapping, revs):
         for revid in revs:
             pb.update('gather revision information', revs.index(revid), len(revs))
             try:
-                (uuid, bp, rev, mapping) = parse_legacy_revision_id(revid)
+                (uuid, bp, rev, mapping) = parse_revision_id(revid)
             except InvalidRevisionId:
                 # Not a bzr-svn revision, nothing to do
                 continue
@@ -133,24 +116,21 @@ def check_rebase_version():
         raise RebaseNotPresent(e)
 
 
-def create_upgrade_plan(repository, svn_repository, revision_id=None,
-                        new_mapping=None, allow_changes=False):
+def create_upgrade_plan(repository, svn_repository, new_mapping,
+                        revision_id=None, allow_changes=False):
     """Generate a rebase plan for upgrading revisions.
 
     :param repository: Repository to do upgrade in
     :param svn_repository: Subversion repository to fetch new revisions from.
+    :param new_mapping: New mapping to use.
     :param revision_id: Revision to upgrade (None for all revisions in 
         repository.)
-    :param new_mapping: New mapping to use.
     :param allow_changes: Whether an upgrade is allowed to change the contents
         of revisions.
     :return: Tuple with a rebase plan and map of renamed revisions.
     """
     from bzrlib.plugins.rebase.rebase import generate_transpose_plan
     check_rebase_version()
-
-    if new_mapping is None:
-        new_mapping = svn_repository.get_mapping() # FIXME?
 
     graph = repository.get_revision_graph(revision_id)
     upgrade_map = generate_upgrade_map(new_mapping, graph.keys())
@@ -176,12 +156,13 @@ def create_upgrade_plan(repository, svn_repository, revision_id=None,
     return (plan, upgrade_map)
 
  
-def upgrade_repository(repository, svn_repository, revision_id=None, 
-                       allow_changes=False, verbose=False):
+def upgrade_repository(repository, svn_repository, new_mapping=None,
+                       revision_id=None, allow_changes=False, verbose=False):
     """Upgrade the revisions in repository until the specified stop revision.
 
     :param repository: Repository in which to upgrade.
     :param svn_repository: Repository to fetch new revisions from.
+    :param new_mapping: New mapping.
     :param revision_id: Revision id up until which to upgrade, or None for 
                         all revisions.
     :param allow_changes: Allow changes to mappings.
@@ -192,12 +173,16 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
     from bzrlib.plugins.rebase.rebase import (
         replay_snapshot, rebase, rebase_todo)
 
+    if new_mapping is None:
+        new_mapping = get_default_mapping() # FIXME?
+
     # Find revisions that need to be upgraded, create
     # dictionary with revision ids in key, new parents in value
     try:
         repository.lock_write()
         svn_repository.lock_read()
         (plan, revid_renames) = create_upgrade_plan(repository, svn_repository, 
+                                                    new_mapping,
                                                     revision_id=revision_id,
                                                     allow_changes=allow_changes)
         if verbose:
@@ -205,11 +190,9 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
                 info("%s -> %s" % (revid, plan[revid][0]))
         def fix_revid(revid):
             try:
-                (uuid, bp, rev, mapping) = parse_legacy_revision_id(revid)
+                (uuid, bp, rev, mapping) = parse_revision_id(revid)
             except InvalidRevisionId:
                 return revid
-            if mapping.scheme is None:
-                mapping.scheme = guess_scheme_from_branch_path(bp)
             return new_mapping.generate_revision_id(uuid, rev, bp)
         def replay(repository, oldrevid, newrevid, new_parents):
             return replay_snapshot(repository, oldrevid, newrevid, new_parents,

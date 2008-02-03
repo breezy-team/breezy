@@ -29,8 +29,7 @@ from scheme import TrunkBranchingScheme
 from tests import TestCaseWithSubversionRepository
 from upgrade import (upgrade_repository, upgrade_branch,
                      upgrade_workingtree, UpgradeChangesContent, 
-                     parse_legacy_revision_id, create_upgraded_revid, 
-                     generate_upgrade_map)
+                     create_upgraded_revid, generate_upgrade_map)
 
 class TestUpgradeChangesContent(TestCase):
     def test_init(self):
@@ -39,30 +38,6 @@ class TestUpgradeChangesContent(TestCase):
 
 
 class ParserTests(TestCase):
-    def test_current(self):
-        self.assertEqual(("uuid", "trunk", 1, BzrSvnMappingv3(TrunkBranchingScheme())), 
-                parse_legacy_revision_id("svn-v3-trunk0:uuid:trunk:1"))
-
-    def test_current_undefined(self):
-        self.assertEqual(("uuid", "trunk", 1, BzrSvnMappingv3(TrunkBranchingScheme())), 
-                parse_legacy_revision_id("svn-v3-undefined:uuid:trunk:1"))
-
-    def test_legacy2(self):
-        self.assertEqual(("uuid", "trunk", 1, BzrSvnMappingv2()), 
-                         parse_legacy_revision_id("svn-v2:1@uuid-trunk"))
-
-    def test_legacy(self):
-        self.assertEqual(("uuid", "trunk", 1, BzrSvnMappingv1()), 
-                         parse_legacy_revision_id("svn-v1:1@uuid-trunk"))
-
-    def test_except(self):
-        self.assertRaises(InvalidRevisionId, 
-                         parse_legacy_revision_id, "svn-v0:1@uuid-trunk")
-
-    def test_except_nonsvn(self):
-        self.assertRaises(InvalidRevisionId, 
-                         parse_legacy_revision_id, "blah")
-
     def test_create_upgraded_revid_new(self):
         self.assertEqual("bla-svn%d-upgrade" % MAPPING_VERSION,
                          create_upgraded_revid("bla"))
@@ -344,7 +319,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
 
 class TestGenerateUpdateMapTests(TestCase):
     def test_nothing(self):
-        self.assertEquals({}, generate_upgrade_map(["bla", "bloe"]))
+        self.assertEquals({}, generate_upgrade_map(BzrSvnMappingv3(TrunkBranchingScheme()), ["bla", "bloe"]))
 
-    def test_v2(self):
-        self.assertEquals({"svn-v2:12@65390229-12b7-0310-b90b-f21a5aa7ec8e-trunk": "svn-v3-trunk0:65390229-12b7-0310-b90b-f21a5aa7ec8e:trunk:12"}, generate_upgrade_map(["svn-v2:12@65390229-12b7-0310-b90b-f21a5aa7ec8e-trunk", "bloe", "blaaa"]))
+    def test_v2_to_v3(self):
+        self.assertEquals({"svn-v2:12@65390229-12b7-0310-b90b-f21a5aa7ec8e-trunk": "svn-v3-trunk0:65390229-12b7-0310-b90b-f21a5aa7ec8e:trunk:12"}, generate_upgrade_map(BzrSvnMappingv3(TrunkBranchingScheme()), ["svn-v2:12@65390229-12b7-0310-b90b-f21a5aa7ec8e-trunk", "bloe", "blaaa"]))

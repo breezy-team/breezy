@@ -28,7 +28,6 @@ from bzrlib.trace import mutter
 from convert import load_dumpfile
 from bzrlib.plugins.svn.errors import InvalidFileName
 import format
-from mapping import default_mapping
 import remote
 from scheme import TrunkBranchingScheme, NoBranchingScheme
 from tests import TestCaseWithSubversionRepository
@@ -1347,7 +1346,7 @@ Node-copyfrom-path: x
         tree = repos.revision_tree(
              repos.generate_revision_id(3, "branches/foobranch", "trunk0"))
 
-        self.assertEqual(default_mapping.generate_file_id(repos.uuid, 1, "trunk", u""), tree.inventory.root.file_id)
+        self.assertEqual(mapping.generate_file_id(repos.uuid, 1, "trunk", u""), tree.inventory.root.file_id)
 
     def test_fetch_odd(self):
         repos_url = self.make_client('d', 'dc')

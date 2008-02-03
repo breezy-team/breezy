@@ -15,10 +15,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import sha
+
 from errors import InvalidPropertyValue
 from mapping import (generate_revision_metadata, parse_revision_metadata, 
-                     parse_revid_property, parse_merge_property, BzrSvnMappingv1, BzrSvnMappingv2, 
-                          BzrSvnMappingv3, BzrSvnMappingv4, BzrSvnMappingHybrid)
+                     parse_revid_property, parse_merge_property, 
+                     BzrSvnMappingv1, BzrSvnMappingv2, BzrSvnMappingv3, 
+                     BzrSvnMappingv4, BzrSvnMappingHybrid, parse_revision_id)
 from scheme import NoBranchingScheme
 
 from bzrlib.tests import (TestCase, adapt_tests, TestSkipped)
@@ -175,17 +178,21 @@ class MappingTestAdapter:
                 self.mapping.generate_revision_id("myuuid", 5, "bla", "foobar")))
 
 
-class Mappingv1TestAdapter(MappingTestAdapter,TestCase):
+class Mappingv1Tests(MappingTestAdapter,TestCase):
     def setUp(self):
         self.mapping = BzrSvnMappingv1
 
 
-class Mappingv2TestAdapter(MappingTestAdapter,TestCase):
+class Mappingv2Tests(MappingTestAdapter,TestCase):
     def setUp(self):
         self.mapping = BzrSvnMappingv2
 
 
-class Mappingv3TestAdapter(MappingTestAdapter,TestCase):
+def sha1(text):
+    return sha.new(text).hexdigest()
+
+
+class Mappingv3Tests(MappingTestAdapter,TestCase):
     def setUp(self):
         self.mapping = BzrSvnMappingv3
 
@@ -195,7 +202,7 @@ class Mappingv3TestAdapter(MappingTestAdapter,TestCase):
 
     def test_generate_revid(self):
         self.assertEqual("svn-v3-undefined:myuuid:branch:5", 
-                         default_mapping.generate_revision_id("myuuid", 5, "branch", "undefined"))
+                         self.mapping.generate_revision_id("myuuid", 5, "branch", "undefined"))
 
     def test_generate_revid_nested(self):
         self.assertEqual("svn-v3-undefined:myuuid:branch%2Fpath:5", 
@@ -219,7 +226,69 @@ class Mappingv3TestAdapter(MappingTestAdapter,TestCase):
                          default_mapping.parse_revision_id(
                      "svn-v3-undefined:uuid:bp%2Fdata:4"))
 
+    def test_generate_file_id_root(self):
+        self.assertEqual("2@uuid:bp:", self.mapping.generate_file_id("uuid", 2, "bp", u""))
+
+    def test_generate_file_id_path(self):
+        self.assertEqual("2@uuid:bp:mypath", 
+                self.mapping.generate_file_id("uuid", 2, "bp", u"mypath"))
+
+    def test_generate_file_id_long(self):
+        dir = "this/is/a" + ("/very"*40) + "/long/path/"
+        self.assertEqual("2@uuid:bp;" + sha1(dir+"filename"), 
+                self.mapping.generate_file_id("uuid", 2, "bp", dir+u"filename"))
+
+    def test_generate_file_id_long_nordic(self):
+        dir = "this/is/a" + ("/very"*40) + "/long/path/"
+        self.assertEqual("2@uuid:bp;" + sha1((dir+u"filename\x2c\x8a").encode('utf-8')), 
+                self.mapping.generate_file_id("uuid", 2, "bp", dir+u"filename\x2c\x8a"))
+
+    def test_generate_file_id_special_char(self):
+        self.assertEqual("2@uuid:bp:mypath%2C%C2%8A",
+                         self.mapping.generate_file_id("uuid", 2, "bp", u"mypath\x2c\x8a"))
+
+    def test_generate_svn_file_id(self):
+        self.assertEqual("2@uuid:bp:path", 
+                self.mapping.generate_file_id("uuid", 2, "bp", u"path"))
+
+    def test_generate_svn_file_id_nordic(self):
+        self.assertEqual("2@uuid:bp:%C3%A6%C3%B8%C3%A5", 
+                self.mapping.generate_file_id("uuid", 2, "bp", u"\xe6\xf8\xe5"))
+
+    def test_generate_svn_file_id_nordic_branch(self):
+        self.assertEqual("2@uuid:%C3%A6:%C3%A6%C3%B8%C3%A5", 
+                self.mapping.generate_file_id("uuid", 2, u"\xe6".encode('utf-8'), u"\xe6\xf8\xe5"))
+
+
+
 #class Mappingv4TestAdapter(MappingTestAdapter,TestCase):
 #    def setUp(self):
 #        self.mapping = BzrSvnMappingv4
+
+
+class ParseRevisionIdTests:
+    def test_current(self):
+        self.assertEqual(("uuid", "trunk", 1, BzrSvnMappingv3(TrunkBranchingScheme())), 
+                parse_revision_id("svn-v3-trunk0:uuid:trunk:1"))
+
+    def test_current_undefined(self):
+        self.assertEqual(("uuid", "trunk", 1, BzrSvnMappingv3(TrunkBranchingScheme())), 
+                parse_revision_id("svn-v3-undefined:uuid:trunk:1"))
+
+    def test_legacy2(self):
+        self.assertEqual(("uuid", "trunk", 1, BzrSvnMappingv2()), 
+                         parse_revision_id("svn-v2:1@uuid-trunk"))
+
+    def test_legacy(self):
+        self.assertEqual(("uuid", "trunk", 1, BzrSvnMappingv1()), 
+                         parse_revision_id("svn-v1:1@uuid-trunk"))
+
+    def test_except(self):
+        self.assertRaises(InvalidRevisionId, 
+                         parse_revision_id, "svn-v0:1@uuid-trunk")
+
+    def test_except_nonsvn(self):
+        self.assertRaises(InvalidRevisionId, 
+                         parse_revision_id, "blah")
+
 

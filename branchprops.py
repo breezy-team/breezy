@@ -102,6 +102,8 @@ class BranchPropertyList(CacheTable):
         """
         assert isinstance(revnum, int)
         assert isinstance(path, str)
+        if not self.log.touches_path(path, revnum):
+            return {}
         (prev_path, prev_revnum) = self.log.get_previous(path, revnum)
         if prev_path is None and prev_revnum == -1:
             previous = {}

@@ -27,7 +27,9 @@ from unittest import TestCase
 
 from branch import FakeControlFiles, SvnBranchFormat
 from convert import load_dumpfile
-from mapping import MAPPING_VERSION, SVN_PROP_BZR_REVISION_ID
+from mapping import (MAPPING_VERSION, SVN_PROP_BZR_REVISION_ID, 
+                     BzrSvnMappingv3)
+from scheme import TrunkBranchingScheme
 from tests import TestCaseWithSubversionRepository
 
 class WorkingSubversionBranch(TestCaseWithSubversionRepository):
@@ -544,10 +546,11 @@ foohosts""")
         newbranch.repository.lock_read()
         weave = newbranch.repository.weave_store.get_weave(
                 tree.inventory.path2id("hosts"), transaction)
+        mapping = BzrSvnMappingv3(TrunkBranchingScheme())
         self.assertEqual(set([
-            default_mapping.generate_revision_id(uuid, 1, "trunk", "trunk0"),
-            default_mapping.generate_revision_id(uuid, 2, "trunk", "trunk0"),
-            default_mapping.generate_revision_id(uuid, 3, "trunk", "trunk0"),
+            mapping.generate_revision_id(uuid, 1, "trunk"),
+            mapping.generate_revision_id(uuid, 2, "trunk"),
+            mapping.generate_revision_id(uuid, 3, "trunk"),
             oldbranch.generate_revision_id(6)]),
                           set(weave.versions()))
         newbranch.repository.unlock()

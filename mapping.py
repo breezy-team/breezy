@@ -787,4 +787,22 @@ mapping_registry.register('hybrid', BzrSvnMappingHybrid,
         'Hybrid v3 and v4 format')
 mapping_registry.set_default('v3')
 
-default_mapping = BzrSvnMappingv3
+
+def parse_revision_id(revid):
+    """Try to parse a Subversion revision id.
+    
+    :param revid: Revision id to parse
+    :return: tuple with (uuid, branch_path, mapping)
+    """
+    if revid.startswith("svn-"):
+        try:
+            mapping_version = revid[len("svn-"):len("svn-vx")]
+            mapping = mapping_registry.get(mapping_version)
+            return mapping.parse_revision_id(revid)
+        except KeyError:
+            pass
+
+    raise InvalidRevisionId(revid, None)
+
+def get_default_mapping():
+    return mapping_registry.get("default")

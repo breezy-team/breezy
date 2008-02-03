@@ -30,7 +30,6 @@ from bzrlib.trace import mutter
 from copy import deepcopy
 from cStringIO import StringIO
 from errors import ChangesRootLHSHistory, MissingPrefix, RevpropChangeFailed
-from mapping import default_mapping
 from repository import (SvnRepositoryFormat, SvnRepository)
 import urllib
 

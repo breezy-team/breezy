@@ -19,7 +19,6 @@
 from bzrlib.errors import (InvalidRevisionId, NoSuchRevision)
 
 from cache import CacheTable
-from mapping import default_mapping
 
 class RevidMap(CacheTable):
     """Revision id mapping store. 

@@ -19,7 +19,8 @@ from bzrlib.repository import Repository
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.trace import mutter
 
-from mapping import default_mapping
+from mapping import BzrSvnMappingv3
+from scheme import NoBranchingScheme
 from tests import TestCaseWithSubversionRepository
 
 import os
@@ -181,14 +182,15 @@ Node-copyfrom-path: x
 """)
         self.check_output("", 'svn-import --scheme=none %s dc' % filename)
         newrepos = Repository.open("dc")
+        mapping = BzrSvnMappingv3(NoBranchingScheme())
         self.assertTrue(newrepos.has_revision(
-            default_mapping.generate_revision_id(uuid, 5, "", "none")))
+            mapping.generate_revision_id(uuid, 5, "")))
         self.assertTrue(newrepos.has_revision(
-            default_mapping.generate_revision_id(uuid, 1, "", "none")))
+            mapping.generate_revision_id(uuid, 1, "")))
         inv1 = newrepos.get_inventory(
-                default_mapping.generate_revision_id(uuid, 1, "", "none"))
+                mapping.generate_revision_id(uuid, 1, ""))
         inv2 = newrepos.get_inventory(
-                default_mapping.generate_revision_id(uuid, 5, "", "none"))
+                mapping.generate_revision_id(uuid, 5, ""))
         self.assertNotEqual(inv1.path2id("y"), inv2.path2id("y"))
 
 

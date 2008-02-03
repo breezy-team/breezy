@@ -38,10 +38,11 @@ from cache import create_cache_dir, sqlite3
 from config import SvnRepositoryConfig
 import errors
 import logwalker
-from mapping import (default_mapping, SVN_PROP_BZR_REVISION_ID, 
-                     SVN_PROP_BZR_BRANCHING_SCHEME,
+from mapping import (SVN_PROP_BZR_REVISION_ID, 
+                     SVN_PROP_BZR_BRANCHING_SCHEME, BzrSvnMappingv3,
                      parse_revision_metadata, parse_revid_property, 
-                     parse_merge_property, BzrSvnMapping)
+                     parse_merge_property, BzrSvnMapping,
+                     get_default_mapping, parse_revision_id)
 from revids import RevidMap
 from scheme import (BranchingScheme, ListBranchingScheme, 
                     parse_list_scheme_text, guess_scheme_from_history)
@@ -148,7 +149,7 @@ class SvnRepository(Repository):
         return (None, False)
 
     def get_mapping(self):
-        return default_mapping(self.get_scheme())
+        return get_default_mapping()(self.get_scheme())
 
     def get_scheme(self):
         """Determine the branching scheme to use for this repository.
@@ -483,7 +484,8 @@ class SvnRepository(Repository):
 
         # Try a simple parse
         try:
-            (uuid, branch_path, revnum, mapping) = default_mapping.parse_revision_id(revid)
+            # FIXME: Also try to parse with the other formats..
+            (uuid, branch_path, revnum, mapping) = parse_revision_id(revid)
             assert isinstance(branch_path, str)
             assert isinstance(mapping, BzrSvnMapping)
             if uuid == self.uuid:
@@ -502,7 +504,7 @@ class SvnRepository(Repository):
             assert isinstance(scheme, str)
             # Entry already complete?
             if min_revnum == max_revnum:
-                return (branch_path, min_revnum, default_mapping(get_scheme(scheme)))
+                return (branch_path, min_revnum, BzrSvnMappingv3(get_scheme(scheme)))
         except NoSuchRevision, e:
             # If there is no entry in the map, walk over all branches:
             if scheme is None:
