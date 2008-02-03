@@ -102,9 +102,9 @@ class SvnCommitBuilder(RootCommitBuilder):
         if self.base_revid is None:
             self.base_revnum = -1
             self.base_path = None
-            self.base_scheme = repository.get_scheme()
+            self.base_mapping = repository.get_mapping()
         else:
-            (self.base_path, self.base_revnum, self.base_scheme) = \
+            (self.base_path, self.base_revnum, self.base_mapping) = \
                 repository.lookup_revision_id(self.base_revid)
 
         if old_inv is None:
@@ -127,7 +127,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             if self.base_revid is None:
                 return default
             return self.repository.branchprop_list.get_property(self.base_path, self.base_revnum, name, default)
-        (self._svn_revprops, self._svnprops) = default_mapping.export_revision(self.branch.get_branch_path(), timestamp, timezone, committer, revprops, revision_id, self.base_revno+1, merges, get_branch_file_property, self.base_scheme)
+        (self._svn_revprops, self._svnprops) = self.base_mapping.export_revision(self.branch.get_branch_path(), timestamp, timezone, committer, revprops, revision_id, self.base_revno+1, merges, get_branch_file_property)
 
     def mutter(self, text):
         if 'commit' in debug.debug_flags:
@@ -410,7 +410,7 @@ class SvnCommitBuilder(RootCommitBuilder):
         for id, path in _dir_process_file_id(self.old_inv, self.new_inventory, "", self.new_inventory.root.file_id):
             fileids[path] = id
 
-        default_mapping.export_fileid_map(fileids, self._svn_revprops, self._svnprops)
+        self.base_mapping.export_fileid_map(fileids, self._svn_revprops, self._svnprops)
         self._svn_revprops[svn.core.SVN_PROP_REVISION_LOG] = message.encode("utf-8")
 
         try:
@@ -625,7 +625,7 @@ def push_new(target_repository, target_branch_path, source,
             """See SvnBranch.generate_revision_id()."""
             return self.repository.generate_revision_id(
                 revnum, self.get_branch_path(revnum), 
-                str(self.repository.get_scheme()))
+                str(self.repository.get_mapping()))
 
     push(ImaginaryBranch(target_repository), source, start_revid)
 

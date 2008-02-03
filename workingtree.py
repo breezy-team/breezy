@@ -39,7 +39,7 @@ from mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS,
                      SVN_PROP_BZR_REVISION_ID, SVN_PROP_BZR_REVISION_INFO,
                      generate_revision_metadata)
 from remote import SvnRemoteAccess
-from repository import (SvnRepository, revision_id_to_svk_feature)
+from repository import SvnRepository
 from svk import SVN_PROP_SVK_MERGE
 from mapping import escape_svn_path
 from scheme import BranchingScheme
@@ -645,7 +645,7 @@ class SvnWorkingTree(WorkingTree):
             svk_merge = ""
             for merge in merges:
                 try:
-                    svk_merge += revision_id_to_svk_feature(merge) + "\n"
+                    svk_merge += default_mapping.revision_id_to_svk_feature(merge) + "\n"
                 except InvalidRevisionId:
                     pass
 

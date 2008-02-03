@@ -23,7 +23,7 @@ from bzrlib.trace import mutter
 
 import urllib
 
-from mapping import escape_svn_path, default_mapping
+from mapping import escape_svn_path
 
 def generate_file_id(repos, revid, inv_path):
     """Generate a file id for a path created in a specific revision.
@@ -40,25 +40,25 @@ def generate_file_id(repos, revid, inv_path):
     """
     assert isinstance(revid, str)
     assert isinstance(inv_path, unicode)
-    (branch, revnum, _) = repos.lookup_revision_id(revid)
-    return default_mapping.generate_file_id(repos.uuid, revnum, branch, inv_path)
+    (branch, revnum, mapping) = repos.lookup_revision_id(revid)
+    return mapping.generate_file_id(repos.uuid, revnum, branch, inv_path)
 
 
-def get_local_changes(paths, scheme, generate_revid, get_children=None):
+def get_local_changes(paths, mapping, generate_revid, get_children=None):
     new_paths = {}
     for p in sorted(paths.keys()):
         data = paths[p]
-        new_p = scheme.unprefix(p)[1]
+        new_p = mapping.scheme.unprefix(p)[1]
         if data[1] is not None:
             try:
-                (cbp, crp) = scheme.unprefix(data[1])
+                (cbp, crp) = mapping.scheme.unprefix(data[1])
 
                 # Branch copy
                 if (crp == "" and new_p == ""):
                     data = ('M', None, None)
                 else:
                     data = (data[0], crp, generate_revid(
-                                  data[2], cbp, str(scheme)))
+                                  data[2], cbp, mapping))
             except NotBranchError:
                 # Copied from outside of a known branch
                 # Make it look like the files were added in this revision
@@ -102,7 +102,7 @@ class FileIdMap(object):
         return map
 
     def apply_changes(self, uuid, revnum, branch, global_changes, 
-                      renames, scheme, find_children=None):
+                      renames, mapping, find_children=None):
         """Change file id map to incorporate specified changes.
 
         :param uuid: UUID of repository changes happen in
@@ -110,19 +110,19 @@ class FileIdMap(object):
         :param branch: Branch path where changes happened
         :param global_changes: Dict with global changes that happened
         :param renames: List of renames (known file ids for particular paths)
-        :param scheme: Branching scheme
+        :param mapping: Mapping
         """
-        changes = get_local_changes(global_changes, scheme,
+        changes = get_local_changes(global_changes, mapping,
                     self.repos.generate_revision_id, find_children)
         if find_children is not None:
             def get_children(path, revid):
-                (bp, revnum, scheme) = self.repos.lookup_revision_id(revid)
+                (bp, revnum, mapping) = self.repos.lookup_revision_id(revid)
                 for p in find_children(bp+"/"+path, revnum):
-                    yield scheme.unprefix(p)[1]
+                    yield mapping.unprefix(bp, p)
         else:
             get_children = None
 
-        revid = self.repos.generate_revision_id(revnum, branch, str(scheme))
+        revid = self.repos.generate_revision_id(revnum, branch, mapping)
 
         def new_file_id(x):
             return generate_file_id(self.repos, revid, x)
@@ -131,21 +131,20 @@ class FileIdMap(object):
         idmap.update(renames)
         return idmap
 
-    def get_map(self, uuid, revnum, branch, renames_cb, scheme):
+    def get_map(self, uuid, revnum, branch, renames_cb, mapping):
         """Make sure the map is up to date until revnum."""
         # First, find the last cached map
         todo = []
         next_parent_revs = []
         if revnum == 0:
             assert branch == ""
-            return {"": (default_mapping.generate_file_id(uuid, revnum, branch, u""), 
-              self.repos.generate_revision_id(revnum, branch, str(scheme)))}
+            return {"": (mapping.generate_file_id(uuid, revnum, branch, u""), 
+              self.repos.generate_revision_id(revnum, branch, mapping))}
 
         # No history -> empty map
         for (bp, paths, rev) in self.repos.follow_branch_history(branch, 
-                                             revnum, scheme):
-            revid = self.repos.generate_revision_id(rev, bp, 
-                                                    str(scheme))
+                                             revnum, mapping):
+            revid = self.repos.generate_revision_id(rev, bp, mapping)
             try:
                 map = self.load(revid)
                 # found the nearest cached map
@@ -159,8 +158,8 @@ class FileIdMap(object):
             return map
 
         if len(next_parent_revs) == 0:
-            if scheme.is_branch(""):
-                map = {u"": (default_mapping.generate_file_id(uuid, 0, "", u""), NULL_REVISION)}
+            if mapping.scheme.is_branch(""):
+                map = {u"": (mapping.generate_file_id(uuid, 0, "", u""), NULL_REVISION)}
             else:
                 map = {}
 
@@ -173,15 +172,15 @@ class FileIdMap(object):
                 def log_find_children(path, revnum):
                     expensive = True
                     return self.repos._log.find_children(path, revnum)
-                changes = get_local_changes(global_changes, scheme,
+                changes = get_local_changes(global_changes, mapping,
                                             self.repos.generate_revision_id, 
                                             log_find_children)
                 pb.update('generating file id map', i, len(todo))
 
                 def find_children(path, revid):
-                    (bp, revnum, scheme) = self.repos.lookup_revision_id(revid)
+                    (bp, revnum, mapping) = self.repos.lookup_revision_id(revid)
                     for p in log_find_children(bp+"/"+path, revnum):
-                        yield scheme.unprefix(p)[1]
+                        yield mapping.unprefix(bp, p)
 
                 parent_revs = next_parent_revs
 

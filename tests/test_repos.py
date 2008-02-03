@@ -43,7 +43,7 @@ from scheme import (TrunkBranchingScheme, NoBranchingScheme,
 from transport import SvnRaTransport
 from tests import TestCaseWithSubversionRepository
 from tests.test_fileids import MockRepo
-from repository import (revision_id_to_svk_feature, SvnRepositoryFormat)
+from repository import SvnRepositoryFormat
 
 
 class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):

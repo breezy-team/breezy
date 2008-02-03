@@ -21,13 +21,15 @@ from bzrlib.trace import mutter
 
 import calendar
 import errors
+from scheme import BranchingScheme
 import sha
 import svn
 import time
 import urllib
 
 from svk import (SVN_PROP_SVK_MERGE, svk_features_merged_since, 
-                 parse_svk_features, serialize_svk_features)
+                 parse_svk_features, serialize_svk_features, 
+                 parse_svk_feature, generate_svk_feature)
 
 MAPPING_VERSION = 3
 
@@ -253,10 +255,11 @@ class BzrSvnMapping:
 
     @staticmethod
     def supports_roundtripping():
+        """Whether this mapping supports roundtripping.
+        """
         return False
 
-    @staticmethod
-    def parse_revision_id(revid):
+    def parse_revision_id(self, revid):
         """Parse an existing Subversion-based revision id.
 
         :param revid: The revision id.
@@ -265,18 +268,22 @@ class BzrSvnMapping:
         """
         raise NotImplementedError(self.parse_revision_id)
 
-    @staticmethod
-    def generate_revision_id(uuid, revnum, path, scheme):
+    def generate_revision_id(self, uuid, revnum, path):
         """Generate a unambiguous revision id. 
         
         :param uuid: UUID of the repository.
         :param revnum: Subversion revision number.
         :param path: Branch path.
-        :param scheme: Name of the branching scheme in use
 
         :return: New revision id.
         """
         raise NotImplementedError(self.generate_revision_id)
+
+    def is_branch(self, branch_path):
+        raise NotImplementedError(self.is_branch)
+
+    def is_tag(self, tag_path):
+        raise NotImplementedError(self.is_tag)
 
     @staticmethod
     def generate_file_id(uuid, revnum, branch, inv_path):
@@ -302,15 +309,13 @@ class BzrSvnMapping:
         """
         raise NotImplementedError(self.import_revision)
 
-    @staticmethod
-    def get_rhs_parents(revprops, get_branch_file_property, scheme):
+    def get_rhs_parents(self, revprops, get_branch_file_property):
         """Obtain the right-hand side parents for a revision.
 
         """
         raise NotImplementedError(self.get_rhs_parents)
 
-    @staticmethod
-    def get_rhs_ancestors(revprops, get_branch_file_property, scheme):
+    def get_rhs_ancestors(self, revprops, get_branch_file_property):
         """Obtain the right-hand side ancestors for a revision.
 
         """
@@ -333,17 +338,18 @@ class BzrSvnMapping:
         """
         raise NotImplementedError(self.export_fileid_map)
 
-    @staticmethod
-    def export_revision(branch_root, timestamp, timezone, committer, revprops, revision_id, revno, merges, 
-                        get_branch_file_property, scheme):
+    def export_revision(self, branch_root, timestamp, timezone, committer, revprops, 
+                        revision_id, revno, merges, get_branch_file_property):
         """Determines the revision properties and branch root file 
         properties.
         """
         raise NotImplementedError(self.export_revision)
 
-    @staticmethod
-    def get_revision_id(revprops, get_branch_file_property, scheme):
+    def get_revision_id(self ,revprops, get_branch_file_property):
         raise NotImplementedError(self.get_revision_id)
+
+    def unprefix(self, branch_path, repos_path):
+        raise NotImplementedError(self.unprefix)
 
 
 class BzrSvnMappingv1(BzrSvnMapping):
@@ -353,8 +359,8 @@ class BzrSvnMappingv1(BzrSvnMapping):
     It does not support pushing revisions to Subversion as-is, but only 
     as part of a merge.
     """
-    @staticmethod
-    def parse_revision_id(revid):
+    @classmethod
+    def parse_revision_id(cls, revid):
         assert revid.startswith("svn-v1:")
         revid = revid[len("svn-v1:"):]
         at = revid.index("@")
@@ -363,10 +369,9 @@ class BzrSvnMappingv1(BzrSvnMapping):
         branch_path = unescape_svn_path(revid[fash+1:])
         revnum = int(revid[0:at])
         assert revnum >= 0
-        return (uuid, branch_path, revnum, None)
+        return (uuid, branch_path, revnum, cls())
 
-    @staticmethod
-    def generate_revision_id(uuid, revnum, path, scheme):
+    def generate_revision_id(self, uuid, revnum, path):
         return "svn-v1:%d@%s-%s" % (revnum, uuid, escape_svn_path(path))
 
 
@@ -374,8 +379,8 @@ class BzrSvnMappingv2(BzrSvnMapping):
     """The second version of the mappings as used in the 0.3.x series.
 
     """
-    @staticmethod
-    def parse_revision_id(revid):
+    @classmethod
+    def parse_revision_id(cls, revid):
         assert revid.startswith("svn-v2:")
         revid = revid[len("svn-v2:"):]
         at = revid.index("@")
@@ -384,10 +389,9 @@ class BzrSvnMappingv2(BzrSvnMapping):
         branch_path = unescape_svn_path(revid[fash+1:])
         revnum = int(revid[0:at])
         assert revnum >= 0
-        return (uuid, branch_path, revnum, None)
+        return (uuid, branch_path, revnum, cls())
 
-    @staticmethod
-    def generate_revision_id(uuid, revnum, path, scheme):
+    def generate_revision_id(self, uuid, revnum, path):
         return "svn-v2:%d@%s-%s" % (revnum, uuid, escape_svn_path(path))
 
 
@@ -398,14 +402,21 @@ def parse_fileid_property(text):
         ret[urllib.unquote(path)] = osutils.safe_file_id(key)
     return ret
 
+
 def generate_fileid_property(fileids):
+    """Marshall a dictionary with file ids."""
     return "".join(["%s\t%s\n" % (urllib.quote(path), fileids[path]) for path in sorted(fileids.keys())])
+
 
 class BzrSvnMappingv3(BzrSvnMapping):
     """The third version of the mappings as used in the 0.4.x series.
 
     """
     revid_prefix = "svn-v3-"
+
+    def __init__(self, scheme):
+        self.scheme = scheme
+        assert not isinstance(scheme, str)
 
     @staticmethod
     def supports_roundtripping():
@@ -426,25 +437,34 @@ class BzrSvnMappingv3(BzrSvnMapping):
 
         scheme = version[len(cls.revid_prefix):]
 
+        branch_path = unescape_svn_path(branch_path)
+
         # Some older versions of bzr-svn 0.4 did not always set a branching
         # scheme but set "undefined" instead.
         if scheme == "undefined":
-            scheme = None
+            scheme = BranchingScheme.guess_scheme_from_branch_path(branch_path)
+        else:
+            scheme = BranchingScheme.find_scheme(scheme)
 
-        return (uuid, unescape_svn_path(branch_path), int(srevnum), scheme)
+        return (uuid, branch_path, int(srevnum), cls(scheme))
 
-    @classmethod
-    def generate_revision_id(cls, uuid, revnum, path, scheme):
+    def is_branch(self, branch_path):
+        return (self.scheme.is_branch(branch_path) or 
+                self.scheme.is_tag(branch_path))
+
+    def is_tag(self, tag_path):
+        return self.scheme.is_tag(tag_path)
+
+    def generate_revision_id(self, uuid, revnum, path):
         assert isinstance(revnum, int)
         assert isinstance(path, str)
         assert revnum >= 0
         assert revnum > 0 or path == "", \
                 "Trying to generate revid for (%r,%r)" % (path, revnum)
-        return "%s%s:%s:%s:%d" % (cls.revid_prefix, scheme, uuid, \
+        return "%s%s:%s:%s:%d" % (self.revid_prefix, self.scheme, uuid, \
                        escape_svn_path(path.strip("/")), revnum)
 
-    @staticmethod
-    def generate_file_id(uuid, revnum, branch, inv_path):
+    def generate_file_id(self, uuid, revnum, branch, inv_path):
         assert isinstance(uuid, str)
         assert isinstance(revnum, int)
         assert isinstance(branch, str)
@@ -458,13 +478,12 @@ class BzrSvnMappingv3(BzrSvnMapping):
         assert isinstance(ret, str)
         return osutils.safe_file_id(ret)
 
-    @staticmethod
-    def import_revision(svn_revprops, get_branch_file_property, rev):
+    def import_revision(self, svn_revprops, get_branch_file_property, rev):
+        parse_svn_revprops(svn_revprops, rev)
         parse_revision_metadata(
                 get_branch_file_property(SVN_PROP_BZR_REVISION_INFO, ""), rev)
 
-    @classmethod
-    def _svk_merged_revisions(cls, get_branch_file_property, scheme):
+    def _svk_merged_revisions(self, get_branch_file_property):
         """Find out what SVK features were merged in a revision.
 
         """
@@ -476,47 +495,70 @@ class BzrSvnMappingv3(BzrSvnMapping):
             previous = self.branchprop_list.get_property(prev_path.encode("utf-8"), 
                          prev_revnum, SVN_PROP_SVK_MERGE, "")
         for feature in svk_features_merged_since(current, previous):
-            revid = cls._svk_feature_to_revision_id(scheme, feature)
+            revid = self._svk_feature_to_revision_id(feature)
             if revid is not None:
                 yield revid
 
-    @classmethod
-    def get_rhs_parents(cls, revprops, get_branch_file_property, scheme):
+    def _svk_feature_to_revision_id(self, feature):
+        """Convert a SVK feature to a revision id for this repository.
+
+        :param feature: SVK feature.
+        :return: revision id.
+        """
+        try:
+            (uuid, bp, revnum) = parse_svk_feature(feature)
+        except errors.InvalidPropertyValue:
+            return None
+        if uuid != self.uuid:
+            return None
+        if not self.scheme.is_branch(bp) and not self.scheme.is_tag(bp):
+            return None
+        return self.generate_revision_id(revnum, bp)
+
+    def get_rhs_parents(self, revprops, get_branch_file_property):
         rhs_parents = []
-        bzr_merges = get_branch_file_property(SVN_PROP_BZR_ANCESTRY+str(scheme), None)
+        bzr_merges = get_branch_file_property(SVN_PROP_BZR_ANCESTRY+str(self.scheme), None)
         if bzr_merges is not None:
             return parse_merge_property(bzr_merges.splitlines()[-1])
 
         svk_merges = get_branch_file_property(SVN_PROP_SVK_MERGE, None)
         if svk_merges is not None:
-            return cls._svk_merged_revisions(get_branch_file_property, scheme)
+            return self._svk_merged_revisions(get_branch_file_property, scheme)
 
         return []
 
-    @staticmethod
-    def get_rhs_ancestors(revprops, get_branch_file_property, scheme):
+    def get_rhs_ancestors(self, revprops, get_branch_file_property):
         ancestry = []
-        for l in get_branch_file_property(SVN_PROP_BZR_ANCESTRY+str(scheme), "").splitlines():
+        for l in get_branch_file_property(SVN_PROP_BZR_ANCESTRY+str(self.scheme), "").splitlines():
             ancestry.extend(l.split("\n"))
         return ancestry
 
-    @classmethod
-    def import_fileid_map(cls, svn_revprops, get_branch_file_property):
+    def import_fileid_map(self, svn_revprops, get_branch_file_property):
         fileids = get_branch_file_property(SVN_PROP_BZR_FILEIDS, None)
         if fileids is None:
             return {}
         return parse_fileid_property(fileids)
 
-    @staticmethod
-    def _record_merges(merges, get_branch_file_property, scheme):
+    def _revision_id_to_svk_feature(self, revid):
+        """Create a SVK feature identifier from a revision id.
+
+        :param revid: Revision id to convert.
+        :return: Matching SVK feature identifier.
+        """
+        assert isinstance(revid, str)
+        (uuid, branch, revnum, _) = self.__class__.parse_revision_id(revid)
+        # TODO: What about renamed revisions? Should use 
+        # repository.lookup_revision_id here.
+        return generate_svk_feature(uuid, branch, revnum)
+
+    def _record_merges(self, merges, get_branch_file_property):
         """Store the extra merges (non-LHS parents) in a file property.
 
         :param merges: List of parents.
         """
-        from repository import revision_id_to_svk_feature
         # Bazaar Parents
-        old = get_branch_file_property(SVN_PROP_BZR_ANCESTRY+str(scheme), "")
-        svnprops = { SVN_PROP_BZR_ANCESTRY+str(scheme): old + "\t".join(merges) + "\n" }
+        old = get_branch_file_property(SVN_PROP_BZR_ANCESTRY+str(self.scheme), "")
+        svnprops = { SVN_PROP_BZR_ANCESTRY+str(self.scheme): old + "\t".join(merges) + "\n" }
 
         old_svk_features = parse_svk_features(get_branch_file_property(SVN_PROP_SVK_MERGE, ""))
         svk_features = set(old_svk_features)
@@ -524,7 +566,7 @@ class BzrSvnMappingv3(BzrSvnMapping):
         # SVK compatibility
         for merge in merges:
             try:
-                svk_features.add(revision_id_to_svk_feature(merge))
+                svk_features.add(self._revision_id_to_svk_feature(merge))
             except InvalidRevisionId:
                 pass
 
@@ -533,29 +575,27 @@ class BzrSvnMappingv3(BzrSvnMapping):
 
         return svnprops
  
-    @classmethod
-    def export_revision(cls, branch_root, timestamp, timezone, committer, revprops, revision_id, revno, merges, 
-                        get_branch_file_property, scheme):
+    def export_revision(self, branch_root, timestamp, timezone, committer, revprops, revision_id, revno, merges, 
+                        get_branch_file_property):
         # Keep track of what Subversion properties to set later on
         fileprops = {}
         fileprops[SVN_PROP_BZR_REVISION_INFO] = generate_revision_metadata(
             timestamp, timezone, committer, revprops)
 
         if len(merges) > 0:
-            fileprops.update(cls._record_merges(merges, get_branch_file_property, scheme))
+            fileprops.update(self._record_merges(merges, get_branch_file_property, self.scheme))
 
         # Set appropriate property if revision id was specified by 
         # caller
         if revision_id is not None:
-            old = get_branch_file_property(SVN_PROP_BZR_REVISION_ID+str(scheme), "")
-            fileprops[SVN_PROP_BZR_REVISION_ID+str(scheme)] = old + "%d %s\n" % (revno, revision_id)
+            old = get_branch_file_property(SVN_PROP_BZR_REVISION_ID+str(self.scheme), "")
+            fileprops[SVN_PROP_BZR_REVISION_ID+str(self.scheme)] = old + "%d %s\n" % (revno, revision_id)
 
         return ({}, fileprops)
 
-    @staticmethod
-    def get_revision_id(revprops, get_branch_file_property, scheme):
+    def get_revision_id(self, revprops, get_branch_file_property):
         # Lookup the revision from the bzr:revision-id-vX property
-        text = get_branch_file_property(SVN_PROP_BZR_REVISION_ID+str(scheme), None)
+        text = get_branch_file_property(SVN_PROP_BZR_REVISION_ID+str(self.scheme), None)
         if text is None:
             return (None, None)
 
@@ -569,14 +609,17 @@ class BzrSvnMappingv3(BzrSvnMapping):
             mutter(str(e))
             return (None, None)
 
-    @staticmethod
-    def export_fileid_map(fileids, revprops, fileprops):
+    def export_fileid_map(self, fileids, revprops, fileprops):
         if fileids != {}:
             file_id_text = generate_fileid_property(fileids)
             fileprops[SVN_PROP_BZR_FILEIDS] = file_id_text
         else:
             fileprops[SVN_PROP_BZR_FILEIDS] = ""
 
+    def unprefix(self, branch_path, repos_path):
+        (bp, np) = self.scheme.unprefix(repos_path)
+        assert branch_path == bp
+        return np
 
 
 class BzrSvnMappingv4:
@@ -584,37 +627,29 @@ class BzrSvnMappingv4:
     def supports_roundtripping():
         return True
 
-    @staticmethod
-    def import_revision(svn_revprops, get_branch_file_property, rev):
+    def import_revision(self, svn_revprops, get_branch_file_property, rev):
         parse_svn_revprops(svn_revprops, rev)
-        if svn_revprops.get(SVN_REVPROP_BZR_MAPPING_VERSION) == str(MAPPING_VERSION):
-            parse_bzr_svn_revprops(svn_revprops, rev)
-        elif not svn_revprops.has_key(SVN_REVPROP_BZR_MAPPING_VERSION):
-            parse_revision_metadata(get_branch_file_property(SVN_PROP_BZR_REVISION_INFO, ""), rev)
+        parse_bzr_svn_revprops(svn_revprops, rev)
 
-    @classmethod
-    def import_fileid_map(cls, svn_revprops, get_branch_file_property):
+    def import_fileid_map(self, svn_revprops, get_branch_file_property):
         if not svn_revprops.has_key(SVN_REVPROP_BZR_FILEIDS):
             return {}
         return parse_fileid_property(svn_revprops[SVN_REVPROP_BZR_FILEIDS])
 
-    @classmethod
-    def get_rhs_parents(cls, svn_revprops, get_branch_file_property, scheme):
+    def get_rhs_parents(self, svn_revprops, get_branch_file_property):
         if svn_revprops[SVN_REVPROP_BZR_ROOT] != branch:
             return []
         return svn_revprops.get(SVN_REVPROP_BZR_MERGE, "").splitlines()
 
-    @staticmethod
-    def get_revision_id(revprops, get_branch_file_property, scheme):
+    def get_revision_id(self, revprops, get_branch_file_property):
         if revprops[SVN_REVPROP_BZR_ROOT] == path:
             revid = revprops[SVN_REVPROP_BZR_REVISION_ID]
             revno = int(revprops[SVN_REVPROP_BZR_REVNO])
             return (revno, revid)
         return (None, None)
 
-    @classmethod
-    def export_revision(cls, branch_root, timestamp, timezone, committer, revprops, revision_id, revno, 
-                        merges, get_branch_file_property, scheme):
+    def export_revision(self, branch_root, timestamp, timezone, committer, revprops, revision_id, revno, 
+                        merges, get_branch_file_property):
         svn_revprops = {SVN_REVPROP_BZR_MAPPING_VERSION: str(MAPPING_VERSION)}
 
         if timestamp is not None:
@@ -638,29 +673,27 @@ class BzrSvnMappingv4:
 
         return (svn_revprops, {})
 
-    @staticmethod
-    def export_fileid_map(fileids, revprops, fileprops):
+    def export_fileid_map(self, fileids, revprops, fileprops):
         revprops[SVN_REVPROP_BZR_FILEIDS] = generate_fileid_property(fileids)
 
-    @staticmethod
-    def import_revision(svn_revprops, get_branch_file_property, rev):
-        parse_svn_revprops(svn_revprops, rev)
-
-    @staticmethod
-    def get_rhs_ancestors(revprops, get_branch_file_property, scheme):
+    def get_rhs_ancestors(self, revprops, get_branch_file_property):
         raise NotImplementedError(self.get_rhs_ancestors)
 
-    @staticmethod
-    def parse_revision_id(revid):
+    @classmethod
+    def parse_revision_id(cls, revid):
         raise NotImplementedError(self.parse_revision_id)
 
-    @staticmethod
-    def generate_revision_id(uuid, revnum, path, scheme):
+    def generate_revision_id(self, uuid, revnum, path):
         raise NotImplementedError(self.generate_revision_id)
 
-    @staticmethod
-    def generate_file_id(uuid, revnum, branch, inv_path):
+    def generate_file_id(self, uuid, revnum, branch, inv_path):
         raise NotImplementedError(self.generate_file_id)
+
+    def is_branch(self, branch_path):
+        return True
+
+    def is_tag(self, tag_path):
+        return True
 
 
 class BzrSvnMappingHybrid:
@@ -668,57 +701,48 @@ class BzrSvnMappingHybrid:
     def supports_roundtripping():
         return True
 
-    @classmethod
-    def get_rhs_parents(cls, svn_revprops, get_branch_file_property, scheme):
+    def get_rhs_parents(self, svn_revprops, get_branch_file_property):
         if svn_revprops.has_key(SVN_REVPROP_BZR_MAPPING_VERSION):
-            return BzrSvnMappingv4.get_rhs_parents(svn_revprops, get_branch_file_property, scheme)
+            return BzrSvnMappingv4.get_rhs_parents(self, svn_revprops, get_branch_file_property)
         else:
-            return BzrSvnMappingv3.get_rhs_parents(svn_revprops, get_branch_file_property, scheme)
+            return BzrSvnMappingv3.get_rhs_parents(self, svn_revprops, get_branch_file_property)
 
-    @staticmethod
-    def get_revision_id(revprops, get_branch_file_property, scheme):
+    def get_revision_id(self, revprops, get_branch_file_property):
         if revprops.has_key(SVN_REVPROP_BZR_MAPPING_VERSION):
-            return BzrSvnMappingv4.get_revision_id(revprops, get_branch_file_property, scheme)
+            return BzrSvnMappingv4.get_revision_id(self, revprops, get_branch_file_property)
         else:
-            return BzrSvnMappingv3.get_revision_id(revprops, get_branch_file_property, scheme)
+            return BzrSvnMappingv3.get_revision_id(self, revprops, get_branch_file_property)
 
-    @classmethod
-    def import_fileid_map(cls, svn_revprops, get_branch_file_property):
+    def import_fileid_map(self, svn_revprops, get_branch_file_property):
         if svn_revprops.has_key(SVN_REVPROP_BZR_MAPPING_VERSION):
-            return BzrSvnMappingv4.import_fileid_map(svn_revprops, get_branch_file_property)
+            return BzrSvnMappingv4.import_fileid_map(self, svn_revprops, get_branch_file_property)
         else:
-            return BzrSvnMappingv3.import_fileid_map(svn_revprops, get_branch_file_property)
+            return BzrSvnMappingv3.import_fileid_map(self, svn_revprops, get_branch_file_property)
 
-    @classmethod
-    def export_revision(cls, branch_root, timestamp, timezone, committer, revprops, revision_id, revno, 
-                        merges, get_branch_file_property, scheme):
-        (_, fileprops) = BzrSvnMappingv3.export_revision(branch_root, timestamp, timezone, committer, 
-                                      revprops, revision_id, revno, merges, get_branch_file_property, scheme)
-        (revprops, _) = BzrSvnMappingv4.export_revision(branch_root, timestamp, timezone, committer, 
-                                      revprops, revision_id, revno, merges, get_branch_file_property, scheme)
+    def export_revision(self, branch_root, timestamp, timezone, committer, revprops, revision_id, revno, 
+                        merges, get_branch_file_property):
+        (_, fileprops) = BzrSvnMappingv3.export_revision(self, branch_root, timestamp, timezone, committer, 
+                                      revprops, revision_id, revno, merges, get_branch_file_property)
+        (revprops, _) = BzrSvnMappingv4.export_revision(self, branch_root, timestamp, timezone, committer, 
+                                      revprops, revision_id, revno, merges, get_branch_file_property)
         return (revprops, fileprops)
 
-    @staticmethod
-    def parse_revision_id(revid):
+    def parse_revision_id(self, revid):
         raise NotImplementedError(self.parse_revision_id)
 
-    @staticmethod
-    def generate_revision_id(uuid, revnum, path, scheme):
+    def generate_revision_id(self, uuid, revnum, path):
         raise NotImplementedError(self.generate_revision_id)
 
-    @staticmethod
-    def generate_file_id(uuid, revnum, branch, inv_path):
+    def generate_file_id(self, uuid, revnum, branch, inv_path):
         raise NotImplementedError(self.generate_file_id)
 
-    @staticmethod
-    def export_fileid_map(fileids, revprops, fileprops):
-        BzrSvnMappingv3.export_fileid_map(fileids, revprops, fileprops)
-        BzrSvnMappingv4.export_fileid_map(fileids, revprops, fileprops)
+    def export_fileid_map(self, fileids, revprops, fileprops):
+        BzrSvnMappingv3.export_fileid_map(self, fileids, revprops, fileprops)
+        BzrSvnMappingv4.export_fileid_map(self, fileids, revprops, fileprops)
 
-    @staticmethod
-    def import_revision(svn_revprops, get_branch_file_property, rev):
-        BzrSvnMappingv3.import_revision(svn_revprops, get_branch_file_property, rev)
-        BzrSvnMappingv4.import_revision(svn_revprops, get_branch_file_property, rev)
+    def import_revision(self, svn_revprops, get_branch_file_property, rev):
+        BzrSvnMappingv3.import_revision(self, svn_revprops, get_branch_file_property, rev)
+        BzrSvnMappingv4.import_revision(self, svn_revprops, get_branch_file_property, rev)
 
 
 class BzrSvnMappingRegistry(registry.Registry):

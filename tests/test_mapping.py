@@ -106,6 +106,7 @@ class MetadataMarshallerTests(TestCase):
         self.assertRaises(InvalidPropertyValue, 
                 lambda: parse_revid_property("foo\nbar"))
 
+
 class ParseMergePropertyTestCase(TestCase):
     def test_parse_merge_space(self):
         self.assertEqual([], parse_merge_property("bla bla"))
@@ -178,6 +179,10 @@ class Mappingv2TestAdapter(MappingTestAdapter,TestCase):
 class Mappingv3TestAdapter(MappingTestAdapter,TestCase):
     def setUp(self):
         self.mapping = BzrSvnMappingv3
+
+    def test_revid_svk_map(self):
+        self.assertEqual("auuid:/:6", 
+              self.mapping._revision_id_to_svk_feature("svn-v%d-undefined:auuid::6" % MAPPING_VERSION))
 
 
 #class Mappingv4TestAdapter(MappingTestAdapter,TestCase):

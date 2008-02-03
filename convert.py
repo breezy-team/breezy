@@ -144,7 +144,7 @@ def convert_repository(source_repos, output_url, scheme=None,
         elif (target_repos.is_shared() and 
               hasattr(inter, '_supports_branches') and 
               inter._supports_branches):
-            inter.fetch(branches=[source_repos.generate_revision_id(revnum, branch, str(source_repos.get_scheme())) for (branch, revnum) in existing_branches])
+            inter.fetch(branches=[source_repos.generate_revision_id(revnum, branch, source_repos.get_mapping()) for (branch, revnum) in existing_branches])
 
 
     source_graph = source_repos.get_graph()
@@ -154,7 +154,7 @@ def convert_repository(source_repos, output_url, scheme=None,
         for (branch, revnum) in existing_branches:
             pb.update("%s:%d" % (branch, revnum), i, len(existing_branches))
             revid = source_repos.generate_revision_id(revnum, branch, 
-                                          str(source_repos.get_scheme()))
+                                          source_repos.get_mapping())
 
             target_dir = get_dir(branch)
             if not create_shared_repo:

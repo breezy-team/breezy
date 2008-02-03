@@ -36,14 +36,13 @@ def parse_legacy_revision_id(revid):
     """Try to parse a legacy Subversion revision id.
     
     :param revid: Revision id to parse
-    :return: tuple with (uuid, branch_path, revision number, scheme, mapping version)
+    :return: tuple with (uuid, branch_path, mapping)
     """
     if revid.startswith("svn-"):
         try:
             mapping_version = revid[len("svn-"):len("svn-vx")]
             mapping = mapping_registry.get(mapping_version)
-            (uuid, bp, rev, scheme) = mapping.parse_revision_id(revid)
-            return (uuid, bp, rev, scheme, mapping_version)
+            return mapping.parse_revision_id(revid)
         except KeyError:
             pass
 
@@ -109,13 +108,13 @@ def generate_upgrade_map(revs):
         for revid in revs:
             pb.update('gather revision information', revs.index(revid), len(revs))
             try:
-                (uuid, bp, rev, scheme, _) = parse_legacy_revision_id(revid)
+                (uuid, bp, rev, mapping) = parse_legacy_revision_id(revid)
             except InvalidRevisionId:
                 # Not a bzr-svn revision, nothing to do
                 continue
-            if scheme is None:
+            if mapping.scheme is None:
                 scheme = guess_scheme_from_branch_path(bp)
-            newrevid = default_mapping.generate_revision_id(uuid, rev, bp, scheme)
+            newrevid = new_mapping.generate_revision_id(uuid, rev, bp)
             if revid == newrevid:
                 continue
             rename_map[revid] = newrevid
@@ -204,12 +203,12 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
                 info("%s -> %s" % (revid, plan[revid][0]))
         def fix_revid(revid):
             try:
-                (uuid, bp, rev, scheme, _) = parse_legacy_revision_id(revid)
+                (uuid, bp, rev, mapping) = parse_legacy_revision_id(revid)
             except InvalidRevisionId:
                 return revid
-            if scheme is None:
-                scheme = guess_scheme_from_branch_path(bp)
-            return default_mapping.generate_revision_id(uuid, rev, bp, scheme)
+            if mapping.scheme is None:
+                mapping.scheme = guess_scheme_from_branch_path(bp)
+            return new_mapping.generate_revision_id(uuid, rev, bp)
         def replay(repository, oldrevid, newrevid, new_parents):
             return replay_snapshot(repository, oldrevid, newrevid, new_parents,
                                    revid_renames, fix_revid)
