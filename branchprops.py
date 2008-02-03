@@ -27,7 +27,7 @@ import svn.core
 class BranchPropertyList(CacheTable):
     """Simple class that retrieves file properties set on branches."""
     def __init__(self, log, cachedb=None):
-        super(BranchPropertyList, self).__init__(cachedb)
+        CacheTable.__init__(self, cachedb)
         self.log = log
 
     def _create_table(self):
@@ -91,21 +91,29 @@ class BranchPropertyList(CacheTable):
 
         return proplist
 
-    def get_changed_property(self, path, revnum, name, default=None):
+    def get_changed_properties(self, path, revnum):
         """Get the contents of a Subversion file property.
 
         Will use the cache.
 
         :param path: Subversion path.
         :param revnum: Subversion revision number.
-        :param default: Default value to return if property wasn't found.
         :return: Contents of property or default if property didn't exist.
         """
         assert isinstance(revnum, int)
         assert isinstance(path, str)
-        if not self.touches_property(path, revnum, name):
-            return default
-        return self.get_property(path, revnum, name, default)
+        (prev_path, prev_revnum) = self.log.get_previous(path, revnum)
+        if prev_path is None and prev_revnum == -1:
+            previous = {}
+        else:
+            previous = self.get_properties(prev_path.encode("utf-8"), 
+                                          prev_revnum)
+        current = self.get_properties(path, revnum)
+        ret = {}
+        for key, val in current.items():
+            if previous.get(key) != val:
+                ret[key] = val
+        return ret
 
     def get_property(self, path, revnum, name, default=None):
         """Get the contents of a Subversion file property.

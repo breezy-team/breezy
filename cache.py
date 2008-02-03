@@ -42,6 +42,7 @@ See http://bazaar-vcs.org/BzrForeignBranches/Subversion for details.
 """)
     return cache_dir
 
+
 def check_pysqlite_version(sqlite3):
     """Check that sqlite library is compatible.
 
@@ -66,6 +67,7 @@ except:
 
 
 class CacheTable:
+    """Simple base class for SQLite-based caches."""
     def __init__(self, cache_db=None):
         if cache_db is None:
             self.cachedb = sqlite3.connect(":memory:")

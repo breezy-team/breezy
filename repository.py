@@ -280,8 +280,8 @@ class SvnRepository(Repository):
         ancestry = [revision_id]
 
         svn_revprops = self.transport.revprop_list(revnum)
-        get_branch_fileprop = lambda name, default: self.branchprop_list.get_property(path, revnum, name, default)
-        ancestry.extend(mapping.get_rhs_ancestors(svn_revprops, get_branch_fileprop))
+        svn_fileprops = self.branchprop_list.get_properties(path, revnum)
+        ancestry.extend(mapping.get_rhs_ancestors(svn_revprops, svn_fileprops.get))
 
         if revnum > 0:
             for (branch, rev) in self.follow_branch(path, revnum - 1, mapping):
@@ -335,9 +335,9 @@ class SvnRepository(Repository):
         (path, revnum, mapping) = self.lookup_revision_id(revid)
 
         svn_revprops = self.transport.revprop_list(revnum)
-        return mapping.import_fileid_map(svn_revprops, 
-                lambda name, default: self.branchprop_list.get_changed_property(path, revnum, name, default)
-                )
+        svn_fileprops = self.branchprop_list.get_changed_properties(path, revnum)
+
+        return mapping.import_fileid_map(svn_revprops, svn_fileprops.get)
 
     def _mainline_revision_parent(self, path, revnum, mapping):
         """Find the mainline parent of the specified revision.
@@ -395,7 +395,8 @@ class SvnRepository(Repository):
             parent_ids.append(mainline_parent)
 
         if get_branch_fileprop is None:
-            get_branch_fileprop = lambda name, default: self.branchprop_list.get_changed_property(branch, revnum, name, default)
+            svn_fileprops = self.branchprop_list.get_changed_properties(branch, revnum)
+            get_branch_fileprop = svn_fileprops.get
 
         svn_revprops = self.transport.revprop_list(revnum)
 
@@ -418,9 +419,9 @@ class SvnRepository(Repository):
 
         rev = LazySvnRevision(revision_id=revision_id, parent_ids=parent_ids)
         svn_revprops = self.transport.revprop_list(revnum)
+        svn_fileprops = self.branchprop_list.get_changed_properties(path, revnum)
 
-        mapping.import_revision(svn_revprops, 
-                lambda name, default: self.branchprop_list.get_changed_property(path, revnum, name, default), rev)
+        mapping.import_revision(svn_revprops, svn_fileprops.get, rev)
 
         return rev
 
@@ -443,6 +444,7 @@ class SvnRepository(Repository):
         """
         assert isinstance(path, str)
         assert isinstance(revnum, int)
+        assert isinstance(mapping, BzrSvnMapping)
 
         # Look in the cache to see if it already has a revision id
         revid = self.revmap.lookup_branch_revnum(revnum, path, str(mapping.scheme))
@@ -456,8 +458,8 @@ class SvnRepository(Repository):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
                 raise NoSuchRevision(path, revnum)
             raise
-        (bzr_revno, revid) = mapping.get_revision_id(revprops, 
-                lambda name, default: self.branchprop_list.get_changed_property(path, revnum, name, default))
+        fileprops = self.branchprop_list.get_changed_properties(path, revnum)
+        (bzr_revno, revid) = mapping.get_revision_id(revprops, fileprops.get)
         # Or generate it
         if revid is None:
             revid = mapping.generate_revision_id(
