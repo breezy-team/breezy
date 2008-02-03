@@ -440,7 +440,7 @@ class SvnWorkingTree(WorkingTree):
             extra = ""
         wc = self._get_wc(write_lock=True)
         try:
-            svn.wc.prop_set(SVN_PROP_BZR_REVISION_ID+str(self.branch.scheme), 
+            svn.wc.prop_set(SVN_PROP_BZR_REVISION_ID+str(self.branch.mapping.scheme), 
                              self._get_bzr_revids() + extra,
                              self.basedir, wc)
             svn.wc.prop_set(SVN_PROP_BZR_REVISION_INFO, 
@@ -464,7 +464,7 @@ class SvnWorkingTree(WorkingTree):
             # Reset properties so the next subversion commit won't 
             # accidently set these properties.
             wc = self._get_wc(write_lock=True)
-            svn.wc.prop_set(SVN_PROP_BZR_REVISION_ID+str(self.branch.scheme), 
+            svn.wc.prop_set(SVN_PROP_BZR_REVISION_ID+str(self.branch.mapping.scheme), 
                              self._get_bzr_revids(), self.basedir, wc)
             svn.wc.prop_set(SVN_PROP_BZR_REVISION_INFO, 
                 self.branch.repository.branchprop_list.get_property(
@@ -615,12 +615,12 @@ class SvnWorkingTree(WorkingTree):
         return self.branch.repository.branchprop_list.get_property(
                 self.branch.get_branch_path(self.base_revnum), 
                 self.base_revnum, 
-                SVN_PROP_BZR_REVISION_ID+str(self.branch.scheme), "")
+                SVN_PROP_BZR_REVISION_ID+str(self.branch.mapping.scheme), "")
 
     def _get_bzr_merges(self):
         return self.branch.repository.branchprop_list.get_property(
                 self.branch.get_branch_path(self.base_revnum), 
-                self.base_revnum, SVN_PROP_BZR_ANCESTRY+str(self.branch.scheme), "")
+                self.base_revnum, SVN_PROP_BZR_ANCESTRY+str(self.branch.mapping.scheme), "")
 
     def _get_svk_merges(self):
         return self.branch.repository.branchprop_list.get_property(
@@ -637,7 +637,7 @@ class SvnWorkingTree(WorkingTree):
             else:
                 bzr_merge = ""
 
-            svn.wc.prop_set(SVN_PROP_BZR_ANCESTRY+str(self.branch.scheme), 
+            svn.wc.prop_set(SVN_PROP_BZR_ANCESTRY+str(self.branch.mapping.scheme), 
                                  self._get_bzr_merges() + bzr_merge, 
                                  self.basedir, wc)
 
@@ -665,7 +665,7 @@ class SvnWorkingTree(WorkingTree):
         wc = self._get_wc()
         try:
             merged_data = svn.wc.prop_get(
-                SVN_PROP_BZR_ANCESTRY+str(self.branch.scheme), self.basedir, wc)
+                SVN_PROP_BZR_ANCESTRY+str(self.branch.mapping.scheme), self.basedir, wc)
             if merged_data is None:
                 set_merged = []
             else:

@@ -100,7 +100,7 @@ def check_revision_changed(oldrev, newrev):
         raise UpgradeChangesContent(oldrev.revision_id)
 
 
-def generate_upgrade_map(revs):
+def generate_upgrade_map(new_mapping, revs):
     rename_map = {}
     pb = ui.ui_factory.nested_progress_bar()
     # Create a list of revisions that can be renamed during the upgade
@@ -112,8 +112,6 @@ def generate_upgrade_map(revs):
             except InvalidRevisionId:
                 # Not a bzr-svn revision, nothing to do
                 continue
-            if mapping.scheme is None:
-                scheme = guess_scheme_from_branch_path(bp)
             newrevid = new_mapping.generate_revision_id(uuid, rev, bp)
             if revid == newrevid:
                 continue
@@ -136,13 +134,14 @@ def check_rebase_version():
 
 
 def create_upgrade_plan(repository, svn_repository, revision_id=None,
-                        allow_changes=False):
+                        new_mapping=None, allow_changes=False):
     """Generate a rebase plan for upgrading revisions.
 
     :param repository: Repository to do upgrade in
     :param svn_repository: Subversion repository to fetch new revisions from.
     :param revision_id: Revision to upgrade (None for all revisions in 
         repository.)
+    :param new_mapping: New mapping to use.
     :param allow_changes: Whether an upgrade is allowed to change the contents
         of revisions.
     :return: Tuple with a rebase plan and map of renamed revisions.
@@ -150,8 +149,11 @@ def create_upgrade_plan(repository, svn_repository, revision_id=None,
     from bzrlib.plugins.rebase.rebase import generate_transpose_plan
     check_rebase_version()
 
+    if new_mapping is None:
+        new_mapping = svn_repository.get_mapping() # FIXME?
+
     graph = repository.get_revision_graph(revision_id)
-    upgrade_map = generate_upgrade_map(graph.keys())
+    upgrade_map = generate_upgrade_map(new_mapping, graph.keys())
    
     # Make sure all the required current version revisions are present
     for revid in upgrade_map.values():
