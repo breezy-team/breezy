@@ -22,7 +22,7 @@ from bzrlib.trace import mutter
 from bzrlib.tests import TestCase
 
 from fileids import SimpleFileIdMap
-from scheme import TrunkBranchingScheme
+from scheme import TrunkBranchingScheme, NoBranchingScheme
 from tests import TestCaseWithSubversionRepository
 
 class MockRepo:
@@ -247,30 +247,34 @@ class GetMapTests(TestCaseWithSubversionRepository):
         self.repos = Repository.open(self.repos_url)
 
     def test_empty(self):
-        scheme = TrunkBranchingScheme()
-        self.assertEqual({"": (self.mapping.generate_file_id(self.repos.uuid, 0, "", u""), self.repos.generate_revision_id(0, "", "trunk0"))}, 
-                         self.repos.get_fileid_map(0, "", scheme))
+        self.repos.set_branching_scheme(NoBranchingScheme())
+        self.mapping = self.repos.get_mapping()
+        self.assertEqual({"": (self.mapping.generate_file_id(self.repos.uuid, 0, "", u""), self.repos.generate_revision_id(0, "", self.mapping))}, 
+                         self.repos.get_fileid_map(0, "", self.mapping))
 
     def test_empty_trunk(self):
-        scheme = TrunkBranchingScheme()
+        self.repos.set_branching_scheme(TrunkBranchingScheme())
+        self.mapping = self.repos.get_mapping()
         self.build_tree({"dc/trunk": None})
         self.client_add("dc/trunk")
         self.client_commit("dc", "Msg")
-        self.assertEqual({"": (self.mapping.generate_file_id(self.repos.uuid, 1, "trunk", u""), self.repos.generate_revision_id(1, "trunk", "trunk0"))}, 
-                self.repos.get_fileid_map(1, "trunk", scheme))
+        self.assertEqual({"": (self.mapping.generate_file_id(self.repos.uuid, 1, "trunk", u""), self.repos.generate_revision_id(1, "trunk", self.mapping))}, 
+                self.repos.get_fileid_map(1, "trunk", self.mapping))
 
     def test_change_parent(self):
-        scheme = TrunkBranchingScheme()
+        self.repos.set_branching_scheme(TrunkBranchingScheme())
+        self.mapping = self.repos.get_mapping()
         self.build_tree({"dc/trunk": None})
         self.client_add("dc/trunk")
         self.client_commit("dc", "Msg")
         self.build_tree({"dc/trunk/file": 'data'})
         self.client_add("dc/trunk/file")
         self.client_commit("dc", "Msg")
-        self.assertEqual({"": (self.mapping.generate_file_id(self.repos.uuid, 1, "trunk", u""), self.repos.generate_revision_id(2, "trunk", "trunk0")), "file": (self.mapping.generate_file_id(self.repos.uuid, 2, "trunk", u"file"), self.repos.generate_revision_id(2, "trunk", "trunk0"))}, self.repos.get_fileid_map(2, "trunk", scheme))
+        self.assertEqual({"": (self.mapping.generate_file_id(self.repos.uuid, 1, "trunk", u""), self.repos.generate_revision_id(2, "trunk", self.mapping)), "file": (self.mapping.generate_file_id(self.repos.uuid, 2, "trunk", u"file"), self.repos.generate_revision_id(2, "trunk", self.mapping))}, self.repos.get_fileid_map(2, "trunk", self.mapping))
 
     def test_change_updates(self):
-        scheme = TrunkBranchingScheme()
+        self.repos.set_branching_scheme(TrunkBranchingScheme())
+        self.mapping = self.repos.get_mapping()
         self.build_tree({"dc/trunk": None})
         self.client_add("dc/trunk")
         self.client_commit("dc", "Msg")
@@ -279,10 +283,11 @@ class GetMapTests(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Msg")
         self.build_tree({"dc/trunk/file": 'otherdata'})
         self.client_commit("dc", "Msg")
-        self.assertEqual({"": (self.mapping.generate_file_id(self.repos.uuid, 1, "trunk", u""), self.repos.generate_revision_id(3, "trunk", "trunk0")), "file": (self.mapping.generate_file_id(self.repos.uuid, 2, "trunk", u"file"), self.repos.generate_revision_id(3, "trunk", "trunk0"))}, self.repos.get_fileid_map(3, "trunk", scheme))
+        self.assertEqual({"": (self.mapping.generate_file_id(self.repos.uuid, 1, "trunk", u""), self.repos.generate_revision_id(3, "trunk", self.mapping)), "file": (self.mapping.generate_file_id(self.repos.uuid, 2, "trunk", u"file"), self.repos.generate_revision_id(3, "trunk", self.mapping))}, self.repos.get_fileid_map(3, "trunk", self.mapping))
 
     def test_sibling_unrelated(self):
-        scheme = TrunkBranchingScheme()
+        self.repos.set_branching_scheme(TrunkBranchingScheme())
+        self.mapping = self.repos.get_mapping()
         self.build_tree({"dc/trunk": None})
         self.client_add("dc/trunk")
         self.client_commit("dc", "Msg")
@@ -295,10 +300,11 @@ class GetMapTests(TestCaseWithSubversionRepository):
         self.build_tree({"dc/trunk/file": 'otherdata'})
         self.client_commit("dc", "Msg")
         self.client_update("dc")
-        self.assertEqual({"": (self.mapping.generate_file_id(self.repos.uuid, 1, "trunk", u""), self.repos.generate_revision_id(3, "trunk", self.mapping)), "bar": (self.mapping.generate_file_id(self.repos.uuid, 2, "trunk", u"bar"), self.repos.generate_revision_id(2, "trunk", self.mapping)), "file": (self.mapping.generate_file_id(self.repos.uuid, 2, "trunk", u"file"), self.repos.generate_revision_id(3, "trunk", self.mapping))}, self.repos.get_fileid_map(3, "trunk", scheme))
+        self.assertEqual({"": (self.mapping.generate_file_id(self.repos.uuid, 1, "trunk", u""), self.repos.generate_revision_id(3, "trunk", self.mapping)), "bar": (self.mapping.generate_file_id(self.repos.uuid, 2, "trunk", u"bar"), self.repos.generate_revision_id(2, "trunk", self.mapping)), "file": (self.mapping.generate_file_id(self.repos.uuid, 2, "trunk", u"file"), self.repos.generate_revision_id(3, "trunk", self.mapping))}, self.repos.get_fileid_map(3, "trunk", self.mapping))
 
     def test_copy(self):
-        scheme = TrunkBranchingScheme()
+        self.repos.set_branching_scheme(TrunkBranchingScheme())
+        self.mapping = self.repos.get_mapping()
         self.build_tree({"dc/trunk": None})
         self.client_add("dc/trunk")
         self.client_commit("dc", "Msg")
@@ -308,12 +314,12 @@ class GetMapTests(TestCaseWithSubversionRepository):
         self.client_copy("dc/trunk/file", "dc/trunk/bar")
         self.client_commit("dc", "Msg")
         self.assertEqual({
-            "": (self.mapping.generate_file_id(self.repos.uuid, 1, "trunk", u""), self.repos.generate_revision_id(3, "trunk", mapping)), 
-            "bar": (self.mapping.generate_file_id(self.repos.uuid, 3, "trunk", u"bar"), self.repos.generate_revision_id(3, "trunk", mapping)), "file": (self.mapping.generate_file_id(self.repos.uuid, 2, "trunk", u"file"), self.repos.generate_revision_id(2, "trunk", mapping))}, self.repos.get_fileid_map(3, "trunk", scheme))
+            "": (self.mapping.generate_file_id(self.repos.uuid, 1, "trunk", u""), self.repos.generate_revision_id(3, "trunk", self.mapping)), 
+            "bar": (self.mapping.generate_file_id(self.repos.uuid, 3, "trunk", u"bar"), self.repos.generate_revision_id(3, "trunk", self.mapping)), "file": (self.mapping.generate_file_id(self.repos.uuid, 2, "trunk", u"file"), self.repos.generate_revision_id(2, "trunk", self.mapping))}, self.repos.get_fileid_map(3, "trunk", self.mapping))
 
     def test_copy_nested_modified(self):
-        scheme = TrunkBranchingScheme()
-        self.repos.set_branching_scheme(scheme)
+        self.repos.set_branching_scheme(TrunkBranchingScheme())
+        self.mapping = self.repos.get_mapping()
         self.build_tree({"dc/trunk": None})
         self.client_add("dc/trunk")
         self.client_commit("dc", "Msg")
@@ -334,4 +340,4 @@ class GetMapTests(TestCaseWithSubversionRepository):
               self.repos.generate_revision_id(3, "trunk", self.mapping)),
           "bar/file": (self.mapping.generate_file_id(self.repos.uuid, 3, "trunk", u"bar/file"), 
               self.repos.generate_revision_id(3, "trunk", self.mapping))},
-            self.repos.get_fileid_map(3, "trunk", scheme))
+            self.repos.get_fileid_map(3, "trunk", self.mapping))

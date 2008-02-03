@@ -693,8 +693,9 @@ class SvnRepository(Repository):
         :return: iterator that returns tuples with branch path, 
             changed paths and revision number.
         """
-        assert branch_path is not None
-        assert mapping.is_branch(branch_path) or mapping.is_tag(branch_path)
+        assert isinstance(branch_path, str)
+        assert mapping.is_branch(branch_path) or mapping.is_tag(branch_path), \
+                "Mapping %r doesn't accept %s as branch or tag" % (mapping, branch_path)
 
         for (bp, paths, revnum) in self._log.follow_path(branch_path, revnum):
             assert revnum > 0 or bp == ""

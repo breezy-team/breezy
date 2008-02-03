@@ -1358,6 +1358,7 @@ Node-copyfrom-path: x
         self.client_commit("dc", "added branch foobranch") #3
 
         repos = remote.SvnRemoteAccess(SvnRaTransport("svn+"+repos_url), format.SvnRemoteFormat()).find_repository()
+        repos.set_branching_scheme(TrunkBranchingScheme())
 
         mapping = repos.get_mapping()
 

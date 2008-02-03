@@ -123,10 +123,10 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                              "corrupt-id\n")
         self.client_commit("dc", "set id")
         repos = Repository.open(repos_url)
-        revid = repos.generate_revision_id(1, "", "undefined")
+        revid = repos.generate_revision_id(1, "", repos.get_mapping())
         self.assertEquals(
-               u"svn-v%d-undefined:%s::1" % (MAPPING_VERSION, repos.uuid),
-               revid)
+                repos.get_mapping().generate_revision_id(repos.uuid, 1, ""),
+                revid)
 
     def test_add_revision(self):
         repos_url = self.make_client("a", "dc")
@@ -225,6 +225,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_add("dc/branches")
         self.client_commit("dc", "My Message")
         repos = Repository.open(repos_url)
+        repos.set_branching_scheme(TrunkBranchingScheme())
         self.assertEqual([('trunk', 1)], 
                 list(repos.follow_history(1, repos.get_mapping())))
 
@@ -239,6 +240,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Create branch")
 
         repos = Repository.open(repos_url)
+        repos.set_branching_scheme(TrunkBranchingScheme())
 
         items = list(repos.follow_history(2, repos.get_mapping()))
         self.assertEqual([('branches/abranch', 2), 
@@ -543,6 +545,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_update("dc")
         self.build_tree({'dc/trunk/foo': "data2"})
         repository = Repository.open("svn+%s" % repos_url)
+        repository.set_branching_scheme(TrunkBranchingScheme())
         self.client_set_prop("dc/trunk", "svk:merge", 
             "%s:/branches/foo:1\n" % repository.uuid)
         self.client_commit("dc", "Second Message")
@@ -551,7 +554,6 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
             repository.generate_revision_id(1, "branches/foo", mapping)], 
                 repository.revision_parents(
                     repository.generate_revision_id(2, "trunk", mapping)))
- 
     
     def test_get_revision(self):
         repos_url = self.make_client('d', 'dc')
@@ -1155,7 +1157,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_add("dc/py")
         self.client_commit("dc", "Initial commit")
         self.assertRaises(NoSuchRevision, 
-                lambda: repos._mainline_revision_parent("trunk", 2, NoBranchingScheme()))
+                lambda: repos._mainline_revision_parent("trunk", 2, repos.get_mapping()))
 
 
 class TestSvnRevisionTree(TestCaseWithSubversionRepository):

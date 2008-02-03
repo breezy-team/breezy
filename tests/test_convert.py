@@ -92,6 +92,7 @@ class TestConversion(TestCaseWithSubversionRepository):
                            TrunkBranchingScheme(), 
                            all=False, create_shared_repo=True)
         newrepos = Repository.open("e")
+        oldrepos.set_branching_scheme(TrunkBranchingScheme())
         self.assertFalse(newrepos.has_revision(oldrepos.generate_revision_id(2, "branches/somebranch", oldrepos.get_mapping())))
 
     def test_fetch_filebranch(self):
@@ -101,6 +102,7 @@ class TestConversion(TestCaseWithSubversionRepository):
         oldrepos = Repository.open(self.repos_url)
         convert_repository(oldrepos, "e", TrunkBranchingScheme())
         newrepos = Repository.open("e")
+        oldrepos.set_branching_scheme(TrunkBranchingScheme())
         self.assertFalse(newrepos.has_revision(oldrepos.generate_revision_id(2, "branches/somebranch", oldrepos.get_mapping())))
 
     def test_fetch_dead(self):

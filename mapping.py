@@ -424,13 +424,15 @@ class BzrSvnMappingv3(BzrSvnMapping):
         self.scheme = scheme
         assert not isinstance(scheme, str)
 
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self.scheme)
+
     @staticmethod
     def supports_roundtripping():
         return True
 
     @classmethod
-    def parse_revision_id(cls, revid):
-        assert revid is not None
+    def _parse_revision_id(cls, revid):
         assert isinstance(revid, str)
 
         if not revid.startswith(cls.revid_prefix):
@@ -445,6 +447,11 @@ class BzrSvnMappingv3(BzrSvnMapping):
 
         branch_path = unescape_svn_path(branch_path)
 
+        return (uuid, branch_path, int(srevnum), scheme)
+
+    @classmethod
+    def parse_revision_id(cls, revid):
+        (uuid, branch_path, srevnum, scheme) = cls._parse_revision_id(revid)
         # Some older versions of bzr-svn 0.4 did not always set a branching
         # scheme but set "undefined" instead.
         if scheme == "undefined":
@@ -452,7 +459,7 @@ class BzrSvnMappingv3(BzrSvnMapping):
         else:
             scheme = BranchingScheme.find_scheme(scheme)
 
-        return (uuid, branch_path, int(srevnum), cls(scheme))
+        return (uuid, branch_path, srevnum, cls(scheme))
 
     def is_branch(self, branch_path):
         return (self.scheme.is_branch(branch_path) or 
@@ -461,14 +468,18 @@ class BzrSvnMappingv3(BzrSvnMapping):
     def is_tag(self, tag_path):
         return self.scheme.is_tag(tag_path)
 
-    def generate_revision_id(self, uuid, revnum, path):
+    @classmethod
+    def _generate_revision_id(cls, uuid, revnum, path, scheme):
         assert isinstance(revnum, int)
         assert isinstance(path, str)
         assert revnum >= 0
         assert revnum > 0 or path == "", \
                 "Trying to generate revid for (%r,%r)" % (path, revnum)
-        return "%s%s:%s:%s:%d" % (self.revid_prefix, self.scheme, uuid, \
+        return "%s%s:%s:%s:%d" % (cls.revid_prefix, scheme, uuid, \
                        escape_svn_path(path.strip("/")), revnum)
+
+    def generate_revision_id(self, uuid, revnum, path):
+        return self._generate_revision_id(uuid, revnum, path, self.scheme)
 
     def generate_file_id(self, uuid, revnum, branch, inv_path):
         assert isinstance(uuid, str)

@@ -124,13 +124,12 @@ class ParseMergePropertyTestCase(TestCase):
 
 class MappingTestAdapter:
     def test_roundtrip_revision(self):
-        revid = self.mapping.generate_revision_id("myuuid", 42, "path", "somescheme")
-        (uuid, path, revnum, scheme) = self.mapping.parse_revision_id(revid)
+        revid = self.mapping.generate_revision_id("myuuid", 42, "path")
+        (uuid, path, revnum, mapping) = self.mapping.parse_revision_id(revid)
         self.assertEquals(uuid, "myuuid")
         self.assertEquals(revnum, 42)
         self.assertEquals(path, "path")
-        if scheme is not None:
-            self.assertEquals(scheme, "somescheme")
+        self.assertEquals(mapping, self.mapping)
 
     def test_fileid_map(self):
         if not self.mapping.supports_roundtripping():
@@ -174,9 +173,9 @@ class MappingTestAdapter:
                 lambda: self.mapping.parse_revision_id("bla"))
 
     def test_parse_revision_id(self):
-        self.assertEquals(("myuuid", "bla", 5, "foobar"), 
+        self.assertEquals(("myuuid", "bla", 5, self.mapping), 
             self.mapping.parse_revision_id(
-                self.mapping.generate_revision_id("myuuid", 5, "bla", "foobar")))
+                self.mapping.generate_revision_id("myuuid", 5, "bla")))
 
 
 class Mappingv1Tests(MappingTestAdapter,TestCase):
@@ -195,7 +194,7 @@ def sha1(text):
 
 class Mappingv3Tests(MappingTestAdapter,TestCase):
     def setUp(self):
-        self.mapping = BzrSvnMappingv3
+        self.mapping = BzrSvnMappingv3(NoBranchingScheme())
 
     def test_revid_svk_map(self):
         self.assertEqual("auuid:/:6", 
@@ -203,28 +202,28 @@ class Mappingv3Tests(MappingTestAdapter,TestCase):
 
     def test_generate_revid(self):
         self.assertEqual("svn-v3-undefined:myuuid:branch:5", 
-                         self.mapping.generate_revision_id("myuuid", 5, "branch", "undefined"))
+                         BzrSvnMappingv3._generate_revision_id("myuuid", 5, "branch", "undefined"))
 
     def test_generate_revid_nested(self):
         self.assertEqual("svn-v3-undefined:myuuid:branch%2Fpath:5", 
-                  default_mapping.generate_revision_id("myuuid", 5, "branch/path", "undefined"))
+                  BzrSvnMappingv3._generate_revision_id("myuuid", 5, "branch/path", "undefined"))
 
     def test_generate_revid_special_char(self):
         self.assertEqual("svn-v3-undefined:myuuid:branch%2C:5", 
-             default_mapping.generate_revision_id("myuuid", 5, "branch\x2c", "undefined"))
+             BzrSvnMappingv3._generate_revision_id("myuuid", 5, "branch\x2c", "undefined"))
 
     def test_generate_revid_nordic(self):
         self.assertEqual("svn-v3-undefined:myuuid:branch%C3%A6:5", 
-             default_mapping.generate_revision_id("myuuid", 5, u"branch\xe6".encode("utf-8"), "undefined"))
+             BzrSvnMappingv3._generate_revision_id("myuuid", 5, u"branch\xe6".encode("utf-8"), "undefined"))
 
     def test_parse_revid_simple(self):
-        self.assertEqual(("uuid", "", 4, None),
-                         default_mapping.parse_revision_id(
+        self.assertEqual(("uuid", "", 4, "undefined"),
+                         BzrSvnMappingv3._parse_revision_id(
                              "svn-v3-undefined:uuid::4"))
 
     def test_parse_revid_nested(self):
-        self.assertEqual(("uuid", "bp/data", 4, None),
-                         default_mapping.parse_revision_id(
+        self.assertEqual(("uuid", "bp/data", 4, "undefined"),
+                         BzrSvnMappingv3._parse_revision_id(
                      "svn-v3-undefined:uuid:bp%2Fdata:4"))
 
     def test_generate_file_id_root(self):

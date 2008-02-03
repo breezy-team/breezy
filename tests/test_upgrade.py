@@ -67,7 +67,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         self.client_commit("dc", "data")
 
         oldrepos = Repository.open(repos_url)
-        dir = BzrDir.create("f",format=get_rich_root_format())
+        dir = BzrDir.create("f", format=get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
         dir.create_branch()
@@ -90,7 +90,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         self.client_commit("dc", "data")
 
         oldrepos = Repository.open(repos_url)
-        dir = BzrDir.create("f",format=get_rich_root_format())
+        dir = BzrDir.create("f", format=get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
         dir.create_branch()
@@ -147,7 +147,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         self.client_commit("dc", "data")
 
         oldrepos = Repository.open(repos_url)
-        dir = BzrDir.create("f",format=get_rich_root_format())
+        dir = BzrDir.create("f", format=get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
         dir.create_branch()
@@ -190,7 +190,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         self.client_commit("dc", "data")
 
         oldrepos = Repository.open(repos_url)
-        dir = BzrDir.create("f",format=get_rich_root_format())
+        dir = BzrDir.create("f", format=get_rich_root_format())
         newrepos = dir.create_repository()
         dir.create_branch()
         wt = dir.create_workingtree()
@@ -227,7 +227,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         self.client_commit("dc", "data")
 
         oldrepos = Repository.open(repos_url)
-        dir = BzrDir.create("f",format=get_rich_root_format())
+        dir = BzrDir.create("f", format=get_rich_root_format())
         newrepos = dir.create_repository()
         b = dir.create_branch()
         wt = dir.create_workingtree()
@@ -254,7 +254,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         self.client_commit("dc", "data")
 
         oldrepos = Repository.open(repos_url)
-        dir = BzrDir.create("f",format=get_rich_root_format())
+        dir = BzrDir.create("f", format=get_rich_root_format())
         newrepos = dir.create_repository()
         b = dir.create_branch()
         wt = dir.create_workingtree()
@@ -282,7 +282,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         self.client_commit("dc", "data")
 
         oldrepos = Repository.open(repos_url)
-        dir = BzrDir.create("f",format=get_rich_root_format())
+        dir = BzrDir.create("f", format=get_rich_root_format())
         dir.create_repository()
         b = dir.create_branch()
         wt = dir.create_workingtree()
@@ -306,7 +306,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         self.client_commit("dc", "data")
 
         oldrepos = Repository.open(repos_url)
-        dir = BzrDir.create("f",format=get_rich_root_format())
+        dir = BzrDir.create("f", format=get_rich_root_format())
         dir.create_repository()
         b = dir.create_branch()
         wt = dir.create_workingtree()
