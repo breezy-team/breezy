@@ -1,8 +1,10 @@
-#FORMAT rst
+bzr-svn frequently asked questions
+==================================
 
-=================================================================
+.. contents::
+
 Bazaar is using a lot of memory accessing a Subversion repository
-=================================================================
+-----------------------------------------------------------------
 bzr-svn can use a lot of memory cloning big branches when older 
 versions of the python-subversion bindings are used. This memory leak 
 has been fixed in the trunk of Subversion (r28544) and has been 
@@ -11,9 +13,8 @@ proposed for inclusion in Subversion 1.4.7.
 One way to work around this problem is to Ctrl+C the branch operation 
 and restart it.
 
-==============================================================================
 I am unable to access a repository that requires user/password authentication.
-==============================================================================
+------------------------------------------------------------------------------
 The Python bindings required for password prompting are only present in 
 version 1.5 of Subversion so password prompting is only possible if 
 you have that version installed.
@@ -23,9 +24,8 @@ use passwords cached by Subversion. Subversion can be forced to cache
 the password by accessing the repository using the Subversion command-line 
 client. For example, try running 'svn info <url>'.
 
-==============================================================================
 Trying to branch into repository gives an error about incompatibility.
-==============================================================================
+----------------------------------------------------------------------
 
 Creating a repository and then trying to clone a Subversion branch into 
 that repository may cause the following error:
@@ -41,18 +41,16 @@ upgrade the repository, run:
 
  $ bzr upgrade --rich-root-pack
 
-===========================================================================
 Pushing a branch that didn't exist in Subversion yet with `bzr push` fails.
-===========================================================================
+---------------------------------------------------------------------------
 At the moment, only `bzr svn-push` can be used to push new branches into 
-Subversion. 
+Subversion. Future releases will include this functionality in `bzr push`.
 
 More information can be found in the bug report at:
 https://bugs.launchpad.net/bzr-svn/+bug/127945.
 
-==============================================
 Cloning a large Subversion branch is very slow
-==============================================
+----------------------------------------------
 There is no way around this at the moment, because Bazaar has to import all 
 the history from the Subversion branch as it doesn't support so-called 
 history horizons yet. 
@@ -60,9 +58,8 @@ history horizons yet.
 More information about history horizons can be found at:
 http://bazaar-vcs.org/HistoryHorizon
 
-=====================================================
 The Bazaar revno's differ from the Subversion revno's
-=====================================================
+-----------------------------------------------------
 That's right. Bazaar revision numbers are per-branch, whereas Subversion revno's are per-repository. If you 
 would like to use Subversion revision numbers, use the "svn:" revision specifier. For example:
 
@@ -70,18 +67,16 @@ would like to use Subversion revision numbers, use the "svn:" revision specifier
 
   $ bzr ls -rsvn:34 svn://example.com/bar
 
-=========================================================================
 Bazaar reports branches have diverged while pulling, when they haven't
-=========================================================================
+----------------------------------------------------------------------
 As of version 0.4, bzr-svn creates revisions with different revision ids than 
 previous versions. In other words, existing bzr-svn branches created with 
 0.3.x can not be used directly with 0.4.0 but will have to be upgraded to 
 work with 0.4.0 using the "bzr svn-upgrade" command. The bzr-rebase package 
 has to be installed for this command to work correctly.
 
-============================================================================
 Is it possible to keep the author name when pushing changes into Subversion?
-============================================================================
+----------------------------------------------------------------------------
 Yes, but this requires the repository to allow revision property changes. 
 
 See hooks/pre-revprop-change in the Subversion repository for 
@@ -90,17 +85,15 @@ more information about how to do this.
 You also need to enable support for this in bzr-svn by setting 
 override-svn-revprops to True in ~/.bazaar/bazaar.conf.
 
-======================================================================================
 I converted my Subversion repository using svn-import, but now all branches are empty!
-======================================================================================
+--------------------------------------------------------------------------------------
 
 bzr-svn does not create working trees by default. If you need 
 the working trees, run "bzr checkout" in the branch or 
 specify --trees to svn-import.
 
-=================================================================================
 bzr-svn did a replace operation when I tried to push a merge commit to Subversion
-=================================================================================
+---------------------------------------------------------------------------------
 Yes, this is because bzr-svn has to preserve the left-hand side history of your 
 branch. 
 

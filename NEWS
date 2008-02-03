@@ -1,5 +1,13 @@
 bzr-svn 0.4.8	UNRELEASED
 
+  BUGS
+
+   * Fix path to URL conversion for Windows NT.
+
+  INTERNALS
+
+   * Allow multiple mappings to be available at the same time.
+
 bzr-svn 0.4.7	2008-02-01
  
   FEATURES
