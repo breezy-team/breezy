@@ -604,6 +604,18 @@ class TestRepository(TestCaseWithRepository):
         for value in parents.values():
             self.assertIsInstance(value, tuple)
 
+    def test_get_parent_map_corner_cases(self):
+        """get_parent_map(keys) must work on a repo's graph."""
+        repo = self.make_repository('.')
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        graph = repo.get_graph()
+        # With no search, no error
+        self.assertEqual({}, graph.get_parent_map([], None))
+        # And with a search, no error
+        search = graph._make_breadth_first_searcher([])
+        self.assertEqual({}, graph.get_parent_map([], search))
+
     def test_implements_revision_graph_can_have_wrong_parents(self):
         """All repositories should implement
         revision_graph_can_have_wrong_parents, so that check and reconcile can

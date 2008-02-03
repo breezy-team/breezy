@@ -46,6 +46,7 @@ from bzrlib.smart import server, medium
 from bzrlib.smart.client import _SmartClient
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.transport.remote import RemoteTransport
+from bzrlib.tuned_gzip import bytes_to_gzip
 
 
 class BasicRemoteObjectTests(tests.TestCaseWithTransport):
@@ -608,7 +609,7 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         r1 = u'\u0e33'.encode('utf8')
         r2 = u'\u0dab'.encode('utf8')
         lines = [' '.join([r2, r1]), r1]
-        encoded_body = '\n'.join(lines)
+        encoded_body = bytes_to_gzip('\n'.join(lines))
         responses = [(('ok', ), encoded_body), (('ok', ), encoded_body)]
 
         transport_path = 'quack'
@@ -624,8 +625,8 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         parents = graph.get_parent_map([r1])
         self.assertEqual({r1: (NULL_REVISION,)}, parents)
         self.assertEqual(
-            [('call_expecting_body', 'Repository.get_parent_map',
-             ('quack/', r2))],
+            [('call_with_body_bytes_expecting_body',
+              'Repository.get_parent_map', ('quack/', r2), '\n\n0')],
             client._calls)
         repo.unlock()
         # now we call again, and it should use the second response.
@@ -634,10 +635,10 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         parents = graph.get_parent_map([r1])
         self.assertEqual({r1: (NULL_REVISION,)}, parents)
         self.assertEqual(
-            [('call_expecting_body', 'Repository.get_parent_map',
-              ('quack/', r2)),
-             ('call_expecting_body', 'Repository.get_parent_map',
-              ('quack/', r1))
+            [('call_with_body_bytes_expecting_body',
+              'Repository.get_parent_map', ('quack/', r2), '\n\n0'),
+             ('call_with_body_bytes_expecting_body',
+              'Repository.get_parent_map', ('quack/', r1), '\n\n0'),
             ],
             client._calls)
         repo.unlock()

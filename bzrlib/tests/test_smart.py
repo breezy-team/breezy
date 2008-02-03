@@ -37,6 +37,7 @@ from bzrlib.smart.request import (
 import bzrlib.smart.bzrdir
 import bzrlib.smart.branch
 import bzrlib.smart.repository
+from bzrlib.tuned_gzip import bytes_to_gzip
 from bzrlib.util import bencode
 
 
@@ -527,6 +528,22 @@ class TestSmartServerRepositoryRequest(tests.TestCaseWithTransport):
         self.make_bzrdir('subdir')
         self.assertRaises(errors.NoRepositoryPresent,
             request.execute, backing.local_abspath('subdir'))
+
+
+class TestSmartServerRepositoryGetParentMap(tests.TestCaseWithTransport):
+
+    def test_trivial_gzipped(self):
+        # This tests that the wire encoding is actually gzipped
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryGetParentMap(backing)
+        tree = self.make_branch_and_memory_tree('.')
+
+        self.assertEqual(None,
+            request.execute(backing.local_abspath(''), 'missing-id'))
+        # Note that it returns a body (of '' gzipped).
+        self.assertEqual(
+            SuccessfulSmartServerResponse(('ok', ), bytes_to_gzip('')),
+            request.do_body('\n\n0\n'))
 
 
 class TestSmartServerRepositoryGetRevisionGraph(tests.TestCaseWithTransport):
