@@ -46,8 +46,24 @@ from mapping import (SVN_PROP_BZR_REVISION_ID,
 from revids import RevidMap
 from scheme import (BranchingScheme, ListBranchingScheme, 
                     parse_list_scheme_text, guess_scheme_from_history)
+from svk import (SVN_PROP_SVK_MERGE, svk_features_merged_since, 
+                 parse_svk_feature)
 from tree import SvnRevisionTree
 import urllib
+
+def svk_feature_to_revision_id(feature, mapping):
+    """Convert a SVK feature to a revision id for this repository.
+
+    :param feature: SVK feature.
+    :return: revision id.
+    """
+    try:
+        (uuid, bp, revnum) = parse_svk_feature(feature)
+    except errors.InvalidPropertyValue:
+        return None
+    if not mapping.is_branch(bp) and not mapping.is_tag(bp):
+        return None
+    return mapping.generate_revision_id(uuid, revnum, bp)
 
 
 class SvnRepositoryFormat(RepositoryFormat):
@@ -387,6 +403,23 @@ class SvnRepository(Repository):
             parents_list.append(parents)
         return parents_list
 
+    def _svk_merged_revisions(self, branch, revnum, mapping, 
+                              get_branch_property):
+        """Find out what SVK features were merged in a revision.
+
+        """
+        current = get_branch_property(branch, revnum, SVN_PROP_SVK_MERGE, "")
+        (prev_path, prev_revnum) = self._log.get_previous(branch, revnum)
+        if prev_path is None and prev_revnum == -1:
+            previous = ""
+        else:
+            previous = self.branchprop_list.get_property(prev_path.encode("utf-8"), 
+                         prev_revnum, SVN_PROP_SVK_MERGE, "")
+        for feature in svk_features_merged_since(current, previous):
+            revid = svk_feature_to_revision_id(feature, mapping)
+            if revid is not None:
+                yield revid
+
     def revision_parents(self, revision_id, get_branch_fileprop=None):
         """See Repository.revision_parents()."""
         parent_ids = []
@@ -401,7 +434,11 @@ class SvnRepository(Repository):
 
         svn_revprops = self.transport.revprop_list(revnum)
 
-        parent_ids.extend(mapping.get_rhs_parents(svn_revprops, get_branch_fileprop))
+        extra_rhs_parents = mapping.get_rhs_parents(svn_revprops, get_branch_fileprop)
+        parent_ids.extend(extra_rhs_parents)
+
+        if extra_rhs_parents == []:
+            parent_ids.extend(self._svk_merged_revisions(branch, revnum, mapping, self.branchprop_list.get_property))
 
         return parent_ids
 

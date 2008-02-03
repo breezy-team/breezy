@@ -27,10 +27,6 @@ import svn
 import time
 import urllib
 
-from svk import (SVN_PROP_SVK_MERGE, svk_features_merged_since, 
-                 parse_svk_features, serialize_svk_features, 
-                 parse_svk_feature, generate_svk_feature)
-
 MAPPING_VERSION = 3
 
 SVN_PROP_BZR_PREFIX = 'bzr:'
@@ -502,47 +498,11 @@ class BzrSvnMappingv3(BzrSvnMapping):
         parse_revision_metadata(
                 get_branch_file_property(SVN_PROP_BZR_REVISION_INFO, ""), rev)
 
-    def _svk_merged_revisions(self, get_branch_file_property):
-        """Find out what SVK features were merged in a revision.
-
-        """
-        current = get_branch_file_property(SVN_PROP_SVK_MERGE, "")
-        (prev_path, prev_revnum) = self._log.get_previous(branch, revnum)
-        if prev_path is None and prev_revnum == -1:
-            previous = ""
-        else:
-            previous = self.branchprop_list.get_property(prev_path.encode("utf-8"), 
-                         prev_revnum, SVN_PROP_SVK_MERGE, "")
-        for feature in svk_features_merged_since(current, previous):
-            revid = self._svk_feature_to_revision_id(feature)
-            if revid is not None:
-                yield revid
-
-    def _svk_feature_to_revision_id(self, feature):
-        """Convert a SVK feature to a revision id for this repository.
-
-        :param feature: SVK feature.
-        :return: revision id.
-        """
-        try:
-            (uuid, bp, revnum) = parse_svk_feature(feature)
-        except errors.InvalidPropertyValue:
-            return None
-        if uuid != self.uuid:
-            return None
-        if not self.scheme.is_branch(bp) and not self.scheme.is_tag(bp):
-            return None
-        return self.generate_revision_id(revnum, bp)
-
     def get_rhs_parents(self, revprops, get_branch_file_property):
         rhs_parents = []
         bzr_merges = get_branch_file_property(SVN_PROP_BZR_ANCESTRY+str(self.scheme), None)
         if bzr_merges is not None:
             return parse_merge_property(bzr_merges.splitlines()[-1])
-
-        svk_merges = get_branch_file_property(SVN_PROP_SVK_MERGE, None)
-        if svk_merges is not None:
-            return self._svk_merged_revisions(get_branch_file_property)
 
         return []
 
@@ -558,18 +518,6 @@ class BzrSvnMappingv3(BzrSvnMapping):
             return {}
         return parse_fileid_property(fileids)
 
-    def _revision_id_to_svk_feature(self, revid):
-        """Create a SVK feature identifier from a revision id.
-
-        :param revid: Revision id to convert.
-        :return: Matching SVK feature identifier.
-        """
-        assert isinstance(revid, str)
-        (uuid, branch, revnum, _) = self.__class__.parse_revision_id(revid)
-        # TODO: What about renamed revisions? Should use 
-        # repository.lookup_revision_id here.
-        return generate_svk_feature(uuid, branch, revnum)
-
     def _record_merges(self, merges, get_branch_file_property):
         """Store the extra merges (non-LHS parents) in a file property.
 
@@ -578,19 +526,6 @@ class BzrSvnMappingv3(BzrSvnMapping):
         # Bazaar Parents
         old = get_branch_file_property(SVN_PROP_BZR_ANCESTRY+str(self.scheme), "")
         svnprops = { SVN_PROP_BZR_ANCESTRY+str(self.scheme): old + "\t".join(merges) + "\n" }
-
-        old_svk_features = parse_svk_features(get_branch_file_property(SVN_PROP_SVK_MERGE, ""))
-        svk_features = set(old_svk_features)
-
-        # SVK compatibility
-        for merge in merges:
-            try:
-                svk_features.add(self._revision_id_to_svk_feature(merge))
-            except InvalidRevisionId:
-                pass
-
-        if old_svk_features != svk_features:
-            svnprops[SVN_PROP_SVK_MERGE] = serialize_svk_features(svk_features)
 
         return svnprops
  

@@ -30,8 +30,22 @@ from bzrlib.trace import mutter
 from copy import deepcopy
 from cStringIO import StringIO
 from errors import ChangesRootLHSHistory, MissingPrefix, RevpropChangeFailed
+from svk import generate_svk_feature, serialize_svk_features, parse_svk_features 
+from mapping import parse_revision_id
 from repository import (SvnRepositoryFormat, SvnRepository)
 import urllib
+
+def _revision_id_to_svk_feature(revid):
+    """Create a SVK feature identifier from a revision id.
+
+    :param revid: Revision id to convert.
+    :return: Matching SVK feature identifier.
+    """
+    assert isinstance(revid, str)
+    (uuid, branch, revnum, _) = parse_revision_id(revid)
+    # TODO: What about renamed revisions? Should use 
+    # repository.lookup_revision_id here.
+    return generate_svk_feature(uuid, branch, revnum)
 
 
 def _check_dirs_exist(transport, bp_parts, base_rev):
@@ -127,6 +141,20 @@ class SvnCommitBuilder(RootCommitBuilder):
                 return default
             return self.repository.branchprop_list.get_property(self.base_path, self.base_revnum, name, default)
         (self._svn_revprops, self._svnprops) = self.base_mapping.export_revision(self.branch.get_branch_path(), timestamp, timezone, committer, revprops, revision_id, self.base_revno+1, merges, get_branch_file_property)
+
+        if len(merges) > 0:
+            old_svk_features = parse_svk_features(get_branch_file_property(SVN_PROP_SVK_MERGE, ""))
+            svk_features = set(old_svk_features)
+
+            # SVK compatibility
+            for merge in merges:
+                try:
+                    svk_features.add(_revision_id_to_svk_feature(merge))
+                except InvalidRevisionId:
+                    pass
+
+            if old_svk_features != svk_features:
+                self._svnprops[SVN_PROP_SVK_MERGE] = serialize_svk_features(svk_features)
 
     def mutter(self, text):
         if 'commit' in debug.debug_flags:

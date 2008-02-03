@@ -33,6 +33,7 @@ from bzrlib.transport.local import LocalTransport
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 
 from branch import SvnBranch
+from commit import _revision_id_to_svk_feature
 from convert import SvnConverter
 from errors import LocalCommitsUnsupported, NoSvnRepositoryPresent
 from mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS, 
@@ -646,7 +647,7 @@ class SvnWorkingTree(WorkingTree):
             # Set svk:merge
             for merge in merges:
                 try:
-                    svk_merges.add(self.branch.mapping._revision_id_to_svk_feature(merge))
+                    svk_merges.add(_revision_id_to_svk_feature(merge))
                 except InvalidRevisionId:
                     pass
 

@@ -21,10 +21,11 @@
 from bzrlib.branch import Branch, PullResult
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import DivergedBranches, BzrError
+from bzrlib.tests import TestCase
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
-from commit import set_svn_revprops
+from commit import set_svn_revprops, _revision_id_to_svk_feature
 from copy import copy
 from errors import RevpropChangeFailed
 from mapping import MAPPING_VERSION
@@ -581,3 +582,10 @@ class RevpropTests(TestCaseWithSubversionRepository):
         transport = SvnRaTransport(repos_url)
         self.assertRaises(RevpropChangeFailed, 
                 lambda: set_svn_revprops(transport, 1, {"svn:author": "Somebody", "svn:date": svn_time_to_cstring(1000000*473385600)}))
+
+class SvkTestCase(TestCase):
+    def test_revid_svk_map(self):
+        self.assertEqual("auuid:/:6", 
+              _revision_id_to_svk_feature("svn-v3-undefined:auuid::6"))
+
+

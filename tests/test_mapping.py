@@ -192,10 +192,6 @@ class Mappingv3Tests(MappingTestAdapter,TestCase):
     def setUp(self):
         self.mapping = BzrSvnMappingv3(NoBranchingScheme())
 
-    def test_revid_svk_map(self):
-        self.assertEqual("auuid:/:6", 
-              self.mapping._revision_id_to_svk_feature("svn-v3-undefined:auuid::6"))
-
     def test_generate_revid(self):
         self.assertEqual("svn-v3-undefined:myuuid:branch:5", 
                          BzrSvnMappingv3._generate_revision_id("myuuid", 5, "branch", "undefined"))
