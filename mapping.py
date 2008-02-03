@@ -21,7 +21,7 @@ from bzrlib.trace import mutter
 
 import calendar
 import errors
-from scheme import BranchingScheme
+from scheme import BranchingScheme, guess_scheme_from_branch_path
 import sha
 import svn
 import time
@@ -374,6 +374,9 @@ class BzrSvnMappingv1(BzrSvnMapping):
     def generate_revision_id(self, uuid, revnum, path):
         return "svn-v1:%d@%s-%s" % (revnum, uuid, escape_svn_path(path))
 
+    def __eq__(self, other):
+        return type(self) == type(other)
+
 
 class BzrSvnMappingv2(BzrSvnMapping):
     """The second version of the mappings as used in the 0.3.x series.
@@ -393,6 +396,9 @@ class BzrSvnMappingv2(BzrSvnMapping):
 
     def generate_revision_id(self, uuid, revnum, path):
         return "svn-v2:%d@%s-%s" % (revnum, uuid, escape_svn_path(path))
+
+    def __eq__(self, other):
+        return type(self) == type(other)
 
 
 def parse_fileid_property(text):
@@ -442,7 +448,7 @@ class BzrSvnMappingv3(BzrSvnMapping):
         # Some older versions of bzr-svn 0.4 did not always set a branching
         # scheme but set "undefined" instead.
         if scheme == "undefined":
-            scheme = BranchingScheme.guess_scheme_from_branch_path(branch_path)
+            scheme = guess_scheme_from_branch_path(branch_path)
         else:
             scheme = BranchingScheme.find_scheme(scheme)
 
@@ -621,6 +627,9 @@ class BzrSvnMappingv3(BzrSvnMapping):
         assert branch_path == bp
         return np
 
+    def __eq__(self, other):
+        return type(self) == type(other) and self.scheme == other.scheme
+
 
 class BzrSvnMappingv4:
     @staticmethod
@@ -694,6 +703,9 @@ class BzrSvnMappingv4:
 
     def is_tag(self, tag_path):
         return True
+
+    def __eq__(self, other):
+        return type(self) == type(other)
 
 
 class BzrSvnMappingHybrid:

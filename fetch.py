@@ -29,7 +29,6 @@ from svn.core import Pool
 import svn.core
 
 from bzrlib.plugins.svn.errors import InvalidFileName
-from fileids import generate_file_id
 from mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_MERGE, 
                      SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVISION_INFO, 
                      SVN_PROP_BZR_BRANCHING_SCHEME, SVN_PROP_BZR_REVISION_ID,
@@ -128,7 +127,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         if self.old_inventory.root is None:
             # First time the root is set
             old_file_id = None
-            file_id = generate_file_id(self.source, self.revid, u"")
+            file_id = self.mapping.generate_file_id(self.source.uuid, self.revnum, self.branch_path, u"")
             self.dir_baserev[file_id] = []
         else:
             assert self.old_inventory.root.revision is not None
@@ -165,7 +164,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         assert isinstance(parent_id, str)
         if self.id_map.has_key(new_path):
             return self.id_map[new_path]
-        return generate_file_id(self.source, self.revid, new_path)
+        return self.mapping.generate_file_id(self.source.uuid, self.revnum, self.branch_path, new_path)
 
     def _rename(self, file_id, parent_id, path):
         assert isinstance(path, unicode)

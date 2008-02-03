@@ -25,25 +25,6 @@ import urllib
 
 from mapping import escape_svn_path
 
-def generate_file_id(repos, revid, inv_path):
-    """Generate a file id for a path created in a specific revision.
-
-    :note: This should not necessarily be the revnum in which the 
-        node first appeared in Subversion, but the revnum in which 
-        bzr-svn required a new file identity to be created.
-
-    :param repos: Repository object.
-    :param revid: bzr-svn revision id for the revision in which the path first
-                  appeared.
-    :param inv_path: Inventory path in the specified revision.
-    :return: A file id
-    """
-    assert isinstance(revid, str)
-    assert isinstance(inv_path, unicode)
-    (branch, revnum, mapping) = repos.lookup_revision_id(revid)
-    return mapping.generate_file_id(repos.uuid, revnum, branch, inv_path)
-
-
 def get_local_changes(paths, mapping, generate_revid, get_children=None):
     new_paths = {}
     for p in sorted(paths.keys()):
@@ -122,10 +103,8 @@ class FileIdMap(object):
         else:
             get_children = None
 
-        revid = self.repos.generate_revision_id(revnum, branch, mapping)
-
         def new_file_id(x):
-            return generate_file_id(self.repos, revid, x)
+            return mapping.generate_file_id(self.repos.uuid, revnum, branch, x)
          
         idmap = self._apply_changes(new_file_id, changes, get_children)
         idmap.update(renames)
@@ -141,10 +120,13 @@ class FileIdMap(object):
             return {"": (mapping.generate_file_id(uuid, revnum, branch, u""), 
               self.repos.generate_revision_id(revnum, branch, mapping))}
 
+        quickrevidmap = {}
+
         # No history -> empty map
         for (bp, paths, rev) in self.repos.follow_branch_history(branch, 
                                              revnum, mapping):
             revid = self.repos.generate_revision_id(rev, bp, mapping)
+            quickrevidmap[revid] = (rev, bp)
             try:
                 map = self.load(revid)
                 # found the nearest cached map
@@ -178,14 +160,15 @@ class FileIdMap(object):
                 pb.update('generating file id map', i, len(todo))
 
                 def find_children(path, revid):
-                    (bp, revnum, mapping) = self.repos.lookup_revision_id(revid)
+                    (revnum, bp) = quickrevidmap[revid]
                     for p in log_find_children(bp+"/"+path, revnum):
                         yield mapping.unprefix(bp, p)
 
                 parent_revs = next_parent_revs
 
                 def new_file_id(x):
-                    return generate_file_id(self.repos, revid, x)
+                    (revnum, branch) = quickrevidmap[revid]
+                    return mapping.generate_file_id(self.repos.uuid, revnum, branch, x)
                 
                 revmap = self._apply_changes(new_file_id, changes, find_children)
                 revmap.update(renames_cb(revid))

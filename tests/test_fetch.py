@@ -27,7 +27,6 @@ from bzrlib.trace import mutter
 
 from convert import load_dumpfile
 from bzrlib.plugins.svn.errors import InvalidFileName
-from fileids import generate_file_id
 import format
 from mapping import default_mapping
 import remote

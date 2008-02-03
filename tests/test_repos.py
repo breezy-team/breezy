@@ -33,7 +33,6 @@ import os, sys
 
 import svn.fs
 
-from fileids import generate_file_id
 import format
 from mapping import (default_mapping, escape_svn_path, unescape_svn_path, 
                      SVN_PROP_BZR_REVISION_ID, SVN_PROP_BZR_BRANCHING_SCHEME,

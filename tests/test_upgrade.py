@@ -23,7 +23,9 @@ from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 
 from errors import RebaseNotPresent
 from format import get_rich_root_format
-from mapping import default_mapping, MAPPING_VERSION
+from mapping import (MAPPING_VERSION, BzrSvnMappingv3, BzrSvnMappingv2, 
+                     BzrSvnMappingv1)
+from scheme import TrunkBranchingScheme
 from tests import TestCaseWithSubversionRepository
 from upgrade import (upgrade_repository, upgrade_branch,
                      upgrade_workingtree, UpgradeChangesContent, 
@@ -38,19 +40,19 @@ class TestUpgradeChangesContent(TestCase):
 
 class ParserTests(TestCase):
     def test_current(self):
-        self.assertEqual(("uuid", "trunk", 1, "trunk0", 'v3'), 
+        self.assertEqual(("uuid", "trunk", 1, BzrSvnMappingv3(TrunkBranchingScheme())), 
                 parse_legacy_revision_id("svn-v3-trunk0:uuid:trunk:1"))
 
     def test_current_undefined(self):
-        self.assertEqual(("uuid", "trunk", 1, None, 'v3'), 
+        self.assertEqual(("uuid", "trunk", 1, BzrSvnMappingv3(TrunkBranchingScheme())), 
                 parse_legacy_revision_id("svn-v3-undefined:uuid:trunk:1"))
 
     def test_legacy2(self):
-        self.assertEqual(("uuid", "trunk", 1, None, 'v2'), 
+        self.assertEqual(("uuid", "trunk", 1, BzrSvnMappingv2()), 
                          parse_legacy_revision_id("svn-v2:1@uuid-trunk"))
 
     def test_legacy(self):
-        self.assertEqual(("uuid", "trunk", 1, None, 'v1'), 
+        self.assertEqual(("uuid", "trunk", 1, BzrSvnMappingv1()), 
                          parse_legacy_revision_id("svn-v1:1@uuid-trunk"))
 
     def test_except(self):
@@ -158,7 +160,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
 
         tree = newrepos.revision_tree("customrev-svn%d-upgrade" % MAPPING_VERSION)
         self.assertEqual("specificid", tree.inventory.path2id("a"))
-        self.assertEqual(default_mapping.generate_file_id(oldrepos.uuid, 1, "", u"a"), 
+        self.assertEqual(oldrepos.get_mapping().generate_file_id(oldrepos.uuid, 1, "", u"a"), 
                          tree.inventory.path2id("b"))
 
     @skip_no_rebase

@@ -165,6 +165,15 @@ class MappingTestAdapter:
         scheme = NoBranchingScheme()
         self.assertEquals((None, None), self.mapping.get_revision_id({}, dict().get, scheme))
 
+    def test_parse_revision_id_unknown(self):
+        self.assertRaises(InvalidRevisionId, 
+                lambda: self.mapping.parse_revision_id("bla"))
+
+    def test_parse_revision_id(self):
+        self.assertEquals(("myuuid", "bla", 5, "foobar"), 
+            self.mapping.parse_revision_id(
+                self.mapping.generate_revision_id("myuuid", 5, "bla", "foobar")))
+
 
 class Mappingv1TestAdapter(MappingTestAdapter,TestCase):
     def setUp(self):
@@ -182,8 +191,33 @@ class Mappingv3TestAdapter(MappingTestAdapter,TestCase):
 
     def test_revid_svk_map(self):
         self.assertEqual("auuid:/:6", 
-              self.mapping._revision_id_to_svk_feature("svn-v%d-undefined:auuid::6" % MAPPING_VERSION))
+              self.mapping._revision_id_to_svk_feature("svn-v3-undefined:auuid::6"))
 
+    def test_generate_revid(self):
+        self.assertEqual("svn-v3-undefined:myuuid:branch:5", 
+                         default_mapping.generate_revision_id("myuuid", 5, "branch", "undefined"))
+
+    def test_generate_revid_nested(self):
+        self.assertEqual("svn-v3-undefined:myuuid:branch%2Fpath:5", 
+                  default_mapping.generate_revision_id("myuuid", 5, "branch/path", "undefined"))
+
+    def test_generate_revid_special_char(self):
+        self.assertEqual("svn-v3-undefined:myuuid:branch%2C:5", 
+             default_mapping.generate_revision_id("myuuid", 5, "branch\x2c", "undefined"))
+
+    def test_generate_revid_nordic(self):
+        self.assertEqual("svn-v3-undefined:myuuid:branch%C3%A6:5", 
+             default_mapping.generate_revision_id("myuuid", 5, u"branch\xe6".encode("utf-8"), "undefined"))
+
+    def test_parse_revid_simple(self):
+        self.assertEqual(("uuid", "", 4, None),
+                         default_mapping.parse_revision_id(
+                             "svn-v3-undefined:uuid::4"))
+
+    def test_parse_revid_nested(self):
+        self.assertEqual(("uuid", "bp/data", 4, None),
+                         default_mapping.parse_revision_id(
+                     "svn-v3-undefined:uuid:bp%2Fdata:4"))
 
 #class Mappingv4TestAdapter(MappingTestAdapter,TestCase):
 #    def setUp(self):
