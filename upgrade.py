@@ -64,7 +64,7 @@ def upgrade_branch(branch, svn_repository, allow_changes=False, verbose=False):
     """
     revid = branch.last_revision()
     renames = upgrade_repository(branch.repository, svn_repository, 
-              revid, allow_changes=allow_changes, verbose=verbose)
+              revision_id=revid, allow_changes=allow_changes, verbose=verbose)
     if len(renames) > 0:
         branch.generate_revision_history(renames[revid])
     return renames
