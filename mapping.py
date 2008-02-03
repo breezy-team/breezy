@@ -529,7 +529,7 @@ class BzrSvnMappingv3(BzrSvnMapping):
 
         svk_merges = get_branch_file_property(SVN_PROP_SVK_MERGE, None)
         if svk_merges is not None:
-            return self._svk_merged_revisions(get_branch_file_property, scheme)
+            return self._svk_merged_revisions(get_branch_file_property)
 
         return []
 
@@ -589,7 +589,7 @@ class BzrSvnMappingv3(BzrSvnMapping):
             timestamp, timezone, committer, revprops)
 
         if len(merges) > 0:
-            fileprops.update(self._record_merges(merges, get_branch_file_property, self.scheme))
+            fileprops.update(self._record_merges(merges, get_branch_file_property))
 
         # Set appropriate property if revision id was specified by 
         # caller

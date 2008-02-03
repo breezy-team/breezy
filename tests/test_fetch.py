@@ -48,8 +48,9 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
+        mapping = oldrepos.get_mapping()
         self.assertEqual("bla", newrepos.get_inventory(
-            oldrepos.generate_revision_id(1, "", "none")).path2id("test"))
+            oldrepos.generate_revision_id(1, "", mapping)).path2id("test"))
 
     def test_fetch_trunk1(self):
         repos_url = self.make_client('d', 'dc')
@@ -145,7 +146,8 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         dir = BzrDir.create("f",format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
-        tree = newrepos.revision_tree(oldrepos.generate_revision_id(2, "", "none"))
+        mapping = oldrepos.get_mapping()
+        tree = newrepos.revision_tree(oldrepos.generate_revision_id(2, "", mapping))
         self.assertEquals("bloe", tree.path2id("dir"))
         self.assertIs(None, tree.path2id("dir/adir"))
         self.assertEquals("bla", tree.path2id("bdir"))
@@ -168,7 +170,8 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         dir = BzrDir.create("f",format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
-        tree = newrepos.revision_tree(oldrepos.generate_revision_id(2, "", "none"))
+        mapping = oldrepos.get_mapping()
+        tree = newrepos.revision_tree(oldrepos.generate_revision_id(2, "", mapping))
         self.assertEquals("bloe", tree.path2id("dir"))
         self.assertIs(None, tree.path2id("dir/adir"))
         mutter('entries: %r' % tree.inventory.entries())
@@ -239,7 +242,8 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Second Message")
         newrepos = Repository.open("f")
         oldrepos.copy_content_into(newrepos)
-        self.assertTrue(oldrepos.has_revision(oldrepos.generate_revision_id(2, "", "none")))
+        mapping = oldrepos.get_mapping()
+        self.assertTrue(oldrepos.has_revision(oldrepos.generate_revision_id(2, "", mapping)))
 
     def test_fetch_delete_recursive(self):
         repos_url = self.make_client('d', 'dc')
@@ -252,9 +256,10 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
-        tree = newrepos.revision_tree(oldrepos.generate_revision_id(1, "", "none"))
+        mapping = oldrepos.get_mapping()
+        tree = newrepos.revision_tree(oldrepos.generate_revision_id(1, "", mapping))
         self.assertEquals(3, len(tree.inventory))
-        tree = newrepos.revision_tree(oldrepos.generate_revision_id(2, "", "none"))
+        tree = newrepos.revision_tree(oldrepos.generate_revision_id(2, "", mapping))
         self.assertEquals(1, len(tree.inventory))
 
     def test_fetch_local(self):
@@ -270,14 +275,15 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         dir = BzrDir.create("f",format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
+        mapping = oldrepos.get_mapping()
         self.assertTrue(newrepos.has_revision(
-            oldrepos.generate_revision_id(1, "", "none")))
+            oldrepos.generate_revision_id(1, "", mapping)))
         self.assertTrue(newrepos.has_revision(
-            oldrepos.generate_revision_id(2, "", "none")))
+            oldrepos.generate_revision_id(2, "", mapping)))
         newrepos.lock_read()
         try:
             tree = newrepos.revision_tree(
-                    oldrepos.generate_revision_id(2, "", "none"))
+                    oldrepos.generate_revision_id(2, "", mapping))
             self.assertTrue(tree.has_filename("foo/bla"))
             self.assertTrue(tree.has_filename("foo"))
             self.assertEqual("data", tree.get_file_by_path("foo/bla").read())
@@ -297,14 +303,15 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         dir = BzrDir.create("f",format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
+        mapping = oldrepos.get_mapping()
         self.assertTrue(newrepos.has_revision(
-            oldrepos.generate_revision_id(1, "", "none")))
+            oldrepos.generate_revision_id(1, "", mapping)))
         self.assertTrue(newrepos.has_revision(
-            oldrepos.generate_revision_id(2, "", "none")))
+            oldrepos.generate_revision_id(2, "", mapping)))
         inv1 = newrepos.get_inventory(
-                oldrepos.generate_revision_id(1, "", "none"))
+                oldrepos.generate_revision_id(1, "", mapping))
         inv2 = newrepos.get_inventory(
-                oldrepos.generate_revision_id(2, "", "none"))
+                oldrepos.generate_revision_id(2, "", mapping))
         self.assertNotEqual(inv1.path2id("bla"), inv2.path2id("bla"))
 
     def test_fetch_copy_subdir(self):
@@ -407,10 +414,11 @@ Node-action: delete
         dir = BzrDir.create("f",format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
+        mapping = oldrepos.get_mapping()
         self.assertTrue(newrepos.has_revision(
-            oldrepos.generate_revision_id(1, "", "none")))
+            oldrepos.generate_revision_id(1, "", mapping)))
         inv1 = newrepos.get_inventory(
-                oldrepos.generate_revision_id(1, "", "none"))
+                oldrepos.generate_revision_id(1, "", mapping))
         self.assertTrue(inv1.has_filename(u"x\xe1"))
 
     def test_fetch_replace_with_subreplace(self):
@@ -547,14 +555,15 @@ Node-copyfrom-path: u
         dir = BzrDir.create("f",format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
+        mapping = oldrepos.get_mapping()
         self.assertTrue(newrepos.has_revision(
-            oldrepos.generate_revision_id(1, "", "none")))
+            oldrepos.generate_revision_id(1, "", mapping)))
         self.assertTrue(newrepos.has_revision(
-            oldrepos.generate_revision_id(3, "", "none")))
+            oldrepos.generate_revision_id(3, "", mapping)))
         inv1 = newrepos.get_inventory(
-                oldrepos.generate_revision_id(1, "", "none"))
+                oldrepos.generate_revision_id(1, "", mapping))
         inv2 = newrepos.get_inventory(
-                oldrepos.generate_revision_id(3, "", "none"))
+                oldrepos.generate_revision_id(3, "", mapping))
 
     def test_fetch_replace_self(self):
         filename = os.path.join(self.test_dir, "dumpfile")
@@ -692,14 +701,15 @@ Node-copyfrom-path: bla
         dir = BzrDir.create("f",format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
+        mapping = oldrepos.get_mapping()
         self.assertTrue(newrepos.has_revision(
-            oldrepos.generate_revision_id(1, "", "none")))
+            oldrepos.generate_revision_id(1, "", mapping)))
         self.assertTrue(newrepos.has_revision(
-            oldrepos.generate_revision_id(3, "", "none")))
+            oldrepos.generate_revision_id(3, "", mapping)))
         inv1 = newrepos.get_inventory(
-                oldrepos.generate_revision_id(1, "", "none"))
+                oldrepos.generate_revision_id(1, "", mapping))
         inv2 = newrepos.get_inventory(
-                oldrepos.generate_revision_id(3, "", "none"))
+                oldrepos.generate_revision_id(3, "", mapping))
         self.assertEqual(inv1.path2id("bla"), inv2.path2id("bla"))
 
     def test_fetch_replace_backup(self):
@@ -871,14 +881,15 @@ Node-copyfrom-path: bla
         dir = BzrDir.create("f",format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
+        mapping = oldrepos.get_mapping()
         self.assertTrue(newrepos.has_revision(
-            oldrepos.generate_revision_id(1, "", "none")))
+            oldrepos.generate_revision_id(1, "", mapping)))
         self.assertTrue(newrepos.has_revision(
-            oldrepos.generate_revision_id(3, "", "none")))
+            oldrepos.generate_revision_id(3, "", mapping)))
         inv1 = newrepos.get_inventory(
-                oldrepos.generate_revision_id(1, "", "none"))
+                oldrepos.generate_revision_id(1, "", mapping))
         inv2 = newrepos.get_inventory(
-                oldrepos.generate_revision_id(3, "", "none"))
+                oldrepos.generate_revision_id(3, "", mapping))
         self.assertEqual(inv1.path2id("bla"), inv2.path2id("bla"))
 
     def test_fetch_replace_unrelated(self):
@@ -1011,14 +1022,15 @@ Node-copyfrom-path: x
         dir = BzrDir.create("f",format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
+        mapping = oldrepos.get_mapping()
         self.assertTrue(newrepos.has_revision(
-            oldrepos.generate_revision_id(1, "", "none")))
+            oldrepos.generate_revision_id(1, "", mapping)))
         self.assertTrue(newrepos.has_revision(
-            oldrepos.generate_revision_id(4, "", "none")))
+            oldrepos.generate_revision_id(4, "", mapping)))
         inv1 = newrepos.get_inventory(
-                oldrepos.generate_revision_id(1, "", "none"))
+                oldrepos.generate_revision_id(1, "", mapping))
         inv2 = newrepos.get_inventory(
-                oldrepos.generate_revision_id(4, "", "none"))
+                oldrepos.generate_revision_id(4, "", mapping))
         self.assertNotEqual(inv1.path2id("x"), inv2.path2id("x"))
 
     def test_fetch_replace_related(self):
@@ -1173,14 +1185,15 @@ Node-copyfrom-path: x
         dir = BzrDir.create("f",format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
+        mapping = oldrepos.get_mapping()
         self.assertTrue(newrepos.has_revision(
-            oldrepos.generate_revision_id(1, "", "none")))
+            oldrepos.generate_revision_id(1, "", mapping)))
         self.assertTrue(newrepos.has_revision(
-            oldrepos.generate_revision_id(5, "", "none")))
+            oldrepos.generate_revision_id(5, "", mapping)))
         inv1 = newrepos.get_inventory(
-                oldrepos.generate_revision_id(1, "", "none"))
+                oldrepos.generate_revision_id(1, "", mapping))
         inv2 = newrepos.get_inventory(
-                oldrepos.generate_revision_id(5, "", "none"))
+                oldrepos.generate_revision_id(5, "", mapping))
         self.assertNotEqual(inv1.path2id("y"), inv2.path2id("y"))
 
     def test_fetch_dir_upgrade(self):
@@ -1202,7 +1215,8 @@ Node-copyfrom-path: x
         oldrepos.copy_content_into(newrepos)
 
         branch = Branch.open("%s/branches/mybranch" % repos_url)
-        self.assertEqual([oldrepos.generate_revision_id(2, "branches/mybranch", "trunk0")], 
+        mapping = oldrepos.get_mapping()
+        self.assertEqual([oldrepos.generate_revision_id(2, "branches/mybranch", mapping)], 
                          branch.revision_history())
 
     def test_fetch_file_from_non_branch(self):
@@ -1224,7 +1238,7 @@ Node-copyfrom-path: x
         oldrepos.copy_content_into(newrepos)
 
         branch = Branch.open("%s/trunk" % repos_url)
-        self.assertEqual([oldrepos.generate_revision_id(2, "trunk", "trunk0")], 
+        self.assertEqual([oldrepos.generate_revision_id(2, "trunk", oldrepos.get_mapping())], 
                          branch.revision_history())
 
     def test_fetch_dir_from_non_branch(self):
@@ -1246,7 +1260,7 @@ Node-copyfrom-path: x
         oldrepos.copy_content_into(newrepos)
 
         branch = Branch.open("%s/trunk" % repos_url)
-        self.assertEqual([oldrepos.generate_revision_id(2, "trunk", "trunk0")],
+        self.assertEqual([oldrepos.generate_revision_id(2, "trunk", oldrepos.get_mapping())],
                          branch.revision_history())
 
     def test_fetch_from_non_branch(self):
@@ -1266,7 +1280,7 @@ Node-copyfrom-path: x
         oldrepos.copy_content_into(newrepos)
 
         branch = Branch.open("%s/trunk" % repos_url)
-        self.assertEqual([oldrepos.generate_revision_id(2, "trunk", "trunk0")],
+        self.assertEqual([oldrepos.generate_revision_id(2, "trunk", oldrepos.get_mapping())],
                          branch.revision_history())
 
 
@@ -1313,18 +1327,20 @@ Node-copyfrom-path: x
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
 
+        mapping = oldrepos.get_mapping()
+
         self.assertTrue(newrepos.has_revision(
-            oldrepos.generate_revision_id(1, "trunk", "trunk0")))
+            oldrepos.generate_revision_id(1, "trunk", mapping)))
         self.assertTrue(newrepos.has_revision(
-            oldrepos.generate_revision_id(2, "trunk", "trunk0")))
+            oldrepos.generate_revision_id(2, "trunk", mapping)))
         self.assertTrue(newrepos.has_revision(
-            oldrepos.generate_revision_id(3, "trunk", "trunk0")))
+            oldrepos.generate_revision_id(3, "trunk", mapping)))
         self.assertTrue(newrepos.has_revision(
-            oldrepos.generate_revision_id(4, "branches/foobranch", "trunk0")))
+            oldrepos.generate_revision_id(4, "branches/foobranch", mapping)))
         self.assertFalse(newrepos.has_revision(
-            oldrepos.generate_revision_id(4, "trunk", "trunk0")))
+            oldrepos.generate_revision_id(4, "trunk", mapping)))
         self.assertFalse(newrepos.has_revision(
-            oldrepos.generate_revision_id(2, "", "trunk0")))
+            oldrepos.generate_revision_id(2, "", mapping)))
 
     def test_fetch_copy_root_id_kept(self):
         repos_url = self.make_client('d', 'dc')
@@ -1343,8 +1359,10 @@ Node-copyfrom-path: x
 
         repos = remote.SvnRemoteAccess(SvnRaTransport("svn+"+repos_url), format.SvnRemoteFormat()).find_repository()
 
+        mapping = repos.get_mapping()
+
         tree = repos.revision_tree(
-             repos.generate_revision_id(3, "branches/foobranch", "trunk0"))
+             repos.generate_revision_id(3, "branches/foobranch", mapping))
 
         self.assertEqual(mapping.generate_file_id(repos.uuid, 1, "trunk", u""), tree.inventory.root.file_id)
 
@@ -1379,8 +1397,10 @@ Node-copyfrom-path: x
 
         repos = remote.SvnRemoteAccess(SvnRaTransport("svn+"+repos_url), format.SvnRemoteFormat()).find_repository()
 
+        mapping = repos.get_mapping()
+
         tree = repos.revision_tree(
-             repos.generate_revision_id(6, "branches/foobranch", "trunk0"))
+             repos.generate_revision_id(6, "branches/foobranch", mapping))
 
     def test_fetch_consistent(self):
         repos_url = self.make_client('d', 'dc')
@@ -1395,10 +1415,11 @@ Node-copyfrom-path: x
         newrepos2 = dir2.create_repository()
         oldrepos.copy_content_into(newrepos1)
         oldrepos.copy_content_into(newrepos2)
+        mapping = oldrepos.get_mapping()
         inv1 = newrepos1.get_inventory(
-                oldrepos.generate_revision_id(1, "", "none"))
+                oldrepos.generate_revision_id(1, "", mapping))
         inv2 = newrepos2.get_inventory(
-                oldrepos.generate_revision_id(1, "", "none"))
+                oldrepos.generate_revision_id(1, "", mapping))
         self.assertEqual(inv1, inv2)
 
     def test_fetch_executable(self):
@@ -1413,10 +1434,11 @@ Node-copyfrom-path: x
         dir = BzrDir.create("f",format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
+        mapping = oldrepos.get_mapping()
         self.assertTrue(newrepos.has_revision(
-            oldrepos.generate_revision_id(1, "", "none")))
+            oldrepos.generate_revision_id(1, "", mapping)))
         inv1 = newrepos.get_inventory(
-                oldrepos.generate_revision_id(1, "", "none"))
+                oldrepos.generate_revision_id(1, "", mapping))
         self.assertTrue(inv1[inv1.path2id("bla")].executable)
         self.assertTrue(inv1[inv1.path2id("blie")].executable)
 
@@ -1431,10 +1453,11 @@ Node-copyfrom-path: x
         dir = BzrDir.create("f",format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
+        mapping = oldrepos.get_mapping()
         self.assertTrue(newrepos.has_revision(
-            oldrepos.generate_revision_id(1, "", "none")))
+            oldrepos.generate_revision_id(1, "", mapping)))
         inv1 = newrepos.get_inventory(
-                oldrepos.generate_revision_id(1, "", "none"))
+                oldrepos.generate_revision_id(1, "", mapping))
         self.assertEqual('symlink', inv1[inv1.path2id("mylink")].kind)
         self.assertEqual('bla', inv1[inv1.path2id("mylink")].symlink_target)
 
@@ -1458,12 +1481,13 @@ Node-copyfrom-path: x
         dir = BzrDir.create("f",format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
+        mapping = oldrepos.get_mapping()
         self.assertTrue(newrepos.has_revision(
-            oldrepos.generate_revision_id(1, "", "none")))
+            oldrepos.generate_revision_id(1, "", mapping)))
         inv1 = newrepos.get_inventory(
-                oldrepos.generate_revision_id(1, "", "none"))
+                oldrepos.generate_revision_id(1, "", mapping))
         inv2 = newrepos.get_inventory(
-                oldrepos.generate_revision_id(2, "", "none"))
+                oldrepos.generate_revision_id(2, "", mapping))
         self.assertEqual('file', inv1[inv1.path2id("mylink")].kind)
         self.assertEqual('symlink', inv2[inv2.path2id("mylink")].kind)
         self.assertEqual('bla', inv2[inv2.path2id("mylink")].symlink_target)
@@ -1479,15 +1503,16 @@ Node-copyfrom-path: x
         dir = BzrDir.create("f",format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
+        mapping = oldrepos.get_mapping()
         self.assertTrue(newrepos.has_revision(
-            oldrepos.generate_revision_id(1, "", "none")))
+            oldrepos.generate_revision_id(1, "", mapping)))
         inv1 = newrepos.get_inventory(
-                oldrepos.generate_revision_id(1, "", "none"))
+                oldrepos.generate_revision_id(1, "", mapping))
         self.assertFalse(inv1[inv1.path2id("bla")].executable)
         inv2 = newrepos.get_inventory(
-                oldrepos.generate_revision_id(2, "", "none"))
+                oldrepos.generate_revision_id(2, "", mapping))
         self.assertTrue(inv2[inv2.path2id("bla")].executable)
-        self.assertEqual(oldrepos.generate_revision_id(2, "", "none"), 
+        self.assertEqual(oldrepos.generate_revision_id(2, "", mapping), 
                          inv2[inv2.path2id("bla")].revision)
 
     def test_fetch_ghosts(self):
@@ -1500,8 +1525,9 @@ Node-copyfrom-path: x
         dir = BzrDir.create("f",format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
+        mapping = oldrepos.get_mapping()
 
-        rev = newrepos.get_revision(oldrepos.generate_revision_id(1, "", "none"))
+        rev = newrepos.get_revision(oldrepos.generate_revision_id(1, "", mapping))
         self.assertTrue("aghost" in rev.parent_ids)
 
     def test_fetch_svk_merge(self):
@@ -1524,9 +1550,11 @@ Node-copyfrom-path: x
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
 
-        rev = newrepos.get_revision(oldrepos.generate_revision_id(3, "trunk", "trunk0"))
+        mapping = oldrepos.get_mapping()
+
+        rev = newrepos.get_revision(oldrepos.generate_revision_id(3, "trunk", mapping))
         mutter('parent ids: %r' % rev.parent_ids)
-        self.assertTrue(oldrepos.generate_revision_id(2, "branches/foo", "trunk0") in rev.parent_ids)
+        self.assertTrue(oldrepos.generate_revision_id(2, "branches/foo", mapping) in rev.parent_ids)
 
     def test_fetch_invalid_ghosts(self):
         repos_url = self.make_client('d', 'dc')
@@ -1538,9 +1566,11 @@ Node-copyfrom-path: x
         dir = BzrDir.create("f",format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
+        
+        mapping = oldrepos.get_mapping()
 
-        rev = newrepos.get_revision(oldrepos.generate_revision_id(1, "", "none"))
-        self.assertEqual([oldrepos.generate_revision_id(0, "", "none")], rev.parent_ids)
+        rev = newrepos.get_revision(oldrepos.generate_revision_id(1, "", mapping))
+        self.assertEqual([oldrepos.generate_revision_id(0, "", mapping)], rev.parent_ids)
 
     def test_fetch_property_change_only(self):
         repos_url = self.make_client('d', 'dc')
@@ -1558,12 +1588,13 @@ Node-copyfrom-path: x
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
+        mapping = oldrepos.get_mapping()
         self.assertEquals([
-            oldrepos.generate_revision_id(0, "", "none"),
-            oldrepos.generate_revision_id(1, "", "none"),
-            oldrepos.generate_revision_id(2, "", "none"),
-            oldrepos.generate_revision_id(3, "", "none"),
-            oldrepos.generate_revision_id(4, "", "none"),
+            oldrepos.generate_revision_id(0, "", mapping),
+            oldrepos.generate_revision_id(1, "", mapping),
+            oldrepos.generate_revision_id(2, "", mapping),
+            oldrepos.generate_revision_id(3, "", mapping),
+            oldrepos.generate_revision_id(4, "", mapping),
             ], newrepos.all_revision_ids())
 
     def test_fetch_property_change_only_trunk(self):
@@ -1582,11 +1613,12 @@ Node-copyfrom-path: x
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
+        mapping = oldrepos.get_mapping()
         self.assertEquals([
-            oldrepos.generate_revision_id(1, "trunk", "trunk0"),
-            oldrepos.generate_revision_id(2, "trunk", "trunk0"),
-            oldrepos.generate_revision_id(3, "trunk", "trunk0"),
-            oldrepos.generate_revision_id(4, "trunk", "trunk0"),
+            oldrepos.generate_revision_id(1, "trunk", mapping),
+            oldrepos.generate_revision_id(2, "trunk", mapping),
+            oldrepos.generate_revision_id(3, "trunk", mapping),
+            oldrepos.generate_revision_id(4, "trunk", mapping),
             ], newrepos.all_revision_ids())
 
     def test_fetch_crosscopy(self):
@@ -1617,9 +1649,10 @@ Node-copyfrom-path: x
         oldrepos.set_branching_scheme(TrunkBranchingScheme())
         dir = BzrDir.create("f",format.get_rich_root_format())
         newrepos = dir.create_repository()
-        copyrev = oldrepos.generate_revision_id(2, "branches/abranch", "trunk0")
-        prevrev = oldrepos.generate_revision_id(3, "branches/abranch", "trunk0")
-        lastrev = oldrepos.generate_revision_id(4, "branches/abranch", "trunk0")
+        mapping = oldrepos.get_mapping()
+        copyrev = oldrepos.generate_revision_id(2, "branches/abranch", mapping)
+        prevrev = oldrepos.generate_revision_id(3, "branches/abranch", mapping)
+        lastrev = oldrepos.generate_revision_id(4, "branches/abranch", mapping)
         oldrepos.copy_content_into(newrepos, lastrev)
 
         inventory = newrepos.get_inventory(lastrev)

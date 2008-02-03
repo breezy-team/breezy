@@ -97,8 +97,10 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         bzrdir = BzrDir.open("svn+"+repos_url)
         branch = bzrdir.open_branch()
         repos = bzrdir.find_repository()
+        
+        mapping = repos.get_mapping()
 
-        self.assertEqual(repos.generate_revision_id(1, "", "none"), 
+        self.assertEqual(repos.generate_revision_id(1, "", mapping), 
                 branch.last_revision())
 
         self.build_tree({'dc/foo': "data2"})
@@ -107,7 +109,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         branch = Branch.open("svn+"+repos_url)
         repos = Repository.open("svn+"+repos_url)
 
-        self.assertEqual(repos.generate_revision_id(2, "", "none"),
+        self.assertEqual(repos.generate_revision_id(2, "", mapping),
                 branch.last_revision())
 
     def test_set_revision_history(self):
@@ -166,9 +168,11 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         
         branch = Branch.open("svn+"+repos_url)
         repos = Repository.open("svn+"+repos_url)
+        
+        mapping = repos.get_mapping()
 
-        self.assertEqual([repos.generate_revision_id(0, "", "none"), 
-                    repos.generate_revision_id(1, "", "none")], 
+        self.assertEqual([repos.generate_revision_id(0, "", mapping), 
+                    repos.generate_revision_id(1, "", mapping)], 
                 branch.revision_history())
 
         self.build_tree({'dc/foo': "data34"})
@@ -177,10 +181,12 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         branch = Branch.open("svn+"+repos_url)
         repos = Repository.open("svn+"+repos_url)
 
+        mapping = repos.get_mapping()
+
         self.assertEqual([
-            repos.generate_revision_id(0, "", "none"),
+            repos.generate_revision_id(0, "", mapping),
             "mycommit",
-            repos.generate_revision_id(2, "", "none")],
+            repos.generate_revision_id(2, "", mapping)],
             branch.revision_history())
 
     def test_revision_id_to_revno_none(self):

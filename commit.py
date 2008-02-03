@@ -624,7 +624,7 @@ def push_new(target_repository, target_branch_path, source,
             """See SvnBranch.generate_revision_id()."""
             return self.repository.generate_revision_id(
                 revnum, self.get_branch_path(revnum), 
-                str(self.repository.get_mapping()))
+                self.repository.get_mapping())
 
     push(ImaginaryBranch(target_repository), source, start_revid)
 

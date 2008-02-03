@@ -40,7 +40,7 @@ from mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS,
                      generate_revision_metadata)
 from remote import SvnRemoteAccess
 from repository import SvnRepository
-from svk import SVN_PROP_SVK_MERGE, parse_svk_features
+from svk import SVN_PROP_SVK_MERGE, parse_svk_features, serialize_svk_features
 from mapping import escape_svn_path
 from scheme import BranchingScheme
 from transport import (SvnRaTransport, bzr_to_svn_url, create_svn_client,
@@ -646,7 +646,7 @@ class SvnWorkingTree(WorkingTree):
             # Set svk:merge
             for merge in merges:
                 try:
-                    svk_merges.add(self.branch.mapping.revision_id_to_svk_feature(merge))
+                    svk_merges.add(self.branch.mapping._revision_id_to_svk_feature(merge))
                 except InvalidRevisionId:
                     pass
 

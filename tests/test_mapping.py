@@ -24,6 +24,7 @@ from mapping import (generate_revision_metadata, parse_revision_metadata,
                      BzrSvnMappingv4, BzrSvnMappingHybrid, parse_revision_id)
 from scheme import NoBranchingScheme
 
+from bzrlib.errors import InvalidRevisionId
 from bzrlib.tests import (TestCase, adapt_tests, TestSkipped)
 from bzrlib.revision import Revision
 from bzrlib.trace import mutter
@@ -180,12 +181,12 @@ class MappingTestAdapter:
 
 class Mappingv1Tests(MappingTestAdapter,TestCase):
     def setUp(self):
-        self.mapping = BzrSvnMappingv1
+        self.mapping = BzrSvnMappingv1()
 
 
 class Mappingv2Tests(MappingTestAdapter,TestCase):
     def setUp(self):
-        self.mapping = BzrSvnMappingv2
+        self.mapping = BzrSvnMappingv2()
 
 
 def sha1(text):

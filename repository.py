@@ -476,7 +476,7 @@ class SvnRepository(Repository):
         :param scheme: Optional branching scheme to use when searching for 
                        revisions
         :raises: NoSuchRevision
-        :return: Tuple with branch path, revision number and scheme.
+        :return: Tuple with branch path, revision number and mapping.
         """
         def get_scheme(name):
             assert isinstance(name, str)
@@ -564,7 +564,7 @@ class SvnRepository(Repository):
             if entry_revid == revid:
                 self.revmap.insert_revid(revid, bp, rev, rev, scheme, 
                                          entry_revno)
-                return (bp, rev, get_scheme(scheme))
+                return (bp, rev, BzrSvnMappingv3(get_scheme(scheme)))
 
         raise AssertionError("Revision id %s was added incorrectly" % revid)
 

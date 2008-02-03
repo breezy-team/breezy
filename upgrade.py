@@ -20,8 +20,7 @@ from bzrlib.trace import info, mutter
 import bzrlib.ui as ui
 
 from errors import RebaseNotPresent
-from mapping import (unescape_svn_path, MAPPING_VERSION, get_default_mapping)
-from scheme import BranchingScheme, guess_scheme_from_branch_path
+from mapping import (MAPPING_VERSION, get_default_mapping, parse_revision_id)
 
 class UpgradeChangesContent(BzrError):
     """Inconsistency was found upgrading the mapping of a revision."""

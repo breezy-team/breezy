@@ -41,7 +41,6 @@ from scheme import (TrunkBranchingScheme, NoBranchingScheme,
                     ListBranchingScheme)
 from transport import SvnRaTransport
 from tests import TestCaseWithSubversionRepository
-from tests.test_fileids import MockRepo
 from repository import SvnRepositoryFormat
 
 
@@ -107,8 +106,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos_url = self.make_client("a", "dc")
         repos = Repository.open(repos_url)
         mapping = repos.get_mapping()
-        revid = repos.generate_revision_id(0, "", mapping)
-        self.assertEqual({u"": (generate_file_id(MockRepo(repos.uuid), revid, u""), revid)}, repos.get_fileid_map(0, "", NoBranchingScheme()))
+        self.assertEqual({u"": (mapping.generate_file_id(repos.uuid, 0, "", u""), revid)}, repos.get_fileid_map(0, "", mapping))
 
     def test_generate_revision_id_forced_revid(self):
         repos_url = self.make_client("a", "dc")
@@ -207,16 +205,18 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
 
         repos = Repository.open(repos_url)
         repos.set_branching_scheme(TrunkBranchingScheme())
+        mapping = repos.get_mapping()
         self.assertEqual([
-            repos.generate_revision_id(2, "branches/somebranch", "trunk0"),
-            repos.generate_revision_id(1, "trunk", "trunk0")], 
+            repos.generate_revision_id(2, "branches/somebranch", mapping),
+            repos.generate_revision_id(1, "trunk", mapping)], 
             list(repos.all_revision_ids()))
 
     def test_follow_history_empty(self):
         repos_url = self.make_client("a", "dc")
+        repos = Repository.open(repos_url)
         self.assertEqual([('', 0)], 
-              list(Repository.open(repos_url).follow_history(0, 
-                  NoBranchingScheme())))
+              list(repos.follow_history(0, 
+                  repos.get_mapping())))
 
     def test_follow_history_empty_branch(self):
         repos_url = self.make_client("a", "dc")
@@ -226,7 +226,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My Message")
         repos = Repository.open(repos_url)
         self.assertEqual([('trunk', 1)], 
-                list(repos.follow_history(1, TrunkBranchingScheme())))
+                list(repos.follow_history(1, repos.get_mapping())))
 
     def test_follow_history_follow(self):
         repos_url = self.make_client("a", "dc")
@@ -240,7 +240,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
 
         repos = Repository.open(repos_url)
 
-        items = list(repos.follow_history(2, TrunkBranchingScheme()))
+        items = list(repos.follow_history(2, repos.get_mapping()))
         self.assertEqual([('branches/abranch', 2), 
                           ('trunk', 1)], items)
 
@@ -546,10 +546,11 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_set_prop("dc/trunk", "svk:merge", 
             "%s:/branches/foo:1\n" % repository.uuid)
         self.client_commit("dc", "Second Message")
-        self.assertEqual([repository.generate_revision_id(1, "trunk", "trunk0"),
-            repository.generate_revision_id(1, "branches/foo", "trunk0")], 
+        mapping = repository.get_mapping()
+        self.assertEqual([repository.generate_revision_id(1, "trunk", mapping),
+            repository.generate_revision_id(1, "branches/foo", mapping)], 
                 repository.revision_parents(
-                    repository.generate_revision_id(2, "trunk", "trunk0")))
+                    repository.generate_revision_id(2, "trunk", mapping)))
  
     
     def test_get_revision(self):
@@ -1035,27 +1036,29 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
 
-        self.assertTrue(newrepos.has_revision(
-            oldrepos.generate_revision_id(1, "trunk", "trunk0")))
-        self.assertTrue(newrepos.has_revision(
-            oldrepos.generate_revision_id(2, "trunk", "trunk0")))
-        self.assertTrue(newrepos.has_revision(
-            oldrepos.generate_revision_id(3, "trunk", "trunk0")))
-        self.assertTrue(newrepos.has_revision(
-            oldrepos.generate_revision_id(4, "branches/foobranch", "trunk0")))
-        self.assertFalse(newrepos.has_revision(
-            oldrepos.generate_revision_id(4, "trunk", "trunk0")))
-        self.assertFalse(newrepos.has_revision(
-            oldrepos.generate_revision_id(2, "", "trunk0")))
+        mapping = oldrepos.get_mapping()
 
-        rev = newrepos.get_revision(oldrepos.generate_revision_id(1, "trunk", "trunk0"))
+        self.assertTrue(newrepos.has_revision(
+            oldrepos.generate_revision_id(1, "trunk", mapping)))
+        self.assertTrue(newrepos.has_revision(
+            oldrepos.generate_revision_id(2, "trunk", mapping)))
+        self.assertTrue(newrepos.has_revision(
+            oldrepos.generate_revision_id(3, "trunk", mapping)))
+        self.assertTrue(newrepos.has_revision(
+            oldrepos.generate_revision_id(4, "branches/foobranch", mapping)))
+        self.assertFalse(newrepos.has_revision(
+            oldrepos.generate_revision_id(4, "trunk", mapping)))
+        self.assertFalse(newrepos.has_revision(
+            oldrepos.generate_revision_id(2, "", mapping)))
+
+        rev = newrepos.get_revision(oldrepos.generate_revision_id(1, "trunk", mapping))
         self.assertEqual("$", rev.message)
 
         rev = newrepos.get_revision(
-            oldrepos.generate_revision_id(2, "trunk", "trunk0"))
+            oldrepos.generate_revision_id(2, "trunk", mapping))
         self.assertEqual('bla\xc3\xbcbla', rev.message.encode("utf-8"))
 
-        rev = newrepos.get_revision(oldrepos.generate_revision_id(3, "trunk", "trunk0"))
+        rev = newrepos.get_revision(oldrepos.generate_revision_id(3, "trunk", mapping))
         self.assertEqual(u"a\\x0cb", rev.message)
 
     def test_set_branching_scheme(self):
@@ -1078,7 +1081,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Initial commit")
         mapping = repos.get_mapping()
         self.assertEquals(repos.generate_revision_id(0, "", mapping), \
-                repos._mainline_revision_parent("", 1, NoBranchingScheme()))
+                repos._mainline_revision_parent("", 1, mapping))
 
     def test_mainline_revision_parent_simple(self):
         repos_url = self.make_client('d', 'dc')
@@ -1092,8 +1095,9 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Incremental commit")
         repos = Repository.open(repos_url)
         repos.set_branching_scheme(TrunkBranchingScheme())
-        self.assertEquals(repos.generate_revision_id(1, "trunk", "trunk0"), \
-                repos._mainline_revision_parent("trunk", 2, TrunkBranchingScheme()))
+        mapping = repos.get_mapping()
+        self.assertEquals(repos.generate_revision_id(1, "trunk", mapping), \
+                repos._mainline_revision_parent("trunk", 2, mapping))
 
     def test_mainline_revision_parent_copied(self):
         repos_url = self.make_client('d', 'dc')
@@ -1107,8 +1111,9 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Change de")
         repos = Repository.open(repos_url)
         repos.set_branching_scheme(TrunkBranchingScheme(1))
-        self.assertEquals(repos.generate_revision_id(1, "py/trunk", "trunk1"), \
-                repos._mainline_revision_parent("de/trunk", 3, TrunkBranchingScheme(1)))
+        mapping = repos.get_mapping()
+        self.assertEquals(repos.generate_revision_id(1, "py/trunk", mapping), \
+                repos._mainline_revision_parent("de/trunk", 3, mapping))
 
     def test_mainline_revision_copied(self):
         repos_url = self.make_client('d', 'dc')
@@ -1122,8 +1127,9 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Copy trunk")
         repos = Repository.open(repos_url)
         repos.set_branching_scheme(TrunkBranchingScheme(1))
-        self.assertEquals(repos.generate_revision_id(1, "py/trunk", "trunk1"), \
-                repos._mainline_revision_parent("de/trunk", 2, TrunkBranchingScheme(1)))
+        mapping = repos.get_mapping()
+        self.assertEquals(repos.generate_revision_id(1, "py/trunk", mapping), \
+                repos._mainline_revision_parent("de/trunk", 2, mapping))
 
     def test_mainline_revision_nested_deleted(self):
         repos_url = self.make_client('d', 'dc')
@@ -1137,8 +1143,9 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Another incremental commit")
         repos = Repository.open(repos_url)
         repos.set_branching_scheme(TrunkBranchingScheme(1))
-        self.assertEquals(repos.generate_revision_id(1, "py/trunk", "trunk1"), \
-                repos._mainline_revision_parent("de/trunk", 3, TrunkBranchingScheme(1)))
+        mapping = repos.get_mapping()
+        self.assertEquals(repos.generate_revision_id(1, "py/trunk", mapping), \
+                repos._mainline_revision_parent("de/trunk", 3, mapping))
 
     def test_mainline_revision_missing(self):
         repos_url = self.make_client('d', 'dc')
