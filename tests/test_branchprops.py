@@ -115,6 +115,32 @@ class TestBranchProps(TestCaseWithSubversionRepository):
         bp = BranchPropertyList(logwalk, self.db)
         self.assertEqual("data2\n", bp.get_property_diff("", 2, "myprop"))
 
+    def test_get_changed_properties(self):
+        repos_url = self.make_client('d', 'dc')
+        self.client_set_prop("dc", "myprop", "data\n")
+        self.client_commit("dc", "My Message")
+        self.client_update("dc")
+        self.client_set_prop("dc", "myprop", "newdata\n")
+        self.client_commit("dc", "My Message")
+        self.client_update("dc")
+        self.client_set_prop("dc", "myp2", "newdata\n")
+        self.client_commit("dc", "My Message")
+        self.client_update("dc")
+
+        logwalk = LogWalker(transport=SvnRaTransport(repos_url))
+
+        bp = BranchPropertyList(logwalk, self.db)
+        self.assertEquals("data\n",
+                          bp.get_changed_properties("", 1)["myprop"])
+
+        bp = BranchPropertyList(logwalk, self.db)
+        self.assertEquals("newdata\n", 
+                          bp.get_changed_properties("", 2)["myprop"])
+
+        bp = BranchPropertyList(logwalk, self.db)
+        self.assertEquals("newdata\n", 
+                          bp.get_changed_properties("", 3)["myp2"])
+
     def test_touches_property(self):
         repos_url = self.make_client('d', 'dc')
         self.client_set_prop("dc", "myprop", "data\n")
