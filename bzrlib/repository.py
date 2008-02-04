@@ -1778,8 +1778,7 @@ class Repository(object):
         """Return the graph walker for this repository format"""
         parents_provider = self._make_parents_provider()
         if (other_repository is not None and
-            other_repository.bzrdir.transport.base !=
-            self.bzrdir.transport.base):
+            not self.has_same_location(other_repository)):
             parents_provider = graph._StackedParentsProvider(
                 [parents_provider, other_repository._make_parents_provider()])
         return graph.Graph(parents_provider)
