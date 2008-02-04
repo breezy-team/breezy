@@ -85,6 +85,7 @@ class TestConversion(TestCaseWithSubversionRepository):
         self.build_tree({'dc/branches/somebranch/somefile': 'data'})
         self.client_add("dc/branches/somebranch")
         self.client_commit("dc", "add a branch")
+        self.client_update("dc")
         self.client_delete("dc/branches/somebranch")
         self.client_commit("dc", "remove branch")
         oldrepos = Repository.open(self.repos_url)
