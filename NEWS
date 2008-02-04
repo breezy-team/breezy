@@ -16,6 +16,8 @@ bzr-svn 0.4.7	2008-02-01
 
    * Warn about location when initializing Subversion repository cache.
 
+   * Set revision properties when possible.
+
   BUGS
 
    * Fix opening unicode file names during fetch. (#162368)

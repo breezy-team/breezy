@@ -18,19 +18,14 @@
 
 from bzrlib.errors import (InvalidRevisionId, NoSuchRevision)
 
-from mapping import default_mapping
+from cache import CacheTable
 
-class RevidMap(object):
+class RevidMap(CacheTable):
     """Revision id mapping store. 
 
     Stores mapping from revid -> (path, revnum, scheme)
     """
-    def __init__(self, cache_db=None):
-        if cache_db is None:
-            from cache import sqlite3
-            self.cachedb = sqlite3.connect(":memory:")
-        else:
-            self.cachedb = cache_db
+    def _create_table(self):
         self.cachedb.executescript("""
         create table if not exists revmap (revid text, path text, min_revnum integer, max_revnum integer, scheme text);
         create index if not exists revid on revmap (revid);
@@ -42,7 +37,6 @@ class RevidMap(object):
         create table if not exists revids_seen (scheme text, max_revnum int);
         create unique index if not exists scheme on revids_seen (scheme);
         """)
-        self.cachedb.commit()
 
     def set_last_revnum_checked(self, scheme, revnum):
         """Remember the latest revision number that has been checked

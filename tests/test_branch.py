@@ -27,7 +27,9 @@ from unittest import TestCase
 
 from branch import FakeControlFiles, SvnBranchFormat
 from convert import load_dumpfile
-from mapping import default_mapping, MAPPING_VERSION, SVN_PROP_BZR_REVISION_ID
+from mapping import (MAPPING_VERSION, SVN_PROP_BZR_REVISION_ID, 
+                     BzrSvnMappingv3)
+from scheme import TrunkBranchingScheme
 from tests import TestCaseWithSubversionRepository
 
 class WorkingSubversionBranch(TestCaseWithSubversionRepository):
@@ -95,8 +97,10 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         bzrdir = BzrDir.open("svn+"+repos_url)
         branch = bzrdir.open_branch()
         repos = bzrdir.find_repository()
+        
+        mapping = repos.get_mapping()
 
-        self.assertEqual(repos.generate_revision_id(1, "", "none"), 
+        self.assertEqual(repos.generate_revision_id(1, "", mapping), 
                 branch.last_revision())
 
         self.build_tree({'dc/foo': "data2"})
@@ -105,7 +109,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         branch = Branch.open("svn+"+repos_url)
         repos = Repository.open("svn+"+repos_url)
 
-        self.assertEqual(repos.generate_revision_id(2, "", "none"),
+        self.assertEqual(repos.generate_revision_id(2, "", mapping),
                 branch.last_revision())
 
     def test_set_revision_history(self):
@@ -164,9 +168,11 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         
         branch = Branch.open("svn+"+repos_url)
         repos = Repository.open("svn+"+repos_url)
+        
+        mapping = repos.get_mapping()
 
-        self.assertEqual([repos.generate_revision_id(0, "", "none"), 
-                    repos.generate_revision_id(1, "", "none")], 
+        self.assertEqual([repos.generate_revision_id(0, "", mapping), 
+                    repos.generate_revision_id(1, "", mapping)], 
                 branch.revision_history())
 
         self.build_tree({'dc/foo': "data34"})
@@ -175,10 +181,12 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         branch = Branch.open("svn+"+repos_url)
         repos = Repository.open("svn+"+repos_url)
 
+        mapping = repos.get_mapping()
+
         self.assertEqual([
-            repos.generate_revision_id(0, "", "none"),
+            repos.generate_revision_id(0, "", mapping),
             "mycommit",
-            repos.generate_revision_id(2, "", "none")],
+            repos.generate_revision_id(2, "", mapping)],
             branch.revision_history())
 
     def test_revision_id_to_revno_none(self):
@@ -486,18 +494,18 @@ foohosts""")
 
         newbranch = newdir.open_branch()
 
+        oldbranch = Branch.open(url)
+
         uuid = "6f95bc5c-e18d-4021-aca8-49ed51dbcb75"
         newbranch.lock_read()
-        tree = newbranch.repository.revision_tree(
-                default_mapping.generate_revision_id(uuid, 7, "branches/foobranch", 
-                "trunk0"))
+        tree = newbranch.repository.revision_tree(oldbranch.generate_revision_id(7))
 
         weave = newbranch.repository.weave_store.get_weave(
             tree.inventory.path2id("hosts"),
             newbranch.repository.get_transaction())
         self.assertEqual(set([
-            default_mapping.generate_revision_id(uuid, 6, "branches/foobranch", "trunk0"),
-            default_mapping.generate_revision_id(uuid, 7, "branches/foobranch", "trunk0")]),
+            oldbranch.generate_revision_id(6),
+            oldbranch.generate_revision_id(7)]),
                           set(weave.versions()))
         newbranch.unlock()
  
@@ -535,19 +543,21 @@ foohosts""")
         newdir = olddir.sprout("new")
 
         newbranch = newdir.open_branch()
+        oldbranch = olddir.open_branch()
 
         uuid = olddir.find_repository().uuid
         tree = newbranch.repository.revision_tree(
-             default_mapping.generate_revision_id(uuid, 6, "branches/foobranch", "trunk0"))
+             oldbranch.generate_revision_id(6))
         transaction = newbranch.repository.get_transaction()
         newbranch.repository.lock_read()
         weave = newbranch.repository.weave_store.get_weave(
                 tree.inventory.path2id("hosts"), transaction)
+        mapping = BzrSvnMappingv3(TrunkBranchingScheme())
         self.assertEqual(set([
-            default_mapping.generate_revision_id(uuid, 1, "trunk", "trunk0"),
-            default_mapping.generate_revision_id(uuid, 2, "trunk", "trunk0"),
-            default_mapping.generate_revision_id(uuid, 3, "trunk", "trunk0"),
-            default_mapping.generate_revision_id(uuid, 6, "branches/foobranch", "trunk0")]),
+            mapping.generate_revision_id(uuid, 1, "trunk"),
+            mapping.generate_revision_id(uuid, 2, "trunk"),
+            mapping.generate_revision_id(uuid, 3, "trunk"),
+            oldbranch.generate_revision_id(6)]),
                           set(weave.versions()))
         newbranch.repository.unlock()
 

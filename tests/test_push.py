@@ -93,16 +93,17 @@ class TestPush(TestCaseWithSubversionRepository):
         svnbranch.pull(self.bzrdir.open_branch())
 
         repos = self.svndir.find_repository()
+        mapping = repos.get_mapping()
         self.assertEquals(newid, svnbranch.last_revision())
-        inv = repos.get_inventory(repos.generate_revision_id(2, "", "none"))
+        inv = repos.get_inventory(repos.generate_revision_id(2, "", mapping))
         self.assertEqual(newid, inv[inv.path2id('foo/bla')].revision)
         self.assertEqual(wt.branch.last_revision(),
-          repos.generate_revision_id(2, "", "none"))
-        self.assertEqual(repos.generate_revision_id(2, "", "none"),
+          repos.generate_revision_id(2, "", mapping))
+        self.assertEqual(repos.generate_revision_id(2, "", mapping),
                         self.svndir.open_branch().last_revision())
         self.assertEqual("other data", 
             repos.revision_tree(repos.generate_revision_id(2, "", 
-                                "none")).get_file_text(inv.path2id("foo/bla")))
+                                mapping)).get_file_text(inv.path2id("foo/bla")))
 
     def test_simple(self):
         self.build_tree({'dc/file': 'data'})
@@ -113,11 +114,12 @@ class TestPush(TestCaseWithSubversionRepository):
         self.svndir.open_branch().pull(self.bzrdir.open_branch())
 
         repos = self.svndir.find_repository()
-        inv = repos.get_inventory(repos.generate_revision_id(2, "", "none"))
+        mapping = repos.get_mapping()
+        inv = repos.get_inventory(repos.generate_revision_id(2, "", mapping))
         self.assertTrue(inv.has_filename('file'))
         self.assertEquals(wt.branch.last_revision(),
-                repos.generate_revision_id(2, "", "none"))
-        self.assertEqual(repos.generate_revision_id(2, "", "none"),
+                repos.generate_revision_id(2, "", mapping))
+        self.assertEqual(repos.generate_revision_id(2, "", mapping),
                         self.svndir.open_branch().last_revision())
 
     def test_override_revprops(self):
@@ -141,11 +143,12 @@ class TestPush(TestCaseWithSubversionRepository):
         self.svndir.open_branch().pull(self.bzrdir.open_branch())
 
         repos = self.svndir.find_repository()
-        inv = repos.get_inventory(repos.generate_revision_id(2, "", "none"))
+        mapping = repos.get_mapping()
+        inv = repos.get_inventory(repos.generate_revision_id(2, "", mapping))
         self.assertTrue(inv.has_filename('file'))
         self.assertEquals(wt.branch.last_revision(),
-                repos.generate_revision_id(2, "", "none"))
-        self.assertEqual(repos.generate_revision_id(2, "", "none"),
+                repos.generate_revision_id(2, "", mapping))
+        self.assertEqual(repos.generate_revision_id(2, "", mapping),
                         self.svndir.open_branch().last_revision())
 
     def test_symlink(self):
@@ -160,7 +163,8 @@ class TestPush(TestCaseWithSubversionRepository):
         self.svndir.open_branch().pull(self.bzrdir.open_branch())
 
         repos = self.svndir.find_repository()
-        inv = repos.get_inventory(repos.generate_revision_id(2, "", "none"))
+        mapping = repos.get_mapping() 
+        inv = repos.get_inventory(repos.generate_revision_id(2, "", mapping))
         self.assertTrue(inv.has_filename('south'))
         self.assertEquals('symlink', inv[inv.path2id('south')].kind)
         self.assertEquals('bla', inv[inv.path2id('south')].symlink_target)
@@ -174,16 +178,17 @@ class TestPush(TestCaseWithSubversionRepository):
         self.svndir.open_branch().pull(self.bzrdir.open_branch())
 
         repos = self.svndir.find_repository()
-        inv = repos.get_inventory(repos.generate_revision_id(2, "", "none"))
+        mapping = repos.get_mapping()
+        inv = repos.get_inventory(repos.generate_revision_id(2, "", mapping))
         self.assertTrue(inv.has_filename('file'))
         self.assertEquals(wt.branch.last_revision(),
-                         repos.generate_revision_id(2, "", "none"))
-        self.assertEqual(repos.generate_revision_id(2, "", "none"),
+                         repos.generate_revision_id(2, "", mapping))
+        self.assertEqual(repos.generate_revision_id(2, "", mapping),
                         self.svndir.open_branch().last_revision())
 
         self.bzrdir.open_branch().pull(self.svndir.open_branch())
 
-        self.assertEqual(repos.generate_revision_id(2, "", "none"),
+        self.assertEqual(repos.generate_revision_id(2, "", mapping),
                         self.bzrdir.open_branch().last_revision())
 
     def test_branch_after_push(self):
@@ -209,8 +214,9 @@ class TestPush(TestCaseWithSubversionRepository):
         self.svndir.open_branch().pull(self.bzrdir.open_branch())
 
         repos = self.svndir.find_repository()
+        mapping = repos.get_mapping()
         self.assertEqual("Commit from Bzr",
-          repos.get_revision(repos.generate_revision_id(2, "", "none")).message)
+          repos.get_revision(repos.generate_revision_id(2, "", mapping)).message)
 
     def test_commit_set_revid(self):
         self.build_tree({'dc/file': 'data'})
@@ -256,14 +262,16 @@ class TestPush(TestCaseWithSubversionRepository):
 
         repos = self.svndir.find_repository()
 
-        self.assertEqual(repos.generate_revision_id(3, "", "none"), 
+        mapping = repos.get_mapping()
+
+        self.assertEqual(repos.generate_revision_id(3, "", mapping), 
                         self.svndir.open_branch().last_revision())
 
-        inv = repos.get_inventory(repos.generate_revision_id(2, "", "none"))
+        inv = repos.get_inventory(repos.generate_revision_id(2, "", mapping))
         self.assertTrue(inv.has_filename('file'))
         self.assertFalse(inv.has_filename('adir'))
 
-        inv = repos.get_inventory(repos.generate_revision_id(3, "", "none"))
+        inv = repos.get_inventory(repos.generate_revision_id(3, "", mapping))
         self.assertTrue(inv.has_filename('file'))
         self.assertTrue(inv.has_filename('adir'))
 
@@ -271,7 +279,7 @@ class TestPush(TestCaseWithSubversionRepository):
                          self.bzrdir.open_branch().revision_history())
 
         self.assertEqual(wt.branch.last_revision(), 
-                repos.generate_revision_id(3, "", "none"))
+                repos.generate_revision_id(3, "", mapping))
         self.assertEqual(
                 wt.branch.repository.get_ancestry(wt.branch.last_revision()), 
                 repos.get_ancestry(wt.branch.last_revision()))
@@ -329,7 +337,7 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         self.build_tree({'c/test': "Tour"})
         bzrwt.add("test")
         revid = bzrwt.commit("Do a commit")
-        newdir = BzrDir.open(repos_url+"/trunk")
+        newdir = BzrDir.open("%s/trunk" % repos_url)
         newbranch = newdir.import_branch(bzrwt.branch)
         newtree = newbranch.repository.revision_tree(revid)
         bzrwt.lock_read()
@@ -375,7 +383,8 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
 
         repos = Repository.open(repos_url)
         wt.branch.repository.fetch(repos)
-        other_rev = repos.generate_revision_id(3, "", "none")
+        mapping = repos.get_mapping()
+        other_rev = repos.generate_revision_id(3, "", mapping)
         wt.lock_write()
         try:
             merge = Merger.from_revision_ids(DummyProgress(), wt, other=other_rev)
@@ -418,7 +427,8 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
 
         repos = Repository.open(repos_url)
         wt.branch.repository.fetch(repos)
-        other_rev = repos.generate_revision_id(3, "trunk", "trunk0")
+        mapping = repos.get_mapping()
+        other_rev = repos.generate_revision_id(3, "trunk", mapping)
         wt.lock_write()
         try:
             merge = Merger.from_revision_ids(DummyProgress(), wt, other=other_rev)
@@ -517,8 +527,9 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         newdir = BzrDir.open(repos_url+"/branches/mybranch")
         newbranch = newdir.import_branch(bzrwt.branch)
         self.assertEquals(revid2, newbranch.last_revision())
+        mapping = svnrepos.get_mapping()
         self.assertEquals([
-            svnrepos.generate_revision_id(1, "trunk", "trunk0") 
+            svnrepos.generate_revision_id(1, "trunk", mapping) 
             , revid1, revid2], newbranch.revision_history())
 
     def test_push_overwrite(self):
@@ -645,6 +656,7 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
 
         # Push first branch into Subversion
         newdir = BzrDir.open(repos_url+"/trunk")
+        mapping = newdir.find_repository().get_mapping()
         newbranch = newdir.import_branch(bzrwt.branch)
 
         # Should create dc/trunk
@@ -658,7 +670,7 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
 
         self.build_tree({'dc/branches/foo/registry/generic.c': "France"})
         merge_revno = self.client_commit("dc", "Change copied branch")[0]
-        merge_revid = newdir.find_repository().generate_revision_id(merge_revno, "branches/foo", "trunk0")
+        merge_revid = newdir.find_repository().generate_revision_id(merge_revno, "branches/foo", mapping)
 
         self.build_tree({'c/registry/generic.c': "de"})
         revid2 = bzrwt.commit("Change something", rev_id="changerevid")
@@ -726,7 +738,8 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         self.build_tree({'dc/trunk/registry/generic.c': "BLA"})
         self.client_commit("dc/trunk", "Change copied branch")
         self.client_update("dc")
-        merge_revid = newdir.find_repository().generate_revision_id(2, "trunk", "trunk0")
+        mapping = newdir.find_repository().get_mapping()
+        merge_revid = newdir.find_repository().generate_revision_id(2, "trunk", mapping)
 
         # Merge 
         self.build_tree({'c/registry/generic.c': "DE"})

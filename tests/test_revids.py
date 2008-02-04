@@ -18,8 +18,7 @@ from bzrlib.errors import NoSuchRevision, InvalidRevisionId
 from bzrlib.repository import Repository
 from bzrlib.tests import TestCase
 
-from mapping import default_mapping, MAPPING_VERSION
-from repository import revision_id_to_svk_feature
+from mapping import MAPPING_VERSION
 from revids import RevidMap
 from tests import TestCaseWithSubversionRepository
 
@@ -87,48 +86,5 @@ class TestRevidMap(TestCase):
         revidmap.insert_revid("bla", "mypath", 200, 42, "brainslug")
         self.assertEquals(None, 
                 revidmap.lookup_branch_revnum(42, "mypath", "brainslug"))
-
-
-class TestParseRevisionId(TestCase):
-    def test_parse_revision_id_unknown(self):
-        self.assertRaises(InvalidRevisionId, 
-                lambda: default_mapping.parse_revision_id("bla"))
-
-    def test_parse_revision_id(self):
-        self.assertEquals(("myuuid", "bla", 5, "foobar"), 
-            default_mapping.parse_revision_id(
-                default_mapping.generate_revision_id("myuuid", 5, "bla", "foobar")))
-
-
-class RevisionIdMappingTest(TestCase):
-    def test_generate_revid(self):
-        self.assertEqual("svn-v%d-undefined:myuuid:branch:5" % MAPPING_VERSION, 
-                         default_mapping.generate_revision_id("myuuid", 5, "branch", "undefined"))
-
-    def test_generate_revid_nested(self):
-        self.assertEqual("svn-v%d-undefined:myuuid:branch%%2Fpath:5" % MAPPING_VERSION, 
-                  default_mapping.generate_revision_id("myuuid", 5, "branch/path", "undefined"))
-
-    def test_generate_revid_special_char(self):
-        self.assertEqual("svn-v%d-undefined:myuuid:branch%%2C:5" % MAPPING_VERSION, 
-             default_mapping.generate_revision_id("myuuid", 5, "branch\x2c", "undefined"))
-
-    def test_generate_revid_nordic(self):
-        self.assertEqual("svn-v%d-undefined:myuuid:branch%%C3%%A6:5" % MAPPING_VERSION, 
-             default_mapping.generate_revision_id("myuuid", 5, u"branch\xe6".encode("utf-8"), "undefined"))
-
-    def test_parse_revid_simple(self):
-        self.assertEqual(("uuid", "", 4, None),
-                         default_mapping.parse_revision_id(
-                             "svn-v%d-undefined:uuid::4" % MAPPING_VERSION))
-
-    def test_parse_revid_nested(self):
-        self.assertEqual(("uuid", "bp/data", 4, None),
-                         default_mapping.parse_revision_id(
-                     "svn-v%d-undefined:uuid:bp%%2Fdata:4" % MAPPING_VERSION))
-
-    def test_revid_svk_map(self):
-        self.assertEqual("auuid:/:6", 
-              revision_id_to_svk_feature("svn-v%d-undefined:auuid::6" % MAPPING_VERSION))
 
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2006-2008 Jelmer Vernooij <jelmer@samba.org>
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -38,29 +38,32 @@ from cache import create_cache_dir, sqlite3
 from config import SvnRepositoryConfig
 import errors
 import logwalker
-from mapping import (default_mapping, SVN_PROP_BZR_REVISION_ID, 
-                     SVN_PROP_BZR_REVISION_INFO, SVN_PROP_BZR_BRANCHING_SCHEME,
-                     SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS,
-                     parse_revid_property, parse_merge_property)
+from mapping import (SVN_PROP_BZR_REVISION_ID, 
+                     SVN_PROP_BZR_BRANCHING_SCHEME, BzrSvnMappingv3,
+                     parse_revision_metadata, parse_revid_property, 
+                     parse_merge_property, BzrSvnMapping,
+                     get_default_mapping, parse_revision_id)
 from revids import RevidMap
 from scheme import (BranchingScheme, ListBranchingScheme, 
                     parse_list_scheme_text, guess_scheme_from_history)
-from svk import parse_svk_feature, SVN_PROP_SVK_MERGE
+from svk import (SVN_PROP_SVK_MERGE, svk_features_merged_since, 
+                 parse_svk_feature)
 from tree import SvnRevisionTree
 import urllib
 
+def svk_feature_to_revision_id(feature, mapping):
+    """Convert a SVK feature to a revision id for this repository.
 
-def revision_id_to_svk_feature(revid):
-    """Create a SVK feature identifier from a revision id.
-
-    :param revid: Revision id to convert.
-    :return: Matching SVK feature identifier.
+    :param feature: SVK feature.
+    :return: revision id.
     """
-    assert isinstance(revid, str)
-    (uuid, branch, revnum, _) = default_mapping.parse_revision_id(revid)
-    # TODO: What about renamed revisions? Should use 
-    # repository.lookup_revision_id here.
-    return "%s:/%s:%d" % (uuid, branch, revnum)
+    try:
+        (uuid, bp, revnum) = parse_svk_feature(feature)
+    except errors.InvalidPropertyValue:
+        return None
+    if not mapping.is_branch(bp) and not mapping.is_tag(bp):
+        return None
+    return mapping.generate_revision_id(uuid, revnum, bp)
 
 
 class SvnRepositoryFormat(RepositoryFormat):
@@ -161,6 +164,9 @@ class SvnRepository(Repository):
 
         return (None, False)
 
+    def get_mapping(self):
+        return get_default_mapping()(self.get_scheme())
+
     def get_scheme(self):
         """Determine the branching scheme to use for this repository.
 
@@ -246,21 +252,21 @@ class SvnRepository(Repository):
         assert revision_id != None
         return self.revision_tree(revision_id).inventory
 
-    def get_fileid_map(self, revnum, path, scheme):
+    def get_fileid_map(self, revnum, path, mapping):
         return self.fileid_map.get_map(self.uuid, revnum, path, 
-                                       self.revision_fileid_renames, scheme)
+                                       self.revision_fileid_renames, mapping)
 
     def transform_fileid_map(self, uuid, revnum, branch, changes, renames, 
-                             scheme):
+                             mapping):
         return self.fileid_map.apply_changes(uuid, revnum, branch, changes, 
-                                             renames, scheme)
+                                             renames, mapping)
 
-    def all_revision_ids(self, scheme=None):
-        if scheme is None:
-            scheme = self.get_scheme()
+    def all_revision_ids(self, mapping=None):
+        if mapping is None:
+            mapping = self.get_mapping()
         for (bp, rev) in self.follow_history(
-                self.transport.get_latest_revnum(), scheme):
-            yield self.generate_revision_id(rev, bp, str(scheme))
+                self.transport.get_latest_revnum(), mapping):
+            yield self.generate_revision_id(rev, bp, mapping)
 
     def get_inventory_weave(self):
         """See Repository.get_inventory_weave()."""
@@ -286,18 +292,18 @@ class SvnRepository(Repository):
         if revision_id is None: 
             return [None]
 
-        (path, revnum, scheme) = self.lookup_revision_id(revision_id)
+        (path, revnum, mapping) = self.lookup_revision_id(revision_id)
 
         ancestry = [revision_id]
 
-        for l in self.branchprop_list.get_property(path, revnum, 
-                                    SVN_PROP_BZR_ANCESTRY+str(scheme), "").splitlines():
-            ancestry.extend(l.split("\n"))
+        svn_revprops = self.transport.revprop_list(revnum)
+        svn_fileprops = self.branchprop_list.get_properties(path, revnum)
+        ancestry.extend(mapping.get_rhs_ancestors(svn_revprops, svn_fileprops.get))
 
         if revnum > 0:
-            for (branch, rev) in self.follow_branch(path, revnum - 1, scheme):
+            for (branch, rev) in self.follow_branch(path, revnum - 1, mapping):
                 ancestry.append(
-                    self.generate_revision_id(rev, branch, str(scheme)))
+                    self.generate_revision_id(rev, branch, mapping))
 
         ancestry.append(None)
         ancestry.reverse()
@@ -343,87 +349,43 @@ class SvnRepository(Repository):
         :param revid: Id of revision to look up.
         :return: dictionary with paths as keys, file ids as values
         """
-        (path, revnum, _) = self.lookup_revision_id(revid)
-        # Only consider bzr:file-ids if this is a bzr revision
-        if not self.branchprop_list.touches_property(path, revnum, 
-                SVN_PROP_BZR_REVISION_INFO):
-            return {}
-        fileids = self.branchprop_list.get_property(path, revnum, 
-                                                    SVN_PROP_BZR_FILEIDS)
-        if fileids is None:
-            return {}
-        ret = {}
-        for line in fileids.splitlines():
-            (path, key) = line.split("\t", 2)
-            ret[urllib.unquote(path)] = osutils.safe_file_id(key)
-        return ret
+        (path, revnum, mapping) = self.lookup_revision_id(revid)
 
-    def _mainline_revision_parent(self, path, revnum, scheme):
+        svn_revprops = self.transport.revprop_list(revnum)
+        svn_fileprops = self.branchprop_list.get_changed_properties(path, revnum)
+
+        return mapping.import_fileid_map(svn_revprops, svn_fileprops.get)
+
+    def _mainline_revision_parent(self, path, revnum, mapping):
         """Find the mainline parent of the specified revision.
 
         :param path: Path of the revision in Subversion
         :param revnum: Subversion revision number
-        :param scheme: Name of branching scheme to use
+        :param mapping: Mapping.
         :return: Revision id of the left-hand-side parent or None if 
                   this is the first revision
         """
         assert isinstance(path, str)
         assert isinstance(revnum, int)
 
-        if not scheme.is_branch(path) and \
-           not scheme.is_tag(path):
+        if not mapping.is_branch(path) and \
+           not mapping.is_tag(path):
             raise NoSuchRevision(self, 
-                    self.generate_revision_id(revnum, path, str(scheme)))
+                    self.generate_revision_id(revnum, path, mapping))
 
-        it = self.follow_branch(path, revnum, scheme)
+        it = self.follow_branch(path, revnum, mapping)
         # the first tuple returned should match the one specified. 
         # if it's not, then the branch, revnum didn't change in the specified 
         # revision and so it is invalid
         if (path, revnum) != it.next():
             raise NoSuchRevision(self, 
-                    self.generate_revision_id(revnum, path, str(scheme)))
+                    self.generate_revision_id(revnum, path, mapping))
         try:
             (branch, rev) = it.next()
-            return self.generate_revision_id(rev, branch, str(scheme))
+            return self.generate_revision_id(rev, branch, mapping)
         except StopIteration:
             # The specified revision was the first one in the branch
             return None
-
-    def _svk_feature_to_revision_id(self, scheme, feature):
-        """Convert a SVK feature to a revision id for this repository.
-
-        :param scheme: Branching scheme.
-        :param feature: SVK feature.
-        :return: revision id.
-        """
-        try:
-            (uuid, bp, revnum) = parse_svk_feature(feature)
-        except errors.InvalidPropertyValue:
-            return None
-        if uuid != self.uuid:
-            return None
-        if not scheme.is_branch(bp) and not scheme.is_tag(bp):
-            return None
-        return self.generate_revision_id(revnum, bp, str(scheme))
-
-    def _svk_merged_revisions(self, branch, revnum, scheme):
-        """Find out what SVK features were merged in a revision.
-
-        :param branch: Subversion branch path.
-        :param revnum: Subversion revision number.
-        :param scheme: Branching scheme.
-        """
-        current = set(self.branchprop_list.get_property(branch, revnum, SVN_PROP_SVK_MERGE, "").splitlines())
-        (prev_path, prev_revnum) = self._log.get_previous(branch, revnum)
-        if prev_path is None and prev_revnum == -1:
-            previous = set()
-        else:
-            previous = set(self.branchprop_list.get_property(prev_path.encode("utf-8"), 
-                         prev_revnum, SVN_PROP_SVK_MERGE, "").splitlines())
-        for feature in current.difference(previous):
-            revid = self._svk_feature_to_revision_id(scheme, feature)
-            if revid is not None:
-                yield revid
 
     def get_parents(self, revids):
         parents_list = []
@@ -441,20 +403,44 @@ class SvnRepository(Repository):
             parents_list.append(parents)
         return parents_list
 
+    def _svk_merged_revisions(self, branch, revnum, mapping, 
+                              get_branch_property):
+        """Find out what SVK features were merged in a revision.
+
+        """
+        current = get_branch_property(branch, revnum, SVN_PROP_SVK_MERGE, "")
+        if current == "":
+            return
+        (prev_path, prev_revnum) = self._log.get_previous(branch, revnum)
+        if prev_path is None and prev_revnum == -1:
+            previous = ""
+        else:
+            previous = self.branchprop_list.get_property(prev_path.encode("utf-8"), 
+                         prev_revnum, SVN_PROP_SVK_MERGE, "")
+        for feature in svk_features_merged_since(current, previous):
+            revid = svk_feature_to_revision_id(feature, mapping)
+            if revid is not None:
+                yield revid
+
     def revision_parents(self, revision_id, get_branch_fileprop=None):
         """See Repository.revision_parents()."""
         parent_ids = []
-        (branch, revnum, scheme) = self.lookup_revision_id(revision_id)
-        mainline_parent = self._mainline_revision_parent(branch, revnum, scheme)
+        (branch, revnum, mapping) = self.lookup_revision_id(revision_id)
+        mainline_parent = self._mainline_revision_parent(branch, revnum, mapping)
         if mainline_parent is not None:
             parent_ids.append(mainline_parent)
 
         if get_branch_fileprop is None:
-            get_branch_fileprop = lambda name, default: self.branchprop_list.get_changed_property(branch, revnum, name, default)
+            svn_fileprops = self.branchprop_list.get_changed_properties(branch, revnum)
+            get_branch_fileprop = svn_fileprops.get
 
         svn_revprops = self.transport.revprop_list(revnum)
 
-        parent_ids.extend(default_mapping.get_rhs_parents(svn_revprops, get_branch_fileprop, scheme))
+        extra_rhs_parents = mapping.get_rhs_parents(svn_revprops, get_branch_fileprop)
+        parent_ids.extend(extra_rhs_parents)
+
+        if extra_rhs_parents == []:
+            parent_ids.extend(self._svk_merged_revisions(branch, revnum, mapping, self.branchprop_list.get_property))
 
         return parent_ids
 
@@ -463,7 +449,7 @@ class SvnRepository(Repository):
         if not revision_id or not isinstance(revision_id, str):
             raise InvalidRevisionId(revision_id=revision_id, branch=self)
 
-        (path, revnum, _) = self.lookup_revision_id(revision_id)
+        (path, revnum, mapping) = self.lookup_revision_id(revision_id)
         
         parent_ids = self.revision_parents(revision_id)
 
@@ -472,11 +458,10 @@ class SvnRepository(Repository):
             inventory_sha1 = property(lambda rev: self.get_inventory_sha1(rev.revision_id))
 
         rev = LazySvnRevision(revision_id=revision_id, parent_ids=parent_ids)
-
         svn_revprops = self.transport.revprop_list(revnum)
+        svn_fileprops = self.branchprop_list.get_changed_properties(path, revnum)
 
-        default_mapping.parse_svn_revision(svn_revprops, 
-                lambda name, default: self.branchprop_list.get_changed_property(path, revnum, name, default), rev)
+        mapping.import_revision(svn_revprops, svn_fileprops.get, rev)
 
         return rev
 
@@ -488,42 +473,39 @@ class SvnRepository(Repository):
     def add_revision(self, rev_id, rev, inv=None, config=None):
         raise NotImplementedError(self.add_revision)
 
-    def generate_revision_id(self, revnum, path, scheme):
+    def generate_revision_id(self, revnum, path, mapping):
         """Generate an unambiguous revision id. 
         
         :param revnum: Subversion revision number.
         :param path: Branch path.
-        :param scheme: Branching scheme name
+        :param mapping: Mapping to use.
 
         :return: New revision id.
         """
         assert isinstance(path, str)
         assert isinstance(revnum, int)
+        assert isinstance(mapping, BzrSvnMapping)
 
         # Look in the cache to see if it already has a revision id
-        revid = self.revmap.lookup_branch_revnum(revnum, path, scheme)
+        revid = self.revmap.lookup_branch_revnum(revnum, path, str(mapping.scheme))
         if revid is not None:
             return revid
 
-        # Lookup the revision from the bzr:revision-id-vX property
-        line = self.branchprop_list.get_property_diff(path, revnum, 
-                SVN_PROP_BZR_REVISION_ID+str(scheme)).strip("\n")
+        # See if there is a bzr:revision-id revprop set
+        try:
+            revprops = self._log._get_transport().revprop_list(revnum)
+        except SubversionException, (_, num):
+            if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
+                raise NoSuchRevision(path, revnum)
+            raise
+        fileprops = self.branchprop_list.get_changed_properties(path, revnum)
+        (bzr_revno, revid) = mapping.get_revision_id(revprops, fileprops.get)
         # Or generate it
-        if line == "":
-            revid = default_mapping.generate_revision_id(
-                        self.uuid, revnum, path, scheme)
-        else:
-            try:
-                (bzr_revno, revid) = parse_revid_property(line)
-                self.revmap.insert_revid(revid, path, revnum, revnum, 
-                        scheme, bzr_revno)
-            except errors.InvalidPropertyValue, e:
-                mutter(str(e))
-                revid = default_mapping.generate_revision_id(self.uuid, 
-                            revnum, path, scheme)
-                self.revmap.insert_revid(revid, path, revnum, revnum, 
-                        scheme)
-
+        if revid is None:
+            revid = mapping.generate_revision_id(
+                        self.uuid, revnum, path)
+        self.revmap.insert_revid(revid, path, revnum, revnum, 
+                str(mapping.scheme), bzr_revno)
         return revid
 
     def lookup_revision_id(self, revid, scheme=None):
@@ -533,7 +515,7 @@ class SvnRepository(Repository):
         :param scheme: Optional branching scheme to use when searching for 
                        revisions
         :raises: NoSuchRevision
-        :return: Tuple with branch path, revision number and scheme.
+        :return: Tuple with branch path, revision number and mapping.
         """
         def get_scheme(name):
             assert isinstance(name, str)
@@ -541,11 +523,12 @@ class SvnRepository(Repository):
 
         # Try a simple parse
         try:
-            (uuid, branch_path, revnum, schemen) = default_mapping.parse_revision_id(revid)
+            # FIXME: Also try to parse with the other formats..
+            (uuid, branch_path, revnum, mapping) = parse_revision_id(revid)
             assert isinstance(branch_path, str)
-            assert isinstance(schemen, str)
+            assert isinstance(mapping, BzrSvnMapping)
             if uuid == self.uuid:
-                return (branch_path, revnum, get_scheme(schemen))
+                return (branch_path, revnum, mapping)
             # If the UUID doesn't match, this may still be a valid revision
             # id; a revision from another SVN repository may be pushed into 
             # this one.
@@ -560,7 +543,7 @@ class SvnRepository(Repository):
             assert isinstance(scheme, str)
             # Entry already complete?
             if min_revnum == max_revnum:
-                return (branch_path, min_revnum, get_scheme(scheme))
+                return (branch_path, min_revnum, BzrSvnMappingv3(get_scheme(scheme)))
         except NoSuchRevision, e:
             # If there is no entry in the map, walk over all branches:
             if scheme is None:
@@ -620,7 +603,7 @@ class SvnRepository(Repository):
             if entry_revid == revid:
                 self.revmap.insert_revid(revid, bp, rev, rev, scheme, 
                                          entry_revno)
-                return (bp, rev, get_scheme(scheme))
+                return (bp, rev, BzrSvnMappingv3(get_scheme(scheme)))
 
         raise AssertionError("Revision id %s was added incorrectly" % revid)
 
@@ -648,21 +631,21 @@ class SvnRepository(Repository):
         return bzrlib.xml5.serializer_v5.write_revision_to_string(
             self.get_revision(revision_id))
 
-    def follow_history(self, revnum, scheme):
+    def follow_history(self, revnum, mapping):
         """Yield all the branches found between the start of history 
         and a specified revision number.
 
         :param revnum: Revision number up to which to search.
         :return: iterator over branches in the range 0..revnum
         """
-        assert scheme is not None
+        assert mapping is not None
 
         while revnum >= 0:
             yielded_paths = []
             paths = self._log.get_revision_paths(revnum)
             for p in paths:
                 try:
-                    bp = scheme.unprefix(p)[0]
+                    bp = mapping.scheme.unprefix(p)[0]
                     if not bp in yielded_paths:
                         if not paths.has_key(bp) or paths[bp][0] != 'D':
                             assert revnum > 0 or bp == ""
@@ -672,19 +655,19 @@ class SvnRepository(Repository):
                     pass
             revnum -= 1
 
-    def follow_branch(self, branch_path, revnum, scheme):
+    def follow_branch(self, branch_path, revnum, mapping):
         """Follow the history of a branch. Will yield all the 
         left-hand side ancestors of a specified revision.
     
         :param branch_path: Subversion path to search.
         :param revnum: Revision number in Subversion to start.
-        :param scheme: Name of the branching scheme to use
+        :param mapping: Mapping.
         :return: iterator over the ancestors
         """
         assert branch_path is not None
         assert isinstance(branch_path, str)
         assert isinstance(revnum, int) and revnum >= 0
-        assert scheme.is_branch(branch_path) or scheme.is_tag(branch_path)
+        assert mapping.is_branch(branch_path) or mapping.is_tag(branch_path)
         branch_path = branch_path.strip("/")
 
         while revnum >= 0:
@@ -715,8 +698,8 @@ class SvnRepository(Repository):
                     yield (branch_path, revnum+1)
                 if paths[branch_path][1] is None:
                     return
-                if not scheme.is_branch(paths[branch_path][1]) and \
-                   not scheme.is_tag(paths[branch_path][1]):
+                if not mapping.is_branch(paths[branch_path][1]) and \
+                   not mapping.is_tag(paths[branch_path][1]):
                     # FIXME: if copyfrom_path is not a branch path, 
                     # should simulate a reverse "split" of a branch
                     # for now, just make it look like the branch ended here
@@ -742,19 +725,20 @@ class SvnRepository(Repository):
                     branch_path = paths[p][1].encode("utf-8") + branch_path[len(p):]
                     break
 
-    def follow_branch_history(self, branch_path, revnum, scheme):
+    def follow_branch_history(self, branch_path, revnum, mapping):
         """Return all the changes that happened in a branch 
         between branch_path and revnum. 
 
         :return: iterator that returns tuples with branch path, 
             changed paths and revision number.
         """
-        assert branch_path is not None
-        assert scheme.is_branch(branch_path) or scheme.is_tag(branch_path)
+        assert isinstance(branch_path, str)
+        assert mapping.is_branch(branch_path) or mapping.is_tag(branch_path), \
+                "Mapping %r doesn't accept %s as branch or tag" % (mapping, branch_path)
 
         for (bp, paths, revnum) in self._log.follow_path(branch_path, revnum):
             assert revnum > 0 or bp == ""
-            assert scheme.is_branch(bp) or scheme.is_tag(bp)
+            assert mapping.is_branch(bp) or mapping.is_tag(bp)
             # Remove non-bp paths from paths
             for p in paths.keys():
                 if not p.startswith(bp+"/") and bp != p and bp != "":
@@ -764,8 +748,8 @@ class SvnRepository(Repository):
                 continue
 
             if (paths.has_key(bp) and paths[bp][1] is not None and 
-                not scheme.is_branch(paths[bp][1]) and
-                not scheme.is_tag(paths[bp][1])):
+                not mapping.is_branch(paths[bp][1]) and
+                not mapping.is_tag(paths[bp][1])):
                 # FIXME: if copyfrom_path is not a branch path, 
                 # should simulate a reverse "split" of a branch
                 # for now, just make it look like the branch ended here
@@ -805,14 +789,14 @@ class SvnRepository(Repository):
         # SVN doesn't store GPG signatures
         raise NoSuchRevision(self, revision_id)
 
-    def _full_revision_graph(self, scheme, _latest_revnum=None):
+    def _full_revision_graph(self, mapping, _latest_revnum=None):
         if _latest_revnum is None:
             _latest_revnum = self.transport.get_latest_revnum()
         graph = {}
         for (branch, revnum) in self.follow_history(_latest_revnum, 
-                                                    scheme):
+                                                    mapping):
             mutter('%r, %r' % (branch, revnum))
-            revid = self.generate_revision_id(revnum, branch, str(scheme))
+            revid = self.generate_revision_id(revnum, branch, mapping)
             graph[revid] = self.revision_parents(revid)
         return graph
 
@@ -822,16 +806,16 @@ class SvnRepository(Repository):
             return {}
 
         if revision_id is None:
-            return self._full_revision_graph(self.get_scheme())
+            return self._full_revision_graph(self.get_mapping())
 
-        (path, revnum, scheme) = self.lookup_revision_id(revision_id)
+        (path, revnum, mapping) = self.lookup_revision_id(revision_id)
 
         _previous = revision_id
         self._ancestry = {}
         
         if revnum > 0:
-            for (branch, rev) in self.follow_branch(path, revnum - 1, scheme):
-                revid = self.generate_revision_id(rev, branch, str(scheme))
+            for (branch, rev) in self.follow_branch(path, revnum - 1, mapping):
+                revid = self.generate_revision_id(rev, branch, mapping)
                 self._ancestry[_previous] = [revid]
                 _previous = revid
 

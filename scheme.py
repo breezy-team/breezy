@@ -213,6 +213,9 @@ class NoBranchingScheme(ListBranchingScheme):
     def __str__(self):
         return "none"
 
+    def __repr__(self):
+        return "%s()" % self.__class__.__name__
+
     def is_branch_parent(self, path):
         return False
 
@@ -272,6 +275,9 @@ class TrunkBranchingScheme(ListBranchingScheme):
     def __str__(self):
         return "trunk%d" % self.level
 
+    def __repr__(self):
+        return "%s(%d)" % (self.__class__.__name__, self.level)
+
     def is_branch_parent(self, path):
         parts = path.strip("/").split("/")
         if len(parts) <= self.level:
@@ -320,6 +326,9 @@ class SingleBranchingScheme(ListBranchingScheme):
 
     def __str__(self):
         return "single-%s" % self.path
+
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self.path)
 
     def is_branch_parent(self, path):
         if not "/" in self.path:

@@ -30,7 +30,7 @@ import svn.wc
 
 import os, sys
 
-from mapping import MAPPING_VERSION, default_mapping
+from mapping import MAPPING_VERSION
 from transport import svn_config
 from tests import TestCaseWithSubversionRepository
 
@@ -293,7 +293,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertEqual(wt.branch.generate_revision_id(0), 
                          wt.basis_tree().inventory.revision_id)
         inv = Inventory()
-        root_id = default_mapping.generate_file_id(wt.branch.repository.uuid, 0, "", u"")
+        root_id = wt.branch.repository.get_mapping().generate_file_id(wt.branch.repository.uuid, 0, "", u"")
         inv.revision_id = wt.branch.generate_revision_id(0)
         inv.add_path('', 'directory', root_id).revision = inv.revision_id
                               

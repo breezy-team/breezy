@@ -19,22 +19,23 @@
 from bzrlib.errors import NoSuchRevision
 from bzrlib.trace import mutter
 
+from cache import CacheTable
+
 from svn.core import SubversionException, Pool
 import svn.core
 
-class BranchPropertyList:
+class BranchPropertyList(CacheTable):
     """Simple class that retrieves file properties set on branches."""
-    def __init__(self, log, cachedb):
+    def __init__(self, log, cachedb=None):
+        CacheTable.__init__(self, cachedb)
         self.log = log
-        self.cachedb = cachedb
 
+    def _create_table(self):
         self.cachedb.executescript("""
             create table if not exists branchprop (name text, value text, branchpath text, revnum integer);
             create index if not exists branch_path_revnum on branchprop (branchpath, revnum);
             create index if not exists branch_path_revnum_name on branchprop (branchpath, revnum, name);
         """)
-
-        self.pool = Pool()
 
     def _get_dir_props(self, path, revnum):
         """Obtain all the directory properties set on a path/revnum pair.
@@ -48,7 +49,7 @@ class BranchPropertyList:
 
         try:
             (_, _, props) = self.log._get_transport().get_dir(path, 
-                revnum, pool=self.pool)
+                revnum)
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
                 raise NoSuchRevision(self, revnum)
@@ -90,21 +91,33 @@ class BranchPropertyList:
 
         return proplist
 
-    def get_changed_property(self, path, revnum, name, default=None):
+    def get_changed_properties(self, path, revnum):
         """Get the contents of a Subversion file property.
 
         Will use the cache.
 
         :param path: Subversion path.
         :param revnum: Subversion revision number.
-        :param default: Default value to return if property wasn't found.
         :return: Contents of property or default if property didn't exist.
         """
         assert isinstance(revnum, int)
         assert isinstance(path, str)
-        if not self.touches_property(path, revnum, name):
-            return default
-        return self.get_property(path, revnum, name, default)
+        if not self.log.touches_path(path, revnum):
+            return {}
+        current = self.get_properties(path, revnum)
+        if current == {}:
+            return {}
+        (prev_path, prev_revnum) = self.log.get_previous(path, revnum)
+        if prev_path is None and prev_revnum == -1:
+            previous = {}
+        else:
+            previous = self.get_properties(prev_path.encode("utf-8"), 
+                                           prev_revnum)
+        ret = {}
+        for key, val in current.items():
+            if previous.get(key) != val:
+                ret[key] = val
+        return ret
 
     def get_property(self, path, revnum, name, default=None):
         """Get the contents of a Subversion file property.

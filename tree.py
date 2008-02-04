@@ -61,10 +61,10 @@ class SvnRevisionTree(RevisionTree):
         self._repository = repository
         self._revision_id = revision_id
         pool = Pool()
-        (self.branch_path, self.revnum, scheme) = repository.lookup_revision_id(revision_id)
+        (self.branch_path, self.revnum, mapping) = repository.lookup_revision_id(revision_id)
         self._inventory = Inventory()
         self.id_map = repository.get_fileid_map(self.revnum, self.branch_path, 
-                                                scheme)
+                                                mapping)
         editor = TreeBuildEditor(self, pool)
         self.file_data = {}
         root_repos = repository.transport.get_svn_repos_root()
@@ -224,7 +224,7 @@ class SvnBasisTree(RevisionTree):
         self.id_map = workingtree.branch.repository.get_fileid_map(
                 workingtree.base_revnum, 
                 workingtree.branch.get_branch_path(workingtree.base_revnum), 
-                workingtree.branch.scheme)
+                workingtree.branch.mapping)
         self._inventory = Inventory(root_id=None)
         self._repository = workingtree.branch.repository
 

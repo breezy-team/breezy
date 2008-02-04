@@ -67,6 +67,22 @@ class SvnRepositoryConfig(IniBasedConfig):
             return BranchingScheme.find_scheme(schemename.encode('ascii'))
         return None
 
+    def get_set_revprops(self):
+        """Check whether or not bzr-svn should attempt to store Bazaar
+        revision properties in Subversion revision properties during commit."""
+        try:
+            return self._get_parser().get_bool(self.uuid, "set-revprops")
+        except KeyError:
+            return None
+
+    def get_supports_change_revprop(self):
+        """Check whether or not the repository supports changing existing 
+        revision properties."""
+        try:
+            return self._get_parser().get_bool(self.uuid, "supports-change-revprop")
+        except KeyError:
+            return None
+
     def branching_scheme_is_mandatory(self):
         """Check whether or not the branching scheme for this repository 
         is mandatory.

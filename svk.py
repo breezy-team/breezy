@@ -15,6 +15,14 @@
 
 SVN_PROP_SVK_MERGE = 'svk:merge'
 
+parse_svk_features = lambda text: set(text.splitlines())
+
+serialize_svk_features = lambda features: "".join([x+"\n" for x in sorted(features)])
+
+def svk_features_merged_since(new_text, old_text=""):
+    return parse_svk_features(new_text).difference(parse_svk_features(old_text))
+
+
 def parse_svk_feature(feature):
     """Parse a svk feature identifier.
 
@@ -27,4 +35,19 @@ def parse_svk_feature(feature):
         raise errors.InvalidPropertyValue(SVN_PROP_SVK_MERGE, 
                 "not enough colons")
     return (uuid, branch.strip("/"), int(revnum))
+
+
+def generate_svk_feature(uuid, branch, revnum):
+    """Create a SVK feature identifier.
+
+    :param uuid: Subversion repository UUID
+    :param branch: Branch path
+    :param revnum: Revision number
+    :return: Matching SVK feature identifier.
+    """
+    assert isinstance(revnum, int)
+    assert isinstance(uuid, str)
+    assert isinstance(branch, str) and (branch == "" or branch[0] != "/")
+    return "%s:/%s:%d" % (uuid, branch, revnum)
+
 

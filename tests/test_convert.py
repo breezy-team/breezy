@@ -26,7 +26,6 @@ from bzrlib.trace import mutter
 import os, sys
 from convert import convert_repository, NotDumpFile, load_dumpfile
 from format import get_rich_root_format
-from mapping import default_mapping
 from scheme import TrunkBranchingScheme, NoBranchingScheme
 from tests import TestCaseWithSubversionRepository
 
@@ -86,6 +85,7 @@ class TestConversion(TestCaseWithSubversionRepository):
         self.build_tree({'dc/branches/somebranch/somefile': 'data'})
         self.client_add("dc/branches/somebranch")
         self.client_commit("dc", "add a branch")
+        self.client_update("dc")
         self.client_delete("dc/branches/somebranch")
         self.client_commit("dc", "remove branch")
         oldrepos = Repository.open(self.repos_url)
@@ -93,7 +93,8 @@ class TestConversion(TestCaseWithSubversionRepository):
                            TrunkBranchingScheme(), 
                            all=False, create_shared_repo=True)
         newrepos = Repository.open("e")
-        self.assertFalse(newrepos.has_revision(oldrepos.generate_revision_id(2, "branches/somebranch", "trunk0")))
+        oldrepos.set_branching_scheme(TrunkBranchingScheme())
+        self.assertFalse(newrepos.has_revision(oldrepos.generate_revision_id(2, "branches/somebranch", oldrepos.get_mapping())))
 
     def test_fetch_filebranch(self):
         self.build_tree({'dc/branches/somebranch': 'data'})
@@ -102,7 +103,8 @@ class TestConversion(TestCaseWithSubversionRepository):
         oldrepos = Repository.open(self.repos_url)
         convert_repository(oldrepos, "e", TrunkBranchingScheme())
         newrepos = Repository.open("e")
-        self.assertFalse(newrepos.has_revision(oldrepos.generate_revision_id(2, "branches/somebranch", "trunk0")))
+        oldrepos.set_branching_scheme(TrunkBranchingScheme())
+        self.assertFalse(newrepos.has_revision(oldrepos.generate_revision_id(2, "branches/somebranch", oldrepos.get_mapping())))
 
     def test_fetch_dead(self):
         self.build_tree({'dc/branches/somebranch/somefile': 'data'})
@@ -115,7 +117,7 @@ class TestConversion(TestCaseWithSubversionRepository):
                            all=True, create_shared_repo=True)
         newrepos = Repository.open("e")
         self.assertTrue(newrepos.has_revision(
-            oldrepos.generate_revision_id(3, "branches/somebranch", "trunk0")))
+            oldrepos.generate_revision_id(3, "branches/somebranch", oldrepos.get_mapping())))
 
     def test_fetch_filter(self):
         self.build_tree({'dc/branches/somebranch/somefile': 'data',
@@ -195,20 +197,23 @@ class TestConversion(TestCaseWithSubversionRepository):
                 TrunkBranchingScheme(), True, False))
 
     def test_shared_import_continue_branch(self):
-        convert_repository(Repository.open("svn+"+self.repos_url), "e", 
+        oldrepos = Repository.open("svn+"+self.repos_url)
+        convert_repository(oldrepos, "e", 
                 TrunkBranchingScheme(), True)
+
+        mapping = oldrepos.get_mapping()
 
         self.build_tree({'dc/trunk/file': 'foodata'})
         self.client_commit("dc", "msg")
 
         self.assertEqual(
-                Repository.open(self.repos_url).generate_revision_id(2, "trunk", "trunk0"), 
+                Repository.open(self.repos_url).generate_revision_id(2, "trunk", mapping), 
                 Branch.open("e/trunk").last_revision())
 
         convert_repository(Repository.open("svn+"+self.repos_url), "e", 
                 TrunkBranchingScheme(), True)
 
-        self.assertEqual(Repository.open(self.repos_url).generate_revision_id(3, "trunk", "trunk0"), 
+        self.assertEqual(Repository.open(self.repos_url).generate_revision_id(3, "trunk", mapping), 
                         Branch.open("e/trunk").last_revision())
 
  
@@ -345,10 +350,11 @@ data
         repos = self.load_dumpfile(filename, 'g')
         convert_repository(repos, os.path.join(self.test_dir, "e"), 
                            TrunkBranchingScheme())
+        mapping = repos.get_mapping()
         abspath = self.test_dir
         if sys.platform == 'win32':
             abspath = '/' + abspath
         branch = Branch.open(os.path.join(self.test_dir, "e", "trunk"))
         self.assertEqual("file://%s/e/trunk" % self.test_dir, branch.base.rstrip("/"))
-        self.assertEqual(default_mapping.generate_revision_id("6987ef2d-cd6b-461f-9991-6f1abef3bd59", 1, 'trunk', "trunk0"), branch.last_revision())
+        self.assertEqual(mapping.generate_revision_id("6987ef2d-cd6b-461f-9991-6f1abef3bd59", 1, 'trunk'), branch.last_revision())
 

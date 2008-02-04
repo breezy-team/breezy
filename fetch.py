@@ -29,14 +29,12 @@ from svn.core import Pool
 import svn.core
 
 from bzrlib.plugins.svn.errors import InvalidFileName
-from fileids import generate_file_id
 from mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_MERGE, 
                      SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVISION_INFO, 
                      SVN_PROP_BZR_BRANCHING_SCHEME, SVN_PROP_BZR_REVISION_ID,
-                     SVN_PROP_BZR_FILEIDS, parse_merge_property, 
-                     default_mapping)
-from repository import (SvnRepository, SvnRepositoryFormat, 
-                        SVN_PROP_SVK_MERGE)
+                     SVN_PROP_BZR_FILEIDS, parse_merge_property)
+from repository import (SvnRepository, SvnRepositoryFormat)
+from svk import SVN_PROP_SVK_MERGE
 from tree import apply_txdelta_handler
 
 
@@ -94,12 +92,12 @@ class RevisionBuildEditor(svn.delta.Editor):
 
     def start_revision(self, revid, prev_inventory):
         self.revid = revid
-        (self.branch_path, self.revnum, self.scheme) = self.source.lookup_revision_id(revid)
+        (self.branch_path, self.revnum, self.mapping) = self.source.lookup_revision_id(revid)
         changes = self.source._log.get_revision_paths(self.revnum, self.branch_path)
         renames = self.source.revision_fileid_renames(revid)
         self.id_map = self.source.transform_fileid_map(self.source.uuid, 
                               self.revnum, self.branch_path, changes, renames, 
-                              self.scheme)
+                              self.mapping)
         self.dir_baserev = {}
         self._premature_deletes = set()
         self.pool = Pool()
@@ -121,9 +119,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         rev = Revision(revision_id=revid, parent_ids=self._get_parent_ids())
 
         svn_revprops = self.source._log._get_transport().revprop_list(self.revnum)
-        default_mapping.parse_svn_revision(svn_revprops, 
-                self._branch_fileprops.get, 
-                rev)
+        self.mapping.import_revision(svn_revprops, self._branch_fileprops.get, rev)
 
         return rev
 
@@ -131,7 +127,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         if self.old_inventory.root is None:
             # First time the root is set
             old_file_id = None
-            file_id = generate_file_id(self.source, self.revid, u"")
+            file_id = self.mapping.generate_file_id(self.source.uuid, self.revnum, self.branch_path, u"")
             self.dir_baserev[file_id] = []
         else:
             assert self.old_inventory.root.revision is not None
@@ -168,7 +164,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         assert isinstance(parent_id, str)
         if self.id_map.has_key(new_path):
             return self.id_map[new_path]
-        return generate_file_id(self.source, self.revid, new_path)
+        return self.mapping.generate_file_id(self.source.uuid, self.revnum, self.branch_path, new_path)
 
     def _rename(self, file_id, parent_id, path):
         assert isinstance(path, unicode)
@@ -257,7 +253,7 @@ class RevisionBuildEditor(svn.delta.Editor):
             if new_id != self.inventory.root.file_id:
                 mutter('rogue %r on non-root directory' % name)
                 return
-        elif name == SVN_PROP_BZR_ANCESTRY+str(self.scheme):
+        elif name == SVN_PROP_BZR_ANCESTRY+str(self.mapping.scheme):
             if new_id != self.inventory.root.file_id:
                 mutter('rogue %r on non-root directory' % name)
                 return
@@ -521,9 +517,9 @@ class InterFromSvnRepository(InterRepository):
         needed = filter(lambda x: not self.target.has_revision(x), 
                         self.source.all_revision_ids())
         for revid in needed:
-            (branch, revnum, scheme) = self.source.lookup_revision_id(revid)
+            (branch, revnum, mapping) = self.source.lookup_revision_id(revid)
             parents[revid] = self.source._mainline_revision_parent(branch, 
-                                               revnum, scheme)
+                                               revnum, mapping)
         needed.reverse()
         return (needed, parents)
 
@@ -550,13 +546,12 @@ class InterFromSvnRepository(InterRepository):
         """
         needed = []
         parents = {}
-        (path, until_revnum, scheme) = self.source.lookup_revision_id(
-                                                                    revision_id)
+        (path, until_revnum, mapping) = self.source.lookup_revision_id(revision_id)
 
         prev_revid = None
         for (branch, revnum) in self.source.follow_branch(path, 
-                                                          until_revnum, scheme):
-            revid = self.source.generate_revision_id(revnum, branch, str(scheme))
+                                                          until_revnum, mapping):
+            revid = self.source.generate_revision_id(revnum, branch, mapping)
 
             if prev_revid is not None:
                 parents[prev_revid] = revid
@@ -637,7 +632,7 @@ class InterFromSvnRepository(InterRepository):
                         # Report status of existing paths
                         reporter.set_path("", editor.revnum, True, None, pool)
                     else:
-                        (parent_branch, parent_revnum, scheme) = \
+                        (parent_branch, parent_revnum, mapping) = \
                                 self.source.lookup_revision_id(parent_revid)
                         transport.reparent(urlutils.join(repos_root, parent_branch))
 

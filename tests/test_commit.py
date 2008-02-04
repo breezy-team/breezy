@@ -21,10 +21,11 @@
 from bzrlib.branch import Branch, PullResult
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import DivergedBranches, BzrError
+from bzrlib.tests import TestCase
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
-from commit import set_svn_revprops
+from commit import set_svn_revprops, _revision_id_to_svk_feature
 from copy import copy
 from errors import RevpropChangeFailed
 from mapping import MAPPING_VERSION
@@ -312,15 +313,16 @@ class TestPush(TestCaseWithSubversionRepository):
         self.olddir.open_branch().pull(self.newdir.open_branch())
 
         repos = self.olddir.find_repository()
-        inv = repos.get_inventory(repos.generate_revision_id(2, "", "none"))
-        self.assertEqual(repos.generate_revision_id(2, "", "none"),
+        mapping = repos.get_mapping()
+        inv = repos.get_inventory(repos.generate_revision_id(2, "", mapping))
+        self.assertEqual(repos.generate_revision_id(2, "", mapping),
                          inv[inv.path2id('foo/bla')].revision)
         self.assertEqual(wt.branch.last_revision(),
-          repos.generate_revision_id(2, "", "none"))
+          repos.generate_revision_id(2, "", mapping))
         self.assertEqual(wt.branch.last_revision(),
                         self.olddir.open_branch().last_revision())
         self.assertEqual("other data", 
-            repos.revision_tree(repos.generate_revision_id(2, "", "none")).get_file_text( inv.path2id("foo/bla")))
+            repos.revision_tree(repos.generate_revision_id(2, "", mapping)).get_file_text( inv.path2id("foo/bla")))
 
     def test_simple(self):
         self.build_tree({'dc/file': 'data'})
@@ -331,11 +333,12 @@ class TestPush(TestCaseWithSubversionRepository):
         self.olddir.open_branch().pull(self.newdir.open_branch())
 
         repos = self.olddir.find_repository()
-        inv = repos.get_inventory(repos.generate_revision_id(2, "", "none"))
+        mapping = repos.get_mapping()
+        inv = repos.get_inventory(repos.generate_revision_id(2, "", mapping))
         self.assertTrue(inv.has_filename('file'))
         self.assertEqual(wt.branch.last_revision(), 
-                repos.generate_revision_id(2, "", "none"))
-        self.assertEqual(repos.generate_revision_id(2, "", "none"),
+                repos.generate_revision_id(2, "", mapping))
+        self.assertEqual(repos.generate_revision_id(2, "", mapping),
                         self.olddir.open_branch().last_revision())
 
     def test_pull_after_push(self):
@@ -347,17 +350,18 @@ class TestPush(TestCaseWithSubversionRepository):
         self.olddir.open_branch().pull(self.newdir.open_branch())
 
         repos = self.olddir.find_repository()
-        inv = repos.get_inventory(repos.generate_revision_id(2, "", "none"))
+        mapping = repos.get_mapping()
+        inv = repos.get_inventory(repos.generate_revision_id(2, "", mapping))
         self.assertTrue(inv.has_filename('file'))
         self.assertEquals(wt.branch.last_revision(), 
-                         repos.generate_revision_id(2, "", "none"))
+                         repos.generate_revision_id(2, "", mapping))
 
-        self.assertEqual(repos.generate_revision_id(2, "", "none"),
+        self.assertEqual(repos.generate_revision_id(2, "", mapping),
                         self.olddir.open_branch().last_revision())
 
         self.newdir.open_branch().pull(self.olddir.open_branch())
 
-        self.assertEqual(repos.generate_revision_id(2, "", "none"),
+        self.assertEqual(repos.generate_revision_id(2, "", mapping),
                         self.newdir.open_branch().last_revision())
 
     def test_message(self):
@@ -369,9 +373,10 @@ class TestPush(TestCaseWithSubversionRepository):
         self.olddir.open_branch().pull(self.newdir.open_branch())
 
         repos = self.olddir.find_repository()
+        mapping = repos.get_mapping()
         self.assertEqual("Commit from Bzr",
             repos.get_revision(
-                repos.generate_revision_id(2, "", "none")).message)
+                repos.generate_revision_id(2, "", mapping)).message)
 
     def test_message_nordic(self):
         self.build_tree({'dc/file': 'data'})
@@ -382,8 +387,9 @@ class TestPush(TestCaseWithSubversionRepository):
         self.olddir.open_branch().pull(self.newdir.open_branch())
 
         repos = self.olddir.find_repository()
+        mapping = repos.get_mapping()
         self.assertEqual(u"\xe6\xf8\xe5", repos.get_revision(
-            repos.generate_revision_id(2, "", "none")).message)
+            repos.generate_revision_id(2, "", mapping)).message)
 
     def test_commit_rename_file(self):
         self.build_tree({'dc/vla': "data"})
@@ -576,3 +582,10 @@ class RevpropTests(TestCaseWithSubversionRepository):
         transport = SvnRaTransport(repos_url)
         self.assertRaises(RevpropChangeFailed, 
                 lambda: set_svn_revprops(transport, 1, {"svn:author": "Somebody", "svn:date": svn_time_to_cstring(1000000*473385600)}))
+
+class SvkTestCase(TestCase):
+    def test_revid_svk_map(self):
+        self.assertEqual("auuid:/:6", 
+              _revision_id_to_svk_feature("svn-v3-undefined:auuid::6"))
+
+

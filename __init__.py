@@ -367,6 +367,24 @@ class cmd_svn_branching_scheme(Command):
 register_command(cmd_svn_branching_scheme)
 
 
+class cmd_svn_set_revprops(Command):
+    """Migrate Bazaar metadata to Subversion revision properties.
+
+    This requires that you have permission to change the 
+    revision properties on the repository.
+
+    To change these permissions, edit the hooks/pre-revprop-change 
+    file in the Subversion repository.
+    """
+    takes_args = ['location']
+
+    def run(self, location="."):
+        raise NotImplementedError(self.run)
+
+
+register_command(cmd_svn_set_revprops)
+
+
 def test_suite():
     from unittest import TestSuite
     import tests
