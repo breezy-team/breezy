@@ -134,10 +134,10 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         wt.commit(message='fix moredata', rev_id="customrev")
 
         upgrade_repository(newrepos, oldrepos, allow_changes=True)
-
+        mapping = oldrepos.get_mapping()
         tree = newrepos.revision_tree("customrev%s-upgrade" % mapping.upgrade_suffix)
         self.assertEqual("specificid", tree.inventory.path2id("a"))
-        self.assertEqual(oldrepos.get_mapping().generate_file_id(oldrepos.uuid, 1, "", u"a"), 
+        self.assertEqual(mapping.generate_file_id(oldrepos.uuid, 1, "", u"a"), 
                          tree.inventory.path2id("b"))
 
     @skip_no_rebase
@@ -168,6 +168,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         newrepos.lock_write()
         newrepos.start_write_group()
 
+        mapping = oldrepos.get_mapping()
         vf = newrepos.weave_store.get_weave_or_empty(tree.inventory.path2id("a"), newrepos.get_transaction())
         vf.clone_text("customrev%s-upgrade" % mapping.upgrade_suffix,
                 "svn-v1:1@%s-" % oldrepos.uuid, ["svn-v1:1@%s-" % oldrepos.uuid])
@@ -176,7 +177,6 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         newrepos.unlock()
 
         upgrade_repository(newrepos, oldrepos, allow_changes=True)
-        mapping = oldrepos.get_mapping()
 
         self.assertTrue(newrepos.has_revision(oldrepos.generate_revision_id(1, "", mapping)))
         self.assertTrue(newrepos.has_revision("customrev%s-upgrade" % mapping.upgrade_suffix))
