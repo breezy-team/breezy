@@ -147,10 +147,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
 
         repos = Repository.open(repos_url)
 
-        abspath = self.test_dir
-        if sys.platform == 'win32':
-            abspath = '/' + abspath
-        self.assertEqual("SvnRepository('file://%s/')" % urlutils.join(self.test_dir, "a"), repos.__repr__())
+        self.assertEqual("SvnRepository('%s/')" % urlutils.local_path_to_url(urlutils.join(self.test_dir, "a")), repos.__repr__())
 
     def test_get_branch_invalid_revision(self):
         repos_url = self.make_client("a", "dc")

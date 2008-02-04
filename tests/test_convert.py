@@ -19,6 +19,7 @@
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir, format_registry
 from bzrlib.errors import NotBranchError, NoSuchFile, IncompatibleRepositories
+from bzrlib.urlutils import local_path_to_url
 from bzrlib.repository import Repository
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.trace import mutter
@@ -355,6 +356,6 @@ data
         if sys.platform == 'win32':
             abspath = '/' + abspath
         branch = Branch.open(os.path.join(self.test_dir, "e", "trunk"))
-        self.assertEqual("file://%s/e/trunk" % self.test_dir, branch.base.rstrip("/"))
+        self.assertEqual(local_path_to_url(os.path.join(self.test_dir, "e", "trunk")), branch.base.rstrip("/"))
         self.assertEqual(mapping.generate_revision_id("6987ef2d-cd6b-461f-9991-6f1abef3bd59", 1, 'trunk'), branch.last_revision())
 
