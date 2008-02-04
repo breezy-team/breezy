@@ -20,8 +20,9 @@ import sha
 from errors import InvalidPropertyValue
 from mapping import (generate_revision_metadata, parse_revision_metadata, 
                      parse_revid_property, parse_merge_property, 
-                     BzrSvnMappingv1, BzrSvnMappingv2, BzrSvnMappingv3, 
-                     BzrSvnMappingv4, BzrSvnMappingHybrid, parse_revision_id)
+                     BzrSvnMappingv1, BzrSvnMappingv2, 
+                     BzrSvnMappingv3FileProps, BzrSvnMappingv3RevProps,
+                     BzrSvnMappingv4, BzrSvnMappingv3Hybrid, parse_revision_id)
 from scheme import NoBranchingScheme
 
 from bzrlib.errors import InvalidRevisionId
@@ -188,34 +189,34 @@ def sha1(text):
     return sha.new(text).hexdigest()
 
 
-class Mappingv3Tests(MappingTestAdapter,TestCase):
+class Mappingv3FilePropTests(MappingTestAdapter,TestCase):
     def setUp(self):
-        self.mapping = BzrSvnMappingv3(NoBranchingScheme())
+        self.mapping = BzrSvnMappingv3FileProps(NoBranchingScheme())
 
     def test_generate_revid(self):
         self.assertEqual("svn-v3-undefined:myuuid:branch:5", 
-                         BzrSvnMappingv3._generate_revision_id("myuuid", 5, "branch", "undefined"))
+                         BzrSvnMappingv3FileProps._generate_revision_id("myuuid", 5, "branch", "undefined"))
 
     def test_generate_revid_nested(self):
         self.assertEqual("svn-v3-undefined:myuuid:branch%2Fpath:5", 
-                  BzrSvnMappingv3._generate_revision_id("myuuid", 5, "branch/path", "undefined"))
+                  BzrSvnMappingv3FileProps._generate_revision_id("myuuid", 5, "branch/path", "undefined"))
 
     def test_generate_revid_special_char(self):
         self.assertEqual("svn-v3-undefined:myuuid:branch%2C:5", 
-             BzrSvnMappingv3._generate_revision_id("myuuid", 5, "branch\x2c", "undefined"))
+             BzrSvnMappingv3FileProps._generate_revision_id("myuuid", 5, "branch\x2c", "undefined"))
 
     def test_generate_revid_nordic(self):
         self.assertEqual("svn-v3-undefined:myuuid:branch%C3%A6:5", 
-             BzrSvnMappingv3._generate_revision_id("myuuid", 5, u"branch\xe6".encode("utf-8"), "undefined"))
+             BzrSvnMappingv3FileProps._generate_revision_id("myuuid", 5, u"branch\xe6".encode("utf-8"), "undefined"))
 
     def test_parse_revid_simple(self):
         self.assertEqual(("uuid", "", 4, "undefined"),
-                         BzrSvnMappingv3._parse_revision_id(
+                         BzrSvnMappingv3FileProps._parse_revision_id(
                              "svn-v3-undefined:uuid::4"))
 
     def test_parse_revid_nested(self):
         self.assertEqual(("uuid", "bp/data", 4, "undefined"),
-                         BzrSvnMappingv3._parse_revision_id(
+                         BzrSvnMappingv3FileProps._parse_revision_id(
                      "svn-v3-undefined:uuid:bp%2Fdata:4"))
 
     def test_generate_file_id_root(self):
@@ -252,6 +253,15 @@ class Mappingv3Tests(MappingTestAdapter,TestCase):
                 self.mapping.generate_file_id("uuid", 2, u"\xe6".encode('utf-8'), u"\xe6\xf8\xe5"))
 
 
+class Mappingv3RevPropTests(MappingTestAdapter,TestCase):
+    def setUp(self):
+        self.mapping = BzrSvnMappingv3RevProps(NoBranchingScheme())
+
+
+class Mappingv3HybridTests(MappingTestAdapter,TestCase):
+    def setUp(self):
+        self.mapping = BzrSvnMappingv3Hybrid(NoBranchingScheme())
+
 
 class Mappingv4TestAdapter(MappingTestAdapter,TestCase):
     def setUp(self):
@@ -260,11 +270,11 @@ class Mappingv4TestAdapter(MappingTestAdapter,TestCase):
 
 class ParseRevisionIdTests:
     def test_current(self):
-        self.assertEqual(("uuid", "trunk", 1, BzrSvnMappingv3(TrunkBranchingScheme())), 
+        self.assertEqual(("uuid", "trunk", 1, BzrSvnMappingv3FileProps(TrunkBranchingScheme())), 
                 parse_revision_id("svn-v3-trunk0:uuid:trunk:1"))
 
     def test_current_undefined(self):
-        self.assertEqual(("uuid", "trunk", 1, BzrSvnMappingv3(TrunkBranchingScheme())), 
+        self.assertEqual(("uuid", "trunk", 1, BzrSvnMappingv3FileProps(TrunkBranchingScheme())), 
                 parse_revision_id("svn-v3-undefined:uuid:trunk:1"))
 
     def test_legacy2(self):

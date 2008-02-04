@@ -19,7 +19,7 @@ from bzrlib.repository import Repository
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.trace import mutter
 
-from mapping import BzrSvnMappingv3
+from mapping import BzrSvnMappingv3FileProps
 from scheme import NoBranchingScheme
 from tests import TestCaseWithSubversionRepository
 
@@ -182,7 +182,7 @@ Node-copyfrom-path: x
 """)
         self.check_output("", 'svn-import --scheme=none %s dc' % filename)
         newrepos = Repository.open("dc")
-        mapping = BzrSvnMappingv3(NoBranchingScheme())
+        mapping = BzrSvnMappingv3FileProps(NoBranchingScheme())
         self.assertTrue(newrepos.has_revision(
             mapping.generate_revision_id(uuid, 5, "")))
         self.assertTrue(newrepos.has_revision(

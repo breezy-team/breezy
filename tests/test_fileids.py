@@ -22,7 +22,7 @@ from bzrlib.trace import mutter
 from bzrlib.tests import TestCase
 
 from fileids import SimpleFileIdMap
-from mapping import BzrSvnMappingv3
+from mapping import BzrSvnMappingv3FileProps
 from scheme import TrunkBranchingScheme, NoBranchingScheme
 from tests import TestCaseWithSubversionRepository
 
@@ -163,7 +163,7 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
 
 class TestFileMapping(TestCase):
     def setUp(self):
-        self.mapping = BzrSvnMappingv3(NoBranchingScheme())
+        self.mapping = BzrSvnMappingv3FileProps(NoBranchingScheme())
 
     def apply_mappings(self, mappings, find_children=None, renames={}):
         map = {}

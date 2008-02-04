@@ -39,7 +39,7 @@ from config import SvnRepositoryConfig
 import errors
 import logwalker
 from mapping import (SVN_PROP_BZR_REVISION_ID, 
-                     SVN_PROP_BZR_BRANCHING_SCHEME, BzrSvnMappingv3,
+                     SVN_PROP_BZR_BRANCHING_SCHEME, BzrSvnMappingv3FileProps,
                      parse_revision_metadata, parse_revid_property, 
                      parse_merge_property, BzrSvnMapping,
                      get_default_mapping, parse_revision_id)
@@ -544,7 +544,7 @@ class SvnRepository(Repository):
             assert isinstance(scheme, str)
             # Entry already complete?
             if min_revnum == max_revnum:
-                return (branch_path, min_revnum, BzrSvnMappingv3(get_scheme(scheme)))
+                return (branch_path, min_revnum, BzrSvnMappingv3FileProps(get_scheme(scheme)))
         except NoSuchRevision, e:
             # If there is no entry in the map, walk over all branches:
             if scheme is None:
@@ -604,7 +604,7 @@ class SvnRepository(Repository):
             if entry_revid == revid:
                 self.revmap.insert_revid(revid, bp, rev, rev, scheme, 
                                          entry_revno)
-                return (bp, rev, BzrSvnMappingv3(get_scheme(scheme)))
+                return (bp, rev, BzrSvnMappingv3FileProps(get_scheme(scheme)))
 
         raise AssertionError("Revision id %s was added incorrectly" % revid)
 
