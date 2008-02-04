@@ -100,7 +100,7 @@ class SvnWorkingTree(WorkingTree):
             os.makedirs(os.path.join(self.controldir, 'lock'))
         except OSError:
             pass
-        control_transport = bzrdir.transport.clone(os.path.join(
+        control_transport = bzrdir.transport.clone(urlutils.join(
                                                    svn.wc.get_adm_dir(), 'bzr'))
         self._control_files = LockableFiles(control_transport, 'lock', LockDir)
 
