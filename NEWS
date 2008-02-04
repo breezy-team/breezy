@@ -2,7 +2,7 @@ bzr-svn 0.4.8	UNRELEASED
 
   BUGS
 
-   * Fix path to URL conversion for Windows NT.
+   * Fix path to URL conversion for Windows NT. (#188233)
 
   INTERNALS
 
