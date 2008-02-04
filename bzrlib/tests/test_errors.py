@@ -56,6 +56,13 @@ class TestErrors(TestCaseWithTransport):
             'It supports versions "(4, 5, 6)" to "(7, 8, 9)".',
             str(error))
 
+    def test_inconsistent_delta(self):
+        error = errors.InconsistentDelta('path', 'file-id', 'reason for foo')
+        self.assertEqualDiff(
+            "An inconsistent delta was supplied for 'path', 'file-id'\n"
+            "reason: reason for foo",
+            str(error))
+
     def test_in_process_transport(self):
         error = errors.InProcessTransport('fpp')
         self.assertEqualDiff(

@@ -1993,6 +1993,19 @@ class CorruptRepository(BzrError):
         self.repo_path = repo.bzrdir.root_transport.base
 
 
+class InconsistentDelta(BzrError):
+    """Used when we get a delta that is not valid."""
+
+    _fmt = ("An inconsistent delta was supplied involving %(path)r,"
+            " %(file_id)r\nreason: %s")
+
+    def __init__(self, path, file_id, reason):
+        BzrError.__init__(self)
+        self.path = path
+        self.file_id = file_id
+        self.reason = reason
+
+
 class UpgradeRequired(BzrError):
 
     _fmt = "To use this feature you must upgrade your branch at %(path)s."
