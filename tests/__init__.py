@@ -23,6 +23,7 @@ from bzrlib import osutils
 from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.trace import mutter
+from bzrlib.urlutils import local_path_to_url
 from bzrlib.workingtree import WorkingTree
 
 import svn.repos, svn.wc
@@ -59,11 +60,7 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
                 open(revprop_hook, 'w').write("#!/bin/sh\n")
                 os.chmod(revprop_hook, os.stat(revprop_hook).st_mode | 0111)
 
-        if sys.platform == 'win32':
-            abspath = '/' + abspath # The root of the filesystem on win32 is one level above the "drives"
-        repos_url = "file://%s" % abspath
-
-        return repos_url
+        return local_path_to_url(abspath)
 
     def make_remote_bzrdir(self, relpath):
         """Create a repository."""
