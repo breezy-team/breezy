@@ -1,0 +1,29 @@
+Bzr <-> Svn mappings version 4
+==============================
+
+.. contents:
+
+Rationale
+---------
+
+Changes compared to version 3
+-----------------------------
+
+Removal of branching schemes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Branching schemes will no longer be part of the revision id, since they 
+are irrelevant. All paths will be allowed as valid branch paths.
+
+Ignores
+~~~~~~~
+
+Keywords
+~~~~~~~~
+
+By-reference nested trees
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Considering empty directories empty branches
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. vim: ft=rest

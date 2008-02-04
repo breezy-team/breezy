@@ -34,17 +34,12 @@ This should allow for a massive performance improvement and user experience.
 However, the problem is that this will not work with a lot of older Subversion 
 repositories.
 
-New mapping version
-~~~~~~~~~~~~~~~~~~~
-Since this requires changes to the way the bzr<->svn mappings work, this 
-requires a new version of the mappings. This will be version 4.
-
 Legacy repositories
 ~~~~~~~~~~~~~~~~~~~
 There are already repositories out there that have the old file properties 
 set (version 3 and lower of the bzr<->svn mappings). In order to interoperate 
-with existing versions of bzr-svn that have these mappings only, it should be 
-possible to set both version 3 and version 4 mappings on a revision.
+with existing versions of bzr-svn that support file properties only, 
+file properties should always be set together with revision properties.
 
 In order to make sure that it is possible to rely on revision properties 
 as much as possible, the following policy will be followed where it concerns 
@@ -72,5 +67,4 @@ A new per-Subversion-repository setting `support_legacy` will be added. This
 setting controls whether file properties should be set when pushing to the 
 specified repository. It defaults to True.
 
-..
-    vim: ft=rest
+..  vim: ft=rest
