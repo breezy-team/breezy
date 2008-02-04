@@ -157,12 +157,12 @@ class MappingTestAdapter:
         if not self.mapping.supports_roundtripping():
             raise TestNotApplicable
         (revprops, fileprops) = self.mapping.export_revision("branchp", 432432432.0, 0, "somebody", {}, "arevid", 4, ["merge1"], dict().get)
-        self.assertEquals((4, "arevid"), self.mapping.get_revision_id(revprops, fileprops.get))
+        self.assertEquals((4, "arevid"), self.mapping.get_revision_id("branchp", revprops, fileprops.get))
     
     def test_revision_id_none(self):
         if not self.mapping.supports_roundtripping():
             raise TestNotApplicable
-        self.assertEquals((None, None), self.mapping.get_revision_id({}, dict().get))
+        self.assertEquals((None, None), self.mapping.get_revision_id("bp", {}, dict().get))
 
     def test_parse_revision_id_unknown(self):
         self.assertRaises(InvalidRevisionId, 
@@ -253,9 +253,9 @@ class Mappingv3Tests(MappingTestAdapter,TestCase):
 
 
 
-#class Mappingv4TestAdapter(MappingTestAdapter,TestCase):
-#    def setUp(self):
-#        self.mapping = BzrSvnMappingv4
+class Mappingv4TestAdapter(MappingTestAdapter,TestCase):
+    def setUp(self):
+        self.mapping = BzrSvnMappingv4()
 
 
 class ParseRevisionIdTests:

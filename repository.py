@@ -298,7 +298,7 @@ class SvnRepository(Repository):
 
         svn_revprops = self.transport.revprop_list(revnum)
         svn_fileprops = self.branchprop_list.get_properties(path, revnum)
-        ancestry.extend(mapping.get_rhs_ancestors(svn_revprops, svn_fileprops.get))
+        ancestry.extend(mapping.get_rhs_ancestors(path, svn_revprops, svn_fileprops.get))
 
         if revnum > 0:
             for (branch, rev) in self.follow_branch(path, revnum - 1, mapping):
@@ -436,7 +436,7 @@ class SvnRepository(Repository):
 
         svn_revprops = self.transport.revprop_list(revnum)
 
-        extra_rhs_parents = mapping.get_rhs_parents(svn_revprops, get_branch_fileprop)
+        extra_rhs_parents = mapping.get_rhs_parents(branch, svn_revprops, get_branch_fileprop)
         parent_ids.extend(extra_rhs_parents)
 
         if extra_rhs_parents == []:
@@ -499,7 +499,8 @@ class SvnRepository(Repository):
                 raise NoSuchRevision(path, revnum)
             raise
         fileprops = self.branchprop_list.get_changed_properties(path, revnum)
-        (bzr_revno, revid) = mapping.get_revision_id(revprops, fileprops.get)
+        (bzr_revno, revid) = mapping.get_revision_id(path, revprops, 
+                                                     fileprops.get)
         # Or generate it
         if revid is None:
             revid = mapping.generate_revision_id(
