@@ -1105,7 +1105,6 @@ class TransportTests(TestTransportImplementation):
         self.assertListRaises(PathError, t.list_dir, 'c/f')
         self.assertListRaises(PathError, t.list_dir, 'a')
 
-
     def test_list_dir_result_is_url_escaped(self):
         t = self.get_transport()
         if not t.listable():
