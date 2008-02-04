@@ -416,6 +416,7 @@ class BzrSvnMappingv3(BzrSvnMapping):
     """The third version of the mappings as used in the 0.4.x series.
 
     """
+    upgrade_suffix = "-svn3"
     revid_prefix = "svn-v3-"
 
     def __init__(self, scheme):

@@ -20,7 +20,7 @@ from bzrlib.trace import info, mutter
 import bzrlib.ui as ui
 
 from errors import RebaseNotPresent
-from mapping import (MAPPING_VERSION, get_default_mapping, parse_revision_id)
+from mapping import parse_revision_id
 
 class UpgradeChangesContent(BzrError):
     """Inconsistency was found upgrading the mapping of a revision."""
@@ -31,7 +31,7 @@ class UpgradeChangesContent(BzrError):
 
 
 
-def create_upgraded_revid(revid):
+def create_upgraded_revid(revid, mapping_suffix, upgrade_suffix="-upgrade"):
     """Create a new revision id for an upgraded version of a revision.
     
     Prevents suffix to be appended needlessly.
@@ -39,11 +39,10 @@ def create_upgraded_revid(revid):
     :param revid: Original revision id.
     :return: New revision id
     """
-    suffix = "-svn%d-upgrade" % MAPPING_VERSION
-    if revid.endswith("-upgrade"):
-        return revid[0:revid.rfind("-svn")] + suffix
+    if revid.endswith(upgrade_suffix):
+        return revid[0:revid.rfind("-svn")] + mapping_suffix + upgrade_suffix
     else:
-        return revid + suffix
+        return revid + mapping_suffix + upgrade_suffix
 
 
 def upgrade_workingtree(wt, svn_repository, allow_changes=False, verbose=False):
@@ -146,8 +145,8 @@ def create_upgrade_plan(repository, svn_repository, new_mapping,
             check_revision_changed(oldrev, newrev)
 
     plan = generate_transpose_plan(graph, upgrade_map, 
-                                   repository.revision_parents,
-                                   create_upgraded_revid)
+      repository.revision_parents,
+      lambda revid: create_upgraded_revid(revid, new_mapping.upgrade_suffix))
     def remove_parents((oldrevid, (newrevid, parents))):
         return (oldrevid, newrevid)
     upgrade_map.update(dict(map(remove_parents, plan.items())))
