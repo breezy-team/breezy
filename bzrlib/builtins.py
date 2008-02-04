@@ -2470,7 +2470,7 @@ class cmd_unalias(Command):
             print "bzr unalias: %s: not found" % alias_name
         else:
             c = config.GlobalConfig()
-            c.unset_alias(alias)
+            c.unset_alias(alias_name)
 
 
 class cmd_alias(Command):
