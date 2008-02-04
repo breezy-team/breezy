@@ -174,11 +174,13 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         if revnum is None:
             rev.kind = svn.core.svn_opt_revision_head
         else:
+            assert isinstance(revnum, int)
             rev.kind = svn.core.svn_opt_revision_number
             rev.value.number = revnum
         return rev
 
     def client_log(self, path, start_revnum=None, stop_revnum=None):
+        assert isinstance(path, str)
         ret = {}
         def rcvr(orig_paths, rev, author, date, message, pool):
             ret[rev] = (orig_paths, author, date, message)
