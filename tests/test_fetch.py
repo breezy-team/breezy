@@ -60,7 +60,7 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My Message")
         oldrepos = Repository.open(repos_url)
         oldrepos.set_branching_scheme(TrunkBranchingScheme(1))
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
 
@@ -104,7 +104,7 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "strange revision")
         oldrepos = Repository.open(repos_url)
         oldrepos.set_branching_scheme(TrunkBranchingScheme(0))
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
 
@@ -117,7 +117,7 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My Message")
         oldrepos = Repository.open(repos_url)
         oldrepos.set_branching_scheme(TrunkBranchingScheme())
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         self.assertRaises(InvalidFileName, oldrepos.copy_content_into, newrepos)
 
@@ -144,7 +144,7 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My Message")
         self.client_update("dc")
         oldrepos = Repository.open(repos_url)
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
         mapping = oldrepos.get_mapping()
@@ -168,7 +168,7 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My Message")
         self.client_update("dc")
         oldrepos = Repository.open(repos_url)
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
         mapping = oldrepos.get_mapping()
@@ -185,7 +185,7 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My Message")
         oldrepos = Repository.open(repos_url)
         oldrepos.set_branching_scheme(TrunkBranchingScheme(0))
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
 
@@ -200,7 +200,7 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My Message")
         oldrepos = Repository.open(repos_url)
         oldrepos.set_branching_scheme(TrunkBranchingScheme(0))
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
 
@@ -211,7 +211,7 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My Message")
         oldrepos = Repository.open(repos_url)
         oldrepos.set_branching_scheme(TrunkBranchingScheme(0))
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
 
@@ -225,7 +225,7 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         revno = self.client_commit("dc", "My Message2")[0]
         oldrepos = Repository.open(repos_url)
         oldrepos.set_branching_scheme(TrunkBranchingScheme(0))
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
         self.assertEquals(2, revno)
@@ -236,7 +236,7 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         self.client_add("dc/foo")
         self.client_commit("dc", "My Message")
         oldrepos = Repository.open(repos_url)
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
         self.client_delete("dc/foo/bla")
@@ -273,7 +273,7 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         self.client_add("dc/bar")
         self.client_commit("dc", "Second Message")
         oldrepos = Repository.open(repos_url)
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
         mapping = oldrepos.get_mapping()
@@ -301,7 +301,7 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         self.client_add("dc/bla")
         self.client_commit("dc", "Second Message")
         oldrepos = Repository.open("svn+"+repos_url)
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
         mapping = oldrepos.get_mapping()
@@ -327,7 +327,7 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Third Message")
         oldrepos = Repository.open("svn+"+repos_url)
         oldrepos.set_branching_scheme(TrunkBranchingScheme())
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
 
@@ -412,7 +412,7 @@ Node-action: delete
 
         load_dumpfile("dumpfile", "old")
         oldrepos = Repository.open("old")
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
         mapping = oldrepos.get_mapping()
@@ -553,7 +553,7 @@ Node-copyfrom-path: u
 
         load_dumpfile("dumpfile", "old")
         oldrepos = Repository.open("old")
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
         mapping = oldrepos.get_mapping()
@@ -699,7 +699,7 @@ Node-copyfrom-path: bla
 
         load_dumpfile("dumpfile", "old")
         oldrepos = Repository.open("old")
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
         mapping = oldrepos.get_mapping()
@@ -879,7 +879,7 @@ Node-copyfrom-path: bla
 
         load_dumpfile("dumpfile", "old")
         oldrepos = Repository.open("old")
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
         mapping = oldrepos.get_mapping()
@@ -1020,7 +1020,7 @@ Node-copyfrom-path: x
 
         load_dumpfile("dumpfile", "old")
         oldrepos = Repository.open("old")
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
         mapping = oldrepos.get_mapping()
@@ -1183,7 +1183,7 @@ Node-copyfrom-path: x
 
         load_dumpfile("dumpfile", "old")
         oldrepos = Repository.open("old")
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
         mapping = oldrepos.get_mapping()
@@ -1211,7 +1211,7 @@ Node-copyfrom-path: x
 
         oldrepos = Repository.open(repos_url)
         oldrepos.set_branching_scheme(TrunkBranchingScheme())
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
 
@@ -1234,7 +1234,7 @@ Node-copyfrom-path: x
 
         oldrepos = Repository.open(repos_url)
         oldrepos.set_branching_scheme(TrunkBranchingScheme())
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
 
@@ -1256,7 +1256,7 @@ Node-copyfrom-path: x
 
         oldrepos = Repository.open(repos_url)
         oldrepos.set_branching_scheme(TrunkBranchingScheme())
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
 
@@ -1276,7 +1276,7 @@ Node-copyfrom-path: x
 
         oldrepos = Repository.open(repos_url)
         oldrepos.set_branching_scheme(TrunkBranchingScheme())
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
 
@@ -1300,7 +1300,7 @@ Node-copyfrom-path: x
 
         oldrepos = Repository.open(repos_url)
         oldrepos.set_branching_scheme(TrunkBranchingScheme())
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
 
@@ -1324,7 +1324,7 @@ Node-copyfrom-path: x
 
         oldrepos = Repository.open(repos_url)
         oldrepos.set_branching_scheme(TrunkBranchingScheme())
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
 
@@ -1412,8 +1412,8 @@ Node-copyfrom-path: x
         self.client_set_prop("dc/bla", "svn:executable", "*")
         self.client_commit("dc", "My Message")
         oldrepos = Repository.open("svn+"+repos_url)
-        dir1 = BzrDir.create("f",format.get_rich_root_format())
-        dir2 = BzrDir.create("g",format.get_rich_root_format())
+        dir1 = BzrDir.create("f", format.get_rich_root_format())
+        dir2 = BzrDir.create("g", format.get_rich_root_format())
         newrepos1 = dir1.create_repository()
         newrepos2 = dir2.create_repository()
         oldrepos.copy_content_into(newrepos1)
@@ -1434,7 +1434,7 @@ Node-copyfrom-path: x
         self.client_set_prop("dc/blie", "svn:executable", "")
         self.client_commit("dc", "My Message")
         oldrepos = Repository.open("svn+"+repos_url)
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
         mapping = oldrepos.get_mapping()
@@ -1455,7 +1455,7 @@ Node-copyfrom-path: x
         self.client_add("dc/mylink")
         self.client_commit("dc", "My Message")
         oldrepos = Repository.open("svn+"+repos_url)
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
         mapping = oldrepos.get_mapping()
@@ -1483,7 +1483,7 @@ Node-copyfrom-path: x
         editor.close_directory(root_baton)
         editor.close()
         oldrepos = Repository.open("svn+"+repos_url)
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
         mapping = oldrepos.get_mapping()
@@ -1505,7 +1505,7 @@ Node-copyfrom-path: x
         self.client_set_prop("dc/bla", "svn:executable", "*")
         self.client_commit("dc", "Make executable")
         oldrepos = Repository.open("svn+"+repos_url)
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
         mapping = oldrepos.get_mapping()
@@ -1527,7 +1527,7 @@ Node-copyfrom-path: x
         self.client_set_prop("dc", "bzr:ancestry:v3-none", "aghost\n")
         self.client_commit("dc", "My Message")
         oldrepos = Repository.open("svn+"+repos_url)
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
         mapping = oldrepos.get_mapping()
@@ -1551,7 +1551,7 @@ Node-copyfrom-path: x
                              "%s:/branches/foo:2\n" % oldrepos.uuid)
         self.client_commit("dc", "Merge")
 
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
 
@@ -1568,7 +1568,7 @@ Node-copyfrom-path: x
         self.client_set_prop("dc", "bzr:ancestry:v3-none", "a ghost\n")
         self.client_commit("dc", "My Message")
         oldrepos = Repository.open("svn+"+repos_url)
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
         
@@ -1652,7 +1652,7 @@ Node-copyfrom-path: x
 
         oldrepos = Repository.open("svn+"+repos_url)
         oldrepos.set_branching_scheme(TrunkBranchingScheme())
-        dir = BzrDir.create("f",format.get_rich_root_format())
+        dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         mapping = oldrepos.get_mapping()
         copyrev = oldrepos.generate_revision_id(2, "branches/abranch", mapping)

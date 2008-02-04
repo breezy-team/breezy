@@ -578,7 +578,7 @@ class BzrSvnMappingFileProps:
         else:
             fileprops[SVN_PROP_BZR_FILEIDS] = ""
 
-class BzrSvnMappingv3FileProps(BzrSvnMappingFileProps,BzrSvnMappingv3):
+class BzrSvnMappingv3FileProps(BzrSvnMappingFileProps, BzrSvnMappingv3):
     pass
 
 class BzrSvnMappingRevProps:
@@ -639,7 +639,7 @@ class BzrSvnMappingRevProps:
         raise NotImplementedError(self.get_rhs_ancestors)
 
 
-class BzrSvnMappingv3RevProps(BzrSvnMappingRevProps,BzrSvnMappingv3):
+class BzrSvnMappingv3RevProps(BzrSvnMappingRevProps, BzrSvnMappingv3):
     pass
 
 

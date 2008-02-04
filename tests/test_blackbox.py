@@ -25,7 +25,7 @@ from tests import TestCaseWithSubversionRepository
 
 import os
 
-class TestBranch(ExternalBase,TestCaseWithSubversionRepository):
+class TestBranch(ExternalBase, TestCaseWithSubversionRepository):
     def test_branch_empty(self):
         repos_url = self.make_client('d', 'de')
         self.run_bzr("branch %s dc" % repos_url)

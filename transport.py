@@ -512,7 +512,7 @@ class SvnRaTransport(Transport):
                              recurse, edit, edit_baton, pool))
 
     @convert_svn_error
-    def has_capability(self ,cap):
+    def has_capability(self, cap):
         return svn.ra.has_capability(self._ra, cap)
 
     @convert_svn_error

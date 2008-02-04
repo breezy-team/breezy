@@ -230,7 +230,7 @@ class TestConversion(TestCaseWithSubversionRepository):
         self.assertTrue(os.path.isdir(os.path.join(self.test_dir, "e", "branches", "abranch")))
 
     def test_convert_to_nonexistant(self):
-        self.assertRaises(NoSuchFile, convert_repository,Repository.open("svn+"+self.repos_url), os.path.join(self.test_dir, "e", "foo", "bar"), TrunkBranchingScheme())
+        self.assertRaises(NoSuchFile, convert_repository, Repository.open("svn+"+self.repos_url), os.path.join(self.test_dir, "e", "foo", "bar"), TrunkBranchingScheme())
 
     def test_notshared_import(self):
         convert_repository(Repository.open("svn+"+self.repos_url), "e", 
