@@ -27,8 +27,7 @@ from unittest import TestCase
 
 from branch import FakeControlFiles, SvnBranchFormat
 from convert import load_dumpfile
-from mapping import (MAPPING_VERSION, SVN_PROP_BZR_REVISION_ID, 
-                     BzrSvnMappingv3FileProps)
+from mapping import (SVN_PROP_BZR_REVISION_ID, BzrSvnMappingv3FileProps)
 from scheme import TrunkBranchingScheme
 from tests import TestCaseWithSubversionRepository
 
@@ -206,7 +205,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         repos_url = self.make_client('a', 'dc')
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
-        self.client_set_prop("dc", "bzr:revision-id:v%d-none" % MAPPING_VERSION, 
+        self.client_set_prop("dc", "bzr:revision-id:v3-none", 
                             "2 myrevid\n")
         self.client_commit("dc", "My Message")
         branch = Branch.open(repos_url)
@@ -216,11 +215,11 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         repos_url = self.make_client('a', 'dc')
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
-        self.client_set_prop("dc", "bzr:revision-id:v%d-none" % MAPPING_VERSION, 
+        self.client_set_prop("dc", "bzr:revision-id:v3-none", 
                             "2 myrevid\n")
         self.client_commit("dc", "My Message")
         self.build_tree({'dc/foo': "someotherdata"})
-        self.client_set_prop("dc", "bzr:revision-id:v%d-none" % MAPPING_VERSION, 
+        self.client_set_prop("dc", "bzr:revision-id:v3-none", 
                             "2 myrevid\n3 mysecondrevid\n")
         self.client_commit("dc", "My Message")
         branch = Branch.open(repos_url)
@@ -573,7 +572,7 @@ foohosts""")
         self.client_add("dc/bla")
         self.client_commit("dc", "bla")
         branch = Branch.open('d')
-        self.assertEqual("svn-v%d-none:%s::1" % (MAPPING_VERSION, branch.repository.uuid),  branch.generate_revision_id(1))
+        self.assertEqual("svn-v3-none:%s::1" % (branch.repository.uuid),  branch.generate_revision_id(1))
 
     def test_create_checkout(self):
         repos_url = self.make_client('d', 'dc')

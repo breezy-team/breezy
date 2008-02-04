@@ -606,8 +606,9 @@ class BzrSvnMappingRevProps:
             return (revno, revid)
         return (None, None)
 
-    def export_revision(self, branch_root, timestamp, timezone, committer, revprops, revision_id, revno, 
-                        merges, get_branch_file_property):
+    def export_revision(self, branch_root, timestamp, timezone, committer, 
+                        revprops, revision_id, revno, merges, 
+                        get_branch_file_property):
         svn_revprops = {SVN_REVPROP_BZR_MAPPING_VERSION: str(MAPPING_VERSION)}
 
         if timestamp is not None:

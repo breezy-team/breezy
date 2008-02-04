@@ -18,7 +18,6 @@ from bzrlib.errors import NoSuchRevision, InvalidRevisionId
 from bzrlib.repository import Repository
 from bzrlib.tests import TestCase
 
-from mapping import MAPPING_VERSION
 from revids import RevidMap
 from tests import TestCaseWithSubversionRepository
 

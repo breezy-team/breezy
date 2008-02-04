@@ -28,7 +28,6 @@ from bzrlib.workingtree import WorkingTree
 from commit import set_svn_revprops, _revision_id_to_svk_feature
 from copy import copy
 from errors import RevpropChangeFailed
-from mapping import MAPPING_VERSION
 import os
 from remote import SvnRaTransport
 from tests import TestCaseWithSubversionRepository
@@ -191,7 +190,7 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
 
         self.assertEqual("3 my-revision-id\n", 
             self.client_get_prop("dc", 
-                "bzr:revision-id:v%d-none" % MAPPING_VERSION, 2))
+                "bzr:revision-id:v3-none", 2))
 
     def test_commit_metadata(self):
         repos_url = self.make_client('d', 'dc')
@@ -213,7 +212,7 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         builder.commit("foo")
 
         self.assertEqual("3 my-revision-id\n", 
-                self.client_get_prop("dc", "bzr:revision-id:v%d-none" % MAPPING_VERSION, 2))
+                self.client_get_prop("dc", "bzr:revision-id:v3-none", 2))
 
         self.assertEqual(
                 "timestamp: 1970-01-01 01:15:36.000000000 +0000\ncommitter: fry\n",

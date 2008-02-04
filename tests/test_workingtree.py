@@ -30,7 +30,6 @@ import svn.wc
 
 import os, sys
 
-from mapping import MAPPING_VERSION
 from transport import svn_config
 from tests import TestCaseWithSubversionRepository
 
@@ -460,9 +459,9 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         
         tree = self.open_checkout("dc")
         tree.set_pending_merges([
-            "svn-v%d:1@a-uuid-foo-branch%%2fpath" % MAPPING_VERSION, "c"])
+            mapping.generate_revision_id("a-uuid-foo", 1, "branch/fpath"), "c"])
         self.assertEqual(
-                "svn-v%d:1@a-uuid-foo-branch%%2fpath\tc\n" % MAPPING_VERSION, 
+                "svn-v3:1@a-uuid-foo-branch%%2fpath\tc\n",
                 self.client_get_prop("dc", "bzr:ancestry:v3-none"))
 
     def test_set_pending_merges_svk(self):
@@ -472,7 +471,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         
         tree = self.open_checkout("dc")
         tree.set_pending_merges([
-            "svn-v%d-undefined:a-uuid-foo:branch%%2fpath:1" % MAPPING_VERSION, "c"])
+            mapping.generate_revision_id("a-uuid-foo", 1, "branch/path"), "c"])
         self.assertEqual("a-uuid-foo:/branch/path:1\n", 
                          self.client_get_prop("dc", "svk:merge"))
 

@@ -130,6 +130,8 @@ class SvnRepository(Repository):
         self._log = logwalker.LogWalker(transport=transport, 
                                         cache_db=self.cachedb)
 
+        # TODO: Only use branchprop_list and fileid_map when 
+        # fileprops-based mappings are being used
         self.branchprop_list = BranchPropertyList(self._log, self.cachedb)
         self.fileid_map = SimpleFileIdMap(self, cachedir_transport)
         self.revmap = RevidMap(self.cachedb)

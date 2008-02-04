@@ -35,8 +35,7 @@ import svn.fs
 
 import format
 from mapping import (escape_svn_path, unescape_svn_path, 
-                     SVN_PROP_BZR_REVISION_ID, SVN_PROP_BZR_BRANCHING_SCHEME,
-                     MAPPING_VERSION)
+                     SVN_PROP_BZR_REVISION_ID, SVN_PROP_BZR_BRANCHING_SCHEME)
 from scheme import (TrunkBranchingScheme, NoBranchingScheme, 
                     ListBranchingScheme)
 from transport import SvnRaTransport
@@ -582,7 +581,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_add("dc/foo")
         self.client_commit("dc", "My Message")
         self.build_tree({'dc/foo': "data2"})
-        self.client_set_prop("dc", "bzr:revision-id:v%d-none" % MAPPING_VERSION, 
+        self.client_set_prop("dc", "bzr:revision-id:v3-none", 
                             "3 myrevid\n")
         self.client_update("dc")
         (num, date, author) = self.client_commit("dc", "Second Message")

@@ -23,7 +23,7 @@ from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 
 from errors import RebaseNotPresent
 from format import get_rich_root_format
-from mapping import (MAPPING_VERSION, BzrSvnMappingv3FileProps, BzrSvnMappingv2, 
+from mapping import (BzrSvnMappingv3FileProps, BzrSvnMappingv2, 
                      BzrSvnMappingv1)
 from scheme import TrunkBranchingScheme
 from tests import TestCaseWithSubversionRepository
@@ -106,10 +106,10 @@ class UpgradeTests(TestCaseWithSubversionRepository):
 
         mapping = oldrepos.get_mapping()
         self.assertTrue(newrepos.has_revision(oldrepos.generate_revision_id(1, "", mapping)))
-        self.assertTrue(newrepos.has_revision("customrev-svn%d-upgrade" % MAPPING_VERSION))
+        self.assertTrue(newrepos.has_revision("customrev%s-upgrade" % mapping.upgrade_suffix))
         newrepos.lock_read()
         self.assertTrue((oldrepos.generate_revision_id(1, "", mapping),),
-                        tuple(newrepos.revision_parents("customrev-svn%d-upgrade" % MAPPING_VERSION)))
+                        tuple(newrepos.revision_parents("customrev%s-upgrade" % mapping.upgrade_suffix)))
         newrepos.unlock()
 
     @skip_no_rebase
@@ -135,7 +135,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
 
         upgrade_repository(newrepos, oldrepos, allow_changes=True)
 
-        tree = newrepos.revision_tree("customrev-svn%d-upgrade" % MAPPING_VERSION)
+        tree = newrepos.revision_tree("customrev%s-upgrade" % mapping.upgrade_suffix)
         self.assertEqual("specificid", tree.inventory.path2id("a"))
         self.assertEqual(oldrepos.get_mapping().generate_file_id(oldrepos.uuid, 1, "", u"a"), 
                          tree.inventory.path2id("b"))
@@ -169,7 +169,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         newrepos.start_write_group()
 
         vf = newrepos.weave_store.get_weave_or_empty(tree.inventory.path2id("a"), newrepos.get_transaction())
-        vf.clone_text("customrev-svn%d-upgrade" % MAPPING_VERSION,
+        vf.clone_text("customrev%s-upgrade" % mapping.upgrade_suffix,
                 "svn-v1:1@%s-" % oldrepos.uuid, ["svn-v1:1@%s-" % oldrepos.uuid])
 
         newrepos.commit_write_group()
@@ -179,10 +179,10 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         mapping = oldrepos.get_mapping()
 
         self.assertTrue(newrepos.has_revision(oldrepos.generate_revision_id(1, "", mapping)))
-        self.assertTrue(newrepos.has_revision("customrev-svn%d-upgrade" % MAPPING_VERSION))
+        self.assertTrue(newrepos.has_revision("customrev%s-upgrade" % mapping.upgrade_suffix))
         newrepos.lock_read()
         self.assertTrue((oldrepos.generate_revision_id(1, "", mapping),),
-                        tuple(newrepos.revision_parents("customrev-svn%d-upgrade" % MAPPING_VERSION)))
+                        tuple(newrepos.revision_parents("customrev%s-upgrade" % mapping.upgrade_suffix)))
         newrepos.unlock()
 
     @skip_no_rebase
@@ -209,18 +209,18 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         renames = upgrade_repository(newrepos, oldrepos, allow_changes=True)
         self.assertEqual({
             'svn-v1:1@%s-' % oldrepos.uuid: 'svn-v3-none:%s::1' % oldrepos.uuid,
-            "customrev": "customrev-svn%d-upgrade" % MAPPING_VERSION,
-            "anotherrev": "anotherrev-svn%d-upgrade" % MAPPING_VERSION},
+            "customrev": "customrev%s-upgrade" % mapping.upgrade_suffix,
+            "anotherrev": "anotherrev%s-upgrade" % mapping.upgrade_suffix},
             renames)
 
         self.assertTrue(newrepos.has_revision(oldrepos.generate_revision_id(1, "", mapping)))
-        self.assertTrue(newrepos.has_revision("customrev-svn%d-upgrade" % MAPPING_VERSION))
-        self.assertTrue(newrepos.has_revision("anotherrev-svn%d-upgrade" % MAPPING_VERSION))
+        self.assertTrue(newrepos.has_revision("customrev%s-upgrade" % mapping.upgrade_suffix))
+        self.assertTrue(newrepos.has_revision("anotherrev%s-upgrade" % mapping.upgrade_suffix))
         newrepos.lock_read()
         self.assertTrue((oldrepos.generate_revision_id(1, "", mapping),),
-                        tuple(newrepos.revision_parents("customrev-svn%d-upgrade" % MAPPING_VERSION)))
-        self.assertTrue(("customrev-svn%d-upgrade" % MAPPING_VERSION,),
-                        tuple(newrepos.revision_parents("anotherrev-svn%d-upgrade" % MAPPING_VERSION)))
+                        tuple(newrepos.revision_parents("customrev%s-upgrade" % mapping.upgrade_suffix)))
+        self.assertTrue(("customrev-%s-upgrade" % mapping.upgrade_suffix,),
+                        tuple(newrepos.revision_parents("anotherrev%s-upgrade" % mapping.upgrade_suffix)))
         newrepos.unlock()
 
     @skip_no_rebase
@@ -247,8 +247,8 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         mapping = oldrepos.get_mapping()
         self.assertEqual([oldrepos.generate_revision_id(0, "", mapping),
                           oldrepos.generate_revision_id(1, "", mapping),
-                          "customrev-svn%d-upgrade" % MAPPING_VERSION,
-                          "anotherrev-svn%d-upgrade" % MAPPING_VERSION
+                          "customrev%s-upgrade" % mapping.upgrade_suffix,
+                          "anotherrev%s-upgrade" % mapping.upgrade_suffix
                           ], b.revision_history())
 
     @skip_no_rebase
@@ -276,8 +276,8 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         self.assertEquals(wt.last_revision(), b.last_revision())
         self.assertEqual([oldrepos.generate_revision_id(0, "", mapping),
                           oldrepos.generate_revision_id(1, "", mapping),
-                          "customrev-svn%d-upgrade" % MAPPING_VERSION,
-                          "anotherrev-svn%d-upgrade" % MAPPING_VERSION
+                          "customrev%s-upgrade" % mapping.upgrade_suffix,
+                          "anotherrev%s-upgrade" % mapping.upgrade_suffix
                           ], b.revision_history())
 
     @skip_no_rebase
