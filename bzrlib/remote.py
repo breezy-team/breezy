@@ -130,6 +130,10 @@ class RemoteBzrDir(BzrDir):
         else:
             raise errors.UnexpectedSmartServerResponse(response)
 
+    def _get_tree_branch(self):
+        """See BzrDir._get_tree_branch()."""
+        return None, self.open_branch()
+
     def open_branch(self, _unsupported=False):
         assert _unsupported == False, 'unsupported flag support not implemented yet.'
         reference_url = self.get_branch_reference()
