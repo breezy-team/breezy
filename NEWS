@@ -37,6 +37,9 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * Creating a new branch no longer tries to read the entire revision-history
+      unnecessarily over smart server operations. (Robert Collins)
+
     * Fetching between different repository formats with compatible models now
       takes advantage of the smart method to stream revisions.  (Andrew Bennetts)
 
