@@ -18,6 +18,7 @@
 
 from tests import TestCaseWithSubversionRepository
 from bzrlib.errors import NotBranchError, NoSuchFile, FileExists, InvalidURL
+from bzrlib import urlutils
 from transport import SvnRaTransport, bzr_to_svn_url
 from unittest import TestCase
 
@@ -115,7 +116,7 @@ class SvnRaTest(TestCaseWithSubversionRepository):
         t = SvnRaTransport(repos_url)
         tt = t.clone()
         self.assertEqual(tt.base, t.base)
-        tt.reparent(os.path.join(t.base, "dir"))
+        tt.reparent(urlutils.join(t.base, "dir"))
         self.assertNotEqual(tt.base, t.base)
 
     def test_mkdir(self):
@@ -173,7 +174,7 @@ class SvnRaTest(TestCaseWithSubversionRepository):
     def test_local_abspath(self):
         repos_url = self.make_client('d', 'dc')
         t = SvnRaTransport("%s" % repos_url)
-        self.assertEquals(os.path.join(self.test_dir, "d"), t.local_abspath('.'))
+        self.assertEquals(urlutils.join(self.test_dir, "d"), t.local_abspath('.'))
  
 
 class UrlConversionTest(TestCase):
