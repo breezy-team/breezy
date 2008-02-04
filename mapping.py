@@ -248,6 +248,14 @@ def parse_bzr_svn_revprops(props, rev):
 
 class BzrSvnMapping:
     """Class that maps between Subversion and Bazaar semantics."""
+    experimental = False
+    _warned_experimental = False
+
+    def __init__(self):
+        if self.experimental and not BzrSvnMapping._warned_experimental:
+            from bzrlib.trace import warning
+            warning("using experimental bzr-svn mappings; output may change between revisions")
+            BzrSvnMapping._warned_experimental = True
 
     @staticmethod
     def supports_roundtripping():
@@ -413,10 +421,12 @@ class BzrSvnMappingv3(BzrSvnMapping):
     """The third version of the mappings as used in the 0.4.x series.
 
     """
+    experimental = False
     upgrade_suffix = "-svn3"
     revid_prefix = "svn-v3-"
 
     def __init__(self, scheme):
+        BzrSvnMapping.__init__(self)
         self.scheme = scheme
         assert not isinstance(scheme, str)
 
@@ -645,6 +655,7 @@ class BzrSvnMappingv3RevProps(BzrSvnMappingRevProps, BzrSvnMappingv3):
 
 class BzrSvnMappingv4(BzrSvnMappingRevProps):
     revid_prefix = "svn-v4"
+    experimental = True
 
     @staticmethod
     def supports_roundtripping():

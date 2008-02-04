@@ -64,11 +64,6 @@ def check_bzrlib_version(desired):
         if not (bzrlib_version[0], bzrlib_version[1]-1) in desired:
             raise BzrError('Version mismatch')
 
-def check_bzrsvn_version():
-    """Warn about use of experimental mappings."""
-    if version_info[3] == "exp":
-        warning('version of bzr-svn is experimental; output may change between revisions')
-
 def check_subversion_version():
     """Check that Subversion is compatible.
 
@@ -122,7 +117,6 @@ def lazy_check_versions():
         return
     versions_checked = True
     check_bzrlib_version(COMPATIBLE_BZR_VERSIONS)
-    check_bzrsvn_version()
 
 optimizers_registered = False
 def lazy_register_optimizers():
