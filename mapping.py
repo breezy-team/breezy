@@ -746,7 +746,7 @@ mapping_registry.register('v2', BzrSvnMappingv2,
         'Second format')
 mapping_registry.register('v3', BzrSvnMappingv3,
         'Third format')
-mapping_registry.register('v4', BzrSvnMappingv3,
+mapping_registry.register('v4', BzrSvnMappingv4,
         'Fourth format')
 mapping_registry.register('hybrid', BzrSvnMappingHybrid,
         'Hybrid v3 and v4 format')
