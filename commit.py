@@ -30,7 +30,8 @@ from bzrlib.trace import mutter
 from copy import deepcopy
 from cStringIO import StringIO
 from errors import ChangesRootLHSHistory, MissingPrefix, RevpropChangeFailed
-from svk import generate_svk_feature, serialize_svk_features, parse_svk_features 
+from svk import (generate_svk_feature, serialize_svk_features, 
+                 parse_svk_features, SVN_PROP_SVK_MERGE)
 from mapping import parse_revision_id
 from repository import (SvnRepositoryFormat, SvnRepository)
 import urllib
@@ -445,8 +446,8 @@ class SvnCommitBuilder(RootCommitBuilder):
                                               bp_parts, -1)
             self.revision_metadata = None
             try:
-                self.editor = self.repository.transport.get_commit_editor(self._svn_revprops, 
-                                                                          done, None, False)
+                self.editor = self.repository.transport.get_commit_editor(
+                        self._svn_revprops, done, None, False)
                 self._svn_revprops = {}
             except NotImplementedError:
                 if set_revprops:

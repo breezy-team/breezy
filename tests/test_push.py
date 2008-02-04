@@ -337,7 +337,7 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         self.build_tree({'c/test': "Tour"})
         bzrwt.add("test")
         revid = bzrwt.commit("Do a commit")
-        newdir = BzrDir.open(repos_url+"/trunk")
+        newdir = BzrDir.open("%s/trunk" % repos_url)
         newbranch = newdir.import_branch(bzrwt.branch)
         newtree = newbranch.repository.revision_tree(revid)
         bzrwt.lock_read()

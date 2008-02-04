@@ -102,6 +102,9 @@ class BranchPropertyList(CacheTable):
         """
         assert isinstance(revnum, int)
         assert isinstance(path, str)
+        current = self.get_properties(path, revnum)
+        if current == {}:
+            return {}
         if self.log.touches_path(path, revnum):
             (prev_path, prev_revnum) = self.log.get_previous(path, revnum)
             if prev_path is None and prev_revnum == -1:
@@ -111,7 +114,6 @@ class BranchPropertyList(CacheTable):
                                               prev_revnum)
         else:
             previous = {}
-        current = self.get_properties(path, revnum)
         ret = {}
         for key, val in current.items():
             if previous.get(key) != val:

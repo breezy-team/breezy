@@ -201,6 +201,8 @@ class SvnBranch(Branch):
         revhistory = []
         for (branch, rev) in self.repository.follow_branch(
                 self.get_branch_path(last_revnum), last_revnum, self.mapping):
+            from bzrlib.trace import mutter
+            mutter('revhistory %r, %r' % (branch, rev))
             revhistory.append(
                 self.repository.generate_revision_id(rev, branch, 
                     self.mapping))

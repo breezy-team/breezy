@@ -409,6 +409,8 @@ class SvnRepository(Repository):
 
         """
         current = get_branch_property(branch, revnum, SVN_PROP_SVK_MERGE, "")
+        if current == "":
+            return
         (prev_path, prev_revnum) = self._log.get_previous(branch, revnum)
         if prev_path is None and prev_revnum == -1:
             previous = ""
