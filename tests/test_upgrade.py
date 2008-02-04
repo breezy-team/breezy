@@ -39,12 +39,12 @@ class TestUpgradeChangesContent(TestCase):
 
 class ParserTests(TestCase):
     def test_create_upgraded_revid_new(self):
-        self.assertEqual("bla-svn%d-upgrade" % MAPPING_VERSION,
-                         create_upgraded_revid("bla"))
+        self.assertEqual("bla-svn3-upgrade",
+                         create_upgraded_revid("bla", "-svn3"))
 
     def test_create_upgraded_revid_upgrade(self):
-        self.assertEqual("bla-svn%d-upgrade" % MAPPING_VERSION,
-                         create_upgraded_revid("bla-svn1-upgrade"))
+        self.assertEqual("bla-svn3-upgrade",
+                         create_upgraded_revid("bla-svn1-upgrade", "-svn3"))
 
 
 def skip_no_rebase(unbound):
