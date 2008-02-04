@@ -35,6 +35,20 @@ div.contents p a:hover {
   color: inherit;
   }
 
+div.note {
+  margin-left: 5em;
+  margin-right: 5em;
+  color: #000000;
+  background-color: #c1d1ff;
+  border: 1px solid #888888;
+  padding-left: 1em;
+  padding-right: 1em;
+  }
+
+div.note .first {
+  font-weight: bold;
+  }
+
 h1 {
   color: #b52b2b; 
   /* DKREDcolor: #966b72; */
@@ -124,7 +138,6 @@ tt {
   margin-right: 5em;
   color: #000000;
   font-weight: normal;
-  background-color: #c1d1ff;
   background-color: #e5ecf9;
   border: 1px solid #888888;
   padding: 1em;

@@ -118,7 +118,7 @@ The protocol (for both requests and responses) is described by::
 
   REQUEST := MESSAGE_V1
   RESPONSE := MESSAGE_V1
-  MESSAGE_V1 := ARGS BODY
+  MESSAGE_V1 := ARGS [BODY]
 
   ARGS := ARG [MORE_ARGS] NEWLINE
   MORE_ARGS := SEP ARG [MORE_ARGS]
@@ -144,7 +144,8 @@ The request protocol is::
 
 The response protocol is::
 
-  RESPONSE_V2 := "bzr response 2" NEWLINE MESSAGE_V2
+  RESPONSE_V2 := "bzr response 2" NEWLINE RESPONSE_STATUS NEWLINE MESSAGE_V2
+  RESPONSE_STATUS := "success" | "failed"
 
 Future versions should follow this structure, like version two does::
 
@@ -160,7 +161,7 @@ than structured response prefixed with a version string.
 
 Version two of the message protocol is::
 
-  MESSAGE_V2 := ARGS BODY
+  MESSAGE_V2 := ARGS [BODY_V2]
   BODY_V2 := BODY | STREAMED_BODY
 
 That is, a version one length-prefixed body, or a version two streamed
@@ -174,8 +175,8 @@ a lot like HTTP's chunked encoding::
  
   STREAMED_BODY := "chunked" NEWLINE CHUNKS TERMINATOR
   CHUNKS := CHUNK [CHUNKS]
-  CHUNK := CHUNK_LENGTH CHUNK_CONTENT
-  CHUNK_LENGTH := HEX_DIGITS NEWLINE
+  CHUNK := HEX_LENGTH CHUNK_CONTENT
+  HEX_LENGTH := HEX_DIGITS NEWLINE
   CHUNK_CONTENT := bytes
   
   TERMINATOR := SUCCESS_TERMINATOR | ERROR_TERMINATOR
@@ -195,6 +196,82 @@ body.
 The type of body (length-prefixed or chunked) in a response is always the
 same for a given request method.  Only new request methods introduced in
 Bazaar 0.91 and later use streamed bodies.
+
+Version three
+-------------
+
+.. note::
+  
+  For some discussion of the requirements that led to this new protocol
+  version, see bug #\ 83935_.
+
+.. _83935: https://bugs.launchpad.net/bzr/+bug/83935
+
+Version three has bencoding of most protocol structures, to make parsing
+simpler.
+
+The request and response protocol is::
+
+  REQUEST_V3 := "bzr request 3" NEWLINE HEADERS REQUEST_ARGS BODY_V3
+  RESPONSE_V3 := "bzr response 3" NEWLINE RESPONSE_STATUS_V3 HEADERS
+                 RESPONSE_ARGS BODY_V3
+  RESPONSE_STATUS_V3 := SUCCESS_STATUS | ERROR_STATUS
+  SUCCESS_STATUS := "S"
+  ERROR_STATUS := "E"
+  HEADERS := bencoded_dictionary
+
+Each request and response will have “headers”, a dictionary of key-value pairs.
+The keys must be strings, not any other type of value.
+
+Currently, the only defined header is “Software version”.  Both the client and
+the server should include a “Software version” header, with a value of a
+free-form string such as “bzrlib 1.2”, to aid debugging and logging.  Clients
+and servers **should not** vary behaviour based on this string.
+
+The argument encoding is::
+
+  REQUEST_ARGS := bencoded_sequence
+  RESPONSE_ARGS := bencoded_sequence
+
+Arguments in this protocol version are bencoded, and the entire argument
+structure is length-prefixed.  As a result, unlike previous protocol versions,
+arguments in this version are 8-bit clean.
+
+For requests, the first item in the encoded sequence must be a string of
+the request's verb, e.g. ``Branch.last_revision_info``.  (And so requests must
+always have at least one item in their REQUEST_ARGS sequence.)
+
+For error responses (where the RESPONSE_STATUS_V3 is ERROR_STATUS), the
+situation is analagous to requests.  The first item in the encoded sequence must
+be a string of the error name.  The other arguments supply details about the
+error, and their number and types will depend on the type of error (as
+identified by the error name).
+
+One possible error name is ``UnknownRequestVerb``, which means the server does
+not recognise the verb used by the client's request.
+
+The body encoding is::
+
+  BODY_V3 := NO_BODY | LENGTH_PREFIXED_BODY | STREAMED_BODY_V2
+  NO_BODY := "n"
+  LENGTH_PREFIXED_BODY := "p" LENGTH_PREFIX BODY_BYTES
+  LENGTH_PREFIX := 32-bit unsigned integer in network byte order
+  STREAMED_BODY_V2 := "s" CHUNKS_V2 TERMINATOR_V2
+
+  CHUNKS_V2 := "c" CHUNK_V2 [CHUNKS_V2]
+  CHUNK_V2 := LENGTH_PREFIX CHUNK_CONTENT
+  
+  TERMINATOR_V2 := SUCCESS_TERMINATOR_V2 | ERROR_TERMINATOR_V2
+  SUCCESS_TERMINATOR_V2 := SUCCESS_STATUS
+  ERROR_TERMINATOR_V2 := ERROR_STATUS bencoded_sequence
+
+Version 3 messages always explicitly declare if a body is included.  Clients
+and servers are no longer expected to know which request verbs and responses
+will have bodies attached.  If present, bodies may be a single length-prefixed
+string (like in protocol 1) or a stream of chunks (like in protocol 2).
+
+If a streamed body is finished with an error, that error will be encoded
+identically to RESPONSE_ARGS.
 
 Paths
 =====
