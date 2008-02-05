@@ -109,7 +109,8 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
 
         :return: A smart server response where the body contains an utf8
             encoded flattened list of the parents of the revisions (the same
-            format as Repository.get_revision_graph) which has been gzipped.
+            format as Repository.get_revision_graph) which has been bz2
+            compressed.
         """
         repository = self._repository
         repository.lock_read()
@@ -154,9 +155,9 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
                     size_so_far += 2 + len(revision_id) + sum(map(len, parents))
             # get all the directly asked for parents, and then flesh out to
             # 64K (compressed) or so. We do one level of depth at a time to
-            # stay in sync with the client. The 185000 magic number is
+            # stay in sync with the client. The 250000 magic number is
             # estimated compression ratio taken from bzr.dev itself.
-            if first_loop_done and size_so_far > 185000:
+            if first_loop_done and size_so_far > 250000:
                 next_revs = set()
                 break
             # don't query things we've already queried

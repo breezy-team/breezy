@@ -532,15 +532,15 @@ class TestSmartServerRepositoryRequest(tests.TestCaseWithTransport):
 
 class TestSmartServerRepositoryGetParentMap(tests.TestCaseWithTransport):
 
-    def test_trivial_gzipped(self):
-        # This tests that the wire encoding is actually gzipped
+    def test_trivial_bzipped(self):
+        # This tests that the wire encoding is actually bzipped
         backing = self.get_transport()
         request = smart.repository.SmartServerRepositoryGetParentMap(backing)
         tree = self.make_branch_and_memory_tree('.')
 
         self.assertEqual(None,
             request.execute(backing.local_abspath(''), 'missing-id'))
-        # Note that it returns a body (of '' gzipped).
+        # Note that it returns a body (of '' bzipped).
         self.assertEqual(
             SuccessfulSmartServerResponse(('ok', ), bz2.compress('')),
             request.do_body('\n\n0\n'))
