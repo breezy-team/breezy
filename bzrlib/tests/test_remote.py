@@ -206,6 +206,23 @@ class TestBzrDirOpenBranch(tests.TestCase):
             [('call', 'BzrDir.open_branch', ('quack/',))],
             client._calls)
 
+    def test__get_tree_branch(self):
+        # _get_tree_branch is a form of open_branch, but it should only ask for
+        # branch opening, not any other network requests.
+        calls = []
+        def open_branch():
+            calls.append("Called")
+            return "a-branch"
+        transport = MemoryTransport()
+        # no requests on the network - catches other api calls being made.
+        client = FakeClient([], transport.base)
+        bzrdir = RemoteBzrDir(transport, _client=client)
+        # patch the open_branch call to record that it was called.
+        bzrdir.open_branch = open_branch
+        self.assertEqual((None, "a-branch"), bzrdir._get_tree_branch())
+        self.assertEqual(["Called"], calls)
+        self.assertEqual([], client._calls)
+
     def test_url_quoting_of_path(self):
         # Relpaths on the wire should not be URL-escaped.  So "~" should be
         # transmitted as "~", not "%7E".

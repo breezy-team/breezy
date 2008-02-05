@@ -153,6 +153,9 @@ IN DEVELOPMENT
       ``Repository.get_data_stream_for_search`` which allows less network
       traffic when requesting data streams over a smart server. (Robert Collins)
 
+    * ``RemoteBzrDir._get_tree_branch`` no longer triggers ``_ensure_real``,
+      removing one round trip on many network operations. (Robert Collins)
+
     * Repository has a new method ``has_revisions`` which signals the presence
       of many revisions by returning a set of the revisions listed which are
       present. This can be done by index queries without reading data for parent
