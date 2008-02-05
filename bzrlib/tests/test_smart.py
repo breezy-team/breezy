@@ -24,6 +24,7 @@ properties.
 Tests for low-level protocol encoding are found in test_smart_transport.
 """
 
+import bz2
 from StringIO import StringIO
 import tempfile
 import tarfile
@@ -37,7 +38,6 @@ from bzrlib.smart.request import (
 import bzrlib.smart.bzrdir
 import bzrlib.smart.branch
 import bzrlib.smart.repository
-from bzrlib.tuned_gzip import bytes_to_gzip
 from bzrlib.util import bencode
 
 
@@ -542,7 +542,7 @@ class TestSmartServerRepositoryGetParentMap(tests.TestCaseWithTransport):
             request.execute(backing.local_abspath(''), 'missing-id'))
         # Note that it returns a body (of '' gzipped).
         self.assertEqual(
-            SuccessfulSmartServerResponse(('ok', ), bytes_to_gzip('')),
+            SuccessfulSmartServerResponse(('ok', ), bz2.compress('')),
             request.do_body('\n\n0\n'))
 
 

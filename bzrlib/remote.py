@@ -17,6 +17,7 @@
 # TODO: At some point, handle upgrades by just passing the whole request
 # across to run on the server.
 
+import bz2
 from cStringIO import StringIO
 
 from bzrlib import (
@@ -42,7 +43,6 @@ from bzrlib.symbol_versioning import (
     )
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter, note
-from bzrlib.tuned_gzip import GzipFile
 
 # Note: RemoteBzrDirFormat is in bzrdir.py
 
@@ -854,8 +854,7 @@ class RemoteRepository(object):
             reponse[1].cancel_read_body()
             raise errors.UnexpectedSmartServerResponse(response[0])
         if response[0][0] == 'ok':
-            coded = GzipFile(mode='rb',
-                fileobj=StringIO(response[1].read_body_bytes())).read()
+            coded = bz2.decompress(response[1].read_body_bytes())
             if coded == '':
                 # no revisions found
                 return {}

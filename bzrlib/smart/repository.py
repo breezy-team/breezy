@@ -16,6 +16,7 @@
 
 """Server-side repository related request implmentations."""
 
+import bz2
 from cStringIO import StringIO
 import os
 import sys
@@ -31,7 +32,6 @@ from bzrlib.smart.request import (
     SuccessfulSmartServerResponse,
     )
 from bzrlib import revision as _mod_revision
-from bzrlib.tuned_gzip import GzipFile, bytes_to_gzip
 
 
 class SmartServerRepositoryRequest(SmartServerRequest):
@@ -169,7 +169,7 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
             lines.append(' '.join((revision, ) + tuple(parents)))
 
         return SuccessfulSmartServerResponse(
-            ('ok', ), bytes_to_gzip('\n'.join(lines)))
+            ('ok', ), bz2.compress('\n'.join(lines)))
 
 
 class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryRequest):
