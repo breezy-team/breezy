@@ -118,6 +118,10 @@ IN DEVELOPMENT
       ``SearchResult`` can be used to recreate the search later, which will
       be useful in reducing network traffic. (Robert Collins)
 
+    * Use convenience function to check whether two repository handles 
+      are referring to the same repository in ``Repository.get_graph``. 
+      (Jelmer Vernooij, #187162)
+
     * Fetching now passes the find_ghosts flag through to the 
       ``InterRepository.missing_revision_ids`` call consistently for all
       repository types. This will enable faster missing revision discovery with
