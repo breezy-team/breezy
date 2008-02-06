@@ -302,19 +302,19 @@ elif 'py2exe' in sys.argv:
             module = 'bzrlib'
         includes.append(module)
 
-    additional_packages =  []
+    additional_packages = set()
     if sys.version.startswith('2.4'):
         # adding elementtree package
-        additional_packages.append('elementtree')
+        additional_packages.add('elementtree')
     elif sys.version.startswith('2.5'):
-        additional_packages.append('xml.etree')
+        additional_packages.add('xml.etree')
     else:
         import warnings
         warnings.warn('Unknown Python version.\n'
                       'Please check setup.py script for compatibility.')
     # email package from std python library use lazy import,
     # so we need to explicitly add all package
-    additional_packages.append('email')
+    additional_packages.add('email')
 
     # text files for help topis
     text_topics = glob.glob('bzrlib/help_topics/en/*.txt')
@@ -331,11 +331,17 @@ elif 'py2exe' in sys.argv:
                 continue
             x.append(os.path.join(root, i))
         if x:
-            target_dir = root[len('bzrlib/'):]
+            target_dir = root[len('bzrlib/'):]  # install to 'plugins/...'
             plugins_files.append((target_dir, x))
+    # find modules for built-in plugins
+    import tools.package_mf
+    mf = tools.package_mf.CustomModuleFinder()
+    mf.run_package('bzrlib/plugins')
+    packs, mods = mf.get_result()
+    additional_packages.update(packs)
 
-    options_list = {"py2exe": {"packages": packages + additional_packages,
-                               "includes": includes,
+    options_list = {"py2exe": {"packages": packages + list(additional_packages),
+                               "includes": includes + mods,
                                "excludes": ["Tkinter", "medusa", "tools"],
                                "dist_dir": "win32_bzr.exe",
                               },
