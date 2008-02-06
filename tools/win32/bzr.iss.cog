@@ -86,7 +86,7 @@ PrivilegesRequired=none
 Source: "*.*"; DestDir: "{app}"; Flags: ignoreversion;
 Source: "lib\*.*"; DestDir: "{app}\lib"; Flags: createallsubdirs ignoreversion recursesubdirs;
 Source: "doc\*.*"; DestDir: "{app}\doc"; Flags: createallsubdirs ignoreversion recursesubdirs;
-Source: "plugins\*.py"; DestDir: "{app}\plugins"; Components: plugins; Flags: createallsubdirs ignoreversion recursesubdirs;
+Source: "plugins\*.*"; DestDir: "{app}\plugins"; Components: plugins; Flags: createallsubdirs ignoreversion recursesubdirs;
 ; [[[cog
 ; try:
 ;     import pycurl

@@ -298,8 +298,8 @@ elif 'py2exe' in sys.argv:
     includes = []
     for i in glob.glob('bzrlib\\*.py'):
         module = i[:-3].replace('\\', '.')
-        if module == 'bzrlib.__init__':
-            module = 'bzrlib'
+        if module.endswith('__init__'):
+            module = module[:-len('__init__')]
         includes.append(module)
 
     additional_packages = set()
@@ -351,7 +351,7 @@ elif 'py2exe' in sys.argv:
                    'tools/win32/bzr_postinstall.py',
                   ],
           zipfile='lib/library.zip',
-          data_files=topics_files+plugins_files,
+          data_files=topics_files + plugins_files,
           )
 
 else:
