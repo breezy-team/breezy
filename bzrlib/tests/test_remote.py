@@ -163,6 +163,16 @@ class FakeMedium(object):
 
     def __init__(self, base):
         self.base = base
+        self.connection = FakeConnection()
+
+
+class FakeConnection(object):
+
+    def __init__(self):
+        self._remote_is_at_least_1_2 = True
+
+    def disconnect(self):
+        pass
 
 
 class TestVfsHas(tests.TestCase):

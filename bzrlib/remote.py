@@ -794,6 +794,13 @@ class RemoteRepository(object):
 
     def _get_parent_map(self, keys):
         """Helper for get_parent_map that performs the RPC."""
+        medium = self._client.get_smart_medium()
+        if not medium._remote_is_at_least_1_2:
+            # We already found out that the server can't understand
+            # Repository.get_revision_graph requests, so just fetch the whole
+            # graph.
+            return self.get_revision_graph()
+
         keys = set(keys)
         if NULL_REVISION in keys:
             keys.discard(NULL_REVISION)
@@ -810,11 +817,14 @@ class RemoteRepository(object):
             verb, path, *keys)
         if self._response_is_unknown_method(response, verb):
             # Server that does not support this method, get the whole graph.
-            response = self._client.call_expecting_body(
-                'Repository.get_revision_graph', path, '')
-            if response[0][0] not in ['ok', 'nosuchrevision']:
-                reponse[1].cancel_read_body()
-                raise errors.UnexpectedSmartServerResponse(response[0])
+            # Worse, we have to force a disconnection, because the server now
+            # doesn't realise it has a body on the wire to consume, so the
+            # only way to recover is to abandon the connection.
+            medium.disconnect()
+            # To avoid having to disconnect repeatedly, we keep track of the
+            # fact the server doesn't understand remote methods added in 1.2.
+            medium._remote_is_at_least_1_2 = False
+            return self.get_revision_graph()
         elif response[0][0] not in ['ok']:
             reponse[1].cancel_read_body()
             raise errors.UnexpectedSmartServerResponse(response[0])
@@ -970,6 +980,10 @@ class RemoteRepository(object):
         return self._real_repository.has_signature_for_revision_id(revision_id)
 
     def get_data_stream_for_search(self, search):
+        medium = self._client.get_smart_medium()
+        if not medium._remote_is_at_least_1_2:
+            self._ensure_real()
+            return self._real_repository.get_data_stream_for_search(search)
         REQUEST_NAME = 'Repository.stream_revisions_chunked'
         path = self.bzrdir._path_for_remote_call(self._client)
         recipe = search.get_recipe()
@@ -980,19 +994,24 @@ class RemoteRepository(object):
         response, protocol = self._client.call_with_body_bytes_expecting_body(
             REQUEST_NAME, (path,), body)
 
+        if self._response_is_unknown_method((response, protocol), REQUEST_NAME):
+            # Server that does not support this method, fall back to VFS.
+            # Worse, we have to force a disconnection, because the server now
+            # doesn't realise it has a body on the wire to consume, so the
+            # only way to recover is to abandon the connection.
+            medium.disconnect()
+            # To avoid having to disconnect repeatedly, we keep track of the
+            # fact the server doesn't understand this remote method.
+            medium._remote_is_at_least_1_2 = False
+            self._ensure_real()
+            return self._real_repository.get_data_stream_for_search(search)
+
         if response == ('ok',):
             return self._deserialise_stream(protocol)
         if response == ('NoSuchRevision', ):
             # We cannot easily identify the revision that is missing in this
             # situation without doing much more network IO. For now, bail.
             raise NoSuchRevision(self, "unknown")
-        elif (response == ('error', "Generic bzr smart protocol error: "
-                "bad request '%s'" % REQUEST_NAME) or
-              response == ('error', "Generic bzr smart protocol error: "
-                "bad request u'%s'" % REQUEST_NAME)):
-            protocol.cancel_read_body()
-            self._ensure_real()
-            return self._real_repository.get_data_stream_for_search(search)
         else:
             raise errors.UnexpectedSmartServerResponse(response)
 
