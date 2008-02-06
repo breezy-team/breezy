@@ -544,7 +544,8 @@ BZR_PLUGIN_PATH  Paths where bzr should look for plugins.
 BZR_HOME         Directory holding .bazaar config dir. Overrides HOME.
 BZR_HOME (Win32) Directory holding bazaar config dir. Overrides APPDATA and HOME.
 BZR_REMOTE_PATH  Full name of remote 'bzr' command (for bzr+ssh:// URLs).
-BZR_LOG          Location of .bzr.log (use /dev/null or NUL to suppress log).
+BZR_LOG          Location of .bzr.log (use '/dev/null' to suppress log).
+BZR_LOG (Win32)  Location of .bzr.log (use 'NUL' to suppress log).
 ================ =================================================================
 """
 
