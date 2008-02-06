@@ -16,6 +16,11 @@ IN DEVELOPMENT
       friendly. Full path of plugins locations will be shown only with
       ``--verbose`` command-line option. (Alexander Belchenko)
 
+    * ``launchpad`` builtin plugin now shipped as separate part in standalone
+      bzr.exe, installed to ``C:\Program Files\Bazaar\plugins`` directory, 
+      and standalone installer allows user to skip installation of this plugin.
+      (Alexander Belchenko)
+
     * ``merge`` now prefers to use the submit branch, but will fall back to
       parent branch.  For many users, this has no effect.  But some users who
       pull and merge on the same branch will notice a change.  This change
@@ -129,6 +134,11 @@ IN DEVELOPMENT
       which will split out ghosts and present parents into two separate sets,
       useful for code which needs to be aware of ghosts (e.g. fetching data
       cares about ghosts during revision selection). (Robert Collins)
+
+    * New module ``tools/package_mf.py`` provide custom module finder for
+      python packages (improves standard python library's modulefinder.py)
+      used by ``setup.py`` script while building standalone bzr.exe.
+      (Alexander Belchenko)
  
     * Record a timestamp against each mutter to the trace file, relative to the
       first import of bzrlib.  (Andrew Bennetts)
