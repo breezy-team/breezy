@@ -802,7 +802,7 @@ class RemoteRepository(object):
         medium = self._client.get_smart_medium()
         if not medium._remote_is_at_least_1_2:
             # We already found out that the server can't understand
-            # Repository.get_revision_graph requests, so just fetch the whole
+            # Repository.get_parent_map requests, so just fetch the whole
             # graph.
             return self.get_revision_graph()
 
