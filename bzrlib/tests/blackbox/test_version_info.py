@@ -134,3 +134,8 @@ class TestVersionInfo(TestCaseWithTransport):
         txt = self.run_bzr('version-info --format python branch')[0]
 
         self.assertContainsRe(txt, 'version_info = {')
+
+    def test_custom_without_template(self):
+        wt = self.make_branch_and_tree('branch')
+        out, err = self.run_bzr('version-info --custom', retcode=3)
+        self.assertContainsRe(err, r'ERROR: No template specified\.')

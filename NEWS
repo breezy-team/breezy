@@ -75,6 +75,9 @@ IN DEVELOPMENT
 
     * Cleanly handle connection errors in smart protocol version two, the same
       way as they are handled by version one.  (Andrew Bennetts)
+
+    * Clearer error when ``version-info --custom`` is used without
+      ``--template`` (Lukáš Lalinský)
       
     * List possible values for BZR_SSH environment variable in env-variables
       help topic. (Alexander Belchenko, #181842)
