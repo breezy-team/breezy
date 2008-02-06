@@ -177,12 +177,6 @@ def open_tracefile(tracefilename=None):
             home = os.path.expanduser('~')
         _bzr_log_filename = os.path.join(home, '.bzr.log')
     else:
-        if sys.platform == 'win32':
-            if tracefilename.lower() == 'nul':
-                return
-        else:
-            if tracefilename == '/dev/null':
-                return
         _bzr_log_filename = tracefilename
 
     _bzr_log_filename = os.path.expanduser(_bzr_log_filename)
