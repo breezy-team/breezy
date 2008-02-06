@@ -275,6 +275,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         elif isinstance(err[1], UnavailableFeature):
             return self.addNotSupported(test, err[1].args[0])
         else:
+            self._cleanupLogFile(test)
             unittest.TestResult.addError(self, test, err)
             self.error_count += 1
             self.report_error(test, err)
@@ -291,6 +292,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         if isinstance(err[1], KnownFailure):
             return self._addKnownFailure(test, err)
         else:
+            self._cleanupLogFile(test)
             unittest.TestResult.addFailure(self, test, err)
             self.failure_count += 1
             self.report_failure(test, err)
@@ -310,6 +312,7 @@ class ExtendedTestResult(unittest._TextTestResult):
                     self._formatTime(benchmark_time),
                     test.id()))
         self.report_success(test)
+        self._cleanupLogFile(test)
         unittest.TestResult.addSuccess(self, test)
 
     def _testConcluded(self, test):
@@ -317,7 +320,7 @@ class ExtendedTestResult(unittest._TextTestResult):
 
         Called regardless of whether it succeded, failed, etc.
         """
-        self._cleanupLogFile(test)
+        pass
 
     def _addKnownFailure(self, test, err):
         self.known_failure_count += 1
@@ -1311,6 +1314,8 @@ class TestCase(unittest.TestCase):
         import bzrlib.trace
         bzrlib.trace._trace_file.flush()
         if self._log_contents:
+            # XXX: this can hardly contain the content flushed above --vila
+            # 20080128
             return self._log_contents
         if self._log_file_name is not None:
             logfile = open(self._log_file_name)

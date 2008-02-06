@@ -1048,7 +1048,7 @@ class TestLimitedRangeRequestServer(http_utils.TestCaseWithWebserver):
         self.assertEqual(l[2], (4096, '0004'))
         self.assertEqual(l[3], (8192, '0008'))
         # The server will refuse to serve the first request (too much ranges),
-        # a second request will succeeds.
+        # a second request will succeed.
         self.assertEqual(2, self.get_readonly_server().GET_request_nb)
 
 
@@ -1064,6 +1064,7 @@ class TestHttpProxyWhiteBox(tests.TestCase):
 
     def tearDown(self):
         self._restore_env()
+        tests.TestCase.tearDown(self)
 
     def _install_env(self, env):
         for name, value in env.iteritems():

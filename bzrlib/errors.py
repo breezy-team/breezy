@@ -267,6 +267,16 @@ class RootMissing(InternalBzrError):
         "record_entry_contents.")
 
 
+class NoPublicBranch(BzrError):
+
+    _fmt = 'There is no public branch set for "%(branch_url)s".'
+
+    def __init__(self, branch):
+        import bzrlib.urlutils as urlutils
+        public_location = urlutils.unescape_for_display(branch.base, 'ascii')
+        BzrError.__init__(self, branch_url=public_location)
+
+
 class NoHelpTopic(BzrError):
 
     _fmt = ("No help could be found for '%(topic)s'. "

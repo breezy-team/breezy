@@ -610,7 +610,8 @@ class cmd_pull(Command):
             else:
                 display_url = urlutils.unescape_for_display(stored_loc,
                         self.outf.encoding)
-                self.outf.write("Using saved location: %s\n" % display_url)
+                if not is_quiet():
+                    self.outf.write("Using saved location: %s\n" % display_url)
                 location = stored_loc
                 location_transport = transport.get_transport(
                     location, possible_transports=possible_transports)
@@ -2874,9 +2875,12 @@ class cmd_merge(Command):
         from bzrlib.diff import show_diff_trees
         tree_merger = merger.make_merger()
         tt = tree_merger.make_preview_transform()
-        result_tree = tt.get_preview_tree()
-        show_diff_trees(merger.this_tree, result_tree, self.outf, old_label='',
-                        new_label='')
+        try:
+            result_tree = tt.get_preview_tree()
+            show_diff_trees(merger.this_tree, result_tree, self.outf,
+                            old_label='', new_label='')
+        finally:
+            tt.finalize()
 
     def _do_merge(self, merger, change_reporter, allow_pending, verified):
         merger.change_reporter = change_reporter
