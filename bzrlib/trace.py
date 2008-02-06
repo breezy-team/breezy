@@ -99,7 +99,7 @@ _bzr_log_filename = None
 
 # The time the first message was written to the trace file, so that we can
 # show relative times since startup.
-_bzr_log_start_time = None
+_bzr_log_start_time = bzrlib._start_time
 
 
 # held in a global for quick reference
@@ -152,16 +152,11 @@ def mutter(fmt, *args):
         out = fmt % tuple(real_args)
     else:
         out = fmt
-    out += '\n'
-    if 'times' in debug.debug_flags:
-        global _bzr_log_start_time
-        if _bzr_log_start_time is None:
-            _bzr_log_start_time = time.time()
-        timestamp = '%0.3f' % (time.time() - _bzr_log_start_time,)
-        out = '%s %s' % (timestamp, out)
+    timestamp = '%0.3f  ' % (time.time() - _bzr_log_start_time,)
+    out = timestamp + out + '\n'
     _trace_file.write(out)
-    # TODO: jam 20051227 Consider flushing the trace file to help debugging
-    #_trace_file.flush()
+    # no need to flush here, the trace file is now linebuffered when it's
+    # opened.
 
 
 def mutter_callsite(stacklevel, fmt, *args):

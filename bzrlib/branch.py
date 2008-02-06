@@ -62,7 +62,7 @@ from bzrlib.symbol_versioning import (deprecated_function,
                                       zero_eight, zero_nine, zero_sixteen,
                                       zero_ninetyone,
                                       )
-from bzrlib.trace import mutter, mutter_callsite, note
+from bzrlib.trace import mutter, mutter_callsite, note, is_quiet
 
 
 BZR_BRANCH_FORMAT_4 = "Bazaar-NG branch, format 0.0.4\n"
@@ -436,12 +436,8 @@ class Branch(object):
         raise errors.UpgradeRequired(self.base)
 
     def last_revision(self):
-        """Return last revision id, or None"""
-        ph = self.revision_history()
-        if ph:
-            return ph[-1]
-        else:
-            return _mod_revision.NULL_REVISION
+        """Return last revision id, or NULL_REVISION."""
+        return self.last_revision_info()[1]
 
     def last_revision_info(self):
         """Return information about the last revision.
@@ -1948,11 +1944,6 @@ class BzrBranch6(BzrBranch5):
         revno = int(revno)
         return revno, revision_id
 
-    def last_revision(self):
-        """Return last revision id, or None"""
-        revision_id = self.last_revision_info()[1]
-        return revision_id
-
     def _write_last_revision_info(self, revno, revision_id):
         """Simply write out the revision id, with no checks.
 
@@ -2129,10 +2120,11 @@ class PullResult(_Result):
         return self.new_revno - self.old_revno
 
     def report(self, to_file):
-        if self.old_revid == self.new_revid:
-            to_file.write('No revisions to pull.\n')
-        else:
-            to_file.write('Now on revision %d.\n' % self.new_revno)
+        if not is_quiet():
+            if self.old_revid == self.new_revid:
+                to_file.write('No revisions to pull.\n')
+            else:
+                to_file.write('Now on revision %d.\n' % self.new_revno)
         self._show_tag_conficts(to_file)
 
 

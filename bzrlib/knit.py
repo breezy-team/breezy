@@ -736,7 +736,9 @@ class KnitVersionedFile(VersionedFile):
         :seealso: get_data_stream
         """
         if format != self.get_format_signature():
-            trace.mutter('incompatible format signature inserting to %r', self)
+            if 'knit' in debug.debug_flags:
+                trace.mutter(
+                    'incompatible format signature inserting to %r', self)
             source = self._knit_from_datastream(
                 (format, data_list, reader_callable))
             self.join(source)
@@ -746,7 +748,7 @@ class KnitVersionedFile(VersionedFile):
             if self.has_version(version_id):
                 # First check: the list of parents.
                 my_parents = self.get_parents_with_ghosts(version_id)
-                if my_parents != parents:
+                if tuple(my_parents) != tuple(parents):
                     # XXX: KnitCorrupt is not quite the right exception here.
                     raise KnitCorrupt(
                         self.filename,

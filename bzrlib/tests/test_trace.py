@@ -21,6 +21,7 @@
 from cStringIO import StringIO
 import errno
 import os
+import re
 import sys
 import tempfile
 
@@ -120,15 +121,20 @@ class TestTrace(TestCase):
         else:
             self.fail("expected error not raised")
 
+    def assertLogStartsWith(self, log, string):
+        """Like assertStartsWith, but skips the log timestamp."""
+        self.assertContainsRe(log,
+            '^\\d+\\.\\d+  ' + re.escape(string))
+
     def test_mutter_callsite_1(self):
         """mutter_callsite can capture 1 level of stack frame."""
         mutter_callsite(1, "foo %s", "a string")
         log = self._get_log(keep_log_file=True)
         # begin with the message
-        self.assertStartsWith(log, 'foo a string\nCalled from:\n')
+        self.assertLogStartsWith(log, 'foo a string\nCalled from:\n')
         # should show two frame: this frame and the one above
         self.assertContainsRe(log,
-            'test_trace\.py", line \d+, in test_mutter_callsite_1\n')
+            'test_trace\\.py", line \\d+, in test_mutter_callsite_1\n')
         # this frame should be the final one
         self.assertEndsWith(log, ' "a string")\n')
 
@@ -137,7 +143,7 @@ class TestTrace(TestCase):
         mutter_callsite(2, "foo %s", "a string")
         log = self._get_log(keep_log_file=True)
         # begin with the message
-        self.assertStartsWith(log, 'foo a string\nCalled from:\n')
+        self.assertLogStartsWith(log, 'foo a string\nCalled from:\n')
         # should show two frame: this frame and the one above
         self.assertContainsRe(log,
             'test_trace.py", line \d+, in test_mutter_callsite_2\n')
