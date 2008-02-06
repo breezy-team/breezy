@@ -382,7 +382,12 @@ class PlugIn(object):
         if getattr(self.module, '__path__', None) is not None:
             return os.path.abspath(self.module.__path__[0])
         elif getattr(self.module, '__file__', None) is not None:
-            return os.path.abspath(self.module.__file__)
+            path = os.path.abspath(self.module.__file__)
+            if path[-4:] in ('.pyc', '.pyo'):
+                pypath = path[:-4] + '.py'
+                if os.path.isfile(pypath):
+                    path = pypath
+            return path
         else:
             return repr(self.module)
 

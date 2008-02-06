@@ -358,8 +358,10 @@ class SmartClientMediumRequest(object):
             new_char = self.read_bytes(1)
             line += new_char
             if new_char == '':
-                raise errors.SmartProtocolError(
-                    'unexpected end of file reading from server')
+                # end of file encountered reading from server
+                raise errors.ConnectionReset(
+                    "please check connectivity and permissions",
+                    "(and try -Dhpss if further diagnosis is required)")
         return line
 
 
