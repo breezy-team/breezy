@@ -23,6 +23,7 @@ the object given a transport that supports smartserver rpc operations.
 These tests correspond to tests.test_smart, which exercises the server side.
 """
 
+import bz2
 from cStringIO import StringIO
 
 from bzrlib import (
@@ -625,7 +626,7 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         r1 = u'\u0e33'.encode('utf8')
         r2 = u'\u0dab'.encode('utf8')
         lines = [' '.join([r2, r1]), r1]
-        encoded_body = '\n'.join(lines)
+        encoded_body = bz2.compress('\n'.join(lines))
         responses = [(('ok', ), encoded_body), (('ok', ), encoded_body)]
 
         transport_path = 'quack'
@@ -641,8 +642,8 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         parents = graph.get_parent_map([r1])
         self.assertEqual({r1: (NULL_REVISION,)}, parents)
         self.assertEqual(
-            [('call_expecting_body', 'Repository.get_parent_map',
-             ('quack/', r2))],
+            [('call_with_body_bytes_expecting_body',
+              'Repository.get_parent_map', ('quack/', r2), '\n\n0')],
             client._calls)
         repo.unlock()
         # now we call again, and it should use the second response.
@@ -651,10 +652,10 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         parents = graph.get_parent_map([r1])
         self.assertEqual({r1: (NULL_REVISION,)}, parents)
         self.assertEqual(
-            [('call_expecting_body', 'Repository.get_parent_map',
-              ('quack/', r2)),
-             ('call_expecting_body', 'Repository.get_parent_map',
-              ('quack/', r1))
+            [('call_with_body_bytes_expecting_body',
+              'Repository.get_parent_map', ('quack/', r2), '\n\n0'),
+             ('call_with_body_bytes_expecting_body',
+              'Repository.get_parent_map', ('quack/', r1), '\n\n0'),
             ],
             client._calls)
         repo.unlock()

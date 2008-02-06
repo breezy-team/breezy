@@ -17,6 +17,7 @@
 # TODO: At some point, handle upgrades by just passing the whole request
 # across to run on the server.
 
+import bz2
 from cStringIO import StringIO
 
 from bzrlib import (
@@ -272,6 +273,8 @@ class RemoteRepository(object):
         self._leave_lock = False
         # A cache of looked up revision parent data; reset at unlock time.
         self._parents_map = None
+        if 'hpss' in debug.debug_flags:
+            self._requested_parents = None
         # For tests:
         # These depend on the actual remote format, so force them off for
         # maximum compatibility. XXX: In future these should depend on the
@@ -476,6 +479,8 @@ class RemoteRepository(object):
             self._lock_mode = 'r'
             self._lock_count = 1
             self._parents_map = {}
+            if 'hpss' in debug.debug_flags:
+                self._requested_parents = set()
             if self._real_repository is not None:
                 self._real_repository.lock_read()
         else:
@@ -514,6 +519,8 @@ class RemoteRepository(object):
             self._lock_mode = 'w'
             self._lock_count = 1
             self._parents_map = {}
+            if 'hpss' in debug.debug_flags:
+                self._requested_parents = set()
         elif self._lock_mode == 'r':
             raise errors.ReadOnlyError(self)
         else:
@@ -574,6 +581,8 @@ class RemoteRepository(object):
         if self._lock_count > 0:
             return
         self._parents_map = None
+        if 'hpss' in debug.debug_flags:
+            self._requested_parents = None
         old_mode = self._lock_mode
         self._lock_mode = None
         try:
@@ -776,7 +785,12 @@ class RemoteRepository(object):
                         len(set(self._parents_map).intersection(parent_map)),
                         len(parent_map))
             self._parents_map.update(parent_map)
-        return dict((k, ancestry[k]) for k in keys if k in ancestry)
+        present_keys = [k for k in keys if k in ancestry]
+        if 'hpss' in debug.debug_flags:
+            self._requested_parents.update(present_keys)
+            mutter('Current RemoteRepository graph hit rate: %d%%',
+                100.0 * len(self._requested_parents) / len(self._parents_map))
+        return dict((k, ancestry[k]) for k in present_keys)
 
     def _response_is_unknown_method(self, response, verb):
         """Return True if response is an unknonwn method response to verb.
@@ -806,12 +820,33 @@ class RemoteRepository(object):
                 return found_parents
         else:
             found_parents = {}
+        # TODO(Needs analysis): We could assume that the keys being requested
+        # from get_parent_map are in a breadth first search, so typically they
+        # will all be depth N from some common parent, and we don't have to
+        # have the server iterate from the root parent, but rather from the
+        # keys we're searching; and just tell the server the keyspace we
+        # already have; but this may be more traffic again.
+
+        # Transform self._parents_map into a search request recipe.
+        # TODO: Manage this incrementally to avoid covering the same path
+        # repeatedly. (The server will have to on each request, but the less
+        # work done the better).
+        start_set = set(self._parents_map)
+        result_parents = set()
+        for parents in self._parents_map.itervalues():
+            result_parents.update(parents)
+        stop_keys = result_parents.difference(start_set)
+        included_keys = start_set.intersection(result_parents)
+        start_set.difference_update(included_keys)
+        recipe = (start_set, stop_keys, len(self._parents_map))
+        body = self._serialise_search_recipe(recipe)
         path = self.bzrdir._path_for_remote_call(self._client)
         for key in keys:
             assert type(key) is str
         verb = 'Repository.get_parent_map'
-        response = self._client.call_expecting_body(
-            verb, path, *keys)
+        args = (path,) + tuple(keys)
+        response = self._client.call_with_body_bytes_expecting_body(
+            verb, args, self._serialise_search_recipe(recipe))
         if self._response_is_unknown_method(response, verb):
             # Server that does not support this method, get the whole graph.
             response = self._client.call_expecting_body(
@@ -823,7 +858,7 @@ class RemoteRepository(object):
             reponse[1].cancel_read_body()
             raise errors.UnexpectedSmartServerResponse(response[0])
         if response[0][0] == 'ok':
-            coded = response[1].read_body_bytes()
+            coded = bz2.decompress(response[1].read_body_bytes())
             if coded == '':
                 # no revisions found
                 return {}
@@ -976,11 +1011,7 @@ class RemoteRepository(object):
     def get_data_stream_for_search(self, search):
         REQUEST_NAME = 'Repository.stream_revisions_chunked'
         path = self.bzrdir._path_for_remote_call(self._client)
-        recipe = search.get_recipe()
-        start_keys = ' '.join(recipe[0])
-        stop_keys = ' '.join(recipe[1])
-        count = str(recipe[2])
-        body = '\n'.join((start_keys, stop_keys, count))
+        body = self._serialise_search_recipe(search.get_recipe())
         response, protocol = self._client.call_with_body_bytes_expecting_body(
             REQUEST_NAME, (path,), body)
 
@@ -1040,6 +1071,17 @@ class RemoteRepository(object):
 
     def _make_parents_provider(self):
         return self
+
+    def _serialise_search_recipe(self, recipe):
+        """Serialise a graph search recipe.
+
+        :param recipe: A search recipe (start, stop, count).
+        :return: Serialised bytes.
+        """
+        start_keys = ' '.join(recipe[0])
+        stop_keys = ' '.join(recipe[1])
+        count = str(recipe[2])
+        return '\n'.join((start_keys, stop_keys, count))
 
 
 class RemoteBranchLockableFiles(LockableFiles):
