@@ -24,6 +24,7 @@ from bzrlib.progress import (
         TTYProgressBar,
         DotsProgressBar,
         ProgressBarStack,
+        InstrumentedProgress,
         )
 from bzrlib.tests import TestCase
 
@@ -35,18 +36,6 @@ class FakeStack:
     def top(self):
         return self.__top
 
-class InstrumentedProgress(TTYProgressBar):
-    """TTYProgress variant that tracks outcomes"""
-
-    def __init__(self, *args, **kwargs):
-        self.always_throttled = True
-        TTYProgressBar.__init__(self, *args, **kwargs)
-
-    def throttle(self, old_message):
-        result = TTYProgressBar.throttle(self, old_message)
-        if result is False:
-            self.always_throttled = False
-        
 
 class _TTYStringIO(StringIO):
     """A helper class which makes a StringIO look like a terminal"""

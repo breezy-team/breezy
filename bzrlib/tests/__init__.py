@@ -42,8 +42,8 @@ import stat
 from subprocess import Popen, PIPE
 import sys
 import tempfile
-import unittest
 import time
+import unittest
 import warnings
 
 
@@ -77,9 +77,13 @@ from bzrlib.revision import common_ancestor
 import bzrlib.store
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
+    DEPRECATED_PARAMETER,
+    deprecated_function,
     deprecated_method,
+    deprecated_passed,
     zero_ninetyone,
     zero_ninetytwo,
+    one_zero,
     )
 import bzrlib.trace
 from bzrlib.transport import get_transport
@@ -89,13 +93,13 @@ from bzrlib.transport.memory import MemoryServer
 from bzrlib.transport.readonly import ReadonlyServer
 from bzrlib.trace import mutter, note
 from bzrlib.tests import TestUtil
-from bzrlib.tests.HttpServer import HttpServer
+from bzrlib.tests.http_server import HttpServer
 from bzrlib.tests.TestUtil import (
                           TestSuite,
                           TestLoader,
                           )
-from bzrlib.tests.EncodingAdapter import EncodingTestAdapter
 from bzrlib.tests.treeshape import build_tree_contents
+import bzrlib.version_info_formats.format_custom
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
 
 # Mark this python module as being part of the implementation
@@ -116,6 +120,7 @@ MODULES_TO_DOCTEST = [
         bzrlib.merge3,
         bzrlib.option,
         bzrlib.store,
+        bzrlib.version_info_formats.format_custom,
         # quoted to avoid module-loading circularity
         'bzrlib.tests',
         ]
@@ -270,6 +275,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         elif isinstance(err[1], UnavailableFeature):
             return self.addNotSupported(test, err[1].args[0])
         else:
+            self._cleanupLogFile(test)
             unittest.TestResult.addError(self, test, err)
             self.error_count += 1
             self.report_error(test, err)
@@ -286,6 +292,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         if isinstance(err[1], KnownFailure):
             return self._addKnownFailure(test, err)
         else:
+            self._cleanupLogFile(test)
             unittest.TestResult.addFailure(self, test, err)
             self.failure_count += 1
             self.report_failure(test, err)
@@ -305,6 +312,7 @@ class ExtendedTestResult(unittest._TextTestResult):
                     self._formatTime(benchmark_time),
                     test.id()))
         self.report_success(test)
+        self._cleanupLogFile(test)
         unittest.TestResult.addSuccess(self, test)
 
     def _testConcluded(self, test):
@@ -312,7 +320,7 @@ class ExtendedTestResult(unittest._TextTestResult):
 
         Called regardless of whether it succeded, failed, etc.
         """
-        self._cleanupLogFile(test)
+        pass
 
     def _addKnownFailure(self, test, err):
         self.known_failure_count += 1
@@ -1305,6 +1313,8 @@ class TestCase(unittest.TestCase):
         import bzrlib.trace
         bzrlib.trace._trace_file.flush()
         if self._log_contents:
+            # XXX: this can hardly contain the content flushed above --vila
+            # 20080128
             return self._log_contents
         if self._log_file_name is not None:
             logfile = open(self._log_file_name)
@@ -1714,8 +1724,8 @@ class TestCaseWithMemoryTransport(TestCase):
     _TEST_NAME = 'test'
 
     def __init__(self, methodName='runTest'):
-        # allow test parameterisation after test construction and before test
-        # execution. Variables that the parameteriser sets need to be 
+        # allow test parameterization after test construction and before test
+        # execution. Variables that the parameterizer sets need to be 
         # ones that are not set by setUp, or setUp will trash them.
         super(TestCaseWithMemoryTransport, self).__init__(methodName)
         self.vfs_transport_factory = default_transport
@@ -2046,6 +2056,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
 
         This doesn't add anything to a branch.
 
+        :type shape:    list or tuple.
         :param line_endings: Either 'binary' or 'native'
             in binary mode, exact contents are written in native mode, the
             line endings match the default platform endings.
@@ -2053,6 +2064,9 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
             If the transport is readonly or None, "." is opened automatically.
         :return: None
         """
+        if type(shape) not in (list, tuple):
+            raise AssertionError("Parameter 'shape' should be "
+                "a list or a tuple. Got %r instead" % (shape,))
         # It's OK to just create them using forward slashes on windows.
         if transport is None or transport.is_readonly():
             transport = get_transport(".")
@@ -2227,51 +2241,208 @@ class ChrootedTestCase(TestCaseWithTransport):
             self.transport_readonly_server = HttpServer
 
 
-def filter_suite_by_re(suite, pattern, exclude_pattern=None,
-                       random_order=False):
+def condition_id_re(pattern):
+    """Create a condition filter which performs a re check on a test's id.
+    
+    :param pattern: A regular expression string.
+    :return: A callable that returns True if the re matches.
+    """
+    filter_re = re.compile(pattern)
+    def condition(test):
+        test_id = test.id()
+        return filter_re.search(test_id)
+    return condition
+
+
+def condition_isinstance(klass_or_klass_list):
+    """Create a condition filter which returns isinstance(param, klass).
+    
+    :return: A callable which when called with one parameter obj return the
+        result of isinstance(obj, klass_or_klass_list).
+    """
+    def condition(obj):
+        return isinstance(obj, klass_or_klass_list)
+    return condition
+
+
+def condition_id_in_list(id_list):
+    """Create a condition filter which verify that test's id in a list.
+    
+    :param name: A TestIdList object.
+    :return: A callable that returns True if the test's id appears in the list.
+    """
+    def condition(test):
+        return id_list.test_in(test.id())
+    return condition
+
+
+def exclude_tests_by_condition(suite, condition):
+    """Create a test suite which excludes some tests from suite.
+
+    :param suite: The suite to get tests from.
+    :param condition: A callable whose result evaluates True when called with a
+        test case which should be excluded from the result.
+    :return: A suite which contains the tests found in suite that fail
+        condition.
+    """
+    result = []
+    for test in iter_suite_tests(suite):
+        if not condition(test):
+            result.append(test)
+    return TestUtil.TestSuite(result)
+
+
+def filter_suite_by_condition(suite, condition):
+    """Create a test suite by filtering another one.
+    
+    :param suite: The source suite.
+    :param condition: A callable whose result evaluates True when called with a
+        test case which should be included in the result.
+    :return: A suite which contains the tests found in suite that pass
+        condition.
+    """ 
+    result = []
+    for test in iter_suite_tests(suite):
+        if condition(test):
+            result.append(test)
+    return TestUtil.TestSuite(result)
+
+
+def filter_suite_by_re(suite, pattern, exclude_pattern=DEPRECATED_PARAMETER,
+                       random_order=DEPRECATED_PARAMETER):
     """Create a test suite by filtering another one.
     
     :param suite:           the source suite
     :param pattern:         pattern that names must match
-    :param exclude_pattern: pattern that names must not match, if any
-    :param random_order:    if True, tests in the new suite will be put in
-                            random order
+    :param exclude_pattern: A pattern that names must not match. This parameter
+        is deprecated as of bzrlib 1.0. Please use the separate function
+        exclude_tests_by_re instead.
+    :param random_order:    If True, tests in the new suite will be put in
+        random order. This parameter is deprecated as of bzrlib 1.0. Please
+        use the separate function randomize_suite instead.
     :returns: the newly created suite
     """ 
-    return sort_suite_by_re(suite, pattern, exclude_pattern,
-        random_order, False)
+    if deprecated_passed(exclude_pattern):
+        symbol_versioning.warn(
+            one_zero % "passing exclude_pattern to filter_suite_by_re",
+                DeprecationWarning, stacklevel=2)
+        if exclude_pattern is not None:
+            suite = exclude_tests_by_re(suite, exclude_pattern)
+    condition = condition_id_re(pattern)
+    result_suite = filter_suite_by_condition(suite, condition)
+    if deprecated_passed(random_order):
+        symbol_versioning.warn(
+            one_zero % "passing random_order to filter_suite_by_re",
+                DeprecationWarning, stacklevel=2)
+        if random_order:
+            result_suite = randomize_suite(result_suite)
+    return result_suite
 
 
+def filter_suite_by_id_list(suite, test_id_list):
+    """Create a test suite by filtering another one.
+
+    :param suite: The source suite.
+    :param test_id_list: A list of the test ids to keep as strings.
+    :returns: the newly created suite
+    """
+    condition = condition_id_in_list(test_id_list)
+    result_suite = filter_suite_by_condition(suite, condition)
+    return result_suite
+
+
+def exclude_tests_by_re(suite, pattern):
+    """Create a test suite which excludes some tests from suite.
+
+    :param suite: The suite to get tests from.
+    :param pattern: A regular expression string. Test ids that match this
+        pattern will be excluded from the result.
+    :return: A TestSuite that contains all the tests from suite without the
+        tests that matched pattern. The order of tests is the same as it was in
+        suite.
+    """
+    return exclude_tests_by_condition(suite, condition_id_re(pattern))
+
+
+def preserve_input(something):
+    """A helper for performing test suite transformation chains.
+
+    :param something: Anything you want to preserve.
+    :return: Something.
+    """
+    return something
+
+
+def randomize_suite(suite):
+    """Return a new TestSuite with suite's tests in random order.
+    
+    The tests in the input suite are flattened into a single suite in order to
+    accomplish this. Any nested TestSuites are removed to provide global
+    randomness.
+    """
+    tests = list(iter_suite_tests(suite))
+    random.shuffle(tests)
+    return TestUtil.TestSuite(tests)
+
+
+@deprecated_function(one_zero)
 def sort_suite_by_re(suite, pattern, exclude_pattern=None,
                      random_order=False, append_rest=True):
-    """Create a test suite by sorting another one.
+    """DEPRECATED: Create a test suite by sorting another one.
+
+    This method has been decomposed into separate helper methods that should be
+    called directly:
+     - filter_suite_by_re
+     - exclude_tests_by_re
+     - randomize_suite
+     - split_suite_by_re
     
     :param suite:           the source suite
     :param pattern:         pattern that names must match in order to go
                             first in the new suite
     :param exclude_pattern: pattern that names must not match, if any
     :param random_order:    if True, tests in the new suite will be put in
-                            random order
+                            random order (with all tests matching pattern
+                            first).
     :param append_rest:     if False, pattern is a strict filter and not
                             just an ordering directive
     :returns: the newly created suite
     """ 
-    first = []
-    second = []
-    filter_re = re.compile(pattern)
     if exclude_pattern is not None:
-        exclude_re = re.compile(exclude_pattern)
+        suite = exclude_tests_by_re(suite, exclude_pattern)
+    if random_order:
+        order_changer = randomize_suite
+    else:
+        order_changer = preserve_input
+    if append_rest:
+        suites = map(order_changer, split_suite_by_re(suite, pattern))
+        return TestUtil.TestSuite(suites)
+    else:
+        return order_changer(filter_suite_by_re(suite, pattern))
+
+
+def split_suite_by_re(suite, pattern):
+    """Split a test suite into two by a regular expression.
+    
+    :param suite: The suite to split.
+    :param pattern: A regular expression string. Test ids that match this
+        pattern will be in the first test suite returned, and the others in the
+        second test suite returned.
+    :return: A tuple of two test suites, where the first contains tests from
+        suite matching pattern, and the second contains the remainder from
+        suite. The order within each output suite is the same as it was in
+        suite.
+    """ 
+    matched = []
+    did_not_match = []
+    filter_re = re.compile(pattern)
     for test in iter_suite_tests(suite):
         test_id = test.id()
-        if exclude_pattern is None or not exclude_re.search(test_id):
-            if filter_re.search(test_id):
-                first.append(test)
-            elif append_rest:
-                second.append(test)
-    if random_order:
-        random.shuffle(first)
-        random.shuffle(second)
-    return TestUtil.TestSuite(first + second)
+        if filter_re.search(test_id):
+            matched.append(test)
+        else:
+            did_not_match.append(test)
+    return TestUtil.TestSuite(matched), TestUtil.TestSuite(did_not_match)
 
 
 def run_suite(suite, name='test', verbose=False, pattern=".*",
@@ -2281,8 +2452,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
               list_only=False,
               random_seed=None,
               exclude_pattern=None,
-              strict=False,
-              ):
+              strict=False):
     TestCase._gather_lsprof_in_benchmarks = lsprof_timed
     if verbose:
         verbosity = 2
@@ -2312,13 +2482,19 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
             (random_seed))
         random.seed(random_seed)
     # Customise the list of tests if requested
-    if pattern != '.*' or exclude_pattern is not None or random_order:
+    if exclude_pattern is not None:
+        suite = exclude_tests_by_re(suite, exclude_pattern)
+    if random_order:
+        order_changer = randomize_suite
+    else:
+        order_changer = preserve_input
+    if pattern != '.*' or random_order:
         if matching_tests_first:
-            suite = sort_suite_by_re(suite, pattern, exclude_pattern,
-                random_order)
+            suites = map(order_changer, split_suite_by_re(suite, pattern))
+            suite = TestUtil.TestSuite(suites)
         else:
-            suite = filter_suite_by_re(suite, pattern, exclude_pattern,
-                random_order)
+            suite = order_changer(filter_suite_by_re(suite, pattern))
+
     result = runner.run(suite)
 
     if strict:
@@ -2337,6 +2513,7 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              random_seed=None,
              exclude_pattern=None,
              strict=False,
+             load_list=None,
              ):
     """Run the whole test suite under the enhanced runner"""
     # XXX: Very ugly way to do this...
@@ -2351,8 +2528,12 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
     old_transport = default_transport
     default_transport = transport
     try:
+        if load_list is None:
+            keep_only = None
+        else:
+            keep_only = load_test_id_list(load_list)
         if test_suite_factory is None:
-            suite = test_suite()
+            suite = test_suite(keep_only)
         else:
             suite = test_suite_factory()
         return run_suite(suite, 'testbzr', verbose=verbose, pattern=pattern,
@@ -2369,9 +2550,78 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
         default_transport = old_transport
 
 
-def test_suite():
+def load_test_id_list(file_name):
+    """Load a test id list from a text file.
+
+    The format is one test id by line.  No special care is taken to impose
+    strict rules, these test ids are used to filter the test suite so a test id
+    that do not match an existing test will do no harm. This allows user to add
+    comments, leave blank lines, etc.
+    """
+    test_list = []
+    try:
+        ftest = open(file_name, 'rt')
+    except IOError, e:
+        if e.errno != errno.ENOENT:
+            raise
+        else:
+            raise errors.NoSuchFile(file_name)
+
+    for test_name in ftest.readlines():
+        test_list.append(test_name.strip())
+    ftest.close()
+    return test_list
+
+
+class TestIdList(object):
+    """Test id list to filter a test suite.
+
+    Relying on the assumption that test ids are built as:
+    <module>[.<class>.<method>][(<param>+)], <module> being in python dotted
+    notation, this class offers methods to :
+    - avoid building a test suite for modules not refered to in the test list,
+    - keep only the tests listed from the module test suite.
+    """
+
+    def __init__(self, test_id_list):
+        # When a test suite needs to be filtered against us we compare test ids
+        # for equality, so a simple dict offers a quick and simple solution.
+        self.tests = dict().fromkeys(test_id_list, True)
+
+        # While unittest.TestCase have ids like:
+        # <module>.<class>.<method>[(<param+)],
+        # doctest.DocTestCase can have ids like:
+        # <module>
+        # <module>.<class>
+        # <module>.<function>
+        # <module>.<class>.<method>
+
+        # Since we can't predict a test class from its name only, we settle on
+        # a simple constraint: a test id always begins with its module name.
+
+        modules = {}
+        for test_id in test_id_list:
+            parts = test_id.split('.')
+            mod_name = parts.pop(0)
+            modules[mod_name] = True
+            for part in parts:
+                mod_name += '.' + part
+                modules[mod_name] = True
+        self.modules = modules
+
+    def is_module_name_used(self, module_name):
+        """Is there tests for the module or one of its sub modules."""
+        return self.modules.has_key(module_name)
+
+    def test_in(self, test_id):
+        return self.tests.has_key(test_id)
+
+
+def test_suite(keep_only=None):
     """Build and return TestSuite for the whole of bzrlib.
-    
+
+    :param keep_only: A list of test ids limiting the suite returned.
+
     This function can be replaced if you need to change the default test
     suite on a global basis, but it is not encouraged.
     """
@@ -2416,6 +2666,7 @@ def test_suite():
                    'bzrlib.tests.test_help',
                    'bzrlib.tests.test_hooks',
                    'bzrlib.tests.test_http',
+                   'bzrlib.tests.test_http_implementations',
                    'bzrlib.tests.test_http_response',
                    'bzrlib.tests.test_https_ca_bundle',
                    'bzrlib.tests.test_identitymap',
@@ -2509,26 +2760,66 @@ def test_suite():
         ]
     suite = TestUtil.TestSuite()
     loader = TestUtil.TestLoader()
-    suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
+
+    if keep_only is not None:
+        id_filter = TestIdList(keep_only)
+
+    # modules building their suite with loadTestsFromModuleNames
+    if keep_only is None:
+        suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
+    else:
+        for mod in [m for m in testmod_names
+                    if id_filter.is_module_name_used(m)]:
+            mod_suite = loader.loadTestsFromModuleNames([mod])
+            mod_suite = filter_suite_by_id_list(mod_suite, id_filter)
+            suite.addTest(mod_suite)
+
+    # modules adapted for transport implementations
     from bzrlib.tests.test_transport_implementations import TransportTestProviderAdapter
     adapter = TransportTestProviderAdapter()
-    adapt_modules(test_transport_implementations, adapter, loader, suite)
-    adapt_tests(
-        ["bzrlib.tests.test_msgeditor.MsgEditorTest."
-         "test__create_temp_file_with_commit_template_in_unicode_dir"],
-        EncodingTestAdapter(), loader, suite)
-    for package in packages_to_test():
-        suite.addTest(package.test_suite())
-    for m in MODULES_TO_TEST:
-        suite.addTest(loader.loadTestsFromModule(m))
-    for m in MODULES_TO_DOCTEST:
+    if keep_only is None:
+        adapt_modules(test_transport_implementations, adapter, loader, suite)
+    else:
+        for mod in [m for m in test_transport_implementations
+                    if id_filter.is_module_name_used(m)]:
+            mod_suite = TestUtil.TestSuite()
+            adapt_modules([mod], adapter, loader, mod_suite)
+            mod_suite = filter_suite_by_id_list(mod_suite, id_filter)
+            suite.addTest(mod_suite)
+
+    # modules defining their own test_suite()
+    for package in [p for p in packages_to_test()
+                    if (keep_only is None
+                        or id_filter.is_module_name_used(p.__name__))]:
+        pack_suite = package.test_suite()
+        if keep_only is not None:
+            pack_suite = filter_suite_by_id_list(pack_suite, id_filter)
+        suite.addTest(pack_suite)
+
+    # XXX: MODULES_TO_TEST should be obsoleted ?
+    for mod in [m for m in MODULES_TO_TEST
+                if keep_only is None or id_filter.is_module_name_used(m)]:
+        mod_suite = loader.loadTestsFromModule(mod)
+        if keep_only is not None:
+            mod_suite = filter_suite_by_id_list(mod_suite, id_filter)
+        suite.addTest(mod_suite)
+
+    for mod in MODULES_TO_DOCTEST:
         try:
-            suite.addTest(doctest.DocTestSuite(m))
+            doc_suite = doctest.DocTestSuite(mod)
         except ValueError, e:
-            print '**failed to get doctest for: %s\n%s' %(m,e)
+            print '**failed to get doctest for: %s\n%s' % (mod, e)
             raise
+        if keep_only is not None:
+            # DocTests may use ids which doesn't contain the module name
+            doc_suite = filter_suite_by_id_list(doc_suite, id_filter)
+        suite.addTest(doc_suite)
+
     default_encoding = sys.getdefaultencoding()
-    for name, plugin in bzrlib.plugin.plugins().items():
+    for name, plugin in  [(n, p) for (n, p) in bzrlib.plugin.plugins().items()
+                          if (keep_only is None
+                              or id_filter.is_module_name_used(
+                p.module.__name__))]:
         try:
             plugin_suite = plugin.test_suite()
         except ImportError, e:
@@ -2536,6 +2827,9 @@ def test_suite():
                 'Unable to test plugin "%s": %s', name, e)
         else:
             if plugin_suite is not None:
+                if keep_only is not None:
+                    plugin_suite = filter_suite_by_id_list(plugin_suite,
+                                                           id_filter)
                 suite.addTest(plugin_suite)
         if default_encoding != sys.getdefaultencoding():
             bzrlib.trace.warning(
@@ -2767,3 +3061,29 @@ class _FTPServerFeature(Feature):
         return 'FTPServer'
 
 FTPServerFeature = _FTPServerFeature()
+
+
+class _CaseInsensitiveFilesystemFeature(Feature):
+    """Check if underlined filesystem is case-insensitive
+    (e.g. on Windows, Cygwin, MacOS)
+    """
+
+    def _probe(self):
+        if TestCaseWithMemoryTransport.TEST_ROOT is None:
+            root = osutils.mkdtemp(prefix='testbzr-', suffix='.tmp')
+            TestCaseWithMemoryTransport.TEST_ROOT = root
+        else:
+            root = TestCaseWithMemoryTransport.TEST_ROOT
+        tdir = osutils.mkdtemp(prefix='case-sensitive-probe-', suffix='',
+            dir=root)
+        name_a = osutils.pathjoin(tdir, 'a')
+        name_A = osutils.pathjoin(tdir, 'A')
+        os.mkdir(name_a)
+        result = osutils.isdir(name_A)
+        _rmtree_temp_dir(tdir)
+        return result
+
+    def feature_name(self):
+        return 'case-insensitive filesystem'
+
+CaseInsensitiveFilesystemFeature = _CaseInsensitiveFilesystemFeature()

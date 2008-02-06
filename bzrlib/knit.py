@@ -96,7 +96,6 @@ from bzrlib.errors import (
     KnitError,
     InvalidRevisionId,
     KnitCorrupt,
-    KnitDataStreamIncompatible,
     KnitHeaderError,
     RevisionNotPresent,
     RevisionAlreadyPresent,
@@ -576,7 +575,11 @@ class KnitVersionedFile(VersionedFile):
         """Get a data stream for the specified versions.
 
         Versions may be returned in any order, not necessarily the order
-        specified.
+        specified.  They are returned in a partial order by compression
+        parent, so that the deltas can be applied as the data stream is
+        inserted; however note that compression parents will not be sent
+        unless they were specifically requested, as the client may already
+        have them.
 
         :param required_versions: The exact set of versions to be extracted.
             Unlike some other knit methods, this is not used to generate a
@@ -585,46 +588,62 @@ class KnitVersionedFile(VersionedFile):
         :returns: format_signature, list of (version, options, length, parents),
             reader_callable.
         """
-        if not isinstance(required_versions, set):
-            required_versions = set(required_versions)
-        # we don't care about inclusions, the caller cares.
-        # but we need to setup a list of records to visit.
+        required_version_set = frozenset(required_versions)
+        version_index = {}
+        # list of revisions that can just be sent without waiting for their
+        # compression parent
+        ready_to_send = []
+        # map from revision to the children based on it
+        deferred = {}
+        # first, read all relevant index data, enough to sort into the right
+        # order to return
         for version_id in required_versions:
-            if not self.has_version(version_id):
-                raise RevisionNotPresent(version_id, self.filename)
-        # Pick the desired versions out of the index in oldest-to-newest order
-        version_list = []
-        for version_id in self.versions():
-            if version_id in required_versions:
-                version_list.append(version_id)
-
-        # create the list of version information for the result
-        copy_queue_records = []
-        copy_set = set()
-        result_version_list = []
-        for version_id in version_list:
             options = self._index.get_options(version_id)
             parents = self._index.get_parents_with_ghosts(version_id)
             index_memo = self._index.get_position(version_id)
+            version_index[version_id] = (index_memo, options, parents)
+            if ('line-delta' in options
+                and parents[0] in required_version_set):
+                # must wait until the parent has been sent
+                deferred.setdefault(parents[0], []). \
+                    append(version_id)
+            else:
+                # either a fulltext, or a delta whose parent the client did
+                # not ask for and presumably already has
+                ready_to_send.append(version_id)
+        # build a list of results to return, plus instructions for data to
+        # read from the file
+        copy_queue_records = []
+        temp_version_list = []
+        while ready_to_send:
+            # XXX: pushing and popping lists may be a bit inefficient
+            version_id = ready_to_send.pop(0)
+            (index_memo, options, parents) = version_index[version_id]
             copy_queue_records.append((version_id, index_memo))
             none, data_pos, data_size = index_memo
-            copy_set.add(version_id)
-            # version, options, length, parents
-            result_version_list.append((version_id, options, data_size,
+            temp_version_list.append((version_id, options, data_size,
                 parents))
-
-        # Read the compressed record data.
-        # XXX:
-        # From here down to the return should really be logic in the returned
-        # callable -- in a class that adapts read_records_iter_raw to read
-        # requests.
+            if version_id in deferred:
+                # now we can send all the children of this revision - we could
+                # put them in anywhere, but we hope that sending them soon
+                # after the fulltext will give good locality in the receiver
+                ready_to_send[:0] = deferred.pop(version_id)
+        assert len(deferred) == 0, \
+            "Still have compressed child versions waiting to be sent"
+        # XXX: The stream format is such that we cannot stream it - we have to
+        # know the length of all the data a-priori.
         raw_datum = []
+        result_version_list = []
         for (version_id, raw_data), \
             (version_id2, options, _, parents) in \
             izip(self._data.read_records_iter_raw(copy_queue_records),
-                 result_version_list):
-            assert version_id == version_id2, 'logic error, inconsistent results'
+                 temp_version_list):
+            assert version_id == version_id2, \
+                'logic error, inconsistent results'
             raw_datum.append(raw_data)
+            result_version_list.append(
+                (version_id, options, len(raw_data), parents))
+        # provide a callback to get data incrementally.
         pseudo_file = StringIO(''.join(raw_datum))
         def read(length):
             if length is None:
@@ -717,15 +736,19 @@ class KnitVersionedFile(VersionedFile):
         :seealso: get_data_stream
         """
         if format != self.get_format_signature():
-            trace.mutter('incompatible format signature inserting to %r', self)
-            raise KnitDataStreamIncompatible(
-                format, self.get_format_signature())
+            if 'knit' in debug.debug_flags:
+                trace.mutter(
+                    'incompatible format signature inserting to %r', self)
+            source = self._knit_from_datastream(
+                (format, data_list, reader_callable))
+            self.join(source)
+            return
 
         for version_id, options, length, parents in data_list:
             if self.has_version(version_id):
                 # First check: the list of parents.
                 my_parents = self.get_parents_with_ghosts(version_id)
-                if my_parents != parents:
+                if tuple(my_parents) != tuple(parents):
                     # XXX: KnitCorrupt is not quite the right exception here.
                     raise KnitCorrupt(
                         self.filename,
@@ -750,14 +773,44 @@ class KnitVersionedFile(VersionedFile):
                     # line-delta is no use unless we have its parent.
                     # Fetching from a broken repository with this problem
                     # shouldn't break the target repository.
+                    #
+                    # See https://bugs.launchpad.net/bzr/+bug/164443
                     if not self._index.has_version(parents[0]):
                         raise KnitCorrupt(
                             self.filename,
-                            'line-delta from stream references '
-                            'missing parent %s' % parents[0])
+                            'line-delta from stream '
+                            'for version %s '
+                            'references '
+                            'missing parent %s\n'
+                            'Try running "bzr check" '
+                            'on the source repository, and "bzr reconcile" '
+                            'if necessary.' %
+                            (version_id, parents[0]))
                 self._add_raw_records(
                     [(version_id, options, parents, length)],
                     reader_callable(length))
+
+    def _knit_from_datastream(self, (format, data_list, reader_callable)):
+        """Create a knit object from a data stream.
+
+        This method exists to allow conversion of data streams that do not
+        match the signature of this knit. Generally it will be slower and use
+        more memory to use this method to insert data, but it will work.
+
+        :seealso: get_data_stream for details on datastreams.
+        :return: A knit versioned file which can be used to join the datastream
+            into self.
+        """
+        if format == "knit-plain":
+            factory = KnitPlainFactory()
+        elif format == "knit-annotated":
+            factory = KnitAnnotateFactory()
+        else:
+            raise errors.KnitDataStreamUnknown(format)
+        index = _StreamIndex(data_list)
+        access = _StreamAccess(reader_callable, index, self, factory)
+        return KnitVersionedFile(self.filename, self.transport,
+            factory=factory, index=index, access_method=access)
 
     def versions(self):
         """See VersionedFile.versions."""
@@ -1484,9 +1537,9 @@ class _KnitIndex(_KnitComponentFile):
             return 'line-delta'
 
     def get_options(self, version_id):
-        """Return a string represention options.
+        """Return a list representing options.
 
-        e.g. foo,bar
+        e.g. ['foo', 'bar']
         """
         return self._cache[version_id][1]
 
@@ -1720,9 +1773,9 @@ class KnitGraphIndex(object):
             raise RevisionNotPresent(version_id, self)
 
     def get_options(self, version_id):
-        """Return a string represention options.
+        """Return a list representing options.
 
-        e.g. foo,bar
+        e.g. ['foo', 'bar']
         """
         node = self._get_node(version_id)
         if not self._deltas:
@@ -1994,6 +2047,183 @@ class _PackAccess(object):
         self.write_index = index
 
 
+class _StreamAccess(object):
+    """A Knit Access object that provides data from a datastream.
+    
+    It also provides a fallback to present as unannotated data, annotated data
+    from a *backing* access object.
+
+    This is triggered by a index_memo which is pointing to a different index
+    than this was constructed with, and is used to allow extracting full
+    unannotated texts for insertion into annotated knits.
+    """
+
+    def __init__(self, reader_callable, stream_index, backing_knit,
+        orig_factory):
+        """Create a _StreamAccess object.
+
+        :param reader_callable: The reader_callable from the datastream.
+            This is called to buffer all the data immediately, for 
+            random access.
+        :param stream_index: The index the data stream this provides access to
+            which will be present in native index_memo's.
+        :param backing_knit: The knit object that will provide access to 
+            annotated texts which are not available in the stream, so as to
+            create unannotated texts.
+        :param orig_factory: The original content factory used to generate the
+            stream. This is used for checking whether the thunk code for
+            supporting _copy_texts will generate the correct form of data.
+        """
+        self.data = reader_callable(None)
+        self.stream_index = stream_index
+        self.backing_knit = backing_knit
+        self.orig_factory = orig_factory
+
+    def get_raw_records(self, memos_for_retrieval):
+        """Get the raw bytes for a records.
+
+        :param memos_for_retrieval: An iterable containing the (thunk_flag,
+            index, start, end) memo for retrieving the bytes.
+        :return: An iterator over the bytes of the records.
+        """
+        # use a generator for memory friendliness
+        for thunk_flag, version_id, start, end in memos_for_retrieval:
+            if version_id is self.stream_index:
+                yield self.data[start:end]
+                continue
+            # we have been asked to thunk. This thunking only occurs when
+            # we are obtaining plain texts from an annotated backing knit
+            # so that _copy_texts will work.
+            # We could improve performance here by scanning for where we need
+            # to do this and using get_line_list, then interleaving the output
+            # as desired. However, for now, this is sufficient.
+            if self.orig_factory.__class__ != KnitPlainFactory:
+                raise errors.KnitCorrupt(
+                    self, 'Bad thunk request %r' % version_id)
+            lines = self.backing_knit.get_lines(version_id)
+            line_bytes = ''.join(lines)
+            digest = sha_string(line_bytes)
+            if lines:
+                if lines[-1][-1] != '\n':
+                    lines[-1] = lines[-1] + '\n'
+                    line_bytes += '\n'
+            orig_options = list(self.backing_knit._index.get_options(version_id))
+            if 'fulltext' not in orig_options:
+                if 'line-delta' not in orig_options:
+                    raise errors.KnitCorrupt(self,
+                        'Unknown compression method %r' % orig_options)
+                orig_options.remove('line-delta')
+                orig_options.append('fulltext')
+            # We want plain data, because we expect to thunk only to allow text
+            # extraction.
+            size, bytes = self.backing_knit._data._record_to_data(version_id,
+                digest, lines, line_bytes)
+            yield bytes
+
+
+class _StreamIndex(object):
+    """A Knit Index object that uses the data map from a datastream."""
+
+    def __init__(self, data_list):
+        """Create a _StreamIndex object.
+
+        :param data_list: The data_list from the datastream.
+        """
+        self.data_list = data_list
+        self._by_version = {}
+        pos = 0
+        for key, options, length, parents in data_list:
+            self._by_version[key] = options, (pos, pos + length), parents
+            pos += length
+
+    def get_ancestry(self, versions, topo_sorted):
+        """Get an ancestry list for versions."""
+        if topo_sorted:
+            # Not needed for basic joins
+            raise NotImplementedError(self.get_ancestry)
+        # get a graph of all the mentioned versions:
+        # Little ugly - basically copied from KnitIndex, but don't want to
+        # accidentally incorporate too much of that index's code.
+        ancestry = set()
+        pending = set(versions)
+        cache = self._by_version
+        while pending:
+            version = pending.pop()
+            # trim ghosts
+            try:
+                parents = [p for p in cache[version][2] if p in cache]
+            except KeyError:
+                raise RevisionNotPresent(version, self)
+            # if not completed and not a ghost
+            pending.update([p for p in parents if p not in ancestry])
+            ancestry.add(version)
+        return list(ancestry)
+
+    def get_method(self, version_id):
+        """Return compression method of specified version."""
+        try:
+            options = self._by_version[version_id][0]
+        except KeyError:
+            # Strictly speaking this should check in the backing knit, but
+            # until we have a test to discriminate, this will do.
+            return 'fulltext'
+        if 'fulltext' in options:
+            return 'fulltext'
+        elif 'line-delta' in options:
+            return 'line-delta'
+        else:
+            raise errors.KnitIndexUnknownMethod(self, options)
+
+    def get_options(self, version_id):
+        """Return a list representing options.
+
+        e.g. ['foo', 'bar']
+        """
+        return self._by_version[version_id][0]
+
+    def get_parents_with_ghosts(self, version_id):
+        """Return parents of specified version with ghosts."""
+        return self._by_version[version_id][2]
+
+    def get_position(self, version_id):
+        """Return details needed to access the version.
+        
+        _StreamAccess has the data as a big array, so we return slice
+        coordinates into that (as index_memo's are opaque outside the
+        index and matching access class).
+
+        :return: a tuple (thunk_flag, index, start, end).  If thunk_flag is
+            False, index will be self, otherwise it will be a version id.
+        """
+        try:
+            start, end = self._by_version[version_id][1]
+            return False, self, start, end
+        except KeyError:
+            # Signal to the access object to handle this from the backing knit.
+            return (True, version_id, None, None)
+
+    def get_versions(self):
+        """Get all the versions in the stream."""
+        return self._by_version.keys()
+
+    def iter_parents(self, version_ids):
+        """Iterate through the parents for many version ids.
+
+        :param version_ids: An iterable yielding version_ids.
+        :return: An iterator that yields (version_id, parents). Requested 
+            version_ids not present in the versioned file are simply skipped.
+            The order is undefined, allowing for different optimisations in
+            the underlying implementation.
+        """
+        result = []
+        for version in version_ids:
+            try:
+                result.append((version, self._by_version[version][2]))
+            except KeyError:
+                pass
+        return result
+
+
 class _KnitData(object):
     """Manage extraction of data from a KnitAccess, caching and decompressing.
     
@@ -2254,7 +2484,7 @@ class InterKnit(InterVersionedFile):
             for index, version in enumerate(to_process):
                 pb.update('Converting versioned data', index, total)
                 sha1, num_bytes, parent_text = self.target.add_lines(version,
-                    self.source.get_parents(version),
+                    self.source.get_parents_with_ghosts(version),
                     self.source.get_lines(version),
                     parent_texts=parent_cache)
                 parent_cache[version] = parent_text
@@ -2288,7 +2518,8 @@ class InterKnit(InterVersionedFile):
             if None in version_ids:
                 version_ids.remove(None)
     
-            self.source_ancestry = set(self.source.get_ancestry(version_ids))
+            self.source_ancestry = set(self.source.get_ancestry(version_ids,
+                topo_sorted=False))
             this_versions = set(self.target._index.get_versions())
             # XXX: For efficiency we should not look at the whole index,
             #      we only need to consider the referenced revisions - they

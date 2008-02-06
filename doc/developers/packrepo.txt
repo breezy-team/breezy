@@ -283,4 +283,5 @@ As with other repositories, in normal use data is only inserted.
 However, in some circumstances we may want to garbage-collect or prune
 existing data, or reconcile indexes.
 
-  vim: tw=72 ft=rest expandtab
+..
+   vim: tw=72 ft=rst expandtab

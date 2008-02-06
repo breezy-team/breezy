@@ -55,6 +55,7 @@ import logging
 import os
 import sys
 import re
+import time
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -82,6 +83,7 @@ _trace_file = None
 _trace_depth = 0
 _bzr_log_file = None
 _bzr_log_filename = None
+_start_time = bzrlib._start_time
 
 
 # configure convenient aliases for output routines
@@ -126,7 +128,8 @@ def mutter(fmt, *args):
         out = fmt % tuple(real_args)
     else:
         out = fmt
-    out += '\n'
+    timestamp = '%0.3f  ' % (time.time() - _start_time,)
+    out = timestamp + out + '\n'
     _trace_file.write(out)
     # TODO: jam 20051227 Consider flushing the trace file to help debugging
     #_trace_file.flush()
@@ -188,10 +191,10 @@ def open_tracefile(tracefilename=None):
         if tf.tell() <= 2:
             tf.write("this is a debug log for diagnosing/reporting problems in bzr\n")
             tf.write("you can delete or truncate this file, or include sections in\n")
-            tf.write("bug reports to bazaar@lists.canonical.com\n\n")
+            tf.write("bug reports to https://bugs.launchpad.net/bzr/+filebug\n\n")
         _file_handler = logging.StreamHandler(tf)
         fmt = r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s'
-        datefmt = r'%a %H:%M:%S'
+        datefmt = r'%Y-%m-%d %H:%M:%S'
         _file_handler.setFormatter(logging.Formatter(fmt, datefmt))
         _file_handler.setLevel(logging.DEBUG)
         logging.getLogger('').addHandler(_file_handler)
@@ -382,8 +385,9 @@ def report_bug(exc_info, err_file):
         err_file.write("  %-20s %s [%s]\n" %
             (name, a_plugin.path(), a_plugin.__version__))
     err_file.write(
-        "\n"
-        "** Please send this report to bazaar@lists.ubuntu.com\n"
-        "   with a description of what you were doing when the\n"
-        "   error occurred.\n"
-        )
+"""\
+*** Bazaar has encountered an internal error.
+    Please report a bug at https://bugs.launchpad.net/bzr/+filebug
+    including this traceback, and a description of what you
+    were doing when the error occurred.
+""")

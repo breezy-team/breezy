@@ -187,7 +187,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                               % a_bzrdir.transport)
 
     def sproutOrSkip(self, from_bzrdir, to_url, revision_id=None,
-                     force_new_repo=False):
+                     force_new_repo=False, accelerator_tree=None):
         """Sprout from_bzrdir into to_url, or raise TestSkipped.
         
         A simple wrapper for from_bzrdir.sprout that translates NotLocalUrl into
@@ -198,7 +198,8 @@ class TestBzrDir(TestCaseWithBzrDir):
             raise TestSkipped('Cannot sprout to remote bzrdirs.')
         target = from_bzrdir.sprout(to_url, revision_id=revision_id,
                                     force_new_repo=force_new_repo,
-                                    possible_transports=[to_transport])
+                                    possible_transports=[to_transport],
+                                    accelerator_tree=accelerator_tree)
         return target
 
     def test_create_null_workingtree(self):
@@ -240,6 +241,18 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertRaises(errors.NotBranchError, bzrdir.open_branch)
         bzrdir.create_branch()
         bzrdir.open_branch()
+
+    def test_destroy_repository(self):
+        repo = self.make_repository('repository')
+        bzrdir = repo.bzrdir
+        try:
+            bzrdir.destroy_repository()
+        except (errors.UnsupportedOperation, errors.TransportNotPossible):
+            raise TestNotApplicable('Format does not support destroying'
+                                    ' repository')
+        self.assertRaises(errors.NoRepositoryPresent, bzrdir.open_repository)
+        bzrdir.create_repository()
+        bzrdir.open_repository()
 
     def test_open_workingtree_raises_no_working_tree(self):
         """BzrDir.open_workingtree() should raise NoWorkingTree (rather than
@@ -1067,6 +1080,17 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = tree.bzrdir
         target = self.sproutOrSkip(dir, self.get_url('target'), revision_id='1')
         self.assertEqual(['1'], target.open_workingtree().get_parent_ids())
+
+    def test_sprout_takes_accelerator(self):
+        tree = self.make_branch_and_tree('source')
+        self.build_tree(['source/foo'])
+        tree.add('foo')
+        tree.commit('revision 1', rev_id='1')
+        tree.commit('revision 2', rev_id='2', allow_pointless=True)
+        dir = tree.bzrdir
+        target = self.sproutOrSkip(dir, self.get_url('target'),
+                                   accelerator_tree=tree)
+        self.assertEqual(['2'], target.open_workingtree().get_parent_ids())
 
     def test_format_initialize_find_open(self):
         # loopback test to check the current format initializes to itself.

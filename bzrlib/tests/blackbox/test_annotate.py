@@ -167,3 +167,16 @@ class TestAnnotate(TestCaseWithTransport):
         out, err = self.run_bzr("annotate doesnotexist", retcode=3)
         self.assertEqual('', out)
         self.assertEqual("bzr: ERROR: doesnotexist is not versioned.\n", err)
+
+    def test_annotate_without_workingtree(self):
+        tree = self.make_branch_and_tree('branch')
+        self.build_tree_contents([('branch/empty', '')])
+        tree.add('empty')
+        tree.commit('add empty file')
+        bzrdir = tree.branch.bzrdir
+        bzrdir.destroy_workingtree()
+        self.assertFalse(bzrdir.has_workingtree())
+
+        os.chdir('branch')
+        out, err = self.run_bzr('annotate empty')
+        self.assertEqual('', out)

@@ -17,28 +17,32 @@
 # TODO: At some point, handle upgrades by just passing the whole request
 # across to run on the server.
 
+import bz2
 from cStringIO import StringIO
 
 from bzrlib import (
     branch,
+    debug,
     errors,
+    graph,
     lockdir,
     repository,
     revision,
 )
-from bzrlib.branch import Branch, BranchReferenceFormat
+from bzrlib.branch import BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, RemoteBzrDirFormat
 from bzrlib.config import BranchConfig, TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import NoSuchRevision
 from bzrlib.lockable_files import LockableFiles
-from bzrlib.pack import ContainerReader
+from bzrlib.pack import ContainerPushParser
 from bzrlib.smart import client, vfs
 from bzrlib.symbol_versioning import (
     deprecated_method,
     zero_ninetyone,
     )
-from bzrlib.trace import note
+from bzrlib.revision import NULL_REVISION
+from bzrlib.trace import mutter, note
 
 # Note: RemoteBzrDirFormat is in bzrdir.py
 
@@ -85,6 +89,11 @@ class RemoteBzrDir(BzrDir):
         self._real_bzrdir.create_repository(shared=shared)
         return self.open_repository()
 
+    def destroy_repository(self):
+        """See BzrDir.destroy_repository"""
+        self._ensure_real()
+        self._real_bzrdir.destroy_repository()
+
     def create_branch(self):
         self._ensure_real()
         real_branch = self._real_bzrdir.create_branch()
@@ -121,6 +130,10 @@ class RemoteBzrDir(BzrDir):
             raise errors.NotBranchError(path=self.root_transport.base)
         else:
             raise errors.UnexpectedSmartServerResponse(response)
+
+    def _get_tree_branch(self):
+        """See BzrDir._get_tree_branch()."""
+        return None, self.open_branch()
 
     def open_branch(self, _unsupported=False):
         assert _unsupported == False, 'unsupported flag support not implemented yet.'
@@ -192,7 +205,7 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
     Instances of this repository are represented by RemoteRepository
     instances.
 
-    The RemoteRepositoryFormat is parameterised during construction
+    The RemoteRepositoryFormat is parameterized during construction
     to reflect the capabilities of the real, remote format. Specifically
     the attributes rich_root_data and supports_tree_reference are set
     on a per instance basis, and are not set (and should not be) at
@@ -258,6 +271,10 @@ class RemoteRepository(object):
         self._lock_token = None
         self._lock_count = 0
         self._leave_lock = False
+        # A cache of looked up revision parent data; reset at unlock time.
+        self._parents_map = None
+        if 'hpss' in debug.debug_flags:
+            self._requested_parents = None
         # For tests:
         # These depend on the actual remote format, so force them off for
         # maximum compatibility. XXX: In future these should depend on the
@@ -362,7 +379,7 @@ class RemoteRepository(object):
 
     def has_revision(self, revision_id):
         """See Repository.has_revision()."""
-        if revision_id is None:
+        if revision_id == NULL_REVISION:
             # The null revision is always present.
             return True
         path = self.bzrdir._path_for_remote_call(self._client)
@@ -370,14 +387,27 @@ class RemoteRepository(object):
         assert response[0] in ('yes', 'no'), 'unexpected response code %s' % (response,)
         return response[0] == 'yes'
 
+    def has_revisions(self, revision_ids):
+        """See Repository.has_revisions()."""
+        result = set()
+        for revision_id in revision_ids:
+            if self.has_revision(revision_id):
+                result.add(revision_id)
+        return result
+
     def has_same_location(self, other):
         return (self.__class__ == other.__class__ and
                 self.bzrdir.transport.base == other.bzrdir.transport.base)
         
     def get_graph(self, other_repository=None):
         """Return the graph for this repository format"""
-        self._ensure_real()
-        return self._real_repository.get_graph(other_repository)
+        parents_provider = self
+        if (other_repository is not None and
+            other_repository.bzrdir.transport.base !=
+            self.bzrdir.transport.base):
+            parents_provider = graph._StackedParentsProvider(
+                [parents_provider, other_repository._make_parents_provider()])
+        return graph.Graph(parents_provider)
 
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""
@@ -409,6 +439,12 @@ class RemoteRepository(object):
                 result[key] = (float(values[0]), long(values[1]))
 
         return result
+
+    def find_branches(self, using=False):
+        """See Repository.find_branches()."""
+        # should be an API call to the server.
+        self._ensure_real()
+        return self._real_repository.find_branches(using=using)
 
     def get_physical_lock_status(self):
         """See Repository.get_physical_lock_status()."""
@@ -442,6 +478,9 @@ class RemoteRepository(object):
         if not self._lock_mode:
             self._lock_mode = 'r'
             self._lock_count = 1
+            self._parents_map = {}
+            if 'hpss' in debug.debug_flags:
+                self._requested_parents = set()
             if self._real_repository is not None:
                 self._real_repository.lock_read()
         else:
@@ -479,6 +518,9 @@ class RemoteRepository(object):
                 self._leave_lock = False
             self._lock_mode = 'w'
             self._lock_count = 1
+            self._parents_map = {}
+            if 'hpss' in debug.debug_flags:
+                self._requested_parents = set()
         elif self._lock_mode == 'r':
             raise errors.ReadOnlyError(self)
         else:
@@ -538,6 +580,9 @@ class RemoteRepository(object):
         self._lock_count -= 1
         if self._lock_count > 0:
             return
+        self._parents_map = None
+        if 'hpss' in debug.debug_flags:
+            self._requested_parents = None
         old_mode = self._lock_mode
         self._lock_mode = None
         try:
@@ -590,7 +635,9 @@ class RemoteRepository(object):
 
     def sprout(self, to_bzrdir, revision_id=None):
         # TODO: Option to control what format is created?
-        dest_repo = to_bzrdir.create_repository()
+        self._ensure_real()
+        dest_repo = self._real_repository._format.initialize(to_bzrdir,
+                                                             shared=False)
         dest_repo.fetch(self, revision_id=revision_id)
         return dest_repo
 
@@ -615,12 +662,10 @@ class RemoteRepository(object):
                 committer=committer, revprops=revprops, revision_id=revision_id)
         return builder
 
-    @needs_write_lock
     def add_inventory(self, revid, inv, parents):
         self._ensure_real()
         return self._real_repository.add_inventory(revid, inv, parents)
 
-    @needs_write_lock
     def add_revision(self, rev_id, rev, inv=None, config=None):
         self._ensure_real()
         return self._real_repository.add_revision(
@@ -630,6 +675,10 @@ class RemoteRepository(object):
     def get_inventory(self, revision_id):
         self._ensure_real()
         return self._real_repository.get_inventory(revision_id)
+
+    def iter_inventories(self, revision_ids):
+        self._ensure_real()
+        return self._real_repository.iter_inventories(revision_ids)
 
     @needs_read_lock
     def get_revision(self, revision_id):
@@ -653,6 +702,30 @@ class RemoteRepository(object):
     def make_working_trees(self):
         """RemoteRepositories never create working trees by default."""
         return False
+
+    def revision_ids_to_search_result(self, result_set):
+        """Convert a set of revision ids to a graph SearchResult."""
+        result_parents = set()
+        for parents in self.get_graph().get_parent_map(
+            result_set).itervalues():
+            result_parents.update(parents)
+        included_keys = result_set.intersection(result_parents)
+        start_keys = result_set.difference(included_keys)
+        exclude_keys = result_parents.difference(result_set)
+        result = graph.SearchResult(start_keys, exclude_keys,
+            len(result_set), result_set)
+        return result
+
+    @needs_read_lock
+    def search_missing_revision_ids(self, other, revision_id=None, find_ghosts=True):
+        """Return the revision ids that other has that this does not.
+        
+        These are returned in topological order.
+
+        revision_id: only return revision ids included by revision_id.
+        """
+        return repository.InterRepository.get(
+            other, self).search_missing_revision_ids(revision_id, find_ghosts)
 
     def fetch(self, source, revision_id=None, pb=None):
         if self.has_same_location(source):
@@ -689,9 +762,9 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.fileids_altered_by_revision_ids(revision_ids)
 
-    def get_versioned_file_checker(self, revisions, revision_versions_cache):
+    def _get_versioned_file_checker(self, revisions, revision_versions_cache):
         self._ensure_real()
-        return self._real_repository.get_versioned_file_checker(
+        return self._real_repository._get_versioned_file_checker(
             revisions, revision_versions_cache)
         
     def iter_files_bytes(self, desired_files):
@@ -699,6 +772,106 @@ class RemoteRepository(object):
         """
         self._ensure_real()
         return self._real_repository.iter_files_bytes(desired_files)
+
+    def get_parent_map(self, keys):
+        """See bzrlib.Graph.get_parent_map()."""
+        # Hack to build up the caching logic.
+        ancestry = self._parents_map
+        missing_revisions = set(key for key in keys if key not in ancestry)
+        if missing_revisions:
+            parent_map = self._get_parent_map(missing_revisions)
+            if 'hpss' in debug.debug_flags:
+                mutter('retransmitted revisions: %d of %d',
+                        len(set(self._parents_map).intersection(parent_map)),
+                        len(parent_map))
+            self._parents_map.update(parent_map)
+        present_keys = [k for k in keys if k in ancestry]
+        if 'hpss' in debug.debug_flags:
+            self._requested_parents.update(present_keys)
+            mutter('Current RemoteRepository graph hit rate: %d%%',
+                100.0 * len(self._requested_parents) / len(self._parents_map))
+        return dict((k, ancestry[k]) for k in present_keys)
+
+    def _response_is_unknown_method(self, response, verb):
+        """Return True if response is an unknonwn method response to verb.
+        
+        :param response: The response from a smart client call_expecting_body
+            call.
+        :param verb: The verb used in that call.
+        :return: True if an unknown method was encountered.
+        """
+        # This might live better on
+        # bzrlib.smart.protocol.SmartClientRequestProtocolOne
+        if (response[0] == ('error', "Generic bzr smart protocol error: "
+                "bad request '%s'" % verb) or
+              response[0] == ('error', "Generic bzr smart protocol error: "
+                "bad request u'%s'" % verb)):
+           response[1].cancel_read_body()
+           return True
+        return False
+
+    def _get_parent_map(self, keys):
+        """Helper for get_parent_map that performs the RPC."""
+        keys = set(keys)
+        if NULL_REVISION in keys:
+            keys.discard(NULL_REVISION)
+            found_parents = {NULL_REVISION:()}
+            if not keys:
+                return found_parents
+        else:
+            found_parents = {}
+        # TODO(Needs analysis): We could assume that the keys being requested
+        # from get_parent_map are in a breadth first search, so typically they
+        # will all be depth N from some common parent, and we don't have to
+        # have the server iterate from the root parent, but rather from the
+        # keys we're searching; and just tell the server the keyspace we
+        # already have; but this may be more traffic again.
+
+        # Transform self._parents_map into a search request recipe.
+        # TODO: Manage this incrementally to avoid covering the same path
+        # repeatedly. (The server will have to on each request, but the less
+        # work done the better).
+        start_set = set(self._parents_map)
+        result_parents = set()
+        for parents in self._parents_map.itervalues():
+            result_parents.update(parents)
+        stop_keys = result_parents.difference(start_set)
+        included_keys = start_set.intersection(result_parents)
+        start_set.difference_update(included_keys)
+        recipe = (start_set, stop_keys, len(self._parents_map))
+        body = self._serialise_search_recipe(recipe)
+        path = self.bzrdir._path_for_remote_call(self._client)
+        for key in keys:
+            assert type(key) is str
+        verb = 'Repository.get_parent_map'
+        args = (path,) + tuple(keys)
+        response = self._client.call_with_body_bytes_expecting_body(
+            verb, args, self._serialise_search_recipe(recipe))
+        if self._response_is_unknown_method(response, verb):
+            # Server that does not support this method, get the whole graph.
+            response = self._client.call_expecting_body(
+                'Repository.get_revision_graph', path, '')
+            if response[0][0] not in ['ok', 'nosuchrevision']:
+                reponse[1].cancel_read_body()
+                raise errors.UnexpectedSmartServerResponse(response[0])
+        elif response[0][0] not in ['ok']:
+            reponse[1].cancel_read_body()
+            raise errors.UnexpectedSmartServerResponse(response[0])
+        if response[0][0] == 'ok':
+            coded = bz2.decompress(response[1].read_body_bytes())
+            if coded == '':
+                # no revisions found
+                return {}
+            lines = coded.split('\n')
+            revision_graph = {}
+            for line in lines:
+                d = tuple(line.split())
+                if len(d) > 1:
+                    revision_graph[d[0]] = d[1:]
+                else:
+                    # No parents - so give the Graph result (NULL_REVISION,).
+                    revision_graph[d[0]] = (NULL_REVISION,)
+            return revision_graph
 
     @needs_read_lock
     def get_signature_text(self, revision_id):
@@ -764,7 +937,6 @@ class RemoteRepository(object):
         from bzrlib import osutils
         import tarfile
         import tempfile
-        from StringIO import StringIO
         # TODO: Maybe a progress bar while streaming the tarball?
         note("Copying repository content as tarball...")
         tar_file = self._get_tarball('bz2')
@@ -836,35 +1008,44 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository.has_signature_for_revision_id(revision_id)
 
-    def get_data_stream(self, revision_ids):
+    def get_data_stream_for_search(self, search):
+        REQUEST_NAME = 'Repository.stream_revisions_chunked'
         path = self.bzrdir._path_for_remote_call(self._client)
-        response, protocol = self._client.call_expecting_body(
-            'Repository.stream_knit_data_for_revisions', path, *revision_ids)
+        body = self._serialise_search_recipe(search.get_recipe())
+        response, protocol = self._client.call_with_body_bytes_expecting_body(
+            REQUEST_NAME, (path,), body)
+
         if response == ('ok',):
             return self._deserialise_stream(protocol)
+        if response == ('NoSuchRevision', ):
+            # We cannot easily identify the revision that is missing in this
+            # situation without doing much more network IO. For now, bail.
+            raise NoSuchRevision(self, "unknown")
         elif (response == ('error', "Generic bzr smart protocol error: "
-                "bad request 'Repository.stream_knit_data_for_revisions'") or
+                "bad request '%s'" % REQUEST_NAME) or
               response == ('error', "Generic bzr smart protocol error: "
-                "bad request u'Repository.stream_knit_data_for_revisions'")):
+                "bad request u'%s'" % REQUEST_NAME)):
             protocol.cancel_read_body()
             self._ensure_real()
-            return self._real_repository.get_data_stream(revision_ids)
+            return self._real_repository.get_data_stream_for_search(search)
         else:
             raise errors.UnexpectedSmartServerResponse(response)
 
     def _deserialise_stream(self, protocol):
-        buffer = StringIO(protocol.read_body_bytes())
-        reader = ContainerReader(buffer)
-        for record_names, read_bytes in reader.iter_records():
-            try:
-                # These records should have only one name, and that name
-                # should be a one-element tuple.
-                [name_tuple] = record_names
-            except ValueError:
-                raise errors.SmartProtocolError(
-                    'Repository data stream had invalid record name %r'
-                    % (record_names,))
-            yield name_tuple, read_bytes(None)
+        stream = protocol.read_streamed_body()
+        container_parser = ContainerPushParser()
+        for bytes in stream:
+            container_parser.accept_bytes(bytes)
+            records = container_parser.read_pending_records()
+            for record_names, record_bytes in records:
+                if len(record_names) != 1:
+                    # These records should have only one name, and that name
+                    # should be a one-element tuple.
+                    raise errors.SmartProtocolError(
+                        'Repository data stream had invalid record name %r'
+                        % (record_names,))
+                name_tuple = record_names[0]
+                yield name_tuple, record_bytes
 
     def insert_data_stream(self, stream):
         self._ensure_real()
@@ -887,6 +1068,20 @@ class RemoteRepository(object):
     def _check_for_inconsistent_revision_parents(self):
         self._ensure_real()
         return self._real_repository._check_for_inconsistent_revision_parents()
+
+    def _make_parents_provider(self):
+        return self
+
+    def _serialise_search_recipe(self, recipe):
+        """Serialise a graph search recipe.
+
+        :param recipe: A search recipe (start, stop, count).
+        :return: Serialised bytes.
+        """
+        start_keys = ' '.join(recipe[0])
+        stop_keys = ' '.join(recipe[1])
+        count = str(recipe[2])
+        return '\n'.join((start_keys, stop_keys, count))
 
 
 class RemoteBranchLockableFiles(LockableFiles):
@@ -1227,7 +1422,8 @@ class RemoteBranch(branch.Branch):
         # format, because RemoteBranches can't be created at arbitrary URLs.
         # XXX: if to_bzrdir is a RemoteBranch, this should perhaps do
         # to_bzrdir.create_branch...
-        result = branch.BranchFormat.get_default_format().initialize(to_bzrdir)
+        self._ensure_real()
+        result = self._real_branch._format.initialize(to_bzrdir)
         self.copy_content_into(result, revision_id=revision_id)
         result.set_parent(self.bzrdir.root_transport.base)
         return result
@@ -1275,10 +1471,10 @@ class RemoteBranch(branch.Branch):
         self._ensure_real()
         return self._real_branch.set_push_location(location)
 
-    def update_revisions(self, other, stop_revision=None):
+    def update_revisions(self, other, stop_revision=None, overwrite=False):
         self._ensure_real()
         return self._real_branch.update_revisions(
-            other, stop_revision=stop_revision)
+            other, stop_revision=stop_revision, overwrite=overwrite)
 
 
 class RemoteBranchConfig(BranchConfig):

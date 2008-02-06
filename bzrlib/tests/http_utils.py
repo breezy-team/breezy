@@ -17,115 +17,42 @@
 from cStringIO import StringIO
 import errno
 import md5
-from SimpleHTTPServer import SimpleHTTPRequestHandler
 import re
 import sha
 import socket
+import threading
 import time
 import urllib2
 import urlparse
 
+
+from bzrlib import (
+    tests,
+    transport,
+    )
 from bzrlib.smart import protocol
-from bzrlib.tests import TestCaseWithTransport
-from bzrlib.tests.HttpServer import (
-    HttpServer,
-    TestingHTTPRequestHandler,
-    )
-from bzrlib.transport import (
-    get_transport,
-    )
+from bzrlib.tests import http_server
 
 
-class WallRequestHandler(TestingHTTPRequestHandler):
-    """Whatever request comes in, close the connection"""
-
-    def handle_one_request(self):
-        """Handle a single HTTP request, by abruptly closing the connection"""
-        self.close_connection = 1
-
-
-class BadStatusRequestHandler(TestingHTTPRequestHandler):
-    """Whatever request comes in, returns a bad status"""
-
-    def parse_request(self):
-        """Fakes handling a single HTTP request, returns a bad status"""
-        ignored = TestingHTTPRequestHandler.parse_request(self)
-        try:
-            self.send_response(0, "Bad status")
-            self.end_headers()
-        except socket.error, e:
-            # We don't want to pollute the test results with
-            # spurious server errors while test succeed. In our
-            # case, it may occur that the test has already read
-            # the 'Bad Status' and closed the socket while we are
-            # still trying to send some headers... So the test is
-            # ok, but if we raise the exception, the output is
-            # dirty. So we don't raise, but we close the
-            # connection, just to be safe :)
-            spurious = [errno.EPIPE,
-                        errno.ECONNRESET,
-                        errno.ECONNABORTED,
-                        ]
-            if (len(e.args) > 0) and (e.args[0] in spurious):
-                self.close_connection = 1
-                pass
-            else:
-                raise
-        return False
-
-
-class InvalidStatusRequestHandler(TestingHTTPRequestHandler):
-    """Whatever request comes in, returns am invalid status"""
-
-    def parse_request(self):
-        """Fakes handling a single HTTP request, returns a bad status"""
-        ignored = TestingHTTPRequestHandler.parse_request(self)
-        self.wfile.write("Invalid status line\r\n")
-        return False
-
-
-class BadProtocolRequestHandler(TestingHTTPRequestHandler):
-    """Whatever request comes in, returns a bad protocol version"""
-
-    def parse_request(self):
-        """Fakes handling a single HTTP request, returns a bad status"""
-        ignored = TestingHTTPRequestHandler.parse_request(self)
-        # Returns an invalid protocol version, but curl just
-        # ignores it and those cannot be tested.
-        self.wfile.write("%s %d %s\r\n" % ('HTTP/0.0',
-                                           404,
-                                           'Look at my protocol version'))
-        return False
-
-
-class ForbiddenRequestHandler(TestingHTTPRequestHandler):
-    """Whatever request comes in, returns a 403 code"""
-
-    def parse_request(self):
-        """Handle a single HTTP request, by replying we cannot handle it"""
-        ignored = TestingHTTPRequestHandler.parse_request(self)
-        self.send_error(403)
-        return False
-
-
-class HTTPServerWithSmarts(HttpServer):
+class HTTPServerWithSmarts(http_server.HttpServer):
     """HTTPServerWithSmarts extends the HttpServer with POST methods that will
     trigger a smart server to execute with a transport rooted at the rootdir of
     the HTTP server.
     """
 
-    def __init__(self):
-        HttpServer.__init__(self, SmartRequestHandler)
+    def __init__(self, protocol_version=None):
+        http_server.HttpServer.__init__(self, SmartRequestHandler,
+                                        protocol_version=protocol_version)
 
 
-class SmartRequestHandler(TestingHTTPRequestHandler):
+class SmartRequestHandler(http_server.TestingHTTPRequestHandler):
     """Extend TestingHTTPRequestHandler to support smart client POSTs."""
 
     def do_POST(self):
         """Hand the request off to a smart server instance."""
         self.send_response(200)
         self.send_header("Content-type", "application/octet-stream")
-        transport = get_transport(self.server.test_case_server._home_dir)
+        t = transport.get_transport(self.server.test_case_server._home_dir)
         # TODO: We might like to support streaming responses.  1.0 allows no
         # Content-length in this case, so for integrity we should perform our
         # own chunking within the stream.
@@ -135,7 +62,7 @@ class SmartRequestHandler(TestingHTTPRequestHandler):
         # HTTP trailer facility which may not be widely available.
         out_buffer = StringIO()
         smart_protocol_request = protocol.SmartServerRequestProtocolOne(
-                transport, out_buffer.write)
+                t, out_buffer.write)
         # if this fails, we should return 400 bad request, but failure is
         # failure for now - RBC 20060919
         data_length = int(self.headers['Content-Length'])
@@ -150,69 +77,7 @@ class SmartRequestHandler(TestingHTTPRequestHandler):
         self.wfile.write(out_buffer.getvalue())
 
 
-class LimitedRangeRequestHandler(TestingHTTPRequestHandler):
-    """Errors out when range specifiers exceed the limit"""
-
-    def get_multiple_ranges(self, file, file_size, ranges):
-        """Refuses the multiple ranges request"""
-        tcs = self.server.test_case_server
-        if tcs.range_limit is not None and len(ranges) > tcs.range_limit:
-            file.close()
-            # Emulate apache behavior
-            self.send_error(400, "Bad Request")
-            return
-        return TestingHTTPRequestHandler.get_multiple_ranges(self, file,
-                                                             file_size, ranges)
-
-    def do_GET(self):
-        tcs = self.server.test_case_server
-        tcs.GET_request_nb += 1
-        return TestingHTTPRequestHandler.do_GET(self)
-
-
-class LimitedRangeHTTPServer(HttpServer):
-    """An HttpServer erroring out on requests with too much range specifiers"""
-
-    def __init__(self, request_handler=LimitedRangeRequestHandler,
-                 range_limit=None):
-        HttpServer.__init__(self, request_handler)
-        self.range_limit = range_limit
-        self.GET_request_nb = 0
-
-
-class SingleRangeRequestHandler(TestingHTTPRequestHandler):
-    """Always reply to range request as if they were single.
-
-    Don't be explicit about it, just to annoy the clients.
-    """
-
-    def get_multiple_ranges(self, file, file_size, ranges):
-        """Answer as if it was a single range request and ignores the rest"""
-        (start, end) = ranges[0]
-        return self.get_single_range(file, file_size, start, end)
-
-
-class SingleOnlyRangeRequestHandler(TestingHTTPRequestHandler):
-    """Only reply to simple range requests, errors out on multiple"""
-
-    def get_multiple_ranges(self, file, file_size, ranges):
-        """Refuses the multiple ranges request"""
-        if len(ranges) > 1:
-            file.close()
-            self.send_error(416, "Requested range not satisfiable")
-            return
-        (start, end) = ranges[0]
-        return self.get_single_range(file, file_size, start, end)
-
-
-class NoRangeRequestHandler(TestingHTTPRequestHandler):
-    """Ignore range requests without notice"""
-
-    # Just bypass the range handling done by TestingHTTPRequestHandler
-    do_GET = SimpleHTTPRequestHandler.do_GET
-
-
-class TestCaseWithWebserver(TestCaseWithTransport):
+class TestCaseWithWebserver(tests.TestCaseWithTransport):
     """A support class that provides readonly urls that are http://.
 
     This is done by forcing the readonly server to be an http
@@ -221,7 +86,7 @@ class TestCaseWithWebserver(TestCaseWithTransport):
     """
     def setUp(self):
         super(TestCaseWithWebserver, self).setUp()
-        self.transport_readonly_server = HttpServer
+        self.transport_readonly_server = http_server.HttpServer
 
 
 class TestCaseWithTwoWebservers(TestCaseWithWebserver):
@@ -232,7 +97,7 @@ class TestCaseWithTwoWebservers(TestCaseWithWebserver):
     """
     def setUp(self):
         super(TestCaseWithTwoWebservers, self).setUp()
-        self.transport_secondary_server = HttpServer
+        self.transport_secondary_server = http_server.HttpServer
         self.__secondary_server = None
 
     def create_transport_secondary_server(self):
@@ -251,18 +116,18 @@ class TestCaseWithTwoWebservers(TestCaseWithWebserver):
         return self.__secondary_server
 
 
-class ProxyServer(HttpServer):
+class ProxyServer(http_server.HttpServer):
     """A proxy test server for http transports."""
 
     proxy_requests = True
 
 
-class RedirectRequestHandler(TestingHTTPRequestHandler):
+class RedirectRequestHandler(http_server.TestingHTTPRequestHandler):
     """Redirect all request to the specified server"""
 
     def parse_request(self):
         """Redirect a single HTTP request to another host"""
-        valid = TestingHTTPRequestHandler.parse_request(self)
+        valid = http_server.TestingHTTPRequestHandler.parse_request(self)
         if valid:
             tcs = self.server.test_case_server
             code, target = tcs.is_redirected(self.path)
@@ -270,6 +135,8 @@ class RedirectRequestHandler(TestingHTTPRequestHandler):
                 # Redirect as instructed
                 self.send_response(code)
                 self.send_header('Location', target)
+                # We do not send a body
+                self.send_header('Content-Length', '0')
                 self.end_headers()
                 return False # The job is done
             else:
@@ -278,11 +145,13 @@ class RedirectRequestHandler(TestingHTTPRequestHandler):
         return valid
 
 
-class HTTPServerRedirecting(HttpServer):
+class HTTPServerRedirecting(http_server.HttpServer):
     """An HttpServer redirecting to another server """
 
-    def __init__(self, request_handler=RedirectRequestHandler):
-        HttpServer.__init__(self, request_handler)
+    def __init__(self, request_handler=RedirectRequestHandler,
+                 protocol_version=None):
+        http_server.HttpServer.__init__(self, request_handler,
+                                        protocol_version=protocol_version)
         # redirections is a list of tuples (source, target, code)
         # - source is a regexp for the paths requested
         # - target is a replacement for re.sub describing where
@@ -340,7 +209,7 @@ class TestCaseWithRedirectedWebserver(TestCaseWithTwoWebservers):
        self.old_server = self.get_secondary_server()
 
 
-class AuthRequestHandler(TestingHTTPRequestHandler):
+class AuthRequestHandler(http_server.TestingHTTPRequestHandler):
     """Requires an authentication to process requests.
 
     This is intended to be used with a server that always and
@@ -355,7 +224,7 @@ class AuthRequestHandler(TestingHTTPRequestHandler):
 
     def do_GET(self):
         if self.authorized():
-            return TestingHTTPRequestHandler.do_GET(self)
+            return http_server.TestingHTTPRequestHandler.do_GET(self)
         else:
             # Note that we must update test_case_server *before*
             # sending the error or the client may try to read it
@@ -364,6 +233,8 @@ class AuthRequestHandler(TestingHTTPRequestHandler):
             tcs.auth_required_errors += 1
             self.send_response(tcs.auth_error_code)
             self.send_header_auth_reqed()
+            # We do not send a body
+            self.send_header('Content-Length', '0')
             self.end_headers()
             return
 
@@ -426,7 +297,7 @@ class DigestAuthRequestHandler(AuthRequestHandler):
         self.send_header(tcs.auth_header_sent,header)
 
 
-class AuthServer(HttpServer):
+class AuthServer(http_server.HttpServer):
     """Extends HttpServer with a dictionary of passwords.
 
     This is used as a base class for various schemes which should
@@ -443,8 +314,10 @@ class AuthServer(HttpServer):
     auth_error_code = None
     auth_realm = "Thou should not pass"
 
-    def __init__(self, request_handler, auth_scheme):
-        HttpServer.__init__(self, request_handler)
+    def __init__(self, request_handler, auth_scheme,
+                 protocol_version=None):
+        http_server.HttpServer.__init__(self, request_handler,
+                                        protocol_version=protocol_version)
         self.auth_scheme = auth_scheme
         self.password_of = {}
         self.auth_required_errors = 0
@@ -473,8 +346,10 @@ class DigestAuthServer(AuthServer):
 
     auth_nonce = 'now!'
 
-    def __init__(self, request_handler, auth_scheme):
-        AuthServer.__init__(self, request_handler, auth_scheme)
+    def __init__(self, request_handler, auth_scheme,
+                 protocol_version=None):
+        AuthServer.__init__(self, request_handler, auth_scheme,
+                            protocol_version=protocol_version)
 
     def digest_authorized(self, auth, command):
         nonce = auth['nonce']
@@ -535,32 +410,36 @@ class ProxyAuthServer(AuthServer):
 class HTTPBasicAuthServer(HTTPAuthServer):
     """An HTTP server requiring basic authentication"""
 
-    def __init__(self):
-        HTTPAuthServer.__init__(self, BasicAuthRequestHandler, 'basic')
+    def __init__(self, protocol_version=None):
+        HTTPAuthServer.__init__(self, BasicAuthRequestHandler, 'basic',
+                                protocol_version=protocol_version)
         self.init_http_auth()
 
 
 class HTTPDigestAuthServer(DigestAuthServer, HTTPAuthServer):
     """An HTTP server requiring digest authentication"""
 
-    def __init__(self):
-        DigestAuthServer.__init__(self, DigestAuthRequestHandler, 'digest')
+    def __init__(self, protocol_version=None):
+        DigestAuthServer.__init__(self, DigestAuthRequestHandler, 'digest',
+                                  protocol_version=protocol_version)
         self.init_http_auth()
 
 
 class ProxyBasicAuthServer(ProxyAuthServer):
     """A proxy server requiring basic authentication"""
 
-    def __init__(self):
-        ProxyAuthServer.__init__(self, BasicAuthRequestHandler, 'basic')
+    def __init__(self, protocol_version=None):
+        ProxyAuthServer.__init__(self, BasicAuthRequestHandler, 'basic',
+                                 protocol_version=protocol_version)
         self.init_proxy_auth()
 
 
 class ProxyDigestAuthServer(DigestAuthServer, ProxyAuthServer):
     """A proxy server requiring basic authentication"""
 
-    def __init__(self):
-        ProxyAuthServer.__init__(self, DigestAuthRequestHandler, 'digest')
+    def __init__(self, protocol_version=None):
+        ProxyAuthServer.__init__(self, DigestAuthRequestHandler, 'digest',
+                                 protocol_version=protocol_version)
         self.init_proxy_auth()
 
 

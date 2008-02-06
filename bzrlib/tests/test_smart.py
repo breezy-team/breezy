@@ -24,12 +24,17 @@ properties.
 Tests for low-level protocol encoding are found in test_smart_transport.
 """
 
+import bz2
 from StringIO import StringIO
 import tempfile
 import tarfile
 
 from bzrlib import bzrdir, errors, pack, smart, tests
-from bzrlib.smart.request import SmartServerResponse
+from bzrlib.smart.request import (
+    FailedSmartServerResponse,
+    SmartServerResponse,
+    SuccessfulSmartServerResponse,
+    )
 import bzrlib.smart.bzrdir
 import bzrlib.smart.branch
 import bzrlib.smart.repository
@@ -525,6 +530,22 @@ class TestSmartServerRepositoryRequest(tests.TestCaseWithTransport):
             request.execute, backing.local_abspath('subdir'))
 
 
+class TestSmartServerRepositoryGetParentMap(tests.TestCaseWithTransport):
+
+    def test_trivial_bzipped(self):
+        # This tests that the wire encoding is actually bzipped
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryGetParentMap(backing)
+        tree = self.make_branch_and_memory_tree('.')
+
+        self.assertEqual(None,
+            request.execute(backing.local_abspath(''), 'missing-id'))
+        # Note that it returns a body (of '' bzipped).
+        self.assertEqual(
+            SuccessfulSmartServerResponse(('ok', ), bz2.compress('')),
+            request.do_body('\n\n0\n'))
+
+
 class TestSmartServerRepositoryGetRevisionGraph(tests.TestCaseWithTransport):
 
     def test_none_argument(self):
@@ -814,6 +835,51 @@ class TestSmartServerRepositoryStreamKnitData(tests.TestCaseWithTransport):
             response)
 
 
+class TestSmartServerRepositoryStreamRevisionsChunked(tests.TestCaseWithTransport):
+
+    def test_fetch_revisions(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryStreamRevisionsChunked(
+            backing)
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
+        rev_id1_utf8 = u'\xc8'.encode('utf-8')
+        rev_id2_utf8 = u'\xc9'.encode('utf-8')
+        tree.commit('1st commit', rev_id=rev_id1_utf8)
+        tree.commit('2nd commit', rev_id=rev_id2_utf8)
+        tree.unlock()
+
+        response = request.execute(backing.local_abspath(''))
+        self.assertEqual(None, response)
+        response = request.do_body("%s\n%s\n1" % (rev_id2_utf8, rev_id1_utf8))
+        self.assertEqual(('ok',), response.args)
+        from cStringIO import StringIO
+        parser = pack.ContainerPushParser()
+        names = []
+        for stream_bytes in response.body_stream:
+            parser.accept_bytes(stream_bytes)
+            for [name], record_bytes in parser.read_pending_records():
+                names.append(name)
+                # The bytes should be a valid bencoded string.
+                bencode.bdecode(record_bytes)
+                # XXX: assert that the bencoded knit records have the right
+                # contents?
+        
+    def test_no_such_revision_error(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryStreamRevisionsChunked(
+            backing)
+        repo = self.make_repository('.')
+        rev_id1_utf8 = u'\xc8'.encode('utf-8')
+        response = request.execute(backing.local_abspath(''))
+        self.assertEqual(None, response)
+        response = request.do_body("%s\n\n1" % (rev_id1_utf8,))
+        self.assertEqual(
+            FailedSmartServerResponse(('NoSuchRevision', )),
+            response)
+
+
 class TestSmartServerIsReadonly(tests.TestCaseWithTransport):
 
     def test_is_readonly_no(self):
@@ -867,6 +933,9 @@ class TestHandlers(tests.TestCase):
             smart.request.request_handlers.get('Repository.gather_stats'),
             smart.repository.SmartServerRepositoryGatherStats)
         self.assertEqual(
+            smart.request.request_handlers.get('Repository.get_parent_map'),
+            smart.repository.SmartServerRepositoryGetParentMap)
+        self.assertEqual(
             smart.request.request_handlers.get(
                 'Repository.get_revision_graph'),
             smart.repository.SmartServerRepositoryGetRevisionGraph)
@@ -879,10 +948,6 @@ class TestHandlers(tests.TestCase):
         self.assertEqual(
             smart.request.request_handlers.get('Repository.lock_write'),
             smart.repository.SmartServerRepositoryLockWrite)
-        self.assertEqual(
-            smart.request.request_handlers.get(
-                'Repository.stream_knit_data_for_revisions'),
-            smart.repository.SmartServerRepositoryStreamKnitDataForRevisions)
         self.assertEqual(
             smart.request.request_handlers.get('Repository.tarball'),
             smart.repository.SmartServerRepositoryTarball)
