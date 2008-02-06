@@ -764,14 +764,19 @@ class RemoteRepository(object):
         """See bzrlib.Graph.get_parent_map()."""
         # Hack to build up the caching logic.
         ancestry = self._parents_map
-        missing_revisions = set(key for key in keys if key not in ancestry)
+        if ancestry is None:
+            # Repository is not locked, so there's no cache.
+            missing_revisions = set(keys)
+            ancestry = {}
+        else:
+            missing_revisions = set(key for key in keys if key not in ancestry)
         if missing_revisions:
             parent_map = self._get_parent_map(missing_revisions)
             if 'hpss' in debug.debug_flags:
                 mutter('retransmitted revisions: %d of %d',
-                        len(set(self._parents_map).intersection(parent_map)),
+                        len(set(ancestry).intersection(parent_map)),
                         len(parent_map))
-            self._parents_map.update(parent_map)
+            ancestry.update(parent_map)
         return dict((k, ancestry[k]) for k in keys if k in ancestry)
 
     def _response_is_unknown_method(self, response, verb):
@@ -816,7 +821,7 @@ class RemoteRepository(object):
         response = self._client.call_expecting_body(
             verb, path, *keys)
         if self._response_is_unknown_method(response, verb):
-            # Server that does not support this method, get the whole graph.
+            # Server does not support this method, so get the whole graph.
             # Worse, we have to force a disconnection, because the server now
             # doesn't realise it has a body on the wire to consume, so the
             # only way to recover is to abandon the connection.
@@ -995,7 +1000,7 @@ class RemoteRepository(object):
             REQUEST_NAME, (path,), body)
 
         if self._response_is_unknown_method((response, protocol), REQUEST_NAME):
-            # Server that does not support this method, fall back to VFS.
+            # Server does not support this method, so fall back to VFS.
             # Worse, we have to force a disconnection, because the server now
             # doesn't realise it has a body on the wire to consume, so the
             # only way to recover is to abandon the connection.
