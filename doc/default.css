@@ -35,6 +35,7 @@ div.contents p a:hover {
   color: inherit;
   }
 
+/* Format ".. note:" sections nicely */
 div.note {
   margin-left: 5em;
   margin-right: 5em;
