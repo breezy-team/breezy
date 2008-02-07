@@ -448,7 +448,7 @@ class PLinkSubprocessVendor(SubprocessVendor):
         if subsystem is not None:
             assert command is None, (
                 'subsystem and command are mutually exclusive')
-        args = ['plink', '-x', '-a', '-ssh', '-2']
+        args = ['plink', '-x', '-a', '-ssh', '-2', '-batch']
         if port is not None:
             args.extend(['-P', str(port)])
         if username is not None:
