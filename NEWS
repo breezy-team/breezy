@@ -38,6 +38,11 @@ IN DEVELOPMENT
     * ``merge --preview`` produces a diff of the changes merge would make,
       but does not actually perform the merge.  (Aaron Bentley)
 
+    * New smart method ``Repository.get_parent_map`` for getting revision
+      parent data. This returns additional parent information topologically
+      adjacent to the requested data to reduce round trip latency impacts.
+      (Robert Collins)
+
     * New smart method, ``Repository.stream_revisions_chunked``, for fetching
       revision data that streams revision data via a chunked encoding.  This
       avoids buffering large amounts of revision data on the server and on the
@@ -79,6 +84,9 @@ IN DEVELOPMENT
 
     * Cleanly handle connection errors in smart protocol version two, the same
       way as they are handled by version one.  (Andrew Bennetts)
+
+    * Clearer error when ``version-info --custom`` is used without
+      ``--template`` (Lukáš Lalinský)
       
     * List possible values for BZR_SSH environment variable in env-variables
       help topic. (Alexander Belchenko, #181842)
@@ -127,6 +135,10 @@ IN DEVELOPMENT
       ``SearchResult`` can be used to recreate the search later, which will
       be useful in reducing network traffic. (Robert Collins)
 
+    * Use convenience function to check whether two repository handles 
+      are referring to the same repository in ``Repository.get_graph``. 
+      (Jelmer Vernooij, #187162)
+
     * Fetching now passes the find_ghosts flag through to the 
       ``InterRepository.missing_revision_ids`` call consistently for all
       repository types. This will enable faster missing revision discovery with
@@ -157,6 +169,9 @@ IN DEVELOPMENT
     * ``Repository.get_data_stream`` is now deprecated in favour of
       ``Repository.get_data_stream_for_search`` which allows less network
       traffic when requesting data streams over a smart server. (Robert Collins)
+
+    * ``RemoteBzrDir._get_tree_branch`` no longer triggers ``_ensure_real``,
+      removing one round trip on many network operations. (Robert Collins)
 
     * Repository has a new method ``has_revisions`` which signals the presence
       of many revisions by returning a set of the revisions listed which are

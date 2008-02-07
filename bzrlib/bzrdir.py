@@ -748,7 +748,7 @@ class BzrDir(object):
     def _get_tree_branch(self):
         """Return the branch and tree, if any, for this bzrdir.
 
-        Return None for tree if not present.
+        Return None for tree if not present or inaccessible.
         Raise NotBranchError if no branch is present.
         :return: (tree, branch)
         """
