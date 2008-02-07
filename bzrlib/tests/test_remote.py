@@ -140,7 +140,7 @@ class FakeClient(_SmartClient):
         self.responses = responses
         self._calls = []
         self.expecting_body = False
-        _SmartClient.__init__(self, FakeMedium(fake_medium_base))
+        _SmartClient.__init__(self, FakeMedium(fake_medium_base, self._calls))
 
     def call(self, method, *args):
         self._calls.append(('call', method, args))
@@ -162,8 +162,20 @@ class FakeClient(_SmartClient):
 
 class FakeMedium(object):
 
-    def __init__(self, base):
+    def __init__(self, base, client_calls):
         self.base = base
+        self.connection = FakeConnection(client_calls)
+        self._client_calls = client_calls
+
+
+class FakeConnection(object):
+
+    def __init__(self, client_calls):
+        self._remote_is_at_least_1_2 = True
+        self._client_calls = client_calls
+
+    def disconnect(self):
+        self._client_calls.append(('disconnect medium',))
 
 
 class TestVfsHas(tests.TestCase):
@@ -659,6 +671,27 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
             ],
             client._calls)
         repo.unlock()
+
+    def test_get_parent_map_reconnects_if_unknown_method(self):
+        error_msg = (
+            "Generic bzr smart protocol error: "
+            "bad request 'Repository.get_parent_map'")
+        responses = [
+            (('error', error_msg), ''),
+            (('ok',), '')]
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(
+            responses, transport_path)
+        rev_id = 'revision-id'
+        parents = repo.get_parent_map([rev_id])
+        self.assertEqual(
+            [('call_with_body_bytes_expecting_body',
+              'Repository.get_parent_map', ('quack/', rev_id), '\n\n0'),
+             ('disconnect medium',),
+             ('call_expecting_body', 'Repository.get_revision_graph',
+              ('quack/', ''))],
+            client._calls)
+
 
 
 class TestRepositoryGetRevisionGraph(TestRemoteRepository):

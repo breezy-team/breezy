@@ -7,6 +7,15 @@ Bazaar Release Notes
 IN DEVELOPMENT
 --------------
 
+  NOTES WHEN UPGRADING:
+  
+    * Fetching via the smart protocol may need to reconnect once during a fetch
+      if the remote server is running Bazaar 1.1 or earlier, because the client
+      attempts to use more efficient requests that confuse older servers.  You
+      may be required to re-enter a password or passphrase when this happens.
+      This won't happen if the server is upgraded to Bazaar 1.2.
+      (Andrew Bennetts)
+
   CHANGES:
 
     * Fetching via bzr+ssh will no longer fill ghosts by default (this is
