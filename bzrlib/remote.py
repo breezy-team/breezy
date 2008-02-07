@@ -41,7 +41,7 @@ from bzrlib.symbol_versioning import (
     zero_ninetyone,
     )
 from bzrlib.revision import NULL_REVISION
-from bzrlib.trace import mutter, note
+from bzrlib.trace import mutter, note, warning
 
 # Note: RemoteBzrDirFormat is in bzrdir.py
 
@@ -825,6 +825,9 @@ class RemoteRepository(object):
             # Worse, we have to force a disconnection, because the server now
             # doesn't realise it has a body on the wire to consume, so the
             # only way to recover is to abandon the connection.
+            warning(
+                'Server is too old for fast get_parent_map, reconnecting.  '
+                '(Upgrade the server to Bazaar 1.2 to avoid this)')
             medium.disconnect()
             # To avoid having to disconnect repeatedly, we keep track of the
             # fact the server doesn't understand remote methods added in 1.2.
@@ -1004,6 +1007,9 @@ class RemoteRepository(object):
             # Worse, we have to force a disconnection, because the server now
             # doesn't realise it has a body on the wire to consume, so the
             # only way to recover is to abandon the connection.
+            warning(
+                'Server is too old for streaming pull, reconnecting.  '
+                '(Upgrade the server to Bazaar 1.2 to avoid this)')
             medium.disconnect()
             # To avoid having to disconnect repeatedly, we keep track of the
             # fact the server doesn't understand this remote method.
