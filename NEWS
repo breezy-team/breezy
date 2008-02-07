@@ -7,15 +7,17 @@ Bazaar Release Notes
 IN DEVELOPMENT
 --------------
 
-  CHANGES:
-
-    * Fetching via bzr+ssh will no longer fill ghosts by default (this is
-      consistent with pack-0.92 fetching over SFTP). (Robert Collins)
-
+  NOTES WHEN UPGRADING:
+  
     * Fetching via the smart protocol may need to reconnect once during a fetch
       if the remote server is running Bazaar 1.1 or earlier, because the client
       attempts to use more efficient requests that confuse older servers.  This
       won't happen if the server is upgraded to Bazaar 1.2.  (Andrew Bennetts)
+
+  CHANGES:
+
+    * Fetching via bzr+ssh will no longer fill ghosts by default (this is
+      consistent with pack-0.92 fetching over SFTP). (Robert Collins)
 
     * Formatting of ``bzr plugins`` output is changed to be more human-
       friendly. Full path of plugins locations will be shown only with
