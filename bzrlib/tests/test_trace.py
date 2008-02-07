@@ -182,9 +182,14 @@ class TestTrace(TestCase):
                 pop_log_file(memento1)
             # the files were opened in binary mode, so should have exactly
             # these bytes.  and removing the file as the log target should
-            # have caused them to be flushed out.
-            self.assertFileEqual("comment to file1\nagain to file1\n", tmp1.name)
-            self.assertFileEqual("comment to file2\n", tmp2.name)
+            # have caused them to be flushed out.  need to match using regexps
+            # as there's a timestamp at the front.
+            tmp1.seek(0)
+            self.assertContainsRe(tmp1.read(),
+                r"\d+\.\d+  comment to file1\n\d+\.\d+  again to file1\n")
+            tmp2.seek(0)
+            self.assertContainsRe(tmp2.read(),
+                r"\d+\.\d+  comment to file2\n")
         finally:
             tmp1.close()
             tmp2.close()
