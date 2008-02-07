@@ -99,6 +99,10 @@ IN DEVELOPMENT
       to previously take a write lock (and start a write group.)
       (Martin Pool)
 
+    * Support for loading plugins from zip files and
+      ``bzrlib.plugin.load_from_zip()`` are deprecated.
+      (Alexander Belchenko)
+
   TESTING:
 
    * selftest now accepts --load-list <file> to load a test id list. This

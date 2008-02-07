@@ -16,7 +16,6 @@
 
 """Custom module finder for entire package"""
 
-import glob
 import modulefinder
 import os
 import sys
@@ -32,7 +31,7 @@ class CustomModuleFinder(modulefinder.ModuleFinder):
 
     def __init__(self, path=None, debug=0, excludes=[], replace_paths=[]):
         if path is None:
-            path = [os.path.join(sys.prefix, 'Lib')]    # only python std lib
+            path = [os.path.dirname(os.__file__)]    # only python std lib
         modulefinder.ModuleFinder.__init__(self, path, debug, excludes,
             replace_paths)
 
