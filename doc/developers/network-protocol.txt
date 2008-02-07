@@ -208,17 +208,20 @@ Version three
 .. _83935: https://bugs.launchpad.net/bzr/+bug/83935
 
 Version three has bencoding of most protocol structures, to make parsing
-simpler.
+simpler.  For extra parsing convenience, these structures are length
+prefixed::
+
+  LENGTH_PREFIX := 32-bit unsigned integer in network byte order
 
 The request and response protocol is::
 
   REQUEST_V3 := "bzr request 3" NEWLINE HEADERS REQUEST_ARGS BODY_V3
-  RESPONSE_V3 := "bzr response 3" NEWLINE RESPONSE_STATUS_V3 HEADERS
-                 RESPONSE_ARGS BODY_V3
+  RESPONSE_V3 := "bzr response 3" NEWLINE HEADERS BODY_V3 
+                 RESPONSE_STATUS_V3 RESPONSE_ARGS
   RESPONSE_STATUS_V3 := SUCCESS_STATUS | ERROR_STATUS
   SUCCESS_STATUS := "S"
   ERROR_STATUS := "E"
-  HEADERS := bencoded_dictionary
+  HEADERS := LENGTH_PREFIX bencoded_dictionary
 
 Each request and response will have “headers”, a dictionary of key-value pairs.
 The keys must be strings, not any other type of value.
@@ -230,8 +233,8 @@ and servers **should not** vary behaviour based on this string.
 
 The argument encoding is::
 
-  REQUEST_ARGS := bencoded_sequence
-  RESPONSE_ARGS := bencoded_sequence
+  REQUEST_ARGS := LENGTH_PREFIX bencoded_sequence
+  RESPONSE_ARGS := LENGTH_PREFIX bencoded_sequence
 
 Arguments in this protocol version are bencoded, and the entire argument
 structure is length-prefixed.  As a result, unlike previous protocol versions,
@@ -247,6 +250,13 @@ be a string of the error name.  The other arguments supply details about the
 error, and their number and types will depend on the type of error (as
 identified by the error name).
 
+Notice that the response body occurs before the response arguments.  So
+there is now just one place in a response to report an error, even one
+that occurs while generating a streaming body: after the body.  This is a
+change from version two, where for some requests the server was expected
+to return a success status even though it hadn't finished trying to
+process the request.
+
 One possible error name is ``UnknownRequestVerb``, which means the server does
 not recognise the verb used by the client's request.
 
@@ -255,23 +265,22 @@ The body encoding is::
   BODY_V3 := NO_BODY | LENGTH_PREFIXED_BODY | STREAMED_BODY_V2
   NO_BODY := "n"
   LENGTH_PREFIXED_BODY := "p" LENGTH_PREFIX BODY_BYTES
-  LENGTH_PREFIX := 32-bit unsigned integer in network byte order
-  STREAMED_BODY_V2 := "s" CHUNKS_V2 TERMINATOR_V2
+  STREAMED_BODY_V2 := "s" CHUNKS_V2 CHUNKS_TERMINATOR
 
   CHUNKS_V2 := "c" CHUNK_V2 [CHUNKS_V2]
   CHUNK_V2 := LENGTH_PREFIX CHUNK_CONTENT
-  
-  TERMINATOR_V2 := SUCCESS_TERMINATOR_V2 | ERROR_TERMINATOR_V2
-  SUCCESS_TERMINATOR_V2 := SUCCESS_STATUS
-  ERROR_TERMINATOR_V2 := ERROR_STATUS bencoded_sequence
+  CHUNKS_TERMINATOR := "t"
 
-Version 3 messages always explicitly declare if a body is included.  Clients
-and servers are no longer expected to know which request verbs and responses
-will have bodies attached.  If present, bodies may be a single length-prefixed
-string (like in protocol 1) or a stream of chunks (like in protocol 2).
+Version 3 messages always explicitly declare if a body is included.  The
+absence of a body is signalled by sending NO_BODY as the body type.
+Clients and servers are no longer expected to know which request verbs and
+responses will have bodies attached.  If present, bodies may be a single
+length-prefixed string (like in protocol 1) or a stream of chunks (like in
+protocol 2, although the termination is slightly different).
 
-If a streamed body is finished with an error, that error will be encoded
-identically to RESPONSE_ARGS.
+If an error occurs while generating a streamed body, the server should
+finish the stream and use ERROR_STATUS as the RESPONSE_STATUS.  That is,
+it should send an error in the same way it would when there is no body.
 
 Paths
 =====
