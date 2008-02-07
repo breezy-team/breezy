@@ -170,11 +170,13 @@ def open_tracefile(tracefilename=None):
     import codecs
 
     if tracefilename is None:
-        if sys.platform == 'win32':
-            from bzrlib import win32utils
-            home = win32utils.get_home_location()
-        else:
-            home = os.path.expanduser('~')
+        home = os.environ.get('BZR_HOME')
+        if home is None:
+            if sys.platform == 'win32':
+                from bzrlib import win32utils
+                home = win32utils.get_home_location()
+            else:
+                home = os.path.expanduser('~')
         _bzr_log_filename = os.path.join(home, '.bzr.log')
     else:
         _bzr_log_filename = tracefilename

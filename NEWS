@@ -16,6 +16,10 @@ IN DEVELOPMENT
       friendly. Full path of plugins locations will be shown only with
       ``--verbose`` command-line option. (Alexander Belchenko)
 
+    * If BZR_HOME environment variable is defined then default location
+      for .bzr.log trace file is ``$BZR_HOME/.bzr.log``.
+      (Alexander Belchenko)
+
     * ``merge`` now prefers to use the submit branch, but will fall back to
       parent branch.  For many users, this has no effect.  But some users who
       pull and merge on the same branch will notice a change.  This change
@@ -26,6 +30,10 @@ IN DEVELOPMENT
 
   FEATURES:
 
+    * BZR_LOG environment variable controls location of .bzr.log trace file. 
+      User can suppress writing messages to .bzr.log by using '/dev/null'
+      filename (on Linux) or 'NUL' (on Windows). (Alexander Belchenko)
+
     * ``merge --preview`` produces a diff of the changes merge would make,
       but does not actually perform the merge.  (Aaron Bentley)
 
@@ -34,10 +42,6 @@ IN DEVELOPMENT
       avoids buffering large amounts of revision data on the server and on the
       client, and sends less data to the server to request the revisions.
       (Andrew Bennetts, Robert Collins, #178353)
-
-    * BZR_LOG environment variable controls location of .bzr.log trace file. 
-      User can suppress writing messages to .bzr.log by using '/dev/null'
-      filename (on Linux) or 'NUL' (on Windows). (Alexander Belchenko)
 
   IMPROVEMENTS:
 

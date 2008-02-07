@@ -16,6 +16,7 @@
 
 """Black-box tests for bzr version."""
 
+import os
 import sys
 
 import bzrlib
@@ -83,9 +84,13 @@ class TestVersionBzrLogLocation(TestCaseInTempDir):
     def test_simple(self):
         bzr_log = 'my.bzr.log'
         osutils.set_or_unset_env('BZR_LOG', bzr_log)
+        default_log = os.path.join(os.environ['BZR_HOME'], '.bzr.log')
+        self.failIfExists([default_log, bzr_log])
         out = self.run_bzr_subprocess('version')[0]
         self.assertTrue(len(out) > 0)
         self.assertContainsRe(out, r"(?m)^  Bazaar log file: " + bzr_log)
+        self.failIfExists(default_log)
+        self.failUnlessExists(bzr_log)
 
     def test_dev_null(self):
         if sys.platform == 'win32':
@@ -93,6 +98,9 @@ class TestVersionBzrLogLocation(TestCaseInTempDir):
         else:
             bzr_log = '/dev/null'
         osutils.set_or_unset_env('BZR_LOG', bzr_log)
+        default_log = os.path.join(os.environ['BZR_HOME'], '.bzr.log')
+        self.failIfExists(default_log)
         out = self.run_bzr_subprocess('version')[0]
         self.assertTrue(len(out) > 0)
         self.assertContainsRe(out, r"(?m)^  Bazaar log file: " + bzr_log)
+        self.failIfExists(default_log)
