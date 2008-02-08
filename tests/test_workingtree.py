@@ -461,7 +461,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         tree.set_pending_merges([
             tree.branch.mapping.generate_revision_id("a-uuid-foo", 1, "branch/fpath"), "c"])
         self.assertEqual(
-                "svn-v3:1@a-uuid-foo-branch%%2fpath\tc\n",
+                "svn-v3-none:a-uuid-foo:branch%2Ffpath:1\tc\n",
                 self.client_get_prop("dc", "bzr:ancestry:v3-none"))
 
     def test_set_pending_merges_svk(self):
