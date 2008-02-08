@@ -425,7 +425,7 @@ class TestBranchConfig(tests.TestCaseWithTransport):
         self.check_file_contents(locations,
                                  '[%s/branch]\n'
                                  'push_location = http://foobar\n'
-                                 'push_location:policy = norecurse'
+                                 'push_location:policy = norecurse\n'
                                  % (local_path,))
 
     def test_autonick_urlencoded(self):
@@ -897,7 +897,7 @@ class TestLocationConfig(tests.TestCaseInTempDir):
         self.my_config.set_user_option('foo', 'bar')
         self.assertEqual(
             self.my_config.branch.control_files.files['branch.conf'],
-            'foo = bar')
+            'foo = bar\n')
         self.assertEqual(self.my_config.get_user_option('foo'), 'bar')
         self.my_config.set_user_option('foo', 'baz',
                                        store=config.STORE_LOCATION)

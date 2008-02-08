@@ -77,6 +77,8 @@ IN DEVELOPMENT
       Speeds up ``bzr annotate`` with a pack repository by approx 3:2.
       (John Arbash Meinel)
 
+    * Upgrade bundled ConfigObj to version 4.5.1. (Matt Nordhoff)
+
   BUGFIXES:
 
     * Calculate remote path relative to the shared medium in _SmartClient.  This
