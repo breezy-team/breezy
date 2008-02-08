@@ -112,6 +112,9 @@ SPEC_TYPES.append(revspec.RevisionSpec_svn)
 
 versions_checked = False
 def lazy_check_versions():
+    """Check whether all dependencies have the right versions.
+    
+    :note: Only checks once, caches the result."""
     global versions_checked
     if versions_checked:
         return
@@ -120,6 +123,10 @@ def lazy_check_versions():
 
 optimizers_registered = False
 def lazy_register_optimizers():
+    """Register optimizers for fetching between Subversion and Bazaar 
+    repositories.
+    
+    :note: Only registers on the first call."""
     global optimizers_registered
     if optimizers_registered:
         return
@@ -132,7 +139,10 @@ def lazy_register_optimizers():
 
 
 def get_scheme(schemename):
-    """Parse scheme identifier and return a branching scheme."""
+    """Parse scheme identifier and return a branching scheme.
+    
+    :param schemename: Name of the scheme to retrieve.
+    """
     from scheme import BranchingScheme
     from bzrlib.errors import BzrCommandError
     
@@ -380,6 +390,7 @@ register_command(cmd_svn_set_revprops)
 
 
 def test_suite():
+    """Returns the testsuite for bzr-svn."""
     from unittest import TestSuite
     import tests
     suite = TestSuite()

@@ -46,6 +46,10 @@ def create_upgraded_revid(revid, mapping_suffix, upgrade_suffix="-upgrade"):
 
 
 def upgrade_workingtree(wt, svn_repository, allow_changes=False, verbose=False):
+    """Upgrade a working tree.
+
+    :param svn_repository: Subversion repository object
+    """
     renames = upgrade_branch(wt.branch, svn_repository, allow_changes=allow_changes, verbose=verbose)
     last_revid = wt.branch.last_revision()
     wt.set_parent_trees([(last_revid, wt.branch.repository.revision_tree(last_revid))])
@@ -82,6 +86,13 @@ def check_revision_changed(oldrev, newrev):
 
 
 def generate_upgrade_map(new_mapping, revs):
+    """Generate an upgrade map for use by bzr-rebase.
+
+    :param new_mapping: BzrSvnMapping to upgrade revisions to.
+    :param revs: Iterator over revisions to upgrade.
+    :return: Map from old revids as keys, new revids as values stored in a 
+             dictionary.
+    """
     rename_map = {}
     pb = ui.ui_factory.nested_progress_bar()
     # Create a list of revisions that can be renamed during the upgade
@@ -105,6 +116,13 @@ def generate_upgrade_map(new_mapping, revs):
 MIN_REBASE_VERSION = (0, 2)
 
 def check_rebase_version():
+    """Check what version of bzr-rebase is installed.
+
+    Raises an exception when the version installed is older than 
+    MIN_REBASE_VERSION.
+
+    :raises RebaseNotPresent: Raised if bzr-rebase is not installed or too old.
+    """
     try:
         from bzrlib.plugins.rebase import version_info as rebase_version_info
         if rebase_version_info[:2] < MIN_REBASE_VERSION:

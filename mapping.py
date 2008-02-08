@@ -735,6 +735,7 @@ class BzrSvnMappingv3Hybrid(BzrSvnMappingv3):
 
 
 class BzrSvnMappingRegistry(registry.Registry):
+    """Registry for the various Bzr<->Svn mappings."""
     def register(self, key, factory, help):
         """Register a mapping between Bazaar and Subversion semantics.
 
@@ -784,5 +785,7 @@ def parse_revision_id(revid):
     except KeyError:
         pass
 
+
 def get_default_mapping():
+    """Convenience function for obtaining the default mapping to use."""
     return mapping_registry.get("default")

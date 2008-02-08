@@ -13,6 +13,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+"""Utility functions for dealing with SVK properties."""
+
 SVN_PROP_SVK_MERGE = 'svk:merge'
 
 parse_svk_features = lambda text: set(text.splitlines())
