@@ -132,12 +132,7 @@ class SSHVendorManager(object):
 
     def _get_vendor_by_inspection(self):
         """Return the vendor or None by checking for known SSH implementations."""
-        # detection of plink vendor is disabled because of bug #107593
-        # https://bugs.launchpad.net/bzr/+bug/107593
-        # who want plink should explicitly enable it with BZR_SSH environment
-        # variable.
-        #~for args in (['ssh', '-V'], ['plink', '-V']):
-        for args in (['ssh', '-V'],):
+        for args in (['ssh', '-V'], ['plink', '-V']):
             version = self._get_ssh_version_string(args)
             vendor = self._get_vendor_by_version_string(version, args)
             if vendor is not None:
