@@ -348,7 +348,7 @@ class cmd_svn_branching_scheme(Command):
             if scheme is None:
                 return ""
             return "".join(map(lambda x: x+"\n", scheme.to_lines()))
-        repos = Repository.open(location)
+        repos = Repository.open_containing(location)[0]
         if not isinstance(repos, SvnRepository):
             raise BzrCommandError("Not a Subversion repository: %s" % location)
         if repository_wide:
