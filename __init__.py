@@ -338,6 +338,7 @@ class cmd_svn_branching_scheme(Command):
         ]
 
     def run(self, location=".", set=False, repository_wide=False):
+        from bzrlib.bzrdir import BzrDir
         from bzrlib.errors import BzrCommandError
         from bzrlib.msgeditor import edit_commit_message
         from bzrlib.repository import Repository
@@ -348,7 +349,8 @@ class cmd_svn_branching_scheme(Command):
             if scheme is None:
                 return ""
             return "".join(map(lambda x: x+"\n", scheme.to_lines()))
-        repos = Repository.open_containing(location)[0]
+        dir = BzrDir.open_containing(location)[0]
+        repos = dir.find_repository()
         if not isinstance(repos, SvnRepository):
             raise BzrCommandError("Not a Subversion repository: %s" % location)
         if repository_wide:
