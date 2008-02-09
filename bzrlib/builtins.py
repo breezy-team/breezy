@@ -2450,29 +2450,6 @@ class cmd_nick(Command):
         print branch.nick
 
 
-class cmd_unalias(Command):
-    """Remove a defined alias.
-
-    :Examples:
-        To remove the alias for 'll':
-            bzr unalias ll
-    """
-    _see_also = ['alias']
-    takes_args = ['alias_name']
-
-    @display_command
-    def run(self, alias_name):
-        # If alias is not found, print something like:
-        # unalias: foo: not found
-        from bzrlib.commands import get_alias
-        alias = get_alias(alias_name)
-        if alias is None:
-            print "bzr unalias: %s: not found" % alias_name
-        else:
-            c = config.GlobalConfig()
-            c.unset_alias(alias_name)
-
-
 class cmd_alias(Command):
     """Print the list of aliases set.
 
@@ -2489,12 +2466,20 @@ class cmd_alias(Command):
 
             bzr alias ll='log --line -r-10..-1'
 
-    """
-    _see_also = ['unalias']
-    takes_args = ['name?']
+        To remove an alias for 'll'::
 
-    def run(self, name=None):
-        if name is None:
+            bzr alias --remove ll
+
+    """
+    takes_args = ['name?']
+    takes_options = [
+        Option('remove', help='Remove the alias.'),
+        ]
+
+    def run(self, name=None, remove=False):
+        if remove:
+            self.remove_alias(name)
+        elif name is None:
             self.print_aliases()
         else:
             equal_pos = name.find('=')
@@ -2502,6 +2487,21 @@ class cmd_alias(Command):
                 self.print_alias(name)
             else:
                 self.set_alias(name[:equal_pos], name[equal_pos+1:])
+
+    @display_command
+    def remove_alias(self, alias_name):
+        if alias_name is None:
+            raise errors.BzrCommandError(
+                'bzr alias --remove expects an alias to remove.')
+        # If alias is not found, print something like:
+        # unalias: foo: not found
+        from bzrlib.commands import get_alias
+        alias = get_alias(alias_name)
+        if alias is None:
+            print "bzr alias: %s: not found" % alias_name
+        else:
+            c = config.GlobalConfig()
+            c.unset_alias(alias_name)
 
     @display_command
     def print_aliases(self):
