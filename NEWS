@@ -87,7 +87,11 @@ IN DEVELOPMENT
 
     * Clearer error when ``version-info --custom`` is used without
       ``--template`` (Lukáš Lalinský)
-      
+
+    * Don't raise UnavailableFeature during test setup when medusa is not
+      available or tearDown is never called leading to nasty side effects.
+      (#137823, Vincent Ladeuil)
+
     * List possible values for BZR_SSH environment variable in env-variables
       help topic. (Alexander Belchenko, #181842)
 
