@@ -1981,6 +1981,18 @@ class ConflictFormatError(BzrError):
     _fmt = "Format error in conflict listings"
 
 
+class CorruptDirstate(BzrError):
+
+    _fmt = ("There is an inconsistency with your dirstate file at path"
+            " %(dirstate)s.\n"
+            "Error: %(description)s")
+
+    def __init__(self, dirstate, description):
+        BzrError.__init__(self)
+        self.dirstate = dirstate
+        self.description = description
+
+
 class CorruptRepository(BzrError):
 
     _fmt = ("An error has been detected in the repository %(repo_path)s.\n"
@@ -1989,6 +2001,19 @@ class CorruptRepository(BzrError):
     def __init__(self, repo):
         BzrError.__init__(self)
         self.repo_path = repo.bzrdir.root_transport.base
+
+
+class InconsistentDelta(BzrError):
+    """Used when we get a delta that is not valid."""
+
+    _fmt = ("An inconsistent delta was supplied involving %(path)r,"
+            " %(file_id)r\nreason: %s")
+
+    def __init__(self, path, file_id, reason):
+        BzrError.__init__(self)
+        self.path = path
+        self.file_id = file_id
+        self.reason = reason
 
 
 class UpgradeRequired(BzrError):

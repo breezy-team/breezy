@@ -29,6 +29,12 @@ from bzrlib.tests import TestCase, TestCaseWithTransport
 
 class TestErrors(TestCaseWithTransport):
 
+    def test_corrupt_dirstate(self):
+        error = errors.CorruptDirstate('path/to/dirstate', 'the reason why')
+        self.assertEqualDiff("There is an inconsistency with your dirstate file at path"
+                             " path/to/dirstate.\n"
+                             "Error: the reason why", str(error))
+
     def test_disabled_method(self):
         error = errors.DisabledMethod("class name")
         self.assertEqualDiff(
@@ -49,6 +55,13 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqualDiff(
             'The API for "module" is not compatible with "(1, 2, 3)". '
             'It supports versions "(4, 5, 6)" to "(7, 8, 9)".',
+            str(error))
+
+    def test_inconsistent_delta(self):
+        error = errors.InconsistentDelta('path', 'file-id', 'reason for foo')
+        self.assertEqualDiff(
+            "An inconsistent delta was supplied for 'path', 'file-id'\n"
+            "reason: reason for foo",
             str(error))
 
     def test_in_process_transport(self):
