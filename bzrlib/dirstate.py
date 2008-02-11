@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -295,9 +295,6 @@ class DirState(object):
     IN_MEMORY_UNMODIFIED = 1
     IN_MEMORY_MODIFIED = 2
 
-    CONSISTENT = 0
-    INCONSISTENT = 1
-
     # A pack_stat (the x's) that is just noise and will never match the output
     # of base64 encode.
     NULLSTAT = 'x' * 32
@@ -324,7 +321,9 @@ class DirState(object):
         # modified states.
         self._header_state = DirState.NOT_IN_MEMORY
         self._dirblock_state = DirState.NOT_IN_MEMORY
-        self._consistency = DirState.CONSISTENT
+        # If true, an error has been detected while updating the dirstate, and 
+        # for safety we're not going to commit to disk.
+        self._changes_aborted = False
         self._dirblocks = []
         self._ghosts = []
         self._parents = []
@@ -1297,12 +1296,12 @@ class DirState(object):
             # the entry for this file_id must be in tree 0.
             entry = self._get_entry(0, file_id, new_path)
             if entry[0] is None or entry[0][2] != file_id:
-                self._consistency = DirState.INCONSISTENT
+                self._changes_aborted = True
                 raise errors.InconsistentDelta(new_path, file_id,
                     'working tree does not contain new entry')
             if real_add and entry[1][1][0] not in absent:
-                self._consistency = DirState.INCONSISTENT
-                raise errors.BzrError(new_path, file_id,
+                self._changes_aborted = True
+                raise errors.InconsistentDelta(new_path, file_id,
                     'The entry was considered to be a genuinely new record,'
                     ' but there was already an old record for it.')
             # We don't need to update the target of an 'r' because the handling
@@ -1322,12 +1321,12 @@ class DirState(object):
             # the entry for this file_id must be in tree 0.
             entry = self._get_entry(0, file_id, new_path)
             if entry[0] is None or entry[0][2] != file_id:
-                self._consistency = DirState.INCONSISTENT
+                self._changes_aborted = True
                 raise errors.InconsistentDelta(new_path, file_id,
                     'working tree does not contain new entry')
             if (entry[1][0][0] in absent or
                 entry[1][1][0] in absent):
-                self._consistency = DirState.INCONSISTENT
+                self._changes_aborted = True
                 raise errors.InconsistentDelta(new_path, file_id,
                     'changed considered absent')
             entry[1][1] = new_details
@@ -1355,24 +1354,24 @@ class DirState(object):
             block_index, entry_index, dir_present, file_present = \
                 self._get_block_entry_index(dirname, basename, 1)
             if not file_present:
-                self._consistency = DirState.INCONSISTENT
+                self._changes_aborted = True
                 raise errors.InconsistentDelta(old_path, file_id,
                     'basis tree does not contain removed entry')
             entry = self._dirblocks[block_index][1][entry_index]
             if entry[0][2] != file_id:
-                self._consistency = DirState.INCONSISTENT
+                self._changes_aborted = True
                 raise errors.InconsistentDelta(old_path, file_id,
                     'mismatched file_id in tree 1')
             if real_delete:
                 if entry[1][0][0] != 'a':
-                    self._consistency = DirState.INCONSISTENT
+                    self._changes_aborted = True
                 raise errors.InconsistentDelta(old_path, file_id,
                         'This was marked as a real delete, but the WT state'
                         ' claims that it still exists and is versioned.')
                 del self._dirblocks[block_index][1][entry_index]
             else:
                 if entry[1][0][0] == 'a':
-                    self._consistency = DirState.INCONSISTENT
+                    self._changes_aborted = True
                     raise errors.InconsistentDelta(old_path, file_id,
                         'The entry was considered a rename, but the source path'
                         ' is marked as absent.')
@@ -1682,7 +1681,7 @@ class DirState(object):
             assert entry[0][2] and entry[1][tree_index][0] not in ('a', 'r'), 'unversioned entry?!?!'
             if fileid_utf8:
                 if entry[0][2] != fileid_utf8:
-                    self._consistency = DirState.INCONSISTENT
+                    self._changes_aborted = True
                     raise errors.BzrError('integrity error ? : mismatching'
                                           ' tree_index, file_id and path')
             return entry
@@ -1971,11 +1970,11 @@ class DirState(object):
         start over, to allow for fine grained read lock duration, so 'status'
         wont block 'commit' - for example.
         """
-        if self._consistency != DirState.CONSISTENT:
+        if self._changes_aborted:
             # Should this be a warning? For now, I'm expecting that places that
             # mark it inconsistent will warn, making a warning here redundant.
-            trace.mutter('Not saving DirState because it is in an'
-                         ' INCONSISTENT state.')
+            trace.mutter('Not saving DirState because '
+                    '_changes_aborted is set.')
             return
         if (self._header_state == DirState.IN_MEMORY_MODIFIED or
             self._dirblock_state == DirState.IN_MEMORY_MODIFIED):
@@ -2621,7 +2620,7 @@ class DirState(object):
         """Forget all state information about the dirstate."""
         self._header_state = DirState.NOT_IN_MEMORY
         self._dirblock_state = DirState.NOT_IN_MEMORY
-        self._consistency = DirState.CONSISTENT
+        self._changes_aborted = False
         self._parents = []
         self._ghosts = []
         self._dirblocks = []
