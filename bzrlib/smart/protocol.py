@@ -20,12 +20,14 @@ client and server.
 
 import collections
 from cStringIO import StringIO
+import struct
 import time
 
 from bzrlib import debug
 from bzrlib import errors
 from bzrlib.smart import request
 from bzrlib.trace import log_exception_quietly, mutter
+from bzrlib.util.bencode import bdecode
 
 
 # Protocol version strings.  These are sent as prefixes of bzr requests and
@@ -33,6 +35,9 @@ from bzrlib.trace import log_exception_quietly, mutter
 # one strings because that version doesn't send any).
 REQUEST_VERSION_TWO = 'bzr request 2\n'
 RESPONSE_VERSION_TWO = 'bzr response 2\n'
+
+REQUEST_VERSION_THREE = 'bzr request 3 (bzr 1.2)\n'
+RESPONSE_VERSION_THREE = 'bzr response 3 (bzr 1.2)\n'
 
 
 def _recv_tuple(from_file):
@@ -184,6 +189,9 @@ class SmartServerRequestProtocolTwo(SmartServerRequestProtocolOne):
     This prefixes responses with the value of RESPONSE_VERSION_TWO.
     """
 
+    response_marker = RESPONSE_VERSION_TWO
+    request_marker = REQUEST_VERSION_TWO
+
     def _write_success_or_failure_prefix(self, response):
         """Write the protocol specific success/failure prefix."""
         if response.is_successful():
@@ -196,7 +204,7 @@ class SmartServerRequestProtocolTwo(SmartServerRequestProtocolOne):
         
         Version two sends the value of RESPONSE_VERSION_TWO.
         """
-        self._write_func(RESPONSE_VERSION_TWO)
+        self._write_func(self.response_marker)
 
     def _send_response(self, response):
         """Send a smart server response down the output stream."""
@@ -611,13 +619,16 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
     This prefixes the request with the value of REQUEST_VERSION_TWO.
     """
 
+    response_marker = RESPONSE_VERSION_TWO
+    request_marker = REQUEST_VERSION_TWO
+
     def read_response_tuple(self, expect_body=False):
         """Read a response tuple from the wire.
 
         This should only be called once.
         """
         version = self._request.read_line()
-        if version != RESPONSE_VERSION_TWO:
+        if version != self.response_marker:
             raise errors.SmartProtocolError('bad protocol marker %r' % version)
         response_status = self._recv_line()
         if response_status not in ('success\n', 'failed\n'):
@@ -631,7 +642,7 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
         
         Version two sends the value of REQUEST_VERSION_TWO.
         """
-        self._request.accept_bytes(REQUEST_VERSION_TWO)
+        self._request.accept_bytes(self.request_marker)
 
     def read_streamed_body(self):
         """Read bytes from the body, decoding into a byte stream.
@@ -650,4 +661,150 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
                            len(body_bytes))
                 yield body_bytes
         self._request.finished_reading()
+
+
+class SmartServerRequestProtocolThree(_StatefulDecoder, SmartServerRequestProtocolTwo):
+
+    response_marker = RESPONSE_VERSION_THREE
+    request_marker = REQUEST_VERSION_THREE
+
+    def __init__(self, backing_transport, write_func):
+        _StatefulDecoder.__init__(self)
+        self._backing_transport = backing_transport
+        self._write_func = write_func
+        self.has_dispatched = False
+        # Start with an empty request object, start building it up as data
+        # arrives.
+        self._in_buffer = ''
+        # Initial state
+        self.state_accept = self._state_accept_expecting_headers
+
+        self.request_handler = request.SmartServerRequestHandler(
+            self._backing_transport, commands=request.request_handlers)
+
+#        self.excess_buffer = ''
+#        self._finished = False
+#        self.has_dispatched = False
+#        self._body_decoder = None
+
+    def _extract_length_prefixed_bytes(self):
+        if len(self._in_buffer) < 4:
+            # A length prefix by itself is 4 bytes, and we don't even have that
+            # many yet.
+            return None
+        (length,) = struct.unpack('!L', self._in_buffer[:4])
+        end_of_bytes = 4 + length
+        if len(self._in_buffer) < end_of_bytes:
+            # We haven't yet read as many bytes as the length-prefix says there
+            # are.
+            return None
+        # Extract the bytes from the buffer.
+        bytes = self._in_buffer[4:end_of_bytes]
+        self._in_buffer = self._in_buffer[end_of_bytes:]
+        return bytes
+
+    def _extract_prefixed_bencoded_data(self):
+        prefixed_bytes = self._extract_length_prefixed_bytes()
+        if prefixed_bytes is None:
+            return None
+        try:
+            decoded = bdecode(prefixed_bytes)
+        except ValueError:
+            raise errors.SmartProtocolError(
+                'Bytes %r not bencoded' % (prefixed_bytes,))
+        return decoded
+
+    def _state_accept_expecting_headers(self, bytes):
+        self._in_buffer += bytes
+        decoded = self._extract_prefixed_bencoded_data()
+        if type(decoded) is not dict:
+            raise errors.SmartProtocolError(
+                'Header object %r is not a dict' % (decoded,))
+        self.state_accept = self._state_accept_expecting_request_args
+        self.request_handler.headers_received(decoded)
+
+    def _state_accept_expecting_request_args(self, bytes):
+        self._in_buffer += bytes
+        decoded = self._extract_prefixed_bencoded_data()
+        if type(decoded) is not list:
+            raise errors.SmartProtocolError(
+                'Request arguments %r not sequence' % (decoded,))
+        self.state_accept = self._state_accept_expecting_body_kind
+        self.request_handler.args_received(decoded)
+
+    def _state_accept_expecting_body_kind(self, bytes):
+        self._in_buffer += bytes
+        body_kind = self._in_buffer[:1]
+        if body_kind == '':
+            # Not enough bytes yet.
+            return
+        # Trim the buffer.
+        self._in_buffer = self._in_buffer[1:]
+        if body_kind == 'n':
+            # No body.  All done!
+            self.request_handler.no_body_received()
+            self.done()
+        elif body_kind == 'p':
+            # A single length-prefixed blob
+            self.state_accept = self._state_accept_expecting_prefixed_body
+        elif body_kind == 's':
+            # Streamed body
+            self.state_accept = self._state_accept_expecting_chunked_body
+        else:
+            raise errors.SmartProtocolError('Bad body kind: %r' % (body_kind,))
+
+    def done(self):
+        self.state_accept = self._state_accept_reading_unused
+        #xxx_dispatch_request()
+
+    def _state_accept_expecting_prefixed_body(self, bytes):
+        self._in_buffer += bytes
+        body = self._extract_length_prefixed_bytes()
+        if body is None:
+            return
+        self.request_handler.prefixed_body_received(body)
+        self.done()
+
+    def _state_accept_expecting_chunked_body(self, bytes):
+        self._in_buffer += bytes
+        chunk_or_terminator = self._in_buffer[:1]
+        if chunk_or_terminator == '':
+            # Not enough bytes yet.
+            return
+        # Trim the buffer.
+        self._in_buffer = self._in_buffer[1:]
+        if chunk_or_terminator == 'c':
+            self.state_accept = self._state_accept_expecting_chunk
+        elif chunk_or_terminator == 't':
+            self.done()
+        else:
+            raise errors.SmartProtocolError(
+                'Bad chunk header: %r' % (chunk_or_terminator,))
+
+    def _state_accept_expecting_chunk(self, bytes):
+        self._in_buffer += bytes
+        prefixed_bytes = self._extract_length_prefixed_bytes()
+        if prefixed_bytes is None:
+            return None
+        self.request_handler.body_chunk_received(prefixed_bytes)
+        self.state_accept = self._state_accept_expecting_chunked_body
+
+    def _state_accept_reading_unused(self, bytes):
+        self.unused_data += bytes
+
+    @property
+    def excess_buffer(self):
+        return self.unused_data
+    
+    def next_read_size(self):
+        if self.state_accept == self._state_accept_reading_unused:
+            return 0
+        else:
+            return 1 # XXX !!!
+
+
+class SmartClientRequestProtocolThree(SmartClientRequestProtocolTwo):
+
+    response_marker = RESPONSE_VERSION_THREE
+    request_marker = REQUEST_VERSION_THREE
 

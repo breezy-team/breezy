@@ -30,6 +30,8 @@ from bzrlib.bundle.serializer import write_bundle
 
 class SmartServerRequest(object):
     """Base class for request handlers."""
+    # XXX: rename this class to BaseSmartServerRequestHandler ?  A request
+    # *handler* is a different concept to the request.
 
     def __init__(self, backing_transport):
         """Constructor.
@@ -233,6 +235,27 @@ class SmartServerRequestHandler(object):
                 return FailedSmartServerResponse(('ReadOnlyError', ))
             else:
                 raise
+
+    def headers_received(self, headers):
+        # XXX
+        pass
+
+    def args_received(self, args):
+        # XXX
+        pass
+
+    def no_body_received(self):
+        # XXX
+        pass
+
+    def prefixed_body_received(self, body_bytes):
+        # XXX
+        pass
+
+    def body_chunk_received(self, chunk_bytes):
+        # XXX
+        pass
+
 
 
 class HelloRequest(SmartServerRequest):
