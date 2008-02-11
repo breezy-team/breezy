@@ -22,7 +22,6 @@ import os
 import socket
 import threading
 import unittest
-import urllib2
 
 from bzrlib import (
         bzrdir,
@@ -40,10 +39,6 @@ from bzrlib.smart import (
         server,
         vfs,
 )
-from bzrlib.tests.http_utils import (
-        HTTPServerWithSmarts,
-        SmartRequestHandler,
-        )
 from bzrlib.tests.test_smart import TestCaseWithSmartMedium
 from bzrlib.transport import (
         get_transport,
@@ -2080,6 +2075,11 @@ class TestServerProtocolThree(TestSmartProtocol):
         self.assertEqual('', smart_protocol.excess_buffer)
 
     def make_protocol_expecting_body(self):
+        """Returns a SmartServerRequestProtocolThree instance in the
+        'expecting_body_kind' state.
+
+        That is, return a protocol object that is waiting to receive a body.
+        """
         output = StringIO()
         protocol_version = "bzr request 3\n"
         headers = '\0\0\0\x02de'  # length-prefixed, bencoded empty dict
@@ -2089,47 +2089,53 @@ class TestServerProtocolThree(TestSmartProtocol):
         smart_protocol.accept_bytes(request_bytes)
         return smart_protocol
 
-    def test_no_body(self):
+    def assertBodyParsingBehaviour(self, calls, protocol_bytes):
+        """Assert that the given bytes cause an exact sequence of calls to the
+        request handler.
+        """
         smart_protocol = self.make_protocol_expecting_body()
         smart_protocol.request_handler = InstrumentedRequestHandler()
+        smart_protocol.accept_bytes(protocol_bytes)
+        self.assertEqual(calls, smart_protocol.request_handler.calls,
+            "%r was not parsed as expected" % (protocol_bytes,))
+
+    def test_request_no_body(self):
+        """Parsing a request with no body calls no_body_received on the request
+        handler.
+        """
         body = (
             'n' # body kind
             )
-        smart_protocol.accept_bytes(body)
-        self.assertEqual(
-            [('no_body_received',)],
-            smart_protocol.request_handler.calls)
+        self.assertBodyParsingBehaviour([('no_body_received',)], body)
 
-    def test_prefixed_body(self):
-        smart_protocol = self.make_protocol_expecting_body()
-        smart_protocol.request_handler = InstrumentedRequestHandler()
+    def test_request_prefixed_body(self):
+        """Parsing a request with a length-prefixed body calls
+        prefixed_body_received on the request handler.
+        """
         body = (
             'p' # body kind
             '\0\0\0\x07' # length prefix
             'content' # the payload
             )
-        smart_protocol.accept_bytes(body)
-        self.assertEqual(
-            [('prefixed_body_received', 'content')],
-            smart_protocol.request_handler.calls)
+        self.assertBodyParsingBehaviour(
+            [('prefixed_body_received', 'content')], body)
 
-    def test_chunked_body_zero_chunks(self):
-        smart_protocol = self.make_protocol_expecting_body()
-        smart_protocol.request_handler = InstrumentedRequestHandler()
+    def test_request_chunked_body_zero_chunks(self):
+        """Parsing a request with a streamed body with no chunks does not call
+        the request handler!
+        """
         body = (
             's' # body kind
             't' # stream terminator
             )
-        smart_protocol.accept_bytes(body)
         # XXX: No calls to the request handler in this case?  That's slightly
         # odd.
-        self.assertEqual(
-            [],
-            smart_protocol.request_handler.calls)
+        self.assertBodyParsingBehaviour([], body)
 
-    def test_chunked_body_one_chunks(self):
-        smart_protocol = self.make_protocol_expecting_body()
-        smart_protocol.request_handler = InstrumentedRequestHandler()
+    def test_request_chunked_body_one_chunks(self):
+        """Parsing a request with a streamed body with one chunk calls
+        body_chunk_received once.
+        """
         body = (
             's' # body kind
             'c' # chunk indicator
@@ -2138,14 +2144,12 @@ class TestServerProtocolThree(TestSmartProtocol):
             # Done
             't' # stream terminator
             )
-        smart_protocol.accept_bytes(body)
-        self.assertEqual(
-            [('body_chunk_received', 'one')],
-            smart_protocol.request_handler.calls)
+        self.assertBodyParsingBehaviour([('body_chunk_received', 'one')], body)
 
-    def test_chunked_body_two_chunks(self):
-        smart_protocol = self.make_protocol_expecting_body()
-        smart_protocol.request_handler = InstrumentedRequestHandler()
+    def test_request_chunked_body_two_chunks(self):
+        """Parsing a request with a streamed body with multiple chunks calls
+        body_chunk_received for each chunk.
+        """
         body = (
             's' # body kind
             # First chunk
@@ -2159,10 +2163,9 @@ class TestServerProtocolThree(TestSmartProtocol):
             # Done
             't' # stream terminator
             )
-        smart_protocol.accept_bytes(body)
-        self.assertEqual(
+        self.assertBodyParsingBehaviour(
             [('body_chunk_received', 'one'), ('body_chunk_received', 'two')],
-            smart_protocol.request_handler.calls)
+            body)
 
 
 class InstrumentedRequestHandler(object):
