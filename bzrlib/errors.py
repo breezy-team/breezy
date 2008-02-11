@@ -1983,13 +1983,12 @@ class ConflictFormatError(BzrError):
 
 class CorruptDirstate(BzrError):
 
-    _fmt = ("There is an inconsistency with your dirstate file at path"
-            " %(dirstate)s.\n"
+    _fmt = ("Inconsistency in dirstate file %(dirstate_path)s.\n"
             "Error: %(description)s")
 
-    def __init__(self, dirstate, description):
+    def __init__(self, dirstate_path, description):
         BzrError.__init__(self)
-        self.dirstate = dirstate
+        self.dirstate_path = dirstate_path
         self.description = description
 
 

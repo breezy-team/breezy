@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #            and others
 #
@@ -31,9 +31,10 @@ class TestErrors(TestCaseWithTransport):
 
     def test_corrupt_dirstate(self):
         error = errors.CorruptDirstate('path/to/dirstate', 'the reason why')
-        self.assertEqualDiff("There is an inconsistency with your dirstate file at path"
-                             " path/to/dirstate.\n"
-                             "Error: the reason why", str(error))
+        self.assertEqualDiff(
+            "Inconsistency in dirstate file path/to/dirstate.\n"
+            "Error: the reason why",
+            str(error))
 
     def test_disabled_method(self):
         error = errors.DisabledMethod("class name")
