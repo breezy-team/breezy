@@ -77,8 +77,6 @@ IN DEVELOPMENT
       Speeds up ``bzr annotate`` with a pack repository by approx 3:2.
       (John Arbash Meinel)
 
-    * Upgrade bundled ConfigObj to version 4.5.1. (Matt Nordhoff)
-
   BUGFIXES:
 
     * Calculate remote path relative to the shared medium in _SmartClient.  This
@@ -123,6 +121,9 @@ IN DEVELOPMENT
 
     * Unknown hostnames when connecting to a ``bzr://`` URL no longer cause
       tracebacks.  (Andrew Bennetts, #182849)
+
+    * Upgrade bundled ConfigObj to version 4.5.1, which properly escapes #
+      signs, among other small improvements. (Matt Nordhoff, #86838)
 
   API BREAKS:
 
