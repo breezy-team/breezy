@@ -231,15 +231,6 @@ the server should include a “Software version” header, with a value of a
 free-form string such as “bzrlib 1.2”, to aid debugging and logging.  Clients
 and servers **should not** vary behaviour based on this string.
 
-.. note::
-  **XXX:** should the REQUEST_V3 be more like RESPONSE_V3, and take
-  a body first, so that errors during streaming errors can be signalled?
-  But then the server cannot possibly do anything but buffer the body,
-  because it does not know the request name.  In that case should there be
-  a separate, optional trailing ABANDON_REQUEST flag to abort the request?
-  Probably this can be built into the requests if it is really needed...
-
-
 The argument encoding is::
 
   REQUEST_ARGS := LENGTH_PREFIX bencoded_sequence
@@ -287,9 +278,19 @@ responses will have bodies attached.  If present, bodies may be a single
 length-prefixed string (like in protocol 1) or a stream of chunks (like in
 protocol 2, although the termination is slightly different).
 
-If an error occurs while generating a streamed body, the server should
-finish the stream and use ERROR_STATUS as the RESPONSE_STATUS.  That is,
-it should send an error in the same way it would when there is no body.
+If an error occurs while a server is generating a streamed body for a
+response, the server should finish the stream and use ERROR_STATUS as the
+RESPONSE_STATUS.  That is, it should send an error in the same way it
+would when there is no body.
+
+If an error occurs while a client is generating a streamed body for a
+request, the client should simply terminate the stream as if it was
+completed normally.  In this situation, the client should be aware that
+the server will most likely have already processed the chunks already
+transmitted.  That is, in general the client should not expect the server
+to automatically rollback any changes from a request that was aborted in
+this fashion (although individual methods might offer stronger
+guarantees).
 
 Paths
 =====
