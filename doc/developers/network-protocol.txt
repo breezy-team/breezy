@@ -231,6 +231,15 @@ the server should include a “Software version” header, with a value of a
 free-form string such as “bzrlib 1.2”, to aid debugging and logging.  Clients
 and servers **should not** vary behaviour based on this string.
 
+.. note::
+  **XXX:** should the REQUEST_V3 be more like RESPONSE_V3, and take
+  a body first, so that errors during streaming errors can be signalled?
+  But then the server cannot possibly do anything but buffer the body,
+  because it does not know the request name.  In that case should there be
+  a separate, optional trailing ABANDON_REQUEST flag to abort the request?
+  Probably this can be built into the requests if it is really needed...
+
+
 The argument encoding is::
 
   REQUEST_ARGS := LENGTH_PREFIX bencoded_sequence
@@ -265,10 +274,10 @@ The body encoding is::
   BODY_V3 := NO_BODY | LENGTH_PREFIXED_BODY | STREAMED_BODY_V2
   NO_BODY := "n"
   LENGTH_PREFIXED_BODY := "p" LENGTH_PREFIX BODY_BYTES
-  STREAMED_BODY_V2 := "s" CHUNKS_V2 CHUNKS_TERMINATOR
+  STREAMED_BODY_V2 := "s" CHUNKS_V2
 
-  CHUNKS_V2 := "c" CHUNK_V2 [CHUNKS_V2]
-  CHUNK_V2 := LENGTH_PREFIX CHUNK_CONTENT
+  CHUNKS_V2 := CHUNK_V2 | CHUNKS_TERMINATOR
+  CHUNK_V2 := "c" LENGTH_PREFIX CHUNK_CONTENT CHUNK_V2
   CHUNKS_TERMINATOR := "t"
 
 Version 3 messages always explicitly declare if a body is included.  The
