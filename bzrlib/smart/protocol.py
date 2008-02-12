@@ -743,9 +743,7 @@ class _ProtocolThreeBase(_StatefulDecoder):
         # Trim the buffer.
         self._in_buffer = self._in_buffer[1:]
         if body_kind == 'n':
-            # No body.  All done!
-            self.request_handler.no_body_received()
-            self.done()
+            self._no_body()
         elif body_kind == 'p':
             # A single length-prefixed blob
             self.state_accept = self._state_accept_expecting_prefixed_body
@@ -810,7 +808,11 @@ class _ProtocolThreeBase(_StatefulDecoder):
 
 
 class SmartServerRequestProtocolThree(_ProtocolThreeBase):
-    pass
+
+    def _no_body(self):
+        # No body.  All done!
+        self.request_handler.no_body_received()
+        self.done()
 
 
 class _ResponseHandler(object):
@@ -867,26 +869,9 @@ class SmartClientRequestProtocolThree(_ProtocolThreeBase, SmartClientRequestProt
         self.state_accept = self._state_accept_expecting_body_kind
         self.response_handler.headers_received(decoded)
 
-    def _state_accept_expecting_body_kind(self, bytes):
-        self._in_buffer += bytes
-        body_kind = self._in_buffer[:1]
-        if body_kind == '':
-            # Not enough bytes yet.
-            return
-        # Trim the buffer.
-        self._in_buffer = self._in_buffer[1:]
-        if body_kind == 'n':
-            # No body.  All done!
-            self.request_handler.no_body_received()
-            self.state_accept = self._state_accept_expecting_response_status
-        elif body_kind == 'p':
-            # A single length-prefixed blob
-            self.state_accept = self._state_accept_expecting_prefixed_body
-        elif body_kind == 's':
-            # Streamed body
-            self.state_accept = self._state_accept_expecting_chunked_body
-        else:
-            raise errors.SmartProtocolError('Bad body kind: %r' % (body_kind,))
+    def _no_body(self):
+        self.request_handler.no_body_received()
+        self.state_accept = self._state_accept_expecting_response_status
 
     def _state_accept_expecting_response_status(self, bytes):
         self._in_buffer += bytes
