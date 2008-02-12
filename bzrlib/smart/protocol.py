@@ -663,7 +663,7 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
         self._request.finished_reading()
 
 
-class SmartServerRequestProtocolThree(_StatefulDecoder):
+class _ProtocolThreeBase(_StatefulDecoder):
 
     response_marker = RESPONSE_VERSION_THREE
     request_marker = REQUEST_VERSION_THREE
@@ -673,10 +673,8 @@ class SmartServerRequestProtocolThree(_StatefulDecoder):
         self._backing_transport = backing_transport
         self._write_func = write_func
         self.has_dispatched = False
-        # Start with an empty request object, start building it up as data
-        # arrives.
-        self._in_buffer = ''
         # Initial state
+        self._in_buffer = ''
         self.state_accept = self._state_accept_expecting_headers
 
         if request_registry is None:
@@ -758,6 +756,8 @@ class SmartServerRequestProtocolThree(_StatefulDecoder):
             raise errors.SmartProtocolError('Bad body kind: %r' % (body_kind,))
 
     def done(self):
+        self.unused_data = self._in_buffer
+        self._in_buffer = None
         self.state_accept = self._state_accept_reading_unused
         self.request_handler.end_received()
 
@@ -809,8 +809,109 @@ class SmartServerRequestProtocolThree(_StatefulDecoder):
             return 1 # XXX !!!
 
 
-class SmartClientRequestProtocolThree(SmartClientRequestProtocolTwo):
+class SmartServerRequestProtocolThree(_ProtocolThreeBase):
+    pass
+
+
+class _ResponseHandler(object):
+    # XXX: lots of symmetry with SmartServerRequestHandler, so we ought to
+    # reuse code too.
+
+    def headers_received(self, headers):
+        pass
+
+    def no_body_received(self):
+        # XXX
+        pass
+
+    def prefixed_body_received(self, body_bytes):
+        # XXX
+        pass
+
+    def body_chunk_received(self, chunk_bytes):
+        # XXX
+        pass
+
+    def args_received(self, args):
+        # XXX
+        pass
+
+    def error_received(self, error_args):
+        # XXX
+        pass
+
+    def end_received(self):
+        # XXX
+        pass
+
+
+class SmartClientRequestProtocolThree(_ProtocolThreeBase, SmartClientRequestProtocolTwo):
 
     response_marker = RESPONSE_VERSION_THREE
     request_marker = REQUEST_VERSION_THREE
+
+    def __init__(self, client_medium_request):
+        _StatefulDecoder.__init__(self)
+        SmartClientRequestProtocolTwo.__init__(self, client_medium_request)
+        # Initial state
+        self._in_buffer = ''
+        self.state_accept = self._state_accept_expecting_headers
+        self.response_handler = self.request_handler = _ResponseHandler()
+
+    def _state_accept_expecting_headers(self, bytes):
+        self._in_buffer += bytes
+        decoded = self._extract_prefixed_bencoded_data()
+        if type(decoded) is not dict:
+            raise errors.SmartProtocolError(
+                'Header object %r is not a dict' % (decoded,))
+        self.state_accept = self._state_accept_expecting_body_kind
+        self.response_handler.headers_received(decoded)
+
+    def _state_accept_expecting_body_kind(self, bytes):
+        self._in_buffer += bytes
+        body_kind = self._in_buffer[:1]
+        if body_kind == '':
+            # Not enough bytes yet.
+            return
+        # Trim the buffer.
+        self._in_buffer = self._in_buffer[1:]
+        if body_kind == 'n':
+            # No body.  All done!
+            self.request_handler.no_body_received()
+            self.state_accept = self._state_accept_expecting_response_status
+        elif body_kind == 'p':
+            # A single length-prefixed blob
+            self.state_accept = self._state_accept_expecting_prefixed_body
+        elif body_kind == 's':
+            # Streamed body
+            self.state_accept = self._state_accept_expecting_chunked_body
+        else:
+            raise errors.SmartProtocolError('Bad body kind: %r' % (body_kind,))
+
+    def _state_accept_expecting_response_status(self, bytes):
+        self._in_buffer += bytes
+        response_status = self._in_buffer[:1]
+        if response_status == '':
+            # Not enough bytes yet.
+            return
+        self._in_buffer = self._in_buffer[1:]
+        if response_status not in ['S', 'F']:
+            raise errors.SmartProtocolError(
+                'Unknown response status: %r' % (response_status,))
+        self.successful_status = bool(response_status == 'S')
+        self.state_accept = self._state_accept_expecting_request_args
+
+    def _state_accept_expecting_request_args(self, bytes):
+        self._in_buffer += bytes
+        decoded = self._extract_prefixed_bencoded_data()
+        if type(decoded) is not list:
+            raise errors.SmartProtocolError(
+                'Request arguments %r not sequence' % (decoded,))
+        if self.successful_status:
+            self.response_handler.args_received(decoded)
+        else:
+            if len(decoded) < 1:
+                raise errors.SmartProtocolError('Empty error details')
+            self.response_handler.error_received(decoded)
+        self.done()
 

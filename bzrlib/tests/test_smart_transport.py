@@ -2194,6 +2194,28 @@ class InstrumentedRequestHandler(object):
         self.calls.append(('end_received',))
 
 
+class TestClientProtocolThree(TestSmartProtocol):
+    """Tests for v3 of the client-side protocol."""
+
+    client_protocol_class = protocol.SmartClientRequestProtocolThree
+    server_protocol_class = protocol.SmartServerRequestProtocolThree
+
+    def test_trivial_response(self):
+        """Smoke test for the simplest possible v3 response: no headers, no
+        body, no args.
+        """
+        output = StringIO()
+        headers = '\0\0\0\x02de'  # length-prefixed, bencoded empty dict
+        body = 'n'
+        response_status = 'S' # success
+        args = '\0\0\0\x02le' # length-prefixed, bencoded empty list
+        request_bytes = headers + body + response_status + args
+        smart_protocol = self.client_protocol_class(None)
+        smart_protocol.accept_bytes(request_bytes)
+        self.assertEqual(0, smart_protocol.next_read_size())
+        self.assertEqual('', smart_protocol.excess_buffer)
+        self.assertEqual('', smart_protocol.unused_data)
+
 
 #class TestProtocolTestCoverage(tests.TestCase):
 #
