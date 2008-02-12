@@ -663,12 +663,12 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
         self._request.finished_reading()
 
 
-class SmartServerRequestProtocolThree(_StatefulDecoder, SmartServerRequestProtocolTwo):
+class SmartServerRequestProtocolThree(_StatefulDecoder):
 
     response_marker = RESPONSE_VERSION_THREE
     request_marker = REQUEST_VERSION_THREE
 
-    def __init__(self, backing_transport, write_func):
+    def __init__(self, backing_transport, write_func, request_registry=None):
         _StatefulDecoder.__init__(self)
         self._backing_transport = backing_transport
         self._write_func = write_func
@@ -679,8 +679,10 @@ class SmartServerRequestProtocolThree(_StatefulDecoder, SmartServerRequestProtoc
         # Initial state
         self.state_accept = self._state_accept_expecting_headers
 
+        if request_registry is None:
+            request_registry = request.request_handlers
         self.request_handler = request.SmartServerRequestHandler(
-            self._backing_transport, commands=request.request_handlers)
+            self._backing_transport, commands=request_registry)
 
 #        self.excess_buffer = ''
 #        self._finished = False
@@ -729,6 +731,8 @@ class SmartServerRequestProtocolThree(_StatefulDecoder, SmartServerRequestProtoc
         if type(decoded) is not list:
             raise errors.SmartProtocolError(
                 'Request arguments %r not sequence' % (decoded,))
+        if len(decoded) < 1:
+            raise errors.SmartProtocolError('Empty argument sequence')
         self.state_accept = self._state_accept_expecting_body_kind
         self.request_handler.args_received(decoded)
 
@@ -755,9 +759,11 @@ class SmartServerRequestProtocolThree(_StatefulDecoder, SmartServerRequestProtoc
 
     def done(self):
         self.state_accept = self._state_accept_reading_unused
-        #xxx_dispatch_request()
+        self.request_handler.end_received()
 
     def _state_accept_expecting_prefixed_body(self, bytes):
+        # XXX: we could make this stream the body directly to the request,
+        # rather than buffering.
         self._in_buffer += bytes
         body = self._extract_length_prefixed_bytes()
         if body is None:

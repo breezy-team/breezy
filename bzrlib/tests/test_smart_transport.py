@@ -2053,6 +2053,14 @@ class TestVersionOneFeaturesInProtocolThree(
         client_protocol = protocol.SmartClientRequestProtocolThree(request)
 
 
+class NoOpRequest(request.SmartServerRequest):
+
+    def do(self):
+        return request.SuccessfulSmartServerResponse(())
+
+dummy_registry = {'ARG': NoOpRequest}
+
+
 class TestServerProtocolThree(TestSmartProtocol):
     """Tests for v3 of the server-side protocol."""
 
@@ -2064,12 +2072,12 @@ class TestServerProtocolThree(TestSmartProtocol):
         argument, no body.
         """
         output = StringIO()
-        protocol_version = "bzr request 3\n"
         headers = '\0\0\0\x02de'  # length-prefixed, bencoded empty dict
         args = '\0\0\0\x07l3:ARGe' # length-prefixed, bencoded list: ['ARG']
         body = 'n'
         request_bytes = headers + args + body
-        smart_protocol = self.server_protocol_class(None, output.write)
+        smart_protocol = self.server_protocol_class(None, output.write,
+            dummy_registry)
         smart_protocol.accept_bytes(request_bytes)
         self.assertEqual(0, smart_protocol.next_read_size())
         self.assertEqual('', smart_protocol.excess_buffer)
@@ -2081,18 +2089,19 @@ class TestServerProtocolThree(TestSmartProtocol):
         That is, return a protocol object that is waiting to receive a body.
         """
         output = StringIO()
-        protocol_version = "bzr request 3\n"
         headers = '\0\0\0\x02de'  # length-prefixed, bencoded empty dict
         args = '\0\0\0\x07l3:ARGe' # length-prefixed, bencoded list: ['ARG']
         request_bytes = headers + args
-        smart_protocol = self.server_protocol_class(None, output.write)
+        smart_protocol = self.server_protocol_class(None, output.write,
+            dummy_registry)
         smart_protocol.accept_bytes(request_bytes)
         return smart_protocol
 
     def assertBodyParsingBehaviour(self, calls, protocol_bytes):
         """Assert that the given bytes cause an exact sequence of calls to the
-        request handler.
+        request handler, followed by an end_received call.
         """
+        calls = calls + [('end_received',)]
         smart_protocol = self.make_protocol_expecting_body()
         smart_protocol.request_handler = InstrumentedRequestHandler()
         smart_protocol.accept_bytes(protocol_bytes)
@@ -2128,8 +2137,6 @@ class TestServerProtocolThree(TestSmartProtocol):
             's' # body kind
             't' # stream terminator
             )
-        # XXX: No calls to the request handler in this case?  That's slightly
-        # odd.
         self.assertBodyParsingBehaviour([], body)
 
     def test_request_chunked_body_one_chunks(self):
@@ -2182,6 +2189,9 @@ class InstrumentedRequestHandler(object):
 
     def prefixed_body_received(self, body_bytes):
         self.calls.append(('prefixed_body_received', body_bytes))
+
+    def end_received(self):
+        self.calls.append(('end_received',))
 
 
 

@@ -14,8 +14,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Basic server-side logic for dealing with requests."""
+"""Basic server-side logic for dealing with requests.
 
+**XXX**:
+
+The class names are a little confusing: the protocol will instantiate a
+SmartServerRequestHandler, whose dispatch_command method creates an instance of
+a SmartServerRequest subclass.
+
+The request_handlers registry tracks SmartServerRequest classes (rather than
+SmartServerRequestHandler).
+"""
 
 import tempfile
 
@@ -73,11 +82,18 @@ class SmartServerRequest(object):
         
         Must return a SmartServerResponse.
         """
-        # TODO: if a client erroneously sends a request that shouldn't have a
-        # body, what to do?  Probably SmartServerRequestHandler should catch
-        # this NotImplementedError and translate it into a 'bad request' error
-        # to send to the client.
         raise NotImplementedError(self.do_body)
+
+    def do_chunk(self, chunk_bytes):
+        """Called with each body chunk if the request has a streamed body.
+
+        The do() method is still called, and must have returned None.
+        """
+        raise NotImplementedError(self.do_chunk)
+
+    def do_end(self):
+        """Called when the end of the request has been received."""
+        pass
 
 
 class SmartServerResponse(object):
@@ -241,21 +257,30 @@ class SmartServerRequestHandler(object):
         pass
 
     def args_received(self, args):
-        # XXX
-        pass
+        cmd = args[0]
+        args = args[1:]
+        try:
+            command = self._commands.get(cmd)
+        except LookupError:
+            raise errors.SmartProtocolError("bad request %r" % (cmd,))
+        self._command = command(self._backing_transport)
+        self._run_handler_code(self._command.execute, args, {})
 
     def no_body_received(self):
         # XXX
         pass
 
     def prefixed_body_received(self, body_bytes):
-        # XXX
-        pass
+        """No more body data will be received."""
+        self._run_handler_code(self._command.do_body, (body_bytes,), {})
+        # cannot read after this.
+        self.finished_reading = True
 
     def body_chunk_received(self, chunk_bytes):
-        # XXX
-        pass
+        self._run_handler_code(self._command.do_chunk, (chunk_bytes,), {})
 
+    def end_received(self):
+        self._run_handler_code(self._command.do_end, (), {})
 
 
 class HelloRequest(SmartServerRequest):
