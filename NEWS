@@ -172,8 +172,9 @@ IN DEVELOPMENT
       cares about ghosts during revision selection). (Robert Collins)
 
     * New remote method ``RemoteBzrDir.find_repositoryV2`` adding support for
-      detecting external lookup support on remote repositories.
-      (Robert Collins)
+      detecting external lookup support on remote repositories. This method is
+      now attempted first when lookup up repositories, leading to an extra 
+      round trip on older bzr smart servers. (Robert Collins)
  
     * Record a timestamp against each mutter to the trace file, relative to the
       first import of bzrlib.  (Andrew Bennetts)

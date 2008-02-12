@@ -111,7 +111,7 @@ class SmartServerRequestFindRepositoryV2(SmartServerRequestFindRepository):
         If a bzrdir is not present, an exception is propogated
         rather than 'no branch' because these are different conditions.
 
-        This is the second edition of this method introduced in bzr 1.2, which
+        This is the second edition of this method introduced in bzr 1.3, which
         returns information about the supports_external_lookups format
         attribute too.
 
