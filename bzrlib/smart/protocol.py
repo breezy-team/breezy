@@ -746,10 +746,7 @@ class _ProtocolThreeBase(_StatefulDecoder):
         if type(decoded) is not list:
             raise errors.SmartProtocolError(
                 'Request arguments %r not sequence' % (decoded,))
-        if len(decoded) < 1:
-            raise errors.SmartProtocolError('Empty argument sequence')
-        self.state_accept = self._state_accept_expecting_body_kind
-        self.request_handler.args_received(decoded)
+        self._args_received(decoded)
 
     def _state_accept_expecting_body_kind(self, bytes):
         self._in_buffer += bytes
@@ -813,6 +810,12 @@ class _ProtocolThreeBase(_StatefulDecoder):
 
 
 class SmartServerRequestProtocolThree(_ProtocolThreeBase):
+
+    def _args_received(self, args):
+        if len(args) < 1:
+            raise errors.SmartProtocolError('Empty argument sequence')
+        self.state_accept = self._state_accept_expecting_body_kind
+        self.request_handler.args_received(args)
 
     def _headers_received(self, headers):
         self.state_accept = self._state_accept_expecting_request_args
@@ -886,17 +889,12 @@ class SmartClientRequestProtocolThree(_ProtocolThreeBase, SmartClientRequestProt
         self.successful_status = bool(response_status == 'S')
         self.state_accept = self._state_accept_expecting_request_args
 
-    def _state_accept_expecting_request_args(self, bytes):
-        self._in_buffer += bytes
-        decoded = self._extract_prefixed_bencoded_data()
-        if type(decoded) is not list:
-            raise errors.SmartProtocolError(
-                'Request arguments %r not sequence' % (decoded,))
+    def _args_received(self, args):
         if self.successful_status:
-            self.response_handler.args_received(decoded)
+            self.response_handler.args_received(args)
         else:
-            if len(decoded) < 1:
+            if len(args) < 1:
                 raise errors.SmartProtocolError('Empty error details')
-            self.response_handler.error_received(decoded)
+            self.response_handler.error_received(args)
         self.done()
 
