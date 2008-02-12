@@ -244,6 +244,12 @@ def _send_chunks(stream, write_func):
                 % chunk)
 
 
+class _NeedMoreBytes(Exception):
+    """Raise this inside a _StatefulDecoder to stop decoding until more bytes
+    have been received.
+    """
+
+
 class _StatefulDecoder(object):
 
     def __init__(self):
@@ -262,10 +268,13 @@ class _StatefulDecoder(object):
         """
         # accept_bytes is allowed to change the state
         current_state = self.state_accept
-        self.state_accept(bytes)
-        while current_state != self.state_accept:
-            current_state = self.state_accept
-            self.state_accept('')
+        try:
+            self.state_accept(bytes)
+            while current_state != self.state_accept:
+                current_state = self.state_accept
+                self.state_accept('')
+        except _NeedMoreBytes:
+            pass
 
 
 class ChunkedBodyDecoder(_StatefulDecoder):
@@ -691,13 +700,13 @@ class _ProtocolThreeBase(_StatefulDecoder):
         if len(self._in_buffer) < 4:
             # A length prefix by itself is 4 bytes, and we don't even have that
             # many yet.
-            return None
+            raise _NeedMoreBytes()
         (length,) = struct.unpack('!L', self._in_buffer[:4])
         end_of_bytes = 4 + length
         if len(self._in_buffer) < end_of_bytes:
             # We haven't yet read as many bytes as the length-prefix says there
             # are.
-            return None
+            raise _NeedMoreBytes()
         # Extract the bytes from the buffer.
         bytes = self._in_buffer[4:end_of_bytes]
         self._in_buffer = self._in_buffer[end_of_bytes:]
@@ -705,14 +714,20 @@ class _ProtocolThreeBase(_StatefulDecoder):
 
     def _extract_prefixed_bencoded_data(self):
         prefixed_bytes = self._extract_length_prefixed_bytes()
-        if prefixed_bytes is None:
-            return None
         try:
             decoded = bdecode(prefixed_bytes)
         except ValueError:
             raise errors.SmartProtocolError(
                 'Bytes %r not bencoded' % (prefixed_bytes,))
         return decoded
+
+    def _extract_single_byte(self):
+        if self._in_buffer == '':
+            # The buffer is empty
+            raise _NeedMoreBytes()
+        one_byte = self._in_buffer[0]
+        self._in_buffer = self._in_buffer[1:]
+        return one_byte
 
     def _state_accept_expecting_headers(self, bytes):
         self._in_buffer += bytes
@@ -736,12 +751,7 @@ class _ProtocolThreeBase(_StatefulDecoder):
 
     def _state_accept_expecting_body_kind(self, bytes):
         self._in_buffer += bytes
-        body_kind = self._in_buffer[:1]
-        if body_kind == '':
-            # Not enough bytes yet.
-            return
-        # Trim the buffer.
-        self._in_buffer = self._in_buffer[1:]
+        body_kind = self._extract_single_byte()
         if body_kind == 'n':
             self._no_body()
         elif body_kind == 'p':
@@ -764,19 +774,12 @@ class _ProtocolThreeBase(_StatefulDecoder):
         # rather than buffering.
         self._in_buffer += bytes
         body = self._extract_length_prefixed_bytes()
-        if body is None:
-            return
         self.request_handler.prefixed_body_received(body)
         self.done()
 
     def _state_accept_expecting_chunked_body(self, bytes):
         self._in_buffer += bytes
-        chunk_or_terminator = self._in_buffer[:1]
-        if chunk_or_terminator == '':
-            # Not enough bytes yet.
-            return
-        # Trim the buffer.
-        self._in_buffer = self._in_buffer[1:]
+        chunk_or_terminator = self._extract_single_byte()
         if chunk_or_terminator == 'c':
             self.state_accept = self._state_accept_expecting_chunk
         elif chunk_or_terminator == 't':
@@ -788,8 +791,6 @@ class _ProtocolThreeBase(_StatefulDecoder):
     def _state_accept_expecting_chunk(self, bytes):
         self._in_buffer += bytes
         prefixed_bytes = self._extract_length_prefixed_bytes()
-        if prefixed_bytes is None:
-            return None
         self.request_handler.body_chunk_received(prefixed_bytes)
         self.state_accept = self._state_accept_expecting_chunked_body
 
@@ -875,11 +876,9 @@ class SmartClientRequestProtocolThree(_ProtocolThreeBase, SmartClientRequestProt
 
     def _state_accept_expecting_response_status(self, bytes):
         self._in_buffer += bytes
-        response_status = self._in_buffer[:1]
-        if response_status == '':
-            # Not enough bytes yet.
+        response_status = self._extract_single_byte()
+        if response_status is None:
             return
-        self._in_buffer = self._in_buffer[1:]
         if response_status not in ['S', 'F']:
             raise errors.SmartProtocolError(
                 'Unknown response status: %r' % (response_status,))
