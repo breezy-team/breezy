@@ -327,7 +327,7 @@ class ChunkedBodyDecoder(_StatefulDecoder):
         if pos == -1:
             # We haven't read a complete length prefix yet, so there's nothing
             # to do.
-            return None
+            raise _NeedMoreBytes()
         line = self._in_buffer[:pos]
         # Trim the prefix (including '\n' delimiter) from the _in_buffer.
         self._in_buffer = self._in_buffer[pos+1:]
@@ -346,11 +346,7 @@ class ChunkedBodyDecoder(_StatefulDecoder):
     def _state_accept_expecting_header(self, bytes):
         self._in_buffer += bytes
         prefix = self._extract_line()
-        if prefix is None:
-            # We haven't read a complete length prefix yet, so there's nothing
-            # to do.
-            return
-        elif prefix == 'chunked':
+        if prefix == 'chunked':
             self.state_accept = self._state_accept_expecting_length
         else:
             raise errors.SmartProtocolError(
@@ -359,11 +355,7 @@ class ChunkedBodyDecoder(_StatefulDecoder):
     def _state_accept_expecting_length(self, bytes):
         self._in_buffer += bytes
         prefix = self._extract_line()
-        if prefix is None:
-            # We haven't read a complete length prefix yet, so there's nothing
-            # to do.
-            return
-        elif prefix == 'ERR':
+        if prefix == 'ERR':
             self.error = True
             self.error_in_progress = []
             self._state_accept_expecting_length('')
@@ -695,6 +687,17 @@ class _ProtocolThreeBase(_StatefulDecoder):
 #        self._finished = False
 #        self.has_dispatched = False
 #        self._body_decoder = None
+
+    def accept_bytes(self, bytes):
+        try:
+            _StatefulDecoder.accept_bytes(self, bytes)
+        except KeyboardInterrupt:
+            raise
+        except Exception, exception:
+            log_exception_quietly()
+            # XXX
+            #self._send_response(request.FailedSmartServerResponse(
+            #    ('error', str(exception))))
 
     def _extract_length_prefixed_bytes(self):
         if len(self._in_buffer) < 4:

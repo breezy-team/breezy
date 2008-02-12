@@ -1426,15 +1426,12 @@ class CommonSmartProtocolTestMixin(object):
 
     def test_errors_are_logged(self):
         """If an error occurs during testing, it is logged to the test log."""
-        # XXX: hmm, only errors from the request handler get logged, other
-        # protocol errors don't.   I guess this is trying to test for internal
-        # logic errors (unexpected "internal server errors", ala HTTP 500)
-        # rather than bad requests from the client?  The behaviour here needs
-        # clarification.
+        # XXX: should also test than an error inside a SmartServerRequest would
+        # get logged.
         out_stream = StringIO()
         smart_protocol = self.server_protocol_class(None, out_stream.write)
-        # This triggers a "bad request" error.
-        smart_protocol.accept_bytes('abc\n')
+        # This triggers a "bad request" error in all protocol versions.
+        smart_protocol.accept_bytes('\0\0\0\0malformed request\n')
         test_log = self._get_log(keep_log_file=True)
         self.assertContainsRe(test_log, 'Traceback')
         self.assertContainsRe(test_log, 'SmartProtocolError')
