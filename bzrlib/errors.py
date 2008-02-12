@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -2006,7 +2006,7 @@ class InconsistentDelta(BzrError):
     """Used when we get a delta that is not valid."""
 
     _fmt = ("An inconsistent delta was supplied involving %(path)r,"
-            " %(file_id)r\nreason: %s")
+            " %(file_id)r\nreason: %(reason)s")
 
     def __init__(self, path, file_id, reason):
         BzrError.__init__(self)
