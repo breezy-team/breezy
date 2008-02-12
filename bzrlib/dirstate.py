@@ -1365,9 +1365,9 @@ class DirState(object):
             if real_delete:
                 if entry[1][0][0] != 'a':
                     self._changes_aborted = True
-                raise errors.InconsistentDelta(old_path, file_id,
-                        'This was marked as a real delete, but the WT state'
-                        ' claims that it still exists and is versioned.')
+                    raise errors.InconsistentDelta(old_path, file_id,
+                            'This was marked as a real delete, but the WT state'
+                            ' claims that it still exists and is versioned.')
                 del self._dirblocks[block_index][1][entry_index]
             else:
                 if entry[1][0][0] == 'a':
