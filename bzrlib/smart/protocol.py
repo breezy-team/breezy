@@ -802,6 +802,8 @@ class _ProtocolThreeBase(_StatefulDecoder):
 
     @property
     def excess_buffer(self):
+        # XXX: this property compatibility hack.  Really there should not be
+        # both unused_data and excess_buffer.
         return self.unused_data
     
     def next_read_size(self):
@@ -880,8 +882,6 @@ class SmartClientRequestProtocolThree(_ProtocolThreeBase, SmartClientRequestProt
     def _state_accept_expecting_response_status(self, bytes):
         self._in_buffer += bytes
         response_status = self._extract_single_byte()
-        if response_status is None:
-            return
         if response_status not in ['S', 'F']:
             raise errors.SmartProtocolError(
                 'Unknown response status: %r' % (response_status,))
