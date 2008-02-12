@@ -181,13 +181,18 @@ IN DEVELOPMENT
     * ``RemoteBzrDir._get_tree_branch`` no longer triggers ``_ensure_real``,
       removing one round trip on many network operations. (Robert Collins)
 
+    * RemoteTransport's ``recommended_page_size`` method now returns 64k, like
+      SFTPTransport and HttpTransportBase.  (Andrew Bennetts)
+
+    * Repository formats have a new supported-feature attribute
+      ``supports_external_lookups`` used to indicate repositories which support
+      falling back to other repositories when they have partial data.
+      (Robert Collins)
+
     * Repository has a new method ``has_revisions`` which signals the presence
       of many revisions by returning a set of the revisions listed which are
       present. This can be done by index queries without reading data for parent
       revision names etc. (Robert Collins)
-
-    * RemoteTransport's ``recommended_page_size`` method now returns 64k, like
-      SFTPTransport and HttpTransportBase.  (Andrew Bennetts)
 
 
 bzr 1.1 2008-01-15

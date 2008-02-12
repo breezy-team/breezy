@@ -2055,6 +2055,8 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
     # Set this attribute in derived clases to control the _serializer that the
     # repository objects will have passed to their constructor.
     _serializer = None
+    # External references are not supported in pack repositories yet.
+    supports_external_lookups = False
 
     def _get_control_store(self, repo_transport, control_files):
         """Return the control store for this repository."""

@@ -2090,6 +2090,9 @@ class RepositoryFormat(object):
     # Set to True or False in derived classes. True indicates that the format
     # supports ghosts gracefully.
     supports_ghosts = None
+    # Can this repository be given external locations to lookup additional
+    # data. Set to True or False in derived classes.
+    supports_external_lookups = None
 
     def __str__(self):
         return "<%s>" % self.__class__.__name__
@@ -2234,6 +2237,7 @@ class MetaDirRepositoryFormat(RepositoryFormat):
 
     rich_root_data = False
     supports_tree_reference = False
+    supports_external_lookups = False
     _matchingbzrdir = bzrdir.BzrDirMetaFormat1()
 
     def __init__(self):

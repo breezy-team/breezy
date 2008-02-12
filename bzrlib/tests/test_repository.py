@@ -176,6 +176,11 @@ class TestFormat6(TestCaseWithTransport):
         self.assertRaises(errors.OutSideTransaction,
             inv.add_lines, 'foo', [], [])
 
+    def test_supports_external_lookups(self):
+        control = bzrdir.BzrDirFormat6().initialize(self.get_url())
+        repo = weaverepo.RepositoryFormat6().initialize(control)
+        self.assertFalse(repo._format.supports_external_lookups)
+
 
 class TestFormat7(TestCaseWithTransport):
     
@@ -288,6 +293,11 @@ class TestFormat7(TestCaseWithTransport):
         repo.unlock()
         self.assertRaises(errors.OutSideTransaction,
             inv.add_lines, 'foo', [], [])
+
+    def test_supports_external_lookups(self):
+        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
+        repo = weaverepo.RepositoryFormat7().initialize(control)
+        self.assertFalse(repo._format.supports_external_lookups)
 
 
 class TestFormatKnit1(TestCaseWithTransport):
@@ -403,6 +413,11 @@ class TestFormatKnit1(TestCaseWithTransport):
             'test-rev-id', inv_xml)
         inv = repo.deserialise_inventory('other-rev-id', inv_xml)
         self.assertEqual('other-rev-id', inv.root.revision)
+
+    def test_supports_external_lookups(self):
+        repo = self.make_repository('.',
+                format=bzrdir.format_registry.get('knit')())
+        self.assertFalse(repo._format.supports_external_lookups)
 
 
 class KnitRepositoryStreamTests(test_knit.KnitTests):
@@ -676,6 +691,12 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         repo.unlock()
         self.assertRaises(errors.OutSideTransaction,
             inv.add_lines, 'foo', [], [])
+
+    def test_supports_external_lookups(self):
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = knitrepo.RepositoryFormatKnit3()
+        repo = self.make_repository('.', format=format)
+        self.assertFalse(repo._format.supports_external_lookups)
 
 
 class TestWithBrokenRepo(TestCaseWithTransport):
@@ -1170,6 +1191,10 @@ class TestKnitPackNoSubtrees(TestCaseWithTransport):
             missing_ghost.get_revision, 'ghost')
         self.assertRaises(errors.RevisionNotPresent,
             missing_ghost.get_inventory, 'ghost')
+
+    def test_supports_external_lookups(self):
+        repo = self.make_repository('.', format=self.get_format())
+        self.assertFalse(repo._format.supports_external_lookups)
 
 
 class TestKnitPackSubtrees(TestKnitPackNoSubtrees):
