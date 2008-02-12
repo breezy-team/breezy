@@ -170,6 +170,10 @@ IN DEVELOPMENT
       which will split out ghosts and present parents into two separate sets,
       useful for code which needs to be aware of ghosts (e.g. fetching data
       cares about ghosts during revision selection). (Robert Collins)
+
+    * New remote method ``RemoteBzrDir.find_repositoryV2`` adding support for
+      detecting external lookup support on remote repositories.
+      (Robert Collins)
  
     * Record a timestamp against each mutter to the trace file, relative to the
       first import of bzrlib.  (Andrew Bennetts)
