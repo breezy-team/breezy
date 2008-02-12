@@ -798,8 +798,8 @@ class _ProtocolThreeBase(_StatefulDecoder):
 
     @property
     def excess_buffer(self):
-        # XXX: this property compatibility hack.  Really there should not be
-        # both unused_data and excess_buffer.
+        # XXX: this property is a compatibility hack.  Really there should not
+        # be both unused_data and excess_buffer.
         return self.unused_data
     
     def next_read_size(self):
