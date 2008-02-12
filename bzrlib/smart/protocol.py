@@ -738,9 +738,8 @@ class _ProtocolThreeBase(_StatefulDecoder):
         if type(decoded) is not dict:
             raise errors.SmartProtocolError(
                 'Header object %r is not a dict' % (decoded,))
-        self.state_accept = self._state_accept_expecting_request_args
-        self.request_handler.headers_received(decoded)
-
+        self._headers_received(decoded)
+    
     def _state_accept_expecting_request_args(self, bytes):
         self._in_buffer += bytes
         decoded = self._extract_prefixed_bencoded_data()
@@ -815,6 +814,10 @@ class _ProtocolThreeBase(_StatefulDecoder):
 
 class SmartServerRequestProtocolThree(_ProtocolThreeBase):
 
+    def _headers_received(self, headers):
+        self.state_accept = self._state_accept_expecting_request_args
+        self.request_handler.headers_received(headers)
+
     def _no_body(self):
         # No body.  All done!
         self.request_handler.no_body_received()
@@ -866,14 +869,9 @@ class SmartClientRequestProtocolThree(_ProtocolThreeBase, SmartClientRequestProt
         self.state_accept = self._state_accept_expecting_headers
         self.response_handler = self.request_handler = _ResponseHandler()
 
-    def _state_accept_expecting_headers(self, bytes):
-        self._in_buffer += bytes
-        decoded = self._extract_prefixed_bencoded_data()
-        if type(decoded) is not dict:
-            raise errors.SmartProtocolError(
-                'Header object %r is not a dict' % (decoded,))
+    def _headers_received(self, headers):
         self.state_accept = self._state_accept_expecting_body_kind
-        self.response_handler.headers_received(decoded)
+        self.response_handler.headers_received(headers)
 
     def _no_body(self):
         self.request_handler.no_body_received()
