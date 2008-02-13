@@ -420,7 +420,7 @@ class TestTreeToDirState(TestCaseWithDirState):
     def get_tree_with_a_file(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a file'])
-        tree.add('a file', 'a file id')
+        tree.add('a file', 'a-file-id')
         return tree
 
     def test_non_empty_no_parents_to_dirstate(self):
@@ -431,7 +431,7 @@ class TestTreeToDirState(TestCaseWithDirState):
             (('', '', tree.get_root_id()), # common details
              [('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
              ]),
-            (('', 'a file', 'a file id'), # common
+            (('', 'a file', 'a-file-id'), # common
              [('f', '', 0, False, dirstate.DirState.NULLSTAT), # current
              ]),
             ])
@@ -450,7 +450,7 @@ class TestTreeToDirState(TestCaseWithDirState):
              [('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
               ('d', '', 0, False, rev_id), # first parent details
              ]),
-            (('', 'a file', 'a file id'), # common
+            (('', 'a file', 'a-file-id'), # common
              [('f', '', 0, False, dirstate.DirState.NULLSTAT), # current
               ('f', 'c3ed76e4bfd45ff1763ca206055bca8e9fc28aa8', 24, False,
                rev_id), # first parent
@@ -478,7 +478,7 @@ class TestTreeToDirState(TestCaseWithDirState):
               ('d', '', 0, False, rev_id), # first parent details
               ('d', '', 0, False, rev_id2), # second parent details
              ]),
-            (('', 'a file', 'a file id'), # common
+            (('', 'a file', 'a-file-id'), # common
              [('f', '', 0, False, dirstate.DirState.NULLSTAT), # current
               ('f', 'c3ed76e4bfd45ff1763ca206055bca8e9fc28aa8', 24, False,
                rev_id), # first parent
@@ -1008,12 +1008,12 @@ class TestDirStateManipulations(TestCaseWithDirState):
             (('', '', 'TREE_ROOT'), [
              ('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
              ]),
-            (('', 'a file', 'a file id'), [
+            (('', 'a file', 'a-file-id'), [
              ('f', '1'*20, 19, False, dirstate.pack_stat(stat)), # current tree
              ]),
             ]
         try:
-            state.add('a file', 'a file id', 'file', stat, '1'*20)
+            state.add('a file', 'a-file-id', 'file', stat, '1'*20)
             # having added it, it should be in the output of iter_entries.
             self.assertEqual(expected_entries, list(state._iter_entries()))
             # saving and reloading should not affect this.
@@ -1038,7 +1038,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         state = dirstate.DirState.initialize('dirstate')
         try:
             self.assertRaises(errors.NotVersionedError, state.add,
-                'unversioned/a file', 'a file id', 'file', None, None)
+                'unversioned/a file', 'a-file-id', 'file', None, None)
         finally:
             state.unlock()
 
@@ -1115,7 +1115,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
             (('', 'a dir', 'a dir id'), [
              ('d', '', 0, False, dirstate.pack_stat(dirstat)), # current tree
              ]),
-            (('a dir', 'a file', 'a file id'), [
+            (('a dir', 'a file', 'a-file-id'), [
              ('f', '1'*20, 25, False,
               dirstate.pack_stat(filestat)), # current tree details
              ]),
@@ -1123,7 +1123,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         state = dirstate.DirState.initialize('dirstate')
         try:
             state.add('a dir', 'a dir id', 'directory', dirstat, None)
-            state.add('a dir/a file', 'a file id', 'file', filestat, '1'*20)
+            state.add('a dir/a file', 'a-file-id', 'file', filestat, '1'*20)
             # added it, it should be in the output of iter_entries.
             self.assertEqual(expected_entries, list(state._iter_entries()))
             # saving and reloading should not affect this.

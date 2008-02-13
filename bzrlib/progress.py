@@ -486,7 +486,24 @@ class ChildProgress(_BaseProgressBar):
     def note(self, *args, **kwargs):
         self.parent.note(*args, **kwargs)
 
- 
+
+class InstrumentedProgress(TTYProgressBar):
+    """TTYProgress variant that tracks outcomes"""
+
+    def __init__(self, *args, **kwargs):
+        self.always_throttled = True
+        self.never_throttle = False
+        TTYProgressBar.__init__(self, *args, **kwargs)
+
+    def throttle(self, old_message):
+        if self.never_throttle:
+            result =  False
+        else:
+            result = TTYProgressBar.throttle(self, old_message)
+        if result is False:
+            self.always_throttled = False
+
+
 def str_tdelta(delt):
     if delt is None:
         return "-:--:--"

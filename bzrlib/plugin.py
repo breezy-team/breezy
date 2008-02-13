@@ -57,7 +57,21 @@ def get_default_plugin_path():
     """Get the DEFAULT_PLUGIN_PATH"""
     global DEFAULT_PLUGIN_PATH
     if DEFAULT_PLUGIN_PATH is None:
-        DEFAULT_PLUGIN_PATH = osutils.pathjoin(config.config_dir(), 'plugins')
+        path = [osutils.pathjoin(config.config_dir(), 'plugins')]
+        if getattr(sys, 'frozen', None):    # bzr.exe
+            # We need to use relative path to system-wide plugin
+            # directory because bzrlib from standalone bzr.exe
+            # could be imported by another standalone program
+            # (e.g. bzr-config; or TortoiseBzr/Olive if/when they
+            # will become standalone exe). [bialix 20071123]
+            # __file__ typically is
+            # C:\Program Files\Bazaar\lib\library.zip\bzrlib\plugin.pyc
+            # then plugins directory is
+            # C:\Program Files\Bazaar\plugins
+            # so relative path is ../../../plugins
+            path.append(osutils.abspath(osutils.pathjoin(
+                osutils.dirname(__file__), '../../../plugins')))
+        DEFAULT_PLUGIN_PATH = os.pathsep.join(path)
     return DEFAULT_PLUGIN_PATH
 
 
@@ -77,8 +91,10 @@ def disable_plugins():
     global _loaded
     _loaded = True
 
+
 def _strip_trailing_sep(path):
     return path.rstrip("\\/")
+
 
 def set_plugins_path():
     """Set the path for plugins to be loaded from."""
@@ -141,7 +157,6 @@ def load_from_path(dirs):
         else:
             # it might be a zip: try loading from the zip.
             load_from_zip(d)
-            continue
 
 
 # backwards compatability: load_from_dirs was the old name
@@ -375,7 +390,12 @@ class PlugIn(object):
         if getattr(self.module, '__path__', None) is not None:
             return os.path.abspath(self.module.__path__[0])
         elif getattr(self.module, '__file__', None) is not None:
-            return os.path.abspath(self.module.__file__)
+            path = os.path.abspath(self.module.__file__)
+            if path[-4:] in ('.pyc', '.pyo'):
+                pypath = path[:-4] + '.py'
+                if os.path.isfile(pypath):
+                    path = pypath
+            return path
         else:
             return repr(self.module)
 

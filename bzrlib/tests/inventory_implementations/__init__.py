@@ -16,24 +16,7 @@
 
 """Tests for different inventory implementations"""
 
-# NOTE: Don't import Inventory here, to make sure that we don't accidentally
-# hardcode that when we should be using self.make_inventory
-
-from bzrlib import (
-        errors,
-        )
-
-from bzrlib.inventory import (
-        InventoryDirectory,
-        InventoryEntry,
-        InventoryFile,
-        InventoryLink,
-        ROOT_ID,
-        TreeReference,
-        )
-
 from bzrlib.tests import (
-        TestCase,
         multiply_tests_from_modules,
         )
 

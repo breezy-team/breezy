@@ -128,27 +128,20 @@ class TransportListRegistry(registry.Registry):
         self.get(key).insert(0,
                 registry._LazyObjectGetter(module_name, member_name))
 
-    def register_transport(self, key, help=None, default_port=None):
-        self.register(key, [], help, default_port)
+    def register_transport(self, key, help=None):
+        self.register(key, [], help)
 
     def set_default_transport(self, key=None):
         """Return either 'key' or the default key if key is None"""
         self._default_key = key
 
-    def get_default_port(self, scheme):
-        """Return the registered default port for this protocol scheme."""
-        try:
-            return self.get_info(scheme + '://')
-        except LookupError:
-            return None
-
 
 transport_list_registry = TransportListRegistry()
 
 
-def register_transport_proto(prefix, help=None, info=None, default_port=None,
+def register_transport_proto(prefix, help=None, info=None,
                              register_netloc=False):
-    transport_list_registry.register_transport(prefix, help, default_port)
+    transport_list_registry.register_transport(prefix, help)
     if register_netloc:
         assert prefix.endswith('://')
         register_urlparse_netloc_protocol(prefix[:-3])
@@ -240,6 +233,10 @@ class _CoalescedOffset(object):
     def __cmp__(self, other):
         return cmp((self.start, self.length, self.ranges),
                    (other.start, other.length, other.ranges))
+
+    def __repr__(self):
+        return '%s(%r, %r, %r)' % (self.__class__.__name__,
+            self.start, self.length, self.ranges)
 
 
 class LateReadError(object):
@@ -346,7 +343,7 @@ class Transport(object):
         This handles things like ENOENT, ENOTDIR, EEXIST, and EACCESS
         """
         if getattr(e, 'errno', None) is not None:
-            if e.errno in (errno.ENOENT, errno.ENOTDIR):
+            if e.errno in (errno.ENOENT, errno.ENOTDIR, errno.EINVAL):
                 raise errors.NoSuchFile(path, extra=e)
             # I would rather use errno.EFOO, but there doesn't seem to be
             # any matching for 267
@@ -652,7 +649,7 @@ class Transport(object):
 
         :param relpath: The path to read data from.
         :param offsets: A list of (offset, size) tuples.
-        :param adjust_for_latency: Adjust the requested offsets to accomdate
+        :param adjust_for_latency: Adjust the requested offsets to accomodate
             transport latency. This may re-order the offsets, expand them to
             grab adjacent data when there is likely a high cost to requesting
             data relative to delivering it.
@@ -668,9 +665,12 @@ class Transport(object):
         if adjust_for_latency:
             # Design note: We may wish to have different algorithms for the
             # expansion of the offsets per-transport. E.g. for local disk to
-            # use page-aligned expansion. If that is the case consider the following structure:
-            #  - a test that transport.readv uses self._offset_expander or some similar attribute, to do the expansion
-            #  - a test for each transport that it has some known-good offset expander
+            # use page-aligned expansion. If that is the case consider the
+            # following structure:
+            #  - a test that transport.readv uses self._offset_expander or some
+            #    similar attribute, to do the expansion
+            #  - a test for each transport that it has some known-good offset
+            #    expander
             #  - unit tests for each offset expander
             #  - a set of tests for the offset expander interface, giving
             #    baseline behaviour (which the current transport
@@ -792,7 +792,7 @@ class Transport(object):
         return offsets
 
     @staticmethod
-    def _coalesce_offsets(offsets, limit, fudge_factor):
+    def _coalesce_offsets(offsets, limit=0, fudge_factor=0, max_size=0):
         """Yield coalesced offsets.
 
         With a long list of neighboring requests, combine them
@@ -801,13 +801,21 @@ class Transport(object):
         Turns  [(15, 10), (25, 10)] => [(15, 20, [(0, 10), (10, 10)])]
 
         :param offsets: A list of (start, length) pairs
-        :param limit: Only combine a maximum of this many pairs
-                      Some transports penalize multiple reads more than
-                      others, and sometimes it is better to return early.
-                      0 means no limit
+
+        :param limit: Only combine a maximum of this many pairs Some transports
+                penalize multiple reads more than others, and sometimes it is
+                better to return early.
+                0 means no limit
+
         :param fudge_factor: All transports have some level of 'it is
                 better to read some more data and throw it away rather 
                 than seek', so collapse if we are 'close enough'
+
+        :param max_size: Create coalesced offsets no bigger than this size.
+                When a single offset is bigger than 'max_size', it will keep
+                its size and be alone in the coalesced offset.
+                0 means no maximum size.
+
         :return: yield _CoalescedOffset objects, which have members for where
                 to start, how much to read, and how to split those 
                 chunks back up
@@ -817,10 +825,11 @@ class Transport(object):
 
         for start, size in offsets:
             end = start + size
-            if (last_end is not None 
+            if (last_end is not None
                 and start <= last_end + fudge_factor
                 and start >= cur.start
-                and (limit <= 0 or len(cur.ranges) < limit)):
+                and (limit <= 0 or len(cur.ranges) < limit)
+                and (max_size <= 0 or end - cur.start <= max_size)):
                 cur.length = end - cur.start
                 cur.ranges.append((start-cur.start, size))
             else:
@@ -1253,7 +1262,7 @@ class Transport(object):
 class _SharedConnection(object):
     """A connection shared between several transports."""
 
-    def __init__(self, connection=None, credentials=None):
+    def __init__(self, connection=None, credentials=None, base=None):
         """Constructor.
 
         :param connection: An opaque object specific to each transport.
@@ -1263,6 +1272,7 @@ class _SharedConnection(object):
         """
         self.connection = connection
         self.credentials = credentials
+        self.base = base
 
 
 class ConnectedTransport(Transport):
@@ -1362,10 +1372,6 @@ class ConnectedTransport(Transport):
         host = urllib.unquote(host)
         path = urllib.unquote(path)
 
-        if port is None:
-            # The port isn't explicitly specified, so return the default (if
-            # there is one).
-            port = transport_list_registry.get_default_port(scheme)
         return (scheme, user, password, host, port, path)
 
     @staticmethod
@@ -1396,10 +1402,7 @@ class ConnectedTransport(Transport):
             # have one so that it doesn't get accidentally
             # exposed.
             netloc = '%s@%s' % (urllib.quote(user), netloc)
-        if (port is not None and 
-            port != transport_list_registry.get_default_port(scheme)):
-            # Include the port in the netloc (unless it's the same as the
-            # default, in which case we omit it as it is redundant).
+        if port is not None:
             netloc = '%s:%d' % (netloc, port)
         path = urllib.quote(path)
         return urlparse.urlunparse((scheme, netloc, path, None, None, None))
@@ -1456,7 +1459,7 @@ class ConnectedTransport(Transport):
         """Get the object shared amongst cloned transports.
 
         This should be used only by classes that needs to extend the sharing
-        with other objects than tramsports.
+        with objects other than transports.
 
         Use _get_connection to get the connection itself.
         """
@@ -1721,8 +1724,6 @@ register_transport_proto('file://',
 register_lazy_transport('file://', 'bzrlib.transport.local', 'LocalTransport')
 transport_list_registry.set_default_transport("file://")
 
-# Note that sftp:// has no default_port, because the user's ~/.ssh/config
-# can set it to arbitrary values based on hostname.
 register_transport_proto('sftp://',
             help="Access using SFTP (most SSH servers provide SFTP).",
             register_netloc=True)
@@ -1730,49 +1731,46 @@ register_lazy_transport('sftp://', 'bzrlib.transport.sftp', 'SFTPTransport')
 # Decorated http transport
 register_transport_proto('http+urllib://',
 #                help="Read-only access of branches exported on the web."
-            default_port=80, register_netloc=True)
+                         register_netloc=True)
 register_lazy_transport('http+urllib://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
 register_transport_proto('https+urllib://',
 #                help="Read-only access of branches exported on the web using SSL."
-            default_port=443, register_netloc=True)
+                         register_netloc=True)
 register_lazy_transport('https+urllib://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
 register_transport_proto('http+pycurl://',
 #                help="Read-only access of branches exported on the web."
-            default_port=80, register_netloc=True)
+                         register_netloc=True)
 register_lazy_transport('http+pycurl://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
 register_transport_proto('https+pycurl://',
 #                help="Read-only access of branches exported on the web using SSL."
-            default_port=443, register_netloc=True)
+                         register_netloc=True)
 register_lazy_transport('https+pycurl://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
 # Default http transports (last declared wins (if it can be imported))
 register_transport_proto('http://',
-            help="Read-only access of branches exported on the web.",
-            default_port=80)
+                 help="Read-only access of branches exported on the web.")
 register_transport_proto('https://',
-            help="Read-only access of branches exported on the web using SSL.",
-            default_port=443)
+            help="Read-only access of branches exported on the web using SSL.")
 register_lazy_transport('http://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
 register_lazy_transport('https://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
-register_lazy_transport('http://', 'bzrlib.transport.http._pycurl', 'PyCurlTransport')
-register_lazy_transport('https://', 'bzrlib.transport.http._pycurl', 'PyCurlTransport')
+register_lazy_transport('http://', 'bzrlib.transport.http._pycurl',
+                        'PyCurlTransport')
+register_lazy_transport('https://', 'bzrlib.transport.http._pycurl',
+                        'PyCurlTransport')
 
-register_transport_proto('ftp://',
-            help="Access using passive FTP.",
-            default_port=21)
+register_transport_proto('ftp://', help="Access using passive FTP.")
 register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
-register_transport_proto('aftp://',
-            help="Access using active FTP.",
-            default_port=21)
+register_transport_proto('aftp://', help="Access using active FTP.")
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 
 register_transport_proto('memory://')
-register_lazy_transport('memory://', 'bzrlib.transport.memory', 'MemoryTransport')
+register_lazy_transport('memory://', 'bzrlib.transport.memory',
+                        'MemoryTransport')
 
 # chroots cannot be implicitly accessed, they must be explicitly created:
 register_transport_proto('chroot+')
@@ -1780,20 +1778,24 @@ register_transport_proto('chroot+')
 register_transport_proto('readonly+',
 #              help="This modifier converts any transport to be readonly."
             )
-register_lazy_transport('readonly+', 'bzrlib.transport.readonly', 'ReadonlyTransportDecorator')
+register_lazy_transport('readonly+', 'bzrlib.transport.readonly',
+                        'ReadonlyTransportDecorator')
 
 register_transport_proto('fakenfs+')
-register_lazy_transport('fakenfs+', 'bzrlib.transport.fakenfs', 'FakeNFSTransportDecorator')
+register_lazy_transport('fakenfs+', 'bzrlib.transport.fakenfs',
+                        'FakeNFSTransportDecorator')
 
 register_transport_proto('trace+')
-register_lazy_transport('trace+', 'bzrlib.transport.trace', 'TransportTraceDecorator')
+register_lazy_transport('trace+', 'bzrlib.transport.trace',
+                        'TransportTraceDecorator')
 
 register_transport_proto('unlistable+')
-register_lazy_transport('unlistable+', 'bzrlib.transport.unlistable', 'UnlistableTransportDecorator')
+register_lazy_transport('unlistable+', 'bzrlib.transport.unlistable',
+                        'UnlistableTransportDecorator')
 
 register_transport_proto('brokenrename+')
 register_lazy_transport('brokenrename+', 'bzrlib.transport.brokenrename',
-        'BrokenRenameTransportDecorator')
+                        'BrokenRenameTransportDecorator')
 
 register_transport_proto('vfat+')
 register_lazy_transport('vfat+',
@@ -1808,28 +1810,23 @@ del scheme
 
 register_transport_proto('bzr://',
             help="Fast access using the Bazaar smart server.",
-            default_port=4155, register_netloc=True)
+                         register_netloc=True)
 
-register_lazy_transport('bzr://',
-                        'bzrlib.transport.remote',
+register_lazy_transport('bzr://', 'bzrlib.transport.remote',
                         'RemoteTCPTransport')
 register_transport_proto('bzr+http://',
 #                help="Fast access using the Bazaar smart server over HTTP."
-            default_port=80, register_netloc=True)
-register_lazy_transport('bzr+http://',
-                        'bzrlib.transport.remote',
+                         register_netloc=True)
+register_lazy_transport('bzr+http://', 'bzrlib.transport.remote',
                         'RemoteHTTPTransport')
 register_transport_proto('bzr+https://',
 #                help="Fast access using the Bazaar smart server over HTTPS."
-             register_netloc=True)
+                         register_netloc=True)
 register_lazy_transport('bzr+https://',
                         'bzrlib.transport.remote',
                         'RemoteHTTPTransport')
-# Note that bzr+ssh:// has no default_port, because the user's ~/.ssh/config
-# can set it to arbitrary values based on hostname.
 register_transport_proto('bzr+ssh://',
             help="Fast access using the Bazaar smart server over SSH.",
             register_netloc=True)
-register_lazy_transport('bzr+ssh://',
-                        'bzrlib.transport.remote',
+register_lazy_transport('bzr+ssh://', 'bzrlib.transport.remote',
                         'RemoteSSHTransport')

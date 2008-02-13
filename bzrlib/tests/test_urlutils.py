@@ -541,6 +541,29 @@ class TestUrlToPath(TestCase):
         #test('.', 'http://host/', 'http://host')
         test('http://host', 'http://host/', 'http://host')
 
+        # On Windows file:///C:/path/to and file:///D:/other/path
+        # should not use relative url over the non-existent '/' directory.
+        if sys.platform == 'win32':
+            # on the same drive
+            test('../../other/path',
+                'file:///C:/path/to', 'file:///C:/other/path')
+            #~next two tests is failed, i.e. urlutils.relative_url expects
+            #~to see normalized file URLs?
+            #~test('../../other/path',
+            #~    'file:///C:/path/to', 'file:///c:/other/path')
+            #~test('../../other/path',
+            #~    'file:///C:/path/to', 'file:///C|/other/path')
+
+            # check UNC paths too
+            test('../../other/path',
+                'file://HOST/base/path/to', 'file://HOST/base/other/path')
+            # on different drives
+            test('file:///D:/other/path',
+                'file:///C:/path/to', 'file:///D:/other/path')
+            # TODO: strictly saying in UNC path //HOST/base is full analog
+            # of drive letter for hard disk, and this situation is also
+            # should be exception from rules. [bialix 20071221]
+
 
 class TestCwdToURL(TestCaseInTempDir):
     """Test that local_path_to_url works base on the cwd"""

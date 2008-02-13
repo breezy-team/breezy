@@ -273,6 +273,28 @@ class TestPlugins(TestCaseInTempDir):
         plugin_path = self.test_dir + '/plugin.py'
         self.assertIsSameRealPath(plugin_path, normpath(plugin.path()))
 
+    def test_plugin_get_path_py_not_pyc(self):
+        self.setup_plugin()         # after first import there will be plugin.pyc
+        self.teardown_plugin()
+        bzrlib.plugin.load_from_path(['.']) # import plugin.pyc
+        plugins = bzrlib.plugin.plugins()
+        plugin = plugins['plugin']
+        plugin_path = self.test_dir + '/plugin.py'
+        self.assertIsSameRealPath(plugin_path, normpath(plugin.path()))
+
+    def test_plugin_get_path_pyc_only(self):
+        self.setup_plugin()         # after first import there will be plugin.pyc
+        self.teardown_plugin()
+        os.unlink(self.test_dir + '/plugin.py')
+        bzrlib.plugin.load_from_path(['.']) # import plugin.pyc
+        plugins = bzrlib.plugin.plugins()
+        plugin = plugins['plugin']
+        if __debug__:
+            plugin_path = self.test_dir + '/plugin.pyc'
+        else:
+            plugin_path = self.test_dir + '/plugin.pyo'
+        self.assertIsSameRealPath(plugin_path, normpath(plugin.path()))
+
     def test_no_test_suite_gives_None_for_test_suite(self):
         self.setup_plugin()
         plugin = bzrlib.plugin.plugins()['plugin']

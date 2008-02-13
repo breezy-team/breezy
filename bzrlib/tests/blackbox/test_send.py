@@ -17,6 +17,7 @@
 
 
 import os
+import sys
 from StringIO import StringIO
 
 from bzrlib import (
@@ -192,8 +193,9 @@ class TestSend(tests.TestCaseWithTransport):
     def test_mailto_option(self):
         self.make_trees()
         branch = _mod_branch.Branch.open('branch')
-        branch.get_config().set_user_option('mail_client', 'bogus')
+        branch.get_config().set_user_option('mail_client', 'editor')
         self.run_bzr_error(('No mail-to address specified',), 'send -f branch')
+        branch.get_config().set_user_option('mail_client', 'bogus')
         self.run_bzr('send -f branch -o-')
         self.run_bzr_error(('Unknown mail client: bogus',),
                            'send -f branch --mail-to jrandom@example.org')
@@ -235,3 +237,12 @@ class TestSend(tests.TestCaseWithTransport):
                                  'grandparent'])
         self.assertEqual('revision1', md.base_revision_id)
         self.assertEqual('revision3', md.revision_id)
+
+    def test_nonexistant_branch(self):
+        if sys.platform == "win32":
+            location = "C:/i/do/not/exist/"
+        else:
+            location = "/i/do/not/exist/"
+        out, err = self.run_bzr(["send", "--from", location], retcode=3)
+        self.assertEqual(out, '')
+        self.assertEqual(err, 'bzr: ERROR: Not a branch: "%s".\n' % location)

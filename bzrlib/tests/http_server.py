@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,22 +14,23 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import BaseHTTPServer
 import errno
+import httplib
 import os
-from SimpleHTTPServer import SimpleHTTPRequestHandler
-import socket
 import posixpath
 import random
 import re
+import SimpleHTTPServer
+import socket
+import SocketServer
 import sys
 import threading
 import time
 import urllib
 import urlparse
 
-from bzrlib.transport import Server
-from bzrlib.transport.local import LocalURLServer
+from bzrlib import transport
+from bzrlib.transport import local
 
 
 class WebserverNotAvailable(Exception):
@@ -41,12 +42,26 @@ class BadWebserverPath(ValueError):
         return 'path %s is not in %s' % self.args
 
 
-class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
+class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     """Handles one request.
 
-    A TestingHTTPRequestHandler is instantiated for every request
-    received by the associated server.
+    A TestingHTTPRequestHandler is instantiated for every request received by
+    the associated server. Note that 'request' here is inherited from the base
+    TCPServer class, for the HTTP server it is really a connection which itself
+    will handle one or several HTTP requests.
     """
+    # Default protocol version
+    protocol_version = 'HTTP/1.1'
+
+    # The Message-like class used to parse the request headers
+    MessageClass = httplib.HTTPMessage
+
+    def setup(self):
+        SimpleHTTPServer.SimpleHTTPRequestHandler.setup(self)
+        tcs = self.server.test_case_server
+        if tcs.protocol_version is not None:
+            # If the test server forced a protocol version, use it
+            self.protocol_version = tcs.protocol_version
 
     def log_message(self, format, *args):
         tcs = self.server.test_case_server
@@ -64,14 +79,15 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
         connection early to avoid polluting the test results.
         """
         try:
-            SimpleHTTPRequestHandler.handle_one_request(self)
+            SimpleHTTPServer.SimpleHTTPRequestHandler.handle_one_request(self)
         except socket.error, e:
-            if (len(e.args) > 0
-                and e.args[0] in (errno.EPIPE, errno.ECONNRESET,
-                                  errno.ECONNABORTED,)):
-                self.close_connection = 1
-                pass
-            else:
+            # Any socket error should close the connection, but some errors are
+            # due to the client closing early and we don't want to pollute test
+            # results, so we raise only the others.
+            self.close_connection = 1
+            if (len(e.args) == 0
+                or e.args[0] not in (errno.EPIPE, errno.ECONNRESET,
+                                     errno.ECONNABORTED, errno.EBADF)):
                 raise
 
     _range_regexp = re.compile(r'^(?P<start>\d+)-(?P<end>\d+)$')
@@ -110,6 +126,26 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
                     return 0, []
         return tail, ranges
 
+    def _header_line_length(self, keyword, value):
+        header_line = '%s: %s\r\n' % (keyword, value)
+        return len(header_line)
+
+    def send_head(self):
+        """Overrides base implementation to work around a bug in python2.5."""
+        path = self.translate_path(self.path)
+        if os.path.isdir(path) and not self.path.endswith('/'):
+            # redirect browser - doing basically what apache does when
+            # DirectorySlash option is On which is quite common (braindead, but
+            # common)
+            self.send_response(301)
+            self.send_header("Location", self.path + "/")
+            # Indicates that the body is empty for HTTP/1.1 clients 
+            self.send_header('Content-Length', '0')
+            self.end_headers()
+            return None
+
+        return SimpleHTTPServer.SimpleHTTPRequestHandler.send_head(self)
+
     def send_range_content(self, file, start, length):
         file.seek(start)
         self.wfile.write(file.read(length))
@@ -130,31 +166,48 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
     def get_multiple_ranges(self, file, file_size, ranges):
         self.send_response(206)
         self.send_header('Accept-Ranges', 'bytes')
-        boundary = "%d" % random.randint(0,0x7FFFFFFF)
-        self.send_header("Content-Type",
-                         "multipart/byteranges; boundary=%s" % boundary)
-        self.end_headers()
+        boundary = '%d' % random.randint(0,0x7FFFFFFF)
+        self.send_header('Content-Type',
+                         'multipart/byteranges; boundary=%s' % boundary)
+        boundary_line = '--%s\r\n' % boundary
+        # Calculate the Content-Length
+        content_length = 0
         for (start, end) in ranges:
-            self.wfile.write("--%s\r\n" % boundary)
-            self.send_header("Content-type", 'application/octet-stream')
-            self.send_header("Content-Range", "bytes %d-%d/%d" % (start,
-                                                                  end,
-                                                                  file_size))
+            content_length += len(boundary_line)
+            content_length += self._header_line_length(
+                'Content-type', 'application/octet-stream')
+            content_length += self._header_line_length(
+                'Content-Range', 'bytes %d-%d/%d' % (start, end, file_size))
+            content_length += len('\r\n') # end headers
+            content_length += end - start # + 1
+        content_length += len(boundary_line)
+        self.send_header('Content-length', content_length)
+        self.end_headers()
+
+        # Send the multipart body
+        for (start, end) in ranges:
+            self.wfile.write(boundary_line)
+            self.send_header('Content-type', 'application/octet-stream')
+            self.send_header('Content-Range', 'bytes %d-%d/%d'
+                             % (start, end, file_size))
             self.end_headers()
             self.send_range_content(file, start, end - start + 1)
-            self.wfile.write("--%s\r\n" % boundary)
+        # Final boundary
+        self.wfile.write(boundary_line)
 
     def do_GET(self):
         """Serve a GET request.
 
         Handles the Range header.
         """
+        # Update statistics
+        self.server.test_case_server.GET_request_nb += 1
 
         path = self.translate_path(self.path)
         ranges_header_value = self.headers.get('Range')
         if ranges_header_value is None or os.path.isdir(path):
             # Let the mother class handle most cases
-            return SimpleHTTPRequestHandler.do_GET(self)
+            return SimpleHTTPServer.SimpleHTTPRequestHandler.do_GET(self)
 
         try:
             # Always read in binary mode. Opening files in text
@@ -231,7 +284,8 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
         return self._translate_path(path)
 
     def _translate_path(self, path):
-        return SimpleHTTPRequestHandler.translate_path(self, path)
+        return SimpleHTTPServer.SimpleHTTPRequestHandler.translate_path(
+            self, path)
 
     if sys.platform == 'win32':
         # On win32 you cannot access non-ascii filenames without
@@ -262,33 +316,84 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
             return path
 
 
-class TestingHTTPServer(BaseHTTPServer.HTTPServer):
+class TestingHTTPServerMixin:
 
-    def __init__(self, server_address, RequestHandlerClass,
-                 test_case_server):
-        BaseHTTPServer.HTTPServer.__init__(self, server_address,
-                                           RequestHandlerClass)
+    def __init__(self, test_case_server):
         # test_case_server can be used to communicate between the
         # tests and the server (or the request handler and the
         # server), allowing dynamic behaviors to be defined from
         # the tests cases.
         self.test_case_server = test_case_server
 
-    def server_close(self):
-        """Called to clean-up the server.
+    def tearDown(self):
+         """Called to clean-up the server.
+ 
+         Since the server may be (surely is, even) in a blocking listen, we
+         shutdown its socket before closing it.
+         """
+         # Note that is this executed as part of the implicit tear down in the
+         # main thread while the server runs in its own thread. The clean way
+         # to tear down the server is to instruct him to stop accepting
+         # connections and wait for the current connection(s) to end
+         # naturally. To end the connection naturally, the http transports
+         # should close their socket when they do not need to talk to the
+         # server anymore. This happens naturally during the garbage collection
+         # phase of the test transport objetcs (the server clients), so we
+         # don't have to worry about them.  So, for the server, we must tear
+         # down here, from the main thread, when the test have ended.  Note
+         # that since the server is in a blocking operation and since python
+         # use select internally, shutting down the socket is reliable and
+         # relatively clean.
+         try:
+             self.socket.shutdown(socket.SHUT_RDWR)
+         except socket.error, e:
+             # WSAENOTCONN (10057) 'Socket is not connected' is harmless on
+             # windows (occurs before the first connection attempt
+             # vila--20071230)
+             if not len(e.args) or e.args[0] != 10057:
+                 raise
+         # Let the server properly close the socket
+         self.server_close()
 
-        Since the server may be in a blocking read, we shutdown the socket
-        before closing it.
-        """
-        self.socket.shutdown(socket.SHUT_RDWR)
-        BaseHTTPServer.HTTPServer.server_close(self)
+class TestingHTTPServer(SocketServer.TCPServer, TestingHTTPServerMixin):
+
+    def __init__(self, server_address, request_handler_class,
+                 test_case_server):
+        TestingHTTPServerMixin.__init__(self, test_case_server)
+        SocketServer.TCPServer.__init__(self, server_address,
+                                        request_handler_class)
 
 
-class HttpServer(Server):
+class TestingThreadingHTTPServer(SocketServer.ThreadingTCPServer,
+                                 TestingHTTPServerMixin):
+    """A threading HTTP test server for HTTP 1.1.
+
+    Since tests can initiate several concurrent connections to the same http
+    server, we need an independent connection for each of them. We achieve that
+    by spawning a new thread for each connection.
+    """
+
+    def __init__(self, server_address, request_handler_class,
+                 test_case_server):
+        TestingHTTPServerMixin.__init__(self, test_case_server)
+        SocketServer.ThreadingTCPServer.__init__(self, server_address,
+                                                 request_handler_class)
+        # Decides how threads will act upon termination of the main
+        # process. This is prophylactic as we should not leave the threads
+        # lying around.
+        self.daemon_threads = True
+
+
+class HttpServer(transport.Server):
     """A test server for http transports.
 
     Subclasses can provide a specific request handler.
     """
+
+    # The real servers depending on the protocol
+    http_server_class = {'HTTP/1.0': TestingHTTPServer,
+                         'HTTP/1.1': TestingThreadingHTTPServer,
+                         }
 
     # Whether or not we proxy the requests (see
     # TestingHTTPRequestHandler.translate_path).
@@ -297,31 +402,71 @@ class HttpServer(Server):
     # used to form the url that connects to this server
     _url_protocol = 'http'
 
-    # Subclasses can provide a specific request handler
-    def __init__(self, request_handler=TestingHTTPRequestHandler):
-        Server.__init__(self)
+    def __init__(self, request_handler=TestingHTTPRequestHandler,
+                 protocol_version=None):
+        """Constructor.
+
+        :param request_handler: a class that will be instantiated to handle an
+            http connection (one or several requests).
+
+        :param protocol_version: if specified, will override the protocol
+            version of the request handler.
+        """
+        transport.Server.__init__(self)
         self.request_handler = request_handler
         self.host = 'localhost'
         self.port = 0
         self._httpd = None
+        self.protocol_version = protocol_version
+        # Allows tests to verify number of GET requests issued
+        self.GET_request_nb = 0
 
     def _get_httpd(self):
         if self._httpd is None:
-            self._httpd = TestingHTTPServer((self.host, self.port),
-                                            self.request_handler,
-                                            self)
+            rhandler = self.request_handler
+            # Depending on the protocol version, we will create the approriate
+            # server
+            if self.protocol_version is None:
+                # Use the request handler one
+                proto_vers = rhandler.protocol_version
+            else:
+                # Use our own, it will be used to override the request handler
+                # one too.
+                proto_vers = self.protocol_version
+            # Create the appropriate server for the required protocol
+            serv_cls = self.http_server_class.get(proto_vers, None)
+            if serv_cls is None:
+                raise httplib.UnknownProtocol(proto_vers)
+            else:
+                self._httpd = serv_cls((self.host, self.port), rhandler, self)
             host, self.port = self._httpd.socket.getsockname()
         return self._httpd
 
     def _http_start(self):
-        httpd = self._get_httpd()
-        self._http_base_url = '%s://%s:%s/' % (self._url_protocol,
-                                               self.host,
-                                               self.port)
-        self._http_starting.release()
+        """Server thread main entry point. """
+        self._http_running = False
+        try:
+            try:
+                httpd = self._get_httpd()
+                self._http_base_url = '%s://%s:%s/' % (self._url_protocol,
+                                                       self.host, self.port)
+                self._http_running = True
+            except:
+                # Whatever goes wrong, we save the exception for the main
+                # thread. Note that since we are running in a thread, no signal
+                # can be received, so we don't care about KeyboardInterrupt.
+                self._http_exception = sys.exc_info()
+        finally:
+            # Release the lock or the main thread will block and the whole
+            # process will hang.
+            self._http_starting.release()
 
+        # From now on, exceptions are taken care of by the
+        # SocketServer.BaseServer or the request handler.
         while self._http_running:
             try:
+                # Really an HTTP connection but the python framework is generic
+                # and call them requests
                 httpd.handle_request()
             except socket.timeout:
                 pass
@@ -352,28 +497,38 @@ class HttpServer(Server):
         # XXX: TODO: make the server back onto vfs_server rather than local
         # disk.
         assert backing_transport_server is None or \
-            isinstance(backing_transport_server, LocalURLServer), \
+            isinstance(backing_transport_server, local.LocalURLServer), \
             "HTTPServer currently assumes local transport, got %s" % \
             backing_transport_server
         self._home_dir = os.getcwdu()
         self._local_path_parts = self._home_dir.split(os.path.sep)
+        self._http_base_url = None
+
+        # Create the server thread
         self._http_starting = threading.Lock()
         self._http_starting.acquire()
-        self._http_running = True
-        self._http_base_url = None
         self._http_thread = threading.Thread(target=self._http_start)
         self._http_thread.setDaemon(True)
+        self._http_exception = None
         self._http_thread.start()
+
         # Wait for the server thread to start (i.e release the lock)
         self._http_starting.acquire()
+
+        if self._http_exception is not None:
+            # Something went wrong during server start
+            exc_class, exc_value, exc_tb = self._http_exception
+            raise exc_class, exc_value, exc_tb
         self._http_starting.release()
         self.logs = []
 
     def tearDown(self):
         """See bzrlib.transport.Server.tearDown."""
-        self._httpd.server_close()
+        self._httpd.tearDown()
         self._http_running = False
-        self._http_thread.join()
+        # We don't need to 'self._http_thread.join()' here since the thread is
+        # a daemonic one and will be garbage collected anyway. Joining just
+        # slows us down for no added benefit.
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
@@ -383,7 +538,7 @@ class HttpServer(Server):
         """See bzrlib.transport.Server.get_bogus_url."""
         # this is chosen to try to prevent trouble with proxies, weird dns,
         # etc
-        return 'http://127.0.0.1:1/'
+        return self._url_protocol + '://127.0.0.1:1/'
 
 
 class HttpServer_urllib(HttpServer):

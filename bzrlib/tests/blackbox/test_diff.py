@@ -146,18 +146,18 @@ class TestDiff(DiffBase):
     def example_branches(self):
         branch1_tree = self.make_branch_and_tree('branch1')
         self.build_tree(['branch1/file'], line_endings='binary')
+        self.build_tree(['branch1/file2'], line_endings='binary')
         branch1_tree.add('file')
-        branch1_tree.commit(message='add file')
+        branch1_tree.add('file2')
+        branch1_tree.commit(message='add file and file2')
         branch2_tree = branch1_tree.bzrdir.sprout('branch2').open_workingtree()
         self.build_tree_contents([('branch2/file', 'new content\n')])
         branch2_tree.commit(message='update file')
         return branch1_tree, branch2_tree
 
-    def test_diff_branches(self):
-        self.example_branches()
-        # should open branch1 and diff against branch2, 
-        out, err = self.run_bzr('diff -r branch:branch2 branch1',
-                                retcode=1)
+    def check_b2_vs_b1(self, cmd):
+        # Compare branch2 vs branch1 using cmd and check the result
+        out, err = self.run_bzr(cmd, retcode=1)
         self.assertEquals('', err)
         self.assertEquals("=== modified file 'file'\n"
                           "--- file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
@@ -166,16 +166,62 @@ class TestDiff(DiffBase):
                           "-new content\n"
                           "+contents of branch1/file\n"
                           "\n", subst_dates(out))
-        out, err = self.run_bzr('diff branch2 branch1',
-                                         retcode=1)
+
+    def check_b1_vs_b2(self, cmd):
+        # Compare branch1 vs branch2 using cmd and check the result
+        out, err = self.run_bzr(cmd, retcode=1)
         self.assertEquals('', err)
         self.assertEqualDiff("=== modified file 'file'\n"
                               "--- file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
                               "+++ file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
                               "@@ -1,1 +1,1 @@\n"
-                              "-new content\n"
-                              "+contents of branch1/file\n"
+                              "-contents of branch1/file\n"
+                              "+new content\n"
                               "\n", subst_dates(out))
+
+    def check_no_diffs(self, cmd):
+        # Check that running cmd returns an empty diff
+        out, err = self.run_bzr(cmd, retcode=0)
+        self.assertEquals('', err)
+        self.assertEquals('', out)
+
+    def test_diff_branches(self):
+        self.example_branches()
+        # should open branch1 and diff against branch2, 
+        self.check_b2_vs_b1('diff -r branch:branch2 branch1')
+        # Compare two working trees using various syntax forms
+        self.check_b2_vs_b1('diff --old branch2 --new branch1')
+        self.check_b2_vs_b1('diff --old branch2 branch1')
+        self.check_b2_vs_b1('diff branch2 --new branch1')
+        # Test with a selected file that was changed
+        self.check_b2_vs_b1('diff --old branch2 --new branch1 file')
+        self.check_b2_vs_b1('diff --old branch2 branch1/file')
+        self.check_b2_vs_b1('diff branch2/file --new branch1')
+        # Test with a selected file that was not changed
+        self.check_no_diffs('diff --old branch2 --new branch1 file2')
+        self.check_no_diffs('diff --old branch2 branch1/file2')
+        self.check_no_diffs('diff branch2/file2 --new branch1')
+
+    def test_diff_branches_no_working_trees(self):
+        branch1_tree, branch2_tree = self.example_branches()
+        # Compare a working tree to a branch without a WT
+        dir1 = branch1_tree.bzrdir
+        dir1.destroy_workingtree()
+        self.assertFalse(dir1.has_workingtree())
+        self.check_b2_vs_b1('diff --old branch2 --new branch1')
+        self.check_b2_vs_b1('diff --old branch2 branch1')
+        self.check_b2_vs_b1('diff branch2 --new branch1')
+        # Compare a branch without a WT to one with a WT
+        self.check_b1_vs_b2('diff --old branch1 --new branch2')
+        self.check_b1_vs_b2('diff --old branch1 branch2')
+        self.check_b1_vs_b2('diff branch1 --new branch2')
+        # Compare a branch with a WT against another without a WT
+        dir2 = branch2_tree.bzrdir
+        dir2.destroy_workingtree()
+        self.assertFalse(dir2.has_workingtree())
+        self.check_b1_vs_b2('diff --old branch1 --new branch2')
+        self.check_b1_vs_b2('diff --old branch1 branch2')
+        self.check_b1_vs_b2('diff branch1 --new branch2')
 
     def test_diff_revno_branches(self):
         self.example_branches()
@@ -213,6 +259,14 @@ class TestDiff(DiffBase):
         output = self.run_bzr('diff -r 1.. branch1', retcode=1)
         self.assertContainsRe(output[0], '\n\\-original line\n\\+new line\n')
 
+    def test_diff_to_working_tree_in_subdir(self):
+        self.example_branch2()
+        self.build_tree_contents([('branch1/file1', 'new line')])
+        os.mkdir('branch1/dir1')
+        os.chdir('branch1/dir1')
+        output = self.run_bzr('diff -r 1..', retcode=1)
+        self.assertContainsRe(output[0], '\n\\-original line\n\\+new line\n')
+
     def test_diff_across_rename(self):
         """The working tree path should always be considered for diffing"""
         tree = self.make_example_branch()
@@ -220,6 +274,14 @@ class TestDiff(DiffBase):
         tree.rename_one('hello', 'hello1')
         self.run_bzr('diff hello1', retcode=1)
         self.run_bzr('diff -r 0..1 hello1', retcode=1)
+
+    def test_diff_to_branch_no_working_tree(self):
+        branch1_tree = self.example_branch2()
+        dir1 = branch1_tree.bzrdir
+        dir1.destroy_workingtree()
+        self.assertFalse(dir1.has_workingtree())
+        output = self.run_bzr('diff -r 1.. branch1', retcode=1)
+        self.assertContainsRe(output[0], '\n\\-original line\n\\+repo line\n')
 
 
 class TestCheckoutDiff(TestDiff):

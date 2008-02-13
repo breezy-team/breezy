@@ -474,6 +474,8 @@ _merge_type_registry.register_lazy('diff3', 'bzrlib.merge', 'Diff3Merger',
                                    "Merge using external diff3")
 _merge_type_registry.register_lazy('weave', 'bzrlib.merge', 'WeaveMerger',
                                    "Weave-based merge")
+_merge_type_registry.register_lazy('lca', 'bzrlib.merge', 'LCAMerger',
+                                   "LCA-newness merge")
 
 # Declare the standard options
 _standard_option('help', short_name='h',

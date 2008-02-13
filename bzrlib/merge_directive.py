@@ -190,7 +190,32 @@ class _BaseMergeDirective(object):
                     StringIO(self.get_raw_bundle()))
                 # We don't use the bundle's target revision, because
                 # MergeDirective.revision_id is authoritative.
-                info.install_revisions(target_repo, stream_input=False)
+                try:
+                    info.install_revisions(target_repo, stream_input=False)
+                except errors.RevisionNotPresent:
+                    # At least one dependency isn't present.  Try installing
+                    # missing revisions from the submit branch
+                    submit_branch = _mod_branch.Branch.open(self.target_branch)
+                    missing_revisions = []
+                    bundle_revisions = set(r.revision_id for r in
+                                           info.real_revisions)
+                    for revision in info.real_revisions:
+                        for parent_id in revision.parent_ids:
+                            if (parent_id not in bundle_revisions and
+                                not target_repo.has_revision(parent_id)):
+                                missing_revisions.append(parent_id)
+                    # reverse missing revisions to try to get heads first
+                    unique_missing = []
+                    unique_missing_set = set()
+                    for revision in reversed(missing_revisions):
+                        if revision in unique_missing_set:
+                            continue
+                        unique_missing.append(revision)
+                        unique_missing_set.add(revision)
+                    for missing_revision in unique_missing:
+                        target_repo.fetch(submit_branch.repository,
+                                          missing_revision)
+                    info.install_revisions(target_repo, stream_input=False)
             else:
                 source_branch = _mod_branch.Branch.open(self.source_branch)
                 target_repo.fetch(source_branch.repository, self.revision_id)

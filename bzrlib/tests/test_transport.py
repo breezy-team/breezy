@@ -48,10 +48,6 @@ from bzrlib.transport.chroot import ChrootServer
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.transport.local import (LocalTransport,
                                     EmulatedWin32LocalTransport)
-from bzrlib.transport.remote import (
-    BZR_DEFAULT_PORT,
-    RemoteTCPTransport
-    )
 
 
 # TODO: Should possibly split transport-specific tests into their own files.
@@ -78,10 +74,13 @@ class TestTransport(TestCase):
         try:
             _clear_protocol_handlers()
             register_transport_proto('foo')
-            register_lazy_transport('foo', 'bzrlib.tests.test_transport', 'TestTransport.SampleHandler')
+            register_lazy_transport('foo', 'bzrlib.tests.test_transport',
+                                    'TestTransport.SampleHandler')
             register_transport_proto('bar')
-            register_lazy_transport('bar', 'bzrlib.tests.test_transport', 'TestTransport.SampleHandler')
-            self.assertEqual([SampleHandler.__module__, 'bzrlib.transport.chroot'],
+            register_lazy_transport('bar', 'bzrlib.tests.test_transport',
+                                    'TestTransport.SampleHandler')
+            self.assertEqual([SampleHandler.__module__,
+                              'bzrlib.transport.chroot'],
                              _get_transport_modules())
         finally:
             _set_protocol_handlers(handlers)
@@ -153,11 +152,12 @@ class TestTransport(TestCase):
 
 
 class TestCoalesceOffsets(TestCase):
-    
-    def check(self, expected, offsets, limit=0, fudge=0):
+
+    def check(self, expected, offsets, limit=0, max_size=0, fudge=0):
         coalesce = Transport._coalesce_offsets
         exp = [_CoalescedOffset(*x) for x in expected]
-        out = list(coalesce(offsets, limit=limit, fudge_factor=fudge))
+        out = list(coalesce(offsets, limit=limit, fudge_factor=fudge,
+                            max_size=max_size))
         self.assertEqual(exp, out)
 
     def test_coalesce_empty(self):
@@ -170,7 +170,7 @@ class TestCoalesceOffsets(TestCase):
         self.check([(0, 10, [(0, 10)]),
                     (20, 10, [(0, 10)]),
                    ], [(0, 10), (20, 10)])
-            
+
     def test_coalesce_unsorted(self):
         self.check([(20, 10, [(0, 10)]),
                     (0, 10, [(0, 10)]),
@@ -180,6 +180,7 @@ class TestCoalesceOffsets(TestCase):
         self.check([(0, 20, [(0, 10), (10, 10)])],
                    [(0, 10), (10, 10)])
 
+    # XXX: scary, http.readv() can't handle that --vila20071209
     def test_coalesce_overlapped(self):
         self.check([(0, 15, [(0, 10), (5, 10)])],
                    [(0, 10), (5, 10)])
@@ -208,6 +209,20 @@ class TestCoalesceOffsets(TestCase):
                     (100, 10, [(0, 10),]),
                    ], [(10, 10), (30, 10), (100, 10)],
                    fudge=10
+                  )
+    def test_coalesce_max_size(self):
+        self.check([(10, 20, [(0, 10), (10, 10)]),
+                    (30, 50, [(0, 50)]),
+                    # If one range is above max_size, it gets its own coalesced
+                    # offset
+                    (100, 80, [(0, 80),]),],
+                   [(10, 10), (20, 10), (30, 50), (100, 80)],
+                   max_size=50
+                  )
+
+    def test_coalesce_no_max_size(self):
+        self.check([(10, 170, [(0, 10), (10, 10), (20, 50), (70, 100)]),],
+                   [(10, 10), (20, 10), (30, 50), (80, 100)],
                   )
 
 
@@ -418,9 +433,9 @@ class ReadonlyDecoratorTransportTest(TestCase):
         self.assertEqual(True, transport.is_readonly())
 
     def test_http_parameters(self):
-        from bzrlib.tests.HttpServer import HttpServer
+        from bzrlib.tests.http_server import HttpServer
         import bzrlib.transport.readonly as readonly
-        # connect to . via http which is not listable
+        # connect to '.' via http which is not listable
         server = HttpServer()
         server.setUp()
         try:
@@ -451,8 +466,8 @@ class FakeNFSDecoratorTests(TestCaseInTempDir):
     def test_http_parameters(self):
         # the listable and is_readonly parameters
         # are not changed by the fakenfs decorator
-        from bzrlib.tests.HttpServer import HttpServer
-        # connect to . via http which is not listable
+        from bzrlib.tests.http_server import HttpServer
+        # connect to '.' via http which is not listable
         server = HttpServer()
         server.setUp()
         try:
@@ -619,7 +634,7 @@ class TestConnectedTransport(TestCase):
     def test_parse_url(self):
         t = ConnectedTransport('http://simple.example.com/home/source')
         self.assertEquals(t._host, 'simple.example.com')
-        self.assertEquals(t._port, 80)
+        self.assertEquals(t._port, None)
         self.assertEquals(t._path, '/home/source/')
         self.failUnless(t._user is None)
         self.failUnless(t._password is None)
@@ -714,123 +729,6 @@ class TestReusedTransports(TestCase):
         t1 = get_transport('http://foo/path')
         t2 = get_transport('http://bar/path', possible_transports=[t1])
         self.assertIsNot(t1, t2)
-
-
-class TestRemoteTCPTransport(TestCase):
-    """Tests for bzr:// transport (RemoteTCPTransport)."""
-
-    def test_relpath_with_implicit_port(self):
-        """Connected transports with the same URL are the same, even if the
-        port is implicit.
-
-        So t.relpath(url) should always be '' if t.base is the same as url, or
-        if the only difference is that one explicitly specifies the default
-        port and the other doesn't specify a port.
-        """
-        t_implicit_port = RemoteTCPTransport('bzr://host.com/')
-        self.assertEquals('', t_implicit_port.relpath('bzr://host.com/'))
-        self.assertEquals('', t_implicit_port.relpath('bzr://host.com:4155/'))
-        t_explicit_port = RemoteTCPTransport('bzr://host.com:4155/')
-        self.assertEquals('', t_explicit_port.relpath('bzr://host.com/'))
-        self.assertEquals('', t_explicit_port.relpath('bzr://host.com:4155/'))
-
-    def test_construct_uses_default_port(self):
-        """If no port is specified, then RemoteTCPTransport uses
-        BZR_DEFAULT_PORT.
-        """
-        t = get_transport('bzr://host.com/')
-        self.assertEquals(BZR_DEFAULT_PORT, t._port)
-
-    def test_url_omits_default_port(self):
-        """If a RemoteTCPTransport uses the default port, then its base URL
-        will omit the port.
-
-        This is like how ":80" is omitted from "http://example.com/".
-        """
-        t = get_transport('bzr://host.com:4155/')
-        self.assertEquals('bzr://host.com/', t.base)
-
-    def test_url_includes_non_default_port(self):
-        """Non-default ports are included in the transport's URL.
-
-        Contrast this to `test_url_omits_default_port`.
-        """
-        t = get_transport('bzr://host.com:666/')
-        self.assertEquals('bzr://host.com:666/', t.base)
-
-
-class SSHPortTestMixin(object):
-    """Mixin class for testing SSH-based transports' use of ports in URLs.
-    
-    Unlike other connected transports, SSH-based transports (sftp, bzr+ssh)
-    don't have a default port, because the user may have OpenSSH configured to
-    use a non-standard port.
-    """
-
-    def make_url(self, netloc):
-        """Make a url for the given netloc, using the scheme defined on the
-        TestCase.
-        """
-        return '%s://%s/' % (self.scheme, netloc)
-
-    def test_relpath_with_implicit_port(self):
-        """SSH-based transports with the same URL are the same.
-        
-        Note than an unspecified port number is different to port 22 (because
-        OpenSSH may be configured to use a non-standard port).
-
-        So t.relpath(url) should always be '' if t.base is the same as url, but
-        raise PathNotChild if the ports in t and url are not both specified (or
-        both unspecified).
-        """
-        url_implicit_port = self.make_url('host.com')
-        url_explicit_port = self.make_url('host.com:22')
-
-        t_implicit_port = get_transport(url_implicit_port)
-        self.assertEquals('', t_implicit_port.relpath(url_implicit_port))
-        self.assertRaises(
-            PathNotChild, t_implicit_port.relpath, url_explicit_port)
-        
-        t_explicit_port = get_transport(url_explicit_port)
-        self.assertRaises(
-            PathNotChild, t_explicit_port.relpath, url_implicit_port)
-        self.assertEquals('', t_explicit_port.relpath(url_explicit_port))
-
-    def test_construct_with_no_port(self):
-        """If no port is specified, then the SSH-based transport's _port will
-        be None.
-        """
-        t = get_transport(self.make_url('host.com'))
-        self.assertEquals(None, t._port)
-
-    def test_url_with_no_port(self):
-        """If no port was specified, none is shown in the base URL."""
-        t = get_transport(self.make_url('host.com'))
-        self.assertEquals(self.make_url('host.com'), t.base)
-
-    def test_url_includes_port(self):
-        """An SSH-based transport's base will show the port if one was
-        specified, even if that port is 22, because we do not assume 22 is the
-        default port.
-        """
-        # 22 is the "standard" port for SFTP.
-        t = get_transport(self.make_url('host.com:22'))
-        self.assertEquals(self.make_url('host.com:22'), t.base)
-        # 666 is not a standard port.
-        t = get_transport(self.make_url('host.com:666'))
-        self.assertEquals(self.make_url('host.com:666'), t.base)
-
-
-class SFTPTransportPortTest(TestCase, SSHPortTestMixin):
-    """Tests for sftp:// transport (SFTPTransport)."""
-
-    scheme = 'sftp'
-
-
-class BzrSSHTransportPortTest(TestCase, SSHPortTestMixin):
-    """Tests for bzr+ssh:// transport (RemoteSSHTransport)."""
-
-    scheme = 'bzr+ssh'
 
 
 class TestTransportTrace(TestCase):
