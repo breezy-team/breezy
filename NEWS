@@ -9,6 +9,26 @@ IN DEVELOPMENT
 
   NOTES WHEN UPGRADING:
   
+  CHANGES:
+
+  FEATURES:
+
+  IMPROVEMENTS:
+
+  BUGFIXES:
+
+  API BREAKS:
+
+  TESTING:
+
+  INTERNALS:
+
+
+bzr 1.2rc1 (not released yet)
+-----------------------------
+
+  NOTES WHEN UPGRADING:
+  
     * Fetching via the smart protocol may need to reconnect once during a fetch
       if the remote server is running Bazaar 1.1 or earlier, because the client
       attempts to use more efficient requests that confuse older servers.  You
