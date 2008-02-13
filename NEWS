@@ -87,17 +87,21 @@ IN DEVELOPMENT
 
     * Clearer error when ``version-info --custom`` is used without
       ``--template`` (Lukáš Lalinský)
+
+    * If a plugin's test suite cannot be loaded, for example because of a syntax
+      error in the tests, then ``selftest`` fails, rather than just printing 
+      a warning.  (Martin Pool, #189771)
       
     * List possible values for BZR_SSH environment variable in env-variables
       help topic. (Alexander Belchenko, #181842)
 
-   * New methods ``push_log_file`` and ``pop_log_file`` to intercept messages:
-     popping the log redirection now precisely restores the previous state,
-     which makes it easier to use bzr log output from other programs.
-     TestCaseInTempDir no longer depends on a log redirection being established
-     by the test framework, which lets bzr tests cleanly run from a normal
-     unittest runner.
-     (#124153, #124849, Martin Pool, Jonathan Lange)
+    * New methods ``push_log_file`` and ``pop_log_file`` to intercept messages:
+      popping the log redirection now precisely restores the previous state,
+      which makes it easier to use bzr log output from other programs.
+      TestCaseInTempDir no longer depends on a log redirection being established
+      by the test framework, which lets bzr tests cleanly run from a normal
+      unittest runner.
+      (#124153, #124849, Martin Pool, Jonathan Lange)
 
     * ``pull --quiet`` is now more quiet, in particular a message is no longer
       printed when the remembered pull location is used. (James Westby,
@@ -133,10 +137,10 @@ IN DEVELOPMENT
 
   TESTING:
 
-   * selftest now accepts --load-list <file> to load a test id list. This
-     speeds up running the test suite on a limited set of tests.
-     (Vincent Ladeuil)
-
+    * selftest now accepts --load-list <file> to load a test id list. This
+      speeds up running the test suite on a limited set of tests.
+      (Vincent Ladeuil)
+ 
   INTERNALS:
 
     * Add a new method ``get_result`` to graph search objects. The resulting
