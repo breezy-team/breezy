@@ -187,10 +187,10 @@ def test_suite():
     loader = TestLoader()
     suite = TestSuite()
     for module in [
-            test_account,
-            test_register,
-            test_lp_indirect,
-            test_lp_service,
+        test_account,
+        test_register,
+        test_lp_indirect,
+        test_lp_service,
         ]:
         suite.addTests(loader.loadTestsFromModule(module))
     return suite
