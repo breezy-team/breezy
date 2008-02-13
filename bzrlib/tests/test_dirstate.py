@@ -646,7 +646,7 @@ class TestDirStateOnFile(TestCaseWithDirState):
         finally:
             state.unlock()
 
-    def test_save_refuses_if_inconsistent(self):
+    def test_save_refuses_if_changes_aborted(self):
         self.build_tree(['a-file', 'a-dir/'])
         state = dirstate.DirState.initialize('dirstate')
         try:
@@ -672,7 +672,7 @@ class TestDirStateOnFile(TestCaseWithDirState):
 
             # Now modify the state, but mark it as inconsistent
             state.add('a-dir', 'a-dir-id', 'directory', None, '')
-            state._consistency = dirstate.DirState.INCONSISTENT
+            state._changes_aborted = True
             state.save()
         finally:
             state.unlock()
