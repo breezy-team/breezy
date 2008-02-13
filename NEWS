@@ -87,6 +87,10 @@ IN DEVELOPMENT
 
     * Clearer error when ``version-info --custom`` is used without
       ``--template`` (Lukáš Lalinský)
+
+    * If a plugin's test suite cannot be loaded, for example because of a syntax
+      error in the tests, then ``selftest`` fails, rather than just printing 
+      a warning.  (Martin Pool, #189771)
       
     * List possible values for BZR_SSH environment variable in env-variables
       help topic. (Alexander Belchenko, #181842)
