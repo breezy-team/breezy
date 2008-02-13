@@ -61,7 +61,7 @@ class TestErrors(TestCaseWithTransport):
     def test_inconsistent_delta(self):
         error = errors.InconsistentDelta('path', 'file-id', 'reason for foo')
         self.assertEqualDiff(
-            "An inconsistent delta was supplied for 'path', 'file-id'\n"
+            "An inconsistent delta was supplied involving 'path', 'file-id'\n"
             "reason: reason for foo",
             str(error))
 
