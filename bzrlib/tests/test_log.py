@@ -425,7 +425,7 @@ message:
     message:
       merge branch 2
         ------------------------------------------------------------
-        revno: 1.1.1.1.1
+        revno: 1.2.1
         committer: Lorem Ipsum <test@example.com>
         branch nick: smallerchild
         timestamp: Just now
@@ -674,10 +674,10 @@ class TestGetViewRevisions(TestCaseWithTransport):
         full_rev_nos_for_reference = {
             '1': '1',
             '2': '2',
-            '3a': '2.2.1', #first commit tree 3
-            '3b': '2.1.1', # first commit tree 2
+            '3a': '2.1.1', #first commit tree 3
+            '3b': '2.2.1', # first commit tree 2
             '3c': '3', #merges 3b to main
-            '4a': '2.1.2', # second commit tree 2
+            '4a': '2.2.2', # second commit tree 2
             '4b': '4', # merges 4a to main
             }
         return mainline_revs, rev_nos, wt
@@ -738,8 +738,8 @@ class TestGetViewRevisions(TestCaseWithTransport):
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                             'forward'))
         expected = [('1', '1', 0), ('2', '2', 0), ('3c', '3', 0),
-            ('3a', '2.2.1', 1), ('3b', '2.1.1', 1), ('4b', '4', 0),
-            ('4a', '2.1.2', 1)]
+            ('3a', '2.1.1', 1), ('3b', '2.2.1', 1), ('4b', '4', 0),
+            ('4a', '2.2.2', 1)]
         self.assertEqual(expected, revisions)
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                              'forward', include_merges=False))

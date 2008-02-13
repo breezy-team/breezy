@@ -22,6 +22,7 @@ import os
 import sys
 
 from bzrlib import (
+    errors,
     symbol_versioning,
     tests,
     version_info_formats,
@@ -256,6 +257,11 @@ class TestVersionInfo(TestCaseWithTransport):
         val = regen('clean: {clean}', check_for_clean=True)
         self.assertEqual(val, 'clean: 0')
         os.remove('branch/c')
+
+    def test_custom_without_template(self):
+        builder = CustomVersionInfoBuilder(None)
+        sio = StringIO()
+        self.assertRaises(errors.NoTemplate, builder.generate, sio)
 
 
 class TestBuilder(version_info_formats.VersionInfoBuilder):

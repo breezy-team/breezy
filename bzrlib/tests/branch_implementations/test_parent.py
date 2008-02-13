@@ -19,7 +19,11 @@ import sys
 
 import bzrlib.errors
 from bzrlib.osutils import getcwd
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import (
+    TestCaseWithTransport,
+    TestNotApplicable,
+    TestSkipped,
+    )
 from bzrlib import urlutils
 
 
@@ -84,3 +88,16 @@ class TestParent(TestCaseWithTransport):
         # With an invalid branch parent, just return None
         self.assertRaises(bzrlib.errors.InaccessibleParent, b.get_parent)
 
+    def test_win32_set_parent_on_another_drive(self):
+        if sys.platform != 'win32':
+            raise TestSkipped('windows-specific test')
+        b = self.make_branch('.')
+        base_url = b.abspath('.')
+        if not base_url.startswith('file:///'):
+            raise TestNotApplicable('this test should be run with local base')
+        base = urlutils.local_path_from_url(base_url)
+        other = 'file:///B:/path'
+        if base[0] != 'C':
+            other = 'file:///C:/path'
+        b.set_parent(other)
+        self.assertEquals(other, b._get_parent_location())

@@ -314,4 +314,4 @@ class TestRenameOne(TestCaseWithWorkingTree):
         self.build_tree(['a'])
         tree.add(['a'])
         self.assertRaises((errors.InvalidNormalization, UnicodeEncodeError),
-            tree.rename_one, 'a', u'b\xb5rry')
+            tree.rename_one, 'a', u'ba\u030arry')
