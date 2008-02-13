@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1981,6 +1981,17 @@ class ConflictFormatError(BzrError):
     _fmt = "Format error in conflict listings"
 
 
+class CorruptDirstate(BzrError):
+
+    _fmt = ("Inconsistency in dirstate file %(dirstate_path)s.\n"
+            "Error: %(description)s")
+
+    def __init__(self, dirstate_path, description):
+        BzrError.__init__(self)
+        self.dirstate_path = dirstate_path
+        self.description = description
+
+
 class CorruptRepository(BzrError):
 
     _fmt = ("An error has been detected in the repository %(repo_path)s.\n"
@@ -1989,6 +2000,19 @@ class CorruptRepository(BzrError):
     def __init__(self, repo):
         BzrError.__init__(self)
         self.repo_path = repo.bzrdir.root_transport.base
+
+
+class InconsistentDelta(BzrError):
+    """Used when we get a delta that is not valid."""
+
+    _fmt = ("An inconsistent delta was supplied involving %(path)r,"
+            " %(file_id)r\nreason: %(reason)s")
+
+    def __init__(self, path, file_id, reason):
+        BzrError.__init__(self)
+        self.path = path
+        self.file_id = file_id
+        self.reason = reason
 
 
 class UpgradeRequired(BzrError):
