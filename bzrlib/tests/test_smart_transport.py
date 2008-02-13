@@ -2191,13 +2191,13 @@ class InstrumentedRequestHandler(object):
         self.calls.append(('end_received',))
 
 
-class TestClientProtocolThree(TestSmartProtocol):
-    """Tests for v3 of the client-side protocol."""
+class TestClientDecodingProtocolThree(TestSmartProtocol):
+    """Tests for v3 of the client-side protocol decoding."""
 
     client_protocol_class = protocol.SmartClientRequestProtocolThree
     server_protocol_class = protocol.SmartServerRequestProtocolThree
 
-    def test_trivial_response(self):
+    def test_trivial_response_decoding(self):
         """Smoke test for the simplest possible v3 response: no headers, no
         body, no args.
         """
@@ -2212,6 +2212,62 @@ class TestClientProtocolThree(TestSmartProtocol):
         self.assertEqual(0, smart_protocol.next_read_size())
         self.assertEqual('', smart_protocol.excess_buffer)
         self.assertEqual('', smart_protocol.unused_data)
+
+
+class TestClientEncodingProtocolThree(TestSmartProtocol):
+
+    client_protocol_class = protocol.SmartClientRequestProtocolThree
+    server_protocol_class = protocol.SmartServerRequestProtocolThree
+
+    def make_client_encoder_and_output(self):
+        input = None
+        output = StringIO()
+        client_medium = medium.SmartSimplePipesClientMedium(input, output)
+        request = client_medium.get_request()
+        smart_protocol = self.client_protocol_class(request)
+        return smart_protocol, output
+
+    def test_call_smoke_test(self):
+        """A smoke test SmartClientRequestProtocolThree.call.
+
+        This test checks that a particular simple invocation of call emits the
+        correct bytes for that invocation.
+        """
+        smart_protocol, output = self.make_client_encoder_and_output()
+        smart_protocol.call('one arg', headers={'header name': 'header value'})
+        self.assertEquals(
+            'bzr request 3 (bzr 1.3)\n' # protocol version
+            '\x00\x00\x00\x1fd11:header name12:header valuee' # headers
+            '\x00\x00\x00\x0bl7:one arge' # args
+            'n', # no body
+            output.getvalue())
+
+    def test_call_default_headers(self):
+        """SmartClientRequestProtocolThree.call by default sends a 'Software
+        version' header.
+        """
+        smart_protocol, output = self.make_client_encoder_and_output()
+        smart_protocol.call('foo')
+        # XXX: using assertContainsRe is a pretty poor way to assert this.
+        self.assertContainsRe(output.getvalue(), 'Software version')
+        
+    def test_call_with_body_bytes_smoke_test(self):
+        """A smoke test SmartClientRequestProtocolThree.call_with_body_bytes.
+
+        This test checks that a particular simple invocation of
+        call_with_body_bytes emits the correct bytes for that invocation.
+        """
+        smart_protocol, output = self.make_client_encoder_and_output()
+        smart_protocol.call_with_body_bytes(
+            ('one arg',), 'body bytes',
+            headers={'header name': 'header value'})
+        self.assertEquals(
+            'bzr request 3 (bzr 1.3)\n' # protocol version
+            '\x00\x00\x00\x1fd11:header name12:header valuee' # headers
+            '\x00\x00\x00\x0bl7:one arge' # args
+            'p' # there is a prefixed body
+            '\x00\x00\x00\nbody bytes', # the prefixed body
+            output.getvalue())
 
 
 #class TestProtocolTestCoverage(tests.TestCase):

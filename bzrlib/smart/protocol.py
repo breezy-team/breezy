@@ -37,8 +37,8 @@ from bzrlib.util.bencode import bdecode, bencode
 REQUEST_VERSION_TWO = 'bzr request 2\n'
 RESPONSE_VERSION_TWO = 'bzr response 2\n'
 
-REQUEST_VERSION_THREE = 'bzr request 3 (bzr 1.2)\n'
-RESPONSE_VERSION_THREE = 'bzr response 3 (bzr 1.2)\n'
+REQUEST_VERSION_THREE = 'bzr request 3 (bzr 1.3)\n'
+RESPONSE_VERSION_THREE = 'bzr response 3 (bzr 1.3)\n'
 
 
 def _recv_tuple(from_file):
@@ -915,8 +915,9 @@ class SmartClientRequestProtocolThree(_ProtocolThreeBase, SmartClientRequestProt
         self._request.accept_bytes(struct.pack('!L', len(bytes)))
         self._request.accept_bytes(bytes)
 
-    def _write_headers(self):
-        headers = {'Software version': bzrlib.__version__}
+    def _write_headers(self, headers=None):
+        if headers is None:
+            headers = {'Software version': bzrlib.__version__}
         self._write_prefixed_bencode(headers)
 
     def _write_args(self, args):
@@ -926,59 +927,9 @@ class SmartClientRequestProtocolThree(_ProtocolThreeBase, SmartClientRequestProt
         self._request.accept_bytes('n')
 
     def _write_prefixed_body(self, bytes):
+        self._request.accept_bytes('p')
         self._request.accept_bytes(struct.pack('!L', len(bytes)))
         self._request.accept_bytes(bytes)
-
-
-    # these methods from SmartClientRequestProtocolOne/Two
-    def call(self, *args):
-        if 'hpss' in debug.debug_flags:
-            mutter('hpss call:   %s', repr(args)[1:-1])
-            if getattr(self._request._medium, 'base', None) is not None:
-                mutter('             (to %s)', self._request._medium.base)
-            self._request_start_time = time.time()
-        self._write_protocol_version()
-        self._write_headers()
-        self._write_args(args)
-        self._write_no_body()
-        self._request.finished_writing()
-
-    def call_with_body_bytes(self, args, body):
-        """Make a remote call of args with body bytes 'body'.
-
-        After calling this, call read_response_tuple to find the result out.
-        """
-        if 'hpss' in debug.debug_flags:
-            mutter('hpss call w/body: %s (%r...)', repr(args)[1:-1], body[:20])
-            if getattr(self._request._medium, '_path', None) is not None:
-                mutter('                  (to %s)', self._request._medium._path)
-            mutter('              %d bytes', len(body))
-            self._request_start_time = time.time()
-        self._write_protocol_version()
-        self._write_headers()
-        self._write_args(args)
-        self._write_prefixed_body(body)
-        self._request.finished_writing()
-
-    def call_with_body_readv_array(self, args, body):
-        """Make a remote call with a readv array.
-
-        The body is encoded with one line per readv offset pair. The numbers in
-        each pair are separated by a comma, and no trailing \n is emitted.
-        """
-        if 'hpss' in debug.debug_flags:
-            mutter('hpss call w/readv: %s', repr(args)[1:-1])
-            if getattr(self._request._medium, '_path', None) is not None:
-                mutter('                  (to %s)', self._request._medium._path)
-            self._request_start_time = time.time()
-        self._write_protocol_version()
-        self._write_headers()
-        self._write_args(args)
-        readv_bytes = self._serialise_offsets(body)
-        self._write_prefixed_body(readv_bytes)
-        self._request.finished_writing()
-        if 'hpss' in debug.debug_flags:
-            mutter('              %d bytes in readv request', len(readv_bytes))
 
     def _wait_for_request_end(self):
         while True:
@@ -993,6 +944,63 @@ class SmartClientRequestProtocolThree(_ProtocolThreeBase, SmartClientRequestProt
                     "please check connectivity and permissions",
                     "(and try -Dhpss if further diagnosis is required)")
             self.accept_bytes(bytes)
+
+    # these methods from SmartClientRequestProtocolOne/Two
+    def call(self, *args, **kw):
+        # XXX: ideally, signature would be call(self, *args, headers=None), but
+        # python doesn't allow that.  So, we fake it.
+        headers = None
+        if 'headers' in kw:
+            headers = kw.pop('headers')
+        if kw != {}:
+            raise TypeError('Unexpected keyword arguments: %r' % (kw,))
+        if 'hpss' in debug.debug_flags:
+            mutter('hpss call:   %s', repr(args)[1:-1])
+            if getattr(self._request._medium, 'base', None) is not None:
+                mutter('             (to %s)', self._request._medium.base)
+            self._request_start_time = time.time()
+        self._write_protocol_version()
+        self._write_headers(headers)
+        self._write_args(args)
+        self._write_no_body()
+        self._request.finished_writing()
+
+    def call_with_body_bytes(self, args, body, headers=None):
+        """Make a remote call of args with body bytes 'body'.
+
+        After calling this, call read_response_tuple to find the result out.
+        """
+        if 'hpss' in debug.debug_flags:
+            mutter('hpss call w/body: %s (%r...)', repr(args)[1:-1], body[:20])
+            if getattr(self._request._medium, '_path', None) is not None:
+                mutter('                  (to %s)', self._request._medium._path)
+            mutter('              %d bytes', len(body))
+            self._request_start_time = time.time()
+        self._write_protocol_version()
+        self._write_headers(headers)
+        self._write_args(args)
+        self._write_prefixed_body(body)
+        self._request.finished_writing()
+
+    def call_with_body_readv_array(self, args, body, headers=None):
+        """Make a remote call with a readv array.
+
+        The body is encoded with one line per readv offset pair. The numbers in
+        each pair are separated by a comma, and no trailing \n is emitted.
+        """
+        if 'hpss' in debug.debug_flags:
+            mutter('hpss call w/readv: %s', repr(args)[1:-1])
+            if getattr(self._request._medium, '_path', None) is not None:
+                mutter('                  (to %s)', self._request._medium._path)
+            self._request_start_time = time.time()
+        self._write_protocol_version()
+        self._write_headers(headers)
+        self._write_args(args)
+        readv_bytes = self._serialise_offsets(body)
+        self._write_prefixed_body(readv_bytes)
+        self._request.finished_writing()
+        if 'hpss' in debug.debug_flags:
+            mutter('              %d bytes in readv request', len(readv_bytes))
 
     def cancel_read_body(self):
         """Ignored.  Not relevant to version 3 of the protocol."""
