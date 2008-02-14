@@ -203,9 +203,9 @@ Version three
 .. note::
   
   For some discussion of the requirements that led to this new protocol
-  version, see bug #\ 83935_.
+  version, see `bug #83935`_.
 
-.. _83935: https://bugs.launchpad.net/bzr/+bug/83935
+.. _bug #83935: https://bugs.launchpad.net/bzr/+bug/83935
 
 Version three has bencoding of most protocol structures, to make parsing
 simpler.  For extra parsing convenience, these structures are length
@@ -215,9 +215,9 @@ prefixed::
 
 The request and response protocol is::
 
-  REQUEST_V3 := "bzr request 3" NEWLINE HEADERS REQUEST_ARGS BODY_V3
-  RESPONSE_V3 := "bzr response 3" NEWLINE HEADERS BODY_V3 
-                 RESPONSE_STATUS_V3 RESPONSE_ARGS
+  REQUEST_V3 := "bzr request 3" NEWLINE HEADERS ARGS_V3 BODY_V3
+  RESPONSE_V3 := "bzr response 3" NEWLINE HEADERS RESPONSE_STATUS 
+                 ARGS_V3 BODY_V3
   RESPONSE_STATUS_V3 := SUCCESS_STATUS | ERROR_STATUS
   SUCCESS_STATUS := "S"
   ERROR_STATUS := "E"
@@ -228,21 +228,20 @@ The keys must be strings, not any other type of value.
 
 Currently, the only defined header is “Software version”.  Both the client and
 the server should include a “Software version” header, with a value of a
-free-form string such as “bzrlib 1.2”, to aid debugging and logging.  Clients
+free-form string such as “bzrlib 1.3”, to aid debugging and logging.  Clients
 and servers **should not** vary behaviour based on this string.
 
 The argument encoding is::
 
-  REQUEST_ARGS := LENGTH_PREFIX bencoded_sequence
-  RESPONSE_ARGS := LENGTH_PREFIX bencoded_sequence
+  ARGS_V3 := LENGTH_PREFIX bencoded_sequence
 
 Arguments in this protocol version are bencoded, and the entire argument
 structure is length-prefixed.  As a result, unlike previous protocol versions,
 arguments in this version are 8-bit clean.
 
 For requests, the first item in the encoded sequence must be a string of
-the request's verb, e.g. ``Branch.last_revision_info``.  (And so requests must
-always have at least one item in their REQUEST_ARGS sequence.)
+the request's verb, e.g. ``Branch.last_revision_info``.  Thus requests must
+always have at least one item in their ARGS_V3 sequence.
 
 For error responses (where the RESPONSE_STATUS_V3 is ERROR_STATUS), the
 situation is analagous to requests.  The first item in the encoded sequence must
@@ -250,12 +249,9 @@ be a string of the error name.  The other arguments supply details about the
 error, and their number and types will depend on the type of error (as
 identified by the error name).
 
-Notice that the response body occurs before the response arguments.  So
-there is now just one place in a response to report an error, even one
-that occurs while generating a streaming body: after the body.  This is a
-change from version two, where for some requests the server was expected
-to return a success status even though it hadn't finished trying to
-process the request.
+For success responses, there are no restrictions on the sequence.  It may
+be empty, and the first element does not have to be a string.  The
+contents are entirely dependent on the verb.
 
 One possible error name is ``UnknownRequestVerb``, which means the server does
 not recognise the verb used by the client's request.
@@ -269,28 +265,35 @@ The body encoding is::
 
   CHUNKS_V2 := CHUNK_V2 | CHUNKS_TERMINATOR
   CHUNK_V2 := "c" LENGTH_PREFIX CHUNK_CONTENT CHUNK_V2
-  CHUNKS_TERMINATOR := "t"
+  CHUNKS_TERMINATOR := "t" BODY_STATUS
+  BODY_STATUS := SUCCESS_STATUS | BODY_ERROR
+  BODY_ERROR := ERROR_STATUS ARGS_V3
 
 Version 3 messages always explicitly declare if a body is included.  The
-absence of a body is signalled by sending NO_BODY as the body type.
-Clients and servers are no longer expected to know which request verbs and
-responses will have bodies attached.  If present, bodies may be a single
-length-prefixed string (like in protocol 1) or a stream of chunks (like in
-protocol 2, although the termination is slightly different).
+absence of a body is signalled by sending NO_BODY as the body type.  If
+present, bodies may be a single length-prefixed string (similar to
+protocol 1) or a stream of chunks (similar to the streamed bodies in
+protocol 2).
 
-If an error occurs while a server is generating a streamed body for a
-response, the server should finish the stream and use ERROR_STATUS as the
-RESPONSE_STATUS.  That is, it should send an error in the same way it
-would when there is no body.
+Unlike earlier versions, clients and servers are no longer required to
+know which request verbs and responses will have bodies attached.  It is
+always possible to know when a complete request or response has been read,
+even if the server implements no verbs.
 
-If an error occurs while a client is generating a streamed body for a
-request, the client should simply terminate the stream as if it was
-completed normally.  In this situation, the client should be aware that
-the server will most likely have already processed the chunks already
-transmitted.  That is, in general the client should not expect the server
-to automatically rollback any changes from a request that was aborted in
-this fashion (although individual methods might offer stronger
-guarantees).
+If an error occurs while a client or a server is generating a streamed
+body, the sender should finish the stream and use BODY_ERROR as the
+BODY_STATUS.  The ARGS_V3 in an BODY_ERROR should be encoded the same way
+as errors in the ARGS_V3 of RESPONSE_V3: the first argument should be a
+string of the error name, and the rest of the arguments are details about
+that error.
+
+Note that clients can interrupt a stream with an error, not just servers.
+Clients can use this to signal to the server that the request should be
+aborted, due to an unexpected failure while generating the request.
+Servers are still required to respond to these requests (a possible
+response in this case could be an ``InterruptedRequest`` error).  Clients
+should be aware that, depending on the verb, servers may have already
+successful processed the chunks received before the interruption.
 
 Paths
 =====
@@ -325,6 +328,14 @@ The available request methods are registered in `bzrlib.smart.request`.
 **XXX**: ideally the request methods should be documented here.
 Contributions welcome!
 
+
+Recognised errors
+=================
+
+The first argument of an error response specifies the error type.
+
+**XXX**: ideally the error types should be documented here.  Contributions
+welcome!
 
 ..
    vim: ft=rst tw=74 ai
