@@ -2686,27 +2686,27 @@ format_registry.register_metadir('rich-root-pack',
     )
 # The following two formats should always just be aliases.
 format_registry.register_metadir('development',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment0',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack1',
     help='Current development format. Can convert data to and from pack-0.92 '
         '(and anything compatible with pack-0.92) format repositories. '
-        'Repositories in this format can only be read by bzr.dev. '
+        'Repositories and branches in this format can only be read by bzr.dev. '
         'Please read '
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
         'before use.',
-    branch_format='bzrlib.branch.BzrBranchFormat6',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     experimental=True,
     alias=True,
     )
 format_registry.register_metadir('development-subtree',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment0Subtree',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack3',
     help='Current development format, subtree variant. Can convert data to and '
         'from pack-0.92 (and anything compatible with pack-0.92) format '
-        'repositories. Repositories in this format can only be read by '
-        'bzr.dev. Please read '
+        'repositories. Repositories and branches in this format can only be '
+        'read by bzr.dev. Please read '
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
         'before use.',
-    branch_format='bzrlib.branch.BzrBranchFormat6',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     experimental=True,
     alias=True,
@@ -2734,4 +2734,27 @@ format_registry.register_metadir('development0-subtree',
     hidden=True,
     experimental=True,
     )
+format_registry.register_metadir('development1',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack1',
+    help='pack-0.92 with a branch that supports stacking. '
+        'Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    hidden=True,
+    experimental=True,
+    )
+format_registry.register_metadir('development1-subtree',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack3',
+    help='pack-0.92-subtree with a branch that supports stacking. '
+        'Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    hidden=True,
+    experimental=True,
+    )
+# The current format that is made on 'bzr init'.
 format_registry.set_default('pack-0.92')

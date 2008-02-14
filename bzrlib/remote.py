@@ -1289,6 +1289,18 @@ class RemoteBranch(branch.Branch):
         self._ensure_real()
         return self._real_branch.get_physical_lock_status()
 
+    def get_stacked_on(self):
+        """Get the URL this branch is stacked against.
+
+        :raises NotStacked: If the branch is not stacked.
+        :raises UnstackableBranchFormat: If the branch does not support
+            stacking.
+        :raises UnstackableRepositoryFormat: If the repository does not support
+            stacking.
+        """
+        self._ensure_real()
+        return self._real_branch.get_stacked_on()
+
     def lock_read(self):
         if not self._lock_mode:
             self._lock_mode = 'r'
@@ -1464,6 +1476,17 @@ class RemoteBranch(branch.Branch):
         self._ensure_real()
         return self._real_branch.set_parent(url)
         
+    def set_stacked_on(self, stacked_location):
+        """set the URL this branch is stacked against.
+
+        :raises UnstackableBranchFormat: If the branch does not support
+            stacking.
+        :raises UnstackableRepositoryFormat: If the repository does not support
+            stacking.
+        """
+        self._ensure_real()
+        return self._real_branch.set_stacked_on(stacked_location)
+
     def get_config(self):
         return RemoteBranchConfig(self)
 

@@ -350,12 +350,31 @@ class Branch(object):
         """
         raise NotImplementedError(self.get_root_id)
 
+    def get_stacked_on(self):
+        """Get the URL this branch is stacked against.
+
+        :raises NotStacked: If the branch is not stacked.
+        :raises UnstackableBranchFormat: If the branch does not support
+            stacking.
+        """
+        raise NotImplementedError(self.get_stacked_on)
+
     def print_file(self, file, revision_id):
         """Print `file` to stdout."""
         raise NotImplementedError(self.print_file)
 
     def set_revision_history(self, rev_history):
         raise NotImplementedError(self.set_revision_history)
+
+    def set_stacked_on(self, url):
+        """set the URL this branch is stacked against.
+
+        :raises UnstackableBranchFormat: If the branch does not support
+            stacking.
+        :raises UnstackableRepositoryFormat: If the repository does not support
+            stacking.
+        """
+        raise NotImplementedError(self.set_stacked_on)
 
     def _cache_revision_history(self, rev_history):
         """Set the cached revision history to rev_history.
@@ -1087,7 +1106,42 @@ class BzrBranchFormat4(BranchFormat):
         return "Bazaar-NG branch format 4"
 
 
-class BzrBranchFormat5(BranchFormat):
+class BranchFormatMetadir(BranchFormat):
+    """Common logic for meta-dir based branch formats."""
+
+    def _branch_class(self):
+        """What class to instantiate on open calls."""
+        raise NotImplementedError(self._branch_class)
+
+    def open(self, a_bzrdir, _found=False):
+        """Return the branch object for a_bzrdir
+
+        _found is a private parameter, do not use it. It is used to indicate
+               if format probing has already be done.
+        """
+        if not _found:
+            format = BranchFormat.find_format(a_bzrdir)
+            assert format.__class__ == self.__class__
+        try:
+            transport = a_bzrdir.get_branch_transport(None)
+            control_files = lockable_files.LockableFiles(transport, 'lock',
+                                                         lockdir.LockDir)
+            return self._branch_class()(_format=self,
+                              _control_files=control_files,
+                              a_bzrdir=a_bzrdir,
+                              _repository=a_bzrdir.find_repository())
+        except NoSuchFile:
+            raise NotBranchError(path=transport.base)
+
+    def __init__(self):
+        super(BranchFormatMetadir, self).__init__()
+        self._matchingbzrdir = bzrdir.BzrDirMetaFormat1()
+
+    def supports_tags(self):
+        return True
+
+
+class BzrBranchFormat5(BranchFormatMetadir):
     """Bzr branch format 5.
 
     This format has:
@@ -1099,6 +1153,9 @@ class BzrBranchFormat5(BranchFormat):
 
     This format is new in bzr 0.8.
     """
+
+    def _branch_class(self):
+        return BzrBranch5
 
     def get_format_string(self):
         """See BranchFormat.get_format_string()."""
@@ -1115,32 +1172,11 @@ class BzrBranchFormat5(BranchFormat):
                       ]
         return self._initialize_helper(a_bzrdir, utf8_files)
 
-    def __init__(self):
-        super(BzrBranchFormat5, self).__init__()
-        self._matchingbzrdir = bzrdir.BzrDirMetaFormat1()
-
-    def open(self, a_bzrdir, _found=False):
-        """Return the branch object for a_bzrdir
-
-        _found is a private parameter, do not use it. It is used to indicate
-               if format probing has already be done.
-        """
-        if not _found:
-            format = BranchFormat.find_format(a_bzrdir)
-            assert format.__class__ == self.__class__
-        try:
-            transport = a_bzrdir.get_branch_transport(None)
-            control_files = lockable_files.LockableFiles(transport, 'lock',
-                                                         lockdir.LockDir)
-            return BzrBranch5(_format=self,
-                              _control_files=control_files,
-                              a_bzrdir=a_bzrdir,
-                              _repository=a_bzrdir.find_repository())
-        except NoSuchFile:
-            raise NotBranchError(path=transport.base)
+    def supports_tags(self):
+        return False
 
 
-class BzrBranchFormat6(BzrBranchFormat5):
+class BzrBranchFormat6(BranchFormatMetadir):
     """Branch format with last-revision and tags.
 
     Unlike previous formats, this has no explicit revision history. Instead,
@@ -1150,6 +1186,9 @@ class BzrBranchFormat6(BzrBranchFormat5):
     This format was introduced in bzr 0.15
     and became the default in 0.91.
     """
+
+    def _branch_class(self):
+        return BzrBranch6
 
     def get_format_string(self):
         """See BranchFormat.get_format_string()."""
@@ -1167,25 +1206,35 @@ class BzrBranchFormat6(BzrBranchFormat5):
                       ]
         return self._initialize_helper(a_bzrdir, utf8_files)
 
-    def open(self, a_bzrdir, _found=False):
-        """Return the branch object for a_bzrdir
 
-        _found is a private parameter, do not use it. It is used to indicate
-               if format probing has already be done.
-        """
-        if not _found:
-            format = BranchFormat.find_format(a_bzrdir)
-            assert format.__class__ == self.__class__
-        transport = a_bzrdir.get_branch_transport(None)
-        control_files = lockable_files.LockableFiles(transport, 'lock',
-                                                     lockdir.LockDir)
-        return BzrBranch6(_format=self,
-                          _control_files=control_files,
-                          a_bzrdir=a_bzrdir,
-                          _repository=a_bzrdir.find_repository())
+class BzrBranchFormat7(BranchFormatMetadir):
+    """Branch format with last-revision, tags, and a stacked location pointer.
 
-    def supports_tags(self):
-        return True
+    The stacked location pointer is passed down to the repository and requires
+    a repository format with supports_external_lookups = True.
+
+    This format was introduced in bzr 1.3.
+    """
+
+    def _branch_class(self):
+        return BzrBranch7
+
+    def get_format_string(self):
+        """See BranchFormat.get_format_string()."""
+        return "Bazaar Branch Format 7 (needs bzr 1.3)\n"
+
+    def get_format_description(self):
+        """See BranchFormat.get_format_description()."""
+        return "Branch format 7"
+
+    def initialize(self, a_bzrdir):
+        """Create a branch of this format in a_bzrdir."""
+        utf8_files = [('last-revision', '0 null:\n'),
+                      ('branch.conf', ''),
+                      ('tags', ''),
+                      ('stacked-on', '\n'),
+                      ]
+        return self._initialize_helper(a_bzrdir, utf8_files)
 
 
 class BranchReferenceFormat(BranchFormat):
@@ -1277,9 +1326,11 @@ class BranchReferenceFormat(BranchFormat):
 # and not independently creatable, so are not registered.
 __format5 = BzrBranchFormat5()
 __format6 = BzrBranchFormat6()
+__format7 = BzrBranchFormat7()
 BranchFormat.register_format(__format5)
 BranchFormat.register_format(BranchReferenceFormat())
 BranchFormat.register_format(__format6)
+BranchFormat.register_format(__format7)
 BranchFormat.set_default_format(__format6)
 _legacy_formats = [BzrBranchFormat4(),
                    ]
@@ -1653,6 +1704,9 @@ class BzrBranch(Branch):
         except errors.InvalidURLJoin, e:
             raise errors.InaccessibleParent(parent, self.base)
 
+    def get_stacked_on(self):
+        raise errors.UnstackableBranchFormat(self._format, self.base)
+
     def set_push_location(self, location):
         """See Branch.set_push_location."""
         self.get_config().set_user_option(
@@ -1684,6 +1738,9 @@ class BzrBranch(Branch):
         else:
             assert isinstance(url, str)
             self.control_files.put_bytes('parent', url + '\n')
+
+    def set_stacked_on(self, url):
+        raise errors.UnstackableBranchFormat(self._format, self.base)
 
 
 class BzrBranch5(BzrBranch):
@@ -1820,7 +1877,12 @@ class BzrBranch5(BzrBranch):
         return None
 
 
-class BzrBranch6(BzrBranch5):
+class BzrBranch7(BzrBranch5):
+
+    def _check_stackable_repo(self):
+        if not self.repository._format.supports_external_lookups:
+            raise errors.UnstackableRepositoryFormat(self.repository._format,
+                self.repository.base)
 
     @needs_read_lock
     def last_revision_info(self):
@@ -1930,6 +1992,9 @@ class BzrBranch6(BzrBranch5):
         """See Branch.get_old_bound_location"""
         return self._get_bound_location(False)
 
+    def get_stacked_on(self):
+        self._check_stackable_repo()
+
     def set_append_revisions_only(self, enabled):
         if enabled:
             value = 'True'
@@ -1937,6 +2002,9 @@ class BzrBranch6(BzrBranch5):
             value = 'False'
         self.get_config().set_user_option('append_revisions_only', value,
             warn_masked=True)
+
+    def set_stacked_on(self, url):
+        self._check_stackable_repo()
 
     def _get_append_revisions_only(self):
         value = self.get_config().get_user_option('append_revisions_only')
@@ -1973,6 +2041,19 @@ class BzrBranch6(BzrBranch5):
 
     def _make_tags(self):
         return BasicTags(self)
+
+
+class BzrBranch6(BzrBranch7):
+    """See BzrBranchFormat6 for the capabilities of this branch.
+
+    This subclass of BzrBranch7 disables the new features BzrBranch7 added.
+    """
+
+    def get_stacked_on(self):
+        raise errors.UnstackableBranchFormat(self._format, self.base)
+
+    def set_stacked_on(self, url):
+        raise errors.UnstackableBranchFormat(self._format, self.base)
 
 
 ######################################################################
