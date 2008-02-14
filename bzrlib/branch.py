@@ -2168,3 +2168,13 @@ class Converter5to6(object):
         except NoSuchFile:
             pass
         branch.set_bound_location(None)
+
+
+class Converter6to7(object):
+    """Perform an in-place upgrade of format 6 to format 7"""
+
+    def convert(self, branch):
+        branch.control_files.put_utf8('stacked-on', '\n')
+        # update target format
+        new_branch.control_files.put_utf8('format',
+            format.get_format_string())

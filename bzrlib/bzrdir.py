@@ -2354,10 +2354,17 @@ class ConvertMetaToMeta(Converter):
             # InterXFormat lookups
             # Avoid circular imports
             from bzrlib import branch as _mod_branch
-            if (branch._format.__class__ is _mod_branch.BzrBranchFormat5 and
-                self.target_format.get_branch_format().__class__ is
-                _mod_branch.BzrBranchFormat6):
+            old_new = (branch._format.__class__,
+                self.target_format.get_branch_format().__class__)
+            if (old_new ==
+                (_mod_branch.BzrBranchFormat5, _mod_branch.BzrBranchFormat6)):
                 branch_converter = _mod_branch.Converter5to6()
+            elif (old_new ==
+                (_mod_branch.BzrBranchFormat6, _mod_branch.BzrBranchFormat7)):
+                branch_converter = _mod_branch.Converter6to7()
+            else:
+                branch_converter = None
+            if branch_converter is not None:
                 branch_converter.convert(branch)
         try:
             tree = self.bzrdir.open_workingtree(recommend_upgrade=False)
