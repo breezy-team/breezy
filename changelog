@@ -1,3 +1,12 @@
+bzr (1.2~rc1-1) unstable; urgency=low
+
+  * First release candidate of the upcoming 1.2 release.
+
+    (NB: 1.1 final was never packaged because there were no code changes
+    between 1.1~rc1 and 1.1 itself.)
+
+ -- Adeodato Simó <dato@net.com.org.es>  Thu, 14 Feb 2008 13:32:37 +0100
+
 bzr (1.1~rc1-1) unstable; urgency=low
 
   * First release candidate of the upcoming 1.1 release.
