@@ -82,3 +82,53 @@ class ImportProcessor(object):
     def tag_handler(self, cmd):
         """Process a TagCommand."""
         raise NotImplementedError(self.tag_handler)
+
+
+class CommitHandler(object):
+    """Base class for commit handling.
+    
+    Subclasses should override the pre_*, post_* and *_handler
+    methods as appropriate.
+    """
+
+    def __init__(self, command):
+        self.command = command
+
+    def process(self):
+        self.pre_process_files()
+        for fc in self.command.file_iter():
+            try:
+                handler = self.__class__.__dict__[fc.name + "_handler"]
+            except KeyError:
+                raise errors.MissingHandler(fc.name)
+            else:
+                handler(self, fc)
+        self.post_process_files()
+
+    def pre_process_files(self):
+        """Prepare for committing."""
+        pass
+
+    def post_process_files(self):
+        """Save the revision."""
+        pass
+
+    def modify_handler(self, filecmd):
+        """Handle a filemodify command."""
+        raise NotImplementedError(self.modify_handler)
+
+    def delete_handler(self, filecmd):
+        """Handle a filedelete command."""
+        raise NotImplementedError(self.delete_handler)
+
+    def copy_handler(self, filecmd):
+        """Handle a filecopy command."""
+        raise NotImplementedError(self.copy_handler)
+
+    def rename_handler(self, filecmd):
+        """Handle a filerename command."""
+        raise NotImplementedError(self.rename_handler)
+
+    def deleteall_handler(self, filecmd):
+        """Handle a filedeleteall command."""
+        raise NotImplementedError(self.deleteall_handler)
