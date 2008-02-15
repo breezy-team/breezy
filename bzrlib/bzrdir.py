@@ -2351,21 +2351,24 @@ class ConvertMetaToMeta(Converter):
             pass
         else:
             # TODO: conversions of Branch and Tree should be done by
-            # InterXFormat lookups
+            # InterXFormat lookups/some sort of registry.
             # Avoid circular imports
             from bzrlib import branch as _mod_branch
-            old_new = (branch._format.__class__,
-                self.target_format.get_branch_format().__class__)
-            if (old_new ==
-                (_mod_branch.BzrBranchFormat5, _mod_branch.BzrBranchFormat6)):
-                branch_converter = _mod_branch.Converter5to6()
-            elif (old_new ==
-                (_mod_branch.BzrBranchFormat6, _mod_branch.BzrBranchFormat7)):
-                branch_converter = _mod_branch.Converter6to7()
-            else:
-                branch_converter = None
-            if branch_converter is not None:
+            old = branch._format.__class__
+            new = self.target_format.get_branch_format().__class__
+            while old != new:
+                if (old == _mod_branch.BzrBranchFormat5 and
+                    new in (_mod_branch.BzrBranchFormat6,
+                        _mod_branch.BzrBranchFormat7)):
+                    branch_converter = _mod_branch.Converter5to6()
+                elif (old == _mod_branch.BzrBranchFormat6 and
+                    new == _mod_branch.BzrBranchFormat7):
+                    branch_converter = _mod_branch.Converter6to7()
+                else:
+                    raise errors.BadConversionTarget("No converter", new)
                 branch_converter.convert(branch)
+                branch = self.bzrdir.open_branch()
+                old = branch._format.__class__
         try:
             tree = self.bzrdir.open_workingtree(recommend_upgrade=False)
         except (errors.NoWorkingTree, errors.NotLocalUrl):
