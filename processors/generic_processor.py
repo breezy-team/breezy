@@ -61,14 +61,15 @@ class GenericProcessor(processor.ImportProcessor):
 
     def pre_process(self):
         self.cache_mgr = GenericCacheManager()
-        self.last_reversion_id = None
+        self.active_branch = self.branch
         self.init_stats()
 
     def post_process(self):
         self.dump_stats()
-        # Update the branch, assuming the last revision is the head
+        # Update the branches, assuming the last revision is the head
         note("Updating branch information ...")
-        last_rev_id = self.last_revision_id
+        # TODO - loop over the branches created/modified
+        last_rev_id = self.cache_mgr.last_revision_ids[self.branch]
         revno = len(list(self.repo.iter_reverse_revision_history(last_rev_id)))
         self.branch.set_last_revision_info(revno, last_rev_id)
         # Update the working tree, if any
@@ -103,13 +104,15 @@ class GenericProcessor(processor.ImportProcessor):
 
     def commit_handler(self, cmd):
         """Process a CommitCommand."""
-        handler = GenericCommitHandler(cmd, self.repo, self.cache_mgr)
+        handler = GenericCommitHandler(cmd, self.repo, self.cache_mgr,
+            self.active_branch)
         # For now, put a write group around every commit. In the future,
         # we might only start/commit one every N to sppeed things up
         self.repo.start_write_group()
         try:
             handler.process()
-            self.last_revision_id = handler.revision_id
+            self.cache_mgr.last_revision_ids[self.active_branch] = \
+                handler.revision_id
             self._revision_count += 1
         except:
             self.repo.abort_write_group()
@@ -159,13 +162,17 @@ class GenericCacheManager(object):
         # we need to keep all of these but they are small
         self.revision_ids = {}
 
+        # branch -> last revision-id lookup table
+        self.last_revision_ids = {}
+
 
 class GenericCommitHandler(processor.CommitHandler):
 
-    def __init__(self, command, repo, cache_mgr):
+    def __init__(self, command, repo, cache_mgr, active_branch):
         processor.CommitHandler.__init__(self, command)
         self.repo = repo
         self.cache_mgr = cache_mgr
+        self.active_branch = active_branch
         # smart loader that uses these caches
         self.loader = revisionloader.RevisionLoader(repo,
             lambda revision_ids: self._get_inventories(revision_ids))
@@ -179,9 +186,20 @@ class GenericCommitHandler(processor.CommitHandler):
 
     def post_process_files(self):
         """Save the revision."""
+        if self.command.parents:
+            parents = [self.cache_mgr.revision_ids[ref]
+                for ref in self.command.parents]
+        else:
+            # if no parents are given, the last revision on
+            # the current branch is assumed according to the spec
+            last_rev = self.cache_mgr.last_revision_ids.get(
+                    self.active_branch)
+            if last_rev:
+                parents = [last_rev]
+            else:
+                parents = []
+
         # Derive the inventory from the previous one
-        parents = [self.cache_mgr.revision_ids[ref]
-            for ref in self.command.parents]
         if len(parents) == 0:
             new_inventory = self.gen_initial_inventory()
         else:
@@ -267,6 +285,17 @@ class GenericCommitHandler(processor.CommitHandler):
         who = "%s <%s>" % (committer[0],committer[1])
         timestamp = committer[2]
         return generate_ids.gen_revision_id(who, timestamp)
+
+    def get_inventory(self, revision_id):
+        """Get the inventory for a revision id."""
+        try:
+            inv = self.cache_mgr.inventories[revision_id]
+        except KeyError:
+            # TODO: count misses and/or inform the user about the miss?
+            # Not cached so reconstruct from repository
+            inv = self.repo.revision_tree(revision_id).inventory
+            self.cache_mgr.inventories[revision_id] = inv
+        return inv
 
     def _get_inventories(self, revision_ids):
         """Get the inventories for revision-ids.
