@@ -4,6 +4,15 @@ Bazaar Release Notes
 
 .. contents::
 
+
+bzr 1.2 2008-02-15
+------------------
+
+  BUG FIXES:
+
+    * Fix failing test in Launchpad plugin. (Martin Pool)
+
+
 bzr 1.2rc1 2008-02-13
 ---------------------
 
