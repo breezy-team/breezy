@@ -1994,6 +1994,10 @@ class BzrBranch7(BzrBranch5):
 
     def get_stacked_on(self):
         self._check_stackable_repo()
+        stacked_url = self.control_files.get_utf8('stacked-on').read()[:-1]
+        if not stacked_url:
+            raise errors.NotStacked(self)
+        return stacked_url
 
     def set_append_revisions_only(self, enabled):
         if enabled:
@@ -2005,6 +2009,9 @@ class BzrBranch7(BzrBranch5):
 
     def set_stacked_on(self, url):
         self._check_stackable_repo()
+        if not url:
+            url = ''
+        self.control_files.put_utf8('stacked-on', url + '\n')
 
     def _get_append_revisions_only(self):
         value = self.get_config().get_user_option('append_revisions_only')

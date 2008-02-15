@@ -339,7 +339,9 @@ class TestBranch7(TestBranch67, TestCaseWithTransport):
         return "development-subtree"
 
     def test_set_stacked_on_unstackable_repo(self):
-        branch = self.make_branch('a', format=self.get_format_name())
+        repo = self.make_repository('a', format='dirstate-tags')
+        control = repo.bzrdir
+        branch = _mod_branch.BzrBranchFormat7().initialize(control)
         target = self.make_branch('b')
         self.assertRaises(errors.UnstackableRepositoryFormat,
             branch.set_stacked_on, target.base)

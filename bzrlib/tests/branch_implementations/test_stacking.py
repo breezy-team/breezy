@@ -41,6 +41,6 @@ class TestStacking(TestCaseWithBranch):
             self.assertRaises(old_format_errors, branch.get_stacked_on)
             return
         # now we have a stacked branch:
-        self.assertEqual(target.base, branch.get_stacked_on)
+        self.assertEqual(target.base, branch.get_stacked_on())
         branch.set_stacked_on(None)
-        self.assertRaises(NotStacked, branch.get_stacked_on)
+        self.assertRaises(errors.NotStacked, branch.get_stacked_on)
