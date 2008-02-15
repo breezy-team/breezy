@@ -21,9 +21,9 @@
 COMMAND_NAMES = ['blob', 'checkpoint', 'commit', 'progress', 'reset', 'tag']
 FILE_COMMAND_NAMES = ['modify', 'delete', 'copy', 'rename', 'deleteall']
 
-# File kinds
-FILE_KIND = 'f'
-SYMLINK_KIND = 's'
+# Bazaar file kinds
+FILE_KIND = 'file'
+SYMLINK_KIND = 'symlink'
 
 
 class ImportCommand(object):
@@ -120,13 +120,13 @@ class FileCopyCommand(FileCommand):
 
 class FileRenameCommand(FileCommand):
 
-    def __init__(self, src_path, dest_path):
+    def __init__(self, old_path, new_path):
         FileCommand.__init__(self, 'rename')
-        self.src_path = src_path
-        self.dest_path = dest_path
+        self.old_path = old_path
+        self.new_path = new_path
 
 
 class FileDeleteAllCommand(FileCommand):
 
-    def __init__(self, path):
+    def __init__(self):
         FileCommand.__init__(self, 'deleteall')
