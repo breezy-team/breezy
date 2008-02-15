@@ -215,21 +215,24 @@ class LineBasedParser(object):
         Throws MissingBytes if the bytes are not found.
 
         Note: This method does not read from the line buffer.
+
+        :return: a string
         """
         lines = []
         left = count
+        found = 0
         while left > 0:
             line = self.input.readline(left)
             if line:
-                left -= len(line)
+                line_len = len(line)
+                left -= line_len
+                found += line_len
                 lines.append(line)
             else:
                 left = 0
-        result = ''.join(lines)
-        found = len(result)
         if found != count:
             self.abort(errors.MissingBytes, count, found)
-        return result
+        return ''.join(lines)
 
     def read_until(self, terminator):
         """Read the input stream until the terminator is found.

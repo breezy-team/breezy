@@ -17,7 +17,9 @@
 """Import processor that supports all Bazaar repository formats."""
 
 
+import time
 from bzrlib import (
+    delta,
     errors,
     generate_ids,
     inventory,
@@ -36,6 +38,14 @@ from bzrlib.plugins.fastimport import (
     )
 
 
+def _single_plural(n, single, plural):
+    """Return a single or plural form of a noun based on number."""
+    if n == 1:
+        return single
+    else:
+        return plural
+
+
 class GenericProcessor(processor.ImportProcessor):
     """An import processor that handles basic imports.
 
@@ -50,21 +60,34 @@ class GenericProcessor(processor.ImportProcessor):
     """
 
     def pre_process(self):
-        # Statistics
-        self._revision_count = 0
-        self._branch_count = 0
-        self._tag_count = 0
-
-        # dataref -> data. datref is either :mark or the sha-1.
-        # Once a blob is used, it should be deleted from here.
-        self.blob_cache = {}
+        self.cache_mgr = GenericCacheManager()
+        self.last_reversion_id = None
+        self.init_stats()
 
     def post_process(self):
-        # Dump statistics
-        note("Imported %d revisions into %d branches with %d tags.",
-            self._revision_count, self._branch_count, self._tag_count)
-        #note("%d files, %d directories, %d symlinks.",
-        #    self._file_count, self._dir_count, self._symlink_count)
+        self.dump_stats()
+        # Update the branch, assuming the last revision is the head
+        note("Updating branch information ...")
+        last_rev_id = self.last_revision_id
+        revno = len(list(self.repo.iter_reverse_revision_history(last_rev_id)))
+        self.branch.set_last_revision_info(revno, last_rev_id)
+        # Update the working tree, if any
+        if self.working_tree:
+            self.working_tree.update(delta._ChangeReporter())
+
+    def init_stats(self):
+        self._revision_count = 0
+        self._branch_count = 1
+        self._tag_count = 0
+
+    def dump_stats(self):
+        rc = self._revision_count
+        bc = self._branch_count
+        tc = self._tag_count
+        note("Imported %d %s into %d %s with %d %s.",
+            rc, _single_plural(rc, "revision", "revisions"),
+            bc, _single_plural(bc, "branch", "branches"),
+            tc, _single_plural(tc, "tag", "tags"))
 
     def blob_handler(self, cmd):
         """Process a BlobCommand."""
@@ -72,7 +95,7 @@ class GenericProcessor(processor.ImportProcessor):
             dataref = ":%s" % (cmd.mark,)
         else:
             dataref = osutils.sha_strings(cmd.data)
-        self.blob_cache[dataref] = cmd.data
+        self.cache_mgr.blobs[dataref] = cmd.data
 
     def checkpoint_handler(self, cmd):
         """Process a CheckpointCommand."""
@@ -80,18 +103,30 @@ class GenericProcessor(processor.ImportProcessor):
 
     def commit_handler(self, cmd):
         """Process a CommitCommand."""
-        handler = GenericCommitHandler(cmd, self.target, self.blob_cache)
-        handler.process()
-        self._revision_count += 1
+        handler = GenericCommitHandler(cmd, self.repo, self.cache_mgr)
+        # For now, put a write group around every commit. In the future,
+        # we might only start/commit one every N to sppeed things up
+        self.repo.start_write_group()
+        try:
+            handler.process()
+            self.last_revision_id = handler.revision_id
+            self._revision_count += 1
+        except:
+            self.repo.abort_write_group()
+            raise
+        else:
+            self.repo.commit_write_group()
 
     def progress_handler(self, cmd):
         """Process a ProgressCommand."""
+        # We could use a progress bar here but timestamped messages
+        # is more useful for determining when things might complete
         note("%s progress %s" % (self._time_of_day(), cmd.message))
 
     def _time_of_day(self):
         """Time of day as a string."""
         # Note: this is a separate method so tests can patch in a fixed value
-        return datetime.datetime.now().strftime("%H:%M:%s")
+        return time.localtime().strftime("%H:%M:%s")
 
     def reset_handler(self, cmd):
         """Process a ResetCommand."""
@@ -103,49 +138,57 @@ class GenericProcessor(processor.ImportProcessor):
         warning("tags are not supported yet - ignoring tag '%s'", cmd.id)
 
 
+class GenericCacheManager(object):
+    """A manager of caches for the GenericProcessor."""
+
+    def __init__(self, inventory_cache_size=100):
+        # dataref -> data. datref is either :mark or the sha-1.
+        # Once a blob is used, it should be deleted from here.
+        self.blobs = {}
+
+        # revision-id -> Inventory cache
+        # these are large and we probably don't need too many as
+        # most parents are recent in history
+        self.inventories = lru_cache.LRUCache(inventory_cache_size)
+
+        # directory-path -> inventory-entry lookup table
+        # we need to keep all of these but they are small
+        self.directory_entries = {}
+
+        # import-ref -> revision-id lookup table
+        # we need to keep all of these but they are small
+        self.revision_ids = {}
+
+
 class GenericCommitHandler(processor.CommitHandler):
 
-    def __init__(self, command, repo, blob_cache, inventory_cache_size=100):
+    def __init__(self, command, repo, cache_mgr):
         processor.CommitHandler.__init__(self, command)
         self.repo = repo
-        # cache of blobs until they are referenced
-        self.blob_cache = blob_cache
-        # revision-id -> Inventory cache
-        self.inventory_cache = lru_cache.LRUCache(inventory_cache_size)
-        # smart loader that uses this cache
+        self.cache_mgr = cache_mgr
+        # smart loader that uses these caches
         self.loader = revisionloader.RevisionLoader(repo,
             lambda revision_ids: self._get_inventories(revision_ids))
-        # directory-path -> inventory-entry lookup table
-        self._directory_entries = {}
-        # import-ref to revision-id lookup table
-        self.revision_id_by_import_ref = {}
 
     def pre_process_files(self):
         """Prepare for committing."""
         self.revision_id = self.gen_revision_id()
         self.inv_delta = []
         # cache of texts for this commit, indexed by file-id
-        self.text_for_commit = {}
+        self.lines_for_commit = {}
 
     def post_process_files(self):
         """Save the revision."""
-        rev = revision.Revision(self.revision_id)
-        committer = self.command.committer
-        rev.committer = "%s <%s>" % (committer[0],committer[1])
-        rev.timestamp = committer[2]
-        rev.timezone = committer[3]
-        print "loading revision %r" % (rev,)
-
         # Derive the inventory from the previous one
-        parents = self.command.parents
+        parents = [self.cache_mgr.revision_ids[ref]
+            for ref in self.command.parents]
         if len(parents) == 0:
-            new_inventory = inventory.Inventory()
+            new_inventory = self.gen_initial_inventory()
         else:
             # use the bzr_revision_id to lookup the inv cache
-            parent_id = self.revision_id_by_import_ref[parents[0]]
-            new_inventory = self.get_inventory(parent_id).copy()
+            new_inventory = self.get_inventory(parents[0]).copy()
         new_inventory.apply_delta(self.inv_delta)
-        self.revision_id_by_import_ref[self.command.ref] = new_inventory
+        self.cache_mgr.revision_ids[self.command.ref] = new_inventory
 
         # debug trace ...
         print "applied inventory delta ..."
@@ -155,15 +198,32 @@ class GenericCommitHandler(processor.CommitHandler):
         for entry in new_inventory:
             print "  %r" % (entry,)
 
-        ## Uncomment once the rest is working
-        # self.loader.load(revision, new_inventory, None,
-        #     lambda file_id: self._get_text(file_id))
+        # Load the revision into the repository
+        # TODO: Escape the commit message
+        committer = self.command.committer
+        who = "%s <%s>" % (committer[0],committer[1])
+        rev = revision.Revision(self.revision_id)
+        rev = revision.Revision(
+           timestamp=committer[2],
+           timezone=committer[3],
+           committer=who,
+           message=self.escape_commit_message(self.command.message),
+           revision_id=self.revision_id)
+        rev.parent_ids = parents
+        self.loader.load(rev, new_inventory, None,
+            lambda file_id: self._get_lines(file_id))
+        print "loaded revision %r" % (rev,)
+
+    def escape_commit_message(self, msg):
+        # It's crap that we need to do this at this level (but we do)
+        # TODO
+        return msg
 
     def modify_handler(self, filecmd):
         if filecmd.dataref is not None:
-            data = self.blob_cache[filecmd.dataref]
+            data = self.cache_mgr.blobs[filecmd.dataref]
             # Conserve memory, assuming blobs aren't referenced twice
-            del self.blob_cache[filecmd.dataref]
+            del self.cache_mgr.blobs[filecmd.dataref]
         else:
             data = filecmd.data
         self._modify_inventory(filecmd.path, filecmd.kind,
@@ -188,6 +248,16 @@ class GenericCommitHandler(processor.CommitHandler):
         # TODO: Search the current inventory instead of generating every time
         return generate_ids.gen_file_id(path)
 
+    def gen_initial_inventory(self):
+        """Generate an inventory for a parentless revision."""
+        inv = inventory.Inventory(revision_id=self.revision_id)
+        if not self.repo.supports_rich_root():
+            # In this repository, root entries have no knit or weave. When
+            # serializing out to disk and back in, root.revision is always
+            # the new revision_id.
+            inv.root.revision = self.revision_id
+        return inv
+
     def gen_revision_id(self):
         """Generate a revision id.
 
@@ -205,11 +275,11 @@ class GenericCommitHandler(processor.CommitHandler):
         speed up inventory reconstruction."""
         present = []
         inventories = []
-        # If an inventoy is in the cache, we assume it was
+        # If an inventory is in the cache, we assume it was
         # successfully loaded into the repsoitory
         for revision_id in revision_ids:
             try:
-                inv = self.inventory_cache[revision_id]
+                inv = self.cache_mgr.inventories[revision_id]
                 present.append(revision_id)
             except KeyError:
                 # TODO: count misses and/or inform the user about the miss?
@@ -220,13 +290,13 @@ class GenericCommitHandler(processor.CommitHandler):
                 else:
                     rev_tree = self.repo.revision_tree(None)
                 inv = rev_tree.inventory
-                self.inventory_cache[revision_id] = inv
-        inventories.append(inv)
+                self.cache_mgr.inventories[revision_id] = inv
+            inventories.append(inv)
         return present, inventories
 
-    def _get_text(self, file_id):
-        """Get the text for a file-id."""
-        return self.text_for_commit[file_id]
+    def _get_lines(self, file_id):
+        """Get the lines for a file-id."""
+        return self.lines_for_commit[file_id]
 
     def _modify_inventory(self, path, kind, is_executable, data):
         """Add to or change an item in the inventory."""
@@ -234,11 +304,15 @@ class GenericCommitHandler(processor.CommitHandler):
         basename, parent_ie = self._ensure_directory(path)
         file_id = self.bzr_file_id(path)
         ie = inventory.make_entry(kind, basename, parent_ie, file_id)
+        ie.revision = self.revision_id
         if isinstance(ie, inventory.InventoryFile):
             ie.text_sha1 = osutils.sha_strings(data)
             ie.text_size = len(data)
             ie.executable = is_executable
-            self.text_for_commit[file_id] = data
+            lines = data.split('\n')
+            if lines[-1] == '':
+                lines.pop()
+            self.lines_for_commit[file_id] = lines
         elif isinstance(ie, inventory.InventoryLnk):
             ie.symlink_target = data
         else:
@@ -246,7 +320,7 @@ class GenericCommitHandler(processor.CommitHandler):
                 (kind,))
 
         # Record this new inventory entry. As the import stream doesn't
-        # repeat all files every time, we build an entry delta.
+        # repeat all files every time, we build an inventory delta.
         # HACK: We also assume that inventory.apply_delta handles the
         # 'add' case cleanly when asked to change a non-existent entry.
         # This saves time vs explicitly detecting add vs change.
@@ -260,7 +334,7 @@ class GenericCommitHandler(processor.CommitHandler):
             # the root node doesn't get updated
             return basename, inventory.ROOT_ID
         try:
-            ie = self._directory_entries[dirname]
+            ie = self.cache_mgr.directory_entries[dirname]
         except KeyError:
             # We will create this entry, since it doesn't exist
             pass
@@ -275,6 +349,6 @@ class GenericCommitHandler(processor.CommitHandler):
                                                   dir_basename,
                                                   parent_ie.file_id)
         ie.revision = self.revision_id
-        self._directory_entries[dirname] = ie
+        self.cache_mgr.directory_entries[dirname] = ie
         self.inv_delta.append((None, path, dir_file_id, ie))
         return basename, ie

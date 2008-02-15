@@ -79,8 +79,7 @@ class cmd_fast_import(Command):
         else:
             from bzrlib.plugins.fastimport.processors import generic_processor
             control, relpath = bzrdir.BzrDir.open_containing('.')
-            target = control.open_repository()
-            proc = generic_processor.GenericProcessor(target)
+            proc = generic_processor.GenericProcessor(control)
 
         # Note: might need to pass the parser to the processor so that the
         # processor can be it's error reporting with source context

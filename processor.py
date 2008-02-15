@@ -31,8 +31,16 @@ class ImportProcessor(object):
     methods as appropriate.
     """
 
-    def __init__(self, target, verbose=False):
-        self.target = target
+    def __init__(self, bzrdir, verbose=False):
+        self.bzrdir = bzrdir
+        if bzrdir is None:
+            # Some 'importers' don't need a repository to write to
+            self.branch = None
+            self.repo = None
+            self.working_tree = None
+        else:
+            (self.working_tree, self.branch) = bzrdir._get_tree_branch()
+            self.repo = self.branch.repository
         self.verbose = verbose
 
     def process(self, command_iter):
@@ -40,6 +48,19 @@ class ImportProcessor(object):
 
         :param command_iter: an iterator providing commands
         """
+        if self.working_tree is not None:
+            self.working_tree.lock_write()
+        elif self.branch is not None:
+            self.branch.lock_write()
+        try:
+            self._process(command_iter)
+        finally:
+            if self.working_tree is not None:
+                self.working_tree.unlock()
+            elif self.branch is not None:
+                self.branch.unlock()
+
+    def _process(self, command_iter):
         self.pre_process()
         for cmd in command_iter():
             try:

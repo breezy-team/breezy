@@ -17,7 +17,13 @@
 """Parameterised loading of revisions into a repository."""
 
 
+from bzrlib import errors
+
+
 class RevisionLoader(object):
+    # NOTE: This is effectively bzrlib.repository._install_revision
+    # refactored to be a class. When importing, we want more flexibility
+    # in how previous revisions are cached, data is feed in, etc.
 
     def __init__(self, repo, inventories_provider=None):
         """An object responsible for loading revisions into a repository.
@@ -49,13 +55,13 @@ class RevisionLoader(object):
         :param text_provider: a callable expecting a file_id parameter
             that returns the text for that file-id
         """
-        # NOTE: Code based on bzrlib.repository._install_revision
-        present_parents, parent_invs = self.inventories_provider(self.repo,
+        present_parents, parent_invs = self.inventories_provider(
             rev.parent_ids)
-        self._load_texts(rev.revision_id, inv.entries, parent_invs,
+        self._load_texts(rev.revision_id, inv.iter_entries(), parent_invs,
             text_provider)
         try:
-            self.repo.add_inventory(rev.revision_id, inv, present_parents)
+            rev.inventory_sha1 = self.repo.add_inventory(rev.revision_id,
+                inv, present_parents)
         except errors.RevisionAlreadyPresent:
             pass
         if signature is not None:
@@ -73,7 +79,6 @@ class RevisionLoader(object):
         :param text_provider: a callable expecting a file_id parameter
             that returns the text for that file-id
         """
-        # NOTE: Code based on bzrlib.repository._install_revision
 
         # Backwards compatibility hack: skip the root id.
         if not self.repo.supports_rich_root():
