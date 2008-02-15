@@ -243,8 +243,10 @@ class LineBasedParser(object):
         raise NotImplementedError(self.read_until)
 
 
-# Regular expressions used for parsing
-_WHO_AND_WHEN_RE = re.compile(r'(\w+) <(.+)> (.+)')
+# Regular expression used for parsing. (Note: The spec states that the name
+# part should be non-empty but git-fast-export doesn't always do that so
+# the first bit is \w*, not \w+.)
+_WHO_AND_WHEN_RE = re.compile(r'(\w*) <(.+)> (.+)')
 
 
 class ImportParser(LineBasedParser):
@@ -432,15 +434,14 @@ class ImportParser(LineBasedParser):
     def _who_when(self, s, cmd, section):
         """Parse who and when information from a string.
         
-        :return: a tuple of (who,email,when) where who and
-          email are strings and when is a datetime object
+        :return: a tuple of (name,email,timestamp,timezone)
         """
         match = _WHO_AND_WHEN_RE.search(s)
         if match:
             datestr = match.group(3)
             if self.date_parser is None:
                 # auto-detect the date format
-                if len(datestr) == 16:
+                if len(datestr.split(' ')) == 2:
                     format = 'raw'
                 elif datestr == 'now':
                     format = 'now'
@@ -448,7 +449,7 @@ class ImportParser(LineBasedParser):
                     format = 'rfc2822'
                 self.date_parser = dates.DATE_PARSERS_BY_NAME[format]
             when = self.date_parser(datestr)
-            return (match.group(1), match.group(2), when)
+            return (match.group(1),match.group(2),when[0],when[1])
         else:
             self.abort(errors.BadFormat, cmd, section, s)
 
@@ -472,7 +473,7 @@ class ImportParser(LineBasedParser):
             return False, False
         elif s in ['755', '100755', '0100755']:
             return True, False
-        elif s == '120000':
+        elif s in ['120000', '0120000']:
             return False, True
         else:
             self.abort(errors.BadFormat, 'filemodify', 'mode', s)
