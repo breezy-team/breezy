@@ -16,13 +16,14 @@
 
 """Date parsing routines.
 
-Each routine routines a (timestamp,timezone) tuple where
-timestamp is seconds since epoch and timezone is the offset
-from UTC in seconds.
+Each routine returns timestamp,timezone where
+
+* timestamp is seconds since epoch
+* timezone is the offset from UTC in seconds.
 """
 
 
-import datetime
+import time
 
 
 def parse_raw(s):
@@ -34,7 +35,7 @@ def parse_raw(s):
     timestamp_str, timezone_str = s.split(' ', 1)
     timestamp = float(timestamp_str)
     timezone = _parse_tz(timezone_str)
-    return (timestamp, timezone)
+    return timestamp, timezone
 
 
 def _parse_tz(tz):
@@ -64,7 +65,7 @@ def parse_now(s):
     The format must be exactly "now".
     See the spec for details.
     """
-    return (datetime.datetime.now(),0)
+    return time.time(), 0
 
 
 # Lookup tabel of date parsing routines
