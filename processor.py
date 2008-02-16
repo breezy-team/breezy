@@ -31,7 +31,7 @@ class ImportProcessor(object):
     methods as appropriate.
     """
 
-    def __init__(self, bzrdir, verbose=False):
+    def __init__(self, bzrdir, params=None, verbose=False):
         self.bzrdir = bzrdir
         if bzrdir is None:
             # Some 'importers' don't need a repository to write to
@@ -41,6 +41,7 @@ class ImportProcessor(object):
         else:
             (self.working_tree, self.branch) = bzrdir._get_tree_branch()
             self.repo = self.branch.repository
+        self.params = params
         self.verbose = verbose
 
     def process(self, command_iter):

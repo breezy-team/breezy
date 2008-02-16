@@ -18,12 +18,26 @@
 
 
 from bzrlib.commands import Command, register_command
-from bzrlib.option import RegistryOption
+from bzrlib.option import RegistryOption, ListOption
 
 
 def test_suite():
     import tests
     return tests.test_suite()
+
+
+def _defines_to_dict(defines):
+    """Convert a list of definition strings to a dictionary."""
+    if defines is None:
+        return None
+    result = {}
+    for define in defines:
+        kv = define.split('=', 1)
+        if len(kv) == 1:
+            result[define.strip()] = 1
+        else:
+            result[kv[0].strip()] = kv[1].strip()
+    return result
 
 
 class cmd_fast_import(Command):
@@ -62,24 +76,29 @@ class cmd_fast_import(Command):
     takes_options = ['verbose',
                     RegistryOption.from_kwargs('method',
                         'The way to process the data.',
-                        title='Processing Method', value_switches=True, enum_switch=False,
-                        generic="Import the data into any format (default)",
-                        info="Display information only - don't import it",
+                        title='Processing Method',
+                        value_switches=True, enum_switch=False,
+                        safe="Import the data into any format (default).",
+                        info="Display information only - don't import it.",
+                        ),
+                    ListOption('params', short_name='P', type=str,
+                        help="Define processing specific parameters.",
                         ),
                      ]
     aliases = ['fastimport']
-    def run(self, verbose=False, method='generic'):
+    def run(self, verbose=False, method='safe', params=None):
         import sys
         from bzrlib import bzrdir
         import parser
 
+        params = _defines_to_dict(params)
         if method == 'info':
             from bzrlib.plugins.fastimport.processors import info_processor
-            proc = info_processor.InfoProcessor()
+            proc = info_processor.InfoProcessor(params=params)
         else:
             from bzrlib.plugins.fastimport.processors import generic_processor
             control, relpath = bzrdir.BzrDir.open_containing('.')
-            proc = generic_processor.GenericProcessor(control)
+            proc = generic_processor.GenericProcessor(control, params=params)
 
         # Note: might need to pass the parser to the processor so that the
         # processor can be it's error reporting with source context
