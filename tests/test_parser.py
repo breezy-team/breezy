@@ -94,10 +94,19 @@ class TestImportParser(tests.TestCase):
     def test_iter_commands(self):
         s = StringIO.StringIO(_sample_import_text)
         p = parser.ImportParser(s)
+        result = []
         for cmd in p.iter_commands():
-            print cmd
+            result.append(cmd)
             if cmd.name == 'commit':
                 for fc in cmd.file_iter():
-                    print "  %s" % (fc,)
-        #cmd1 = cmds[0]
-        #self.assertEqual('progress', cmd1.name)
+                    result.append(fc)
+        cmd1 = result[0]
+        self.assertEqual('progress', cmd1.name)
+
+
+class TestStringParsing(tests.TestCase):
+
+    def test_unquote(self):
+        s = r'hello \"sweet\" wo\\r\tld'
+        self.assertEquals(r'hello "sweet" wo\r' + "\tld",
+            parser._unquote_c_string(s))

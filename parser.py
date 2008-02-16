@@ -458,13 +458,18 @@ class ImportParser(LineBasedParser):
 
     def _path(self, s):
         """Parse a path."""
-        # TODO: handle quoted paths
+        if s.startswith('"'):
+            if s[-1] != '"':
+                self.abort(errors.BadFormat, cmd, section, s)
+            else:
+                return _unquote_c_string(s[1:-1])
         return s
 
     def _path_pair(self, s):
         """Parse two paths separated by a space."""
-        # TODO: handle quoted paths
-        return tuple(s.split(' ', 1))
+        # TODO: handle a space in the first path
+        parts = s.split(' ', 1)
+        return map(_unquote_c_string, parts)
 
     def _mode(self, s):
         """Parse a file mode into executable and symlink flags.
@@ -481,3 +486,8 @@ class ImportParser(LineBasedParser):
         else:
             self.abort(errors.BadFormat, 'filemodify', 'mode', s)
 
+
+def _unquote_c_string(s):
+    """replace C-style escape sequences (\n, \", etc.) with real chars."""
+    # HACK: Python strings are close enough
+    return s.decode('string_escape', 'replace')
