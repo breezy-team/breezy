@@ -41,7 +41,11 @@ class ImportProcessor(object):
         else:
             (self.working_tree, self.branch) = bzrdir._get_tree_branch()
             self.repo = self.branch.repository
-        self.params = params
+        if params is None:
+            self.params = []
+        else:
+            self.params = params
+
         self.verbose = verbose
 
     def process(self, command_iter):
@@ -69,8 +73,9 @@ class ImportProcessor(object):
             except KeyError:
                 raise errors.MissingHandler(cmd.name)
             else:
-                # TODO: put hooks around processing each command?
+                self.pre_handler(cmd)
                 handler(self, cmd)
+                self.post_handler(cmd)
         self.post_process()
 
     def pre_process(self):
@@ -79,6 +84,14 @@ class ImportProcessor(object):
 
     def post_process(self):
         """Hook for logic at end of processing."""
+        pass
+
+    def pre_handler(self, cmd):
+        """Hook for logic before each handler starts."""
+        pass
+
+    def post_handler(self, cmd):
+        """Hook for logic after each handler finishes."""
         pass
 
     def progress_handler(self, cmd):

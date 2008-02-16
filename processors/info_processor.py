@@ -46,7 +46,6 @@ class InfoProcessor(processor.ImportProcessor):
         # Allow creation without a target
         processor.ImportProcessor.__init__(self, target, params, verbose)
 
-
     def pre_process(self):
         # Init statistics
         self.cmd_counts = {}
@@ -83,6 +82,12 @@ class InfoProcessor(processor.ImportProcessor):
                 'separate authors'))
             note("\t%s\t%s" % (_found(self.executables_found), 'executables'))
             note("\t%s\t%s" % (_found(self.symlinks_found), 'symlinks'))
+
+    def pre_handler(self, cmd):
+        """Hook for logic before each handler starts."""
+        dump = self.params.get('dump')
+        if dump and cmd.name == dump:
+            print "%s" % (cmd,)
 
     def progress_handler(self, cmd):
         """Process a ProgressCommand."""

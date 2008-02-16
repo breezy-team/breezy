@@ -31,6 +31,19 @@ class ImportCommand(object):
 
     def __init__(self, name):
         self.name = name
+        # List of field names not to display
+        self._binary = []
+
+    def __str__(self):
+        interesting = {}
+        for field,value in self.__dict__.iteritems():
+            if field.startswith('_'):
+                continue
+            elif field in self._binary:
+                if value is not None:
+                    value = '(...)'
+            interesting[field] = value
+        return "%s: %s" % (self.__class__.__name__, interesting)
 
 
 class BlobCommand(ImportCommand):
@@ -39,6 +52,7 @@ class BlobCommand(ImportCommand):
         ImportCommand.__init__(self, 'blob')
         self.mark = mark
         self.data = data
+        self._binary = ['data']
 
 
 class CheckpointCommand(ImportCommand):
@@ -59,6 +73,13 @@ class CommitCommand(ImportCommand):
         self.message = message
         self.parents = parents
         self.file_iter = file_iter
+        self._binary = ['file_iter']
+
+    def __str__(self):
+        result = [ImportCommand.__str__(self)]
+        for f in self.file_iter():
+            result.append("\t%s" % f)
+        return '\n'.join(result)
 
 
 class ProgressCommand(ImportCommand):
@@ -101,6 +122,7 @@ class FileModifyCommand(FileCommand):
         self.is_executable = is_executable
         self.dataref = dataref
         self.data = data
+        self._binary = ['data']
 
 
 class FileDeleteCommand(FileCommand):
