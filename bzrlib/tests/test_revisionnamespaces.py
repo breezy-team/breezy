@@ -350,10 +350,8 @@ class TestRevisionSpec_tag(TestRevisionSpec):
     
     def make_branch_and_tree(self, relpath):
         # override format as the default one may not support tags
-        control = bzrdir.BzrDir.create(relpath)
-        control.create_repository()
-        branch.BzrBranchExperimental.initialize(control)
-        return control.create_workingtree()
+        return TestRevisionSpec.make_branch_and_tree(
+            self, relpath, format='dirstate-tags')
 
     def test_from_string_tag(self):
         spec = RevisionSpec.from_string('tag:bzr-0.14')

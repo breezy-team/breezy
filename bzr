@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@ import os
 import sys
 
 # update this on each release
-_script_version = (1, 2, 0)
+_script_version = (1, 3, 0)
 
 if __doc__ is None:
     print "bzr does not support python -OO."
@@ -98,7 +98,7 @@ import bzrlib.trace
 
 
 if __name__ == '__main__':
-    bzrlib.trace.enable_default_logging(os.environ.get('BZR_LOG'))
+    bzrlib.trace.enable_default_logging()
     exit_val = bzrlib.commands.main(sys.argv)
 
     if profiling:

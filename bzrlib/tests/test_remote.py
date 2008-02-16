@@ -23,6 +23,7 @@ the object given a transport that supports smartserver rpc operations.
 These tests correspond to tests.test_smart, which exercises the server side.
 """
 
+import bz2
 from cStringIO import StringIO
 
 from bzrlib import (
@@ -139,7 +140,7 @@ class FakeClient(_SmartClient):
         self.responses = responses
         self._calls = []
         self.expecting_body = False
-        _SmartClient.__init__(self, FakeMedium(fake_medium_base))
+        _SmartClient.__init__(self, FakeMedium(fake_medium_base, self._calls))
 
     def call(self, method, *args):
         self._calls.append(('call', method, args))
@@ -161,8 +162,20 @@ class FakeClient(_SmartClient):
 
 class FakeMedium(object):
 
-    def __init__(self, base):
+    def __init__(self, base, client_calls):
         self.base = base
+        self.connection = FakeConnection(client_calls)
+        self._client_calls = client_calls
+
+
+class FakeConnection(object):
+
+    def __init__(self, client_calls):
+        self._remote_is_at_least_1_2 = True
+        self._client_calls = client_calls
+
+    def disconnect(self):
+        self._client_calls.append(('disconnect medium',))
 
 
 class TestVfsHas(tests.TestCase):
@@ -205,6 +218,23 @@ class TestBzrDirOpenBranch(tests.TestCase):
         self.assertEqual(
             [('call', 'BzrDir.open_branch', ('quack/',))],
             client._calls)
+
+    def test__get_tree_branch(self):
+        # _get_tree_branch is a form of open_branch, but it should only ask for
+        # branch opening, not any other network requests.
+        calls = []
+        def open_branch():
+            calls.append("Called")
+            return "a-branch"
+        transport = MemoryTransport()
+        # no requests on the network - catches other api calls being made.
+        client = FakeClient([], transport.base)
+        bzrdir = RemoteBzrDir(transport, _client=client)
+        # patch the open_branch call to record that it was called.
+        bzrdir.open_branch = open_branch
+        self.assertEqual((None, "a-branch"), bzrdir._get_tree_branch())
+        self.assertEqual(["Called"], calls)
+        self.assertEqual([], client._calls)
 
     def test_url_quoting_of_path(self):
         # Relpaths on the wire should not be URL-escaped.  So "~" should be
@@ -608,7 +638,7 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         r1 = u'\u0e33'.encode('utf8')
         r2 = u'\u0dab'.encode('utf8')
         lines = [' '.join([r2, r1]), r1]
-        encoded_body = '\n'.join(lines)
+        encoded_body = bz2.compress('\n'.join(lines))
         responses = [(('ok', ), encoded_body), (('ok', ), encoded_body)]
 
         transport_path = 'quack'
@@ -624,8 +654,8 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         parents = graph.get_parent_map([r1])
         self.assertEqual({r1: (NULL_REVISION,)}, parents)
         self.assertEqual(
-            [('call_expecting_body', 'Repository.get_parent_map',
-             ('quack/', r2))],
+            [('call_with_body_bytes_expecting_body',
+              'Repository.get_parent_map', ('quack/', r2), '\n\n0')],
             client._calls)
         repo.unlock()
         # now we call again, and it should use the second response.
@@ -634,13 +664,34 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         parents = graph.get_parent_map([r1])
         self.assertEqual({r1: (NULL_REVISION,)}, parents)
         self.assertEqual(
-            [('call_expecting_body', 'Repository.get_parent_map',
-              ('quack/', r2)),
-             ('call_expecting_body', 'Repository.get_parent_map',
-              ('quack/', r1))
+            [('call_with_body_bytes_expecting_body',
+              'Repository.get_parent_map', ('quack/', r2), '\n\n0'),
+             ('call_with_body_bytes_expecting_body',
+              'Repository.get_parent_map', ('quack/', r1), '\n\n0'),
             ],
             client._calls)
         repo.unlock()
+
+    def test_get_parent_map_reconnects_if_unknown_method(self):
+        error_msg = (
+            "Generic bzr smart protocol error: "
+            "bad request 'Repository.get_parent_map'")
+        responses = [
+            (('error', error_msg), ''),
+            (('ok',), '')]
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(
+            responses, transport_path)
+        rev_id = 'revision-id'
+        parents = repo.get_parent_map([rev_id])
+        self.assertEqual(
+            [('call_with_body_bytes_expecting_body',
+              'Repository.get_parent_map', ('quack/', rev_id), '\n\n0'),
+             ('disconnect medium',),
+             ('call_expecting_body', 'Repository.get_revision_graph',
+              ('quack/', ''))],
+            client._calls)
+
 
 
 class TestRepositoryGetRevisionGraph(TestRemoteRepository):

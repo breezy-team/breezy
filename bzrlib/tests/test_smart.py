@@ -24,6 +24,7 @@ properties.
 Tests for low-level protocol encoding are found in test_smart_transport.
 """
 
+import bz2
 from StringIO import StringIO
 import tempfile
 import tarfile
@@ -527,6 +528,22 @@ class TestSmartServerRepositoryRequest(tests.TestCaseWithTransport):
         self.make_bzrdir('subdir')
         self.assertRaises(errors.NoRepositoryPresent,
             request.execute, backing.local_abspath('subdir'))
+
+
+class TestSmartServerRepositoryGetParentMap(tests.TestCaseWithTransport):
+
+    def test_trivial_bzipped(self):
+        # This tests that the wire encoding is actually bzipped
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryGetParentMap(backing)
+        tree = self.make_branch_and_memory_tree('.')
+
+        self.assertEqual(None,
+            request.execute(backing.local_abspath(''), 'missing-id'))
+        # Note that it returns a body (of '' bzipped).
+        self.assertEqual(
+            SuccessfulSmartServerResponse(('ok', ), bz2.compress('')),
+            request.do_body('\n\n0\n'))
 
 
 class TestSmartServerRepositoryGetRevisionGraph(tests.TestCaseWithTransport):

@@ -176,20 +176,21 @@ register_lazy_transport(
     'bzrlib.plugins.launchpad.lp_indirect',
     'LaunchpadTransport')
 
-register_lazy_transport(
-    'lp://',
-    'bzrlib.plugins.launchpad.lp_indirect',
-    'LaunchpadTransport')
 
 def test_suite():
     """Called by bzrlib to fetch tests for this plugin"""
     from unittest import TestSuite, TestLoader
     from bzrlib.plugins.launchpad import (
-        test_register, test_lp_indirect, test_account)
+        test_register, test_lp_indirect, test_lp_registration, test_account)
 
     loader = TestLoader()
     suite = TestSuite()
-    for m in [test_register, test_lp_indirect, test_account]:
+    for m in [
+        test_account,
+        test_register,
+        test_lp_indirect,
+        test_lp_registration,
+        ]:
         suite.addTests(loader.loadTestsFromModule(m))
     return suite
 
