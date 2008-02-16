@@ -26,7 +26,7 @@ import svn.core
 
 from cache import sqlite3
 
-LOG_CHUNK_LIMIT = 1000
+LOG_CHUNK_LIMIT = 0
 
 class LogWalker(object):
     """Easy way to access the history of a Subversion repository."""
