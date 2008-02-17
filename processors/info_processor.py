@@ -61,6 +61,8 @@ class InfoProcessor(processor.ImportProcessor):
         self.separate_authors_found = False
         self.symlinks_found = False
         self.executables_found = False
+        self.lightweight_tags = 0
+        self.named_branches = []
 
     def post_process(self):
         # Dump statistics
@@ -76,18 +78,16 @@ class InfoProcessor(processor.ImportProcessor):
                 count = self.parent_counts[i]
                 if count > 0:
                     note("\t%d\t%d", count, i)
-            note("Other information:")
+            note("Other commit information:")
             note("\t%d\t%s" % (len(self.committers), 'unique committers'))
             note("\t%s\t%s" % (_found(self.separate_authors_found),
                 'separate authors'))
             note("\t%s\t%s" % (_found(self.executables_found), 'executables'))
             note("\t%s\t%s" % (_found(self.symlinks_found), 'symlinks'))
-
-    def pre_handler(self, cmd):
-        """Hook for logic before each handler starts."""
-        dump = self.params.get('dump')
-        if dump and cmd.name == dump:
-            print "%s" % (cmd,)
+        if self.cmd_counts['reset']:
+            note("Reset information:")
+            note("\t%d\t%s" % (self.lightweight_tags, 'of the reset commands are lightweight tags'))
+            note("\t%s\t%s" % ('others', self.named_branches))
 
     def progress_handler(self, cmd):
         """Process a ProgressCommand."""
@@ -119,6 +119,10 @@ class InfoProcessor(processor.ImportProcessor):
     def reset_handler(self, cmd):
         """Process a ResetCommand."""
         self.cmd_counts[cmd.name] += 1
+        if cmd.ref.startswith('refs/tags/'):
+            self.lightweight_tags += 1
+        else:
+            self.named_branches.append(cmd.ref)
 
     def tag_handler(self, cmd):
         """Process a TagCommand."""

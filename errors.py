@@ -129,3 +129,16 @@ class MissingHandler(ImportError):
     def __init__(self, cmd):
         ImportError.__init__(self)
         self.cmd = cmd
+
+
+class UnknownParameter(ImportError):
+    """Raised when an unknown parameter is passed to a processor."""
+
+    _fmt = ("Unknown parameter - '%(param)s' not in %(knowns)s")
+
+    def __init__(self, param, knowns):
+        ImportError.__init__(self)
+        self.param = param
+        self.knowns = knowns
+
+

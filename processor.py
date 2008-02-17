@@ -31,7 +31,15 @@ class ImportProcessor(object):
     methods as appropriate.
     """
 
+    known_params = []
+
     def __init__(self, bzrdir, params=None, verbose=False):
+        self.verbose = verbose
+        if params is None:
+            self.params = []
+        else:
+            self.params = params
+            self.validate_parameters()
         self.bzrdir = bzrdir
         if bzrdir is None:
             # Some 'importers' don't need a repository to write to
@@ -41,12 +49,12 @@ class ImportProcessor(object):
         else:
             (self.working_tree, self.branch) = bzrdir._get_tree_branch()
             self.repo = self.branch.repository
-        if params is None:
-            self.params = []
-        else:
-            self.params = params
 
-        self.verbose = verbose
+    def validate_parameters(self):
+        """Validate that the parameters are correctly specified."""
+        for p in self.params:
+            if p not in self.known_params:
+                raise errors.UnknownParameter(p, self.known_params)
 
     def process(self, command_iter):
         """Import data into Bazaar by processing a stream of commands.

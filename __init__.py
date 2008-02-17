@@ -80,6 +80,7 @@ class cmd_fast_import(Command):
                         value_switches=True, enum_switch=False,
                         safe="Import the data into any format (default).",
                         info="Display information only - don't import it.",
+                        filter="Filter commands only - don't import it.",
                         ),
                     ListOption('params', short_name='P', type=str,
                         help="Define processing specific parameters.",
@@ -95,6 +96,9 @@ class cmd_fast_import(Command):
         if method == 'info':
             from bzrlib.plugins.fastimport.processors import info_processor
             proc = info_processor.InfoProcessor(params=params)
+        elif method == 'filter':
+            from bzrlib.plugins.fastimport.processors import filter_processor
+            proc = filter_processor.FilterProcessor(params=params)
         else:
             from bzrlib.plugins.fastimport.processors import generic_processor
             control, relpath = bzrdir.BzrDir.open_containing('.')

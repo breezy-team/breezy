@@ -138,13 +138,20 @@ class GenericProcessor(processor.ImportProcessor):
 
     def reset_handler(self, cmd):
         """Process a ResetCommand."""
-        warning("multiple branches are not supported yet"
-            " - ignoring branch '%s'", cmd.ref)
+        if cmd.ref.startswith('refs/tags/'):
+            self._set_tag(cmd.ref[len('refs/tags/'):], cmd.from_)
+        else:
+            warning("multiple branches are not supported yet"
+                " - ignoring branch '%s'", cmd.ref)
 
     def tag_handler(self, cmd):
         """Process a TagCommand."""
-        bzr_tag_name = cmd.id.decode('utf-8', 'replace')
-        bzr_rev_id = self.cache_mgr.revision_ids[cmd.from_]
+        self._set_tag(cmd.id, cmd.from_)
+
+    def _set_tag(self, name, from_):
+        """Define a tag given a name an import 'from' reference."""
+        bzr_tag_name = name.decode('utf-8', 'replace')
+        bzr_rev_id = self.cache_mgr.revision_ids[from_]
         self.tags[bzr_tag_name] = bzr_rev_id
         self._tag_count += 1
 
