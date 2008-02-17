@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from distutils.core import setup
 setup(name="bisect",
-      version="unreleased",
+      version="1.0",
       description="Git-style bisect plugin for bzr.",
       author="Jeff Licquia",
       author_email="jeff@licquia.org",
