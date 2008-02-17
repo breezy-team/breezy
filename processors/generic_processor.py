@@ -63,6 +63,8 @@ class GenericProcessor(processor.ImportProcessor):
         self.cache_mgr = GenericCacheManager()
         self.active_branch = self.branch
         self.init_stats()
+        # mapping of tag name to revision_id
+        self.tags = {}
 
     def post_process(self):
         self.dump_stats()
@@ -72,6 +74,8 @@ class GenericProcessor(processor.ImportProcessor):
         last_rev_id = self.cache_mgr.last_revision_ids[self.branch]
         revno = len(list(self.repo.iter_reverse_revision_history(last_rev_id)))
         self.branch.set_last_revision_info(revno, last_rev_id)
+        if self.tags:
+            self.branch.tags._set_tag_dict(self.tags)
         # Update the working tree, if any
         if self.working_tree:
             self.working_tree.update(delta._ChangeReporter())
@@ -111,6 +115,7 @@ class GenericProcessor(processor.ImportProcessor):
         self.repo.start_write_group()
         try:
             handler.process()
+            self.cache_mgr.revision_ids[cmd.ref] = handler.revision_id
             self.cache_mgr.last_revision_ids[self.active_branch] = \
                 handler.revision_id
             self._revision_count += 1
@@ -138,7 +143,10 @@ class GenericProcessor(processor.ImportProcessor):
 
     def tag_handler(self, cmd):
         """Process a TagCommand."""
-        warning("tags are not supported yet - ignoring tag '%s'", cmd.id)
+        bzr_tag_name = cmd.id.decode('utf-8', 'replace')
+        bzr_rev_id = self.cache_mgr.revision_ids[cmd.from_]
+        self.tags[bzr_tag_name] = bzr_rev_id
+        self._tag_count += 1
 
 
 class GenericCacheManager(object):
@@ -206,7 +214,7 @@ class GenericCommitHandler(processor.CommitHandler):
             # use the bzr_revision_id to lookup the inv cache
             new_inventory = self.get_inventory(parents[0]).copy()
         new_inventory.apply_delta(self.inv_delta)
-        self.cache_mgr.revision_ids[self.command.ref] = new_inventory
+        self.cache_mgr.inventories[self.command.ref] = new_inventory
 
         # debug trace ...
         print "applied inventory delta ..."
