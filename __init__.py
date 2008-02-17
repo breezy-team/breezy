@@ -51,7 +51,11 @@ class BisectCurrent(object):
         return self._revid
 
     def get_parent_revids(self):
-        return self._bzrbranch.repository.get_parents([self._revid])[0]
+        repo = self._bzrbranch.repository
+        repo.lock_read()
+        retval = repo.get_parents([self._revid])[0]
+        repo.unlock()
+        return retval
 
     def is_merge_point(self):
         "Is the current revision a merge point?"
@@ -121,6 +125,7 @@ class BisectLog(object):
             last_revid = branch_last_rev
 
         repo = self._bzrbranch.repository
+        repo.lock_read()
         rev_sequence = repo.iter_reverse_revision_history(last_revid)
         high_revid = None
         low_revid = None
@@ -145,6 +150,8 @@ class BisectLog(object):
             high_revid = last_revid
         if not low_revid:
             low_revid = self._bzrbranch.get_rev_id(1)
+
+        repo.unlock()
 
         # The spread must include the high revision, to bias
         # odd numbers of intervening revisions towards the high
