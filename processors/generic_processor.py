@@ -220,6 +220,11 @@ class GenericCommitHandler(processor.CommitHandler):
         else:
             # use the bzr_revision_id to lookup the inv cache
             new_inventory = self.get_inventory(parents[0]).copy()
+        if not self.repo.supports_rich_root():
+            # In this repository, root entries have no knit or weave. When
+            # serializing out to disk and back in, root.revision is always
+            # the new revision_id.
+            new_inventory.root.revision = self.revision_id
         new_inventory.apply_delta(self.inv_delta)
         self.cache_mgr.inventories[self.command.ref] = new_inventory
 
@@ -284,11 +289,6 @@ class GenericCommitHandler(processor.CommitHandler):
     def gen_initial_inventory(self):
         """Generate an inventory for a parentless revision."""
         inv = inventory.Inventory(revision_id=self.revision_id)
-        if not self.repo.supports_rich_root():
-            # In this repository, root entries have no knit or weave. When
-            # serializing out to disk and back in, root.revision is always
-            # the new revision_id.
-            inv.root.revision = self.revision_id
         return inv
 
     def gen_revision_id(self):
@@ -350,12 +350,10 @@ class GenericCommitHandler(processor.CommitHandler):
         ie = inventory.make_entry(kind, basename, parent_ie, file_id)
         ie.revision = self.revision_id
         if isinstance(ie, inventory.InventoryFile):
-            ie.text_sha1 = osutils.sha_strings(data)
-            ie.text_size = len(data)
             ie.executable = is_executable
-            lines = data.split('\n')
-            if lines[-1] == '':
-                lines.pop()
+            lines = osutils.split_lines(data)
+            ie.text_sha1 = osutils.sha_strings(lines)
+            ie.text_size = sum(map(len, lines))
             self.lines_for_commit[file_id] = lines
         elif isinstance(ie, inventory.InventoryLnk):
             ie.symlink_target = data
