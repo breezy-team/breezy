@@ -300,7 +300,7 @@ class SvnRepository(Repository):
 
         svn_revprops = self.transport.revprop_list(revnum)
         svn_fileprops = self.branchprop_list.get_properties(path, revnum)
-        ancestry.extend(mapping.get_rhs_ancestors(path, svn_revprops, svn_fileprops.get))
+        ancestry.extend(mapping.get_rhs_ancestors(path, svn_revprops, svn_fileprops))
 
         if revnum > 0:
             for (branch, rev) in self.follow_branch(path, revnum - 1, mapping):
@@ -356,7 +356,7 @@ class SvnRepository(Repository):
         svn_revprops = self.transport.revprop_list(revnum)
         svn_fileprops = self.branchprop_list.get_changed_properties(path, revnum)
 
-        return mapping.import_fileid_map(svn_revprops, svn_fileprops.get)
+        return mapping.import_fileid_map(svn_revprops, svn_fileprops)
 
     def _mainline_revision_parent(self, path, revnum, mapping):
         """Find the mainline parent of the specified revision.
@@ -406,11 +406,11 @@ class SvnRepository(Repository):
         return parents_list
 
     def _svk_merged_revisions(self, branch, revnum, mapping, 
-                              get_branch_property):
+                              fileprops):
         """Find out what SVK features were merged in a revision.
 
         """
-        current = get_branch_property(branch, revnum, SVN_PROP_SVK_MERGE, "")
+        current = fileprops.get(SVN_PROP_SVK_MERGE, "")
         if current == "":
             return
         (prev_path, prev_revnum) = self._log.get_previous(branch, revnum)
@@ -424,7 +424,7 @@ class SvnRepository(Repository):
             if revid is not None:
                 yield revid
 
-    def revision_parents(self, revision_id, get_branch_fileprop=None):
+    def revision_parents(self, revision_id, svn_fileprops=None):
         """See Repository.revision_parents()."""
         parent_ids = []
         (branch, revnum, mapping) = self.lookup_revision_id(revision_id)
@@ -432,17 +432,16 @@ class SvnRepository(Repository):
         if mainline_parent is not None:
             parent_ids.append(mainline_parent)
 
-        if get_branch_fileprop is None:
+        if svn_fileprops is None:
             svn_fileprops = self.branchprop_list.get_changed_properties(branch, revnum)
-            get_branch_fileprop = svn_fileprops.get
 
         svn_revprops = self.transport.revprop_list(revnum)
 
-        extra_rhs_parents = mapping.get_rhs_parents(branch, svn_revprops, get_branch_fileprop)
+        extra_rhs_parents = mapping.get_rhs_parents(branch, svn_revprops, svn_fileprops)
         parent_ids.extend(extra_rhs_parents)
 
         if extra_rhs_parents == []:
-            parent_ids.extend(self._svk_merged_revisions(branch, revnum, mapping, self.branchprop_list.get_property))
+            parent_ids.extend(self._svk_merged_revisions(branch, revnum, mapping, svn_fileprops))
 
         return parent_ids
 
@@ -463,7 +462,7 @@ class SvnRepository(Repository):
         svn_revprops = self.transport.revprop_list(revnum)
         svn_fileprops = self.branchprop_list.get_changed_properties(path, revnum)
 
-        mapping.import_revision(svn_revprops, svn_fileprops.get, rev)
+        mapping.import_revision(svn_revprops, svn_fileprops, rev)
 
         return rev
 
@@ -502,7 +501,7 @@ class SvnRepository(Repository):
             raise
         fileprops = self.branchprop_list.get_changed_properties(path, revnum)
         (bzr_revno, revid) = mapping.get_revision_id(path, revprops, 
-                                                     fileprops.get)
+                                                     fileprops)
         # Or generate it
         if revid is None:
             revid = mapping.generate_revision_id(

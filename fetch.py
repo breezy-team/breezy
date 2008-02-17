@@ -107,7 +107,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         self._start_revision()
 
     def _get_parent_ids(self):
-        return self.source.revision_parents(self.revid, self._branch_fileprops.get)
+        return self.source.revision_parents(self.revid, self._branch_fileprops)
 
     def _get_revision(self, revid):
         """Creates the revision object.
@@ -119,7 +119,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         rev = Revision(revision_id=revid, parent_ids=self._get_parent_ids())
 
         svn_revprops = self.source._log._get_transport().revprop_list(self.revnum)
-        self.mapping.import_revision(svn_revprops, self._branch_fileprops.get, rev)
+        self.mapping.import_revision(svn_revprops, self._branch_fileprops, rev)
 
         return rev
 
