@@ -109,7 +109,7 @@ class GenericProcessor(processor.ImportProcessor):
     def commit_handler(self, cmd):
         """Process a CommitCommand."""
         handler = GenericCommitHandler(cmd, self.repo, self.cache_mgr,
-            self.active_branch)
+            self.active_branch, self.verbose)
         # For now, put a write group around every commit. In the future,
         # we might only start/commit one every N to sppeed things up
         self.repo.start_write_group()
@@ -180,14 +180,17 @@ class GenericCacheManager(object):
         # branch -> last revision-id lookup table
         self.last_revision_ids = {}
 
+        # path -> file-ids
+        self.file_ids = {}
 
 class GenericCommitHandler(processor.CommitHandler):
 
-    def __init__(self, command, repo, cache_mgr, active_branch):
+    def __init__(self, command, repo, cache_mgr, active_branch, verbose=False):
         processor.CommitHandler.__init__(self, command)
         self.repo = repo
         self.cache_mgr = cache_mgr
         self.active_branch = active_branch
+        self.verbose = verbose
         # smart loader that uses these caches
         self.loader = revisionloader.RevisionLoader(repo,
             lambda revision_ids: self._get_inventories(revision_ids))
@@ -199,10 +202,9 @@ class GenericCommitHandler(processor.CommitHandler):
         # cache of texts for this commit, indexed by file-id
         self.lines_for_commit = {}
 
-    def post_process_files(self):
-        """Save the revision."""
+        # Get the parent inventories
         if self.command.parents:
-            parents = [self.cache_mgr.revision_ids[ref]
+            self.parents = [self.cache_mgr.revision_ids[ref]
                 for ref in self.command.parents]
         else:
             # if no parents are given, the last revision on
@@ -210,34 +212,36 @@ class GenericCommitHandler(processor.CommitHandler):
             last_rev = self.cache_mgr.last_revision_ids.get(
                     self.active_branch)
             if last_rev:
-                parents = [last_rev]
+                self.parents = [last_rev]
             else:
-                parents = []
+                self.parents = []
 
-        # Derive the inventory from the previous one
-        if len(parents) == 0:
-            new_inventory = self.gen_initial_inventory()
+        # Seed the inventory from the previous one
+        if len(self.parents) == 0:
+            self.inventory = self.gen_initial_inventory()
         else:
             # use the bzr_revision_id to lookup the inv cache
-            new_inventory = self.get_inventory(parents[0]).copy()
+            self.inventory = self.get_inventory(self.parents[0]).copy()
         if not self.repo.supports_rich_root():
             # In this repository, root entries have no knit or weave. When
             # serializing out to disk and back in, root.revision is always
             # the new revision_id.
-            new_inventory.root.revision = self.revision_id
-        new_inventory.apply_delta(self.inv_delta)
-        self.cache_mgr.inventories[self.command.ref] = new_inventory
+            self.inventory.root.revision = self.revision_id
 
-        # debug trace ...
-        print "applied inventory delta ..."
-        for entry in self.inv_delta:
-            print "  %r" % (entry,)
-        print "creating inventory ..."
-        for entry in new_inventory:
-            print "  %r" % (entry,)
+    def post_process_files(self):
+        """Save the revision."""
+        if self.verbose:
+            print "applied inventory delta ..."
+            for entry in self.inv_delta:
+                print "  %r" % (entry,)
+        self.inventory.apply_delta(self.inv_delta)
+        self.cache_mgr.inventories[self.command.ref] = self.inventory
+        if self.verbose:
+            print "creating inventory ..."
+            for entry in self.inventory:
+                print "  %r" % (entry,)
 
         # Load the revision into the repository
-        # TODO: Escape the commit message
         committer = self.command.committer
         who = "%s <%s>" % (committer[0],committer[1])
         rev = revision.Revision(self.revision_id)
@@ -247,8 +251,8 @@ class GenericCommitHandler(processor.CommitHandler):
            committer=who,
            message=self.escape_commit_message(self.command.message),
            revision_id=self.revision_id)
-        rev.parent_ids = parents
-        self.loader.load(rev, new_inventory, None,
+        rev.parent_ids = self.parents
+        self.loader.load(rev, self.inventory, None,
             lambda file_id: self._get_lines(file_id))
         print "loaded revision %r" % (rev,)
 
@@ -282,9 +286,13 @@ class GenericCommitHandler(processor.CommitHandler):
         raise NotImplementedError(self.deleteall_handler)
 
     def bzr_file_id(self, path):
-        """Generate a Bazaar file identifier for a path."""
-        # TODO: Search the current inventory instead of generating every time
-        return generate_ids.gen_file_id(path)
+        """Get a Bazaar file identifier for a path."""
+        try:
+            return self.cache_mgr.file_ids[path]
+        except KeyError:
+            id = generate_ids.gen_file_id(path)
+            self.cache_mgr.file_ids[path] = id
+            return id
 
     def gen_initial_inventory(self):
         """Generate an inventory for a parentless revision."""
