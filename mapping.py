@@ -257,10 +257,20 @@ class BzrSvnMapping:
             warning("using experimental bzr-svn mappings; output may change between revisions")
             BzrSvnMapping._warned_experimental = True
 
-    @staticmethod
-    def supports_roundtripping():
+    @classmethod
+    def supports_roundtripping(cls):
         """Whether this mapping supports roundtripping.
         """
+        return False
+
+    @classmethod
+    def supports_custom_revprops(cls):
+        """Whether this mapping can be used with custom revision properties."""
+        return False
+
+    @classmethod
+    def supports_custom_fileprops(cls):
+        """Whether this mapping can be used with custom file properties."""
         return False
 
     def parse_revision_id(self, revid):
