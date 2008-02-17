@@ -17,6 +17,7 @@
 """Import processor that supports all Bazaar repository formats."""
 
 
+import re
 import time
 from bzrlib import (
     delta,
@@ -122,6 +123,8 @@ class GenericProcessor(processor.ImportProcessor):
                 self.cache_mgr.revision_ids[":" + cmd.mark] = rev_id
             self.cache_mgr.last_revision_ids[self.active_branch] = rev_id
             self._revision_count += 1
+            note("loaded commit %d (%s)" % 
+                (self._revision_count, cmd.mark or cmd.ref))
         except:
             self.repo.abort_write_group()
             raise
@@ -243,35 +246,50 @@ class GenericCommitHandler(processor.CommitHandler):
     def post_process_files(self):
         """Save the revision."""
         if self.verbose:
-            note("applied inventory delta ...")
+            note("applying inventory delta ...")
             for entry in self.inv_delta:
                 note("  %r" % (entry,))
         self.inventory.apply_delta(self.inv_delta)
-        self.cache_mgr.inventories[self.command.ref] = self.inventory
+        self.cache_mgr.inventories[self.revision_id] = self.inventory
         if self.verbose:
-            note("creating inventory ...")
+            note("created inventory ...")
             for entry in self.inventory:
                 note("  %r" % (entry,))
 
         # Load the revision into the repository
+        rev_props = {}
         committer = self.command.committer
         who = "%s <%s>" % (committer[0],committer[1])
-        rev = revision.Revision(self.revision_id)
+        author = self.command.author
+        if author is not None:
+            author_id = "%s <%s>" % (author[0],author[1])
+            if author_id != who:
+                rev_props['author'] = author_id
         rev = revision.Revision(
            timestamp=committer[2],
            timezone=committer[3],
            committer=who,
-           message=self.escape_commit_message(self.command.message),
-           revision_id=self.revision_id)
-        rev.parent_ids = self.parents
+           message=self._escape_commit_message(self.command.message),
+           revision_id=self.revision_id,
+           properties=rev_props,
+           parent_ids=self.parents)
         self.loader.load(rev, self.inventory, None,
             lambda file_id: self._get_lines(file_id))
-        note("loaded commit %s" % (self.command.mark or self.command.ref,))
 
-    def escape_commit_message(self, msg):
+    def _escape_commit_message(self, message):
+        """Replace xml-incompatible control characters."""
         # It's crap that we need to do this at this level (but we do)
-        # TODO: escape_commit_message
-        return msg
+        # Code copied from bzrlib.commit.
+        
+        # Python strings can include characters that can't be
+        # represented in well-formed XML; escape characters that
+        # aren't listed in the XML specification
+        # (http://www.w3.org/TR/REC-xml/#NT-Char).
+        message, _ = re.subn(
+            u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
+            lambda match: match.group(0).encode('unicode_escape'),
+            message)
+        return message
 
     def modify_handler(self, filecmd):
         if filecmd.dataref is not None:
@@ -305,8 +323,8 @@ class GenericCommitHandler(processor.CommitHandler):
     def bzr_file_id_and_new(self, path):
         """Get a Bazaar file identifier and new flag for a path.
         
-        :return: file_id, new where
-          new = True if the file_id is newly created
+        :return: file_id, is_new where
+          is_new = True if the file_id is newly created
         """
         try:
             return self.cache_mgr.file_ids[path], False
@@ -341,7 +359,7 @@ class GenericCommitHandler(processor.CommitHandler):
         try:
             inv = self.cache_mgr.inventories[revision_id]
         except KeyError:
-            # TODO: count misses and/or inform the user about the miss?
+            print "Hmm - get_inventory cache miss for %s" % revision_id
             # Not cached so reconstruct from repository
             inv = self.repo.revision_tree(revision_id).inventory
             self.cache_mgr.inventories[revision_id] = inv
@@ -361,7 +379,7 @@ class GenericCommitHandler(processor.CommitHandler):
                 inv = self.cache_mgr.inventories[revision_id]
                 present.append(revision_id)
             except KeyError:
-                # TODO: count misses and/or inform the user about the miss?
+                print "Hmm - get_inventories cache miss for %s" % revision_id
                 # Not cached so reconstruct from repository
                 if self.repo.has_revision(revision_id):
                     rev_tree = self.repo.revision_tree(revision_id)

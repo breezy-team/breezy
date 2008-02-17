@@ -4,6 +4,31 @@ Notes on bzr-fastexport
 
 ..contents::
 
+Features
+========
+
+Safe Processing
+---------------
+
+Things that ought to work:
+
+* single branch only (so far)
+
+* add & deletes of files and symlinks
+
+* automatic creation of directories (but not deletion)
+
+* executable permission
+
+* tags
+
+Things that might work (not tested):
+
+* separate author to committer
+
+* merges
+
+
 Known Limitations
 =================
 
@@ -25,15 +50,11 @@ Safe Processing
 
 Things not supported yet:
 
-* commit messages that require escaping of XML characters
-
-* separate author to committer
-
 * named branches
 
-* file renames
-
 * 'filedeleteall' handling
+
+* incremental import
 
 Things not recorded in Bazaar:
 
@@ -44,6 +65,12 @@ Things not recorded in Bazaar:
 
 Custom Enhancements
 ===================
+
+General
+-------
+
+The date format is auto-detected.
+
 
 Parsing
 -------
