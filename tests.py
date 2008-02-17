@@ -15,6 +15,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+"Test suite for the bzr bisect plugin."
+
 import os
 import shutil
 import bzrlib.bzrdir
@@ -24,7 +26,7 @@ import bzrlib.plugins.bisect as bisect
 
 
 class BisectTestCase(bzrlib.tests.TestCaseWithTransport):
-
+    "Test harness specific to the bisect plugin."
     def assertRevno(self, rev):
         "Make sure we're at the right revision."
 
@@ -32,8 +34,8 @@ class BisectTestCase(bzrlib.tests.TestCaseWithTransport):
                         1.3: "one dot three", 2: "two", 3: "three",
                         4: "four", 5: "five"}
 
-        f = open("test_file")
-        content = f.read().strip()
+        test_file = open("test_file")
+        content = test_file.read().strip()
         if content != rev_contents[rev]:
             rev_ids = dict((rev_contents[k], k) for k in rev_contents.keys())
             found_rev = rev_ids[content]
@@ -49,9 +51,9 @@ class BisectTestCase(bzrlib.tests.TestCaseWithTransport):
 
         self.tree = self.make_branch_and_tree(".")
 
-        f = open("test_file", "w")
-        f.write("one")
-        f.close()
+        test_file = open("test_file", "w")
+        test_file.write("one")
+        test_file.close()
         self.tree.add(self.tree.relpath(os.path.join(os.getcwd(),
                                                      'test_file')))
         self.tree.commit(message = "add test file")
@@ -60,16 +62,16 @@ class BisectTestCase(bzrlib.tests.TestCaseWithTransport):
         clone_bzrdir = bzrlib.bzrdir.BzrDir.open("../temp-clone")
         clone_tree = clone_bzrdir.open_workingtree()
         for content in ["one dot one", "one dot two", "one dot three"]:
-            f = open("../temp-clone/test_file", "w")
-            f.write(content)
-            f.close()
+            test_file = open("../temp-clone/test_file", "w")
+            test_file.write(content)
+            test_file.close()
             clone_tree.commit(message = "make branch test change")
             saved_subtree_revid = clone_tree.branch.last_revision()
 
         self.tree.merge_from_branch(clone_tree.branch)
-        f = open("test_file", "w")
-        f.write("two")
-        f.close()
+        test_file = open("test_file", "w")
+        test_file.write("two")
+        test_file.close()
         self.tree.commit(message = "merge external branch")
         shutil.rmtree("../temp-clone")
 
@@ -77,15 +79,16 @@ class BisectTestCase(bzrlib.tests.TestCaseWithTransport):
 
         file_contents = ["three", "four", "five"]
         for content in file_contents:
-            f = open("test_file", "w")
-            f.write(content)
-            f.close()
+            test_file = open("test_file", "w")
+            test_file.write(content)
+            test_file.close()
             self.tree.commit(message = "make test change")
 
 
 class BisectHarnessTests(BisectTestCase):
-
+    "Tests for the harness itself."
     def testLastRev(self):
+        "Test that the last revision is correct."
         repo = self.tree.branch.repository
         top_revtree = repo.revision_tree(self.tree.last_revision())
         top_revtree.lock_read()
@@ -96,6 +99,7 @@ class BisectHarnessTests(BisectTestCase):
         assert test_content == "five"
 
     def testSubtreeRev(self):
+        "Test that the last revision in a subtree is correct."
         repo = self.tree.branch.repository
         sub_revtree = repo.revision_tree(self.subtree_rev)
         sub_revtree.lock_read()
@@ -107,68 +111,78 @@ class BisectHarnessTests(BisectTestCase):
 
 
 class BisectCurrentUnitTests(BisectTestCase):
-
+    "Test the BisectCurrent class."
     def testShowLog(self):
+        "Test that the log can be shown."
         # Not a very good test; just makes sure the code doesn't fail,
         # not that the output makes any sense.
         bisect.BisectCurrent().show_rev_log()
 
     def testShowLogSubtree(self):
-        bc = bisect.BisectCurrent()
-        bc.switch(self.subtree_rev)
-        bc.show_rev_log()
+        "Test that a subtree's log can be shown."
+        current = bisect.BisectCurrent()
+        current.switch(self.subtree_rev)
+        current.show_rev_log()
 
     def testSwitchVersions(self):
-        bc = bisect.BisectCurrent()
+        "Test switching versions."
+        current = bisect.BisectCurrent()
         self.assertRevno(5)
-        bc.switch(4)
+        current.switch(4)
         self.assertRevno(4)
 
     def testReset(self):
-        bc = bisect.BisectCurrent()
-        bc.switch(4)
-        bc.reset()
+        "Test resetting the working tree to a non-bisected state."
+        current = bisect.BisectCurrent()
+        current.switch(4)
+        current.reset()
         self.assertRevno(5)
         assert not os.path.exists(bisect.bisect_rev_path)
 
     def testIsMergePoint(self):
-        bc = bisect.BisectCurrent()
+        "Test merge point detection."
+        current = bisect.BisectCurrent()
         self.assertRevno(5)
-        assert not bc.is_merge_point()
-        bc.switch(2)
-        assert bc.is_merge_point()
+        assert not current.is_merge_point()
+        current.switch(2)
+        assert current.is_merge_point()
 
 
 class BisectLogUnitTests(BisectTestCase):
-
+    "Test the BisectLog class."
     def testCreateBlank(self):
-        bl = bisect.BisectLog()
-        bl.save()
+        "Test creation of new log."
+        bisect_log = bisect.BisectLog()
+        bisect_log.save()
         assert os.path.exists(bisect.bisect_info_path)
 
     def testLoad(self):
-        f = open(bisect.bisect_info_path, "w")
-        f.write("rev1 yes\nrev2 no\nrev3 yes\n")
-        f.close()
+        "Test loading a log."
+        preloaded_log = open(bisect.bisect_info_path, "w")
+        preloaded_log.write("rev1 yes\nrev2 no\nrev3 yes\n")
+        preloaded_log.close()
 
-        bl = bisect.BisectLog()
-        assert len(bl._items) == 3
-        assert bl._items[0] == ("rev1", "yes")
-        assert bl._items[1] == ("rev2", "no")
-        assert bl._items[2] == ("rev3", "yes")
+        bisect_log = bisect.BisectLog()
+        assert len(bisect_log._items) == 3
+        assert bisect_log._items[0] == ("rev1", "yes")
+        assert bisect_log._items[1] == ("rev2", "no")
+        assert bisect_log._items[2] == ("rev3", "yes")
 
     def testSave(self):
-        bl = bisect.BisectLog()
-        bl._items = [("rev1", "yes"), ("rev2", "no"), ("rev3", "yes")]
-        bl.save()
+        "Test saving the log."
+        bisect_log = bisect.BisectLog()
+        bisect_log._items = [("rev1", "yes"), ("rev2", "no"), ("rev3", "yes")]
+        bisect_log.save()
 
-        f = open(bisect.bisect_info_path)
-        assert f.read() == "rev1 yes\nrev2 no\nrev3 yes\n"
+        logfile = open(bisect.bisect_info_path)
+        assert logfile.read() == "rev1 yes\nrev2 no\nrev3 yes\n"
 
 
 class BisectFuncTests(BisectTestCase):
-
+    "Functional tests for the bisect plugin."
     def testWorkflow(self):
+        "Run through a basic usage scenario."
+
         # Start up the bisection.  When the two ends are set, we should
         # end up in the middle.
 
@@ -192,6 +206,9 @@ class BisectFuncTests(BisectTestCase):
         self.assertRevno(3)
 
     def testWorkflowSubtree(self):
+        """Run through a usage scenario where the offending change
+        is in a subtree."""
+
         # Similar to testWorkflow, but make sure the plugin traverses
         # subtrees when the "final" revision is a merge point.
 
@@ -220,6 +237,8 @@ class BisectFuncTests(BisectTestCase):
         self.assertRevno(1.1)
 
     def testMove(self):
+        "Test manually moving to a different revision during the bisection."
+
         # Set up a bisection in progress.
 
         self.run_bzr(['bisect', 'start'])
@@ -232,6 +251,8 @@ class BisectFuncTests(BisectTestCase):
         self.assertRevno(2)
 
     def testReset(self):
+        "Test resetting the tree."
+
         # Set up a bisection in progress.
 
         self.run_bzr(['bisect', 'start'])
@@ -245,6 +266,8 @@ class BisectFuncTests(BisectTestCase):
         self.assertRevno(5)
 
     def testLog(self):
+        "Test saving the current bisection state, and re-loading it."
+
         # Set up a bisection in progress.
 
         self.run_bzr(['bisect', 'start'])
@@ -273,6 +296,7 @@ class BisectFuncTests(BisectTestCase):
 
 
 def test_suite():
+    "Set up the bisect plugin test suite."
     from bzrlib.tests.TestUtil import TestLoader, TestSuite
     from bzrlib.plugins.bisect import tests
     suite = TestSuite()
