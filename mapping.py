@@ -430,7 +430,7 @@ class BzrSvnMappingv3(BzrSvnMapping):
     """The third version of the mappings as used in the 0.4.x series.
 
     """
-    experimental = False
+    experimental = True
     upgrade_suffix = "-svn3"
     revid_prefix = "svn-v3-"
 
@@ -520,6 +520,11 @@ class BzrSvnMappingv3(BzrSvnMapping):
 
 
 class BzrSvnMappingFileProps:
+    @classmethod
+    def supports_custom_fileprops(cls):
+        """Whether this mapping can be used with custom file properties."""
+        return True
+
     def import_revision(self, svn_revprops, fileprops, rev):
         parse_svn_revprops(svn_revprops, rev)
         parse_revision_metadata(
@@ -601,6 +606,11 @@ class BzrSvnMappingv3FileProps(BzrSvnMappingFileProps, BzrSvnMappingv3):
     pass
 
 class BzrSvnMappingRevProps:
+    @classmethod
+    def supports_custom_revprops(cls):
+        """Whether this mapping can be used with custom revision properties."""
+        return True
+
     def import_revision(self, svn_revprops, fileprops, rev):
         parse_svn_revprops(svn_revprops, rev)
         parse_bzr_svn_revprops(svn_revprops, rev)
