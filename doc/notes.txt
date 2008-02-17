@@ -1,0 +1,57 @@
+=======================
+Notes on bzr-fastexport
+=======================
+
+..contents::
+
+Known Limitations
+=================
+
+Parsing
+-------
+
+Things not supported yet:
+
+* renaming a path that contains a space in the old name
+
+* copying a path that contains a space in the source name
+
+* delimited data sections (all data must be length prefixed currently)
+
+* rfc2822 dates.
+
+Safe Processing
+---------------
+
+Things not supported yet:
+
+* commit messages that require escaping of XML characters
+
+* separate author to committer
+
+* named branches
+
+* file renames
+
+* 'filedeleteall' handling
+
+Things not recorded in Bazaar:
+
+* tagger and message for (non-lightweight) tags
+
+* copy semantics
+
+
+Custom Enhancements
+===================
+
+Parsing
+-------
+
+These enhancements over the specification are provided in order
+to read data produced by git-fast-export:
+
+* A person's name may be empty
+
+* Long file modes with an extra leading 0, i.e. 0000644,
+  0000755 and 0120000 are legal.
