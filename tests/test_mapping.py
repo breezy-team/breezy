@@ -140,15 +140,15 @@ class MappingTestAdapter:
         fileids = {"": "some-id", "bla/blie": "other-id"}
         self.mapping.export_fileid_map(fileids, revprops, fileprops)
         self.assertEquals(fileids, 
-                self.mapping.import_fileid_map(revprops, fileprops.get))
+                self.mapping.import_fileid_map(revprops, fileprops))
 
     def test_revision(self):
         if not self.mapping.supports_roundtripping():
             raise TestNotApplicable
         (revprops, fileprops) = self.mapping.export_revision("branchp", 432432432.0, 0, "somebody", 
-                                     {"arevprop": "val"}, "arevid", 4, ["merge1"], dict().get)
+                                     {"arevprop": "val"}, "arevid", 4, ["merge1"], dict())
         targetrev = Revision(None)
-        self.mapping.import_revision(revprops, fileprops.get, targetrev)
+        self.mapping.import_revision(revprops, fileprops, targetrev)
         self.assertEquals(targetrev.committer, "somebody")
         self.assertEquals(targetrev.properties, {"arevprop": "val"})
         self.assertEquals(targetrev.timestamp, 432432432.0)
@@ -157,13 +157,13 @@ class MappingTestAdapter:
     def test_revision_id(self):
         if not self.mapping.supports_roundtripping():
             raise TestNotApplicable
-        (revprops, fileprops) = self.mapping.export_revision("branchp", 432432432.0, 0, "somebody", {}, "arevid", 4, ["merge1"], dict().get)
-        self.assertEquals((4, "arevid"), self.mapping.get_revision_id("branchp", revprops, fileprops.get))
+        (revprops, fileprops) = self.mapping.export_revision("branchp", 432432432.0, 0, "somebody", {}, "arevid", 4, ["merge1"], dict())
+        self.assertEquals((4, "arevid"), self.mapping.get_revision_id("branchp", revprops, fileprops))
     
     def test_revision_id_none(self):
         if not self.mapping.supports_roundtripping():
             raise TestNotApplicable
-        self.assertEquals((None, None), self.mapping.get_revision_id("bp", {}, dict().get))
+        self.assertEquals((None, None), self.mapping.get_revision_id("bp", {}, dict()))
 
     def test_parse_revision_id_unknown(self):
         self.assertRaises(InvalidRevisionId, 
