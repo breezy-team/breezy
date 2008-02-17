@@ -52,10 +52,11 @@ class GenericProcessor(processor.ImportProcessor):
     Current features supported:
 
     * timestamped progress reporting
-    * blobs are cached in memory until used
-    * TODO: commit handling
-    * LATER: branch support
-    * checkpoints and tags are ignored
+    * blobs are cached in memory
+    * commits are processed
+    * tags are stored in the current branch
+    * LATER: named branch support
+    * checkpoints are ignored
     * some basic statistics are dumped on completion.
     """
 
@@ -115,9 +116,11 @@ class GenericProcessor(processor.ImportProcessor):
         self.repo.start_write_group()
         try:
             handler.process()
-            self.cache_mgr.revision_ids[cmd.ref] = handler.revision_id
-            self.cache_mgr.last_revision_ids[self.active_branch] = \
-                handler.revision_id
+            rev_id = handler.revision_id
+            self.cache_mgr.revision_ids[cmd.ref] = rev_id
+            if cmd.mark is not None:
+                self.cache_mgr.revision_ids[":" + cmd.mark] = rev_id
+            self.cache_mgr.last_revision_ids[self.active_branch] = rev_id
             self._revision_count += 1
         except:
             self.repo.abort_write_group()
@@ -141,8 +144,8 @@ class GenericProcessor(processor.ImportProcessor):
         if cmd.ref.startswith('refs/tags/'):
             self._set_tag(cmd.ref[len('refs/tags/'):], cmd.from_)
         else:
-            warning("multiple branches are not supported yet"
-                " - ignoring branch '%s'", cmd.ref)
+            warning("named branches are not supported yet"
+                " - ignoring reset of '%s'", cmd.ref)
 
     def tag_handler(self, cmd):
         """Process a TagCommand."""
@@ -161,7 +164,6 @@ class GenericCacheManager(object):
 
     def __init__(self, inventory_cache_size=100):
         # dataref -> data. datref is either :mark or the sha-1.
-        # Once a blob is used, it should be deleted from here.
         self.blobs = {}
 
         # revision-id -> Inventory cache
@@ -182,6 +184,16 @@ class GenericCacheManager(object):
 
         # path -> file-ids
         self.file_ids = {}
+
+    def _delete_path(self, path):
+        """Remove a path from caches."""
+        del self.file_ids[path]
+
+    def _rename_path(self, old_path, new_path):
+        """Rename a path in the caches."""
+        self.file_ids[new_path] = self.file_ids[old_path]
+        del self.file_ids[old_path]
+
 
 class GenericCommitHandler(processor.CommitHandler):
 
@@ -231,15 +243,15 @@ class GenericCommitHandler(processor.CommitHandler):
     def post_process_files(self):
         """Save the revision."""
         if self.verbose:
-            print "applied inventory delta ..."
+            note("applied inventory delta ...")
             for entry in self.inv_delta:
-                print "  %r" % (entry,)
+                note("  %r" % (entry,))
         self.inventory.apply_delta(self.inv_delta)
         self.cache_mgr.inventories[self.command.ref] = self.inventory
         if self.verbose:
-            print "creating inventory ..."
+            note("creating inventory ...")
             for entry in self.inventory:
-                print "  %r" % (entry,)
+                note("  %r" % (entry,))
 
         # Load the revision into the repository
         committer = self.command.committer
@@ -254,18 +266,18 @@ class GenericCommitHandler(processor.CommitHandler):
         rev.parent_ids = self.parents
         self.loader.load(rev, self.inventory, None,
             lambda file_id: self._get_lines(file_id))
-        print "loaded revision %r" % (rev,)
+        note("loaded commit %s" % (self.command.mark or self.command.ref,))
 
     def escape_commit_message(self, msg):
         # It's crap that we need to do this at this level (but we do)
-        # TODO
+        # TODO: escape_commit_message
         return msg
 
     def modify_handler(self, filecmd):
         if filecmd.dataref is not None:
             data = self.cache_mgr.blobs[filecmd.dataref]
-            # Conserve memory, assuming blobs aren't referenced twice
-            del self.cache_mgr.blobs[filecmd.dataref]
+            ## Conserve memory, assuming blobs aren't referenced twice
+            #del self.cache_mgr.blobs[filecmd.dataref]
         else:
             data = filecmd.data
         self._modify_inventory(filecmd.path, filecmd.kind,
@@ -274,25 +286,38 @@ class GenericCommitHandler(processor.CommitHandler):
     def delete_handler(self, filecmd):
         path = filecmd.path
         self.inv_delta.append((path, None, self.bzr_file_id(path), None))
+        self.cache_mgr._delete_path(path)
 
     def copy_handler(self, filecmd):
         raise NotImplementedError(self.copy_handler)
 
     def rename_handler(self, filecmd):
-        # TODO: add a suitable entry to the inventory delta
-        raise NotImplementedError(self.rename_handler)
+        old_path = filecmd.old_path
+        new_path = filecmd.new_path
+        file_id = self.bzr_file_id(old_path)
+        ie = self.inventory[file_id]
+        self.inv_delta.append((old_path, new_path, file_id, ie))
+        self.cache_mgr._rename_path(old_path, new_path)
 
     def deleteall_handler(self, filecmd):
         raise NotImplementedError(self.deleteall_handler)
 
-    def bzr_file_id(self, path):
-        """Get a Bazaar file identifier for a path."""
+    def bzr_file_id_and_new(self, path):
+        """Get a Bazaar file identifier and new flag for a path.
+        
+        :return: file_id, new where
+          new = True if the file_id is newly created
+        """
         try:
-            return self.cache_mgr.file_ids[path]
+            return self.cache_mgr.file_ids[path], False
         except KeyError:
             id = generate_ids.gen_file_id(path)
             self.cache_mgr.file_ids[path] = id
-            return id
+            return id, True
+
+    def bzr_file_id(self, path):
+        """Get a Bazaar file identifier for a path."""
+        return self.bzr_file_id_and_new(path)[0]
 
     def gen_initial_inventory(self):
         """Generate an inventory for a parentless revision."""
@@ -305,6 +330,8 @@ class GenericCommitHandler(processor.CommitHandler):
         Subclasses may override this to produce deterministic ids say.
         """
         committer = self.command.committer
+        # Perhaps 'who' being the person running the import is ok? If so,
+        # it might be a bit quicker and give slightly better compression?
         who = "%s <%s>" % (committer[0],committer[1])
         timestamp = committer[2]
         return generate_ids.gen_revision_id(who, timestamp)
@@ -354,8 +381,8 @@ class GenericCommitHandler(processor.CommitHandler):
         """Add to or change an item in the inventory."""
         # Create the new InventoryEntry
         basename, parent_ie = self._ensure_directory(path)
-        file_id = self.bzr_file_id(path)
-        ie = inventory.make_entry(kind, basename, parent_ie, file_id)
+        file_id, is_new = self.bzr_file_id_and_new(path)
+        ie = inventory.make_entry(kind, basename, parent_ie.file_id, file_id)
         ie.revision = self.revision_id
         if isinstance(ie, inventory.InventoryFile):
             ie.executable = is_executable
@@ -369,20 +396,18 @@ class GenericCommitHandler(processor.CommitHandler):
             raise errors.BzrError("Cannot import items of kind '%s' yet" %
                 (kind,))
 
-        # Record this new inventory entry. As the import stream doesn't
-        # repeat all files every time, we build an inventory delta.
-        # HACK: We also assume that inventory.apply_delta handles the
-        # 'add' case cleanly when asked to change a non-existent entry.
-        # This saves time vs explicitly detecting add vs change.
-        old_path = path
-        self.inv_delta.append((old_path, path, file_id, ie))
+        # Record this new inventory entry
+        if is_new:
+            self.inventory.add(ie)
+        else:
+            self.inv_delta.append((path, path, file_id, ie))
 
     def _ensure_directory(self, path):
         """Ensure that the containing directory exists for 'path'"""
         dirname, basename = osutils.split(path)
         if dirname == '':
             # the root node doesn't get updated
-            return basename, inventory.ROOT_ID
+            return basename, self.inventory.root
         try:
             ie = self.cache_mgr.directory_entries[dirname]
         except KeyError:
@@ -400,5 +425,9 @@ class GenericCommitHandler(processor.CommitHandler):
                                                   parent_ie.file_id)
         ie.revision = self.revision_id
         self.cache_mgr.directory_entries[dirname] = ie
-        self.inv_delta.append((None, path, dir_file_id, ie))
+        # There are no lines stored for a directory so
+        # make sure the cache used by get_lines knows that
+        self.lines_for_commit[dir_file_id] = []
+        #print "adding dir %s" % path
+        self.inventory.add(ie)
         return basename, ie
