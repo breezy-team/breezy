@@ -5,12 +5,12 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -27,6 +27,7 @@ import bzrlib.plugins.bisect as bisect
 
 class BisectTestCase(bzrlib.tests.TestCaseWithTransport):
     "Test harness specific to the bisect plugin."
+
     def assertRevno(self, rev):
         "Make sure we're at the right revision."
 
@@ -87,6 +88,7 @@ class BisectTestCase(bzrlib.tests.TestCaseWithTransport):
 
 class BisectHarnessTests(BisectTestCase):
     "Tests for the harness itself."
+
     def testLastRev(self):
         "Test that the last revision is correct."
         repo = self.tree.branch.repository
@@ -112,6 +114,7 @@ class BisectHarnessTests(BisectTestCase):
 
 class BisectCurrentUnitTests(BisectTestCase):
     "Test the BisectCurrent class."
+
     def testShowLog(self):
         "Test that the log can be shown."
         # Not a very good test; just makes sure the code doesn't fail,
@@ -150,6 +153,7 @@ class BisectCurrentUnitTests(BisectTestCase):
 
 class BisectLogUnitTests(BisectTestCase):
     "Test the BisectLog class."
+
     def testCreateBlank(self):
         "Test creation of new log."
         bisect_log = bisect.BisectLog()
@@ -180,6 +184,7 @@ class BisectLogUnitTests(BisectTestCase):
 
 class BisectFuncTests(BisectTestCase):
     "Functional tests for the bisect plugin."
+
     def testWorkflow(self):
         "Run through a basic usage scenario."
 
