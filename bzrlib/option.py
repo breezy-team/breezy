@@ -17,21 +17,23 @@
 # TODO: For things like --diff-prefix, we want a way to customize the display
 # of the option argument.
 
+import optparse
 import re
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import optparse
 
 from bzrlib import (
     errors,
     log,
-    registry as _mod_registry,
     revisionspec,
     symbol_versioning,
     )
 """)
 from bzrlib.trace import warning
+from bzrlib import (
+    registry as _mod_registry,
+    )
 
 
 def _parse_revision_str(revstr):
@@ -445,7 +447,7 @@ def _global_option(name, **kwargs):
     Option.OPTIONS[name] = Option(name, **kwargs)
 
 
-def _global_registry_option(name, help, registry, **kwargs):
+def _global_registry_option(name, help, registry=None, **kwargs):
     Option.OPTIONS[name] = RegistryOption(name, help, registry, **kwargs)
 
 
@@ -538,8 +540,8 @@ _global_option('version')
 _global_option('email')
 _global_option('update')
 _global_registry_option('log-format', "Use specified log format.",
-                        log.log_formatter_registry, value_switches=True,
-                        title='Log format')
+                        lazy_registry=('bzrlib.log', 'log_formatter_registry'),
+                        value_switches=True, title='Log format')
 _global_option('long', help='Use detailed log format. Same as --log-format long',
                short_name='l')
 _global_option('short', help='Use moderately short log format. Same as --log-format short')
