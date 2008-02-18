@@ -26,6 +26,7 @@ from bzrlib import (
     inventory,
     lru_cache,
     osutils,
+    progress,
     revision,
     revisiontree,
     )
@@ -71,6 +72,8 @@ class GenericProcessor(processor.ImportProcessor):
     known_params = ['info']
 
     def pre_process(self):
+        self._start_time = time.time()
+
         # Load the info file, if any
         info_path = self.params.get('info')
         if info_path is not None:
@@ -145,7 +148,7 @@ class GenericProcessor(processor.ImportProcessor):
                 self.cache_mgr.revision_ids[":" + cmd.mark] = rev_id
             self.cache_mgr.last_revision_ids[self.active_branch] = rev_id
             self._revision_count += 1
-            self.report_progress("(%s)" % cmd.mark)
+            self.report_progress("(:%s)" % cmd.mark)
         except:
             self.repo.abort_write_group()
             raise
@@ -153,15 +156,18 @@ class GenericProcessor(processor.ImportProcessor):
             self.repo.commit_write_group()
 
     def report_progress(self, details=''):
-        #if self._revision_count % 10 != 0:
-        #    return
         # TODO: use a progress bar with ETA enabled
-        if self.total_commits is not None:
-            counts = "%d/%d" % (self._revision_count, self.total_commits)
-        else:
-            counts = "%d" % (self._revision_count,)
-        note("%s %s commits loaded %s" % (self._time_of_day(), counts,
-            details))
+        if self.verbose or self._revision_count % 10 == 0:
+            if self.total_commits is not None:
+                counts = "%d/%d" % (self._revision_count, self.total_commits)
+                eta = progress.get_eta(self._start_time, self._revision_count,
+                    self.total_commits)
+                eta_str = '[%s] ' % progress.str_tdelta(eta)
+            else:
+                counts = "%d" % (self._revision_count,)
+                eta_str = ''
+            note("%s %s commits loaded %s%s" % (self._time_of_day(),
+                counts, eta_str, details))
 
     def progress_handler(self, cmd):
         """Process a ProgressCommand."""
