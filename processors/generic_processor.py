@@ -84,6 +84,12 @@ class GenericProcessor(processor.ImportProcessor):
         # mapping of tag name to revision_id
         self.tags = {}
 
+        # Prepare progress reporting
+        if self.info is not None:
+            self.total_commits = int(self.info['Command counts']['commit'])
+        else:
+            self.total_commits = None
+
     def post_process(self):
         self.dump_stats()
         # Update the branches, assuming the last revision is the head
@@ -139,13 +145,23 @@ class GenericProcessor(processor.ImportProcessor):
                 self.cache_mgr.revision_ids[":" + cmd.mark] = rev_id
             self.cache_mgr.last_revision_ids[self.active_branch] = rev_id
             self._revision_count += 1
-            note("%s loaded commit %d (%s)" % (self._time_of_day(),
-                self._revision_count, cmd.mark or cmd.ref))
+            self.report_progress("(%s)" % cmd.mark)
         except:
             self.repo.abort_write_group()
             raise
         else:
             self.repo.commit_write_group()
+
+    def report_progress(self, details=''):
+        #if self._revision_count % 10 != 0:
+        #    return
+        # TODO: use a progress bar with ETA enabled
+        if self.total_commits is not None:
+            counts = "%d/%d" % (self._revision_count, self.total_commits)
+        else:
+            counts = "%d" % (self._revision_count,)
+        note("%s %s commits loaded %s" % (self._time_of_day(), counts,
+            details))
 
     def progress_handler(self, cmd):
         """Process a ProgressCommand."""
@@ -211,11 +227,13 @@ class GenericCacheManager(object):
 
         # Work out the blobs to make sticky - None means all
         #print "%r" % (info,)
-        try:
-            self._blobs_to_keep = info['Blob usage tracking']['multi']
-        except KeyError:
-            # No safe choice but to do the lot
-            self._blobs_to_keep = None
+        self._blobs_to_keep = None
+        if info is not None:
+            try:
+                self._blobs_to_keep = info['Blob usage tracking']['multi']
+            except KeyError:
+                # info not in file - possible when no blobs used
+                pass
 
     def store_blob(self, id, data):
         """Store a blob of data."""
