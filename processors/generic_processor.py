@@ -123,8 +123,8 @@ class GenericProcessor(processor.ImportProcessor):
                 self.cache_mgr.revision_ids[":" + cmd.mark] = rev_id
             self.cache_mgr.last_revision_ids[self.active_branch] = rev_id
             self._revision_count += 1
-            note("loaded commit %d (%s)" % 
-                (self._revision_count, cmd.mark or cmd.ref))
+            note("%s loaded commit %d (%s)" % (self._time_of_day(),
+                self._revision_count, cmd.mark or cmd.ref))
         except:
             self.repo.abort_write_group()
             raise
@@ -140,7 +140,7 @@ class GenericProcessor(processor.ImportProcessor):
     def _time_of_day(self):
         """Time of day as a string."""
         # Note: this is a separate method so tests can patch in a fixed value
-        return time.localtime().strftime("%H:%M:%s")
+        return time.strftime("%H:%M:%S")
 
     def reset_handler(self, cmd):
         """Process a ResetCommand."""
