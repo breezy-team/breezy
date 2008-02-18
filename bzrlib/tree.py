@@ -281,13 +281,17 @@ class Tree(object):
         """Return the file_id for the root of this tree."""
         raise NotImplementedError(self.get_root_id)
 
-    def annotate_iter(self, file_id):
+    def annotate_iter(self, file_id,
+                      default_revision=_mod_revision.CURRENT_REVISION):
         """Return an iterator of revision_id, line tuples.
 
         For working trees (and mutable trees in general), the special
         revision_id 'current:' will be used for lines that are new in this
         tree, e.g. uncommitted changes.
         :param file_id: The file to produce an annotated version from
+        :param default_revision: For lines that don't match a basis, mark them
+            with this revision id. Not all implementations will make use of
+            this value.
         """
         raise NotImplementedError(self.annotate_iter)
 
