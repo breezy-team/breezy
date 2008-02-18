@@ -88,16 +88,14 @@ try:
     have_fcntl = True
 except ImportError:
     have_fcntl = False
-try:
-    import win32con, win32file, pywintypes, winerror, msvcrt
-    have_pywin32 = True
-except ImportError:
-    have_pywin32 = False
-try:
-    import ctypes, msvcrt
-    have_ctypes = True
-except ImportError:
-    have_ctypes = False
+
+have_pywin32 = False
+if sys.platform == 'win32':
+    try:
+        import win32con, win32file, pywintypes, winerror, msvcrt
+        have_pywin32 = True
+    except ImportError:
+        pass
 
 
 _lock_classes = []
@@ -328,7 +326,15 @@ if have_pywin32 and sys.platform == 'win32':
     _lock_classes.append(('pywin32', _w32c_WriteLock, _w32c_ReadLock))
 
 
-if have_ctypes and sys.platform == 'win32':
+have_ctypes_win32 = False
+if sys.platform == 'win32':
+    try:
+        import ctypes, msvcrt
+        have_ctypes_win32 = True
+    except ImportError:
+        pass
+
+if have_ctypes_win32:
     # These constants were copied from the win32con.py module.
     LOCKFILE_FAIL_IMMEDIATELY = 1
     LOCKFILE_EXCLUSIVE_LOCK = 2

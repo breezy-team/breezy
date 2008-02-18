@@ -16,20 +16,19 @@
 
 """bzr library"""
 
+#from bzrlib.osutils import get_user_encoding
 import time
 
 # Keep track of when bzrlib was first imported, so that we can give rough
 # timestamps relative to program start in the log file kept by bzrlib.trace.
 _start_time = time.time()
 
-from bzrlib.osutils import get_user_encoding
-
 
 IGNORE_FILENAME = ".bzrignore"
 
 
 # XXX: Compatibility. This should probably be deprecated
-user_encoding = get_user_encoding()
+#user_encoding = get_user_encoding()
 
 
 __copyright__ = "Copyright 2005, 2006, 2007, 2008 Canonical Ltd."

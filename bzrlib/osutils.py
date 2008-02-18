@@ -14,7 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from cStringIO import StringIO
 import os
 import re
 import stat
@@ -59,7 +58,6 @@ from bzrlib.symbol_versioning import (
     deprecated_function,
     one_zero,
     )
-from bzrlib.trace import mutter
 
 
 # On win32, O_BINARY is used to indicate the file should
@@ -286,6 +284,15 @@ def _win32_fixdrive(path):
 
 
 def _win32_abspath(path):
+    global _win32_abspath
+    if win32utils.winver == 'Windows 98':
+        _win32_abspath = _win98_abspath
+    else:
+        _win32_abspath = _real_win32_abspath
+    return _win32_abspath(path)
+
+
+def _real_win32_abspath(path):
     # Real _nt_abspath doesn't have a problem with a unicode cwd
     return _win32_fixdrive(_nt_abspath(unicode(path)).replace('\\', '/'))
 
@@ -315,9 +322,6 @@ def _win98_abspath(path):
             path = path[1:]
         path = cwd + '\\' + path
     return _win32_fixdrive(_nt_normpath(path).replace('\\', '/'))
-
-if win32utils.winver == 'Windows 98':
-    _win32_abspath = _win98_abspath
 
 
 def _win32_realpath(path):
@@ -426,6 +430,7 @@ def get_terminal_encoding():
     On my standard US Windows XP, the preferred encoding is
     cp1252, but the console is cp437
     """
+    from bzrlib.trace import mutter
     output_encoding = getattr(sys.stdout, 'encoding', None)
     if not output_encoding:
         input_encoding = getattr(sys.stdin, 'encoding', None)

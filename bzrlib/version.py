@@ -72,7 +72,7 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
     if show_config:
         config_dir = os.path.normpath(config.config_dir())  # use native slashes
         if not isinstance(config_dir, unicode):
-            config_dir = config_dir.decode(bzrlib.user_encoding)
+            config_dir = config_dir.decode(osutils.get_user_encoding())
         to_file.write("  Bazaar configuration: %s\n" % (config_dir,))
         to_file.write("  Bazaar log file: ")
         to_file.write(trace._bzr_log_filename + '\n')

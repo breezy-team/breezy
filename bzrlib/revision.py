@@ -18,15 +18,13 @@
 # perhaps show them in log -v and allow them as options to the commit command.
 
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import deprecated_graph
+""")
 from bzrlib import (
     errors,
-    symbol_versioning
-    )
-from bzrlib.deprecated_graph import (
-    all_descendants,
-    Graph,
-    node_distances,
-    select_farthest,
+    symbol_versioning,
     )
 from bzrlib.osutils import contains_whitespace
 from bzrlib.progress import DummyProgress
@@ -308,9 +306,10 @@ def common_ancestor(revision_a, revision_b, revision_source,
             raise errors.NoCommonAncestor(revision_a, revision_b)
             
         pb.update('Picking ancestor', 2, 3)
-        distances = node_distances (descendants, ancestors, root)
+        distances = deprecated_graph.node_distances(
+            descendants, ancestors, root)
         pb.update('Picking ancestor', 3, 2)
-        farthest = select_farthest(distances, common)
+        farthest = deprecated_graph.select_farthest(distances, common)
         if farthest is None or farthest == NULL_REVISION:
             raise errors.NoCommonAncestor(revision_a, revision_b)
     finally:
@@ -399,7 +398,7 @@ class MultipleRevisionSources(object):
                                             revision_id)
 
         # combine the graphs
-        result = Graph()
+        result = deprecated_graph.Graph()
         pending = set(revision_ids)
         done = set()
         def find_parents(node_id):

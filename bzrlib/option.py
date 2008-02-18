@@ -26,7 +26,7 @@ import optparse
 from bzrlib import (
     errors,
     log,
-    registry,
+    registry as _mod_registry,
     revisionspec,
     symbol_versioning,
     )
@@ -306,8 +306,9 @@ class RegistryOption(Option):
         else:
             return self.converter(value)
 
-    def __init__(self, name, help, registry, converter=None,
-        value_switches=False, title=None, enum_switch=True):
+    def __init__(self, name, help, registry=None, converter=None,
+        value_switches=False, title=None, enum_switch=True,
+        lazy_registry=None):
         """
         Constructor.
 
@@ -321,9 +322,16 @@ class RegistryOption(Option):
             '--knit' can be used interchangeably.
         :param enum_switch: If true, a switch is provided with the option name,
             which takes a value.
+        :param lazy_registry: A tuple of (module name, attribute name) for a
+            registry to be lazily loaded.
         """
         Option.__init__(self, name, help, type=self.convert)
-        self.registry = registry
+        self._registry = registry
+        if registry is None:
+            assert lazy_registry is not None, (
+                'One of registry or lazy_registry must be given.')
+            self._lazy_registry = _mod_registry._LazyObjectGetter(
+                *lazy_registry)
         self.name = name
         self.converter = converter
         self.value_switches = value_switches
@@ -332,6 +340,13 @@ class RegistryOption(Option):
         if self.title is None:
             self.title = name
 
+    @property
+    def registry(self):
+        if self._registry is not None:
+            return self._registry
+        else:
+            return self._lazy_registry.get_obj()
+    
     @staticmethod
     def from_kwargs(name_, help=None, title=None, value_switches=False,
                     enum_switch=True, **kwargs):
@@ -341,7 +356,7 @@ class RegistryOption(Option):
         RegistryOption constructor.  Any other keyword arguments are treated
         as values for the option, and they value is treated as the help.
         """
-        reg = registry.Registry()
+        reg = _mod_registry.Registry()
         for name, switch_help in kwargs.iteritems():
             name = name.replace('_', '-')
             reg.register(name, name, help=switch_help)
@@ -434,7 +449,7 @@ def _global_registry_option(name, help, registry, **kwargs):
     Option.OPTIONS[name] = RegistryOption(name, help, registry, **kwargs)
 
 
-class MergeTypeRegistry(registry.Registry):
+class MergeTypeRegistry(_mod_registry.Registry):
 
     pass
 

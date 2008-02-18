@@ -59,35 +59,32 @@ from warnings import (
     warn,
     )
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import (
+    errors,
+    revision,
+    revisionspec,
+    tsort,
+    )
+""")
+
 from bzrlib import (
     config,
     lazy_regex,
     registry,
     symbol_versioning,
     )
-from bzrlib.errors import (
-    BzrCommandError,
-    )
 from bzrlib.osutils import (
     format_date,
     get_terminal_encoding,
     terminal_width,
-    )
-from bzrlib.revision import (
-    NULL_REVISION,
-    )
-from bzrlib.revisionspec import (
-    RevisionInfo,
     )
 from bzrlib.symbol_versioning import (
     deprecated_method,
     zero_seventeen,
     )
 from bzrlib.trace import mutter
-from bzrlib.tsort import (
-    merge_sort,
-    topo_sort,
-    )
 
 
 def find_touching_revisions(branch, file_id):
@@ -249,7 +246,7 @@ def _show_log(branch,
         generate_single_revision = ((start_rev_id == end_rev_id)
             and getattr(lf, 'supports_single_merge_revision', False))
         if not generate_single_revision:
-            raise BzrCommandError('Selected log formatter only supports '
+            raise errors.BzrCommandError('Selected log formatter only supports '
                 'mainline revisions.')
         generate_merge_revisions = generate_single_revision
     view_revs_iter = get_view_revisions(mainline_revs, rev_nos, branch,
@@ -363,7 +360,7 @@ def _get_mainline_revs(branch, start_revision, end_revision):
     if start_revision is None:
         start_revno = 1
     else:
-        if isinstance(start_revision,RevisionInfo):
+        if isinstance(start_revision, revisionspec.RevisionInfo):
             start_rev_id = start_revision.rev_id
             start_revno = start_revision.revno or 1
         else:
@@ -374,19 +371,19 @@ def _get_mainline_revs(branch, start_revision, end_revision):
     if end_revision is None:
         end_revno = len(which_revs)
     else:
-        if isinstance(end_revision,RevisionInfo):
+        if isinstance(end_revision, revisionspec.RevisionInfo):
             end_rev_id = end_revision.rev_id
             end_revno = end_revision.revno or len(which_revs)
         else:
             branch.check_real_revno(end_revision)
             end_revno = end_revision
 
-    if ((start_rev_id == NULL_REVISION)
-        or (end_rev_id == NULL_REVISION)):
-        raise BzrCommandError('Logging revision 0 is invalid.')
+    if ((start_rev_id == revision.NULL_REVISION)
+        or (end_rev_id == revision.NULL_REVISION)):
+        raise errors.BzrCommandError('Logging revision 0 is invalid.')
     if start_revno > end_revno:
-        raise BzrCommandError("Start revision must be older than "
-                              "the end revision.")
+        raise errors.BzrCommandError("Start revision must be older than "
+                                     "the end revision.")
 
     # list indexes are 0-based; revisions are 1-based
     cut_revs = which_revs[(start_revno-1):(end_revno)]
@@ -475,7 +472,7 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
     # build the ancestry of each revision in the graph
     # - only listing the ancestors that change the specific file.
     rev_graph = branch.repository.get_revision_graph(mainline_revisions[-1])
-    sorted_rev_list = topo_sort(rev_graph)
+    sorted_rev_list = tsort.topo_sort(rev_graph)
     ancestry = {}
     for rev in sorted_rev_list:
         parents = rev_graph[rev]
@@ -520,7 +517,7 @@ def get_view_revisions(mainline_revs, rev_nos, branch, direction,
         for revision_id in revision_ids:
             yield revision_id, str(rev_nos[revision_id]), 0
         return
-    merge_sorted_revisions = merge_sort(
+    merge_sorted_revisions = tsort.merge_sort(
         branch.repository.get_revision_graph(mainline_revs[-1]),
         mainline_revs[-1],
         mainline_revs,
@@ -827,7 +824,7 @@ def log_formatter(name, *args, **kwargs):
     try:
         return log_formatter_registry.make_formatter(name, *args, **kwargs)
     except KeyError:
-        raise BzrCommandError("unknown log formatter: %r" % name)
+        raise errors.BzrCommandError("unknown log formatter: %r" % name)
 
 
 def show_one_log(revno, rev, delta, verbose, to_file, show_timezone):

@@ -18,13 +18,16 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     debug,
+    deprecated_graph,
+    xml5,
+    xml6,
+    xml7,
     )
 from bzrlib.store import revision
 from bzrlib.store.revision.knit import KnitRevisionStore
 """)
 from bzrlib import (
     bzrdir,
-    deprecated_graph,
     errors,
     knit,
     lockable_files,
@@ -32,9 +35,6 @@ from bzrlib import (
     osutils,
     symbol_versioning,
     transactions,
-    xml5,
-    xml6,
-    xml7,
     )
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
@@ -351,7 +351,9 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
     _commit_builder_class = None
     # Set this attribute in derived clases to control the _serializer that the
     # repository objects will have passed to their constructor.
-    _serializer = xml5.serializer_v5
+    @property
+    def _serializer(self):
+        return xml5.serializer_v5
     # Knit based repositories handle ghosts reasonably well.
     supports_ghosts = True
 
@@ -468,7 +470,9 @@ class RepositoryFormatKnit1(RepositoryFormatKnit):
 
     repository_class = KnitRepository
     _commit_builder_class = CommitBuilder
-    _serializer = xml5.serializer_v5
+    @property
+    def _serializer(self):
+        return xml5.serializer_v5
 
     def __ne__(self, other):
         return self.__class__ is not other.__class__
@@ -505,7 +509,9 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
     _commit_builder_class = RootCommitBuilder
     rich_root_data = True
     supports_tree_reference = True
-    _serializer = xml7.serializer_v7
+    @property
+    def _serializer(self):
+        return xml7.serializer_v7
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
@@ -552,7 +558,9 @@ class RepositoryFormatKnit4(RepositoryFormatKnit):
     _commit_builder_class = RootCommitBuilder
     rich_root_data = True
     supports_tree_reference = False
-    _serializer = xml6.serializer_v6
+    @property
+    def _serializer(self):
+        return xml6.serializer_v6
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir('rich-root')

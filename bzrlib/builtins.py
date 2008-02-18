@@ -17,11 +17,11 @@
 """builtin bzr commands"""
 
 import os
-from StringIO import StringIO
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import codecs
+import cStringIO
 import sys
 import time
 
@@ -2306,7 +2306,7 @@ class cmd_commit(Command):
             if my_message is None and not file:
                 t = make_commit_message_template_encoded(tree,
                         selected_list, diff=show_diff,
-                        output_encoding=bzrlib.user_encoding)
+                        output_encoding=osutils.get_user_encoding())
                 my_message = edit_commit_message_encoded(t)
                 if my_message is None:
                     raise errors.BzrCommandError("please specify a commit"
@@ -4068,7 +4068,7 @@ class cmd_send(Command):
         from bzrlib.revision import NULL_REVISION
         branch = Branch.open_containing(from_)[0]
         if output is None:
-            outfile = StringIO()
+            outfile = cStringIO.StringIO()
         elif output == '-':
             outfile = self.outf
         else:

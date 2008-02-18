@@ -22,11 +22,9 @@ from bzrlib import (
     branch,
     errors,
     workingtree,
-    )
-""")
-from bzrlib import (
     version_info_formats,
     )
+""")
 from bzrlib.commands import Command
 from bzrlib.option import Option, RegistryOption
 
@@ -72,8 +70,9 @@ class cmd_version_info(Command):
 
     takes_options = [RegistryOption('format',
                             'Select the output format.',
-                            version_info_formats.format_registry,
-                            value_switches=True),
+                            value_switches=True,
+                            lazy_registry=('bzrlib.version_info_formats',
+                                           'format_registry')),
                      Option('all', help='Include all possible information.'),
                      Option('check-clean', help='Check if tree is clean.'),
                      Option('include-history',

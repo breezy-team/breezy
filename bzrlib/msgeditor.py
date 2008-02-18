@@ -23,7 +23,6 @@ import os
 from subprocess import call
 import sys
 
-import bzrlib
 import bzrlib.config as config
 from bzrlib import osutils
 from bzrlib.errors import BzrError, BadCommitMessageEncoding
@@ -102,8 +101,8 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
     """
 
     if not start_message is None:
-        start_message = start_message.encode(bzrlib.user_encoding)
-    infotext = infotext.encode(bzrlib.user_encoding, 'replace')
+        start_message = start_message.encode(osutils.get_user_encoding())
+    infotext = infotext.encode(osutils.get_user_encoding(), 'replace')
     return edit_commit_message_encoded(infotext, ignoreline, start_message)
 
 
@@ -144,7 +143,7 @@ def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
         f = file(msgfilename, 'rU')
         try:
             try:
-                for line in codecs.getreader(bzrlib.user_encoding)(f):
+                for line in codecs.getreader(osutils.get_user_encoding())(f):
                     stripped_line = line.strip()
                     # strip empty line before the log message starts
                     if not started:

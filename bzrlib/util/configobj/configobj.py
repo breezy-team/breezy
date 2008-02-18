@@ -24,12 +24,12 @@ if INTP_VER < (2, 2):
     raise RuntimeError("Python v.2.2 or later needed")
 
 import os, re
-compiler = None
-try:
-    import compiler
-except ImportError:
-    # for IronPython
-    pass
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import compiler
+""")
+
 from types import StringTypes
 from warnings import warn
 try:
@@ -88,27 +88,6 @@ BOM_SET = {
     None: BOM_UTF8
     }
 
-try:
-    from validate import VdtMissingValue
-except ImportError:
-    VdtMissingValue = None
-
-try:
-    enumerate
-except NameError:
-    def enumerate(obj):
-        """enumerate for Python 2.2."""
-        i = -1
-        for item in obj:
-            i += 1
-            yield i, item
-
-try:
-    True, False
-except NameError:
-    True, False = 1, 0
-
-
 __version__ = '4.4.0'
 
 __revision__ = '$Id: configobj.py 156 2006-01-31 14:57:08Z fuzzyman $'
@@ -159,8 +138,6 @@ OPTION_DEFAULTS = {
 
 def getObj(s):
     s = "a=" + s
-    if compiler is None:
-        raise ImportError('compiler module not available')
     p = compiler.parse(s)
     return p.getChildren()[1].getChildren()[0].getChildren()[1]
 
@@ -2029,6 +2006,10 @@ class ConfigObj(Section):
             if self.configspec is None:
                 raise ValueError, 'No configspec supplied.'
             if preserve_errors:
+                try:
+                    from validate import VdtMissingValue
+                except ImportError:
+                    VdtMissingValue = None
                 if VdtMissingValue is None:
                     raise ImportError('Missing validate module.')
             section = self

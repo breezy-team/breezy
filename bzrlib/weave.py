@@ -75,6 +75,10 @@ import sha
 import time
 import warnings
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import tsort
+""")
 from bzrlib import (
     progress,
     )
@@ -88,7 +92,6 @@ from bzrlib.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
 import bzrlib.errors as errors
 from bzrlib.osutils import sha_strings
 import bzrlib.patiencediff
-from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import VersionedFile, InterVersionedFile
 from bzrlib.weavefile import _read_weave_v5, write_weave_v5
 
@@ -760,7 +763,7 @@ class Weave(VersionedFile):
         version_ids = other.get_ancestry(version_ids)
         pending_graph = [(version, other.get_parents(version)) for
                          version in version_ids]
-        for name in topo_sort(pending_graph):
+        for name in tsort.topo_sort(pending_graph):
             other_idx = other._name_map[name]
             # returns True if we have it, False if we need it.
             if not self._check_version_consistent(other, other_idx, name):
@@ -940,7 +943,7 @@ def _reweave(wa, wb, pb=None, msg=None):
     # map from version name -> all parent names
     combined_parents = _reweave_parent_graphs(wa, wb)
     mutter("combined parents: %r", combined_parents)
-    order = topo_sort(combined_parents.iteritems())
+    order = tsort.topo_sort(combined_parents.iteritems())
     mutter("order to reweave: %r", order)
 
     if pb and not msg:

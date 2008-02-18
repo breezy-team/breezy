@@ -75,8 +75,10 @@ lazy_import(globals(), """
 from bzrlib import (
     annotate,
     lru_cache,
+    merge,
     pack,
     trace,
+    tsort,
     )
 """)
 from bzrlib import (
@@ -87,7 +89,6 @@ from bzrlib import (
     osutils,
     patiencediff,
     progress,
-    merge,
     ui,
     )
 from bzrlib.errors import (
@@ -108,7 +109,6 @@ from bzrlib.osutils import (
     sha_strings,
     )
 from bzrlib.symbol_versioning import DEPRECATED_PARAMETER, deprecated_passed
-from bzrlib.tsort import topo_sort
 import bzrlib.ui
 import bzrlib.weave
 from bzrlib.versionedfile import VersionedFile, InterVersionedFile
@@ -1401,7 +1401,7 @@ class _KnitIndex(_KnitComponentFile):
             graph[version] = parents
         if not topo_sorted:
             return graph.keys()
-        return topo_sort(graph.items())
+        return tsort.topo_sort(graph.items())
 
     def get_ancestry_with_ghosts(self, versions):
         """See VersionedFile.get_ancestry_with_ghosts."""
@@ -1421,7 +1421,7 @@ class _KnitIndex(_KnitComponentFile):
                 # if not completed
                 pending.update([p for p in parents if p not in graph])
                 graph[version] = parents
-        return topo_sort(graph.items())
+        return tsort.topo_sort(graph.items())
 
     def get_build_details(self, version_ids):
         """Get the method, index_memo and compression parent for version_ids.
@@ -1664,7 +1664,7 @@ class KnitGraphIndex(object):
         if versions.difference(graph):
             raise RevisionNotPresent(versions.difference(graph).pop(), self)
         if topo_sorted:
-            result_keys = topo_sort(graph.items())
+            result_keys = tsort.topo_sort(graph.items())
         else:
             result_keys = graph.iterkeys()
         return [key[0] for key in result_keys]
@@ -1700,7 +1700,7 @@ class KnitGraphIndex(object):
                 # add a key, no parents
                 graph[missing_version] = []
                 pending.discard(missing_version) # don't look for it
-        result_keys = topo_sort(graph.items())
+        result_keys = tsort.topo_sort(graph.items())
         return [key[0] for key in result_keys]
 
     def get_build_details(self, version_ids):
@@ -2529,7 +2529,7 @@ class InterKnit(InterVersionedFile):
         """
         version_ids = self._get_source_version_ids(version_ids, ignore_missing)
         graph = self.source.get_graph(version_ids)
-        order = topo_sort(graph.items())
+        order = tsort.topo_sort(graph.items())
 
         def size_of_content(content):
             return sum(len(line) for line in content.text())
@@ -2596,7 +2596,7 @@ class InterKnit(InterVersionedFile):
     
             if not needed_versions:
                 return 0
-            full_list = topo_sort(self.source.get_graph())
+            full_list = tsort.topo_sort(self.source.get_graph())
     
             version_list = [i for i in full_list if (not self.target.has_version(i)
                             and i in needed_versions)]
@@ -2698,7 +2698,7 @@ class WeaveToKnit(InterVersionedFile):
     
             if not needed_versions:
                 return 0
-            full_list = topo_sort(self.source.get_graph())
+            full_list = tsort.topo_sort(self.source.get_graph())
     
             version_list = [i for i in full_list if (not self.target.has_version(i)
                             and i in needed_versions)]

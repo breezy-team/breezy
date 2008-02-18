@@ -26,6 +26,9 @@ from bzrlib import (
         graph,
         pack,
         ui,
+        xml5,
+        xml6,
+        xml7,
         )
 from bzrlib.index import (
     GraphIndex,
@@ -42,7 +45,6 @@ from bzrlib import tsort
 """)
 from bzrlib import (
     bzrdir,
-    deprecated_graph,
     errors,
     knit,
     lockable_files,
@@ -50,9 +52,6 @@ from bzrlib import (
     osutils,
     symbol_versioning,
     transactions,
-    xml5,
-    xml6,
-    xml7,
     )
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
@@ -2148,7 +2147,9 @@ class RepositoryFormatKnitPack1(RepositoryFormatPack):
 
     repository_class = KnitPackRepository
     _commit_builder_class = PackCommitBuilder
-    _serializer = xml5.serializer_v5
+    @property
+    def _serializer(self):
+        return xml5.serializer_v5
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir('pack-0.92')
@@ -2184,7 +2185,9 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
     _commit_builder_class = PackRootCommitBuilder
     rich_root_data = True
     supports_tree_reference = True
-    _serializer = xml7.serializer_v7
+    @property
+    def _serializer(self):
+        return xml7.serializer_v7
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir(
@@ -2225,7 +2228,9 @@ class RepositoryFormatKnitPack4(RepositoryFormatPack):
     _commit_builder_class = PackRootCommitBuilder
     rich_root_data = True
     supports_tree_reference = False
-    _serializer = xml6.serializer_v6
+    @property
+    def _serializer(self):
+        return xml6.serializer_v6
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir(
