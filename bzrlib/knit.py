@@ -426,7 +426,8 @@ class KnitPlainFactory(object):
         return out
 
     def annotate_iter(self, knit, version_id):
-        return annotate_knit(knit, version_id)
+        annotator = _KnitPackAnnotator(knit)
+        return iter(annotator.get_annotated_lines(version_id))
 
 
 def make_empty_knit(transport, relpath):
@@ -2753,6 +2754,37 @@ def annotate_knit(knit, revision_id):
         annotations[candidate] = list(annotate.reannotate([annotations[p]
             for p in parents], fulltext[candidate], candidate, blocks))
     return iter(annotations[revision_id])
+
+
+class _KnitPackAnnotator(object):
+    """Build up the annotations for a text."""
+
+    def __init__(self, knit):
+        self._knit = knit
+
+    def get_annotated_lines(self, revision_id):
+        """Return the annotated fulltext at the given revision.
+
+        :param revision_id: The revision id for this file
+        """
+        ancestry = self._knit.get_ancestry(revision_id)
+        fulltext = dict(zip(ancestry, self._knit.get_line_list(ancestry)))
+        annotations = {}
+        for candidate in ancestry:
+            if candidate in annotations:
+                continue
+            parents = self._knit.get_parents(candidate)
+            if len(parents) == 0:
+                blocks = None
+            elif self._knit._index.get_method(candidate) != 'line-delta':
+                blocks = None
+            else:
+                parent, sha1, noeol, delta = self._knit.get_delta(candidate)
+                blocks = KnitContent.get_line_delta_blocks(delta,
+                    fulltext[parents[0]], fulltext[candidate])
+            annotations[candidate] = list(annotate.reannotate([annotations[p]
+                for p in parents], fulltext[candidate], candidate, blocks))
+        return annotations[revision_id]
 
 
 try:
