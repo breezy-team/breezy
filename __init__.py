@@ -95,10 +95,12 @@ class cmd_fast_import(Command):
         params = _defines_to_dict(params)
         if method == 'info':
             from bzrlib.plugins.fastimport.processors import info_processor
-            proc = info_processor.InfoProcessor(params=params)
+            proc = info_processor.InfoProcessor(params=params,
+                verbose=verbose)
         elif method == 'filter':
             from bzrlib.plugins.fastimport.processors import filter_processor
-            proc = filter_processor.FilterProcessor(params=params)
+            proc = filter_processor.FilterProcessor(params=params,
+                verbose=verbose)
         else:
             from bzrlib.plugins.fastimport.processors import generic_processor
             control, relpath = bzrdir.BzrDir.open_containing('.')

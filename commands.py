@@ -19,7 +19,8 @@
 
 # Lists of command names
 COMMAND_NAMES = ['blob', 'checkpoint', 'commit', 'progress', 'reset', 'tag']
-FILE_COMMAND_NAMES = ['modify', 'delete', 'copy', 'rename', 'deleteall']
+FILE_COMMAND_NAMES = ['filemodify', 'filedelete', 'filecopy', 'filerename',
+    'filedeleteall']
 
 # Bazaar file kinds
 FILE_KIND = 'file'
@@ -34,16 +35,31 @@ class ImportCommand(object):
         # List of field names not to display
         self._binary = []
 
-    def __str__(self):
+    def dump_str(self, names=None, child_lists=None, verbose=False):
+        """Dump fields as a string.
+
+        :param names: the list of fields to include or
+            None for all public fields
+        :param child_lists: dictionary of child command names to
+            fields for that child command to include
+        :param verbose: if True, prefix each line with the command class and
+            display fields as a dictionary; if False, dump just the field
+            values with tabs between them
+        """
         interesting = {}
-        for field,value in self.__dict__.iteritems():
-            if field.startswith('_'):
-                continue
-            elif field in self._binary:
-                if value is not None:
-                    value = '(...)'
+        if names is None:
+            fields = [k for k in self.__dict__.keys() if not k.startswith('_')]
+        else:
+            fields = names
+        for field in fields:
+            value = self.__dict__.get(field)
+            if field in self._binary and value is not None:
+                value = '(...)'
             interesting[field] = value
-        return "%s: %s" % (self.__class__.__name__, interesting)
+        if verbose:
+            return "%s: %s" % (self.__class__.__name__, interesting)
+        else:
+            return "\t".join([interesting[k] for k in fields])
 
 
 class BlobCommand(ImportCommand):
@@ -75,10 +91,16 @@ class CommitCommand(ImportCommand):
         self.file_iter = file_iter
         self._binary = ['file_iter']
 
-    def __str__(self):
-        result = [ImportCommand.__str__(self)]
+    def dump_str(self, names=None, child_lists=None, verbose=False):
+        result = [ImportCommand.dump_str(self, names, verbose=verbose)]
         for f in self.file_iter():
-            result.append("\t%s" % f)
+            if child_lists is None:
+                continue
+            try:
+                child_names = child_lists[f.name]
+            except KeyError:
+                continue
+            result.append("\t%s" % f.dump_str(child_names, verbose=verbose))
         return '\n'.join(result)
 
 
@@ -116,7 +138,7 @@ class FileModifyCommand(FileCommand):
 
     def __init__(self, path, kind, is_executable, dataref, data):
         # Either dataref or data should be null
-        FileCommand.__init__(self, 'modify')
+        FileCommand.__init__(self, 'filemodify')
         self.path = path
         self.kind = kind
         self.is_executable = is_executable
@@ -128,14 +150,14 @@ class FileModifyCommand(FileCommand):
 class FileDeleteCommand(FileCommand):
 
     def __init__(self, path):
-        FileCommand.__init__(self, 'delete')
+        FileCommand.__init__(self, 'filedelete')
         self.path = path
 
 
 class FileCopyCommand(FileCommand):
 
     def __init__(self, src_path, dest_path):
-        FileCommand.__init__(self, 'copy')
+        FileCommand.__init__(self, 'filecopy')
         self.src_path = src_path
         self.dest_path = dest_path
 
@@ -143,7 +165,7 @@ class FileCopyCommand(FileCommand):
 class FileRenameCommand(FileCommand):
 
     def __init__(self, old_path, new_path):
-        FileCommand.__init__(self, 'rename')
+        FileCommand.__init__(self, 'filerename')
         self.old_path = old_path
         self.new_path = new_path
 
@@ -151,4 +173,4 @@ class FileRenameCommand(FileCommand):
 class FileDeleteAllCommand(FileCommand):
 
     def __init__(self):
-        FileCommand.__init__(self, 'deleteall')
+        FileCommand.__init__(self, 'filedeleteall')

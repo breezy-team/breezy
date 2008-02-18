@@ -29,16 +29,27 @@ class FilterProcessor(processor.ImportProcessor):
     No changes to the current repository are made.
     """
 
-    known_params = commands.COMMAND_NAMES
+    known_params = commands.COMMAND_NAMES + commands.FILE_COMMAND_NAMES
 
     def __init__(self, target=None, params=None, verbose=False):
         # Allow creation without a target
         processor.ImportProcessor.__init__(self, target, params, verbose)
+        self.parsed_params = {}
+        if params:
+            for name, value in params.iteritems():
+                if value == 1:
+                    # All fields
+                    fields = None
+                else:
+                    fields = value.split(',')
+                self.parsed_params[name] = fields
 
     def pre_handler(self, cmd):
         """Hook for logic before each handler starts."""
-        if self.params.get(cmd.name):
-            print "%s" % (cmd,)
+        if self.parsed_params.has_key(cmd.name):
+            fields = self.parsed_params[cmd.name]
+            str = cmd.dump_str(fields, self.parsed_params, self.verbose)
+            print "%s" % (str,)
 
     def progress_handler(self, cmd):
         """Process a ProgressCommand."""
