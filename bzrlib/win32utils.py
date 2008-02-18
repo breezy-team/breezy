@@ -120,7 +120,7 @@ def get_appdata_location():
 
     Returned value can be unicode or plain sring.
     To convert plain string to unicode use
-    s.decode(bzrlib.user_encoding)
+    s.decode(osutils.get_user_encoding())
     """
     if has_ctypes:
         try:
@@ -155,7 +155,7 @@ def get_home_location():
 
     Returned value can be unicode or plain sring.
     To convert plain string to unicode use
-    s.decode(bzrlib.user_encoding)
+    s.decode(osutils.get_user_encoding())
     """
     if has_ctypes:
         try:
@@ -185,7 +185,7 @@ def get_user_name():
 
     Returned value can be unicode or plain sring.
     To convert plain string to unicode use
-    s.decode(bzrlib.user_encoding)
+    s.decode(osutils.get_user_encoding())
     """
     if has_ctypes:
         try:
@@ -208,7 +208,7 @@ def get_host_name():
 
     Returned value can be unicode or plain sring.
     To convert plain string to unicode use
-    s.decode(bzrlib.user_encoding)
+    s.decode(osutils.get_user_encoding())
     """
     if has_ctypes:
         try:
@@ -227,8 +227,7 @@ def get_host_name():
 
 def _ensure_unicode(s):
     if s and type(s) != unicode:
-        import bzrlib
-        s = s.decode(bzrlib.user_encoding)
+        s = s.decode(osutils.get_user_encoding())
     return s
     
 

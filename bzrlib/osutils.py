@@ -422,7 +422,7 @@ def get_terminal_encoding():
 
     This attempts to check both sys.stdout and sys.stdin to see
     what encoding they are in, and if that fails it falls back to
-    bzrlib.user_encoding.
+    osutils.get_user_encoding().
     The problem is that on Windows, locale.getpreferredencoding()
     is not the same encoding as that used by the console:
     http://mail.python.org/pipermail/python-list/2003-May/162357.html
@@ -435,8 +435,9 @@ def get_terminal_encoding():
     if not output_encoding:
         input_encoding = getattr(sys.stdin, 'encoding', None)
         if not input_encoding:
-            output_encoding = bzrlib.user_encoding
-            mutter('encoding stdout as bzrlib.user_encoding %r', output_encoding)
+            output_encoding = get_user_encoding()
+            mutter('encoding stdout as osutils.get_user_encoding() %r',
+                   output_encoding)
         else:
             output_encoding = input_encoding
             mutter('encoding stdout as sys.stdin encoding %r', output_encoding)
@@ -444,9 +445,10 @@ def get_terminal_encoding():
         mutter('encoding stdout as sys.stdout encoding %r', output_encoding)
     if output_encoding == 'cp0':
         # invalid encoding (cp0 means 'no codepage' on Windows)
-        output_encoding = bzrlib.user_encoding
+        output_encoding = get_user_encoding()
         mutter('cp0 is invalid encoding.'
-               ' encoding stdout as bzrlib.user_encoding %r', output_encoding)
+               ' encoding stdout as osutils.get_user_encoding() %r',
+               output_encoding)
     # check encoding
     try:
         codecs.lookup(output_encoding)
@@ -454,9 +456,9 @@ def get_terminal_encoding():
         sys.stderr.write('bzr: warning:'
                          ' unknown terminal encoding %s.\n'
                          '  Using encoding %s instead.\n'
-                         % (output_encoding, bzrlib.user_encoding)
+                         % (output_encoding, get_user_encoding())
                         )
-        output_encoding = bzrlib.user_encoding
+        output_encoding = get_user_encoding()
 
     return output_encoding
 
@@ -1096,7 +1098,7 @@ def set_or_unset_env(env_variable, value):
             del os.environ[env_variable]
     else:
         if isinstance(value, unicode):
-            value = value.encode(bzrlib.user_encoding)
+            value = value.encode(get_user_encoding())
         os.environ[env_variable] = value
     return orig_val
 

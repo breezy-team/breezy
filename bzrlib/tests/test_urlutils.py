@@ -21,7 +21,6 @@ import re
 import sys
 
 from bzrlib import osutils, urlutils, win32utils
-import bzrlib
 from bzrlib.errors import InvalidURL, InvalidURLJoin
 from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
 
@@ -82,7 +81,7 @@ class TestUrlToPath(TestCase):
 
         # Local paths are assumed to *not* be escaped at all
         try:
-            u'uni/\xb5'.encode(bzrlib.user_encoding)
+            u'uni/\xb5'.encode(osutils.get_user_encoding())
         except UnicodeError:
             # locale cannot handle unicode 
             pass

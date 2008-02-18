@@ -2316,7 +2316,7 @@ class cmd_commit(Command):
                     "please specify either --message or --file")
             if file:
                 my_message = codecs.open(file, 'rt', 
-                                         bzrlib.user_encoding).read()
+                                         osutils.get_user_encoding()).read()
             if my_message == "":
                 raise errors.BzrCommandError("empty commit message specified")
             return my_message

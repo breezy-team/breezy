@@ -38,6 +38,7 @@ from bzrlib import (
     revision as _mod_revision,
     weave,
     weavefile,
+    )
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repository import (
     CommitBuilder,

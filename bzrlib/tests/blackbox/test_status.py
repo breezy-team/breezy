@@ -32,6 +32,7 @@ from bzrlib import (
     bzrdir,
     conflicts,
     errors,
+    osutils,
     )
 import bzrlib.branch
 from bzrlib.osutils import pathjoin
@@ -420,7 +421,7 @@ class TestStatusEncodings(TestCaseWithTransport):
     
     def setUp(self):
         TestCaseWithTransport.setUp(self)
-        self.user_encoding = bzrlib.user_encoding
+        self.user_encoding = osutils._cached_user_encoding
         self.stdout = sys.stdout
 
     def tearDown(self):
@@ -442,7 +443,7 @@ class TestStatusEncodings(TestCaseWithTransport):
 
     def test_stdout_ascii(self):
         sys.stdout = StringIO()
-        bzrlib.user_encoding = 'ascii'
+        osutils._cached_user_encoding = 'ascii'
         working_tree = self.make_uncommitted_tree()
         stdout, stderr = self.run_bzr("status")
 
@@ -453,7 +454,7 @@ added:
 
     def test_stdout_latin1(self):
         sys.stdout = StringIO()
-        bzrlib.user_encoding = 'latin-1'
+        osutils._cached_user_encoding = 'latin-1'
         working_tree = self.make_uncommitted_tree()
         stdout, stderr = self.run_bzr('status')
 

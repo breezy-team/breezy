@@ -235,7 +235,7 @@ class Config(object):
         """
         v = os.environ.get('BZR_EMAIL')
         if v:
-            return v.decode(bzrlib.user_encoding)
+            return v.decode(osutils.get_user_encoding())
 
         v = self._get_user_id()
         if v:
@@ -243,7 +243,7 @@ class Config(object):
 
         v = os.environ.get('EMAIL')
         if v:
-            return v.decode(bzrlib.user_encoding)
+            return v.decode(osutils.get_user_encoding())
 
         name, email = _auto_user_id()
         if name:
@@ -644,7 +644,7 @@ class BranchConfig(Config):
         try:
             return (self.branch.control_files.get_utf8("email") 
                     .read()
-                    .decode(bzrlib.user_encoding)
+                    .decode(osutils.get_user_encoding())
                     .rstrip("\r\n"))
         except errors.NoSuchFile, e:
             pass
@@ -832,8 +832,8 @@ def _auto_user_id():
             encoding = 'utf-8'
         except UnicodeError:
             try:
-                gecos = w.pw_gecos.decode(bzrlib.user_encoding)
-                encoding = bzrlib.user_encoding
+                encoding = osutils.get_user_encoding()
+                gecos = w.pw_gecos.decode(encoding)
             except UnicodeError:
                 raise errors.BzrCommandError('Unable to determine your name.  '
                    'Use "bzr whoami" to set it.')
@@ -854,10 +854,11 @@ def _auto_user_id():
     except ImportError:
         import getpass
         try:
-            realname = username = getpass.getuser().decode(bzrlib.user_encoding)
+            user_encoding = osutils.get_user_encoding()
+            realname = username = getpass.getuser().decode(user_encoding)
         except UnicodeDecodeError:
             raise errors.BzrError("Can't decode username as %s." % \
-                    bzrlib.user_encoding)
+                    user_encoding)
 
     return realname, (username + '@' + socket.gethostname())
 

@@ -68,7 +68,7 @@ class TestVersionUnicodeOutput(TestCaseInTempDir):
         uni_val, str_val = probe_unicode_in_user_encoding()
         if uni_val is None:
             raise TestSkipped('Cannot find a unicode character that works in'
-                              ' encoding %s' % (bzrlib.user_encoding,))
+                              ' encoding %s' % (osutils.get_user_encoding(),))
 
         osutils.set_or_unset_env('BZR_HOME', str_val)
         out = self.run_bzr("version")[0]
