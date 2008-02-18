@@ -59,7 +59,7 @@ class ImportCommand(object):
         if verbose:
             return "%s: %s" % (self.__class__.__name__, interesting)
         else:
-            return "\t".join([interesting[k] for k in fields])
+            return "\t".join([str(interesting[k]) for k in fields])
 
 
 class BlobCommand(ImportCommand):
