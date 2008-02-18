@@ -165,7 +165,8 @@ def reannotate(parents_lines, new_lines, new_revision_id,
         (will often be CURRENT_REVISION)
     :param left_matching_blocks: a hint about which areas are common
         between the text and its left-hand-parent.  The format is
-        the SequenceMatcher.get_matching_blocks format.
+        the SequenceMatcher.get_matching_blocks format
+        (start_left, start_right, length_of_match).
     """
     if len(parents_lines) == 0:
         lines = [(new_revision_id, line) for line in new_lines]
