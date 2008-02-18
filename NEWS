@@ -8,6 +8,10 @@ bzr-svn 0.4.8	UNRELEASED
 
    * Allow specifying path inside repository in svn-branching-scheme. (#190331)
 
+  FEATURES
+
+   * Add -d option to the svn-push command. 
+
   INTERNALS
 
    * Allow multiple mappings to be available at the same time.
