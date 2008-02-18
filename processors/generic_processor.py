@@ -33,6 +33,7 @@ from bzrlib.trace import (
     note,
     warning,
     )
+import bzrlib.util.configobj.configobj as configobj
 from bzrlib.plugins.fastimport import (
     processor,
     revisionloader,
@@ -59,10 +60,25 @@ class GenericProcessor(processor.ImportProcessor):
     * LATER: named branch support
     * checkpoints are ignored
     * some basic statistics are dumped on completion.
+
+    Here are the supported parameters:
+
+    * info - name of a config file holding the analysis generated
+      by running the --info processor (this is important for knowing
+      what to intelligently cache)
     """
 
+    known_params = ['info']
+
     def pre_process(self):
-        self.cache_mgr = GenericCacheManager()
+        # Load the info file, if any
+        info_path = self.params.get('info')
+        if info_path is not None:
+            self.info = configobj.ConfigObj(info_path)
+        else:
+            self.info = None
+
+        self.cache_mgr = GenericCacheManager(self.info, verbose=self.verbose)
         self.active_branch = self.branch
         self.init_stats()
         # mapping of tag name to revision_id
@@ -102,7 +118,7 @@ class GenericProcessor(processor.ImportProcessor):
             dataref = ":%s" % (cmd.mark,)
         else:
             dataref = osutils.sha_strings(cmd.data)
-        self.cache_mgr.blobs[dataref] = cmd.data
+        self.cache_mgr.store_blob(dataref, cmd.data)
 
     def checkpoint_handler(self, cmd):
         """Process a CheckpointCommand."""
@@ -165,9 +181,18 @@ class GenericProcessor(processor.ImportProcessor):
 class GenericCacheManager(object):
     """A manager of caches for the GenericProcessor."""
 
-    def __init__(self, inventory_cache_size=100):
+    def __init__(self, info, verbose=False, inventory_cache_size=10):
+        """Create a manager of caches.
+
+        :param info: a ConfigObj holding the output from
+            the --info processor, or None if no hints are available
+        """
+        self.verbose = verbose
+
         # dataref -> data. datref is either :mark or the sha-1.
-        self.blobs = {}
+        # Sticky blobs aren't removed after being referenced.
+        self._blobs = {}
+        self._sticky_blobs = {}
 
         # revision-id -> Inventory cache
         # these are large and we probably don't need too many as
@@ -183,6 +208,31 @@ class GenericCacheManager(object):
 
         # path -> file-ids - as generated
         self.file_ids = {}
+
+        # Work out the blobs to make sticky - None means all
+        #print "%r" % (info,)
+        try:
+            self._blobs_to_keep = info['Blob usage tracking']['multi']
+        except KeyError:
+            # No safe choice but to do the lot
+            self._blobs_to_keep = None
+
+    def store_blob(self, id, data):
+        """Store a blob of data."""
+        if (self._blobs_to_keep is None or data == '' or
+            id in self._blobs_to_keep):
+            self._sticky_blobs[id] = data
+            if self.verbose:
+                print "making blob %s sticky" % (id,)
+        else:
+            self._blobs[id] = data
+
+    def fetch_blob(self, id):
+        """Fetch a blob of data."""
+        try:
+            return self._sticky_blobs[id]
+        except KeyError:
+            return self._blobs.pop(id)
 
     def _delete_path(self, path):
         """Remove a path from caches."""
@@ -296,9 +346,7 @@ class GenericCommitHandler(processor.CommitHandler):
 
     def modify_handler(self, filecmd):
         if filecmd.dataref is not None:
-            data = self.cache_mgr.blobs[filecmd.dataref]
-            ## Conserve memory, assuming blobs aren't referenced twice
-            #del self.cache_mgr.blobs[filecmd.dataref]
+            data = self.cache_mgr.fetch_blob(filecmd.dataref)
         else:
             data = filecmd.data
         self._modify_inventory(filecmd.path, filecmd.kind,
