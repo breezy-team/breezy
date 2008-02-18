@@ -303,8 +303,15 @@ class GenericCommitHandler(processor.CommitHandler):
 
     def delete_handler(self, filecmd):
         path = filecmd.path
-        self.inv_delta.append((path, None, self.bzr_file_id(path), None))
-        self.cache_mgr._delete_path(path)
+        try:
+            del self.inventory[self.bzr_file_id(path)]
+        except errors.NoSuchId:
+            warning("ignoring delete of %s - not in inventory" % (path,))
+        finally:
+            try:
+                self.cache_mgr._delete_path(path)
+            except KeyError:
+                pass
 
     def copy_handler(self, filecmd):
         raise NotImplementedError(self.copy_handler)
@@ -418,7 +425,8 @@ class GenericCommitHandler(processor.CommitHandler):
         if is_new:
             self.inventory.add(ie)
         else:
-            self.inv_delta.append((path, path, file_id, ie))
+            # HACK: no API for this (del+add does more than it needs to)
+            self.inventory._byid[file_id] = ie
 
     def _ensure_directory(self, path):
         """Ensure that the containing directory exists for 'path'"""
