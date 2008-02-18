@@ -174,10 +174,6 @@ class GenericCacheManager(object):
         # most parents are recent in history
         self.inventories = lru_cache.LRUCache(inventory_cache_size)
 
-        # directory-path -> inventory-entry lookup table
-        # we need to keep all of these but they are small
-        self.directory_entries = {}
-
         # import-ref -> revision-id lookup table
         # we need to keep all of these but they are small
         self.revision_ids = {}
@@ -185,17 +181,21 @@ class GenericCacheManager(object):
         # branch -> last revision-id lookup table
         self.last_revision_ids = {}
 
-        # path -> file-ids
+        # path -> file-ids - as generated
         self.file_ids = {}
 
     def _delete_path(self, path):
         """Remove a path from caches."""
-        del self.file_ids[path]
+        # we actually want to remember what file-id we gave a path,
+        # even when that file is deleted, so doing nothing is correct
+        pass
 
     def _rename_path(self, old_path, new_path):
         """Rename a path in the caches."""
+        # we actually want to remember what file-id we gave a path,
+        # even when that file is renamed, so both paths should have
+        # the same value and we don't delete any information
         self.file_ids[new_path] = self.file_ids[old_path]
-        del self.file_ids[old_path]
 
 
 class GenericCommitHandler(processor.CommitHandler):
@@ -242,6 +242,9 @@ class GenericCommitHandler(processor.CommitHandler):
             # serializing out to disk and back in, root.revision is always
             # the new revision_id.
             self.inventory.root.revision = self.revision_id
+
+        # directory-path -> inventory-entry for current inventory
+        self.directory_entries = dict(self.inventory.directories())
 
     def post_process_files(self):
         """Save the revision."""
@@ -406,7 +409,7 @@ class GenericCommitHandler(processor.CommitHandler):
         """Add to or change an item in the inventory."""
         # Create the new InventoryEntry
         basename, parent_ie = self._ensure_directory(path)
-        file_id, is_new = self.bzr_file_id_and_new(path)
+        file_id = self.bzr_file_id(path)
         ie = inventory.make_entry(kind, basename, parent_ie.file_id, file_id)
         ie.revision = self.revision_id
         if isinstance(ie, inventory.InventoryFile):
@@ -422,11 +425,11 @@ class GenericCommitHandler(processor.CommitHandler):
                 (kind,))
 
         # Record this new inventory entry
-        if is_new:
-            self.inventory.add(ie)
-        else:
+        if file_id in self.inventory:
             # HACK: no API for this (del+add does more than it needs to)
             self.inventory._byid[file_id] = ie
+        else:
+            self.inventory.add(ie)
 
     def _ensure_directory(self, path):
         """Ensure that the containing directory exists for 'path'"""
@@ -435,7 +438,7 @@ class GenericCommitHandler(processor.CommitHandler):
             # the root node doesn't get updated
             return basename, self.inventory.root
         try:
-            ie = self.cache_mgr.directory_entries[dirname]
+            ie = self.directory_entries[dirname]
         except KeyError:
             # We will create this entry, since it doesn't exist
             pass
@@ -450,7 +453,7 @@ class GenericCommitHandler(processor.CommitHandler):
                                                   dir_basename,
                                                   parent_ie.file_id)
         ie.revision = self.revision_id
-        self.cache_mgr.directory_entries[dirname] = ie
+        self.directory_entries[dirname] = ie
         # There are no lines stored for a directory so
         # make sure the cache used by get_lines knows that
         self.lines_for_commit[dir_file_id] = []
