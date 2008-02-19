@@ -314,6 +314,8 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.report_success(test)
         self._cleanupLogFile(test)
         unittest.TestResult.addSuccess(self, test)
+        if getattr(test, '_log_contents', '') != '':
+            del test._log_contents
 
     def _testConcluded(self, test):
         """Common code when a test has finished.
@@ -356,6 +358,8 @@ class ExtendedTestResult(unittest._TextTestResult):
             # seems best to treat this as success from point-of-view of unittest
             # -- it actually does nothing so it barely matters :)
             unittest.TestResult.addSuccess(self, test)
+            if getattr(test, '_log_contents', '') != '':
+                del test._log_contents
 
     def printErrorList(self, flavour, errors):
         for test, err in errors:
@@ -789,6 +793,8 @@ class TestCase(unittest.TestCase):
     _keep_log_file = False
     # record lsprof data when performing benchmark calls.
     _gather_lsprof_in_benchmarks = False
+    attrs_to_keep = ('_testMethodName', '_testMethodDoc',
+                     '_log_contents', '_log_file_name', '_benchtime')
 
     def __init__(self, methodName='testMethod'):
         super(TestCase, self).__init__(methodName)
@@ -1281,7 +1287,16 @@ class TestCase(unittest.TestCase):
                     result.addSuccess(self)
                 result.stopTest(self)
                 return
-        return unittest.TestCase.run(self, result)
+        try:
+            return unittest.TestCase.run(self, result)
+        finally:
+            saved_attrs = {}
+            not_found = object()
+            for attr_name in self.attrs_to_keep:
+                attr = getattr(self, attr_name, not_found)
+                if attr is not not_found:
+                    saved_attrs[attr_name] = attr
+            self.__dict__ = saved_attrs
 
     def tearDown(self):
         self._runCleanups()
