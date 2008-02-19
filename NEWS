@@ -9,6 +9,37 @@ IN DEVELOPMENT
 
   NOTES WHEN UPGRADING:
   
+  CHANGES:
+
+   * A new repository format 'development' has been added. This format will
+     represent the latest 'in-progress' format that the bzr developers are
+     interested in getting early-adopter testing and feedback on.
+     ``doc/developers/development-repo.txt`` has detailed information.
+     (Robert Collins)
+
+  FEATURES:
+
+  IMPROVEMENTS:
+
+  BUGFIXES:
+
+  API BREAKS:
+
+  TESTING:
+
+  INTERNALS:
+
+    * The bzrdir format registry now accepts an ``alias`` keyword to
+      register_metadir, used to indicate that a format name is an alias for
+      some other format and thus should not be reported when describing the
+      format. (Robert Collins)
+
+
+bzr 1.2rc1 (not released yet)
+-----------------------------
+
+  NOTES WHEN UPGRADING:
+  
     * Fetching via the smart protocol may need to reconnect once during a fetch
       if the remote server is running Bazaar 1.1 or earlier, because the client
       attempts to use more efficient requests that confuse older servers.  You
