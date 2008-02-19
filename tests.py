@@ -19,6 +19,7 @@
 
 import os
 import shutil
+import bzrlib
 import bzrlib.bzrdir
 import bzrlib.tests
 import bzrlib.revisionspec
@@ -110,6 +111,17 @@ class BisectHarnessTests(BisectTestCase):
         sub_file.close()
         sub_revtree.unlock()
         assert test_content == "one dot three"
+
+
+class BisectMetaTests(BisectTestCase):
+    "Test the metadata provided by the package."
+
+    def testVersionPresent(self):
+        assert bisect.version_info
+
+    def testBzrVersioning(self):
+        assert bisect.bzr_minimum_api >= bzrlib.api_minimum_version
+        assert bisect.bzr_minimum_api <= bzrlib.version_info[:3]
 
 
 class BisectCurrentUnitTests(BisectTestCase):
@@ -306,6 +318,7 @@ def test_suite():
     from bzrlib.plugins.bisect import tests
     suite = TestSuite()
     suite.addTest(TestLoader().loadTestsFromTestCase(tests.BisectHarnessTests))
+    suite.addTest(TestLoader().loadTestsFromTestCase(tests.BisectMetaTests))
     suite.addTest(TestLoader().loadTestsFromTestCase(tests.BisectFuncTests))
     suite.addTest(TestLoader().loadTestsFromTestCase(
         tests.BisectCurrentUnitTests))
