@@ -26,7 +26,10 @@ from bzrlib import (
     trace,
     transport,
 )
-from bzrlib.smart.medium import SmartServerSocketStreamMedium
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib.smart import medium
+""")
 
 
 class SmartTCPServer(object):
@@ -134,7 +137,8 @@ class SmartTCPServer(object):
         # propogates to the newly accepted socket.
         conn.setblocking(True)
         conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        handler = SmartServerSocketStreamMedium(conn, self.backing_transport)
+        handler = medium.SmartServerSocketStreamMedium(
+            conn, self.backing_transport)
         connection_thread = threading.Thread(None, handler.serve, name='smart-server-child')
         connection_thread.setDaemon(True)
         connection_thread.start()
