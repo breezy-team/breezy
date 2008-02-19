@@ -156,7 +156,8 @@ def _annotate_file(branch, rev_id, file_id):
 
 
 def reannotate(parents_lines, new_lines, new_revision_id,
-               _left_matching_blocks=None):
+               _left_matching_blocks=None,
+               heads_provider=None):
     """Create a new annotated version from new lines and parent annotations.
     
     :param parents_lines: List of annotated lines for all parents
@@ -167,6 +168,10 @@ def reannotate(parents_lines, new_lines, new_revision_id,
         between the text and its left-hand-parent.  The format is
         the SequenceMatcher.get_matching_blocks format
         (start_left, start_right, length_of_match).
+    :param heads_provider: An object which provids a .heads() call to resolve
+        if any revision ids are children of others.
+        If None, then any ancestry disputes will be resolved with
+        new_revision_id
     """
     if len(parents_lines) == 0:
         lines = [(new_revision_id, line) for line in new_lines]
@@ -177,7 +182,8 @@ def reannotate(parents_lines, new_lines, new_revision_id,
         left = _reannotate(parents_lines[0], new_lines, new_revision_id,
                            _left_matching_blocks)
         lines = _reannotate_annotated(parents_lines[1], new_lines,
-                                      new_revision_id, left)
+                                      new_revision_id, left,
+                                      heads_provider)
     else:
         reannotations = [_reannotate(parents_lines[0], new_lines,
                                      new_revision_id, _left_matching_blocks)]
@@ -218,7 +224,7 @@ def _reannotate(parent_lines, new_lines, new_revision_id,
 
 
 def _reannotate_annotated(right_parent_lines, new_lines, new_revision_id,
-                          annotated_lines):
+                          annotated_lines, heads_provider):
     """Update the annotations for a node based on another parent.
 
     :param right_parent_lines: A list of annotated lines for the right-hand
@@ -228,6 +234,8 @@ def _reannotate_annotated(right_parent_lines, new_lines, new_revision_id,
         present in either parent.
     :param annotated_lines: A list of annotated lines. This should be the
         annotation of new_lines based on parents seen so far.
+    :param heads_provider: When parents disagree on the lineage of a line, we
+        need to check if one side supersedes the other.
     """
     def get_matching_blocks(old, new):
         matcher = patiencediff.PatienceSequenceMatcher(None,
@@ -272,20 +280,15 @@ def _reannotate_annotated(right_parent_lines, new_lines, new_revision_id,
                         lines_append(right)
                     else:
                         # Left and Right both claim this line
-                        # TODO: The correct method is to use a heads() call to
-                        #       handle ancestry disagreements.
-                        #       For now, just mark it unclaimed
-                        lines_append((new_revision_id, left[1]))
-                        ## # TODO: The correcb
-                        ## # import pdb; pdb.set_trace()
-                        ## heads = heads_provider.heads((left[0], right[0]))
-                        ## if len(heads) == 1:
-                        ##     # import pdb; pdb.set_trace()
-                        ##     lines_append((heads.pop(), left[1]))
-                        ## else:
-                        ##     # Both claim different origins
-                        ##     lines_append((new_revision_id, left[1]))
-                        ##     # lines_append(left)
+                        if heads_provider is None:
+                            lines_append((new_revision_id, left[1]))
+                        else:
+                            heads = heads_provider.heads((left[0], right[0]))
+                            if len(heads) == 1:
+                                lines_append((heads.pop(), left[1]))
+                            else:
+                                # Both claim different origins
+                                lines_append((new_revision_id, left[1]))
                 last_jj = jj + nn
         last_i = i + n
         last_j = j + n

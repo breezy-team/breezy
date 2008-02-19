@@ -74,6 +74,7 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     annotate,
+    graph as _mod_graph,
     lru_cache,
     pack,
     trace,
@@ -2789,7 +2790,10 @@ class _KnitAnnotator(object):
         self._pending_children = {}
 
         self._all_build_details = {}
+        # The children => parent revision_id graph
         self._revision_id_graph = {}
+
+        self._heads_provider = None
 
     def _add_fulltext_content(self, revision_id, content_obj, noeol_flag):
         self._fulltext_contents[revision_id] = content_obj
@@ -2828,7 +2832,8 @@ class _KnitAnnotator(object):
         a = self._annotated_lines
         annotated_parent_lines = [a[p] for p in parent_ids]
         annotated_lines = list(annotate.reannotate(annotated_parent_lines,
-            fulltext, revision_id, left_matching_blocks))
+            fulltext, revision_id, left_matching_blocks,
+            heads_provider=self._get_heads_provider()))
         self._annotated_lines[revision_id] = annotated_lines
         # Now that we've added this one, see if there are any pending
         # deltas to be done, certainly this parent is finished
@@ -2849,6 +2854,9 @@ class _KnitAnnotator(object):
             passing to read_records_iter to start reading in the raw data from
             the pack file.
         """
+        if revision_id in self._annotated_lines:
+            # Nothing to do
+            return []
         pending = set([revision_id])
         records = []
         while pending:
@@ -2934,6 +2942,17 @@ class _KnitAnnotator(object):
                 nodes_to_annotate.extend(
                     self._add_annotation(rev_id, fulltext, parent_ids,
                                      left_matching_blocks=blocks))
+
+    def _get_heads_provider(self):
+        """Create a heads provider for resolving ancestry issues."""
+        if self._heads_provider is not None:
+            return self._heads_provider
+        parent_provider = _mod_graph.DictParentsProvider(
+            self._revision_id_graph)
+        graph_obj = _mod_graph.Graph(parent_provider)
+        head_cache = _mod_graph.HeadsCache(graph_obj)
+        self._heads_provider = head_cache
+        return head_cache
 
     def get_annotated_lines(self, revision_id):
         """Return the annotated fulltext at the given revision.
