@@ -50,6 +50,10 @@ class ImportProcessor(object):
             (self.working_tree, self.branch) = bzrdir._get_tree_branch()
             self.repo = self.branch.repository
 
+        # Handlers can set this to request exiting cleanly without
+        # iterating through the remaining commands
+        self.finished = False
+
     def validate_parameters(self):
         """Validate that the parameters are correctly specified."""
         for p in self.params:
@@ -84,6 +88,8 @@ class ImportProcessor(object):
                 self.pre_handler(cmd)
                 handler(self, cmd)
                 self.post_handler(cmd)
+            if self.finished:
+                break
         self.post_process()
 
     def pre_process(self):

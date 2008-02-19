@@ -78,7 +78,7 @@ class cmd_fast_import(Command):
                         'The way to process the data.',
                         title='Processing Method',
                         value_switches=True, enum_switch=False,
-                        safe="Import the data into any format (default).",
+                        generic="Import the data into any format (default).",
                         info="Display information only - don't import it.",
                         filter="Filter commands only - don't import it.",
                         ),

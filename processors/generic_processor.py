@@ -41,6 +41,9 @@ from bzrlib.plugins.fastimport import (
     )
 
 
+# How many commits before automatically checkpointing
+_DEFAULT_AUTO_CHECKPOINT = 10000
+
 def _single_plural(n, single, plural):
     """Return a single or plural form of a noun based on number."""
     if n == 1:
@@ -54,12 +57,13 @@ class GenericProcessor(processor.ImportProcessor):
 
     Current features supported:
 
-    * timestamped progress reporting
     * blobs are cached in memory
-    * commits are processed
+    * files and symlinks commits are supported
     * tags are stored in the current branch
+    * checkpoints automatically happen at a configurable frequency
+      over and above the stream requested checkpoints
+    * timestamped progress reporting, both automatic and stream requested
     * LATER: named branch support
-    * checkpoints are ignored
     * some basic statistics are dumped on completion.
 
     Here are the supported parameters:
@@ -67,13 +71,32 @@ class GenericProcessor(processor.ImportProcessor):
     * info - name of a config file holding the analysis generated
       by running the --info processor (this is important for knowing
       what to intelligently cache)
+
+    * checkpoint - automatically checkpoint every n commits over and
+      above any checkpoints contained in the import stream.
+      The default is 10000.
+
+    * count - only import this many commits then exit. If not set,
+      all commits are imported.
     """
 
-    known_params = ['info']
+    known_params = ['info', 'checkpoint', 'count']
 
     def pre_process(self):
         self._start_time = time.time()
+        self._load_info_and_params()
+        self.cache_mgr = GenericCacheManager(self.info, verbose=self.verbose)
+        self.active_branch = self.branch
+        self.init_stats()
 
+        # mapping of tag name to revision_id
+        self.tags = {}
+
+        # Create a write group. This is committed at the end of the import.
+        # Checkpointing closes the current one and starts a new one.
+        self.repo.start_write_group()
+
+    def _load_info_and_params(self):
         # Load the info file, if any
         info_path = self.params.get('info')
         if info_path is not None:
@@ -81,21 +104,27 @@ class GenericProcessor(processor.ImportProcessor):
         else:
             self.info = None
 
-        self.cache_mgr = GenericCacheManager(self.info, verbose=self.verbose)
-        self.active_branch = self.branch
-        self.init_stats()
-        # mapping of tag name to revision_id
-        self.tags = {}
+        # Decide how often to automatically checkpoint
+        self.checkpoint_every = int(self.params.get('checkpoint',
+            _DEFAULT_AUTO_CHECKPOINT))
 
-        # Prepare progress reporting
+        # Find the maximum number of commits to import (None means all)
+        # and prepare progress reporting. Just in case the info file
+        # has an outdated count of commits, we store the max counts
+        # at which we need to terminate separately to the total used
+        # for progress tracking.
+        try:
+            self.max_commits = int(self.params['count'])
+        except KeyError:
+            self.max_commits = None
         if self.info is not None:
             self.total_commits = int(self.info['Command counts']['commit'])
+            if (self.max_commits is not None and
+                self.total_commits > self.max_commits):
+                self.total_commits = self.max_commits
         else:
-            self.total_commits = None
+            self.total_commits = self.max_commits
 
-        # Create a write group. This is committed at the end of the import.
-        # Checkpointing closes the current one and starts a new one.
-        self.repo.start_write_group()
 
     def _process(self, command_iter):
         # if anything goes wrong, abort the write group if any
@@ -137,6 +166,11 @@ class GenericProcessor(processor.ImportProcessor):
             bc, _single_plural(bc, "branch", "branches"),
             tc, _single_plural(tc, "tag", "tags"))
 
+    def note(self, msg, *args):
+        """Output a note but timestamp it."""
+        msg = "%s %s" % (self._time_of_day(), msg)
+        note(msg, *args)
+
     def blob_handler(self, cmd):
         """Process a BlobCommand."""
         if cmd.mark is not None:
@@ -163,6 +197,14 @@ class GenericProcessor(processor.ImportProcessor):
         self.cache_mgr.last_revision_ids[self.active_branch] = rev_id
         self._revision_count += 1
         self.report_progress("(:%s)" % cmd.mark)
+        if (self.max_commits is not None and
+            self._revision_count >= self.max_commits):
+            self.note("stopping after reaching requested count of commits")
+            self.finished = True
+        elif self._revision_count % self.checkpoint_every == 0:
+            self.note("%d commits - automatic checkpoint triggered",
+                self._revision_count)
+            self.checkpoint_handler(None)
 
     def report_progress(self, details=''):
         # TODO: use a progress bar with ETA enabled
@@ -175,14 +217,13 @@ class GenericProcessor(processor.ImportProcessor):
             else:
                 counts = "%d" % (self._revision_count,)
                 eta_str = ''
-            note("%s %s commits processed %s%s" % (self._time_of_day(),
-                counts, eta_str, details))
+            self.note("%s commits processed %s%s" % (counts, eta_str, details))
 
     def progress_handler(self, cmd):
         """Process a ProgressCommand."""
         # We could use a progress bar here but timestamped messages
         # is more useful for determining when things might complete
-        note("%s progress %s" % (self._time_of_day(), cmd.message))
+        self.note("progress %s" % (cmd.message,))
 
     def _time_of_day(self):
         """Time of day as a string."""
