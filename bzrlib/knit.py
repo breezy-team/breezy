@@ -808,7 +808,7 @@ class KnitVersionedFile(VersionedFile):
             factory = KnitAnnotateFactory()
         else:
             raise errors.KnitDataStreamUnknown(format)
-        index = _StreamIndex(data_list)
+        index = _StreamIndex(data_list, self._index)
         access = _StreamAccess(reader_callable, index, self, factory)
         return KnitVersionedFile(self.filename, self.transport,
             factory=factory, index=index, access_method=access)
@@ -875,12 +875,14 @@ class KnitVersionedFile(VersionedFile):
 
         This data is intended to be used for retrieving the knit records.
 
-        A dict of version_id to (method, index_memo, next) is
+        A dict of version_id to (method, index_memo, next, parents, noeol) is
         returned.
         method is the way referenced data should be applied.
-        data_pos is the position of the data in the knit.
-        data_size is the size of the data in the knit.
+        index_memo is the handle to pass to the data access to actually get the
+            data
         next is the build-parent of the version, or None for fulltexts.
+        parents is the version_ids of the parents of this version
+        noeol is a flag indicating if there is a final newline character
         """
         component_data = {}
         pending_components = version_ids
@@ -888,7 +890,8 @@ class KnitVersionedFile(VersionedFile):
             build_details = self._index.get_build_details(pending_components)
             pending_components = set()
             for version_id, details in build_details.items():
-                method, index_memo, compression_parent, parents = details
+                (method, index_memo, compression_parent, parents,
+                 noeol) = details
                 if compression_parent is not None:
                     pending_components.add(compression_parent)
                 component_data[version_id] = details
@@ -1045,12 +1048,14 @@ class KnitVersionedFile(VersionedFile):
         """
         position_map = self._get_components_positions(version_ids)
         # c = component_id, m = method, i_m = index_memo, n = next
-        # p = parent_ids
-        records = [(c, i_m) for c, (m, i_m, n, p) in position_map.iteritems()]
+        # p = parent_ids, e = noeol
+        records = [(c, i_m) for c, (m, i_m, n, p, e)
+                             in position_map.iteritems()]
         record_map = {}
         for component_id, content, digest in \
                 self._data.read_records_iter(records):
-            method, index_memo, next, parent_ids = position_map[component_id]
+            (method, index_memo, next, parent_ids,
+             noeol) = position_map[component_id]
             record_map[component_id] = method, content, digest, next
                           
         return record_map
@@ -1430,7 +1435,7 @@ class _KnitIndex(_KnitComponentFile):
 
         :param version_ids: An iterable of version_ids.
         :return: A dict of version_id:(method, index_memo, compression_parent,
-            parents).
+            parents, noeol).
         """
         result = {}
         for version_id in version_ids:
@@ -1440,9 +1445,10 @@ class _KnitIndex(_KnitComponentFile):
                 compression_parent = None
             else:
                 compression_parent = parents[0]
+            noeol = 'no-eol' in self.get_options(version_id)
             index_memo = self.get_position(version_id)
             result[version_id] = (method, index_memo, compression_parent,
-                                  parents)
+                                  parents, noeol)
         return result
 
     def iter_parents(self, version_ids):
@@ -1713,7 +1719,7 @@ class KnitGraphIndex(object):
 
         :param version_ids: An iterable of version_ids.
         :return: A dict of version_id:(method, index_memo, compression_parent,
-            parents).
+            parents, noeol).
         """
         result = {}
         entries = self._get_entries(self._version_ids_to_keys(version_ids), True)
@@ -1729,12 +1735,13 @@ class KnitGraphIndex(object):
                     (compression_parent_key,))[0]
                 else:
                     compression_parent = None
+            noeol = (entry[2][0] == 'N')
             if compression_parent:
                 method = 'line-delta'
             else:
                 method = 'fulltext'
             result[version_id] = (method, self._node_to_position(entry),
-                compression_parent, parents)
+                compression_parent, parents, noeol)
         return result
 
     def _compression_parent(self, an_entry):
@@ -2181,12 +2188,15 @@ class _StreamAccess(object):
 class _StreamIndex(object):
     """A Knit Index object that uses the data map from a datastream."""
 
-    def __init__(self, data_list):
+    def __init__(self, data_list, backing_index):
         """Create a _StreamIndex object.
 
         :param data_list: The data_list from the datastream.
+        :param backing_index: The index which will supply values for nodes
+            referenced outside of this stream.
         """
         self.data_list = data_list
+        self.backing_index = backing_index
         self._by_version = {}
         pos = 0
         for key, options, length, parents in data_list:
@@ -2220,19 +2230,21 @@ class _StreamIndex(object):
         """Get the method, index_memo and compression parent for version_ids.
 
         :param version_ids: An iterable of version_ids.
-        :return: A dict of version_id:(method, index_memo, compression_parent).
+        :return: A dict of version_id:(method, index_memo, compression_parent,
+            parents, noeol).
         """
         result = {}
         for version_id in version_ids:
             method = self.get_method(version_id)
             parent_ids = self.get_parents_with_ghosts(version_id)
+            noeol = ('no-eol' in self.get_options(version_id))
             if method == 'fulltext':
                 compression_parent = None
             else:
                 compression_parent = parent_ids[0]
             index_memo = self.get_position(version_id)
             result[version_id] = (method, index_memo, compression_parent,
-                                  parent_ids)
+                                  parent_ids, noeol)
         return result
 
     def get_method(self, version_id):
@@ -2242,7 +2254,7 @@ class _StreamIndex(object):
         except KeyError:
             # Strictly speaking this should check in the backing knit, but
             # until we have a test to discriminate, this will do.
-            return 'fulltext'
+            return self.backing_index.get_method(version_id)
         if 'fulltext' in options:
             return 'fulltext'
         elif 'line-delta' in options:
@@ -2255,16 +2267,17 @@ class _StreamIndex(object):
 
         e.g. ['foo', 'bar']
         """
-        return self._by_version[version_id][0]
+        try:
+            return self._by_version[version_id][0]
+        except KeyError:
+            return self.backing_index.get_options(version_id)
 
     def get_parents_with_ghosts(self, version_id):
         """Return parents of specified version with ghosts."""
         try:
             return self._by_version[version_id][2]
         except KeyError:
-            # Strictly speaking this should check in the backing knit, but
-            # until we have a test to discriminate, this will do.
-            return ()
+            return self.backing_index.get_parents_with_ghosts(version_id)
 
     def get_position(self, version_id):
         """Return details needed to access the version.
@@ -2846,7 +2859,8 @@ class _KnitAnnotator(object):
             # new_nodes = self._knit._index._get_entries(this_iteration)
             pending = set()
             for rev_id, details in build_details.iteritems():
-                method, index_memo, compression_parent, parents = details
+                (method, index_memo, compression_parent, parents,
+                 noeol) = details
                 self._revision_id_graph[rev_id] = parents
                 records.append((rev_id, index_memo))
                 pending.update(p for p in parents
@@ -2873,10 +2887,8 @@ class _KnitAnnotator(object):
                 continue
             parent_ids = self._revision_id_graph[rev_id]
             details = self._all_build_details[rev_id]
-            method, index_memo, compression_parent, parent_ids = details
-            # XXX: We don't want to be going back to the index here, make it
-            #      part of details
-            noeol = 'no-eol' in self._knit._index.get_options(rev_id)
+            (method, index_memo, compression_parent, parent_ids,
+             noeol) = details
             nodes_to_annotate = []
             # TODO: Remove the punning between compression parents, and
             #       parent_ids, we should be able to do this without assuming
@@ -2898,10 +2910,8 @@ class _KnitAnnotator(object):
             while nodes_to_annotate:
                 # Should we use a queue here instead of a stack?
                 (rev_id, parent_ids, raw_content) = nodes_to_annotate.pop()
-                (method, index_memo, compression_parent,
-                 parent_ids) = self._all_build_details[rev_id]
-                # XXX
-                noeol = 'no-eol' in self._knit._index.get_options(rev_id)
+                (method, index_memo, compression_parent, parent_ids,
+                 noeol) = self._all_build_details[rev_id]
                 if method == 'line-delta':
                     parent_fulltext_content = self._fulltext_contents[compression_parent]
                     delta = self._knit.factory.parse_line_delta(raw_content,

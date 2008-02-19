@@ -2102,7 +2102,7 @@ class TestKnitCaching(KnitTests):
 
         def read_one_raw(version):
             pos_map = k._get_components_positions([version])
-            method, index_memo, next = pos_map[version]
+            method, index_memo, next, parents, noeol= pos_map[version]
             lst = list(k._data.read_records_iter_raw([(version, index_memo)]))
             self.assertEqual(1, len(lst))
             return lst[0]
@@ -2123,7 +2123,7 @@ class TestKnitCaching(KnitTests):
 
         def read_one(version):
             pos_map = k._get_components_positions([version])
-            method, index_memo, next = pos_map[version]
+            method, index_memo, next, parents, noeol = pos_map[version]
             lst = list(k._data.read_records_iter([(version, index_memo)]))
             self.assertEqual(1, len(lst))
             return lst[0]
@@ -2903,7 +2903,7 @@ class Test_StreamIndex(KnitTests):
         """Constructing a StreamIndex generates index data."""
         data_list = [('text-a', ['fulltext'], 127, []),
             ('text-b', ['option'], 128, ['text-c'])]
-        index = _StreamIndex(data_list)
+        index = _StreamIndex(data_list, None)
         self.assertEqual({'text-a':(['fulltext'], (0, 127), []),
             'text-b':(['option'], (127, 127 + 128), ['text-c'])},
             index._by_version)
