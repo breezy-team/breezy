@@ -23,6 +23,7 @@ from bzrlib.trace import (
     )
 from bzrlib.plugins.fastimport import (
     commands,
+    helpers,
     processor,
     )
 
@@ -68,7 +69,8 @@ class InfoProcessor(processor.ImportProcessor):
         self.blobs = {}
         for usage in ['new', 'used', 'multi', 'unknown']:
             self.blobs[usage] = set()
-
+        # Head tracking: map of commit mark to ref
+        self.heads = {}
 
     def post_process(self):
         # Dump statistics
@@ -97,6 +99,9 @@ class InfoProcessor(processor.ImportProcessor):
             self._dump_stats_group("Parent counts", p_names, p_values, str)
             self._dump_stats_group("Commit analysis", flags.keys(),
                 flags.values(), _found)
+            heads = helpers.invert_dict(self.heads)
+            self._dump_stats_group("Head analysis", heads.keys(),
+                heads.values(), None, _iterable_as_config_list)
             # note("\t%d\t%s" % (len(self.committers), 'unique committers'))
 
         # Blob stats
@@ -105,7 +110,7 @@ class InfoProcessor(processor.ImportProcessor):
             if self.verbose:
                 del self.blobs['used']
             self._dump_stats_group("Blob usage tracking", self.blobs.keys(),
-                self.blobs.values(), len, _set_as_config_list)
+                self.blobs.values(), len, _iterable_as_config_list)
 
         # Other stats
         if self.cmd_counts['reset']:
@@ -173,6 +178,15 @@ class InfoProcessor(processor.ImportProcessor):
                         self._track_blob(fc.dataref)
                     else:
                         self.sha_blob_references = True
+        # Track the heads
+        for parent in cmd.parents:
+            try:
+                del self.heads[parent]
+            except KeyError:
+                print "hmm - didn't find parent %s" % parent
+                pass
+        self.heads[":" + cmd.mark] = cmd.ref
+            
 
     def reset_handler(self, cmd):
         """Process a ResetCommand."""
@@ -202,8 +216,8 @@ def _found(b):
     """Format a found boolean as a string."""
     return ['no', 'found'][b]
 
-def _set_as_config_list(s):
-    """Format a set as a sequence of comma-separated strings.
+def _iterable_as_config_list(s):
+    """Format an iterable as a sequence of comma-separated strings.
     
     To match what ConfigObj expects, a single item list has a trailing comma.
     """
