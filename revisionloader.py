@@ -92,7 +92,11 @@ class RevisionLoader(object):
             #w = self.repo.weave_store.get_weave_or_empty(ie.file_id, tx)
             #if ie.revision in w:
             #    continue
-            # Try another way ...
+            # Try another way, realising that this assumes that the
+            # version is not already there. In the general case,
+            # a shared repository might already have the revision but
+            # we arguably don't need that check when importing from
+            # a foreign system.
             if ie.revision != revision_id:
                 continue
             text_parents = []
