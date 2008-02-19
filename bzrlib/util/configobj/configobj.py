@@ -1312,7 +1312,7 @@ class ConfigObj(Section):
                 self.configspec = None
             return
         
-        elif hasattr(infile, 'read'):
+        elif getattr(infile, 'read', None) is not None:
             # This supports file like objects
             infile = infile.read() or []
             # needs splitting into lines - but needs doing *after* decoding
