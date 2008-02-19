@@ -426,7 +426,7 @@ class KnitPlainFactory(object):
         return out
 
     def annotate_iter(self, knit, version_id):
-        annotator = _KnitPackAnnotator(knit)
+        annotator = _KnitAnnotator(knit)
         return iter(annotator.get_annotated_lines(version_id))
 
 
@@ -2225,12 +2225,14 @@ class _StreamIndex(object):
         result = {}
         for version_id in version_ids:
             method = self.get_method(version_id)
+            parent_ids = self.get_parents_with_ghosts(version_id)
             if method == 'fulltext':
                 compression_parent = None
             else:
-                compression_parent = self.get_parents_with_ghosts(version_id)[0]
+                compression_parent = parent_ids[0]
             index_memo = self.get_position(version_id)
-            result[version_id] = (method, index_memo, compression_parent)
+            result[version_id] = (method, index_memo, compression_parent,
+                                  parent_ids)
         return result
 
     def get_method(self, version_id):
@@ -2257,7 +2259,12 @@ class _StreamIndex(object):
 
     def get_parents_with_ghosts(self, version_id):
         """Return parents of specified version with ghosts."""
-        return self._by_version[version_id][2]
+        try:
+            return self._by_version[version_id][2]
+        except KeyError:
+            # Strictly speaking this should check in the backing knit, but
+            # until we have a test to discriminate, this will do.
+            return ()
 
     def get_position(self, version_id):
         """Return details needed to access the version.
@@ -2742,27 +2749,11 @@ def annotate_knit(knit, revision_id):
     It will work for knits with cached annotations, but this is not
     recommended.
     """
-    ancestry = knit.get_ancestry(revision_id)
-    fulltext = dict(zip(ancestry, knit.get_line_list(ancestry)))
-    annotations = {}
-    for candidate in ancestry:
-        if candidate in annotations:
-            continue
-        parents = knit.get_parents(candidate)
-        if len(parents) == 0:
-            blocks = None
-        elif knit._index.get_method(candidate) != 'line-delta':
-            blocks = None
-        else:
-            parent, sha1, noeol, delta = knit.get_delta(candidate)
-            blocks = KnitContent.get_line_delta_blocks(delta,
-                fulltext[parents[0]], fulltext[candidate])
-        annotations[candidate] = list(annotate.reannotate([annotations[p]
-            for p in parents], fulltext[candidate], candidate, blocks))
-    return iter(annotations[revision_id])
+    annotator = _KnitAnnotator(knit)
+    return iter(annotator.get_annotated_lines(revision_id))
 
 
-class _KnitPackAnnotator(object):
+class _KnitAnnotator(object):
     """Build up the annotations for a text."""
 
     def __init__(self, knit):
