@@ -86,23 +86,26 @@ class RevisionLoader(object):
             if root.revision != revision_id:
                 raise errors.IncompatibleRevision(repr(self.repo))
         # Add the texts that are not already present
-        transaction = self.repo.get_transaction()
+        tx = self.repo.get_transaction()
         for path, ie in entries:
-            w = self.repo.weave_store.get_weave_or_empty(ie.file_id,
-                transaction)
-            if ie.revision not in w:
-                text_parents = []
-                for parent_inv in parent_invs:
-                    if ie.file_id not in parent_inv:
-                        continue
-                    parent_id = parent_inv[ie.file_id].revision
-                    if parent_id in text_parents:
-                        continue
-                    text_parents.append(parent_id)
-                vfile = self.repo.weave_store.get_weave_or_empty(ie.file_id, 
-                    transaction)
-                lines = text_provider(ie.file_id)
-                vfile.add_lines(revision_id, text_parents, lines)
+            # This test is *really* slow: over 50% of import time
+            #w = self.repo.weave_store.get_weave_or_empty(ie.file_id, tx)
+            #if ie.revision in w:
+            #    continue
+            # Try another way ...
+            if ie.revision != revision_id:
+                continue
+            text_parents = []
+            for parent_inv in parent_invs:
+                if ie.file_id not in parent_inv:
+                    continue
+                parent_id = parent_inv[ie.file_id].revision
+                if parent_id in text_parents:
+                    continue
+                text_parents.append(parent_id)
+            vfile = self.repo.weave_store.get_weave_or_empty(ie.file_id,  tx)
+            lines = text_provider(ie.file_id)
+            vfile.add_lines(revision_id, text_parents, lines)
 
     def _default_inventories_provider(self, revision_ids):
         """An inventories provider that queries the repository."""

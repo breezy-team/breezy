@@ -93,7 +93,23 @@ class GenericProcessor(processor.ImportProcessor):
         else:
             self.total_commits = None
 
+        # Create a write group. This is committed at the end of the import.
+        # Checkpointing closes the current one and starts a new one.
+        self.repo.start_write_group()
+
+    def _process(self, command_iter):
+        # if anything goes wrong, abort the write group if any
+        try:
+            processor.ImportProcessor._process(self, command_iter)
+        except:
+            if self.repo is not None and self.repo.is_in_write_group():
+                self.repo.abort_write_group()
+            raise
+
     def post_process(self):
+        # Commit the current write group.
+        self.repo.commit_write_group()
+
         self.dump_stats()
         # Update the branches, assuming the last revision is the head
         note("Updating branch information ...")
@@ -131,29 +147,22 @@ class GenericProcessor(processor.ImportProcessor):
 
     def checkpoint_handler(self, cmd):
         """Process a CheckpointCommand."""
-        warning("ignoring checkpoint")
+        # Commit the current write group and start a new one
+        self.repo.commit_write_group()
+        self.repo.start_write_group()
 
     def commit_handler(self, cmd):
         """Process a CommitCommand."""
         handler = GenericCommitHandler(cmd, self.repo, self.cache_mgr,
-            self.active_branch, self.verbose)
-        # For now, put a write group around every commit. In the future,
-        # we might only start/commit one every N to sppeed things up
-        self.repo.start_write_group()
-        try:
-            handler.process()
-            rev_id = handler.revision_id
-            self.cache_mgr.revision_ids[cmd.ref] = rev_id
-            if cmd.mark is not None:
-                self.cache_mgr.revision_ids[":" + cmd.mark] = rev_id
-            self.cache_mgr.last_revision_ids[self.active_branch] = rev_id
-            self._revision_count += 1
-            self.report_progress("(:%s)" % cmd.mark)
-        except:
-            self.repo.abort_write_group()
-            raise
-        else:
-            self.repo.commit_write_group()
+        self.active_branch, self.verbose)
+        handler.process()
+        rev_id = handler.revision_id
+        self.cache_mgr.revision_ids[cmd.ref] = rev_id
+        if cmd.mark is not None:
+            self.cache_mgr.revision_ids[":" + cmd.mark] = rev_id
+        self.cache_mgr.last_revision_ids[self.active_branch] = rev_id
+        self._revision_count += 1
+        self.report_progress("(:%s)" % cmd.mark)
 
     def report_progress(self, details=''):
         # TODO: use a progress bar with ETA enabled
@@ -166,7 +175,7 @@ class GenericProcessor(processor.ImportProcessor):
             else:
                 counts = "%d" % (self._revision_count,)
                 eta_str = ''
-            note("%s %s commits loaded %s%s" % (self._time_of_day(),
+            note("%s %s commits processed %s%s" % (self._time_of_day(),
                 counts, eta_str, details))
 
     def progress_handler(self, cmd):
