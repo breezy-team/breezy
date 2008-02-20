@@ -222,10 +222,11 @@ implements no verbs.
 The underlying message format is::
 
   MESSAGE := "bzr message 3" NEWLINE HEADERS MESSAGE_PARTS
-  HEADERS := LENGTH_PREFIX, bencoded_dict
+  HEADERS := LENGTH_PREFIX bencoded_dict
   MESSAGE_PARTS := MESSAGE_PART [MORE_MESSAGE_PARTS]
   MORE_MESSAGE_PARTS := END_MESSAGE_PARTS | MESSAGE_PARTS
   END_MESSAGE_PARTS := "e"
+
   MESSAGE_PART := ONE_BYTE | STRUCTURE | BYTES | CHUNKED_BYTES
   ONE_BYTE := "o" byte
   STRUCTURE := "s" LENGTH_PREFIX bencoded_structure
