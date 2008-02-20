@@ -21,6 +21,7 @@ for basing real processors on. See the processors package for examples.
 """
 
 
+from bzrlib.errors import NotBranchError
 import errors
 
 
@@ -43,12 +44,19 @@ class ImportProcessor(object):
         self.bzrdir = bzrdir
         if bzrdir is None:
             # Some 'importers' don't need a repository to write to
+            self.working_tree = None
             self.branch = None
             self.repo = None
-            self.working_tree = None
         else:
-            (self.working_tree, self.branch) = bzrdir._get_tree_branch()
-            self.repo = self.branch.repository
+            try:
+                # Might be inside a branch
+                (self.working_tree, self.branch) = bzrdir._get_tree_branch()
+                self.repo = self.branch.repository
+            except NotBranchError:
+                # Must be inside a repository
+                self.working_tree = None
+                self.branch = None
+                self.repo = bzrdir.open_repository()
 
         # Handlers can set this to request exiting cleanly without
         # iterating through the remaining commands
@@ -69,6 +77,8 @@ class ImportProcessor(object):
             self.working_tree.lock_write()
         elif self.branch is not None:
             self.branch.lock_write()
+        elif self.repo is not None:
+            self.repo.lock_write()
         try:
             self._process(command_iter)
         finally:
@@ -76,6 +86,8 @@ class ImportProcessor(object):
                 self.working_tree.unlock()
             elif self.branch is not None:
                 self.branch.unlock()
+            elif self.repo is not None:
+                self.repo.unlock()
 
     def _process(self, command_iter):
         self.pre_process()
