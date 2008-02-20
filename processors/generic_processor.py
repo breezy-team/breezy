@@ -687,11 +687,10 @@ class GenericBranchUpdater(object):
         lost_heads = []
         ref_names = self.heads_by_ref.keys()
         if self.branch is not None:
-            # Until there's a good reason to be more selective,
-            # use the last imported revision as the tip of the default branch
-            default_tip = self.heads_by_ref[self.last_ref][0]
+            trunk = self.select_trunk(ref_names)
+            default_tip = self.heads_by_ref[trunk][0]
             branch_tips.append((self.branch, default_tip))
-            ref_names.remove(self.last_ref)
+            ref_names.remove(trunk)
 
         # Convert the reference names into Bazaar speak
         bzr_names = self._get_bzr_names_from_ref_names(ref_names)
@@ -726,6 +725,14 @@ class GenericBranchUpdater(object):
             lost_info = (name, lost_head)
             lost_heads.append(lost_info)
         return branch_tips, lost_heads
+
+    def select_trunk(self, ref_names):
+        """Given a set of ref names, choose one as the trunk."""
+        for candidate in ['refs/heads/master']:
+            if candidate in ref_names:
+                return candidate
+        # Use the last reference in the import stream
+        return self.last_ref
 
     def make_branch(self, location):
         """Create a branch in the repository."""
