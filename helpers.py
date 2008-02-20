@@ -14,7 +14,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Miscellaneous useflu stuff."""
+"""Miscellaneous useful stuff."""
+
+
+def single_plural(n, single, plural):
+    """Return a single or plural form of a noun based on number."""
+    if n == 1:
+        return single
+    else:
+        return plural
 
 
 def invert_dict(d):

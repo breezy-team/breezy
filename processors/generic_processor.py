@@ -45,14 +45,6 @@ from bzrlib.plugins.fastimport import (
 # How many commits before automatically checkpointing
 _DEFAULT_AUTO_CHECKPOINT = 10000
 
-def _single_plural(n, single, plural):
-    """Return a single or plural form of a noun based on number."""
-    if n == 1:
-        return single
-    else:
-        return plural
-
-
 class GenericProcessor(processor.ImportProcessor):
     """An import processor that handles basic imports.
 
@@ -164,9 +156,9 @@ class GenericProcessor(processor.ImportProcessor):
         bc = self._branch_count
         tc = self._tag_count
         note("Imported %d %s into %d %s with %d %s.",
-            rc, _single_plural(rc, "revision", "revisions"),
-            bc, _single_plural(bc, "branch", "branches"),
-            tc, _single_plural(tc, "tag", "tags"))
+            rc, helpers.single_plural(rc, "revision", "revisions"),
+            bc, helpers.single_plural(bc, "branch", "branches"),
+            tc, helpers.single_plural(tc, "tag", "tags"))
 
     def note(self, msg, *args):
         """Output a note but timestamp it."""
