@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -797,7 +797,6 @@ class TestCase(unittest.TestCase):
     def setUp(self):
         unittest.TestCase.setUp(self)
         self._cleanEnvironment()
-        bzrlib.trace.disable_default_logging()
         self._silenceUI()
         self._startLogFile()
         self._benchcalls = []
@@ -1041,6 +1040,32 @@ class TestCase(unittest.TestCase):
         else:
             self.fail('Unexpected success.  Should have failed: %s' % reason)
 
+    def assertFileEqual(self, content, path):
+        """Fail if path does not contain 'content'."""
+        self.failUnlessExists(path)
+        f = file(path, 'rb')
+        try:
+            s = f.read()
+        finally:
+            f.close()
+        self.assertEqualDiff(content, s)
+
+    def failUnlessExists(self, path):
+        """Fail unless path or paths, which may be abs or relative, exist."""
+        if not isinstance(path, basestring):
+            for p in path:
+                self.failUnlessExists(p)
+        else:
+            self.failUnless(osutils.lexists(path),path+" does not exist")
+
+    def failIfExists(self, path):
+        """Fail if path or paths, which may be abs or relative, exist."""
+        if not isinstance(path, basestring):
+            for p in path:
+                self.failIfExists(p)
+        else:
+            self.failIf(osutils.lexists(path),path+" exists")
+
     def _capture_deprecation_warnings(self, a_callable, *args, **kwargs):
         """A helper for callDeprecated and applyDeprecated.
 
@@ -1159,7 +1184,7 @@ class TestCase(unittest.TestCase):
         """
         fileno, name = tempfile.mkstemp(suffix='.log', prefix='testbzr')
         self._log_file = os.fdopen(fileno, 'w+')
-        self._log_nonce = bzrlib.trace.enable_test_log(self._log_file)
+        self._log_memento = bzrlib.trace.push_log_file(self._log_file)
         self._log_file_name = name
         self.addCleanup(self._finishLogFile)
 
@@ -1170,7 +1195,7 @@ class TestCase(unittest.TestCase):
         """
         if self._log_file is None:
             return
-        bzrlib.trace.disable_test_log(self._log_nonce)
+        bzrlib.trace.pop_log_file(self._log_memento)
         self._log_file.close()
         self._log_file = None
         if not self._keep_log_file:
@@ -2087,32 +2112,6 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
 
     def build_tree_contents(self, shape):
         build_tree_contents(shape)
-
-    def assertFileEqual(self, content, path):
-        """Fail if path does not contain 'content'."""
-        self.failUnlessExists(path)
-        f = file(path, 'rb')
-        try:
-            s = f.read()
-        finally:
-            f.close()
-        self.assertEqualDiff(content, s)
-
-    def failUnlessExists(self, path):
-        """Fail unless path or paths, which may be abs or relative, exist."""
-        if not isinstance(path, basestring):
-            for p in path:
-                self.failUnlessExists(p)
-        else:
-            self.failUnless(osutils.lexists(path),path+" does not exist")
-
-    def failIfExists(self, path):
-        """Fail if path or paths, which may be abs or relative, exist."""
-        if not isinstance(path, basestring):
-            for p in path:
-                self.failIfExists(p)
-        else:
-            self.failIf(osutils.lexists(path),path+" exists")
 
     def assertInWorkingTree(self, path, root_path='.', tree=None):
         """Assert whether path or paths are in the WorkingTree"""

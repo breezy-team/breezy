@@ -31,7 +31,7 @@ import bzrlib.plugin
 import bzrlib.plugins
 import bzrlib.commands
 import bzrlib.help
-from bzrlib.symbol_versioning import one_two
+from bzrlib.symbol_versioning import one_three
 from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.osutils import pathjoin, abspath, normpath
 
@@ -384,7 +384,7 @@ class TestPluginFromZip(TestCaseInTempDir):
         try:
             # this is normally done by load_plugins -> set_plugins_path
             bzrlib.plugins.__path__ = [zip_name]
-            self.applyDeprecated(one_two,
+            self.applyDeprecated(one_three,
                 bzrlib.plugin.load_from_zip, zip_name)
             self.assertTrue(plugin_name in dir(bzrlib.plugins),
                             'Plugin is not loaded')

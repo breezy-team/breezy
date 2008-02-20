@@ -514,7 +514,7 @@ class _BreadthFirstSearcher(object):
             # exclude keys for them. However, while we could have a second
             # look-ahead result buffer and shuffle things around, this method
             # is typically only called once per search - when memoising the
-            # results of the search.
+            # results of the search. 
             found, ghosts, next, parents = self._do_query(self._next_query)
             # pretend we didn't query: perhaps we should tweak _do_query to be
             # entirely stateless?

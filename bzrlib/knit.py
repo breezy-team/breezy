@@ -874,7 +874,7 @@ class KnitVersionedFile(VersionedFile):
 
         This data is intended to be used for retrieving the knit records.
 
-        A dict of version_id to (method, data_pos, data_size, next) is
+        A dict of version_id to (method, index_memo, next) is
         returned.
         method is the way referenced data should be applied.
         data_pos is the position of the data in the knit.
@@ -882,18 +882,15 @@ class KnitVersionedFile(VersionedFile):
         next is the build-parent of the version, or None for fulltexts.
         """
         component_data = {}
-        for version_id in version_ids:
-            cursor = version_id
-
-            while cursor is not None and cursor not in component_data:
-                method = self._index.get_method(cursor)
-                if method == 'fulltext':
-                    next = None
-                else:
-                    next = self.get_parents_with_ghosts(cursor)[0]
-                index_memo = self._index.get_position(cursor)
-                component_data[cursor] = (method, index_memo, next)
-                cursor = next
+        pending_components = version_ids
+        while pending_components:
+            build_details = self._index.get_build_details(pending_components)
+            pending_components = set()
+            for version_id, details in build_details.items():
+                method, index_memo, compression_parent = details
+                if compression_parent is not None:
+                    pending_components.add(compression_parent)
+                component_data[version_id] = details
         return component_data
        
     def _get_content(self, version_id, parent_texts={}):
@@ -1426,6 +1423,23 @@ class _KnitIndex(_KnitComponentFile):
                 graph[version] = parents
         return topo_sort(graph.items())
 
+    def get_build_details(self, version_ids):
+        """Get the method, index_memo and compression parent for version_ids.
+
+        :param version_ids: An iterable of version_ids.
+        :return: A dict of version_id:(method, index_memo, compression_parent).
+        """
+        result = {}
+        for version_id in version_ids:
+            method = self.get_method(version_id)
+            if method == 'fulltext':
+                compression_parent = None
+            else:
+                compression_parent = self.get_parents_with_ghosts(version_id)[0]
+            index_memo = self.get_position(version_id)
+            result[version_id] = (method, index_memo, compression_parent)
+        return result
+
     def iter_parents(self, version_ids):
         """Iterate through the parents for many version ids.
 
@@ -1689,6 +1703,50 @@ class KnitGraphIndex(object):
         result_keys = topo_sort(graph.items())
         return [key[0] for key in result_keys]
 
+    def get_build_details(self, version_ids):
+        """Get the method, index_memo and compression parent for version_ids.
+
+        :param version_ids: An iterable of version_ids.
+        :return: A dict of version_id:(method, index_memo, compression_parent).
+        """
+        result = {}
+        entries = self._get_entries(self._version_ids_to_keys(version_ids), True)
+        for entry in entries:
+            version_id = self._keys_to_version_ids((entry[1],))[0]
+            if not self._deltas:
+                compression_parent = None
+            else:
+                compression_parent_key = self._compression_parent(entry)
+                if compression_parent_key:
+                    compression_parent = self._keys_to_version_ids(
+                    (compression_parent_key,))[0]
+                else:
+                    compression_parent = None
+            if compression_parent:
+                method = 'line-delta'
+            else:
+                method = 'fulltext'
+            result[version_id] = (method, self._node_to_position(entry),
+                compression_parent)
+        return result
+
+    def _compression_parent(self, an_entry):
+        # return the key that an_entry is compressed against, or None
+        # Grab the second parent list (as deltas implies parents currently)
+        compression_parents = an_entry[3][1]
+        if not compression_parents:
+            return None
+        assert len(compression_parents) == 1
+        return compression_parents[0]
+
+    def _get_method(self, node):
+        if not self._deltas:
+            return 'fulltext'
+        if self._compression_parent(node):
+            return 'line-delta'
+        else:
+            return 'fulltext'
+
     def get_graph(self):
         """Return a list of the node:parents lists from this knit index."""
         if not self._parents:
@@ -1750,21 +1808,16 @@ class KnitGraphIndex(object):
             logic to get the record.
         """
         node = self._get_node(version_id)
+        return self._node_to_position(node)
+
+    def _node_to_position(self, node):
+        """Convert an index value to position details."""
         bits = node[2][1:].split(' ')
         return node[0], int(bits[0]), int(bits[1])
 
     def get_method(self, version_id):
         """Return compression method of specified version."""
-        if not self._deltas:
-            return 'fulltext'
-        return self._parent_compression(self._get_node(version_id)[3][1])
-
-    def _parent_compression(self, reference_list):
-        # use the second reference list to decide if this is delta'd or not.
-        if len(reference_list):
-            return 'line-delta'
-        else:
-            return 'fulltext'
+        return self._get_method(self._get_node(version_id))
 
     def _get_node(self, version_id):
         try:
@@ -1778,10 +1831,7 @@ class KnitGraphIndex(object):
         e.g. ['foo', 'bar']
         """
         node = self._get_node(version_id)
-        if not self._deltas:
-            options = ['fulltext']
-        else:
-            options = [self._parent_compression(node[3][1])]
+        options = [self._get_method(node)]
         if node[2][0] == 'N':
             options.append('no-eol')
         return options
@@ -2158,6 +2208,23 @@ class _StreamIndex(object):
             pending.update([p for p in parents if p not in ancestry])
             ancestry.add(version)
         return list(ancestry)
+
+    def get_build_details(self, version_ids):
+        """Get the method, index_memo and compression parent for version_ids.
+
+        :param version_ids: An iterable of version_ids.
+        :return: A dict of version_id:(method, index_memo, compression_parent).
+        """
+        result = {}
+        for version_id in version_ids:
+            method = self.get_method(version_id)
+            if method == 'fulltext':
+                compression_parent = None
+            else:
+                compression_parent = self.get_parents_with_ghosts(version_id)[0]
+            index_memo = self.get_position(version_id)
+            result[version_id] = (method, index_memo, compression_parent)
+        return result
 
     def get_method(self, version_id):
         """Return compression method of specified version."""

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@ import errno
 import os
 import re
 import sys
+import tempfile
 
 from bzrlib import (
     errors,
@@ -31,6 +32,8 @@ from bzrlib.tests import TestCaseInTempDir, TestCase
 from bzrlib.trace import (
     mutter, mutter_callsite, report_exception,
     set_verbosity_level, get_verbosity_level, is_quiet, is_verbose, be_quiet,
+    pop_log_file,
+    push_log_file,
     _rollover_trace_maybe,
     )
 
@@ -157,6 +160,39 @@ class TestTrace(TestCase):
         self.assertContainsRe(log, 'Writing a greek mu')
         self.assertContainsRe(log, "But fails in an ascii string")
         self.assertContainsRe(log, u"ascii argument: \xb5")
+
+    def test_push_log_file(self):
+        """Can push and pop log file, and this catches mutter messages.
+
+        This is primarily for use in the test framework. 
+        """
+        tmp1 = tempfile.NamedTemporaryFile()
+        tmp2 = tempfile.NamedTemporaryFile()
+        try:
+            memento1 = push_log_file(tmp1)
+            mutter("comment to file1")
+            try:
+                memento2 = push_log_file(tmp2)
+                try:
+                    mutter("comment to file2")
+                finally:
+                    pop_log_file(memento2)
+                mutter("again to file1")
+            finally:
+                pop_log_file(memento1)
+            # the files were opened in binary mode, so should have exactly
+            # these bytes.  and removing the file as the log target should
+            # have caused them to be flushed out.  need to match using regexps
+            # as there's a timestamp at the front.
+            tmp1.seek(0)
+            self.assertContainsRe(tmp1.read(),
+                r"\d+\.\d+  comment to file1\n\d+\.\d+  again to file1\n")
+            tmp2.seek(0)
+            self.assertContainsRe(tmp2.read(),
+                r"\d+\.\d+  comment to file2\n")
+        finally:
+            tmp1.close()
+            tmp2.close()
 
 
 class TestVerbosityLevel(TestCase):

@@ -46,7 +46,7 @@ from bzrlib import (
 from bzrlib import plugins as _mod_plugins
 """)
 
-from bzrlib.symbol_versioning import deprecated_function, one_two
+from bzrlib.symbol_versioning import deprecated_function, one_three
 from bzrlib.trace import mutter, warning, log_exception_quietly
 
 
@@ -207,7 +207,7 @@ def load_from_dir(d):
             log_exception_quietly()
 
 
-@deprecated_function(one_two)
+@deprecated_function(one_three)
 def load_from_zip(zip_name):
     """Load all the plugins in a zip."""
     valid_suffixes = ('.py', '.pyc', '.pyo')    # only python modules/packages
