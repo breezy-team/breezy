@@ -311,7 +311,7 @@ class TestPush(TestCaseWithSubversionRepository):
 
         self.olddir.open_branch().pull(self.newdir.open_branch())
 
-        repos = self.olddir.find_repository()
+        repos = self.olddir._find_repository()
         mapping = repos.get_mapping()
         inv = repos.get_inventory(repos.generate_revision_id(2, "", mapping))
         self.assertEqual(repos.generate_revision_id(2, "", mapping),
@@ -331,7 +331,7 @@ class TestPush(TestCaseWithSubversionRepository):
 
         self.olddir.open_branch().pull(self.newdir.open_branch())
 
-        repos = self.olddir.find_repository()
+        repos = self.olddir._find_repository()
         mapping = repos.get_mapping()
         inv = repos.get_inventory(repos.generate_revision_id(2, "", mapping))
         self.assertTrue(inv.has_filename('file'))
@@ -348,7 +348,7 @@ class TestPush(TestCaseWithSubversionRepository):
 
         self.olddir.open_branch().pull(self.newdir.open_branch())
 
-        repos = self.olddir.find_repository()
+        repos = self.olddir._find_repository()
         mapping = repos.get_mapping()
         inv = repos.get_inventory(repos.generate_revision_id(2, "", mapping))
         self.assertTrue(inv.has_filename('file'))
@@ -371,7 +371,7 @@ class TestPush(TestCaseWithSubversionRepository):
 
         self.olddir.open_branch().pull(self.newdir.open_branch())
 
-        repos = self.olddir.find_repository()
+        repos = self.olddir._find_repository()
         mapping = repos.get_mapping()
         self.assertEqual("Commit from Bzr",
             repos.get_revision(
@@ -385,7 +385,7 @@ class TestPush(TestCaseWithSubversionRepository):
 
         self.olddir.open_branch().pull(self.newdir.open_branch())
 
-        repos = self.olddir.find_repository()
+        repos = self.olddir._find_repository()
         mapping = repos.get_mapping()
         self.assertEqual(u"\xe6\xf8\xe5", repos.get_revision(
             repos.generate_revision_id(2, "", mapping)).message)
@@ -485,7 +485,7 @@ class TestPushNested(TestCaseWithSubversionRepository):
         wt.add('file')
         wt.commit(message="Commit from Bzr")
         self.olddir.open_branch().pull(self.newdir.open_branch())
-        repos = self.olddir.find_repository()
+        repos = self.olddir._find_repository()
         self.client_update("sc")
         self.assertTrue(os.path.exists("sc/foo/trunk/file"))
         self.assertFalse(os.path.exists("sc/foo/trunk/filel"))
