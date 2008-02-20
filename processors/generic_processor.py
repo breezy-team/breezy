@@ -102,10 +102,6 @@ class GenericProcessor(processor.ImportProcessor):
         self.cache_mgr = GenericCacheManager(self.info, verbose=self.verbose)
         self.init_stats()
 
-        # Head tracking: last ref & map of commit mark to ref
-        self.last_ref = None
-        self.heads = {}
-
         # mapping of tag name to revision_id
         self.tags = {}
 
@@ -159,7 +155,8 @@ class GenericProcessor(processor.ImportProcessor):
         # Update the branches
         self.note("Updating branch information ...")
         updater = GenericBranchUpdater(self.branch, self.cache_mgr,
-            helpers.invert_dict(self.heads), self.last_ref)
+            helpers.invert_dict(self.cache_mgr.heads),
+            self.cache_mgr.last_ref)
         branches_updated, branches_lost = updater.update()
         self._branch_count = len(branches_updated)
 
@@ -208,7 +205,7 @@ class GenericProcessor(processor.ImportProcessor):
     def blob_handler(self, cmd):
         """Process a BlobCommand."""
         if cmd.mark is not None:
-            dataref = ":%s" % (cmd.mark,)
+            dataref = cmd.id
         else:
             dataref = osutils.sha_strings(cmd.data)
         self.cache_mgr.store_blob(dataref, cmd.data)
@@ -221,25 +218,19 @@ class GenericProcessor(processor.ImportProcessor):
 
     def commit_handler(self, cmd):
         """Process a CommitCommand."""
+        # 'Commit' the revision
         handler = GenericCommitHandler(cmd, self.repo, self.cache_mgr,
             self.verbose)
         handler.process()
-        mark = ":" + cmd.mark
-        self.cache_mgr.revision_ids[mark] = handler.revision_id
 
-        # Track the heads
-        for parent in cmd.parents:
-            try:
-                del self.heads[parent]
-            except KeyError:
-                self.warning("didn't find parent %s while tracking heads",
-                    parent)
-        self.heads[mark] = cmd.ref
-        self.last_ref = cmd.ref
+        # Update caches
+        self.cache_mgr.revision_ids[cmd.id] = handler.revision_id
+        self.cache_mgr.last_ids[cmd.ref] = cmd.id
+        self.cache_mgr.last_ref = cmd.ref
 
         # Report progress
         self._revision_count += 1
-        self.report_progress("(%s)" % mark)
+        self.report_progress("(%s)" % cmd.id)
 
         # Check if we should finish up or automatically checkpoint
         if (self.max_commits is not None and
@@ -320,6 +311,11 @@ class GenericCacheManager(object):
         # path -> file-ids - as generated
         self.file_ids = {}
 
+        # Head tracking: last ref, last id per ref & map of commit mark to ref
+        self.last_ref = None
+        self.last_ids = {}
+        self.heads = {}
+
         # Work out the blobs to make sticky - None means all
         #print "%r" % (info,)
         self._blobs_to_keep = None
@@ -379,10 +375,30 @@ class GenericCommitHandler(processor.CommitHandler):
         # cache of texts for this commit, indexed by file-id
         self.lines_for_commit = {}
 
+        # Work out the true set of parents
+        cmd = self.command
+        if cmd.mark is None:
+            last_id = self.cache_mgr.last_ids.get(cmd.ref)
+            if last_id is not None:
+                parents = [last_id]
+            else:
+                parents = []
+        else:
+            parents = cmd.parents
+
+        # Track the heads
+        for parent in parents:
+            try:
+                del self.cache_mgr.heads[parent]
+            except KeyError:
+                warning("didn't find parent %s while tracking heads",
+                    parent)
+        self.cache_mgr.heads[cmd.id] = cmd.ref
+
         # Get the parent inventories
-        if self.command.parents:
+        if parents:
             self.parents = [self.cache_mgr.revision_ids[p]
-                for p in self.command.parents]
+                for p in parents]
         else:
             self.parents = []
 
