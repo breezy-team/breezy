@@ -213,15 +213,33 @@ prefixed::
 
   LENGTH_PREFIX := 32-bit unsigned integer in network byte order
 
-The request and response protocol is::
+Unlike earlier versions, clients and servers are no longer required to
+know which request verbs and responses will have bodies attached.  Because
+of length-prefixing and other changes, it is always possible to know when
+a complete request or response has been read, even if the server
+implements no verbs.
 
-  REQUEST_V3 := "bzr request 3" NEWLINE HEADERS ARGS_V3 BODY_V3
-  RESPONSE_V3 := "bzr response 3" NEWLINE HEADERS RESPONSE_STATUS 
-                 ARGS_V3 BODY_V3
-  RESPONSE_STATUS_V3 := SUCCESS_STATUS | ERROR_STATUS
-  SUCCESS_STATUS := "S"
-  ERROR_STATUS := "E"
-  HEADERS := LENGTH_PREFIX bencoded_dictionary
+The underlying message format is::
+
+  MESSAGE := "bzr message 3" NEWLINE HEADERS MESSAGE_PARTS
+  HEADERS := LENGTH_PREFIX, bencoded_dict
+  MESSAGE_PARTS := MESSAGE_PART [MORE_MESSAGE_PARTS]
+  MORE_MESSAGE_PARTS := END_MESSAGE_PARTS | MESSAGE_PARTS
+  END_MESSAGE_PARTS := "e"
+  MESSAGE_PART := ONE_BYTE | STRUCTURE | BYTES | CHUNKED_BYTES
+  ONE_BYTE := "o" byte
+  STRUCTURE := "s" LENGTH_PREFIX bencoded_structure
+  BYTES := "b" LENGTH_PREFIX bytes
+  CHUNKED_BYTES := "c" CHUNKS_V3
+  CHUNKS_V3 := CHUNK_V3 | CHUNKS_TERMINATOR
+  CHUNK_V3 := "c" LENGTH_PREFIX bytes CHUNK_V3
+  CHUNKS_TERMINATOR := "t"
+
+This format allows an arbitrary sequence of message parts to be encoded
+in a single message.
+
+Headers
+~~~~~~~
 
 Each request and response will have “headers”, a dictionary of key-value pairs.
 The keys must be strings, not any other type of value.
@@ -231,54 +249,48 @@ the server should include a “Software version” header, with a value of a
 free-form string such as “bzrlib 1.3”, to aid debugging and logging.  Clients
 and servers **should not** vary behaviour based on this string.
 
-The argument encoding is::
+Conventional requests/responses
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-  ARGS_V3 := LENGTH_PREFIX bencoded_sequence
+Most requests will send a sequence of:
 
-Arguments in this protocol version are bencoded, and the entire argument
-structure is length-prefixed.  As a result, unlike previous protocol versions,
-arguments in this version are 8-bit clean.
+ * Arguments (a STRUCTURE of a tuple)
+ * Optional body
+   * a BYTES, or 
+   * CHUNKED_BYTES followed by a ONE_BYTE status
 
-For requests, the first item in the encoded sequence must be a string of
-the request's verb, e.g. ``Branch.last_revision_info``.  Thus requests must
-always have at least one item in their ARGS_V3 sequence.
+Most responses will send a sequence of:
 
-For error responses (where the RESPONSE_STATUS_V3 is ERROR_STATUS), the
-situation is analagous to requests.  The first item in the encoded sequence must
-be a string of the error name.  The other arguments supply details about the
+ * Status
+ * Arguments (a STRUCTURE of a tuple)
+ * Optional body
+   * a BYTES, or 
+   * CHUNKED_BYTES followed by a ONE_BYTE status
+
+In all cases, the ONE_BYTE status is either "S" for Success or "E" for
+Error.  These message part sequences reflect the message structures
+allowed by earlier protocol versions, and this is how older smart methods
+that pre-date this protocol version will be encoded in this version.
+
+For new methods, these sequences are just a convention and may be varied
+if appropriate for a particular request or response.  However, each
+request should at least start with an STRUCTURE encoding the arguments
+tuple.  The first element of that tuple must be a string that names the
+request method.  (Note that arguments in this protocol version are
+bencoded.  As a result, unlike previous protocol versions, arguments in
+this version are 8-bit clean.)
+
+For error responses (where the Status byte is "E"), the situation is
+analagous to requests.  The first item in the encoded sequence must be a
+string of the error name.  The other arguments supply details about the
 error, and their number and types will depend on the type of error (as
 identified by the error name).
-
-For success responses, there are no restrictions on the sequence.  It may
-be empty, and the first element does not have to be a string.  The
-contents are entirely dependent on the verb.
 
 One possible error name is ``UnknownRequestVerb``, which means the server does
 not recognise the verb used by the client's request.
 
-The body encoding is::
-
-  BODY_V3 := NO_BODY | LENGTH_PREFIXED_BODY | STREAMED_BODY_V2
-  NO_BODY := "n"
-  LENGTH_PREFIXED_BODY := "p" LENGTH_PREFIX BODY_BYTES
-  STREAMED_BODY_V2 := "s" CHUNKS_V2
-
-  CHUNKS_V2 := CHUNK_V2 | CHUNKS_TERMINATOR
-  CHUNK_V2 := "c" LENGTH_PREFIX CHUNK_CONTENT CHUNK_V2
-  CHUNKS_TERMINATOR := "t" BODY_STATUS
-  BODY_STATUS := SUCCESS_STATUS | BODY_ERROR
-  BODY_ERROR := ERROR_STATUS ARGS_V3
-
-Version 3 messages always explicitly declare if a body is included.  The
-absence of a body is signalled by sending NO_BODY as the body type.  If
-present, bodies may be a single length-prefixed string (similar to
-protocol 1) or a stream of chunks (similar to the streamed bodies in
-protocol 2).
-
-Unlike earlier versions, clients and servers are no longer required to
-know which request verbs and responses will have bodies attached.  It is
-always possible to know when a complete request or response has been read,
-even if the server implements no verbs.
+Streamed bodies
+~~~~~~~~~~~~~~~
 
 If an error occurs while a client or a server is generating a streamed
 body, the sender should finish the stream and use BODY_ERROR as the
