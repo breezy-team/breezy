@@ -67,10 +67,11 @@ class InfoProcessor(processor.ImportProcessor):
         self.named_branches = []
         # Blob usage tracking
         self.blobs = {}
-        for usage in ['new', 'used', 'multi', 'unknown']:
+        for usage in ['new', 'used', 'multi', 'unknown', 'unmarked']:
             self.blobs[usage] = set()
         # Head tracking: map of commit mark to ref
         self.heads = {}
+        self.last_ids = {}
 
     def post_process(self):
         # Dump statistics
@@ -153,7 +154,10 @@ class InfoProcessor(processor.ImportProcessor):
     def blob_handler(self, cmd):
         """Process a BlobCommand."""
         self.cmd_counts[cmd.name] += 1
-        self.blobs['new'].add(":" + cmd.mark)
+        if cmd.mark is None:
+            self.blobs['unmarked'].add(cmd.id)
+        else:
+            self.blobs['new'].add(cmd.id)
 
     def checkpoint_handler(self, cmd):
         """Process a CheckpointCommand."""
@@ -179,14 +183,21 @@ class InfoProcessor(processor.ImportProcessor):
                     else:
                         self.sha_blob_references = True
         # Track the heads
-        for parent in cmd.parents:
+        if cmd.mark is None:
+            last_id = self.last_ids.get(cmd.ref)
+            if last_id is not None:
+                parents = [last_id]
+            else:
+                parents = []
+        else:
+            parents = cmd.parents
+        for parent in parents:
             try:
                 del self.heads[parent]
             except KeyError:
-                print "hmm - didn't find parent %s" % parent
-                pass
-        self.heads[":" + cmd.mark] = cmd.ref
-            
+                note("hmm - didn't find parent %s" % parent)
+        self.heads[cmd.id] = cmd.ref
+        self.last_ids[cmd.ref] = cmd.id
 
     def reset_handler(self, cmd):
         """Process a ResetCommand."""

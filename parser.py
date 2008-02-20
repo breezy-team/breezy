@@ -323,12 +323,14 @@ class ImportParser(LineBasedParser):
 
     def _parse_blob(self):
         """Parse a blob command."""
+        lineno = self.lineno
         mark = self._get_mark_if_any()
         data = self._get_data('blob')
-        return commands.BlobCommand(mark, data)
+        return commands.BlobCommand(mark, data, lineno)
 
     def _parse_commit(self, ref):
         """Parse a commit command."""
+        lineno  = self.lineno
         mark = self._get_mark_if_any()
         author = self._get_user_info('commit', 'author', False)
         committer = self._get_user_info('commit', 'committer')
@@ -345,7 +347,7 @@ class ImportParser(LineBasedParser):
         else:
             parents = []
         return commands.CommitCommand(ref, mark, author, committer, message,
-            parents, self.iter_file_commands)
+            parents, self.iter_file_commands, lineno)
 
     def _parse_file_modify(self, info):
         """Parse a filemodify command within a commit.

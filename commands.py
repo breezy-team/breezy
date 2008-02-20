@@ -64,10 +64,16 @@ class ImportCommand(object):
 
 class BlobCommand(ImportCommand):
 
-    def __init__(self, mark, data):
+    def __init__(self, mark, data, lineno=0):
         ImportCommand.__init__(self, 'blob')
         self.mark = mark
         self.data = data
+        self.lineno = lineno
+        # Provide a unique id in case the mark is missing
+        if mark is None:
+            self.id = '@%d' % lineno
+        else:
+            self.id = ':' + mark
         self._binary = ['data']
 
 
@@ -80,7 +86,7 @@ class CheckpointCommand(ImportCommand):
 class CommitCommand(ImportCommand):
 
     def __init__(self, ref, mark, author, committer, message, parents,
-        file_iter):
+        file_iter, lineno=0):
         ImportCommand.__init__(self, 'commit')
         self.ref = ref
         self.mark = mark
@@ -89,7 +95,13 @@ class CommitCommand(ImportCommand):
         self.message = message
         self.parents = parents
         self.file_iter = file_iter
+        self.lineno = lineno
         self._binary = ['file_iter']
+        # Provide a unique id in case the mark is missing
+        if mark is None:
+            self.id = '@%d' % lineno
+        else:
+            self.id = ':' + mark
 
     def dump_str(self, names=None, child_lists=None, verbose=False):
         result = [ImportCommand.dump_str(self, names, verbose=verbose)]
