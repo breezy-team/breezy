@@ -86,6 +86,11 @@ def load_tests(standard_tests, module, loader):
     prefix = module.__name__ + '.test_'
     test_repository_modules = [
         'add_inventory',
+        'add_revision',
+        'add_signature_text',
+        'all_revision_ids',
+        'break_lock',
+        'check',
         ]
     module_name_list = [prefix + module_name
         for module_name in test_repository_modules]
