@@ -11,15 +11,21 @@ IN DEVELOPMENT
   
   CHANGES:
 
-   * A new repository format 'development' has been added. This format will
-     represent the latest 'in-progress' format that the bzr developers are
-     interested in getting early-adopter testing and feedback on.
-     ``doc/developers/development-repo.txt`` has detailed information.
-     (Robert Collins)
+    * A new repository format 'development' has been added. This format will
+      represent the latest 'in-progress' format that the bzr developers are
+      interested in getting early-adopter testing and feedback on.
+      ``doc/developers/development-repo.txt`` has detailed information.
+      (Robert Collins)
 
   FEATURES:
 
   IMPROVEMENTS:
+
+    * Updates to how ``annotate`` work. Should see a measurable improvement in
+      performance for file with a lot of merges. Also, correctly handle when a
+      line is introduced by both parents (it should be attributed to the first
+      merge which notices this, and not too all subsequent merges.)
+      (John Arbash Meinel)
 
   BUGFIXES:
 
