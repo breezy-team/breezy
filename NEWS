@@ -27,6 +27,9 @@ IN DEVELOPMENT
 
   TESTING:
 
+    * ``bzrlib.tests.adapt_tests`` was broken and unused - it has been fixed.
+      (Robert Collins)
+
   INTERNALS:
 
     * New remote method ``RemoteBzrDir.find_repositoryV2`` adding support for

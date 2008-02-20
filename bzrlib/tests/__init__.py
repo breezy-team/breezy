@@ -2705,6 +2705,7 @@ def test_suite(keep_only=None):
                    'bzrlib.tests.test_registry',
                    'bzrlib.tests.test_remote',
                    'bzrlib.tests.test_repository',
+                   'bzrlib.tests.repository_external_reference_implementations',
                    'bzrlib.tests.test_revert',
                    'bzrlib.tests.test_revision',
                    'bzrlib.tests.test_revisionnamespaces',
@@ -2897,14 +2898,14 @@ def multiply_scenarios(scenarios_left, scenarios_right):
 
 def adapt_modules(mods_list, adapter, loader, suite):
     """Adapt the modules in mods_list using adapter and add to suite."""
-    for test in iter_suite_tests(loader.loadTestsFromModuleNames(mods_list)):
-        suite.addTests(adapter.adapt(test))
+    tests = loader.loadTestsFromModuleNames(mods_list)
+    adapt_tests(tests, adapter, suite)
 
 
-def adapt_tests(tests_list, adapter, loader, suite):
+def adapt_tests(tests_list, adapter, suite):
     """Adapt the tests in tests_list using adapter and add to suite."""
-    for test in tests_list:
-        suite.addTests(adapter.adapt(loader.loadTestsFromName(test)))
+    for test in iter_suite_tests(tests_list):
+        suite.addTests(adapter.adapt(test))
 
 
 def _rmtree_temp_dir(dirname):
