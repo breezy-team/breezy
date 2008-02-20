@@ -32,6 +32,16 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * New remote method ``RemoteBzrDir.find_repositoryV2`` adding support for
+      detecting external lookup support on remote repositories. This method is
+      now attempted first when lookup up repositories, leading to an extra 
+      round trip on older bzr smart servers. (Robert Collins)
+ 
+    * Repository formats have a new supported-feature attribute
+      ``supports_external_lookups`` used to indicate repositories which support
+      falling back to other repositories when they have partial data.
+      (Robert Collins)
+
     * The bzrdir format registry now accepts an ``alias`` keyword to
       register_metadir, used to indicate that a format name is an alias for
       some other format and thus should not be reported when describing the
@@ -204,7 +214,7 @@ bzr 1.2rc1 (not released yet)
       which will split out ghosts and present parents into two separate sets,
       useful for code which needs to be aware of ghosts (e.g. fetching data
       cares about ghosts during revision selection). (Robert Collins)
- 
+
     * Record a timestamp against each mutter to the trace file, relative to the
       first import of bzrlib.  (Andrew Bennetts)
      
@@ -215,13 +225,13 @@ bzr 1.2rc1 (not released yet)
     * ``RemoteBzrDir._get_tree_branch`` no longer triggers ``_ensure_real``,
       removing one round trip on many network operations. (Robert Collins)
 
+    * RemoteTransport's ``recommended_page_size`` method now returns 64k, like
+      SFTPTransport and HttpTransportBase.  (Andrew Bennetts)
+
     * Repository has a new method ``has_revisions`` which signals the presence
       of many revisions by returning a set of the revisions listed which are
       present. This can be done by index queries without reading data for parent
       revision names etc. (Robert Collins)
-
-    * RemoteTransport's ``recommended_page_size`` method now returns 64k, like
-      SFTPTransport and HttpTransportBase.  (Andrew Bennetts)
 
 
 bzr 1.1 2008-01-15
