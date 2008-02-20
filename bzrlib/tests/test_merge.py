@@ -385,6 +385,7 @@ class TestMerge(TestCaseWithTransport):
         merger.merge_type = _mod_merge.Merge3Merger
         tree_merger = merger.make_merger()
         tt = tree_merger.make_preview_transform()
+        self.addCleanup(tt.finalize)
         preview_tree = tt.get_preview_tree()
         tree_file = this_tree.get_file('file-id')
         try:

@@ -291,7 +291,6 @@ development.
 -Dknit         Trace knit operations.
 -Dlock         Trace when lockdir locks are taken or released.
 -Dmerge        Emit information for debugging merges.
--Dtimes        Record timestamps from program start in trace file.
 """
 
 _standard_options = \
@@ -545,6 +544,7 @@ BZR_PLUGIN_PATH  Paths where bzr should look for plugins.
 BZR_HOME         Directory holding .bazaar config dir. Overrides HOME.
 BZR_HOME (Win32) Directory holding bazaar config dir. Overrides APPDATA and HOME.
 BZR_REMOTE_PATH  Full name of remote 'bzr' command (for bzr+ssh:// URLs).
+BZR_SSH          SSH client: paramiko (default), openssh, ssh, plink.
 ================ =================================================================
 """
 

@@ -748,7 +748,7 @@ class BzrDir(object):
     def _get_tree_branch(self):
         """Return the branch and tree, if any, for this bzrdir.
 
-        Return None for tree if not present.
+        Return None for tree if not present or inaccessible.
         Raise NotBranchError if no branch is present.
         :return: (tree, branch)
         """
@@ -2447,12 +2447,22 @@ class BzrDirFormatRegistry(registry.Registry):
     e.g. BzrDirMeta1 with weave repository.  Also, it's more user-oriented.
     """
 
+    def __init__(self):
+        """Create a BzrDirFormatRegistry."""
+        self._aliases = set()
+        super(BzrDirFormatRegistry, self).__init__()
+
+    def aliases(self):
+        """Return a set of the format names which are aliases."""
+        return frozenset(self._aliases)
+
     def register_metadir(self, key,
              repository_format, help, native=True, deprecated=False,
              branch_format=None,
              tree_format=None,
              hidden=False,
-             experimental=False):
+             experimental=False,
+             alias=False):
         """Register a metadir subformat.
 
         These all use a BzrDirMetaFormat1 bzrdir, but can be parameterized
@@ -2491,10 +2501,10 @@ class BzrDirFormatRegistry(registry.Registry):
                 bd.repository_format = _load(repository_format)
             return bd
         self.register(key, helper, help, native, deprecated, hidden,
-            experimental)
+            experimental, alias)
 
     def register(self, key, factory, help, native=True, deprecated=False,
-                 hidden=False, experimental=False):
+                 hidden=False, experimental=False, alias=False):
         """Register a BzrDirFormat factory.
         
         The factory must be a callable that takes one parameter: the key.
@@ -2503,21 +2513,26 @@ class BzrDirFormatRegistry(registry.Registry):
         This function mainly exists to prevent the info object from being
         supplied directly.
         """
-        registry.Registry.register(self, key, factory, help, 
+        registry.Registry.register(self, key, factory, help,
             BzrDirFormatInfo(native, deprecated, hidden, experimental))
+        if alias:
+            self._aliases.add(key)
 
     def register_lazy(self, key, module_name, member_name, help, native=True,
-                      deprecated=False, hidden=False, experimental=False):
-        registry.Registry.register_lazy(self, key, module_name, member_name, 
+        deprecated=False, hidden=False, experimental=False, alias=False):
+        registry.Registry.register_lazy(self, key, module_name, member_name,
             help, BzrDirFormatInfo(native, deprecated, hidden, experimental))
+        if alias:
+            self._aliases.add(key)
 
     def set_default(self, key):
         """Set the 'default' key to be a clone of the supplied key.
         
         This method must be called once and only once.
         """
-        registry.Registry.register(self, 'default', self.get(key), 
+        registry.Registry.register(self, 'default', self.get(key),
             self.get_help(key), info=self.get_info(key))
+        self._aliases.add('default')
 
     def set_default_repository(self, key):
         """Set the FormatRegistry default and Repository default.
@@ -2668,5 +2683,55 @@ format_registry.register_metadir('rich-root-pack',
         ' bzr < 1.0',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    )
+# The following two formats should always just be aliases.
+format_registry.register_metadir('development',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment0',
+    help='Current development format. Can convert data to and from pack-0.92 '
+        '(and anything compatible with pack-0.92) format repositories. '
+        'Repositories in this format can only be read by bzr.dev. '
+        'Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat6',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    experimental=True,
+    alias=True,
+    )
+format_registry.register_metadir('development-subtree',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment0Subtree',
+    help='Current development format, subtree variant. Can convert data to and '
+        'from pack-0.92 (and anything compatible with pack-0.92) format '
+        'repositories. Repositories in this format can only be read by '
+        'bzr.dev. Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat6',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    experimental=True,
+    alias=True,
+    )
+# And the development formats which the will have aliased one of follow:
+format_registry.register_metadir('development0',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment0',
+    help='Trivial rename of pack-0.92 to provide a development format. '
+        'Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat6',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    hidden=True,
+    experimental=True,
+    )
+format_registry.register_metadir('development0-subtree',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment0Subtree',
+    help='Trivial rename of pack-0.92-subtree to provide a development format. '
+        'Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat6',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    hidden=True,
+    experimental=True,
     )
 format_registry.set_default('pack-0.92')

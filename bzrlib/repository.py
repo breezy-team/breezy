@@ -495,7 +495,6 @@ class Repository(object):
         attempted.
         """
 
-    @needs_write_lock
     def add_inventory(self, revision_id, inv, parents):
         """Add the inventory inv to the repository as revision_id.
         
@@ -526,7 +525,6 @@ class Repository(object):
         return inv_vf.add_lines(revision_id, final_parents, lines,
             check_content=check_content)[0]
 
-    @needs_write_lock
     def add_revision(self, revision_id, rev, inv=None, config=None):
         """Add rev to the revision store as revision_id.
 
@@ -843,7 +841,7 @@ class Repository(object):
                 knit = self._revision_store.get_signature_file(
                     self.get_transaction())
             else:
-                raise RepositoryDataStreamError(
+                raise errors.RepositoryDataStreamError(
                     "Unrecognised data stream key '%s'" % (item_key,))
             decoded_list = bencode.bdecode(bytes)
             format = decoded_list.pop(0)
@@ -1780,8 +1778,7 @@ class Repository(object):
         """Return the graph walker for this repository format"""
         parents_provider = self._make_parents_provider()
         if (other_repository is not None and
-            other_repository.bzrdir.transport.base !=
-            self.bzrdir.transport.base):
+            not self.has_same_location(other_repository)):
             parents_provider = graph._StackedParentsProvider(
                 [parents_provider, other_repository._make_parents_provider()])
         return graph.Graph(parents_provider)
@@ -2301,7 +2298,7 @@ format_registry.register_lazy(
 
 # Pack-based formats. There is one format for pre-subtrees, and one for
 # post-subtrees to allow ease of testing.
-# NOTE: These are experimental in 0.92.
+# NOTE: These are experimental in 0.92. Stable in 1.0 and above
 format_registry.register_lazy(
     'Bazaar pack repository format 1 (needs bzr 0.92)\n',
     'bzrlib.repofmt.pack_repo',
@@ -2317,6 +2314,21 @@ format_registry.register_lazy(
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatKnitPack4',
     )
+# Development formats. 
+# 1.2->1.3
+# development 0 - stub to introduce development versioning scheme.
+format_registry.register_lazy(
+    "Bazaar development format 0 (needs bzr.dev from before 1.3)\n",
+    'bzrlib.repofmt.pack_repo',
+    'RepositoryFormatPackDevelopment0',
+    )
+format_registry.register_lazy(
+    ("Bazaar development format 0 with subtree support "
+        "(needs bzr.dev from before 1.3)\n"),
+    'bzrlib.repofmt.pack_repo',
+    'RepositoryFormatPackDevelopment0Subtree',
+    )
+# 1.3->1.4 go below here
 
 
 class InterRepository(InterObject):
@@ -2829,13 +2841,24 @@ class InterKnit1and2(InterKnitRepo):
         try:
             from bzrlib.repofmt.knitrepo import (RepositoryFormatKnit1,
                 RepositoryFormatKnit3)
-            from bzrlib.repofmt.pack_repo import (RepositoryFormatKnitPack1,
-                RepositoryFormatKnitPack3)
-            return (isinstance(source._format,
-                    (RepositoryFormatKnit1, RepositoryFormatKnitPack1)) and
-                isinstance(target._format,
-                    (RepositoryFormatKnit3, RepositoryFormatKnitPack3))
+            from bzrlib.repofmt.pack_repo import (
+                RepositoryFormatKnitPack1,
+                RepositoryFormatKnitPack3,
+                RepositoryFormatPackDevelopment0,
+                RepositoryFormatPackDevelopment0Subtree,
                 )
+            nosubtrees = (
+                RepositoryFormatKnit1,
+                RepositoryFormatKnitPack1,
+                RepositoryFormatPackDevelopment0,
+                )
+            subtrees = (
+                RepositoryFormatKnit3,
+                RepositoryFormatKnitPack3,
+                RepositoryFormatPackDevelopment0Subtree,
+                )
+            return (isinstance(source._format, nosubtrees) and
+                isinstance(target._format, subtrees))
         except AttributeError:
             return False
 
