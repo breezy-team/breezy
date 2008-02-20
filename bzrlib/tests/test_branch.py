@@ -294,6 +294,7 @@ class TestBranch6(TestCaseWithTransport):
         self.assertEqual(warnings[0], 'Value "new" is masked by "old" from '
                          'locations.conf')
 
+
 class TestBranchReference(TestCaseWithTransport):
     """Tests for the branch reference facility."""
 

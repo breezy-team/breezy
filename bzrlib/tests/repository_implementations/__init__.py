@@ -859,6 +859,7 @@ def test_suite():
 
     prefix = 'bzrlib.tests.repository_implementations.'
     test_repository_modules = [
+        'test_add_fallback_repository',
         'test_break_lock',
         'test_check',
         # test_check_reconcile is intentionally omitted, see below.

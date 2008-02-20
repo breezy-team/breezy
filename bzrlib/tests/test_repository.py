@@ -1213,7 +1213,7 @@ class TestDevelopment0(TestKnitPackNoSubtrees):
 
     def get_format(self):
         return bzrdir.format_registry.make_bzrdir(
-            'development')
+            'development0')
 
     def check_format(self, t):
         self.assertEqualDiff(
@@ -1225,13 +1225,46 @@ class TestDevelopment0Subtree(TestKnitPackNoSubtrees):
 
     def get_format(self):
         return bzrdir.format_registry.make_bzrdir(
-            'development-subtree')
+            'development0-subtree')
 
     def check_format(self, t):
         self.assertEqualDiff(
             "Bazaar development format 0 with subtree support "
             "(needs bzr.dev from before 1.3)\n",
             t.get('format').read())
+
+
+class TestDevelopment1(TestKnitPackNoSubtrees):
+
+    def get_format(self):
+        return bzrdir.format_registry.make_bzrdir(
+            'development')
+
+    def check_format(self, t):
+        self.assertEqualDiff(
+            "Bazaar development format 1 (needs bzr.dev from before 1.3)\n",
+            t.get('format').read())
+
+    def test_supports_external_lookups(self):
+        repo = self.make_repository('.', format=self.get_format())
+        self.assertTrue(repo._format.supports_external_lookups)
+
+
+class TestDevelopment1Subtree(TestKnitPackNoSubtrees):
+
+    def get_format(self):
+        return bzrdir.format_registry.make_bzrdir(
+            'development-subtree')
+
+    def check_format(self, t):
+        self.assertEqualDiff(
+            "Bazaar development format 1 with subtree support "
+            "(needs bzr.dev from before 1.3)\n",
+            t.get('format').read())
+
+    def test_supports_external_lookups(self):
+        repo = self.make_repository('.', format=self.get_format())
+        self.assertTrue(repo._format.supports_external_lookups)
 
 
 class TestRepositoryPackCollection(TestCaseWithTransport):

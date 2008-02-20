@@ -40,6 +40,7 @@ from bzrlib import (
         )
 from bzrlib.config import BranchConfig, TreeConfig
 from bzrlib.lockable_files import LockableFiles, TransportLock
+from bzrlib.repofmt.pack_repo import RepositoryFormatPackDevelopment1Subtree
 from bzrlib.tag import (
     BasicTags,
     DisabledTags,
@@ -1186,6 +1187,11 @@ class BzrBranchFormat6(BzrBranchFormat5):
 
     def supports_tags(self):
         return True
+
+    def __init__(self):
+        super(BzrBranchFormat6, self).__init__()
+        self._matchingbzrdir.repository_format = \
+            RepositoryFormatPackDevelopment1Subtree()
 
 
 class BranchReferenceFormat(BranchFormat):

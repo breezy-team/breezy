@@ -495,6 +495,15 @@ class Repository(object):
         attempted.
         """
 
+    def add_fallback_repository(self, repository):
+        """Add a repository to use for looking up data not held locally.
+        
+        :param repository: A repository.
+        """
+        if not self._format.supports_external_lookups:
+            raise errors.UnstackableRepositoryFormat(self._format, self.base)
+        self._fallback_repositories.append(repository)
+
     def add_inventory(self, revision_id, inv, parents):
         """Add the inventory inv to the repository as revision_id.
         
@@ -563,13 +572,17 @@ class Repository(object):
     def all_revision_ids(self):
         """Returns a list of all the revision ids in the repository. 
 
-        This is deprecated because code should generally work on the graph
-        reachable from a particular revision, and ignore any other revisions
-        that might be present.  There is no direct replacement method.
+        This is conceptually deprecated because code should generally work on
+        the graph reachable from a particular revision, and ignore any other
+        revisions that might be present.  There is no direct replacement
+        method.
         """
         if 'evil' in debug.debug_flags:
             mutter_callsite(2, "all_revision_ids is linear with history.")
-        return self._all_revision_ids()
+        all_ids = set(self._all_revision_ids())
+        for repository in self._fallback_repositories:
+            all_ids.update(repository.all_revision_ids())
+        return all_ids
 
     def _all_revision_ids(self):
         """Returns a list of all the revision ids in the repository. 
@@ -635,6 +648,8 @@ class Repository(object):
         self._warn_if_deprecated()
         self._write_group = None
         self.base = control_files._transport.base
+        # Additional places to query for data.
+        self._fallback_repositories = []
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__,
@@ -2331,6 +2346,17 @@ format_registry.register_lazy(
         "(needs bzr.dev from before 1.3)\n"),
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatPackDevelopment0Subtree',
+    )
+format_registry.register_lazy(
+    "Bazaar development format 1 (needs bzr.dev from before 1.3)\n",
+    'bzrlib.repofmt.pack_repo',
+    'RepositoryFormatPackDevelopment1',
+    )
+format_registry.register_lazy(
+    ("Bazaar development format 1 with subtree support "
+        "(needs bzr.dev from before 1.3)\n"),
+    'bzrlib.repofmt.pack_repo',
+    'RepositoryFormatPackDevelopment1Subtree',
     )
 # 1.3->1.4 go below here
 

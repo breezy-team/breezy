@@ -894,8 +894,8 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
 
     def test_all_revision_ids(self):
         # all_revision_ids -> all revisions
-        self.assertEqual(['rev1', 'rev2', 'rev3', 'rev4'],
-                         self.bzrdir.open_repository().all_revision_ids())
+        self.assertEqual(set(['rev1', 'rev2', 'rev3', 'rev4']),
+            set(self.bzrdir.open_repository().all_revision_ids()))
 
     def test_get_ancestry_missing_revision(self):
         # get_ancestry(revision that is in some data but not fully installed

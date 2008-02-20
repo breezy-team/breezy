@@ -2328,3 +2328,72 @@ class RepositoryFormatPackDevelopment0Subtree(RepositoryFormatPack):
             "pack-0.92-subtree\n")
 
 
+class RepositoryFormatPackDevelopment1(RepositoryFormatPackDevelopment0):
+    """A no-subtrees development repository.
+
+    This format should be retained until the second release after bzr 1.2.
+
+    Supports external lookups, which results in non-truncated ghosts after
+    reconcile compared to pack-0.92 formats.
+    """
+
+    supports_external_lookups = True
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir('development1')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return "Bazaar development format 1 (needs bzr.dev from before 1.3)\n"
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return ("Development repository format, currently the same as "
+            "pack-0.92 with external reference support.\n")
+
+    def check_conversion_target(self, target_format):
+        pass
+
+
+class RepositoryFormatPackDevelopment1Subtree(RepositoryFormatPackDevelopment0):
+    """A subtrees development repository.
+
+    This format should be retained until the second release after bzr 1.2.
+
+    Supports external lookups, which results in non-truncated ghosts after
+    reconcile compared to pack-0.92 formats.
+    """
+
+    supports_external_lookups = True
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir(
+            'development1-subtree')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def check_conversion_target(self, target_format):
+        if not target_format.rich_root_data:
+            raise errors.BadConversionTarget(
+                'Does not support rich root data.', target_format)
+        if not getattr(target_format, 'supports_tree_reference', False):
+            raise errors.BadConversionTarget(
+                'Does not support nested trees', target_format)
+            
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return ("Bazaar development format 1 with subtree support "
+            "(needs bzr.dev from before 1.3)\n")
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return ("Development repository format, currently the same as "
+            "pack-0.92-subtree with external reference support.\n")
