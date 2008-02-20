@@ -1,5 +1,5 @@
 =======================
-Notes on bzr-fastexport
+Notes on bzr-fastimport
 =======================
 
 ..contents::
@@ -7,12 +7,10 @@ Notes on bzr-fastexport
 Features
 ========
 
-Safe Processing
----------------
+fast-import
+-----------
 
 Things that ought to work:
-
-* single branch only (so far)
 
 * add & deletes of files and symlinks
 
@@ -20,13 +18,24 @@ Things that ought to work:
 
 * executable permission
 
-* tags
+* branches created based on where the import is run:
 
-Things that might work (not tested):
+  * import into a shared repository outside a branch - branches
+    are created as subdirectories of the current directory
+  
+  * import into a branch inside a shared repository - current
+    branch becomes the trunk and other branches are created
+    as sister directories
+
+  * import into a standalone tree - warnings are given
+    for branches (heads) found but not imported
+  
+Things that might work (not tested enough):
 
 * separate author to committer
 
-* merges
+* merge tracking
+
 
 
 Known Limitations
@@ -45,16 +54,22 @@ Things not supported yet:
 
 * rfc2822 dates.
 
-Safe Processing
----------------
+Known bugs:
+
+* line number tracking isn't fully cooked
+
+fast-import
+-----------
 
 Things not supported yet:
 
-* named branches
+* incremental import
+
+* deterministic revision-ids as an option
+
+* 'reset' handling
 
 * 'filedeleteall' handling
-
-* incremental import
 
 Things not recorded in Bazaar:
 

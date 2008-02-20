@@ -64,8 +64,8 @@ class GenericProcessor(processor.ImportProcessor):
 
     Here are the supported parameters:
 
-    * info - name of a config file holding the analysis generated
-      by running the --info processor in verbose mode. When
+    * info - name of a hints file holding the analysis generated
+      by running the fast-import-info processor in verbose mode. When
       importing large repositories, this parameter is needed so
       that the importer knows what blobs to intelligently cache.
 
@@ -132,6 +132,8 @@ class GenericProcessor(processor.ImportProcessor):
         # for progress tracking.
         try:
             self.max_commits = int(self.params['count'])
+            if self.max_commits < 0:
+                self.max_commits = None
         except KeyError:
             self.max_commits = None
         if self.info is not None:
@@ -178,7 +180,7 @@ class GenericProcessor(processor.ImportProcessor):
         # Update the working trees as requested and dump stats
         self._tree_count = 0
         remind_about_update = True
-        if self.params.get('trees'):
+        if self.params.get('trees', False):
             if self.working_tree is None:
                 self.warning("No working tree available to update")
             else:

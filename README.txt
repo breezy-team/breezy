@@ -33,11 +33,17 @@ To test the plugin after installation:
 Documentation
 -------------
 
-The general usage is::
+The normal recipe is::
 
-  frontend | bzr fast-import [options]
+  bzr init-repo .
+  frontend | bzr fast-import -
 
-See the doc/ directory for details.
+For further details, see http://bazaar-vcs.org/BzrFastImport and the
+online help::
+
+  bzr help fast-import
+  bzr help fast-import-info
+  bzr help fast-import-filter
 
 
 Licensing
