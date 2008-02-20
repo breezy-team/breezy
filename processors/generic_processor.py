@@ -61,8 +61,15 @@ class GenericProcessor(processor.ImportProcessor):
     Here are the supported parameters:
 
     * info - name of a config file holding the analysis generated
-      by running the --info processor (this is important for knowing
-      what to intelligently cache)
+      by running the --info processor in verbose mode. When
+      importing large repositories, this parameter is needed so
+      that the importer knows what blobs to intelligently cache.
+
+    * trees - update the working tree before completing.
+      By default, the importer updates the repository
+      and branches and the user needs to run 'bzr update' for the
+      branches of interest afterwards. In the future, this parameter
+      might be more flexible, e.g. take a pattern of trees to update.
 
     * checkpoint - automatically checkpoint every n commits over and
       above any checkpoints contained in the import stream.
@@ -72,7 +79,22 @@ class GenericProcessor(processor.ImportProcessor):
       all commits are imported.
     """
 
-    known_params = ['info', 'checkpoint', 'count']
+    known_params = ['info', 'trees', 'checkpoint', 'count']
+
+    def note(self, msg, *args):
+        """Output a note but timestamp it."""
+        msg = "%s %s" % (self._time_of_day(), msg)
+        note(msg, *args)
+
+    def warning(self, msg, *args):
+        """Output a warning but timestamp it."""
+        msg = "%s %s" % (self._time_of_day(), msg)
+        warning(msg, *args)
+
+    def _time_of_day(self):
+        """Time of day as a string."""
+        # Note: this is a separate method so tests can patch in a fixed value
+        return time.strftime("%H:%M:%S")
 
     def pre_process(self):
         self._start_time = time.time()
@@ -138,32 +160,39 @@ class GenericProcessor(processor.ImportProcessor):
         self.note("Updating branch information ...")
         updater = BranchUpdater(self.branch, self.cache_mgr,
             helpers.invert_dict(self.heads), self.last_ref)
-        updater.update()
+        branches_updated = updater.update()
+        self._branch_count = 1
 
         # Update the working tree, if any
-        if self.working_tree:
-            self.note("Updating the working tree ...")
-            self.working_tree.update(delta._ChangeReporter())
+        self._tree_count = 0
+        if self.params.get('trees'):
+            if self.working_tree is None:
+                self.warning("No working tree available to update")
+            else:
+                if self.verbose:
+                    report = delta._ChangeReporter()
+                else:
+                    reporter = None
+                self.note("Updating the working tree ...")
+                self.working_tree.update(reporter)
+                self._tree_count = 1
+        else:
+            self.note("NOTE: Use 'bzr update' to refresh your working trees")
         self.dump_stats()
 
     def init_stats(self):
         self._revision_count = 0
-        self._branch_count = 1
-        self._tag_count = 0
 
     def dump_stats(self):
+        time_required = progress.str_tdelta(time.time() - self._start_time)
         rc = self._revision_count
         bc = self._branch_count
-        tc = self._tag_count
-        note("Imported %d %s into %d %s with %d %s.",
+        wtc = self._tree_count
+        self.note("Imported %d %s, updating %d %s and %d %s in %s",
             rc, helpers.single_plural(rc, "revision", "revisions"),
             bc, helpers.single_plural(bc, "branch", "branches"),
-            tc, helpers.single_plural(tc, "tag", "tags"))
-
-    def note(self, msg, *args):
-        """Output a note but timestamp it."""
-        msg = "%s %s" % (self._time_of_day(), msg)
-        note(msg, *args)
+            wtc, helpers.single_plural(wtc, "tree", "trees"),
+            time_required)
 
     def blob_handler(self, cmd):
         """Process a BlobCommand."""
@@ -192,7 +221,8 @@ class GenericProcessor(processor.ImportProcessor):
             try:
                 del self.heads[parent]
             except KeyError:
-                warning("didn't find parent %s while tracking heads" % parent)
+                self.warning("didn't find parent %s while tracking heads",
+                    parent)
         self.heads[mark] = cmd.ref
         self.last_ref = cmd.ref
 
@@ -217,7 +247,11 @@ class GenericProcessor(processor.ImportProcessor):
                 counts = "%d/%d" % (self._revision_count, self.total_commits)
                 eta = progress.get_eta(self._start_time, self._revision_count,
                     self.total_commits)
-                eta_str = '[%s] ' % progress.str_tdelta(eta)
+                eta_str = progress.str_tdelta(eta)
+                if eta_str.endswith('--'):
+                    eta_str = ''
+                else:
+                    eta_str = '[%s] ' % eta_str
             else:
                 counts = "%d" % (self._revision_count,)
                 eta_str = ''
@@ -229,17 +263,12 @@ class GenericProcessor(processor.ImportProcessor):
         # is more useful for determining when things might complete
         self.note("progress %s" % (cmd.message,))
 
-    def _time_of_day(self):
-        """Time of day as a string."""
-        # Note: this is a separate method so tests can patch in a fixed value
-        return time.strftime("%H:%M:%S")
-
     def reset_handler(self, cmd):
         """Process a ResetCommand."""
         if cmd.ref.startswith('refs/tags/'):
             self._set_tag(cmd.ref[len('refs/tags/'):], cmd.from_)
         else:
-            warning("named branches are not supported yet"
+            self.warning("named branches are not supported yet"
                 " - ignoring reset of '%s'", cmd.ref)
 
     def tag_handler(self, cmd):
@@ -251,7 +280,6 @@ class GenericProcessor(processor.ImportProcessor):
         bzr_tag_name = name.decode('utf-8', 'replace')
         bzr_rev_id = self.cache_mgr.revision_ids[from_]
         self.tags[bzr_tag_name] = bzr_rev_id
-        self._tag_count += 1
 
 
 class GenericCacheManager(object):
@@ -598,11 +626,17 @@ class BranchUpdater(object):
         If the repository is shared, this routine creates branches
         as required. If it isn't, warnings are produced about the
         lost of information.
+
+        :return: the list of branches updated
         """
+        updated = []
         default_tip, branch_tips = self._get_matching_branches()
         self._update_branch(self.branch, default_tip)
+        updated.append(self.branch)
         for br, tip in branch_tips:
             self._update_branch(br, tip)
+            updated.append(br)
+        return updated
 
     def _get_matching_branches(self):
         """Get the Bazaar branches.
@@ -649,5 +683,5 @@ class BranchUpdater(object):
         # TODO: apply tags known in this branch
         #if self.tags:
         #    br.tags._set_tag_dict(self.tags)
-        note("branch %s has %d revisions", br.nick, revno)
+        note("\t branch %s has %d revisions", br.nick, revno)
 
