@@ -88,7 +88,7 @@ class GenericProcessor(processor.ImportProcessor):
 
     def warning(self, msg, *args):
         """Output a warning but timestamp it."""
-        msg = "%s %s" % (self._time_of_day(), msg)
+        msg = "%s WARNING: %s" % (self._time_of_day(), msg)
         warning(msg, *args)
 
     def _time_of_day(self):
@@ -158,13 +158,23 @@ class GenericProcessor(processor.ImportProcessor):
 
         # Update the branches
         self.note("Updating branch information ...")
-        updater = BranchUpdater(self.branch, self.cache_mgr,
+        updater = GenericBranchUpdater(self.branch, self.cache_mgr,
             helpers.invert_dict(self.heads), self.last_ref)
-        branches_updated = updater.update()
-        self._branch_count = 1
+        branches_updated, branches_lost = updater.update()
+        self._branch_count = len(branches_updated)
 
-        # Update the working tree, if any
+        # Tell the user about branches that were not created
+        if branches_lost:
+            self.warning("Unshared repository - not creating branches for "
+                "these head revisions:")
+            for lost_info in branches_lost:
+                head_revision = lost_info[1]
+                branch_name = lost_info[0]
+                note("\t %s = %s", head_revision, branch_name)
+
+        # Update the working trees as requested and dump stats
         self._tree_count = 0
+        remind_about_update = True
         if self.params.get('trees'):
             if self.working_tree is None:
                 self.warning("No working tree available to update")
@@ -176,9 +186,10 @@ class GenericProcessor(processor.ImportProcessor):
                 self.note("Updating the working tree ...")
                 self.working_tree.update(reporter)
                 self._tree_count = 1
-        else:
-            self.note("NOTE: Use 'bzr update' to refresh your working trees")
+                remind_about_update = False
         self.dump_stats()
+        if remind_about_update:
+            self.note("NOTE: To refresh working trees, use 'bzr update'")
 
     def init_stats(self):
         self._revision_count = 0
@@ -259,8 +270,7 @@ class GenericProcessor(processor.ImportProcessor):
 
     def progress_handler(self, cmd):
         """Process a ProgressCommand."""
-        # We could use a progress bar here but timestamped messages
-        # is more useful for determining when things might complete
+        # We could use a progress bar here instead
         self.note("progress %s" % (cmd.message,))
 
     def reset_handler(self, cmd):
@@ -605,7 +615,7 @@ class GenericCommitHandler(processor.CommitHandler):
         return basename, ie
 
 
-class BranchUpdater(object):
+class GenericBranchUpdater(object):
 
     def __init__(self, branch, cache_mgr, heads_by_ref, last_ref):
         """Create an object responsible for updating branches.
@@ -627,53 +637,67 @@ class BranchUpdater(object):
         as required. If it isn't, warnings are produced about the
         lost of information.
 
-        :return: the list of branches updated
+        :return: updated, lost_heads where
+          updated = the list of branches updated
+          lost_heads = a list of (bazaar-name,revision) for branches that
+            would have been created had the repository been shared
         """
         updated = []
-        default_tip, branch_tips = self._get_matching_branches()
+        default_tip, branch_tips, lost_heads = self._get_matching_branches()
         self._update_branch(self.branch, default_tip)
         updated.append(self.branch)
         for br, tip in branch_tips:
             self._update_branch(br, tip)
             updated.append(br)
-        return updated
+        return updated, lost_heads
 
     def _get_matching_branches(self):
         """Get the Bazaar branches.
 
-        :return: default_tip, branch_tips where
+        :return: default_tip, branch_tips, lost_tips where
           default_tip = the last commit mark for the default branch
           branch_tips = a list of (branch,tip) tuples for other branches.
+          lost_heads = a list of (bazaar-name,revision) for branches that
+            would have been created had the repository been shared
         """
-        # simple for now
-        return self.heads_by_ref[self.last_ref][0], []
+        # Until there's a good reason to be more sellective,
+        # use the last imported revision as the tip of the default branch
+        default_tip = self.heads_by_ref[self.last_ref][0]
 
-        #names = sorted(heads.keys())
-        #try:
-        #    default_head = names.pop(names.index('refs/heads/master'))
-        #except ValueError:
-        #    # 1st one is as good as any
-        #    default_head = names.pop(0)
-        #default_tip = heads[default_head][0]
+        # Convert the reference names into Bazaar speak
+        ref_names = self.heads_by_ref.keys()
+        ref_names.remove(self.last_ref)
+        bzr_names = self._get_bzr_names_from_ref_names(ref_names)
 
-        # Get/Create missing branches
-        #branch_tips = []
-        #return default_tip, branch_tips
+        # Create/track missing branches
+        branch_tips = []
+        lost_heads = []
+        shared_repo = self.repo.is_shared()
+        for name in sorted(bzr_names.keys()):
+            ref_name = bzr_names[name]
+            tip = self.heads_by_ref[ref_name][0]
+            if shared_repo:
+                # TODO: create the branch
+                pass
+            else:
+                lost_head = self.cache_mgr.revision_ids[tip]
+                lost_info = (name, lost_head)
+                lost_heads.append(lost_info)
+        return default_tip, branch_tips, lost_heads
 
-        #shared_repo = self.repo.is_shared()
-        #for head in heads:
-        #    # TODO
-        #    pass
-#
-#        if not shared_repo:
-#            # Tell the user about their loss
-#            warning("unshared repository so not creating these branches:")
-#            for head in heads:
-#                # rev = ...
-#                # warning("  %s -> %s", head)
-#                warning("  %s", head)
-#            branch_tips = []
-#        return default_tip, branch_tips
+    def _get_bzr_names_from_ref_names(self, ref_names):
+        """Map reference names to Bazaar branch names."""
+        bazaar_names = {}
+        for ref_name in sorted(ref_names):
+            parts = ref_name.split('/')
+            if parts[0] == 'refs':
+                parts.pop(0)
+            full_name = "--".join(parts)
+            bazaar_name = parts[-1]
+            if bazaar_name in bazaar_names:
+                bazaar_name = full_name
+            bazaar_names[bazaar_name] = ref_name
+        return bazaar_names
 
     def _update_branch(self, br, last_mark):
         """Update a branch with last revision and tag information."""
@@ -684,4 +708,3 @@ class BranchUpdater(object):
         #if self.tags:
         #    br.tags._set_tag_dict(self.tags)
         note("\t branch %s has %d revisions", br.nick, revno)
-
