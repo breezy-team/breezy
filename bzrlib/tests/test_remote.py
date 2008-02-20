@@ -197,13 +197,13 @@ class TestBzrDirOpenBranch(tests.TestCase):
         transport = MemoryTransport()
         transport.mkdir('quack')
         transport = transport.clone('quack')
-        client = FakeClient([(('ok', ''), ), (('ok', '', 'no', 'no'), )],
+        client = FakeClient([(('ok', ''), ), (('ok', '', 'no', 'no', 'no'), )],
                             transport.base)
         bzrdir = RemoteBzrDir(transport, _client=client)
         result = bzrdir.open_branch()
         self.assertEqual(
             [('call', 'BzrDir.open_branch', ('quack/',)),
-             ('call', 'BzrDir.find_repository', ('quack/',))],
+             ('call', 'BzrDir.find_repositoryV2', ('quack/',))],
             client._calls)
         self.assertIsInstance(result, RemoteBranch)
         self.assertEqual(bzrdir, result.bzrdir)
@@ -240,16 +240,16 @@ class TestBzrDirOpenBranch(tests.TestCase):
         # Relpaths on the wire should not be URL-escaped.  So "~" should be
         # transmitted as "~", not "%7E".
         transport = RemoteTransport('bzr://localhost/~hello/')
-        client = FakeClient([(('ok', ''), ), (('ok', '', 'no', 'no'), )],
+        client = FakeClient([(('ok', ''), ), (('ok', '', 'no', 'no', 'no'), )],
                             transport.base)
         bzrdir = RemoteBzrDir(transport, _client=client)
         result = bzrdir.open_branch()
         self.assertEqual(
             [('call', 'BzrDir.open_branch', ('~hello/',)),
-             ('call', 'BzrDir.find_repository', ('~hello/',))],
+             ('call', 'BzrDir.find_repositoryV2', ('~hello/',))],
             client._calls)
 
-    def check_open_repository(self, rich_root, subtrees):
+    def check_open_repository(self, rich_root, subtrees, external_lookup='no'):
         transport = MemoryTransport()
         transport.mkdir('quack')
         transport = transport.clone('quack')
@@ -261,12 +261,13 @@ class TestBzrDirOpenBranch(tests.TestCase):
             subtree_response = 'yes'
         else:
             subtree_response = 'no'
-        client = FakeClient([(('ok', '', rich_response, subtree_response), ),],
-                            transport.base)
+        client = FakeClient(
+            [(('ok', '', rich_response, subtree_response, external_lookup), ),],
+            transport.base)
         bzrdir = RemoteBzrDir(transport, _client=client)
         result = bzrdir.open_repository()
         self.assertEqual(
-            [('call', 'BzrDir.find_repository', ('quack/',))],
+            [('call', 'BzrDir.find_repositoryV2', ('quack/',))],
             client._calls)
         self.assertIsInstance(result, RemoteRepository)
         self.assertEqual(bzrdir, result.bzrdir)
@@ -278,6 +279,7 @@ class TestBzrDirOpenBranch(tests.TestCase):
         self.check_open_repository(False, True)
         self.check_open_repository(True, False)
         self.check_open_repository(False, False)
+        self.check_open_repository(False, False, 'yes')
 
     def test_old_server(self):
         """RemoteBzrDirFormat should fail to probe if the server version is too
