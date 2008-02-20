@@ -227,14 +227,10 @@ The underlying message format is::
   MORE_MESSAGE_PARTS := END_MESSAGE_PARTS | MESSAGE_PARTS
   END_MESSAGE_PARTS := "e"
 
-  MESSAGE_PART := ONE_BYTE | STRUCTURE | BYTES | CHUNKED_BYTES
+  MESSAGE_PART := ONE_BYTE | STRUCTURE | BYTES
   ONE_BYTE := "o" byte
   STRUCTURE := "s" LENGTH_PREFIX bencoded_structure
   BYTES := "b" LENGTH_PREFIX bytes
-  CHUNKED_BYTES := "c" CHUNKS_V3
-  CHUNKS_V3 := CHUNK_V3 | CHUNKS_TERMINATOR
-  CHUNK_V3 := "c" LENGTH_PREFIX bytes CHUNK_V3
-  CHUNKS_TERMINATOR := "t"
 
 This format allows an arbitrary sequence of message parts to be encoded
 in a single message.
@@ -250,63 +246,57 @@ the server should include a “Software version” header, with a value of a
 free-form string such as “bzrlib 1.3”, to aid debugging and logging.  Clients
 and servers **should not** vary behaviour based on this string.
 
-Conventional requests/responses
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Conventional requests and responses
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Most requests will send a sequence of:
+By convention, most requests and responses have a simple “arguments plus
+optional body” structure, as in earlier protocol versions.  This section
+describes how such messages are encoded.  All requests and responses
+defined by earlier protocol versions must be encoded in this way.
 
- * Arguments (a STRUCTURE of a tuple)
- * Optional body
-   * a BYTES, or 
-   * CHUNKED_BYTES followed by a ONE_BYTE status
+Conventional requests will send a sequence of:
 
-Most responses will send a sequence of:
+* Arguments (a STRUCTURE of a tuple)
 
- * Status
- * Arguments (a STRUCTURE of a tuple)
- * Optional body
-   * a BYTES, or 
-   * CHUNKED_BYTES followed by a ONE_BYTE status
+* (Optional) body
+
+  * Single body (BYTES), or
+
+  * Streamed body (multiple BYTES parts), followed by a status (ONE_BYTE)
+
+    * if status is "E", followed by an Error (STRUCTURE)
+
+Conventional responses will send a sequence of:
+
+* Status (ONE_BYTE)
+
+* Arguments (a STRUCTURE of a tuple)
+
+* (Optional) body
+
+  * Single body (BYTES), or
+
+  * Streamed body (multiple BYTES parts), followed by a status (ONE_BYTE)
+
+    * if status is "E", followed by an Error (STRUCTURE)
 
 In all cases, the ONE_BYTE status is either "S" for Success or "E" for
-Error.  These message part sequences reflect the message structures
-allowed by earlier protocol versions, and this is how older smart methods
-that pre-date this protocol version will be encoded in this version.
+Error.  Note that the streamed body from version two is now just multiple
+BYTES parts.
 
 For new methods, these sequences are just a convention and may be varied
 if appropriate for a particular request or response.  However, each
-request should at least start with an STRUCTURE encoding the arguments
+request should at least start with a STRUCTURE encoding the arguments
 tuple.  The first element of that tuple must be a string that names the
 request method.  (Note that arguments in this protocol version are
 bencoded.  As a result, unlike previous protocol versions, arguments in
 this version are 8-bit clean.)
 
-For error responses (where the Status byte is "E"), the situation is
-analagous to requests.  The first item in the encoded sequence must be a
-string of the error name.  The other arguments supply details about the
-error, and their number and types will depend on the type of error (as
-identified by the error name).
-
-One possible error name is ``UnknownRequestVerb``, which means the server does
-not recognise the verb used by the client's request.
-
-Streamed bodies
-~~~~~~~~~~~~~~~
-
-If an error occurs while a client or a server is generating a streamed
-body, the sender should finish the stream and use BODY_ERROR as the
-BODY_STATUS.  The ARGS_V3 in an BODY_ERROR should be encoded the same way
-as errors in the ARGS_V3 of RESPONSE_V3: the first argument should be a
-string of the error name, and the rest of the arguments are details about
-that error.
-
-Note that clients can interrupt a stream with an error, not just servers.
-Clients can use this to signal to the server that the request should be
-aborted, due to an unexpected failure while generating the request.
-Servers are still required to respond to these requests (a possible
-response in this case could be an ``InterruptedRequest`` error).  Clients
-should be aware that, depending on the verb, servers may have already
-successful processed the chunks received before the interruption.
+For errors (where the Status byte of a response or a streamed body is
+"E"), the situation is analagous to requests.  The first item in the
+encoded sequence must be a string of the error name.  The other arguments
+supply details about the error, and their number and types will depend on
+the type of error (as identified by the error name).
 
 Paths
 =====
@@ -346,6 +336,10 @@ Recognised errors
 =================
 
 The first argument of an error response specifies the error type.
+
+One possible error name is ``UnknownRequestVerb``, which means the server does
+not recognise the verb used by the client's request.  This error was
+introduced in version three.
 
 **XXX**: ideally the error types should be documented here.  Contributions
 welcome!
