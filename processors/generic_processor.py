@@ -36,6 +36,7 @@ from bzrlib.trace import (
     )
 import bzrlib.util.configobj.configobj as configobj
 from bzrlib.plugins.fastimport import (
+    helpers,
     processor,
     revisionloader,
     )
@@ -59,11 +60,10 @@ class GenericProcessor(processor.ImportProcessor):
 
     * blobs are cached in memory
     * files and symlinks commits are supported
-    * tags are stored in the current branch
     * checkpoints automatically happen at a configurable frequency
       over and above the stream requested checkpoints
     * timestamped progress reporting, both automatic and stream requested
-    * LATER: named branch support
+    * LATER: named branch support, tags for each branch
     * some basic statistics are dumped on completion.
 
     Here are the supported parameters:
@@ -86,8 +86,11 @@ class GenericProcessor(processor.ImportProcessor):
         self._start_time = time.time()
         self._load_info_and_params()
         self.cache_mgr = GenericCacheManager(self.info, verbose=self.verbose)
-        self.active_branch = self.branch
         self.init_stats()
+
+        # Head tracking: last ref & map of commit mark to ref
+        self.last_ref = None
+        self.heads = {}
 
         # mapping of tag name to revision_id
         self.tags = {}
@@ -139,18 +142,17 @@ class GenericProcessor(processor.ImportProcessor):
         # Commit the current write group.
         self.repo.commit_write_group()
 
-        self.dump_stats()
-        # Update the branches, assuming the last revision is the head
-        note("Updating branch information ...")
-        # TODO - loop over the branches created/modified
-        last_rev_id = self.cache_mgr.last_revision_ids[self.branch]
-        revno = len(list(self.repo.iter_reverse_revision_history(last_rev_id)))
-        self.branch.set_last_revision_info(revno, last_rev_id)
-        if self.tags:
-            self.branch.tags._set_tag_dict(self.tags)
+        # Update the branches
+        self.note("Updating branch information ...")
+        updater = BranchUpdater(self.branch, self.cache_mgr,
+            helpers.invert_dict(self.heads), self.last_ref)
+        updater.update()
+
         # Update the working tree, if any
         if self.working_tree:
+            self.note("Updating the working tree ...")
             self.working_tree.update(delta._ChangeReporter())
+        self.dump_stats()
 
     def init_stats(self):
         self._revision_count = 0
@@ -188,15 +190,25 @@ class GenericProcessor(processor.ImportProcessor):
     def commit_handler(self, cmd):
         """Process a CommitCommand."""
         handler = GenericCommitHandler(cmd, self.repo, self.cache_mgr,
-        self.active_branch, self.verbose)
+            self.verbose)
         handler.process()
-        rev_id = handler.revision_id
-        self.cache_mgr.revision_ids[cmd.ref] = rev_id
-        if cmd.mark is not None:
-            self.cache_mgr.revision_ids[":" + cmd.mark] = rev_id
-        self.cache_mgr.last_revision_ids[self.active_branch] = rev_id
+        mark = ":" + cmd.mark
+        self.cache_mgr.revision_ids[mark] = handler.revision_id
+
+        # Track the heads
+        for parent in cmd.parents:
+            try:
+                del self.heads[parent]
+            except KeyError:
+                warning("didn't find parent %s while tracking heads" % parent)
+        self.heads[mark] = cmd.ref
+        self.last_ref = cmd.ref
+
+        # Report progress
         self._revision_count += 1
-        self.report_progress("(:%s)" % cmd.mark)
+        self.report_progress("(%s)" % mark)
+
+        # Check if we should finish up or automatically checkpoint
         if (self.max_commits is not None and
             self._revision_count >= self.max_commits):
             self.note("stopping after reaching requested count of commits")
@@ -275,9 +287,6 @@ class GenericCacheManager(object):
         # we need to keep all of these but they are small
         self.revision_ids = {}
 
-        # branch -> last revision-id lookup table
-        self.last_revision_ids = {}
-
         # path -> file-ids - as generated
         self.file_ids = {}
 
@@ -324,11 +333,10 @@ class GenericCacheManager(object):
 
 class GenericCommitHandler(processor.CommitHandler):
 
-    def __init__(self, command, repo, cache_mgr, active_branch, verbose=False):
+    def __init__(self, command, repo, cache_mgr, verbose=False):
         processor.CommitHandler.__init__(self, command)
         self.repo = repo
         self.cache_mgr = cache_mgr
-        self.active_branch = active_branch
         self.verbose = verbose
         # smart loader that uses these caches
         self.loader = revisionloader.RevisionLoader(repo,
@@ -343,17 +351,10 @@ class GenericCommitHandler(processor.CommitHandler):
 
         # Get the parent inventories
         if self.command.parents:
-            self.parents = [self.cache_mgr.revision_ids[ref]
-                for ref in self.command.parents]
+            self.parents = [self.cache_mgr.revision_ids[p]
+                for p in self.command.parents]
         else:
-            # if no parents are given, the last revision on
-            # the current branch is assumed according to the spec
-            last_rev = self.cache_mgr.last_revision_ids.get(
-                    self.active_branch)
-            if last_rev:
-                self.parents = [last_rev]
-            else:
-                self.parents = []
+            self.parents = []
 
         # Seed the inventory from the previous one
         if len(self.parents) == 0:
@@ -582,3 +583,79 @@ class GenericCommitHandler(processor.CommitHandler):
         #print "adding dir %s" % path
         self.inventory.add(ie)
         return basename, ie
+
+
+class BranchUpdater(object):
+
+    def __init__(self, branch, cache_mgr, heads_by_ref, last_ref):
+        """Create an object responsible for updating branches.
+
+        :param heads_by_ref: a dictionary where
+          names are git-style references like refs/heads/master;
+          values are one item lists of commits marks.
+        """
+        self.branch = branch
+        self.repo = branch.repository
+        self.cache_mgr = cache_mgr
+        self.heads_by_ref = heads_by_ref
+        self.last_ref = last_ref
+
+    def update(self):
+        """Update the Bazaar branches and tips matching the heads.
+
+        If the repository is shared, this routine creates branches
+        as required. If it isn't, warnings are produced about the
+        lost of information.
+        """
+        default_tip, branch_tips = self._get_matching_branches()
+        self._update_branch(self.branch, default_tip)
+        for br, tip in branch_tips:
+            self._update_branch(br, tip)
+
+    def _get_matching_branches(self):
+        """Get the Bazaar branches.
+
+        :return: default_tip, branch_tips where
+          default_tip = the last commit mark for the default branch
+          branch_tips = a list of (branch,tip) tuples for other branches.
+        """
+        # simple for now
+        return self.heads_by_ref[self.last_ref][0], []
+
+        #names = sorted(heads.keys())
+        #try:
+        #    default_head = names.pop(names.index('refs/heads/master'))
+        #except ValueError:
+        #    # 1st one is as good as any
+        #    default_head = names.pop(0)
+        #default_tip = heads[default_head][0]
+
+        # Get/Create missing branches
+        #branch_tips = []
+        #return default_tip, branch_tips
+
+        #shared_repo = self.repo.is_shared()
+        #for head in heads:
+        #    # TODO
+        #    pass
+#
+#        if not shared_repo:
+#            # Tell the user about their loss
+#            warning("unshared repository so not creating these branches:")
+#            for head in heads:
+#                # rev = ...
+#                # warning("  %s -> %s", head)
+#                warning("  %s", head)
+#            branch_tips = []
+#        return default_tip, branch_tips
+
+    def _update_branch(self, br, last_mark):
+        """Update a branch with last revision and tag information."""
+        last_rev_id = self.cache_mgr.revision_ids[last_mark]
+        revno = len(list(self.repo.iter_reverse_revision_history(last_rev_id)))
+        br.set_last_revision_info(revno, last_rev_id)
+        # TODO: apply tags known in this branch
+        #if self.tags:
+        #    br.tags._set_tag_dict(self.tags)
+        note("branch %s has %d revisions", br.nick, revno)
+
