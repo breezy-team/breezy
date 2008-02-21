@@ -202,7 +202,9 @@ class InfoProcessor(processor.ImportProcessor):
             try:
                 del self.heads[parent]
             except KeyError:
-                note("hmm - didn't find parent %s" % parent)
+                # it's ok if the parent isn't there - another
+                # commit may have already removed it
+                pass
         self.heads[cmd.id] = cmd.ref
         self.last_ids[cmd.ref] = cmd.id
 

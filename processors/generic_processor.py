@@ -429,8 +429,9 @@ class GenericCommitHandler(processor.CommitHandler):
             try:
                 del self.cache_mgr.heads[parent]
             except KeyError:
-                warning("didn't find parent %s while tracking heads",
-                    parent)
+                # it's ok if the parent isn't there - another
+                # commit may have already removed it
+                pass
         self.cache_mgr.heads[cmd.id] = cmd.ref
 
         # Get the parent inventories
