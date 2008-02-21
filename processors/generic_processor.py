@@ -369,8 +369,6 @@ class GenericCacheManager(object):
         if (self._blobs_to_keep is None or data == '' or
             id in self._blobs_to_keep):
             self._sticky_blobs[id] = data
-            if self.verbose:
-                print "making blob %s sticky" % (id,)
         else:
             self._blobs[id] = data
 
@@ -405,6 +403,16 @@ class GenericCommitHandler(processor.CommitHandler):
         # smart loader that uses these caches
         self.loader = revisionloader.RevisionLoader(repo,
             lambda revision_ids: self._get_inventories(revision_ids))
+
+    def note(self, msg, *args):
+        """Output a note but add context."""
+        msg = "%s (%s)" % (msg, self.command.id)
+        note(msg, *args)
+
+    def warning(self, msg, *args):
+        """Output a warning but add context."""
+        msg = "WARNING: %s (%s)" % (msg, self.command.id)
+        warning(msg, *args)
 
     def pre_process_files(self):
         """Prepare for committing."""
@@ -458,16 +466,8 @@ class GenericCommitHandler(processor.CommitHandler):
 
     def post_process_files(self):
         """Save the revision."""
-        if self.verbose:
-            note("applying inventory delta ...")
-            for entry in self.inv_delta:
-                note("  %r" % (entry,))
         self.inventory.apply_delta(self.inv_delta)
         self.cache_mgr.inventories[self.revision_id] = self.inventory
-        if self.verbose:
-            note("created inventory ...")
-            for entry in self.inventory:
-                note("  %r" % (entry,))
 
         # Load the revision into the repository
         rev_props = {}
@@ -517,7 +517,7 @@ class GenericCommitHandler(processor.CommitHandler):
         try:
             del self.inventory[self.bzr_file_id(path)]
         except errors.NoSuchId:
-            warning("ignoring delete of %s - not in inventory" % (path,))
+            self.warning("ignoring delete of %s as not in inventory", path)
         finally:
             try:
                 self.cache_mgr._delete_path(path)
@@ -577,7 +577,8 @@ class GenericCommitHandler(processor.CommitHandler):
         try:
             inv = self.cache_mgr.inventories[revision_id]
         except KeyError:
-            print "Hmm - get_inventory cache miss for %s" % revision_id
+            if self.verbose:
+                self.note("get_inventory cache miss for %s", revision_id)
             # Not cached so reconstruct from repository
             inv = self.repo.revision_tree(revision_id).inventory
             self.cache_mgr.inventories[revision_id] = inv
@@ -597,7 +598,8 @@ class GenericCommitHandler(processor.CommitHandler):
                 inv = self.cache_mgr.inventories[revision_id]
                 present.append(revision_id)
             except KeyError:
-                print "Hmm - get_inventories cache miss for %s" % revision_id
+                if self.verbose:
+                    self.note("get_inventories cache miss for %s", revision_id)
                 # Not cached so reconstruct from repository
                 if self.repo.has_revision(revision_id):
                     rev_tree = self.repo.revision_tree(revision_id)
