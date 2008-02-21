@@ -46,8 +46,12 @@ from bzrlib.plugins.fastimport import (
     )
 
 
+# How many commits before automatically reporting progress
+_DEFAULT_AUTO_PROGRESS = 1000
+
 # How many commits before automatically checkpointing
 _DEFAULT_AUTO_CHECKPOINT = 10000
+
 
 class GenericProcessor(processor.ImportProcessor):
     """An import processor that handles basic imports.
@@ -59,7 +63,7 @@ class GenericProcessor(processor.ImportProcessor):
     * checkpoints automatically happen at a configurable frequency
       over and above the stream requested checkpoints
     * timestamped progress reporting, both automatic and stream requested
-    * LATER: named branch support, tags for each branch
+    * LATER: reset support, tags for each branch
     * some basic statistics are dumped on completion.
 
     Here are the supported parameters:
@@ -69,11 +73,10 @@ class GenericProcessor(processor.ImportProcessor):
       importing large repositories, this parameter is needed so
       that the importer knows what blobs to intelligently cache.
 
-    * trees - update the working tree before completing.
+    * trees - update the working trees before completing.
       By default, the importer updates the repository
       and branches and the user needs to run 'bzr update' for the
-      branches of interest afterwards. In the future, this parameter
-      might be more flexible, e.g. take a pattern of trees to update.
+      branches of interest afterwards.
 
     * checkpoint - automatically checkpoint every n commits over and
       above any checkpoints contained in the import stream.
@@ -120,6 +123,12 @@ class GenericProcessor(processor.ImportProcessor):
             self.info = configobj.ConfigObj(info_path)
         else:
             self.info = None
+
+        # Decide how often to automatically report progress
+        # (not a parameter yet)
+        self.progress_every = _DEFAULT_AUTO_PROGRESS
+        if self.verbose:
+            self.progress_every = self.progress_every / 10
 
         # Decide how often to automatically checkpoint
         self.checkpoint_every = int(self.params.get('checkpoint',
@@ -181,20 +190,41 @@ class GenericProcessor(processor.ImportProcessor):
         self._tree_count = 0
         remind_about_update = True
         if self.params.get('trees', False):
-            if self.working_tree is None:
-                self.warning("No working tree available to update")
-            else:
+            trees = self._get_working_trees(branches_updated)
+            if trees:
+                self.note("Updating the working trees ...")
                 if self.verbose:
                     report = delta._ChangeReporter()
                 else:
                     reporter = None
-                self.note("Updating the working tree ...")
-                self.working_tree.update(reporter)
-                self._tree_count = 1
+                for wt in trees:
+                    wt.update(reporter)
+                    self._tree_count += 1
                 remind_about_update = False
+            else:
+                self.warning("No working trees available to update")
         self.dump_stats()
         if remind_about_update:
-            self.note("NOTE: To refresh working trees, use 'bzr update'")
+            self.note("To refresh the working tree for a branch, "
+                "use 'bzr update'")
+
+    def _get_working_trees(self, branches):
+        """Get the working trees for branches in the repository."""
+        result = []
+        wt_expected = self.repo.make_working_trees()
+        for br in branches:
+            if br == self.branch and br is not None:
+                wt = self.working_tree
+            elif wt_expected:
+                try:
+                    wt = br.bzrdir.open_workingtree()
+                except errors.NoWorkingTree:
+                    self.warning("No working tree for branch %s", br)
+                    continue
+            else:
+                continue
+            result.append(wt)
+        return result
 
     def init_stats(self):
         self._revision_count = 0
@@ -252,7 +282,7 @@ class GenericProcessor(processor.ImportProcessor):
 
     def report_progress(self, details=''):
         # TODO: use a progress bar with ETA enabled
-        if self.verbose or self._revision_count % 10 == 0:
+        if self._revision_count % self.progress_every == 0:
             if self.total_commits is not None:
                 counts = "%d/%d" % (self._revision_count, self.total_commits)
                 eta = progress.get_eta(self._start_time, self._revision_count,
@@ -277,7 +307,7 @@ class GenericProcessor(processor.ImportProcessor):
         if cmd.ref.startswith('refs/tags/'):
             self._set_tag(cmd.ref[len('refs/tags/'):], cmd.from_)
         else:
-            self.warning("named branches are not supported yet"
+            self.warning("resets are not supported yet"
                 " - ignoring reset of '%s'", cmd.ref)
 
     def tag_handler(self, cmd):
