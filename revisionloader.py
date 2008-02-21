@@ -17,7 +17,8 @@
 """Parameterised loading of revisions into a repository."""
 
 
-from bzrlib import errors
+from bzrlib import errors, lru_cache
+from bzrlib import revision as _mod_revision
 
 
 class RevisionLoader(object):
@@ -60,7 +61,7 @@ class RevisionLoader(object):
         self._load_texts(rev.revision_id, inv.iter_entries(), parent_invs,
             text_provider)
         try:
-            rev.inventory_sha1 = self.repo.add_inventory(rev.revision_id,
+            rev.inventory_sha1 = self._add_inventory(rev.revision_id,
                 inv, present_parents)
         except errors.RevisionAlreadyPresent:
             pass
@@ -111,6 +112,17 @@ class RevisionLoader(object):
             lines = text_provider(ie.file_id)
             vfile.add_lines(revision_id, text_parents, lines)
 
+    def _add_inventory(self, revision_id, inv, parents):
+        """Add the inventory inv to the repository as revision_id.
+        
+        :param parents: The revision ids of the parents that revision_id
+                        is known to have and are in the repository already.
+
+        :returns: The validator(which is a sha1 digest, though what is sha'd is
+            repository format specific) of the serialized inventory.
+        """
+        return self.repo.add_inventory(revision_id, inv, parents)
+
     def _default_inventories_provider(self, revision_ids):
         """An inventories provider that queries the repository."""
         present = []
@@ -123,3 +135,41 @@ class RevisionLoader(object):
                 rev_tree = self.repo.revision_tree(None)
             inventories.append(rev_tree.inventory)
         return present, inventories
+
+
+class ImportRevisionLoader(RevisionLoader):
+    """A RevisionLoader optimised for importing.
+        
+    This implementation allows caching of the serialised inventory texts.
+    """
+
+    def __init__(self, repo, inventories_provider=None, inv_parent_texts=None):
+        """See RevisionLoader.__init__."""
+        RevisionLoader.__init__(self, repo, inventories_provider)
+        if inv_parent_texts is not None:
+            self.inv_parent_texts = inv_parent_texts
+        else:
+            self.inv_parent_texts = {}
+
+    def _add_inventory(self, revision_id, inv, parents):
+        """See RevisionLoader._add_inventory."""
+        # Code taken from bzrlib.repository.add_inventory
+        assert self.repo.is_in_write_group()
+        _mod_revision.check_not_reserved_id(revision_id)
+        assert inv.revision_id is None or inv.revision_id == revision_id, \
+            "Mismatch between inventory revision" \
+            " id and insertion revid (%r, %r)" % (inv.revision_id, revision_id)
+        assert inv.root is not None
+        inv_lines = self.repo._serialise_inventory_to_lines(inv)
+        inv_vf = self.repo.get_inventory_weave()
+
+        # Code taken from bzrlib.repository._inventory_add_lines
+        final_parents = []
+        for parent in parents:
+            if parent in inv_vf:
+                final_parents.append(parent)
+        sha1, num_bytes, parent_text = inv_vf.add_lines(revision_id,
+            final_parents, inv_lines, self.inv_parent_texts,
+            check_content=False)
+        self.inv_parent_texts[revision_id] = parent_text
+        return sha1

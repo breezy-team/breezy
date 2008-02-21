@@ -119,10 +119,13 @@ class cmd_fast_import(Command):
                     Option('count', type=int,
                         help="Import this many revisions then exit.",
                         ),
+                    Option('inv-cache', type=int,
+                        help="Number of inventories to cache.",
+                        ),
                      ]
     aliases = []
     def run(self, source, verbose=False, info=None, trees=False,
-        checkpoint=10000, count=-1):
+        checkpoint=10000, count=-1, inv_cache=10):
         from bzrlib import bzrdir
         from bzrlib.plugins.fastimport.processors import generic_processor
         control, relpath = bzrdir.BzrDir.open_containing('.')
@@ -130,7 +133,8 @@ class cmd_fast_import(Command):
             'info': info,
             'trees': trees,
             'checkpoint': checkpoint,
-            'count': count
+            'count': count,
+            'inv-cache': inv_cache,
             }
         return _run(source, generic_processor.GenericProcessor, control,
             params, verbose)

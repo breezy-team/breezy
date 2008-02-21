@@ -52,6 +52,9 @@ _DEFAULT_AUTO_PROGRESS = 1000
 # How many commits before automatically checkpointing
 _DEFAULT_AUTO_CHECKPOINT = 10000
 
+# How many inventories to cache
+_DEFAULT_INV_CACHE_SIZE = 10
+
 
 class GenericProcessor(processor.ImportProcessor):
     """An import processor that handles basic imports.
@@ -82,11 +85,14 @@ class GenericProcessor(processor.ImportProcessor):
       above any checkpoints contained in the import stream.
       The default is 10000.
 
-    * count - only import this many commits then exit. If not set,
-      all commits are imported.
+    * count - only import this many commits then exit. If not set
+      or negative, all commits are imported.
+    
+    * inv-cache - number of inventories to cache.
+      If not set, the default is 10.
     """
 
-    known_params = ['info', 'trees', 'checkpoint', 'count']
+    known_params = ['info', 'trees', 'checkpoint', 'count', 'inv-cache']
 
     def note(self, msg, *args):
         """Output a note but timestamp it."""
@@ -106,7 +112,8 @@ class GenericProcessor(processor.ImportProcessor):
     def pre_process(self):
         self._start_time = time.time()
         self._load_info_and_params()
-        self.cache_mgr = GenericCacheManager(self.info, verbose=self.verbose)
+        self.cache_mgr = GenericCacheManager(self.info, self.verbose,
+            self.inventory_cache_size)
         self.init_stats()
 
         # mapping of tag name to revision_id
@@ -115,6 +122,10 @@ class GenericProcessor(processor.ImportProcessor):
         # Create a write group. This is committed at the end of the import.
         # Checkpointing closes the current one and starts a new one.
         self.repo.start_write_group()
+
+        # Turn on caching for the inventory versioned file
+        inv_vf = self.repo.get_inventory_weave()
+        inv_vf.enable_cache()
 
     def _load_info_and_params(self):
         # Load the info file, if any
@@ -133,6 +144,10 @@ class GenericProcessor(processor.ImportProcessor):
         # Decide how often to automatically checkpoint
         self.checkpoint_every = int(self.params.get('checkpoint',
             _DEFAULT_AUTO_CHECKPOINT))
+
+        # Decide how big to make the inventory cache
+        self.inventory_cache_size = int(self.params.get('inv-cache',
+            _DEFAULT_INV_CACHE_SIZE))
 
         # Find the maximum number of commits to import (None means all)
         # and prepare progress reporting. Just in case the info file
@@ -354,6 +369,9 @@ class GenericCacheManager(object):
         self.last_ids = {}
         self.heads = {}
 
+        # Cache of recent serialised inventories
+        self.inv_parent_texts = lru_cache.LRUCache(inventory_cache_size)
+
         # Work out the blobs to make sticky - None means all
         #print "%r" % (info,)
         self._blobs_to_keep = None
@@ -401,8 +419,11 @@ class GenericCommitHandler(processor.CommitHandler):
         self.cache_mgr = cache_mgr
         self.verbose = verbose
         # smart loader that uses these caches
-        self.loader = revisionloader.RevisionLoader(repo,
-            lambda revision_ids: self._get_inventories(revision_ids))
+        self.loader = revisionloader.ImportRevisionLoader(repo,
+            lambda revision_ids: self._get_inventories(revision_ids),
+            cache_mgr.inv_parent_texts)
+        #self.loader = revisionloader.RevisionLoader(repo,
+        #    lambda revision_ids: self._get_inventories(revision_ids))
 
     def note(self, msg, *args):
         """Output a note but add context."""
