@@ -40,6 +40,7 @@ from bzrlib import (
         )
 from bzrlib.config import BranchConfig, TreeConfig
 from bzrlib.lockable_files import LockableFiles, TransportLock
+from bzrlib.repofmt.pack_repo import RepositoryFormatPackDevelopment1Subtree
 from bzrlib.tag import (
     BasicTags,
     DisabledTags,
@@ -1235,6 +1236,11 @@ class BzrBranchFormat7(BranchFormatMetadir):
                       ('stacked-on', '\n'),
                       ]
         return self._initialize_helper(a_bzrdir, utf8_files)
+
+    def __init__(self):
+        super(BzrBranchFormat7, self).__init__()
+        self._matchingbzrdir.repository_format = \
+            RepositoryFormatPackDevelopment1Subtree()
 
 
 class BranchReferenceFormat(BranchFormat):

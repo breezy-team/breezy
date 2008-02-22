@@ -1213,7 +1213,7 @@ class TestDevelopment0(TestKnitPackNoSubtrees):
 
     def get_format(self):
         return bzrdir.format_registry.make_bzrdir(
-            'development')
+            'development0')
 
     def check_format(self, t):
         self.assertEqualDiff(
@@ -1225,13 +1225,123 @@ class TestDevelopment0Subtree(TestKnitPackNoSubtrees):
 
     def get_format(self):
         return bzrdir.format_registry.make_bzrdir(
-            'development-subtree')
+            'development0-subtree')
 
     def check_format(self, t):
         self.assertEqualDiff(
             "Bazaar development format 0 with subtree support "
             "(needs bzr.dev from before 1.3)\n",
             t.get('format').read())
+
+
+class TestExternalDevelopment1(object):
+
+    def test_error_mismatched_format(self):
+        # this first implementation uses the internal pack list from each
+        # repository and thus needs the same format in both sides.
+        base = self.make_repository('base', format='pack-0.92')
+        repo = self.make_repository('repo', format=self.get_format())
+        self.assertRaises(errors.IncompatibleRepositories,
+            repo.add_fallback_repository, base)
+
+    def test_ensure_loaded_gets_other_repositories(self):
+        tree = self.make_branch_and_tree('base', format=self.get_format())
+        repo = self.make_repository('repo', format=self.get_format())
+        repo.add_fallback_repository(tree.branch.repository)
+        tree.commit('foo')
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        repo._pack_collection.ensure_loaded()
+        packs_repo = repo._pack_collection.all_packs()
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        packs_base = tree.branch.repository._pack_collection.all_packs()
+        self.assertEqual(packs_base, packs_repo)
+        self.assertEqual(1, len(packs_base))
+
+    def test_adding_pack_does_not_record_pack_names_from_other_repositories(self):
+        base = self.make_branch_and_tree('base', format=self.get_format())
+        base.commit('foo')
+        referencing = self.make_branch_and_tree('repo', format=self.get_format())
+        referencing.branch.repository.add_fallback_repository(base.branch.repository)
+        referencing.commit('bar')
+        new_instance = referencing.bzrdir.open_repository()
+        new_instance.lock_read()
+        self.addCleanup(new_instance.unlock)
+        new_instance._pack_collection.ensure_loaded()
+        self.assertEqual(1, len(new_instance._pack_collection.all_packs()))
+
+    def test_autopack_only_considers_main_repo_packs(self):
+        base = self.make_branch_and_tree('base', format=self.get_format())
+        base.commit('foo')
+        tree = self.make_branch_and_tree('repo', format=self.get_format())
+        tree.branch.repository.add_fallback_repository(base.branch.repository)
+        trans = tree.branch.repository.bzrdir.get_repository_transport(None)
+        # This test could be a little cheaper by replacing the packs
+        # attribute on the repository to allow a different pack distribution
+        # and max packs policy - so we are checking the policy is honoured
+        # in the test. But for now 11 commits is not a big deal in a single
+        # test.
+        for x in range(9):
+            tree.commit('commit %s' % x)
+        # there should be 9 packs:
+        index = GraphIndex(trans, 'pack-names', None)
+        self.assertEqual(9, len(list(index.iter_all_entries())))
+        # committing one more should coalesce to 1 of 10.
+        tree.commit('commit triggering pack')
+        index = GraphIndex(trans, 'pack-names', None)
+        self.assertEqual(1, len(list(index.iter_all_entries())))
+        # packing should not damage data
+        tree = tree.bzrdir.open_workingtree()
+        check_result = tree.branch.repository.check(
+            [tree.branch.last_revision()])
+        # We should have 50 (10x5) files in the obsolete_packs directory.
+        obsolete_files = list(trans.list_dir('obsolete_packs'))
+        self.assertFalse('foo' in obsolete_files)
+        self.assertFalse('bar' in obsolete_files)
+        self.assertEqual(50, len(obsolete_files))
+        # XXX: Todo check packs obsoleted correctly - old packs and indices
+        # in the obsolete_packs directory.
+        large_pack_name = list(index.iter_all_entries())[0][1][0]
+        # finally, committing again should not touch the large pack.
+        tree.commit('commit not triggering pack')
+        index = GraphIndex(trans, 'pack-names', None)
+        self.assertEqual(2, len(list(index.iter_all_entries())))
+        pack_names = [node[1][0] for node in index.iter_all_entries()]
+        self.assertTrue(large_pack_name in pack_names)
+
+
+class TestDevelopment1(TestKnitPackNoSubtrees, TestExternalDevelopment1):
+
+    def get_format(self):
+        return bzrdir.format_registry.make_bzrdir(
+            'development')
+
+    def check_format(self, t):
+        self.assertEqualDiff(
+            "Bazaar development format 1 (needs bzr.dev from before 1.3)\n",
+            t.get('format').read())
+
+    def test_supports_external_lookups(self):
+        repo = self.make_repository('.', format=self.get_format())
+        self.assertTrue(repo._format.supports_external_lookups)
+
+
+class TestDevelopment1Subtree(TestKnitPackNoSubtrees, TestExternalDevelopment1):
+
+    def get_format(self):
+        return bzrdir.format_registry.make_bzrdir(
+            'development-subtree')
+
+    def check_format(self, t):
+        self.assertEqualDiff(
+            "Bazaar development format 1 with subtree support "
+            "(needs bzr.dev from before 1.3)\n",
+            t.get('format').read())
+
+    def test_supports_external_lookups(self):
+        repo = self.make_repository('.', format=self.get_format())
+        self.assertTrue(repo._format.supports_external_lookups)
 
 
 class TestRepositoryPackCollection(TestCaseWithTransport):
@@ -1396,14 +1506,11 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         name = packs.names()[0]
         pack_1 = packs.get_pack_by_name(name)
         # the pack should be correctly initialised
-        rev_index = GraphIndex(packs._index_transport, name + '.rix',
-            packs._names[name][0])
-        inv_index = GraphIndex(packs._index_transport, name + '.iix',
-            packs._names[name][1])
-        txt_index = GraphIndex(packs._index_transport, name + '.tix',
-            packs._names[name][2])
-        sig_index = GraphIndex(packs._index_transport, name + '.six',
-            packs._names[name][3])
+        sizes = packs._names[name][1]
+        rev_index = GraphIndex(packs._index_transport, name + '.rix', sizes[0])
+        inv_index = GraphIndex(packs._index_transport, name + '.iix', sizes[1])
+        txt_index = GraphIndex(packs._index_transport, name + '.tix', sizes[2])
+        sig_index = GraphIndex(packs._index_transport, name + '.six', sizes[3])
         self.assertEqual(pack_repo.ExistingPack(packs._pack_transport,
             name, rev_index, inv_index, txt_index, sig_index), pack_1)
         # and the same instance should be returned on successive calls.

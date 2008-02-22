@@ -2696,7 +2696,7 @@ format_registry.register_metadir('rich-root-pack',
     )
 # The following two formats should always just be aliases.
 format_registry.register_metadir('development',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack1',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment1',
     help='Current development format. Can convert data to and from pack-0.92 '
         '(and anything compatible with pack-0.92) format repositories. '
         'Repositories and branches in this format can only be read by bzr.dev. '
@@ -2709,11 +2709,11 @@ format_registry.register_metadir('development',
     alias=True,
     )
 format_registry.register_metadir('development-subtree',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack3',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment1Subtree',
     help='Current development format, subtree variant. Can convert data to and '
-        'from pack-0.92 (and anything compatible with pack-0.92) format '
-        'repositories. Repositories and branches in this format can only be '
-        'read by bzr.dev. Please read '
+        'from pack-0.92-subtree (and anything compatible with '
+        'pack-0.92-subtree) format repositories. Repositories and branches in '
+        'this format can only be read by bzr.dev. Please read '
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
         'before use.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
@@ -2745,8 +2745,8 @@ format_registry.register_metadir('development0-subtree',
     experimental=True,
     )
 format_registry.register_metadir('development1',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack1',
-    help='pack-0.92 with a branch that supports stacking. '
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment1',
+    help='A branch and pack based repository that support stacking. '
         'Please read '
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
         'before use.',
@@ -2756,8 +2756,8 @@ format_registry.register_metadir('development1',
     experimental=True,
     )
 format_registry.register_metadir('development1-subtree',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack3',
-    help='pack-0.92-subtree with a branch that supports stacking. '
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment1Subtree',
+    help='A branch and pack based repository that support stacking. '
         'Please read '
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
         'before use.',

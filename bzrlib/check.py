@@ -94,7 +94,7 @@ class Check(object):
 
     def plan_revisions(self):
         repository = self.repository
-        self.planned_revisions = repository.all_revision_ids()
+        self.planned_revisions = list(repository.all_revision_ids())
         self.progress.clear()
         inventoried = set(self.inventory_weave.versions())
         awol = set(self.planned_revisions) - inventoried
