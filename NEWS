@@ -26,6 +26,9 @@ IN DEVELOPMENT
     * Include quick-start-summary.svg file to python-based installer(s)
       for Windows (#192924, Alexander Belchenko)
 
+    * ``merge --preview`` now works for merges that add or modify
+      symlinks (James Henstridge)
+
   API BREAKS:
 
   TESTING:
