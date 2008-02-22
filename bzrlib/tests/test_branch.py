@@ -354,6 +354,14 @@ class TestBranch7(TestBranch67, TestCaseWithTransport):
         branch = self.make_branch('a', format=self.get_format_name())
         self.assertFileEqual('\n', 'a/.bzr/branch/stacked-on')
 
+    def test_stack_and_unstack(self):
+        branch = self.make_branch('a', format=self.get_format_name())
+        target = self.make_branch('b')
+        branch.set_stacked_on(target.base)
+        self.assertEqual(target.base, branch.get_stacked_on())
+        branch.set_stacked_on(None)
+        self.assertRaises(errors.NotStacked, branch.get_stacked_on)
+
 
 class TestBranchReference(TestCaseWithTransport):
     """Tests for the branch reference facility."""
