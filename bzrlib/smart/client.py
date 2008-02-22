@@ -17,7 +17,7 @@
 import urllib
 from urlparse import urlparse
 
-from bzrlib.smart import protocol
+from bzrlib.smart import message, protocol
 from bzrlib import urlutils
 
 
@@ -47,10 +47,19 @@ class _SmartClient(object):
             result, smart_protocol = smart_client.call_expecting_body(...)
             body = smart_protocol.read_body_bytes()
         """
-        request = self.get_smart_medium().get_request()
-        smart_protocol = protocol.SmartClientRequestProtocolTwo(request)
-        smart_protocol.call(method, *args)
-        return smart_protocol.read_response_tuple(expect_body=True), smart_protocol
+        # Get a medium
+        medium_request = self.get_smart_medium().get_request()
+
+        # Send a request over the medium
+        request_encoder = protocol.ProtocolThreeRequester(medium_request)
+        request_encoder.call(method, *args)
+        
+        # Handle the response
+        response_handler = message.ConventionalResponseHandler()
+        response_proto = protocol._ProtocolThreeBase(response_handler)
+        response_handler.setProtoAndMedium(response_proto, medium_request)
+        response_tuple = response_handler.read_response_tuple()
+        return response_tuple, response_handler
 
     def call_with_body_bytes(self, method, args, body):
         """Call a method on the remote server with body bytes."""

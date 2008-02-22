@@ -2059,17 +2059,26 @@ class LoggingMessageHandler(object):
     def __init__(self):
         self.event_log = []
 
+    def _log(self, *args):
+        self.event_log.append(args)
+
     def headers_received(self, headers):
-        self.event_log.append(('headers', headers))
+        self._log('headers', headers)
 
-    def byte_received(self, byte):
-        self.event_log.append(('byte', byte))
+    def protocol_error(self, exception):
+        self._log('protocol_error', exception)
 
-    def bytes_received(self, bytes):
-        self.event_log.append(('bytes', bytes))
+    def byte_part_received(self, byte):
+        self._log('byte', byte)
 
-    def structure_received(self, structure):
-        self.event_log.append(('structure', structure))
+    def bytes_part_received(self, bytes):
+        self._log('bytes', bytes)
+
+    def structure_part_received(self, structure):
+        self._log('structure', structure)
+
+    def end_received(self):
+        self._log('end')
 
 
 class TestProtocolThree(TestSmartProtocol):
@@ -2300,7 +2309,7 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
         smart_protocol, output = self.make_client_encoder_and_output()
         smart_protocol.call('one arg', headers={'header name': 'header value'})
         self.assertEquals(
-            'bzr request 3 (bzr 1.3)\n' # protocol version
+            'bzr message 3 (bzr 1.3)\n' # protocol version
             '\x00\x00\x00\x1fd11:header name12:header valuee' # headers
             's\x00\x00\x00\x0bl7:one arge' # args
             'e', # end
@@ -2326,7 +2335,7 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
             ('one arg',), 'body bytes',
             headers={'header name': 'header value'})
         self.assertEquals(
-            'bzr request 3 (bzr 1.3)\n' # protocol version
+            'bzr message 3 (bzr 1.3)\n' # protocol version
             '\x00\x00\x00\x1fd11:header name12:header valuee' # headers
             's\x00\x00\x00\x0bl7:one arge' # args
             'b' # there is a prefixed body
