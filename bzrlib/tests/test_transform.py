@@ -1859,6 +1859,17 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.assertEqual(
             preview_tree.get_file('file2-id').read(), 'content B\n')
 
+    def test_transform_new_symlink(self):
+        self.requireFeature(SymlinkFeature)
+        revision_tree = self.create_tree()
+        preview = TransformPreview(revision_tree)
+        self.addCleanup(preview.finalize)
+        preview.new_symlink('symlink', preview.root, 'target', 'symlink-id')
+        preview_tree = preview.get_preview_tree()
+        self.assertEqual(preview_tree.kind('symlink-id'), 'symlink')
+        self.assertEqual(
+            preview_tree.get_symlink_target('symlink-id'), 'target')
+
     def test_diff_preview_tree(self):
         revision_tree = self.create_tree()
         preview = TransformPreview(revision_tree)
