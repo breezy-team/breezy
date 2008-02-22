@@ -502,7 +502,17 @@ class Repository(object):
         """
         if not self._format.supports_external_lookups:
             raise errors.UnstackableRepositoryFormat(self._format, self.base)
+        if not self._add_fallback_repository_check(repository):
+            raise errors.IncompatibleRepositories(self, repository)
         self._fallback_repositories.append(repository)
+
+    def _add_fallback_repository_check(self, repository):
+        """Check that this repository can fallback to repository safely.
+        
+        :param repository: A repository to fallback to.
+        :return: True if the repositories can stack ok.
+        """
+        return InterRepository._same_model(self, repository)
 
     def add_inventory(self, revision_id, inv, parents):
         """Add the inventory inv to the repository as revision_id.
@@ -579,10 +589,7 @@ class Repository(object):
         """
         if 'evil' in debug.debug_flags:
             mutter_callsite(2, "all_revision_ids is linear with history.")
-        all_ids = set(self._all_revision_ids())
-        for repository in self._fallback_repositories:
-            all_ids.update(repository.all_revision_ids())
-        return all_ids
+        return self._all_revision_ids()
 
     def _all_revision_ids(self):
         """Returns a list of all the revision ids in the repository. 
