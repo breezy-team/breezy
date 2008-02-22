@@ -1967,3 +1967,11 @@ class TestTransformPreview(tests.TestCaseWithTransport):
             self.assertEqual('contents', tree_file.read())
         finally:
             tree_file.close()
+
+    def test_get_symlink_target(self):
+        self.requireFeature(SymlinkFeature)
+        preview = self.get_empty_preview()
+        preview.new_symlink('symlink', preview.root, 'target', 'symlink-id')
+        preview_tree = preview.get_preview_tree()
+        self.assertEqual('target',
+                         preview_tree.get_symlink_target('symlink-id'))
