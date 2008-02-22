@@ -674,19 +674,14 @@ class _ProtocolThreeBase(_StatefulDecoder):
     response_marker = RESPONSE_VERSION_THREE
     request_marker = REQUEST_VERSION_THREE
 
-    def __init__(self, backing_transport, write_func, request_registry=None):
+    def __init__(self, message_handler):
         _StatefulDecoder.__init__(self)
-        self._backing_transport = backing_transport
-        self._write_func = write_func
         self.has_dispatched = False
         # Initial state
         self._in_buffer = ''
         self.state_accept = self._state_accept_expecting_headers
 
-        if request_registry is None:
-            request_registry = request.request_handlers
-        self.request_handler = request.SmartServerRequestHandler(
-            self._backing_transport, commands=request_registry)
+        self.request_handler = self.message_handler = message_handler
 
 #        self.excess_buffer = ''
 #        self._finished = False
@@ -744,59 +739,46 @@ class _ProtocolThreeBase(_StatefulDecoder):
             raise errors.SmartProtocolError(
                 'Header object %r is not a dict' % (decoded,))
         self._headers_received(decoded)
+        self.state_accept = self._state_accept_expecting_message_part
     
-    def _state_accept_expecting_request_args(self, bytes):
+    def _state_accept_expecting_message_part(self, bytes):
         self._in_buffer += bytes
-        decoded = self._extract_prefixed_bencoded_data()
-        if type(decoded) is not list:
-            raise errors.SmartProtocolError(
-                'Request arguments %r not sequence' % (decoded,))
-        self._args_received(decoded)
-
-    def _state_accept_expecting_body_kind(self, bytes):
-        self._in_buffer += bytes
-        body_kind = self._extract_single_byte()
-        if body_kind == 'n':
-            self._no_body()
-        elif body_kind == 'p':
-            # A single length-prefixed blob
-            self.state_accept = self._state_accept_expecting_prefixed_body
-        elif body_kind == 's':
-            # Streamed body
-            self.state_accept = self._state_accept_expecting_chunked_body
+        message_part_kind = self._extract_single_byte()
+        if message_part_kind == 'o':
+            self.state_accept = self._state_accept_expecting_one_byte
+        elif message_part_kind == 's':
+            self.state_accept = self._state_accept_expecting_structure
+        elif message_part_kind == 'b':
+            self.state_accept = self._state_accept_expecting_bytes
+        elif message_part_kind == 'e':
+            self.done()
         else:
-            raise errors.SmartProtocolError('Bad body kind: %r' % (body_kind,))
+            raise errors.SmartProtocolError(
+                'Bad message kind byte: %r' % (message_part_kind,))
+
+    def _state_accept_expecting_one_byte(self, bytes):
+        self._in_buffer += bytes
+        byte = self._extract_single_byte()
+        self.message_handler.byte_received(byte)
+        self.state_accept = self._state_accept_expecting_message_part
+
+    def _state_accept_expecting_bytes(self, bytes):
+        self._in_buffer += bytes
+        bytes = self._extract_length_prefixed_bytes()
+        self.message_handler.bytes_received(bytes)
+        self.state_accept = self._state_accept_expecting_message_part
+
+    def _state_accept_expecting_structure(self, bytes):
+        self._in_buffer += bytes
+        structure = self._extract_prefixed_bencoded_data()
+        self.message_handler.structure_received(structure)
+        self.state_accept = self._state_accept_expecting_message_part
 
     def done(self):
         self.unused_data = self._in_buffer
         self._in_buffer = None
         self.state_accept = self._state_accept_reading_unused
         self.request_handler.end_received()
-
-    def _state_accept_expecting_prefixed_body(self, bytes):
-        # XXX: we could make this stream the body directly to the request,
-        # rather than buffering.
-        self._in_buffer += bytes
-        body = self._extract_length_prefixed_bytes()
-        self.request_handler.prefixed_body_received(body)
-        self.done()
-
-    def _state_accept_expecting_chunked_body(self, bytes):
-        self._in_buffer += bytes
-        chunk_or_terminator = self._extract_single_byte()
-        if chunk_or_terminator == 'c':
-            self.state_accept = self._state_accept_expecting_chunk
-        elif chunk_or_terminator == 't':
-            self.done()
-        else:
-            raise errors.SmartProtocolError(
-                'Bad chunk header: %r' % (chunk_or_terminator,))
-
-    def _state_accept_expecting_chunk(self, bytes):
-        self._in_buffer += bytes
-        prefixed_bytes = self._extract_length_prefixed_bytes()
-        self.request_handler.body_chunk_received(prefixed_bytes)
-        self.state_accept = self._state_accept_expecting_chunked_body
 
     def _state_accept_reading_unused(self, bytes):
         self.unused_data += bytes
@@ -823,7 +805,7 @@ class SmartServerRequestProtocolThree(_ProtocolThreeBase):
         self.request_handler.args_received(args)
 
     def _headers_received(self, headers):
-        self.state_accept = self._state_accept_expecting_request_args
+        #self.state_accept = self._state_accept_expecting_request_args
         self.request_handler.headers_received(headers)
 
     def _no_body(self):
@@ -882,7 +864,7 @@ class SmartClientRequestProtocolThree(_ProtocolThreeBase, SmartClientRequestProt
         self.response_handler = self.request_handler = _ResponseHandler()
 
     def _headers_received(self, headers):
-        self.state_accept = self._state_accept_expecting_body_kind
+        #self.state_accept = self._state_accept_expecting_body_kind
         self.response_handler.headers_received(headers)
 
     def _no_body(self):
@@ -923,13 +905,14 @@ class SmartClientRequestProtocolThree(_ProtocolThreeBase, SmartClientRequestProt
         self._write_prefixed_bencode(headers)
 
     def _write_args(self, args):
+        self._request.accept_bytes('s')
         self._write_prefixed_bencode(args)
 
-    def _write_no_body(self):
-        self._request.accept_bytes('n')
+    def _write_end(self):
+        self._request.accept_bytes('e')
 
     def _write_prefixed_body(self, bytes):
-        self._request.accept_bytes('p')
+        self._request.accept_bytes('b')
         self._request.accept_bytes(struct.pack('!L', len(bytes)))
         self._request.accept_bytes(bytes)
 
@@ -964,7 +947,7 @@ class SmartClientRequestProtocolThree(_ProtocolThreeBase, SmartClientRequestProt
         self._write_protocol_version()
         self._write_headers(headers)
         self._write_args(args)
-        self._write_no_body()
+        self._write_end()
         self._request.finished_writing()
 
     def call_with_body_bytes(self, args, body, headers=None):
@@ -982,6 +965,7 @@ class SmartClientRequestProtocolThree(_ProtocolThreeBase, SmartClientRequestProt
         self._write_headers(headers)
         self._write_args(args)
         self._write_prefixed_body(body)
+        self._write_end()
         self._request.finished_writing()
 
     def call_with_body_readv_array(self, args, body, headers=None):
