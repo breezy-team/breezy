@@ -16,6 +16,18 @@ IN DEVELOPMENT
       interested in getting early-adopter testing and feedback on.
       ``doc/developers/development-repo.txt`` has detailed information.
       (Robert Collins)
+
+    * BZR_LOG environment variable controls location of .bzr.log trace file. 
+      User can suppress writing messages to .bzr.log by using '/dev/null'
+      filename (on Linux) or 'NUL' (on Windows). If BZR_LOG variable 
+      is not defined but BZR_HOME is defined then default location
+      for .bzr.log trace file is ``$BZR_HOME/.bzr.log``.
+      (Alexander Belchenko)
+
+    * ``launchpad`` builtin plugin now shipped as separate part in standalone
+      bzr.exe, installed to ``C:\Program Files\Bazaar\plugins`` directory, 
+      and standalone installer allows user to skip installation of this plugin.
+      (Alexander Belchenko)
  
     * Restore auto-detection of plink.exe on Windows. (Dmitry Vasiliev)
 
@@ -36,9 +48,18 @@ IN DEVELOPMENT
 
   API BREAKS:
 
+    * Support for loading plugins from zip files and
+      ``bzrlib.plugin.load_from_zip()`` function are deprecated.
+      (Alexander Belchenko)
+
   TESTING:
 
   INTERNALS:
+
+    * New module ``tools/package_mf.py`` provide custom module finder for
+      python packages (improves standard python library's modulefinder.py)
+      used by ``setup.py`` script while building standalone bzr.exe.
+      (Alexander Belchenko)
 
     * New remote method ``RemoteBzrDir.find_repositoryV2`` adding support for
       detecting external lookup support on remote repositories. This method is
@@ -225,7 +246,7 @@ bzr 1.2rc1 (not released yet)
 
     * Record a timestamp against each mutter to the trace file, relative to the
       first import of bzrlib.  (Andrew Bennetts)
-     
+
     * ``Repository.get_data_stream`` is now deprecated in favour of
       ``Repository.get_data_stream_for_search`` which allows less network
       traffic when requesting data streams over a smart server. (Robert Collins)
