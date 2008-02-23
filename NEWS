@@ -28,6 +28,8 @@ IN DEVELOPMENT
       bzr.exe, installed to ``C:\Program Files\Bazaar\plugins`` directory, 
       and standalone installer allows user to skip installation of this plugin.
       (Alexander Belchenko)
+ 
+    * Restore auto-detection of plink.exe on Windows. (Dmitry Vasiliev)
 
   FEATURES:
 
@@ -35,8 +37,11 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+    * Disable plink's interactive prompt for password.
+      (#107593, Dmitry Vasiliev)
+
     * Include quick-start-summary.svg file to python-based installer(s)
-      for Windows (#192924, Alexander Belchenko)
+      for Windows. (#192924, Alexander Belchenko)
 
     * ``merge --preview`` now works for merges that add or modify
       symlinks (James Henstridge)
