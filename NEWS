@@ -17,6 +17,13 @@ IN DEVELOPMENT
       ``doc/developers/development-repo.txt`` has detailed information.
       (Robert Collins)
 
+    * BZR_LOG environment variable controls location of .bzr.log trace file. 
+      User can suppress writing messages to .bzr.log by using '/dev/null'
+      filename (on Linux) or 'NUL' (on Windows). If BZR_LOG variable 
+      is not defined but BZR_HOME is defined then default location
+      for .bzr.log trace file is ``$BZR_HOME/.bzr.log``.
+      (Alexander Belchenko)
+
     * ``launchpad`` builtin plugin now shipped as separate part in standalone
       bzr.exe, installed to ``C:\Program Files\Bazaar\plugins`` directory, 
       and standalone installer allows user to skip installation of this plugin.
@@ -30,6 +37,9 @@ IN DEVELOPMENT
 
     * Include quick-start-summary.svg file to python-based installer(s)
       for Windows (#192924, Alexander Belchenko)
+
+    * ``merge --preview`` now works for merges that add or modify
+      symlinks (James Henstridge)
 
   API BREAKS:
 

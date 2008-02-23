@@ -1407,6 +1407,12 @@ class _PreviewTree(object):
         name = self._transform._limbo_name(trans_id)
         return open(name, 'rb')
 
+    def get_symlink_target(self, file_id):
+        """See Tree.get_symlink_target"""
+        trans_id = self._transform.trans_id_file_id(file_id)
+        name = self._transform._limbo_name(trans_id)
+        return os.readlink(name)
+
     def paths2ids(self, specific_files, trees=None, require_versioned=False):
         """See Tree.paths2ids"""
         return 'not_empty'
