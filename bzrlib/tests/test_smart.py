@@ -38,7 +38,35 @@ from bzrlib.smart.request import (
 import bzrlib.smart.bzrdir
 import bzrlib.smart.branch
 import bzrlib.smart.repository
+from bzrlib.tests import (
+    iter_suite_tests,
+    split_suite_by_re,
+    TestScenarioApplier,
+    )
 from bzrlib.util import bencode
+
+
+def load_tests(standard_tests, module, loader):
+    """Multiply tests version and protocol consistency."""
+    # FindRepository tests.
+    bzrdir_mod = bzrlib.smart.bzrdir
+    applier = TestScenarioApplier()
+    applier.scenarios = [
+        ("find_repository", {
+            "_request_class":bzrdir_mod.SmartServerRequestFindRepositoryV1}),
+        ("find_repositoryV2", {
+            "_request_class":bzrdir_mod.SmartServerRequestFindRepositoryV2}),
+        ]
+    to_adapt, result = split_suite_by_re(standard_tests,
+        "TestSmartServerRequestFindRepository")
+    v2_only, v1_and_2 = split_suite_by_re(to_adapt,
+        "_v2")
+    for test in iter_suite_tests(v1_and_2):
+        result.addTests(applier.adapt(test))
+    del applier.scenarios[0]
+    for test in iter_suite_tests(v2_only):
+        result.addTests(applier.adapt(test))
+    return result
 
 
 class TestCaseWithSmartMedium(tests.TestCaseWithTransport):
@@ -77,7 +105,7 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithTransport):
     def test_no_repository(self):
         """When there is no repository to be found, ('norepository', ) is returned."""
         backing = self.get_transport()
-        request = smart.bzrdir.SmartServerRequestFindRepository(backing)
+        request = self._request_class(backing)
         self.make_bzrdir('.')
         self.assertEqual(SmartServerResponse(('norepository', )),
             request.execute(backing.local_abspath('')))
@@ -87,7 +115,7 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithTransport):
         # path the repository is being searched on is the same as that that 
         # the repository is at.
         backing = self.get_transport()
-        request = smart.bzrdir.SmartServerRequestFindRepository(backing)
+        request = self._request_class(backing)
         result = self._make_repository_and_result()
         self.assertEqual(result, request.execute(backing.local_abspath('')))
         self.make_bzrdir('subdir')
@@ -108,12 +136,19 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithTransport):
             subtrees = 'yes'
         else:
             subtrees = 'no'
-        return SmartServerResponse(('ok', '', rich_root, subtrees))
+        if (smart.bzrdir.SmartServerRequestFindRepositoryV2 ==
+            self._request_class):
+            # All tests so far are on formats, and for non-external
+            # repositories.
+            return SuccessfulSmartServerResponse(
+                ('ok', '', rich_root, subtrees, 'no'))
+        else:
+            return SuccessfulSmartServerResponse(('ok', '', rich_root, subtrees))
 
     def test_shared_repository(self):
         """When there is a shared repository, we get 'ok', 'relpath-to-repo'."""
         backing = self.get_transport()
-        request = smart.bzrdir.SmartServerRequestFindRepository(backing)
+        request = self._request_class(backing)
         result = self._make_repository_and_result(shared=True)
         self.assertEqual(result, request.execute(backing.local_abspath('')))
         self.make_bzrdir('subdir')
@@ -128,11 +163,20 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithTransport):
     def test_rich_root_and_subtree_encoding(self):
         """Test for the format attributes for rich root and subtree support."""
         backing = self.get_transport()
-        request = smart.bzrdir.SmartServerRequestFindRepository(backing)
+        request = self._request_class(backing)
         result = self._make_repository_and_result(format='dirstate-with-subtree')
         # check the test will be valid
         self.assertEqual('yes', result.args[2])
         self.assertEqual('yes', result.args[3])
+        self.assertEqual(result, request.execute(backing.local_abspath('')))
+
+    def test_supports_external_lookups_no_v2(self):
+        """Test for the supports_external_lookups attribute."""
+        backing = self.get_transport()
+        request = self._request_class(backing)
+        result = self._make_repository_and_result(format='dirstate-with-subtree')
+        # check the test will be valid
+        self.assertEqual('no', result.args[4])
         self.assertEqual(result, request.execute(backing.local_abspath('')))
 
 
@@ -922,7 +966,10 @@ class TestHandlers(tests.TestCase):
             smart.branch.SmartServerBranchRequestUnlock)
         self.assertEqual(
             smart.request.request_handlers.get('BzrDir.find_repository'),
-            smart.bzrdir.SmartServerRequestFindRepository)
+            smart.bzrdir.SmartServerRequestFindRepositoryV1)
+        self.assertEqual(
+            smart.request.request_handlers.get('BzrDir.find_repositoryV2'),
+            smart.bzrdir.SmartServerRequestFindRepositoryV2)
         self.assertEqual(
             smart.request.request_handlers.get('BzrDirFormat.initialize'),
             smart.bzrdir.SmartServerRequestInitializeBzrDir)

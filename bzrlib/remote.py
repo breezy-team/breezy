@@ -148,16 +148,29 @@ class RemoteBzrDir(BzrDir):
                 
     def open_repository(self):
         path = self._path_for_remote_call(self._client)
-        response = self._client.call('BzrDir.find_repository', path)
+        verb = 'BzrDir.find_repositoryV2'
+        response = self._client.call(verb, path)
+        if (response == ('error', "Generic bzr smart protocol error: "
+                "bad request '%s'" % verb) or
+              response == ('error', "Generic bzr smart protocol error: "
+                "bad request u'%s'" % verb)):
+            verb = 'BzrDir.find_repository'
+            response = self._client.call(verb, path)
         assert response[0] in ('ok', 'norepository'), \
             'unexpected response code %s' % (response,)
         if response[0] == 'norepository':
             raise errors.NoRepositoryPresent(self)
-        assert len(response) == 4, 'incorrect response length %s' % (response,)
+        if verb == 'BzrDir.find_repository':
+            # servers that don't support the V2 method don't support external
+            # references either.
+            response = response + ('no', )
+        assert len(response) == 5, 'incorrect response length %s' % (response,)
         if response[1] == '':
             format = RemoteRepositoryFormat()
             format.rich_root_data = (response[2] == 'yes')
             format.supports_tree_reference = (response[3] == 'yes')
+            # No wire format to check this yet.
+            format.supports_external_lookups = (response[4] == 'yes')
             return RemoteRepository(self, format)
         else:
             raise errors.NoRepositoryPresent(self)
@@ -284,6 +297,9 @@ class RemoteRepository(object):
         self._reconcile_fixes_text_parents = False
         self._reconcile_backsup_inventory = False
         self.base = self.bzrdir.transport.base
+        # Can this repository be given external locations to lookup additional
+        # data.
+        self.supports_external_lookups = False
 
     def __str__(self):
         return "%s(%s)" % (self.__class__.__name__, self.base)
