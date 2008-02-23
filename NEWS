@@ -28,6 +28,9 @@ IN DEVELOPMENT
       bzr.exe, installed to ``C:\Program Files\Bazaar\plugins`` directory, 
       and standalone installer allows user to skip installation of this plugin.
       (Alexander Belchenko)
+
+    * On Linux bzr additionally looks for plugins in arch-independent site
+      directory. (Toshio Kuratomi)
  
     * Restore auto-detection of plink.exe on Windows. (Dmitry Vasiliev)
 
