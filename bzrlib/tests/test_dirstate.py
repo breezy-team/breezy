@@ -646,6 +646,45 @@ class TestDirStateOnFile(TestCaseWithDirState):
         finally:
             state.unlock()
 
+    def test_save_refuses_if_changes_aborted(self):
+        self.build_tree(['a-file', 'a-dir/'])
+        state = dirstate.DirState.initialize('dirstate')
+        try:
+            # No stat and no sha1 sum.
+            state.add('a-file', 'a-file-id', 'file', None, '')
+            state.save()
+        finally:
+            state.unlock()
+
+        # The dirstate should include TREE_ROOT and 'a-file' and nothing else
+        expected_blocks = [
+            ('', [(('', '', 'TREE_ROOT'),
+                   [('d', '', 0, False, dirstate.DirState.NULLSTAT)])]),
+            ('', [(('', 'a-file', 'a-file-id'),
+                   [('f', '', 0, False, dirstate.DirState.NULLSTAT)])]),
+        ]
+
+        state = dirstate.DirState.on_file('dirstate')
+        state.lock_write()
+        try:
+            state._read_dirblocks_if_needed()
+            self.assertEqual(expected_blocks, state._dirblocks)
+
+            # Now modify the state, but mark it as inconsistent
+            state.add('a-dir', 'a-dir-id', 'directory', None, '')
+            state._changes_aborted = True
+            state.save()
+        finally:
+            state.unlock()
+
+        state = dirstate.DirState.on_file('dirstate')
+        state.lock_read()
+        try:
+            state._read_dirblocks_if_needed()
+            self.assertEqual(expected_blocks, state._dirblocks)
+        finally:
+            state.unlock()
+
 
 class TestDirStateInitialize(TestCaseWithDirState):
 
