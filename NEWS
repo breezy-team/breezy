@@ -11,11 +11,13 @@ IN DEVELOPMENT
   
   CHANGES:
 
-   * A new repository format 'development' has been added. This format will
-     represent the latest 'in-progress' format that the bzr developers are
-     interested in getting early-adopter testing and feedback on.
-     ``doc/developers/development-repo.txt`` has detailed information.
-     (Robert Collins)
+    * A new repository format 'development' has been added. This format will
+      represent the latest 'in-progress' format that the bzr developers are
+      interested in getting early-adopter testing and feedback on.
+      ``doc/developers/development-repo.txt`` has detailed information.
+      (Robert Collins)
+ 
+    * Restore auto-detection of plink.exe on Windows. (Dmitry Vasiliev)
 
   FEATURES:
 
@@ -23,8 +25,11 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+    * Disable plink's interactive prompt for password.
+      (#107593, Dmitry Vasiliev)
+
     * Include quick-start-summary.svg file to python-based installer(s)
-      for Windows (#192924, Alexander Belchenko)
+      for Windows. (#192924, Alexander Belchenko)
 
     * ``merge --preview`` now works for merges that add or modify
       symlinks (James Henstridge)
