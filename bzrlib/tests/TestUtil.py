@@ -77,6 +77,8 @@ class TestLoader(unittest.TestLoader):
     """Custom TestLoader to extend the stock python one."""
 
     suiteClass = TestSuite
+    # Memoize test names by test class dict
+    test_func_names = {}
 
     def loadTestsFromModuleNames(self, names):
         """use a custom means to load tests from modules.
@@ -122,6 +124,16 @@ class TestLoader(unittest.TestLoader):
         else:
             return basic_tests
 
+    def getTestCaseNames(self, test_case_class):
+        test_fn_names = self.test_func_names.get(test_case_class, None)
+        if test_fn_names is not None:
+            # We already calculate that
+            return test_fn_names
+
+        test_fn_names = unittest.TestLoader.getTestCaseNames(self,
+                                                             test_case_class)
+        self.test_func_names[test_case_class] = test_fn_names
+        return test_fn_names
 
 def _load_module_by_name(mod_name):
     parts = mod_name.split('.')

@@ -196,6 +196,6 @@ class UpgradeRecommendedTests(TestCaseInTempDir):
         # the actual workingtree, not when we only open a bzrdir that contains
         # an old workngtree
         self.run_bzr('init --knit a')
-        out, err = self.run_bzr('checkout a b')
+        out, err = self.run_bzr('revno a')
         if err.find('upgrade') > -1:
             self.fail("message shouldn't suggest upgrade:\n%s" % err)

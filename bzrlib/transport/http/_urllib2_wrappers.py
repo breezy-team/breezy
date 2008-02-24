@@ -1,4 +1,4 @@
-# Copyright (C) 2006,2007 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,9 +32,6 @@ And a custom Request class that lets us track redirections, and
 handle authentication schemes.
 """
 
-# TODO: now that we have -Dhttp most of the needs should be covered in a more
-# accessible way (i.e. no need to edit the source), if experience confirms
-# that, delete all DEBUG uses -- vila20071130 (happy birthday).
 DEBUG = 0
 
 # FIXME: Oversimplifying, two kind of exceptions should be
@@ -78,6 +75,12 @@ class Response(httplib.HTTPResponse):
     # Some responses have bodies in which we have no interest
     _body_ignored_responses = [301,302, 303, 307, 401, 403, 404]
 
+    # in finish() below, we may have to discard several MB in the worst
+    # case. To avoid buffering that much, we read and discard by chunks
+    # instead. The underlying file is either a socket or a StringIO, so reading
+    # 8k chunks should be fine.
+    _discarded_buf_size = 8192
+
     def begin(self):
         """Begin to read the response from the server.
 
@@ -88,13 +91,9 @@ class Response(httplib.HTTPResponse):
         """
         httplib.HTTPResponse.begin(self)
         if self.status in self._body_ignored_responses:
-            if self.debuglevel > 0:
+            if self.debuglevel >= 2:
                 print "For status: [%s]," % self.status,
-                print "will ready body, length: ",
-                if  self.length is not None:
-                    print "[%d]" % self.length
-                else:
-                    print "None"
+                print "will ready body, length: %s" % self.length
             if not (self.length is None or self.will_close):
                 # In some cases, we just can't read the body not
                 # even try or we may encounter a 104, 'Connection
@@ -102,8 +101,8 @@ class Response(httplib.HTTPResponse):
                 # and the server closed the connection just after
                 # having issued the response headers (even if the
                 # headers indicate a Content-Type...)
-                body = self.fp.read(self.length)
-                if self.debuglevel > 3:
+                body = self.read(self.length)
+                if self.debuglevel >= 9:
                     # This one can be huge and is generally not interesting
                     print "Consumed body: [%s]" % body
             self.close()
@@ -120,12 +119,6 @@ class Response(httplib.HTTPResponse):
             # below we keep the socket with the server opened.
             self.will_close = False
 
-    # in finish() below, we may have to discard several MB in the worst
-    # case. To avoid buffering that much, we read and discard by chunks
-    # instead. The underlying file is either a socket or a StringIO, so reading
-    # 8k chunks should be fine.
-    _discarded_buf_size = 8192
-
     def finish(self):
         """Finish reading the body.
 
@@ -141,17 +134,13 @@ class Response(httplib.HTTPResponse):
         if not self.isclosed():
             # Make sure nothing was left to be read on the socket
             pending = 0
-            while self.length and self.length > self._discarded_buf_size:
-                data = self.read(self._discarded_buf_size)
-                pending += len(data)
-            if self.length:
-                data = self.read(self.length)
+            data = True
+            while data and self.length:
+                # read() will update self.length
+                data = self.read(min(self.length, self._discarded_buf_size))
                 pending += len(data)
             if pending:
-                trace.mutter(
-                    "bogus http server didn't give body length,"
-                    "%s bytes left on the socket",
-                    pending)
+                trace.mutter("%s bytes left on the HTTP socket", pending)
             self.close()
         return pending
 
@@ -161,7 +150,6 @@ class AbstractHTTPConnection:
     """A custom HTTP(S) Connection, which can reset itself on a bad response"""
 
     response_class = Response
-    strict = 1 # We don't support HTTP/0.9
 
     # When we detect a server responding with the whole file to range requests,
     # we want to warn. But not below a given thresold.
@@ -183,7 +171,7 @@ class AbstractHTTPConnection:
         return self._response
 
     def cleanup_pipe(self):
-        """Make the connection believe the response has been fully processed."""
+        """Read the remaining bytes of the last response if any."""
         if self._response is not None:
             pending = self._response.finish()
             # Warn the user (once)
@@ -209,9 +197,10 @@ class AbstractHTTPConnection:
 class HTTPConnection(AbstractHTTPConnection, httplib.HTTPConnection):
 
     # XXX: Needs refactoring at the caller level.
-    def __init__(self, host, port=None, strict=None, proxied_host=None):
+    def __init__(self, host, port=None, proxied_host=None):
         AbstractHTTPConnection.__init__(self)
-        httplib.HTTPConnection.__init__(self, host, port, strict)
+        # Use strict=True since we don't support HTTP/0.9
+        httplib.HTTPConnection.__init__(self, host, port, strict=True)
         self.proxied_host = proxied_host
 
     def connect(self):
@@ -220,13 +209,15 @@ class HTTPConnection(AbstractHTTPConnection, httplib.HTTPConnection):
         httplib.HTTPConnection.connect(self)
 
 
+# FIXME: Should test for ssl availability
 class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
 
     def __init__(self, host, port=None, key_file=None, cert_file=None,
-                 strict=None, proxied_host=None):
+                 proxied_host=None):
         AbstractHTTPConnection.__init__(self)
+        # Use strict=True since we don't support HTTP/0.9
         httplib.HTTPSConnection.__init__(self, host, port,
-                                         key_file, cert_file, strict)
+                                         key_file, cert_file, strict=True)
         self.proxied_host = proxied_host
 
     def connect(self):
@@ -440,7 +431,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
             raise exc_type, exc_val, exc_tb
         else:
             if first_try:
-                if self._debuglevel > 0:
+                if self._debuglevel >= 2:
                     print 'Received exception: [%r]' % exc_val
                     print '  On connection: [%r]' % request.connection
                     method = request.get_method()
@@ -449,7 +440,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                 request.connection.close()
                 response = self.do_open(http_class, request, False)
             else:
-                if self._debuglevel > 0:
+                if self._debuglevel >= 2:
                     print 'Received second exception: [%r]' % exc_val
                     print '  On connection: [%r]' % request.connection
                 if exc_type in (httplib.BadStatusLine, httplib.UnknownProtocol):
@@ -476,7 +467,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                                                        request.get_selector()),
                         orig_error=exc_val)
 
-                if self._debuglevel > 0:
+                if self._debuglevel >= 2:
                     print 'On connection: [%r]' % request.connection
                     method = request.get_method()
                     url = request.get_full_url()
@@ -511,8 +502,9 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                 trace.mutter('> %s %s' % (method, url))
                 hdrs = ['%s: %s' % (k, v) for k,v in headers.items()]
                 trace.mutter('> ' + '\n> '.join(hdrs) + '\n')
-            if self._debuglevel > 0:
-                print 'Request sent: [%r]' % request
+            if self._debuglevel >= 1:
+                print 'Request sent: [%r] from (%s)' \
+                    % (request, request.connection.sock.getsockname())
             response = connection.getresponse()
             convert_to_addinfourl = True
         except (socket.gaierror, httplib.BadStatusLine, httplib.UnknownProtocol,
@@ -532,7 +524,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
 #            connection.send(body)
 #            response = connection.getresponse()
 
-        if self._debuglevel > 0:
+        if self._debuglevel >= 2:
             print 'Receives response: %r' % response
             print '  For: %r(%r)' % (request.get_method(),
                                      request.get_full_url())
@@ -547,7 +539,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
             resp.code = r.status
             resp.msg = r.reason
             resp.version = r.version
-            if self._debuglevel > 0:
+            if self._debuglevel >= 2:
                 print 'Create addinfourl: %r' % resp
                 print '  For: %r(%r)' % (request.get_method(),
                                          request.get_full_url())
@@ -593,7 +585,7 @@ class HTTPSHandler(AbstractHTTPHandler):
             # - with and without certificate
             # - with self-signed certificate
             # - with and without authentication
-            # - with good and bad credentials (especially the proxy auth aound
+            # - with good and bad credentials (especially the proxy auth around
             #   CONNECT)
             # - with basic and digest schemes
             # - reconnection on errors
@@ -694,7 +686,7 @@ class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
             newurl = headers.getheaders('uri')[0]
         else:
             return
-        if self._debuglevel > 0:
+        if self._debuglevel >= 1:
             print 'Redirected to: %s (followed: %r)' % (newurl,
                                                         req.follow_redirections)
         if req.follow_redirections is False:
@@ -757,7 +749,7 @@ class ProxyHandler(urllib2.ProxyHandler):
         urllib2.ProxyHandler.__init__(self, proxies)
         # First, let's get rid of urllib2 implementation
         for type, proxy in self.proxies.items():
-            if self._debuglevel > 0:
+            if self._debuglevel >= 3:
                 print 'Will unbind %s_open for %r' % (type, proxy)
             delattr(self, '%s_open' % type)
 
@@ -766,13 +758,13 @@ class ProxyHandler(urllib2.ProxyHandler):
         https_proxy = self.get_proxy_env_var('https')
 
         if http_proxy is not None:
-            if self._debuglevel > 0:
+            if self._debuglevel >= 3:
                 print 'Will bind http_request for %r' % http_proxy
             setattr(self, 'http_request',
                     lambda request: self.set_proxy(request, 'http'))
 
         if https_proxy is not None:
-            if self._debuglevel > 0:
+            if self._debuglevel >= 3:
                 print 'Will bind http_request for %r' % https_proxy
             setattr(self, 'https_request',
                     lambda request: self.set_proxy(request, 'https'))
@@ -823,7 +815,7 @@ class ProxyHandler(urllib2.ProxyHandler):
             return request
 
         proxy = self.get_proxy_env_var(type)
-        if self._debuglevel > 0:
+        if self._debuglevel >= 3:
             print 'set_proxy %s_request for %r' % (type, proxy)
         # FIXME: python 2.5 urlparse provides a better _parse_proxy which can
         # grok user:password@host:port as well as
@@ -847,7 +839,7 @@ class ProxyHandler(urllib2.ProxyHandler):
         else:
             phost = host + ':%d' % port
         request.set_proxy(phost, type)
-        if self._debuglevel > 0:
+        if self._debuglevel >= 3:
             print 'set_proxy: proxy set to %s://%s' % (type, phost)
         return request
 
@@ -948,6 +940,8 @@ class AbstractAuthHandler(urllib2.BaseHandler):
                 # We already tried that, give up
                 return None
 
+            # Housekeeping
+            request.connection.cleanup_pipe()
             response = self.parent.open(request)
             if response:
                 self.auth_successful(request, response)
@@ -1350,7 +1344,7 @@ class Opener(object):
             )
 
         self.open = self._opener.open
-        if DEBUG >= 3:
+        if DEBUG >= 9:
             # When dealing with handler order, it's easy to mess
             # things up, the following will help understand which
             # handler is used, when and for what.

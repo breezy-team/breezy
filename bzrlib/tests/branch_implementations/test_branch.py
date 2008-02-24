@@ -42,7 +42,7 @@ from bzrlib.osutils import getcwd
 import bzrlib.revision
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.tests.branch_implementations import TestCaseWithBranch
-from bzrlib.tests.HttpServer import HttpServer
+from bzrlib.tests.http_server import HttpServer
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryServer

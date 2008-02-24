@@ -1,0 +1,246 @@
+==============================
+Development repository formats
+==============================
+
+.. contents::
+
+Using development repository formats
+====================================
+
+Motivation
+----------
+
+We believe that we can continue to gain substantial performance benefits
+by altering the repository storage in bzr. The more feedback we can get
+on the changes during the development process the better.
+
+To make it possible to get more feedback we are going to expose the
+current development formats to the users of our development trunk
+'bzr.dev'. The technical details of the individual formats are at the
+end of this document.
+
+Format names
+------------
+
+The current development format will be called 'development'. Each time
+the development format changes, the prior development format will be
+renamed to e.g. 'development0', 'development1' etc.
+
+When a release of bzr is done, all the older numbered development
+formats will be removed from 'bzr.dev', so we will not be carrying the
+code for them around indefinately. 
+
+Support for upgrade and migration
+---------------------------------
+
+The preservation and renaming policy makes it quite safe for users to
+test out development formats (though we cannot guarantee bugs of course
+- it is development code):
+
+ - users of a given development format can always get back onto regular
+   formats by switching to the next bzr released version which is
+   guaranteed to be able to upgrade from that development format.
+ - users that routinely use bzr.dev should upgrade to the most recent 
+   development version available before pulling in bzr.dev changes
+   around release time, as that is when old format cleanups will occur.
+
+We cannot guarantee backwards compatability though, because some of the
+planned work may be 'upgrade only'. Please see ``bzr help formats`` for
+the text of the 'development' format which will indicate its
+compatability with other formats if you need to interoperate with
+users or services that do not have bzr.dev.
+
+Before converting to a development format
+-----------------------------------------
+
+Run a ``bzr check`` with the version of bzr that you will be using.
+``bzr check`` gets updated as we find new things that are inconsistent
+with existing repositories. While only a small number of repositories
+are likely to have any given error, it is best to check just in case.
+
+If ``bzr check`` reports a problem, run this command::
+
+  bzr reconcile
+
+Note that reconcile can take many hours, particularly if you are
+reconciling one of the 'knit' or 'dirstate' format repositories. If you
+have such a repository, consider upgrading it to 'pack-0.92' first,
+which will perform reconcile significantly faster.
+
+Creating a new development format branch
+----------------------------------------
+
+If you're starting a project from scratch, it's easy to make it a
+``development`` one. Here's how::
+
+  cd my-stuff
+  bzr init --development
+  bzr add
+  bzr commit -m "initial import"
+
+In other words, use the normal sequence of commands but add the
+``--development`` option to the ``init`` command.
+
+
+Creating a new development format repository
+--------------------------------------------
+
+If you're starting a project from scratch and wish to use a shared repository
+for branches, you can make it a ``development`` repository like this::
+
+  cd my-repo
+  bzr init-repo --development .
+  cd my-stuff
+  bzr init
+  bzr add
+  bzr commit -m "initial import"
+
+In other words, use the normal sequence of commands but add the
+``--development`` option to the ``init-repo`` command.
+
+Upgrading an existing branch or repository to development
+---------------------------------------------------------
+
+If you have an existing branch and wish to migrate it to
+a ``development`` format, use the ``upgrade`` command like this::
+
+  bzr upgrade --development path-to-my-branch
+
+If you are using a shared repository, run::
+
+  bzr upgrade --development ROOT_OF_REPOSITORY
+
+to upgrade the history database. Note that this will not
+alter the branch format of each branch, so
+you will need to also upgrade each branch individually
+if you are upgrading from an old (e.g. < 0.17) bzr.
+More modern bzr's will already have the branch format at
+our latest branch format which adds support for tags.
+
+Starting a new development format branch from one in an older format
+--------------------------------------------------------------------
+
+This can be done in one of several ways:
+
+1. Create a new branch and pull into it
+2. Create a standalone branch and upgrade its format
+3. Create a knitpack shared repository and branch into it
+
+Here are the commands for using the ``pull`` approach::
+
+    bzr init --development my-new-branch
+    cd my-new-branch
+    bzr pull my-source-branch
+
+Here are the commands for using the ``upgrade`` approach::
+
+    bzr branch my-source-branch my-new-branch
+    cd my-new-branch
+    bzr upgrade --development .
+
+Here are the commands for the shared repository approach::
+
+  cd my-repo
+  bzr init-repo --development .
+  bzr branch my-source-branch my-new-branch
+  cd my-new-branch
+
+As a reminder, any of the above approaches can fail if the source branch
+has inconsistent data within it and hasn't been reconciled yet. Please
+be sure to check that before reporting problems.
+
+Develoment formats for bzr-svn users
+------------------------------------
+
+If you are using ``bzr-svn`` or are testing the prototype subtree support,
+you can still use and assist in testing the development formats. The
+commands to use are identical to the ones given above except that the
+name of the format to use is ``development-subtree``.
+
+**WARNING**: Note that bzr only supports one-way conversion **to** the
+subtree format ``development-subtree``. Once you are using
+``development-subtree`` you cannot pull or merge back into a regular
+format such as ``pack-0.92``, ``development`` etc.
+
+The ``development-subtree`` format is required for the bzr-svn
+plug-in but should otherwise not be used until the subtree feature is
+complete within bzr.
+
+Reporting problems
+------------------
+
+If you need any help or encounter any problems, please contact the developers
+via the usual ways, i.e. chat to us on IRC or send a message to our mailing
+list. See http://bazaar-vcs.org/BzrSupport for contact details.
+
+
+Technical notes
+===============
+
+When to create a new development format
+---------------------------------------
+
+Whenever a code change will result in incorrect behaviour with existing
+``development`` repositories. Changes in push/pull/init/commit/merge
+have all been known to do this in the past.
+
+How to create a new development format
+--------------------------------------
+
+1. Register two new formats with the next available sequence number.
+   e.g. ``development1`` and ``development1-subtree``. (You can see the
+   ``development0`` format for an example.
+   These should:
+
+   * Use your new development repository/branch/tree classes
+   * Have really bare bones help - something like 'changes X to be Y
+     see ...developers/development-repo.html'
+   * Be hidden and experimental.
+2. Change the repository class (or branch or tree) in the
+   ``development`` and ``development-subtree`` formats to point to the
+   new class you are creating.
+3. Add a new development format (and tests!). Repository formats are in
+   ``bzrlib.repofmt``. You probably want to reproduce the current
+   development format from ``bzrlib.repofmt.pack_repo`` with just new
+   disk format strings, ``_get_matching_bzrdir`` and help.
+4. Alter any other things that do class based tests. The easiest way
+   to find these is a grep for Development in bzrlib - and please
+   refactor as you find these to reduce the relevance this step has,
+   as it should not need to exist.
+5. Now subclass/create from scratch/whatever the live object code you
+   need to change to introduce your new format. Keep in mind that
+   eventually it will become the default format, so please don't keep
+   subclassing the last releases code, rather consider making the last
+   releases code a subclass of your new code (if there is a lot in
+   common) so that we can eventually remove that format once it becomes
+   ancient (or relegate it to a plugin).
+6. Once you have made the changes that required a new disk format, you
+   should submit the resulting branch to be merged. Other changes - to
+   take advantage of whatever new feature you have added - should be
+   sent in separately, because the disk level changes are a contention
+   point between multiple developers.
+
+Format Details
+==============
+
+development
+-----------
+
+Currently an alias for Development0
+
+development-subtree
+-------------------
+
+Currently an alias for Development0Subtree
+
+Development0[Subtree]
+---------------------
+
+These formats exists solely to provide an actual new format for the
+feature of 'development formats' to be introduced. They are regular
+pack-0.92 style formats with no changes to the disk storage other than
+the version marker.
+
+
+..
+   vim: tw=72 ft=rst expandtab

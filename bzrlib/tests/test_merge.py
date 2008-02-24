@@ -24,6 +24,7 @@ from bzrlib import (
     merge as _mod_merge,
     option,
     progress,
+    transform,
     versionedfile,
     )
 from bzrlib.branch import Branch
@@ -138,6 +139,8 @@ class TestMerge(TestCaseWithTransport):
         tree_a.commit(message="hello")
         dir_b = tree_a.bzrdir.sprout('b')
         tree_b = dir_b.open_workingtree()
+        tree_b.lock_write()
+        self.addCleanup(tree_b.unlock)
         tree_a.commit(message="hello again")
         log = StringIO()
         merge_inner(tree_b.branch, tree_a, tree_b.basis_tree(), 
@@ -288,6 +291,21 @@ class TestMerge(TestCaseWithTransport):
         merger.do_merge()
         self.assertEqual(tree_a.get_parent_ids(), [tree_b.last_revision()])
 
+    def test_merge_uncommitted_otherbasis_ancestor_of_thisbasis_weave(self):
+        tree_a = self.make_branch_and_tree('a')
+        self.build_tree(['a/file_1', 'a/file_2'])
+        tree_a.add(['file_1'])
+        tree_a.commit('commit 1')
+        tree_a.add(['file_2'])
+        tree_a.commit('commit 2')
+        tree_b = tree_a.bzrdir.sprout('b').open_workingtree()
+        tree_b.rename_one('file_1', 'renamed')
+        merger = _mod_merge.Merger.from_uncommitted(tree_a, tree_b,
+                                                    progress.DummyProgress())
+        merger.merge_type = _mod_merge.WeaveMerger
+        merger.do_merge()
+        self.assertEqual(tree_a.get_parent_ids(), [tree_b.last_revision()])
+
     def prepare_cherrypick(self):
         """Prepare a pair of trees for cherrypicking tests.
 
@@ -333,6 +351,75 @@ class TestMerge(TestCaseWithTransport):
             this_tree, 'rev2b', 'rev3b', other_tree.branch)
         merger.merge_type = _mod_merge.Merge3Merger
         merger.do_merge()
+
+    def test_make_merger(self):
+        this_tree = self.make_branch_and_tree('this')
+        this_tree.commit('rev1', rev_id='rev1')
+        other_tree = this_tree.bzrdir.sprout('other').open_workingtree()
+        this_tree.commit('rev2', rev_id='rev2a')
+        other_tree.commit('rev2', rev_id='rev2b')
+        this_tree.lock_write()
+        self.addCleanup(this_tree.unlock)
+        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress,
+            this_tree, 'rev2b', other_branch=other_tree.branch)
+        merger.merge_type = _mod_merge.Merge3Merger
+        tree_merger = merger.make_merger()
+        self.assertIs(_mod_merge.Merge3Merger, tree_merger.__class__)
+        self.assertEqual('rev2b', tree_merger.other_tree.get_revision_id())
+        self.assertEqual('rev1', tree_merger.base_tree.get_revision_id())
+
+    def test_make_preview_transform(self):
+        this_tree = self.make_branch_and_tree('this')
+        self.build_tree_contents([('this/file', '1\n')])
+        this_tree.add('file', 'file-id')
+        this_tree.commit('rev1', rev_id='rev1')
+        other_tree = this_tree.bzrdir.sprout('other').open_workingtree()
+        self.build_tree_contents([('this/file', '1\n2a\n')])
+        this_tree.commit('rev2', rev_id='rev2a')
+        self.build_tree_contents([('other/file', '2b\n1\n')])
+        other_tree.commit('rev2', rev_id='rev2b')
+        this_tree.lock_write()
+        self.addCleanup(this_tree.unlock)
+        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+            this_tree, 'rev2b', other_branch=other_tree.branch)
+        merger.merge_type = _mod_merge.Merge3Merger
+        tree_merger = merger.make_merger()
+        tt = tree_merger.make_preview_transform()
+        self.addCleanup(tt.finalize)
+        preview_tree = tt.get_preview_tree()
+        tree_file = this_tree.get_file('file-id')
+        try:
+            self.assertEqual('1\n2a\n', tree_file.read())
+        finally:
+            tree_file.close()
+        preview_file = preview_tree.get_file('file-id')
+        try:
+            self.assertEqual('2b\n1\n2a\n', preview_file.read())
+        finally:
+            preview_file.close()
+
+    def test_do_merge(self):
+        this_tree = self.make_branch_and_tree('this')
+        self.build_tree_contents([('this/file', '1\n')])
+        this_tree.add('file', 'file-id')
+        this_tree.commit('rev1', rev_id='rev1')
+        other_tree = this_tree.bzrdir.sprout('other').open_workingtree()
+        self.build_tree_contents([('this/file', '1\n2a\n')])
+        this_tree.commit('rev2', rev_id='rev2a')
+        self.build_tree_contents([('other/file', '2b\n1\n')])
+        other_tree.commit('rev2', rev_id='rev2b')
+        this_tree.lock_write()
+        self.addCleanup(this_tree.unlock)
+        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+            this_tree, 'rev2b', other_branch=other_tree.branch)
+        merger.merge_type = _mod_merge.Merge3Merger
+        tree_merger = merger.make_merger()
+        tt = tree_merger.do_merge()
+        tree_file = this_tree.get_file('file-id')
+        try:
+            self.assertEqual('2b\n1\n2a\n', tree_file.read())
+        finally:
+            tree_file.close()
 
 
 class TestPlanMerge(TestCaseWithMemoryTransport):
@@ -445,15 +532,70 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
         self.assertEqual(subtracted_plan,
             list(_PlanMerge._subtract_plans(old_plan, new_plan)))
 
-    def test_plan_merge_with_base(self):
+    def setup_merge_with_base(self):
         self.add_version('COMMON', [], 'abc')
         self.add_version('THIS', ['COMMON'], 'abcd')
         self.add_version('BASE', ['COMMON'], 'eabc')
         self.add_version('OTHER', ['BASE'], 'eafb')
+
+    def test_plan_merge_with_base(self):
+        self.setup_merge_with_base()
         plan = self.plan_merge_vf.plan_merge('THIS', 'OTHER', 'BASE')
         self.assertEqual([('unchanged', 'a\n'),
                           ('new-b', 'f\n'),
                           ('unchanged', 'b\n'),
                           ('killed-b', 'c\n'),
                           ('new-a', 'd\n')
+                         ], list(plan))
+
+    def test_plan_lca_merge(self):
+        self.setup_plan_merge()
+        plan = self.plan_merge_vf.plan_lca_merge('B', 'C')
+        self.assertEqual([
+                          ('new-b', 'f\n'),
+                          ('unchanged', 'a\n'),
+                          ('killed-b', 'c\n'),
+                          ('new-a', 'e\n'),
+                          ('new-a', 'h\n'),
+                          ('killed-a', 'b\n'),
+                          ('unchanged', 'g\n')],
+                         list(plan))
+
+    def test_plan_lca_merge_uncommitted_files(self):
+        self.setup_plan_merge_uncommitted()
+        plan = self.plan_merge_vf.plan_lca_merge('B:', 'C:')
+        self.assertEqual([
+                          ('new-b', 'f\n'),
+                          ('unchanged', 'a\n'),
+                          ('killed-b', 'c\n'),
+                          ('new-a', 'e\n'),
+                          ('new-a', 'h\n'),
+                          ('killed-a', 'b\n'),
+                          ('unchanged', 'g\n')],
+                         list(plan))
+
+    def test_plan_lca_merge_with_base(self):
+        self.setup_merge_with_base()
+        plan = self.plan_merge_vf.plan_lca_merge('THIS', 'OTHER', 'BASE')
+        self.assertEqual([('unchanged', 'a\n'),
+                          ('new-b', 'f\n'),
+                          ('unchanged', 'b\n'),
+                          ('killed-b', 'c\n'),
+                          ('new-a', 'd\n')
+                         ], list(plan))
+
+    def test_plan_lca_merge_with_criss_cross(self):
+        self.add_version('ROOT', [], 'abc')
+        # each side makes a change
+        self.add_version('REV1', ['ROOT'], 'abcd')
+        self.add_version('REV2', ['ROOT'], 'abce')
+        # both sides merge, discarding others' changes
+        self.add_version('LCA1', ['REV1', 'REV2'], 'abcd')
+        self.add_version('LCA2', ['REV1', 'REV2'], 'abce')
+        plan = self.plan_merge_vf.plan_lca_merge('LCA1', 'LCA2')
+        self.assertEqual([('unchanged', 'a\n'),
+                          ('unchanged', 'b\n'),
+                          ('unchanged', 'c\n'),
+                          ('conflicted-a', 'd\n'),
+                          ('conflicted-b', 'e\n'),
                          ], list(plan))

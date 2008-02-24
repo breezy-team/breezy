@@ -48,8 +48,8 @@ from bzrlib.tests import (
     TestSkipped,
     test_sftp_transport
     )
-from bzrlib.tests.HttpServer import HttpServer
-from bzrlib.tests.HTTPTestUtil import (
+from bzrlib.tests.http_server import HttpServer
+from bzrlib.tests.http_utils import (
     TestCaseWithTwoWebservers,
     HTTPServerRedirecting,
     )
@@ -170,6 +170,16 @@ class TestFormatRegistry(TestCase):
         finally:
             bzrdir.format_registry.set_default_repository(old_default)
 
+    def test_aliases(self):
+        a_registry = bzrdir.BzrDirFormatRegistry()
+        a_registry.register('weave', bzrdir.BzrDirFormat6,
+            'Pre-0.8 format.  Slower and does not support checkouts or shared'
+            ' repositories', deprecated=True)
+        a_registry.register('weavealias', bzrdir.BzrDirFormat6,
+            'Pre-0.8 format.  Slower and does not support checkouts or shared'
+            ' repositories', deprecated=True, alias=True)
+        self.assertEqual(frozenset(['weavealias']), a_registry.aliases())
+    
 
 class SampleBranch(bzrlib.branch.Branch):
     """A dummy branch for guess what, dummy use."""
@@ -590,6 +600,66 @@ class ChrootedTests(TestCaseWithTransport):
         tree.bzrdir.sprout('repo/tree2')
         self.failUnlessExists('repo/tree2/subtree')
         self.failIfExists('repo/tree2/subtree/file')
+
+    def make_foo_bar_baz(self):
+        foo = bzrdir.BzrDir.create_branch_convenience('foo').bzrdir
+        bar = self.make_branch('foo/bar').bzrdir
+        baz = self.make_branch('baz').bzrdir
+        return foo, bar, baz
+
+    def test_find_bzrdirs(self):
+        foo, bar, baz = self.make_foo_bar_baz()
+        transport = get_transport(self.get_url())
+        self.assertEqualBzrdirs([baz, foo, bar],
+                                bzrdir.BzrDir.find_bzrdirs(transport))
+
+    def test_find_bzrdirs_list_current(self):
+        def list_current(transport):
+            return [s for s in transport.list_dir('') if s != 'baz']
+
+        foo, bar, baz = self.make_foo_bar_baz()
+        transport = get_transport(self.get_url())
+        self.assertEqualBzrdirs([foo, bar],
+                                bzrdir.BzrDir.find_bzrdirs(transport,
+                                    list_current=list_current))
+
+
+    def test_find_bzrdirs_evaluate(self):
+        def evaluate(bzrdir):
+            try:
+                repo = bzrdir.open_repository()
+            except NoRepositoryPresent:
+                return True, bzrdir.root_transport.base
+            else:
+                return False, bzrdir.root_transport.base
+
+        foo, bar, baz = self.make_foo_bar_baz()
+        transport = get_transport(self.get_url())
+        self.assertEqual([baz.root_transport.base, foo.root_transport.base],
+                         list(bzrdir.BzrDir.find_bzrdirs(transport,
+                                                         evaluate=evaluate)))
+
+    def assertEqualBzrdirs(self, first, second):
+        first = list(first)
+        second = list(second)
+        self.assertEqual(len(first), len(second))
+        for x, y in zip(first, second):
+            self.assertEqual(x.root_transport.base, y.root_transport.base)
+
+    def test_find_branches(self):
+        root = self.make_repository('', shared=True)
+        foo, bar, baz = self.make_foo_bar_baz()
+        qux = self.make_bzrdir('foo/qux')
+        transport = get_transport(self.get_url())
+        branches = bzrdir.BzrDir.find_branches(transport)
+        self.assertEqual(baz.root_transport.base, branches[0].base)
+        self.assertEqual(foo.root_transport.base, branches[1].base)
+        self.assertEqual(bar.root_transport.base, branches[2].base)
+
+        # ensure this works without a top-level repo
+        branches = bzrdir.BzrDir.find_branches(transport.clone('foo'))
+        self.assertEqual(foo.root_transport.base, branches[0].base)
+        self.assertEqual(bar.root_transport.base, branches[1].base)
 
 
 class TestMeta1DirFormat(TestCaseWithTransport):

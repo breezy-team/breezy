@@ -440,7 +440,9 @@ def describe_format(control, repository, branch, tree):
         tree.bzrdir.root_transport.base):
         branch = None
         repository = None
-    for key in bzrdir.format_registry.keys():
+    non_aliases = set(bzrdir.format_registry.keys())
+    non_aliases.difference_update(bzrdir.format_registry.aliases())
+    for key in non_aliases:
         format = bzrdir.format_registry.make_bzrdir(key)
         if isinstance(format, bzrdir.BzrDirMetaFormat1):
             if (tree and format.workingtree_format !=
@@ -457,11 +459,12 @@ def describe_format(control, repository, branch, tree):
         candidates.append(key)
     if len(candidates) == 0:
         return 'unnamed'
-    new_candidates = [c for c in candidates if c != 'default']
-    if len(new_candidates) > 0:
-        candidates = new_candidates
+    candidates.sort()
     new_candidates = [c for c in candidates if not
         bzrdir.format_registry.get_info(c).hidden]
     if len(new_candidates) > 0:
+        # If there are any non-hidden formats that match, only return those to
+        # avoid listing hidden formats except when only a hidden format will
+        # do.
         candidates = new_candidates
     return ' or '.join(candidates)

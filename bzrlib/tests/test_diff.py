@@ -15,21 +15,24 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
+import os.path
 from cStringIO import StringIO
 import errno
 import subprocess
 from tempfile import TemporaryFile
 
+from bzrlib import tests
 from bzrlib.diff import (
-    internal_diff,
-    external_diff,
+    DiffFromTool,
     DiffPath,
-    show_diff_trees,
     DiffSymlink,
     DiffTree,
     DiffText,
+    external_diff,
+    internal_diff,
+    show_diff_trees,
     )
-from bzrlib.errors import BinaryFile, NoDiff
+from bzrlib.errors import BinaryFile, NoDiff, ExecutableMissing
 import bzrlib.osutils as osutils
 import bzrlib.patiencediff
 import bzrlib._patiencediff_py
@@ -662,6 +665,7 @@ class TestDiffTree(TestCaseWithTransport):
              ' \@\@\n-old\n\+new\n\n')
 
     def test_diff_kind_change(self):
+        self.requireFeature(tests.SymlinkFeature)
         self.build_tree_contents([('old-tree/olddir/',),
                                   ('old-tree/olddir/oldfile', 'old\n')])
         self.old_tree.add('olddir')
@@ -1233,3 +1237,68 @@ class TestUsingCompiledIfAvailable(TestCase):
             from bzrlib._patiencediff_py import recurse_matches_py
             self.assertIs(recurse_matches_py,
                           bzrlib.patiencediff.recurse_matches)
+
+
+class TestDiffFromTool(TestCaseWithTransport):
+
+    def test_from_string(self):
+        diff_obj = DiffFromTool.from_string('diff', None, None, None)
+        self.addCleanup(diff_obj.finish)
+        self.assertEqual(['diff', '%(old_path)s', '%(new_path)s'],
+            diff_obj.command_template)
+
+    def test_from_string_u5(self):
+        diff_obj = DiffFromTool.from_string('diff -u\\ 5', None, None, None)
+        self.addCleanup(diff_obj.finish)
+        self.assertEqual(['diff', '-u 5', '%(old_path)s', '%(new_path)s'],
+                         diff_obj.command_template)
+        self.assertEqual(['diff', '-u 5', 'old-path', 'new-path'],
+                         diff_obj._get_command('old-path', 'new-path'))
+
+    def test_execute(self):
+        output = StringIO()
+        diff_obj = DiffFromTool(['python', '-c',
+                                 'print "%(old_path)s %(new_path)s"'],
+                                None, None, output)
+        self.addCleanup(diff_obj.finish)
+        diff_obj._execute('old', 'new')
+        self.assertEqual(output.getvalue().rstrip(), 'old new')
+
+    def test_excute_missing(self):
+        diff_obj = DiffFromTool(['a-tool-which-is-unlikely-to-exist'],
+                                None, None, None)
+        self.addCleanup(diff_obj.finish)
+        e = self.assertRaises(ExecutableMissing, diff_obj._execute, 'old',
+                              'new')
+        self.assertEqual('a-tool-which-is-unlikely-to-exist could not be found'
+                         ' on this machine', str(e))
+
+    def test_prepare_files(self):
+        output = StringIO()
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/oldname', 'oldcontent')])
+        tree.add('oldname', 'file-id')
+        tree.commit('old tree', timestamp=0)
+        tree.rename_one('oldname', 'newname')
+        self.build_tree_contents([('tree/newname', 'newcontent')])
+        old_tree = tree.basis_tree()
+        old_tree.lock_read()
+        self.addCleanup(old_tree.unlock)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        diff_obj = DiffFromTool(['python', '-c',
+                                 'print "%(old_path)s %(new_path)s"'],
+                                old_tree, tree, output)
+        self.addCleanup(diff_obj.finish)
+        self.assertContainsRe(diff_obj._root, 'bzr-diff-[^/]*')
+        old_path, new_path = diff_obj._prepare_files('file-id', 'oldname',
+                                                     'newname')
+        self.assertContainsRe(old_path, 'old/oldname$')
+        self.assertEqual(0, os.stat(old_path).st_mtime)
+        self.assertContainsRe(new_path, 'new/newname$')
+        self.assertFileEqual('oldcontent', old_path)
+        self.assertFileEqual('newcontent', new_path)
+        if osutils.has_symlinks():
+            self.assertTrue(os.path.samefile('tree/newname', new_path))
+        # make sure we can create files with the same parent directories
+        diff_obj._prepare_files('file-id', 'oldname2', 'newname2')

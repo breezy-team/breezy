@@ -30,6 +30,8 @@ class TestRevert(tests.TestCaseWithTransport):
         self.build_tree(['source/dir/', 'source/dir/contents'])
         source_tree.add(['dir', 'dir/contents'], ['dir-id', 'contents-id'])
         source_tree.commit('added dir')
+        target_tree.lock_write()
+        self.addCleanup(target_tree.unlock)
         merge.merge_inner(target_tree.branch, source_tree.basis_tree(), 
                           target_tree.basis_tree(), this_tree=target_tree)
         self.failUnlessExists('target/dir')
@@ -84,8 +86,12 @@ class TestRevert(tests.TestCaseWithTransport):
         tt = transform.TreeTransform(tree)
         tt.new_file('newfile', tt.root, 'helooo!', 'newfile-id', True)
         tt.apply()
-        self.assertTrue(tree.is_executable('newfile-id'))
-        tree.commit('added newfile')
+        tree.lock_write()
+        try:
+            self.assertTrue(tree.is_executable('newfile-id'))
+            tree.commit('added newfile')
+        finally:
+            tree.unlock()
         return tree
 
     def test_preserve_execute(self):
@@ -96,6 +102,8 @@ class TestRevert(tests.TestCaseWithTransport):
         tt.create_file('Woooorld!', newfile)
         tt.apply()
         tree = workingtree.WorkingTree.open('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
         self.assertTrue(tree.is_executable('newfile-id'))
         transform.revert(tree, tree.basis_tree(), None, backups=True)
         self.assertEqual('helooo!', tree.get_file('newfile-id').read())
@@ -107,6 +115,8 @@ class TestRevert(tests.TestCaseWithTransport):
         newfile = tt.trans_id_tree_file_id('newfile-id')
         tt.set_executability(False, newfile)
         tt.apply()
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
         transform.revert(tree, tree.basis_tree(), None)
         self.assertTrue(tree.is_executable('newfile-id'))
 

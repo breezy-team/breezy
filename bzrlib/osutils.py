@@ -360,7 +360,7 @@ def _win32_rename(old, new):
 
 
 def _mac_getcwd():
-    return unicodedata.normalize('NFKC', os.getcwdu())
+    return unicodedata.normalize('NFC', os.getcwdu())
 
 
 # Default is to just use the python builtins, but these can be rebound on
@@ -670,8 +670,7 @@ def format_date(t, offset=0, timezone='original', date_fmt=None,
         tt = time.localtime(t)
         offset = local_time_offset(t)
     else:
-        raise errors.BzrError("unsupported timezone format %r" % timezone,
-                              ['options are "utc", "original", "local"'])
+        raise errors.UnsupportedTimezoneFormat(timezone)
     if date_fmt is None:
         date_fmt = "%a %Y-%m-%d %H:%M:%S"
     if show_offset:
@@ -1022,20 +1021,20 @@ def _accessible_normalized_filename(path):
     On platforms where the system does not normalize filenames 
     (Windows, Linux), you have to access a file by its exact path.
 
-    Internally, bzr only supports NFC/NFKC normalization, since that is 
+    Internally, bzr only supports NFC normalization, since that is 
     the standard for XML documents.
 
     So return the normalized path, and a flag indicating if the file
     can be accessed by that path.
     """
 
-    return unicodedata.normalize('NFKC', unicode(path)), True
+    return unicodedata.normalize('NFC', unicode(path)), True
 
 
 def _inaccessible_normalized_filename(path):
     __doc__ = _accessible_normalized_filename.__doc__
 
-    normalized = unicodedata.normalize('NFKC', unicode(path))
+    normalized = unicodedata.normalize('NFC', unicode(path))
     return normalized, normalized == path
 
 

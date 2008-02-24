@@ -62,7 +62,7 @@ from bzrlib.symbol_versioning import (deprecated_function,
                                       zero_eight, zero_nine, zero_sixteen,
                                       zero_ninetyone,
                                       )
-from bzrlib.trace import mutter, mutter_callsite, note
+from bzrlib.trace import mutter, mutter_callsite, note, is_quiet
 
 
 BZR_BRANCH_FORMAT_4 = "Bazaar-NG branch, format 0.0.4\n"
@@ -436,12 +436,8 @@ class Branch(object):
         raise errors.UpgradeRequired(self.base)
 
     def last_revision(self):
-        """Return last revision id, or None"""
-        ph = self.revision_history()
-        if ph:
-            return ph[-1]
-        else:
-            return _mod_revision.NULL_REVISION
+        """Return last revision id, or NULL_REVISION."""
+        return self.last_revision_info()[1]
 
     def last_revision_info(self):
         """Return information about the last revision.
@@ -1828,120 +1824,6 @@ class BzrBranch5(BzrBranch):
         return None
 
 
-class BzrBranchExperimental(BzrBranch5):
-    """Bzr experimental branch format
-
-    This format has:
-     - a revision-history file.
-     - a format string
-     - a lock dir guarding the branch itself
-     - all of this stored in a branch/ subdirectory
-     - works with shared repositories.
-     - a tag dictionary in the branch
-
-    This format is new in bzr 0.15, but shouldn't be used for real data, 
-    only for testing.
-
-    This class acts as it's own BranchFormat.
-    """
-
-    _matchingbzrdir = bzrdir.BzrDirMetaFormat1()
-
-    @classmethod
-    def get_format_string(cls):
-        """See BranchFormat.get_format_string()."""
-        return "Bazaar-NG branch format experimental\n"
-
-    @classmethod
-    def get_format_description(cls):
-        """See BranchFormat.get_format_description()."""
-        return "Experimental branch format"
-
-    @classmethod
-    def get_reference(cls, a_bzrdir):
-        """Get the target reference of the branch in a_bzrdir.
-
-        format probing must have been completed before calling
-        this method - it is assumed that the format of the branch
-        in a_bzrdir is correct.
-
-        :param a_bzrdir: The bzrdir to get the branch data from.
-        :return: None if the branch is not a reference branch.
-        """
-        return None
-
-    @classmethod
-    def set_reference(self, a_bzrdir, to_branch):
-        """Set the target reference of the branch in a_bzrdir.
-
-        format probing must have been completed before calling
-        this method - it is assumed that the format of the branch
-        in a_bzrdir is correct.
-
-        :param a_bzrdir: The bzrdir to set the branch reference for.
-        :param to_branch: branch that the checkout is to reference
-        """
-        raise NotImplementedError(self.set_reference)
-
-    @classmethod
-    def _initialize_control_files(cls, a_bzrdir, utf8_files, lock_filename,
-            lock_class):
-        branch_transport = a_bzrdir.get_branch_transport(cls)
-        control_files = lockable_files.LockableFiles(branch_transport,
-            lock_filename, lock_class)
-        control_files.create_lock()
-        control_files.lock_write()
-        try:
-            for filename, content in utf8_files:
-                control_files.put_utf8(filename, content)
-        finally:
-            control_files.unlock()
-        
-    @classmethod
-    def initialize(cls, a_bzrdir):
-        """Create a branch of this format in a_bzrdir."""
-        utf8_files = [('format', cls.get_format_string()),
-                      ('revision-history', ''),
-                      ('branch-name', ''),
-                      ('tags', ''),
-                      ]
-        cls._initialize_control_files(a_bzrdir, utf8_files,
-            'lock', lockdir.LockDir)
-        return cls.open(a_bzrdir, _found=True)
-
-    @classmethod
-    def open(cls, a_bzrdir, _found=False):
-        """Return the branch object for a_bzrdir
-
-        _found is a private parameter, do not use it. It is used to indicate
-               if format probing has already be done.
-        """
-        if not _found:
-            format = BranchFormat.find_format(a_bzrdir)
-            assert format.__class__ == cls
-        transport = a_bzrdir.get_branch_transport(None)
-        control_files = lockable_files.LockableFiles(transport, 'lock',
-                                                     lockdir.LockDir)
-        return cls(_format=cls,
-            _control_files=control_files,
-            a_bzrdir=a_bzrdir,
-            _repository=a_bzrdir.find_repository())
-
-    @classmethod
-    def is_supported(cls):
-        return True
-
-    def _make_tags(self):
-        return BasicTags(self)
-
-    @classmethod
-    def supports_tags(cls):
-        return True
-
-
-BranchFormat.register_format(BzrBranchExperimental)
-
-
 class BzrBranch6(BzrBranch5):
 
     @needs_read_lock
@@ -1951,11 +1833,6 @@ class BzrBranch6(BzrBranch5):
         revision_id = cache_utf8.get_cached_utf8(revision_id)
         revno = int(revno)
         return revno, revision_id
-
-    def last_revision(self):
-        """Return last revision id, or None"""
-        revision_id = self.last_revision_info()[1]
-        return revision_id
 
     def _write_last_revision_info(self, revno, revision_id):
         """Simply write out the revision id, with no checks.
@@ -2133,10 +2010,11 @@ class PullResult(_Result):
         return self.new_revno - self.old_revno
 
     def report(self, to_file):
-        if self.old_revid == self.new_revid:
-            to_file.write('No revisions to pull.\n')
-        else:
-            to_file.write('Now on revision %d.\n' % self.new_revno)
+        if not is_quiet():
+            if self.old_revid == self.new_revid:
+                to_file.write('No revisions to pull.\n')
+            else:
+                to_file.write('Now on revision %d.\n' % self.new_revno)
         self._show_tag_conficts(to_file)
 
 

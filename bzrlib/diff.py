@@ -17,6 +17,7 @@
 import difflib
 import os
 import re
+import shutil
 import sys
 
 from bzrlib.lazy_import import lazy_import
@@ -28,6 +29,7 @@ import time
 
 from bzrlib import (
     bzrdir,
+    commands,
     errors,
     osutils,
     patiencediff,
@@ -386,9 +388,11 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url):
 
     other_paths = []
     make_paths_wt_relative = True
+    consider_relpath = True
     if path_list is None or len(path_list) == 0:
-        # If no path is given, assume the current directory
+        # If no path is given, the current working tree is used
         default_location = u'.'
+        consider_relpath = False
     elif old_url is not None and new_url is not None:
         other_paths = path_list
         make_paths_wt_relative = False
@@ -402,7 +406,7 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url):
         old_url = default_location
     working_tree, branch, relpath = \
         bzrdir.BzrDir.open_containing_tree_or_branch(old_url)
-    if relpath != '':
+    if consider_relpath and relpath != '':
         specific_files.append(relpath)
     old_tree = _get_tree_to_diff(old_revision_spec, working_tree, branch)
 
@@ -412,7 +416,7 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url):
     if new_url != old_url:
         working_tree, branch, relpath = \
             bzrdir.BzrDir.open_containing_tree_or_branch(new_url)
-        if relpath != '':
+        if consider_relpath and relpath != '':
             specific_files.append(relpath)
     new_tree = _get_tree_to_diff(new_revision_spec, working_tree, branch,
         basis_is_default=working_tree is None)
@@ -467,7 +471,8 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                     external_diff_options=None,
                     old_label='a/', new_label='b/',
                     extra_trees=None,
-                    path_encoding='utf8'):
+                    path_encoding='utf8',
+                    using=None):
     """Show in text form the changes from one tree to another.
 
     to_file
@@ -494,9 +499,9 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
         new_tree.lock_read()
         try:
             differ = DiffTree.from_trees_options(old_tree, new_tree, to_file,
-                                                   path_encoding,
-                                                   external_diff_options,
-                                                   old_label, new_label)
+                                                 path_encoding,
+                                                 external_diff_options,
+                                                 old_label, new_label, using)
             return differ.show_diff(specific_files, extra_trees)
         finally:
             new_tree.unlock()
@@ -565,6 +570,9 @@ class DiffPath(object):
         self.to_file = to_file
         self.path_encoding = path_encoding
 
+    def finish(self):
+        pass
+
     @classmethod
     def from_diff_tree(klass, diff_tree):
         return klass(diff_tree.old_tree, diff_tree.new_tree,
@@ -589,6 +597,9 @@ class DiffKindChange(object):
     """
     def __init__(self, differs):
         self.differs = differs
+
+    def finish(self):
+        pass
 
     @classmethod
     def from_diff_tree(klass, diff_tree):
@@ -736,6 +747,99 @@ class DiffText(DiffPath):
         return self.CHANGED
 
 
+class DiffFromTool(DiffPath):
+
+    def __init__(self, command_template, old_tree, new_tree, to_file,
+                 path_encoding='utf-8'):
+        DiffPath.__init__(self, old_tree, new_tree, to_file, path_encoding)
+        self.command_template = command_template
+        self._root = tempfile.mkdtemp(prefix='bzr-diff-')
+
+    @classmethod
+    def from_string(klass, command_string, old_tree, new_tree, to_file,
+                    path_encoding='utf-8'):
+        command_template = commands.shlex_split_unicode(command_string)
+        command_template.extend(['%(old_path)s', '%(new_path)s'])
+        return klass(command_template, old_tree, new_tree, to_file,
+                     path_encoding)
+
+    @classmethod
+    def make_from_diff_tree(klass, command_string):
+        def from_diff_tree(diff_tree):
+            return klass.from_string(command_string, diff_tree.old_tree,
+                                     diff_tree.new_tree, diff_tree.to_file)
+        return from_diff_tree
+
+    def _get_command(self, old_path, new_path):
+        my_map = {'old_path': old_path, 'new_path': new_path}
+        return [t % my_map for t in self.command_template]
+
+    def _execute(self, old_path, new_path):
+        command = self._get_command(old_path, new_path)
+        try:
+            proc = subprocess.Popen(command, stdout=subprocess.PIPE,
+                                    cwd=self._root)
+        except OSError, e:
+            if e.errno == errno.ENOENT:
+                raise errors.ExecutableMissing(command[0])
+            else:
+                raise
+        self.to_file.write(proc.stdout.read())
+        return proc.wait()
+
+    def _try_symlink_root(self, tree, prefix):
+        if not (getattr(tree, 'abspath', None) is not None
+                and osutils.has_symlinks()):
+            return False
+        try:
+            os.symlink(tree.abspath(''), osutils.pathjoin(self._root, prefix))
+        except OSError, e:
+            if e.errno != errno.EEXIST:
+                raise
+        return True
+
+    def _write_file(self, file_id, tree, prefix, relpath):
+        full_path = osutils.pathjoin(self._root, prefix, relpath)
+        if self._try_symlink_root(tree, prefix):
+            return full_path
+        parent_dir = osutils.dirname(full_path)
+        try:
+            os.makedirs(parent_dir)
+        except OSError, e:
+            if e.errno != errno.EEXIST:
+                raise
+        source = tree.get_file(file_id, relpath)
+        try:
+            target = open(full_path, 'wb')
+            try:
+                osutils.pumpfile(source, target)
+            finally:
+                target.close()
+        finally:
+            source.close()
+        osutils.make_readonly(full_path)
+        mtime = tree.get_file_mtime(file_id)
+        os.utime(full_path, (mtime, mtime))
+        return full_path
+
+    def _prepare_files(self, file_id, old_path, new_path):
+        old_disk_path = self._write_file(file_id, self.old_tree, 'old',
+                                         old_path)
+        new_disk_path = self._write_file(file_id, self.new_tree, 'new',
+                                         new_path)
+        return old_disk_path, new_disk_path
+
+    def finish(self):
+        osutils.rmtree(self._root)
+
+    def diff(self, file_id, old_path, new_path, old_kind, new_kind):
+        if (old_kind, new_kind) != ('file', 'file'):
+            return DiffPath.CANNOT_DIFF
+        self._prepare_files(file_id, old_path, new_path)
+        self._execute(osutils.pathjoin('old', old_path),
+                      osutils.pathjoin('new', new_path))
+
+
 class DiffTree(object):
     """Provides textual representations of the difference between two trees.
 
@@ -781,7 +885,7 @@ class DiffTree(object):
     @classmethod
     def from_trees_options(klass, old_tree, new_tree, to_file,
                            path_encoding, external_diff_options, old_label,
-                           new_label):
+                           new_label, using):
         """Factory for producing a DiffTree.
 
         Designed to accept options used by show_diff_trees.
@@ -793,7 +897,12 @@ class DiffTree(object):
             binary to perform file comparison, using supplied options.
         :param old_label: Prefix to use for old file labels
         :param new_label: Prefix to use for new file labels
+        :param using: Commandline to use to invoke an external diff tool
         """
+        if using is not None:
+            extra_factories = [DiffFromTool.make_from_diff_tree(using)]
+        else:
+            extra_factories = []
         if external_diff_options:
             assert isinstance(external_diff_options, basestring)
             opts = external_diff_options.split()
@@ -803,7 +912,8 @@ class DiffTree(object):
             diff_file = internal_diff
         diff_text = DiffText(old_tree, new_tree, to_file, path_encoding,
                              old_label, new_label, diff_file)
-        return klass(old_tree, new_tree, to_file, path_encoding, diff_text)
+        return klass(old_tree, new_tree, to_file, path_encoding, diff_text,
+                     extra_factories)
 
     def show_diff(self, specific_files, extra_trees=None):
         """Write tree diff to self.to_file
@@ -811,6 +921,13 @@ class DiffTree(object):
         :param sepecific_files: the specific files to compare (recursive)
         :param extra_trees: extra trees to use for mapping paths to file_ids
         """
+        try:
+            return self._show_diff(specific_files, extra_trees)
+        finally:
+            for differ in self.differs:
+                differ.finish()
+
+    def _show_diff(self, specific_files, extra_trees):
         # TODO: Generation of pseudo-diffs for added/deleted files could
         # be usefully made into a much faster special case.
         iterator = self.new_tree._iter_changes(self.old_tree,
