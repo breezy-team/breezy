@@ -1322,17 +1322,19 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
             else:
                 parents_list = [(revision_id, basis)]
             basis.lock_read()
-            wt.set_parent_trees(parents_list, allow_leftmost_as_ghost=True)
-            wt.flush()
-            # if the basis has a root id we have to use that; otherwise we use
-            # a new random one
-            basis_root_id = basis.get_root_id()
-            if basis_root_id is not None:
-                wt._set_root_id(basis_root_id)
+            try:
+                wt.set_parent_trees(parents_list, allow_leftmost_as_ghost=True)
                 wt.flush()
-            transform.build_tree(basis, wt, accelerator_tree,
-                                 hardlink=hardlink)
-            basis.unlock()
+                # if the basis has a root id we have to use that; otherwise we
+                # use a new random one
+                basis_root_id = basis.get_root_id()
+                if basis_root_id is not None:
+                    wt._set_root_id(basis_root_id)
+                    wt.flush()
+                transform.build_tree(basis, wt, accelerator_tree,
+                                     hardlink=hardlink)
+            finally:
+                basis.unlock()
         finally:
             control_files.unlock()
             wt.unlock()

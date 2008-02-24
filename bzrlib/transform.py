@@ -357,7 +357,12 @@ class TreeTransformBase(object):
     def create_hardlink(self, path, trans_id):
         """Schedule creation of a hard link"""
         name = self._limbo_name(trans_id)
-        os.link(path, name)
+        try:
+            os.link(path, name)
+        except OSError, e:
+            if e.errno != errno.EPERM:
+                raise
+            raise errors.HardLinkNotSupported(path)
         try:
             unique_add(self._new_contents, trans_id, 'file')
         except:
