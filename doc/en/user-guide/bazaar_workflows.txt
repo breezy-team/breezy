@@ -110,7 +110,8 @@ A companion tool of Bazaar's called Bundle Buggy can be very useful for tracking
 Decentralized with automatic gatekeeper
 ---------------------------------------
 
-In this workflow, each developer has their own branch or branches, plus read-only access to the mainline. A software gatekeeper (e.g. PQM) has commit rights to the main branch. When a developer wants their work merged, they request another person to review it. Once passed review, either the original author or the reviewer asks the gatekeeper to merge it, depending on team policies. The gatekeeper does a merge, a compile, and runs the test suite. If and only if the code passes, it is merged into the mainline.
+In this workflow, each developer has their own branch or branches, plus read-only access to the mainline. A software gatekeeper has commit rights to the main branch. When a developer wants their work merged, they request another person to review it. Once it has passed review, either the original author or the reviewer asks the gatekeeper software to merge it, depending on team policies. The gatekeeper software does a merge, a compile, and runs the test suite. If and only if the code passes, it is merged into the
+mainline.
 
 Note: As an alternative, the review step can be skipped and the author can submit the change to the automatic gatekeeper without it. (This is particularly appropriate when using practices such as Pair Programming that effectively promote just-in-time reviews instead of reviewing code as a separate step.)
 
