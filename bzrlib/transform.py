@@ -1595,7 +1595,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink):
                     new_trans_id = file_trans_id[file_id]
                     old_parent = tt.trans_id_tree_path(tree_path)
                     _reparent_children(tt, old_parent, new_trans_id)
-            offset = num +1 - len(deferred_contents)
+            offset = num + 1 - len(deferred_contents)
             _create_files(tt, tree, deferred_contents, pb, offset,
                           accelerator_tree, hardlink)
         finally:
@@ -1634,7 +1634,7 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
             if accelerator_path is None:
                 new_desired_files.append((file_id, trans_id))
                 continue
-            pb.update('Adding file contents', count+offset, total)
+            pb.update('Adding file contents', count + offset, total)
             if hardlink:
                 tt.create_hardlink(accelerator_tree.abspath(accelerator_path),
                                    trans_id)
@@ -1646,11 +1646,10 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
                     contents.close()
             count += 1
         offset += count
-    count = 0
     for count, (trans_id, contents) in enumerate(tree.iter_files_bytes(
                                                  new_desired_files)):
         tt.create_file(contents, trans_id)
-        pb.update('Adding file contents', count+offset, total)
+        pb.update('Adding file contents', count + offset, total)
 
 
 def _reparent_children(tt, old_parent, new_parent):
