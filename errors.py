@@ -40,7 +40,7 @@ class InvalidSvnBranchPath(NotBranchError):
     """Error raised when a path was specified that is not a child of or itself
     a valid branch path in the current branching scheme."""
     _fmt = """%(path)s is not a valid Subversion branch path in the current 
-branching scheme. See 'bzr help svn-branching schemes' for details."""
+branching scheme. See 'bzr help svn-branching-schemes' for details."""
 
     def __init__(self, path, scheme):
         assert isinstance(path, str)
