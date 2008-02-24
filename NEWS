@@ -33,6 +33,9 @@ IN DEVELOPMENT
 
   FEATURES:
 
+   * ``branch`` and ``checkout`` can hard-link working tree files, which is
+     faster and saves space.  (Aaron Bentley)
+
   IMPROVEMENTS:
 
   BUGFIXES:
@@ -302,9 +305,6 @@ bzr 1.1rc1 2008-01-05
    * ``branch`` and ``checkout`` can now use files from a working tree to
      to speed up the process.  For checkout, this requires the new
      --files-from flag.  (Aaron Bentley)
-
-   * ``branch`` and ``checkout`` can hard-link working tree files, which is
-     faster and saves space.  (Aaron Bentley)
 
    * ``bzr diff`` now sorts files in alphabetical order.  (Aaron Bentley)
 
