@@ -43,6 +43,7 @@ from bzrlib.osutils import file_kind, pathjoin
 from bzrlib.merge import Merge3Merger
 from bzrlib.tests import (
     CaseInsensitiveFilesystemFeature,
+    HardlinkFeature,
     SymlinkFeature,
     TestCase,
     TestCaseInTempDir,
@@ -133,6 +134,21 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         # is it safe to finalize repeatedly?
         transform.finalize()
         transform.finalize()
+
+    def test_hardlink(self):
+        self.requireFeature(HardlinkFeature)
+        transform, root = self.get_transform()
+        transform.new_file('file1', root, 'contents')
+        transform.apply()
+        target = self.make_branch_and_tree('target')
+        target_transform = TreeTransform(target)
+        trans_id = target_transform.create_path('file1', target_transform.root)
+        target_transform.create_hardlink(self.wt.abspath('file1'), trans_id)
+        target_transform.apply()
+        self.failUnlessExists('target/file1')
+        source_stat = os.stat(self.wt.abspath('file1'))
+        target_stat = os.stat('target/file1')
+        self.assertEqual(source_stat, target_stat)
 
     def test_convenience(self):
         transform, root = self.get_transform()
@@ -1573,12 +1589,19 @@ class TestBuildTree(tests.TestCaseWithTransport):
         # children of non-root directories should not be renamed
         self.assertEqual(2, transform_result.rename_count)
 
-    def test_build_tree_accelerator_tree(self):
+    def create_ab_tree(self):
+        """Create a committed test tree with two files"""
         source = self.make_branch_and_tree('source')
         self.build_tree_contents([('source/file1', 'A')])
         self.build_tree_contents([('source/file2', 'B')])
         source.add(['file1', 'file2'], ['file1-id', 'file2-id'])
         source.commit('commit files')
+        source.lock_write()
+        self.addCleanup(source.unlock)
+        return source
+
+    def test_build_tree_accelerator_tree(self):
+        source = self.create_ab_tree()
         self.build_tree_contents([('source/file2', 'C')])
         calls = []
         real_source_get_file = source.get_file
@@ -1586,8 +1609,6 @@ class TestBuildTree(tests.TestCaseWithTransport):
             calls.append(file_id)
             return real_source_get_file(file_id, path)
         source.get_file = get_file
-        source.lock_read()
-        self.addCleanup(source.unlock)
         target = self.make_branch_and_tree('target')
         revision_tree = source.basis_tree()
         revision_tree.lock_read()
@@ -1599,11 +1620,7 @@ class TestBuildTree(tests.TestCaseWithTransport):
         self.assertEqual([], list(target._iter_changes(revision_tree)))
 
     def test_build_tree_accelerator_tree_missing_file(self):
-        source = self.make_branch_and_tree('source')
-        self.build_tree_contents([('source/file1', 'A')])
-        self.build_tree_contents([('source/file2', 'B')])
-        source.add(['file1', 'file2'])
-        source.commit('commit files')
+        source = self.create_ab_tree()
         os.unlink('source/file1')
         source.remove(['file2'])
         target = self.make_branch_and_tree('target')
@@ -1632,8 +1649,6 @@ class TestBuildTree(tests.TestCaseWithTransport):
             calls.append(file_id)
             return real_source_get_file(file_id, path)
         source.get_file = get_file
-        source.lock_read()
-        self.addCleanup(source.unlock)
         target = self.make_branch_and_tree('target')
         revision_tree = source.basis_tree()
         revision_tree.lock_read()
@@ -1643,6 +1658,31 @@ class TestBuildTree(tests.TestCaseWithTransport):
         target.lock_read()
         self.addCleanup(target.unlock)
         self.assertEqual([], list(target._iter_changes(revision_tree)))
+
+    def test_build_tree_hardlink(self):
+        self.requireFeature(HardlinkFeature)
+        source = self.create_ab_tree()
+        target = self.make_branch_and_tree('target')
+        revision_tree = source.basis_tree()
+        revision_tree.lock_read()
+        self.addCleanup(revision_tree.unlock)
+        build_tree(revision_tree, target, source, hardlink=True)
+        target.lock_read()
+        self.addCleanup(target.unlock)
+        self.assertEqual([], list(target._iter_changes(revision_tree)))
+        source_stat = os.stat('source/file1')
+        target_stat = os.stat('target/file1')
+        self.assertEqual(source_stat, target_stat)
+
+        # Explicitly disallowing hardlinks should prevent them.
+        target2 = self.make_branch_and_tree('target2')
+        build_tree(revision_tree, target2, source, hardlink=False)
+        target2.lock_read()
+        self.addCleanup(target2.unlock)
+        self.assertEqual([], list(target2._iter_changes(revision_tree)))
+        source_stat = os.stat('source/file1')
+        target2_stat = os.stat('target2/file1')
+        self.assertNotEqual(source_stat, target2_stat)
 
     def test_build_tree_accelerator_tree_moved(self):
         source = self.make_branch_and_tree('source')
@@ -1660,6 +1700,24 @@ class TestBuildTree(tests.TestCaseWithTransport):
         target.lock_read()
         self.addCleanup(target.unlock)
         self.assertEqual([], list(target._iter_changes(revision_tree)))
+
+    def test_build_tree_hardlinks_preserve_execute(self):
+        self.requireFeature(HardlinkFeature)
+        source = self.create_ab_tree()
+        tt = TreeTransform(source)
+        trans_id = tt.trans_id_tree_file_id('file1-id')
+        tt.set_executability(True, trans_id)
+        tt.apply()
+        self.assertTrue(source.is_executable('file1-id'))
+        target = self.make_branch_and_tree('target')
+        revision_tree = source.basis_tree()
+        revision_tree.lock_read()
+        self.addCleanup(revision_tree.unlock)
+        build_tree(revision_tree, target, source, hardlink=True)
+        target.lock_read()
+        self.addCleanup(target.unlock)
+        self.assertEqual([], list(target._iter_changes(revision_tree)))
+        self.assertTrue(source.is_executable('file1-id'))
 
 
 class MockTransform(object):

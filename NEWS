@@ -33,6 +33,9 @@ IN DEVELOPMENT
 
   FEATURES:
 
+   * ``branch`` and ``checkout`` can hard-link working tree files, which is
+     faster and saves space.  (Aaron Bentley)
+
   IMPROVEMENTS:
 
   BUGFIXES:

@@ -864,10 +864,12 @@ class cmd_branch(Command):
 
     _see_also = ['checkout']
     takes_args = ['from_location', 'to_location?']
-    takes_options = ['revision']
+    takes_options = ['revision', Option('hardlink',
+        help='Hard-link working tree files where possible.')]
     aliases = ['get', 'clone']
 
-    def run(self, from_location, to_location=None, revision=None):
+    def run(self, from_location, to_location=None, revision=None,
+            hardlink=False):
         from bzrlib.tag import _merge_tags_if_possible
         if revision is None:
             revision = [None]
@@ -905,7 +907,8 @@ class cmd_branch(Command):
                 # preserve whatever source format we have.
                 dir = br_from.bzrdir.sprout(to_transport.base, revision_id,
                                             possible_transports=[to_transport],
-                                            accelerator_tree=accelerator_tree)
+                                            accelerator_tree=accelerator_tree,
+                                            hardlink=hardlink)
                 branch = dir.open_branch()
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
@@ -950,13 +953,16 @@ class cmd_checkout(Command):
                                  "common operations like diff and status without "
                                  "such access, and also support local commits."
                             ),
-                     Option('files-from',
-                            help="Get file contents from this tree.", type=str)
+                     Option('files-from', type=str,
+                            help="Get file contents from this tree."),
+                     Option('hardlink',
+                            help='Hard-link working tree files where possible.'
+                            ),
                      ]
     aliases = ['co']
 
     def run(self, branch_location=None, to_location=None, revision=None,
-            lightweight=False, files_from=None):
+            lightweight=False, files_from=None, hardlink=False):
         if revision is None:
             revision = [None]
         elif len(revision) > 1:
@@ -987,7 +993,7 @@ class cmd_checkout(Command):
                 source.bzrdir.create_workingtree(revision_id)
                 return
         source.create_checkout(to_location, revision_id, lightweight,
-                               accelerator_tree)
+                               accelerator_tree, hardlink)
 
 
 class cmd_renames(Command):

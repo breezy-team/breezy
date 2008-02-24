@@ -2970,6 +2970,17 @@ class _SymlinkFeature(Feature):
 SymlinkFeature = _SymlinkFeature()
 
 
+class _HardlinkFeature(Feature):
+
+    def _probe(self):
+        return osutils.has_hardlinks()
+
+    def feature_name(self):
+        return 'hardlinks'
+
+HardlinkFeature = _HardlinkFeature()
+
+
 class _OsFifoFeature(Feature):
 
     def _probe(self):

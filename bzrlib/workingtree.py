@@ -2763,7 +2763,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         
 
     def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
-                   accelerator_tree=None):
+                   accelerator_tree=None, hardlink=False):
         """See WorkingTreeFormat.initialize()."""
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
@@ -2856,7 +2856,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
                              self._lock_class)
 
     def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
-                   accelerator_tree=None):
+                   accelerator_tree=None, hardlink=False):
         """See WorkingTreeFormat.initialize().
         
         :param revision_id: if supplied, create a working tree at a different
@@ -2865,6 +2865,8 @@ class WorkingTreeFormat3(WorkingTreeFormat):
             contents more quickly than the revision tree, i.e. a workingtree.
             The revision tree will be used for cases where accelerator_tree's
             content is different.
+        :param hardlink: If true, hard-link files from accelerator_tree,
+            where possible.
         """
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
