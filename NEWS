@@ -36,6 +36,10 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * ``Repository.get_revision_graph_with_ghosts`` and
+      ``bzrlib.revision.common_ancestor`` have been deprecated.
+      (John Arbash Meinel)
+
     * ``Graph.iter_ancestry`` returns the ancestry of revision ids. Similar to
       ``Repository.get_revision_graph()`` except it includes ghosts and you can
       stop part-way through. (John Arbash Meinel)
