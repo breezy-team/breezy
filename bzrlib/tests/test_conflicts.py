@@ -20,10 +20,20 @@ import os
 from bzrlib import bzrdir
 from bzrlib.tests import TestCaseWithTransport, TestCase
 from bzrlib.branch import Branch
-from bzrlib.conflicts import (MissingParent, ContentsConflict, TextConflict,
-        PathConflict, DuplicateID, DuplicateEntry, ParentLoop, UnversionedParent,
-        ConflictList, 
-        restore)
+from bzrlib.conflicts import (
+    ConflictList,
+    ContentsConflict,
+    DuplicateID,
+    DuplicateEntry,
+    MissingParent,
+    NonDirectoryParent,
+    ParentLoop,
+    PathConflict,
+    TextConflict,
+    UnversionedParent,
+    resolve,
+    restore,
+    )
 from bzrlib.errors import NotConflicted
 
 
@@ -47,6 +57,7 @@ example_conflicts = ConflictList([
     ParentLoop('Cancelled move', u'p\xe5the', u'p\xe5th2e',
                None, '\xc3\xaed2e'),
     UnversionedParent('Versioned directory', u'p\xe5thf', '\xc3\xaedf'),
+    NonDirectoryParent('Created directory', u'p\xe5thg', '\xc3\xaedg'),
 ])
 
 
@@ -114,6 +125,18 @@ class TestConflicts(TestCaseWithTransport):
         self.assertEqual((tree_conflicts, ConflictList()),
                          tree_conflicts.select_conflicts(tree, ['foo'],
                                                          ignore_misses=True))
+
+    def test_resolve_conflicts_recursive(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['dir/', 'dir/hello'])
+        tree.add(['dir', 'dir/hello'])
+        tree.set_conflicts(ConflictList([TextConflict('dir/hello')]))
+        resolve(tree, ['dir'], recursive=False, ignore_misses=True)
+        self.assertEqual(ConflictList([TextConflict('dir/hello')]),
+                         tree.conflicts())
+        resolve(tree, ['dir'], recursive=True, ignore_misses=True)
+        self.assertEqual(ConflictList([]),
+                         tree.conflicts())
 
 
 class TestConflictStanzas(TestCase):

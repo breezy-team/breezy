@@ -30,6 +30,7 @@ import sys
 
 from bzrlib import (
     errors,
+    osutils,
     symbol_versioning,
     )
 from bzrlib.smart.protocol import (
@@ -37,12 +38,7 @@ from bzrlib.smart.protocol import (
     SmartServerRequestProtocolOne,
     SmartServerRequestProtocolTwo,
     )
-
-try:
-    from bzrlib.transport import ssh
-except errors.ParamikoNotPresent:
-    # no paramiko.  SmartSSHClientMedium will break.
-    pass
+from bzrlib.transport import ssh
 
 
 class SmartServerStreamMedium(object):
@@ -182,7 +178,7 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         self.finished = True
 
     def _write_out(self, bytes):
-        self.socket.sendall(bytes)
+        osutils.send_all(self.socket, bytes)
 
 
 class SmartServerPipeStreamMedium(SmartServerStreamMedium):
@@ -362,8 +358,10 @@ class SmartClientMediumRequest(object):
             new_char = self.read_bytes(1)
             line += new_char
             if new_char == '':
-                raise errors.SmartProtocolError(
-                    'unexpected end of file reading from server')
+                # end of file encountered reading from server
+                raise errors.ConnectionReset(
+                    "please check connectivity and permissions",
+                    "(and try -Dhpss if further diagnosis is required)")
         return line
 
 
@@ -388,6 +386,10 @@ class SmartClientStreamMedium(SmartClientMedium):
 
     def __init__(self):
         self._current_request = None
+        # Be optimistic: we assume the remote end can accept new remote
+        # requests until we get an error saying otherwise.  (1.2 adds some
+        # requests that send bodies, which confuses older servers.)
+        self._remote_is_at_least_1_2 = True
 
     def accept_bytes(self, bytes):
         self._accept_bytes(bytes)
@@ -510,6 +512,11 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         return self._read_from.read(count)
 
 
+# Port 4155 is the default port for bzr://, registered with IANA.
+BZR_DEFAULT_INTERFACE = '0.0.0.0'
+BZR_DEFAULT_PORT = 4155
+
+
 class SmartTCPClientMedium(SmartClientStreamMedium):
     """A client medium using TCP."""
     
@@ -524,7 +531,7 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
     def _accept_bytes(self, bytes):
         """See SmartClientMedium.accept_bytes."""
         self._ensure_connection()
-        self._socket.sendall(bytes)
+        osutils.send_all(self._socket, bytes)
 
     def disconnect(self):
         """See SmartClientMedium.disconnect()."""
@@ -540,10 +547,21 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
             return
         self._socket = socket.socket()
         self._socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        result = self._socket.connect_ex((self._host, int(self._port)))
-        if result:
+        if self._port is None:
+            port = BZR_DEFAULT_PORT
+        else:
+            port = int(self._port)
+        try:
+            self._socket.connect((self._host, port))
+        except socket.error, err:
+            # socket errors either have a (string) or (errno, string) as their
+            # args.
+            if type(err.args) is str:
+                err_msg = err.args
+            else:
+                err_msg = err.args[1]
             raise errors.ConnectionError("failed to connect to %s:%d: %s" %
-                    (self._host, self._port, os.strerror(result)))
+                    (self._host, port, err_msg))
         self._connected = True
 
     def _flush(self):

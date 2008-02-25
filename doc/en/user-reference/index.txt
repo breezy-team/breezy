@@ -1,8 +1,0 @@
-#####################
-Bazaar User Reference
-#####################
-
-* `Hooks Reference <hooks.html>`_ |--| The various operations that Bazaar
-  lets you hook into
-
-.. |--| unicode:: U+2014

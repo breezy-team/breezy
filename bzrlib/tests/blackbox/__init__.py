@@ -101,6 +101,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_sign_my_commits',
                      'bzrlib.tests.blackbox.test_split',
                      'bzrlib.tests.blackbox.test_status',
+                     'bzrlib.tests.blackbox.test_switch',
                      'bzrlib.tests.blackbox.test_tags',
                      'bzrlib.tests.blackbox.test_testament',
                      'bzrlib.tests.blackbox.test_too_much',

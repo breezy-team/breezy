@@ -42,17 +42,21 @@ class TestBranchLocking(TestCaseWithBranch):
         bcf = b.control_files
         rcf = getattr(b.repository, 'control_files', None)
         if rcf is None:
-            raise TestSkipped(
-                "This tests depends on being able to instrument "
-                "repository.control_files, but %r doesn't have control_files."
-                % (b.repository,))
-
-        # Look out for branch types that reuse their control files
-        self.combined_control = bcf is rcf
-
-        b.control_files = LockWrapper(self.locks, b.control_files, 'bc')
-        b.repository.control_files = \
-            LockWrapper(self.locks, b.repository.control_files, 'rc')
+            self.combined_branch = False
+        else:
+            # Look out for branch types that reuse their control files
+            self.combined_control = bcf is rcf
+        try:
+            b.control_files = LockWrapper(self.locks, b.control_files, 'bc')
+        except AttributeError:
+            # RemoteBranch seems to trigger this.
+            raise TestSkipped("Could not instrument branch control files.")
+        if self.combined_control:
+            # instrument the repository control files too to ensure its worked
+            # with correctly. When they are not shared, we trust the repository
+            # API and only instrument the repository itself. 
+            b.repository.control_files = \
+                LockWrapper(self.locks, b.repository.control_files, 'rc')
         return b
 
     def test_01_lock_read(self):
@@ -70,15 +74,24 @@ class TestBranchLocking(TestCaseWithBranch):
         self.assertFalse(b.is_locked())
         self.assertFalse(b.repository.is_locked())
 
-        self.assertEqual([('b', 'lr', True),
-                          ('r', 'lr', True),
-                          ('rc', 'lr', True),
-                          ('bc', 'lr', True),
-                          ('b', 'ul', True),
-                          ('bc', 'ul', True),
-                          ('r', 'ul', True),
-                          ('rc', 'ul', True),
-                         ], self.locks)
+        if self.combined_control:
+            self.assertEqual([('b', 'lr', True),
+                              ('r', 'lr', True),
+                              ('rc', 'lr', True),
+                              ('bc', 'lr', True),
+                              ('b', 'ul', True),
+                              ('bc', 'ul', True),
+                              ('r', 'ul', True),
+                              ('rc', 'ul', True),
+                             ], self.locks)
+        else:
+            self.assertEqual([('b', 'lr', True),
+                              ('r', 'lr', True),
+                              ('bc', 'lr', True),
+                              ('b', 'ul', True),
+                              ('bc', 'ul', True),
+                              ('r', 'ul', True),
+                             ], self.locks)
 
     def test_02_lock_write(self):
         # Test that locking occurs in the correct order
@@ -95,15 +108,24 @@ class TestBranchLocking(TestCaseWithBranch):
         self.assertFalse(b.is_locked())
         self.assertFalse(b.repository.is_locked())
 
-        self.assertEqual([('b', 'lw', True),
-                          ('r', 'lw', True),
-                          ('rc', 'lw', True),
-                          ('bc', 'lw', True),
-                          ('b', 'ul', True),
-                          ('bc', 'ul', True),
-                          ('r', 'ul', True),
-                          ('rc', 'ul', True),
-                         ], self.locks)
+        if self.combined_control:
+            self.assertEqual([('b', 'lw', True),
+                              ('r', 'lw', True),
+                              ('rc', 'lw', True),
+                              ('bc', 'lw', True),
+                              ('b', 'ul', True),
+                              ('bc', 'ul', True),
+                              ('r', 'ul', True),
+                              ('rc', 'ul', True),
+                             ], self.locks)
+        else:
+            self.assertEqual([('b', 'lw', True),
+                              ('r', 'lw', True),
+                              ('bc', 'lw', True),
+                              ('b', 'ul', True),
+                              ('bc', 'ul', True),
+                              ('r', 'ul', True),
+                             ], self.locks)
 
     def test_03_lock_fail_unlock_repo(self):
         # Make sure branch.unlock() is called, even if there is a
@@ -126,14 +148,23 @@ class TestBranchLocking(TestCaseWithBranch):
 
             # We unlock the branch control files, even if 
             # we fail to unlock the repository
-            self.assertEqual([('b', 'lw', True),
-                              ('r', 'lw', True),
-                              ('rc', 'lw', True),
-                              ('bc', 'lw', True),
-                              ('b', 'ul', True),
-                              ('bc', 'ul', True),
-                              ('r', 'ul', False), 
-                             ], self.locks)
+            if self.combined_control:
+                self.assertEqual([('b', 'lw', True),
+                                  ('r', 'lw', True),
+                                  ('rc', 'lw', True),
+                                  ('bc', 'lw', True),
+                                  ('b', 'ul', True),
+                                  ('bc', 'ul', True),
+                                  ('r', 'ul', False),
+                                 ], self.locks)
+            else:
+                self.assertEqual([('b', 'lw', True),
+                                  ('r', 'lw', True),
+                                  ('bc', 'lw', True),
+                                  ('b', 'ul', True),
+                                  ('bc', 'ul', True),
+                                  ('r', 'ul', False),
+                                 ], self.locks)
 
         finally:
             # For cleanup purposes, make sure we are unlocked
@@ -159,15 +190,24 @@ class TestBranchLocking(TestCaseWithBranch):
 
             # We unlock the repository even if 
             # we fail to unlock the control files
-            self.assertEqual([('b', 'lw', True),
-                              ('r', 'lw', True),
-                              ('rc', 'lw', True),
-                              ('bc', 'lw', True),
-                              ('b', 'ul', True),
-                              ('bc', 'ul', False),
-                              ('r', 'ul', True), 
-                              ('rc', 'ul', True), 
-                             ], self.locks)
+            if self.combined_control:
+                self.assertEqual([('b', 'lw', True),
+                                  ('r', 'lw', True),
+                                  ('rc', 'lw', True),
+                                  ('bc', 'lw', True),
+                                  ('b', 'ul', True),
+                                  ('bc', 'ul', False),
+                                  ('r', 'ul', True),
+                                  ('rc', 'ul', True),
+                                 ], self.locks)
+            else:
+                self.assertEqual([('b', 'lw', True),
+                                  ('r', 'lw', True),
+                                  ('bc', 'lw', True),
+                                  ('b', 'ul', True),
+                                  ('bc', 'ul', False),
+                                  ('r', 'ul', True),
+                                 ], self.locks)
 
         finally:
             # For cleanup purposes, make sure we are unlocked
@@ -208,13 +248,20 @@ class TestBranchLocking(TestCaseWithBranch):
         self.assertFalse(b.is_locked())
         self.assertFalse(b.repository.is_locked())
 
-        self.assertEqual([('b', 'lr', True),
-                          ('r', 'lr', True),
-                          ('rc', 'lr', True),
-                          ('bc', 'lr', False),
-                          ('r', 'ul', True),
-                          ('rc', 'ul', True),
-                         ], self.locks)
+        if self.combined_control:
+            self.assertEqual([('b', 'lr', True),
+                              ('r', 'lr', True),
+                              ('rc', 'lr', True),
+                              ('bc', 'lr', False),
+                              ('r', 'ul', True),
+                              ('rc', 'ul', True),
+                             ], self.locks)
+        else:
+            self.assertEqual([('b', 'lr', True),
+                              ('r', 'lr', True),
+                              ('bc', 'lr', False),
+                              ('r', 'ul', True),
+                             ], self.locks)
 
     def test_08_lock_write_fail_control(self):
         # Test the repository is unlocked if we can't lock self
@@ -224,14 +271,20 @@ class TestBranchLocking(TestCaseWithBranch):
         self.assertRaises(TestPreventLocking, b.lock_write)
         self.assertFalse(b.is_locked())
         self.assertFalse(b.repository.is_locked())
-
-        self.assertEqual([('b', 'lw', True),
-                          ('r', 'lw', True),
-                          ('rc', 'lw', True),
-                          ('bc', 'lw', False),
-                          ('r', 'ul', True),
-                          ('rc', 'ul', True),
-                         ], self.locks)
+        if self.combined_control:
+            self.assertEqual([('b', 'lw', True),
+                              ('r', 'lw', True),
+                              ('rc', 'lw', True),
+                              ('bc', 'lw', False),
+                              ('r', 'ul', True),
+                              ('rc', 'ul', True),
+                             ], self.locks)
+        else:
+            self.assertEqual([('b', 'lw', True),
+                              ('r', 'lw', True),
+                              ('bc', 'lw', False),
+                              ('r', 'ul', True),
+                             ], self.locks)
 
     def test_lock_write_returns_None_refuses_token(self):
         branch = self.make_branch('b')
@@ -398,24 +451,33 @@ class TestBranchLocking(TestCaseWithBranch):
             except NotImplementedError:
                 # This branch doesn't support this API.
                 return
-            branch.repository.leave_lock_in_place()
-            repo_token = branch.repository.lock_write()
-            branch.repository.unlock()
+            try:
+                branch.repository.leave_lock_in_place()
+            except NotImplementedError:
+                # This repo doesn't support leaving locks around,
+                # assume it is essentially lock-free.
+                repo_token = None
+            else:
+                repo_token = branch.repository.lock_write()
+                branch.repository.unlock()
         finally:
             branch.unlock()
         # Reacquire the lock (with a different branch object) by using the
         # tokens.
         new_branch = branch.bzrdir.open_branch()
-        # We have to explicitly lock the repository first.
-        new_branch.repository.lock_write(token=repo_token)
+        if repo_token is not None:
+            # We have to explicitly lock the repository first.
+            new_branch.repository.lock_write(token=repo_token)
         new_branch.lock_write(token=token)
-        # Now we don't need our own repository lock anymore (the branch is
-        # holding it for us).
-        new_branch.repository.unlock()
+        if repo_token is not None:
+            # Now we don't need our own repository lock anymore (the branch is
+            # holding it for us).
+            new_branch.repository.unlock()
         # Call dont_leave_lock_in_place, so that the lock will be released by
         # this instance, even though the lock wasn't originally acquired by it.
         new_branch.dont_leave_lock_in_place()
-        new_branch.repository.dont_leave_lock_in_place()
+        if repo_token is not None:
+            new_branch.repository.dont_leave_lock_in_place()
         new_branch.unlock()
         # Now the branch (and repository) is unlocked.  Test this by locking it
         # without tokens.
@@ -437,8 +499,14 @@ class TestBranchLocking(TestCaseWithBranch):
         branch = branch.bzrdir.open_branch()
         branch.lock_write()
         try:
-            # Now the branch.repository is locked, so we can't lock it with a new
-            # repository without a token.
+            # The branch should have asked the repository to lock.
+            self.assertTrue(branch.repository.is_write_locked())
+            # Does the repository type actually lock?
+            if not branch.repository.get_physical_lock_status():
+                # The test was successfully applied, so it was applicable.
+                return
+            # Now the branch.repository is physically locked, so we can't lock
+            # it with a new repository instance.
             new_repo = branch.bzrdir.open_repository()
             self.assertRaises(errors.LockContention, new_repo.lock_write)
             # We can call lock_write on the original repository object though,

@@ -1,13 +1,12 @@
-=================================
-Authentication configuration file
-=================================
+Authentication Settings
+=======================
 
 
 Intent
-======
+------
 
 Many different authentication policies can be described in the
-``$HOME/.bazaar/authentication.conf`` file but a particular user should need
+``authentication.conf`` file but a particular user should need
 only a few definitions to cover his needs without having to specify a user and
 a password for every branch he uses.
 
@@ -41,7 +40,7 @@ provided you have created the following ``authentication.conf`` file::
   
 
 Authentication definitions
-==========================
+--------------------------
 
 There are two kinds of authentication used by the various schemes supported by
 bzr:
@@ -108,12 +107,12 @@ Multiple definitions can be provided and, for a given URL, bzr will select a
 
 
 File format
-===========
+-----------
 
 The general rules for `configuration files`_ apply except for the variable
 policies.
 
-.. _configuration files: configuration.html
+.. _configuration files: #configuration-settings
 
 Each section describes an authentication definition.
 
@@ -136,11 +135,11 @@ Each section could define:
 
 
 Examples
-========
+--------
 
 
 Personal projects hosted outside
---------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 All connections are done with the same ``user`` (the remote one for which the
 default bzr one is not appropriate) and the password is always prompted with
@@ -165,7 +164,7 @@ some exceptions::
 
 
 Source hosting provider
------------------------
+~~~~~~~~~~~~~~~~~~~~~~~
 
 In the shp.net (fictious) domain, each project has its own site::
 
@@ -178,7 +177,7 @@ In the shp.net (fictious) domain, each project has its own site::
         password=precious
 
 HTTPS, SFTP servers and their proxy
------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 At company.com, the server hosting released and integration code is behind a
 proxy, the two servers use different authentication policies::
@@ -208,7 +207,7 @@ proxy, the two servers use different authentication policies::
 
 
 Planned enhancements
-====================
+--------------------
 
 The following are not yet implemented but planned as parts of a work in
 progress:

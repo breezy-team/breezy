@@ -23,13 +23,26 @@ import bzrlib
 from bzrlib import (
     bzrdir,
     errors,
+    graph,
     remote,
     repository,
     )
 from bzrlib.delta import TreeDelta
 from bzrlib.inventory import Inventory, InventoryDirectory
+from bzrlib.repofmt.weaverepo import (
+    RepositoryFormat5,
+    RepositoryFormat6,
+    RepositoryFormat7,
+    )
 from bzrlib.revision import NULL_REVISION, Revision
-from bzrlib.tests import TestCaseWithTransport, TestSkipped
+from bzrlib.smart import server
+from bzrlib.symbol_versioning import one_two
+from bzrlib.tests import (
+    KnownFailure,
+    TestCaseWithTransport,
+    TestNotApplicable,
+    TestSkipped,
+    )
 from bzrlib.tests.repository_implementations import TestCaseWithRepository
 from bzrlib.transport import get_transport
 from bzrlib.upgrade import upgrade
@@ -65,6 +78,19 @@ class TestRepository(TestCaseWithRepository):
         self.addCleanup(tree_b.unlock)
         tree_b.get_file_text('file1')
         rev1 = repo_b.get_revision('rev1')
+
+    def test_iter_inventories_is_ordered(self):
+        # just a smoke test
+        tree = self.make_branch_and_tree('a')
+        first_revision = tree.commit('')
+        second_revision = tree.commit('')
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        revs = (first_revision, second_revision)
+        invs = tree.branch.repository.iter_inventories(revs)
+        for rev_id, inv in zip(revs, invs):
+            self.assertEqual(rev_id, inv.revision_id)
+            self.assertIsInstance(inv, Inventory)
 
     def test_supports_rich_root(self):
         tree = self.make_branch_and_tree('a')
@@ -241,6 +267,11 @@ class TestRepository(TestCaseWithRepository):
         text = repo._format.get_format_description()
         self.failUnless(len(text))
 
+    def test_format_supports_external_lookups(self):
+        repo = self.make_repository('.')
+        self.assertSubset(
+            [repo._format.supports_external_lookups], (True, False))
+
     def assertMessageRoundtrips(self, message):
         """Assert that message roundtrips to a repository and back intact."""
         tree = self.make_branch_and_tree('.')
@@ -360,12 +391,28 @@ class TestRepository(TestCaseWithRepository):
     def test_format_attributes(self):
         """All repository formats should have some basic attributes."""
         # create a repository to get a real format instance, not the 
-        # template from the test suite parameterisation.
+        # template from the test suite parameterization.
         repo = self.make_repository('.')
         repo._format.rich_root_data
         repo._format.supports_tree_reference
 
-    def test_get_data_stream(self):
+    def test_get_data_stream_deprecated(self):
+        # If get_data_stream is present it must be deprecated
+        tree = self.make_branch_and_tree('t')
+        self.build_tree(['t/foo'])
+        tree.add('foo', 'file1')
+        tree.commit('message', rev_id='rev_id')
+        repo = tree.branch.repository
+        try:
+            stream = self.applyDeprecated(one_two, repo.get_data_stream,
+                ['rev_id'])
+        except NotImplementedError:
+            raise TestNotApplicable("%s doesn't support get_data_stream"
+                % repo._format)
+        except AttributeError:
+            pass
+
+    def test_get_data_stream_for_search(self):
         # Make a repo with a revision
         tree = self.make_branch_and_tree('t')
         self.build_tree(['t/foo'])
@@ -374,11 +421,13 @@ class TestRepository(TestCaseWithRepository):
         repo = tree.branch.repository
 
         # Get a data stream (a file-like object) for that revision
+        search = graph.SearchResult(set(['rev_id']), set([NULL_REVISION]), 1,
+            set(['rev_id']))
         try:
-            stream = repo.get_data_stream(['rev_id'])
+            stream = repo.get_data_stream_for_search(search)
         except NotImplementedError:
-            # Not all repositories support streaming.
-            return
+            raise TestNotApplicable("%s doesn't support get_data_stream"
+                % repo._format)
 
         # The data stream is a iterator that yields (name, versioned_file)
         # pairs for:
@@ -416,11 +465,13 @@ class TestRepository(TestCaseWithRepository):
         tree.commit('message', rev_id='rev_id')
         source_repo = tree.branch.repository
         dest_repo = self.make_repository('dest')
+        search = dest_repo.search_missing_revision_ids(source_repo,
+            revision_id='rev_id')
         try:
-            stream = source_repo.get_data_stream(['rev_id'])
+            stream = source_repo.get_data_stream_for_search(search)
         except NotImplementedError, e:
             # Not all repositories support streaming.
-            self.assertContainsRe(str(e), 'get_data_stream')
+            self.assertContainsRe(str(e), 'get_data_stream_for_search')
             raise TestSkipped('This format does not support streaming.')
 
         dest_repo.lock_write()
@@ -438,6 +489,26 @@ class TestRepository(TestCaseWithRepository):
         # reopen to be sure it was added.
         dest_repo = dest_repo.bzrdir.open_repository()
         self.assertTrue(dest_repo.has_revision('rev_id'))
+
+        # insert the same data stream again, should be no-op
+        stream = source_repo.get_data_stream_for_search(search)
+        dest_repo.lock_write()
+        try:
+            dest_repo.start_write_group()
+            try:
+                dest_repo.insert_data_stream(stream)
+            except:
+                dest_repo.abort_write_group()
+                raise
+            else:
+                dest_repo.commit_write_group()
+        finally:
+            dest_repo.unlock()
+
+        # try to insert data stream with invalid key
+        stream = [[('bogus-key',), '']]
+        self.assertRaises(errors.RepositoryDataStreamError,
+                          dest_repo.insert_data_stream, stream)
 
     def test_get_serializer_format(self):
         repo = self.make_repository('.')
@@ -515,6 +586,29 @@ class TestRepository(TestCaseWithRepository):
         self.addCleanup(repo.unlock)
         repo.get_graph()
 
+    def test_graph_ghost_handling(self):
+        tree = self.make_branch_and_tree('here')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.commit('initial commit', rev_id='rev1')
+        tree.add_parent_tree_id('ghost')
+        tree.commit('commit-with-ghost', rev_id='rev2')
+        graph = tree.branch.repository.get_graph()
+        parents = graph.get_parent_map(['ghost', 'rev2'])
+        self.assertTrue('ghost' not in parents)
+        self.assertEqual(parents['rev2'], ('rev1', 'ghost'))
+
+    def test_parent_map_type(self):
+        tree = self.make_branch_and_tree('here')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.commit('initial commit', rev_id='rev1')
+        tree.commit('next commit', rev_id='rev2')
+        graph = tree.branch.repository.get_graph()
+        parents = graph.get_parent_map([NULL_REVISION, 'rev1', 'rev2'])
+        for value in parents.values():
+            self.assertIsInstance(value, tuple)
+
     def test_implements_revision_graph_can_have_wrong_parents(self):
         """All repositories should implement
         revision_graph_can_have_wrong_parents, so that check and reconcile can
@@ -568,6 +662,123 @@ class TestRepository(TestCaseWithRepository):
         repository.install_revisions(repo2, [(revision, tree, signature)])
         self.assertEqual(revision, repo2.get_revision('A'))
         self.assertEqual(signature, repo2.get_signature_text('A'))
+
+    # XXX: this helper duplicated from tests.test_repository
+    def make_remote_repository(self, path):
+        """Make a RemoteRepository object backed by a real repository that will
+        be created at the given path."""
+        repo = self.make_repository(path)
+        smart_server = server.SmartTCPServer_for_testing()
+        smart_server.setUp(self.get_server())
+        remote_transport = get_transport(smart_server.get_url()).clone(path)
+        self.addCleanup(smart_server.tearDown)
+        remote_bzrdir = bzrdir.BzrDir.open_from_transport(remote_transport)
+        remote_repo = remote_bzrdir.open_repository()
+        return remote_repo
+
+    def test_sprout_from_hpss_preserves_format(self):
+        """repo.sprout from a smart server preserves the repository format."""
+        if self.repository_format == RepositoryFormat7():
+            raise KnownFailure(
+                "Cannot fetch weaves over smart protocol.")
+        remote_repo = self.make_remote_repository('remote')
+        local_bzrdir = self.make_bzrdir('local')
+        try:
+            local_repo = remote_repo.sprout(local_bzrdir)
+        except errors.TransportNotPossible:
+            raise TestNotApplicable(
+                "Cannot lock_read old formats like AllInOne over HPSS.")
+        remote_backing_repo = bzrdir.BzrDir.open(
+            self.get_vfs_only_url('remote')).open_repository()
+        self.assertEqual(remote_backing_repo._format, local_repo._format)
+
+    def test_sprout_branch_from_hpss_preserves_repo_format(self):
+        """branch.sprout from a smart server preserves the repository format.
+        """
+        weave_formats = [RepositoryFormat5(), RepositoryFormat6(),
+                         RepositoryFormat7()]
+        if self.repository_format in weave_formats:
+            raise KnownFailure(
+                "Cannot fetch weaves over smart protocol.")
+        remote_repo = self.make_remote_repository('remote')
+        remote_branch = remote_repo.bzrdir.create_branch()
+        try:
+            local_bzrdir = remote_branch.bzrdir.sprout('local')
+        except errors.TransportNotPossible:
+            raise TestNotApplicable(
+                "Cannot lock_read old formats like AllInOne over HPSS.")
+        local_repo = local_bzrdir.open_repository()
+        remote_backing_repo = bzrdir.BzrDir.open(
+            self.get_vfs_only_url('remote')).open_repository()
+        self.assertEqual(remote_backing_repo._format, local_repo._format)
+
+    def test__make_parents_provider(self):
+        """Repositories must have a _make_parents_provider method that returns
+        an object with a get_parent_map method.
+        """
+        repo = self.make_repository('repo')
+        repo._make_parents_provider().get_parent_map
+
+    def make_repository_and_foo_bar(self, shared):
+        made_control = self.make_bzrdir('repository')
+        repo = made_control.create_repository(shared=shared)
+        bzrdir.BzrDir.create_branch_convenience(self.get_url('repository/foo'),
+                                                force_new_repo=False)
+        bzrdir.BzrDir.create_branch_convenience(self.get_url('repository/bar'),
+                                                force_new_repo=True)
+        baz = self.make_bzrdir('repository/baz')
+        qux = self.make_branch('repository/baz/qux')
+        quxx = self.make_branch('repository/baz/qux/quxx')
+        return repo
+
+    def test_find_branches(self):
+        repo = self.make_repository_and_foo_bar(shared=False)
+        branches = repo.find_branches()
+        self.assertContainsRe(branches[-1].base, 'repository/foo/$')
+        self.assertContainsRe(branches[-3].base, 'repository/baz/qux/$')
+        self.assertContainsRe(branches[-2].base, 'repository/baz/qux/quxx/$')
+        # in some formats, creating a repo creates a branch
+        if len(branches) == 6:
+            self.assertContainsRe(branches[-4].base, 'repository/baz/$')
+            self.assertContainsRe(branches[-5].base, 'repository/bar/$')
+            self.assertContainsRe(branches[-6].base, 'repository/$')
+        else:
+            self.assertEqual(4, len(branches))
+            self.assertContainsRe(branches[-4].base, 'repository/bar/$')
+
+    def test_find_branches_using(self):
+        try:
+            repo = self.make_repository_and_foo_bar(shared=True)
+        except errors.IncompatibleFormat:
+            raise TestNotApplicable
+        branches = repo.find_branches(using=True)
+        self.assertContainsRe(branches[-1].base, 'repository/foo/$')
+        # in some formats, creating a repo creates a branch
+        if len(branches) == 2:
+            self.assertContainsRe(branches[-2].base, 'repository/$')
+        else:
+            self.assertEqual(1, len(branches))
+
+    def test_find_branches_using_standalone(self):
+        branch = self.make_branch('branch')
+        contained = self.make_branch('branch/contained')
+        branches = branch.repository.find_branches(using=True)
+        self.assertEqual([branch.base], [b.base for b in branches])
+        branches = branch.repository.find_branches(using=False)
+        self.assertEqual([branch.base, contained.base],
+                         [b.base for b in branches])
+
+    def test_find_branches_using_empty_standalone_repo(self):
+        repo = self.make_repository('repo')
+        self.assertFalse(repo.is_shared())
+        try:
+            repo.bzrdir.open_branch()
+        except errors.NotBranchError:
+            self.assertEqual([], repo.find_branches(using=True))
+        else:
+            self.assertEqual([repo.bzrdir.root_transport.base],
+                             [b.base for b in repo.find_branches(using=True)])
+
 
 class TestRepositoryLocking(TestCaseWithRepository):
 
@@ -853,6 +1064,8 @@ class TestEscaping(TestCaseWithTransport):
         # now access over vfat; should be safe
         branch = bzrdir.BzrDir.open('vfat+' + self.get_url('repo')).open_branch()
         revtree = branch.repository.revision_tree(REV_ID)
+        revtree.lock_read()
+        self.addCleanup(revtree.unlock)
         contents = revtree.get_file_text(FOO_ID)
         self.assertEqual(contents, 'contents of repo/foo\n')
 

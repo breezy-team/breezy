@@ -39,7 +39,7 @@ from bzrlib.smart import (
         server,
         vfs,
 )
-from bzrlib.tests.HTTPTestUtil import (
+from bzrlib.tests.http_utils import (
         HTTPServerWithSmarts,
         SmartRequestHandler,
         )
@@ -79,6 +79,30 @@ class StringIOSSHConnection(object):
     def get_filelike_channels(self):
         return self.vendor.read_from, self.vendor.write_to
 
+
+class _InvalidHostnameFeature(tests.Feature):
+    """Does 'non_existent.invalid' fail to resolve?
+    
+    RFC 2606 states that .invalid is reserved for invalid domain names, and
+    also underscores are not a valid character in domain names.  Despite this,
+    it's possible a badly misconfigured name server might decide to always
+    return an address for any name, so this feature allows us to distinguish a
+    broken system from a broken test.
+    """
+
+    def _probe(self):
+        try:
+            socket.gethostbyname('non_existent.invalid')
+        except socket.gaierror:
+            # The host name failed to resolve.  Good.
+            return True
+        else:
+            return False
+
+    def feature_name(self):
+        return 'invalid hostname'
+
+InvalidHostnameFeature = _InvalidHostnameFeature()
 
 
 class SmartClientMediumTests(tests.TestCase):
@@ -442,6 +466,13 @@ class SmartClientMediumTests(tests.TestCase):
         # now disconnect again : this should not do anything, if disconnection
         # really did disconnect.
         medium.disconnect()
+
+    def test_tcp_client_host_unknown_connection_error(self):
+        self.requireFeature(InvalidHostnameFeature)
+        client_medium = medium.SmartTCPClientMedium(
+            'non_existent.invalid', 4155)
+        self.assertRaises(
+            errors.ConnectionError, client_medium._ensure_connection)
 
 
 class TestSmartClientStreamMediumRequest(tests.TestCase):
@@ -1389,6 +1420,19 @@ class CommonSmartProtocolTestMixin(object):
         self.assertContainsRe(test_log, 'Traceback')
         self.assertContainsRe(test_log, 'SmartProtocolError')
 
+    def test_connection_closed_reporting(self):
+        input = StringIO()
+        output = StringIO()
+        client_medium = medium.SmartSimplePipesClientMedium(input, output)
+        request = client_medium.get_request()
+        smart_protocol = self.client_protocol_class(request)
+        smart_protocol.call('hello')
+        ex = self.assertRaises(errors.ConnectionReset, 
+            smart_protocol.read_response_tuple)
+        self.assertEqual("Connection closed: "
+            "please check connectivity and permissions "
+            "(and try -Dhpss if further diagnosis is required)", str(ex))
+
 
 class TestSmartProtocolOne(TestSmartProtocol, CommonSmartProtocolTestMixin):
     """Tests for the smart protocol version one."""
@@ -1423,19 +1467,6 @@ class TestSmartProtocolOne(TestSmartProtocol, CommonSmartProtocolTestMixin):
             self.client_protocol)
         self.assertOffsetSerialisation([(1,2), (3,4), (100, 200)],
             '1,2\n3,4\n100,200', self.client_protocol)
-
-    def test_connection_closed_reporting(self):
-        input = StringIO()
-        output = StringIO()
-        client_medium = medium.SmartSimplePipesClientMedium(input, output)
-        request = client_medium.get_request()
-        smart_protocol = protocol.SmartClientRequestProtocolOne(request)
-        smart_protocol.call('hello')
-        ex = self.assertRaises(errors.ConnectionReset, 
-            smart_protocol.read_response_tuple)
-        self.assertEqual("Connection closed: "
-            "please check connectivity and permissions "
-            "(and try -Dhpss if further diagnosis is required)", str(ex))
 
     def test_accept_bytes_of_bad_request_to_protocol(self):
         out_stream = StringIO()
@@ -2277,6 +2308,8 @@ class TestSuccessfulSmartServerResponse(tests.TestCase):
             ('foo', 'bar'), 'bytes')
         self.assertEqual(('foo', 'bar'), response.args)
         self.assertEqual('bytes', response.body)
+        # repr(response) doesn't trigger exceptions.
+        repr(response)
 
     def test_construct_with_body_stream(self):
         bytes_iterable = ['abc']
@@ -2306,6 +2339,8 @@ class TestFailedSmartServerResponse(tests.TestCase):
         response = request.FailedSmartServerResponse(('foo', 'bar'), 'bytes')
         self.assertEqual(('foo', 'bar'), response.args)
         self.assertEqual('bytes', response.body)
+        # repr(response) doesn't trigger exceptions.
+        repr(response)
 
     def test_is_successful(self):
         """is_successful should return False for FailedSmartServerResponse."""
@@ -2322,37 +2357,12 @@ class FakeHTTPMedium(object):
         return None
 
 
-class HTTPTunnellingSmokeTest(tests.TestCaseWithTransport):
-    
+class HTTPTunnellingSmokeTest(tests.TestCase):
+
     def setUp(self):
         super(HTTPTunnellingSmokeTest, self).setUp()
         # We use the VFS layer as part of HTTP tunnelling tests.
         self._captureVar('BZR_NO_SMART_VFS', None)
-
-    def _test_bulk_data(self, url_protocol):
-        # We should be able to send and receive bulk data in a single message.
-        # The 'readv' command in the smart protocol both sends and receives bulk
-        # data, so we use that.
-        self.build_tree(['data-file'])
-        self.transport_readonly_server = HTTPServerWithSmarts
-
-        http_transport = self.get_readonly_transport()
-        medium = http_transport.get_smart_medium()
-        # Since we provide the medium, the url below will be mostly ignored
-        # during the test, as long as the path is '/'.
-        remote_transport = remote.RemoteTransport('bzr://fake_host/',
-                                                  medium=medium)
-        self.assertEqual(
-            [(0, "c")], list(remote_transport.readv("data-file", [(0,1)])))
-
-    def test_bulk_data_pycurl(self):
-        try:
-            self._test_bulk_data('http+pycurl')
-        except errors.UnsupportedProtocol, e:
-            raise tests.TestSkipped(str(e))
-    
-    def test_bulk_data_urllib(self):
-        self._test_bulk_data('http+urllib')
 
     def test_smart_http_medium_request_accept_bytes(self):
         medium = FakeHTTPMedium()
@@ -2362,85 +2372,6 @@ class HTTPTunnellingSmokeTest(tests.TestCaseWithTransport):
         self.assertEqual(None, medium.written_request)
         request.finished_writing()
         self.assertEqual('abcdef', medium.written_request)
-
-    def _test_http_send_smart_request(self, url_protocol):
-        http_server = HTTPServerWithSmarts()
-        http_server._url_protocol = url_protocol
-        http_server.setUp(self.get_vfs_only_server())
-        self.addCleanup(http_server.tearDown)
-
-        post_body = 'hello\n'
-        expected_reply_body = 'ok\x012\n'
-
-        http_transport = get_transport(http_server.get_url())
-        medium = http_transport.get_smart_medium()
-        response = medium.send_http_smart_request(post_body)
-        reply_body = response.read()
-        self.assertEqual(expected_reply_body, reply_body)
-
-    def test_http_send_smart_request_pycurl(self):
-        try:
-            self._test_http_send_smart_request('http+pycurl')
-        except errors.UnsupportedProtocol, e:
-            raise tests.TestSkipped(str(e))
-
-    def test_http_send_smart_request_urllib(self):
-        self._test_http_send_smart_request('http+urllib')
-
-    def test_http_server_with_smarts(self):
-        self.transport_readonly_server = HTTPServerWithSmarts
-
-        post_body = 'hello\n'
-        expected_reply_body = 'ok\x012\n'
-
-        smart_server_url = self.get_readonly_url('.bzr/smart')
-        reply = urllib2.urlopen(smart_server_url, post_body).read()
-
-        self.assertEqual(expected_reply_body, reply)
-
-    def test_smart_http_server_post_request_handler(self):
-        self.transport_readonly_server = HTTPServerWithSmarts
-        httpd = self.get_readonly_server()._get_httpd()
-
-        socket = SampleSocket(
-            'POST /.bzr/smart HTTP/1.0\r\n'
-            # HTTP/1.0 posts must have a Content-Length.
-            'Content-Length: 6\r\n'
-            '\r\n'
-            'hello\n')
-        # Beware: the ('localhost', 80) below is the
-        # client_address parameter, but we don't have one because
-        # we have defined a socket which is not bound to an
-        # address. The test framework never uses this client
-        # address, so far...
-        request_handler = SmartRequestHandler(socket, ('localhost', 80), httpd)
-        response = socket.writefile.getvalue()
-        self.assertStartsWith(response, 'HTTP/1.0 200 ')
-        # This includes the end of the HTTP headers, and all the body.
-        expected_end_of_response = '\r\n\r\nok\x012\n'
-        self.assertEndsWith(response, expected_end_of_response)
-
-
-class SampleSocket(object):
-    """A socket-like object for use in testing the HTTP request handler."""
-    
-    def __init__(self, socket_read_content):
-        """Constructs a sample socket.
-
-        :param socket_read_content: a byte sequence
-        """
-        # Use plain python StringIO so we can monkey-patch the close method to
-        # not discard the contents.
-        from StringIO import StringIO
-        self.readfile = StringIO(socket_read_content)
-        self.writefile = StringIO()
-        self.writefile.close = lambda: None
-        
-    def makefile(self, mode='r', bufsize=None):
-        if 'r' in mode:
-            return self.readfile
-        else:
-            return self.writefile
 
 
 class RemoteHTTPTransportTestCase(tests.TestCase):
@@ -2457,20 +2388,6 @@ class RemoteHTTPTransportTestCase(tests.TestCase):
         self.assertEqual(base_transport._http_transport,
                          new_transport._http_transport)
         self.assertEqual('child_dir/foo', new_transport._remote_path('foo'))
-
-    def test_remote_path_after_clone_parent(self):
-        # However, accessing a parent directory should go direct to the parent's
-        # URL.  We don't send relpaths like "../foo" in smart requests.
-        base_transport = remote.RemoteHTTPTransport('bzr+http://host/path1/path2')
-        new_transport = base_transport.clone('..')
-        self.assertEqual('foo', new_transport._remote_path('foo'))
-        new_transport = base_transport.clone('../')
-        self.assertEqual('foo', new_transport._remote_path('foo'))
-        new_transport = base_transport.clone('../abc')
-        self.assertEqual('foo', new_transport._remote_path('foo'))
-        # "abc/../.." should be equivalent to ".."
-        new_transport = base_transport.clone('abc/../..')
-        self.assertEqual('foo', new_transport._remote_path('foo'))
 
     def test_remote_path_unnormal_base(self):
         # If the transport's base isn't normalised, the _remote_path should

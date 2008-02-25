@@ -62,7 +62,7 @@ from bzrlib.symbol_versioning import (deprecated_function,
                                       zero_eight, zero_nine, zero_sixteen,
                                       zero_ninetyone,
                                       )
-from bzrlib.trace import mutter, mutter_callsite, note
+from bzrlib.trace import mutter, mutter_callsite, note, is_quiet
 
 
 BZR_BRANCH_FORMAT_4 = "Bazaar-NG branch, format 0.0.4\n"
@@ -425,7 +425,7 @@ class Branch(object):
         That is equivalent to the number of revisions committed to
         this branch.
         """
-        return len(self.revision_history())
+        return self.last_revision_info()[0]
 
     def unbind(self):
         """Older format branches cannot bind or unbind."""
@@ -436,12 +436,8 @@ class Branch(object):
         raise errors.UpgradeRequired(self.base)
 
     def last_revision(self):
-        """Return last revision id, or None"""
-        ph = self.revision_history()
-        if ph:
-            return ph[-1]
-        else:
-            return _mod_revision.NULL_REVISION
+        """Return last revision id, or NULL_REVISION."""
+        return self.last_revision_info()[1]
 
     def last_revision_info(self):
         """Return information about the last revision.
@@ -757,13 +753,20 @@ class Branch(object):
         return format
 
     def create_checkout(self, to_location, revision_id=None,
-                        lightweight=False):
+                        lightweight=False, accelerator_tree=None,
+                        hardlink=False):
         """Create a checkout of a branch.
         
         :param to_location: The url to produce the checkout at
         :param revision_id: The revision to check out
         :param lightweight: If True, produce a lightweight checkout, otherwise,
         produce a bound branch (heavyweight checkout)
+        :param accelerator_tree: A tree which can be used for retrieving file
+            contents more quickly than the revision tree, i.e. a workingtree.
+            The revision tree will be used for cases where accelerator_tree's
+            content is different.
+        :param hardlink: If true, hard-link files from accelerator_tree,
+            where possible.
         :return: The tree of the created checkout
         """
         t = transport.get_transport(to_location)
@@ -783,7 +786,9 @@ class Branch(object):
             checkout_branch.pull(self, stop_revision=revision_id)
             from_branch=None
         tree = checkout.create_workingtree(revision_id,
-                                           from_branch=from_branch)
+                                           from_branch=from_branch,
+                                           accelerator_tree=accelerator_tree,
+                                           hardlink=hardlink)
         basis_tree = tree.basis_tree()
         basis_tree.lock_read()
         try:
@@ -867,6 +872,19 @@ class BranchFormat(object):
         :return: None if the branch is not a reference branch.
         """
         return None
+
+    @classmethod
+    def set_reference(self, a_bzrdir, to_branch):
+        """Set the target reference of the branch in a_bzrdir.
+
+        format probing must have been completed before calling
+        this method - it is assumed that the format of the branch
+        in a_bzrdir is correct.
+
+        :param a_bzrdir: The bzrdir to set the branch reference for.
+        :param to_branch: branch that the checkout is to reference
+        """
+        raise NotImplementedError(self.set_reference)
 
     def get_format_string(self):
         """Return the ASCII format string that identifies this format."""
@@ -1198,6 +1216,11 @@ class BranchReferenceFormat(BranchFormat):
         transport = a_bzrdir.get_branch_transport(None)
         return transport.get('location').read()
 
+    def set_reference(self, a_bzrdir, to_branch):
+        """See BranchFormat.set_reference()."""
+        transport = a_bzrdir.get_branch_transport(None)
+        location = transport.put_bytes('location', to_branch.base)
+
     def initialize(self, a_bzrdir, target_branch=None):
         """Create a branch of this format in a_bzrdir."""
         if target_branch is None:
@@ -1439,13 +1462,14 @@ class BzrBranch(Branch):
             last_rev, other_branch))
 
     @needs_write_lock
-    def update_revisions(self, other, stop_revision=None):
+    def update_revisions(self, other, stop_revision=None, overwrite=False):
         """See Branch.update_revisions."""
         other.lock_read()
         try:
+            other_last_revno, other_last_revision = other.last_revision_info()
             if stop_revision is None:
-                stop_revision = other.last_revision()
-                if stop_revision is None:
+                stop_revision = other_last_revision
+                if _mod_revision.is_null(stop_revision):
                     # if there are no commits, we're done.
                     return
             # whats the current last revision, before we fetch [and change it
@@ -1456,11 +1480,29 @@ class BzrBranch(Branch):
             # already merged can operate on the just fetched graph, which will
             # be cached in memory.
             self.fetch(other, stop_revision)
-            if self.repository.get_graph().is_ancestor(stop_revision,
-                                                       last_rev):
-                return
-            self.generate_revision_history(stop_revision, last_rev=last_rev,
-                other_branch=other)
+            # Check to see if one is an ancestor of the other
+            if not overwrite:
+                heads = self.repository.get_graph().heads([stop_revision,
+                                                           last_rev])
+                if heads == set([last_rev]):
+                    # The current revision is a decendent of the target,
+                    # nothing to do
+                    return
+                elif heads == set([stop_revision, last_rev]):
+                    # These branches have diverged
+                    raise errors.DivergedBranches(self, other)
+                assert heads == set([stop_revision])
+            if other_last_revision == stop_revision:
+                self.set_last_revision_info(other_last_revno,
+                                            other_last_revision)
+            else:
+                # TODO: jam 2007-11-29 Is there a way to determine the
+                #       revno without searching all of history??
+                if overwrite:
+                    self.generate_revision_history(stop_revision)
+                else:
+                    self.generate_revision_history(stop_revision,
+                        last_rev=last_rev, other_branch=other)
         finally:
             other.unlock()
 
@@ -1485,15 +1527,7 @@ class BzrBranch(Branch):
         source.lock_read()
         try:
             result.old_revno, result.old_revid = self.last_revision_info()
-            try:
-                self.update_revisions(source, stop_revision)
-            except DivergedBranches:
-                if not overwrite:
-                    raise
-            if overwrite:
-                if stop_revision is None:
-                    stop_revision = source.last_revision()
-                self.generate_revision_history(stop_revision)
+            self.update_revisions(source, stop_revision, overwrite=overwrite)
             result.tag_conflicts = source.tags.merge_to(self.tags, overwrite)
             result.new_revno, result.new_revid = self.last_revision_info()
             if _hook_master:
@@ -1765,22 +1799,6 @@ class BzrBranch5(BzrBranch):
         # last_rev is not in the other_last_rev history, AND
         # other_last_rev is not in our history, and do it without pulling
         # history around
-        last_rev = _mod_revision.ensure_null(self.last_revision())
-        if last_rev != _mod_revision.NULL_REVISION:
-            other.lock_read()
-            try:
-                other_last_rev = other.last_revision()
-                if not _mod_revision.is_null(other_last_rev):
-                    # neither branch is new, we have to do some work to
-                    # ascertain diversion.
-                    remote_graph = other.repository.get_revision_graph(
-                        other_last_rev)
-                    local_graph = self.repository.get_revision_graph(last_rev)
-                    if (last_rev not in remote_graph and
-                        other_last_rev not in local_graph):
-                        raise errors.DivergedBranches(self, other)
-            finally:
-                other.unlock()
         self.set_bound_location(other.base)
 
     @needs_write_lock
@@ -1806,107 +1824,6 @@ class BzrBranch5(BzrBranch):
         return None
 
 
-class BzrBranchExperimental(BzrBranch5):
-    """Bzr experimental branch format
-
-    This format has:
-     - a revision-history file.
-     - a format string
-     - a lock dir guarding the branch itself
-     - all of this stored in a branch/ subdirectory
-     - works with shared repositories.
-     - a tag dictionary in the branch
-
-    This format is new in bzr 0.15, but shouldn't be used for real data, 
-    only for testing.
-
-    This class acts as it's own BranchFormat.
-    """
-
-    _matchingbzrdir = bzrdir.BzrDirMetaFormat1()
-
-    @classmethod
-    def get_format_string(cls):
-        """See BranchFormat.get_format_string()."""
-        return "Bazaar-NG branch format experimental\n"
-
-    @classmethod
-    def get_format_description(cls):
-        """See BranchFormat.get_format_description()."""
-        return "Experimental branch format"
-
-    @classmethod
-    def get_reference(cls, a_bzrdir):
-        """Get the target reference of the branch in a_bzrdir.
-
-        format probing must have been completed before calling
-        this method - it is assumed that the format of the branch
-        in a_bzrdir is correct.
-
-        :param a_bzrdir: The bzrdir to get the branch data from.
-        :return: None if the branch is not a reference branch.
-        """
-        return None
-
-    @classmethod
-    def _initialize_control_files(cls, a_bzrdir, utf8_files, lock_filename,
-            lock_class):
-        branch_transport = a_bzrdir.get_branch_transport(cls)
-        control_files = lockable_files.LockableFiles(branch_transport,
-            lock_filename, lock_class)
-        control_files.create_lock()
-        control_files.lock_write()
-        try:
-            for filename, content in utf8_files:
-                control_files.put_utf8(filename, content)
-        finally:
-            control_files.unlock()
-        
-    @classmethod
-    def initialize(cls, a_bzrdir):
-        """Create a branch of this format in a_bzrdir."""
-        utf8_files = [('format', cls.get_format_string()),
-                      ('revision-history', ''),
-                      ('branch-name', ''),
-                      ('tags', ''),
-                      ]
-        cls._initialize_control_files(a_bzrdir, utf8_files,
-            'lock', lockdir.LockDir)
-        return cls.open(a_bzrdir, _found=True)
-
-    @classmethod
-    def open(cls, a_bzrdir, _found=False):
-        """Return the branch object for a_bzrdir
-
-        _found is a private parameter, do not use it. It is used to indicate
-               if format probing has already be done.
-        """
-        if not _found:
-            format = BranchFormat.find_format(a_bzrdir)
-            assert format.__class__ == cls
-        transport = a_bzrdir.get_branch_transport(None)
-        control_files = lockable_files.LockableFiles(transport, 'lock',
-                                                     lockdir.LockDir)
-        return cls(_format=cls,
-            _control_files=control_files,
-            a_bzrdir=a_bzrdir,
-            _repository=a_bzrdir.find_repository())
-
-    @classmethod
-    def is_supported(cls):
-        return True
-
-    def _make_tags(self):
-        return BasicTags(self)
-
-    @classmethod
-    def supports_tags(cls):
-        return True
-
-
-BranchFormat.register_format(BzrBranchExperimental)
-
-
 class BzrBranch6(BzrBranch5):
 
     @needs_read_lock
@@ -1916,11 +1833,6 @@ class BzrBranch6(BzrBranch5):
         revision_id = cache_utf8.get_cached_utf8(revision_id)
         revno = int(revno)
         return revno, revision_id
-
-    def last_revision(self):
-        """Return last revision id, or None"""
-        revision_id = self.last_revision_info()[1]
-        return revision_id
 
     def _write_last_revision_info(self, revno, revision_id):
         """Simply write out the revision id, with no checks.
@@ -2098,10 +2010,11 @@ class PullResult(_Result):
         return self.new_revno - self.old_revno
 
     def report(self, to_file):
-        if self.old_revid == self.new_revid:
-            to_file.write('No revisions to pull.\n')
-        else:
-            to_file.write('Now on revision %d.\n' % self.new_revno)
+        if not is_quiet():
+            if self.old_revid == self.new_revid:
+                to_file.write('No revisions to pull.\n')
+            else:
+                to_file.write('Now on revision %d.\n' % self.new_revno)
         self._show_tag_conficts(to_file)
 
 

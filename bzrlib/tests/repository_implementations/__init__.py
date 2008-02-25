@@ -218,7 +218,7 @@ class FileParentIsNotInRevisionAncestryScenario(BrokenRepoScenario):
     def check_regexes(self, repo):
         return [r"\* a-file-id version rev2 has parents \('rev1a', 'rev1b'\) "
                 r"but should have \('rev1a',\)",
-                "0 unreferenced text versions",
+                "1 unreferenced text versions",
                 ]
 
     def populate_repository(self, repo):
@@ -868,6 +868,7 @@ def test_suite():
         'test_find_text_key_references',
         'test__generate_text_key_index',
         'test_has_same_location',
+        'test_has_revisions',
         'test_is_write_locked',
         'test_iter_reverse_revision_history',
         'test_pack',
@@ -880,10 +881,10 @@ def test_suite():
     module_name_list = [prefix + module_name
                         for module_name in test_repository_modules]
 
-    # Parameterise repository_implementations test modules by format.
+    # Parameterize repository_implementations test modules by format.
     result = multiply_tests_from_modules(module_name_list, format_scenarios)
 
-    # test_check_reconcile needs to be parameterised by format *and* by broken
+    # test_check_reconcile needs to be parameterized by format *and* by broken
     # repository scenario.
     broken_scenarios = [(s.__name__, {'scenario_class': s})
                         for s in all_broken_scenario_classes]

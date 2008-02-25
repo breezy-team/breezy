@@ -30,6 +30,7 @@ from bzrlib import (
     lockable_files,
     lockdir,
     osutils,
+    symbol_versioning,
     transactions,
     xml5,
     xml6,
@@ -58,21 +59,29 @@ class _KnitParentsProvider(object):
     def __repr__(self):
         return 'KnitParentsProvider(%r)' % self._knit
 
+    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
     def get_parents(self, revision_ids):
-        parents_list = []
-        for revision_id in revision_ids:
+        """See graph._StackedParentsProvider.get_parents"""
+        parent_map = self.get_parent_map(revision_ids)
+        return [parent_map.get(r, None) for r in revision_ids]
+
+    def get_parent_map(self, keys):
+        """See graph._StackedParentsProvider.get_parent_map"""
+        parent_map = {}
+        for revision_id in keys:
             if revision_id == _mod_revision.NULL_REVISION:
-                parents = []
+                parent_map[revision_id] = ()
             else:
                 try:
-                    parents = self._knit.get_parents_with_ghosts(revision_id)
+                    parents = tuple(
+                        self._knit.get_parents_with_ghosts(revision_id))
                 except errors.RevisionNotPresent:
-                    parents = None
+                    continue
                 else:
                     if len(parents) == 0:
-                        parents = [_mod_revision.NULL_REVISION]
-            parents_list.append(parents)
-        return parents_list
+                        parents = (_mod_revision.NULL_REVISION,)
+                parent_map[revision_id] = parents
+        return parent_map
 
 
 class KnitRepository(MetaDirRepository):
@@ -148,10 +157,20 @@ class KnitRepository(MetaDirRepository):
         except errors.RevisionNotPresent:
             raise errors.NoSuchRevision(self, revision_id)
 
+    @symbol_versioning.deprecated_method(symbol_versioning.one_two)
     @needs_read_lock
     def get_data_stream(self, revision_ids):
-        """See Repository.get_data_stream."""
-        item_keys = self.item_keys_introduced_by(revision_ids)
+        """See Repository.get_data_stream.
+        
+        Deprecated in 1.2 for get_data_stream_for_search.
+        """
+        search_result = self.revision_ids_to_search_result(set(revision_ids))
+        return self.get_data_stream_for_search(search_result)
+
+    @needs_read_lock
+    def get_data_stream_for_search(self, search):
+        """See Repository.get_data_stream_for_search."""
+        item_keys = self.item_keys_introduced_by(search.get_keys())
         for knit_kind, file_id, versions in item_keys:
             name = (knit_kind,)
             if knit_kind == 'file':
@@ -256,6 +275,15 @@ class KnitRepository(MetaDirRepository):
         """
         return self._get_revision_vf()
 
+    def has_revisions(self, revision_ids):
+        """See Repository.has_revisions()."""
+        result = set()
+        transaction = self.get_transaction()
+        for revision_id in revision_ids:
+            if self._revision_store.has_revision_id(revision_id, transaction):
+                result.add(revision_id)
+        return result
+
     @needs_write_lock
     def reconcile(self, other=None, thorough=False):
         """Reconcile this repository."""
@@ -326,6 +354,8 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
     _serializer = xml5.serializer_v5
     # Knit based repositories handle ghosts reasonably well.
     supports_ghosts = True
+    # External lookups are not supported in this format.
+    supports_external_lookups = False
 
     def _get_control_store(self, repo_transport, control_files):
         """Return the control store for this repository."""

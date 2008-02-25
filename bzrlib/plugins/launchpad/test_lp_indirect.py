@@ -40,6 +40,7 @@ class FakeResolveFactory(object):
         return self
 
     def submit(self, service):
+        self._service_url = service.service_url
         return self._result
 
 
@@ -54,6 +55,22 @@ class IndirectUrlTests(TestCase):
         transport = LaunchpadTransport('lp:///')
         self.assertEquals('http://bazaar.launchpad.net/~apt/apt/devel',
                           transport._resolve('lp:apt', factory))
+        # Make sure that resolve went to the production server.
+        self.assertEquals('https://xmlrpc.edge.launchpad.net/bazaar/',
+                          factory._service_url)
+
+    def test_staging(self):
+        """A launchpad url should map to a http url"""
+        factory = FakeResolveFactory(
+            self, 'apt', dict(urls=[
+                    'http://bazaar.staging.launchpad.net/~apt/apt/devel']))
+        url = 'lp://staging/apt'
+        transport = LaunchpadTransport(url)
+        self.assertEquals('http://bazaar.staging.launchpad.net/~apt/apt/devel',
+                          transport._resolve(url, factory))
+        # Make sure that resolve went to the staging server.
+        self.assertEquals('https://xmlrpc.staging.launchpad.net/bazaar/',
+                          factory._service_url)
 
     def test_indirect_through_url(self):
         """A launchpad url should map to a http url"""
@@ -101,6 +118,18 @@ class IndirectUrlTests(TestCase):
         factory = FakeResolveFactory(
             self, 'apt', dict(urls=[
                     'bzr+ssh://bazaar.launchpad.net/~apt/apt/devel',
+                    'http://bazaar.launchpad.net/~apt/apt/devel']))
+        transport = LaunchpadTransport('lp:///')
+        self.assertEquals('http://bazaar.launchpad.net/~apt/apt/devel',
+                          transport._resolve('lp:///apt', factory))
+
+    def test_skip_sftp_launchpad_net_when_anonymous(self):
+        # Test that sftp://bazaar.launchpad.net gets skipped if
+        # Bazaar does not know the user's Launchpad ID:
+        self.assertEqual(None, get_lp_login())
+        factory = FakeResolveFactory(
+            self, 'apt', dict(urls=[
+                    'sftp://bazaar.launchpad.net/~apt/apt/devel',
                     'http://bazaar.launchpad.net/~apt/apt/devel']))
         transport = LaunchpadTransport('lp:///')
         self.assertEquals('http://bazaar.launchpad.net/~apt/apt/devel',

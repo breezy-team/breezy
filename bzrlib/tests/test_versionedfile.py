@@ -40,7 +40,7 @@ from bzrlib.knit import (
     KnitPlainFactory,
     )
 from bzrlib.tests import TestCaseWithMemoryTransport, TestSkipped
-from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
+from bzrlib.tests.http_utils import TestCaseWithWebserver
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryTransport
@@ -795,6 +795,68 @@ class TestPlaintextKnit(TestKnit):
 
     def get_factory(self):
         return self._factory
+
+
+class TestPlanMergeVersionedFile(TestCaseWithMemoryTransport):
+
+    def setUp(self):
+        TestCaseWithMemoryTransport.setUp(self)
+        self.vf1 = KnitVersionedFile('root', self.get_transport(), create=True)
+        self.vf2 = KnitVersionedFile('root', self.get_transport(), create=True)
+        self.plan_merge_vf = versionedfile._PlanMergeVersionedFile('root',
+            [self.vf1, self.vf2])
+
+    def test_add_lines(self):
+        self.plan_merge_vf.add_lines('a:', [], [])
+        self.assertRaises(ValueError, self.plan_merge_vf.add_lines, 'a', [],
+                          [])
+        self.assertRaises(ValueError, self.plan_merge_vf.add_lines, 'a:', None,
+                          [])
+        self.assertRaises(ValueError, self.plan_merge_vf.add_lines, 'a:', [],
+                          None)
+
+    def test_ancestry(self):
+        self.vf1.add_lines('A', [], [])
+        self.vf1.add_lines('B', ['A'], [])
+        self.plan_merge_vf.add_lines('C:', ['B'], [])
+        self.plan_merge_vf.add_lines('D:', ['C:'], [])
+        self.assertEqual(set(['A', 'B', 'C:', 'D:']),
+            self.plan_merge_vf.get_ancestry('D:', topo_sorted=False))
+
+    def setup_abcde(self):
+        self.vf1.add_lines('A', [], ['a'])
+        self.vf1.add_lines('B', ['A'], ['b'])
+        self.vf2.add_lines('C', [], ['c'])
+        self.vf2.add_lines('D', ['C'], ['d'])
+        self.plan_merge_vf.add_lines('E:', ['B', 'D'], ['e'])
+
+    def test_ancestry_uses_all_versionedfiles(self):
+        self.setup_abcde()
+        self.assertEqual(set(['A', 'B', 'C', 'D', 'E:']),
+            self.plan_merge_vf.get_ancestry('E:', topo_sorted=False))
+
+    def test_ancestry_raises_revision_not_present(self):
+        error = self.assertRaises(errors.RevisionNotPresent,
+                                  self.plan_merge_vf.get_ancestry, 'E:', False)
+        self.assertContainsRe(str(error), '{E:} not present in "root"')
+
+    def test_get_parents(self):
+        self.setup_abcde()
+        self.assertEqual(['A'], self.plan_merge_vf.get_parents('B'))
+        self.assertEqual(['C'], self.plan_merge_vf.get_parents('D'))
+        self.assertEqual(['B', 'D'], self.plan_merge_vf.get_parents('E:'))
+        error = self.assertRaises(errors.RevisionNotPresent,
+                                  self.plan_merge_vf.get_parents, 'F')
+        self.assertContainsRe(str(error), '{F} not present in "root"')
+
+    def test_get_lines(self):
+        self.setup_abcde()
+        self.assertEqual(['a'], self.plan_merge_vf.get_lines('A'))
+        self.assertEqual(['c'], self.plan_merge_vf.get_lines('C'))
+        self.assertEqual(['e'], self.plan_merge_vf.get_lines('E:'))
+        error = self.assertRaises(errors.RevisionNotPresent,
+                                  self.plan_merge_vf.get_lines, 'F')
+        self.assertContainsRe(str(error), '{F} not present in "root"')
 
 
 class InterString(versionedfile.InterVersionedFile):

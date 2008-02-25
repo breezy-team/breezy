@@ -17,6 +17,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from cStringIO import StringIO
+import errno
 import os
 import sys
 
@@ -30,9 +31,8 @@ from bzrlib.tests import TestSkipped
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.trace import mutter
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
-                                WorkingTree)
+                                WorkingTree, WorkingTree2)
 from bzrlib.conflicts import ConflictList, TextConflict, ContentsConflict
-
 
 
 class TestWorkingTree(TestCaseWithWorkingTree):
@@ -848,3 +848,40 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.commit('foo')
         tree.remove('file')
         self.assertRaises(errors.NoSuchId, tree.get_file_sha1, 'file-id')
+
+    def test_case_sensitive(self):
+        """If filesystem is case-sensitive, tree should report this.
+
+        We check case-sensitivity by creating a file with a lowercase name,
+        then testing whether it exists with an uppercase name.
+        """
+        self.build_tree(['filename'])
+        if os.path.exists('FILENAME'):
+            case_sensitive = False
+        else:
+            case_sensitive = True
+        tree = self.make_branch_and_tree('test')
+        if tree.__class__ == WorkingTree2:
+            raise TestSkipped('WorkingTree2 is not supported')
+        self.assertEqual(case_sensitive, tree.case_sensitive)
+
+    def test_sprout_hardlink(self):
+        source = self.make_branch_and_tree('source')
+        self.build_tree(['source/file'])
+        source.add('file')
+        source.commit('added file')
+        def fake_link(source, target):
+            raise OSError(errno.EPERM, 'Operation not permitted')
+        real_os_link = os.link
+        os.link = fake_link
+        try:
+            # Hard-link support is optional, so supplying hardlink=True may
+            # or may not raise an exception.  But if it does, it must be
+            # HardLinkNotSupported
+            try:
+                source.bzrdir.sprout('target', accelerator_tree=source,
+                                     hardlink=True)
+            except errors.HardLinkNotSupported:
+                pass
+        finally:
+            os.link = real_os_link

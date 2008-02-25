@@ -58,9 +58,22 @@ class LaunchpadTransport(Transport):
     def __init__(self, base):
         super(LaunchpadTransport, self).__init__(base)
         # We only support URLs without a netloc
-        netloc = urlsplit(base)[1]
-        if netloc != '':
+        self.lp_instance = urlsplit(base)[1]
+        if self.lp_instance == '':
+            self.lp_instance = None
+        elif self.lp_instance not in LaunchpadService.LAUNCHPAD_INSTANCE:
             raise errors.InvalidURL(path=base)
+
+    def _requires_launchpad_login(self, scheme, netloc, path, query,
+                                  fragment):
+        """Does the URL require a Launchpad login in order to be reached?
+
+        The URL is specified by its parsed components, as returned from
+        urlsplit.
+        """
+        return (scheme in ('bzr+ssh', 'sftp')
+                and (netloc.endswith('launchpad.net')
+                     or netloc.endswith('launchpad.dev')))
 
     def _resolve(self, abspath,
                  _request_factory=ResolveLaunchpadPathRequest,
@@ -69,7 +82,7 @@ class LaunchpadTransport(Transport):
         path = urlsplit(abspath)[2].lstrip('/')
         # Perform an XMLRPC request to resolve the path
         resolve = _request_factory(path)
-        service = LaunchpadService()
+        service = LaunchpadService(lp_instance=self.lp_instance)
         try:
             result = resolve.submit(service)
         except xmlrpclib.Fault, fault:
@@ -83,8 +96,8 @@ class LaunchpadTransport(Transport):
             _lp_login = get_lp_login()
         for url in result['urls']:
             scheme, netloc, path, query, fragment = urlsplit(url)
-            if scheme == 'bzr+ssh' and (netloc.endswith('launchpad.net') or
-                                        netloc.endswith('launchpad.dev')):
+            if self._requires_launchpad_login(scheme, netloc, path, query,
+                                              fragment):
                 # Only accept launchpad.net bzr+ssh URLs if we know
                 # the user's Launchpad login:
                 if _lp_login is None:

@@ -32,23 +32,43 @@ from bzrlib import (
 export BZR_LP_XMLRPC_URL=http://xmlrpc.staging.launchpad.net/bazaar/
 '''
 
+class InvalidLaunchpadInstance(errors.BzrError):
+
+    _fmt = "%(lp_instance)s is not a valid Launchpad instance."
+
+    def __init__(self, lp_instance):
+        errors.BzrError.__init__(self, lp_instance=lp_instance)
+
+
 class LaunchpadService(object):
     """A service to talk to Launchpad via XMLRPC.
-    
+
     See http://bazaar-vcs.org/Specs/LaunchpadRpc for the methods we can call.
     """
 
-    # NB: this should always end in a slash to avoid xmlrpclib appending
+    # NB: these should always end in a slash to avoid xmlrpclib appending
     # '/RPC2'
-    DEFAULT_SERVICE_URL = 'https://xmlrpc.launchpad.net/bazaar/'
+    # We use edge as the default because:
+    # Beta users get redirected to it
+    # All users can use it
+    # There is a bug in the launchpad side where redirection causes an OOPS.
+    LAUNCHPAD_INSTANCE = {
+        'production': 'https://xmlrpc.launchpad.net/bazaar/',
+        'edge': 'https://xmlrpc.edge.launchpad.net/bazaar/',
+        'staging': 'https://xmlrpc.staging.launchpad.net/bazaar/',
+        'demo': 'https://xmlrpc.demo.launchpad.net/bazaar/',
+        'dev': 'http://xmlrpc.launchpad.dev/bazaar/',
+        }
+    DEFAULT_SERVICE_URL = LAUNCHPAD_INSTANCE['edge']
 
     transport = None
     registrant_email = None
     registrant_password = None
 
 
-    def __init__(self, transport=None):
+    def __init__(self, transport=None, lp_instance=None):
         """Construct a new service talking to the launchpad rpc server"""
+        self._lp_instance = lp_instance
         if transport is None:
             uri_type = urllib.splittype(self.service_url)[0]
             if uri_type == 'https':
@@ -69,6 +89,11 @@ class LaunchpadService(object):
         key = 'BZR_LP_XMLRPC_URL'
         if key in os.environ:
             return os.environ[key]
+        elif self._lp_instance is not None:
+            try:
+                return self.LAUNCHPAD_INSTANCE[self._lp_instance]
+            except KeyError:
+                raise InvalidLaunchpadInstance(self._lp_instance)
         else:
             return self.DEFAULT_SERVICE_URL
 
@@ -180,7 +205,7 @@ class BranchRegistrationRequest(BaseRequest):
                  author_email='',
                  product_name='',
                  ):
-        assert branch_url
+        assert branch_url, 'branch_url %r is invalid' % branch_url
         self.branch_url = branch_url
         if branch_name:
             self.branch_name = branch_name

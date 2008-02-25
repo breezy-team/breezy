@@ -20,6 +20,7 @@
 """
 
 import os
+import sys
 
 from bzrlib.tests.blackbox import TestCaseWithTransport
 
@@ -128,3 +129,9 @@ class TestCat(TestCaseWithTransport):
         out, err = self.run_bzr_subprocess(['cat', url])
         self.assertEqual('contents of README\n', out)
 
+    def test_cat_nonexistent_branch(self):
+        if sys.platform == "win32":
+            location = "C:/i/do/not/exist"
+        else:
+            location = "/i/do/not/exist"
+        self.run_bzr_error(['^bzr: ERROR: Not a branch'], ['cat', location])

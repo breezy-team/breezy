@@ -132,12 +132,7 @@ class SSHVendorManager(object):
 
     def _get_vendor_by_inspection(self):
         """Return the vendor or None by checking for known SSH implementations."""
-        # detection of plink vendor is disabled because of bug #107593
-        # https://bugs.launchpad.net/bzr/+bug/107593
-        # who want plink should explicitly enable it with BZR_SSH environment
-        # variable.
-        #~for args in (['ssh', '-V'], ['plink', '-V']):
-        for args in (['ssh', '-V'],):
+        for args in (['ssh', '-V'], ['plink', '-V']):
             version = self._get_ssh_version_string(args)
             vendor = self._get_vendor_by_version_string(version, args)
             if vendor is not None:
@@ -331,7 +326,10 @@ if paramiko is not None:
     register_ssh_vendor('paramiko', vendor)
     register_ssh_vendor('none', vendor)
     register_default_ssh_vendor(vendor)
+    _sftp_connection_errors = (EOFError, paramiko.SSHException)
     del vendor
+else:
+    _sftp_connection_errors = (EOFError,)
 
 
 class SubprocessVendor(SSHVendor):
@@ -350,7 +348,7 @@ class SubprocessVendor(SSHVendor):
                                                   subsystem='sftp')
             sock = self._connect(argv)
             return SFTPClient(sock)
-        except (EOFError, paramiko.SSHException), e:
+        except _sftp_connection_errors, e:
             self._raise_connection_error(host, port=port, orig_error=e)
         except (OSError, IOError), e:
             # If the machine is fast enough, ssh can actually exit
@@ -445,7 +443,7 @@ class PLinkSubprocessVendor(SubprocessVendor):
         if subsystem is not None:
             assert command is None, (
                 'subsystem and command are mutually exclusive')
-        args = ['plink', '-x', '-a', '-ssh', '-2']
+        args = ['plink', '-x', '-a', '-ssh', '-2', '-batch']
         if port is not None:
             args.extend(['-P', str(port)])
         if username is not None:

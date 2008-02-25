@@ -27,9 +27,11 @@ active, in which case aftp:// will be your friend.
 from cStringIO import StringIO
 import errno
 import ftplib
+import getpass
 import os
 import os.path
 import urlparse
+import socket
 import stat
 import time
 import random
@@ -141,6 +143,10 @@ class FtpTransport(ConnectedTransport):
                                              port=self._port)
             connection.login(user=user, passwd=password)
             connection.set_pasv(not self.is_active)
+        except socket.error, e:
+            raise errors.SocketConnectionError(self._host, self._port,
+                                               msg='Unable to connect to',
+                                               orig_error= e)
         except ftplib.error_perm, e:
             raise errors.TransportError(msg="Error setting up connection:"
                                         " %s" % str(e), orig_error=e)
@@ -570,9 +576,21 @@ def get_test_permutations():
         return [(FtpTransport, ftp_server.FTPServer)]
     else:
         # Dummy server to have the test suite report the number of tests
-        # needing that feature.
+        # needing that feature. We raise UnavailableFeature from methods before
+        # the test server is being used. Doing so in the setUp method has bad
+        # side-effects (tearDown is never called).
         class UnavailableFTPServer(object):
+
             def setUp(self):
+                pass
+
+            def tearDown(self):
+                pass
+
+            def get_url(self):
+                raise tests.UnavailableFeature(tests.FTPServerFeature)
+
+            def get_bogus_url(self):
                 raise tests.UnavailableFeature(tests.FTPServerFeature)
 
         return [(FtpTransport, UnavailableFTPServer)]
