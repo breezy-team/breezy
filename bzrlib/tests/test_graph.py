@@ -238,6 +238,22 @@ boundary = {'a': ['b'], 'c': ['b', 'd'], 'b':['e'], 'd':['e'], 'e': ['f'],
             'f':[NULL_REVISION]}
 
 
+# A graph that contains a ghost
+#  NULL_REVISION
+#       |
+#       f
+#       |
+#       e   g
+#      / \ /
+#     b   d
+#     | \ |
+#     a   c
+
+with_ghost = {'a': ['b'], 'c': ['b', 'd'], 'b':['e'], 'd':['e', 'g'],
+              'e': ['f'], 'f':[NULL_REVISION]}
+
+
+
 class InstrumentedParentsProvider(object):
 
     def __init__(self, parents_provider):
@@ -488,6 +504,21 @@ class TestGraph(TestCaseWithMemoryTransport):
         graph = _mod_graph.Graph(instrumented_provider)
         self.assertFalse(graph.is_ancestor('a', 'c'))
         self.assertTrue('null:' not in instrumented_provider.calls)
+
+    def test_iter_ancestry(self):
+        graph = self.make_graph(boundary)
+        expected = boundary.copy()
+        expected.pop('a') # 'a' is not in the ancestry of 'c', all the
+                          # other nodes are
+        self.assertEqual(expected, dict(graph.iter_ancestry('c')))
+
+    def test_iter_ancestry_with_ghost(self):
+        graph = self.make_graph(with_ghost)
+        expected = with_ghost.copy()
+        # 'a' is not in the ancestry of 'c', and 'g' is a ghost
+        expected.pop('a') 
+        expected['g'] = ()
+        self.assertEqual(expected, dict(graph.iter_ancestry('c')))
 
     def test_filter_candidate_lca(self):
         """Test filter_candidate_lca for a corner case
