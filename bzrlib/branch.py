@@ -213,11 +213,18 @@ class Branch(object):
         last_revision = self.last_revision()
         g = self.repository.get_graph()
         ancestry = []
-        null_parents = (_mod_revision.NULL_REVISION,)
-        for revision_id, parents in g.iter_ancestry(last_revision):
-            if parents == null_parents:
+        NULL_REVISION = _mod_revision.NULL_REVISION
+        # API FRICTION: get_parent_map() returns (NULL_REVISION,) for nodes
+        #   rather than an empty list/tuple. (And thus so does iter_ancestry)
+        #   However, that would make revno 1 == NULL_REVISION according to
+        #   merge_sort, so we have to strip it out of the results.
+        #   This wouldn't be terrible, except implementors of get_parent_map()
+        #   generally are artificially introducing NULL_REVISION into their
+        #   return values because of the api requirements.
+        for revision_id, parents in g.iter_ancestry([last_revision]):
+            if len(parents) == 1 and parents[0] == NULL_REVISION:
                 ancestry.append((revision_id, ()))
-            elif revision_id == _mod_revision.NULL_REVISION:
+            elif revision_id == NULL_REVISION:
                 continue
             else:
                 ancestry.append((revision_id, parents))

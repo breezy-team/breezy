@@ -21,6 +21,10 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``Branch.get_revision_id_to_revno_map()`` uses ``Graph.iter_ancestry`` to
+      extract the revision history. On Pack repositories this significantly
+      improves performance. (John Arbash Meinel)
+
   BUGFIXES:
 
     * Include quick-start-summary.svg file to python-based installer(s)
@@ -31,6 +35,10 @@ IN DEVELOPMENT
   TESTING:
 
   INTERNALS:
+
+    * ``Graph.iter_ancestry`` returns the ancestry of revision ids. Similar to
+      ``Repository.get_revision_graph()`` except it includes ghosts and you can
+      stop part-way through. (John Arbash Meinel)
 
     * New remote method ``RemoteBzrDir.find_repositoryV2`` adding support for
       detecting external lookup support on remote repositories. This method is

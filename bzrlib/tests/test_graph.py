@@ -510,15 +510,17 @@ class TestGraph(TestCaseWithMemoryTransport):
         expected = boundary.copy()
         expected.pop('a') # 'a' is not in the ancestry of 'c', all the
                           # other nodes are
-        self.assertEqual(expected, dict(graph.iter_ancestry('c')))
+        self.assertEqual(expected, dict(graph.iter_ancestry(['c'])))
+        self.assertEqual(boundary, dict(graph.iter_ancestry(['a', 'c'])))
 
     def test_iter_ancestry_with_ghost(self):
         graph = self.make_graph(with_ghost)
         expected = with_ghost.copy()
         # 'a' is not in the ancestry of 'c', and 'g' is a ghost
-        expected.pop('a') 
         expected['g'] = ()
-        self.assertEqual(expected, dict(graph.iter_ancestry('c')))
+        self.assertEqual(expected, dict(graph.iter_ancestry(['a', 'c'])))
+        expected.pop('a') 
+        self.assertEqual(expected, dict(graph.iter_ancestry(['c'])))
 
     def test_filter_candidate_lca(self):
         """Test filter_candidate_lca for a corner case

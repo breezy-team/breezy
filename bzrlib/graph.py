@@ -424,19 +424,24 @@ class Graph(object):
                 raise errors.NoCommonAncestor(left_revision, right_revision)
             revisions = lca
 
-    def iter_ancestry(self, revision_id):
+    def iter_ancestry(self, revision_ids):
         """Iterate the ancestry of this revision.
 
         The specific order is undefined, but children should be returned before
         parents.
 
+        :param revision_ids: Nodes to start the search
         :return: Yield tuples mapping a revision_id to its parents for the
             ancestry of revision_id.
+            Ghosts will be returned with parents of the empty tuple, and nodes
+            with no parents will have NULL_REVISION as their only parent. (As
+            defined by get_parent_map.)
+            There also be a node for (NULL_REVISION, ())
         """
         # XXX: Do we want to guarantee that children will be returned before
         #      parents? At present that is the order, but I don't know that it
         #      is beneficial to require it.
-        pending = set([revision_id])
+        pending = set(revision_ids)
         processed = set()
         while pending:
             processed.update(pending)
