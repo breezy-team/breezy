@@ -90,9 +90,19 @@ class GenericProcessor(processor.ImportProcessor):
     
     * inv-cache - number of inventories to cache.
       If not set, the default is 10.
+
+    * experimental - enable experimental mode, i.e. use features
+      not yet fully tested.
     """
 
-    known_params = ['info', 'trees', 'checkpoint', 'count', 'inv-cache']
+    known_params = [
+        'info',
+        'trees',
+        'checkpoint',
+        'count',
+        'inv-cache',
+        'experimental',
+        ]
 
     def note(self, msg, *args):
         """Output a note but timestamp it."""
@@ -128,6 +138,8 @@ class GenericProcessor(processor.ImportProcessor):
         inv_vf.enable_cache()
 
     def _load_info_and_params(self):
+        self._experimental = self.params.get('experimental', False)
+
         # Load the info file, if any
         info_path = self.params.get('info')
         if info_path is not None:
@@ -273,7 +285,7 @@ class GenericProcessor(processor.ImportProcessor):
         """Process a CommitCommand."""
         # 'Commit' the revision
         handler = GenericCommitHandler(cmd, self.repo, self.cache_mgr,
-            self.verbose)
+            self.verbose, self._experimental)
         handler.process()
 
         # Update caches
@@ -373,7 +385,6 @@ class GenericCacheManager(object):
         self.inv_parent_texts = lru_cache.LRUCache(inventory_cache_size)
 
         # Work out the blobs to make sticky - None means all
-        #print "%r" % (info,)
         self._blobs_to_keep = None
         if info is not None:
             try:
@@ -413,11 +424,13 @@ class GenericCacheManager(object):
 
 class GenericCommitHandler(processor.CommitHandler):
 
-    def __init__(self, command, repo, cache_mgr, verbose=False):
+    def __init__(self, command, repo, cache_mgr, verbose=False,
+        _experimental=False):
         processor.CommitHandler.__init__(self, command)
         self.repo = repo
         self.cache_mgr = cache_mgr
         self.verbose = verbose
+        self._experimental = _experimental
         # smart loader that uses these caches
         self.loader = revisionloader.ImportRevisionLoader(repo,
             lambda revision_ids: self._get_inventories(revision_ids),
@@ -475,7 +488,9 @@ class GenericCommitHandler(processor.CommitHandler):
             self.inventory = self.gen_initial_inventory()
         else:
             # use the bzr_revision_id to lookup the inv cache
-            self.inventory = self.get_inventory_copy(self.parents[0])
+            inv = self.get_inventory(self.parents[0])
+            # TODO: Shallow copy - deep inventory copying is expensive
+            self.inventory = inv.copy()
         if not self.repo.supports_rich_root():
             # In this repository, root entries have no knit or weave. When
             # serializing out to disk and back in, root.revision is always
@@ -484,10 +499,6 @@ class GenericCommitHandler(processor.CommitHandler):
 
         # directory-path -> inventory-entry for current inventory
         self.directory_entries = dict(self.inventory.directories())
-
-    def get_inventory_copy(self, rev_id):
-        inv = self.get_inventory(rev_id)
-        return inv.copy()
 
     def post_process_files(self):
         """Save the revision."""
@@ -541,6 +552,8 @@ class GenericCommitHandler(processor.CommitHandler):
         path = filecmd.path
         try:
             del self.inventory[self.bzr_file_id(path)]
+        except KeyError:
+            self.warning("ignoring delete of %s as not in inventory", path)
         except errors.NoSuchId:
             self.warning("ignoring delete of %s as not in inventory", path)
         try:
@@ -691,7 +704,7 @@ class GenericCommitHandler(processor.CommitHandler):
         # There are no lines stored for a directory so
         # make sure the cache used by get_lines knows that
         self.lines_for_commit[dir_file_id] = []
-        #print "adding dir %s" % path
+        #print "adding dir for %s" % path
         self.inventory.add(ie)
         return basename, ie
 

@@ -122,10 +122,13 @@ class cmd_fast_import(Command):
                     Option('inv-cache', type=int,
                         help="Number of inventories to cache.",
                         ),
+                    Option('experimental',
+                        help="Enable experimental features.",
+                        ),
                      ]
     aliases = []
     def run(self, source, verbose=False, info=None, trees=False,
-        checkpoint=10000, count=-1, inv_cache=10):
+        checkpoint=10000, count=-1, inv_cache=10, experimental=False):
         from bzrlib import bzrdir
         from bzrlib.plugins.fastimport.processors import generic_processor
         control, relpath = bzrdir.BzrDir.open_containing('.')
@@ -135,6 +138,7 @@ class cmd_fast_import(Command):
             'checkpoint': checkpoint,
             'count': count,
             'inv-cache': inv_cache,
+            'experimental': experimental,
             }
         return _run(source, generic_processor.GenericProcessor, control,
             params, verbose)
