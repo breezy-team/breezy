@@ -2017,6 +2017,15 @@ class BzrBranch7(BzrBranch5):
         self._check_stackable_repo()
         if not url:
             url = ''
+            # repositories don't offer an interface to remove fallback
+            # repositories today; take the conceptually simpler option and just
+            # reopen it.
+            self.repository = self.bzrdir.find_repository()
+        else:
+            new_repo = bzrdir.BzrDir.open(url).open_branch().repository
+            self.repository.add_fallback_repository(new_repo)
+        # write this out after the repository is stacked to avoid setting a
+        # stacked config that doesn't work.
         self.control_files.put_utf8('stacked-on', url + '\n')
 
     def _get_append_revisions_only(self):
