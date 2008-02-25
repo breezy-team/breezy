@@ -1954,9 +1954,13 @@ class KnitPackRepository(KnitRepository):
             NULL_REVISION = _mod_revision.NULL_REVISION
             for rev_id, parent_ids in g.iter_ancestry([revision_id]):
                 if len(parent_ids) == 0: # Ghost
+                    if rev_id not in children:
+                        continue
                     ghosts.add(rev_id)
                     for child in children[rev_id]:
-                        ancestry[child].remove(rev_id)
+                        old_anc = ancestry[child]
+                        ancestry[child] = tuple(p for p in old_anc
+                                                   if p != rev_id)
                     continue
                 if len(parent_ids) == 1 and parent_ids[0] == NULL_REVISION:
                     parent_ids = () # No parents
