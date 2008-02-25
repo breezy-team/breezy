@@ -103,6 +103,10 @@ class Branch(object):
         self.tags = self._make_tags()
         self._revision_history_cache = None
         self._revision_id_to_revno_cache = None
+        self._open_hook()
+
+    def _open_hook(self):
+        """Called by init to allow simpler extension of the base class."""
 
     def break_lock(self):
         """Break a lock if one is present from another instance.
@@ -1352,7 +1356,6 @@ class BzrBranch(Branch):
     def __init__(self, _format=None,
                  _control_files=None, a_bzrdir=None, _repository=None):
         """Create new branch object at a particular location."""
-        Branch.__init__(self)
         if a_bzrdir is None:
             raise ValueError('a_bzrdir must be supplied')
         else:
@@ -1367,6 +1370,7 @@ class BzrBranch(Branch):
         self.control_files = _control_files
         self._transport = _control_files._transport
         self.repository = _repository
+        Branch.__init__(self)
 
     def __str__(self):
         return '%s(%r)' % (self.__class__.__name__, self.base)
@@ -1755,16 +1759,6 @@ class BzrBranch5(BzrBranch):
     It has support for a master_branch which is the data for bound branches.
     """
 
-    def __init__(self,
-                 _format,
-                 _control_files,
-                 a_bzrdir,
-                 _repository):
-        super(BzrBranch5, self).__init__(_format=_format,
-                                         _control_files=_control_files,
-                                         a_bzrdir=a_bzrdir,
-                                         _repository=_repository)
-        
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
              run_hooks=True, possible_transports=None):
@@ -1884,6 +1878,20 @@ class BzrBranch5(BzrBranch):
 
 
 class BzrBranch7(BzrBranch5):
+
+    def _activate_fallback_location(self, url):
+        """Activate the branch/repository from url as a fallback repository."""
+        new_repo = bzrdir.BzrDir.open(url).open_branch().repository
+        self.repository.add_fallback_repository(new_repo)
+
+    def _open_hook(self):
+        try:
+            url = self.get_stacked_on()
+        except (errors.UnstackableRepositoryFormat, errors.NotStacked,
+            errors.UnstackableBranchFormat):
+            pass
+        else:
+            self._activate_fallback_location(url)
 
     def _check_stackable_repo(self):
         if not self.repository._format.supports_external_lookups:
@@ -2022,8 +2030,7 @@ class BzrBranch7(BzrBranch5):
             # reopen it.
             self.repository = self.bzrdir.find_repository()
         else:
-            new_repo = bzrdir.BzrDir.open(url).open_branch().repository
-            self.repository.add_fallback_repository(new_repo)
+            self._activate_fallback_location(url)
         # write this out after the repository is stacked to avoid setting a
         # stacked config that doesn't work.
         self.control_files.put_utf8('stacked-on', url + '\n')

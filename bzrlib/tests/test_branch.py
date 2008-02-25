@@ -365,6 +365,14 @@ class TestBranch7(TestBranch67, TestCaseWithTransport):
         self.assertRaises(errors.NotStacked, branch.get_stacked_on)
         self.assertFalse(branch.repository.has_revision(revid))
 
+    def test_open_opens_stacked_reference(self):
+        branch = self.make_branch('a', format=self.get_format_name())
+        target = self.make_branch_and_tree('b', format=self.get_format_name())
+        branch.set_stacked_on(target.branch.base)
+        branch = branch.bzrdir.open_branch()
+        revid = target.commit('foo')
+        self.assertTrue(branch.repository.has_revision(revid))
+
 
 class TestBranchReference(TestCaseWithTransport):
     """Tests for the branch reference facility."""
