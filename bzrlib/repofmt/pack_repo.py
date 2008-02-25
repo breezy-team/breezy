@@ -1926,6 +1926,49 @@ class KnitPackRepository(KnitRepository):
             found_parents[key[0]] = parents
         return found_parents
 
+    @needs_read_lock
+    def get_revision_graph(self, revision_id=None):
+        """Return a dictionary containing the revision graph.
+
+        :param revision_id: The revision_id to get a graph from. If None, then
+        the entire revision graph is returned. This is a deprecated mode of
+        operation and will be removed in the future.
+        :return: a dictionary of revision_id->revision_parents_list.
+        """
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(3,
+                "get_revision_graph scales with size of history.")
+        # special case NULL_REVISION
+        if revision_id == _mod_revision.NULL_REVISION:
+            return {}
+        a_weave = self._get_revision_vf()
+        if revision_id is None:
+            return a_weave.get_graph()
+        if revision_id not in a_weave:
+            raise errors.NoSuchRevision(self, revision_id)
+        else:
+            g = self.get_graph()
+            ancestry = {}
+            children = {}
+            ghosts = set()
+            NULL_REVISION = _mod_revision.NULL_REVISION
+            for rev_id, parent_ids in g.iter_ancestry([revision_id]):
+                if len(parent_ids) == 0: # Ghost
+                    ghosts.add(rev_id)
+                    for child in children[rev_id]:
+                        ancestry[child].remove(rev_id)
+                    continue
+                if len(parent_ids) == 1 and parent_ids[0] == NULL_REVISION:
+                    parent_ids = () # No parents
+                parent_ids = [p for p in parent_ids if p not in ghosts]
+                ancestry[rev_id] = parent_ids
+                for p in parent_ids:
+                    if p in children:
+                        children[p].append(rev_id)
+                    else:
+                        children[p] = [rev_id]
+            return ancestry
+
     def has_revisions(self, revision_ids):
         """See Repository.has_revisions()."""
         revision_ids = set(revision_ids)

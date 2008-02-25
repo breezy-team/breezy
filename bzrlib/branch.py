@@ -211,25 +211,9 @@ class Branch(object):
         :return: A dictionary mapping revision_id => dotted revno.
         """
         last_revision = self.last_revision()
-        g = self.repository.get_graph()
-        ancestry = []
-        NULL_REVISION = _mod_revision.NULL_REVISION
-        # API FRICTION: get_parent_map() returns (NULL_REVISION,) for nodes
-        #   rather than an empty list/tuple. (And thus so does iter_ancestry)
-        #   However, that would make revno 1 == NULL_REVISION according to
-        #   merge_sort, so we have to strip it out of the results.
-        #   This wouldn't be terrible, except implementors of get_parent_map()
-        #   generally are artificially introducing NULL_REVISION into their
-        #   return values because of the api requirements.
-        for revision_id, parents in g.iter_ancestry([last_revision]):
-            if len(parents) == 1 and parents[0] == NULL_REVISION:
-                ancestry.append((revision_id, ()))
-            elif revision_id == NULL_REVISION:
-                continue
-            else:
-                ancestry.append((revision_id, parents))
+        revision_graph = self.repository.get_revision_graph(last_revision)
         merge_sorted_revisions = tsort.merge_sort(
-            ancestry,
+            revision_graph,
             last_revision,
             None,
             generate_revno=True)

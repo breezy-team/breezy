@@ -1338,8 +1338,9 @@ class Repository(object):
         """
         # All revisions, to find inventory parents.
         if ancestors is None:
-            revision_graph = self.get_revision_graph_with_ghosts()
-            ancestors = revision_graph.get_ancestors()
+            # self.get_revision_graph_with_ghosts().get_ancestors() wasn't
+            # returning any ghosts anyway.
+            ancestors = self.get_revision_graph()
         if text_key_references is None:
             text_key_references = self.find_text_key_references()
         pb = ui.ui_factory.nested_progress_bar()
