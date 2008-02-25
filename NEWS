@@ -80,8 +80,16 @@ IN DEVELOPMENT
       format. (Robert Collins)
 
 
-bzr 1.2rc1 (not released yet)
------------------------------
+bzr 1.2 2008-02-15
+------------------
+
+  BUG FIXES:
+
+    * Fix failing test in Launchpad plugin. (Martin Pool)
+
+
+bzr 1.2rc1 2008-02-13
+---------------------
 
   NOTES WHEN UPGRADING:
   
@@ -163,6 +171,14 @@ bzr 1.2rc1 (not released yet)
 
     * Clearer error when ``version-info --custom`` is used without
       ``--template`` (Lukáš Lalinský)
+
+    * Don't raise UnavailableFeature during test setup when medusa is not
+      available or tearDown is never called leading to nasty side effects.
+      (#137823, Vincent Ladeuil)
+
+    * If a plugin's test suite cannot be loaded, for example because of a syntax
+      error in the tests, then ``selftest`` fails, rather than just printing 
+      a warning.  (Martin Pool, #189771)
       
     * List possible values for BZR_SSH environment variable in env-variables
       help topic. (Alexander Belchenko, #181842)
@@ -174,7 +190,7 @@ bzr 1.2rc1 (not released yet)
       by the test framework, which lets bzr tests cleanly run from a normal
       unittest runner.
       (#124153, #124849, Martin Pool, Jonathan Lange)
- 
+
     * ``pull --quiet`` is now more quiet, in particular a message is no longer
       printed when the remembered pull location is used. (James Westby,
       #185907)
@@ -209,9 +225,9 @@ bzr 1.2rc1 (not released yet)
 
   TESTING:
 
-   * selftest now accepts --load-list <file> to load a test id list. This
-     speeds up running the test suite on a limited set of tests.
-     (Vincent Ladeuil)
+    * selftest now accepts --load-list <file> to load a test id list. This
+      speeds up running the test suite on a limited set of tests.
+      (Vincent Ladeuil)
 
   INTERNALS:
 
@@ -637,7 +653,7 @@ bzr 1.0rc1 2007-11-30
      variable. (Alexander Belchenko, workaround for bug #107593)
 
    * The pack format is now accessible as "pack-0.92", or "pack-0.92-subtree" 
-     to enable the subtree functions.
+     to enable the subtree functions (for example, for bzr-svn).  
      See http://doc.bazaar-vcs.org/latest/developer/packrepo.html
      (Martin Pool)
 

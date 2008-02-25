@@ -576,9 +576,21 @@ def get_test_permutations():
         return [(FtpTransport, ftp_server.FTPServer)]
     else:
         # Dummy server to have the test suite report the number of tests
-        # needing that feature.
+        # needing that feature. We raise UnavailableFeature from methods before
+        # the test server is being used. Doing so in the setUp method has bad
+        # side-effects (tearDown is never called).
         class UnavailableFTPServer(object):
+
             def setUp(self):
+                pass
+
+            def tearDown(self):
+                pass
+
+            def get_url(self):
+                raise tests.UnavailableFeature(tests.FTPServerFeature)
+
+            def get_bogus_url(self):
                 raise tests.UnavailableFeature(tests.FTPServerFeature)
 
         return [(FtpTransport, UnavailableFTPServer)]
