@@ -28,7 +28,7 @@ from bzrlib.revision import (find_present_ancestors, combined_graph,
                              common_ancestor,
                              is_ancestor, MultipleRevisionSources,
                              NULL_REVISION)
-from bzrlib.symbol_versioning import one_zero
+from bzrlib.symbol_versioning import one_zero, one_three
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
@@ -200,6 +200,17 @@ class MockRevisionSource(object):
 class TestCommonAncestor(TestCaseWithTransport):
     """Test checking whether a revision is an ancestor of another revision"""
 
+    def assertCommonAncestorEqual(self, expected, sources, rev_a, rev_b):
+        self.assertEqual(expected,
+                         self.applyDeprecated(one_three, 
+                         common_ancestor, rev_a, rev_b, sources))
+
+    def assertCommonAncestorIn(self, possible, sources, rev_a, rev_b):
+        """assert that we pick one among multiple possible common ancestors"""
+        self.assertTrue(self.applyDeprecated(one_three, 
+                            common_ancestor, rev_a, rev_b, sources)
+                        in possible)
+
     def test_common_ancestor(self):
         """Pick a reasonable merge base"""
         br1, br2 = make_branches(self)
@@ -218,29 +229,30 @@ class TestCommonAncestor(TestCaseWithTransport):
             self.assertEqual(ancestors_list[key], value, 
                               "key %r, %r != %r" % (key, ancestors_list[key],
                                                     value))
-        self.assertEqual(common_ancestor(revisions[0], revisions[0], sources),
-                          revisions[0])
-        self.assertEqual(common_ancestor(revisions[1], revisions[2], sources),
-                          revisions[1])
-        self.assertEqual(common_ancestor(revisions[1], revisions[1], sources),
-                          revisions[1])
-        self.assertEqual(common_ancestor(revisions[2], revisions_2[4], sources),
-                          revisions[2])
-        self.assertEqual(common_ancestor(revisions[3], revisions_2[4], sources),
-                          revisions_2[4])
-        self.assertEqual(common_ancestor(revisions[4], revisions_2[5], sources),
-                          revisions_2[4])
-        self.assertTrue(common_ancestor(revisions[5], revisions_2[6], sources) in
-                        (revisions[4], revisions_2[5]))
-        self.assertTrue(common_ancestor(revisions_2[6], revisions[5], sources),
-                        (revisions[4], revisions_2[5]))
-        self.assertEqual(None, common_ancestor(None, revisions[5], sources))
-        self.assertEqual(NULL_REVISION,
-            common_ancestor(NULL_REVISION, NULL_REVISION, sources))
-        self.assertEqual(NULL_REVISION,
-            common_ancestor(revisions[0], NULL_REVISION, sources))
-        self.assertEqual(NULL_REVISION,
-            common_ancestor(NULL_REVISION, revisions[0], sources))
+        self.assertCommonAncestorEqual(revisions[0], sources,
+                                       revisions[0], revisions[0])
+        self.assertCommonAncestorEqual(revisions[1], sources,
+                                       revisions[1], revisions[2])
+        self.assertCommonAncestorEqual(revisions[1], sources,
+                                       revisions[1], revisions[1])
+        self.assertCommonAncestorEqual(revisions[2], sources,
+                                       revisions[2], revisions_2[4])
+        self.assertCommonAncestorEqual(revisions_2[4], sources,
+                                       revisions[3], revisions_2[4])
+        self.assertCommonAncestorEqual(revisions_2[4], sources,
+                                       revisions[4], revisions_2[5])
+        self.assertCommonAncestorIn((revisions[4], revisions_2[5]), sources,
+                                     revisions[5], revisions_2[6])
+        self.assertCommonAncestorIn((revisions[4], revisions_2[5]), sources,
+                                     revisions_2[6], revisions[5])
+        self.assertCommonAncestorEqual(None, sources,
+                                       None, revisions[5])
+        self.assertCommonAncestorEqual(NULL_REVISION, sources,
+                                       NULL_REVISION, NULL_REVISION)
+        self.assertCommonAncestorEqual(NULL_REVISION, sources,
+                                       revisions[0], NULL_REVISION)
+        self.assertCommonAncestorEqual(NULL_REVISION, sources,
+                                       NULL_REVISION, revisions[0])
 
     def test_combined(self):
         """combined_graph
@@ -289,7 +301,7 @@ class TestCommonAncestor(TestCaseWithTransport):
         # add a right-branch revision
         graph.add_node('right', ['rev1'])
         source = MockRevisionSource(graph)
-        self.assertEqual('rev1', common_ancestor('left', 'right', source))
+        self.assertCommonAncestorEqual('rev1', source, 'left', 'right')
 
 
 class TestMultipleRevisionSources(TestCaseWithTransport):

@@ -20,7 +20,7 @@
 
 from bzrlib import (
     errors,
-    symbol_versioning
+    symbol_versioning,
     )
 from bzrlib.deprecated_graph import (
     all_descendants,
@@ -256,6 +256,7 @@ def combined_graph(revision_a, revision_b, revision_source):
     return root, ancestors, descendants, common
 
 
+@deprecated_function(symbol_versioning.one_three)
 def common_ancestor(revision_a, revision_b, revision_source, 
                     pb=DummyProgress()):
     if None in (revision_a, revision_b):

@@ -1565,6 +1565,7 @@ class Repository(object):
         raise NotImplementedError(self.get_revision_graph)
 
     @needs_read_lock
+    @deprecated_method(symbol_versioning.one_three)
     def get_revision_graph_with_ghosts(self, revision_ids=None):
         """Return a graph of the revisions with ghosts marked as applicable.
 
