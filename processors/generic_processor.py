@@ -475,7 +475,7 @@ class GenericCommitHandler(processor.CommitHandler):
             self.inventory = self.gen_initial_inventory()
         else:
             # use the bzr_revision_id to lookup the inv cache
-            self.inventory = self.get_inventory(self.parents[0]).copy()
+            self.inventory = self.get_inventory_copy(self.parents[0])
         if not self.repo.supports_rich_root():
             # In this repository, root entries have no knit or weave. When
             # serializing out to disk and back in, root.revision is always
@@ -484,6 +484,10 @@ class GenericCommitHandler(processor.CommitHandler):
 
         # directory-path -> inventory-entry for current inventory
         self.directory_entries = dict(self.inventory.directories())
+
+    def get_inventory_copy(self, rev_id):
+        inv = self.get_inventory(rev_id)
+        return inv.copy()
 
     def post_process_files(self):
         """Save the revision."""
@@ -539,11 +543,10 @@ class GenericCommitHandler(processor.CommitHandler):
             del self.inventory[self.bzr_file_id(path)]
         except errors.NoSuchId:
             self.warning("ignoring delete of %s as not in inventory", path)
-        finally:
-            try:
-                self.cache_mgr._delete_path(path)
-            except KeyError:
-                pass
+        try:
+            self.cache_mgr._delete_path(path)
+        except KeyError:
+            pass
 
     def copy_handler(self, filecmd):
         raise NotImplementedError(self.copy_handler)
