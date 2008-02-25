@@ -70,10 +70,23 @@ class _SmartClient(object):
                 raise TypeError('args must be byte strings, not %r' % (args,))
         if type(body) is not str:
             raise TypeError('body must be byte string, not %r' % (body,))
-        request = self.get_smart_medium().get_request()
-        smart_protocol = protocol.SmartClientRequestProtocolOne(request)
-        smart_protocol.call_with_body_bytes((method, ) + args, body)
-        return smart_protocol.read_response_tuple()
+        # Get a medium
+        medium_request = self.get_smart_medium().get_request()
+
+        # Send a request over the medium
+        request_encoder = protocol.ProtocolThreeRequester(medium_request)
+        request_encoder.call_with_body_bytes((method, ) + args, body)
+        
+        # Handle the response
+        response_handler = message.ConventionalResponseHandler()
+        response_proto = protocol._ProtocolThreeBase(response_handler)
+        response_handler.setProtoAndMedium(response_proto, medium_request)
+        response_tuple = response_handler.read_response_tuple()
+        return response_tuple
+#        request = self.get_smart_medium().get_request()
+#        smart_protocol = protocol.SmartClientRequestProtocolOne(request)
+#        smart_protocol.call_with_body_bytes((method, ) + args, body)
+#        return smart_protocol.read_response_tuple()
 
     def call_with_body_bytes_expecting_body(self, method, args, body):
         """Call a method on the remote server with body bytes."""

@@ -136,6 +136,7 @@ class SmartServerStreamMedium(object):
         line = ''
         while not line or line[-1] != '\n':
             new_char = self._get_bytes(1)
+            assert len(new_char) == 1, 'new_char %r is too long' % (new_char,)
             line += new_char
             if new_char == '':
                 # Ran out of bytes before receiving a complete line.
@@ -152,16 +153,22 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
             into blocking mode.
         """
         SmartServerStreamMedium.__init__(self, backing_transport)
-        self.push_back = ''
+        self.push_back = None
         sock.setblocking(True)
         self.socket = sock
+
+    def _push_back(self, bytes):
+        assert self.push_back is None
+        if bytes == '':
+            return
+        self.push_back = bytes
 
     def _serve_one_request_unguarded(self, protocol):
         #print >> sys.stderr, '***', protocol
         while protocol.next_read_size():
             if self.push_back:
                 protocol.accept_bytes(self.push_back)
-                self.push_back = ''
+                self.push_back = None
             else:
                 bytes = self._get_bytes(4096)
                 #print >> sys.stderr, '---', repr(bytes)
@@ -170,13 +177,33 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
                     return
                 protocol.accept_bytes(bytes)
         
-        self.push_back = protocol.excess_buffer
+        self._push_back(protocol.excess_buffer)
+
+    def _get_line(self):
+        newline_pos = -1
+        bytes = ''
+        while newline_pos == -1:
+            new_bytes = self._get_bytes(1)
+            bytes += new_bytes
+            if new_bytes == '':
+                # Ran out of bytes before receiving a complete line.
+                return bytes
+            newline_pos = bytes.find('\n')
+        line = bytes[:newline_pos+1]
+        self._push_back(bytes[newline_pos+1:])
+        return line
 
     def _get_bytes(self, desired_count):
-        # We ignore the desired_count because on sockets it's more efficient to
-        # read 4k at a time.
-        bytes = self.socket.recv(min(desired_count, 4096))
+        pr('_get_bytes...')
+        if self.push_back is not None:
+            assert self.push_back != ''
+            bytes = self.push_back
+            self.push_back = None
+            pr('...: (push back) %r' % bytes)
+            return bytes
+        bytes = self.socket.recv(desired_count)
         #import sys; print >> sys.stderr, 'bytes:', repr(bytes)
+        pr('...: (recv) %r' % bytes)
         return bytes
     
     def terminate_due_to_error(self):
@@ -633,3 +660,10 @@ class SmartClientStreamMediumRequest(SmartClientMediumRequest):
         """
         return self._medium._read_bytes(count)
 
+from thread import get_ident
+def pr(*args):
+    return
+    print '%x' % get_ident(),
+    for arg in args:
+        print arg,
+    print

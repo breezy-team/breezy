@@ -80,8 +80,10 @@ class ConventionalRequestHandler(MessageHandler):
         #      don't yet have requests that expect a stream anyway.
         #      *Maybe* a one-byte 'c' or 'm' (chunk or monolithic) flag before
         #      first bytes part?
-        self.request.accept_body(bytes)
-        self.request.end_of_body()
+        self.request_handler.accept_body(bytes)
+        self.request_handler.end_of_body()
+        assert self.request_handler.finished_reading
+        self.responder.send_response(self.request_handler.response)
 
     def end_received(self):
         # XXX
@@ -150,6 +152,8 @@ class ConventionalResponseHandler(MessageHandler):
         The expect_body flag is ignored.
         """
         self._wait_for_response_args()
+        if not expect_body:
+            self._wait_for_response_end()
         if self.status == 'E':
             xxx_translate_error()
         return tuple(self.args)
@@ -161,8 +165,8 @@ class ConventionalResponseHandler(MessageHandler):
         errors, and then feed the buffer back as read_body_bytes is called.
         """
         # XXX: don't buffer the full request
-        self._wait_for_response_end()
         if self._body is None:
+            self._wait_for_response_end()
             self._body = StringIO(''.join(self._bytes_parts))
             self._bytes_parts = None
         return self._body.read(count)

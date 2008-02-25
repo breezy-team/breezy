@@ -250,6 +250,9 @@ class _NeedMoreBytes(Exception):
     have been received.
     """
 
+    def __init__(self, count=None):
+        self.count = count
+
 
 class _StatefulDecoder(object):
 
@@ -270,12 +273,17 @@ class _StatefulDecoder(object):
         # accept_bytes is allowed to change the state
         current_state = self.state_accept
         try:
+            pr('invoking state_accept %s' %
+                    (self.state_accept.im_func.__name__[len('_state_accept_'):],))
             self.state_accept(bytes)
             while current_state != self.state_accept:
                 current_state = self.state_accept
+                pr('invoking state_accept %s' %
+                        (self.state_accept.im_func.__name__[len('_state_accept_'):],))
                 self.state_accept('')
         except _NeedMoreBytes:
-            pass
+            raise
+            #pass
 
 
 class ChunkedBodyDecoder(_StatefulDecoder):
@@ -687,6 +695,7 @@ class _ProtocolThreeBase(_StatefulDecoder):
         self.has_dispatched = False
         # Initial state
         self._in_buffer = ''
+        self._number_needed_bytes = 4
         self.state_accept = self._state_accept_expecting_headers
 
         self.request_handler = self.message_handler = message_handler
@@ -697,8 +706,28 @@ class _ProtocolThreeBase(_StatefulDecoder):
 #        self._body_decoder = None
 
     def accept_bytes(self, bytes):
+        pr('......')
+#        if 'put_non_atomic' in bytes:
+#            import pdb; pdb.set_trace()
+        def summarise_buf():
+            if self._in_buffer is None:
+                buf_summary = 'None'
+            elif len(self._in_buffer) <= 6:
+                buf_summary = repr(self._in_buffer)
+            else:
+                buf_summary = repr(self._in_buffer[:3] + '...')
+            return buf_summary
+        handler_name = self.message_handler.__class__.__name__
+        handler_name = handler_name[len('Conventional'):-len('Handler')]
+        state_now = self.state_accept.im_func.__name__[len('_state_accept_'):]
+        buf_now = summarise_buf()
+        #from pprint import pprint; pprint([bytes, self.__dict__])
+        self._number_needed_bytes = None
         try:
             _StatefulDecoder.accept_bytes(self, bytes)
+        except _NeedMoreBytes, e:
+            #print '(need more bytes: %r)' % e.count
+            self._number_needed_bytes = e.count
         except KeyboardInterrupt:
             raise
         except Exception, exception:
@@ -707,18 +736,23 @@ class _ProtocolThreeBase(_StatefulDecoder):
             self.message_handler.protocol_error(exception)
             #self._send_response(request.FailedSmartServerResponse(
             #    ('error', str(exception))))
+        pr('%s in %s(%s), got %r --> %s(%s)' % (
+            handler_name, state_now, buf_now, bytes,
+            self.state_accept.im_func.__name__[len('_state_accept_'):],
+            summarise_buf()))
+        pr('~~~~~~')
 
     def _extract_length_prefixed_bytes(self):
         if len(self._in_buffer) < 4:
             # A length prefix by itself is 4 bytes, and we don't even have that
             # many yet.
-            raise _NeedMoreBytes()
+            raise _NeedMoreBytes(4)
         (length,) = struct.unpack('!L', self._in_buffer[:4])
         end_of_bytes = 4 + length
         if len(self._in_buffer) < end_of_bytes:
             # We haven't yet read as many bytes as the length-prefix says there
             # are.
-            raise _NeedMoreBytes()
+            raise _NeedMoreBytes(end_of_bytes)
         # Extract the bytes from the buffer.
         bytes = self._in_buffer[4:end_of_bytes]
         self._in_buffer = self._in_buffer[end_of_bytes:]
@@ -751,6 +785,7 @@ class _ProtocolThreeBase(_StatefulDecoder):
         self.state_accept = self._state_accept_expecting_message_part
     
     def _state_accept_expecting_message_part(self, bytes):
+        #import sys; print >> sys.stderr, 'msg part bytes:', repr(bytes)
         self._in_buffer += bytes
         message_part_kind = self._extract_single_byte()
         if message_part_kind == 'o':
@@ -764,6 +799,7 @@ class _ProtocolThreeBase(_StatefulDecoder):
         else:
             raise errors.SmartProtocolError(
                 'Bad message kind byte: %r' % (message_part_kind,))
+        #import sys; print >> sys.stderr, 'state:', self.state_accept, '_in_buffer:', repr(self._in_buffer)
 
     def _state_accept_expecting_one_byte(self, bytes):
         self._in_buffer += bytes
@@ -775,8 +811,8 @@ class _ProtocolThreeBase(_StatefulDecoder):
         # XXX: this should not buffer whole message part, but instead deliver
         # the bytes as they arrive.
         self._in_buffer += bytes
-        bytes = self._extract_length_prefixed_bytes()
-        self.message_handler.bytes_part_received(bytes)
+        prefixed_bytes = self._extract_length_prefixed_bytes()
+        self.message_handler.bytes_part_received(prefixed_bytes)
         self.state_accept = self._state_accept_expecting_message_part
 
     def _state_accept_expecting_structure(self, bytes):
@@ -786,6 +822,7 @@ class _ProtocolThreeBase(_StatefulDecoder):
         self.state_accept = self._state_accept_expecting_message_part
 
     def done(self):
+        #import sys; print >> sys.stderr, 'Done!', repr(self._in_buffer)
         self.unused_data = self._in_buffer
         self._in_buffer = None
         self.state_accept = self._state_accept_reading_unused
@@ -804,7 +841,10 @@ class _ProtocolThreeBase(_StatefulDecoder):
         if self.state_accept == self._state_accept_reading_unused:
             return 0
         else:
-            return 1 # XXX !!!
+            if self._number_needed_bytes is not None:
+                return self._number_needed_bytes - len(self._in_buffer)
+            else:
+                return 1 # XXX !!!
 
 
 class SmartServerRequestProtocolThree(_ProtocolThreeBase):
@@ -923,6 +963,7 @@ class SmartClientRequestProtocolThree(_ProtocolThreeBase, SmartClientRequestProt
         self._write_protocol_version()
         self._write_headers(headers)
         self._write_args(args)
+        import pdb; pdb.set_trace()
         self._write_prefixed_body(body)
         self._write_end()
         self._request.finished_writing()
@@ -977,9 +1018,9 @@ class _ProtocolThreeEncoder(object):
     def __init__(self, write_func):
         import sys
         def wf(bytes):
-            print >> sys.stderr, 'writing:', repr(bytes)
+            pr('writing:', repr(bytes))
             return write_func(bytes)
-        self._write_func = write_func
+        self._write_func = wf
 
     def _write_protocol_version(self):
         self._write_func(MESSAGE_VERSION_THREE)
@@ -1020,8 +1061,7 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
         self.response_sent = False
 
     def send_error(self, exception):
-        #import sys
-        #print >> sys.stderr, 'exc:', str(exception); return #XXX
+        #import sys; print >> sys.stderr, 'exc:', str(exception); return #XXX
         assert not self.response_sent
         self.response_sent = True
         self._write_headers()
@@ -1030,8 +1070,7 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
         self._write_end()
 
     def send_response(self, response):
-        #import sys
-        #print >> sys.stderr, 'rsp:', str(response)
+        #import sys; print >> sys.stderr, 'rsp:', str(response)
         assert not self.response_sent
         self.response_sent = True
         self._write_headers()
@@ -1101,12 +1140,13 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder):
                 mutter('                  (to %s)', self._request._medium._path)
             mutter('              %d bytes', len(body))
             self._request_start_time = time.time()
+        pr('call_with_body_bytes: %r, %r' % (args, body))
         self._write_protocol_version()
         self._write_headers(headers)
         self._write_structure(args)
         self._write_prefixed_body(body)
         self._write_end()
-        self._request.finished_writing()
+        self._medium_request.finished_writing()
 
     def call_with_body_readv_array(self, args, body, headers=None):
         """Make a remote call with a readv array.
@@ -1153,3 +1193,10 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder):
 #        return self.response_handler.prefixed_body.read(count)
 
 
+from thread import get_ident
+def pr(*args):
+    return
+    print '%x' % get_ident(),
+    for arg in args:
+        print arg,
+    print
