@@ -211,9 +211,18 @@ class Branch(object):
         :return: A dictionary mapping revision_id => dotted revno.
         """
         last_revision = self.last_revision()
-        revision_graph = self.repository.get_revision_graph(last_revision)
+        g = self.repository.get_graph()
+        ancestry = []
+        null_parents = (_mod_revision.NULL_REVISION,)
+        for revision_id, parents in g.iter_ancestry(last_revision):
+            if parents == null_parents:
+                ancestry.append((revision_id, ()))
+            elif revision_id == _mod_revision.NULL_REVISION:
+                continue
+            else:
+                ancestry.append((revision_id, parents))
         merge_sorted_revisions = tsort.merge_sort(
-            revision_graph,
+            ancestry,
             last_revision,
             None,
             generate_revno=True)
