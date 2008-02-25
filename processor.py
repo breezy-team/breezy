@@ -82,6 +82,10 @@ class ImportProcessor(object):
         try:
             self._process(command_iter)
         finally:
+            # If an unhandled exception occurred, abort the write group
+            if self.repo is not None and self.repo.is_in_write_group():
+                self.repo.abort_write_group()
+            # Release the locks
             if self.working_tree is not None:
                 self.working_tree.unlock()
             elif self.branch is not None:
