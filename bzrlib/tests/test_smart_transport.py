@@ -2041,9 +2041,9 @@ class TestVersionOneFeaturesInProtocolThree(
         self.assertEqual('', smart_protocol.excess_buffer)
         self.assertEqual('', smart_protocol._in_buffer)
         self.assertFalse(smart_protocol.has_dispatched)
-        # The protocol starts by scanning one byte a time, because it needs to
-        # see a newline before it can determine the protocol version.
-        self.assertEqual(1, smart_protocol.next_read_size())
+        # The protocol starts by expecting four bytes, a length prefix for the
+        # headers.
+        self.assertEqual(4, smart_protocol.next_read_size())
 
 
 class NoOpRequest(request.SmartServerRequest):

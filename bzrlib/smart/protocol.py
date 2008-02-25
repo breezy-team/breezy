@@ -963,7 +963,6 @@ class SmartClientRequestProtocolThree(_ProtocolThreeBase, SmartClientRequestProt
         self._write_protocol_version()
         self._write_headers(headers)
         self._write_args(args)
-        import pdb; pdb.set_trace()
         self._write_prefixed_body(body)
         self._write_end()
         self._request.finished_writing()
