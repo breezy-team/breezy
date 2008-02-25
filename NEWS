@@ -33,6 +33,9 @@ IN DEVELOPMENT
     * ``bzrlib.tests.adapt_tests`` was broken and unused - it has been fixed.
       (Robert Collins)
 
+    * The branch interface tests were invalid for branches using subtree
+      repositories by default. This has been fixed. (Robert Collins)
+
   INTERNALS:
 
     * New remote method ``RemoteBzrDir.find_repositoryV2`` adding support for
