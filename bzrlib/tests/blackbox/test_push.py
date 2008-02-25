@@ -248,6 +248,31 @@ class TestPush(ExternalBase):
                 'push ../dir',
                 working_dir='tree')
 
+    def test_push_new_branch_reference(self):
+        """Pushing a new branch with --reference creates a stacked branch."""
+        # We have a mainline
+        trunk_tree = self.make_branch_and_tree('target',
+            format='development')
+        trunk_tree.commit('mainline')
+        # and a branch from it
+        branch_tree = self.make_branch_and_tree('branch',
+            format='development')
+        branch_tree.pull(trunk_tree.branch)
+        # with some work on it
+        branch_revid = branch_tree.commit('moar work plz')
+        # which we publish with a reference to the mainline.
+        out, err = self.run_bzr(['push', '--reference', trunk_tree.branch.base,
+            self.get_url('published')], working_dir='branch')
+        self.assertEqual('', out)
+        self.assertEqual('Created new shallow branch referring to %s.\n' %
+            trunk_tree.branch.base, err)
+        published_branch = Branch.open('published')
+        # The published branch refers to the mainline
+        self.assertEqual(trunk_tree.branch.base,
+            published_branch.get_stacked_on())
+        # and the branch's work was pushed
+        self.assertTrue(published_branch.repository.has_revision(branch_revid))
+
 
 class RedirectingMemoryTransport(MemoryTransport):
 
