@@ -259,21 +259,6 @@ def check_branch(branch, verbose):
     branch_result.report_results(verbose)
 
 
-def _check_repository(repository, verbose):
-    """Run consistency checks on a repository.
-    
-    Results are reported through logging.
-    
-    :raise BzrCheckError: if there's a consistency error.
-    """
-    repository.lock_read()
-    try:
-        result = repository.check()
-    finally:
-        repository.unlock()
-    result.report_results(verbose)
-
-
 def _check_working_tree(tree):
     # bit hacky, check the tree parent is accurate
     tree.lock_read()
@@ -320,6 +305,11 @@ def check(path, verbose):
 
     if repo is not None:
         # We have a repository
-        _check_repository(repo, verbose)
-        for branch in branches:
-            check_branch(branch, verbose)
+        repository.lock_read()
+        try:
+            result = repository.check()
+            result.report_results(verbose)
+            for branch in branches:
+                check_branch(branch, verbose)
+        finally:
+            repository.unlock()

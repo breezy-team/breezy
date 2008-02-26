@@ -9,6 +9,5 @@
    we might want to make sure that the result is not lost if the check
    aborts.  One way to handle it would be to allow the caller to pass in
    a check result, which they could examine even if the method fails.
- * Hold repository read locked for as long as possible
  * Indication of what is being checked
  * Change name of function to 'check_dwim'
