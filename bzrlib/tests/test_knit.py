@@ -2102,7 +2102,7 @@ class TestKnitCaching(KnitTests):
 
         def read_one_raw(version):
             pos_map = k._get_components_positions([version])
-            method, index_memo, next, parents, noeol= pos_map[version]
+            method, index_memo, next = pos_map[version]
             lst = list(k._data.read_records_iter_raw([(version, index_memo)]))
             self.assertEqual(1, len(lst))
             return lst[0]
@@ -2123,7 +2123,7 @@ class TestKnitCaching(KnitTests):
 
         def read_one(version):
             pos_map = k._get_components_positions([version])
-            method, index_memo, next, parents, noeol = pos_map[version]
+            method, index_memo, next = pos_map[version]
             lst = list(k._data.read_records_iter([(version, index_memo)]))
             self.assertEqual(1, len(lst))
             return lst[0]

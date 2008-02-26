@@ -895,7 +895,8 @@ class KnitVersionedFile(VersionedFile):
                  noeol) = details
                 if compression_parent is not None:
                     pending_components.add(compression_parent)
-                component_data[version_id] = details
+                component_data[version_id] = (method, index_memo,
+                                              compression_parent)
         return component_data
        
     def _get_content(self, version_id, parent_texts={}):
@@ -1050,15 +1051,14 @@ class KnitVersionedFile(VersionedFile):
         position_map = self._get_components_positions(version_ids)
         # c = component_id, m = method, i_m = index_memo, n = next
         # p = parent_ids, e = noeol
-        records = [(c, i_m) for c, (m, i_m, n, p, e)
+        records = [(c, i_m) for c, (m, i_m, n)
                              in position_map.iteritems()]
         record_map = {}
         for component_id, content, digest in \
                 self._data.read_records_iter(records):
-            (method, index_memo, next, parent_ids,
-             noeol) = position_map[component_id]
+            (method, index_memo, next) = position_map[component_id]
             record_map[component_id] = method, content, digest, next
-                          
+
         return record_map
 
     def get_text(self, version_id):
