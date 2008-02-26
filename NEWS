@@ -38,6 +38,9 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+   * ``check`` handles the split-up .bzr layout correctly, so no longer
+     requires a branch to be present.  (Daniel Watkins, #64783)
+
   BUGFIXES:
 
     * Disable plink's interactive prompt for password.
