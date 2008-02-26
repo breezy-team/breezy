@@ -284,7 +284,7 @@ class TestPush(ExternalBase):
             trunk_tree.branch.base)
 
     def test_push_new_branch_shallow_uses_parent_public(self):
-        """Pushing a new branch with --reference creates a stacked branch."""
+        """Pushing a new branch with --shallow creates a stacked branch."""
         trunk_tree, branch_tree = self.create_trunk_and_feature_branch()
         # the trunk is published on a web server
         self.transport_readonly_server = HttpServer
@@ -300,6 +300,17 @@ class TestPush(ExternalBase):
         self.assertEqual('Created new shallow branch referring to %s.\n' %
             trunk_public_url, err)
         self.assertPublished(branch_tree.last_revision(), trunk_public_url)
+
+    def test_push_new_branch_shallow_no_parent(self):
+        """Pushing with --shallow and no parent branch errors."""
+        branch = self.make_branch_and_tree('branch', format='development')
+        # now we do a shallow push, which should fail as the place to refer too
+        # cannot be determined.
+        out, err = self.run_bzr_error(
+            ['Could not determine branch to refer to\\.'], ['push', '--shallow',
+            self.get_url('published')], working_dir='branch')
+        self.assertEqual('', out)
+        self.assertFalse(self.get_transport('published').has('.'))
 
 
 class RedirectingMemoryTransport(MemoryTransport):

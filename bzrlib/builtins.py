@@ -722,8 +722,14 @@ class cmd_push(Command):
         if reference is not None:
             reference = urlutils.normalize_url(reference)
         if shallow:
-            parent = Branch.open(br_from.get_parent())
-            reference = parent.get_public_branch()
+            reference = None
+            parent_url = br_from.get_parent()
+            if parent_url:
+                parent = Branch.open(parent_url)
+                reference = parent.get_public_branch()
+            if not reference:
+                raise errors.BzrCommandError(
+                    "Could not determine branch to refer to.")
         # where to push logic:
         stored_loc = br_from.get_push_location()
         if location is None:
