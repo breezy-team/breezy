@@ -2353,12 +2353,14 @@ class cmd_commit(Command):
 
 
 class cmd_check(Command):
-    """Validate consistency of branch history.
+    """Validates working tree structure, branch consistency and repository
+    history.
 
-    This command checks various invariants about the branch storage to
-    detect data corruption or bzr bugs.
+    This command checks various invariants about branch and repository storage
+    to detect data corruption or bzr bugs.
 
-    Output fields:
+    The working tree and branch checks will only give output if a problem is
+    detected. The output fields of the repository check are:
 
         revisions: This is just the number of revisions checked.  It doesn't
             indicate a problem.
