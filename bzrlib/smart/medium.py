@@ -136,7 +136,7 @@ class SmartServerStreamMedium(object):
         line = ''
         while not line or line[-1] != '\n':
             new_char = self._get_bytes(1)
-            assert len(new_char) == 1, 'new_char %r is too long' % (new_char,)
+            assert len(new_char) <= 1, 'new_char %r is too long' % (new_char,)
             line += new_char
             if new_char == '':
                 # Ran out of bytes before receiving a complete line.
