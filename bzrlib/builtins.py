@@ -727,6 +727,12 @@ class cmd_push(Command):
             if parent_url:
                 parent = Branch.open(parent_url)
                 reference = parent.get_public_branch()
+                if not reference:
+                    # I considered excluding non-http url's here, thus forcing
+                    # 'public' branches only, but that only works for some
+                    # users, so its best to just depend on the user spotting an
+                    # error by the feedback given to them. RBC 20080227.
+                    reference = parent_url
             if not reference:
                 raise errors.BzrCommandError(
                     "Could not determine branch to refer to.")
