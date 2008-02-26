@@ -58,6 +58,7 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
     def setup(self):
         SimpleHTTPServer.SimpleHTTPRequestHandler.setup(self)
+        self._cwd = self.server._home_dir
         tcs = self.server.test_case_server
         if tcs.protocol_version is not None:
             # If the test server forced a protocol version, use it
@@ -284,8 +285,26 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         return self._translate_path(path)
 
     def _translate_path(self, path):
-        return SimpleHTTPServer.SimpleHTTPRequestHandler.translate_path(
-            self, path)
+        """Translate a /-separated PATH to the local filename syntax.
+
+        Components that mean special things to the local file system
+        (e.g. drive or directory names) are ignored.  (XXX They should
+        probably be diagnosed.)
+
+        Override from python standard library to stop it calling os.getcwd()
+        """
+        # abandon query parameters
+        path = urlparse.urlparse(path)[2]
+        path = posixpath.normpath(urllib.unquote(path))
+        words = path.split('/')
+        words = filter(None, words)
+        path = self._cwd
+        for word in words:
+            drive, word = os.path.splitdrive(word)
+            head, word = os.path.split(word)
+            if word in (os.curdir, os.pardir): continue
+            path = os.path.join(path, word)
+        return path
 
     if sys.platform == 'win32':
         # On win32 you cannot access non-ascii filenames without
@@ -307,7 +326,7 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             path = path.decode('utf-8')
             words = path.split('/')
             words = filter(None, words)
-            path = os.getcwdu()
+            path = self._cwd
             for word in words:
                 drive, word = os.path.splitdrive(word)
                 head, word = os.path.split(word)
@@ -324,6 +343,7 @@ class TestingHTTPServerMixin:
         # server), allowing dynamic behaviors to be defined from
         # the tests cases.
         self.test_case_server = test_case_server
+        self._home_dir = test_case_server._home_dir
 
     def tearDown(self):
          """Called to clean-up the server.
@@ -354,6 +374,7 @@ class TestingHTTPServerMixin:
                  raise
          # Let the server properly close the socket
          self.server_close()
+
 
 class TestingHTTPServer(SocketServer.TCPServer, TestingHTTPServerMixin):
 

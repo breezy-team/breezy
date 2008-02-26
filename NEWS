@@ -30,6 +30,9 @@ IN DEVELOPMENT
 
   TESTING:
 
+    * Fix the test HTTPServer to be isolated from chdir calls made while it is
+      running, allowing it to be used in blackbox tests. (Robert Collins)
+
   INTERNALS:
 
     * New remote method ``RemoteBzrDir.find_repositoryV2`` adding support for
