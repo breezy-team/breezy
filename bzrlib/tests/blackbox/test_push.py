@@ -263,6 +263,14 @@ class TestPush(ExternalBase):
         branch_tree.commit('moar work plz')
         return trunk_tree, branch_tree
 
+    def assertPublished(self, branch_revid, stacked_on):
+        """Assert that the branch 'published' has been published correctly."""
+        published_branch = Branch.open('published')
+        # The published branch refers to the mainline
+        self.assertEqual(stacked_on, published_branch.get_stacked_on())
+        # and the branch's work was pushed
+        self.assertTrue(published_branch.repository.has_revision(branch_revid))
+
     def test_push_new_branch_reference(self):
         """Pushing a new branch with --reference creates a stacked branch."""
         trunk_tree, branch_tree = self.create_trunk_and_feature_branch()
@@ -272,13 +280,8 @@ class TestPush(ExternalBase):
         self.assertEqual('', out)
         self.assertEqual('Created new shallow branch referring to %s.\n' %
             trunk_tree.branch.base, err)
-        published_branch = Branch.open('published')
-        # The published branch refers to the mainline
-        self.assertEqual(trunk_tree.branch.base,
-            published_branch.get_stacked_on())
-        # and the branch's work was pushed
-        branch_revid = branch_tree.last_revision()
-        self.assertTrue(published_branch.repository.has_revision(branch_revid))
+        self.assertPublished(branch_tree.last_revision(),
+            trunk_tree.branch.base)
 
     def test_push_new_branch_shallow_uses_parent_public(self):
         """Pushing a new branch with --reference creates a stacked branch."""
@@ -296,12 +299,7 @@ class TestPush(ExternalBase):
         self.assertEqual('', out)
         self.assertEqual('Created new shallow branch referring to %s.\n' %
             trunk_public_url, err)
-        published_branch = Branch.open('published')
-        # The published branch refers to the mainline
-        self.assertEqual(trunk_public_url, published_branch.get_stacked_on())
-        # and the branch's work was pushed
-        branch_revid = branch_tree.last_revision()
-        self.assertTrue(published_branch.repository.has_revision(branch_revid))
+        self.assertPublished(branch_tree.last_revision(), trunk_public_url)
 
 
 class RedirectingMemoryTransport(MemoryTransport):
