@@ -2,75 +2,13 @@
 # It should ALWAYS be empty in the mainline or in integration branches.
 # 
 #
-That's a nice improvement.
-
-I'd suggest even for things that are not ready to merge, you put
-[merge] in the subject so that we can track them in BB.  (Even if
-we're sure they'll get rejected or tweaked.)
-
-I think there's a bug number for this.
-
-Before it merges it needs a news entry.
-
-The check command help probably needs to be updated: if the path given
-(or the working directory) is a tree, it checks the tree, branch and
-repo, etc.
-
-The reduction of inline code in cmd_check is nice.
-
-_scan_for_branches seems to open all branches in the top level of a
-repository directory.  I guess we need to have such a thing, and for
-more than just check.  So this method needs a docstring, and to be
-tested separately.  Also, it very likely needs to work on a transport,
-not a local directory, and to cope somehow if the transport can't list
-directories. (If only by saying in its docstring that it may error.)
-Probably this should be a repository method.
-
-It can be a separate check, but we may want to change from reporting
-errors through logging to putting them into a Result object.  Though
-we might want to make sure that the result is not lost if the check
-aborts.  One way to handle it would be to allow the caller to pass in
-a check result, which they could examine even if the method fails.
-
-+def _check_repository(repository, verbose):
-
-You probably want to hold the repository read locked across all checks
-pertaining to that repository, otherwise we'll discard cached
-information that'd be useful in checking the branches within it.
-
-I think it'd be useful to show an indication of what we're checking,
-with a note:
-
-   checking working tree /toautoau/oaeuo/euoa/eu
-   checking branch /aotehunoaehuao/eu/oau/aoeu/
-   checking repository /aoetuhaonuhoanteuhoe/uoau
-
-+    if branch is not None:
-+        # We are in a branch
-+        if repo is None:
-+            # The branch is in a shared repository
-+            repo = branch.repository
-+        check_branch(branch, verbose)
-+
-+    if repo is not None:
-+        # We have a repository
-+        _check_repository(repo, verbose)
-+        if branch is None:
-+            # We are in a shared repository
-+            for branch in _scan_for_branches(path):
-+                check_branch(branch, verbose)
-
-So we can actually usefully check a repository without reference to a
-branch, though checking all the branches within it may be more useful
-and I don't really object to doing so.  However, you arguably do want
-to avoid checking standalone branches sitting under a repository.
-
-
-
-But anyhow this clearly wants to be a repository method, not a
-function, as do some of the others there.
-
-+def check(path, verbose):
-
-this is ok; it might want a better name like 'check_dwim' if the point
-is to detect what the user probably wants us to check.
+ * NEWS entry
+ * Update help
+ * It can be a separate check, but we may want to change from reporting
+   errors through logging to putting them into a Result object.  Though
+   we might want to make sure that the result is not lost if the check
+   aborts.  One way to handle it would be to allow the caller to pass in
+   a check result, which they could examine even if the method fails.
+ * Hold repository read locked for as long as possible
+ * Indication of what is being checked
+ * Change name of function to 'check_dwim'
