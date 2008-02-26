@@ -131,6 +131,7 @@ class SmartServerStreamMedium(object):
         line = ''
         while not line or line[-1] != '\n':
             new_char = self._get_bytes(1)
+            assert len(new_char) <= 1, 'new_char %r is too long' % (new_char,)
             line += new_char
             if new_char == '':
                 # Ran out of bytes before receiving a complete line.
@@ -147,15 +148,22 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
             into blocking mode.
         """
         SmartServerStreamMedium.__init__(self, backing_transport)
-        self.push_back = ''
+        self.push_back = None
         sock.setblocking(True)
         self.socket = sock
+
+    def _push_back(self, bytes):
+        assert self.push_back is None, (
+            "_push_back called when self.push is %r" % (self.push_back,))
+        if bytes == '':
+            return
+        self.push_back = bytes
 
     def _serve_one_request_unguarded(self, protocol):
         while protocol.next_read_size():
             if self.push_back:
                 protocol.accept_bytes(self.push_back)
-                self.push_back = ''
+                self.push_back = None
             else:
                 bytes = self._get_bytes(4096)
                 if bytes == '':
@@ -163,11 +171,32 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
                     return
                 protocol.accept_bytes(bytes)
         
-        self.push_back = protocol.excess_buffer
+        self._push_back(protocol.excess_buffer)
 
+    def _get_line(self):
+        newline_pos = -1
+        bytes = ''
+        while newline_pos == -1:
+            new_bytes = self._get_bytes(1)
+            bytes += new_bytes
+            if new_bytes == '':
+                # Ran out of bytes before receiving a complete line.
+                return bytes
+            newline_pos = bytes.find('\n')
+        line = bytes[:newline_pos+1]
+        self._push_back(bytes[newline_pos+1:])
+        return line
+ 
     def _get_bytes(self, desired_count):
         # We ignore the desired_count because on sockets it's more efficient to
         # read 4k at a time.
+        if self.push_back is not None:
+            assert self.push_back != '', (
+                'self.push_back should never be the empty string, which can be '
+                'confused with EOF')
+            bytes = self.push_back
+            self.push_back = None
+            return bytes
         return self.socket.recv(4096)
     
     def terminate_due_to_error(self):
