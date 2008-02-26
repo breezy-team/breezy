@@ -309,11 +309,11 @@ def check(path, verbose):
             branches = repo.find_branches(using=True)
 
     if repo is not None:
-        repository.lock_read()
+        repo.lock_read()
         try:
-            result = repository.check()
+            result = repo.check()
             result.report_results(verbose)
             for branch in branches:
                 check_branch(branch, verbose)
         finally:
-            repository.unlock()
+            repo.unlock()
