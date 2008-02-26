@@ -298,28 +298,28 @@ def check(path, verbose):
         _check_working_tree(WorkingTree.open(path))
     except (errors.NoWorkingTree, errors.NotLocalUrl):
         tree = None
-
-    try:
-        branch = Branch.open_containing(path)[0]
     except errors.NotBranchError:
-        branch = None
+        raise errors.NotVersionedError(path)
 
     try:
         repo = Repository.open(path)
     except errors.NoRepositoryPresent:
         repo = None
+    except errors.NotBranchError:
+        raise errors.NotVersionedError(path)
 
-    if branch is not None:
-        # We are in a branch
+    try:
+        branch = Branch.open_containing(path)[0]
         if repo is None:
             # The branch is in a shared repository
             repo = branch.repository
-        check_branch(branch, verbose)
+        branches = [branch]
+    except errors.NotBranchError:
+        branch = None
+        branches = repo.find_branches(using=True)
 
     if repo is not None:
         # We have a repository
         _check_repository(repo, verbose)
-        if branch is None:
-            # We are in a shared repository
-            for branch in repo.find_branches(using=True):
-                check_branch(branch, verbose)
+        for branch in branches:
+            check_branch(branch, verbose)
