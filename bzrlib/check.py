@@ -321,7 +321,7 @@ def check(path, verbose):
         tree = None
 
     if tree is not None:
-        _check_working_tree(path)
+        _check_working_tree(tree)
 
     if branch is not None:
         # We are in a branch
