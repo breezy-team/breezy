@@ -21,9 +21,10 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
-    * ``Branch.get_revision_id_to_revno_map()`` uses ``Graph.iter_ancestry`` to
-      extract the revision history. On Pack repositories this significantly
-      improves performance. (John Arbash Meinel)
+    * Speed up operations that look at the revision graph (such as 'bzr log').
+      ``KnitPackRepositor.get_revision_graph`` uses ``Graph.iter_ancestry`` to
+      extract the revision history. This allows filtering ghosts as step
+      instead of needing to peek ahead all the time. (John Arbash Meinel)
 
   BUGFIXES:
 
