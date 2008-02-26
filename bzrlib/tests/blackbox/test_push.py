@@ -312,6 +312,17 @@ class TestPush(ExternalBase):
         self.assertEqual('', out)
         self.assertFalse(self.get_transport('published').has('.'))
 
+    def test_push_new_branch_shallow_no_public_location(self):
+        """Pushing with --shallow and the parent having no public url errors."""
+        trunk_tree, branch_tree = self.create_trunk_and_feature_branch()
+        # now we do a shallow push, which should fail as the place to refer too
+        # cannot be determined.
+        out, err = self.run_bzr_error(
+            ['Could not determine branch to refer to\\.'], ['push', '--shallow',
+            self.get_url('published')], working_dir='branch')
+        self.assertEqual('', out)
+        self.assertFalse(self.get_transport('published').has('.'))
+
 
 class RedirectingMemoryTransport(MemoryTransport):
 
