@@ -145,6 +145,12 @@ class ExternalMailClient(MailClient):
         """
         for name in self._get_client_commands():
             cmdline = [name]
+            if sys.platform == 'win32':
+                user_encoding = osutils.get_user_encoding()
+                if to:
+                    to = to.encode(user_encoding, 'replace')
+                if subject:
+                    subject = subject.encode(user_encoding, 'replace')
             cmdline.extend(self._get_compose_commandline(to, subject,
                                                          attach_path))
             try:
@@ -223,8 +229,8 @@ class Thunderbird(ExternalMailClient):
         if subject is not None:
             message_options['subject'] = subject
         if attach_path is not None:
-            message_options['attachment'] = urlutils.local_path_to_url(
-                attach_path)
+            message_options['attachment'] = str(urlutils.local_path_to_url(
+                attach_path))
         options_list = ["%s='%s'" % (k, v) for k, v in
                         sorted(message_options.iteritems())]
         return ['-compose', ','.join(options_list)]
