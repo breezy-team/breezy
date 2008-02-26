@@ -295,6 +295,11 @@ def _check_working_tree(tree):
 
 def check(path, verbose):
     try:
+        _check_working_tree(WorkingTree.open(path))
+    except (errors.NoWorkingTree, errors.NotLocalUrl):
+        tree = None
+
+    try:
         branch = Branch.open_containing(path)[0]
     except errors.NotBranchError:
         branch = None
@@ -303,14 +308,6 @@ def check(path, verbose):
         repo = Repository.open(path)
     except errors.NoRepositoryPresent:
         repo = None
-
-    try:
-        tree = WorkingTree.open(path)
-    except (errors.NoWorkingTree, errors.NotLocalUrl):
-        tree = None
-
-    if tree is not None:
-        _check_working_tree(tree)
 
     if branch is not None:
         # We are in a branch
