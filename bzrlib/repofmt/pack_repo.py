@@ -1964,7 +1964,7 @@ class KnitPackRepository(KnitRepository):
                     continue
                 if len(parent_ids) == 1 and parent_ids[0] == NULL_REVISION:
                     parent_ids = () # No parents
-                parent_ids = [p for p in parent_ids if p not in ghosts]
+                parent_ids = tuple(p for p in parent_ids if p not in ghosts)
                 ancestry[rev_id] = parent_ids
                 for p in parent_ids:
                     if p in children:
