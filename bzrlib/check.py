@@ -277,10 +277,9 @@ def _check_working_tree(tree):
     finally:
         tree.unlock()
 
-
-def check_dwim(path, verbose):
+def _get_elements(path):
     try:
-        _check_working_tree(WorkingTree.open(path))
+        tree = WorkingTree.open(path)
     except (errors.NoWorkingTree, errors.NotLocalUrl):
         tree = None
     except errors.NotBranchError:
@@ -297,6 +296,15 @@ def check_dwim(path, verbose):
         branch = Branch.open_containing(path)[0]
     except errors.NotBranchError:
         branch = None
+
+    return tree, repo, branch
+
+
+def check_dwim(path, verbose):
+    tree, repo, branch = _get_elements(path)
+
+    if tree is not None:
+        _check_working_tree(tree)
 
     if branch is not None:
         # We have a branch
