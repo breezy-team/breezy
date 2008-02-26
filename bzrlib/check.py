@@ -295,16 +295,20 @@ def check(path, verbose):
 
     try:
         branch = Branch.open_containing(path)[0]
+    except errors.NotBranchError:
+        branch = None
+
+    if branch is not None:
+        # We have a branch
         if repo is None:
             # The branch is in a shared repository
             repo = branch.repository
         branches = [branch]
-    except errors.NotBranchError:
-        branch = None
-        branches = repo.find_branches(using=True)
+    else:
+        if repo is not None:
+            branches = repo.find_branches(using=True)
 
     if repo is not None:
-        # We have a repository
         repository.lock_read()
         try:
             result = repository.check()
