@@ -304,6 +304,8 @@ def check_dwim(path, verbose):
     tree, repo, branch = _get_elements(path)
 
     if tree is not None:
+        note("Checking working tree at '%s'." 
+             % (tree.bzrdir.root_transport.base,))
         _check_working_tree(tree)
 
     if branch is not None:
@@ -319,9 +321,13 @@ def check_dwim(path, verbose):
     if repo is not None:
         repo.lock_read()
         try:
+            note("Checking repository at '%s'."
+                 % (repo.bzrdir.root_transport.base,))
             result = repo.check()
             result.report_results(verbose)
             for branch in branches:
+                note("Checking branch at '%s'."
+                     % (branch.bzrdir.root_transport.base,))
                 check_branch(branch, verbose)
         finally:
             repo.unlock()
