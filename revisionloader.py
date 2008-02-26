@@ -17,7 +17,7 @@
 """Parameterised loading of revisions into a repository."""
 
 
-from bzrlib import errors, lru_cache
+from bzrlib import errors, knit, lru_cache, osutils
 from bzrlib import revision as _mod_revision
 
 
@@ -141,7 +141,7 @@ class ImportRevisionLoader(RevisionLoader):
     This implementation caches serialised inventory texts.
     """
 
-    def __init__(self, repo, parent_texts_to_cache=1):
+    def __init__(self, repo, parent_texts_to_cache=1, random_ids=True):
         """See RevisionLoader.__init__.
 
         :param repository: the target repository
@@ -149,6 +149,7 @@ class ImportRevisionLoader(RevisionLoader):
         """
         RevisionLoader.__init__(self, repo)
         self.inv_parent_texts = lru_cache.LRUCache(parent_texts_to_cache)
+        self.random_ids = random_ids
 
     def _add_inventory(self, revision_id, inv, parents):
         """See RevisionLoader._add_inventory."""
@@ -162,13 +163,120 @@ class ImportRevisionLoader(RevisionLoader):
         inv_lines = self.repo._serialise_inventory_to_lines(inv)
         inv_vf = self.repo.get_inventory_weave()
 
-        # Code taken from bzrlib.repository._inventory_add_lines
+        sha1, num_bytes, parent_text = self._inventory_add_lines(inv_vf,
+            revision_id, parents, inv_lines, self.inv_parent_texts)
+        self.inv_parent_texts[revision_id] = parent_text
+        return sha1
+
+    def _inventory_add_lines(self, inv_vf, version_id, parents, lines,
+            parent_texts):
+        """See Repository._inventory_add_lines()."""
         final_parents = []
         for parent in parents:
             if parent in inv_vf:
                 final_parents.append(parent)
-        sha1, num_bytes, parent_text = inv_vf.add_lines(revision_id,
-            final_parents, inv_lines, self.inv_parent_texts,
-            check_content=False)
-        self.inv_parent_texts[revision_id] = parent_text
-        return sha1
+        return inv_vf.add_lines(version_id, final_parents, lines, parent_texts,
+            random_id=self.random_ids, check_content=False)
+
+
+class ExperimentalRevisionLoader(ImportRevisionLoader):
+    """A RevisionLoader over optimised for importing.
+        
+    WARNING: This implementation uses undoumented bzrlib internals.
+    It may not work in the future. In fact, it may not work now as
+    it is a incubator for experimental code.
+    """
+
+    def __init__(self, repo, parent_texts_to_cache=1, fulltext_every=200):
+        """See ImportRevisionLoader.__init__.
+        
+        :para fulltext_every: how often to store an inventory fulltext
+        """
+        ImportRevisionLoader.__init__(self, repo, parent_texts_to_cache)
+        self.revision_count = 0
+        self.fulltext_every = fulltext_every
+
+    def _inventory_add_lines(self, inv_vf, version_id, parents, lines,
+            parent_texts):
+        """See Repository._inventory_add_lines()."""
+        # setup parameters used in original code but not this API
+        self.revision_count += 1
+        if self.revision_count % self.fulltext_every == 0:
+            delta = False
+        else:
+            delta = inv_vf.delta
+        left_matching_blocks = None
+        random_id = self.random_ids
+        check_content = False
+
+        # bzrlib.knit.add_lines() but error checking optimised
+        inv_vf._check_add(version_id, lines, random_id, check_content)
+
+        ####################################################################
+        # bzrlib.knit._add() but skip checking if fulltext better than delta
+        ####################################################################
+
+        line_bytes = ''.join(lines)
+        digest = osutils.sha_string(line_bytes)
+        present_parents = []
+        for parent in parents:
+            if inv_vf.has_version(parent):
+                present_parents.append(parent)
+        if parent_texts is None:
+            parent_texts = {}
+
+        # can only compress against the left most present parent.
+        if (delta and
+            (len(present_parents) == 0 or
+             present_parents[0] != parents[0])):
+            delta = False
+
+        text_length = len(line_bytes)
+        options = []
+        if lines:
+            if lines[-1][-1] != '\n':
+                # copy the contents of lines.
+                lines = lines[:]
+                options.append('no-eol')
+                lines[-1] = lines[-1] + '\n'
+                line_bytes += '\n'
+
+        #if delta:
+        #    # To speed the extract of texts the delta chain is limited
+        #    # to a fixed number of deltas.  This should minimize both
+        #    # I/O and the time spend applying deltas.
+        #    delta = inv_vf._check_should_delta(present_parents)
+
+        assert isinstance(version_id, str)
+        content = inv_vf.factory.make(lines, version_id)
+        if delta or (inv_vf.factory.annotated and len(present_parents) > 0):
+            # Merge annotations from parent texts if needed.
+            delta_hunks = inv_vf._merge_annotations(content, present_parents,
+                parent_texts, delta, inv_vf.factory.annotated,
+                left_matching_blocks)
+
+        if delta:
+            options.append('line-delta')
+            store_lines = inv_vf.factory.lower_line_delta(delta_hunks)
+            size, bytes = inv_vf._data._record_to_data(version_id, digest,
+                store_lines)
+        else:
+            options.append('fulltext')
+            # isinstance is slower and we have no hierarchy.
+            if inv_vf.factory.__class__ == knit.KnitPlainFactory:
+                # Use the already joined bytes saving iteration time in
+                # _record_to_data.
+                size, bytes = inv_vf._data._record_to_data(version_id, digest,
+                    lines, [line_bytes])
+            else:
+                # get mixed annotation + content and feed it into the
+                # serialiser.
+                store_lines = inv_vf.factory.lower_fulltext(content)
+                size, bytes = inv_vf._data._record_to_data(version_id, digest,
+                    store_lines)
+
+        access_memo = inv_vf._data.add_raw_records([size], bytes)[0]
+        inv_vf._index.add_versions(
+            ((version_id, options, access_memo, parents),),
+            random_id=random_id)
+        return digest, text_length, content

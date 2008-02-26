@@ -124,8 +124,11 @@ class GenericProcessor(processor.ImportProcessor):
         self._load_info_and_params()
         self.cache_mgr = GenericCacheManager(self.info, self.verbose,
             self.inventory_cache_size)
-        self.loader = revisionloader.ImportRevisionLoader(self.repo,
-            self.inventory_cache_size)
+        if self._experimental:
+            loader_factory = revisionloader.ExperimentalRevisionLoader
+        else:
+            loader_factory = revisionloader.ImportRevisionLoader
+        self.loader = loader_factory(self.repo, self.inventory_cache_size)
         self.init_stats()
 
         # mapping of tag name to revision_id
