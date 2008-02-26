@@ -124,6 +124,8 @@ class GenericProcessor(processor.ImportProcessor):
         self._load_info_and_params()
         self.cache_mgr = GenericCacheManager(self.info, self.verbose,
             self.inventory_cache_size)
+        self.loader = revisionloader.ImportRevisionLoader(self.repo,
+            self.inventory_cache_size)
         self.init_stats()
 
         # mapping of tag name to revision_id
@@ -285,7 +287,7 @@ class GenericProcessor(processor.ImportProcessor):
         """Process a CommitCommand."""
         # 'Commit' the revision
         handler = GenericCommitHandler(cmd, self.repo, self.cache_mgr,
-            self.verbose, self._experimental)
+            self.loader, self.verbose, self._experimental)
         handler.process()
 
         # Update caches
@@ -381,9 +383,6 @@ class GenericCacheManager(object):
         self.last_ids = {}
         self.heads = {}
 
-        # Cache of recent serialised inventories
-        self.inv_parent_texts = lru_cache.LRUCache(inventory_cache_size)
-
         # Work out the blobs to make sticky - None means all
         self._blobs_to_keep = None
         if info is not None:
@@ -424,19 +423,14 @@ class GenericCacheManager(object):
 
 class GenericCommitHandler(processor.CommitHandler):
 
-    def __init__(self, command, repo, cache_mgr, verbose=False,
+    def __init__(self, command, repo, cache_mgr, loader, verbose=False,
         _experimental=False):
         processor.CommitHandler.__init__(self, command)
         self.repo = repo
         self.cache_mgr = cache_mgr
+        self.loader = loader
         self.verbose = verbose
         self._experimental = _experimental
-        # smart loader that uses these caches
-        self.loader = revisionloader.ImportRevisionLoader(repo,
-            lambda revision_ids: self._get_inventories(revision_ids),
-            cache_mgr.inv_parent_texts)
-        #self.loader = revisionloader.RevisionLoader(repo,
-        #    lambda revision_ids: self._get_inventories(revision_ids))
 
     def note(self, msg, *args):
         """Output a note but add context."""
@@ -523,7 +517,8 @@ class GenericCommitHandler(processor.CommitHandler):
            properties=rev_props,
            parent_ids=self.parents)
         self.loader.load(rev, self.inventory, None,
-            lambda file_id: self._get_lines(file_id))
+            lambda file_id: self._get_lines(file_id),
+            lambda revision_ids: self._get_inventories(revision_ids))
 
     def _escape_commit_message(self, message):
         """Replace xml-incompatible control characters."""

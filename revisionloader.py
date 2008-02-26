@@ -26,7 +26,7 @@ class RevisionLoader(object):
     # refactored to be a class. When importing, we want more flexibility
     # in how previous revisions are cached, data is feed in, etc.
 
-    def __init__(self, repo, inventories_provider=None):
+    def __init__(self, repo):
         """An object responsible for loading revisions into a repository.
 
         NOTE: Repository locking is not managed by this class. Clients
@@ -34,20 +34,11 @@ class RevisionLoader(object):
         the lock.
 
         :param repository: the target repository
-        :param inventories_provider: a callable expecting a repository and
-            a list of revision-ids, that returns:
-              * the list of revision-ids present in the repository
-              * the list of inventories for the revision-id's,
-                including an empty inventory for the missing revisions
-            If None, a default implementation is provided.
         """
         self.repo = repo
-        if inventories_provider is not None:
-            self.inventories_provider = inventories_provider
-        else:
-            self.inventories_provider = self._default_inventories_provider
 
-    def load(self, rev, inv, signature, text_provider):
+    def load(self, rev, inv, signature, text_provider,
+        inventories_provider=None):
         """Load a revision into a repository.
 
         :param rev: the Revision
@@ -55,9 +46,16 @@ class RevisionLoader(object):
         :param signature: signing information
         :param text_provider: a callable expecting a file_id parameter
             that returns the text for that file-id
+        :param inventories_provider: a callable expecting a repository and
+            a list of revision-ids, that returns:
+              * the list of revision-ids present in the repository
+              * the list of inventories for the revision-id's,
+                including an empty inventory for the missing revisions
+            If None, a default implementation is provided.
         """
-        present_parents, parent_invs = self.inventories_provider(
-            rev.parent_ids)
+        if inventories_provider is None:
+            inventories_provider = self._default_inventories_provider
+        present_parents, parent_invs = inventories_provider(rev.parent_ids)
         self._load_texts(rev.revision_id, inv.iter_entries(), parent_invs,
             text_provider)
         try:
@@ -140,16 +138,17 @@ class RevisionLoader(object):
 class ImportRevisionLoader(RevisionLoader):
     """A RevisionLoader optimised for importing.
         
-    This implementation allows caching of the serialised inventory texts.
+    This implementation caches serialised inventory texts.
     """
 
-    def __init__(self, repo, inventories_provider=None, inv_parent_texts=None):
-        """See RevisionLoader.__init__."""
-        RevisionLoader.__init__(self, repo, inventories_provider)
-        if inv_parent_texts is not None:
-            self.inv_parent_texts = inv_parent_texts
-        else:
-            self.inv_parent_texts = {}
+    def __init__(self, repo, parent_texts_to_cache=1):
+        """See RevisionLoader.__init__.
+
+        :param repository: the target repository
+        :param parent_text_to_cache: the number of parent texts to cache
+        """
+        RevisionLoader.__init__(self, repo)
+        self.inv_parent_texts = lru_cache.LRUCache(parent_texts_to_cache)
 
     def _add_inventory(self, revision_id, inv, parents):
         """See RevisionLoader._add_inventory."""
