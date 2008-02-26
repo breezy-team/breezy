@@ -244,17 +244,6 @@ class Check(object):
             seen_names[path] = True
 
 
-def _scan_for_branches(path):
-    dirs = osutils.walkdirs(path).next()[1]
-    branches = []
-    for dir in dirs:
-        try:
-            branches.append(Branch.open_containing(dir[0])[0])
-        except errors.NotBranchError:
-            pass
-    return branches
-
-
 def check_branch(branch, verbose):
     """Run consistency checks on a branch.
     
@@ -335,5 +324,5 @@ def check(path, verbose):
         _check_repository(repo, verbose)
         if branch is None:
             # We are in a shared repository
-            for branch in _scan_for_branches(path):
+            for branch in repo.find_branches(using=True):
                 check_branch(branch, verbose)
