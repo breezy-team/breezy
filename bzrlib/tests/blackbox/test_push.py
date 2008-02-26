@@ -29,6 +29,7 @@ from bzrlib.bzrdir import BzrDirMetaFormat1
 from bzrlib.osutils import abspath
 from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
 from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests.http_server import HttpServer
 from bzrlib.transport import register_transport, unregister_transport
 from bzrlib.transport.memory import MemoryServer, MemoryTransport
 from bzrlib.uncommit import uncommit
@@ -248,8 +249,7 @@ class TestPush(ExternalBase):
                 'push ../dir',
                 working_dir='tree')
 
-    def test_push_new_branch_reference(self):
-        """Pushing a new branch with --reference creates a stacked branch."""
+    def create_trunk_and_feature_branch(self):
         # We have a mainline
         trunk_tree = self.make_branch_and_tree('target',
             format='development')
@@ -258,9 +258,15 @@ class TestPush(ExternalBase):
         branch_tree = self.make_branch_and_tree('branch',
             format='development')
         branch_tree.pull(trunk_tree.branch)
+        branch_tree.branch.set_parent(trunk_tree.branch.base)
         # with some work on it
-        branch_revid = branch_tree.commit('moar work plz')
-        # which we publish with a reference to the mainline.
+        branch_tree.commit('moar work plz')
+        return trunk_tree, branch_tree
+
+    def test_push_new_branch_reference(self):
+        """Pushing a new branch with --reference creates a stacked branch."""
+        trunk_tree, branch_tree = self.create_trunk_and_feature_branch()
+        # we publish branch_tree with a reference to the mainline.
         out, err = self.run_bzr(['push', '--reference', trunk_tree.branch.base,
             self.get_url('published')], working_dir='branch')
         self.assertEqual('', out)
@@ -271,6 +277,30 @@ class TestPush(ExternalBase):
         self.assertEqual(trunk_tree.branch.base,
             published_branch.get_stacked_on())
         # and the branch's work was pushed
+        branch_revid = branch_tree.last_revision()
+        self.assertTrue(published_branch.repository.has_revision(branch_revid))
+
+    def test_push_new_branch_shallow_uses_parent_public(self):
+        """Pushing a new branch with --reference creates a stacked branch."""
+        trunk_tree, branch_tree = self.create_trunk_and_feature_branch()
+        # the trunk is published on a web server
+        self.transport_readonly_server = HttpServer
+        trunk_public = self.make_branch('public_trunk', format='development')
+        trunk_public.pull(trunk_tree.branch)
+        trunk_public_url = self.get_readonly_url('public_trunk')
+        trunk_tree.branch.set_public_branch(trunk_public_url)
+        # now we do a shallow push, which should determine the public location
+        # for us.
+        out, err = self.run_bzr(['push', '--shallow',
+            self.get_url('published')], working_dir='branch')
+        self.assertEqual('', out)
+        self.assertEqual('Created new shallow branch referring to %s.\n' %
+            trunk_public_url, err)
+        published_branch = Branch.open('published')
+        # The published branch refers to the mainline
+        self.assertEqual(trunk_public_url, published_branch.get_stacked_on())
+        # and the branch's work was pushed
+        branch_revid = branch_tree.last_revision()
         self.assertTrue(published_branch.repository.has_revision(branch_revid))
 
 

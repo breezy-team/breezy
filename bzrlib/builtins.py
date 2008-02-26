@@ -702,20 +702,29 @@ class cmd_push(Command):
                 'for the commit history. Only the work not present in that '
                 'other branch is included in this shallow branch.',
             type=unicode),
+        Option('shallow',
+            help='Create a shallow branch with an automatic reference url. '
+                'The chosen url is the parent branches public location. See '
+                '--reference for more information.'),
         ]
     takes_args = ['location?']
     encoding_type = 'replace'
 
     def run(self, location=None, remember=False, overwrite=False,
         create_prefix=False, verbose=False, use_existing_dir=False,
-        directory=None, reference=None):
+        directory=None, reference=None, shallow=False):
         # FIXME: Way too big!  Put this into a function called from the
         # command.
         if directory is None:
             directory = '.'
+        br_from = Branch.open_containing(directory)[0]
+        # shallow branch where to refer to logic:
         if reference is not None:
             reference = urlutils.normalize_url(reference)
-        br_from = Branch.open_containing(directory)[0]
+        if shallow:
+            parent = Branch.open(br_from.get_parent())
+            reference = parent.get_public_branch()
+        # where to push logic:
         stored_loc = br_from.get_push_location()
         if location is None:
             if stored_loc is None:
