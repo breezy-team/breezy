@@ -278,7 +278,7 @@ def _check_working_tree(tree):
         tree.unlock()
 
 
-def check(path, verbose):
+def check_dwim(path, verbose):
     try:
         _check_working_tree(WorkingTree.open(path))
     except (errors.NoWorkingTree, errors.NotLocalUrl):

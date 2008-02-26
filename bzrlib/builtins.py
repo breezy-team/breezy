@@ -2380,10 +2380,10 @@ class cmd_check(Command):
     takes_options = ['verbose']
 
     def run(self, path=None, verbose=False):
-        from bzrlib.check import check
+        from bzrlib.check import check_dwim
         if path is None:
             path = '.'
-        check(path, verbose)
+        check_dwim(path, verbose)
 
 
 class cmd_upgrade(Command):
