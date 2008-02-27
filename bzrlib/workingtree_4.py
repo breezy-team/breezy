@@ -1259,7 +1259,7 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         return "Working tree format 4"
 
     def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
-                   accelerator_tree=None):
+                   accelerator_tree=None, hardlink=False):
         """See WorkingTreeFormat.initialize().
 
         :param revision_id: allows creating a working tree at a different
@@ -1268,6 +1268,8 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
             contents more quickly than the revision tree, i.e. a workingtree.
             The revision tree will be used for cases where accelerator_tree's
             content is different.
+        :param hardlink: If true, hard-link files from accelerator_tree,
+            where possible.
 
         These trees get an initial random root id, if their repository supports
         rich root data, TREE_ROOT otherwise.
@@ -1320,16 +1322,19 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
             else:
                 parents_list = [(revision_id, basis)]
             basis.lock_read()
-            wt.set_parent_trees(parents_list, allow_leftmost_as_ghost=True)
-            wt.flush()
-            # if the basis has a root id we have to use that; otherwise we use
-            # a new random one
-            basis_root_id = basis.get_root_id()
-            if basis_root_id is not None:
-                wt._set_root_id(basis_root_id)
+            try:
+                wt.set_parent_trees(parents_list, allow_leftmost_as_ghost=True)
                 wt.flush()
-            transform.build_tree(basis, wt, accelerator_tree)
-            basis.unlock()
+                # if the basis has a root id we have to use that; otherwise we
+                # use a new random one
+                basis_root_id = basis.get_root_id()
+                if basis_root_id is not None:
+                    wt._set_root_id(basis_root_id)
+                    wt.flush()
+                transform.build_tree(basis, wt, accelerator_tree,
+                                     hardlink=hardlink)
+            finally:
+                basis.unlock()
         finally:
             control_files.unlock()
             wt.unlock()

@@ -56,7 +56,7 @@ class IndirectUrlTests(TestCase):
         self.assertEquals('http://bazaar.launchpad.net/~apt/apt/devel',
                           transport._resolve('lp:apt', factory))
         # Make sure that resolve went to the production server.
-        self.assertEquals('https://xmlrpc.launchpad.net/bazaar/',
+        self.assertEquals('https://xmlrpc.edge.launchpad.net/bazaar/',
                           factory._service_url)
 
     def test_staging(self):
