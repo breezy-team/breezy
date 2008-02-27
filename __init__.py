@@ -72,7 +72,8 @@ class cmd_fast_import(Command):
  
     While reusing an existing format with existing frontends is
     great, it does mean a slightly more complex recipe when
-    importing large projects, namely::
+    importing large projects via exporters that reuse blob data
+    across commits, namely::
 
       bzr init-repo .
       front-end > xxx.fi
@@ -83,6 +84,17 @@ class cmd_fast_import(Command):
     holds caching hints that the second pass uses to lower memory
     usage.
     
+    At checkpoints and on completion, the commit-id -> revision-id
+    map is saved to a file called 'fastimport-id-map' in the control
+    directory for the repository (e.g. .bzr/repository). If the import
+    is interrupted or unexpectedly crashes, it can be started again
+    and this file will be used to skip over already loaded revisions.
+    As long as subsequent exports from the original source begin
+    with exactly the same revisions, you can use this feature to
+    maintain a mirror of a repository managed by a foreign tool.
+    If and when Bazaar is used to manage the repository, this file
+    can be safely deleted.
+
     If you wish to write a custom exporter for your project, see
     http://bazaar-vcs.org/BzrFastImport for the detailed protocol
     specification. In many cases, exporters can be written quite

@@ -40,7 +40,9 @@ from bzrlib.trace import (
     )
 import bzrlib.util.configobj.configobj as configobj
 from bzrlib.plugins.fastimport import (
+    errors as plugin_errors,
     helpers,
+    idmapfile,
     processor,
     revisionloader,
     )
@@ -68,6 +70,12 @@ class GenericProcessor(processor.ImportProcessor):
     * timestamped progress reporting, both automatic and stream requested
     * LATER: reset support, tags for each branch
     * some basic statistics are dumped on completion.
+
+    At checkpoints and on completion, the commit-id -> revision-id map is
+    saved to a file called 'fastimport-id-map'. If the import crashes
+    or is interrupted, it can be started again and this file will be
+    used to skip over already loaded revisions. The format of each line
+    is "commit-id revision-id" so commit-ids cannot include spaces.
 
     Here are the supported parameters:
 
@@ -124,15 +132,21 @@ class GenericProcessor(processor.ImportProcessor):
         self._load_info_and_params()
         self.cache_mgr = GenericCacheManager(self.info, self.verbose,
             self.inventory_cache_size)
+        self.skip_total = self._init_id_map()
+        if self.skip_total:
+            self.note("Found %d commits already loaded - "
+                "skipping over these ...", self.skip_total)
+        self._revision_count = 0
+
+        # mapping of tag name to revision_id
+        self.tags = {}
+
+        # Create the revision loader needed for committing
         if self._experimental:
             loader_factory = revisionloader.ExperimentalRevisionLoader
         else:
             loader_factory = revisionloader.ImportRevisionLoader
         self.loader = loader_factory(self.repo, self.inventory_cache_size)
-        self.init_stats()
-
-        # mapping of tag name to revision_id
-        self.tags = {}
 
         # Create a write group. This is committed at the end of the import.
         # Checkpointing closes the current one and starts a new one.
@@ -144,6 +158,11 @@ class GenericProcessor(processor.ImportProcessor):
 
     def _load_info_and_params(self):
         self._experimental = self.params.get('experimental', False)
+
+        # This is currently hard-coded but might be configurable via
+        # parameters one day if that's needed
+        repo_transport = self.repo.control_files._transport
+        self.id_map_path = repo_transport.local_abspath("fastimport-id-map")
 
         # Load the info file, if any
         info_path = self.params.get('info')
@@ -185,7 +204,6 @@ class GenericProcessor(processor.ImportProcessor):
         else:
             self.total_commits = self.max_commits
 
-
     def _process(self, command_iter):
         # if anything goes wrong, abort the write group if any
         try:
@@ -196,8 +214,9 @@ class GenericProcessor(processor.ImportProcessor):
             raise
 
     def post_process(self):
-        # Commit the current write group.
+        # Commit the current write group and checkpoint the id map
         self.repo.commit_write_group()
+        self._save_id_map()
 
         # Update the branches
         self.note("Updating branch information ...")
@@ -258,12 +277,9 @@ class GenericProcessor(processor.ImportProcessor):
             result.append(wt)
         return result
 
-    def init_stats(self):
-        self._revision_count = 0
-
     def dump_stats(self):
         time_required = progress.str_tdelta(time.time() - self._start_time)
-        rc = self._revision_count
+        rc = self._revision_count - self.skip_total
         bc = self._branch_count
         wtc = self._tree_count
         self.note("Imported %d %s, updating %d %s and %d %s in %s",
@@ -271,6 +287,27 @@ class GenericProcessor(processor.ImportProcessor):
             bc, helpers.single_plural(bc, "branch", "branches"),
             wtc, helpers.single_plural(wtc, "tree", "trees"),
             time_required)
+
+    def _init_id_map(self):
+        """Load the id-map and check it matches the repository.
+        
+        :return: the number of entries in the map
+        """
+        # Currently, we just check the size. In the future, we might
+        # decide to be more paranoid and check that the revision-ids
+        # are identical as well.
+        self.cache_mgr.revision_ids, known = idmapfile.load_id_map(
+            self.id_map_path)
+        existing_count = len(self.repo.all_revision_ids())
+        if existing_count != known:
+            raise plugin_errors.BadRepositorySize(known, existing_count)
+        return known
+
+    def _save_id_map(self):
+        """Save the id-map."""
+        # Save the whole lot every time. If this proves a problem, we can
+        # change to 'append just the new ones' at a later time.
+        idmapfile.save_id_map(self.id_map_path, self.cache_mgr.revision_ids)
 
     def blob_handler(self, cmd):
         """Process a BlobCommand."""
@@ -284,33 +321,63 @@ class GenericProcessor(processor.ImportProcessor):
         """Process a CheckpointCommand."""
         # Commit the current write group and start a new one
         self.repo.commit_write_group()
+        self._save_id_map()
         self.repo.start_write_group()
 
     def commit_handler(self, cmd):
         """Process a CommitCommand."""
-        # 'Commit' the revision
+        if self.skip_total and self._revision_count < self.skip_total:
+            _track_heads(cmd, self.cache_mgr)
+            # Check that we really do know about this commit-id
+            if not self.cache_mgr.revision_ids.has_key(cmd.id):
+                raise plugin_errors.BadRestart(cmd.id)
+            # Consume the file commands and free any non-sticky blobs
+            for fc in cmd.file_iter():
+                pass
+            self.cache_mgr._blobs = {}
+            self._revision_count += 1
+            # If we're finished getting back to where we were,
+            # load the file-ids cache
+            if self._revision_count == self.skip_total:
+                self._gen_file_ids_cache()
+                self.note("Generated the file-ids cache - %d entries",
+                    len(self.cache_mgr.file_ids.keys()))
+            return
+
+        # 'Commit' the revision and report progress
         handler = GenericCommitHandler(cmd, self.repo, self.cache_mgr,
             self.loader, self.verbose, self._experimental)
         handler.process()
-
-        # Update caches
         self.cache_mgr.revision_ids[cmd.id] = handler.revision_id
-        self.cache_mgr.last_ids[cmd.ref] = cmd.id
-        self.cache_mgr.last_ref = cmd.ref
-
-        # Report progress
         self._revision_count += 1
         self.report_progress("(%s)" % cmd.id)
 
         # Check if we should finish up or automatically checkpoint
         if (self.max_commits is not None and
             self._revision_count >= self.max_commits):
-            self.note("stopping after reaching requested count of commits")
+            self.note("Stopping after reaching requested count of commits")
             self.finished = True
         elif self._revision_count % self.checkpoint_every == 0:
             self.note("%d commits - automatic checkpoint triggered",
                 self._revision_count)
             self.checkpoint_handler(None)
+
+    def _gen_file_ids_cache(self):
+        """Generate the file-id cache by searching repository inventories.
+        """
+        # Get the interesting revisions - the heads
+        head_ids = self.cache_mgr.heads.keys()
+        revision_ids = [self.cache_mgr.revision_ids[h] for h in head_ids]
+
+        # Update the fileid cache
+        file_ids = {}
+        for revision_id in revision_ids:
+            inv = self.repo.revision_tree(revision_id).inventory
+            # Cache the inventoires while we're at it
+            self.cache_mgr.inventories[revision_id] = inv
+            for path, ie in inv.iter_entries():
+                file_ids[path] = ie.file_id
+        self.cache_mgr.file_ids = file_ids
 
     def report_progress(self, details=''):
         # TODO: use a progress bar with ETA enabled
@@ -374,14 +441,14 @@ class GenericCacheManager(object):
         # most parents are recent in history
         self.inventories = lru_cache.LRUCache(inventory_cache_size)
 
-        # import-ref -> revision-id lookup table
+        # import commmit-ids -> revision-id lookup table
         # we need to keep all of these but they are small
         self.revision_ids = {}
 
         # path -> file-ids - as generated
         self.file_ids = {}
 
-        # Head tracking: last ref, last id per ref & map of commit mark to ref
+        # Head tracking: last ref, last id per ref & map of commit ids to ref
         self.last_ref = None
         self.last_ids = {}
         self.heads = {}
@@ -424,6 +491,34 @@ class GenericCacheManager(object):
         self.file_ids[new_path] = self.file_ids[old_path]
 
 
+def _track_heads(cmd, cache_mgr):
+    """Track the repository heads given a CommitCommand.
+    
+    :return: the list of parents in terms of commit-ids
+    """
+    # Get the true set of parents
+    if cmd.mark is None:
+        last_id = cache_mgr.last_ids.get(cmd.ref)
+        if last_id is not None:
+            parents = [last_id]
+        else:
+            parents = []
+    else:
+        parents = cmd.parents
+    # Track the heads
+    for parent in parents:
+        try:
+            del cache_mgr.heads[parent]
+        except KeyError:
+            # it's ok if the parent isn't there - another
+            # commit may have already removed it
+            pass
+    cache_mgr.heads[cmd.id] = cmd.ref
+    cache_mgr.last_ids[cmd.ref] = cmd.id
+    cache_mgr.last_ref = cmd.ref
+    return parents
+
+
 class GenericCommitHandler(processor.CommitHandler):
 
     def __init__(self, command, repo, cache_mgr, loader, verbose=False,
@@ -452,26 +547,8 @@ class GenericCommitHandler(processor.CommitHandler):
         # cache of texts for this commit, indexed by file-id
         self.lines_for_commit = {}
 
-        # Work out the true set of parents
-        cmd = self.command
-        if cmd.mark is None:
-            last_id = self.cache_mgr.last_ids.get(cmd.ref)
-            if last_id is not None:
-                parents = [last_id]
-            else:
-                parents = []
-        else:
-            parents = cmd.parents
-
-        # Track the heads
-        for parent in parents:
-            try:
-                del self.cache_mgr.heads[parent]
-            except KeyError:
-                # it's ok if the parent isn't there - another
-                # commit may have already removed it
-                pass
-        self.cache_mgr.heads[cmd.id] = cmd.ref
+        # Track the heads and get the real parent list
+        parents = _track_heads(self.command, self.cache_mgr)
 
         # Get the parent inventories
         if parents:
