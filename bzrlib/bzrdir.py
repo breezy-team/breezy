@@ -914,9 +914,15 @@ class BzrDir(object):
         target_transport.ensure_base()
         cloning_format = self.cloning_metadir()
         result = cloning_format.initialize_on_transport(target_transport)
+        shallow_branch_url = False
         try:
             source_branch = self.open_branch()
             source_repository = source_branch.repository
+            try:
+                shallow_branch_url = source_branch.get_stacked_on()
+            except (errors.NotStacked, errors.UnstackableBranchFormat,
+                errors.UnstackableRepositoryFormat):
+                shallow_branch_url = None
         except errors.NotBranchError:
             source_branch = None
             try:
@@ -935,6 +941,15 @@ class BzrDir(object):
         elif source_repository is None and result_repo is None:
             # no repo available, make a new one
             result.create_repository()
+        elif result_repo is None and shallow_branch_url:
+            result_repo = source_repository._format.initialize(result)
+            stacked_dir = BzrDirPreSplitOut.open(shallow_branch_url)
+            try:
+                stacked_repo = stacked_dir.open_branch().repository
+            except errors.NotBranchError:
+                stacked_repo = stacked_dir.open_repository()
+            result_repo.add_fallback_repository(stacked_repo)
+            result_repo.fetch(source_repository, revision_id=revision_id)
         elif source_repository is not None and result_repo is None:
             # have source, and want to make a new target repo
             result_repo = source_repository.sprout(result,

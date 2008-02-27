@@ -731,6 +731,13 @@ class Branch(object):
         else:
             if parent:
                 destination.set_parent(parent)
+        try:
+            shallow_url = self.get_stacked_on()
+        except (errors.NotStacked, errors.UnstackableBranchFormat,
+            errors.UnstackableRepositoryFormat):
+            pass
+        else:
+            destination.set_stacked_on(shallow_url)
         self.tags.merge_to(destination.tags)
 
     @needs_read_lock

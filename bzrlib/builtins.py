@@ -964,7 +964,12 @@ class cmd_branch(Command):
             if name:
                 branch.control_files.put_utf8('branch-name', name)
             _merge_tags_if_possible(br_from, branch)
-            note('Branched %d revision(s).' % branch.revno())
+            try:
+                note('Created new shallow branch referring to %s.' %
+                    branch.get_stacked_on())
+            except (errors.NotStacked, errors.UnstackableBranchFormat,
+                errors.UnstackableRepositoryFormat):
+                note('Branched %d revision(s).' % branch.revno())
         finally:
             br_from.unlock()
 
