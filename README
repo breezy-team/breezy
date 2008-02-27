@@ -92,6 +92,10 @@ In the future, I also hope to support:
 - use svn_ra_replay() on systems that have Subversion 1.4. Saves a couple of 
   roundtrips when fetching history.
 
+- Shallow branches. Most of the existing Subversion repositories 
+  are quite large and it would therefore be nice to be able to limit 
+  the amount of history that needs to be retrieved during checkouts.
+
 Some Subversion properties can currently not be represented in Bazaar 
 and are therefore ignored for the time being:
 
@@ -115,17 +119,9 @@ and are therefore ignored for the time being:
 
 Other features currently held back by Bazaars feature set:
 
-- Horizon revision history. Most of the existing Subversion repositories 
-  are quite large and it would therefore be nice to be able to limit 
-  the amount of history that needs to be retrieved during checkouts.
-
-  Spec at https://launchpad.net/products/bzr/+spec/shallow-checkouts
-
 - Tracking copies. 
  
   Spec at https://launchpad.net/products/bzr/+spec/filecopies
-
-Features held back by Subversion:
 
 - Showing SVN merges as merges in Bazaar. This requires full merge tracking 
   information in Subversion, something which the Subversion folks are working 
