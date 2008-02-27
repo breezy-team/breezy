@@ -117,7 +117,7 @@ except NameError:
     True, False = 1, 0
 
 
-__version__ = '4.5.1'
+__version__ = '4.5.2'
 
 __revision__ = '$Id: configobj.py 156 2006-01-31 14:57:08Z fuzzyman $'
 
@@ -1312,7 +1312,7 @@ class ConfigObj(Section):
                 self.configspec = None
             return
         
-        elif getattr(infile, 'read', None) is not None:
+        elif hasattr(infile, 'read'):
             # This supports file like objects
             infile = infile.read() or []
             # needs splitting into lines - but needs doing *after* decoding
@@ -1956,7 +1956,7 @@ class ConfigObj(Section):
                 # FIXME: can we supply any useful information here ?
                 raise RepeatSectionError()
             
-        if getattr(configspec, 'initial_comment', None) is not None:
+        if hasattr(configspec, 'initial_comment'):
             section._configspec_initial_comment = configspec.initial_comment
             section._configspec_final_comment = configspec.final_comment
             section._configspec_encoding = configspec.encoding
@@ -2201,7 +2201,7 @@ class ConfigObj(Section):
             section = self
         #
         spec_section = section.configspec
-        if copy and getattr(section, '_configspec_initial_comment', None) is not None:
+        if copy and hasattr(section, '_configspec_initial_comment'):
             section.initial_comment = section._configspec_initial_comment
             section.final_comment = section._configspec_final_comment
             section.encoding = section._configspec_encoding
@@ -2262,7 +2262,7 @@ class ConfigObj(Section):
                     except KeyError:
                         pass
                     
-                if getattr(validator, 'get_default_value', None) is not None:
+                if hasattr(validator, 'get_default_value'):
                     try: 
                         section.default_values[entry] = validator.get_default_value(spec_section[entry])
                     except KeyError:
