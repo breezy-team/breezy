@@ -1444,3 +1444,23 @@ Repository:
        ), out)
         self.assertEqual('', err)
         tree.unlock()
+
+    def test_info_shallow(self):
+        # We have a mainline
+        trunk_tree = self.make_branch_and_tree('mainline',
+            format='development1')
+        trunk_tree.commit('mainline')
+        # and make branch from it which is shallow
+        new_dir = trunk_tree.bzrdir.sprout('newbranch', shallow=True)
+        new_tree = new_dir.open_workingtree()
+        out, err = self.run_bzr('info newbranch')
+        self.assertEqual(
+"""Standalone tree (format: development1)
+Location:
+  branch root: newbranch
+
+Related branches:
+  parent branch: mainline
+     stacked on: mainline
+""", out)
+        self.assertEqual("", err)
