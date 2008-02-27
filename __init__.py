@@ -140,7 +140,7 @@ class cmd_fast_import(Command):
                      ]
     aliases = []
     def run(self, source, verbose=False, info=None, trees=False,
-        checkpoint=10000, count=-1, inv_cache=10, experimental=False):
+        checkpoint=10000, count=-1, inv_cache=10, experimental=True):
         from bzrlib import bzrdir
         from bzrlib.plugins.fastimport.processors import generic_processor
         control, relpath = bzrdir.BzrDir.open_containing('.')

@@ -184,7 +184,7 @@ class ExperimentalRevisionLoader(ImportRevisionLoader):
         
     WARNING: This implementation uses undoumented bzrlib internals.
     It may not work in the future. In fact, it may not work now as
-    it is a incubator for experimental code.
+    it is an incubator for experimental code.
     """
 
     def __init__(self, repo, parent_texts_to_cache=1, fulltext_every=200):

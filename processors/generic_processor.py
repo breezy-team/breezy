@@ -170,7 +170,7 @@ class GenericProcessor(processor.ImportProcessor):
         inv_vf.enable_cache()
 
     def _load_info_and_params(self):
-        self._experimental = self.params.get('experimental', False)
+        self._experimental = bool(self.params.get('experimental', False))
 
         # This is currently hard-coded but might be configurable via
         # parameters one day if that's needed
