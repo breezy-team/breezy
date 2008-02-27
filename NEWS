@@ -11,26 +11,61 @@ IN DEVELOPMENT
   
   CHANGES:
 
-   * A new repository format 'development' has been added. This format will
-     represent the latest 'in-progress' format that the bzr developers are
-     interested in getting early-adopter testing and feedback on.
-     ``doc/developers/development-repo.txt`` has detailed information.
-     (Robert Collins)
+    * A new repository format 'development' has been added. This format will
+      represent the latest 'in-progress' format that the bzr developers are
+      interested in getting early-adopter testing and feedback on.
+      ``doc/developers/development-repo.txt`` has detailed information.
+      (Robert Collins)
+
+    * BZR_LOG environment variable controls location of .bzr.log trace file. 
+      User can suppress writing messages to .bzr.log by using '/dev/null'
+      filename (on Linux) or 'NUL' (on Windows). If BZR_LOG variable 
+      is not defined but BZR_HOME is defined then default location
+      for .bzr.log trace file is ``$BZR_HOME/.bzr.log``.
+      (Alexander Belchenko)
+
+    * ``launchpad`` builtin plugin now shipped as separate part in standalone
+      bzr.exe, installed to ``C:\Program Files\Bazaar\plugins`` directory, 
+      and standalone installer allows user to skip installation of this plugin.
+      (Alexander Belchenko)
+ 
+    * Restore auto-detection of plink.exe on Windows. (Dmitry Vasiliev)
 
   FEATURES:
+
+   * ``branch`` and ``checkout`` can hard-link working tree files, which is
+     faster and saves space.  (Aaron Bentley)
 
   IMPROVEMENTS:
 
   BUGFIXES:
 
+    * Disable plink's interactive prompt for password.
+      (#107593, Dmitry Vasiliev)
+
     * Include quick-start-summary.svg file to python-based installer(s)
-      for Windows (#192924, Alexander Belchenko)
+      for Windows. (#192924, Alexander Belchenko)
+
+    * ``merge --preview`` now works for merges that add or modify
+      symlinks (James Henstridge)
 
   API BREAKS:
 
+    * Support for loading plugins from zip files and
+      ``bzrlib.plugin.load_from_zip()`` function are deprecated.
+      (Alexander Belchenko)
+
   TESTING:
 
+    * The branch interface tests were invalid for branches using subtree
+      repositories by default. This has been fixed. (Robert Collins)
+
   INTERNALS:
+
+    * New module ``tools/package_mf.py`` provide custom module finder for
+      python packages (improves standard python library's modulefinder.py)
+      used by ``setup.py`` script while building standalone bzr.exe.
+      (Alexander Belchenko)
 
     * New remote method ``RemoteBzrDir.find_repositoryV2`` adding support for
       detecting external lookup support on remote repositories. This method is
@@ -48,8 +83,16 @@ IN DEVELOPMENT
       format. (Robert Collins)
 
 
-bzr 1.2rc1 (not released yet)
------------------------------
+bzr 1.2 2008-02-15
+------------------
+
+  BUG FIXES:
+
+    * Fix failing test in Launchpad plugin. (Martin Pool)
+
+
+bzr 1.2rc1 2008-02-13
+---------------------
 
   NOTES WHEN UPGRADING:
   
@@ -131,6 +174,14 @@ bzr 1.2rc1 (not released yet)
 
     * Clearer error when ``version-info --custom`` is used without
       ``--template`` (Lukáš Lalinský)
+
+    * Don't raise UnavailableFeature during test setup when medusa is not
+      available or tearDown is never called leading to nasty side effects.
+      (#137823, Vincent Ladeuil)
+
+    * If a plugin's test suite cannot be loaded, for example because of a syntax
+      error in the tests, then ``selftest`` fails, rather than just printing 
+      a warning.  (Martin Pool, #189771)
       
     * List possible values for BZR_SSH environment variable in env-variables
       help topic. (Alexander Belchenko, #181842)
@@ -142,7 +193,7 @@ bzr 1.2rc1 (not released yet)
       by the test framework, which lets bzr tests cleanly run from a normal
       unittest runner.
       (#124153, #124849, Martin Pool, Jonathan Lange)
- 
+
     * ``pull --quiet`` is now more quiet, in particular a message is no longer
       printed when the remembered pull location is used. (James Westby,
       #185907)
@@ -177,9 +228,9 @@ bzr 1.2rc1 (not released yet)
 
   TESTING:
 
-   * selftest now accepts --load-list <file> to load a test id list. This
-     speeds up running the test suite on a limited set of tests.
-     (Vincent Ladeuil)
+    * selftest now accepts --load-list <file> to load a test id list. This
+      speeds up running the test suite on a limited set of tests.
+      (Vincent Ladeuil)
 
   INTERNALS:
 
@@ -217,7 +268,7 @@ bzr 1.2rc1 (not released yet)
 
     * Record a timestamp against each mutter to the trace file, relative to the
       first import of bzrlib.  (Andrew Bennetts)
-     
+
     * ``Repository.get_data_stream`` is now deprecated in favour of
       ``Repository.get_data_stream_for_search`` which allows less network
       traffic when requesting data streams over a smart server. (Robert Collins)
