@@ -1227,6 +1227,7 @@ class TestCase(unittest.TestCase):
             'BZREMAIL': None, # may still be present in the environment
             'EMAIL': None,
             'BZR_PROGRESS_BAR': None,
+            'BZR_LOG': None,
             # SSH Agent
             'SSH_AUTH_SOCK': None,
             # Proxies
@@ -2815,21 +2816,19 @@ def test_suite(keep_only=None):
         suite.addTest(doc_suite)
 
     default_encoding = sys.getdefaultencoding()
-    for name, plugin in  [(n, p) for (n, p) in bzrlib.plugin.plugins().items()
-                          if (keep_only is None
-                              or id_filter.is_module_name_used(
-                p.module.__name__))]:
-        try:
-            plugin_suite = plugin.test_suite()
-        except ImportError, e:
-            bzrlib.trace.warning(
-                'Unable to test plugin "%s": %s', name, e)
-        else:
-            if plugin_suite is not None:
-                if keep_only is not None:
-                    plugin_suite = filter_suite_by_id_list(plugin_suite,
-                                                           id_filter)
-                suite.addTest(plugin_suite)
+    for name, plugin in bzrlib.plugin.plugins().items():
+        if keep_only is not None:
+            if not id_filter.is_module_name_used(plugin.module.__name__):
+                continue
+        plugin_suite = plugin.test_suite()
+        # We used to catch ImportError here and turn it into just a warning,
+        # but really if you don't have --no-plugins this should be a failure.
+        # mbp 20080213 - see http://bugs.launchpad.net/bugs/189771
+        if plugin_suite is not None:
+            if keep_only is not None:
+                plugin_suite = filter_suite_by_id_list(plugin_suite,
+                                                       id_filter)
+            suite.addTest(plugin_suite)
         if default_encoding != sys.getdefaultencoding():
             bzrlib.trace.warning(
                 'Plugin "%s" tried to reset default encoding to: %s', name,
@@ -2967,6 +2966,17 @@ class _SymlinkFeature(Feature):
         return 'symlinks'
 
 SymlinkFeature = _SymlinkFeature()
+
+
+class _HardlinkFeature(Feature):
+
+    def _probe(self):
+        return osutils.has_hardlinks()
+
+    def feature_name(self):
+        return 'hardlinks'
+
+HardlinkFeature = _HardlinkFeature()
 
 
 class _OsFifoFeature(Feature):
