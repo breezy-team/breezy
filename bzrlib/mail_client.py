@@ -144,15 +144,8 @@ class ExternalMailClient(MailClient):
             the attachment type.
         """
         for name in self._get_client_commands():
-            cmdline = [name]
-            if sys.platform == 'win32':
-                user_encoding = osutils.get_user_encoding()
-                if to:
-                    to = to.encode(user_encoding, 'replace')
-                if subject:
-                    subject = subject.encode(user_encoding, 'replace')
-            cmdline.extend(self._get_compose_commandline(to, subject,
-                                                         attach_path))
+            cmdline = _get_compose_8bit_commandline(name, to, subject,
+                attach_path)
             try:
                 subprocess.call(cmdline)
             except OSError, e:
@@ -172,6 +165,22 @@ class ExternalMailClient(MailClient):
         :param attach_path: The path to the attachment
         """
         raise NotImplementedError
+
+    def _get_compose_8bit_commandline(self, name, to, subject, attach_path):
+        """Wrapper around _get_compose_commandline()
+        to ensure that resulting command line is plain string.
+
+        :param  name:   name of external mail client (first argument).
+        """
+        cmdline = [name]
+        user_encoding = osutils.get_user_encoding()
+        if to:
+            to = to.encode(user_encoding, 'replace')
+        if subject:
+            subject = subject.encode(user_encoding, 'replace')
+        cmdline.extend(self._get_compose_commandline(to, subject,
+                                                     attach_path))
+        return cmdline
 
 
 class Evolution(ExternalMailClient):

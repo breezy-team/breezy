@@ -46,6 +46,20 @@ class TestThunderbird(tests.TestCase):
         self.assertEqual(['-compose', "subject='Hi there!',"
                                       "to='jrandom@example.org'"], commandline)
 
+    def test_commandline_is_8bit(self):
+        # test for bug #139318
+        tbird = mail_client.Thunderbird(None)
+        cmdline = tbird._get_compose_8bit_commandline('thunderbird',
+            u'jrandom@example.org', u'Hi there!', u'file%')
+        self.assertEqual(['thunderbird',
+            '-compose',
+            ("attachment='%s'," % urlutils.local_path_to_url('file%')) +
+            "subject='Hi there!',to='jrandom@example.org'",
+            ], cmdline)
+        for item in cmdline:
+            self.assertFalse(isinstance(item, unicode),
+                'Command-line item %r is unicode!' % item)
+
 
 class TestXDGEmail(tests.TestCase):
 
