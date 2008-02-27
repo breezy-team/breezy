@@ -253,7 +253,11 @@ class GenericProcessor(processor.ImportProcessor):
         # Update the working trees as requested and dump stats
         self._tree_count = 0
         remind_about_update = True
-        if self.params.get('trees', False):
+        if self._branch_count == 0:
+            self.note("no branches to update")
+            self.note("no working trees to update")
+            remind_about_update = False
+        elif self.params.get('trees', False):
             trees = self._get_working_trees(branches_updated)
             if trees:
                 self.note("Updating the working trees ...")
@@ -838,8 +842,8 @@ class GenericBranchUpdater(object):
         updated = []
         branch_tips, lost_heads = self._get_matching_branches()
         for br, tip in branch_tips:
-            self._update_branch(br, tip)
-            updated.append(br)
+            if self._update_branch(br, tip):
+                updated.append(br)
         return updated, lost_heads
 
     def _get_matching_branches(self):
@@ -904,8 +908,11 @@ class GenericBranchUpdater(object):
         return self.last_ref
 
     def make_branch(self, location):
-        """Create a branch in the repository."""
-        return bzrdir.BzrDir.create_branch_convenience(location)
+        """Make a branch in the repository if not already there."""
+        try:
+            return bzrdir.BzrDir.open(location).open_branch()
+        except errors.NotBranchError, ex:
+            return bzrdir.BzrDir.create_branch_convenience(location)
 
     def _get_bzr_names_from_ref_names(self, ref_names):
         """Generate Bazaar branch names from import ref names.
@@ -926,11 +933,19 @@ class GenericBranchUpdater(object):
         return bazaar_names
 
     def _update_branch(self, br, last_mark):
-        """Update a branch with last revision and tag information."""
+        """Update a branch with last revision and tag information.
+        
+        :return: whether the branch was changed or not
+        """
         last_rev_id = self.cache_mgr.revision_ids[last_mark]
         revno = len(list(self.repo.iter_reverse_revision_history(last_rev_id)))
-        br.set_last_revision_info(revno, last_rev_id)
+        existing_revno, existing_last_rev_id = br.last_revision_info()
+        changed = False
+        if revno != existing_revno or last_rev_id != existing_last_rev_id:
+            br.set_last_revision_info(revno, last_rev_id)
+            changed = True
+            note("\t branch %s now has %d revisions", br.nick, revno)
         # TODO: apply tags known in this branch
         #if self.tags:
         #    br.tags._set_tag_dict(self.tags)
-        note("\t branch %s has %d revisions", br.nick, revno)
+        return changed
