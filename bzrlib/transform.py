@@ -1344,7 +1344,7 @@ def build_tree(tree, wt, accelerator_tree=None):
 
 def _build_tree(tree, wt, accelerator_tree):
     """See build_tree."""
-    for num, _unused in enumerate(wt):
+    for num, _unused in enumerate(wt.all_file_ids()):
         if num > 0:  # more than just a root
             raise errors.WorkingTreeAlreadyPopulated(base=wt.basedir)
     file_trans_id = {}
