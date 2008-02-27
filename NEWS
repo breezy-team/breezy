@@ -49,7 +49,7 @@ IN DEVELOPMENT
     * ``merge --preview`` now works for merges that add or modify
       symlinks (James Henstridge)
 
-    * Upgrade bundled ConfigObj to version 4.5.1, which properly quotes #
+    * Upgrade bundled ConfigObj to version 4.5.2, which properly quotes #
       signs, among other small improvements. (Matt Nordhoff, #86838)
 
   API BREAKS:
