@@ -228,6 +228,8 @@ class LineBasedParser(object):
                 left -= line_len
                 found += line_len
                 lines.append(line)
+                if line.endswith('\n'):
+                    self.lineno += 1
             else:
                 left = 0
         if found != count:
