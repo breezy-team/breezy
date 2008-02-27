@@ -60,6 +60,11 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * New wrapping method ``ExternalMailClient._get_compose_8bit_commandline``
+      in ``bzrlib.mail_client`` module to force 8 bit command line 
+      for invoking external mail client via subprocess library. This method
+      makes bug #139318 testable. (Alexander Belchenko)
+
     * New module ``tools/package_mf.py`` provide custom module finder for
       python packages (improves standard python library's modulefinder.py)
       used by ``setup.py`` script while building standalone bzr.exe.
