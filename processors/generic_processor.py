@@ -33,6 +33,7 @@ from bzrlib import (
     revisiontree,
     transport,
     )
+from bzrlib.repofmt import pack_repo
 from bzrlib.trace import (
     note,
     warning,
@@ -148,6 +149,18 @@ class GenericProcessor(processor.ImportProcessor):
             loader_factory = revisionloader.ImportRevisionLoader
         self.loader = loader_factory(self.repo, self.inventory_cache_size)
 
+        # Disable autopacking if the repo format supports it.
+        # THIS IS A HACK - there is no sanctioned way of doing this yet.
+        if isinstance(self.repo, pack_repo.KnitPackRepository):
+            self._original_max_pack_count = \
+                self.repo._pack_collection._max_pack_count
+            def _max_pack_count_for_import(total_revisions):
+                return total_revisions + 1
+            self.repo._pack_collection._max_pack_count = \
+                _max_pack_count_for_import
+        else:
+            self._original_max_pack_count = None
+            
         # Create a write group. This is committed at the end of the import.
         # Checkpointing closes the current one and starts a new one.
         self.repo.start_write_group()
@@ -255,9 +268,20 @@ class GenericProcessor(processor.ImportProcessor):
             else:
                 self.warning("No working trees available to update")
         self.dump_stats()
+
+        # Finish up by telling the user what to do next.
+        # (These messages are explicitly not timestamped.)
+        if self._original_max_pack_count:
+            # We earlier disabled autopacking, creating one pack every
+            # checkpoint instead. If we checkpointed more than 10 times,
+            # Bazaar would have auto-packed. For massive repositories,
+            # this can take a *very* long time so we suggest it to the user
+            # instead of doing it implicitly.
+            if self._revision_count >= self.checkpoint_every * 10:
+                note("To further optimize how data is stored, use 'bzr pack'.")
         if remind_about_update:
-            self.note("To refresh the working tree for a branch, "
-                "use 'bzr update'")
+            note("To refresh the working tree for a branch, "
+                "use 'bzr update'.")
 
     def _get_working_trees(self, branches):
         """Get the working trees for branches in the repository."""
