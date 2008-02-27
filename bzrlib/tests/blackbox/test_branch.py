@@ -127,6 +127,20 @@ class TestBranch(ExternalBase):
         self.assertShallow(branch_tree.last_revision(),
             trunk_tree.branch.base)
 
+    def test_branch_shallow(self):
+        # We have a mainline
+        trunk_tree = self.make_branch_and_tree('mainline',
+            format='development')
+        trunk_tree.commit('mainline')
+        # and make branch from it which is shallow
+        out, err = self.run_bzr(['branch', '--shallow', 'mainline', 'newbranch'])
+        self.assertEqual('', out)
+        self.assertEqual('Created new shallow branch referring to %s.\n' %
+            trunk_tree.branch.base, err)
+        new_tree = WorkingTree.open('newbranch')
+        new_revid = new_tree.commit('new work')
+        self.assertShallow(new_revid, trunk_tree.branch.base)
+
 
 class TestRemoteBranch(TestCaseWithSFTPServer):
 

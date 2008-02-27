@@ -912,11 +912,16 @@ class cmd_branch(Command):
     _see_also = ['checkout']
     takes_args = ['from_location', 'to_location?']
     takes_options = ['revision', Option('hardlink',
-        help='Hard-link working tree files where possible.')]
+        help='Hard-link working tree files where possible.'),
+        Option('shallow',
+            help='Create a shallow branch referring to the source branch. '
+                'The new branch will depend on the availability of the source '
+                'branch for all operations.'),
+        ]
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None,
-            hardlink=False):
+            hardlink=False, shallow=False):
         from bzrlib.tag import _merge_tags_if_possible
         if revision is None:
             revision = [None]
@@ -955,7 +960,7 @@ class cmd_branch(Command):
                 dir = br_from.bzrdir.sprout(to_transport.base, revision_id,
                                             possible_transports=[to_transport],
                                             accelerator_tree=accelerator_tree,
-                                            hardlink=hardlink)
+                                            hardlink=hardlink, shallow=shallow)
                 branch = dir.open_branch()
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
@@ -968,7 +973,7 @@ class cmd_branch(Command):
                 note('Created new shallow branch referring to %s.' %
                     branch.get_stacked_on())
             except (errors.NotStacked, errors.UnstackableBranchFormat,
-                errors.UnstackableRepositoryFormat):
+                errors.UnstackableRepositoryFormat), e:
                 note('Branched %d revision(s).' % branch.revno())
         finally:
             br_from.unlock()
