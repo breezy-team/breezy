@@ -521,6 +521,11 @@ class DirectoryNotEmpty(PathError):
     _fmt = 'Directory not empty: "%(path)s"%(extra)s'
 
 
+class HardLinkNotSupported(PathError):
+
+    _fmt = 'Hard-linking "%(path)s" is not supported'
+
+
 class ReadingCompleted(InternalBzrError):
     
     _fmt = ("The MediumRequest '%(request)s' has already had finish_reading "
