@@ -261,9 +261,7 @@ class MemoryTransport(Transport):
     def _abspath(self, relpath):
         """Generate an internal absolute path."""
         relpath = urlutils.unescape(relpath)
-        if relpath == '':
-            return '/'
-        if relpath[0] == '/':
+        if relpath[:1] == '/':
             return relpath
         cwd_parts = self._cwd.split('/')
         rel_parts = relpath.split('/')

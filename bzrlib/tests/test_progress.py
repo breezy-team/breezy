@@ -30,6 +30,7 @@ from bzrlib.tests import TestCase
 
 
 class FakeStack:
+
     def __init__(self, top):
         self.__top = top
 
@@ -52,6 +53,7 @@ class _NonTTYStringIO(StringIO):
 
 
 class TestProgress(TestCase):
+
     def setUp(self):
         q = DummyProgress()
         self.top = ChildProgress(_stack=FakeStack(q))
