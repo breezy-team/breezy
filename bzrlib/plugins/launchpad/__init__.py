@@ -181,17 +181,18 @@ def test_suite():
     """Called by bzrlib to fetch tests for this plugin"""
     from unittest import TestSuite, TestLoader
     from bzrlib.plugins.launchpad import (
-        test_register, test_lp_indirect, test_lp_registration, test_account)
+         test_account, test_lp_indirect, test_lp_service, test_register,
+         )
 
     loader = TestLoader()
     suite = TestSuite()
-    for m in [
+    for module in [
         test_account,
         test_register,
         test_lp_indirect,
-        test_lp_registration,
+        test_lp_service,
         ]:
-        suite.addTests(loader.loadTestsFromModule(m))
+        suite.addTests(loader.loadTestsFromModule(module))
     return suite
 
 _launchpad_help = """Integration with Launchpad.net

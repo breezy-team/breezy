@@ -297,9 +297,6 @@ class RemoteRepository(object):
         self._reconcile_fixes_text_parents = False
         self._reconcile_backsup_inventory = False
         self.base = self.bzrdir.transport.base
-        # Can this repository be given external locations to lookup additional
-        # data.
-        self.supports_external_lookups = False
         # Additional places to query for data.
         self._fallback_repositories = []
 
