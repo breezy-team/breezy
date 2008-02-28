@@ -33,6 +33,16 @@ class _SmartClient(object):
     def get_smart_medium(self):
         return self._shared_connection.connection
 
+    def _build_client_protocol(self):
+        medium = self.get_smart_medium()
+        version = medium.protocol_version()
+        request = medium.get_request()
+        if version == 2:
+            smart_protocol = protocol.SmartClientRequestProtocolTwo(request)
+        else:
+            smart_protocol = protocol.SmartClientRequestProtocolOne(request)
+        return smart_protocol
+
     def call(self, method, *args):
         """Call a method on the remote server."""
         result, protocol = self.call_expecting_body(method, *args)
@@ -47,8 +57,7 @@ class _SmartClient(object):
             result, smart_protocol = smart_client.call_expecting_body(...)
             body = smart_protocol.read_body_bytes()
         """
-        request = self.get_smart_medium().get_request()
-        smart_protocol = protocol.SmartClientRequestProtocolTwo(request)
+        smart_protocol = self._build_client_protocol()
         smart_protocol.call(method, *args)
         return smart_protocol.read_response_tuple(expect_body=True), smart_protocol
 
@@ -61,8 +70,7 @@ class _SmartClient(object):
                 raise TypeError('args must be byte strings, not %r' % (args,))
         if type(body) is not str:
             raise TypeError('body must be byte string, not %r' % (body,))
-        request = self.get_smart_medium().get_request()
-        smart_protocol = protocol.SmartClientRequestProtocolOne(request)
+        smart_protocol = self._build_client_protocol()
         smart_protocol.call_with_body_bytes((method, ) + args, body)
         return smart_protocol.read_response_tuple()
 
@@ -75,8 +83,7 @@ class _SmartClient(object):
                 raise TypeError('args must be byte strings, not %r' % (args,))
         if type(body) is not str:
             raise TypeError('body must be byte string, not %r' % (body,))
-        request = self.get_smart_medium().get_request()
-        smart_protocol = protocol.SmartClientRequestProtocolTwo(request)
+        smart_protocol = self._build_client_protocol()
         smart_protocol.call_with_body_bytes((method, ) + args, body)
         return smart_protocol.read_response_tuple(expect_body=True), smart_protocol
 
