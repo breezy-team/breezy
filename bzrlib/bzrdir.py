@@ -909,6 +909,8 @@ class BzrDir(object):
             content is different.
         :param hardlink: If true, hard-link files from accelerator_tree,
             where possible.
+        :param shallow: If true, create a shallow branch referring to the
+            location of this control directory.
         """
         target_transport = get_transport(url, possible_transports)
         target_transport.ensure_base()
@@ -1145,8 +1147,11 @@ class BzrDirPreSplitOut(BzrDir):
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
                possible_transports=None, accelerator_tree=None,
-               hardlink=False):
+               hardlink=False, shallow=False):
         """See BzrDir.sprout()."""
+        if shallow:
+            raise errors.UnstackableBranchFormat(
+                self._format, self.root_transport.base)
         from bzrlib.workingtree import WorkingTreeFormat2
         self._make_tail(url)
         result = self._format._initialize_for_clone(url)
