@@ -751,7 +751,8 @@ class SvnCheckout(BzrDir):
         return SvnWorkingTree(self, self.local_path, self.open_branch())
 
     def sprout(self, url, revision_id=None, force_new_repo=False, 
-               recurse='down', possible_transports=None, accelerator_tree=None):
+               recurse='down', possible_transports=None, accelerator_tree=None,
+               hardlink=False):
         # FIXME: honor force_new_repo
         # FIXME: Use recurse
         result = get_rich_root_format().initialize(url)
@@ -759,7 +760,7 @@ class SvnCheckout(BzrDir):
         repo.clone(result, revision_id)
         branch = self.open_branch()
         branch.sprout(result, revision_id)
-        result.create_workingtree()
+        result.create_workingtree(hardlink=hardlink)
         return result
 
     def open_repository(self):
@@ -777,7 +778,7 @@ class SvnCheckout(BzrDir):
             format = BzrDirFormat.get_default_format()
         return not isinstance(self._format, format.__class__)
 
-    def create_workingtree(self, revision_id=None):
+    def create_workingtree(self, revision_id=None, hardlink=None):
         """See BzrDir.create_workingtree().
 
         Not implemented for Subversion because having a .svn directory
