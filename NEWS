@@ -60,6 +60,10 @@ IN DEVELOPMENT
 
   TESTING:
 
+    * The branch interface tests were invalid for branches using rich-root
+      repositories because the empty string is not a valid file-id.
+      (Robert Collins)
+
   INTERNALS:
 
     * New module ``tools/package_mf.py`` provide custom module finder for
