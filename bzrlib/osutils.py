@@ -149,7 +149,7 @@ def file_kind(f, _lstat=os.lstat, _mapper=file_kind_from_stat_mode):
     try:
         return _mapper(_lstat(f).st_mode)
     except OSError, e:
-        if getattr(e, 'errno', None) == errno.ENOENT:
+        if getattr(e, 'errno', None) in (errno.ENOENT, errno.ENOTDIR):
             raise errors.NoSuchFile(f)
         raise
 
@@ -670,8 +670,7 @@ def format_date(t, offset=0, timezone='original', date_fmt=None,
         tt = time.localtime(t)
         offset = local_time_offset(t)
     else:
-        raise errors.BzrError("unsupported timezone format %r" % timezone,
-                              ['options are "utc", "original", "local"'])
+        raise errors.UnsupportedTimezoneFormat(timezone)
     if date_fmt is None:
         date_fmt = "%a %Y-%m-%d %H:%M:%S"
     if show_offset:

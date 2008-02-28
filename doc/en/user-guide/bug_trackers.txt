@@ -3,8 +3,8 @@ Integrating Bazaar with bug trackers
 
 Bazaar has a facility that allows you to associate a commit with a bug
 in the project's bug tracker. Other tools (or hooks) can then use this
-information to link between the commit and the bug, or to automatically
-mark the bug closed in the branches that contain the commit.
+information to generate hyperlinks between the commit and the bug, or to
+automatically mark the bug closed in the branches that contain the commit.
 
 Associating commits and bugs
 ----------------------------
@@ -34,7 +34,7 @@ the bug tracker when changes are pushed to a central location
 appropriate for your project's workflow.
 
 Note: This second processing stage is part of the integration provided
-by Lauchpad when it scans external or hosted branches.
+by Launchpad when it scans external or hosted branches.
 
 Making corrections
 ------------------
@@ -52,3 +52,5 @@ Of course, ``bzr uncommit`` can always be used to undo the last commit in
 order to make it again with the correct options. This is commonly done
 to correct a bad commit message and it equally applies to correcting
 metadata recorded (via ``--fixes`` for example) on the last commit.
+
+Note: ``uncommit`` is best done before incorrect revisions become public.

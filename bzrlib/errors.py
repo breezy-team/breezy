@@ -1870,6 +1870,14 @@ class NoDiffFound(BzrError):
         BzrError.__init__(self, path)
 
 
+class ExecutableMissing(BzrError):
+
+    _fmt = "%(exe_name)s could not be found on this machine"
+
+    def __init__(self, exe_name):
+        BzrError.__init__(self, exe_name=exe_name)
+
+
 class NoDiff(BzrError):
 
     _fmt = "Diff is not installed on this machine: %(msg)s"
@@ -2515,3 +2523,12 @@ class UnableCreateSymlink(BzrError):
                 path_str = repr(path)
             path_str += ' '
         self.path_str = path_str
+
+
+class UnsupportedTimezoneFormat(BzrError):
+
+    _fmt = ('Unsupported timezone format "%(timezone)s", '
+            'options are "utc", "original", "local".')
+
+    def __init__(self, timezone):
+        self.timezone = timezone

@@ -1,0 +1,33 @@
+Understanding Revision Numbers
+==============================
+
+All revisions in the mainline of a branch will have a simple increasing
+integer. (First commit gets 1, 10th commit gets 10, etc.) This makes them
+fairly natural to use when you want to say "grab the 10th revision from my
+branch", or "fixed in revision 3050".
+
+For revisions which have been merged into a branch, a dotted notation is
+used (eg, 3112.1.5). Dotted revision numbers have three numbers. The first
+number indicates what mainline revision change is derived from. The second
+number is the branch counter. There can be many branches derived from the
+same revision, so they all get a unique number. The third number is the
+number of revisions since the branch started. For example, 3112.1.5 is the
+first branch from revision 3112, the fifth revision on that branch.
+
+Revisions are numbered in a stable way, such that if two branches have the
+same revision in their mainline, all revisions in the ancestry of that
+revision will have the same revision numbers. (So if Alice and Bob's
+branches agree on revision 10, they will agree on all revisions before
+that.) Future merges will not change revision numbers. However doing
+``bzr pull`` can change revision numbers, because it changes the
+mainline revisions.
+
+
+bzr versions < 1.2
+------------------
+Versions prior to bzr 1.2 used a slightly different algorithm. Some nested
+branches would get extra numbers (such as 1.1.1.1.1) rather than the
+simpler 3-number system.
+
+..
+   vim: ft=rst tw=74 ai

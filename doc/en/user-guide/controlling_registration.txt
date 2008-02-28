@@ -16,7 +16,7 @@ Bazaar has default rules for deciding which files are
 interesting and which ones are not. You can tune those rules as
 explained in `Ignoring files`_ below.
 
-Unless many other VCS tools, Bazaar tracks directories as first class
+Unlike many other VCS tools, Bazaar tracks directories as first class
 items. As a consequence, empty directories are correctly supported -
 you don't need to create a dummy file inside a directory just to
 ensure it gets tracked and included in project exports.

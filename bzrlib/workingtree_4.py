@@ -494,6 +494,7 @@ class WorkingTree4(WorkingTree3):
 
             Note: The caller is expected to take a read-lock before calling this.
             """
+            self._must_be_locked()
             if not path:
                 path = self.id2path(file_id)
             mode = os.lstat(self.abspath(path)).st_mode

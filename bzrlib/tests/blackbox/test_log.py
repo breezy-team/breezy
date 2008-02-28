@@ -80,6 +80,12 @@ class TestLog(ExternalBase):
         self.run_bzr_error('bzr: ERROR: Logging revision 0 is invalid.',
                            ['log', '-r-2..0'])
 
+    def test_log_unsupported_timezone(self):
+        self._prepare()
+        self.run_bzr_error('bzr: ERROR: Unsupported timezone format "foo", '
+                           'options are "utc", "original", "local".',
+                           ['log', '--timezone', 'foo'])
+
     def test_log_negative_begin_revspec_full_log(self):
         self._prepare()
         log = self.run_bzr("log -r -3..")[0]
@@ -216,7 +222,7 @@ message:
     message:
       merge branch 2
         ------------------------------------------------------------
-        revno: 1.1.1.1.1
+        revno: 1.2.1
         committer: Lorem Ipsum <test@example.com>
         branch nick: smallerchild
         timestamp: Just now
@@ -252,7 +258,7 @@ timestamp: Just now
 message:
   merge branch 2
     ------------------------------------------------------------
-    revno: 1.1.1.1.1
+    revno: 1.2.1
     committer: Lorem Ipsum <test@example.com>
     branch nick: smallerchild
     timestamp: Just now
@@ -274,7 +280,7 @@ timestamp: Just now
 message:
   merge branch 2
     ------------------------------------------------------------
-    revno: 1.1.1.1.1
+    revno: 1.2.1
     committer: Lorem Ipsum <test@example.com>
     branch nick: smallerchild
     timestamp: Just now

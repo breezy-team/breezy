@@ -20,7 +20,7 @@ import os
 
 from bzrlib import branch, errors
 from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
-from bzrlib.tests.HttpServer import HttpServer
+from bzrlib.tests.http_server import HttpServer
 from bzrlib.transport.local import LocalURLServer
 from bzrlib.transport.chroot import TestingChrootServer
 
