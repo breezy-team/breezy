@@ -862,13 +862,13 @@ class SmartClientRequestProtocolThree(_ProtocolThreeBase, SmartClientRequestProt
     request_marker = REQUEST_VERSION_THREE
 
     def __init__(self, client_medium_request):
-        _StatefulDecoder.__init__(self)
+        from bzrlib.smart.message import MessageHandler
+        _ProtocolThreeBase.__init__(self, MessageHandler())
         SmartClientRequestProtocolTwo.__init__(self, client_medium_request)
         # Initial state
         self._in_buffer = ''
         self.state_accept = self._state_accept_expecting_headers
-        from bzrlib.smart.message import MessageHandler
-        self.response_handler = self.request_handler = MessageHandler()
+        self.response_handler = self.request_handler = self.message_handler
 
     def _state_accept_expecting_response_status(self, bytes):
         self._in_buffer += bytes
