@@ -301,6 +301,9 @@ class OldSmartClient(object):
             input_file, output_file)
         return medium.SmartClientStreamMediumRequest(client_medium)
 
+    def protocol_version(self):
+        return 1
+
 
 class OldServerTransport(object):
     """A fake transport for test_old_server that reports it's smart server
