@@ -293,7 +293,7 @@ class TestPush(ExternalBase):
         self.assertEqual('', out)
         self.assertEqual('Created new shallow branch referring to %s.\n' %
             trunk_tree.branch.base, err)
-        self.assertPublished(branch_tree.last_revision(), trunk_public_url)
+        self.assertPublished(branch_tree.last_revision(), trunk_tree.branch.base)
 
     def test_push_new_branch_shallow_uses_parent_public(self):
         """Pushing a new branch with --shallow creates a stacked branch."""
