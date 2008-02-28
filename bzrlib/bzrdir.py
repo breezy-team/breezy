@@ -2399,9 +2399,8 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
             # no smart server, so not a branch for this format type.
             raise errors.NotBranchError(path=transport.base)
         else:
-            # Send a 'hello' request in protocol version one, and decline to
-            # open it if the server doesn't support our required version (2) so
-            # that the VFS-based transport will do it.
+            # Decline to open it if the server doesn't support our required
+            # version (2) so that the VFS-based transport will do it.
             server_version = medium.protocol_version()
             if server_version != 2:
                 raise errors.NotBranchError(path=transport.base)

@@ -377,10 +377,8 @@ class SmartClientMedium(object):
         """Find out the best protocol version to use."""
         if self._protocol_version is None:
             medium_request = self.get_request()
-            # Always use v1 protocol here, for maximum backwards compatibility.
-            # XXX: what about forward compatibility?  If the server can do v2
-            # but not v1, we should be able to use it, but this code would
-            # fail.
+            # Send a 'hello' request in protocol version one, for maximum
+            # backwards compatibility.
             client_protocol = SmartClientRequestProtocolOne(medium_request)
             self._protocol_version = client_protocol.query_version()
         return self._protocol_version
