@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import collections
 from cStringIO import StringIO
 
 from bzrlib import errors
@@ -96,7 +97,7 @@ class ConventionalResponseHandler(MessageHandler):
         MessageHandler.__init__(self)
         self.status = None
         self.args = None
-        self._bytes_parts = []
+        self._bytes_parts = collections.deque()
         self._body = None
         self.finished_reading = False
 
@@ -170,6 +171,13 @@ class ConventionalResponseHandler(MessageHandler):
             self._body = StringIO(''.join(self._bytes_parts))
             self._bytes_parts = None
         return self._body.read(count)
+
+    def read_streamed_body(self):
+        # XXX: this doesn't implement error handling for interrupted streams.
+        while not self.finished_reading:
+            while self._bytes_parts:
+                yield self._bytes_parts.popleft()
+            self._read_more()
 
     def cancel_read_body(self):
         self._wait_for_response_end()
