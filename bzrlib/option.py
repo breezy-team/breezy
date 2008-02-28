@@ -17,22 +17,21 @@
 # TODO: For things like --diff-prefix, we want a way to customize the display
 # of the option argument.
 
+import optparse
 import re
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import optparse
-
 from bzrlib import (
     errors,
-    log,
-    registry,
     revisionspec,
-    symbol_versioning,
     )
 """)
-from bzrlib.trace import warning
 
+from bzrlib import (
+    log,
+    registry,
+    )
 
 def _parse_revision_str(revstr):
     """This handles a revision string -> revno.
