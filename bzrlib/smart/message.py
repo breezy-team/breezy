@@ -154,8 +154,8 @@ class ConventionalResponseHandler(MessageHandler):
         self._wait_for_response_args()
         if not expect_body:
             self._wait_for_response_end()
-        if self.status == 'E':
-            xxx_translate_error()
+        #if self.status == 'E':
+        #    xxx_translate_error() # XXX
         return tuple(self.args)
 
     def read_body_bytes(self, count=-1):
