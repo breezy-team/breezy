@@ -1291,7 +1291,7 @@ class TreeTransform(TreeTransformBase):
                     if trans_id in self._new_reference_revision:
                         new_entry = inventory.TreeReference(
                             self.final_file_id(trans_id),
-                            self._new_name[trans_id], 
+                            self._new_name[trans_id],
                             self.final_file_id(self._new_parent[trans_id]),
                             None, self._new_reference_revision[trans_id])
                     else:
