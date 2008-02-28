@@ -360,7 +360,7 @@ def _win32_rename(old, new):
 
 
 def _mac_getcwd():
-    return unicodedata.normalize('NFKC', os.getcwdu())
+    return unicodedata.normalize('NFC', os.getcwdu())
 
 
 # Default is to just use the python builtins, but these can be rebound on
@@ -849,6 +849,13 @@ def has_symlinks():
         return False
 
 
+def has_hardlinks():
+    if getattr(os, 'link', None) is not None:
+        return True
+    else:
+        return False
+
+
 def contains_whitespace(s):
     """True if there are any whitespace characters in s."""
     # string.whitespace can include '\xa0' in certain locales, because it is
@@ -1014,20 +1021,20 @@ def _accessible_normalized_filename(path):
     On platforms where the system does not normalize filenames 
     (Windows, Linux), you have to access a file by its exact path.
 
-    Internally, bzr only supports NFC/NFKC normalization, since that is 
+    Internally, bzr only supports NFC normalization, since that is 
     the standard for XML documents.
 
     So return the normalized path, and a flag indicating if the file
     can be accessed by that path.
     """
 
-    return unicodedata.normalize('NFKC', unicode(path)), True
+    return unicodedata.normalize('NFC', unicode(path)), True
 
 
 def _inaccessible_normalized_filename(path):
     __doc__ = _accessible_normalized_filename.__doc__
 
-    normalized = unicodedata.normalize('NFKC', unicode(path))
+    normalized = unicodedata.normalize('NFC', unicode(path))
     return normalized, normalized == path
 
 

@@ -473,30 +473,6 @@ class HeadsCache(object):
             return set(heads)
 
 
-class HeadsCache(object):
-    """A cache of results for graph heads calls."""
-
-    def __init__(self, graph):
-        self.graph = graph
-        self._heads = {}
-
-    def heads(self, keys):
-        """Return the heads of keys.
-
-        :see also: Graph.heads.
-        :param keys: The keys to calculate heads for.
-        :return: A set containing the heads, which may be mutated without
-            affecting future lookups.
-        """
-        keys = frozenset(keys)
-        try:
-            return set(self._heads[keys])
-        except KeyError:
-            heads = self.graph.heads(keys)
-            self._heads[keys] = heads
-            return set(heads)
-
-
 class _BreadthFirstSearcher(object):
     """Parallel search breadth-first the ancestry of revisions.
 
@@ -538,7 +514,7 @@ class _BreadthFirstSearcher(object):
             # exclude keys for them. However, while we could have a second
             # look-ahead result buffer and shuffle things around, this method
             # is typically only called once per search - when memoising the
-            # results of the search.
+            # results of the search. 
             found, ghosts, next, parents = self._do_query(self._next_query)
             # pretend we didn't query: perhaps we should tweak _do_query to be
             # entirely stateless?

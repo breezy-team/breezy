@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com> and others
 #
 # This program is free software; you can redistribute it and/or modify
@@ -44,6 +44,7 @@ __all__ = ['deprecated_function',
            'one_zero',
            'one_one',
            'one_two',
+           'one_three',
            ]
 
 from warnings import warn
@@ -69,6 +70,7 @@ one_zero = "%s was deprecated in version 1.0."
 zero_ninetythree = one_zero # Maintained for backwards compatibility
 one_one = "%s was deprecated in version 1.1."
 one_two = "%s was deprecated in version 1.2."
+one_three = "%s was deprecated in version 1.3."
 
 def set_warning_method(method):
     """Set the warning method to be used by this module.

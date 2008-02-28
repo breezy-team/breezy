@@ -488,6 +488,8 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
                 mutter('                  (to %s)', self._request._medium._path)
             mutter('              %d bytes', len(body))
             self._request_start_time = time.time()
+            if 'hpssdetail' in debug.debug_flags:
+                mutter('hpss body content: %s', body)
         self._write_args(args)
         bytes = self._encode_bulk_data(body)
         self._request.accept_bytes(bytes)

@@ -17,6 +17,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from cStringIO import StringIO
+import errno
 import os
 import sys
 
@@ -884,3 +885,24 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         os.unlink('tree/a')
         self.assertEqual(set(['a-id', 'b-id', tree.get_root_id()]),
                          tree.all_file_ids())
+
+    def test_sprout_hardlink(self):
+        source = self.make_branch_and_tree('source')
+        self.build_tree(['source/file'])
+        source.add('file')
+        source.commit('added file')
+        def fake_link(source, target):
+            raise OSError(errno.EPERM, 'Operation not permitted')
+        real_os_link = os.link
+        os.link = fake_link
+        try:
+            # Hard-link support is optional, so supplying hardlink=True may
+            # or may not raise an exception.  But if it does, it must be
+            # HardLinkNotSupported
+            try:
+                source.bzrdir.sprout('target', accelerator_tree=source,
+                                     hardlink=True)
+            except errors.HardLinkNotSupported:
+                pass
+        finally:
+            os.link = real_os_link
