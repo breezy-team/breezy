@@ -19,6 +19,7 @@ from cStringIO import StringIO
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+from itertools import chain
 from warnings import warn
 
 import bzrlib
@@ -1883,10 +1884,14 @@ class BzrBranch5(BzrBranch):
 
 class BzrBranch7(BzrBranch5):
 
+    def _get_fallback_repository(self, url):
+        """Get the repository we fallback to at url."""
+        return bzrdir.BzrDir.open(url).open_branch().repository
+
     def _activate_fallback_location(self, url):
         """Activate the branch/repository from url as a fallback repository."""
-        new_repo = bzrdir.BzrDir.open(url).open_branch().repository
-        self.repository.add_fallback_repository(new_repo)
+        self.repository.add_fallback_repository(
+            self._get_fallback_repository(url))
 
     def _open_hook(self):
         try:
@@ -2028,11 +2033,22 @@ class BzrBranch7(BzrBranch5):
     def set_stacked_on(self, url):
         self._check_stackable_repo()
         if not url:
+            try:
+                old_url = self.get_stacked_on()
+            except (errors.NotStacked, errors.UnstackableBranchFormat,
+                errors.UnstackableRepositoryFormat):
+                return
             url = ''
             # repositories don't offer an interface to remove fallback
             # repositories today; take the conceptually simpler option and just
             # reopen it.
             self.repository = self.bzrdir.find_repository()
+            # for every revision reference the branch has, ensure it is pulled
+            # in.
+            source_repository = self._get_fallback_repository(old_url)
+            for revision_id in chain([self.last_revision()],
+                self.tags.get_reverse_tag_dict()):
+                self.repository.fetch(source_repository, revision_id, find_ghosts=True)
         else:
             self._activate_fallback_location(url)
         # write this out after the repository is stacked to avoid setting a

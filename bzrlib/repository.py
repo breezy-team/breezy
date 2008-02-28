@@ -18,6 +18,7 @@ from cStringIO import StringIO
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+from itertools import chain
 import re
 import time
 
@@ -2767,7 +2768,9 @@ class InterPackRepo(InterSameDataRepository):
             # to fetch from all packs to one without
             # inventory parsing etc, IFF nothing to be copied is in the target.
             # till then:
-            revision_ids = self.source.all_revision_ids()
+            source_revision_ids = frozenset(self.source.all_revision_ids())
+            revision_ids = source_revision_ids - \
+                frozenset(self.target.get_parent_map(source_revision_ids))
             # implementing the TODO will involve:
             # - detecting when all of a pack is selected
             # - avoiding as much as possible pre-selection, so the
@@ -2807,17 +2810,23 @@ class InterPackRepo(InterSameDataRepository):
         if not find_ghosts and revision_id is not None:
             return self._walk_to_common_revisions([revision_id])
         elif revision_id is not None:
-            source_ids = self.source.get_ancestry(revision_id)
-            assert source_ids[0] is None
-            source_ids.pop(0)
+            # Find ghosts: search for revisions pointing from one repository to
+            # the other, and viceversa, anywhere in the history of revision_id.
+            graph = self.target.get_graph(other_repository=self.source)
+            found_ids = frozenset(chain(*graph._make_breadth_first_searcher(
+                [revision_id])))
+            # Double query here: should be able to avoid this by changing the
+            # graph api further.
+            result_set = found_ids - frozenset(
+                self.target.get_graph().get_parent_map(found_ids))
         else:
             source_ids = self.source.all_revision_ids()
-        # source_ids is the worst possible case we may need to pull.
-        # now we want to filter source_ids against what we actually
-        # have in target, but don't try to check for existence where we know
-        # we do not have a revision as that would be pointless.
-        target_ids = set(self.target.all_revision_ids())
-        result_set = set(source_ids).difference(target_ids)
+            # source_ids is the worst possible case we may need to pull.
+            # now we want to filter source_ids against what we actually
+            # have in target, but don't try to check for existence where we know
+            # we do not have a revision as that would be pointless.
+            target_ids = set(self.target.all_revision_ids())
+            result_set = set(source_ids).difference(target_ids)
         return self.source.revision_ids_to_search_result(result_set)
 
 
