@@ -260,6 +260,7 @@ class _StatefulDecoder(object):
         self.finished_reading = False
         self.unused_data = ''
         self.bytes_left = None
+        self._number_needed_bytes = None
 
     def accept_bytes(self, bytes):
         """Decode as much of bytes as possible.
@@ -272,6 +273,7 @@ class _StatefulDecoder(object):
         """
         # accept_bytes is allowed to change the state
         current_state = self.state_accept
+        self._number_needed_bytes = None
         try:
             pr('invoking state_accept %s' %
                     (self.state_accept.im_func.__name__[len('_state_accept_'):],))
@@ -281,9 +283,9 @@ class _StatefulDecoder(object):
                 pr('invoking state_accept %s' %
                         (self.state_accept.im_func.__name__[len('_state_accept_'):],))
                 self.state_accept('')
-        except _NeedMoreBytes:
-            raise
-            #pass
+        except _NeedMoreBytes, e:
+            #print '(need more bytes: %r)' % e.count
+            self._number_needed_bytes = e.count
 
 
 class ChunkedBodyDecoder(_StatefulDecoder):
@@ -725,9 +727,6 @@ class _ProtocolThreeBase(_StatefulDecoder):
         self._number_needed_bytes = None
         try:
             _StatefulDecoder.accept_bytes(self, bytes)
-        except _NeedMoreBytes, e:
-            #print '(need more bytes: %r)' % e.count
-            self._number_needed_bytes = e.count
         except KeyboardInterrupt:
             raise
         except Exception, exception:
