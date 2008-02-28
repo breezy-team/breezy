@@ -46,6 +46,8 @@ IN DEVELOPMENT
     * Include quick-start-summary.svg file to python-based installer(s)
       for Windows. (#192924, Alexander Belchenko)
 
+    * Make version-info --custom imply --all. (#195560, James Westby)
+
     * ``merge --preview`` now works for merges that add or modify
       symlinks (James Henstridge)
 
