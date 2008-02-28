@@ -8,8 +8,8 @@
 
 
 :Authors: `Michael Foord`_, `Nicola Larosa`_, `Mark Andrews`_
-:Version: Validate 0.2.3
-:Date: 2007/02/04
+:Version: Validate 0.3.1
+:Date: 2008/02/05
 :Homepage: `Validate Homepage`_
 :License: `BSD License`_
 :Support: `Mailing List`_
@@ -17,13 +17,14 @@
 .. _Mailing List: http://lists.sourceforge.net/lists/listinfo/configobj-develop
 .. _Michael Foord: fuzzyman@voidspace.org.uk
 .. _Nicola Larosa: nico@teknico.net
-.. _Mark Andrews: mark@la-la.com
 .. _This Document:
 .. _Validate Homepage: http://www.voidspace.org.uk/python/validate.html
 .. _BSD License: http://www.voidspace.org.uk/python/license.shtml
 
 
 .. contents:: Validate Manual
+.. sectnum::
+
 
 Introduction
 ============
@@ -37,7 +38,7 @@ validation checks that the data is correct *and* converts it to the expected
 type.
 
 Checks are also strings, and are easy to write. One generic system can be used
-to validate information from different sources, via a single consistent
+to validate information from different sources via a single consistent
 mechanism.
 
 Checks look like function calls, and map to function calls. They can include
@@ -63,12 +64,14 @@ For support and bug reports please use the ConfigObj `Mailing List`_.
 
 .. _ConfigObj: http://www.voidspace.org.uk/python/configobj.html
 
+
 Downloading
 ===========
 
-The current version is **0.2.3**, dated 4th February 2007. 
+The current version is **0.3.1**, dated 5th February 2008. 
 
 You can get obtain validate in the following ways :
+
 
 Files
 -----
@@ -83,15 +86,14 @@ Files
     
 * The latest development version can be obtained from the `Subversion Repository`_.
 
+
 Documentation
 -------------
 
-*configobj.zip* contains `this document`_ and full `API Docs`_, generated 
-automatically by EpyDoc_.
+*configobj.zip* contains `this document`_.
 
 * You can view `this document`_ online as the `Validate Homepage`_.
 
-* You can also browse the `API Docs`_ online.
 
 Pythonutils
 -----------
@@ -101,12 +103,10 @@ various other useful helper modules, and is required by many of the `Voidspace
 Python Projects`_.
 
 .. _configobj.py: http://www.voidspace.org.uk/cgi-bin/voidspace/downman.py?file=configobj.py
-.. _configobj.zip: http://www.voidspace.org.uk/cgi-bin/voidspace/downman.py?file=configobj-4.4.0.zip
+.. _configobj.zip: http://www.voidspace.org.uk/cgi-bin/voidspace/downman.py?file=configobj-4.5.1.zip
 .. _validate.py: http://www.voidspace.org.uk/cgi-bin/voidspace/downman.py?file=validate.py
-.. _API Docs: http://www.voidspace.org.uk/python/configobj-api/
-.. _Subversion Repository: http://svn.rest2web.python-hosting.com/branches/configobj4/
+.. _Subversion Repository: http://svn.pythonutils.python-hosting.com/trunk/pythonutils/
 .. _Sourceforge: http://sourceforge.net/projects/configobj
-.. _EpyDoc: http://epydoc.sourceforge.net
 .. _pythonutils: http://www.voidspace.org.uk/python/pythonutils.html
 .. _Voidspace Python Projects: http://www.voidspace.org.uk/python
 .. _validate: http://www.voidspace.org.uk/python/validate.html
@@ -159,7 +159,10 @@ The full set of standard checks are :
             dotted-quad string, i.e. '1.2.3.4'.
 
 :'list': matches any list. Takes optional keyword args 'min', and 'max' to
-         specify min and max sizes of the list.
+         specify min and max sizes of the list. The list checks always 
+         return a list.
+         
+:'tuple': matches any list. This check returns a tuple rather than a list.
 
 :'int_list': Matches a list of integers. Takes the same arguments as list.
 
@@ -265,6 +268,7 @@ original function name).
 Dictionary keys/functions you pass in can override the built-in ones if you
 want.
 
+
 Adding functions
 ----------------
 
@@ -287,6 +291,7 @@ same effect as the following code :
 ``vtor.functions``is just a dictionary that maps names to functions, so we
 could also have called ``vtor.functions.update(fdict)``.
 
+
 Writing the check
 -----------------
 
@@ -300,6 +305,7 @@ If you're using ``Validator`` from ConfigObj, then your checks will look like
     keyword = int_list(max=6)
 
 but the check part will be identical .
+
 
 The check method
 ----------------
@@ -352,8 +358,8 @@ part) :
     check1 = 'integer(default=50)'
     check2 = 'option("val 1", "val 2", "val 3", default="val 1")'
 
-    assert vtor.check('', check1, missing=True) == 50
-    assert vtor.check('', check2, missing=True) == "val 1"
+    assert vtor.check(check1, '', missing=True) == 50
+    assert vtor.check(check2, '', missing=True) == "val 1"
 
     {-coloring}
 
@@ -368,6 +374,12 @@ that this check contains no useful value when missing, i.e. the value is
 optional, and may be omitted without harm.
 
 
+.. note:: 
+
+    As of version 0.3.0, if you specify ``default='None'`` (note the quote marks
+    around ``None``) then it will be interpreted as the string ``'None'``.
+
+
 List Values
 ~~~~~~~~~~~
 
@@ -380,6 +392,20 @@ specify that keyword arguments are lists. This includes the ``default`` value.
 This makes checks look something like : ::
 
     checkname(default=list('val1', 'val2', 'val3'))
+
+
+get_default_value
+-----------------
+
+``Validator`` instances have a ``get_default_value`` method. It takes a ``check`` string 
+(the same string you would pass to the ``check`` method) and returns the default value,
+converted to the right type. If the check doesn't define a default value then this method
+raises a ``KeyError``.
+
+If the ``check`` has been seen before then it will have been parsed and cached already, 
+so this method is not expensive to call (however the conversion is done each time).
+
+
 
 Validator Exceptions
 ====================
@@ -439,6 +465,7 @@ they are more appropriate.
 * ``VdtValueTooShortError``
 * ``VdtValueTooLongError``
 
+
 Writing check functions
 =======================
 
@@ -461,6 +488,7 @@ If the check passes then it should return the value (possibly converted to the
 right type).
 
 And that's it !
+
 
 Example
 -------
@@ -550,12 +578,27 @@ If you are only using validate from ConfigObj then the error type (*TooBig*,
 If you are using validate in another circumstance you may want to create your 
 own subclasses of ``ValidateError``, that convey more specific information.
 
+
+Known Issues
+============
+
+The following parses and then blows up. The resulting error message
+is confusing:
+
+    ``checkname(default=list(1, 2, 3, 4)``
+    
+This is because it parses as: ``checkname(default="list(1", 2, 3, 4)``.
+That isn't actually unreasonable, but the error message won't help you
+work out what has happened.
+    
+
 TODO
 ====
 
 * A regex check function ?
 * A timestamp check function ? (Using the ``parse`` function from ``DateUtil``).
 * Allow triple quotes ? (getting a bit heavy for a regex)
+
 
 ISSUES
 ======
@@ -568,8 +611,41 @@ ISSUES
 If we could pull tuples out of arguments, it would be easier
 to specify arguments for 'mixed_lists'.
 
+
 CHANGELOG
 =========
+
+
+2008/02/05 - Version 0.3.1
+--------------------------
+
+BUGFIX: Unicode checks no longer broken.
+
+
+2008/02/05 - Version 0.3.0
+--------------------------
+
+Improved performance with a parse cache.
+
+New ``get_default_value`` method. Given a check it returns the default
+value (converted to the correct type) or raises a ``KeyError`` if the
+check doesn't specify a default.
+
+Added 'tuple' check and corresponding 'is_tuple' function (which always returns a tuple).
+
+BUGFIX: A quoted 'None' as a default value is no longer treated as None,
+but as the string 'None'.
+
+BUGFIX: We weren't unquoting keyword arguments of length two, so an
+empty string didn't work as a default.
+
+BUGFIX: Strings no longer pass the 'is_list' check. Additionally, the
+list checks always return lists.
+
+A couple of documentation bug fixes.
+
+Removed CHANGELOG from module.
+
 
 2007/02/04      Version 0.2.3
 -----------------------------
@@ -620,13 +696,14 @@ Does type conversion as well.
 -----------------------------
 
 Initial version developed by `Michael Foord`_
-and `Mark Andrews`_
+and Mark Andrews.
 
 .. note::
 
     Rendering this document with docutils also needs the
     textmacros module and the PySrc CSS stuff. See
     http://www.voidspace.org.uk/python/firedrop2/textmacros.shtml
+
 
 .. raw:: html
 
@@ -649,19 +726,6 @@ and `Mark Andrews`_
                 <img src="images/pythonbanner.gif" width="468" height="60" 
                 alt="Python on Voidspace" border="0" />
             </a>
-        </p>
-        <p>
-            <a href="http://sourceforge.net/donate/index.php?group_id=123265">
-                <img src="http://images.sourceforge.net/images/project-support.jpg" width="88" height="32" border="0" alt="Support This Project" /> 
-            </a>
-        </p>
-        <p>
-            <script src="http://www.google-analytics.com/urchin.js" type="text/javascript">
-            </script>
-            <script type="text/javascript">
-            _uacct = "UA-203625-1";
-            urchinTracker();
-            </script>
         </p>
     </div>
 

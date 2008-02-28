@@ -28,18 +28,29 @@ IN DEVELOPMENT
       bzr.exe, installed to ``C:\Program Files\Bazaar\plugins`` directory, 
       and standalone installer allows user to skip installation of this plugin.
       (Alexander Belchenko)
+ 
+    * Restore auto-detection of plink.exe on Windows. (Dmitry Vasiliev)
 
   FEATURES:
+
+   * ``branch`` and ``checkout`` can hard-link working tree files, which is
+     faster and saves space.  (Aaron Bentley)
 
   IMPROVEMENTS:
 
   BUGFIXES:
 
+    * Disable plink's interactive prompt for password.
+      (#107593, Dmitry Vasiliev)
+
     * Include quick-start-summary.svg file to python-based installer(s)
-      for Windows (#192924, Alexander Belchenko)
+      for Windows. (#192924, Alexander Belchenko)
 
     * ``merge --preview`` now works for merges that add or modify
       symlinks (James Henstridge)
+
+    * Upgrade bundled ConfigObj to version 4.5.1, which properly quotes #
+      signs, among other small improvements. (Matt Nordhoff, #86838)
 
   API BREAKS:
 
@@ -48,6 +59,10 @@ IN DEVELOPMENT
       (Alexander Belchenko)
 
   TESTING:
+
+    * The branch interface tests were invalid for branches using rich-root
+      repositories because the empty string is not a valid file-id.
+      (Robert Collins)
 
   INTERNALS:
 
@@ -72,8 +87,16 @@ IN DEVELOPMENT
       format. (Robert Collins)
 
 
-bzr 1.2rc1 (not released yet)
------------------------------
+bzr 1.2 2008-02-15
+------------------
+
+  BUG FIXES:
+
+    * Fix failing test in Launchpad plugin. (Martin Pool)
+
+
+bzr 1.2rc1 2008-02-13
+---------------------
 
   NOTES WHEN UPGRADING:
   
@@ -155,6 +178,14 @@ bzr 1.2rc1 (not released yet)
 
     * Clearer error when ``version-info --custom`` is used without
       ``--template`` (Lukáš Lalinský)
+
+    * Don't raise UnavailableFeature during test setup when medusa is not
+      available or tearDown is never called leading to nasty side effects.
+      (#137823, Vincent Ladeuil)
+
+    * If a plugin's test suite cannot be loaded, for example because of a syntax
+      error in the tests, then ``selftest`` fails, rather than just printing 
+      a warning.  (Martin Pool, #189771)
       
     * List possible values for BZR_SSH environment variable in env-variables
       help topic. (Alexander Belchenko, #181842)
@@ -166,7 +197,7 @@ bzr 1.2rc1 (not released yet)
       by the test framework, which lets bzr tests cleanly run from a normal
       unittest runner.
       (#124153, #124849, Martin Pool, Jonathan Lange)
- 
+
     * ``pull --quiet`` is now more quiet, in particular a message is no longer
       printed when the remembered pull location is used. (James Westby,
       #185907)
@@ -201,9 +232,9 @@ bzr 1.2rc1 (not released yet)
 
   TESTING:
 
-   * selftest now accepts --load-list <file> to load a test id list. This
-     speeds up running the test suite on a limited set of tests.
-     (Vincent Ladeuil)
+    * selftest now accepts --load-list <file> to load a test id list. This
+      speeds up running the test suite on a limited set of tests.
+      (Vincent Ladeuil)
 
   INTERNALS:
 
