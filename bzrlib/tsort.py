@@ -19,6 +19,7 @@
 
 
 from bzrlib import errors
+from bzrlib import revision as _mod_revision
 
 
 __all__ = ["topo_sort", "TopoSorter", "merge_sort", "MergeSorter"]
@@ -406,7 +407,8 @@ class MergeSorter(object):
         self._left_subtree_pushed_stack = []
 
         # seed the search with the tip of the branch
-        if branch_tip is not None:
+        if (branch_tip is not None and
+            branch_tip != _mod_revision.NULL_REVISION):
             parents = self._graph.pop(branch_tip)
             self._push_node(branch_tip, 0, parents)
 
