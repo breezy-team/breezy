@@ -63,6 +63,14 @@ class SmartServerStreamMedium(object):
         # backing_transport could be passed to serve instead of __init__
         self.backing_transport = backing_transport
         self.finished = False
+        self.push_back = None
+
+    def _push_back(self, bytes):
+        assert self.push_back is None, (
+            "_push_back called when self.push is %r" % (self.push_back,))
+        if bytes == '':
+            return
+        self.push_back = bytes
 
     def serve(self):
         """Serve requests until the client disconnects."""
@@ -128,16 +136,19 @@ class SmartServerStreamMedium(object):
 
         :returns: a string of bytes ending in a newline (byte 0x0A).
         """
-        # XXX: this duplicates SmartClientRequestProtocolOne._recv_tuple
-        line = ''
-        while not line or line[-1] != '\n':
-            new_char = self._get_bytes(1)
-            line += new_char
-            if new_char == '':
+        newline_pos = -1
+        bytes = ''
+        while newline_pos == -1:
+            new_bytes = self._get_bytes(1)
+            bytes += new_bytes
+            if new_bytes == '':
                 # Ran out of bytes before receiving a complete line.
-                break
+                return bytes
+            newline_pos = bytes.find('\n')
+        line = bytes[:newline_pos+1]
+        self._push_back(bytes[newline_pos+1:])
         return line
-
+ 
 
 class SmartServerSocketStreamMedium(SmartServerStreamMedium):
 
@@ -148,7 +159,6 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
             into blocking mode.
         """
         SmartServerStreamMedium.__init__(self, backing_transport)
-        self.push_back = ''
         sock.setblocking(True)
         self.socket = sock
 
@@ -156,7 +166,7 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         while protocol.next_read_size():
             if self.push_back:
                 protocol.accept_bytes(self.push_back)
-                self.push_back = ''
+                self.push_back = None
             else:
                 bytes = self._get_bytes(4096)
                 if bytes == '':
@@ -164,11 +174,18 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
                     return
                 protocol.accept_bytes(bytes)
         
-        self.push_back = protocol.excess_buffer
+        self._push_back(protocol.excess_buffer)
 
     def _get_bytes(self, desired_count):
         # We ignore the desired_count because on sockets it's more efficient to
         # read 4k at a time.
+        if self.push_back is not None:
+            assert self.push_back != '', (
+                'self.push_back should never be the empty string, which can be '
+                'confused with EOF')
+            bytes = self.push_back
+            self.push_back = None
+            return bytes
         return self.socket.recv(4096)
     
     def terminate_due_to_error(self):
@@ -218,6 +235,13 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
             protocol.accept_bytes(bytes)
 
     def _get_bytes(self, desired_count):
+        if self.push_back is not None:
+            assert self.push_back != '', (
+                'self.push_back should never be the empty string, which can be '
+                'confused with EOF')
+            bytes = self.push_back
+            self.push_back = None
+            return bytes
         return self._in.read(desired_count)
 
     def terminate_due_to_error(self):
