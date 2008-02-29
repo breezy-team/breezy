@@ -2402,7 +2402,7 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
             # Decline to open it if the server doesn't support our required
             # version (2) so that the VFS-based transport will do it.
             server_version = medium.protocol_version()
-            if server_version != 2:
+            if server_version not in (2, 3):
                 raise errors.NotBranchError(path=transport.base)
             return klass()
 

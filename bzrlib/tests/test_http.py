@@ -1685,7 +1685,7 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
     def test_http_send_smart_request(self):
 
         post_body = 'hello\n'
-        expected_reply_body = 'ok\x012\n'
+        expected_reply_body = 'ok\x013\n'
 
         http_server = self.get_readonly_server()
         http_transport = self._transport(http_server.get_url())
@@ -1715,7 +1715,7 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
         response = socket.writefile.getvalue()
         self.assertStartsWith(response, '%s 200 ' % self._protocol_version)
         # This includes the end of the HTTP headers, and all the body.
-        expected_end_of_response = '\r\n\r\nok\x012\n'
+        expected_end_of_response = '\r\n\r\nok\x013\n'
         self.assertEndsWith(response, expected_end_of_response)
 
 
