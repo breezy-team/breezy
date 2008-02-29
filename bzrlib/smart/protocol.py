@@ -1154,8 +1154,9 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder):
         """
         if 'hpss' in debug.debug_flags:
             mutter('hpss call w/body: %s (%r...)', repr(args)[1:-1], body[:20])
-            if getattr(self._request._medium, '_path', None) is not None:
-                mutter('                  (to %s)', self._request._medium._path)
+            path = getattr(self._medium_request._medium, '_path', None)
+            if path is not None:
+                mutter('                  (to %s)', path)
             mutter('              %d bytes', len(body))
             self._request_start_time = time.time()
         pr('call_with_body_bytes: %r, %r' % (args, body))
@@ -1174,8 +1175,9 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder):
         """
         if 'hpss' in debug.debug_flags:
             mutter('hpss call w/readv: %s', repr(args)[1:-1])
-            if getattr(self._request._medium, '_path', None) is not None:
-                mutter('                  (to %s)', self._request._medium._path)
+            path = getattr(self._medium_request._medium, '_path', None)
+            if path is not None:
+                mutter('                  (to %s)', path)
             self._request_start_time = time.time()
         self._write_protocol_version()
         self._write_headers(headers)
