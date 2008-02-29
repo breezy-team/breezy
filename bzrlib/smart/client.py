@@ -17,7 +17,7 @@
 import urllib
 from urlparse import urlparse
 
-from bzrlib.smart import protocol
+from bzrlib.smart import message, protocol
 from bzrlib import urlutils
 
 
@@ -37,11 +37,18 @@ class _SmartClient(object):
         medium = self.get_smart_medium()
         version = medium.protocol_version()
         request = medium.get_request()
-        if version == 2:
-            smart_protocol = protocol.SmartClientRequestProtocolTwo(request)
+        if version == 3:
+            request_encoder = protocol.ProtocolThreeRequester(request)
+            response_handler = message.ConventionalResponseHandler()
+            response_proto = protocol._ProtocolThreeBase(response_handler)
+            response_handler.setProtoAndMedium(response_proto, request)
+        elif version == 2:
+            request_encoder = protocol.SmartClientRequestProtocolTwo(request)
+            response_handler = request_encoder
         else:
-            smart_protocol = protocol.SmartClientRequestProtocolOne(request)
-        return smart_protocol
+            request_encoder = protocol.SmartClientRequestProtocolOne(request)
+            response_handler = request_encoder
+        return request_encoder, response_handler
 
     def call(self, method, *args):
         """Call a method on the remote server."""
@@ -57,9 +64,10 @@ class _SmartClient(object):
             result, smart_protocol = smart_client.call_expecting_body(...)
             body = smart_protocol.read_body_bytes()
         """
-        smart_protocol = self._build_client_protocol()
-        smart_protocol.call(method, *args)
-        return smart_protocol.read_response_tuple(expect_body=True), smart_protocol
+        request_encoder, response_handler = self._build_client_protocol()
+        request_encoder.call(method, *args)
+        return (response_handler.read_response_tuple(expect_body=True),
+                response_handler)
 
     def call_with_body_bytes(self, method, args, body):
         """Call a method on the remote server with body bytes."""
@@ -70,9 +78,9 @@ class _SmartClient(object):
                 raise TypeError('args must be byte strings, not %r' % (args,))
         if type(body) is not str:
             raise TypeError('body must be byte string, not %r' % (body,))
-        smart_protocol = self._build_client_protocol()
-        smart_protocol.call_with_body_bytes((method, ) + args, body)
-        return smart_protocol.read_response_tuple()
+        request_encoder, response_handler = self._build_client_protocol()
+        request_encoder.call_with_body_bytes((method, ) + args, body)
+        return response_handler.read_response_tuple()
 
     def call_with_body_bytes_expecting_body(self, method, args, body):
         """Call a method on the remote server with body bytes."""
@@ -83,9 +91,10 @@ class _SmartClient(object):
                 raise TypeError('args must be byte strings, not %r' % (args,))
         if type(body) is not str:
             raise TypeError('body must be byte string, not %r' % (body,))
-        smart_protocol = self._build_client_protocol()
-        smart_protocol.call_with_body_bytes((method, ) + args, body)
-        return smart_protocol.read_response_tuple(expect_body=True), smart_protocol
+        request_encoder, response_handler = self._build_client_protocol()
+        request_encoder.call_with_body_bytes((method, ) + args, body)
+        return (response_handler.read_response_tuple(expect_body=True),
+                response_handler)
 
     def remote_path_from_transport(self, transport):
         """Convert transport into a path suitable for using in a request.

@@ -34,10 +34,12 @@ from bzrlib import (
     symbol_versioning,
     )
 from bzrlib.smart.protocol import (
+    MESSAGE_VERSION_THREE,
     REQUEST_VERSION_TWO,
     SmartClientRequestProtocolOne,
     SmartServerRequestProtocolOne,
     SmartServerRequestProtocolTwo,
+    build_server_protocol_three
     )
 from bzrlib.transport import ssh
 
@@ -96,12 +98,15 @@ class SmartServerStreamMedium(object):
         """
         # Identify the protocol version.
         bytes = self._get_line()
-        if bytes.startswith(REQUEST_VERSION_TWO):
-            protocol_class = SmartServerRequestProtocolTwo
+        if bytes.startswith(MESSAGE_VERSION_THREE):
+            protocol_factory = build_server_protocol_three
+            bytes = bytes[len(MESSAGE_VERSION_THREE):]
+        elif bytes.startswith(REQUEST_VERSION_TWO):
+            protocol_factory = SmartServerRequestProtocolTwo
             bytes = bytes[len(REQUEST_VERSION_TWO):]
         else:
-            protocol_class = SmartServerRequestProtocolOne
-        protocol = protocol_class(self.backing_transport, self._write_out)
+            protocol_factory = SmartServerRequestProtocolOne
+        protocol = protocol_factory(self.backing_transport, self._write_out)
         protocol.accept_bytes(bytes)
         return protocol
 
@@ -159,16 +164,25 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
             into blocking mode.
         """
         SmartServerStreamMedium.__init__(self, backing_transport)
+        self.push_back = None
         sock.setblocking(True)
         self.socket = sock
 
+    def _push_back(self, bytes):
+        assert self.push_back is None
+        if bytes == '':
+            return
+        self.push_back = bytes
+
     def _serve_one_request_unguarded(self, protocol):
+        #print >> sys.stderr, '***', protocol
         while protocol.next_read_size():
             if self.push_back:
                 protocol.accept_bytes(self.push_back)
                 self.push_back = None
             else:
                 bytes = self._get_bytes(4096)
+                #print >> sys.stderr, '---', repr(bytes)
                 if bytes == '':
                     self.finished = True
                     return
@@ -177,21 +191,21 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         self._push_back(protocol.excess_buffer)
 
     def _get_bytes(self, desired_count):
-        # We ignore the desired_count because on sockets it's more efficient to
-        # read 4k at a time.
+        pr('_get_bytes...')
         if self.push_back is not None:
             assert self.push_back != '', (
                 'self.push_back should never be the empty string, which can be '
                 'confused with EOF')
             bytes = self.push_back
             self.push_back = None
+            pr('...: (push back) %r' % bytes)
             return bytes
-        return self.socket.recv(4096)
+        bytes = self.socket.recv(desired_count)
+        #import sys; print >> sys.stderr, 'bytes:', repr(bytes)
+        pr('...: (recv) %r' % bytes)
+        return bytes
     
     def terminate_due_to_error(self):
-        """Called when an unhandled exception from the protocol occurs."""
-        # TODO: This should log to a server log file, but no such thing
-        # exists yet.  Andrew Bennetts 2006-09-29.
         self.socket.close()
         self.finished = True
 
@@ -664,3 +678,10 @@ class SmartClientStreamMediumRequest(SmartClientMediumRequest):
         """
         return self._medium._read_bytes(count)
 
+from thread import get_ident
+def pr(*args):
+    return
+    print '%x' % get_ident(),
+    for arg in args:
+        print arg,
+    print

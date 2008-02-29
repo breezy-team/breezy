@@ -20,12 +20,15 @@ client and server.
 
 import collections
 from cStringIO import StringIO
+import struct
 import time
 
+import bzrlib
 from bzrlib import debug
 from bzrlib import errors
-from bzrlib.smart import request
+from bzrlib.smart import message, request
 from bzrlib.trace import log_exception_quietly, mutter
+from bzrlib.util.bencode import bdecode, bencode
 
 
 # Protocol version strings.  These are sent as prefixes of bzr requests and
@@ -33,6 +36,9 @@ from bzrlib.trace import log_exception_quietly, mutter
 # one strings because that version doesn't send any).
 REQUEST_VERSION_TWO = 'bzr request 2\n'
 RESPONSE_VERSION_TWO = 'bzr response 2\n'
+
+MESSAGE_VERSION_THREE = 'bzr message 3 (bzr 1.3)\n'
+RESPONSE_VERSION_THREE = REQUEST_VERSION_THREE = MESSAGE_VERSION_THREE
 
 
 def _recv_tuple(from_file):
@@ -184,6 +190,9 @@ class SmartServerRequestProtocolTwo(SmartServerRequestProtocolOne):
     This prefixes responses with the value of RESPONSE_VERSION_TWO.
     """
 
+    response_marker = RESPONSE_VERSION_TWO
+    request_marker = REQUEST_VERSION_TWO
+
     def _write_success_or_failure_prefix(self, response):
         """Write the protocol specific success/failure prefix."""
         if response.is_successful():
@@ -196,7 +205,7 @@ class SmartServerRequestProtocolTwo(SmartServerRequestProtocolOne):
         
         Version two sends the value of RESPONSE_VERSION_TWO.
         """
-        self._write_func(RESPONSE_VERSION_TWO)
+        self._write_func(self.response_marker)
 
     def _send_response(self, response):
         """Send a smart server response down the output stream."""
@@ -236,12 +245,22 @@ def _send_chunks(stream, write_func):
                 % chunk)
 
 
+class _NeedMoreBytes(Exception):
+    """Raise this inside a _StatefulDecoder to stop decoding until more bytes
+    have been received.
+    """
+
+    def __init__(self, count=None):
+        self.count = count
+
+
 class _StatefulDecoder(object):
 
     def __init__(self):
         self.finished_reading = False
         self.unused_data = ''
         self.bytes_left = None
+        self._number_needed_bytes = None
 
     def accept_bytes(self, bytes):
         """Decode as much of bytes as possible.
@@ -254,10 +273,19 @@ class _StatefulDecoder(object):
         """
         # accept_bytes is allowed to change the state
         current_state = self.state_accept
-        self.state_accept(bytes)
-        while current_state != self.state_accept:
-            current_state = self.state_accept
-            self.state_accept('')
+        self._number_needed_bytes = None
+        try:
+            pr('invoking state_accept %s' %
+                    (self.state_accept.im_func.__name__[len('_state_accept_'):],))
+            self.state_accept(bytes)
+            while current_state != self.state_accept:
+                current_state = self.state_accept
+                pr('invoking state_accept %s' %
+                        (self.state_accept.im_func.__name__[len('_state_accept_'):],))
+                self.state_accept('')
+        except _NeedMoreBytes, e:
+            #print '(need more bytes: %r)' % e.count
+            self._number_needed_bytes = e.count
 
 
 class ChunkedBodyDecoder(_StatefulDecoder):
@@ -310,7 +338,7 @@ class ChunkedBodyDecoder(_StatefulDecoder):
         if pos == -1:
             # We haven't read a complete length prefix yet, so there's nothing
             # to do.
-            return None
+            raise _NeedMoreBytes()
         line = self._in_buffer[:pos]
         # Trim the prefix (including '\n' delimiter) from the _in_buffer.
         self._in_buffer = self._in_buffer[pos+1:]
@@ -329,11 +357,7 @@ class ChunkedBodyDecoder(_StatefulDecoder):
     def _state_accept_expecting_header(self, bytes):
         self._in_buffer += bytes
         prefix = self._extract_line()
-        if prefix is None:
-            # We haven't read a complete length prefix yet, so there's nothing
-            # to do.
-            return
-        elif prefix == 'chunked':
+        if prefix == 'chunked':
             self.state_accept = self._state_accept_expecting_length
         else:
             raise errors.SmartProtocolError(
@@ -342,11 +366,7 @@ class ChunkedBodyDecoder(_StatefulDecoder):
     def _state_accept_expecting_length(self, bytes):
         self._in_buffer += bytes
         prefix = self._extract_line()
-        if prefix is None:
-            # We haven't read a complete length prefix yet, so there's nothing
-            # to do.
-            return
-        elif prefix == 'ERR':
+        if prefix == 'ERR':
             self.error = True
             self.error_in_progress = []
             self._state_accept_expecting_length('')
@@ -592,6 +612,8 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
             return 1
         elif resp == ('ok', '2'):
             return 2
+        elif resp == ('ok', '3'):
+            return 3
         else:
             raise errors.SmartProtocolError("bad response %r" % (resp,))
 
@@ -613,13 +635,16 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
     This prefixes the request with the value of REQUEST_VERSION_TWO.
     """
 
+    response_marker = RESPONSE_VERSION_TWO
+    request_marker = REQUEST_VERSION_TWO
+
     def read_response_tuple(self, expect_body=False):
         """Read a response tuple from the wire.
 
         This should only be called once.
         """
         version = self._request.read_line()
-        if version != RESPONSE_VERSION_TWO:
+        if version != self.response_marker:
             raise errors.SmartProtocolError('bad protocol marker %r' % version)
         response_status = self._recv_line()
         if response_status not in ('success\n', 'failed\n'):
@@ -633,7 +658,7 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
         
         Version two sends the value of REQUEST_VERSION_TWO.
         """
-        self._request.accept_bytes(REQUEST_VERSION_TWO)
+        self._request.accept_bytes(self.request_marker)
 
     def read_streamed_body(self):
         """Read bytes from the body, decoding into a byte stream.
@@ -653,3 +678,543 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
                 yield body_bytes
         self._request.finished_reading()
 
+
+def build_server_protocol_three(backing_transport, write_func):
+    request_handler = request.SmartServerRequestHandler(
+        backing_transport, commands=request.request_handlers)
+    responder = ProtocolThreeResponder(write_func)
+    message_handler = message.ConventionalRequestHandler(request_handler, responder)
+    return _ProtocolThreeBase(message_handler)
+
+
+class _ProtocolThreeBase(_StatefulDecoder):
+
+    response_marker = RESPONSE_VERSION_THREE
+    request_marker = REQUEST_VERSION_THREE
+
+    def __init__(self, message_handler):
+        _StatefulDecoder.__init__(self)
+        self.has_dispatched = False
+        # Initial state
+        self._in_buffer = ''
+        self._number_needed_bytes = 4
+        self.state_accept = self._state_accept_expecting_headers
+
+        self.request_handler = self.message_handler = message_handler
+
+#        self.excess_buffer = ''
+#        self._finished = False
+#        self.has_dispatched = False
+#        self._body_decoder = None
+
+    def accept_bytes(self, bytes):
+        pr('......')
+#        if 'put_non_atomic' in bytes:
+#            import pdb; pdb.set_trace()
+        def summarise_buf():
+            if self._in_buffer is None:
+                buf_summary = 'None'
+            elif len(self._in_buffer) <= 6:
+                buf_summary = repr(self._in_buffer)
+            else:
+                buf_summary = repr(self._in_buffer[:3] + '...')
+            return buf_summary
+        handler_name = self.message_handler.__class__.__name__
+        handler_name = handler_name[len('Conventional'):-len('Handler')]
+        state_now = self.state_accept.im_func.__name__[len('_state_accept_'):]
+        buf_now = summarise_buf()
+        #from pprint import pprint; pprint([bytes, self.__dict__])
+        self._number_needed_bytes = None
+        try:
+            _StatefulDecoder.accept_bytes(self, bytes)
+        except KeyboardInterrupt:
+            raise
+        except Exception, exception:
+            log_exception_quietly()
+            # XXX
+            self.message_handler.protocol_error(exception)
+            #self._send_response(request.FailedSmartServerResponse(
+            #    ('error', str(exception))))
+        pr('%s in %s(%s), got %r --> %s(%s)' % (
+            handler_name, state_now, buf_now, bytes,
+            self.state_accept.im_func.__name__[len('_state_accept_'):],
+            summarise_buf()))
+        pr('~~~~~~')
+
+    def _extract_length_prefixed_bytes(self):
+        if len(self._in_buffer) < 4:
+            # A length prefix by itself is 4 bytes, and we don't even have that
+            # many yet.
+            raise _NeedMoreBytes(4)
+        (length,) = struct.unpack('!L', self._in_buffer[:4])
+        end_of_bytes = 4 + length
+        if len(self._in_buffer) < end_of_bytes:
+            # We haven't yet read as many bytes as the length-prefix says there
+            # are.
+            raise _NeedMoreBytes(end_of_bytes)
+        # Extract the bytes from the buffer.
+        bytes = self._in_buffer[4:end_of_bytes]
+        self._in_buffer = self._in_buffer[end_of_bytes:]
+        return bytes
+
+    def _extract_prefixed_bencoded_data(self):
+        prefixed_bytes = self._extract_length_prefixed_bytes()
+        try:
+            decoded = bdecode(prefixed_bytes)
+        except ValueError:
+            raise errors.SmartProtocolError(
+                'Bytes %r not bencoded' % (prefixed_bytes,))
+        return decoded
+
+    def _extract_single_byte(self):
+        if self._in_buffer == '':
+            # The buffer is empty
+            raise _NeedMoreBytes()
+        one_byte = self._in_buffer[0]
+        self._in_buffer = self._in_buffer[1:]
+        return one_byte
+
+    def _state_accept_expecting_headers(self, bytes):
+        self._in_buffer += bytes
+        decoded = self._extract_prefixed_bencoded_data()
+        if type(decoded) is not dict:
+            raise errors.SmartProtocolError(
+                'Header object %r is not a dict' % (decoded,))
+        self.message_handler.headers_received(decoded)
+        self.state_accept = self._state_accept_expecting_message_part
+    
+    def _state_accept_expecting_message_part(self, bytes):
+        #import sys; print >> sys.stderr, 'msg part bytes:', repr(bytes)
+        self._in_buffer += bytes
+        message_part_kind = self._extract_single_byte()
+        if message_part_kind == 'o':
+            self.state_accept = self._state_accept_expecting_one_byte
+        elif message_part_kind == 's':
+            self.state_accept = self._state_accept_expecting_structure
+        elif message_part_kind == 'b':
+            self.state_accept = self._state_accept_expecting_bytes
+        elif message_part_kind == 'e':
+            self.done()
+        else:
+            raise errors.SmartProtocolError(
+                'Bad message kind byte: %r' % (message_part_kind,))
+        #import sys; print >> sys.stderr, 'state:', self.state_accept, '_in_buffer:', repr(self._in_buffer)
+
+    def _state_accept_expecting_one_byte(self, bytes):
+        self._in_buffer += bytes
+        byte = self._extract_single_byte()
+        self.message_handler.byte_part_received(byte)
+        self.state_accept = self._state_accept_expecting_message_part
+
+    def _state_accept_expecting_bytes(self, bytes):
+        # XXX: this should not buffer whole message part, but instead deliver
+        # the bytes as they arrive.
+        self._in_buffer += bytes
+        prefixed_bytes = self._extract_length_prefixed_bytes()
+        self.message_handler.bytes_part_received(prefixed_bytes)
+        self.state_accept = self._state_accept_expecting_message_part
+
+    def _state_accept_expecting_structure(self, bytes):
+        self._in_buffer += bytes
+        structure = self._extract_prefixed_bencoded_data()
+        self.message_handler.structure_part_received(structure)
+        self.state_accept = self._state_accept_expecting_message_part
+
+    def done(self):
+        #import sys; print >> sys.stderr, 'Done!', repr(self._in_buffer)
+        self.unused_data = self._in_buffer
+        self._in_buffer = None
+        self.state_accept = self._state_accept_reading_unused
+        self.message_handler.end_received()
+
+    def _state_accept_reading_unused(self, bytes):
+        self.unused_data += bytes
+
+    @property
+    def excess_buffer(self):
+        # XXX: this property is a compatibility hack.  Really there should not
+        # be both unused_data and excess_buffer.
+        return self.unused_data
+    
+    def next_read_size(self):
+        if self.state_accept == self._state_accept_reading_unused:
+            return 0
+        else:
+            if self._number_needed_bytes is not None:
+                return self._number_needed_bytes - len(self._in_buffer)
+            else:
+                return 1 # XXX !!!
+
+
+class SmartServerRequestProtocolThree(_ProtocolThreeBase):
+
+    def _args_received(self, args):
+        if len(args) < 1:
+            raise errors.SmartProtocolError('Empty argument sequence')
+        self.state_accept = self._state_accept_expecting_body_kind
+        self.request_handler.args_received(args)
+
+
+class SmartClientRequestProtocolThree(_ProtocolThreeBase, SmartClientRequestProtocolTwo):
+
+    response_marker = RESPONSE_VERSION_THREE
+    request_marker = REQUEST_VERSION_THREE
+
+    def __init__(self, client_medium_request):
+        from bzrlib.smart.message import MessageHandler
+        _ProtocolThreeBase.__init__(self, MessageHandler())
+        SmartClientRequestProtocolTwo.__init__(self, client_medium_request)
+        # Initial state
+        self._in_buffer = ''
+        self.state_accept = self._state_accept_expecting_headers
+        self.response_handler = self.request_handler = self.message_handler
+
+    def _state_accept_expecting_response_status(self, bytes):
+        self._in_buffer += bytes
+        response_status = self._extract_single_byte()
+        if response_status not in ['S', 'F']:
+            raise errors.SmartProtocolError(
+                'Unknown response status: %r' % (response_status,))
+        self.successful_status = bool(response_status == 'S')
+        self.state_accept = self._state_accept_expecting_request_args
+
+    def _args_received(self, args):
+        if self.successful_status:
+            self.response_handler.args_received(args)
+        else:
+            if len(args) < 1:
+                raise errors.SmartProtocolError('Empty error details')
+            self.response_handler.error_received(args)
+        self.done()
+
+
+    # XXX: the encoding of requests and decoding responses are somewhat
+    # conflated into one class here.  The protocol is half-duplex, so combining
+    # them just makes the code needlessly ugly.
+
+    def _write_prefixed_bencode(self, structure):
+        bytes = bencode(structure)
+        self._request.accept_bytes(struct.pack('!L', len(bytes)))
+        self._request.accept_bytes(bytes)
+
+    def _write_headers(self, headers=None):
+        if headers is None:
+            headers = {'Software version': bzrlib.__version__}
+        self._write_prefixed_bencode(headers)
+
+    def _write_args(self, args):
+        self._request.accept_bytes('s')
+        self._write_prefixed_bencode(args)
+
+    def _write_end(self):
+        self._request.accept_bytes('e')
+
+    def _write_prefixed_body(self, bytes):
+        self._request.accept_bytes('b')
+        self._request.accept_bytes(struct.pack('!L', len(bytes)))
+        self._request.accept_bytes(bytes)
+
+    def _wait_for_request_end(self):
+        while True:
+            next_read_size = self.next_read_size() 
+            if next_read_size == 0:
+                # a complete request has been read.
+                break
+            bytes = self._request.read_bytes(next_read_size)
+            if bytes == '':
+                # end of file encountered reading from server
+                raise errors.ConnectionReset(
+                    "please check connectivity and permissions",
+                    "(and try -Dhpss if further diagnosis is required)")
+            self.accept_bytes(bytes)
+
+    # these methods from SmartClientRequestProtocolOne/Two
+    def call(self, *args, **kw):
+        # XXX: ideally, signature would be call(self, *args, headers=None), but
+        # python doesn't allow that.  So, we fake it.
+        headers = None
+        if 'headers' in kw:
+            headers = kw.pop('headers')
+        if kw != {}:
+            raise TypeError('Unexpected keyword arguments: %r' % (kw,))
+        if 'hpss' in debug.debug_flags:
+            mutter('hpss call:   %s', repr(args)[1:-1])
+            if getattr(self._request._medium, 'base', None) is not None:
+                mutter('             (to %s)', self._request._medium.base)
+            self._request_start_time = time.time()
+        self._write_protocol_version()
+        self._write_headers(headers)
+        self._write_args(args)
+        self._write_end()
+        self._request.finished_writing()
+
+    def call_with_body_bytes(self, args, body, headers=None):
+        """Make a remote call of args with body bytes 'body'.
+
+        After calling this, call read_response_tuple to find the result out.
+        """
+        if 'hpss' in debug.debug_flags:
+            mutter('hpss call w/body: %s (%r...)', repr(args)[1:-1], body[:20])
+            if getattr(self._request._medium, '_path', None) is not None:
+                mutter('                  (to %s)', self._request._medium._path)
+            mutter('              %d bytes', len(body))
+            self._request_start_time = time.time()
+        self._write_protocol_version()
+        self._write_headers(headers)
+        self._write_args(args)
+        self._write_prefixed_body(body)
+        self._write_end()
+        self._request.finished_writing()
+
+    def call_with_body_readv_array(self, args, body, headers=None):
+        """Make a remote call with a readv array.
+
+        The body is encoded with one line per readv offset pair. The numbers in
+        each pair are separated by a comma, and no trailing \n is emitted.
+        """
+        if 'hpss' in debug.debug_flags:
+            mutter('hpss call w/readv: %s', repr(args)[1:-1])
+            if getattr(self._request._medium, '_path', None) is not None:
+                mutter('                  (to %s)', self._request._medium._path)
+            self._request_start_time = time.time()
+        self._write_protocol_version()
+        self._write_headers(headers)
+        self._write_args(args)
+        readv_bytes = self._serialise_offsets(body)
+        self._write_prefixed_body(readv_bytes)
+        self._request.finished_writing()
+        if 'hpss' in debug.debug_flags:
+            mutter('              %d bytes in readv request', len(readv_bytes))
+
+    def cancel_read_body(self):
+        """Ignored.  Not relevant to version 3 of the protocol."""
+
+    def read_response_tuple(self, expect_body=False):
+        """Read a response tuple from the wire.
+
+        The expect_body flag is ignored.
+        """
+        # XXX: warn if expect_body doesn't match the response?
+        self._wait_for_request_end()
+        if self.response_handler.error_args is not None:
+            self._translate_error()
+            return self.response_handler.error_args
+        return self.response_handler.args
+
+    def read_body_bytes(self, count=-1):
+        """Read bytes from the body, decoding into a byte stream.
+        
+        We read all bytes at once to ensure we've checked the trailer for 
+        errors, and then feed the buffer back as read_body_bytes is called.
+        """
+        # XXX: don't buffer the full request
+        self._wait_for_request_end()
+        return self.response_handler.prefixed_body.read(count)
+
+    def _translate_error(self, error_tuple):
+        # XXX: Hmm!  Need state from the request.  Hmm.
+        error_name = error_tuple[0]
+        error_args = error_tuple[1:]
+        if error_name == 'LockContention':
+            raise errors.LockContention('(remote lock)')
+        elif error_name == 'LockFailed':
+            raise errors.LockContention(*error_args[:2])
+        else:
+            return # XXX
+            raise errors.UnexpectedSmartServerResponse('Sucktitude: %r' %
+                    (error_tuple,))
+
+
+class _ProtocolThreeEncoder(object):
+
+    def __init__(self, write_func):
+        import sys
+        def wf(bytes):
+            pr('writing:', repr(bytes))
+            return write_func(bytes)
+        self._write_func = wf
+
+    def _write_protocol_version(self):
+        self._write_func(MESSAGE_VERSION_THREE)
+
+    def _write_prefixed_bencode(self, structure):
+        bytes = bencode(structure)
+        self._write_func(struct.pack('!L', len(bytes)))
+        self._write_func(bytes)
+
+    def _write_headers(self, headers=None):
+        if headers is None:
+            headers = {'Software version': bzrlib.__version__}
+        self._write_prefixed_bencode(headers)
+
+    def _write_structure(self, args):
+        self._write_func('s')
+        utf8_args = []
+        for arg in args:
+            if type(arg) is unicode:
+                utf8_args.append(arg.encode('utf8'))
+            else:
+                utf8_args.append(arg)
+        self._write_prefixed_bencode(utf8_args)
+
+    def _write_end(self):
+        self._write_func('e')
+
+    def _write_prefixed_body(self, bytes):
+        self._write_func('b')
+        self._write_func(struct.pack('!L', len(bytes)))
+        self._write_func(bytes)
+
+    def _write_error_status(self):
+        self._write_func('oE')
+
+    def _write_success_status(self):
+        self._write_func('oS')
+
+
+class ProtocolThreeResponder(_ProtocolThreeEncoder):
+
+    def __init__(self, write_func):
+        _ProtocolThreeEncoder.__init__(self, write_func)
+        self.response_sent = False
+
+    def send_error(self, exception):
+        #import sys; print >> sys.stderr, 'exc:', str(exception); return #XXX
+        assert not self.response_sent
+        self.response_sent = True
+        self._write_headers()
+        self._write_error_status()
+        self._write_structure(('error', str(exception)))
+        self._write_end()
+
+    def send_response(self, response):
+        #import sys; print >> sys.stderr, 'rsp:', str(response)
+        assert not self.response_sent
+        self.response_sent = True
+        self._write_headers()
+        if response.is_successful():
+            self._write_success_status()
+        else:
+            self._write_error_status()
+        self._write_structure(response.args)
+        if response.body is not None:
+            self._write_prefixed_body(response.body)
+        elif response.body_stream is not None:
+            for chunk in response.body_stream:
+                self._write_prefixed_body(chunk)
+        self._write_end()
+        
+
+class ProtocolThreeRequester(_ProtocolThreeEncoder):
+
+    def __init__(self, medium_request):
+        _ProtocolThreeEncoder.__init__(self, medium_request.accept_bytes)
+        self._medium_request = medium_request
+
+#    def _wait_for_request_end(self):
+#        XXX # XXX
+#        while True:
+#            next_read_size = self.next_read_size() 
+#            if next_read_size == 0:
+#                # a complete request has been read.
+#                break
+#            bytes = self._request.read_bytes(next_read_size)
+#            if bytes == '':
+#                # end of file encountered reading from server
+#                raise errors.ConnectionReset(
+#                    "please check connectivity and permissions",
+#                    "(and try -Dhpss if further diagnosis is required)")
+#            self.accept_bytes(bytes)
+
+    # these methods from SmartClientRequestProtocolOne/Two
+    def call(self, *args, **kw):
+        # XXX: ideally, signature would be call(self, *args, headers=None), but
+        # python doesn't allow that.  So, we fake it.
+        headers = None
+        if 'headers' in kw:
+            headers = kw.pop('headers')
+        if kw != {}:
+            raise TypeError('Unexpected keyword arguments: %r' % (kw,))
+        if 'hpss' in debug.debug_flags:
+            mutter('hpss call:   %s', repr(args)[1:-1])
+            base = getattr(self._medium_request._medium, 'base', None)
+            if base is not None:
+                mutter('             (to %s)', base)
+            self._request_start_time = time.time()
+        self._write_protocol_version()
+        self._write_headers(headers)
+        self._write_structure(args)
+        self._write_end()
+        self._medium_request.finished_writing()
+
+    def call_with_body_bytes(self, args, body, headers=None):
+        """Make a remote call of args with body bytes 'body'.
+
+        After calling this, call read_response_tuple to find the result out.
+        """
+        if 'hpss' in debug.debug_flags:
+            mutter('hpss call w/body: %s (%r...)', repr(args)[1:-1], body[:20])
+            if getattr(self._request._medium, '_path', None) is not None:
+                mutter('                  (to %s)', self._request._medium._path)
+            mutter('              %d bytes', len(body))
+            self._request_start_time = time.time()
+        pr('call_with_body_bytes: %r, %r' % (args, body))
+        self._write_protocol_version()
+        self._write_headers(headers)
+        self._write_structure(args)
+        self._write_prefixed_body(body)
+        self._write_end()
+        self._medium_request.finished_writing()
+
+    def call_with_body_readv_array(self, args, body, headers=None):
+        """Make a remote call with a readv array.
+
+        The body is encoded with one line per readv offset pair. The numbers in
+        each pair are separated by a comma, and no trailing \n is emitted.
+        """
+        if 'hpss' in debug.debug_flags:
+            mutter('hpss call w/readv: %s', repr(args)[1:-1])
+            if getattr(self._request._medium, '_path', None) is not None:
+                mutter('                  (to %s)', self._request._medium._path)
+            self._request_start_time = time.time()
+        self._write_protocol_version()
+        self._write_headers(headers)
+        self._write_structure(args)
+        readv_bytes = self._serialise_offsets(body)
+        self._write_prefixed_body(readv_bytes)
+        self._request.finished_writing()
+        if 'hpss' in debug.debug_flags:
+            mutter('              %d bytes in readv request', len(readv_bytes))
+
+#    def cancel_read_body(self):
+#        """Ignored.  Not relevant to version 3 of the protocol."""
+#
+#    def read_response_tuple(self, expect_body=False):
+#        """Read a response tuple from the wire.
+#
+#        The expect_body flag is ignored.
+#        """
+#        # XXX: warn if expect_body doesn't match the response?
+#        self._wait_for_request_end()
+#        if self.response_handler.error_args is not None:
+#            xxx_translate_error()
+#        return self.response_handler.args
+#
+#    def read_body_bytes(self, count=-1):
+#        """Read bytes from the body, decoding into a byte stream.
+#        
+#        We read all bytes at once to ensure we've checked the trailer for 
+#        errors, and then feed the buffer back as read_body_bytes is called.
+#        """
+#        # XXX: don't buffer the full request
+#        self._wait_for_request_end()
+#        return self.response_handler.prefixed_body.read(count)
+
+
+from thread import get_ident
+def pr(*args):
+    return
+    print '%x' % get_ident(),
+    for arg in args:
+        print arg,
+    print
