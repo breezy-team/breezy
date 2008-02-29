@@ -35,6 +35,7 @@ from bzrlib import (
     )
 from bzrlib.smart.protocol import (
     REQUEST_VERSION_TWO,
+    SmartClientRequestProtocolOne,
     SmartServerRequestProtocolOne,
     SmartServerRequestProtocolTwo,
     )
@@ -368,6 +369,20 @@ class SmartClientMediumRequest(object):
 class SmartClientMedium(object):
     """Smart client is a medium for sending smart protocol requests over."""
 
+    def __init__(self):
+        super(SmartClientMedium, self).__init__()
+        self._protocol_version = None
+
+    def protocol_version(self):
+        """Find out the best protocol version to use."""
+        if self._protocol_version is None:
+            medium_request = self.get_request()
+            # Send a 'hello' request in protocol version one, for maximum
+            # backwards compatibility.
+            client_protocol = SmartClientRequestProtocolOne(medium_request)
+            self._protocol_version = client_protocol.query_version()
+        return self._protocol_version
+
     def disconnect(self):
         """If this medium maintains a persistent connection, close it.
         
@@ -385,6 +400,7 @@ class SmartClientStreamMedium(SmartClientMedium):
     """
 
     def __init__(self):
+        SmartClientMedium.__init__(self)
         self._current_request = None
         # Be optimistic: we assume the remote end can accept new remote
         # requests until we get an error saying otherwise.  (1.2 adds some
