@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
 
 
 from bzrlib import errors
-from bzrlib import revision as _mod_revision
+import bzrlib.revision as _mod_revision
 
 
 __all__ = ["topo_sort", "TopoSorter", "merge_sort", "MergeSorter"]
