@@ -96,7 +96,7 @@ class TransportTestProviderAdapter(TestScenarioApplier):
                     result.append(scenario)
             except errors.DependencyNotPresent, e:
                 # Continue even if a dependency prevents us 
-                # from running this test
+                # from adding this test
                 pass
         return result
 
