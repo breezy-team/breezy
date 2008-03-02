@@ -57,8 +57,9 @@ IN DEVELOPMENT
 
   TESTING:
 
-    * The branch interface tests were invalid for branches using subtree
-      repositories by default. This has been fixed. (Robert Collins)
+    * The branch interface tests were invalid for branches using rich-root
+      repositories because the empty string is not a valid file-id.
+      (Robert Collins)
 
   INTERNALS:
 
