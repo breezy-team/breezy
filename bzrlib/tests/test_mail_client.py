@@ -32,6 +32,17 @@ class TestMutt(tests.TestCase):
         self.assertEqual(['-s', 'Hi there!', 'jrandom@example.org'],
                          commandline)
 
+    def test_commandline_is_8bit(self):
+        mutt = mail_client.Mutt(None)
+        cmdline = mutt._get_compose_commandline(u'jrandom@example.org',
+            u'Hi there!', u'file%')
+        self.assertEqual(
+            ['-s', 'Hi there!', '-a', 'file%', 'jrandom@example.org'],
+            cmdline)
+        for item in cmdline:
+            self.assertFalse(isinstance(item, unicode),
+                'Command-line item %r is unicode!' % item)
+
 
 class TestThunderbird(tests.TestCase):
 
@@ -49,10 +60,9 @@ class TestThunderbird(tests.TestCase):
     def test_commandline_is_8bit(self):
         # test for bug #139318
         tbird = mail_client.Thunderbird(None)
-        cmdline = tbird._get_compose_8bit_commandline('thunderbird',
-            u'jrandom@example.org', u'Hi there!', u'file%')
-        self.assertEqual(['thunderbird',
-            '-compose',
+        cmdline = tbird._get_compose_commandline(u'jrandom@example.org',
+            u'Hi there!', u'file%')
+        self.assertEqual(['-compose',
             ("attachment='%s'," % urlutils.local_path_to_url('file%')) +
             "subject='Hi there!',to='jrandom@example.org'",
             ], cmdline)
@@ -77,6 +87,18 @@ class TestXDGEmail(tests.TestCase):
         self.assertEqual(['jrandom@example.org', '--subject', 'Hi there!'],
                          commandline)
 
+    def test_commandline_is_8bit(self):
+        xdg_email = mail_client.XDGEmail(None)
+        cmdline = xdg_email._get_compose_commandline(u'jrandom@example.org',
+            u'Hi there!', u'file%')
+        self.assertEqual(
+            ['jrandom@example.org', '--subject', 'Hi there!',
+             '--attach', 'file%'],
+            cmdline)
+        for item in cmdline:
+            self.assertFalse(isinstance(item, unicode),
+                'Command-line item %r is unicode!' % item)
+
 
 class TestEvolution(tests.TestCase):
 
@@ -89,6 +111,18 @@ class TestEvolution(tests.TestCase):
         self.assertEqual(['mailto:jrandom@example.org?subject=Hi%20there%21'],
                          commandline)
 
+    def test_commandline_is_8bit(self):
+        evo = mail_client.Evolution(None)
+        cmdline = evo._get_compose_commandline(u'jrandom@example.org',
+            u'Hi there!', u'file%')
+        self.assertEqual(
+            ['mailto:jrandom@example.org?attach=file%25&subject=Hi%20there%21'
+            ],
+            cmdline)
+        for item in cmdline:
+            self.assertFalse(isinstance(item, unicode),
+                'Command-line item %r is unicode!' % item)
+
 
 class TestKMail(tests.TestCase):
 
@@ -100,6 +134,17 @@ class TestKMail(tests.TestCase):
                                                      'Hi there!', None)
         self.assertEqual(['-s', 'Hi there!', 'jrandom@example.org'],
                          commandline)
+
+    def test_commandline_is_8bit(self):
+        kmail = mail_client.KMail(None)
+        cmdline = kmail._get_compose_commandline(u'jrandom@example.org',
+            u'Hi there!', u'file%')
+        self.assertEqual(
+            ['-s', 'Hi there!', '--attach', 'file%', 'jrandom@example.org'],
+            cmdline)
+        for item in cmdline:
+            self.assertFalse(isinstance(item, unicode),
+                'Command-line item %r is unicode!' % item)
 
 
 class TestEditor(tests.TestCase):

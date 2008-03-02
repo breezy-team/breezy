@@ -21,6 +21,7 @@
 from bzrlib import (
     bzrdir,
     errors,
+    osutils,
     symbol_versioning,
     urlutils,
     )
@@ -450,6 +451,12 @@ class TestErrors(TestCaseWithTransport):
         self.assertEquals(
             ("The URL for bug tracker \"foo\" doesn't contain {id}: "
              "http://bug.com/"),
+            str(err))
+
+    def test_unable_encode_path(self):
+        err = errors.UnableEncodePath('foo', 'executable')
+        self.assertEquals("Unable encode executable path 'foo' in "
+            "user encoding " + osutils.get_user_encoding(),
             str(err))
 
 
