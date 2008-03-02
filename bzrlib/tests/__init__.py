@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -275,6 +275,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         elif isinstance(err[1], UnavailableFeature):
             return self.addNotSupported(test, err[1].args[0])
         else:
+            self._cleanupLogFile(test)
             unittest.TestResult.addError(self, test, err)
             self.error_count += 1
             self.report_error(test, err)
@@ -291,6 +292,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         if isinstance(err[1], KnownFailure):
             return self._addKnownFailure(test, err)
         else:
+            self._cleanupLogFile(test)
             unittest.TestResult.addFailure(self, test, err)
             self.failure_count += 1
             self.report_failure(test, err)
@@ -310,6 +312,7 @@ class ExtendedTestResult(unittest._TextTestResult):
                     self._formatTime(benchmark_time),
                     test.id()))
         self.report_success(test)
+        self._cleanupLogFile(test)
         unittest.TestResult.addSuccess(self, test)
 
     def _testConcluded(self, test):
@@ -317,7 +320,7 @@ class ExtendedTestResult(unittest._TextTestResult):
 
         Called regardless of whether it succeded, failed, etc.
         """
-        self._cleanupLogFile(test)
+        pass
 
     def _addKnownFailure(self, test, err):
         self.known_failure_count += 1
@@ -794,7 +797,6 @@ class TestCase(unittest.TestCase):
     def setUp(self):
         unittest.TestCase.setUp(self)
         self._cleanEnvironment()
-        bzrlib.trace.disable_default_logging()
         self._silenceUI()
         self._startLogFile()
         self._benchcalls = []
@@ -1038,6 +1040,32 @@ class TestCase(unittest.TestCase):
         else:
             self.fail('Unexpected success.  Should have failed: %s' % reason)
 
+    def assertFileEqual(self, content, path):
+        """Fail if path does not contain 'content'."""
+        self.failUnlessExists(path)
+        f = file(path, 'rb')
+        try:
+            s = f.read()
+        finally:
+            f.close()
+        self.assertEqualDiff(content, s)
+
+    def failUnlessExists(self, path):
+        """Fail unless path or paths, which may be abs or relative, exist."""
+        if not isinstance(path, basestring):
+            for p in path:
+                self.failUnlessExists(p)
+        else:
+            self.failUnless(osutils.lexists(path),path+" does not exist")
+
+    def failIfExists(self, path):
+        """Fail if path or paths, which may be abs or relative, exist."""
+        if not isinstance(path, basestring):
+            for p in path:
+                self.failIfExists(p)
+        else:
+            self.failIf(osutils.lexists(path),path+" exists")
+
     def _capture_deprecation_warnings(self, a_callable, *args, **kwargs):
         """A helper for callDeprecated and applyDeprecated.
 
@@ -1156,7 +1184,7 @@ class TestCase(unittest.TestCase):
         """
         fileno, name = tempfile.mkstemp(suffix='.log', prefix='testbzr')
         self._log_file = os.fdopen(fileno, 'w+')
-        self._log_nonce = bzrlib.trace.enable_test_log(self._log_file)
+        self._log_memento = bzrlib.trace.push_log_file(self._log_file)
         self._log_file_name = name
         self.addCleanup(self._finishLogFile)
 
@@ -1167,7 +1195,7 @@ class TestCase(unittest.TestCase):
         """
         if self._log_file is None:
             return
-        bzrlib.trace.disable_test_log(self._log_nonce)
+        bzrlib.trace.pop_log_file(self._log_memento)
         self._log_file.close()
         self._log_file = None
         if not self._keep_log_file:
@@ -1199,6 +1227,7 @@ class TestCase(unittest.TestCase):
             'BZREMAIL': None, # may still be present in the environment
             'EMAIL': None,
             'BZR_PROGRESS_BAR': None,
+            'BZR_LOG': None,
             # SSH Agent
             'SSH_AUTH_SOCK': None,
             # Proxies
@@ -1310,6 +1339,8 @@ class TestCase(unittest.TestCase):
         import bzrlib.trace
         bzrlib.trace._trace_file.flush()
         if self._log_contents:
+            # XXX: this can hardly contain the content flushed above --vila
+            # 20080128
             return self._log_contents
         if self._log_file_name is not None:
             logfile = open(self._log_file_name)
@@ -2083,32 +2114,6 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
     def build_tree_contents(self, shape):
         build_tree_contents(shape)
 
-    def assertFileEqual(self, content, path):
-        """Fail if path does not contain 'content'."""
-        self.failUnlessExists(path)
-        f = file(path, 'rb')
-        try:
-            s = f.read()
-        finally:
-            f.close()
-        self.assertEqualDiff(content, s)
-
-    def failUnlessExists(self, path):
-        """Fail unless path or paths, which may be abs or relative, exist."""
-        if not isinstance(path, basestring):
-            for p in path:
-                self.failUnlessExists(p)
-        else:
-            self.failUnless(osutils.lexists(path),path+" does not exist")
-
-    def failIfExists(self, path):
-        """Fail if path or paths, which may be abs or relative, exist."""
-        if not isinstance(path, basestring):
-            for p in path:
-                self.failIfExists(p)
-        else:
-            self.failIf(osutils.lexists(path),path+" exists")
-
     def assertInWorkingTree(self, path, root_path='.', tree=None):
         """Assert whether path or paths are in the WorkingTree"""
         if tree is None:
@@ -2811,21 +2816,19 @@ def test_suite(keep_only=None):
         suite.addTest(doc_suite)
 
     default_encoding = sys.getdefaultencoding()
-    for name, plugin in  [(n, p) for (n, p) in bzrlib.plugin.plugins().items()
-                          if (keep_only is None
-                              or id_filter.is_module_name_used(
-                p.module.__name__))]:
-        try:
-            plugin_suite = plugin.test_suite()
-        except ImportError, e:
-            bzrlib.trace.warning(
-                'Unable to test plugin "%s": %s', name, e)
-        else:
-            if plugin_suite is not None:
-                if keep_only is not None:
-                    plugin_suite = filter_suite_by_id_list(plugin_suite,
-                                                           id_filter)
-                suite.addTest(plugin_suite)
+    for name, plugin in bzrlib.plugin.plugins().items():
+        if keep_only is not None:
+            if not id_filter.is_module_name_used(plugin.module.__name__):
+                continue
+        plugin_suite = plugin.test_suite()
+        # We used to catch ImportError here and turn it into just a warning,
+        # but really if you don't have --no-plugins this should be a failure.
+        # mbp 20080213 - see http://bugs.launchpad.net/bugs/189771
+        if plugin_suite is not None:
+            if keep_only is not None:
+                plugin_suite = filter_suite_by_id_list(plugin_suite,
+                                                       id_filter)
+            suite.addTest(plugin_suite)
         if default_encoding != sys.getdefaultencoding():
             bzrlib.trace.warning(
                 'Plugin "%s" tried to reset default encoding to: %s', name,
@@ -2963,6 +2966,17 @@ class _SymlinkFeature(Feature):
         return 'symlinks'
 
 SymlinkFeature = _SymlinkFeature()
+
+
+class _HardlinkFeature(Feature):
+
+    def _probe(self):
+        return osutils.has_hardlinks()
+
+    def feature_name(self):
+        return 'hardlinks'
+
+HardlinkFeature = _HardlinkFeature()
 
 
 class _OsFifoFeature(Feature):
