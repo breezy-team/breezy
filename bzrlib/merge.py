@@ -1047,6 +1047,7 @@ class WeaveMerger(Merge3Merger):
         self.cherrypick = cherrypick
         super(WeaveMerger, self).__init__(working_tree, this_tree, 
                                           base_tree, other_tree, 
+                                          interesting_files=interesting_files,
                                           interesting_ids=interesting_ids, 
                                           pb=pb, pp=pp, reprocess=reprocess,
                                           change_reporter=change_reporter,
