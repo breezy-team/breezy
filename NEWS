@@ -43,9 +43,9 @@ IN DEVELOPMENT
     * Disable plink's interactive prompt for password.
       (#107593, Dmitry Vasiliev)
 
-    * Encode recipient and subject line from unicode to user_encoding before
-      invoking external mail client (e.g. Thunderbird) in `bzr send` command
-      on Windows. (#139318, Alexander Belchenko)
+    * Encode command line arguments from unicode to user_encoding before
+      invoking external mail client in `bzr send` command.
+      (#139318, Alexander Belchenko)
 
     * Include quick-start-summary.svg file to python-based installer(s)
       for Windows. (#192924, Alexander Belchenko)
@@ -71,11 +71,6 @@ IN DEVELOPMENT
       (Robert Collins)
 
   INTERNALS:
-
-    * New wrapping method ``ExternalMailClient._get_compose_8bit_commandline``
-      in ``bzrlib.mail_client`` module to force 8 bit command line 
-      for invoking external mail client via subprocess library. This method
-      makes bug #139318 testable. (Alexander Belchenko)
 
     * New module ``tools/package_mf.py`` provide custom module finder for
       python packages (improves standard python library's modulefinder.py)
