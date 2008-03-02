@@ -1289,7 +1289,7 @@ class _PlanMergeBase(object):
             for b_index in range(last_j, j):
                 if b_index in new_b:
                     if b_index in killed_a:
-                        yield 'conflicted-b', self.lines_b[a_index]
+                        yield 'conflicted-b', self.lines_b[b_index]
                     else:
                         yield 'new-b', self.lines_b[b_index]
                 else:

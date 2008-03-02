@@ -591,9 +591,10 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
         self.add_version('REV2', ['ROOT'], 'abce')
         # both sides merge, discarding others' changes
         self.add_version('LCA1', ['REV1', 'REV2'], 'abcd')
-        self.add_version('LCA2', ['REV1', 'REV2'], 'abce')
+        self.add_version('LCA2', ['REV1', 'REV2'], 'fabce')
         plan = self.plan_merge_vf.plan_lca_merge('LCA1', 'LCA2')
-        self.assertEqual([('unchanged', 'a\n'),
+        self.assertEqual([('new-b', 'f\n'),
+                          ('unchanged', 'a\n'),
                           ('unchanged', 'b\n'),
                           ('unchanged', 'c\n'),
                           ('conflicted-a', 'd\n'),
