@@ -1978,6 +1978,7 @@ class BzrBranch6(BzrBranch5):
     def _make_tags(self):
         return BasicTags(self)
 
+    @needs_write_lock
     def generate_revision_history(self, revision_id, last_rev=None,
                                   other_branch=None):
         """See Branch5.generate_revision_history"""
