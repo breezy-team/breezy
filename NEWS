@@ -38,6 +38,9 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * Improved error reporting in the Launchpad plugin. (Daniel Watkins,
+      #196618)
+
   BUGFIXES:
 
     * Disable plink's interactive prompt for password.
