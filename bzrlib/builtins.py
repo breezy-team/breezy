@@ -2387,7 +2387,8 @@ class cmd_check(Command):
                      Option('tree', help="Check the working tree related to"
                                          " the current directory.")]
 
-    def run(self, path=None, verbose=False, branch=True, repo=None, tree=None):
+    def run(self, path=None, verbose=False, branch=False, repo=False,
+            tree=False):
         from bzrlib.check import check_dwim
         if path is None:
             path = '.'

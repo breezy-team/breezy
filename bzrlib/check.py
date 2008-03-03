@@ -300,15 +300,16 @@ def _get_elements(path):
     return tree, repo, branch
 
 
-def check_dwim(path, verbose, do_branch=True, do_repo=True, do_tree=True):
+def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
     tree, repo, branch = _get_elements(path)
 
-    if do_tree and tree is not None:
-        note("Checking working tree at '%s'." 
-             % (tree.bzrdir.root_transport.base,))
-        _check_working_tree(tree)
+    if do_tree:
+        if tree is not None:
+            note("Checking working tree at '%s'." 
+                 % (tree.bzrdir.root_transport.base,))
+            _check_working_tree(tree)
 
-    if do_branch and branch is not None:
+    if branch is not None:
         # We have a branch
         if repo is None:
             # The branch is in a shared repository
