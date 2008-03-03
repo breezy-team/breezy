@@ -257,7 +257,9 @@ class ResolveLaunchpadPathRequest(BaseRequest):
     _authenticated = False
 
     def __init__(self, path):
-        assert path
+        if not path:
+            raise errors.InvalidURL(path=path,
+                                    extra="You must specify a product.")
         self.path = path
 
     def _request_params(self):
