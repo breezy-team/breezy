@@ -30,14 +30,14 @@ protocols, see the ``urlspec`` online help topic or the
 `URL Identifiers <../user-reference/bzr_man.html#url-identifiers>`_
 section of the Bazaar User Reference.
 
-A reminder re shared repositories
----------------------------------
+A reminder about shared repositories
+------------------------------------
 
 Before getting a copy of a branch, have a quick think about
 where to put it on your filesystem. For maximum storage
 efficiency down the track, it is recommended that branches
-be created somewhere under a directory setup as a shared
-repository. For example::
+be created somewhere under a directory that has been set up
+as a shared repository. For example::
 
   bzr init-repo my-repo
   cd my-repo
