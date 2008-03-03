@@ -452,6 +452,10 @@ class TestErrors(TestCaseWithTransport):
              "http://bug.com/"),
             str(err))
 
+    def test_unknown_format(self):
+        err = errors.UnknownFormatError('bar', kind='foo')
+        self.assertEquals("Unknown foo format: 'bar'", str(err))
+
 
 class PassThroughError(errors.BzrError):
     
