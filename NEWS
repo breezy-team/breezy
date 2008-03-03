@@ -38,13 +38,13 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
-    * Improved error reporting in the Launchpad plugin. (Daniel Watkins,
-      #196618)
-
   BUGFIXES:
 
     * Disable plink's interactive prompt for password.
       (#107593, Dmitry Vasiliev)
+
+    * Improved error reporting in the Launchpad plugin. (Daniel Watkins,
+      #196618)
 
     * Include quick-start-summary.svg file to python-based installer(s)
       for Windows. (#192924, Alexander Belchenko)
