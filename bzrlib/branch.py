@@ -835,7 +835,7 @@ class BranchFormat(object):
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
         except KeyError:
-            raise errors.UnknownFormatError(format=format_string)
+            raise errors.UnknownFormatError(format=format_string, kind='branch')
 
     @classmethod
     def get_default_format(klass):
