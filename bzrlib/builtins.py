@@ -2379,13 +2379,19 @@ class cmd_check(Command):
 
     _see_also = ['reconcile']
     takes_args = ['path?']
-    takes_options = ['verbose']
+    takes_options = ['verbose',
+                     Option('branch', help="Check the branch related to the"
+                                           " current directory."),
+                     Option('repo', help="Check the repository related to the"
+                                         " current directory."),
+                     Option('tree', help="Check the working tree related to"
+                                         " the current directory.")]
 
-    def run(self, path=None, verbose=False):
+    def run(self, path=None, verbose=False, branch=True, repo=None, tree=None):
         from bzrlib.check import check_dwim
         if path is None:
             path = '.'
-        check_dwim(path, verbose)
+        check_dwim(path, verbose, do_branch=branch, do_repo=repo, do_tree=tree)
 
 
 class cmd_upgrade(Command):

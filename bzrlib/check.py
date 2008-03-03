@@ -300,7 +300,7 @@ def _get_elements(path):
     return tree, repo, branch
 
 
-def check_dwim(path, verbose):
+def check_dwim(path, verbose, do_branch=True, do_repo=True, do_tree=True):
     tree, repo, branch = _get_elements(path)
 
     if tree is not None:
