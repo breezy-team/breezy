@@ -205,7 +205,8 @@ class BranchRegistrationRequest(BaseRequest):
                  author_email='',
                  product_name='',
                  ):
-        assert branch_url, 'branch_url %r is invalid' % branch_url
+        if not branch_url:
+            raise errors.InvalidURL(branch_url, "You need to specify a non-empty branch URL.")
         self.branch_url = branch_url
         if branch_name:
             self.branch_name = branch_name
