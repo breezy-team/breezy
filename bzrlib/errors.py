@@ -684,7 +684,11 @@ class UnsupportedFormatError(BzrError):
 
 class UnknownFormatError(BzrError):
     
-    _fmt = "Unknown branch format: %(format)r"
+    _fmt = "Unknown %(kind)s format: %(format)r"
+
+    def __init__(self, format, kind='branch'):
+        self.kind = kind
+        self.format = format
 
 
 class IncompatibleFormat(BzrError):
