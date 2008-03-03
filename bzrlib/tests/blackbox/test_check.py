@@ -68,3 +68,11 @@ class TestCheck(ExternalBase):
         tree.commit('foo')
         out, err = self.run_bzr('check --tree')
         self.assertContainsRe(err, r"^Checking working tree at '.*'\.\n$")
+
+    def test_partial_check(self):
+        tree = self.make_branch_and_tree('.')
+        tree.commit('foo')
+        out, err = self.run_bzr('check --tree --branch')
+        self.assertContainsRe(err, r"^Checking working tree at '.*'\.\n"
+                                   r"Checking branch at '.*'\.\n"
+                                   r"checked branch.*\n$")
