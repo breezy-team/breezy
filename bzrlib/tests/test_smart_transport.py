@@ -1491,9 +1491,6 @@ class CommonSmartProtocolTestMixin(object):
         """If an error occurs during testing, it is logged to the test log."""
         # XXX: should also test than an error inside a SmartServerRequest would
         # get logged.
-        if self.server_protocol_class is protocol.SmartServerRequestProtocolThree:
-            from bzrlib.tests import KnownFailure
-            raise KnownFailure('XXX')
         out_stream = StringIO()
         smart_protocol = self.server_protocol_class(None, out_stream.write)
         # This triggers a "bad request" error in all protocol versions.
@@ -2097,7 +2094,15 @@ class TestVersionOneFeaturesInProtocolThree(
     """
 
     client_protocol_class = protocol.SmartClientRequestProtocolThree
-    server_protocol_class = protocol.SmartServerRequestProtocolThree
+
+    # build_server_protocol_three is a function, so we can't set it as a class
+    # attribute directly, because then Python will assume it is actually a
+    # method.  So we make server_protocol_class be a property that returns
+    # build_server_protocol_three, rather than simply doing
+    # "server_protocol_class = protocol.build_server_protocol_three".
+    @property
+    def server_protocol_class(self):
+        return protocol.build_server_protocol_three
 
     def test_construct_version_three_server_protocol(self):
         smart_protocol = protocol.SmartServerRequestProtocolThree(None)
