@@ -33,10 +33,15 @@ IN DEVELOPMENT
 
   FEATURES:
 
-   * ``branch`` and ``checkout`` can hard-link working tree files, which is
-     faster and saves space.  (Aaron Bentley)
+    * ``branch`` and ``checkout`` can hard-link working tree files, which is
+      faster and saves space.  (Aaron Bentley)
 
   IMPROVEMENTS:
+
+    * ``bzr switch`` will attempt to find branches to switch to relative to the
+      current branch. E.g. ``bzr switch branchname`` will look for
+      ``current_branch/../branchname``. (Robert Collins, Jelmer Vernooij,
+      Wouter van Heyst)
 
   BUGFIXES:
 
