@@ -33,3 +33,22 @@ class TestCheck(ExternalBase):
         tree = self.make_branch_and_tree('.')
         tree.commit('hallelujah')
         self.run_bzr('check')
+
+    def test_check_branch(self):
+        tree = self.make_branch_and_tree('.')
+        tree.commit('foo')
+        out, err = self.run_bzr('check --branch')
+        self.assertContainsRe(err, r"^Checking branch at '.*'\.\n"
+                                   r"checked branch.*\n$")
+
+    def test_check_repository(self):
+        tree = self.make_branch_and_tree('.')
+        tree.commit('foo')
+        out, err = self.run_bzr('check --repo')
+        self.assertStartsWith(err, "Checking repository at '")
+
+    def test_check_tree(self):
+        tree = self.make_branch_and_tree('.')
+        tree.commit('foo')
+        out, err = self.run_bzr('check --tree')
+        self.assertStartsWith(err, "Checking working tree at '")
