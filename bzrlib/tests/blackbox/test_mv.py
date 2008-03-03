@@ -24,6 +24,7 @@ from bzrlib import (
     )
 
 from bzrlib.tests import (
+    CaseInsensitiveFilesystemFeature,
     SymlinkFeature,
     TestCaseWithTransport,
     )
@@ -162,6 +163,7 @@ class TestMove(TestCaseWithTransport):
         self.assertNotInWorkingTree('foo')
 
     def test_mv_file_to_wrong_case_dir(self):
+        self.requireFeature(CaseInsensitiveFilesystemFeature)
         tree = self.make_branch_and_tree('.')
         self.build_tree(['foo/', 'bar'])
         tree.add(['foo', 'bar'])
