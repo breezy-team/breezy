@@ -45,10 +45,16 @@ class TestCheck(ExternalBase):
         tree = self.make_branch_and_tree('.')
         tree.commit('foo')
         out, err = self.run_bzr('check --repo')
-        self.assertStartsWith(err, "Checking repository at '")
+        self.assertContainsRe(err, r"^Checking repository at '.*'\.\n"
+                                   r"checked repository.*\n"
+                                   r"     1 revisions\n"
+                                   r"     0 file-ids\n"
+                                   r"     0 unique file texts\n"
+                                   r"     0 repeated file texts\n"
+                                   r"     0 unreferenced text versions$")
 
     def test_check_tree(self):
         tree = self.make_branch_and_tree('.')
         tree.commit('foo')
         out, err = self.run_bzr('check --tree')
-        self.assertStartsWith(err, "Checking working tree at '")
+        self.assertContainsRe(err, r"^Checking working tree at '.*'\.\n$")
