@@ -49,8 +49,13 @@ IN DEVELOPMENT
     * Include quick-start-summary.svg file to python-based installer(s)
       for Windows. (#192924, Alexander Belchenko)
 
+    * Make version-info --custom imply --all. (#195560, James Westby)
+
     * ``merge --preview`` now works for merges that add or modify
       symlinks (James Henstridge)
+
+    * Upgrade bundled ConfigObj to version 4.5.1, which properly quotes #
+      signs, among other small improvements. (Matt Nordhoff, #86838)
 
   API BREAKS:
 
@@ -59,6 +64,10 @@ IN DEVELOPMENT
       (Alexander Belchenko)
 
   TESTING:
+
+    * The branch interface tests were invalid for branches using rich-root
+      repositories because the empty string is not a valid file-id.
+      (Robert Collins)
 
   INTERNALS:
 

@@ -250,7 +250,7 @@ class TreeTransformBase(object):
         This reflects only files that already exist, not ones that will be
         added by transactions.
         """
-        path = self._tree.inventory.id2path(inventory_id)
+        path = self._tree.id2path(inventory_id)
         return self.trans_id_tree_path(path)
 
     def trans_id_file_id(self, file_id):
@@ -770,8 +770,8 @@ class TreeTransformBase(object):
         conflicts = []
         removed_tree_ids = set((self.tree_file_id(trans_id) for trans_id in
                                 self._removed_id))
-        active_tree_ids = set((f for f in self._tree.inventory if
-                               f not in removed_tree_ids))
+        all_ids = self._tree.all_file_ids()
+        active_tree_ids = all_ids.difference(removed_tree_ids)
         for trans_id, file_id in self._new_id.iteritems():
             if file_id in active_tree_ids:
                 old_trans_id = self.trans_id_tree_file_id(file_id)
@@ -1186,7 +1186,6 @@ class TreeTransform(TreeTransformBase):
             conflicts = self.find_conflicts()
             if len(conflicts) != 0:
                 raise MalformedTransform(conflicts=conflicts)
-        inv = self._tree.inventory
         inventory_delta = []
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
@@ -1196,10 +1195,9 @@ class TreeTransform(TreeTransformBase):
                 mover = _mover
             try:
                 child_pb.update('Apply phase', 0, 2)
-                self._apply_removals(inv, inventory_delta, mover)
+                self._apply_removals(inventory_delta, mover)
                 child_pb.update('Apply phase', 1, 2)
-                modified_paths = self._apply_insertions(inv, inventory_delta,
-                                                        mover)
+                modified_paths = self._apply_insertions(inventory_delta, mover)
             except:
                 mover.rollback()
                 raise
@@ -1212,7 +1210,7 @@ class TreeTransform(TreeTransformBase):
         self.finalize()
         return _TransformResults(modified_paths, self.rename_count)
 
-    def _apply_removals(self, inv, inventory_delta, mover):
+    def _apply_removals(self, inventory_delta, mover):
         """Perform tree operations that remove directory/inventory names.
 
         That is, delete files that are to be deleted, and put any files that
@@ -1244,12 +1242,15 @@ class TreeTransform(TreeTransformBase):
                         file_id = self._tree.get_root_id()
                     else:
                         file_id = self.tree_file_id(trans_id)
-                    if file_id is not None:
-                        inventory_delta.append((path, None, file_id, None))
+                    assert file_id is not None
+                    # File-id isn't really being deleted, just moved
+                    if file_id in self._r_new_id:
+                        continue
+                    inventory_delta.append((path, None, file_id, None))
         finally:
             child_pb.finished()
 
-    def _apply_insertions(self, inv, inventory_delta, mover):
+    def _apply_insertions(self, inventory_delta, mover):
         """Perform tree operations that insert directory/inventory names.
 
         That is, create any files that need to be created, and restore from
@@ -1264,10 +1265,6 @@ class TreeTransform(TreeTransformBase):
             for num, (path, trans_id) in enumerate(new_paths):
                 new_entry = None
                 child_pb.update('adding file', num, len(new_paths))
-                try:
-                    kind = self._new_contents[trans_id]
-                except KeyError:
-                    kind = contents = None
                 if trans_id in self._new_contents or \
                     self.path_changed(trans_id):
                     full_path = self._tree.abspath(path)
@@ -1283,13 +1280,17 @@ class TreeTransform(TreeTransformBase):
                     if trans_id in self._new_contents:
                         modified_paths.append(full_path)
                         completed_new.append(trans_id)
-
-                if trans_id in self._new_id:
-                    if kind is None:
-                        kind = file_kind(self._tree.abspath(path))
+                file_id = self.final_file_id(trans_id)
+                if file_id is not None and (trans_id in self._new_id or
+                    trans_id in self._new_name or trans_id in self._new_parent
+                    or trans_id in self._new_executability):
+                    try:
+                        kind = self.final_kind(trans_id)
+                    except NoSuchFile:
+                        kind = self._tree.stored_kind(file_id)
                     if trans_id in self._new_reference_revision:
                         new_entry = inventory.TreeReference(
-                            self._new_id[trans_id],
+                            self.final_file_id(trans_id),
                             self._new_name[trans_id],
                             self.final_file_id(self._new_parent[trans_id]),
                             None, self._new_reference_revision[trans_id])
@@ -1297,34 +1298,16 @@ class TreeTransform(TreeTransformBase):
                         new_entry = inventory.make_entry(kind,
                             self.final_name(trans_id),
                             self.final_file_id(self.final_parent(trans_id)),
-                            self._new_id[trans_id])
-                else:
-                    if trans_id in self._new_name or trans_id in\
-                        self._new_parent or\
-                        trans_id in self._new_executability:
-                        file_id = self.final_file_id(trans_id)
-                        if file_id is not None:
-                            entry = inv[file_id]
-                            new_entry = entry.copy()
-
-                    if trans_id in self._new_name or trans_id in\
-                        self._new_parent:
-                            if new_entry is not None:
-                                new_entry.name = self.final_name(trans_id)
-                                parent = self.final_parent(trans_id)
-                                parent_id = self.final_file_id(parent)
-                                new_entry.parent_id = parent_id
+                            self.final_file_id(trans_id))
+                    try:
+                        old_path = self._tree.id2path(new_entry.file_id)
+                    except errors.NoSuchId:
+                        old_path = None
+                    inventory_delta.append((old_path, path, new_entry.file_id,
+                                            new_entry))
 
                 if trans_id in self._new_executability:
                     self._set_executability(path, new_entry, trans_id)
-                if new_entry is not None:
-                    if new_entry.file_id in inv:
-                        old_path = inv.id2path(new_entry.file_id)
-                    else:
-                        old_path = None
-                    inventory_delta.append((old_path, path,
-                                            new_entry.file_id,
-                                            new_entry))
         finally:
             child_pb.finished()
         for trans_id in completed_new:
@@ -1520,8 +1503,9 @@ def build_tree(tree, wt, accelerator_tree=None, hardlink=False):
 
 def _build_tree(tree, wt, accelerator_tree, hardlink):
     """See build_tree."""
-    if len(wt.inventory) > 1:  # more than just a root
-        raise errors.WorkingTreeAlreadyPopulated(base=wt.basedir)
+    for num, _unused in enumerate(wt.all_file_ids()):
+        if num > 0:  # more than just a root
+            raise errors.WorkingTreeAlreadyPopulated(base=wt.basedir)
     file_trans_id = {}
     top_pb = bzrlib.ui.ui_factory.nested_progress_bar()
     pp = ProgressPhase("Build phase", 2, top_pb)
@@ -2056,7 +2040,8 @@ def conflict_pass(tt, conflicts, path_tree=None):
             new_parent_id = tt.new_directory(parent_name + '.new',
                 parent_parent, parent_file_id)
             _reparent_transform_children(tt, parent_id, new_parent_id)
-            tt.unversion_file(parent_id)
+            if parent_file_id is not None:
+                tt.unversion_file(parent_id)
             new_conflicts.add((c_type, 'Created directory', new_parent_id))
     return new_conflicts
 

@@ -500,6 +500,16 @@ class WorkingTree4(WorkingTree3):
             mode = os.lstat(self.abspath(path)).st_mode
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
+    def all_file_ids(self):
+        """See Tree.iter_all_file_ids"""
+        self._must_be_locked()
+        result = set()
+        for key, tree_details in self.current_dirstate()._iter_entries():
+            if tree_details[0][0] in ('a', 'r'): # relocated
+                continue
+            result.add(key[2])
+        return result
+
     @needs_read_lock
     def __iter__(self):
         """Iterate through file_ids for this tree.
@@ -1215,6 +1225,19 @@ class WorkingTree4(WorkingTree3):
             for file_id in file_ids:
                 self._inventory.remove_recursive_id(file_id)
 
+    @needs_tree_write_lock
+    def rename_one(self, from_rel, to_rel, after=False):
+        """See WorkingTree.rename_one"""
+        self.flush()
+        WorkingTree.rename_one(self, from_rel, to_rel, after)
+
+    @needs_tree_write_lock
+    def apply_inventory_delta(self, changes):
+        """See MutableTree.apply_inventory_delta"""
+        state = self.current_dirstate()
+        state.update_by_delta(changes)
+        self._make_dirty(reset_inventory=True)
+
     def update_basis_by_delta(self, new_revid, delta):
         """See MutableTree.update_basis_by_delta."""
         assert self.last_revision() != new_revid
@@ -1606,6 +1629,10 @@ class DirStateRevisionTree(Tree):
         if entry == None:
             raise errors.NoSuchId(tree=self, file_id=file_id)
         return dirstate.DirState._minikind_to_kind[entry[1][0]]
+
+    def stored_kind(self, file_id):
+        """See Tree.stored_kind"""
+        return self.kind(file_id)
 
     def path_content_summary(self, path):
         """See Tree.path_content_summary."""
