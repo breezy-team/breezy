@@ -45,6 +45,7 @@ from bzrlib import (
     osutils,
     trace,
     win32utils,
+    registry,
     )
 """)
 
@@ -168,6 +169,16 @@ def _get_cmd_object(cmd_name, plugins_override=True):
     cmd_obj = ExternalCommand.find_command(cmd_name)
     if cmd_obj:
         return cmd_obj
+
+    # look for plugins that provide this command but aren't installed
+    for provider in command_providers_registry:
+        try:
+            plugin_metadata = provider.plugin_for_command(cmd_name)
+        except errors.NoPluginAvailable:
+            pass
+        else:
+            raise errors.CommandAvailableInPlugin(cmd_name, plugin_metadata, provider)
+
     raise KeyError
 
 
@@ -881,6 +892,22 @@ class HelpCommandIndex(object):
             return []
         else:
             return [cmd]
+
+
+class Provider(object):
+
+    def plugin_for_command(self, cmd_name):
+        raise NotImplementedError
+
+
+class ProvidersRegistry(registry.Registry):
+    '''This registry exists to allow other providers to exist'''
+    def __iter__(self):
+        for key, provider in self.iteritems():
+            yield provider
+    pass
+
+command_providers_registry = ProvidersRegistry()
 
 
 if __name__ == '__main__':
