@@ -58,8 +58,10 @@ class LaunchpadTransport(Transport):
     def __init__(self, base):
         super(LaunchpadTransport, self).__init__(base)
         # We only support URLs without a netloc
-        netloc = urlsplit(base)[1]
-        if netloc != '':
+        self.lp_instance = urlsplit(base)[1]
+        if self.lp_instance == '':
+            self.lp_instance = None
+        elif self.lp_instance not in LaunchpadService.LAUNCHPAD_INSTANCE:
             raise errors.InvalidURL(path=base)
 
     def _requires_launchpad_login(self, scheme, netloc, path, query,
@@ -80,7 +82,7 @@ class LaunchpadTransport(Transport):
         path = urlsplit(abspath)[2].lstrip('/')
         # Perform an XMLRPC request to resolve the path
         resolve = _request_factory(path)
-        service = LaunchpadService()
+        service = LaunchpadService(lp_instance=self.lp_instance)
         try:
             result = resolve.submit(service)
         except xmlrpclib.Fault, fault:

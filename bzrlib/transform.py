@@ -81,6 +81,7 @@ class TreeTransformBase(object):
         object.__init__(self)
         self._tree = tree
         self._limbodir = limbodir
+        self._deletiondir = None
         self._id_number = 0
         # mapping of trans_id -> new basename
         self._new_name = {}
@@ -158,7 +159,8 @@ class TreeTransformBase(object):
                 # We don't especially care *why* the dir is immortal.
                 raise ImmortalLimbo(self._limbodir)
             try:
-                os.rmdir(self._deletiondir)
+                if self._deletiondir is not None:
+                    os.rmdir(self._deletiondir)
             except OSError:
                 raise errors.ImmortalPendingDeletion(self._deletiondir)
         finally:
@@ -351,6 +353,23 @@ class TreeTransformBase(object):
                 raise
         if typefunc(mode):
             os.chmod(self._limbo_name(trans_id), mode)
+
+    def create_hardlink(self, path, trans_id):
+        """Schedule creation of a hard link"""
+        name = self._limbo_name(trans_id)
+        try:
+            os.link(path, name)
+        except OSError, e:
+            if e.errno != errno.EPERM:
+                raise
+            raise errors.HardLinkNotSupported(path)
+        try:
+            unique_add(self._new_contents, trans_id, 'file')
+        except:
+            # Clean up the file, it never got registered so
+            # TreeTransform.finalize() won't clean it up.
+            os.unlink(name)
+            raise
 
     def create_directory(self, trans_id):
         """Schedule creation of a new directory.
@@ -1136,19 +1155,20 @@ class TreeTransform(TreeTransformBase):
             except OSError, e:
                 if e.errno == errno.EEXIST:
                     raise ExistingLimbo(limbodir)
-            self._deletiondir = urlutils.local_path_from_url(
+            deletiondir = urlutils.local_path_from_url(
                 control_files.controlfilename('pending-deletion'))
             try:
-                os.mkdir(self._deletiondir)
+                os.mkdir(deletiondir)
             except OSError, e:
                 if e.errno == errno.EEXIST:
-                    raise errors.ExistingPendingDeletion(self._deletiondir)
+                    raise errors.ExistingPendingDeletion(deletiondir)
         except:
             tree.unlock()
             raise
 
         TreeTransformBase.__init__(self, tree, limbodir, pb,
                                    tree.case_sensitive)
+        self._deletiondir = deletiondir
 
     def apply(self, no_conflicts=False, _mover=None):
         """Apply all changes to the inventory and filesystem.
@@ -1321,7 +1341,8 @@ class TransformPreview(TreeTransformBase):
     """
 
     def __init__(self, tree, pb=DummyProgress(), case_sensitive=True):
-        limbodir = tempfile.mkdtemp()
+        tree.lock_read()
+        limbodir = tempfile.mkdtemp(prefix='bzr-limbo-')
         TreeTransformBase.__init__(self, tree, limbodir, pb, case_sensitive)
 
     def canonical_path(self, path):
@@ -1403,6 +1424,12 @@ class _PreviewTree(object):
         name = self._transform._limbo_name(trans_id)
         return open(name, 'rb')
 
+    def get_symlink_target(self, file_id):
+        """See Tree.get_symlink_target"""
+        trans_id = self._transform.trans_id_file_id(file_id)
+        name = self._transform._limbo_name(trans_id)
+        return os.readlink(name)
+
     def paths2ids(self, specific_files, trees=None, require_versioned=False):
         """See Tree.paths2ids"""
         return 'not_empty'
@@ -1451,7 +1478,7 @@ def topology_sorted_ids(tree):
     return file_ids
 
 
-def build_tree(tree, wt, accelerator_tree=None):
+def build_tree(tree, wt, accelerator_tree=None, hardlink=False):
     """Create working tree for a branch, using a TreeTransform.
     
     This function should be used on empty trees, having a tree root at most.
@@ -1470,6 +1497,9 @@ def build_tree(tree, wt, accelerator_tree=None):
     :param accelerator_tree: A tree which can be used for retrieving file
         contents more quickly than tree itself, i.e. a workingtree.  tree
         will be used for cases where accelerator_tree's content is different.
+    :param hardlink: If true, hard-link files to accelerator_tree, where
+        possible.  accelerator_tree must implement abspath, i.e. be a
+        working tree.
     """
     wt.lock_tree_write()
     try:
@@ -1478,7 +1508,7 @@ def build_tree(tree, wt, accelerator_tree=None):
             if accelerator_tree is not None:
                 accelerator_tree.lock_read()
             try:
-                return _build_tree(tree, wt, accelerator_tree)
+                return _build_tree(tree, wt, accelerator_tree, hardlink)
             finally:
                 if accelerator_tree is not None:
                     accelerator_tree.unlock()
@@ -1488,7 +1518,7 @@ def build_tree(tree, wt, accelerator_tree=None):
         wt.unlock()
 
 
-def _build_tree(tree, wt, accelerator_tree):
+def _build_tree(tree, wt, accelerator_tree, hardlink):
     """See build_tree."""
     if len(wt.inventory) > 1:  # more than just a root
         raise errors.WorkingTreeAlreadyPopulated(base=wt.basedir)
@@ -1515,6 +1545,7 @@ def _build_tree(tree, wt, accelerator_tree):
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             deferred_contents = []
+            num = 0
             for num, (tree_path, entry) in \
                 enumerate(tree.inventory.iter_entries_by_dir()):
                 pb.update("Building tree", num - len(deferred_contents),
@@ -1564,13 +1595,9 @@ def _build_tree(tree, wt, accelerator_tree):
                     new_trans_id = file_trans_id[file_id]
                     old_parent = tt.trans_id_tree_path(tree_path)
                     _reparent_children(tt, old_parent, new_trans_id)
-            for num, (trans_id, bytes) in enumerate(
-                _iter_files_bytes_accelerated(tree, accelerator_tree,
-                                              deferred_contents)):
-                tt.create_file(bytes, trans_id)
-                pb.update('Adding file contents',
-                          (num + len(tree.inventory) - len(deferred_contents)),
-                          len(tree.inventory))
+            offset = num + 1 - len(deferred_contents)
+            _create_files(tt, tree, deferred_contents, pb, offset,
+                          accelerator_tree, hardlink)
         finally:
             pb.finished()
         pp.next_phase()
@@ -1591,28 +1618,38 @@ def _build_tree(tree, wt, accelerator_tree):
     return result
 
 
-def _iter_files_bytes_accelerated(tree, accelerator_tree, desired_files):
+def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
+                  hardlink):
+    total = len(desired_files) + offset
     if accelerator_tree is None:
         new_desired_files = desired_files
     else:
         iter = accelerator_tree._iter_changes(tree, include_unchanged=True)
         unchanged = dict((f, p[1]) for (f, p, c, v, d, n, k, e)
-                         in iter if not c)
+                         in iter if not (c or e[0] != e[1]))
         new_desired_files = []
-        for file_id, identifier in desired_files:
+        count = 0
+        for file_id, trans_id in desired_files:
             accelerator_path = unchanged.get(file_id)
             if accelerator_path is None:
-                new_desired_files.append((file_id, identifier))
+                new_desired_files.append((file_id, trans_id))
                 continue
-            contents = accelerator_tree.get_file(file_id, accelerator_path)
-            try:
-                want_new = False
-                contents_bytes = (contents.read(),)
-            finally:
-                contents.close()
-            yield identifier, contents_bytes
-    for result in tree.iter_files_bytes(new_desired_files):
-        yield result
+            pb.update('Adding file contents', count + offset, total)
+            if hardlink:
+                tt.create_hardlink(accelerator_tree.abspath(accelerator_path),
+                                   trans_id)
+            else:
+                contents = accelerator_tree.get_file(file_id, accelerator_path)
+                try:
+                    tt.create_file(contents, trans_id)
+                finally:
+                    contents.close()
+            count += 1
+        offset += count
+    for count, (trans_id, contents) in enumerate(tree.iter_files_bytes(
+                                                 new_desired_files)):
+        tt.create_file(contents, trans_id)
+        pb.update('Adding file contents', count + offset, total)
 
 
 def _reparent_children(tt, old_parent, new_parent):

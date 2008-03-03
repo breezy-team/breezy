@@ -22,6 +22,7 @@ import os
 from bzrlib import branch, bzrdir
 from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
 from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import HardlinkFeature
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.workingtree import WorkingTree
 
@@ -83,6 +84,17 @@ class TestBranch(ExternalBase):
         self.assertFalse(pushed_repo.has_revision('a-1'))
         self.assertFalse(pushed_repo.has_revision('a-2'))
         self.assertTrue(pushed_repo.has_revision('b-1'))
+
+    def test_branch_hardlink(self):
+        self.requireFeature(HardlinkFeature)
+        source = self.make_branch_and_tree('source')
+        self.build_tree(['source/file1'])
+        source.add('file1')
+        source.commit('added file')
+        self.run_bzr(['branch', 'source', 'target', '--hardlink'])
+        source_stat = os.stat('source/file1')
+        target_stat = os.stat('target/file1')
+        self.assertEqual(source_stat, target_stat)
 
 
 class TestRemoteBranch(TestCaseWithSFTPServer):

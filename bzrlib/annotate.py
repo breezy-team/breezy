@@ -168,25 +168,48 @@ def reannotate(parents_lines, new_lines, new_revision_id,
         the SequenceMatcher.get_matching_blocks format.
     """
     if len(parents_lines) == 0:
-        for line in new_lines:
-            yield new_revision_id, line
+        lines = [(new_revision_id, line) for line in new_lines]
     elif len(parents_lines) == 1:
-        for data in _reannotate(parents_lines[0], new_lines, new_revision_id,
-                                _left_matching_blocks):
-            yield data
+        lines = _reannotate(parents_lines[0], new_lines, new_revision_id,
+                            _left_matching_blocks)
+    elif len(parents_lines) == 2:
+        left = _reannotate(parents_lines[0], new_lines, new_revision_id,
+                           _left_matching_blocks)
+        right = _reannotate(parents_lines[1], new_lines, new_revision_id)
+        lines = []
+        for idx in xrange(len(new_lines)):
+            if left[idx][0] == right[idx][0]:
+                # The annotations match, just return the left one
+                lines.append(left[idx])
+            elif left[idx][0] == new_revision_id:
+                # The left parent claims a new value, return the right one
+                lines.append(right[idx])
+            elif right[idx][0] == new_revision_id:
+                # The right parent claims a new value, return the left one
+                lines.append(left[idx])
+            else:
+                # Both claim different origins
+                lines.append((new_revision_id, left[idx][1]))
     else:
-        block_list = [_left_matching_blocks] + [None] * len(parents_lines)
-        reannotations = [list(_reannotate(p, new_lines, new_revision_id, b))
-                         for p, b in zip(parents_lines, block_list)]
+        reannotations = [_reannotate(parents_lines[0], new_lines,
+                                     new_revision_id, _left_matching_blocks)]
+        reannotations.extend(_reannotate(p, new_lines, new_revision_id)
+                             for p in parents_lines[1:])
+        lines = []
         for annos in zip(*reannotations):
             origins = set(a for a, l in annos)
-            line = annos[0][1]
             if len(origins) == 1:
-                yield iter(origins).next(), line
-            elif len(origins) == 2 and new_revision_id in origins:
-                yield (x for x in origins if x != new_revision_id).next(), line
+                # All the parents agree, so just return the first one
+                lines.append(annos[0])
             else:
-                yield new_revision_id, line
+                line = annos[0][1]
+                if len(origins) == 2 and new_revision_id in origins:
+                    origins.remove(new_revision_id)
+                if len(origins) == 1:
+                    lines.append((origins.pop(), line))
+                else:
+                    lines.append((new_revision_id, line))
+    return lines
 
 
 def _reannotate(parent_lines, new_lines, new_revision_id,
@@ -197,9 +220,10 @@ def _reannotate(parent_lines, new_lines, new_revision_id,
         matcher = patiencediff.PatienceSequenceMatcher(None,
             plain_parent_lines, new_lines)
         matching_blocks = matcher.get_matching_blocks()
+    lines = []
     for i, j, n in matching_blocks:
         for line in new_lines[new_cur:j]:
-            yield new_revision_id, line
-        for data in parent_lines[i:i+n]:
-            yield data
+            lines.append((new_revision_id, line))
+        lines.extend(parent_lines[i:i+n])
         new_cur = j + n
+    return lines
