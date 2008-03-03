@@ -2392,6 +2392,8 @@ class cmd_check(Command):
         from bzrlib.check import check_dwim
         if path is None:
             path = '.'
+        if not branch and not repo and not tree:
+            branch = repo = tree = True
         check_dwim(path, verbose, do_branch=branch, do_repo=repo, do_tree=tree)
 
 
