@@ -52,8 +52,8 @@ IN DEVELOPMENT
     * Upgrade bundled ConfigObj to version 4.5.1, which properly quotes #
       signs, among other small improvements. (Matt Nordhoff, #86838)
 
-    * Use correct indices when emitting LCA conflicts.
-      (Aaron Bentley, #196780)
+    * Use correct indices when emitting LCA conflicts.  This fixes IndexError
+      errors.  (Aaron Bentley, #196780)
 
   API BREAKS:
 
