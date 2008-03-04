@@ -51,6 +51,9 @@ IN DEVELOPMENT
     * ``merge --preview`` now works for merges that add or modify
       symlinks (James Henstridge)
 
+    * Redirecting the output from ``bzr merge`` (when the remembered
+      location is used) now works. (John Arbash Meinel)
+
     * Upgrade bundled ConfigObj to version 4.5.1, which properly quotes #
       signs, among other small improvements. (Matt Nordhoff, #86838)
 
