@@ -38,6 +38,10 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+   * BzrBranch._lefthand_history is faster on pack repos.  (Aaron Bentley)
+
+   * Branch6.generate_revision_history is faster.  (Aaron Bentley)
+
   BUGFIXES:
 
     * Disable plink's interactive prompt for password.

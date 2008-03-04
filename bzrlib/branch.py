@@ -1985,7 +1985,7 @@ class BzrBranch6(BzrBranch5):
     @needs_write_lock
     def generate_revision_history(self, revision_id, last_rev=None,
                                   other_branch=None):
-        """See Branch5.generate_revision_history"""
+        """See BzrBranch5.generate_revision_history"""
         history = self._lefthand_history(revision_id, last_rev, other_branch)
         revno = len(history)
         self.set_last_revision_info(revno, revision_id)
