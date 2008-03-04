@@ -51,6 +51,36 @@ from svk import (SVN_PROP_SVK_MERGE, svk_features_merged_since,
 from tree import SvnRevisionTree
 import urllib
 
+class lazy_dict:
+    def __init__(self, create_fn):
+        self.create_fn = create_fn
+        self.dict = None
+
+    def _ensure_init(self):
+        if self.dict is None:
+            self.dict = self.create_fn()
+
+    def __len__(self):
+        self._ensure_init()
+        return len(self.dict)
+
+    def __getitem__(self, key):
+        self._ensure_init()
+        return self.dict[key]
+
+    def __setitem__(self, key, value):
+        self._ensure_init()
+        self.dict[key] = value
+
+    def get(self, key, default=None):
+        self._ensure_init()
+        return self.dict.get(key, default)
+
+    def has_key(self, key):
+        self._ensure_init()
+        return self.dict.has_key(key)
+
+
 def svk_feature_to_revision_id(feature, mapping):
     """Convert a SVK feature to a revision id for this repository.
 
@@ -298,8 +328,8 @@ class SvnRepository(Repository):
 
         ancestry = [revision_id]
 
-        svn_revprops = self.transport.revprop_list(revnum)
-        svn_fileprops = self.branchprop_list.get_properties(path, revnum)
+        svn_revprops = lazy_dict(lambda: self.transport.revprop_list(revnum))
+        svn_fileprops = lazy_dict(lambda: self.branchprop_list.get_properties(path, revnum))
         ancestry.extend(mapping.get_rhs_ancestors(path, svn_revprops, svn_fileprops))
 
         if revnum > 0:
@@ -353,8 +383,8 @@ class SvnRepository(Repository):
         """
         (path, revnum, mapping) = self.lookup_revision_id(revid)
 
-        svn_revprops = self.transport.revprop_list(revnum)
-        svn_fileprops = self.branchprop_list.get_changed_properties(path, revnum)
+        svn_revprops = lazy_dict(lambda: self.transport.revprop_list(revnum))
+        svn_fileprops = lazy_dict(lambda: self.branchprop_list.get_changed_properties(path, revnum))
 
         return mapping.import_fileid_map(svn_revprops, svn_fileprops)
 
@@ -433,9 +463,9 @@ class SvnRepository(Repository):
             parent_ids.append(mainline_parent)
 
         if svn_fileprops is None:
-            svn_fileprops = self.branchprop_list.get_changed_properties(branch, revnum)
+            svn_fileprops = lazy_dict(lambda: self.branchprop_list.get_changed_properties(branch, revnum))
 
-        svn_revprops = self.transport.revprop_list(revnum)
+        svn_revprops = lazy_dict(lambda: self.transport.revprop_list(revnum))
 
         extra_rhs_parents = mapping.get_rhs_parents(branch, svn_revprops, svn_fileprops)
         parent_ids.extend(extra_rhs_parents)
@@ -459,8 +489,8 @@ class SvnRepository(Repository):
             inventory_sha1 = property(lambda rev: self.get_inventory_sha1(rev.revision_id))
 
         rev = LazySvnRevision(revision_id=revision_id, parent_ids=parent_ids)
-        svn_revprops = self.transport.revprop_list(revnum)
-        svn_fileprops = self.branchprop_list.get_changed_properties(path, revnum)
+        svn_revprops = lazy_dict(lambda: self.transport.revprop_list(revnum))
+        svn_fileprops = lazy_dict(lambda: self.branchprop_list.get_changed_properties(path, revnum))
 
         mapping.import_revision(svn_revprops, svn_fileprops, rev)
 
@@ -494,12 +524,12 @@ class SvnRepository(Repository):
 
         # See if there is a bzr:revision-id revprop set
         try:
-            revprops = self._log._get_transport().revprop_list(revnum)
+            revprops = lazy_dict(lambda: self._log._get_transport().revprop_list(revnum))
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
                 raise NoSuchRevision(path, revnum)
             raise
-        fileprops = self.branchprop_list.get_changed_properties(path, revnum)
+        fileprops = lazy_dict(lambda: self.branchprop_list.get_changed_properties(path, revnum))
         (bzr_revno, revid) = mapping.get_revision_id(path, revprops, 
                                                      fileprops)
         # Or generate it

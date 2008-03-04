@@ -549,19 +549,24 @@ class InterFromSvnRepository(InterRepository):
         (path, until_revnum, mapping) = self.source.lookup_revision_id(revision_id)
 
         prev_revid = None
-        for (branch, revnum) in self.source.follow_branch(path, 
-                                                          until_revnum, mapping):
-            revid = self.source.generate_revision_id(revnum, branch, mapping)
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            for (branch, revnum) in self.source.follow_branch(path, 
+                                                              until_revnum, mapping):
+                pb.update("determining revisions to fetch", until_revnum-revnum, until_revnum)
+                revid = self.source.generate_revision_id(revnum, branch, mapping)
 
-            if prev_revid is not None:
-                parents[prev_revid] = revid
+                if prev_revid is not None:
+                    parents[prev_revid] = revid
 
-            prev_revid = revid
+                prev_revid = revid
 
-            if not self.target.has_revision(revid):
-                needed.append(revid)
-            elif not find_ghosts:
-                break
+                if not self.target.has_revision(revid):
+                    needed.append(revid)
+                elif not find_ghosts:
+                    break
+        finally:
+            pb.finished()
 
         parents[prev_revid] = None
         needed.reverse()

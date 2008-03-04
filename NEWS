@@ -4,6 +4,10 @@ bzr-svn 0.4.9	UNRELEASED
   
    * Fix compatibility with bzr 1.3.
 
+  FEATURE
+
+   * Add progress bar to fetch initialization code. 
+
 
 bzr-svn 0.4.8	UNRELEASED
 
