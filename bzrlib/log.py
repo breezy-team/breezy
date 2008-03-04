@@ -603,8 +603,9 @@ class LogFormatter(object):
     Plugins can register functions to show custom revision properties using
     the class method add_show_properties(function). The registered function
     must respect the following interface description:
-        def my_show_properties(to_file, properties_dict):
-            # code that use to_file.write() to send the correct output
+        def my_show_properties(properties_dict):
+            # code that returns a dict {'name':'value'} of the properties 
+            # to be shown
     """
     registered_show_properties = []
 
@@ -640,17 +641,22 @@ class LogFormatter(object):
         return address
 
     @classmethod
-    def add_show_properties(child=None, func=None):
-        if not func is None:
-            LogFormatter.registered_show_properties.append(func)
+    def add_show_properties(child=None, function=None):
+        """add a properties handler to the list
+            * child: the derived class object
+            * function: a funtion that handle revision properties"""
+        if not function is None:
+            LogFormatter.registered_show_properties.append(function)
 
     def show_properties(self, properties):
+        """shows the custom properties returned by each 
+            function in registered_show_properties."""
         filtered_props = properties.copy()
         if filtered_props.has_key('branch-nick'): 
-            filtered_props.__delitem__('branch-nick')
+            del filtered_props['branch-nick']
         for func in LogFormatter.registered_show_properties:
-            func(self.to_file, filtered_props)
-
+            for key, value in func(filtered_props).items():
+                self.to_file.write(key + ': ' + value + '\n')
 
 class LongLogFormatter(LogFormatter):
 
@@ -684,6 +690,7 @@ class LongLogFormatter(LogFormatter):
             for parent_id in revision.rev.parent_ids:
                 to_file.write(indent + 'parent: %s\n' % (parent_id,))
         
+        # show custom properties
         self.show_properties(revision.rev.properties)
 
         author = revision.rev.properties.get('author', None)

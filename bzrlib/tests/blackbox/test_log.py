@@ -178,6 +178,23 @@ class TestLog(ExternalBase):
         self.assertNotContainsRe(log, r'revno: 1\n')
         self.assertContainsRe(log, r'revno: 2\n')
         self.assertContainsRe(log, r'revno: 3\n')
+        
+    def test_log_with_custom_properties(self):
+        tree = self._prepare()
+        # add a new revision containing a custom property
+        tree.commit(message='', revprops={'first_prop':'first_value'})
+        
+        # define a trivial custom property handler
+        def trivial_custom_prop_handler(props_dict):
+            return props_dict
+        
+        bzrlib.log.LogFormatter.add_show_properties(trivial_custom_prop_handler)
+        log = self.run_bzr("log --limit 1")[0]
+        # check if it's in the output
+        self.assertContainsRe(log, r'first_prop: first_value\n')
+        
+        log = self.run_bzr("log -r1")[0]
+        self.assertNotContainsRe(log, r'first_prop: first_value\n')
 
 class TestLogMerges(ExternalBase):
 
