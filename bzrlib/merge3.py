@@ -67,15 +67,14 @@ class Merge3(object):
     Given BASE, OTHER, THIS, tries to produce a combined text
     incorporating the changes from both BASE->OTHER and BASE->THIS.
     All three will typically be sequences of lines."""
-    def __init__(self, base, a, b):
+    def __init__(self, base, a, b, is_cherrypick=False):
         check_text_lines(base)
         check_text_lines(a)
         check_text_lines(b)
         self.base = base
         self.a = a
         self.b = b
-
-
+        self.is_cherrypick = is_cherrypick
 
     def merge_lines(self,
                     name_a=None,
@@ -130,10 +129,6 @@ class Merge3(object):
                 yield end_marker + newline
             else:
                 raise ValueError(what)
-        
-        
-
-
 
     def merge_annotated(self):
         """Return merge with conflicts, showing origin of lines.
@@ -161,10 +156,6 @@ class Merge3(object):
                 yield '>>>>\n'
             else:
                 raise ValueError(what)
-        
-        
-
-
 
     def merge_groups(self):
         """Yield sequence of line groups.  Each one is a tuple:
@@ -199,7 +190,6 @@ class Merge3(object):
                        self.b[t[5]:t[6]])
             else:
                 raise ValueError(what)
-
 
     def merge_regions(self):
         """Return sequences of matching and conflicting regions.
@@ -250,23 +240,30 @@ class Merge3(object):
 
             if len_a or len_b:
                 # try to avoid actually slicing the lists
-                equal_a = compare_range(self.a, ia, amatch,
-                                        self.base, iz, zmatch)
-                equal_b = compare_range(self.b, ib, bmatch,
-                                        self.base, iz, zmatch)
                 same = compare_range(self.a, ia, amatch,
                                      self.b, ib, bmatch)
 
                 if same:
                     yield 'same', ia, amatch
-                elif equal_a and not equal_b:
-                    yield 'b', ib, bmatch
-                elif equal_b and not equal_a:
-                    yield 'a', ia, amatch
-                elif not equal_a and not equal_b:
-                    yield 'conflict', iz, zmatch, ia, amatch, ib, bmatch
                 else:
-                    raise AssertionError("can't handle a=b=base but unmatched")
+                    equal_a = compare_range(self.a, ia, amatch,
+                                            self.base, iz, zmatch)
+                    equal_b = compare_range(self.b, ib, bmatch,
+                                            self.base, iz, zmatch)
+                    if equal_a and not equal_b:
+                        yield 'b', ib, bmatch
+                    elif equal_b and not equal_a:
+                        yield 'a', ia, amatch
+                    elif not equal_a and not equal_b:
+                        if self.is_cherrypick:
+                            for node in self._refine_cherrypick_conflict(
+                                                    iz, zmatch, ia, amatch,
+                                                    ib, bmatch):
+                                yield node
+                        else:
+                            yield 'conflict', iz, zmatch, ia, amatch, ib, bmatch
+                    else:
+                        raise AssertionError("can't handle a=b=base but unmatched")
 
                 ia = amatch
                 ib = bmatch
@@ -275,7 +272,6 @@ class Merge3(object):
             # if the same part of the base was deleted on both sides
             # that's OK, we can just skip it.
 
-                
             if matchlen > 0:
                 assert ia == amatch
                 assert ib == bmatch
@@ -285,7 +281,43 @@ class Merge3(object):
                 iz = zend
                 ia = aend
                 ib = bend
-    
+
+    def _refine_cherrypick_conflict(self, zstart, zend, astart, aend, bstart, bend):
+        """When cherrypicking b => a, ignore matches with b and base."""
+        # Do not emit regions which match, only regions which do not match
+        matches = bzrlib.patiencediff.PatienceSequenceMatcher(None,
+            self.base[zstart:zend], self.b[bstart:bend]).get_matching_blocks()
+        zzcur = 0
+        bbcur = 0
+        yielded_a = False
+        for region_iz, region_ib, region_len in matches:
+            conflict_z_len = region_iz - zzcur
+            conflict_b_len = region_ib - bbcur
+            if conflict_b_len == 0: # There are no lines in b which conflict,
+                                    # so skip it
+                pass
+            else:
+                if yielded_a:
+                    yield ('conflict', zstart + zzcur, zstart + region_iz,
+                           aend, aend, bstart + bbcur, bstart + region_ib)
+                else:
+                    # The first conflict gets the a-range
+                    yielded_a = True
+                    yield ('conflict', zstart + zzcur, zstart + region_iz,
+                           astart, aend, bstart + bbcur, bstart + region_ib)
+            zzcur = region_iz + region_len
+            bbcur = region_ib + region_len
+        if zzcur != zend - zstart or bbcur != bend - bstart:
+            if yielded_a:
+                yield ('conflict', zstart + zzcur, zstart + region_iz,
+                       aend, aend, bstart + bbcur, bstart + region_ib)
+            else:
+                # The first conflict gets the a-range
+                yielded_a = True
+                yield ('conflict', zstart + zzcur, zstart + region_iz,
+                       astart, aend, bstart + bbcur, bstart + region_ib)
+        if not yielded_a:
+            yield ('conflict', zstart, zend, astart, aend, bstart, bend)
 
     def reprocess_merge_regions(self, merge_regions):
         """Where there are conflict regions, remove the agreed lines.
@@ -318,12 +350,10 @@ class Merge3(object):
             if reg is not None:
                 yield reg
 
-
     @staticmethod
     def mismatch_region(next_a, region_ia,  next_b, region_ib):
         if next_a < region_ia or next_b < region_ib:
             return 'conflict', None, None, next_a, region_ia, next_b, region_ib
-            
 
     def find_sync_regions(self):
         """Return a list of sync regions, where both descendents match the base.
@@ -366,6 +396,8 @@ class Merge3(object):
                 aend = asub + intlen
                 bend = bsub + intlen
 
+                # XXX: How much overhead is involved in slicing all of these
+                #      and doing an extra comparison
                 assert self.base[intbase:intend] == self.a[asub:aend], \
                        (self.base[intbase:intend], self.a[asub:aend])
 
@@ -387,8 +419,6 @@ class Merge3(object):
         sl.append((intbase, intbase, abase, abase, bbase, bbase))
 
         return sl
-
-
 
     def find_unconflicted(self):
         """Return a list of ranges in base that are not conflicted."""

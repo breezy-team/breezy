@@ -352,6 +352,30 @@ class TestMerge(TestCaseWithTransport):
         merger.merge_type = _mod_merge.Merge3Merger
         merger.do_merge()
 
+    def test_merge3_will_detect_cherrypick(self):
+        this_tree = self.make_branch_and_tree('this')
+        self.build_tree_contents([('this/file', "a\n")])
+        this_tree.add('file')
+        this_tree.commit('rev1')
+        other_tree = this_tree.bzrdir.sprout('other').open_workingtree()
+        self.build_tree_contents([('other/file', "a\nb\n")])
+        other_tree.commit('rev2b', rev_id='rev2b')
+        self.build_tree_contents([('other/file', "a\nb\nc\n")])
+        other_tree.commit('rev3b', rev_id='rev3b')
+        this_tree.lock_write()
+        self.addCleanup(this_tree.unlock)
+
+        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+            this_tree, 'rev3b', 'rev2b', other_tree.branch)
+        merger.merge_type = _mod_merge.Merge3Merger
+        merger.do_merge()
+        self.assertFileEqual('a\n'
+                             '<<<<<<< TREE\n'
+                             '=======\n'
+                             'c\n'
+                             '>>>>>>> MERGE-SOURCE\n',
+                             'this/file')
+
     def test_make_merger(self):
         this_tree = self.make_branch_and_tree('this')
         this_tree.commit('rev1', rev_id='rev1')
