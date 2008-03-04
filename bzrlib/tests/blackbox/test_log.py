@@ -194,12 +194,15 @@ class TestLog(ExternalBase):
         def trivial_custom_prop_handler(props_dict):
             return props_dict
         
-        bzrlib.log.LogFormatter.add_show_properties(trivial_custom_prop_handler)
+        bzrlib.log.custom_properties_handler_registry.register(
+            'trivial_custom_prop_handler', 
+            trivial_custom_prop_handler)
         log = self.run_bzr("log --limit 1")[0]
         # check if it's in the output
         self.assertContainsRe(log, r'first_prop: first_value\n')
         
         log = self.run_bzr("log -r1")[0]
+        # should no be any extra properties in the first revision
         self.assertNotContainsRe(log, r'first_prop: first_value\n')
 
 class TestLogMerges(ExternalBase):

@@ -607,7 +607,6 @@ class LogFormatter(object):
             # code that returns a dict {'name':'value'} of the properties 
             # to be shown
     """
-    registered_show_properties = []
 
     def __init__(self, to_file, show_ids=False, show_timezone='original'):
         self.to_file = to_file
@@ -640,22 +639,14 @@ class LogFormatter(object):
             return name
         return address
 
-    @classmethod
-    def add_show_properties(child=None, function=None):
-        """add a properties handler to the list
-            * child: the derived class object
-            * function: a funtion that handle revision properties"""
-        if not function is None:
-            LogFormatter.registered_show_properties.append(function)
-
     def show_properties(self, properties):
         """shows the custom properties returned by each 
             function in registered_show_properties."""
         filtered_props = properties.copy()
         if filtered_props.has_key('branch-nick'): 
             del filtered_props['branch-nick']
-        for func in LogFormatter.registered_show_properties:
-            for key, value in func(filtered_props).items():
+        for key, function in custom_properties_handler_registry.iteritems():
+            for key, value in function(filtered_props).items():
                 self.to_file.write(key + ': ' + value + '\n')
 
 class LongLogFormatter(LogFormatter):
@@ -918,3 +909,5 @@ def show_changed_revisions(branch, old_rh, new_rh, to_file=None,
                  end_revision=len(new_rh),
                  search=None)
 
+
+custom_properties_handler_registry = registry.Registry()
