@@ -1435,22 +1435,25 @@ class BzrBranch(Branch):
                 # our previous tip is not merged into stop_revision
                 raise errors.DivergedBranches(self, other_branch)
         # make a new revision history from the graph
-        next_rev_id = revision_id
+        parents_map = graph.get_parent_map([revision_id])
+        if revision_id not in parents_map:
+            raise errors.NoSuchRevision(self, revision_id)
+        current_rev_id = revision_id
         new_history = []
-        while next_rev_id not in (None, _mod_revision.NULL_REVISION):
-            current_rev_id = next_rev_id
-            parents_map = graph.get_parent_map([current_rev_id])
+        while True:
             try:
                 current_rev_id_parents = parents_map[current_rev_id]
             except KeyError:
-                if current_rev_id == revision_id:
-                    raise errors.NoSuchRevision(self, current_rev_id)
                 break
             try:
                 next_rev_id = current_rev_id_parents[0]
             except IndexError:
                 break
             new_history.append(current_rev_id)
+            if next_rev_id == _mod_revision.NULL_REVISION:
+                break
+            current_rev_id = next_rev_id
+            parents_map = graph.get_parent_map([current_rev_id])
         new_history.reverse()
         return new_history
 
