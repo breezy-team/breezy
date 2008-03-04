@@ -1429,21 +1429,28 @@ class BzrBranch(Branch):
         if 'evil' in debug.debug_flags:
             mutter_callsite(4, "_lefthand_history scales with history.")
         # stop_revision must be a descendant of last_revision
-        stop_graph = self.repository.get_revision_graph(revision_id)
-        if (last_rev is not None and last_rev != _mod_revision.NULL_REVISION
-            and last_rev not in stop_graph):
-            # our previous tip is not merged into stop_revision
-            raise errors.DivergedBranches(self, other_branch)
+        graph = self.repository.get_graph()
+        if last_rev is not None:
+            if not graph.is_ancestor(last_rev, revision_id):
+                # our previous tip is not merged into stop_revision
+                raise errors.DivergedBranches(self, other_branch)
         # make a new revision history from the graph
-        current_rev_id = revision_id
+        next_rev_id = revision_id
         new_history = []
-        while current_rev_id not in (None, _mod_revision.NULL_REVISION):
-            new_history.append(current_rev_id)
-            current_rev_id_parents = stop_graph[current_rev_id]
+        while next_rev_id not in (None, _mod_revision.NULL_REVISION):
+            current_rev_id = next_rev_id
+            parents_map = graph.get_parent_map([current_rev_id])
             try:
-                current_rev_id = current_rev_id_parents[0]
+                current_rev_id_parents = parents_map[current_rev_id]
+            except KeyError:
+                if current_rev_id == revision_id:
+                    raise errors.NoSuchRevision(self, current_rev_id)
+                break
+            try:
+                next_rev_id = current_rev_id_parents[0]
             except IndexError:
-                current_rev_id = None
+                break
+            new_history.append(current_rev_id)
         new_history.reverse()
         return new_history
 

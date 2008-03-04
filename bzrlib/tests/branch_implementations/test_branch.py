@@ -214,6 +214,8 @@ class TestBranch(TestCaseWithBranch):
         wt = self.make_branch_and_tree('.')
         wt.set_parent_ids(['non:existent@rev--ision--0--2'],
             allow_leftmost_as_ghost=True)
+        self.assertEqual(['non:existent@rev--ision--0--2'],
+            wt.get_parent_ids())
         rev_id = wt.commit('commit against a ghost first parent.')
         rev = wt.branch.repository.get_revision(rev_id)
         self.assertEqual(rev.parent_ids, ['non:existent@rev--ision--0--2'])
