@@ -48,6 +48,8 @@ IN DEVELOPMENT
 
     * lca merge now respects specified files. (Aaron Bentley)
 
+    * Make version-info --custom imply --all. (#195560, James Westby)
+
     * ``merge --preview`` now works for merges that add or modify
       symlinks (James Henstridge)
 
@@ -64,6 +66,10 @@ IN DEVELOPMENT
       (Alexander Belchenko)
 
   TESTING:
+
+    * The branch interface tests were invalid for branches using rich-root
+      repositories because the empty string is not a valid file-id.
+      (Robert Collins)
 
   INTERNALS:
 

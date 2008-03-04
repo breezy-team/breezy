@@ -389,6 +389,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             if osutils.lexists(self.abspath(path)):
                 yield ie.file_id
 
+    def all_file_ids(self):
+        """See Tree.iter_all_file_ids"""
+        return set(self.inventory)
+
     def __repr__(self):
         return "<%s of %s>" % (self.__class__.__name__,
                                getattr(self, 'basedir', None))
@@ -1697,6 +1701,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     def kind(self, file_id):
         return file_kind(self.id2abspath(file_id))
+
+    def stored_kind(self, file_id):
+        """See Tree.stored_kind"""
+        return self.inventory[file_id].kind
 
     def _comparison_data(self, entry, path):
         abspath = self.abspath(path)

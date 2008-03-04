@@ -149,7 +149,7 @@ def file_kind(f, _lstat=os.lstat, _mapper=file_kind_from_stat_mode):
     try:
         return _mapper(_lstat(f).st_mode)
     except OSError, e:
-        if getattr(e, 'errno', None) == errno.ENOENT:
+        if getattr(e, 'errno', None) in (errno.ENOENT, errno.ENOTDIR):
             raise errors.NoSuchFile(f)
         raise
 
