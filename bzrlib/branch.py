@@ -1413,6 +1413,8 @@ class BzrBranch(Branch):
         configured to check constraints on history, in which case this may not
         be permitted.
         """
+        if revision_id is None:
+            revision_id = _mod_revision.NULL_REVISION
         history = self._lefthand_history(revision_id)
         assert len(history) == revno, '%d != %d' % (len(history), revno)
         self.set_revision_history(history)
@@ -1440,19 +1442,11 @@ class BzrBranch(Branch):
             raise errors.NoSuchRevision(self, revision_id)
         current_rev_id = revision_id
         new_history = []
-        while True:
-            try:
-                current_rev_id_parents = parents_map[current_rev_id]
-            except KeyError:
-                break
-            try:
-                next_rev_id = current_rev_id_parents[0]
-            except IndexError:
-                break
+        # Do not include ghosts or graph origin in revision_history
+        while (current_rev_id in parents_map and
+               len(parents_map[current_rev_id]) > 0):
             new_history.append(current_rev_id)
-            if next_rev_id == _mod_revision.NULL_REVISION:
-                break
-            current_rev_id = next_rev_id
+            current_rev_id = parents_map[current_rev_id][0]
             parents_map = graph.get_parent_map([current_rev_id])
         new_history.reverse()
         return new_history
@@ -1853,13 +1847,13 @@ class BzrBranch6(BzrBranch5):
         Intended to be called by set_last_revision_info and
         _write_revision_history.
         """
-        if revision_id is None:
-            revision_id = 'null:'
         out_string = '%d %s\n' % (revno, revision_id)
         self.control_files.put_bytes('last-revision', out_string)
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
+        if revision_id is None:
+            revision_id = _mod_revision.NULL_REVISION
         if self._get_append_revisions_only():
             self._check_history_violation(revision_id)
         self._write_last_revision_info(revno, revision_id)
