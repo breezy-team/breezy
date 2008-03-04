@@ -145,6 +145,10 @@ class Tree(object):
     def __iter__(self):
         return iter(self.inventory)
 
+    def all_file_ids(self):
+        """Iterate through all file ids, including ids for missing files."""
+        return set(self.inventory)
+
     def id2path(self, file_id):
         """Return the path for a file id.
 
@@ -184,6 +188,14 @@ class Tree(object):
     def kind(self, file_id):
         raise NotImplementedError("Tree subclass %s must implement kind"
             % self.__class__.__name__)
+
+    def stored_kind(self, file_id):
+        """File kind stored for this file_id.
+
+        May not match kind on disk for working trees.  Always available
+        for versioned files, even when the file itself is missing.
+        """
+        return self.kind(file_id)
 
     def path_content_summary(self, path):
         """Get a summary of the information about path.
@@ -291,14 +303,7 @@ class Tree(object):
         """
         raise NotImplementedError(self.annotate_iter)
 
-    def plan_file_merge(self, file_id, other, base=None):
-        """Generate a merge plan based on annotations.
-
-        If the file contains uncommitted changes in this tree, they will be
-        attributed to the 'current:' pseudo-revision.  If the file contains
-        uncommitted changes in the other tree, they will be assigned to the
-        'other:' pseudo-revision.
-        """
+    def _get_plan_merge_data(self, file_id, other, base):
         from bzrlib import merge, versionedfile
         vf = versionedfile._PlanMergeVersionedFile(file_id)
         last_revision_a = self._get_file_revision(file_id, vf, 'this:')
@@ -307,8 +312,33 @@ class Tree(object):
             last_revision_base = None
         else:
             last_revision_base = base._get_file_revision(file_id, vf, 'base:')
+        return vf, last_revision_a, last_revision_b, last_revision_base
+
+    def plan_file_merge(self, file_id, other, base=None):
+        """Generate a merge plan based on annotations.
+
+        If the file contains uncommitted changes in this tree, they will be
+        attributed to the 'current:' pseudo-revision.  If the file contains
+        uncommitted changes in the other tree, they will be assigned to the
+        'other:' pseudo-revision.
+        """
+        data = self._get_plan_merge_data(file_id, other, base)
+        vf, last_revision_a, last_revision_b, last_revision_base = data
         return vf.plan_merge(last_revision_a, last_revision_b,
                              last_revision_base)
+
+    def plan_file_lca_merge(self, file_id, other, base=None):
+        """Generate a merge plan based lca-newness.
+
+        If the file contains uncommitted changes in this tree, they will be
+        attributed to the 'current:' pseudo-revision.  If the file contains
+        uncommitted changes in the other tree, they will be assigned to the
+        'other:' pseudo-revision.
+        """
+        data = self._get_plan_merge_data(file_id, other, base)
+        vf, last_revision_a, last_revision_b, last_revision_base = data
+        return vf.plan_lca_merge(last_revision_a, last_revision_b,
+                                 last_revision_base)
 
     def _get_file_revision(self, file_id, vf, tree_revision):
         def file_revision(revision_tree):

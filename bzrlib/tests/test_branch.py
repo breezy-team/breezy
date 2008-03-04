@@ -122,7 +122,7 @@ class TestBranchFormat5(TestCaseWithTransport):
         self.assertFileEqual("# comment\n"
                              "[%s]\n"
                              "push_location = foo\n"
-                             "push_location:policy = norecurse" % local_path,
+                             "push_location:policy = norecurse\n" % local_path,
                              fn)
 
     # TODO RBC 20051029 test getting a push location from a branch in a

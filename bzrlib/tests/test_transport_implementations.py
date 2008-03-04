@@ -96,7 +96,7 @@ class TransportTestProviderAdapter(TestScenarioApplier):
                     result.append(scenario)
             except errors.DependencyNotPresent, e:
                 # Continue even if a dependency prevents us 
-                # from running this test
+                # from adding this test
                 pass
         return result
 
@@ -215,8 +215,8 @@ class TransportTests(TestTransportImplementation):
         except (errors.PathError, errors.RedirectRequested):
             # early failure return immediately.
             return
-        # having got a file, read() must either work (i.e. http reading a dir listing) or
-        # fail with ReadError
+        # having got a file, read() must either work (i.e. http reading a dir
+        # listing) or fail with ReadError
         try:
             a_file.read()
         except errors.ReadError:
@@ -1066,12 +1066,12 @@ class TransportTests(TestTransportImplementation):
             self.assertRaises(TransportNotPossible, t.list_dir, '.')
             return
 
-        def sorted_list(d):
-            l = list(t.list_dir(d))
+        def sorted_list(d, transport):
+            l = list(transport.list_dir(d))
             l.sort()
             return l
 
-        self.assertEqual([], sorted_list('.'))
+        self.assertEqual([], sorted_list('.', t))
         # c2 is precisely one letter longer than c here to test that
         # suffixing is not confused.
         # a%25b checks that quoting is done consistently across transports
@@ -1083,8 +1083,13 @@ class TransportTests(TestTransportImplementation):
             self.build_tree(tree_names)
 
         self.assertEqual(
-            ['a', 'a%2525b', 'b', 'c', 'c2'], sorted_list('.'))
-        self.assertEqual(['d', 'e'], sorted_list('c'))
+            ['a', 'a%2525b', 'b', 'c', 'c2'], sorted_list('', t))
+        self.assertEqual(
+            ['a', 'a%2525b', 'b', 'c', 'c2'], sorted_list('.', t))
+        self.assertEqual(['d', 'e'], sorted_list('c', t))
+
+        # Cloning the transport produces an equivalent listing
+        self.assertEqual(['d', 'e'], sorted_list('', t.clone('c')))
 
         if not t.is_readonly():
             t.delete('c/d')
@@ -1093,8 +1098,8 @@ class TransportTests(TestTransportImplementation):
             os.unlink('c/d')
             os.unlink('b')
             
-        self.assertEqual(['a', 'a%2525b', 'c', 'c2'], sorted_list('.'))
-        self.assertEqual(['e'], sorted_list('c'))
+        self.assertEqual(['a', 'a%2525b', 'c', 'c2'], sorted_list('.', t))
+        self.assertEqual(['e'], sorted_list('c', t))
 
         self.assertListRaises(PathError, t.list_dir, 'q')
         self.assertListRaises(PathError, t.list_dir, 'c/f')

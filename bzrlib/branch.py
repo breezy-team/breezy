@@ -15,13 +15,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-from cStringIO import StringIO
-
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from warnings import warn
-
-import bzrlib
 from bzrlib import (
         bzrdir,
         cache_utf8,
@@ -30,16 +25,13 @@ from bzrlib import (
         errors,
         lockdir,
         lockable_files,
-        osutils,
         revision as _mod_revision,
         transport,
-        tree,
         tsort,
         ui,
         urlutils,
         )
-from bzrlib.config import BranchConfig, TreeConfig
-from bzrlib.lockable_files import LockableFiles, TransportLock
+from bzrlib.config import BranchConfig
 from bzrlib.tag import (
     BasicTags,
     DisabledTags,
@@ -47,22 +39,11 @@ from bzrlib.tag import (
 """)
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
-from bzrlib.errors import (BzrError, BzrCheckError, DivergedBranches,
-                           HistoryMissing, InvalidRevisionId,
-                           InvalidRevisionNumber, LockError, NoSuchFile,
-                           NoSuchRevision, NotVersionedError,
-                           NotBranchError, UninitializableFormat,
-                           UnlistableStore, UnlistableBranch,
-                           )
 from bzrlib.hooks import Hooks
-from bzrlib.symbol_versioning import (deprecated_function,
-                                      deprecated_method,
-                                      DEPRECATED_PARAMETER,
-                                      deprecated_passed,
-                                      zero_eight, zero_nine, zero_sixteen,
-                                      zero_ninetyone,
+from bzrlib.symbol_versioning import (deprecated_method,
+                                      zero_sixteen,
                                       )
-from bzrlib.trace import mutter, mutter_callsite, note
+from bzrlib.trace import mutter, mutter_callsite, note, is_quiet
 
 
 BZR_BRANCH_FORMAT_4 = "Bazaar-NG branch, format 0.0.4\n"
@@ -338,7 +319,7 @@ class Branch(object):
         assert isinstance(revno, int)
         rh = self.revision_history()
         if not (1 <= revno <= len(rh)):
-            raise InvalidRevisionNumber(revno)
+            raise errors.InvalidRevisionNumber(revno)
         return self.repository.get_revision_delta(rh[revno-1])
 
     @deprecated_method(zero_sixteen)
@@ -436,12 +417,8 @@ class Branch(object):
         raise errors.UpgradeRequired(self.base)
 
     def last_revision(self):
-        """Return last revision id, or None"""
-        ph = self.revision_history()
-        if ph:
-            return ph[-1]
-        else:
-            return _mod_revision.NULL_REVISION
+        """Return last revision id, or NULL_REVISION."""
+        return self.last_revision_info()[1]
 
     def last_revision_info(self):
         """Return information about the last revision.
@@ -468,7 +445,7 @@ class Branch(object):
         common_index = min(self_len, other_len) -1
         if common_index >= 0 and \
             self_history[common_index] != other_history[common_index]:
-            raise DivergedBranches(self, other)
+            raise errors.DivergedBranches(self, other)
 
         if stop_revision is None:
             stop_revision = other_len
@@ -647,7 +624,7 @@ class Branch(object):
         Zero (the NULL revision) is considered invalid
         """
         if revno < 1 or revno > self.revno():
-            raise InvalidRevisionNumber(revno)
+            raise errors.InvalidRevisionNumber(revno)
 
     @needs_read_lock
     def clone(self, to_bzrdir, revision_id=None):
@@ -757,7 +734,8 @@ class Branch(object):
         return format
 
     def create_checkout(self, to_location, revision_id=None,
-                        lightweight=False, accelerator_tree=None):
+                        lightweight=False, accelerator_tree=None,
+                        hardlink=False):
         """Create a checkout of a branch.
         
         :param to_location: The url to produce the checkout at
@@ -768,6 +746,8 @@ class Branch(object):
             contents more quickly than the revision tree, i.e. a workingtree.
             The revision tree will be used for cases where accelerator_tree's
             content is different.
+        :param hardlink: If true, hard-link files from accelerator_tree,
+            where possible.
         :return: The tree of the created checkout
         """
         t = transport.get_transport(to_location)
@@ -788,7 +768,8 @@ class Branch(object):
             from_branch=None
         tree = checkout.create_workingtree(revision_id,
                                            from_branch=from_branch,
-                                           accelerator_tree=accelerator_tree)
+                                           accelerator_tree=accelerator_tree,
+                                           hardlink=hardlink)
         basis_tree = tree.basis_tree()
         basis_tree.lock_read()
         try:
@@ -851,8 +832,8 @@ class BranchFormat(object):
             transport = a_bzrdir.get_branch_transport(None)
             format_string = transport.get("format").read()
             return klass._formats[format_string]
-        except NoSuchFile:
-            raise NotBranchError(path=transport.base)
+        except errors.NoSuchFile:
+            raise errors.NotBranchError(path=transport.base)
         except KeyError:
             raise errors.UnknownFormatError(format=format_string)
 
@@ -1140,8 +1121,8 @@ class BzrBranchFormat5(BranchFormat):
                               _control_files=control_files,
                               a_bzrdir=a_bzrdir,
                               _repository=a_bzrdir.find_repository())
-        except NoSuchFile:
-            raise NotBranchError(path=transport.base)
+        except errors.NoSuchFile:
+            raise errors.NotBranchError(path=transport.base)
 
 
 class BzrBranchFormat6(BzrBranchFormat5):
@@ -1548,7 +1529,7 @@ class BzrBranch(Branch):
         for l in _locs:
             try:
                 return self.control_files.get(l).read().strip('\n')
-            except NoSuchFile:
+            except errors.NoSuchFile:
                 pass
         return None
 
@@ -1632,7 +1613,7 @@ class BzrBranch(Branch):
         result.old_revno, result.old_revid = target.last_revision_info()
         try:
             target.update_revisions(self, stop_revision)
-        except DivergedBranches:
+        except errors.DivergedBranches:
             if not overwrite:
                 raise
         if overwrite:
@@ -1771,7 +1752,7 @@ class BzrBranch5(BzrBranch):
         else:
             try:
                 self.control_files._transport.delete('bound')
-            except NoSuchFile:
+            except errors.NoSuchFile:
                 return False
             return True
 
@@ -1824,120 +1805,6 @@ class BzrBranch5(BzrBranch):
         return None
 
 
-class BzrBranchExperimental(BzrBranch5):
-    """Bzr experimental branch format
-
-    This format has:
-     - a revision-history file.
-     - a format string
-     - a lock dir guarding the branch itself
-     - all of this stored in a branch/ subdirectory
-     - works with shared repositories.
-     - a tag dictionary in the branch
-
-    This format is new in bzr 0.15, but shouldn't be used for real data, 
-    only for testing.
-
-    This class acts as it's own BranchFormat.
-    """
-
-    _matchingbzrdir = bzrdir.BzrDirMetaFormat1()
-
-    @classmethod
-    def get_format_string(cls):
-        """See BranchFormat.get_format_string()."""
-        return "Bazaar-NG branch format experimental\n"
-
-    @classmethod
-    def get_format_description(cls):
-        """See BranchFormat.get_format_description()."""
-        return "Experimental branch format"
-
-    @classmethod
-    def get_reference(cls, a_bzrdir):
-        """Get the target reference of the branch in a_bzrdir.
-
-        format probing must have been completed before calling
-        this method - it is assumed that the format of the branch
-        in a_bzrdir is correct.
-
-        :param a_bzrdir: The bzrdir to get the branch data from.
-        :return: None if the branch is not a reference branch.
-        """
-        return None
-
-    @classmethod
-    def set_reference(self, a_bzrdir, to_branch):
-        """Set the target reference of the branch in a_bzrdir.
-
-        format probing must have been completed before calling
-        this method - it is assumed that the format of the branch
-        in a_bzrdir is correct.
-
-        :param a_bzrdir: The bzrdir to set the branch reference for.
-        :param to_branch: branch that the checkout is to reference
-        """
-        raise NotImplementedError(self.set_reference)
-
-    @classmethod
-    def _initialize_control_files(cls, a_bzrdir, utf8_files, lock_filename,
-            lock_class):
-        branch_transport = a_bzrdir.get_branch_transport(cls)
-        control_files = lockable_files.LockableFiles(branch_transport,
-            lock_filename, lock_class)
-        control_files.create_lock()
-        control_files.lock_write()
-        try:
-            for filename, content in utf8_files:
-                control_files.put_utf8(filename, content)
-        finally:
-            control_files.unlock()
-        
-    @classmethod
-    def initialize(cls, a_bzrdir):
-        """Create a branch of this format in a_bzrdir."""
-        utf8_files = [('format', cls.get_format_string()),
-                      ('revision-history', ''),
-                      ('branch-name', ''),
-                      ('tags', ''),
-                      ]
-        cls._initialize_control_files(a_bzrdir, utf8_files,
-            'lock', lockdir.LockDir)
-        return cls.open(a_bzrdir, _found=True)
-
-    @classmethod
-    def open(cls, a_bzrdir, _found=False):
-        """Return the branch object for a_bzrdir
-
-        _found is a private parameter, do not use it. It is used to indicate
-               if format probing has already be done.
-        """
-        if not _found:
-            format = BranchFormat.find_format(a_bzrdir)
-            assert format.__class__ == cls
-        transport = a_bzrdir.get_branch_transport(None)
-        control_files = lockable_files.LockableFiles(transport, 'lock',
-                                                     lockdir.LockDir)
-        return cls(_format=cls,
-            _control_files=control_files,
-            a_bzrdir=a_bzrdir,
-            _repository=a_bzrdir.find_repository())
-
-    @classmethod
-    def is_supported(cls):
-        return True
-
-    def _make_tags(self):
-        return BasicTags(self)
-
-    @classmethod
-    def supports_tags(cls):
-        return True
-
-
-BranchFormat.register_format(BzrBranchExperimental)
-
-
 class BzrBranch6(BzrBranch5):
 
     @needs_read_lock
@@ -1947,11 +1814,6 @@ class BzrBranch6(BzrBranch5):
         revision_id = cache_utf8.get_cached_utf8(revision_id)
         revno = int(revno)
         return revno, revision_id
-
-    def last_revision(self):
-        """Return last revision id, or None"""
-        revision_id = self.last_revision_info()[1]
-        return revision_id
 
     def _write_last_revision_info(self, revno, revision_id):
         """Simply write out the revision id, with no checks.
@@ -2129,10 +1991,11 @@ class PullResult(_Result):
         return self.new_revno - self.old_revno
 
     def report(self, to_file):
-        if self.old_revid == self.new_revid:
-            to_file.write('No revisions to pull.\n')
-        else:
-            to_file.write('Now on revision %d.\n' % self.new_revno)
+        if not is_quiet():
+            if self.old_revid == self.new_revid:
+                to_file.write('No revisions to pull.\n')
+            else:
+                to_file.write('Now on revision %d.\n' % self.new_revno)
         self._show_tag_conficts(to_file)
 
 
@@ -2206,6 +2069,6 @@ class Converter5to6(object):
         new_branch.control_files._transport.delete('revision-history')
         try:
             branch.set_parent(None)
-        except NoSuchFile:
+        except errors.NoSuchFile:
             pass
         branch.set_bound_location(None)

@@ -47,8 +47,9 @@ from bzrlib.osutils import rename, pathjoin
 from progress import DummyProgress, ProgressPhase
 from bzrlib.revision import (NULL_REVISION, ensure_null)
 from bzrlib.textfile import check_text_lines
-from bzrlib.trace import mutter, warning, note
-from bzrlib.transform import (TreeTransform, resolve_conflicts, cook_conflicts,
+from bzrlib.trace import mutter, warning, note, is_quiet
+from bzrlib.transform import (TransformPreview, TreeTransform,
+                              resolve_conflicts, cook_conflicts,
                               conflict_pass, FinalPaths, create_by_entry,
                               unique_add, ROOT_PARENT)
 from bzrlib.versionedfile import PlanWeaveMerge
@@ -65,7 +66,7 @@ def transform_tree(from_tree, to_tree, interesting_ids=None):
 class Merger(object):
     def __init__(self, this_branch, other_tree=None, base_tree=None,
                  this_tree=None, pb=DummyProgress(), change_reporter=None,
-                 recurse='down'):
+                 recurse='down', revision_graph=None):
         object.__init__(self)
         assert this_tree is not None, "this_tree is required"
         self.this_branch = this_branch
@@ -89,6 +90,38 @@ class Merger(object):
         self.recurse = recurse
         self.change_reporter = change_reporter
         self._cached_trees = {}
+        self._revision_graph = revision_graph
+        self._base_is_ancestor = None
+        self._base_is_other_ancestor = None
+
+    @property
+    def revision_graph(self):
+        if self._revision_graph is None:
+            self._revision_graph = self.this_branch.repository.get_graph()
+        return self._revision_graph
+
+    def _set_base_is_ancestor(self, value):
+        self._base_is_ancestor = value
+
+    def _get_base_is_ancestor(self):
+        if self._base_is_ancestor is None:
+            self._base_is_ancestor = self.revision_graph.is_ancestor(
+                self.base_rev_id, self.this_basis)
+        return self._base_is_ancestor
+
+    base_is_ancestor = property(_get_base_is_ancestor, _set_base_is_ancestor)
+
+    def _set_base_is_other_ancestor(self, value):
+        self._base_is_other_ancestor = value
+
+    def _get_base_is_other_ancestor(self):
+        if self._base_is_other_ancestor is None:
+            self.base_is_other_ancestor = self.revision_graph.is_ancestor(
+                self.base_rev_id, self.other_basis)
+        return self._base_is_other_ancestor
+
+    base_is_other_ancestor = property(_get_base_is_other_ancestor,
+                                      _set_base_is_other_ancestor)
 
     @staticmethod
     def from_uncommitted(tree, other_tree, pb):
@@ -102,6 +135,7 @@ class Merger(object):
                         pb)
         merger.base_rev_id = merger.base_tree.get_revision_id()
         merger.other_rev_id = None
+        merger.other_basis = merger.base_rev_id
         return merger
 
     @classmethod
@@ -115,19 +149,21 @@ class Merger(object):
         mergeable.install_revisions(tree.branch.repository)
         base_revision_id, other_revision_id, verified =\
             mergeable.get_merge_request(tree.branch.repository)
+        revision_graph = tree.branch.repository.get_graph()
         if (base_revision_id != _mod_revision.NULL_REVISION and
-            tree.branch.repository.get_graph().is_ancestor(
+            revision_graph.is_ancestor(
             base_revision_id, tree.branch.last_revision())):
             base_revision_id = None
         else:
             warning('Performing cherrypick')
         merger = klass.from_revision_ids(pb, tree, other_revision_id,
-                                         base_revision_id)
+                                         base_revision_id, revision_graph=
+                                         revision_graph)
         return merger, verified
 
     @staticmethod
     def from_revision_ids(pb, this, other, base=None, other_branch=None,
-                          base_branch=None):
+                          base_branch=None, revision_graph=None):
         """Return a Merger for revision-ids.
 
         :param tree: The tree to merge changes into
@@ -140,7 +176,8 @@ class Merger(object):
             not supplied, other_branch or this.branch will be used.
         :param pb: A progress indicator
         """
-        merger = Merger(this.branch, this_tree=this, pb=pb)
+        merger = Merger(this.branch, this_tree=this, pb=pb,
+                        revision_graph=revision_graph)
         if other_branch is None:
             other_branch = this.branch
         merger.set_other_revision(other, other_branch)
@@ -299,26 +336,19 @@ class Merger(object):
         self.base_branch = branch
         self._maybe_fetch(branch, self.this_branch, revision_id)
         self.base_tree = self.revision_tree(revision_id)
-        graph = self.this_branch.repository.get_graph()
-        self.base_is_ancestor = graph.is_ancestor(self.base_rev_id,
-                                                  self.this_basis)
-        self.base_is_other_ancestor = graph.is_ancestor(self.base_rev_id,
-                                                        self.other_basis)
 
     def _maybe_fetch(self, source, target, revision_id):
         if not source.repository.has_same_location(target.repository):
             target.fetch(source, revision_id)
 
     def find_base(self):
-        this_repo = self.this_branch.repository
-        graph = this_repo.get_graph()
         revisions = [ensure_null(self.this_basis),
                      ensure_null(self.other_basis)]
         if NULL_REVISION in revisions:
             self.base_rev_id = NULL_REVISION
         else:
-            self.base_rev_id, steps = graph.find_unique_lca(revisions[0],
-                revisions[1], count_steps=True)
+            self.base_rev_id, steps = self.revision_graph.find_unique_lca(
+                revisions[0], revisions[1], count_steps=True)
             if self.base_rev_id == NULL_REVISION:
                 raise UnrelatedBranches()
             if steps > 1:
@@ -346,18 +376,14 @@ class Merger(object):
                 self.base_rev_id = _mod_revision.ensure_null(
                     base_branch.get_rev_id(base_revision[1]))
             self._maybe_fetch(base_branch, self.this_branch, self.base_rev_id)
-            graph = self.this_branch.repository.get_graph()
-            self.base_is_ancestor = graph.is_ancestor(self.base_rev_id,
-                                                      self.this_basis)
-            self.base_is_other_ancestor = graph.is_ancestor(self.base_rev_id,
-                                                            self.other_basis)
 
-    def do_merge(self):
+    def make_merger(self):
         kwargs = {'working_tree':self.this_tree, 'this_tree': self.this_tree,
                   'other_tree': self.other_tree,
                   'interesting_ids': self.interesting_ids,
                   'interesting_files': self.interesting_files,
-                  'pp': self.pp}
+                  'pp': self.pp,
+                  'do_merge': False}
         if self.merge_type.requires_base:
             kwargs['base_tree'] = self.base_tree
         if self.merge_type.supports_reprocess:
@@ -369,22 +395,26 @@ class Merger(object):
             kwargs['show_base'] = self.show_base
         elif self.show_base:
             raise BzrError("Showing base is not supported for this"
-                                  " merge type. %s" % self.merge_type)
+                           " merge type. %s" % self.merge_type)
         if (not getattr(self.merge_type, 'supports_reverse_cherrypick', True)
             and not self.base_is_other_ancestor):
             raise errors.CannotReverseCherrypick()
         if self.merge_type.history_based:
             kwargs['cherrypick'] = (not self.base_is_ancestor or
                                     not self.base_is_other_ancestor)
+        return self.merge_type(pb=self._pb,
+                               change_reporter=self.change_reporter,
+                               **kwargs)
+
+    def do_merge(self):
+        merge = self.make_merger()
         self.this_tree.lock_tree_write()
         if self.base_tree is not None:
             self.base_tree.lock_read()
         if self.other_tree is not None:
             self.other_tree.lock_read()
         try:
-            merge = self.merge_type(pb=self._pb,
-                                    change_reporter=self.change_reporter,
-                                    **kwargs)
+            merge.do_merge()
             if self.recurse == 'down':
                 for path, file_id in self.this_tree.iter_references():
                     sub_tree = self.this_tree.get_nested_tree(file_id, path)
@@ -409,7 +439,7 @@ class Merger(object):
                 self.base_tree.unlock()
             self.this_tree.unlock()
         if len(merge.cooked_conflicts) == 0:
-            if not self.ignore_zero:
+            if not self.ignore_zero and not is_quiet():
                 note("All changes applied successfully.")
         else:
             note("%d conflicts encountered." % len(merge.cooked_conflicts))
@@ -429,7 +459,7 @@ class Merge3Merger(object):
     def __init__(self, working_tree, this_tree, base_tree, other_tree, 
                  interesting_ids=None, reprocess=False, show_base=False,
                  pb=DummyProgress(), pp=None, change_reporter=None,
-                 interesting_files=None):
+                 interesting_files=None, do_merge=True):
         """Initialize the merger object and perform the merge.
 
         :param working_tree: The working tree to apply the merge to
@@ -458,11 +488,8 @@ class Merge3Merger(object):
         self.interesting_ids = interesting_ids
         self.interesting_files = interesting_files
         self.this_tree = working_tree
-        self.this_tree.lock_tree_write()
         self.base_tree = base_tree
-        self.base_tree.lock_read()
         self.other_tree = other_tree
-        self.other_tree.lock_read()
         self._raw_conflicts = []
         self.cooked_conflicts = []
         self.reprocess = reprocess
@@ -472,44 +499,22 @@ class Merge3Merger(object):
         self.change_reporter = change_reporter
         if self.pp is None:
             self.pp = ProgressPhase("Merge phase", 3, self.pb)
+        if do_merge:
+            self.do_merge()
 
-        self.tt = TreeTransform(working_tree, self.pb)
+    def do_merge(self):
+        self.this_tree.lock_tree_write()
+        self.base_tree.lock_read()
+        self.other_tree.lock_read()
+        self.tt = TreeTransform(self.this_tree, self.pb)
         try:
             self.pp.next_phase()
-            entries = self._entries3()
-            child_pb = ui.ui_factory.nested_progress_bar()
-            try:
-                for num, (file_id, changed, parents3, names3,
-                          executable3) in enumerate(entries):
-                    child_pb.update('Preparing file merge', num, len(entries))
-                    self._merge_names(file_id, parents3, names3)
-                    if changed:
-                        file_status = self.merge_contents(file_id)
-                    else:
-                        file_status = 'unmodified'
-                    self._merge_executable(file_id,
-                        executable3, file_status)
-            finally:
-                child_pb.finished()
-            self.fix_root()
-            self.pp.next_phase()
-            child_pb = ui.ui_factory.nested_progress_bar()
-            try:
-                fs_conflicts = resolve_conflicts(self.tt, child_pb,
-                    lambda t, c: conflict_pass(t, c, self.other_tree))
-            finally:
-                child_pb.finished()
-            if change_reporter is not None:
-                from bzrlib import delta
-                delta.report_changes(self.tt._iter_changes(), change_reporter)
-            self.cook_conflicts(fs_conflicts)
-            for conflict in self.cooked_conflicts:
-                warning(conflict)
+            self._compute_transform()
             self.pp.next_phase()
             results = self.tt.apply(no_conflicts=True)
             self.write_modified(results)
             try:
-                working_tree.add_conflicts(self.cooked_conflicts)
+                self.this_tree.add_conflicts(self.cooked_conflicts)
             except UnsupportedOperation:
                 pass
         finally:
@@ -518,6 +523,52 @@ class Merge3Merger(object):
             self.base_tree.unlock()
             self.this_tree.unlock()
             self.pb.clear()
+
+    def make_preview_transform(self):
+        self.base_tree.lock_read()
+        self.other_tree.lock_read()
+        self.tt = TransformPreview(self.this_tree)
+        try:
+            self.pp.next_phase()
+            self._compute_transform()
+            self.pp.next_phase()
+        finally:
+            self.other_tree.unlock()
+            self.base_tree.unlock()
+            self.pb.clear()
+        return self.tt
+
+    def _compute_transform(self):
+        entries = self._entries3()
+        child_pb = ui.ui_factory.nested_progress_bar()
+        try:
+            for num, (file_id, changed, parents3, names3,
+                      executable3) in enumerate(entries):
+                child_pb.update('Preparing file merge', num, len(entries))
+                self._merge_names(file_id, parents3, names3)
+                if changed:
+                    file_status = self.merge_contents(file_id)
+                else:
+                    file_status = 'unmodified'
+                self._merge_executable(file_id,
+                    executable3, file_status)
+        finally:
+            child_pb.finished()
+        self.fix_root()
+        self.pp.next_phase()
+        child_pb = ui.ui_factory.nested_progress_bar()
+        try:
+            fs_conflicts = resolve_conflicts(self.tt, child_pb,
+                lambda t, c: conflict_pass(t, c, self.other_tree))
+        finally:
+            child_pb.finished()
+        if self.change_reporter is not None:
+            from bzrlib import delta
+            delta.report_changes(
+                self.tt._iter_changes(), self.change_reporter)
+        self.cook_conflicts(fs_conflicts)
+        for conflict in self.cooked_conflicts:
+            warning(conflict)
 
     def _entries3(self):
         """Gather data about files modified between three trees.
@@ -992,13 +1043,15 @@ class WeaveMerger(Merge3Merger):
     def __init__(self, working_tree, this_tree, base_tree, other_tree, 
                  interesting_ids=None, pb=DummyProgress(), pp=None,
                  reprocess=False, change_reporter=None,
-                 interesting_files=None, cherrypick=False):
+                 interesting_files=None, cherrypick=False, do_merge=True):
         self.cherrypick = cherrypick
         super(WeaveMerger, self).__init__(working_tree, this_tree, 
                                           base_tree, other_tree, 
+                                          interesting_files=interesting_files,
                                           interesting_ids=interesting_ids, 
                                           pb=pb, pp=pp, reprocess=reprocess,
-                                          change_reporter=change_reporter)
+                                          change_reporter=change_reporter,
+                                          do_merge=do_merge)
 
     def _merged_lines(self, file_id):
         """Generate the merged lines.
@@ -1039,6 +1092,30 @@ class WeaveMerger(Merge3Merger):
             file_group = self._dump_conflicts(name, parent_id, file_id, 
                                               no_base=True)
             file_group.append(trans_id)
+
+
+class LCAMerger(WeaveMerger):
+
+    def _merged_lines(self, file_id):
+        """Generate the merged lines.
+        There is no distinction between lines that are meant to contain <<<<<<<
+        and conflicts.
+        """
+        if self.cherrypick:
+            base = self.base_tree
+        else:
+            base = None
+        plan = self.this_tree.plan_file_lca_merge(file_id, self.other_tree,
+                                                  base=base)
+        if 'merge' in debug.debug_flags:
+            plan = list(plan)
+            trans_id = self.tt.trans_id_file_id(file_id)
+            name = self.tt.final_name(trans_id) + '.plan'
+            contents = ('%10s|%s' % l for l in plan)
+            self.tt.new_file(name, self.tt.final_parent(trans_id), contents)
+        textmerge = PlanWeaveMerge(plan, '<<<<<<< TREE\n',
+            '>>>>>>> MERGE-SOURCE\n')
+        return textmerge.merge_lines(self.reprocess)
 
 
 class Diff3Merger(Merge3Merger):
@@ -1165,8 +1242,7 @@ def _plan_annotate_merge(annotated_a, annotated_b, ancestors_a, ancestors_b):
             yield "unchanged", text_a
 
 
-class _PlanMerge(object):
-    """Plan an annotate merge using on-the-fly annotation"""
+class _PlanMergeBase(object):
 
     def __init__(self, a_rev, b_rev, vf):
         """Contructor.
@@ -1180,11 +1256,9 @@ class _PlanMerge(object):
         self.lines_a = vf.get_lines(a_rev)
         self.lines_b = vf.get_lines(b_rev)
         self.vf = vf
-        a_ancestry = set(vf.get_ancestry(a_rev, topo_sorted=False))
-        b_ancestry = set(vf.get_ancestry(b_rev, topo_sorted=False))
-        self.uncommon = a_ancestry.symmetric_difference(b_ancestry)
         self._last_lines = None
         self._last_lines_revision_id = None
+        self._cached_matching_blocks = {}
 
     def plan_merge(self):
         """Generate a 'plan' for merging the two revisions.
@@ -1196,29 +1270,34 @@ class _PlanMerge(object):
         VersionedFile.plan_merge
         """
         blocks = self._get_matching_blocks(self.a_rev, self.b_rev)
-        new_a = self._find_new(self.a_rev)
-        new_b = self._find_new(self.b_rev)
+        unique_a, unique_b = self._unique_lines(blocks)
+        new_a, killed_b = self._determine_status(self.a_rev, unique_a)
+        new_b, killed_a = self._determine_status(self.b_rev, unique_b)
+        return self._iter_plan(blocks, new_a, killed_b, new_b, killed_a)
+
+    def _iter_plan(self, blocks, new_a, killed_b, new_b, killed_a):
         last_i = 0
         last_j = 0
-        a_lines = self.vf.get_lines(self.a_rev)
-        b_lines = self.vf.get_lines(self.b_rev)
         for i, j, n in blocks:
-            # determine why lines aren't common
             for a_index in range(last_i, i):
                 if a_index in new_a:
-                    cause = 'new-a'
+                    if a_index in killed_b:
+                        yield 'conflicted-a', self.lines_a[a_index]
+                    else:
+                        yield 'new-a', self.lines_a[a_index]
                 else:
-                    cause = 'killed-b'
-                yield cause, a_lines[a_index]
+                    yield 'killed-b', self.lines_a[a_index]
             for b_index in range(last_j, j):
                 if b_index in new_b:
-                    cause = 'new-b'
+                    if b_index in killed_a:
+                        yield 'conflicted-b', self.lines_b[b_index]
+                    else:
+                        yield 'new-b', self.lines_b[b_index]
                 else:
-                    cause = 'killed-a'
-                yield cause, b_lines[b_index]
+                    yield 'killed-a', self.lines_b[b_index]
             # handle common lines
             for a_index in range(i, i+n):
-                yield 'unchanged', a_lines[a_index]
+                yield 'unchanged', self.lines_a[a_index]
             last_i = i+n
             last_j = j+n
 
@@ -1227,6 +1306,10 @@ class _PlanMerge(object):
 
         See SequenceMatcher.get_matching_blocks
         """
+        cached = self._cached_matching_blocks.get((left_revision,
+                                                   right_revision))
+        if cached is not None:
+            return cached
         if self._last_lines_revision_id == left_revision:
             left_lines = self._last_lines
         else:
@@ -1255,6 +1338,63 @@ class _PlanMerge(object):
             last_j = j + n
         return unique_left, unique_right
 
+    @staticmethod
+    def _subtract_plans(old_plan, new_plan):
+        """Remove changes from new_plan that came from old_plan.
+
+        It is assumed that the difference between the old_plan and new_plan
+        is their choice of 'b' text.
+
+        All lines from new_plan that differ from old_plan are emitted
+        verbatim.  All lines from new_plan that match old_plan but are
+        not about the 'b' revision are emitted verbatim.
+
+        Lines that match and are about the 'b' revision are the lines we
+        don't want, so we convert 'killed-b' -> 'unchanged', and 'new-b'
+        is skipped entirely.
+        """
+        matcher = patiencediff.PatienceSequenceMatcher(None, old_plan,
+                                                       new_plan)
+        last_j = 0
+        for i, j, n in matcher.get_matching_blocks():
+            for jj in range(last_j, j):
+                yield new_plan[jj]
+            for jj in range(j, j+n):
+                plan_line = new_plan[jj]
+                if plan_line[0] == 'new-b':
+                    pass
+                elif plan_line[0] == 'killed-b':
+                    yield 'unchanged', plan_line[1]
+                else:
+                    yield plan_line
+            last_j = j + n
+
+
+class _PlanMerge(_PlanMergeBase):
+    """Plan an annotate merge using on-the-fly annotation"""
+
+    def __init__(self, a_rev, b_rev, vf):
+       _PlanMergeBase.__init__(self, a_rev, b_rev, vf)
+       a_ancestry = set(vf.get_ancestry(a_rev, topo_sorted=False))
+       b_ancestry = set(vf.get_ancestry(b_rev, topo_sorted=False))
+       self.uncommon = a_ancestry.symmetric_difference(b_ancestry)
+
+    def _determine_status(self, revision_id, unique_line_numbers):
+        """Determines the status unique lines versus all lcas.
+
+        Basically, determines why the line is unique to this revision.
+
+        A line may be determined new or killed, but not both.
+
+        :param revision_id: The id of the revision in which the lines are
+            unique
+        :param unique_line_numbers: The line numbers of unique lines.
+        :return a tuple of (new_this, killed_other):
+        """
+        new = self._find_new(revision_id)
+        killed = set(unique_line_numbers).difference(new)
+        return new, killed
+
     def _find_new(self, version_id):
         """Determine which lines are new in the ancestry of this version.
 
@@ -1281,20 +1421,58 @@ class _PlanMerge(object):
                 new.intersection_update(result)
         return new
 
-    @staticmethod
-    def _subtract_plans(old_plan, new_plan):
-        matcher = patiencediff.PatienceSequenceMatcher(None, old_plan,
-                                                       new_plan)
-        last_j = 0
-        for i, j, n in matcher.get_matching_blocks():
-            for jj in range(last_j, j):
-                yield new_plan[jj]
-            for jj in range(j, j+n):
-                plan_line = new_plan[jj]
-                if plan_line[0] == 'new-b':
-                    pass
-                elif plan_line[0] == 'killed-b':
-                    yield 'unchanged', plan_line[1]
-                else:
-                    yield plan_line
-            last_j = j + n
+
+class _PlanLCAMerge(_PlanMergeBase):
+    """
+    This merge algorithm differs from _PlanMerge in that:
+    1. comparisons are done against LCAs only
+    2. cases where a contested line is new versus one LCA but old versus
+       another are marked as conflicts, by emitting the line as conflicted-a
+       or conflicted-b.
+
+    This is faster, and hopefully produces more useful output.
+    """
+
+    def __init__(self, a_rev, b_rev, vf, graph):
+        _PlanMergeBase.__init__(self, a_rev, b_rev, vf)
+        self.lcas = graph.find_lca(a_rev, b_rev)
+        for lca in self.lcas:
+            lca_lines = self.vf.get_lines(lca)
+            matcher = patiencediff.PatienceSequenceMatcher(None, self.lines_a,
+                                                           lca_lines)
+            blocks = list(matcher.get_matching_blocks())
+            self._cached_matching_blocks[(a_rev, lca)] = blocks
+            matcher = patiencediff.PatienceSequenceMatcher(None, self.lines_b,
+                                                           lca_lines)
+            blocks = list(matcher.get_matching_blocks())
+            self._cached_matching_blocks[(b_rev, lca)] = blocks
+
+    def _determine_status(self, revision_id, unique_line_numbers):
+        """Determines the status unique lines versus all lcas.
+
+        Basically, determines why the line is unique to this revision.
+
+        A line may be determined new, killed, or both.
+
+        If a line is determined new, that means it was not present in at least
+        one LCA, and is not present in the other merge revision.
+
+        If a line is determined killed, that means the line was present in
+        at least one LCA.
+
+        If a line is killed and new, this indicates that the two merge
+        revisions contain differing conflict resolutions.
+        :param revision_id: The id of the revision in which the lines are
+            unique
+        :param unique_line_numbers: The line numbers of unique lines.
+        :return a tuple of (new_this, killed_other):
+        """
+        new = set()
+        killed = set()
+        unique_line_numbers = set(unique_line_numbers)
+        for lca in self.lcas:
+            blocks = self._get_matching_blocks(revision_id, lca)
+            unique_vs_lca, _ignored = self._unique_lines(blocks)
+            new.update(unique_line_numbers.intersection(unique_vs_lca))
+            killed.update(unique_line_numbers.difference(unique_vs_lca))
+        return new, killed

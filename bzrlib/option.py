@@ -17,22 +17,21 @@
 # TODO: For things like --diff-prefix, we want a way to customize the display
 # of the option argument.
 
+import optparse
 import re
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import optparse
-
 from bzrlib import (
     errors,
-    log,
-    registry,
     revisionspec,
-    symbol_versioning,
     )
 """)
-from bzrlib.trace import warning
 
+from bzrlib import (
+    log,
+    registry,
+    )
 
 def _parse_revision_str(revstr):
     """This handles a revision string -> revno.
@@ -474,6 +473,8 @@ _merge_type_registry.register_lazy('diff3', 'bzrlib.merge', 'Diff3Merger',
                                    "Merge using external diff3")
 _merge_type_registry.register_lazy('weave', 'bzrlib.merge', 'WeaveMerger',
                                    "Weave-based merge")
+_merge_type_registry.register_lazy('lca', 'bzrlib.merge', 'LCAMerger',
+                                   "LCA-newness merge")
 
 # Declare the standard options
 _standard_option('help', short_name='h',

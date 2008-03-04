@@ -32,6 +32,7 @@ from bzrlib.errors import (NotBranchError,
                            UnknownFormatError,
                            UnsupportedFormatError,
                            )
+from bzrlib import graph
 from bzrlib.index import GraphIndex, InMemoryGraphIndex
 from bzrlib.repository import RepositoryFormat
 from bzrlib.smart import server
@@ -47,6 +48,7 @@ from bzrlib import (
     bzrdir,
     errors,
     inventory,
+    progress,
     repository,
     revision as _mod_revision,
     symbol_versioning,
@@ -174,6 +176,11 @@ class TestFormat6(TestCaseWithTransport):
         self.assertRaises(errors.OutSideTransaction,
             inv.add_lines, 'foo', [], [])
 
+    def test_supports_external_lookups(self):
+        control = bzrdir.BzrDirFormat6().initialize(self.get_url())
+        repo = weaverepo.RepositoryFormat6().initialize(control)
+        self.assertFalse(repo._format.supports_external_lookups)
+
 
 class TestFormat7(TestCaseWithTransport):
     
@@ -287,6 +294,11 @@ class TestFormat7(TestCaseWithTransport):
         self.assertRaises(errors.OutSideTransaction,
             inv.add_lines, 'foo', [], [])
 
+    def test_supports_external_lookups(self):
+        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
+        repo = weaverepo.RepositoryFormat7().initialize(control)
+        self.assertFalse(repo._format.supports_external_lookups)
+
 
 class TestFormatKnit1(TestCaseWithTransport):
     
@@ -397,8 +409,15 @@ class TestFormatKnit1(TestCaseWithTransport):
         # Arguably, the deserialise_inventory should detect a mismatch, and
         # raise an error, rather than silently using one revision_id over the
         # other.
-        inv = repo.deserialise_inventory('test-rev-id', inv_xml)
+        self.assertRaises(AssertionError, repo.deserialise_inventory,
+            'test-rev-id', inv_xml)
+        inv = repo.deserialise_inventory('other-rev-id', inv_xml)
         self.assertEqual('other-rev-id', inv.root.revision)
+
+    def test_supports_external_lookups(self):
+        repo = self.make_repository('.',
+                format=bzrdir.format_registry.get('knit')())
+        self.assertFalse(repo._format.supports_external_lookups)
 
 
 class KnitRepositoryStreamTests(test_knit.KnitTests):
@@ -673,6 +692,12 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         self.assertRaises(errors.OutSideTransaction,
             inv.add_lines, 'foo', [], [])
 
+    def test_supports_external_lookups(self):
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = knitrepo.RepositoryFormatKnit3()
+        repo = self.make_repository('.', format=format)
+        self.assertFalse(repo._format.supports_external_lookups)
+
 
 class TestWithBrokenRepo(TestCaseWithTransport):
     """These tests seem to be more appropriate as interface tests?"""
@@ -754,7 +779,9 @@ class TestWithBrokenRepo(TestCaseWithTransport):
         """
         broken_repo = self.make_broken_repository()
         empty_repo = self.make_repository('empty-repo')
-        stream = broken_repo.get_data_stream(['rev1a', 'rev2', 'rev3'])
+        search = graph.SearchResult(set(['rev1a', 'rev2', 'rev3']),
+            set(), 3, ['rev1a', 'rev2', 'rev3'])
+        stream = broken_repo.get_data_stream_for_search(search)
         empty_repo.lock_write()
         self.addCleanup(empty_repo.unlock)
         empty_repo.start_write_group()
@@ -1165,6 +1192,10 @@ class TestKnitPackNoSubtrees(TestCaseWithTransport):
         self.assertRaises(errors.RevisionNotPresent,
             missing_ghost.get_inventory, 'ghost')
 
+    def test_supports_external_lookups(self):
+        repo = self.make_repository('.', format=self.get_format())
+        self.assertFalse(repo._format.supports_external_lookups)
+
 
 class TestKnitPackSubtrees(TestKnitPackNoSubtrees):
 
@@ -1175,6 +1206,31 @@ class TestKnitPackSubtrees(TestKnitPackNoSubtrees):
     def check_format(self, t):
         self.assertEqualDiff(
             "Bazaar pack repository format 1 with subtree support (needs bzr 0.92)\n",
+            t.get('format').read())
+
+
+class TestDevelopment0(TestKnitPackNoSubtrees):
+
+    def get_format(self):
+        return bzrdir.format_registry.make_bzrdir(
+            'development')
+
+    def check_format(self, t):
+        self.assertEqualDiff(
+            "Bazaar development format 0 (needs bzr.dev from before 1.3)\n",
+            t.get('format').read())
+
+
+class TestDevelopment0Subtree(TestKnitPackNoSubtrees):
+
+    def get_format(self):
+        return bzrdir.format_registry.make_bzrdir(
+            'development-subtree')
+
+    def check_format(self, t):
+        self.assertEqualDiff(
+            "Bazaar development format 0 with subtree support "
+            "(needs bzr.dev from before 1.3)\n",
             t.get('format').read())
 
 
@@ -1431,3 +1487,24 @@ class TestPacker(TestCaseWithTransport):
 
     # To date, this class has been factored out and nothing new added to it;
     # thus there are not yet any tests.
+
+
+class TestInterDifferingSerializer(TestCaseWithTransport):
+
+    def test_progress_bar(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.commit('rev1', rev_id='rev-1')
+        tree.commit('rev2', rev_id='rev-2')
+        tree.commit('rev3', rev_id='rev-3')
+        repo = self.make_repository('repo')
+        inter_repo = repository.InterDifferingSerializer(
+            tree.branch.repository, repo)
+        pb = progress.InstrumentedProgress(to_file=StringIO())
+        pb.never_throttle = True
+        inter_repo.fetch('rev-1', pb)
+        self.assertEqual('Transferring revisions', pb.last_msg)
+        self.assertEqual(1, pb.last_cnt)
+        self.assertEqual(1, pb.last_total)
+        inter_repo.fetch('rev-3', pb)
+        self.assertEqual(2, pb.last_cnt)
+        self.assertEqual(2, pb.last_total)
