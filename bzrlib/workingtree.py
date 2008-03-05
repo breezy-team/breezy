@@ -389,6 +389,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             if osutils.lexists(self.abspath(path)):
                 yield ie.file_id
 
+    def all_file_ids(self):
+        """See Tree.iter_all_file_ids"""
+        return set(self.inventory)
+
     def __repr__(self):
         return "<%s of %s>" % (self.__class__.__name__,
                                getattr(self, 'basedir', None))
@@ -1698,6 +1702,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def kind(self, file_id):
         return file_kind(self.id2abspath(file_id))
 
+    def stored_kind(self, file_id):
+        """See Tree.stored_kind"""
+        return self.inventory[file_id].kind
+
     def _comparison_data(self, entry, path):
         abspath = self.abspath(path)
         try:
@@ -2763,7 +2771,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         
 
     def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
-                   accelerator_tree=None):
+                   accelerator_tree=None, hardlink=False):
         """See WorkingTreeFormat.initialize()."""
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
@@ -2856,7 +2864,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
                              self._lock_class)
 
     def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
-                   accelerator_tree=None):
+                   accelerator_tree=None, hardlink=False):
         """See WorkingTreeFormat.initialize().
         
         :param revision_id: if supplied, create a working tree at a different
@@ -2865,6 +2873,8 @@ class WorkingTreeFormat3(WorkingTreeFormat):
             contents more quickly than the revision tree, i.e. a workingtree.
             The revision tree will be used for cases where accelerator_tree's
             content is different.
+        :param hardlink: If true, hard-link files from accelerator_tree,
+            where possible.
         """
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)

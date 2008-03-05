@@ -209,7 +209,7 @@ format_registry.register_lazy(
     'rio',
     'bzrlib.version_info_formats.format_rio',
     'RioVersionInfoBuilder',
-    'Version info in RIO format.')
+    'Version info in RIO (simple text) format (default).')
 format_registry.default_key = 'rio'
 format_registry.register_lazy(
     'python',

@@ -15,13 +15,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-from cStringIO import StringIO
-
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from warnings import warn
-
-import bzrlib
 from bzrlib import (
         bzrdir,
         cache_utf8,
@@ -30,16 +25,13 @@ from bzrlib import (
         errors,
         lockdir,
         lockable_files,
-        osutils,
         revision as _mod_revision,
         transport,
-        tree,
         tsort,
         ui,
         urlutils,
         )
-from bzrlib.config import BranchConfig, TreeConfig
-from bzrlib.lockable_files import LockableFiles, TransportLock
+from bzrlib.config import BranchConfig
 from bzrlib.tag import (
     BasicTags,
     DisabledTags,
@@ -47,20 +39,9 @@ from bzrlib.tag import (
 """)
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
-from bzrlib.errors import (BzrError, BzrCheckError, DivergedBranches,
-                           HistoryMissing, InvalidRevisionId,
-                           InvalidRevisionNumber, LockError, NoSuchFile,
-                           NoSuchRevision, NotVersionedError,
-                           NotBranchError, UninitializableFormat,
-                           UnlistableStore, UnlistableBranch,
-                           )
 from bzrlib.hooks import Hooks
-from bzrlib.symbol_versioning import (deprecated_function,
-                                      deprecated_method,
-                                      DEPRECATED_PARAMETER,
-                                      deprecated_passed,
-                                      zero_eight, zero_nine, zero_sixteen,
-                                      zero_ninetyone,
+from bzrlib.symbol_versioning import (deprecated_method,
+                                      zero_sixteen,
                                       )
 from bzrlib.trace import mutter, mutter_callsite, note, is_quiet
 
@@ -338,7 +319,7 @@ class Branch(object):
         assert isinstance(revno, int)
         rh = self.revision_history()
         if not (1 <= revno <= len(rh)):
-            raise InvalidRevisionNumber(revno)
+            raise errors.InvalidRevisionNumber(revno)
         return self.repository.get_revision_delta(rh[revno-1])
 
     @deprecated_method(zero_sixteen)
@@ -464,7 +445,7 @@ class Branch(object):
         common_index = min(self_len, other_len) -1
         if common_index >= 0 and \
             self_history[common_index] != other_history[common_index]:
-            raise DivergedBranches(self, other)
+            raise errors.DivergedBranches(self, other)
 
         if stop_revision is None:
             stop_revision = other_len
@@ -643,7 +624,7 @@ class Branch(object):
         Zero (the NULL revision) is considered invalid
         """
         if revno < 1 or revno > self.revno():
-            raise InvalidRevisionNumber(revno)
+            raise errors.InvalidRevisionNumber(revno)
 
     @needs_read_lock
     def clone(self, to_bzrdir, revision_id=None):
@@ -753,7 +734,8 @@ class Branch(object):
         return format
 
     def create_checkout(self, to_location, revision_id=None,
-                        lightweight=False, accelerator_tree=None):
+                        lightweight=False, accelerator_tree=None,
+                        hardlink=False):
         """Create a checkout of a branch.
         
         :param to_location: The url to produce the checkout at
@@ -764,6 +746,8 @@ class Branch(object):
             contents more quickly than the revision tree, i.e. a workingtree.
             The revision tree will be used for cases where accelerator_tree's
             content is different.
+        :param hardlink: If true, hard-link files from accelerator_tree,
+            where possible.
         :return: The tree of the created checkout
         """
         t = transport.get_transport(to_location)
@@ -784,7 +768,8 @@ class Branch(object):
             from_branch=None
         tree = checkout.create_workingtree(revision_id,
                                            from_branch=from_branch,
-                                           accelerator_tree=accelerator_tree)
+                                           accelerator_tree=accelerator_tree,
+                                           hardlink=hardlink)
         basis_tree = tree.basis_tree()
         basis_tree.lock_read()
         try:
@@ -847,8 +832,8 @@ class BranchFormat(object):
             transport = a_bzrdir.get_branch_transport(None)
             format_string = transport.get("format").read()
             return klass._formats[format_string]
-        except NoSuchFile:
-            raise NotBranchError(path=transport.base)
+        except errors.NoSuchFile:
+            raise errors.NotBranchError(path=transport.base)
         except KeyError:
             raise errors.UnknownFormatError(format=format_string)
 
@@ -1136,8 +1121,8 @@ class BzrBranchFormat5(BranchFormat):
                               _control_files=control_files,
                               a_bzrdir=a_bzrdir,
                               _repository=a_bzrdir.find_repository())
-        except NoSuchFile:
-            raise NotBranchError(path=transport.base)
+        except errors.NoSuchFile:
+            raise errors.NotBranchError(path=transport.base)
 
 
 class BzrBranchFormat6(BzrBranchFormat5):
@@ -1544,7 +1529,7 @@ class BzrBranch(Branch):
         for l in _locs:
             try:
                 return self.control_files.get(l).read().strip('\n')
-            except NoSuchFile:
+            except errors.NoSuchFile:
                 pass
         return None
 
@@ -1628,7 +1613,7 @@ class BzrBranch(Branch):
         result.old_revno, result.old_revid = target.last_revision_info()
         try:
             target.update_revisions(self, stop_revision)
-        except DivergedBranches:
+        except errors.DivergedBranches:
             if not overwrite:
                 raise
         if overwrite:
@@ -1767,7 +1752,7 @@ class BzrBranch5(BzrBranch):
         else:
             try:
                 self.control_files._transport.delete('bound')
-            except NoSuchFile:
+            except errors.NoSuchFile:
                 return False
             return True
 
@@ -2084,6 +2069,6 @@ class Converter5to6(object):
         new_branch.control_files._transport.delete('revision-history')
         try:
             branch.set_parent(None)
-        except NoSuchFile:
+        except errors.NoSuchFile:
             pass
         branch.set_bound_location(None)
