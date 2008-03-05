@@ -4,9 +4,13 @@ bzr-svn 0.4.9	UNRELEASED
   
    * Fix compatibility with bzr 1.3.
 
+   * Fix performance regression in revmap.
+
   FEATURE
 
    * Add progress bar to fetch initialization code. 
+
+   * Add another progress bar to the branch detection code.
 
 
 bzr-svn 0.4.8	UNRELEASED
