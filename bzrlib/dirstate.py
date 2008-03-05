@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -321,6 +321,9 @@ class DirState(object):
         # modified states.
         self._header_state = DirState.NOT_IN_MEMORY
         self._dirblock_state = DirState.NOT_IN_MEMORY
+        # If true, an error has been detected while updating the dirstate, and 
+        # for safety we're not going to commit to disk.
+        self._changes_aborted = False
         self._dirblocks = []
         self._ghosts = []
         self._parents = []
@@ -1163,6 +1166,68 @@ class DirState(object):
             raise
         return result
 
+    def update_by_delta(self, delta):
+        """Apply an inventory delta to the dirstate for tree 0
+
+        :param delta: An inventory delta.  See Inventory.apply_delta for
+            details.
+        """
+        self._read_dirblocks_if_needed()
+        insertions = {}
+        removals = {}
+        for old_path, new_path, file_id, inv_entry in sorted(delta,
+                                                             reverse=True):
+            assert file_id not in insertions
+            assert file_id not in removals
+            if old_path is not None:
+                old_path = old_path.encode('utf-8')
+                removals[file_id] = old_path
+            if new_path is not None:
+                new_path = new_path.encode('utf-8')
+                dirname, basename = osutils.split(new_path)
+                key = (dirname, basename, file_id)
+                minikind = DirState._kind_to_minikind[inv_entry.kind]
+                if minikind == 't':
+                    fingerprint = inv_entry.reference_revision
+                else:
+                    fingerprint = ''
+                insertions[file_id] = (key, minikind, inv_entry.executable,
+                                       fingerprint, new_path)
+            if None not in (old_path, new_path):
+                for child in self._iter_child_entries(0, old_path):
+                    if child[0][2] in insertions or child[0][2] in removals:
+                        continue
+                    child_dirname = child[0][0]
+                    child_basename = child[0][1]
+                    minikind = child[1][0][0]
+                    fingerprint = child[1][0][4]
+                    executable = child[1][0][3]
+                    old_child_path = osutils.pathjoin(child[0][0],
+                                                      child[0][1])
+                    removals[child[0][2]] = old_child_path
+                    child_suffix = child_dirname[len(old_path):]
+                    new_child_dirname = (new_path + child_suffix)
+                    key = (new_child_dirname, child_basename, child[0][2])
+                    new_child_path = os.path.join(new_child_dirname,
+                                                  child_basename)
+                    insertions[child[0][2]] = (key, minikind, executable,
+                                               fingerprint, new_child_path)
+        self._apply_removals(removals.values())
+        self._apply_insertions(insertions.values())
+
+    def _apply_removals(self, removals):
+        for path in sorted(removals, reverse=True):
+            dirname, basename = osutils.split(path)
+            block_i, entry_i, d_present, f_present = \
+                self._get_block_entry_index(dirname, basename, 0)
+            entry = self._dirblocks[block_i][1][entry_i]
+            self._make_absent(entry)
+
+    def _apply_insertions(self, adds):
+        for key, minikind, executable, fingerprint, path_utf8 in sorted(adds):
+            self.update_minimal(key, minikind, executable, fingerprint,
+                                path_utf8=path_utf8)
+
     def update_basis_by_delta(self, delta, new_revid):
         """Update the parents of this tree after a commit.
 
@@ -1292,13 +1357,15 @@ class DirState(object):
             assert old_path is None
             # the entry for this file_id must be in tree 0.
             entry = self._get_entry(0, file_id, new_path)
-            if entry[0][2] != file_id:
-                raise errors.BzrError('dirstate: cannot apply delta, working'
-                    ' tree does not contain new entry %r %r' %
-                    (new_path, file_id))
+            if entry[0] is None or entry[0][2] != file_id:
+                self._changes_aborted = True
+                raise errors.InconsistentDelta(new_path, file_id,
+                    'working tree does not contain new entry')
             if real_add and entry[1][1][0] not in absent:
-                raise errors.BzrError('dirstate: inconsistent delta, with '
-                    'tree 0. %r %r' % (new_path, file_id))
+                self._changes_aborted = True
+                raise errors.InconsistentDelta(new_path, file_id,
+                    'The entry was considered to be a genuinely new record,'
+                    ' but there was already an old record for it.')
             # We don't need to update the target of an 'r' because the handling
             # of renames turns all 'r' situations into a delete at the original
             # location.
@@ -1315,14 +1382,15 @@ class DirState(object):
             assert old_path == new_path
             # the entry for this file_id must be in tree 0.
             entry = self._get_entry(0, file_id, new_path)
-            if entry[0][2] != file_id:
-                raise errors.BzrError('dirstate: cannot apply delta, working'
-                    ' tree does not contain new entry %r %r' %
-                    (new_path, file_id))
+            if entry[0] is None or entry[0][2] != file_id:
+                self._changes_aborted = True
+                raise errors.InconsistentDelta(new_path, file_id,
+                    'working tree does not contain new entry')
             if (entry[1][0][0] in absent or
                 entry[1][1][0] in absent):
-                raise errors.BzrError('dirstate: inconsistent delta, with '
-                    'tree 0. %r %r' % (new_path, file_id))
+                self._changes_aborted = True
+                raise errors.InconsistentDelta(new_path, file_id,
+                    'changed considered absent')
             entry[1][1] = new_details
 
     def _update_basis_apply_deletes(self, deletes):
@@ -1348,22 +1416,31 @@ class DirState(object):
             block_index, entry_index, dir_present, file_present = \
                 self._get_block_entry_index(dirname, basename, 1)
             if not file_present:
-                raise errors.BzrError('dirstate: cannot apply delta, basis'
-                    ' tree does not contain new entry %r %r' %
-                    (old_path, file_id))
+                self._changes_aborted = True
+                raise errors.InconsistentDelta(old_path, file_id,
+                    'basis tree does not contain removed entry')
             entry = self._dirblocks[block_index][1][entry_index]
             if entry[0][2] != file_id:
-                raise errors.BzrError('mismatched file_id in tree 1 %r %r' %
-                    (old_path, file_id))
+                self._changes_aborted = True
+                raise errors.InconsistentDelta(old_path, file_id,
+                    'mismatched file_id in tree 1')
             if real_delete:
                 if entry[1][0][0] != 'a':
-                    raise errors.BzrError('dirstate: inconsistent delta, with '
-                        'tree 0. %r %r' % (old_path, file_id))
+                    self._changes_aborted = True
+                    raise errors.InconsistentDelta(old_path, file_id,
+                            'This was marked as a real delete, but the WT state'
+                            ' claims that it still exists and is versioned.')
                 del self._dirblocks[block_index][1][entry_index]
             else:
                 if entry[1][0][0] == 'a':
-                    raise errors.BzrError('dirstate: inconsistent delta, with '
-                        'tree 0. %r %r' % (old_path, file_id))
+                    self._changes_aborted = True
+                    raise errors.InconsistentDelta(old_path, file_id,
+                        'The entry was considered a rename, but the source path'
+                        ' is marked as absent.')
+                    # For whatever reason, we were asked to rename an entry
+                    # that was originally marked as deleted. This could be
+                    # because we are renaming the parent directory, and the WT
+                    # current state has the file marked as deleted.
                 elif entry[1][0][0] == 'r':
                     # implement the rename
                     del self._dirblocks[block_index][1][entry_index]
@@ -1666,6 +1743,7 @@ class DirState(object):
             assert entry[0][2] and entry[1][tree_index][0] not in ('a', 'r'), 'unversioned entry?!?!'
             if fileid_utf8:
                 if entry[0][2] != fileid_utf8:
+                    self._changes_aborted = True
                     raise errors.BzrError('integrity error ? : mismatching'
                                           ' tree_index, file_id and path')
             return entry
@@ -1954,6 +2032,12 @@ class DirState(object):
         start over, to allow for fine grained read lock duration, so 'status'
         wont block 'commit' - for example.
         """
+        if self._changes_aborted:
+            # Should this be a warning? For now, I'm expecting that places that
+            # mark it inconsistent will warn, making a warning here redundant.
+            trace.mutter('Not saving DirState because '
+                    '_changes_aborted is set.')
+            return
         if (self._header_state == DirState.IN_MEMORY_MODIFIED or
             self._dirblock_state == DirState.IN_MEMORY_MODIFIED):
 
@@ -2598,6 +2682,7 @@ class DirState(object):
         """Forget all state information about the dirstate."""
         self._header_state = DirState.NOT_IN_MEMORY
         self._dirblock_state = DirState.NOT_IN_MEMORY
+        self._changes_aborted = False
         self._parents = []
         self._ghosts = []
         self._dirblocks = []

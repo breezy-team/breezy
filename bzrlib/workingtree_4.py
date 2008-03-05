@@ -500,6 +500,16 @@ class WorkingTree4(WorkingTree3):
             mode = os.lstat(self.abspath(path)).st_mode
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
+    def all_file_ids(self):
+        """See Tree.iter_all_file_ids"""
+        self._must_be_locked()
+        result = set()
+        for key, tree_details in self.current_dirstate()._iter_entries():
+            if tree_details[0][0] in ('a', 'r'): # relocated
+                continue
+            result.add(key[2])
+        return result
+
     @needs_read_lock
     def __iter__(self):
         """Iterate through file_ids for this tree.
@@ -1215,6 +1225,19 @@ class WorkingTree4(WorkingTree3):
             for file_id in file_ids:
                 self._inventory.remove_recursive_id(file_id)
 
+    @needs_tree_write_lock
+    def rename_one(self, from_rel, to_rel, after=False):
+        """See WorkingTree.rename_one"""
+        self.flush()
+        WorkingTree.rename_one(self, from_rel, to_rel, after)
+
+    @needs_tree_write_lock
+    def apply_inventory_delta(self, changes):
+        """See MutableTree.apply_inventory_delta"""
+        state = self.current_dirstate()
+        state.update_by_delta(changes)
+        self._make_dirty(reset_inventory=True)
+
     def update_basis_by_delta(self, new_revid, delta):
         """See MutableTree.update_basis_by_delta."""
         assert self.last_revision() != new_revid
@@ -1259,7 +1282,7 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         return "Working tree format 4"
 
     def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
-                   accelerator_tree=None):
+                   accelerator_tree=None, hardlink=False):
         """See WorkingTreeFormat.initialize().
 
         :param revision_id: allows creating a working tree at a different
@@ -1268,6 +1291,8 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
             contents more quickly than the revision tree, i.e. a workingtree.
             The revision tree will be used for cases where accelerator_tree's
             content is different.
+        :param hardlink: If true, hard-link files from accelerator_tree,
+            where possible.
 
         These trees get an initial random root id, if their repository supports
         rich root data, TREE_ROOT otherwise.
@@ -1320,16 +1345,19 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
             else:
                 parents_list = [(revision_id, basis)]
             basis.lock_read()
-            wt.set_parent_trees(parents_list, allow_leftmost_as_ghost=True)
-            wt.flush()
-            # if the basis has a root id we have to use that; otherwise we use
-            # a new random one
-            basis_root_id = basis.get_root_id()
-            if basis_root_id is not None:
-                wt._set_root_id(basis_root_id)
+            try:
+                wt.set_parent_trees(parents_list, allow_leftmost_as_ghost=True)
                 wt.flush()
-            transform.build_tree(basis, wt, accelerator_tree)
-            basis.unlock()
+                # if the basis has a root id we have to use that; otherwise we
+                # use a new random one
+                basis_root_id = basis.get_root_id()
+                if basis_root_id is not None:
+                    wt._set_root_id(basis_root_id)
+                    wt.flush()
+                transform.build_tree(basis, wt, accelerator_tree,
+                                     hardlink=hardlink)
+            finally:
+                basis.unlock()
         finally:
             control_files.unlock()
             wt.unlock()
@@ -1601,6 +1629,10 @@ class DirStateRevisionTree(Tree):
         if entry == None:
             raise errors.NoSuchId(tree=self, file_id=file_id)
         return dirstate.DirState._minikind_to_kind[entry[1][0]]
+
+    def stored_kind(self, file_id):
+        """See Tree.stored_kind"""
+        return self.kind(file_id)
 
     def path_content_summary(self, path):
         """See Tree.path_content_summary."""
@@ -1951,6 +1983,11 @@ class InterDirStateTree(InterTree):
                                                  path_utf8=old_path)
                     # update the source details variable to be the real
                     # location.
+                    if old_entry == (None, None):
+                        raise errors.CorruptDirstate(state._filename,
+                            "entry '%s/%s' is considered renamed from %r"
+                            " but source does not exist\n"
+                            "entry: %s" % (entry[0][0], entry[0][1], old_path, entry))
                     source_details = old_entry[1][source_index]
                     source_minikind = source_details[0]
                 else:

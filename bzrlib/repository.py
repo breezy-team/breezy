@@ -495,7 +495,6 @@ class Repository(object):
         attempted.
         """
 
-    @needs_write_lock
     def add_inventory(self, revision_id, inv, parents):
         """Add the inventory inv to the repository as revision_id.
         
@@ -526,7 +525,6 @@ class Repository(object):
         return inv_vf.add_lines(revision_id, final_parents, lines,
             check_content=check_content)[0]
 
-    @needs_write_lock
     def add_revision(self, revision_id, rev, inv=None, config=None):
         """Add rev to the revision store as revision_id.
 
@@ -813,6 +811,16 @@ class Repository(object):
     def get_data_stream(self, revision_ids):
         raise NotImplementedError(self.get_data_stream)
 
+    def get_data_stream_for_search(self, search_result):
+        """Get a data stream that can be inserted to a repository.
+
+        :param search_result: A bzrlib.graph.SearchResult selecting the
+            revisions to get.
+        :return: A data stream that can be inserted into a repository using
+            insert_data_stream.
+        """
+        raise NotImplementedError(self.get_data_stream_for_search)
+
     def insert_data_stream(self, stream):
         """XXX What does this really do? 
         
@@ -833,7 +841,7 @@ class Repository(object):
                 knit = self._revision_store.get_signature_file(
                     self.get_transaction())
             else:
-                raise RepositoryDataStreamError(
+                raise errors.RepositoryDataStreamError(
                     "Unrecognised data stream key '%s'" % (item_key,))
             decoded_list = bencode.bdecode(bytes)
             format = decoded_list.pop(0)
@@ -852,6 +860,18 @@ class Repository(object):
                 (format, data_list, reader_func))
 
     @needs_read_lock
+    def search_missing_revision_ids(self, other, revision_id=None, find_ghosts=True):
+        """Return the revision ids that other has that this does not.
+        
+        These are returned in topological order.
+
+        revision_id: only return revision ids included by revision_id.
+        """
+        return InterRepository.get(other, self).search_missing_revision_ids(
+            revision_id, find_ghosts)
+
+    @deprecated_method(symbol_versioning.one_two)
+    @needs_read_lock
     def missing_revision_ids(self, other, revision_id=None, find_ghosts=True):
         """Return the revision ids that other has that this does not.
         
@@ -859,8 +879,14 @@ class Repository(object):
 
         revision_id: only return revision ids included by revision_id.
         """
-        return InterRepository.get(other, self).missing_revision_ids(
-            revision_id, find_ghosts)
+        keys =  self.search_missing_revision_ids(
+            other, revision_id, find_ghosts).get_keys()
+        other.lock_read()
+        try:
+            parents = other.get_graph().get_parent_map(keys)
+        finally:
+            other.unlock()
+        return tsort.topo_sort(parents)
 
     @staticmethod
     def open(base):
@@ -1752,8 +1778,7 @@ class Repository(object):
         """Return the graph walker for this repository format"""
         parents_provider = self._make_parents_provider()
         if (other_repository is not None and
-            other_repository.bzrdir.transport.base !=
-            self.bzrdir.transport.base):
+            not self.has_same_location(other_repository)):
             parents_provider = graph._StackedParentsProvider(
                 [parents_provider, other_repository._make_parents_provider()])
         return graph.Graph(parents_provider)
@@ -1761,6 +1786,19 @@ class Repository(object):
     def _get_versioned_file_checker(self):
         """Return an object suitable for checking versioned files."""
         return _VersionedFileChecker(self)
+
+    def revision_ids_to_search_result(self, result_set):
+        """Convert a set of revision ids to a graph SearchResult."""
+        result_parents = set()
+        for parents in self.get_graph().get_parent_map(
+            result_set).itervalues():
+            result_parents.update(parents)
+        included_keys = result_set.intersection(result_parents)
+        start_keys = result_set.difference(included_keys)
+        exclude_keys = result_parents.difference(result_set)
+        result = graph.SearchResult(start_keys, exclude_keys,
+            len(result_set), result_set)
+        return result
 
     @needs_write_lock
     def set_make_working_trees(self, new_value):
@@ -1848,7 +1886,8 @@ class Repository(object):
         depend on the revision index being consistent.
         """
         raise NotImplementedError(self.revision_graph_can_have_wrong_parents)
-        
+
+
 # remove these delegates a while after bzr 0.15
 def __make_delegated(name, from_module):
     def _deprecated_repository_forwarder():
@@ -2051,6 +2090,9 @@ class RepositoryFormat(object):
     # Set to True or False in derived classes. True indicates that the format
     # supports ghosts gracefully.
     supports_ghosts = None
+    # Can this repository be given external locations to lookup additional
+    # data. Set to True or False in derived classes.
+    supports_external_lookups = None
 
     def __str__(self):
         return "<%s>" % self.__class__.__name__
@@ -2195,6 +2237,7 @@ class MetaDirRepositoryFormat(RepositoryFormat):
 
     rich_root_data = False
     supports_tree_reference = False
+    supports_external_lookups = False
     _matchingbzrdir = bzrdir.BzrDirMetaFormat1()
 
     def __init__(self):
@@ -2259,7 +2302,7 @@ format_registry.register_lazy(
 
 # Pack-based formats. There is one format for pre-subtrees, and one for
 # post-subtrees to allow ease of testing.
-# NOTE: These are experimental in 0.92.
+# NOTE: These are experimental in 0.92. Stable in 1.0 and above
 format_registry.register_lazy(
     'Bazaar pack repository format 1 (needs bzr 0.92)\n',
     'bzrlib.repofmt.pack_repo',
@@ -2275,6 +2318,21 @@ format_registry.register_lazy(
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatKnitPack4',
     )
+# Development formats. 
+# 1.2->1.3
+# development 0 - stub to introduce development versioning scheme.
+format_registry.register_lazy(
+    "Bazaar development format 0 (needs bzr.dev from before 1.3)\n",
+    'bzrlib.repofmt.pack_repo',
+    'RepositoryFormatPackDevelopment0',
+    )
+format_registry.register_lazy(
+    ("Bazaar development format 0 with subtree support "
+        "(needs bzr.dev from before 1.3)\n"),
+    'bzrlib.repofmt.pack_repo',
+    'RepositoryFormatPackDevelopment0Subtree',
+    )
+# 1.3->1.4 go below here
 
 
 class InterRepository(InterObject):
@@ -2337,12 +2395,13 @@ class InterRepository(InterObject):
             # we don't care about other ghosts as we can't fetch them and
             # haven't been asked to.
             next_revs = set(next_revs)
-            next_revs.difference_update(null_set)
-            have_revs = self.target.has_revisions(next_revs)
+            # we always have NULL_REVISION present.
+            have_revs = self.target.has_revisions(next_revs).union(null_set)
             missing_revs.update(next_revs - have_revs)
             searcher.stop_searching_any(have_revs)
-        return missing_revs
+        return searcher.get_result()
    
+    @deprecated_method(symbol_versioning.one_two)
     @needs_read_lock
     def missing_revision_ids(self, revision_id=None, find_ghosts=True):
         """Return the revision ids that source has that target does not.
@@ -2353,6 +2412,19 @@ class InterRepository(InterObject):
                             revision_id.
         :param find_ghosts: If True find missing revisions in deep history
             rather than just finding the surface difference.
+        """
+        return list(self.search_missing_revision_ids(
+            revision_id, find_ghosts).get_keys())
+
+    @needs_read_lock
+    def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
+        """Return the revision ids that source has that target does not.
+        
+        :param revision_id: only return revision ids included by this
+                            revision_id.
+        :param find_ghosts: If True find missing revisions in deep history
+            rather than just finding the surface difference.
+        :return: A bzrlib.graph.SearchResult.
         """
         # stop searching at found target revisions.
         if not find_ghosts and revision_id is not None:
@@ -2366,10 +2438,7 @@ class InterRepository(InterObject):
         else:
             source_ids = self.source.all_revision_ids()
         result_set = set(source_ids).difference(target_ids)
-        # this may look like a no-op: its not. It preserves the ordering
-        # other_ids had while only returning the members from other_ids
-        # that we've decided we need.
-        return [rev_id for rev_id in source_ids if rev_id in result_set]
+        return self.source.revision_ids_to_search_result(result_set)
 
     @staticmethod
     def _same_model(source, target):
@@ -2516,7 +2585,7 @@ class InterWeaveRepo(InterSameDataRepository):
         return f.count_copied, f.failed_revisions
 
     @needs_read_lock
-    def missing_revision_ids(self, revision_id=None, find_ghosts=True):
+    def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
         """See InterRepository.missing_revision_ids()."""
         # we want all revisions to satisfy revision_id in source.
         # but we don't want to stat every file here and there.
@@ -2542,19 +2611,21 @@ class InterWeaveRepo(InterSameDataRepository):
         # we do not have a revision as that would be pointless.
         target_ids = set(self.target._all_possible_ids())
         possibly_present_revisions = target_ids.intersection(source_ids_set)
-        actually_present_revisions = set(self.target._eliminate_revisions_not_present(possibly_present_revisions))
+        actually_present_revisions = set(
+            self.target._eliminate_revisions_not_present(possibly_present_revisions))
         required_revisions = source_ids_set.difference(actually_present_revisions)
-        required_topo_revisions = [rev_id for rev_id in source_ids if rev_id in required_revisions]
         if revision_id is not None:
             # we used get_ancestry to determine source_ids then we are assured all
             # revisions referenced are present as they are installed in topological order.
             # and the tip revision was validated by get_ancestry.
-            return required_topo_revisions
+            result_set = required_revisions
         else:
             # if we just grabbed the possibly available ids, then 
             # we only have an estimate of whats available and need to validate
             # that against the revision records.
-            return self.source._eliminate_revisions_not_present(required_topo_revisions)
+            result_set = set(
+                self.source._eliminate_revisions_not_present(required_revisions))
+        return self.source.revision_ids_to_search_result(result_set)
 
 
 class InterKnitRepo(InterSameDataRepository):
@@ -2594,7 +2665,7 @@ class InterKnitRepo(InterSameDataRepository):
         return f.count_copied, f.failed_revisions
 
     @needs_read_lock
-    def missing_revision_ids(self, revision_id=None, find_ghosts=True):
+    def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
         """See InterRepository.missing_revision_ids()."""
         if revision_id is not None:
             source_ids = self.source.get_ancestry(revision_id)
@@ -2609,19 +2680,21 @@ class InterKnitRepo(InterSameDataRepository):
         # we do not have a revision as that would be pointless.
         target_ids = set(self.target.all_revision_ids())
         possibly_present_revisions = target_ids.intersection(source_ids_set)
-        actually_present_revisions = set(self.target._eliminate_revisions_not_present(possibly_present_revisions))
+        actually_present_revisions = set(
+            self.target._eliminate_revisions_not_present(possibly_present_revisions))
         required_revisions = source_ids_set.difference(actually_present_revisions)
-        required_topo_revisions = [rev_id for rev_id in source_ids if rev_id in required_revisions]
         if revision_id is not None:
             # we used get_ancestry to determine source_ids then we are assured all
             # revisions referenced are present as they are installed in topological order.
             # and the tip revision was validated by get_ancestry.
-            return required_topo_revisions
+            result_set = required_revisions
         else:
             # if we just grabbed the possibly available ids, then 
             # we only have an estimate of whats available and need to validate
             # that against the revision records.
-            return self.source._eliminate_revisions_not_present(required_topo_revisions)
+            result_set = set(
+                self.source._eliminate_revisions_not_present(required_revisions))
+        return self.source.revision_ids_to_search_result(result_set)
 
 
 class InterPackRepo(InterSameDataRepository):
@@ -2674,8 +2747,8 @@ class InterPackRepo(InterSameDataRepository):
             return (0, [])
         else:
             try:
-                revision_ids = self.missing_revision_ids(revision_id,
-                    find_ghosts=find_ghosts)
+                revision_ids = self.search_missing_revision_ids(revision_id,
+                    find_ghosts=find_ghosts).get_keys()
             except errors.NoSuchRevision:
                 raise errors.InstallFailed([revision_id])
         packs = self.source._pack_collection.all_packs()
@@ -2692,7 +2765,7 @@ class InterPackRepo(InterSameDataRepository):
             return (0, [])
 
     @needs_read_lock
-    def missing_revision_ids(self, revision_id=None, find_ghosts=True):
+    def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
         """See InterRepository.missing_revision_ids().
         
         :param find_ghosts: Find ghosts throughout the ancestry of
@@ -2711,7 +2784,8 @@ class InterPackRepo(InterSameDataRepository):
         # have in target, but don't try to check for existence where we know
         # we do not have a revision as that would be pointless.
         target_ids = set(self.target.all_revision_ids())
-        return [r for r in source_ids if (r not in target_ids)]
+        result_set = set(source_ids).difference(target_ids)
+        return self.source.revision_ids_to_search_result(result_set)
 
 
 class InterModel1and2(InterRepository):
@@ -2771,13 +2845,24 @@ class InterKnit1and2(InterKnitRepo):
         try:
             from bzrlib.repofmt.knitrepo import (RepositoryFormatKnit1,
                 RepositoryFormatKnit3)
-            from bzrlib.repofmt.pack_repo import (RepositoryFormatKnitPack1,
-                RepositoryFormatKnitPack3)
-            return (isinstance(source._format,
-                    (RepositoryFormatKnit1, RepositoryFormatKnitPack1)) and
-                isinstance(target._format,
-                    (RepositoryFormatKnit3, RepositoryFormatKnitPack3))
+            from bzrlib.repofmt.pack_repo import (
+                RepositoryFormatKnitPack1,
+                RepositoryFormatKnitPack3,
+                RepositoryFormatPackDevelopment0,
+                RepositoryFormatPackDevelopment0Subtree,
                 )
+            nosubtrees = (
+                RepositoryFormatKnit1,
+                RepositoryFormatKnitPack1,
+                RepositoryFormatPackDevelopment0,
+                )
+            subtrees = (
+                RepositoryFormatKnit3,
+                RepositoryFormatKnitPack3,
+                RepositoryFormatPackDevelopment0Subtree,
+                )
+            return (isinstance(source._format, nosubtrees) and
+                isinstance(target._format, subtrees))
         except AttributeError:
             return False
 
@@ -2816,8 +2901,10 @@ class InterDifferingSerializer(InterKnitRepo):
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         """See InterRepository.fetch()."""
-        revision_ids = self.target.missing_revision_ids(self.source,
-            revision_id, find_ghosts=find_ghosts)
+        revision_ids = self.target.search_missing_revision_ids(self.source,
+            revision_id, find_ghosts=find_ghosts).get_keys()
+        revision_ids = tsort.topo_sort(
+            self.source.get_graph().get_parent_map(revision_ids))
         def revisions_iterator():
             for current_revision_id in revision_ids:
                 revision = self.source.get_revision(current_revision_id)
