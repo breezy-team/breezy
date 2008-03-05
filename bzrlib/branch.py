@@ -279,8 +279,7 @@ class Branch(object):
             if last_revision is None:
                 pb.update('get source history')
                 last_revision = from_branch.last_revision()
-                if last_revision is None:
-                    last_revision = _mod_revision.NULL_REVISION
+                last_revision = _mod_revision.ensure_null(last_revision)
             return self.repository.fetch(from_branch.repository,
                                          revision_id=last_revision,
                                          pb=nested_pb)
@@ -1413,8 +1412,7 @@ class BzrBranch(Branch):
         configured to check constraints on history, in which case this may not
         be permitted.
         """
-        if revision_id is None:
-            revision_id = _mod_revision.NULL_REVISION
+        revision_id = _mod_revision.ensure_null(revision_id)
         history = self._lefthand_history(revision_id)
         assert len(history) == revno, '%d != %d' % (len(history), revno)
         self.set_revision_history(history)
@@ -1847,13 +1845,13 @@ class BzrBranch6(BzrBranch5):
         Intended to be called by set_last_revision_info and
         _write_revision_history.
         """
+        assert revision_id is not None, "Use NULL_REVISION, not None"
         out_string = '%d %s\n' % (revno, revision_id)
         self.control_files.put_bytes('last-revision', out_string)
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
-        if revision_id is None:
-            revision_id = _mod_revision.NULL_REVISION
+        revision_id = _mod_revision.ensure_null(revision_id)
         if self._get_append_revisions_only():
             self._check_history_violation(revision_id)
         self._write_last_revision_info(revno, revision_id)
