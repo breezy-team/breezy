@@ -891,8 +891,8 @@ class KnitVersionedFile(VersionedFile):
             build_details = self._index.get_build_details(pending_components)
             pending_components = set()
             for version_id, details in build_details.items():
-                (method, index_memo, compression_parent, parents,
-                 noeol) = details
+                (index_memo, compression_parent, parents, content_details) = details
+                method = content_details[0]
                 if compression_parent is not None:
                     pending_components.add(compression_parent)
                 component_data[version_id] = (method, index_memo,
@@ -1050,7 +1050,6 @@ class KnitVersionedFile(VersionedFile):
         """
         position_map = self._get_components_positions(version_ids)
         # c = component_id, m = method, i_m = index_memo, n = next
-        # p = parent_ids, e = noeol
         records = [(c, i_m) for c, (m, i_m, n)
                              in position_map.iteritems()]
         record_map = {}
@@ -1435,8 +1434,18 @@ class _KnitIndex(_KnitComponentFile):
         """Get the method, index_memo and compression parent for version_ids.
 
         :param version_ids: An iterable of version_ids.
-        :return: A dict of version_id:(method, index_memo, compression_parent,
-            parents, noeol).
+        :return: A dict of version_id:(index_memo, compression_parent,
+                                       parents, content_details).
+            index_memo
+                opaque structure to pass to read_records to extract the raw
+                data
+            compression_parent
+                Content that this record is built upon, may be None
+            parents
+                Logical parents of this node
+            content_details
+                extra information about the content which needs to be passed to
+                Factory.parse_raw_data
         """
         result = {}
         for version_id in version_ids:
@@ -1448,8 +1457,8 @@ class _KnitIndex(_KnitComponentFile):
                 compression_parent = parents[0]
             noeol = 'no-eol' in self.get_options(version_id)
             index_memo = self.get_position(version_id)
-            result[version_id] = (method, index_memo, compression_parent,
-                                  parents, noeol)
+            result[version_id] = (index_memo, compression_parent,
+                                  parents, (method, noeol))
         return result
 
     def iter_parents(self, version_ids):
@@ -1741,8 +1750,9 @@ class KnitGraphIndex(object):
                 method = 'line-delta'
             else:
                 method = 'fulltext'
-            result[version_id] = (method, self._node_to_position(entry),
-                compression_parent, parents, noeol)
+            result[version_id] = (self._node_to_position(entry),
+                                  compression_parent, parents,
+                                  (method, noeol))
         return result
 
     def _compression_parent(self, an_entry):
@@ -2244,8 +2254,8 @@ class _StreamIndex(object):
             else:
                 compression_parent = parent_ids[0]
             index_memo = self.get_position(version_id)
-            result[version_id] = (method, index_memo, compression_parent,
-                                  parent_ids, noeol)
+            result[version_id] = (index_memo, compression_parent,
+                                  parent_ids, (method, noeol))
         return result
 
     def get_method(self, version_id):
@@ -2867,8 +2877,8 @@ class _KnitAnnotator(object):
             # new_nodes = self._knit._index._get_entries(this_iteration)
             pending = set()
             for rev_id, details in build_details.iteritems():
-                (method, index_memo, compression_parent, parents,
-                 noeol) = details
+                (index_memo, compression_parent, parents,
+                 content_details) = details
                 self._revision_id_graph[rev_id] = parents
                 records.append((rev_id, index_memo))
                 pending.update(p for p in parents
@@ -2895,8 +2905,9 @@ class _KnitAnnotator(object):
                 continue
             parent_ids = self._revision_id_graph[rev_id]
             details = self._all_build_details[rev_id]
-            (method, index_memo, compression_parent, parent_ids,
-             noeol) = details
+            (index_memo, compression_parent, parents,
+             content_details) = details
+            method, noeol = content_details
             nodes_to_annotate = []
             # TODO: Remove the punning between compression parents, and
             #       parent_ids, we should be able to do this without assuming
@@ -2904,7 +2915,7 @@ class _KnitAnnotator(object):
             if len(parent_ids) == 0:
                 # There are no parents for this node, so just add it
                 # TODO: This probably needs to be decoupled
-                assert compression_parent is None and method == 'fulltext'
+                assert compression_parent is None
                 fulltext_content = self._knit.factory.parse_fulltext(
                     raw_content, rev_id)
                 fulltext = self._add_fulltext_content(rev_id, fulltext_content,
@@ -2918,9 +2929,10 @@ class _KnitAnnotator(object):
             while nodes_to_annotate:
                 # Should we use a queue here instead of a stack?
                 (rev_id, parent_ids, raw_content) = nodes_to_annotate.pop()
-                (method, index_memo, compression_parent, parent_ids,
-                 noeol) = self._all_build_details[rev_id]
-                if method == 'line-delta':
+                (index_memo, compression_parent, parents,
+                 content_details) = self._all_build_details[rev_id]
+                method, noeol = content_details
+                if compression_parent is not None:
                     parent_fulltext_content = self._fulltext_contents[compression_parent]
                     delta = self._knit.factory.parse_line_delta(raw_content,
                                                                 rev_id)
@@ -2933,7 +2945,6 @@ class _KnitAnnotator(object):
                     blocks = KnitContent.get_line_delta_blocks(delta,
                             parent_fulltext, fulltext)
                 else:
-                    assert method == 'fulltext'
                     fulltext_content = self._knit.factory.parse_fulltext(
                         raw_content, rev_id)
                     fulltext = self._add_fulltext_content(rev_id,
