@@ -517,8 +517,6 @@ class SvnRepository(Repository):
         assert isinstance(revnum, int)
         assert isinstance(mapping, BzrSvnMapping)
 
-        mutter("generate_revision_id(%r,%r)" % (revnum, path))
-
         # Look in the cache to see if it already has a revision id
         revid = self.revmap.lookup_branch_revnum(revnum, path, str(mapping.scheme))
         if revid is not None:
