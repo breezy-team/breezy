@@ -2,6 +2,9 @@
 Bazaar Administrator Guide
 ==========================
 
+Note: this is a work in progress!
+
+
 Introduction
 ============
 
