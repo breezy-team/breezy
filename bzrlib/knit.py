@@ -2859,15 +2859,17 @@ def annotate_knit(knit, revision_id):
     return iter(annotator.get_annotated_lines(revision_id))
 
 
+_reused_content = 0
+_unused_content = 0
+_num_nodes = 0
+
+
 class _KnitAnnotator(object):
     """Build up the annotations for a text."""
 
     def __init__(self, knit):
         self._knit = knit
 
-        # unannotated lines of various revisions, this will have the final
-        # newline correct
-        self._fulltexts = {}
         # Content objects, differs from fulltexts because of how final newlines
         # are treated by knits. the content objects here will always have a
         # final newline
@@ -2881,18 +2883,23 @@ class _KnitAnnotator(object):
         # annotated from it.
         self._pending_children = {}
 
+        # Track how many children this node has, so we know if we need to keep
+        # it
+        self._annotate_children = {}
+        self._compression_children = {}
+
         self._all_build_details = {}
         # The children => parent revision_id graph
         self._revision_id_graph = {}
 
         self._heads_provider = None
 
+        self._nodes_to_keep_annotations = set()
+
     def _add_fulltext_content(self, revision_id, content_obj):
         self._fulltext_contents[revision_id] = content_obj
-        fulltext = content_obj.text_lines()
-        self._fulltexts[revision_id] = fulltext
-        # XXX: It would probably be good to check the sha1digest here
-        return fulltext
+        # TODO: jam 20080305 It might be good to check the sha1digest here
+        return content_obj.text_lines()
 
     def _check_parents(self, child, nodes_to_annotate):
         """Check if all parents have been processed.
@@ -2924,6 +2931,15 @@ class _KnitAnnotator(object):
             fulltext, revision_id, left_matching_blocks,
             heads_provider=self._get_heads_provider()))
         self._annotated_lines[revision_id] = annotated_lines
+        for p in parent_ids:
+            ann_children = self._annotate_children[p]
+            ann_children.remove(revision_id)
+            if (not ann_children
+                and p not in self._nodes_to_keep_annotations):
+                del self._annotated_lines[p]
+                del self._all_build_details[p]
+                if p in self._fulltext_contents:
+                    del self._fulltext_contents[p]
         # Now that we've added this one, see if there are any pending
         # deltas to be done, certainly this parent is finished
         nodes_to_annotate = []
@@ -2940,7 +2956,7 @@ class _KnitAnnotator(object):
         fulltext.)
 
         :return: A list of (revision_id, index_memo) records, suitable for
-            passing to read_records_iter to start reading in the raw data from
+            passing to read_records_iter to start reading in the raw data fro/
             the pack file.
         """
         if revision_id in self._annotated_lines:
@@ -2948,8 +2964,11 @@ class _KnitAnnotator(object):
             return []
         pending = set([revision_id])
         records = []
+        generation = 0
+        last_generation = 0
         while pending:
             # get all pending nodes
+            generation += 1
             this_iteration = pending
             build_details = self._knit._index.get_build_details(this_iteration)
             self._all_build_details.update(build_details)
@@ -2960,8 +2979,19 @@ class _KnitAnnotator(object):
                  record_details) = details
                 self._revision_id_graph[rev_id] = parents
                 records.append((rev_id, index_memo))
+                # Do we actually need to check _annotated_lines?
                 pending.update(p for p in parents
                                  if p not in self._all_build_details)
+                if compression_parent:
+                    self._compression_children.setdefault(compression_parent,
+                        []).append(rev_id)
+                if parents:
+                    for parent in parents:
+                        self._annotate_children.setdefault(parent, []).append(rev_id)
+                    if ((generation - last_generation >= 10)
+                        and len(parents) > 1):
+                        last_generation = generation
+                        self._nodes_to_keep_annotations.add(rev_id)
 
             missing_versions = this_iteration.difference(build_details.keys())
             for missing_version in missing_versions:
@@ -2971,6 +3001,8 @@ class _KnitAnnotator(object):
         # Generally we will want to read the records in reverse order, because
         # we find the parent nodes after the children
         records.reverse()
+        global _num_nodes
+        _num_nodes = len(records)
         return records
 
     def _annotate_records(self, records):
@@ -3009,12 +3041,31 @@ class _KnitAnnotator(object):
                 (index_memo, compression_parent, parents,
                  record_details) = self._all_build_details[rev_id]
                 if compression_parent is not None:
-                    parent_fulltext_content = self._fulltext_contents[compression_parent]
+                    comp_children = self._compression_children[compression_parent]
+                    assert rev_id in comp_children
+                    # If there is only 1 child, it is safe to reuse this
+                    # content
+                    reuse_content = (len(comp_children) == 1
+                        and compression_parent not in
+                            self._nodes_to_keep_annotations)
+                    if reuse_content:
+                        global _reused_content
+                        _reused_content += 1
+                        # Remove it from the cache since it will be changing
+                        parent_fulltext_content = self._fulltext_contents.pop(compression_parent)
+                        # Make sure to copy the fulltext since it might be
+                        # modified
+                        parent_fulltext = list(parent_fulltext_content.text_lines())
+                    else:
+                        global _unused_content
+                        _unused_content += 1
+                        parent_fulltext_content = self._fulltext_contents[compression_parent]
+                        parent_fulltext = parent_fulltext_content.text_lines()
+                    comp_children.remove(rev_id)
                     fulltext_content, delta = self._knit.factory.parse_record(
                         rev_id, record, record_details, parent_fulltext_content,
-                        copy_base_content=True)
+                        copy_base_content=(not reuse_content))
                     fulltext = self._add_fulltext_content(rev_id, fulltext_content)
-                    parent_fulltext = self._fulltexts[parent_ids[0]]
                     blocks = KnitContent.get_line_delta_blocks(delta,
                             parent_fulltext, fulltext)
                 else:
@@ -3045,6 +3096,11 @@ class _KnitAnnotator(object):
         """
         records = self._get_build_graph(revision_id)
         self._annotate_records(records)
+        trace.note('Total: %d, Reused: %d, unused: %d, num cached: %d, %d',
+                   _num_nodes,
+                   _reused_content, _unused_content,
+                   len(self._fulltext_contents),
+                   len(self._annotated_lines))
         return self._annotated_lines[revision_id]
 
 
