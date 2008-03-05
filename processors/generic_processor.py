@@ -525,14 +525,14 @@ def _track_heads(cmd, cache_mgr):
     :return: the list of parents in terms of commit-ids
     """
     # Get the true set of parents
-    if cmd.mark is None:
+    if cmd.parents:
+        parents = cmd.parents
+    else:
         last_id = cache_mgr.last_ids.get(cmd.ref)
         if last_id is not None:
             parents = [last_id]
         else:
             parents = []
-    else:
-        parents = cmd.parents
     # Track the heads
     for parent in parents:
         try:

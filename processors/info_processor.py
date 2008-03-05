@@ -190,14 +190,14 @@ class InfoProcessor(processor.ImportProcessor):
                     else:
                         self.sha_blob_references = True
         # Track the heads
-        if cmd.mark is None:
+        if cmd.parents:
+            parents = cmd.parents
+        else:
             last_id = self.last_ids.get(cmd.ref)
             if last_id is not None:
                 parents = [last_id]
             else:
                 parents = []
-        else:
-            parents = cmd.parents
         for parent in parents:
             try:
                 del self.heads[parent]
