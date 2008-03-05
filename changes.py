@@ -25,7 +25,7 @@ from debian_bundle import deb822
 
 from bzrlib.trace import mutter
 
-from errors import DebianError
+from bzrlib.plugins.builddeb.errors import DebianError
 
 class DebianChanges(deb822.Changes):
   """Abstraction of the .changes file. Use it to find out what files were 

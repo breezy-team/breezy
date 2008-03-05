@@ -31,7 +31,7 @@ from debian_bundle.changelog import Version, Changelog
 
 from bzrlib.tests import TestUtil, adapt_modules, TestCaseWithTransport
 
-import blackbox
+from bzrlib.plugins.builddeb.tests import blackbox
 
 
 def make_new_upstream_dir(dir):

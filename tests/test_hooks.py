@@ -22,9 +22,9 @@ import os
 
 from bzrlib.tests import TestCaseInTempDir
 
-from config import DebBuildConfig
-from errors import HookFailedError
-from hooks import run_hook
+from bzrlib.plugins.builddeb.config import DebBuildConfig
+from bzrlib.plugins.builddeb.errors import HookFailedError
+from bzrlib.plugins.builddeb.hooks import run_hook
 
 
 class HookTests(TestCaseInTempDir):

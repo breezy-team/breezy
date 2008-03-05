@@ -26,7 +26,7 @@ import tarfile
 from bzrlib.bzrdir import BzrDir
 from bzrlib.workingtree import WorkingTree
 
-from tests import BuilddebTestCase
+from bzrlib.plugins.builddeb.tests import BuilddebTestCase
 
 
 class TestImportDsc(BuilddebTestCase):

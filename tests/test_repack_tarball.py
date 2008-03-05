@@ -28,7 +28,7 @@ from bzrlib.errors import (NoSuchFile,
                            )
 from bzrlib.tests import TestCaseInTempDir
 
-from repack_tarball import repack_tarball
+from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
 
 
 def touch(filename):

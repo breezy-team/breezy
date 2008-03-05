@@ -36,13 +36,13 @@ from bzrlib.revisionspec import RevisionSpec
 from bzrlib.trace import info, mutter
 from bzrlib.workingtree import WorkingTree
 
-from changes import DebianChanges
-from errors import (DebianError,
+from bzrlib.plugins.builddeb.changes import DebianChanges
+from bzrlib.plugins.builddeb.errors import (DebianError,
                     NoSourceDirError,
                     BuildFailedError,
                     StopBuild,
                     )
-from util import recursive_copy, tarball_name
+from bzrlib.plugins.builddeb.util import recursive_copy, tarball_name
 
 def remove_dir(base, dir):
   """Removes a directory from within a base."""

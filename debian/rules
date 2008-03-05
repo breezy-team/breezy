@@ -23,7 +23,8 @@ build-python%:
 	python$* setup.py build
 ifeq (,$(findstring nocheck,$(DEBBUILDOPTS)))
 ifeq (,$(findstring notest,$(DEBBUILDOPTS)))
-	python$* __init__.py
+	[ -e builddeb ] || ln -s . builddeb
+	BZR_PLUGIN_PATH="$(CURDIR)" python$* /usr/bin/bzr selftest builddeb
 endif
 endif
 	touch $@
@@ -34,6 +35,7 @@ clean:
 	rm -f build-stamp install-all-stamp
 	rm -f $(html_docs)
 	rm -f README.html
+	rm -f builddeb
 
 	python setup.py clean --all
 	dh_clean

@@ -30,7 +30,7 @@ from bzrlib.errors import (BzrCommandError,
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 
-from merge_upstream import merge_upstream
+from bzrlib.plugins.builddeb.merge_upstream import merge_upstream
 
 
 def write_to_file(filename, contents):

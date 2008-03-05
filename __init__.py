@@ -37,20 +37,20 @@ from bzrlib.transport import get_transport
 from bzrlib import urlutils
 from bzrlib.workingtree import WorkingTree
 
-from builder import (DebBuild,
+from bzrlib.plugins.builddeb.builder import (DebBuild,
                      DebMergeBuild,
                      DebNativeBuild,
                      DebSplitBuild,
                      DebMergeExportUpstreamBuild,
                      DebExportUpstreamBuild,
                      )
-from config import DebBuildConfig
-from errors import (StopBuild,
+from bzrlib.plugins.builddeb.config import DebBuildConfig
+from bzrlib.plugins.builddeb.errors import (StopBuild,
                     )
-from hooks import run_hook
-from properties import BuildProperties
-from util import goto_branch, find_changelog, tarball_name
-from version import version_info
+from bzrlib.plugins.builddeb.hooks import run_hook
+from bzrlib.plugins.builddeb.properties import BuildProperties
+from bzrlib.plugins.builddeb.util import goto_branch, find_changelog, tarball_name
+from bzrlib.plugins.builddeb.version import version_info
 
 
 dont_purge_opt = Option('dont-purge',
@@ -330,9 +330,9 @@ class cmd_merge_upstream(Command):
     from bzrlib.errors import (NoSuchTag,
                                TagAlreadyExists,
                                )
-    from errors import MissingChangelogError
-    from merge_upstream import merge_upstream
-    from repack_tarball import repack_tarball
+    from bzrlib.plugins.builddeb.errors import MissingChangelogError
+    from bzrlib.plugins.builddeb.merge_upstream import merge_upstream
+    from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
 
     if version is None:
       raise BzrCommandError("You must supply the --version argument.")
@@ -447,7 +447,7 @@ class cmd_import_dsc(Command):
 
   def run(self, files_list, to=None, snapshot=None, filename=None,
           initial=False):
-    from import_dsc import DscImporter, SnapshotImporter
+    from bzrlib.plugins.builddeb.import_dsc import DscImporter, SnapshotImporter
     if files_list is None:
       files_list = []
     if filename is not None:
@@ -602,7 +602,7 @@ register_command(cmd_bd_do)
 
 def test_suite():
     from unittest import TestSuite
-    import tests
+    from bzrlib.plugins.builddeb import tests
     result = TestSuite()
     result.addTest(tests.test_suite())
     return result
