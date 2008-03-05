@@ -517,6 +517,8 @@ class SvnRepository(Repository):
         assert isinstance(revnum, int)
         assert isinstance(mapping, BzrSvnMapping)
 
+        mutter("generate_revision_id(%r,%r)" % (revnum, path))
+
         # Look in the cache to see if it already has a revision id
         revid = self.revmap.lookup_branch_revnum(revnum, path, str(mapping.scheme))
         if revid is not None:
@@ -525,17 +527,17 @@ class SvnRepository(Repository):
         # See if there is a bzr:revision-id revprop set
         try:
             revprops = lazy_dict(lambda: self._log._get_transport().revprop_list(revnum))
+            fileprops = lazy_dict(lambda: self.branchprop_list.get_changed_properties(path, revnum))
+            (bzr_revno, revid) = mapping.get_revision_id(path, revprops, 
+                                                         fileprops)
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
                 raise NoSuchRevision(path, revnum)
             raise
-        fileprops = lazy_dict(lambda: self.branchprop_list.get_changed_properties(path, revnum))
-        (bzr_revno, revid) = mapping.get_revision_id(path, revprops, 
-                                                     fileprops)
+
         # Or generate it
         if revid is None:
-            revid = mapping.generate_revision_id(
-                        self.uuid, revnum, path)
+            revid = mapping.generate_revision_id(self.uuid, revnum, path)
         self.revmap.insert_revid(revid, path, revnum, revnum, 
                 str(mapping.scheme), bzr_revno)
         return revid

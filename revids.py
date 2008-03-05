@@ -85,7 +85,7 @@ class RevidMap(CacheTable):
         assert isinstance(path, str)
         assert isinstance(scheme, str)
         revid = self.cachedb.execute(
-                "select revid from revmap where max_revnum = min_revnum and min_revnum='%s' and path='%s' and scheme='%s'" % (revnum, path, scheme)).fetchone()
+                "select revid from revmap where max_revnum = '%s' and min_revnum='%s' and path='%s' and scheme='%s'" % (revnum, revnum, path, scheme)).fetchone()
         if revid is not None:
             return str(revid[0])
         return None
