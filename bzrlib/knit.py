@@ -1109,23 +1109,26 @@ class KnitVersionedFile(VersionedFile):
     def _get_record_map(self, version_ids):
         """Produce a dictionary of knit records.
         
-        The keys are version_ids, the values are tuples of (record_details,
-        content, digest, next).
-        method is the way the content should be applied.  
-        content is a KnitContent object.
-        digest is the SHA1 digest of this version id after all steps are done
-        next is the build-parent of the version, i.e. the leftmost ancestor.
-        If the method is fulltext, next will be None.
+        :return: {version_id:(record, record_details, digest, next)}
+            record
+                data returned from read_records
+            record_details
+                opaque information to pass to parse_record
+            digest
+                SHA1 digest of the full text after all steps are done
+            next
+                build-parent of the version, i.e. the leftmost ancestor.
+                Will be None if the record is not a delta.
         """
         position_map = self._get_components_positions(version_ids)
         # c = component_id, r = record_details, i_m = index_memo, n = next
         records = [(c, i_m) for c, (r, i_m, n)
                              in position_map.iteritems()]
         record_map = {}
-        for component_id, content, digest in \
+        for component_id, record, digest in \
                 self._data.read_records_iter(records):
             (record_details, index_memo, next) = position_map[component_id]
-            record_map[component_id] = record_details, content, digest, next
+            record_map[component_id] = record, record_details, digest, next
 
         return record_map
 
@@ -1167,20 +1170,20 @@ class KnitVersionedFile(VersionedFile):
             components = []
             cursor = version_id
             while cursor is not None:
-                record_details, data, digest, next = record_map[cursor]
-                components.append((cursor, record_details, data, digest))
+                record, record_details, digest, next = record_map[cursor]
+                components.append((cursor, record, record_details, digest))
                 if cursor in content_map:
                     break
                 cursor = next
 
             content = None
-            for (component_id, record_details, data,
+            for (component_id, record, record_details,
                  digest) in reversed(components):
                 if component_id in content_map:
                     content = content_map[component_id]
                 else:
                     content, delta = self.factory.parse_record(version_id,
-                        data, record_details, content,
+                        record, record_details, content,
                         copy_base_content=multiple_versions)
                     if multiple_versions:
                         content_map[component_id] = content
