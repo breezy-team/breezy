@@ -1790,8 +1790,18 @@ class KnitGraphIndex(object):
         """Get the method, index_memo and compression parent for version_ids.
 
         :param version_ids: An iterable of version_ids.
-        :return: A dict of version_id:(method, index_memo, compression_parent,
-            parents, noeol).
+        :return: A dict of version_id:(index_memo, compression_parent,
+                                       parents, record_details).
+            index_memo
+                opaque structure to pass to read_records to extract the raw
+                data
+            compression_parent
+                Content that this record is built upon, may be None
+            parents
+                Logical parents of this node
+            record_details
+                extra information about the content which needs to be passed to
+                Factory.parse_record
         """
         result = {}
         entries = self._get_entries(self._version_ids_to_keys(version_ids), True)
@@ -2303,8 +2313,18 @@ class _StreamIndex(object):
         """Get the method, index_memo and compression parent for version_ids.
 
         :param version_ids: An iterable of version_ids.
-        :return: A dict of version_id:(method, index_memo, compression_parent,
-            parents, noeol).
+        :return: A dict of version_id:(index_memo, compression_parent,
+                                       parents, record_details).
+            index_memo
+                opaque structure to pass to read_records to extract the raw
+                data
+            compression_parent
+                Content that this record is built upon, may be None
+            parents
+                Logical parents of this node
+            record_details
+                extra information about the content which needs to be passed to
+                Factory.parse_record
         """
         result = {}
         for version_id in version_ids:
