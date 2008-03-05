@@ -40,6 +40,9 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+    * ``bzr mv a b`` can be now used also to rename previously renamed
+      directories, not only files. (Lukáš Lalinský, #107967)
+
     * Disable plink's interactive prompt for password.
       (#107593, Dmitry Vasiliev)
 
