@@ -513,9 +513,9 @@ class cmd_bd_do(Command):
     bzr bd-do
 
   will run a shell in the unpacked source. Any changes you make in the
-  ``debian/`` directory will be copied back to the branch. If you exit with
-  a non-zero exit code (e.g. "exit 1"), then the changes will not be copied
-  back.
+  ``debian/`` directory (and only those made in that directory) will be copied
+  back to the branch. If you exit with a non-zero exit code (e.g. "exit 1"),
+  then the changes will not be copied back.
 
   You can also specify single commands to be run, e.g.
 
