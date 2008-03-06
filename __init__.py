@@ -284,6 +284,9 @@ class cmd_bisect(Command):
     bzr bisect replay <logfile>
         Replay a previously-saved bisect log, forgetting any bisection
         that might be in progress.
+
+    bzr bisect run <script>
+        Bisect automatically using <script> to determine 'yes' or 'no'.
     """
 
     takes_args = ['subcommand', 'args*']
