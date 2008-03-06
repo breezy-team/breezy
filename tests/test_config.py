@@ -22,7 +22,7 @@ from debian_bundle.changelog import Version
 
 from bzrlib.tests import TestCaseWithTransport
 
-from config import DebBuildConfig
+from bzrlib.plugins.builddeb.config import DebBuildConfig
 
 
 class DebBuildConfigTests(TestCaseWithTransport):

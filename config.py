@@ -20,7 +20,7 @@
 
 from bzrlib.config import ConfigObj, TreeConfig
 from bzrlib.trace import mutter
-from util import get_snapshot_revision
+from bzrlib.plugins.builddeb.util import get_snapshot_revision
 
 
 class DebBuildConfig(object):

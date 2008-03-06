@@ -53,8 +53,13 @@ from bzrlib.plugins.bzrtools.upstream_import import (
                                                      add_implied_parents,
                                                      )
 
-from errors import ImportError, OnlyImportSingleDsc, UnknownType
-from merge_upstream import make_upstream_tag, upstream_tag_to_version
+from bzrlib.plugins.builddeb.errors import (ImportError,
+                OnlyImportSingleDsc,
+                UnknownType,
+                )
+from bzrlib.plugins.builddeb.merge_upstream import (make_upstream_tag,
+                upstream_tag_to_version,
+                )
 
 # TODO: support explicit upstream branch.
 

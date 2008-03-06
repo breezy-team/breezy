@@ -22,7 +22,7 @@ import subprocess
 
 from bzrlib.trace import info
 
-from errors import HookFailedError
+from bzrlib.plugins.builddeb.errors import HookFailedError
 
 
 def run_hook(hook_name, config, wd=None):

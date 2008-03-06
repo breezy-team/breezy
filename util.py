@@ -26,7 +26,9 @@ from bzrlib.trace import info, mutter
 
 from debian_bundle.changelog import Changelog
 
-from errors import MissingChangelogError, AddChangelogError
+from bzrlib.plugins.builddeb.errors import (MissingChangelogError,
+                AddChangelogError,
+                )
 
 
 def recursive_copy(fromdir, todir):

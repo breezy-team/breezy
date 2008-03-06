@@ -24,7 +24,7 @@ from debian_bundle.changelog import (Changelog,
                                      Version,
                                      )
 
-from tests import BuilddebTestCase
+from bzrlib.plugins.builddeb.tests import BuilddebTestCase
 
 
 class TestBuilddeb(BuilddebTestCase):

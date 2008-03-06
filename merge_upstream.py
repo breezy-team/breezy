@@ -41,7 +41,7 @@ from bzrlib.plugins.bzrtools.upstream_import import (import_tar,
                                                      import_zip,
                                                      )
 
-from errors import AddChangelogError
+from bzrlib.plugins.builddeb.errors import AddChangelogError
 
 # TODO: way of working out new version number.
 # TODO: support using an explicit standalone upstream branch.

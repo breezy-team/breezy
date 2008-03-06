@@ -31,7 +31,7 @@ from bzrlib.tests import (TestCaseInTempDir,
                           )
 from bzrlib.workingtree import WorkingTree
 
-from builder import (remove_dir,
+from bzrlib.plugins.builddeb.builder import (remove_dir,
                      remove_bzrbuilddeb_dir,
                      remove_debian_dir,
                      DebBuild,
@@ -42,9 +42,9 @@ from builder import (remove_dir,
                      DebExportUpstreamBuild,
                      UpstreamExporter,
                      )
-import errors
-from properties import BuildProperties
-from tests import BuilddebTestCase
+from bzrlib.plugins.builddeb import errors
+from bzrlib.plugins.builddeb.properties import BuildProperties
+from bzrlib.plugins.builddeb.tests import BuilddebTestCase
 
 class TestUtil(TestCaseInTempDir):
   """Test the utility functions from builder.py."""

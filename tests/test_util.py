@@ -20,8 +20,10 @@
 
 import os
 
-from errors import MissingChangelogError, AddChangelogError
-from util import (
+from bzrlib.plugins.builddeb.errors import (MissingChangelogError,
+                AddChangelogError,
+                )
+from bzrlib.plugins.builddeb.util import (
                   find_changelog,
                   recursive_copy,
                   get_snapshot_revision,

@@ -29,8 +29,8 @@ from bzrlib.errors import FileExists, UncommittedChanges
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 
-from errors import ImportError, OnlyImportSingleDsc
-from import_dsc import DscImporter, files_to_ignore
+from bzrlib.plugins.builddeb.errors import ImportError, OnlyImportSingleDsc
+from bzrlib.plugins.builddeb.import_dsc import DscImporter, files_to_ignore
 
 def write_to_file(filename, contents):
   f = open(filename, 'wb')
