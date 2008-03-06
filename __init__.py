@@ -320,6 +320,8 @@ class cmd_bisect(Command):
         elif subcommand in ('move', ) and not revision:
             raise BzrCommandError(
                 "The 'bisect move' command requires a revision.")
+        elif subcommand in ('run', ):
+            run_script = args_list[0]
         elif args_list or revision:
             raise BzrCommandError(
                 "Improper arguments to bisect " + subcommand)
@@ -340,6 +342,8 @@ class cmd_bisect(Command):
             self.log(output)
         elif subcommand == "replay":
             self.replay(log_fn)
+        elif subcommand == "run":
+            self.run_bisect(run_script)
 
     def reset(self):
         "Reset the bisect state to no state."
