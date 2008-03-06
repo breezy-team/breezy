@@ -79,7 +79,7 @@ class BisectCurrent(object):
             revid = self._bzrbranch.get_rev_id(revid)
         elif isinstance(revid, list):
             revid = revid[0].in_history(working.branch).rev_id
-        working.revert([], working.branch.repository.revision_tree(revid),
+        working.revert(None, working.branch.repository.revision_tree(revid),
                        False)
         self._revid = revid
         self._save()
@@ -89,7 +89,7 @@ class BisectCurrent(object):
         working = self._bzrdir.open_workingtree()
         last_rev = working.branch.last_revision()
         rev_tree = working.branch.repository.revision_tree(last_rev)
-        working.revert([], rev_tree, False)
+        working.revert(None, rev_tree, False)
         if os.path.exists(bisect_rev_path):
             os.unlink(bisect_rev_path)
 
