@@ -424,7 +424,10 @@ class DebMergeBuild(DebBuild):
       shutil.rmtree(os.path.join(source_dir, 'debian'))
     recursive_copy(tempdir, source_dir)
     shutil.rmtree(basetempdir)
-    remove_bzrbuilddeb_dir(os.path.join(source_dir, "debian"))
+    if self._properties.larstiq():
+        remove_bzrbuilddeb_dir(os.path.join(source_dir, "debian"))
+    else:
+        remove_bzrbuilddeb_dir(source_dir)
 
 class DebNativeBuild(DebBuild):
   """A subclass of DebBuild that builds native packages."""

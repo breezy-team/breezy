@@ -185,7 +185,7 @@ class BuilddebTestCase(TestCaseWithTransport):
     c.distributions = 'unstable'
     c.urgency = 'low'
     c.author = 'James Westby <jw+debian@jameswestby.net>'
-    c.date = 'The,  3 Aug 2006 19:16:22 +0100'
+    c.date = 'Thu,  3 Aug 2006 19:16:22 +0100'
     c.add_change('')
     c.add_change('  *  test build')
     c.add_change('')

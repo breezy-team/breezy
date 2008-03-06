@@ -656,8 +656,7 @@ class TestMergeBuilder(BuilderTestCase):
     wt = self.make_branch_and_tree('.')
     basedir = 'debian/'
     files = [basedir]
-    files = files + [join(basedir, f) for f in ['.bzr-builddeb/',
-                             '.bzr-builddeb/default.conf']]
+    files = files + ['.bzr-builddeb/', '.bzr-builddeb/default.conf']
     files = files + [join(basedir, f) for f in self.debian_files]
     self.build_tree(files)
     wt.add(files)
@@ -675,6 +674,9 @@ class TestMergeBuilder(BuilderTestCase):
     wt = self.make_branch_and_tree('.')
     self.build_tree(self.debian_files)
     wt.add(self.debian_files)
+    builddeb_dir = ['.bzr-builddeb/', '.bzr-builddeb/default.conf']
+    self.build_tree(builddeb_dir)
+    wt.add(builddeb_dir)
     wt.commit('commit one')
     self.build_tree(['rules', 'unknown'])
     wt.add('rules')
@@ -691,6 +693,8 @@ class TestMergeBuilder(BuilderTestCase):
       self.failUnlessExists(join(self.source_dir, f))
     for f in ['control', 'unknown']:
       self.failIfExists(join(self.source_dir, f))
+    self.failIfExists(join(self.source_dir, basedir, '.bzr-builddeb'))
+    self.failIfExists(join(self.source_dir, '.bzr-builddeb'))
 
   def test_export_handles_debian_in_upstream(self):
     """Make sure export can handle upstream shipping debian/ as well."""
