@@ -36,6 +36,10 @@ IN DEVELOPMENT
    * ``branch`` and ``checkout`` can hard-link working tree files, which is
      faster and saves space.  (Aaron Bentley)
 
+   * ``bzr send`` will now also look at the ``child_submit_to`` setting in
+     the submit branch to determine the email address to send to. 
+     (Jelmer Vernooij)
+
   IMPROVEMENTS:
 
    * BzrBranch._lefthand_history is faster on pack repos.  (Aaron Bentley)
