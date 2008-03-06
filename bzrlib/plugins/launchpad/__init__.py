@@ -23,8 +23,8 @@
 
 from bzrlib.branch import Branch
 from bzrlib.commands import Command, Option, register_command
+from bzrlib.directory_service import directories
 from bzrlib.errors import BzrCommandError, NoPublicBranch, NotBranchError
-from bzrlib.transport import register_lazy_transport
 from bzrlib.help_topics import topic_registry
 
 
@@ -171,10 +171,8 @@ class cmd_launchpad_login(Command):
 register_command(cmd_launchpad_login)
 
 
-register_lazy_transport(
-    'lp:',
-    'bzrlib.plugins.launchpad.lp_indirect',
-    'LaunchpadTransport')
+directories.register_lazy('lp:', 'bzrlib.plugins.launchpad.lp_indirect',
+                          'LaunchpadDirectory')
 
 
 def test_suite():
