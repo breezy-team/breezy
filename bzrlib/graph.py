@@ -473,6 +473,38 @@ class HeadsCache(object):
             return set(heads)
 
 
+class FrozenHeadsCache(object):
+    """Cache heads() calls, assuming the caller won't modify them."""
+
+    def __init__(self, graph):
+        self.graph = graph
+        self._heads = {}
+
+    def heads(self, keys):
+        """Return the heads of keys.
+
+        This matches the API of Graph.heads(), specifically the return value is
+        a set which can be mutated, and ordering of the input is not preserved
+        in the output.
+
+        :see also: Graph.heads.
+        :param keys: The keys to calculate heads for.
+        :return: A set containing the heads, which may be mutated without
+            affecting future lookups.
+        """
+        keys = frozenset(keys)
+        try:
+            return self._heads[keys]
+        except KeyError:
+            heads = frozenset(self.graph.heads(keys))
+            self._heads[keys] = heads
+            return heads
+
+    def cache(self, keys, heads):
+        """Store a known value."""
+        self._heads[frozenset(keys)] = frozenset(heads)
+
+
 class _BreadthFirstSearcher(object):
     """Parallel search breadth-first the ancestry of revisions.
 

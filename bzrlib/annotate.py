@@ -285,10 +285,16 @@ def _reannotate_annotated(right_parent_lines, new_lines, new_revision_id,
                         else:
                             heads = heads_provider.heads((left[0], right[0]))
                             if len(heads) == 1:
-                                lines_append((heads.pop(), left[1]))
+                                lines_append((iter(heads).next(), left[1]))
                             else:
                                 # Both claim different origins
                                 lines_append((new_revision_id, left[1]))
+                                # We know that new_revision_id is the head for
+                                # left and right, so cache it
+                                heads_provider.cache((new_revision_id, left[0]),
+                                                     (new_revision_id,))
+                                heads_provider.cache((new_revision_id, right[0]),
+                                                     (new_revision_id,))
                 last_jj = jj + nn
         last_i = i + n
         last_j = j + n
