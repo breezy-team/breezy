@@ -39,10 +39,10 @@ IN DEVELOPMENT
   IMPROVEMENTS:
 
     * Updates to how ``annotate`` work. Should see a measurable improvement in
-      performance for file with a lot of merges. Also, correctly handle when a
-      line is introduced by both parents (it should be attributed to the first
-      merge which notices this, and not too all subsequent merges.)
-      (John Arbash Meinel)
+      performance and memory consumption for file with a lot of merges.
+      Also, correctly handle when a line is introduced by both parents (it
+      should be attributed to the first merge which notices this, and not
+      too all subsequent merges.) (John Arbash Meinel)
 
   BUGFIXES:
 
