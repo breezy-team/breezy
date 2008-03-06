@@ -291,10 +291,12 @@ def _reannotate_annotated(right_parent_lines, new_lines, new_revision_id,
                                 lines_append((new_revision_id, left[1]))
                                 # We know that new_revision_id is the head for
                                 # left and right, so cache it
-                                heads_provider.cache((new_revision_id, left[0]),
-                                                     (new_revision_id,))
-                                heads_provider.cache((new_revision_id, right[0]),
-                                                     (new_revision_id,))
+                                heads_provider.cache(
+                                    (new_revision_id, left[0]),
+                                    (new_revision_id,))
+                                heads_provider.cache(
+                                    (new_revision_id, right[0]),
+                                    (new_revision_id,))
                 last_jj = jj + nn
         last_i = i + n
         last_j = j + n
