@@ -4115,7 +4115,8 @@ class cmd_send(Command):
                 note('Using saved location: %s', submit_branch)
 
             if mail_to is None:
-                mail_to = Branch.open(submit_branch).get_config().get_user_option("child_submit_to")
+                submit_config = Branch.open(submit_branch).get_config()
+                mail_to = submit_config.get_user_option("child_submit_to")
 
             stored_public_branch = branch.get_public_branch()
             if public_branch is None:
