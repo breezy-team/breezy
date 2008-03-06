@@ -21,7 +21,7 @@ bzr-builddeb (0.93) unstable; urgency=low
     gets the data, and is representable in bzr.
   * Don't silently skip unkown types when extracting a tarball, error
     instead.
-  * Don't use relative imports. (LP: #189429)
+  * Don't use relative imports. Thanks Robert Collins. (LP: #189429)
 
  -- James Westby <jw+debian@jameswestby.net>  Wed, 05 Mar 2008 16:58:12 +0000
 
