@@ -22,8 +22,10 @@ bzr-builddeb (0.93) unstable; urgency=low
   * Don't silently skip unkown types when extracting a tarball, error
     instead.
   * Don't use relative imports. (LP: #189429)
+  * Remove the .bzr-builddeb from merge builds not in "larstiq" mode.
+    (Closes: #464033)
 
- -- James Westby <jw+debian@jameswestby.net>  Wed, 05 Mar 2008 16:58:12 +0000
+ -- James Westby <jw+debian@jameswestby.net>  Thu, 06 Mar 2008 15:45:21 +0000
 
 bzr-builddeb (0.92) unstable; urgency=low
 
