@@ -58,7 +58,7 @@ class BisectCurrent(object):
         "Return the IDs of the current revision's predecessors."
         repo = self._bzrbranch.repository
         repo.lock_read()
-        retval = repo.get_parents([self._revid])[0]
+        retval = repo.get_parent_map([self._revid]).get(self._revid, None)
         repo.unlock()
         return retval
 
