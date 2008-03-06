@@ -586,7 +586,7 @@ class cmd_bd_do(Command):
       destination = 'debian/'
     source_debian = os.path.join(properties.source_dir(), 'debian')
     for filename in os.listdir(source_debian):
-      proc = subprocess.Popen('cp -vapf "%s" "%s"' % (
+      proc = subprocess.Popen('cp -apf "%s" "%s"' % (
            os.path.join(source_debian, filename), destination),
            shell=True)
       proc.wait()
