@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests for indirect branch urls through Launchpad.net"""
+"""Tests for directory lookup through Launchpad.net"""
 
 import xmlrpclib
 
@@ -26,7 +26,7 @@ from bzrlib.directory_service import directories
 from bzrlib.tests import TestCase, TestCaseWithMemoryTransport
 from bzrlib.transport import get_transport
 from bzrlib.plugins.launchpad import _register_directory
-from bzrlib.plugins.launchpad.lp_indirect import (
+from bzrlib.plugins.launchpad.lp_directory import (
     LaunchpadDirectory)
 from bzrlib.plugins.launchpad.account import get_lp_login
 
@@ -46,8 +46,8 @@ class FakeResolveFactory(object):
         return self._result
 
 
-class IndirectUrlTests(TestCase):
-    """Tests for indirect branch urls through Launchpad.net"""
+class DirectoryUrlTests(TestCase):
+    """Tests for branch urls through Launchpad.net directory"""
 
     def test_short_form(self):
         """A launchpad url should map to a http url"""
@@ -74,7 +74,7 @@ class IndirectUrlTests(TestCase):
         self.assertEquals('https://xmlrpc.staging.launchpad.net/bazaar/',
                           factory._service_url)
 
-    def test_indirect_through_url(self):
+    def test_url_from_directory(self):
         """A launchpad url should map to a http url"""
         factory = FakeResolveFactory(
             self, 'apt', dict(urls=[
@@ -83,7 +83,7 @@ class IndirectUrlTests(TestCase):
         self.assertEquals('http://bazaar.launchpad.net/~apt/apt/devel',
                           directory._resolve('lp:///apt', factory))
 
-    def test_indirect_skip_bad_schemes(self):
+    def test_directory_skip_bad_schemes(self):
         factory = FakeResolveFactory(
             self, 'apt', dict(urls=[
                     'bad-scheme://bazaar.launchpad.net/~apt/apt/devel',
@@ -93,7 +93,7 @@ class IndirectUrlTests(TestCase):
         self.assertEquals('http://bazaar.launchpad.net/~apt/apt/devel',
                           directory._resolve('lp:///apt', factory))
 
-    def test_indirect_no_matching_schemes(self):
+    def test_directory_no_matching_schemes(self):
         # If the XMLRPC call does not return any protocols we support,
         # invalidURL is raised.
         factory = FakeResolveFactory(
@@ -103,7 +103,7 @@ class IndirectUrlTests(TestCase):
         self.assertRaises(errors.InvalidURL,
                           directory._resolve, 'lp:///apt', factory)
 
-    def test_indirect_fault(self):
+    def test_directory_fault(self):
         # Test that XMLRPC faults get converted to InvalidURL errors.
         factory = FakeResolveFactory(self, 'apt', None)
         def submit(service):
@@ -161,15 +161,15 @@ class IndirectUrlTests(TestCase):
                           directory._resolve('lp:///apt', factory))
 
     # TODO: check we get an error if the url is unreasonable
-    def test_error_for_bad_indirection(self):
+    def test_error_for_bad_url(self):
         directory = LaunchpadDirectory()
         self.assertRaises(errors.InvalidURL,
             directory._resolve, 'lp://ratotehunoahu')
 
 
-class IndirectOpenBranchTests(TestCaseWithMemoryTransport):
+class DirectoryOpenBranchTests(TestCaseWithMemoryTransport):
 
-    def test_indirect_open_branch(self):
+    def test_directory_open_branch(self):
         # Test that opening an lp: branch redirects to the real location.
         target_branch = self.make_branch('target')
         class FooService(object):

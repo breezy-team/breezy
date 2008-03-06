@@ -172,7 +172,7 @@ register_command(cmd_launchpad_login)
 
 
 def _register_directory():
-    directories.register_lazy('lp:', 'bzrlib.plugins.launchpad.lp_indirect',
+    directories.register_lazy('lp:', 'bzrlib.plugins.launchpad.lp_directory',
                               'LaunchpadDirectory',
                               'Launchpad-based directory service',)
 _register_directory()
@@ -182,7 +182,7 @@ def test_suite():
     """Called by bzrlib to fetch tests for this plugin"""
     from unittest import TestSuite, TestLoader
     from bzrlib.plugins.launchpad import (
-         test_account, test_lp_indirect, test_lp_service, test_register,
+         test_account, test_lp_directory, test_lp_service, test_register,
          )
 
     loader = TestLoader()
@@ -190,7 +190,7 @@ def test_suite():
     for module in [
         test_account,
         test_register,
-        test_lp_indirect,
+        test_lp_directory,
         test_lp_service,
         ]:
         suite.addTests(loader.loadTestsFromModule(module))
