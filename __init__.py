@@ -2,14 +2,21 @@
 
 import re
 
-from bzrlib import errors, tsort
-from bzrlib.branch import Branch
-import bzrlib.commands
-from bzrlib.config import extract_email_address
-from bzrlib.workingtree import WorkingTree
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import (
+    branch,
+    commands,
+    config,
+    errors,
+    tsort,
+    workingtree,
+    )
+""")
+from bzrlib import lazy_regex
 
 
-_fullname_re = re.compile(r'(?P<fullname>.*?)\s*<')
+_fullname_re = lazy_regex.lazy_compile(r'(?P<fullname>.*?)\s*<')
 
 def extract_fullname(committer):
     """Try to get the user's name from their committer info."""
@@ -17,7 +24,7 @@ def extract_fullname(committer):
     if m:
         return m.group('fullname')
     try:
-        email = extract_email_address(committer)
+        email = config.extract_email_address(committer)
     except errors.BzrError:
         return committer
     else:
@@ -94,7 +101,7 @@ def sort_by_committer(a_repo, revids):
         for count, rev in enumerate(revisions):
             pb.update('checking', count, len(revids))
             try:
-                email = extract_email_address(rev.committer)
+                email = config.extract_email_address(rev.committer)
             except errors.BzrError:
                 email = rev.committer
             committers.setdefault(email, []).append(rev)
@@ -140,7 +147,7 @@ def get_diff_info(a_repo, start_rev, end_rev):
         for count, rev in enumerate(revisions):
             pb.update('checking', count, len(ancestry))
             try:
-                email = extract_email_address(rev.committer)
+                email = config.extract_email_address(rev.committer)
             except errors.BzrError:
                 email = rev.committer
             committers.setdefault(email, []).append(rev)
@@ -183,7 +190,7 @@ def display_info(info, to_file):
                     to_file.write("%s\n" % (email,))
 
 
-class cmd_statistics(bzrlib.commands.Command):
+class cmd_statistics(commands.Command):
     """Generate statistics for LOCATION."""
 
     aliases = ['stats']
@@ -195,9 +202,9 @@ class cmd_statistics(bzrlib.commands.Command):
     def run(self, location='.', revision=None):
         alternate_rev = None
         try:
-            wt = WorkingTree.open_containing(location)[0]
+            wt = workingtree.WorkingTree.open_containing(location)[0]
         except errors.NoWorkingTree:
-            a_branch = Branch.open(location)
+            a_branch = branch.Branch.open(location)
             last_rev = a_branch.last_revision()
         else:
             a_branch = wt.branch
@@ -220,10 +227,10 @@ class cmd_statistics(bzrlib.commands.Command):
         display_info(info, self.outf)
 
 
-bzrlib.commands.register_command(cmd_statistics)
+commands.register_command(cmd_statistics)
 
 
-class cmd_ancestor_growth(bzrlib.commands.Command):
+class cmd_ancestor_growth(commands.Command):
     """Figure out the ancestor graph for LOCATION"""
 
     takes_args = ['location?']
@@ -232,9 +239,9 @@ class cmd_ancestor_growth(bzrlib.commands.Command):
 
     def run(self, location='.'):
         try:
-            wt = WorkingTree.open_containing(location)[0]
+            wt = workingtree.WorkingTree.open_containing(location)[0]
         except errors.NoWorkingTree:
-            a_branch = Branch.open(location)
+            a_branch = branch.Branch.open(location)
             last_rev = a_branch.last_revision()
         else:
             a_branch = wt.branch
@@ -256,7 +263,7 @@ class cmd_ancestor_growth(bzrlib.commands.Command):
                 self.outf.write('%4d, %4d\n' % (revno, cur_parents))
 
 
-bzrlib.commands.register_command(cmd_ancestor_growth)
+commands.register_command(cmd_ancestor_growth)
 
 
 def test_suite():
