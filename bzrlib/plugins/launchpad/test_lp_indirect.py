@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@ from bzrlib.branch import Branch
 from bzrlib.directory_service import directories
 from bzrlib.tests import TestCase, TestCaseWithMemoryTransport
 from bzrlib.transport import get_transport
+from bzrlib.plugins.launchpad import _register_directory
 from bzrlib.plugins.launchpad.lp_indirect import (
     LaunchpadDirectory)
 from bzrlib.plugins.launchpad.account import get_lp_login
@@ -177,10 +178,11 @@ class IndirectOpenBranchTests(TestCaseWithMemoryTransport):
             def look_up(self, name, url):
                 if 'lp:///apt' == url:
                     return target_branch.base.rstrip('/')
-                return '!!!'
+                return '!unexpected look_up value!'
 
         directories.remove('lp:')
         directories.register('lp:', FooService, 'Map lp URLs to local urls')
+        self.addCleanup(_register_directory)
         self.addCleanup(lambda: directories.remove('lp:'))
         transport = get_transport('lp:///apt')
         branch = Branch.open_from_transport(transport)

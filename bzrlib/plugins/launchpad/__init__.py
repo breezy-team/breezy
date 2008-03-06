@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006 - 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -171,8 +171,11 @@ class cmd_launchpad_login(Command):
 register_command(cmd_launchpad_login)
 
 
-directories.register_lazy('lp:', 'bzrlib.plugins.launchpad.lp_indirect',
-                          'LaunchpadDirectory')
+def _register_directory():
+    directories.register_lazy('lp:', 'bzrlib.plugins.launchpad.lp_indirect',
+                              'LaunchpadDirectory',
+                              'Launchpad-based directory service',)
+_register_directory()
 
 
 def test_suite():
