@@ -19,7 +19,18 @@
 from bzrlib import commands
 
 class cmd_upload(commands.Command):
-    def run(self):
+    """Upload a working tree, as a whole or incrementally.
+
+    If no destination is specified use the last one used.
+    If no revision is specified upload the changes since the last upload.
+    """
+    takes_args = ['dest?']
+    takes_options = [
+        'revision',
+        Option('full',
+               'Upload the full working tree.'
+        ]
+    def run(self, dest, revision=None):
         pass
 
 commands.register_command(cmd_upload)

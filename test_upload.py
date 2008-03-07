@@ -14,6 +14,42 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import os
+
+
 from bzrlib import tests
 
 
+class TestUpload(tests.TestCaseWithTransport):
+
+    def _create_branch(self):
+        tree = self.make_branch_and_tree('branch')
+        self.build_tree_contents([('branch/hello', 'foo')])
+        tree.add('hello')
+        tree.commit('setup')
+
+        self.build_tree_contents([('branch/goodbye', 'baz')])
+        tree.add('goodbye')
+        tree.commit('setup')
+        return tree
+
+    def test_full_upload(self):
+        self._create_branch()
+
+        self.run_bzr('upload --full ../upload', working_dir='branch')
+
+        self.assertFileEqual('foo', '../upload/hello')
+        self.assertFileEqual('baz', '../upload/goodbye')
+
+    def test_incremental_upload(self):
+        self._create_branch()
+
+        self.run_bzr('upload -r 1 ../upload', working_dir='branch')
+
+        self.assertFileEqual('foo', '../upload/hello')
+        self.failIfExists('../upload/goodbye')
+
+        self.run_bzr('upload ../upload', working_dir='branch')
+
+        self.assertFileEqual('foo','../upload/hello')
+        self.assertFileEqual('baz', '../upload/goodbye')
