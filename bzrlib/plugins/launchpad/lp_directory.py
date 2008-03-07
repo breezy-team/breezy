@@ -65,12 +65,12 @@ class LaunchpadDirectory(object):
         """Resolve the base URL for this transport."""
         result = urlsplit(url)
         # Perform an XMLRPC request to resolve the path
-        lp_instance = result.netloc
+        lp_instance = result[1]
         if lp_instance == '':
             lp_instance = None
         elif lp_instance not in LaunchpadService.LAUNCHPAD_INSTANCE:
             raise errors.InvalidURL(path=url)
-        resolve = _request_factory(result.path.strip('/'))
+        resolve = _request_factory(result[2].strip('/'))
         service = LaunchpadService(lp_instance=lp_instance)
         try:
             result = resolve.submit(service)
