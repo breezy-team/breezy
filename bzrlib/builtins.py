@@ -4167,8 +4167,9 @@ class cmd_send(Command):
                 else:
                     revision = branch.repository.get_revision(revision_id)
                     subject += revision.get_summary()
+                basename = directive.get_disk_name(branch)
                 mail_client.compose_merge_request(mail_to, subject,
-                                                  outfile.getvalue())
+                                                  outfile.getvalue(), basename)
         finally:
             if output != '-':
                 outfile.close()
