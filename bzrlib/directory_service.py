@@ -14,15 +14,34 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+"""Directory service registration and usage.
+
+Directory services are utilities that provide a mapping from URL-like strings
+to true URLs.  Examples include lp:urls and per-user location aliases.
+"""
+
 from bzrlib import registry
 
 class DirectoryServiceRegistry(registry.Registry):
+    """This object maintains and uses a list of directory services.
+
+    Directory services may be registered via the standard Registry methods.
+    They will be invoked if their key is a prefix of the supplied URL.
+
+    Each item registered should be a factory of objects that provide a look_up
+    method, as invoked by dereference.  Specifically, look_up should accept a
+    name and URL, and return a URL.
+    """
 
     def dereference(self, url):
         """Dereference a supplied URL if possible.
 
         URLs that match a registered directory service prefix are looked up in
         it.  Non-matching urls are returned verbatim.
+
+        This is applied only once; the resulting URL must not be one that
+        requires further dereferencing.
+
         :param url: The URL to dereference
         :return: The dereferenced URL if applicable, the input URL otherwise.
         """
