@@ -56,6 +56,7 @@ class LaunchpadDirectory(object):
                      or netloc.endswith('launchpad.dev')))
 
     def look_up(self, name, url):
+        """See DirectoryService.look_up"""
         return self._resolve(url)
 
     def _resolve(self, url,
