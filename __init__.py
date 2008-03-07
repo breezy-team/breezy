@@ -16,7 +16,10 @@
 
 """Upload a working treem incrementally"""
 
-from bzrlib import commands
+from bzrlib import (
+    commands,
+    option,
+    )
 
 class cmd_upload(commands.Command):
     """Upload a working tree, as a whole or incrementally.
@@ -27,10 +30,9 @@ class cmd_upload(commands.Command):
     takes_args = ['dest?']
     takes_options = [
         'revision',
-        Option('full',
-               'Upload the full working tree.'
+        option.Option('full', 'Upload the full working tree.'),
         ]
-    def run(self, dest, revision=None):
+    def run(self, dest, full=False, revision=None):
         pass
 
 commands.register_command(cmd_upload)
