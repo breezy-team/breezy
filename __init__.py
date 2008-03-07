@@ -69,7 +69,8 @@ class BisectCurrent(object):
     def show_rev_log(self, out = sys.stdout):
         "Write the current revision's log entry to a file."
         rev = self._bzrbranch.repository.get_revision(self._revid)
-        out.write("On revision ?? (%s):\n%s\n" % (rev.revision_id,
+        revno = self._bzrbranch.get_revision_id_to_revno_map()[self._revid]
+        out.write("On revision %s (%s):\n%s\n" % (revno[0], rev.revision_id,
                                                   rev.message))
 
     def switch(self, revid):
