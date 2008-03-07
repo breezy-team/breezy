@@ -250,8 +250,9 @@ class LineBasedParser(object):
 
 # Regular expression used for parsing. (Note: The spec states that the name
 # part should be non-empty but git-fast-export doesn't always do that so
-# the first bit is \w*, not \w+.)
-_WHO_AND_WHEN_RE = re.compile(r'(\w*) <(.+)> (.+)')
+# the first bit is \w*, not \w+.) Also git-fast-import code says the
+# space before the email is optional.
+_WHO_AND_WHEN_RE = re.compile(r'(\w*) ?<(.+)> (.+)')
 
 
 class ImportParser(LineBasedParser):

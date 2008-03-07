@@ -77,13 +77,21 @@ data 5
 bbbbb
 # Commit formats
 commit 
+mark :1
 committer bugs <bugs@bunny.org> now
 data 14
 initial import
-from :1
 M 644 inline README
 data 18
 Welcome from bugs
+commit 
+committer <bugs@bunny.org> now
+data 13
+second commit
+from :1
+M 644 inline README
+data 24
+Welcome from bugs, etc.
 # Miscellaneous
 checkpoint
 progress completed
