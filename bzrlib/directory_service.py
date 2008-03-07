@@ -19,6 +19,13 @@ from bzrlib import registry
 class DirectoryServiceRegistry(registry.Registry):
 
     def dereference(self, url):
+        """Dereference a supplied URL if possible.
+
+        URLs that match a registered directory service prefix are looked up in
+        it.  Non-matching urls are returned verbatim.
+        :param url: The URL to dereference
+        :return: The dereferenced URL if applicable, the input URL otherwise.
+        """
         match = self.get_prefix(url)
         if match is None:
             return url

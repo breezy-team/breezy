@@ -8,7 +8,7 @@ IN DEVELOPMENT
 --------------
 
   NOTES WHEN UPGRADING:
-  
+
   CHANGES:
 
     * A new repository format 'development' has been added. This format will
@@ -28,7 +28,7 @@ IN DEVELOPMENT
       bzr.exe, installed to ``C:\Program Files\Bazaar\plugins`` directory, 
       and standalone installer allows user to skip installation of this plugin.
       (Alexander Belchenko)
- 
+
     * Restore auto-detection of plink.exe on Windows. (Dmitry Vasiliev)
 
   FEATURES:
@@ -42,7 +42,9 @@ IN DEVELOPMENT
 
    * Branch6.generate_revision_history is faster.  (Aaron Bentley)
 
-   * Directory services are now supported.  (Aaron Bentley)
+   * Directory services can now be registered, allowing special URLs to be
+     dereferenced into real URLs.  This is a generalization and cleanup of
+     the lp: transport lookup.  (Aaron Bentley)
 
   BUGFIXES:
 
