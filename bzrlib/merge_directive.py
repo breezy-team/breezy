@@ -144,7 +144,7 @@ class _BaseMergeDirective(object):
         """
         revno, revision_id = branch.last_revision_info()
         if self.revision_id == revision_id:
-            revno = str(revno)
+            revno = [revno]
         else:
             revno = branch.get_revision_id_to_revno_map().get(self.revision_id,
                 ['merge'])
