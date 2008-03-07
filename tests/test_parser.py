@@ -80,6 +80,7 @@ commit
 committer bugs <bugs@bunny.org> now
 data 14
 initial import
+from :1
 M 644 inline README
 data 18
 Welcome from bugs

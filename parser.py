@@ -434,7 +434,13 @@ class ImportParser(LineBasedParser):
                 return self.read_until(rest[2:])
             else:
                 size = int(rest)
-                return self.read_bytes(size)
+                read_bytes = self.read_bytes(size)
+                # optional LF after data.
+                next = self.input.readline()
+                self.lineno += 1
+                if len(next) > 1 or next != "\n":
+                    self.push_line(next)
+                return read_bytes
         else:
             self.abort(errors.MissingSection, required_for, section)
 
