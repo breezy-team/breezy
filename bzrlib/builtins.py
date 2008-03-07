@@ -534,8 +534,13 @@ class cmd_mv(Command):
         if len(names_list) < 2:
             raise errors.BzrCommandError("missing file argument")
         tree, rel_names = tree_files(names_list)
-        
-        if os.path.isdir(names_list[-1]):
+
+        dest = names_list[-1]
+        isdir = os.path.isdir(dest)
+        if (isdir and not tree.case_sensitive and len(rel_names) == 2
+            and rel_names[0].lower() == rel_names[1].lower()):
+                isdir = False
+        if isdir:
             # move into existing directory
             for pair in tree.move(rel_names[:-1], rel_names[-1], after=after):
                 self.outf.write("%s => %s\n" % pair)
@@ -546,8 +551,8 @@ class cmd_mv(Command):
                                              ' directory')
             tree.rename_one(rel_names[0], rel_names[1], after=after)
             self.outf.write("%s => %s\n" % (rel_names[0], rel_names[1]))
-            
-    
+
+
 class cmd_pull(Command):
     """Turn this branch into a mirror of another branch.
 
@@ -3003,10 +3008,8 @@ class cmd_merge(Command):
         mutter("%s", stored_location)
         if stored_location is None:
             raise errors.BzrCommandError("No location specified or remembered")
-        display_url = urlutils.unescape_for_display(stored_location,
-            self.outf.encoding)
-        self.outf.write("%s remembered location %s\n" % (verb_string,
-            display_url))
+        display_url = urlutils.unescape_for_display(stored_location, 'utf-8')
+        note(u"%s remembered location %s", verb_string, display_url)
         return stored_location
 
 
