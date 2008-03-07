@@ -429,7 +429,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1 = self.get_tree_no_parents_no_content(tree1)
         tree2 = self.get_tree_no_parents_no_content(tree2)
         tree1, tree2 = self.mutable_trees_to_test_trees(tree1, tree2)
-        self.assertEqual([], self.doiter_changes(tree1, tree2))
+        self.assertEqual([], self.do_iter_changes(tree1, tree2))
 
     def added(self, tree, file_id):
         entry = tree.inventory[file_id]
