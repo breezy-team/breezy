@@ -14,12 +14,33 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Upload a working treem incrementally"""
+"""Upload a working tree, incrementally"""
 
 from bzrlib import (
     commands,
     option,
+    transport,
+    workingtree,
     )
+
+def upload_full_tree(tree, tdest):
+    tdest.ensure_base() # XXX: Handle errors
+    tree.lock_read()
+    try:
+        inv = tree.inventory
+        entries = inv.iter_entries()
+        entries.next() # skip root
+        for dp, ie in entries:
+            # .bzrignore has no meaning outside of a working tree
+            # so do not export it
+            if dp == ".bzrignore":
+                continue
+
+            import pdb; pdb.set_trace()
+            ie.put_on_disk(tdest.local_abspath('.'), dp, tree)
+    finally:
+        tree.unlock()
+
 
 class cmd_upload(commands.Command):
     """Upload a working tree, as a whole or incrementally.
@@ -31,11 +52,32 @@ class cmd_upload(commands.Command):
     takes_options = [
         'revision',
         option.Option('full', 'Upload the full working tree.'),
-        ]
+       ]
     def run(self, dest, full=False, revision=None):
-        pass
+        tree = workingtree.WorkingTree.open_containing(u'.')[0]
+        b = tree.branch
+
+        if dest is None:
+            raise NotImplementedError
+        else:
+            tdest = transport.get_transport(dest)
+        if revision is None:
+            rev_id = tree.last_revision()
+        else:
+            if len(revision) != 1:
+                raise errors.BzrCommandError(
+                    'bzr upload --revision takes exactly 1 argument')
+            rev_id = revision[0].in_history(b).rev_id
+
+        tree_to_upload = b.repository.revision_tree(rev_id)
+        if full:
+            upload_full_tree(tree_to_upload, tdest)
+        else:
+            raise NotImplementedError
+
 
 commands.register_command(cmd_upload)
+
 
 def test_suite():
     from bzrlib.tests import TestUtil

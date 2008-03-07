@@ -17,7 +17,11 @@
 import os
 
 
-from bzrlib import tests
+from bzrlib import (
+    tests,
+    )
+
+from bzrlib.plugins.upload import cmd_upload
 
 
 class TestUpload(tests.TestCaseWithTransport):
@@ -36,7 +40,10 @@ class TestUpload(tests.TestCaseWithTransport):
     def test_full_upload(self):
         self._create_branch()
 
-        self.run_bzr('upload --full ../upload', working_dir='branch')
+        os.chdir('branch')
+        upload = cmd_upload()
+
+        upload.run('../upload', full=True)
 
         self.assertFileEqual('foo', '../upload/hello')
         self.assertFileEqual('baz', '../upload/goodbye')
