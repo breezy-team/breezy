@@ -42,6 +42,8 @@ IN DEVELOPMENT
 
    * Branch6.generate_revision_history is faster.  (Aaron Bentley)
 
+   * Directory services are now supported.  (Aaron Bentley)
+
   BUGFIXES:
 
     * Disable plink's interactive prompt for password.
