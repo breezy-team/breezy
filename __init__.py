@@ -10,6 +10,7 @@ from bzrlib import (
     config,
     errors,
     tsort,
+    ui,
     workingtree,
     )
 """)
@@ -94,7 +95,7 @@ def collapse_by_author(committers):
 
 def sort_by_committer(a_repo, revids):
     committers = {}
-    pb = bzrlib.ui.ui_factory.nested_progress_bar()
+    pb = ui.ui_factory.nested_progress_bar()
     try:
         pb.note('getting revisions')
         revisions = a_repo.get_revisions(revids)
@@ -113,7 +114,7 @@ def sort_by_committer(a_repo, revids):
 
 def get_info(a_repo, revision):
     """Get all of the information for a particular revision"""
-    pb = bzrlib.ui.ui_factory.nested_progress_bar()
+    pb = ui.ui_factory.nested_progress_bar()
     a_repo.lock_read()
     try:
         pb.note('getting ancestry')
@@ -132,7 +133,7 @@ def get_diff_info(a_repo, start_rev, end_rev):
     
     This lets us figure out what has actually changed between 2 revisions.
     """
-    pb = bzrlib.ui.ui_factory.nested_progress_bar()
+    pb = ui.ui_factory.nested_progress_bar()
     committers = {}
     a_repo.lock_read()
     try:
