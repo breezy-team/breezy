@@ -565,7 +565,7 @@ class Merge3Merger(object):
         if self.change_reporter is not None:
             from bzrlib import delta
             delta.report_changes(
-                self.tt._iter_changes(), self.change_reporter)
+                self.tt.iter_changes(), self.change_reporter)
         self.cook_conflicts(fs_conflicts)
         for conflict in self.cooked_conflicts:
             warning(conflict)
@@ -580,7 +580,7 @@ class Merge3Merger(object):
         executable3 is a tuple of execute-bit values for base, other and this.
         """
         result = []
-        iterator = self.other_tree._iter_changes(self.base_tree,
+        iterator = self.other_tree.iter_changes(self.base_tree,
                 include_unchanged=True, specific_files=self.interesting_files,
                 extra_trees=[self.this_tree])
         for (file_id, paths, changed, versioned, parents, names, kind,
