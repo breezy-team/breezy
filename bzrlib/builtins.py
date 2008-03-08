@@ -4436,6 +4436,7 @@ class cmd_hooks(Command):
     """Show a branch's currently registered hooks.
     """
 
+    hidden = True
     takes_args = ['path?']
 
     def run(self, path=None):
