@@ -40,10 +40,20 @@ class TestHooks(TestCase):
         hooks.install_hook('set_rh', None)
         self.assertEqual(hooks['set_rh'], [None])
 
-    def test_install_hook_with_name(self):
+    def test_install_named_hook_raises_unknown_hook(self):
         hooks = Hooks()
-        hooks['set_rh']
-        hooks.install_hook('set_rh', None, name="demo")
+        self.assertRaises(UnknownHook, hooks.install_named_hook, 'silly',
+                          None, "")
+
+    def test_install_named_hook_appends_known_hook(self):
+        hooks = Hooks()
+        hooks['set_rh'] = []
+        hooks.install_named_hook('set_rh', None, "demo")
+        self.assertEqual(hooks['set_rh'], [None])
+
+    def test_install_named_hook_and_retrieve_name(self):
+        hooks = Hooks()
+        hooks.install_named_hook('set_rh', None, "demo")
         self.assertEqual("demo", hooks.get_hook_name(None))
 
     def test_name_hook_and_retrieve_name(self):
