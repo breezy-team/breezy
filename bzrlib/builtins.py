@@ -4431,6 +4431,26 @@ class cmd_switch(Command):
             urlutils.unescape_for_display(to_branch.base, 'utf-8'))
 
 
+class cmd_hooks(Command):
+    """Show a branch's currently registered hooks.
+    """
+
+    takes_args = ['path?']
+
+    def run(self, path=None):
+        if path is None:
+            path = '.'
+        branch_hooks = Branch.open(path).hooks
+        for hook_type in branch_hooks:
+            hooks = branch_hooks[hook_type]
+            note("%s:" % (hook_type,))
+            if hooks:
+                for hook in hooks:
+                    note("  %s" % (branch_hooks.get_hook_name(hook),))
+            else:
+                note("  <no hooks installed>")
+
+
 def _create_prefix(cur_transport):
     needed = [cur_transport]
     # Recurse upwards until we can create a directory successfully
