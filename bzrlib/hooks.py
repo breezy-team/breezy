@@ -17,6 +17,7 @@
 
 """Support for plugin hooking logic."""
 from bzrlib.lazy_import import lazy_import
+from bzrlib.symbol_versioning import deprecated_method, one_three
 lazy_import(globals(), """
 from bzrlib import (
         errors,
@@ -63,6 +64,7 @@ class Hooks(dict):
         except KeyError:
             raise errors.UnknownHook(self.__class__.__name__, hook_name)
 
+    @deprecated_method(one_three)
     def install_hook(self, hook_name, a_callable):
         """Install a_callable in to the hook hook_name.
 
