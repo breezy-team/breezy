@@ -53,6 +53,8 @@ class Hooks(dict):
         :param a_callable: The callable to be invoked when the hook triggers.
             The exact signature will depend on the hook - see the __init__ 
             method of BranchHooks for details on each hook.
+        :param name: A name to associate a_callable with, to show users what is
+            running.
         """
         try:
             self[hook_name].append(a_callable)
