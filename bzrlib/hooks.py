@@ -45,7 +45,7 @@ class Hooks(dict):
         """
         return self._callable_names.get(a_callable, "No hook name")
 
-    def install_hook(self, hook_name, a_callable):
+    def install_hook(self, hook_name, a_callable, name=None):
         """Install a_callable in to the hook hook_name.
 
         :param hook_name: A hook name. See the __init__ method of BranchHooks
@@ -56,6 +56,8 @@ class Hooks(dict):
         """
         try:
             self[hook_name].append(a_callable)
+            if callable_name is not None:
+                self.name_hook(a_callable, name)
         except KeyError:
             raise errors.UnknownHook(self.__class__.__name__, hook_name)
 
