@@ -22,12 +22,23 @@ from bzrlib.tests import TestCaseWithTransport
 
 class TestHooks(TestCaseWithTransport):
 
+    def _check_hooks_output(self, command_output, hooks):
+        for hook_type in Branch.hooks:
+            s = "\n  ".join(hooks.get(hook_type, ["<no hooks installed>"]))
+            print s
+            self.assert_("%s:\n  %s" % (hook_type, s) in command_output)
+
     def test_hooks(self):
         self.make_branch('.')
-        out,err = self.run_bzr('hooks')
+        out, err = self.run_bzr('hooks')
         self.assertEqual(err, "")
         for hook_type in Branch.hooks:
-            self.assert_("%s:\n  <no hooks installed>" % (hook_type,) in out)
+            self._check_hooks_output(out, {})
+
+        def foo(): return
+        Branch.hooks.install_hook('set_rh', foo)
+        out, err = self.run_bzr('hooks')
+        self._check_hooks_output(out, {'set_rh': ["No hook name"]})
 
     def test_hooks_no_branch(self):
         self.run_bzr('hooks', retcode=3)
