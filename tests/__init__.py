@@ -24,6 +24,7 @@ def test_suite():
     module_names = [
         'bzrlib.plugins.fastimport.tests.test_errors',
         'bzrlib.plugins.fastimport.tests.test_parser',
+        'bzrlib.plugins.fastimport.tests.test_processor',
         ]
     loader = TestLoader()
     return loader.loadTestsFromModuleNames(module_names)
