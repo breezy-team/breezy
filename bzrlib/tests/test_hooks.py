@@ -40,6 +40,12 @@ class TestHooks(TestCase):
         hooks.install_hook('set_rh', None)
         self.assertEqual(hooks['set_rh'], [None])
 
+    def test_install_hook_with_name(self):
+        hooks = Hooks()
+        hooks['set_rh']
+        hooks.install_hook('set_rh', None, name="demo")
+        self.assertEqual("demo", hooks.get_hook_name(None))
+
     def test_name_hook_and_retrieve_name(self):
         """name_hook puts the name in the names mapping."""
         hooks = Hooks()
