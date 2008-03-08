@@ -42,6 +42,9 @@ IN DEVELOPMENT
 
    * Branch6.generate_revision_history is faster.  (Aaron Bentley)
 
+   * Merge directives that are automatically attached to emails have nicer
+     filenames, based on branch-nick + revno. (Aaron Bentley)
+
   BUGFIXES:
 
     * Disable plink's interactive prompt for password.
