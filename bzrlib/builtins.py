@@ -4443,12 +4443,13 @@ class cmd_hooks(Command):
         branch_hooks = Branch.open(path).hooks
         for hook_type in branch_hooks:
             hooks = branch_hooks[hook_type]
-            note("%s:" % (hook_type,))
+            self.outf.write("%s:\n" % (hook_type,))
             if hooks:
                 for hook in hooks:
-                    note("  %s" % (branch_hooks.get_hook_name(hook),))
+                    self.outf.write("  %s\n" %
+                                    (branch_hooks.get_hook_name(hook),))
             else:
-                note("  <no hooks installed>")
+                self.outf.write("  <no hooks installed>\n")
 
 
 def _create_prefix(cur_transport):
