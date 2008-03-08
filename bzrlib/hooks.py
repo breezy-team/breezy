@@ -46,6 +46,21 @@ class Hooks(dict):
         """
         return self._callable_names.get(a_callable, "No hook name")
 
+    @deprecated_method(one_three)
+    def install_hook(self, hook_name, a_callable):
+        """Install a_callable in to the hook hook_name.
+
+        :param hook_name: A hook name. See the __init__ method of BranchHooks
+            for the complete list of hooks.
+        :param a_callable: The callable to be invoked when the hook triggers.
+            The exact signature will depend on the hook - see the __init__ 
+            method of BranchHooks for details on each hook.
+        """
+        try:
+            self[hook_name].append(a_callable)
+        except KeyError:
+            raise errors.UnknownHook(self.__class__.__name__, hook_name)
+
     def install_named_hook(self, hook_name, a_callable, name):
         """Install a_callable in to the hook hook_name, and label it name.
 
@@ -61,21 +76,6 @@ class Hooks(dict):
             self[hook_name].append(a_callable)
             if name is not None:
                 self.name_hook(a_callable, name)
-        except KeyError:
-            raise errors.UnknownHook(self.__class__.__name__, hook_name)
-
-    @deprecated_method(one_three)
-    def install_hook(self, hook_name, a_callable):
-        """Install a_callable in to the hook hook_name.
-
-        :param hook_name: A hook name. See the __init__ method of BranchHooks
-            for the complete list of hooks.
-        :param a_callable: The callable to be invoked when the hook triggers.
-            The exact signature will depend on the hook - see the __init__ 
-            method of BranchHooks for details on each hook.
-        """
-        try:
-            self[hook_name].append(a_callable)
         except KeyError:
             raise errors.UnknownHook(self.__class__.__name__, hook_name)
 
