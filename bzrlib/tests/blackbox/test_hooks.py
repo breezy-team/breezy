@@ -16,10 +16,18 @@
 
 """Tests for commands related to hooks"""
 
+from bzrlib.branch import Branch
 from bzrlib.tests import TestCaseWithTransport
 
 
 class TestHooks(TestCaseWithTransport):
 
     def test_hooks(self):
-        pass
+        self.make_branch('.')
+        out,err = self.run_bzr('hooks')
+        self.assertEqual(err, "")
+        for hook_type in Branch.hooks:
+            self.assert_("%s:\n  <no hooks installed>" % (hook_type,) in out)
+
+    def test_hooks_no_branch(self):
+        self.run_bzr('hooks', retcode=3)
