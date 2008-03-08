@@ -37,7 +37,7 @@ class ImportProcessor(object):
     def __init__(self, bzrdir, params=None, verbose=False):
         self.verbose = verbose
         if params is None:
-            self.params = []
+            self.params = {}
         else:
             self.params = params
             self.validate_parameters()
