@@ -145,6 +145,10 @@ class Tree(object):
     def __iter__(self):
         return iter(self.inventory)
 
+    def all_file_ids(self):
+        """Iterate through all file ids, including ids for missing files."""
+        return set(self.inventory)
+
     def id2path(self, file_id):
         """Return the path for a file id.
 
@@ -184,6 +188,14 @@ class Tree(object):
     def kind(self, file_id):
         raise NotImplementedError("Tree subclass %s must implement kind"
             % self.__class__.__name__)
+
+    def stored_kind(self, file_id):
+        """File kind stored for this file_id.
+
+        May not match kind on disk for working trees.  Always available
+        for versioned files, even when the file itself is missing.
+        """
+        return self.kind(file_id)
 
     def path_content_summary(self, path):
         """Get a summary of the information about path.

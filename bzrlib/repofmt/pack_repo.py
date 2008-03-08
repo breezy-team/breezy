@@ -656,7 +656,7 @@ class Packer(object):
                 time.ctime(), self._pack_collection._upload_transport.base,
                 self.new_pack.random_name,
                 self.new_pack.inventory_index.key_count(),
-                time.time() - new_pack.start_time)
+                time.time() - self.new_pack.start_time)
 
     def _copy_text_texts(self):
         # select text keys
