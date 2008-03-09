@@ -38,6 +38,13 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+   * BzrBranch._lefthand_history is faster on pack repos.  (Aaron Bentley)
+
+   * Branch6.generate_revision_history is faster.  (Aaron Bentley)
+
+   * Merge directives that are automatically attached to emails have nicer
+     filenames, based on branch-nick + revno. (Aaron Bentley)
+
   BUGFIXES:
 
     * Disable plink's interactive prompt for password.
@@ -53,7 +60,10 @@ IN DEVELOPMENT
     * ``merge --preview`` now works for merges that add or modify
       symlinks (James Henstridge)
 
-    * Upgrade bundled ConfigObj to version 4.5.1, which properly quotes #
+    * Redirecting the output from ``bzr merge`` (when the remembered
+      location is used) now works. (John Arbash Meinel)
+
+    * Upgrade bundled ConfigObj to version 4.5.2, which properly quotes #
       signs, among other small improvements. (Matt Nordhoff, #86838)
 
     * Use correct indices when emitting LCA conflicts.  This fixes IndexError

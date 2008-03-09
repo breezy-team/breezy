@@ -3008,10 +3008,8 @@ class cmd_merge(Command):
         mutter("%s", stored_location)
         if stored_location is None:
             raise errors.BzrCommandError("No location specified or remembered")
-        display_url = urlutils.unescape_for_display(stored_location,
-            self.outf.encoding)
-        self.outf.write("%s remembered location %s\n" % (verb_string,
-            display_url))
+        display_url = urlutils.unescape_for_display(stored_location, 'utf-8')
+        note(u"%s remembered location %s", verb_string, display_url)
         return stored_location
 
 
@@ -4167,8 +4165,9 @@ class cmd_send(Command):
                 else:
                     revision = branch.repository.get_revision(revision_id)
                     subject += revision.get_summary()
+                basename = directive.get_disk_name(branch)
                 mail_client.compose_merge_request(mail_to, subject,
-                                                  outfile.getvalue())
+                                                  outfile.getvalue(), basename)
         finally:
             if output != '-':
                 outfile.close()
