@@ -38,8 +38,13 @@ def _run(source, processor_factory, control, params, verbose):
     if source == '-':
         import sys
         stream = sys.stdin
+        try:
+            import msvcrt
+            msvcrt.setmode(sys.stdin.fileno(), os.O_BINARY)
+        except ImportError:
+            pass
     else:
-        stream = open(source)
+        stream = open(source, "rb")
     proc = processor_factory(control, params=params, verbose=verbose)
     p = parser.ImportParser(stream, verbose=verbose)
     return proc.process(p.iter_commands)
