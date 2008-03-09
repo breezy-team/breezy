@@ -1940,6 +1940,10 @@ class cmd_ignore(Command):
         Ignore .o files under the lib directory::
 
             bzr ignore "RE:lib/.*\.o"
+
+        Ignore everything but the "debian" toplevel directory::
+
+            bzr ignore "RE:(?!debian/).*"
     """
 
     _see_also = ['status', 'ignored']
