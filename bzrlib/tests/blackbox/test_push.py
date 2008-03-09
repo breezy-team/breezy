@@ -249,7 +249,7 @@ class TestPush(ExternalBase):
                 working_dir='tree')
 
     def test_push_with_revisionspec(self):
-        """We should be able to push an older revision."""
+        """We should be able to push a revision older than the tip."""
         tree_from = self.make_branch_and_tree('from')
         tree_from.commit("One.", rev_id="from-1")
         tree_from.commit("Two.", rev_id="from-2")
