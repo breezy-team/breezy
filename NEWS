@@ -58,6 +58,10 @@ IN DEVELOPMENT
 
     * Use correct indices when emitting LCA conflicts.  This fixes IndexError
       errors.  (Aaron Bentley, #196780)
+    
+    * New registry for custom log displayers and the method in 
+      LongLogFormatter to display the custom properties returned by the 
+      registered handlers. (Guillermo Gonzalez, #162469)
 
   API BREAKS:
 

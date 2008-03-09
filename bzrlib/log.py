@@ -601,7 +601,7 @@ class LogFormatter(object):
         Otherwise the tags attribute may not be populated.
 
     Plugins can register functions to show custom revision properties using
-    the class method add_show_properties(function). The registered function
+    the custom_properties_handler_registry. The registered function
     must respect the following interface description:
         def my_show_properties(properties_dict):
             # code that returns a dict {'name':'value'} of the properties 
@@ -640,8 +640,9 @@ class LogFormatter(object):
         return address
 
     def show_properties(self, properties):
-        """shows the custom properties returned by each 
-            function in registered_show_properties."""
+        """Display the custom properties returned by each 
+        registered function.
+        """
         filtered_props = properties.copy()
         if filtered_props.has_key('branch-nick'): 
             del filtered_props['branch-nick']
