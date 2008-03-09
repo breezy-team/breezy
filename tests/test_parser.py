@@ -71,26 +71,25 @@ progress completed
 blob
 mark :1
 data 4
-aaaa
-blob
+aaaablob
 data 5
 bbbbb
 # Commit formats
-commit 
-mark :1
-committer bugs <bugs@bunny.org> now
+commit refs/heads/master
+mark :2
+committer bugs bunny <bugs@bunny.org> now
 data 14
 initial import
 M 644 inline README
 data 18
 Welcome from bugs
-commit 
+commit refs/heads/master
 committer <bugs@bunny.org> now
 data 13
 second commit
-from :1
+from :2
 M 644 inline README
-data 24
+data 23
 Welcome from bugs, etc.
 # Miscellaneous
 checkpoint
@@ -109,8 +108,63 @@ class TestImportParser(tests.TestCase):
             if cmd.name == 'commit':
                 for fc in cmd.file_iter():
                     result.append(fc)
+        self.assertEqual(len(result), 9)
         cmd1 = result[0]
         self.assertEqual('progress', cmd1.name)
+        self.assertEqual('completed', cmd1.message)
+        cmd2 = result[1]
+        self.assertEqual('blob', cmd2.name)
+        self.assertEqual('1', cmd2.mark)
+        self.assertEqual(':1', cmd2.id)
+        self.assertEqual('aaaa', cmd2.data)
+        self.assertEqual(4, cmd2.lineno)
+        cmd3 = result[2]
+        self.assertEqual('blob', cmd3.name)
+        self.assertEqual('@7', cmd3.id)
+        self.assertEqual(None, cmd3.mark)
+        self.assertEqual('bbbbb', cmd3.data)
+        self.assertEqual(7, cmd3.lineno)
+        cmd4 = result[3]
+        self.assertEqual('commit', cmd4.name)
+        self.assertEqual('2', cmd4.mark)
+        self.assertEqual(':2', cmd4.id)
+        self.assertEqual('initial import', cmd4.message)
+        self.assertEqual('bugs bunny', cmd4.committer[0])
+        self.assertEqual('bugs@bunny.org', cmd4.committer[1])
+        # FIXME: check timestamp and timezone as well
+        self.assertEqual(None, cmd4.author)
+        self.assertEqual(11, cmd4.lineno)
+        self.assertEqual('refs/heads/master', cmd4.ref)
+        self.assertEqual([], cmd4.parents)
+        file_cmd1 = result[4]
+        self.assertEqual('filemodify', file_cmd1.name)
+        self.assertEqual('README', file_cmd1.path)
+        self.assertEqual('file', file_cmd1.kind)
+        self.assertEqual(False, file_cmd1.is_executable)
+        self.assertEqual('Welcome from bugs\n', file_cmd1.data)
+        cmd5 = result[5]
+        self.assertEqual('commit', cmd5.name)
+        self.assertEqual(None, cmd5.mark)
+        self.assertEqual('@19', cmd5.id)
+        self.assertEqual('second commit', cmd5.message)
+        self.assertEqual('', cmd5.committer[0])
+        self.assertEqual('bugs@bunny.org', cmd5.committer[1])
+        # FIXME: check timestamp and timezone as well
+        self.assertEqual(None, cmd5.author)
+        self.assertEqual(19, cmd5.lineno)
+        self.assertEqual('refs/heads/master', cmd5.ref)
+        self.assertEqual([':2'], cmd5.parents)
+        file_cmd2 = result[6]
+        self.assertEqual('filemodify', file_cmd2.name)
+        self.assertEqual('README', file_cmd2.path)
+        self.assertEqual('file', file_cmd2.kind)
+        self.assertEqual(False, file_cmd2.is_executable)
+        self.assertEqual('Welcome from bugs, etc.', file_cmd2.data)
+        cmd6 = result[7]
+        self.assertEqual(cmd6.name, 'checkpoint')
+        cmd7 = result[8]
+        self.assertEqual('progress', cmd7.name)
+        self.assertEqual('completed', cmd7.message)
 
 
 class TestStringParsing(tests.TestCase):
