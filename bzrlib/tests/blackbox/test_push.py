@@ -248,6 +248,20 @@ class TestPush(ExternalBase):
                 'push ../dir',
                 working_dir='tree')
 
+    def test_push_with_revisionspec(self):
+        """We should be able to push an older revision."""
+        tree_from = self.make_branch_and_tree('from')
+        tree_from.commit("One.", rev_id="from-1")
+        tree_from.commit("Two.", rev_id="from-2")
+
+        self.run_bzr('push -r1 ../to', working_dir='from')
+
+        tree_to = WorkingTree.open('to')
+        repo_to = tree_to.branch.repository
+        self.assertTrue(repo_to.has_revision('from-1'))
+        self.assertFalse(repo_to.has_revision('from-2'))
+        self.assertEqual(tree_to.branch.last_revision_info()[1], 'from-1')
+
 
 class RedirectingMemoryTransport(MemoryTransport):
 
