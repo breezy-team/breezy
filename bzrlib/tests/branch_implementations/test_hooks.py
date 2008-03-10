@@ -36,7 +36,8 @@ class TestSetRevisionHistoryHook(TestCaseWithMemoryTransport):
 
     def test_set_rh_empty_history(self):
         branch = self.make_branch('source')
-        Branch.hooks.install_hook('set_rh', self.capture_set_rh_hook)
+        Branch.hooks.install_named_hook('set_rh', self.capture_set_rh_hook,
+                                        None)
         branch.set_revision_history([])
         self.assertEqual(self.hook_calls,
             [('set_rh', branch, [], True)])
@@ -49,7 +50,8 @@ class TestSetRevisionHistoryHook(TestCaseWithMemoryTransport):
         tree.commit('empty commit', rev_id='foo')
         tree.unlock()
         branch = tree.branch
-        Branch.hooks.install_hook('set_rh', self.capture_set_rh_hook)
+        Branch.hooks.install_named_hook('set_rh', self.capture_set_rh_hook,
+                                        None)
         # some branches require that their history be set to a revision in the
         # repository
         branch.set_revision_history(['f\xc2\xb5'])
@@ -58,15 +60,18 @@ class TestSetRevisionHistoryHook(TestCaseWithMemoryTransport):
 
     def test_set_rh_branch_is_locked(self):
         branch = self.make_branch('source')
-        Branch.hooks.install_hook('set_rh', self.capture_set_rh_hook)
+        Branch.hooks.install_named_hook('set_rh', self.capture_set_rh_hook,
+                                        None)
         branch.set_revision_history([])
         self.assertEqual(self.hook_calls,
             [('set_rh', branch, [], True)])
 
     def test_set_rh_calls_all_hooks_no_errors(self):
         branch = self.make_branch('source')
-        Branch.hooks.install_hook('set_rh', self.capture_set_rh_hook)
-        Branch.hooks.install_hook('set_rh', self.capture_set_rh_hook)
+        Branch.hooks.install_named_hook('set_rh', self.capture_set_rh_hook,
+                                        None)
+        Branch.hooks.install_named_hook('set_rh', self.capture_set_rh_hook,
+                                        None)
         branch.set_revision_history([])
         self.assertEqual(self.hook_calls,
             [('set_rh', branch, [], True),
