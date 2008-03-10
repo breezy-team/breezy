@@ -295,7 +295,7 @@ def _get_elements(path):
 
 
 def check_dwim(path, verbose):
-    tree, repo, branch = _get_elements(path)
+    tree, branch, repo = _get_elements(path)
 
     if tree is not None:
         note("Checking working tree at '%s'." 
