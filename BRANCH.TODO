@@ -2,8 +2,4 @@
 # It should ALWAYS be empty in the mainline or in integration branches.
 # 
 #
- * It can be a separate check, but we may want to change from reporting
-   errors through logging to putting them into a Result object.  Though
-   we might want to make sure that the result is not lost if the check
-   aborts.  One way to handle it would be to allow the caller to pass in
-   a check result, which they could examine even if the method fails.
+
