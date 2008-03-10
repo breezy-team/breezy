@@ -95,7 +95,9 @@ IN DEVELOPMENT
       falling back to other repositories when they have partial data.
       (Robert Collins)
 
-    * Tree.iter_changes is now a public API.  (Aaron Bentley)
+    * ``Tree.iter_changes`` is now a public API, replacing the work-in-progress
+      ``Tree._iter_changes``. The api is now considered stable and ready for
+      external users.  (Aaron Bentley)
 
     * The bzrdir format registry now accepts an ``alias`` keyword to
       register_metadir, used to indicate that a format name is an alias for
