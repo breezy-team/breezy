@@ -56,10 +56,7 @@ class Hooks(dict):
             The exact signature will depend on the hook - see the __init__ 
             method of BranchHooks for details on each hook.
         """
-        try:
-            self[hook_name].append(a_callable)
-        except KeyError:
-            raise errors.UnknownHook(self.__class__.__name__, hook_name)
+        self.install_named_hook(hook_name, a_callable, None)
 
     def install_named_hook(self, hook_name, a_callable, name):
         """Install a_callable in to the hook hook_name, and label it name.
