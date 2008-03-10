@@ -1068,8 +1068,8 @@ class TestServerHooks(SmartTCPTests):
     def test_server_started_hook_memory(self):
         """The server_started hook fires when the server is started."""
         self.hook_calls = []
-        server.SmartTCPServer.hooks.install_hook('server_started',
-            self.capture_server_call)
+        server.SmartTCPServer.hooks.install_named_hook('server_started',
+            self.capture_server_call, None)
         self.setUpServer()
         # at this point, the server will be starting a thread up.
         # there is no indicator at the moment, so bodge it by doing a request.
@@ -1082,8 +1082,8 @@ class TestServerHooks(SmartTCPTests):
     def test_server_started_hook_file(self):
         """The server_started hook fires when the server is started."""
         self.hook_calls = []
-        server.SmartTCPServer.hooks.install_hook('server_started',
-            self.capture_server_call)
+        server.SmartTCPServer.hooks.install_named_hook('server_started',
+            self.capture_server_call, None)
         self.setUpServer(backing_transport=get_transport("."))
         # at this point, the server will be starting a thread up.
         # there is no indicator at the moment, so bodge it by doing a request.
@@ -1098,8 +1098,8 @@ class TestServerHooks(SmartTCPTests):
     def test_server_stopped_hook_simple_memory(self):
         """The server_stopped hook fires when the server is stopped."""
         self.hook_calls = []
-        server.SmartTCPServer.hooks.install_hook('server_stopped',
-            self.capture_server_call)
+        server.SmartTCPServer.hooks.install_named_hook('server_stopped',
+            self.capture_server_call, None)
         self.setUpServer()
         result = [([self.backing_transport.base], self.transport.base)]
         # check the stopping message isn't emitted up front.
@@ -1115,8 +1115,8 @@ class TestServerHooks(SmartTCPTests):
     def test_server_stopped_hook_simple_file(self):
         """The server_stopped hook fires when the server is stopped."""
         self.hook_calls = []
-        server.SmartTCPServer.hooks.install_hook('server_stopped',
-            self.capture_server_call)
+        server.SmartTCPServer.hooks.install_named_hook('server_stopped',
+            self.capture_server_call, None)
         self.setUpServer(backing_transport=get_transport("."))
         result = [(
             [self.backing_transport.base, self.backing_transport.external_url()]
