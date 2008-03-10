@@ -9,6 +9,10 @@ Run it with
 import os
 import sys
 
+if sys.hexversion < 0x02040000:
+    sys.stderr.write("[ERROR] Not a supported Python version. Need 2.4+\n")
+    sys.exit(1)
+
 import bzrlib
 
 ##
@@ -33,35 +37,6 @@ PKG_DATA = {# install files from selftest suite
                                         'help_topics/en/*.txt',
                                        ]},
            }
-
-######################################################################
-# Reinvocation stolen from bzr, we need python2.4 by virtue of bzr_man
-# including bzrlib.help
-
-try:
-    version_info = sys.version_info
-except AttributeError:
-    version_info = 1, 5 # 1.5 or older
-
-REINVOKE = "__BZR_REINVOKE"
-NEED_VERS = (2, 4)
-KNOWN_PYTHONS = ('python2.4',)
-
-if version_info < NEED_VERS:
-    if not os.environ.has_key(REINVOKE):
-        # mutating os.environ doesn't work in old Pythons
-        os.putenv(REINVOKE, "1")
-        for python in KNOWN_PYTHONS:
-            try:
-                os.execvp(python, [python] + sys.argv)
-            except OSError:
-                pass
-    sys.stderr.write("bzr: error: cannot find a suitable python interpreter\n")
-    sys.stderr.write("  (need %d.%d or later)" % NEED_VERS)
-    sys.stderr.write('\n')
-    sys.exit(1)
-if getattr(os, "unsetenv", None) is not None:
-    os.unsetenv(REINVOKE)
 
 
 def get_bzrlib_packages():
