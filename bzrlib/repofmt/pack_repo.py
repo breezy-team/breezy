@@ -1941,36 +1941,43 @@ class KnitPackRepository(KnitRepository):
         # special case NULL_REVISION
         if revision_id == _mod_revision.NULL_REVISION:
             return {}
-        a_weave = self._get_revision_vf()
         if revision_id is None:
-            return a_weave.get_graph()
-        if revision_id not in a_weave:
+            revision_vf = self._get_revision_vf()
+            return revision_vf.get_graph()
+        g = self.get_graph()
+        first = g.get_parent_map([revision_id])
+        if revision_id not in first:
             raise errors.NoSuchRevision(self, revision_id)
         else:
-            g = self.get_graph()
             ancestry = {}
             children = {}
-            ghosts = set()
             NULL_REVISION = _mod_revision.NULL_REVISION
+            ghosts = set([NULL_REVISION])
             for rev_id, parent_ids in g.iter_ancestry([revision_id]):
-                if len(parent_ids) == 0: # Ghost
-                    if rev_id not in children:
-                        continue
+                if parent_ids is None: # This is a ghost
                     ghosts.add(rev_id)
-                    for child in children[rev_id]:
-                        old_anc = ancestry[child]
-                        ancestry[child] = tuple(p for p in old_anc
-                                                   if p != rev_id)
                     continue
-                if len(parent_ids) == 1 and parent_ids[0] == NULL_REVISION:
-                    parent_ids = () # No parents
-                parent_ids = tuple(p for p in parent_ids if p not in ghosts)
                 ancestry[rev_id] = parent_ids
                 for p in parent_ids:
                     if p in children:
                         children[p].append(rev_id)
                     else:
                         children[p] = [rev_id]
+
+            if NULL_REVISION in ancestry:
+                del ancestry[NULL_REVISION]
+
+            # Find all nodes that reference a ghost, and filter the ghosts out
+            # of their parent lists. To preserve the order of parents, and
+            # avoid double filtering nodes, we just find all children first,
+            # and then filter.
+            children_of_ghosts = set()
+            for ghost in ghosts:
+                children_of_ghosts.update(children[ghost])
+
+            for child in children_of_ghosts:
+                ancestry[child] = tuple(p for p in ancestry[child]
+                                           if p not in ghosts)
             return ancestry
 
     def has_revisions(self, revision_ids):
