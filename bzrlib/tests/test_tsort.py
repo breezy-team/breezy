@@ -21,6 +21,7 @@
 from bzrlib.tests import TestCase
 from bzrlib.tsort import topo_sort, TopoSorter, MergeSorter, merge_sort
 from bzrlib.errors import GraphCycleError
+from bzrlib.revision import NULL_REVISION
 
 
 class TopoSortTests(TestCase):
@@ -112,6 +113,8 @@ class MergeSortTests(TestCase):
         # sorting of an emptygraph does not error
         self.assertSortAndIterate({}, None, [], False)
         self.assertSortAndIterate({}, None, [], True)
+        self.assertSortAndIterate({}, NULL_REVISION, [], False)
+        self.assertSortAndIterate({}, NULL_REVISION, [], True)
 
     def test_merge_sort_not_empty_no_tip(self):
         # merge sorting of a branch starting with None should result
