@@ -130,7 +130,8 @@ class TestPullHook(TestCaseWithBranch):
     def test_post_pull_empty_history(self):
         target = self.make_branch('target')
         source = self.make_branch('source')
-        Branch.hooks.install_hook('post_pull', self.capture_post_pull_hook)
+        Branch.hooks.install_named_hook('post_pull',
+            self.capture_post_pull_hook, None)
         target.pull(source)
         # with nothing there we should still get a notification, and
         # have both branches locked at the notification time.
@@ -158,7 +159,8 @@ class TestPullHook(TestCaseWithBranch):
             local = BzrDir.create_branch_convenience('local2')
             local.bind(target)
         source = self.make_branch('source')
-        Branch.hooks.install_hook('post_pull', self.capture_post_pull_hook)
+        Branch.hooks.install_named_hook('post_pull',
+            self.capture_post_pull_hook, None)
         local.pull(source)
         # with nothing there we should still get a notification, and
         # have both branches locked at the notification time.
@@ -177,7 +179,8 @@ class TestPullHook(TestCaseWithBranch):
         sourcedir = target.bzrdir.clone(self.get_url('source'))
         source = MemoryTree.create_on_branch(sourcedir.open_branch())
         rev2 = source.commit('rev 2')
-        Branch.hooks.install_hook('post_pull', self.capture_post_pull_hook)
+        Branch.hooks.install_named_hook('post_pull',
+            self.capture_post_pull_hook, None)
         target.branch.pull(source.branch)
         # with nothing there we should still get a notification, and
         # have both branches locked at the notification time.
