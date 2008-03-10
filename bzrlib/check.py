@@ -280,25 +280,37 @@ def _check_working_tree(tree):
 
 def _get_elements(path):
     try:
-        tree = WorkingTree.open(path)
+        if path == '.':
+            tree = WorkingTree.open_containing(path)[0]
+        else:
+            tree = WorkingTree.open(path)
     except (errors.NoWorkingTree, errors.NotLocalUrl):
-        tree = None
+        pass
     except errors.NotBranchError:
         raise errors.NotVersionedError(path)
+    else:
+        return tree, tree.branch, tree.branch.repository
+
+    try:
+        if path == '.':
+            branch = Branch.open_containing(path)[0]
+        else:
+            branch = Branch.open(path)
+    except errors.NotBranchError:
+        pass
+    else:
+        return None, branch, branch.repository
 
     try:
         repo = Repository.open(path)
     except errors.NoRepositoryPresent:
-        repo = None
+        pass
     except errors.NotBranchError:
         raise errors.NotVersionedError(path)
+    else:
+        return None, None, repo
 
-    try:
-        branch = Branch.open_containing(path)[0]
-    except errors.NotBranchError:
-        branch = None
-
-    return tree, repo, branch
+    raise errors.NotVersionedError(path)
 
 
 def check_dwim(path, verbose):
