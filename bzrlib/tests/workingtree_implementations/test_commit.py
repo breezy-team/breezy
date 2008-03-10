@@ -497,8 +497,8 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         ui.ui_factory = factory
         def a_hook(_, _2, _3, _4, _5, _6):
             pass
-        branch.Branch.hooks.install_hook('post_commit', a_hook)
-        branch.Branch.hooks.name_hook(a_hook, 'hook name')
+        branch.Branch.hooks.install_named_hook('post_commit', a_hook,
+                                               'hook name')
         tree.commit('first post')
         self.assertEqual(
             [('update', 1, 5, 'Collecting changes [Directory 0] - Stage'),
@@ -522,8 +522,8 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         ui.ui_factory = factory
         def a_hook(_, _2, _3, _4, _5, _6, _7, _8):
             pass
-        branch.Branch.hooks.install_hook('pre_commit', a_hook)
-        branch.Branch.hooks.name_hook(a_hook, 'hook name')
+        branch.Branch.hooks.install_named_hook('pre_commit', a_hook,
+                                               'hook name')
         tree.commit('first post')
         self.assertEqual(
             [('update', 1, 5, 'Collecting changes [Directory 0] - Stage'),
