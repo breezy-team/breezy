@@ -277,6 +277,7 @@ def _check_working_tree(tree):
     finally:
         tree.unlock()
 
+
 def _get_elements(path):
     try:
         tree = WorkingTree.open(path)
