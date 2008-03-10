@@ -20,6 +20,7 @@ import warnings
 
 from bzrlib import (
     revision,
+    symbol_versioning,
     )
 from bzrlib.branch import Branch
 from bzrlib.errors import NoSuchRevision
@@ -177,8 +178,9 @@ class TestIntermediateRevisions(TestCaseWithTransport):
         wt2.commit("Commit fifteen", rev_id="b@u-0-10")
 
         from bzrlib.revision import MultipleRevisionSources
-        self.sources = MultipleRevisionSources(self.br1.repository,
-                                               self.br2.repository)
+        self.sources = self.applyDeprecated(one_three,
+                        MultipleRevisionSources, self.br1.repository,
+                                                 self.br2.repository)
 
 
 
@@ -216,7 +218,8 @@ class TestCommonAncestor(TestCaseWithTransport):
         br1, br2 = make_branches(self)
         revisions = br1.revision_history()
         revisions_2 = br2.revision_history()
-        sources = MultipleRevisionSources(br1.repository, br2.repository)
+        sources = self.applyDeprecated(one_three, 
+                    MultipleRevisionSources, br1.repository, br2.repository)
         expected_ancestors_list = {revisions[3]:(0, 0), 
                                    revisions[2]:(1, 1),
                                    revisions_2[4]:(2, 1), 
@@ -259,11 +262,14 @@ class TestCommonAncestor(TestCaseWithTransport):
         Ensure it's not order-sensitive
         """
         br1, br2 = make_branches(self)
-        source = MultipleRevisionSources(br1.repository, br2.repository)
-        combined_1 = combined_graph(br1.last_revision(),
-                                    br2.last_revision(), source)
-        combined_2 = combined_graph(br2.last_revision(),
-                                    br1.last_revision(), source)
+        source = self.applyDeprecated(one_three,
+                    MultipleRevisionSources, br1.repository, br2.repository)
+        combined_1 = self.applyDeprecated(one_three,
+                        combined_graph, br1.last_revision(),
+                                        br2.last_revision(), source)
+        combined_2 = self.applyDeprecated(one_three,
+                        combined_graph, br2.last_revision(),
+                                        br1.last_revision(), source)
         self.assertEquals(combined_1[1], combined_2[1])
         self.assertEquals(combined_1[2], combined_2[2])
         self.assertEquals(combined_1[3], combined_2[3])
@@ -317,11 +323,18 @@ class TestMultipleRevisionSources(TestCaseWithTransport):
         tree_1.commit('foo', rev_id='B', allow_pointless=True)
         tree_2 = self.make_branch_and_tree('2')
         tree_2.commit('bar', rev_id='A', allow_pointless=True)
-        source = MultipleRevisionSources(tree_1.branch.repository,
-                                         tree_2.branch.repository)
+        source = self.applyDeprecated(one_three,
+                    MultipleRevisionSources, tree_1.branch.repository,
+                                             tree_2.branch.repository)
+        # get_revision_graph calls the deprecated
+        # get_revision_graph_with_ghosts once for each repository.
+        expected_warning = symbol_versioning.deprecation_string(
+            tree_1.branch.repository.get_revision_graph_with_ghosts,
+            one_three)
+        rev_graph = self.callDeprecated([expected_warning, expected_warning],
+                        source.get_revision_graph, 'B')
         self.assertEqual({'B':['A'],
-                          'A':[]},
-                         source.get_revision_graph('B'))
+                          'A':[]}, rev_graph)
 
 
 class TestReservedId(TestCase):

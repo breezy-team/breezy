@@ -233,6 +233,7 @@ def _revision_graph(revision, revision_source):
     return root, ancestors, descendants
 
 
+@deprecated_function(symbol_versioning.one_three)
 def combined_graph(revision_a, revision_b, revision_source):
     """Produce a combined ancestry graph.
     Return graph root, ancestors map, descendants map, set of common nodes"""
@@ -321,6 +322,8 @@ def common_ancestor(revision_a, revision_b, revision_source,
 
 class MultipleRevisionSources(object):
     """Proxy that looks in multiple branches for revisions."""
+
+    @symbol_versioning.deprecated_method(symbol_versioning.one_three)
     def __init__(self, *args):
         object.__init__(self)
         assert len(args) != 0
