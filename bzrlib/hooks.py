@@ -74,10 +74,10 @@ class Hooks(dict):
         """
         try:
             self[hook_name].append(a_callable)
-            if name is not None:
-                self.name_hook(a_callable, name)
         except KeyError:
             raise errors.UnknownHook(self.__class__.__name__, hook_name)
+        if name is not None:
+            self.name_hook(a_callable, name)
 
     def name_hook(self, a_callable, name):
         """Associate name with a_callable to show users what is running."""
