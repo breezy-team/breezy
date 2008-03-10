@@ -250,8 +250,9 @@ class LineBasedParser(object):
 
 # Regular expression used for parsing. (Note: The spec states that the name
 # part should be non-empty but git-fast-export doesn't always do that so
-# the first bit is \w*, not \w+.)
-_WHO_AND_WHEN_RE = re.compile(r'(\w*) <(.+)> (.+)')
+# the first bit is \w*, not \w+.) Also git-fast-import code says the
+# space before the email is optional.
+_WHO_AND_WHEN_RE = re.compile(r'([^<]*)<(.+)> (.+)')
 
 
 class ImportParser(LineBasedParser):
@@ -434,14 +435,21 @@ class ImportParser(LineBasedParser):
                 return self.read_until(rest[2:])
             else:
                 size = int(rest)
-                return self.read_bytes(size)
+                read_bytes = self.read_bytes(size)
+                # optional LF after data.
+                next = self.input.readline()
+                self.lineno += 1
+                if len(next) > 1 or next != "\n":
+                    self.push_line(next[:-1])
+                return read_bytes
         else:
             self.abort(errors.MissingSection, required_for, section)
 
     def _who_when(self, s, cmd, section):
         """Parse who and when information from a string.
         
-        :return: a tuple of (name,email,timestamp,timezone)
+        :return: a tuple of (name,email,timestamp,timezone). name may be
+            the empty string if only an email address was given.
         """
         match = _WHO_AND_WHEN_RE.search(s)
         if match:
@@ -456,7 +464,11 @@ class ImportParser(LineBasedParser):
                     format = 'rfc2822'
                 self.date_parser = dates.DATE_PARSERS_BY_NAME[format]
             when = self.date_parser(datestr)
-            return (match.group(1),match.group(2),when[0],when[1])
+            name = match.group(1)
+            if len(name) > 0:
+                if name[-1] == " ":
+                    name = name[:-1]
+            return (name,match.group(2),when[0],when[1])
         else:
             self.abort(errors.BadFormat, cmd, section, s)
 

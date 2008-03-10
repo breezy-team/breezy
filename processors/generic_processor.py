@@ -571,7 +571,6 @@ class GenericCommitHandler(processor.CommitHandler):
     def pre_process_files(self):
         """Prepare for committing."""
         self.revision_id = self.gen_revision_id()
-        self.inv_delta = []
         # cache of texts for this commit, indexed by file-id
         self.lines_for_commit = {}
 
@@ -604,7 +603,6 @@ class GenericCommitHandler(processor.CommitHandler):
 
     def post_process_files(self):
         """Save the revision."""
-        self.inventory.apply_delta(self.inv_delta)
         self.cache_mgr.inventories[self.revision_id] = self.inventory
 
         # Load the revision into the repository
@@ -671,8 +669,9 @@ class GenericCommitHandler(processor.CommitHandler):
         old_path = filecmd.old_path
         new_path = filecmd.new_path
         file_id = self.bzr_file_id(old_path)
-        ie = self.inventory[file_id]
-        self.inv_delta.append((old_path, new_path, file_id, ie))
+        basename, new_parent_ie = self._ensure_directory(new_path)
+        new_parent_id = new_parent_ie.file_id
+        self.inventory.rename(file_id, new_parent_id, basename)
         self.cache_mgr._rename_path(old_path, new_path)
 
     def deleteall_handler(self, filecmd):
