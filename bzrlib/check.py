@@ -259,25 +259,6 @@ def check_branch(branch, verbose):
     branch_result.report_results(verbose)
 
 
-def _check_working_tree(tree):
-    # bit hacky, check the tree parent is accurate
-    tree.lock_read()
-    try:
-        tree_basis = tree.basis_tree()
-        tree_basis.lock_read()
-        try:
-            repo_basis = tree.branch.repository.revision_tree(
-                tree.last_revision())
-            if len(list(repo_basis._iter_changes(tree_basis))):
-                raise errors.BzrCheckError(
-                    "Mismatched basis inventory content.")
-            tree._validate()
-        finally:
-            tree_basis.unlock()
-    finally:
-        tree.unlock()
-
-
 def _get_elements(path):
     try:
         if path == '.':
@@ -319,7 +300,7 @@ def check_dwim(path, verbose):
     if tree is not None:
         note("Checking working tree at '%s'." 
              % (tree.bzrdir.root_transport.base,))
-        _check_working_tree(tree)
+        tree.check()
 
     if branch is not None:
         # We have a branch

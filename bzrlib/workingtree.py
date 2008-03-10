@@ -2506,6 +2506,21 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         self.set_conflicts(un_resolved)
         return un_resolved, resolved
 
+    @needs_read_lock
+    def check(self):
+        # bit hacky, check the tree parent is accurate
+        tree_basis = self.basis_tree()
+        tree_basis.lock_read()
+        try:
+            repo_basis = self.branch.repository.revision_tree(
+                self.last_revision())
+            if len(list(repo_basis._iter_changes(tree_basis))):
+                raise errors.BzrCheckError(
+                    "Mismatched basis inventory content.")
+            self._validate()
+        finally:
+            tree_basis.unlock()
+
     def _validate(self):
         """Validate internal structures.
 
