@@ -82,6 +82,9 @@ IN DEVELOPMENT
       ``bzrlib.plugin.load_from_zip()`` function are deprecated.
       (Alexander Belchenko)
 
+    * ``bzrlib.check.check()`` has been deprecated in favour of the more
+      aptly-named ``bzrlib.check.check_branch()``.  (Daniel Watkins)
+
   TESTING:
 
     * The branch interface tests were invalid for branches using rich-root
