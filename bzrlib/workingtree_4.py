@@ -500,6 +500,16 @@ class WorkingTree4(WorkingTree3):
             mode = os.lstat(self.abspath(path)).st_mode
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
+    def all_file_ids(self):
+        """See Tree.iter_all_file_ids"""
+        self._must_be_locked()
+        result = set()
+        for key, tree_details in self.current_dirstate()._iter_entries():
+            if tree_details[0][0] in ('a', 'r'): # relocated
+                continue
+            result.add(key[2])
+        return result
+
     @needs_read_lock
     def __iter__(self):
         """Iterate through file_ids for this tree.
@@ -1215,6 +1225,19 @@ class WorkingTree4(WorkingTree3):
             for file_id in file_ids:
                 self._inventory.remove_recursive_id(file_id)
 
+    @needs_tree_write_lock
+    def rename_one(self, from_rel, to_rel, after=False):
+        """See WorkingTree.rename_one"""
+        self.flush()
+        WorkingTree.rename_one(self, from_rel, to_rel, after)
+
+    @needs_tree_write_lock
+    def apply_inventory_delta(self, changes):
+        """See MutableTree.apply_inventory_delta"""
+        state = self.current_dirstate()
+        state.update_by_delta(changes)
+        self._make_dirty(reset_inventory=True)
+
     def update_basis_by_delta(self, new_revid, delta):
         """See MutableTree.update_basis_by_delta."""
         assert self.last_revision() != new_revid
@@ -1607,6 +1630,10 @@ class DirStateRevisionTree(Tree):
             raise errors.NoSuchId(tree=self, file_id=file_id)
         return dirstate.DirState._minikind_to_kind[entry[1][0]]
 
+    def stored_kind(self, file_id):
+        """See Tree.stored_kind"""
+        return self.kind(file_id)
+
     def path_content_summary(self, path):
         """See Tree.path_content_summary."""
         id = self.inventory.path2id(path)
@@ -1733,12 +1760,12 @@ class InterDirStateTree(InterTree):
     _matching_to_tree_format = WorkingTreeFormat4()
     _test_mutable_trees_to_test_trees = make_source_parent_tree
 
-    def _iter_changes(self, include_unchanged=False,
+    def iter_changes(self, include_unchanged=False,
                       specific_files=None, pb=None, extra_trees=[],
                       require_versioned=True, want_unversioned=False):
         """Return the changes from source to target.
 
-        :return: An iterator that yields tuples. See InterTree._iter_changes
+        :return: An iterator that yields tuples. See InterTree.iter_changes
             for details.
         :param specific_files: An optional list of file paths to restrict the
             comparison to. When mapping filenames to ids, all matches in all
@@ -1763,7 +1790,7 @@ class InterDirStateTree(InterTree):
         # TODO: handle extra trees in the dirstate.
         if (extra_trees or specific_files == []):
             # we can't fast-path these cases (yet)
-            for f in super(InterDirStateTree, self)._iter_changes(
+            for f in super(InterDirStateTree, self).iter_changes(
                 include_unchanged, specific_files, pb, extra_trees,
                 require_versioned, want_unversioned=want_unversioned):
                 yield f
@@ -1773,7 +1800,7 @@ class InterDirStateTree(InterTree):
                 or self.source._revision_id == NULL_REVISION), \
                 "revision {%s} is not stored in {%s}, but %s " \
                 "can only be used for trees stored in the dirstate" \
-                % (self.source._revision_id, self.target, self._iter_changes)
+                % (self.source._revision_id, self.target, self.iter_changes)
         target_index = 0
         if self.source._revision_id == NULL_REVISION:
             source_index = None

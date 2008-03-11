@@ -36,7 +36,7 @@ class MailClient(object):
         self.config = config
 
     def compose(self, prompt, to, subject, attachment, mime_subtype,
-                extension):
+                extension, basename=None):
         """Compose (and possibly send) an email message
 
         Must be implemented by subclasses.
@@ -51,21 +51,25 @@ class MailClient(object):
             "plain", "x-patch", etc.
         :param extension: The file extension associated with the attachment
             type, e.g. ".patch"
+        :param basename: The name to use for the attachment, e.g.
+            "send-nick-3252"
         """
         raise NotImplementedError
 
-    def compose_merge_request(self, to, subject, directive):
+    def compose_merge_request(self, to, subject, directive, basename=None):
         """Compose (and possibly send) a merge request
 
         :param to: The address to send the request to
         :param subject: The subject line to use for the request
         :param directive: A merge directive representing the merge request, as
             a bytestring.
+        :param basename: The name to use for the attachment, e.g.
+            "send-nick-3252"
         """
         prompt = self._get_merge_prompt("Please describe these changes:", to,
                                         subject, directive)
         self.compose(prompt, to, subject, directive,
-            'x-patch', '.patch')
+            'x-patch', '.patch', basename)
 
     def _get_merge_prompt(self, prompt, to, subject, attachment):
         """Generate a prompt string.  Overridden by Editor.
@@ -90,7 +94,7 @@ class Editor(MailClient):
                          attachment.decode('utf-8', 'replace')))
 
     def compose(self, prompt, to, subject, attachment, mime_subtype,
-                extension):
+                extension, basename=None):
         """See MailClient.compose"""
         if not to:
             raise errors.NoMailAddressSpecified()
@@ -118,17 +122,22 @@ class ExternalMailClient(MailClient):
             return self._client_commands
 
     def compose(self, prompt, to, subject, attachment, mime_subtype,
-                extension):
+                extension, basename=None):
         """See MailClient.compose.
 
         Writes the attachment to a temporary file, invokes _compose.
         """
-        fd, pathname = tempfile.mkstemp(extension, 'bzr-mail-')
+        if basename is None:
+            basename = 'attachment'
+        pathname = tempfile.mkdtemp(prefix='bzr-mail-')
+        attach_path = osutils.pathjoin(pathname, basename + extension)
+        outfile = open(attach_path, 'wb')
         try:
-            os.write(fd, attachment)
+            outfile.write(attachment)
         finally:
-            os.close(fd)
-        self._compose(prompt, to, subject, pathname, mime_subtype, extension)
+            outfile.close()
+        self._compose(prompt, to, subject, attach_path, mime_subtype,
+                      extension)
 
     def _compose(self, prompt, to, subject, attach_path, mime_subtype,
                 extension):
@@ -295,12 +304,12 @@ class DefaultMail(MailClient):
             return XDGEmail(self.config)
 
     def compose(self, prompt, to, subject, attachment, mime_subtype,
-                extension):
+                extension, basename=None):
         """See MailClient.compose"""
         try:
             return self._mail_client().compose(prompt, to, subject,
                                                attachment, mimie_subtype,
-                                               extension)
+                                               extension, basename)
         except errors.MailClientNotFound:
             return Editor(self.config).compose(prompt, to, subject,
                           attachment, mimie_subtype, extension)

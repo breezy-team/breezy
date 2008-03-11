@@ -1572,6 +1572,8 @@ def get_transport(base, possible_transports=None):
     if base is None:
         base = '.'
     last_err = None
+    from bzrlib.directory_service import directories
+    base = directories.dereference(base)
 
     def convert_path_to_url(base, error_str):
         m = _urlRE.match(base)

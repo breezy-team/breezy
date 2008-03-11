@@ -15,13 +15,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-from cStringIO import StringIO
-
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from warnings import warn
-
-import bzrlib
 from bzrlib import (
         bzrdir,
         cache_utf8,
@@ -30,16 +25,13 @@ from bzrlib import (
         errors,
         lockdir,
         lockable_files,
-        osutils,
         revision as _mod_revision,
         transport,
-        tree,
         tsort,
         ui,
         urlutils,
         )
-from bzrlib.config import BranchConfig, TreeConfig
-from bzrlib.lockable_files import LockableFiles, TransportLock
+from bzrlib.config import BranchConfig
 from bzrlib.tag import (
     BasicTags,
     DisabledTags,
@@ -47,20 +39,9 @@ from bzrlib.tag import (
 """)
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
-from bzrlib.errors import (BzrError, BzrCheckError, DivergedBranches,
-                           HistoryMissing, InvalidRevisionId,
-                           InvalidRevisionNumber, LockError, NoSuchFile,
-                           NoSuchRevision, NotVersionedError,
-                           NotBranchError, UninitializableFormat,
-                           UnlistableStore, UnlistableBranch,
-                           )
 from bzrlib.hooks import Hooks
-from bzrlib.symbol_versioning import (deprecated_function,
-                                      deprecated_method,
-                                      DEPRECATED_PARAMETER,
-                                      deprecated_passed,
-                                      zero_eight, zero_nine, zero_sixteen,
-                                      zero_ninetyone,
+from bzrlib.symbol_versioning import (deprecated_method,
+                                      zero_sixteen,
                                       )
 from bzrlib.trace import mutter, mutter_callsite, note, is_quiet
 
@@ -279,8 +260,7 @@ class Branch(object):
             if last_revision is None:
                 pb.update('get source history')
                 last_revision = from_branch.last_revision()
-                if last_revision is None:
-                    last_revision = _mod_revision.NULL_REVISION
+                last_revision = _mod_revision.ensure_null(last_revision)
             return self.repository.fetch(from_branch.repository,
                                          revision_id=last_revision,
                                          pb=nested_pb)
@@ -338,7 +318,7 @@ class Branch(object):
         assert isinstance(revno, int)
         rh = self.revision_history()
         if not (1 <= revno <= len(rh)):
-            raise InvalidRevisionNumber(revno)
+            raise errors.InvalidRevisionNumber(revno)
         return self.repository.get_revision_delta(rh[revno-1])
 
     @deprecated_method(zero_sixteen)
@@ -464,7 +444,7 @@ class Branch(object):
         common_index = min(self_len, other_len) -1
         if common_index >= 0 and \
             self_history[common_index] != other_history[common_index]:
-            raise DivergedBranches(self, other)
+            raise errors.DivergedBranches(self, other)
 
         if stop_revision is None:
             stop_revision = other_len
@@ -643,7 +623,7 @@ class Branch(object):
         Zero (the NULL revision) is considered invalid
         """
         if revno < 1 or revno > self.revno():
-            raise InvalidRevisionNumber(revno)
+            raise errors.InvalidRevisionNumber(revno)
 
     @needs_read_lock
     def clone(self, to_bzrdir, revision_id=None):
@@ -851,8 +831,8 @@ class BranchFormat(object):
             transport = a_bzrdir.get_branch_transport(None)
             format_string = transport.get("format").read()
             return klass._formats[format_string]
-        except NoSuchFile:
-            raise NotBranchError(path=transport.base)
+        except errors.NoSuchFile:
+            raise errors.NotBranchError(path=transport.base)
         except KeyError:
             raise errors.UnknownFormatError(format=format_string)
 
@@ -1140,8 +1120,8 @@ class BzrBranchFormat5(BranchFormat):
                               _control_files=control_files,
                               a_bzrdir=a_bzrdir,
                               _repository=a_bzrdir.find_repository())
-        except NoSuchFile:
-            raise NotBranchError(path=transport.base)
+        except errors.NoSuchFile:
+            raise errors.NotBranchError(path=transport.base)
 
 
 class BzrBranchFormat6(BzrBranchFormat5):
@@ -1413,6 +1393,7 @@ class BzrBranch(Branch):
         configured to check constraints on history, in which case this may not
         be permitted.
         """
+        revision_id = _mod_revision.ensure_null(revision_id)
         history = self._lefthand_history(revision_id)
         assert len(history) == revno, '%d != %d' % (len(history), revno)
         self.set_revision_history(history)
@@ -1429,21 +1410,23 @@ class BzrBranch(Branch):
         if 'evil' in debug.debug_flags:
             mutter_callsite(4, "_lefthand_history scales with history.")
         # stop_revision must be a descendant of last_revision
-        stop_graph = self.repository.get_revision_graph(revision_id)
-        if (last_rev is not None and last_rev != _mod_revision.NULL_REVISION
-            and last_rev not in stop_graph):
-            # our previous tip is not merged into stop_revision
-            raise errors.DivergedBranches(self, other_branch)
+        graph = self.repository.get_graph()
+        if last_rev is not None:
+            if not graph.is_ancestor(last_rev, revision_id):
+                # our previous tip is not merged into stop_revision
+                raise errors.DivergedBranches(self, other_branch)
         # make a new revision history from the graph
+        parents_map = graph.get_parent_map([revision_id])
+        if revision_id not in parents_map:
+            raise errors.NoSuchRevision(self, revision_id)
         current_rev_id = revision_id
         new_history = []
-        while current_rev_id not in (None, _mod_revision.NULL_REVISION):
+        # Do not include ghosts or graph origin in revision_history
+        while (current_rev_id in parents_map and
+               len(parents_map[current_rev_id]) > 0):
             new_history.append(current_rev_id)
-            current_rev_id_parents = stop_graph[current_rev_id]
-            try:
-                current_rev_id = current_rev_id_parents[0]
-            except IndexError:
-                current_rev_id = None
+            current_rev_id = parents_map[current_rev_id][0]
+            parents_map = graph.get_parent_map([current_rev_id])
         new_history.reverse()
         return new_history
 
@@ -1548,7 +1531,7 @@ class BzrBranch(Branch):
         for l in _locs:
             try:
                 return self.control_files.get(l).read().strip('\n')
-            except NoSuchFile:
+            except errors.NoSuchFile:
                 pass
         return None
 
@@ -1632,7 +1615,7 @@ class BzrBranch(Branch):
         result.old_revno, result.old_revid = target.last_revision_info()
         try:
             target.update_revisions(self, stop_revision)
-        except DivergedBranches:
+        except errors.DivergedBranches:
             if not overwrite:
                 raise
         if overwrite:
@@ -1771,7 +1754,7 @@ class BzrBranch5(BzrBranch):
         else:
             try:
                 self.control_files._transport.delete('bound')
-            except NoSuchFile:
+            except errors.NoSuchFile:
                 return False
             return True
 
@@ -1843,13 +1826,13 @@ class BzrBranch6(BzrBranch5):
         Intended to be called by set_last_revision_info and
         _write_revision_history.
         """
-        if revision_id is None:
-            revision_id = 'null:'
+        assert revision_id is not None, "Use NULL_REVISION, not None"
         out_string = '%d %s\n' % (revno, revision_id)
         self.control_files.put_bytes('last-revision', out_string)
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
+        revision_id = _mod_revision.ensure_null(revision_id)
         if self._get_append_revisions_only():
             self._check_history_violation(revision_id)
         self._write_last_revision_info(revno, revision_id)
@@ -1978,6 +1961,14 @@ class BzrBranch6(BzrBranch5):
     def _make_tags(self):
         return BasicTags(self)
 
+    @needs_write_lock
+    def generate_revision_history(self, revision_id, last_rev=None,
+                                  other_branch=None):
+        """See BzrBranch5.generate_revision_history"""
+        history = self._lefthand_history(revision_id, last_rev, other_branch)
+        revno = len(history)
+        self.set_last_revision_info(revno, revision_id)
+
 
 ######################################################################
 # results of operations
@@ -2088,6 +2079,6 @@ class Converter5to6(object):
         new_branch.control_files._transport.delete('revision-history')
         try:
             branch.set_parent(None)
-        except NoSuchFile:
+        except errors.NoSuchFile:
             pass
         branch.set_bound_location(None)
