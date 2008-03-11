@@ -8,6 +8,8 @@ bzr-svn 0.4.8	2008-03-11
 
    * Add progress bar to fetch initialization code. 
 
+   * Fix performance regression in sqlite queries.
+
 bzr-svn 0.4.7	2008-02-01
  
   FEATURES
