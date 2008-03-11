@@ -25,7 +25,7 @@ from bzrlib.errors import (InvalidRevisionId, NotBranchError, NoSuchFile,
 from bzrlib.inventory import Inventory, InventoryFile, InventoryLink
 from bzrlib.lockable_files import TransportLock, LockableFiles
 from bzrlib.lockdir import LockDir
-from bzrlib.osutils import file_kind, fingerprint_file
+from bzrlib.osutils import file_kind, fingerprint_file, supports_executable
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 from bzrlib.tree import RevisionTree
@@ -693,9 +693,13 @@ class SvnWorkingTree(WorkingTree):
         finally:
             self.branch.unlock()
 
-    def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
-        file_id = self.basis_tree().path2(path)
-        return self.basis_tree()._inventory[file_id].executable
+    if not supports_executable():
+        def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
+            file_id = self.basis_tree().path2(path)
+            return self.basis_tree()._inventory[file_id].executable
+
+        def is_executable(self, file_id, path=None):
+            return self.basis_tree()._inventory[file_id].executable
 
 
 class SvnWorkingTreeFormat(WorkingTreeFormat):
