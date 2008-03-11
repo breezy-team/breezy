@@ -2576,3 +2576,8 @@ class UnsupportedTimezoneFormat(BzrError):
 
     def __init__(self, timezone):
         self.timezone = timezone
+
+
+class NotATerminal(BzrError):
+
+    _fmt = 'Unable to ask password without real terminal.'

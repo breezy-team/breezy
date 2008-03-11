@@ -54,6 +54,9 @@ IN DEVELOPMENT
     * Disable plink's interactive prompt for password.
       (#107593, Dmitry Vasiliev)
 
+    * Don't ask a password if there is no real terminal.
+      (Alexander Belchenko, #69851)
+
     * Include quick-start-summary.svg file to python-based installer(s)
       for Windows. (#192924, Alexander Belchenko)
 
