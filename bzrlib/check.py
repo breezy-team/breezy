@@ -251,6 +251,8 @@ def check(branch, verbose):
     
     Results are reported through logging.
     
+    Deprecated in 1.3.  Please use check_branch instead.
+
     :raise BzrCheckError: if there's a consistency error.
     """
     check_branch(branch, verbose)
