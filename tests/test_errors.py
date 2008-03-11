@@ -67,6 +67,9 @@ class TestConvertError(TestCase):
     def test_convert_unknown_hostname(self):
         self.assertIsInstance(convert_error(SubversionException("Unknown hostname 'bla'", SVN_ERR_UNKNOWN_HOSTNAME)), ConnectionError)
 
+    def test_not_implemented(self):
+        self.assertIsInstance(convert_error(SubversionException("Remote server doesn't support ...", svn.core.SVN_ERR_RA_NOT_IMPLEMENTED)), NotImplementedError)
+
     def test_decorator_nothrow(self):
         @convert_svn_error
         def test_nothrow(foo):
