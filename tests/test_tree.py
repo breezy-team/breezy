@@ -18,6 +18,8 @@
 
 from bzrlib.workingtree import WorkingTree
 
+import os, sys
+
 from tree import SvnBasisTree
 from tests import TestCaseWithSubversionRepository
 
@@ -42,8 +44,9 @@ class TestBasisTree(TestCaseWithSubversionRepository):
         self.assertFalse(tree.inventory[tree.inventory.path2id("file")].executable)
 
     def test_symlink(self):
+        if sys.platform == 'win32':
+            return
         self.make_client("d", "dc")
-        import os
         os.symlink("target", "dc/file")
         self.build_tree({"dc/file": "x"})
         self.client_add("dc/file")
@@ -56,8 +59,9 @@ class TestBasisTree(TestCaseWithSubversionRepository):
                          tree.inventory[tree.inventory.path2id("file")].symlink_target)
 
     def test_symlink_next(self):
+        if sys.platform == 'win32':
+            return
         self.make_client("d", "dc")
-        import os
         os.symlink("target", "dc/file")
         self.build_tree({"dc/file": "x", "dc/bla": "p"})
         self.client_add("dc/file")
@@ -73,8 +77,9 @@ class TestBasisTree(TestCaseWithSubversionRepository):
                          tree.inventory[tree.inventory.path2id("file")].symlink_target)
 
     def test_executable_link(self):
+        if sys.platform == 'win32':
+            return
         self.make_client("d", "dc")
-        import os
         os.symlink("target", "dc/file")
         self.build_tree({"dc/file": "x"})
         self.client_add("dc/file")

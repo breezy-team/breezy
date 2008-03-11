@@ -28,7 +28,7 @@ from bzrlib.repository import Repository
 from bzrlib.revision import NULL_REVISION, Revision
 from bzrlib.tests import TestCase
 
-import os
+import os, sys
 
 import svn.fs
 

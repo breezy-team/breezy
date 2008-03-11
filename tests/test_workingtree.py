@@ -28,7 +28,7 @@ from bzrlib.workingtree import WorkingTree
 import svn.core
 import svn.wc
 
-import os
+import os, sys
 
 from mapping import MAPPING_VERSION, default_mapping
 from transport import svn_config
@@ -433,6 +433,8 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertTrue(inv[inv.path2id("bla")].executable)
 
     def test_symlink(self):
+        if sys.platform == 'win32':
+            return
         self.make_client('a', 'dc')
         os.symlink("target", "dc/bla")
         self.client_add("dc/bla")

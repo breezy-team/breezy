@@ -23,7 +23,7 @@ from bzrlib.repository import Repository
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.trace import mutter
 
-import os
+import os, sys
 from convert import convert_repository, NotDumpFile, load_dumpfile
 from format import get_rich_root_format
 from mapping import default_mapping
