@@ -281,15 +281,23 @@ class cmd_svn_push(Command):
     functionality is included in "bzr push".
     """
     takes_args = ['location?']
-    takes_options = ['revision', 'remember']
+    takes_options = ['revision', 'remember', Option('directory',
+            help='Branch to push from, '
+                 'rather than the one containing the working directory.',
+            short_name='d',
+            type=unicode,
+            )]
 
-    def run(self, location=None, revision=None, remember=False):
+    def run(self, location=None, revision=None, remember=False, 
+            directory=None):
         from bzrlib.bzrdir import BzrDir
         from bzrlib.branch import Branch
         from bzrlib.errors import NotBranchError, BzrCommandError
         from bzrlib import urlutils
 
-        source_branch = Branch.open_containing(".")[0]
+        if directory is None:
+            directory = "."
+        source_branch = Branch.open_containing(directory)[0]
         stored_loc = source_branch.get_push_location()
         if location is None:
             if stored_loc is None:

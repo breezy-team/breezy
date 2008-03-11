@@ -12,6 +12,8 @@ bzr-svn 0.4.8	2008-03-11
 
    * Fix performance regression in sqlite queries.
 
+   * Add -d option to the svn-push command. 
+
 bzr-svn 0.4.7	2008-02-01
  
   FEATURES
