@@ -20,6 +20,7 @@
 import shutil
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
+from bzrlib.osutils import has_symlinks
 from bzrlib.repository import Repository
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestSkipped, KnownFailure
@@ -1423,6 +1424,8 @@ Node-copyfrom-path: x
         self.assertTrue(inv1[inv1.path2id("blie")].executable)
 
     def test_fetch_symlink(self):
+        if not has_symlinks():
+            return
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/bla': "data"})
         os.symlink('bla', 'dc/mylink')
