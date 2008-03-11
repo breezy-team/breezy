@@ -20,6 +20,7 @@
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoSuchFile, OutOfDateTree
 from bzrlib.inventory import Inventory
+from bzrlib.osutils import has_symlinks, supports_executable
 from bzrlib.tests import KnownFailure
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
@@ -421,6 +422,8 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertEqual(['.svn', 'bl'], list(tree.extras()))
 
     def test_executable(self):
+        if not supports_executable():
+            return
         self.make_client('a', 'dc')
         self.build_tree({"dc/bla": "data"})
         self.client_add("dc/bla")
