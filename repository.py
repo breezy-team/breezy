@@ -1137,7 +1137,11 @@ class SvnRepository(Repository):
         finally:
             pb.finished()
 
+        pb = ui.ui_factory.nested_progress_bar()
+        i = 0
         for p in created_branches:
+            pb.update("determining branch last changes", 
+                      i, len(created_branches))
             j = self._log.find_latest_change(p, to_revnum, 
                                              include_parents=True,
                                              include_children=True)
@@ -1145,6 +1149,8 @@ class SvnRepository(Repository):
                 j = created_branches[p]
             assert isinstance(j, int)
             ret.append((p, j, True))
+            i += 1
+        pb.finished()
 
         return ret
 

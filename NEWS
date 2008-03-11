@@ -1,4 +1,12 @@
-bzr-svn 0.4.8	UNRELEASED
+bzr-svn 0.4.8	2008-03-11
+
+  BUG FIXES
+
+   * Fix compatibility with Bazaar 1.2.
+
+  FEATURES
+
+   * Add progress bar to fetch initialization code. 
 
 bzr-svn 0.4.7	2008-02-01
  
