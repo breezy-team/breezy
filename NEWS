@@ -12,11 +12,13 @@ bzr-svn 0.4.8	2008-03-11
 
    * Fix path to URL conversion for Windows NT. (#188233)
 
+   * Fix performance regression in sqlite queries.
+
   FEATURES
 
    * Add progress bar to fetch initialization code. 
 
-   * Fix performance regression in sqlite queries.
+   * Add another progress bar to the branch detection code.
 
    * Add -d option to the svn-push command. 
 
