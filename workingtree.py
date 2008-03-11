@@ -694,12 +694,12 @@ class SvnWorkingTree(WorkingTree):
             self.branch.unlock()
 
     if not supports_executable():
-        def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
-            file_id = self.basis_tree().path2(path)
-            return self.basis_tree()._inventory[file_id].executable
-
         def is_executable(self, file_id, path=None):
-            return self.basis_tree()._inventory[file_id].executable
+            inv = self.basis_tree()._inventory
+            if file_id in inv:
+                return inv[file_id].executable
+            # Default to not executable
+            return False
 
 
 class SvnWorkingTreeFormat(WorkingTreeFormat):
