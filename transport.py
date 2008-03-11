@@ -54,6 +54,15 @@ def _create_auth_baton(pool):
         svn.client.get_ssl_server_trust_file_provider(pool),
         ]
 
+    if hasattr(svn.client, 'get_windows_simple_provider'):
+        providers.append(svn.client.get_windows_simple_provider(pool))
+
+    if hasattr(svn.client, 'get_keychain_simple_provider'):
+        providers.append(svn.client.get_keychain_simple_provider(pool))
+
+    if hasattr(svn.client, 'get_windows_ssl_server_trust_provider'):
+        providers.append(svn.client.get_windows_ssl_server_trust_provider(pool))
+
     return svn.core.svn_auth_open(providers, pool)
 
 
