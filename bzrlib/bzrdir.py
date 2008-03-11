@@ -1491,8 +1491,9 @@ class BzrDirFormat(object):
         mutter('created control directory in ' + transport.base)
         control = transport.clone('.bzr')
         utf8_files = [('README', 
-                       "This is a Bazaar-NG control directory.\n"
-                       "Do not change any files in this directory.\n"),
+                       "This is a Bazaar control directory.\n"
+                       "Do not change any files in this directory.\n"
+                       "See http://bazaar-vcs.org/ for more information about Bazaar.\n"),
                       ('branch-format', self.get_format_string()),
                       ]
         # NB: no need to escape relative paths that are url safe.
