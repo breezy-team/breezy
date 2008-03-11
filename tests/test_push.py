@@ -92,7 +92,7 @@ class TestPush(TestCaseWithSubversionRepository):
         svnbranch = self.svndir.open_branch()
         svnbranch.pull(self.bzrdir.open_branch())
 
-        repos = self.svndir.find_repository()
+        repos = self.svndir._find_repository()
         self.assertEquals(newid, svnbranch.last_revision())
         inv = repos.get_inventory(repos.generate_revision_id(2, "", "none"))
         self.assertEqual(newid, inv[inv.path2id('foo/bla')].revision)
@@ -112,7 +112,7 @@ class TestPush(TestCaseWithSubversionRepository):
 
         self.svndir.open_branch().pull(self.bzrdir.open_branch())
 
-        repos = self.svndir.find_repository()
+        repos = self.svndir._find_repository()
         inv = repos.get_inventory(repos.generate_revision_id(2, "", "none"))
         self.assertTrue(inv.has_filename('file'))
         self.assertEquals(wt.branch.last_revision(),
@@ -121,7 +121,7 @@ class TestPush(TestCaseWithSubversionRepository):
                         self.svndir.open_branch().last_revision())
 
     def test_override_revprops(self):
-        self.svndir.find_repository().get_config().set_user_option("override-svn-revprops", "True")
+        self.svndir._find_repository().get_config().set_user_option("override-svn-revprops", "True")
         self.build_tree({'dc/file': 'data'})
         wt = self.bzrdir.open_workingtree()
         wt.add('file')
@@ -140,7 +140,7 @@ class TestPush(TestCaseWithSubversionRepository):
 
         self.svndir.open_branch().pull(self.bzrdir.open_branch())
 
-        repos = self.svndir.find_repository()
+        repos = self.svndir._find_repository()
         inv = repos.get_inventory(repos.generate_revision_id(2, "", "none"))
         self.assertTrue(inv.has_filename('file'))
         self.assertEquals(wt.branch.last_revision(),
@@ -159,7 +159,7 @@ class TestPush(TestCaseWithSubversionRepository):
 
         self.svndir.open_branch().pull(self.bzrdir.open_branch())
 
-        repos = self.svndir.find_repository()
+        repos = self.svndir._find_repository()
         inv = repos.get_inventory(repos.generate_revision_id(2, "", "none"))
         self.assertTrue(inv.has_filename('south'))
         self.assertEquals('symlink', inv[inv.path2id('south')].kind)
@@ -173,7 +173,7 @@ class TestPush(TestCaseWithSubversionRepository):
 
         self.svndir.open_branch().pull(self.bzrdir.open_branch())
 
-        repos = self.svndir.find_repository()
+        repos = self.svndir._find_repository()
         inv = repos.get_inventory(repos.generate_revision_id(2, "", "none"))
         self.assertTrue(inv.has_filename('file'))
         self.assertEquals(wt.branch.last_revision(),
@@ -208,7 +208,7 @@ class TestPush(TestCaseWithSubversionRepository):
 
         self.svndir.open_branch().pull(self.bzrdir.open_branch())
 
-        repos = self.svndir.find_repository()
+        repos = self.svndir._find_repository()
         self.assertEqual("Commit from Bzr",
           repos.get_revision(repos.generate_revision_id(2, "", "none")).message)
 
@@ -232,7 +232,7 @@ class TestPush(TestCaseWithSubversionRepository):
 
         self.svndir.open_branch().pull(self.bzrdir.open_branch())
 
-        rev1 = self.svndir.find_repository().get_revision(wt.branch.last_revision())
+        rev1 = self.svndir._find_repository().get_revision(wt.branch.last_revision())
         rev2 = self.bzrdir.find_repository().get_revision(wt.branch.last_revision())
 
         self.assertEqual(rev1.committer, rev2.committer)
@@ -254,7 +254,7 @@ class TestPush(TestCaseWithSubversionRepository):
 
         self.svndir.open_branch().pull(self.bzrdir.open_branch())
 
-        repos = self.svndir.find_repository()
+        repos = self.svndir._find_repository()
 
         self.assertEqual(repos.generate_revision_id(3, "", "none"), 
                         self.svndir.open_branch().last_revision())

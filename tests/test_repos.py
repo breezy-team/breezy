@@ -451,7 +451,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         """ Test UUID is retrieved correctly """
         bzrdir = self.make_local_bzrdir('c', 'cc')
         self.assertTrue(isinstance(bzrdir, BzrDir))
-        repository = bzrdir.find_repository()
+        repository = bzrdir._find_repository()
         fs = self.open_fs('c')
         self.assertEqual(svn.fs.get_uuid(fs), repository.uuid)
 
