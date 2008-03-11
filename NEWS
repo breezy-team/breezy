@@ -10,7 +10,7 @@ bzr-svn 0.4.8	2008-03-11
 
    * Support using platform-specific auth providers when available.
 
-   * Fix path to URL conversion for Windows NT.
+   * Fix path to URL conversion for Windows NT. (#188233)
 
   FEATURES
 
