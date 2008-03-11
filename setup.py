@@ -9,7 +9,7 @@ Run it with
 import os
 import sys
 
-if sys.hexversion < 0x02040000:
+if sys.version_info < (2, 4):
     sys.stderr.write("[ERROR] Not a supported Python version. Need 2.4+\n")
     sys.exit(1)
 
