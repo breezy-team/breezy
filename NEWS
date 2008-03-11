@@ -6,6 +6,8 @@ bzr-svn 0.4.8	2008-03-11
 
    * Don't provide find_repository() implementation. (#193814)
 
+   * Allow specifying path inside repository in svn-branching-scheme. (#190331)
+
   FEATURES
 
    * Add progress bar to fetch initialization code. 
