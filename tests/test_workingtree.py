@@ -433,7 +433,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertTrue(inv[inv.path2id("bla")].executable)
 
     def test_symlink(self):
-        if sys.platform == 'win32':
+        if not has_symlinks():
             return
         self.make_client('a', 'dc')
         os.symlink("target", "dc/bla")
