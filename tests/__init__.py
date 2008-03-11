@@ -16,7 +16,8 @@
 
 """Tests for the bzr-svn plugin."""
 
-import os, sys
+import os
+import sys
 import bzrlib
 from bzrlib import osutils
 from bzrlib.bzrdir import BzrDir
