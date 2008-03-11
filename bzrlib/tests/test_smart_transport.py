@@ -2313,6 +2313,36 @@ class TestProtocolThree(TestSmartProtocol):
 #            body)
 
 
+class TestConventionalResponseHandler(tests.TestCase):
+
+    def test_interrupted_body_stream(self):
+        interrupted_body_stream = (
+            'oS' # successful response
+            's\0\0\0\x02le' # empty args
+            'b\0\0\0\x09chunk one' # first chunk
+            'b\0\0\0\x09chunk two' # second chunk
+            'oE' # error flag
+            's\0\0\0\x0el5:error3:abce' # bencoded error
+            'e' # message end
+            )
+        from bzrlib.smart.message import ConventionalResponseHandler
+        response_handler = ConventionalResponseHandler()
+        protocol_decoder = protocol._ProtocolThreeBase(response_handler)
+        # put decoder in desired state (waiting for message parts)
+        protocol_decoder.state_accept = protocol_decoder._state_accept_expecting_message_part
+        output = StringIO()
+        client_medium = medium.SmartSimplePipesClientMedium(
+            StringIO(interrupted_body_stream), output)
+        medium_request = client_medium.get_request()
+        medium_request.finished_writing()
+        response_handler.setProtoAndMedium(protocol_decoder, medium_request)
+        stream = response_handler.read_streamed_body()
+        self.assertEqual('chunk one', stream.next())
+        self.assertEqual('chunk two', stream.next())
+        exc = self.assertRaises(errors.ErrorFromSmartServer, stream.next)
+        self.assertEqual(('error', 'abc'), exc.error_tuple)
+
+
 class InstrumentedRequestHandler(object):
     """Test Double of SmartServerRequestHandler."""
 

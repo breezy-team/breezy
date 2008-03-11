@@ -997,7 +997,7 @@ class SmartClientRequestProtocolThree(_ProtocolThreeBase, SmartClientRequestProt
         # XXX: warn if expect_body doesn't match the response?
         self._wait_for_request_end()
         if self.response_handler.error_args is not None:
-            self._translate_error()
+            _translate_error(self.response_handler.error_args)
             return self.response_handler.error_args
         return self.response_handler.args
 
@@ -1011,18 +1011,19 @@ class SmartClientRequestProtocolThree(_ProtocolThreeBase, SmartClientRequestProt
         self._wait_for_request_end()
         return self.response_handler.prefixed_body.read(count)
 
-    def _translate_error(self, error_tuple):
-        # XXX: Hmm!  Need state from the request.  Hmm.
-        error_name = error_tuple[0]
-        error_args = error_tuple[1:]
-        if error_name == 'LockContention':
-            raise errors.LockContention('(remote lock)')
-        elif error_name == 'LockFailed':
-            raise errors.LockContention(*error_args[:2])
-        else:
-            return # XXX
-            raise errors.UnexpectedSmartServerResponse('Sucktitude: %r' %
-                    (error_tuple,))
+
+def _translate_error(error_tuple):
+    # XXX: Hmm!  Need state from the request.  Hmm.
+    error_name = error_tuple[0]
+    error_args = error_tuple[1:]
+    if error_name == 'LockContention':
+        raise errors.LockContention('(remote lock)')
+    elif error_name == 'LockFailed':
+        raise errors.LockContention(*error_args[:2])
+    else:
+        return # XXX
+        raise errors.UnexpectedSmartServerResponse('Sucktitude: %r' %
+                (error_tuple,))
 
 
 class _ProtocolThreeEncoder(object):

@@ -98,7 +98,10 @@ class ConventionalResponseHandler(MessageHandler):
         self.status = None
         self.args = None
         self._bytes_parts = collections.deque()
+        self._body_started = False
+        self._body_stream_status = None
         self._body = None
+        self._body_error_args = None
         self.finished_reading = False
 
     def setProtoAndMedium(self, protocol_decoder, medium):
@@ -106,23 +109,41 @@ class ConventionalResponseHandler(MessageHandler):
         self._medium = medium
 
     def byte_part_received(self, byte):
-        if self.status is not None:
-            raise errors.SmartProtocolError(
-                'Unexpected byte part received: %r' % (byte,))
         if byte not in ['E', 'S']:
             raise errors.SmartProtocolError(
                 'Unknown response status: %r' % (byte,))
-        self.status = byte
+        if self._body_started:
+            if self._body_stream_status is not None:
+                raise errors.SmartProtocolError(
+                    'Unexpected byte part received: %r' % (byte,))
+            self._body_stream_status = byte
+        else:
+            if self.status is not None:
+                raise errors.SmartProtocolError(
+                    'Unexpected byte part received: %r' % (byte,))
+            self.status = byte
 
     def bytes_part_received(self, bytes):
+        self._body_started = True
         self._bytes_parts.append(bytes)
 
     def structure_part_received(self, structure):
-        if self.args is not None:
+        if type(structure) is not list:
             raise errors.SmartProtocolError(
-                'Unexpected structure received: %r (already got %r)'
-                % (structure, self.args))
-        self.args = structure
+                'Args structure is not a sequence: %r' % (structure,))
+        structure = tuple(structure)
+        if not self._body_started:
+            if self.args is not None:
+                raise errors.SmartProtocolError(
+                    'Unexpected structure received: %r (already got %r)'
+                    % (structure, self.args))
+            self.args = structure
+        else:
+            if self._body_stream_status != 'E':
+                raise errors.SmartProtocolError(
+                    'Unexpected structure received after body: %r'
+                    % (structure,))
+            self._body_error_args = structure
 
     def _wait_for_response_args(self):
         while self.args is None and not self.finished_reading:
@@ -178,6 +199,21 @@ class ConventionalResponseHandler(MessageHandler):
             while self._bytes_parts:
                 yield self._bytes_parts.popleft()
             self._read_more()
+        if self._body_stream_status == 'E':
+            _translate_error(self._body_error_args)
 
     def cancel_read_body(self):
         self._wait_for_response_end()
+
+
+def _translate_error(error_tuple):
+    # XXX: Hmm!  Need state from the request.  Hmm.
+    error_name = error_tuple[0]
+    error_args = error_tuple[1:]
+    if error_name == 'LockContention':
+        raise errors.LockContention('(remote lock)')
+    elif error_name == 'LockFailed':
+        raise errors.LockContention(*error_args[:2])
+    else:
+        raise errors.ErrorFromSmartServer(error_tuple)
+

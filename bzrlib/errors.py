@@ -2379,6 +2379,16 @@ class UnexpectedSmartServerResponse(BzrError):
         self.response_tuple = response_tuple
 
 
+class ErrorFromSmartServer(BzrError):
+
+    _fmt = "Error received from smart server: %(error_tuple)r"
+
+    internal_error = True
+
+    def __init__(self, error_tuple):
+        self.error_tuple = error_tuple
+
+
 class ContainerError(BzrError):
     """Base class of container errors."""
 
