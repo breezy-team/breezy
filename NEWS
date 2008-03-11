@@ -45,6 +45,9 @@ IN DEVELOPMENT
    * Merge directives that are automatically attached to emails have nicer
      filenames, based on branch-nick + revno. (Aaron Bentley)
 
+   * The ``hooks`` command lists installed hooks, to assist in debugging.
+     (Daniel Watkins)
+
   BUGFIXES:
 
     * Disable plink's interactive prompt for password.
