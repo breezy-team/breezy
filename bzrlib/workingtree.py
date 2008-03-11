@@ -508,7 +508,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         basis = self.basis_tree()
         basis.lock_read()
         try:
-            changes = self._iter_changes(basis, True, [self.id2path(file_id)],
+            changes = self.iter_changes(basis, True, [self.id2path(file_id)],
                 require_versioned=True).next()
             changed_content, kind = changes[2], changes[6]
             if not changed_content:
@@ -1935,7 +1935,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             has_changed_files = len(unknown_nested_files) > 0
             if not has_changed_files:
                 for (file_id, path, content_change, versioned, parent_id, name,
-                     kind, executable) in self._iter_changes(self.basis_tree(),
+                     kind, executable) in self.iter_changes(self.basis_tree(),
                          include_unchanged=True, require_versioned=False,
                          want_unversioned=True, specific_files=files):
                     if versioned == (False, False):

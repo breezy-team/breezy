@@ -8,7 +8,7 @@ IN DEVELOPMENT
 --------------
 
   NOTES WHEN UPGRADING:
-  
+
   CHANGES:
 
     * A new repository format 'development' has been added. This format will
@@ -28,7 +28,7 @@ IN DEVELOPMENT
       bzr.exe, installed to ``C:\Program Files\Bazaar\plugins`` directory, 
       and standalone installer allows user to skip installation of this plugin.
       (Alexander Belchenko)
- 
+
     * Restore auto-detection of plink.exe on Windows. (Dmitry Vasiliev)
 
   FEATURES:
@@ -38,6 +38,17 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+   * BzrBranch._lefthand_history is faster on pack repos.  (Aaron Bentley)
+
+   * Branch6.generate_revision_history is faster.  (Aaron Bentley)
+
+   * Directory services can now be registered, allowing special URLs to be
+     dereferenced into real URLs.  This is a generalization and cleanup of
+     the lp: transport lookup.  (Aaron Bentley)
+
+   * Merge directives that are automatically attached to emails have nicer
+     filenames, based on branch-nick + revno. (Aaron Bentley)
+
   BUGFIXES:
 
     * Disable plink's interactive prompt for password.
@@ -46,11 +57,21 @@ IN DEVELOPMENT
     * Include quick-start-summary.svg file to python-based installer(s)
       for Windows. (#192924, Alexander Belchenko)
 
+    * lca merge now respects specified files. (Aaron Bentley)
+
+    * Make version-info --custom imply --all. (#195560, James Westby)
+
     * ``merge --preview`` now works for merges that add or modify
       symlinks (James Henstridge)
 
-    * Upgrade bundled ConfigObj to version 4.5.1, which properly quotes #
+    * Redirecting the output from ``bzr merge`` (when the remembered
+      location is used) now works. (John Arbash Meinel)
+
+    * Upgrade bundled ConfigObj to version 4.5.2, which properly quotes #
       signs, among other small improvements. (Matt Nordhoff, #86838)
+
+    * Use correct indices when emitting LCA conflicts.  This fixes IndexError
+      errors.  (Aaron Bentley, #196780)
 
   API BREAKS:
 
@@ -66,6 +87,11 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * Autopacking no longer holds the full set of inventory lines in
+      memory while copying. For large repositories, this can amount to
+      hundreds of MB of ram consumption.
+      (Ian Clatworthy, John Arbash Meinel)
+
     * New module ``tools/package_mf.py`` provide custom module finder for
       python packages (improves standard python library's modulefinder.py)
       used by ``setup.py`` script while building standalone bzr.exe.
@@ -80,6 +106,10 @@ IN DEVELOPMENT
       ``supports_external_lookups`` used to indicate repositories which support
       falling back to other repositories when they have partial data.
       (Robert Collins)
+
+    * ``Tree.iter_changes`` is now a public API, replacing the work-in-progress
+      ``Tree._iter_changes``. The api is now considered stable and ready for
+      external users.  (Aaron Bentley)
 
     * The bzrdir format registry now accepts an ``alias`` keyword to
       register_metadir, used to indicate that a format name is an alias for
