@@ -22,6 +22,7 @@ from bzrlib import osutils
 from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.trace import mutter
+from bzrlib.urlutils import local_path_to_url
 from bzrlib.workingtree import WorkingTree
 
 import svn.repos, svn.wc
@@ -46,7 +47,6 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         :return: Handle to the repository.
         """
         abspath = os.path.join(self.test_dir, relpath)
-        repos_url = "file://%s" % abspath
 
         svn.repos.create(abspath, '', '', None, None)
 
@@ -59,7 +59,7 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
                 open(revprop_hook, 'w').write("#!/bin/sh\n")
                 os.chmod(revprop_hook, os.stat(revprop_hook).st_mode | 0111)
 
-        return repos_url
+        return local_path_to_url(abspath)
 
     def make_remote_bzrdir(self, relpath):
         """Create a repository."""
