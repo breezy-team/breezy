@@ -38,8 +38,9 @@ from bzrlib import revision
 from bzrlib.branch import Branch
 from bzrlib.errors import BzrCheckError
 from bzrlib.repository import Repository
-import bzrlib.ui
+from bzrlib.symbol_versioning import deprecated_function, one_three
 from bzrlib.trace import log_error, note
+import bzrlib.ui
 from bzrlib.workingtree import WorkingTree
 
 class Check(object):
@@ -244,11 +245,22 @@ class Check(object):
             seen_names[path] = True
 
 
-def check_branch(branch, verbose):
+@deprecated_function(one_three)
+def check(branch, verbose):
     """Run consistency checks on a branch.
     
     Results are reported through logging.
     
+    :raise BzrCheckError: if there's a consistency error.
+    """
+    check_branch(branch, verbose)
+
+
+def check_branch(branch, verbose):
+    """Run consistency checks on a branch.
+
+    Results are reported through logging.
+
     :raise BzrCheckError: if there's a consistency error.
     """
     branch.lock_read()
