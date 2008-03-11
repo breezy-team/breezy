@@ -68,7 +68,12 @@ class TestCheckout(TestCaseWithSubversionRepository):
     def test_find_repository(self):
         self.make_client("d", "dc")
         x = self.open_checkout_bzrdir("dc")
-        self.assertTrue(hasattr(x.find_repository(), "uuid"))
+        self.assertRaises(NoRepositoryPresent, x.find_repository)
+
+    def test__find_repository(self):
+        self.make_client("d", "dc")
+        x = self.open_checkout_bzrdir("dc")
+        self.assertTrue(hasattr(x._find_repository(), "uuid"))
 
     def test_needs_format_conversion_default(self):
         self.make_client("d", "dc")

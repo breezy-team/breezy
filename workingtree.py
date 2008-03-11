@@ -748,7 +748,7 @@ class SvnCheckout(BzrDir):
         # FIXME: honor force_new_repo
         # FIXME: Use recurse
         result = get_rich_root_format().initialize(url)
-        repo = self.find_repository()
+        repo = self._find_repository()
         repo.clone(result, revision_id)
         branch = self.open_branch()
         branch.sprout(result, revision_id)
@@ -759,6 +759,9 @@ class SvnCheckout(BzrDir):
         raise NoRepositoryPresent(self)
 
     def find_repository(self):
+        raise NoRepositoryPresent(self)
+
+    def _find_repository(self):
         return SvnRepository(self, self.svn_root_transport, 
                              self.remote_bzrdir.branch_path)
 
@@ -781,7 +784,7 @@ class SvnCheckout(BzrDir):
 
     def open_branch(self, unsupported=True):
         """See BzrDir.open_branch()."""
-        repos = self.find_repository()
+        repos = self._find_repository()
 
         try:
             branch = SvnBranch(self.svn_root_transport.base, repos, 

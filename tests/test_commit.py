@@ -309,7 +309,7 @@ class TestPush(TestCaseWithSubversionRepository):
 
         self.olddir.open_branch().pull(self.newdir.open_branch())
 
-        repos = self.olddir.find_repository()
+        repos = self.olddir._find_repository()
         inv = repos.get_inventory(repos.generate_revision_id(2, "", "none"))
         self.assertEqual(repos.generate_revision_id(2, "", "none"),
                          inv[inv.path2id('foo/bla')].revision)
@@ -328,7 +328,7 @@ class TestPush(TestCaseWithSubversionRepository):
 
         self.olddir.open_branch().pull(self.newdir.open_branch())
 
-        repos = self.olddir.find_repository()
+        repos = self.olddir._find_repository()
         inv = repos.get_inventory(repos.generate_revision_id(2, "", "none"))
         self.assertTrue(inv.has_filename('file'))
         self.assertEqual(wt.branch.last_revision(), 
@@ -344,7 +344,7 @@ class TestPush(TestCaseWithSubversionRepository):
 
         self.olddir.open_branch().pull(self.newdir.open_branch())
 
-        repos = self.olddir.find_repository()
+        repos = self.olddir._find_repository()
         inv = repos.get_inventory(repos.generate_revision_id(2, "", "none"))
         self.assertTrue(inv.has_filename('file'))
         self.assertEquals(wt.branch.last_revision(), 
@@ -366,7 +366,7 @@ class TestPush(TestCaseWithSubversionRepository):
 
         self.olddir.open_branch().pull(self.newdir.open_branch())
 
-        repos = self.olddir.find_repository()
+        repos = self.olddir._find_repository()
         self.assertEqual("Commit from Bzr",
             repos.get_revision(
                 repos.generate_revision_id(2, "", "none")).message)
@@ -379,7 +379,7 @@ class TestPush(TestCaseWithSubversionRepository):
 
         self.olddir.open_branch().pull(self.newdir.open_branch())
 
-        repos = self.olddir.find_repository()
+        repos = self.olddir._find_repository()
         self.assertEqual(u"\xe6\xf8\xe5", repos.get_revision(
             repos.generate_revision_id(2, "", "none")).message)
 
@@ -478,7 +478,7 @@ class TestPushNested(TestCaseWithSubversionRepository):
         wt.add('file')
         wt.commit(message="Commit from Bzr")
         self.olddir.open_branch().pull(self.newdir.open_branch())
-        repos = self.olddir.find_repository()
+        repos = self.olddir._find_repository()
         self.client_update("sc")
         self.assertTrue(os.path.exists("sc/foo/trunk/file"))
         self.assertFalse(os.path.exists("sc/foo/trunk/filel"))
