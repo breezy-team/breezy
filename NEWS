@@ -18,7 +18,7 @@ bzr-svn 0.4.8	2008-03-11
 
   BUG FIXES
 
-   * Fix compatibility with Bazaar 1.2.
+   * Fix compatibility with Bazaar 1.2. (#196002)
 
    * Don't provide find_repository() implementation. (#193814)
 
