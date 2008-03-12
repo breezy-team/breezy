@@ -18,29 +18,12 @@
 
 from bzrlib import (
     commands,
+    errors,
     option,
+    revisionspec,
     transport,
     workingtree,
     )
-
-def upload_full_tree(tree, tdest):
-    tdest.ensure_base() # XXX: Handle errors
-    tree.lock_read()
-    try:
-        inv = tree.inventory
-        entries = inv.iter_entries()
-        entries.next() # skip root
-        for dp, ie in entries:
-            # .bzrignore has no meaning outside of a working tree
-            # so do not export it
-            if dp == ".bzrignore":
-                continue
-
-            import pdb; pdb.set_trace()
-            ie.put_on_disk(tdest.local_abspath('.'), dp, tree)
-    finally:
-        tree.unlock()
-
 
 class cmd_upload(commands.Command):
     """Upload a working tree, as a whole or incrementally.
@@ -53,27 +36,77 @@ class cmd_upload(commands.Command):
         'revision',
         option.Option('full', 'Upload the full working tree.'),
        ]
+
     def run(self, dest, full=False, revision=None):
-        tree = workingtree.WorkingTree.open_containing(u'.')[0]
-        b = tree.branch
+        wt = workingtree.WorkingTree.open_containing(u'.')[0]
+        b = wt.branch
 
         if dest is None:
             raise NotImplementedError
         else:
-            tdest = transport.get_transport(dest)
+            self.dest = transport.get_transport(dest)
         if revision is None:
-            rev_id = tree.last_revision()
+            rev_id = wt.last_revision()
         else:
             if len(revision) != 1:
                 raise errors.BzrCommandError(
                     'bzr upload --revision takes exactly 1 argument')
             rev_id = revision[0].in_history(b).rev_id
 
-        tree_to_upload = b.repository.revision_tree(rev_id)
+        self.rev_id = rev_id
+        self.tree = b.repository.revision_tree(rev_id)
         if full:
-            upload_full_tree(tree_to_upload, tdest)
+            self.upload_full_tree()
         else:
-            raise NotImplementedError
+            rev1 = revisionspec.RevisionSpec.from_string('1')
+            rev1_id = rev1.in_history(b).rev_id
+            from_tree = b.repository.revision_tree(rev1_id)
+            self.upload_tree(from_tree)
+
+    def set_uploaded_revid(self, rev_id):
+        # XXX: Rename to .bzr/uploaded ? Add tests for concurrent updates, etc.
+        self.dest.put_bytes('.bzr.uploaded', rev_id)
+
+    def upload_full_tree(self):
+        self.dest.ensure_base() # XXX: Handle errors
+        self.tree.lock_read()
+        dpath = self.dest.local_abspath('.')
+        try:
+            inv = self.tree.inventory
+            entries = inv.iter_entries()
+            entries.next() # skip root
+            for dp, ie in entries:
+                # .bzrignore has no meaning outside of a working tree
+                # so do not export it
+                if dp == ".bzrignore":
+                    continue
+
+                ie.put_on_disk(dpath, dp, self.tree)
+            self.set_uploaded_revid(self.rev_id)
+        finally:
+            self.tree.unlock()
+
+    def upload_tree(self, from_tree):
+        self.dest.ensure_base() # XXX: Handle errors
+        # XXX: add tests for directories
+        changes = self.tree.changes_from(from_tree)
+        self.tree.lock_read()
+        try:
+            for (path, id, kind) in changes.added:
+                if kind is 'file':
+                    self.dest.put_bytes(path, self.tree.get_file_text(id))
+                else:
+                    raise NotImplementedError
+            # XXX: Add a test for exec_change
+            for (path, id, kind,
+                 content_change, exec_change) in changes.modified:
+                if kind is 'file':
+                    self.dest.put_bytes(path, self.tree.get_file_text(id))
+                else:
+                    raise NotImplementedError
+            self.set_uploaded_revid(self.rev_id)
+        finally:
+            self.tree.unlock()
 
 
 commands.register_command(cmd_upload)
