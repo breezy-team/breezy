@@ -591,11 +591,64 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
         self.add_version('REV2', ['ROOT'], 'abce')
         # both sides merge, discarding others' changes
         self.add_version('LCA1', ['REV1', 'REV2'], 'abcd')
-        self.add_version('LCA2', ['REV1', 'REV2'], 'abce')
+        self.add_version('LCA2', ['REV1', 'REV2'], 'fabce')
         plan = self.plan_merge_vf.plan_lca_merge('LCA1', 'LCA2')
-        self.assertEqual([('unchanged', 'a\n'),
+        self.assertEqual([('new-b', 'f\n'),
+                          ('unchanged', 'a\n'),
                           ('unchanged', 'b\n'),
                           ('unchanged', 'c\n'),
                           ('conflicted-a', 'd\n'),
                           ('conflicted-b', 'e\n'),
                          ], list(plan))
+
+
+class TestMergeImplementation(object):
+
+    def do_merge(self, target_tree, source_tree, **kwargs):
+        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+            target_tree, source_tree.last_revision(),
+            other_branch=source_tree.branch)
+        merger.merge_type=self.merge_type
+        for name, value in kwargs.items():
+            setattr(merger, name, value)
+        merger.do_merge()
+
+    def test_merge_specific_file(self):
+        this_tree = self.make_branch_and_tree('this')
+        this_tree.lock_write()
+        self.addCleanup(this_tree.unlock)
+        self.build_tree_contents([
+            ('this/file1', 'a\nb\n'),
+            ('this/file2', 'a\nb\n')
+        ])
+        this_tree.add(['file1', 'file2'])
+        this_tree.commit('Added files')
+        other_tree = this_tree.bzrdir.sprout('other').open_workingtree()
+        self.build_tree_contents([
+            ('other/file1', 'a\nb\nc\n'),
+            ('other/file2', 'a\nb\nc\n')
+        ])
+        other_tree.commit('modified both')
+        self.build_tree_contents([
+            ('this/file1', 'd\na\nb\n'),
+            ('this/file2', 'd\na\nb\n')
+        ])
+        this_tree.commit('modified both')
+        self.do_merge(this_tree, other_tree, interesting_files=['file1'])
+        self.assertFileEqual('d\na\nb\nc\n', 'this/file1')
+        self.assertFileEqual('d\na\nb\n', 'this/file2')
+
+
+class TestMerge3Merge(TestCaseWithTransport, TestMergeImplementation):
+
+    merge_type = _mod_merge.Merge3Merger
+
+
+class TestWeaveMerge(TestCaseWithTransport, TestMergeImplementation):
+
+    merge_type = _mod_merge.WeaveMerger
+
+
+class TestLCAMerge(TestCaseWithTransport, TestMergeImplementation):
+
+    merge_type = _mod_merge.LCAMerger

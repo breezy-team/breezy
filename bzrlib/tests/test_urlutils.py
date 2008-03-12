@@ -290,6 +290,7 @@ class TestUrlToPath(TestCase):
             raise TestSkipped("local encoding cannot handle unicode")
 
         self.assertEqual('file:///path/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
+        self.assertFalse(isinstance(result, unicode))
 
     def test_posix_local_path_from_url(self):
         from_url = urlutils._posix_local_path_from_url
@@ -321,6 +322,7 @@ class TestUrlToPath(TestCase):
             raise TestSkipped("local encoding cannot handle unicode")
 
         self.assertEqual('file:///D:/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
+        self.assertFalse(isinstance(result, unicode))
 
     def test_win32_unc_path_to_url(self):
         to_url = urlutils._win32_local_path_to_url
@@ -335,7 +337,7 @@ class TestUrlToPath(TestCase):
             raise TestSkipped("local encoding cannot handle unicode")
 
         self.assertEqual('file://HOST/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
-
+        self.assertFalse(isinstance(result, unicode))
 
     def test_win32_local_path_from_url(self):
         from_url = urlutils._win32_local_path_from_url
@@ -490,6 +492,7 @@ class TestUrlToPath(TestCase):
     def test_escape(self):
         self.assertEqual('%25', urlutils.escape('%'))
         self.assertEqual('%C3%A5', urlutils.escape(u'\xe5'))
+        self.assertFalse(isinstance(urlutils.escape(u'\xe5'), unicode))
 
     def test_unescape(self):
         self.assertEqual('%', urlutils.unescape('%25'))

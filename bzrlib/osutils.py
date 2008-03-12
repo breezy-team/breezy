@@ -147,7 +147,7 @@ def file_kind(f, _lstat=os.lstat, _mapper=file_kind_from_stat_mode):
     try:
         return _mapper(_lstat(f).st_mode)
     except OSError, e:
-        if getattr(e, 'errno', None) == errno.ENOENT:
+        if getattr(e, 'errno', None) in (errno.ENOENT, errno.ENOTDIR):
             raise errors.NoSuchFile(f)
         raise
 
@@ -851,6 +851,13 @@ def delete_any(path):
 
 def has_symlinks():
     if getattr(os, 'symlink', None) is not None:
+        return True
+    else:
+        return False
+
+
+def has_hardlinks():
+    if getattr(os, 'link', None) is not None:
         return True
     else:
         return False

@@ -103,7 +103,7 @@ class cmd_version_info(Command):
         else:
             b = wt.branch
 
-        if all:
+        if all or template:
             include_history = True
             check_clean = True
             include_file_revisions=True

@@ -187,12 +187,16 @@ def _rollover_trace_maybe(trace_fname):
 
 
 def _get_bzr_log_filename():
-    # TODO: should this be overridden by $BZR_HOME?
-    if sys.platform == 'win32':
-        from bzrlib import win32utils
-        home = win32utils.get_home_location()
-    else:
-        home = os.path.expanduser('~')
+    bzr_log = os.environ.get('BZR_LOG')
+    if bzr_log:
+        return bzr_log
+    home = os.environ.get('BZR_HOME')
+    if home is None:
+        if sys.platform == 'win32':
+            from bzrlib import win32utils
+            home = win32utils.get_home_location()
+        else:
+            home = os.path.expanduser('~')
     return os.path.join(home, '.bzr.log')
 
 

@@ -8,24 +8,132 @@ IN DEVELOPMENT
 --------------
 
   NOTES WHEN UPGRADING:
-  
+
   CHANGES:
+
+    * A new repository format 'development' has been added. This format will
+      represent the latest 'in-progress' format that the bzr developers are
+      interested in getting early-adopter testing and feedback on.
+      ``doc/developers/development-repo.txt`` has detailed information.
+      (Robert Collins)
+
+    * BZR_LOG environment variable controls location of .bzr.log trace file. 
+      User can suppress writing messages to .bzr.log by using '/dev/null'
+      filename (on Linux) or 'NUL' (on Windows). If BZR_LOG variable 
+      is not defined but BZR_HOME is defined then default location
+      for .bzr.log trace file is ``$BZR_HOME/.bzr.log``.
+      (Alexander Belchenko)
+
+    * ``launchpad`` builtin plugin now shipped as separate part in standalone
+      bzr.exe, installed to ``C:\Program Files\Bazaar\plugins`` directory, 
+      and standalone installer allows user to skip installation of this plugin.
+      (Alexander Belchenko)
+
+    * Restore auto-detection of plink.exe on Windows. (Dmitry Vasiliev)
 
   FEATURES:
 
+   * ``branch`` and ``checkout`` can hard-link working tree files, which is
+     faster and saves space.  (Aaron Bentley)
+
   IMPROVEMENTS:
+
+   * BzrBranch._lefthand_history is faster on pack repos.  (Aaron Bentley)
+
+   * Branch6.generate_revision_history is faster.  (Aaron Bentley)
+
+   * Directory services can now be registered, allowing special URLs to be
+     dereferenced into real URLs.  This is a generalization and cleanup of
+     the lp: transport lookup.  (Aaron Bentley)
+
+   * Merge directives that are automatically attached to emails have nicer
+     filenames, based on branch-nick + revno. (Aaron Bentley)
 
   BUGFIXES:
 
+    * Disable plink's interactive prompt for password.
+      (#107593, Dmitry Vasiliev)
+
+    * Encode command line arguments from unicode to user_encoding before
+      invoking external mail client in `bzr send` command.
+      (#139318, Alexander Belchenko)
+
+    * Include quick-start-summary.svg file to python-based installer(s)
+      for Windows. (#192924, Alexander Belchenko)
+
+    * lca merge now respects specified files. (Aaron Bentley)
+
+    * Make version-info --custom imply --all. (#195560, James Westby)
+
+    * ``merge --preview`` now works for merges that add or modify
+      symlinks (James Henstridge)
+
+    * Redirecting the output from ``bzr merge`` (when the remembered
+      location is used) now works. (John Arbash Meinel)
+
+    * UnknownFormatErrors no longer refer to branches regardless of kind of
+      unknown format. (Daniel Watkins, #173980)
+
+    * Upgrade bundled ConfigObj to version 4.5.2, which properly quotes #
+      signs, among other small improvements. (Matt Nordhoff, #86838)
+
+    * Use correct indices when emitting LCA conflicts.  This fixes IndexError
+      errors.  (Aaron Bentley, #196780)
+
   API BREAKS:
+
+    * Support for loading plugins from zip files and
+      ``bzrlib.plugin.load_from_zip()`` function are deprecated.
+      (Alexander Belchenko)
 
   TESTING:
 
+    * The branch interface tests were invalid for branches using rich-root
+      repositories because the empty string is not a valid file-id.
+      (Robert Collins)
+
   INTERNALS:
 
+    * Autopacking no longer holds the full set of inventory lines in
+      memory while copying. For large repositories, this can amount to
+      hundreds of MB of ram consumption.
+      (Ian Clatworthy, John Arbash Meinel)
 
-bzr 1.2rc1 (not released yet)
------------------------------
+    * New module ``tools/package_mf.py`` provide custom module finder for
+      python packages (improves standard python library's modulefinder.py)
+      used by ``setup.py`` script while building standalone bzr.exe.
+      (Alexander Belchenko)
+
+    * New remote method ``RemoteBzrDir.find_repositoryV2`` adding support for
+      detecting external lookup support on remote repositories. This method is
+      now attempted first when lookup up repositories, leading to an extra 
+      round trip on older bzr smart servers. (Robert Collins)
+ 
+    * Repository formats have a new supported-feature attribute
+      ``supports_external_lookups`` used to indicate repositories which support
+      falling back to other repositories when they have partial data.
+      (Robert Collins)
+
+    * ``Tree.iter_changes`` is now a public API, replacing the work-in-progress
+      ``Tree._iter_changes``. The api is now considered stable and ready for
+      external users.  (Aaron Bentley)
+
+    * The bzrdir format registry now accepts an ``alias`` keyword to
+      register_metadir, used to indicate that a format name is an alias for
+      some other format and thus should not be reported when describing the
+      format. (Robert Collins)
+
+
+bzr 1.2 2008-02-15
+------------------
+
+  BUG FIXES:
+
+    * Fix failing test in Launchpad plugin. (Martin Pool)
+
+
+bzr 1.2rc1 2008-02-13
+---------------------
 
   NOTES WHEN UPGRADING:
   
@@ -107,17 +215,25 @@ bzr 1.2rc1 (not released yet)
 
     * Clearer error when ``version-info --custom`` is used without
       ``--template`` (Lukáš Lalinský)
+
+    * Don't raise UnavailableFeature during test setup when medusa is not
+      available or tearDown is never called leading to nasty side effects.
+      (#137823, Vincent Ladeuil)
+
+    * If a plugin's test suite cannot be loaded, for example because of a syntax
+      error in the tests, then ``selftest`` fails, rather than just printing 
+      a warning.  (Martin Pool, #189771)
       
     * List possible values for BZR_SSH environment variable in env-variables
       help topic. (Alexander Belchenko, #181842)
 
-   * New methods ``push_log_file`` and ``pop_log_file`` to intercept messages:
-     popping the log redirection now precisely restores the previous state,
-     which makes it easier to use bzr log output from other programs.
-     TestCaseInTempDir no longer depends on a log redirection being established
-     by the test framework, which lets bzr tests cleanly run from a normal
-     unittest runner.
-     (#124153, #124849, Martin Pool, Jonathan Lange)
+    * New methods ``push_log_file`` and ``pop_log_file`` to intercept messages:
+      popping the log redirection now precisely restores the previous state,
+      which makes it easier to use bzr log output from other programs.
+      TestCaseInTempDir no longer depends on a log redirection being established
+      by the test framework, which lets bzr tests cleanly run from a normal
+      unittest runner.
+      (#124153, #124849, Martin Pool, Jonathan Lange)
 
     * ``pull --quiet`` is now more quiet, in particular a message is no longer
       printed when the remembered pull location is used. (James Westby,
@@ -153,9 +269,9 @@ bzr 1.2rc1 (not released yet)
 
   TESTING:
 
-   * selftest now accepts --load-list <file> to load a test id list. This
-     speeds up running the test suite on a limited set of tests.
-     (Vincent Ladeuil)
+    * selftest now accepts --load-list <file> to load a test id list. This
+      speeds up running the test suite on a limited set of tests.
+      (Vincent Ladeuil)
 
   INTERNALS:
 
@@ -190,10 +306,10 @@ bzr 1.2rc1 (not released yet)
       which will split out ghosts and present parents into two separate sets,
       useful for code which needs to be aware of ghosts (e.g. fetching data
       cares about ghosts during revision selection). (Robert Collins)
- 
+
     * Record a timestamp against each mutter to the trace file, relative to the
       first import of bzrlib.  (Andrew Bennetts)
-     
+
     * ``Repository.get_data_stream`` is now deprecated in favour of
       ``Repository.get_data_stream_for_search`` which allows less network
       traffic when requesting data streams over a smart server. (Robert Collins)
@@ -201,13 +317,13 @@ bzr 1.2rc1 (not released yet)
     * ``RemoteBzrDir._get_tree_branch`` no longer triggers ``_ensure_real``,
       removing one round trip on many network operations. (Robert Collins)
 
+    * RemoteTransport's ``recommended_page_size`` method now returns 64k, like
+      SFTPTransport and HttpTransportBase.  (Andrew Bennetts)
+
     * Repository has a new method ``has_revisions`` which signals the presence
       of many revisions by returning a set of the revisions listed which are
       present. This can be done by index queries without reading data for parent
       revision names etc. (Robert Collins)
-
-    * RemoteTransport's ``recommended_page_size`` method now returns 64k, like
-      SFTPTransport and HttpTransportBase.  (Andrew Bennetts)
 
 
 bzr 1.1 2008-01-15

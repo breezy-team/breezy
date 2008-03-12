@@ -347,6 +347,7 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
     rich_root_data = False
     supports_tree_reference = False
     supports_ghosts = False
+    supports_external_lookups = False
 
     def initialize(self, a_bzrdir, shared=False, _internal=False):
         """Create a weave repository."""

@@ -22,15 +22,12 @@ import re
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-
 from bzrlib import (
     errors,
-    log,
     revisionspec,
-    symbol_versioning,
     )
 """)
-from bzrlib.trace import warning
+
 from bzrlib import (
     registry as _mod_registry,
     )

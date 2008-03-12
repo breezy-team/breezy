@@ -534,8 +534,13 @@ class cmd_mv(Command):
         if len(names_list) < 2:
             raise errors.BzrCommandError("missing file argument")
         tree, rel_names = tree_files(names_list)
-        
-        if os.path.isdir(names_list[-1]):
+
+        dest = names_list[-1]
+        isdir = os.path.isdir(dest)
+        if (isdir and not tree.case_sensitive and len(rel_names) == 2
+            and rel_names[0].lower() == rel_names[1].lower()):
+                isdir = False
+        if isdir:
             # move into existing directory
             for pair in tree.move(rel_names[:-1], rel_names[-1], after=after):
                 self.outf.write("%s => %s\n" % pair)
@@ -546,8 +551,8 @@ class cmd_mv(Command):
                                              ' directory')
             tree.rename_one(rel_names[0], rel_names[1], after=after)
             self.outf.write("%s => %s\n" % (rel_names[0], rel_names[1]))
-            
-    
+
+
 class cmd_pull(Command):
     """Turn this branch into a mirror of another branch.
 
@@ -864,10 +869,12 @@ class cmd_branch(Command):
 
     _see_also = ['checkout']
     takes_args = ['from_location', 'to_location?']
-    takes_options = ['revision']
+    takes_options = ['revision', Option('hardlink',
+        help='Hard-link working tree files where possible.')]
     aliases = ['get', 'clone']
 
-    def run(self, from_location, to_location=None, revision=None):
+    def run(self, from_location, to_location=None, revision=None,
+            hardlink=False):
         from bzrlib.tag import _merge_tags_if_possible
         if revision is None:
             revision = [None]
@@ -905,7 +912,8 @@ class cmd_branch(Command):
                 # preserve whatever source format we have.
                 dir = br_from.bzrdir.sprout(to_transport.base, revision_id,
                                             possible_transports=[to_transport],
-                                            accelerator_tree=accelerator_tree)
+                                            accelerator_tree=accelerator_tree,
+                                            hardlink=hardlink)
                 branch = dir.open_branch()
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
@@ -950,13 +958,16 @@ class cmd_checkout(Command):
                                  "common operations like diff and status without "
                                  "such access, and also support local commits."
                             ),
-                     Option('files-from',
-                            help="Get file contents from this tree.", type=str)
+                     Option('files-from', type=str,
+                            help="Get file contents from this tree."),
+                     Option('hardlink',
+                            help='Hard-link working tree files where possible.'
+                            ),
                      ]
     aliases = ['co']
 
     def run(self, branch_location=None, to_location=None, revision=None,
-            lightweight=False, files_from=None):
+            lightweight=False, files_from=None, hardlink=False):
         if revision is None:
             revision = [None]
         elif len(revision) > 1:
@@ -987,7 +998,7 @@ class cmd_checkout(Command):
                 source.bzrdir.create_workingtree(revision_id)
                 return
         source.create_checkout(to_location, revision_id, lightweight,
-                               accelerator_tree)
+                               accelerator_tree, hardlink)
 
 
 class cmd_renames(Command):
@@ -1929,6 +1940,10 @@ class cmd_ignore(Command):
         Ignore .o files under the lib directory::
 
             bzr ignore "RE:lib/.*\.o"
+
+        Ignore everything but the "debian" toplevel directory::
+
+            bzr ignore "RE:(?!debian/).*"
     """
 
     _see_also = ['status', 'ignored']
@@ -2398,7 +2413,7 @@ class cmd_check(Command):
                 try:
                     repo_basis = tree.branch.repository.revision_tree(
                         tree.last_revision())
-                    if len(list(repo_basis._iter_changes(tree_basis))):
+                    if len(list(repo_basis.iter_changes(tree_basis))):
                         raise errors.BzrCheckError(
                             "Mismatched basis inventory content.")
                     tree._validate()
@@ -2657,9 +2672,9 @@ class cmd_selftest(Command):
             if benchfile is not None:
                 benchfile.close()
         if result:
-            info('tests passed')
+            note('tests passed')
         else:
-            info('tests failed')
+            note('tests failed')
         return int(not result)
 
 
@@ -2997,10 +3012,8 @@ class cmd_merge(Command):
         mutter("%s", stored_location)
         if stored_location is None:
             raise errors.BzrCommandError("No location specified or remembered")
-        display_url = urlutils.unescape_for_display(stored_location,
-            self.outf.encoding)
-        self.outf.write("%s remembered location %s\n" % (verb_string,
-            display_url))
+        display_url = urlutils.unescape_for_display(stored_location, 'utf-8')
+        note(u"%s remembered location %s", verb_string, display_url)
         return stored_location
 
 
@@ -4156,8 +4169,9 @@ class cmd_send(Command):
                 else:
                     revision = branch.repository.get_revision(revision_id)
                     subject += revision.get_summary()
+                basename = directive.get_disk_name(branch)
                 mail_client.compose_merge_request(mail_to, subject,
-                                                  outfile.getvalue())
+                                                  outfile.getvalue(), basename)
         finally:
             if output != '-':
                 outfile.close()

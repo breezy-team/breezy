@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006 - 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,8 +23,8 @@
 
 from bzrlib.branch import Branch
 from bzrlib.commands import Command, Option, register_command
+from bzrlib.directory_service import directories
 from bzrlib.errors import BzrCommandError, NoPublicBranch, NotBranchError
-from bzrlib.transport import register_lazy_transport
 from bzrlib.help_topics import topic_registry
 
 
@@ -171,27 +171,29 @@ class cmd_launchpad_login(Command):
 register_command(cmd_launchpad_login)
 
 
-register_lazy_transport(
-    'lp:',
-    'bzrlib.plugins.launchpad.lp_indirect',
-    'LaunchpadTransport')
+def _register_directory():
+    directories.register_lazy('lp:', 'bzrlib.plugins.launchpad.lp_directory',
+                              'LaunchpadDirectory',
+                              'Launchpad-based directory service',)
+_register_directory()
 
 
 def test_suite():
     """Called by bzrlib to fetch tests for this plugin"""
     from unittest import TestSuite, TestLoader
     from bzrlib.plugins.launchpad import (
-        test_register, test_lp_indirect, test_lp_registration, test_account)
+         test_account, test_lp_directory, test_lp_service, test_register,
+         )
 
     loader = TestLoader()
     suite = TestSuite()
-    for m in [
+    for module in [
         test_account,
         test_register,
-        test_lp_indirect,
-        test_lp_registration,
+        test_lp_directory,
+        test_lp_service,
         ]:
-        suite.addTests(loader.loadTestsFromModule(m))
+        suite.addTests(loader.loadTestsFromModule(module))
     return suite
 
 _launchpad_help = """Integration with Launchpad.net

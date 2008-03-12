@@ -267,6 +267,11 @@ class TestRepository(TestCaseWithRepository):
         text = repo._format.get_format_description()
         self.failUnless(len(text))
 
+    def test_format_supports_external_lookups(self):
+        repo = self.make_repository('.')
+        self.assertSubset(
+            [repo._format.supports_external_lookups], (True, False))
+
     def assertMessageRoundtrips(self, message):
         """Assert that message roundtrips to a repository and back intact."""
         tree = self.make_branch_and_tree('.')
