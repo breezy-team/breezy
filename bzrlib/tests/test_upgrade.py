@@ -258,7 +258,9 @@ _upgrade1_template = \
      ('foo', 'new contents\n'),
      ('.bzr/',),
      ('.bzr/README',
-      'This is a Bazaar-NG control directory.\nDo not change any files in this directory.\n'),
+      'This is a Bazaar control directory.\n'
+      'Do not change any files in this directory.\n'
+      'See http://bazaar-vcs.org/ for more information about Bazaar.\n'),
      ('.bzr/branch-format', 'Bazaar-NG branch, format 0.0.4\n'),
      ('.bzr/revision-history',
       'mbp@sourcefrog.net-20051004035611-176b16534b086b3c\n'
@@ -298,8 +300,9 @@ _ghost_template = [
     ),
     ( './.bzr/', ),
     ( './.bzr/README',
-        'This is a Bazaar-NG control directory.\n'
-        'Do not change any files in this directory.\n'
+      'This is a Bazaar control directory.\n'
+      'Do not change any files in this directory.\n'
+      'See http://bazaar-vcs.org/ for more information about Bazaar.\n'
     ),
     ( './.bzr/branch-format',
         'Bazaar-NG branch, format 0.0.4\n'
@@ -363,8 +366,9 @@ _ghost_template = [
 _upgrade_dir_template = [
     ( './.bzr/', ),
     ( './.bzr/README',
-        'This is a Bazaar-NG control directory.\n'
-        'Do not change any files in this directory.\n'
+      'This is a Bazaar control directory.\n'
+      'Do not change any files in this directory.\n'
+      'See http://bazaar-vcs.org/ for more information about Bazaar.\n'
     ),
     ( './.bzr/branch-format',
         'Bazaar-NG branch, format 0.0.4\n'

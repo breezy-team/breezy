@@ -54,6 +54,10 @@ IN DEVELOPMENT
     * Disable plink's interactive prompt for password.
       (#107593, Dmitry Vasiliev)
 
+    * Encode command line arguments from unicode to user_encoding before
+      invoking external mail client in `bzr send` command.
+      (#139318, Alexander Belchenko)
+
     * Include quick-start-summary.svg file to python-based installer(s)
       for Windows. (#192924, Alexander Belchenko)
 
@@ -69,6 +73,9 @@ IN DEVELOPMENT
 
     * setup.py script explicitly checks for Python version.
       (Jari Aalto, Alexander Belchenko, #200569)
+
+    * UnknownFormatErrors no longer refer to branches regardless of kind of
+      unknown format. (Daniel Watkins, #173980)
 
     * Upgrade bundled ConfigObj to version 4.5.2, which properly quotes #
       signs, among other small improvements. (Matt Nordhoff, #86838)
@@ -109,6 +116,10 @@ IN DEVELOPMENT
       ``supports_external_lookups`` used to indicate repositories which support
       falling back to other repositories when they have partial data.
       (Robert Collins)
+
+    * ``Tree.iter_changes`` is now a public API, replacing the work-in-progress
+      ``Tree._iter_changes``. The api is now considered stable and ready for
+      external users.  (Aaron Bentley)
 
     * The bzrdir format registry now accepts an ``alias`` keyword to
       register_metadir, used to indicate that a format name is an alias for
