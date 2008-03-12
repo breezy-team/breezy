@@ -1,5 +1,9 @@
 bzr-svn 0.4.9	UNRELEASED
 
+  FEATURES
+
+   * Set revision properties when possible.
+
   BUGS
   
    * Fix compatibility with bzr 1.3.
@@ -41,8 +45,6 @@ bzr-svn 0.4.7	2008-02-01
    * Implement Repository.find_branches(). (#178108)
 
    * Warn about location when initializing Subversion repository cache.
-
-   * Set revision properties when possible.
 
   BUGS
 
