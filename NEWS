@@ -54,6 +54,10 @@ IN DEVELOPMENT
     * Disable plink's interactive prompt for password.
       (#107593, Dmitry Vasiliev)
 
+    * Encode command line arguments from unicode to user_encoding before
+      invoking external mail client in `bzr send` command.
+      (#139318, Alexander Belchenko)
+
     * Include quick-start-summary.svg file to python-based installer(s)
       for Windows. (#192924, Alexander Belchenko)
 

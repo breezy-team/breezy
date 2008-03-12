@@ -2580,3 +2580,14 @@ class UnsupportedTimezoneFormat(BzrError):
 
     def __init__(self, timezone):
         self.timezone = timezone
+
+
+class UnableEncodePath(BzrError):
+
+    _fmt = ('Unable to encode %(kind)s path %(path)r in '
+            'user encoding %(user_encoding)s')
+
+    def __init__(self, path, kind):
+        self.path = path
+        self.kind = kind
+        self.user_encoding = osutils.get_user_encoding()
