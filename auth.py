@@ -13,6 +13,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+"""Authentication token retrieval."""
+
 from bzrlib.config import AuthenticationConfig
 from bzrlib.ui import ui_factory
 from svn.core import (svn_auth_cred_username_t, 
@@ -43,12 +45,14 @@ class SubversionAuthenticationConfig(AuthenticationConfig):
         :param pool: Allocation pool, is ignored.
         """
         username_cred = svn_auth_cred_username_t()
-        username_cred.username = self.get_user(self.scheme, host=self.host, realm=realm)
+        username_cred.username = self.get_user(self.scheme, 
+                host=self.host, realm=realm)
         username_cred.may_save = False
         return username_cred
 
     def get_svn_simple(self, realm, username, may_save, pool):
-        """Look up a Subversion user name+password combination in the Bazaar authentication cache.
+        """Look up a Subversion user name+password combination in the Bazaar 
+        authentication cache.
 
         :param realm: Authentication realm (optional)
         :param username: Username, if it is already known, or None.
@@ -56,14 +60,16 @@ class SubversionAuthenticationConfig(AuthenticationConfig):
         :param pool: Allocation pool, is ignored.
         """
         simple_cred = svn_auth_cred_simple_t()
-        simple_cred.username = username or self.get_username(realm, may_save, pool, prompt="%s password" % realm)
+        simple_cred.username = username or self.get_username(realm, may_save, 
+                                             pool, prompt="%s password" % realm)
         simple_cred.password = self.get_password(self.scheme, host=self.host, 
                                     user=simple_cred.username, realm=realm,
                                     prompt="%s password" % realm)
         simple_cred.may_save = False
         return simple_cred
 
-    def get_svn_ssl_server_trust(self, realm, failures, cert_info, may_save, pool):
+    def get_svn_ssl_server_trust(self, realm, failures, cert_info, may_save, 
+                                 pool):
         """Return a Subversion auth provider that verifies SSL server trust.
 
         :param realm: Realm name (optional)
@@ -76,11 +82,12 @@ class SubversionAuthenticationConfig(AuthenticationConfig):
         if (credentials is not None and 
             credentials.has_key("verify_certificates") and 
             credentials["verify_certificates"] == False):
-            ssl_server_trust.accepted_failures = (svn.core.SVN_AUTH_SSL_NOTYETVALID + 
-                                                  svn.core.SVN_AUTH_SSL_EXPIRED +
-                                                  svn.core.SVN_AUTH_SSL_CNMISMATCH +
-                                                  svn.core.SVN_AUTH_SSL_UNKNOWNCA +
-                                                  svn.core.SVN_AUTH_SSL_OTHER)
+            ssl_server_trust.accepted_failures = (
+                    svn.core.SVN_AUTH_SSL_NOTYETVALID + 
+                    svn.core.SVN_AUTH_SSL_EXPIRED +
+                    svn.core.SVN_AUTH_SSL_CNMISMATCH +
+                    svn.core.SVN_AUTH_SSL_UNKNOWNCA +
+                    svn.core.SVN_AUTH_SSL_OTHER)
         else:
             ssl_server_trust.accepted_failures = 0
         ssl_server_trust.may_save = False
@@ -92,7 +99,8 @@ class SubversionAuthenticationConfig(AuthenticationConfig):
         
         :param retries: Number of allowed retries.
         """
-        return svn_auth_get_username_prompt_provider(self.get_svn_username, retries)
+        return svn_auth_get_username_prompt_provider(self.get_svn_username, 
+                                                     retries)
 
     def get_svn_simple_prompt_provider(self, retries):
         """Return a Subversion auth provider for retrieving a 
@@ -105,7 +113,8 @@ class SubversionAuthenticationConfig(AuthenticationConfig):
     def get_svn_ssl_server_trust_prompt_provider(self):
         """Return a Subversion auth provider for checking 
         whether a SSL server is trusted."""
-        return svn_auth_get_ssl_server_trust_prompt_provider(self.get_svn_ssl_server_trust)
+        return svn_auth_get_ssl_server_trust_prompt_provider(
+                    self.get_svn_ssl_server_trust)
 
     def get_svn_auth_providers(self):
         """Return a list of auth providers for this authentication file.
@@ -122,12 +131,13 @@ def get_ssl_client_cert_pw(realm, may_save, pool):
     :param may_save: Whether the password can be cached.
     """
     ssl_cred_pw = svn_auth_cred_ssl_client_cert_pw_t()
-    ssl_cred_pw.password = \
-            ui_factory.get_password("Please enter password for client certificate[realm=%s]" % realm)
+    ssl_cred_pw.password = ui_factory.get_password(
+            "Please enter password for client certificate[realm=%s]" % realm)
     ssl_cred_pw.may_save = False
     return ssl_cred_pw
 
 
 def get_ssl_client_cert_pw_provider(tries):
-    return svn_auth_get_ssl_client_cert_pw_prompt_provider(get_ssl_client_cert_pw, tries)
+    return svn_auth_get_ssl_client_cert_pw_prompt_provider(
+                get_ssl_client_cert_pw, tries)
 

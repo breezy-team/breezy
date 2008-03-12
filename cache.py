@@ -42,6 +42,7 @@ See http://bazaar-vcs.org/BzrForeignBranches/Subversion for details.
 """)
     return cache_dir
 
+
 def check_pysqlite_version(sqlite3):
     """Check that sqlite library is compatible.
 

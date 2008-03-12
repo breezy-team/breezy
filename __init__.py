@@ -138,7 +138,10 @@ def lazy_register_optimizers():
 
 
 def get_scheme(schemename):
-    """Parse scheme identifier and return a branching scheme."""
+    """Parse scheme identifier and return a branching scheme.
+    
+    :param schemename: Name of the scheme to retrieve.
+    """
     from scheme import BranchingScheme
     from bzrlib.errors import BzrCommandError
     
