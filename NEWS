@@ -4,28 +4,29 @@ bzr-svn 0.4.9	UNRELEASED
   
    * Fix compatibility with bzr 1.3.
 
-   * Fix performance regression in revmap.
+   * Be a bit quieter with messages about experimental mappings. (#162496)
 
-  FEATURE
+bzr-svn 0.4.8	2008-03-11
+
+  BUG FIXES
+
+   * Fix compatibility with Bazaar 1.2.
+
+   * Don't provide find_repository() implementation. (#193814)
+
+   * Allow specifying path inside repository in svn-branching-scheme. (#190331)
+
+   * Support using platform-specific auth providers when available.
+
+   * Fix path to URL conversion for Windows NT. (#188233)
+
+   * Fix performance regression in sqlite queries.
+
+  FEATURES
 
    * Add progress bar to fetch initialization code. 
 
    * Add another progress bar to the branch detection code.
-
-
-bzr-svn 0.4.8	UNRELEASED
-
-  BUGS
-
-   * Fix path to URL conversion for Windows NT. (#188233)
-
-   * Be a bit quieter with messages about experimental mappings. (#162496)
-
-   * Allow specifying path inside repository in svn-branching-scheme. (#190331)
-
-   * Don't provide find_repository() implementation. (#193814)
-
-  FEATURES
 
    * Add -d option to the svn-push command. 
 
