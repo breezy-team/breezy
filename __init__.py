@@ -143,6 +143,8 @@ def get_scheme(schemename):
     
     :param schemename: Name of the scheme to retrieve.
     """
+    if isinstance(schemename, unicode):
+        schemename = schemename.encode("ascii")
     from scheme import BranchingScheme
     from bzrlib.errors import BzrCommandError
     
