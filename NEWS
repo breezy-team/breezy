@@ -49,6 +49,10 @@ IN DEVELOPMENT
    * Merge directives that are automatically attached to emails have nicer
      filenames, based on branch-nick + revno. (Aaron Bentley)
 
+   * Significantly reducing execution time and network traffic for trivial 
+     case of running ``bzr missing`` command for two identical branches.
+     (Alexander Belchenko)
+
   BUGFIXES:
 
     * Disable plink's interactive prompt for password.
