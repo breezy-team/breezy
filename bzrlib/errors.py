@@ -2580,7 +2580,7 @@ class UnsupportedTimezoneFormat(BzrError):
 
 class UnableEncodePath(BzrError):
 
-    _fmt = ('Unable encode %(kind)s path %(path)r in '
+    _fmt = ('Unable to encode %(kind)s path %(path)r in '
             'user encoding %(user_encoding)s')
 
     def __init__(self, path, kind):

@@ -455,7 +455,7 @@ class TestErrors(TestCaseWithTransport):
 
     def test_unable_encode_path(self):
         err = errors.UnableEncodePath('foo', 'executable')
-        self.assertEquals("Unable encode executable path 'foo' in "
+        self.assertEquals("Unable to encode executable path 'foo' in "
             "user encoding " + osutils.get_user_encoding(),
             str(err))
 
