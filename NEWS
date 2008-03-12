@@ -71,6 +71,9 @@ IN DEVELOPMENT
     * Redirecting the output from ``bzr merge`` (when the remembered
       location is used) now works. (John Arbash Meinel)
 
+    * setup.py script explicitly checks for Python version.
+      (Jari Aalto, Alexander Belchenko, #200569)
+
     * UnknownFormatErrors no longer refer to branches regardless of kind of
       unknown format. (Daniel Watkins, #173980)
 
