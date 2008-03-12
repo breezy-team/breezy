@@ -565,7 +565,7 @@ class Merge3Merger(object):
         if self.change_reporter is not None:
             from bzrlib import delta
             delta.report_changes(
-                self.tt._iter_changes(), self.change_reporter)
+                self.tt.iter_changes(), self.change_reporter)
         self.cook_conflicts(fs_conflicts)
         for conflict in self.cooked_conflicts:
             warning(conflict)
@@ -580,7 +580,7 @@ class Merge3Merger(object):
         executable3 is a tuple of execute-bit values for base, other and this.
         """
         result = []
-        iterator = self.other_tree._iter_changes(self.base_tree,
+        iterator = self.other_tree.iter_changes(self.base_tree,
                 include_unchanged=True, specific_files=self.interesting_files,
                 extra_trees=[self.this_tree])
         for (file_id, paths, changed, versioned, parents, names, kind,
@@ -1047,6 +1047,7 @@ class WeaveMerger(Merge3Merger):
         self.cherrypick = cherrypick
         super(WeaveMerger, self).__init__(working_tree, this_tree, 
                                           base_tree, other_tree, 
+                                          interesting_files=interesting_files,
                                           interesting_ids=interesting_ids, 
                                           pb=pb, pp=pp, reprocess=reprocess,
                                           change_reporter=change_reporter,
@@ -1289,7 +1290,7 @@ class _PlanMergeBase(object):
             for b_index in range(last_j, j):
                 if b_index in new_b:
                     if b_index in killed_a:
-                        yield 'conflicted-b', self.lines_b[a_index]
+                        yield 'conflicted-b', self.lines_b[b_index]
                     else:
                         yield 'new-b', self.lines_b[b_index]
                 else:

@@ -291,6 +291,7 @@ development.
 -Dknit         Trace knit operations.
 -Dlock         Trace when lockdir locks are taken or released.
 -Dmerge        Emit information for debugging merges.
+-Dpack         Emit information about pack operations.
 """
 
 _standard_options = \
