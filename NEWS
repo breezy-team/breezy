@@ -6,6 +6,10 @@ bzr-svn 0.4.9	UNRELEASED
 
    * Be a bit quieter with messages about experimental mappings. (#162496)
 
+  INTERNALS
+
+   * Allow multiple mappings to be available at the same time.
+
 bzr-svn 0.4.8	2008-03-11
 
   BUG FIXES
@@ -29,10 +33,6 @@ bzr-svn 0.4.8	2008-03-11
    * Add another progress bar to the branch detection code.
 
    * Add -d option to the svn-push command. 
-
-  INTERNALS
-
-   * Allow multiple mappings to be available at the same time.
 
 bzr-svn 0.4.7	2008-02-01
  
