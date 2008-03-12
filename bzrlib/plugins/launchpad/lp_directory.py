@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,12 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-"""Transport indirection that uses Launchpad as a directory lookup.
-
-When the transport is opened, it immediately redirects to a url
-on Launchpad, which can then either serve the branch itself or redirect
-again.
-"""
+"""Directory lookup that uses Launchpad."""
 
 from urlparse import urlsplit, urlunsplit
 import xmlrpclib
@@ -34,7 +29,6 @@ from bzrlib import (
 from bzrlib.transport import (
     get_transport,
     register_urlparse_netloc_protocol,
-    Transport,
     )
 
 from bzrlib.plugins.launchpad.lp_registration import (
@@ -48,21 +42,7 @@ register_urlparse_netloc_protocol('bzr+ssh')
 register_urlparse_netloc_protocol('lp')
 
 
-class LaunchpadTransport(Transport):
-    """lp:/// URL transport
-
-    This transport redirects requests to the real branch location
-    after resolving the URL via an XMLRPC request to Launchpad.
-    """
-
-    def __init__(self, base):
-        super(LaunchpadTransport, self).__init__(base)
-        # We only support URLs without a netloc
-        self.lp_instance = urlsplit(base)[1]
-        if self.lp_instance == '':
-            self.lp_instance = None
-        elif self.lp_instance not in LaunchpadService.LAUNCHPAD_INSTANCE:
-            raise errors.InvalidURL(path=base)
+class LaunchpadDirectory(object):
 
     def _requires_launchpad_login(self, scheme, netloc, path, query,
                                   fragment):
@@ -75,19 +55,28 @@ class LaunchpadTransport(Transport):
                 and (netloc.endswith('launchpad.net')
                      or netloc.endswith('launchpad.dev')))
 
-    def _resolve(self, abspath,
+    def look_up(self, name, url):
+        """See DirectoryService.look_up"""
+        return self._resolve(url)
+
+    def _resolve(self, url,
                  _request_factory=ResolveLaunchpadPathRequest,
                  _lp_login=None):
         """Resolve the base URL for this transport."""
-        path = urlsplit(abspath)[2].lstrip('/')
+        result = urlsplit(url)
         # Perform an XMLRPC request to resolve the path
-        resolve = _request_factory(path)
-        service = LaunchpadService(lp_instance=self.lp_instance)
+        lp_instance = result[1]
+        if lp_instance == '':
+            lp_instance = None
+        elif lp_instance not in LaunchpadService.LAUNCHPAD_INSTANCE:
+            raise errors.InvalidURL(path=url)
+        resolve = _request_factory(result[2].strip('/'))
+        service = LaunchpadService(lp_instance=lp_instance)
         try:
             result = resolve.submit(service)
         except xmlrpclib.Fault, fault:
             raise errors.InvalidURL(
-                path=abspath, extra=fault.faultString)
+                path=url, extra=fault.faultString)
 
         if 'launchpad' in debug.debug_flags:
             trace.mutter("resolve_lp_path(%r) == %r", path, result)
@@ -114,33 +103,8 @@ class LaunchpadTransport(Transport):
                 else:
                     break
         else:
-            raise errors.InvalidURL(path=abspath,
-                                    extra='no supported schemes')
+            raise errors.InvalidURL(path=url, extra='no supported schemes')
         return url
-
-    def _request_redirect(self, relpath):
-        source = urlutils.join(self.base, relpath)
-        # Split the source location into the branch location, and the
-        # extra path components.
-        pos = source.find('/.bzr/')
-        if pos >= 0:
-            branchpath = source[:pos]
-            extra = source[pos:]
-        else:
-            branchpath = source
-            extra = ''
-        target = self._resolve(branchpath) + extra
-        raise errors.RedirectRequested(
-            source=source,
-            target=target)
-
-    def get(self, relpath):
-        """See Transport.get()."""
-        self._request_redirect(relpath)
-
-    def mkdir(self, relpath, mode=None):
-        """See Transport.mkdir()."""
-        self._request_redirect(relpath)
 
 
 def get_test_permutations():
