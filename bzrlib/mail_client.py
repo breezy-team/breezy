@@ -186,7 +186,7 @@ class ExternalMailClient(MailClient):
         :return:    encoded string if u is unicode, u itself otherwise.
         """
         if isinstance(u, unicode):
-            return u.encode(bzrlib.user_encoding, 'replace')
+            return u.encode(osutils.get_user_encoding(), 'replace')
         return u
 
     def _encode_path(self, path, kind):
@@ -200,7 +200,7 @@ class ExternalMailClient(MailClient):
         """
         if isinstance(path, unicode):
             try:
-                return path.encode(bzrlib.user_encoding)
+                return path.encode(osutils.get_user_encoding())
             except UnicodeEncodeError:
                 raise errors.UnableEncodePath(path, kind)
         return path

@@ -2588,6 +2588,7 @@ class UnableEncodePath(BzrError):
             'user encoding %(user_encoding)s')
 
     def __init__(self, path, kind):
+        from bzrlib.osutils import get_user_encoding
         self.path = path
         self.kind = kind
-        self.user_encoding = osutils.get_user_encoding()
+        self.user_encoding = get_user_encoding()
