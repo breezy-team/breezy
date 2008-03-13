@@ -124,7 +124,6 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         repo = repository.Repository.open('.')
         inv = repo.get_inventory(revid)
         self.assertIsInstance(inv, inventory.Inventory)
-        entries = list(inv.iter_entries())
         printed_inv = '\n'.join(
             repr((path, entry.executable, entry))
             for path, entry in inv.iter_entries())
@@ -213,8 +212,8 @@ class TestGitRepositoryParseRev(tests.TestCase):
             "\n",
             "    message\n",
             "\x00"])
-        self.assertEqual(
-            rev.revision_id, 'git1r-873a8ae0d682b0e63e9795bc53056d32ed3de93f')
+        self.assertEqual(rev.revision_id,
+            'git-experimental-r:873a8ae0d682b0e63e9795bc53056d32ed3de93f')
         self.assertEqual(rev.parent_ids, [])
         self.assertEqual(rev.committer, 'Joe Foo <joe@foo.com>')
         self.assertEqual(repr(rev.timestamp), '1198784532.0')
@@ -244,9 +243,9 @@ class TestGitRepositoryParseRev(tests.TestCase):
         # commit base, the following parents are the ordered merged revisions.
         self.assertEqual(
             rev.parent_ids,
-            ['git1r-263ed20f0d4898be994404ca418bafe8e89abb8a',
-             'git1r-546563eb8f3e94a557f3bb779b6e5a2bd9658752',
-             'git1r-3116d42db7b5c5e69e58f651721e179791479c23'])
+            ['git-experimental-r:263ed20f0d4898be994404ca418bafe8e89abb8a',
+             'git-experimental-r:546563eb8f3e94a557f3bb779b6e5a2bd9658752',
+             'git-experimental-r:3116d42db7b5c5e69e58f651721e179791479c23'])
 
     def test_redundant_spaces(self):
         # Redundant spaces in author and committer are preserved.
