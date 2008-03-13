@@ -148,7 +148,7 @@ class GitRepository(repository.Repository):
             return self._revision_cache[revision_id]
         git_commit_id = ids.convert_revision_id_bzr_to_git(revision_id)
         raw = self._git.rev_list([git_commit_id], max_count=1, header=True)
-        print "fetched revision:", git_commit_id
+        # print "fetched revision:", git_commit_id
         revision = self._parse_rev(raw)
         self._revision_cache[revision_id] = revision
         return revision
@@ -255,7 +255,7 @@ class GitRepository(repository.Repository):
 
     def _fetch_blob(self, git_id):
         lines = self._git.cat_file('blob', git_id)
-        print "fetched blob:", git_id
+        # print "fetched blob:", git_id
         if self._building_inventory is not None:
             self._building_inventory.git_file_data[git_id] = lines
         return lines
@@ -372,7 +372,7 @@ class GitRepository(repository.Repository):
             max_count=1, topo_order=True, paths=[path])
         [line] = lines
         result = ids.convert_revision_id_git_to_bzr(line[:-1])
-        print "fetched file revision", line[:-1], path
+        # print "fetched file revision", line[:-1], path
         return result
 
     def _get_entry_revision_from_db(self, revid, path, git_id, executable):
