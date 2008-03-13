@@ -167,10 +167,10 @@ class MemoryGitBzrDirFormat(git_dir.GitBzrDirFormat):
     _gitdir_class = MemoryGitDir
 
 
-class TestGitRepository(tests.TestCaseWithMemoryTransport):
+class TestGitRepository(tests.TestCaseWithTransport):
 
     def setUp(self):
-        tests.TestCaseWithMemoryTransport.setUp(self)
+        tests.TestCaseWithTransport.setUp(self)
         self.transport = self.get_transport()
         self.transport.mkdir('.git')
         self.git_dir = MemoryGitBzrDirFormat().open(self.transport)
