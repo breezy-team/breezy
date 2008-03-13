@@ -61,6 +61,9 @@ IN DEVELOPMENT
       invoking external mail client in `bzr send` command.
       (#139318, Alexander Belchenko)
 
+    * Improved error reporting in the Launchpad plugin. (Daniel Watkins,
+      #196618)
+
     * Include quick-start-summary.svg file to python-based installer(s)
       for Windows. (#192924, Alexander Belchenko)
 
