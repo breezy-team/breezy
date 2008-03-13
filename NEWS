@@ -49,6 +49,9 @@ IN DEVELOPMENT
    * Merge directives that are automatically attached to emails have nicer
      filenames, based on branch-nick + revno. (Aaron Bentley)
 
+   * ``push`` has a ``--revision`` option, to specify what revision to push up
+     to.  (Daniel Watkins)
+
    * Significantly reducing execution time and network traffic for trivial 
      case of running ``bzr missing`` command for two identical branches.
      (Alexander Belchenko)
@@ -62,6 +65,9 @@ IN DEVELOPMENT
       invoking external mail client in `bzr send` command.
       (#139318, Alexander Belchenko)
 
+    * Improved error reporting in the Launchpad plugin. (Daniel Watkins,
+      #196618)
+
     * Include quick-start-summary.svg file to python-based installer(s)
       for Windows. (#192924, Alexander Belchenko)
 
@@ -74,6 +80,9 @@ IN DEVELOPMENT
 
     * Redirecting the output from ``bzr merge`` (when the remembered
       location is used) now works. (John Arbash Meinel)
+
+    * setup.py script explicitly checks for Python version.
+      (Jari Aalto, Alexander Belchenko, #200569)
 
     * UnknownFormatErrors no longer refer to branches regardless of kind of
       unknown format. (Daniel Watkins, #173980)
