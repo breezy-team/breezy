@@ -93,6 +93,11 @@ IN DEVELOPMENT
     * Use correct indices when emitting LCA conflicts.  This fixes IndexError
       errors.  (Aaron Bentley, #196780)
 
+  DOCUMENTATION:
+
+    * Explained how to use ``version-info --custom`` in the User Guide.
+      (Neil Martinsen-Burrell)
+
   API BREAKS:
 
     * Support for loading plugins from zip files and
