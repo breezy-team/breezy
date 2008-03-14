@@ -852,13 +852,8 @@ class SmartClientRequestProtocolThree(ProtocolThreeDecoder, SmartClientRequestPr
     request_marker = REQUEST_VERSION_THREE
 
     def __init__(self, client_medium_request):
-        from bzrlib.smart.message import MessageHandler
-        ProtocolThreeDecoder.__init__(self, MessageHandler())
+        ProtocolThreeDecoder.__init__(self, message.MessageHandler())
         SmartClientRequestProtocolTwo.__init__(self, client_medium_request)
-        # Initial state
-        self._in_buffer = ''
-        self.state_accept = self._state_accept_expecting_headers
-        self.response_handler = self.request_handler = self.message_handler
 
     # XXX: the encoding of requests and decoding responses are somewhat
     # conflated into one class here.  The protocol is half-duplex, so combining
