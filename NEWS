@@ -30,6 +30,8 @@ IN DEVELOPMENT
       (Alexander Belchenko)
 
     * Restore auto-detection of plink.exe on Windows. (Dmitry Vasiliev)
+    
+    * bzr main script cannot be imported (Benjamin Peterson)
 
   FEATURES:
 
