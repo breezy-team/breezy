@@ -1292,10 +1292,10 @@ class TestCase(unittest.TestCase):
             return unittest.TestCase.run(self, result)
         finally:
             saved_attrs = {}
-            not_found = object()
+            absent_attr = object()
             for attr_name in self.attrs_to_keep:
-                attr = getattr(self, attr_name, not_found)
-                if attr is not not_found:
+                attr = getattr(self, attr_name, absent_attr)
+                if attr is not absent_attr:
                     saved_attrs[attr_name] = attr
             self.__dict__ = saved_attrs
 
