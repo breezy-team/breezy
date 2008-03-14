@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 
 
 from bzrlib import errors
+import bzrlib.revision as _mod_revision
 
 
 __all__ = ["topo_sort", "TopoSorter", "merge_sort", "MergeSorter"]
@@ -406,7 +407,8 @@ class MergeSorter(object):
         self._left_subtree_pushed_stack = []
 
         # seed the search with the tip of the branch
-        if branch_tip is not None:
+        if (branch_tip is not None and
+            branch_tip != _mod_revision.NULL_REVISION):
             parents = self._graph.pop(branch_tip)
             self._push_node(branch_tip, 0, parents)
 
