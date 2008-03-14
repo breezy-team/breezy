@@ -930,7 +930,7 @@ class DiffTree(object):
     def _show_diff(self, specific_files, extra_trees):
         # TODO: Generation of pseudo-diffs for added/deleted files could
         # be usefully made into a much faster special case.
-        iterator = self.new_tree._iter_changes(self.old_tree,
+        iterator = self.new_tree.iter_changes(self.old_tree,
                                                specific_files=specific_files,
                                                extra_trees=extra_trees,
                                                require_versioned=True)
@@ -967,7 +967,7 @@ class DiffTree(object):
                 self.to_file.write("=== renamed %s '%s' => '%s'%s\n" %
                     (kind[0], oldpath_encoded, newpath_encoded, prop_str))
             else:
-                # if it was produced by _iter_changes, it must be
+                # if it was produced by iter_changes, it must be
                 # modified *somehow*, either content or execute bit.
                 self.to_file.write("=== modified %s '%s'%s\n" % (kind[0],
                                    newpath_encoded, prop_str))

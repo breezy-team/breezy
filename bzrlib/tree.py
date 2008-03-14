@@ -93,11 +93,15 @@ class Tree(object):
             want_unversioned=want_unversioned,
             )
 
-    def _iter_changes(self, from_tree, include_unchanged=False,
+    @symbol_versioning.deprecated_method(symbol_versioning.one_three)
+    def _iter_changes(self, *args, **kwargs):
+        return self.iter_changes(*args, **kwargs)
+
+    def iter_changes(self, from_tree, include_unchanged=False,
                      specific_files=None, pb=None, extra_trees=None,
                      require_versioned=True, want_unversioned=False):
         intertree = InterTree.get(from_tree, self)
-        return intertree._iter_changes(include_unchanged, specific_files, pb,
+        return intertree.iter_changes(include_unchanged, specific_files, pb,
             extra_trees, require_versioned, want_unversioned=want_unversioned)
     
     def conflicts(self):
@@ -722,7 +726,7 @@ class InterTree(InterObject):
             require_versioned=require_versioned,
             want_unversioned=want_unversioned)
 
-    def _iter_changes(self, include_unchanged=False,
+    def iter_changes(self, include_unchanged=False,
                       specific_files=None, pb=None, extra_trees=[],
                       require_versioned=True, want_unversioned=False):
         """Generate an iterator of changes between trees.

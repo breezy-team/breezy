@@ -1312,7 +1312,12 @@ class DirState(object):
                         source_path = entry[0][0] + '/' + entry[0][1]
                     else:
                         source_path = entry[0][1]
-                    target_path = new_path_utf8 + source_path[len(old_path):]
+                    if new_path_utf8:
+                        target_path = new_path_utf8 + source_path[len(old_path):]
+                    else:
+                        assert len(old_path) > 0, ("cannot rename directory to"
+                                                   " itself")
+                        target_path = source_path[len(old_path) + 1:]
                     adds.append((None, target_path, entry[0][2], entry[1][1], False))
                     deletes.append(
                         (source_path, target_path, entry[0][2], None, False))

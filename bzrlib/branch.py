@@ -260,8 +260,7 @@ class Branch(object):
             if last_revision is None:
                 pb.update('get source history')
                 last_revision = from_branch.last_revision()
-                if last_revision is None:
-                    last_revision = _mod_revision.NULL_REVISION
+                last_revision = _mod_revision.ensure_null(last_revision)
             return self.repository.fetch(from_branch.repository,
                                          revision_id=last_revision,
                                          pb=nested_pb)
@@ -835,7 +834,7 @@ class BranchFormat(object):
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
         except KeyError:
-            raise errors.UnknownFormatError(format=format_string)
+            raise errors.UnknownFormatError(format=format_string, kind='branch')
 
     @classmethod
     def get_default_format(klass):
@@ -1394,6 +1393,7 @@ class BzrBranch(Branch):
         configured to check constraints on history, in which case this may not
         be permitted.
         """
+        revision_id = _mod_revision.ensure_null(revision_id)
         history = self._lefthand_history(revision_id)
         assert len(history) == revno, '%d != %d' % (len(history), revno)
         self.set_revision_history(history)
@@ -1410,21 +1410,23 @@ class BzrBranch(Branch):
         if 'evil' in debug.debug_flags:
             mutter_callsite(4, "_lefthand_history scales with history.")
         # stop_revision must be a descendant of last_revision
-        stop_graph = self.repository.get_revision_graph(revision_id)
-        if (last_rev is not None and last_rev != _mod_revision.NULL_REVISION
-            and last_rev not in stop_graph):
-            # our previous tip is not merged into stop_revision
-            raise errors.DivergedBranches(self, other_branch)
+        graph = self.repository.get_graph()
+        if last_rev is not None:
+            if not graph.is_ancestor(last_rev, revision_id):
+                # our previous tip is not merged into stop_revision
+                raise errors.DivergedBranches(self, other_branch)
         # make a new revision history from the graph
+        parents_map = graph.get_parent_map([revision_id])
+        if revision_id not in parents_map:
+            raise errors.NoSuchRevision(self, revision_id)
         current_rev_id = revision_id
         new_history = []
-        while current_rev_id not in (None, _mod_revision.NULL_REVISION):
+        # Do not include ghosts or graph origin in revision_history
+        while (current_rev_id in parents_map and
+               len(parents_map[current_rev_id]) > 0):
             new_history.append(current_rev_id)
-            current_rev_id_parents = stop_graph[current_rev_id]
-            try:
-                current_rev_id = current_rev_id_parents[0]
-            except IndexError:
-                current_rev_id = None
+            current_rev_id = parents_map[current_rev_id][0]
+            parents_map = graph.get_parent_map([current_rev_id])
         new_history.reverse()
         return new_history
 
@@ -1824,13 +1826,13 @@ class BzrBranch6(BzrBranch5):
         Intended to be called by set_last_revision_info and
         _write_revision_history.
         """
-        if revision_id is None:
-            revision_id = 'null:'
+        assert revision_id is not None, "Use NULL_REVISION, not None"
         out_string = '%d %s\n' % (revno, revision_id)
         self.control_files.put_bytes('last-revision', out_string)
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
+        revision_id = _mod_revision.ensure_null(revision_id)
         if self._get_append_revisions_only():
             self._check_history_violation(revision_id)
         self._write_last_revision_info(revno, revision_id)
@@ -1958,6 +1960,14 @@ class BzrBranch6(BzrBranch5):
 
     def _make_tags(self):
         return BasicTags(self)
+
+    @needs_write_lock
+    def generate_revision_history(self, revision_id, last_rev=None,
+                                  other_branch=None):
+        """See BzrBranch5.generate_revision_history"""
+        history = self._lefthand_history(revision_id, last_rev, other_branch)
+        revno = len(history)
+        self.set_last_revision_info(revno, revision_id)
 
 
 ######################################################################
