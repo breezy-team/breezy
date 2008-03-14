@@ -19,6 +19,7 @@
 For interface contract tests, see tests/bzr_dir_implementations.
 """
 
+import os
 import os.path
 from StringIO import StringIO
 import subprocess
@@ -534,6 +535,32 @@ class ChrootedTests(TestCaseWithTransport):
                          local_branch_path(branch))
         self.assertEqual(
             os.path.realpath(os.path.join('shared', '.bzr', 'repository')),
+            repo.bzrdir.transport.local_abspath('repository'))
+
+        # Unversioned directory in branch
+        self.make_branch_and_tree('foo')
+        os.mkdir('foo/bar') #XXX
+        tree, branch, repo = \
+            bzrdir.BzrDir.open_containing_tree_branch_or_repository(
+                'foo/bar')
+        self.assertEqual(os.path.realpath('foo'),
+                         os.path.realpath(tree.basedir))
+        self.assertEqual(os.path.realpath('foo'),
+                         local_branch_path(branch))
+        self.assertEqual(
+            os.path.realpath(os.path.join('foo', '.bzr', 'repository')),
+            repo.bzrdir.transport.local_abspath('repository'))
+
+        # Unversioned directory in repository
+        self.make_repository('bar')
+        os.mkdir('bar/baz') #XXX
+        tree, branch, repo = \
+            bzrdir.BzrDir.open_containing_tree_branch_or_repository(
+                'bar/baz')
+        self.assertEqual(tree, None)
+        self.assertEqual(branch, None)
+        self.assertEqual(
+            os.path.realpath(os.path.join('bar', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
 
     def test_open_containing_from_transport(self):
