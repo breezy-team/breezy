@@ -2713,7 +2713,8 @@ class WorkingTreeFormat(object):
         except errors.NoSuchFile:
             raise errors.NoWorkingTree(base=transport.base)
         except KeyError:
-            raise errors.UnknownFormatError(format=format_string)
+            raise errors.UnknownFormatError(format=format_string,
+                                            kind="working tree")
 
     def __eq__(self, other):
         return self.__class__ is other.__class__

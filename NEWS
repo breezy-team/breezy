@@ -36,6 +36,10 @@ IN DEVELOPMENT
    * ``branch`` and ``checkout`` can hard-link working tree files, which is
      faster and saves space.  (Aaron Bentley)
 
+   * ``bzr send`` will now also look at the ``child_submit_to`` setting in
+     the submit branch to determine the email address to send to. 
+     (Jelmer Vernooij)
+
   IMPROVEMENTS:
 
    * BzrBranch._lefthand_history is faster on pack repos.  (Aaron Bentley)
@@ -52,10 +56,24 @@ IN DEVELOPMENT
    * Merge directives that are automatically attached to emails have nicer
      filenames, based on branch-nick + revno. (Aaron Bentley)
 
+   * ``push`` has a ``--revision`` option, to specify what revision to push up
+     to.  (Daniel Watkins)
+
+   * Significantly reducing execution time and network traffic for trivial 
+     case of running ``bzr missing`` command for two identical branches.
+     (Alexander Belchenko)
+
   BUGFIXES:
 
     * Disable plink's interactive prompt for password.
       (#107593, Dmitry Vasiliev)
+
+    * Encode command line arguments from unicode to user_encoding before
+      invoking external mail client in `bzr send` command.
+      (#139318, Alexander Belchenko)
+
+    * Improved error reporting in the Launchpad plugin. (Daniel Watkins,
+      #196618)
 
     * Include quick-start-summary.svg file to python-based installer(s)
       for Windows. (#192924, Alexander Belchenko)
@@ -70,11 +88,22 @@ IN DEVELOPMENT
     * Redirecting the output from ``bzr merge`` (when the remembered
       location is used) now works. (John Arbash Meinel)
 
+    * setup.py script explicitly checks for Python version.
+      (Jari Aalto, Alexander Belchenko, #200569)
+
+    * UnknownFormatErrors no longer refer to branches regardless of kind of
+      unknown format. (Daniel Watkins, #173980)
+
     * Upgrade bundled ConfigObj to version 4.5.2, which properly quotes #
       signs, among other small improvements. (Matt Nordhoff, #86838)
 
     * Use correct indices when emitting LCA conflicts.  This fixes IndexError
       errors.  (Aaron Bentley, #196780)
+
+  DOCUMENTATION:
+
+    * Explained how to use ``version-info --custom`` in the User Guide.
+      (Neil Martinsen-Burrell)
 
   API BREAKS:
 

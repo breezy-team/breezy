@@ -25,15 +25,15 @@ This guide doesn't describe how to install Bazaar but it's usually very
 easy. You can find installation instructions at:
 
 - **GNU/Linux:** Bazaar is probably in your GNU/Linux distribution already.
-- **Windows:** `installation instructions`_.
-- **Mac OS X:** `install using MacPorts`_.
+- **Windows:** `installation instructions for Windows`_.
+- **Mac OS X:** `installation instructions for Mac OS X`_.
 
-For other platforms and to install from source code, see the Downloads_
+For other platforms and to install from source code, see the Download_
 and Installation_ pages.
 
-.. _installation instructions: http://bazaar-vcs.org/WindowsDownloads
-.. _install using MacPorts: http://bazaar-vcs.org/MacPorts
-.. _Downloads: http://bazaar-vcs.org/Download
+.. _installation instructions for Windows: http://bazaar-vcs.org/WindowsDownloads
+.. _installation instructions for Mac OS X: http://bazaar-vcs.org/MacOSXBundle
+.. _Download: http://bazaar-vcs.org/Download
 .. _Installation: http://bazaar-vcs.org/InstallationFaq
 
 

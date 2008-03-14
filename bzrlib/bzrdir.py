@@ -1461,7 +1461,7 @@ class BzrDirFormat(object):
         try:
             return klass._formats[format_string]
         except KeyError:
-            raise errors.UnknownFormatError(format=format_string)
+            raise errors.UnknownFormatError(format=format_string, kind='bzrdir')
 
     @classmethod
     def get_default_format(klass):
