@@ -98,6 +98,10 @@ IN DEVELOPMENT
       hundreds of MB of ram consumption.
       (Ian Clatworthy, John Arbash Meinel)
 
+    * New class method ``BzrDir.open_containing_tree_branch_or_repository``
+      which eases the discovery of the tree, the branch and the repository
+      containing a given location.  (Daniel Watkins)
+
     * New module ``tools/package_mf.py`` provide custom module finder for
       python packages (improves standard python library's modulefinder.py)
       used by ``setup.py`` script while building standalone bzr.exe.
