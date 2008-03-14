@@ -642,9 +642,11 @@ class Packer(object):
         # at this point.
         self.pb.update("Copying inventory texts", 2)
         total_items, readv_group_iter = self._least_readv_node_readv(inv_nodes)
+        # Only grab the output lines if we will be processing them
+        output_lines = bool(self.revision_ids)
         inv_lines = self._copy_nodes_graph(inventory_index_map,
             self.new_pack._writer, self.new_pack.inventory_index,
-            readv_group_iter, total_items, output_lines=True)
+            readv_group_iter, total_items, output_lines=output_lines)
         if self.revision_ids:
             self._process_inventory_lines(inv_lines)
         else:
@@ -656,7 +658,7 @@ class Packer(object):
                 time.ctime(), self._pack_collection._upload_transport.base,
                 self.new_pack.random_name,
                 self.new_pack.inventory_index.key_count(),
-                time.time() - new_pack.start_time)
+                time.time() - self.new_pack.start_time)
 
     def _copy_text_texts(self):
         # select text keys

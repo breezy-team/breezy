@@ -2121,7 +2121,8 @@ class RepositoryFormat(object):
         except errors.NoSuchFile:
             raise errors.NoRepositoryPresent(a_bzrdir)
         except KeyError:
-            raise errors.UnknownFormatError(format=format_string)
+            raise errors.UnknownFormatError(format=format_string,
+                                            kind='repository')
 
     @classmethod
     def register_format(klass, format):

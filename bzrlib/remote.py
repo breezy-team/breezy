@@ -298,9 +298,6 @@ class RemoteRepository(object):
         self._reconcile_fixes_text_parents = False
         self._reconcile_backsup_inventory = False
         self.base = self.bzrdir.transport.base
-        # Can this repository be given external locations to lookup additional
-        # data.
-        self.supports_external_lookups = False
 
     def __str__(self):
         return "%s(%s)" % (self.__class__.__name__, self.base)

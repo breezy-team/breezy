@@ -1166,6 +1166,68 @@ class DirState(object):
             raise
         return result
 
+    def update_by_delta(self, delta):
+        """Apply an inventory delta to the dirstate for tree 0
+
+        :param delta: An inventory delta.  See Inventory.apply_delta for
+            details.
+        """
+        self._read_dirblocks_if_needed()
+        insertions = {}
+        removals = {}
+        for old_path, new_path, file_id, inv_entry in sorted(delta,
+                                                             reverse=True):
+            assert file_id not in insertions
+            assert file_id not in removals
+            if old_path is not None:
+                old_path = old_path.encode('utf-8')
+                removals[file_id] = old_path
+            if new_path is not None:
+                new_path = new_path.encode('utf-8')
+                dirname, basename = osutils.split(new_path)
+                key = (dirname, basename, file_id)
+                minikind = DirState._kind_to_minikind[inv_entry.kind]
+                if minikind == 't':
+                    fingerprint = inv_entry.reference_revision
+                else:
+                    fingerprint = ''
+                insertions[file_id] = (key, minikind, inv_entry.executable,
+                                       fingerprint, new_path)
+            if None not in (old_path, new_path):
+                for child in self._iter_child_entries(0, old_path):
+                    if child[0][2] in insertions or child[0][2] in removals:
+                        continue
+                    child_dirname = child[0][0]
+                    child_basename = child[0][1]
+                    minikind = child[1][0][0]
+                    fingerprint = child[1][0][4]
+                    executable = child[1][0][3]
+                    old_child_path = osutils.pathjoin(child[0][0],
+                                                      child[0][1])
+                    removals[child[0][2]] = old_child_path
+                    child_suffix = child_dirname[len(old_path):]
+                    new_child_dirname = (new_path + child_suffix)
+                    key = (new_child_dirname, child_basename, child[0][2])
+                    new_child_path = os.path.join(new_child_dirname,
+                                                  child_basename)
+                    insertions[child[0][2]] = (key, minikind, executable,
+                                               fingerprint, new_child_path)
+        self._apply_removals(removals.values())
+        self._apply_insertions(insertions.values())
+
+    def _apply_removals(self, removals):
+        for path in sorted(removals, reverse=True):
+            dirname, basename = osutils.split(path)
+            block_i, entry_i, d_present, f_present = \
+                self._get_block_entry_index(dirname, basename, 0)
+            entry = self._dirblocks[block_i][1][entry_i]
+            self._make_absent(entry)
+
+    def _apply_insertions(self, adds):
+        for key, minikind, executable, fingerprint, path_utf8 in sorted(adds):
+            self.update_minimal(key, minikind, executable, fingerprint,
+                                path_utf8=path_utf8)
+
     def update_basis_by_delta(self, delta, new_revid):
         """Update the parents of this tree after a commit.
 
@@ -1250,7 +1312,12 @@ class DirState(object):
                         source_path = entry[0][0] + '/' + entry[0][1]
                     else:
                         source_path = entry[0][1]
-                    target_path = new_path_utf8 + source_path[len(old_path):]
+                    if new_path_utf8:
+                        target_path = new_path_utf8 + source_path[len(old_path):]
+                    else:
+                        assert len(old_path) > 0, ("cannot rename directory to"
+                                                   " itself")
+                        target_path = source_path[len(old_path) + 1:]
                     adds.append((None, target_path, entry[0][2], entry[1][1], False))
                     deletes.append(
                         (source_path, target_path, entry[0][2], None, False))
