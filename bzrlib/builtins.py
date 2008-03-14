@@ -2743,11 +2743,15 @@ class cmd_find_merge_base(Command):
 class cmd_merge(Command):
     """Perform a three-way merge.
     
-    The branch is the branch you will merge from.  By default, it will merge
-    the latest revision.  If you specify a revision, that revision will be
-    merged.  If you specify two revisions, the first will be used as a BASE,
-    and the second one as OTHER.  Revision numbers are always relative to the
-    specified branch.
+    The source of the merge can be specified either in the form of a branch,
+    or in the form of a path to a file containing a merge directive generated
+    with bzr send. If neither is specified, the default is the upstream branch
+    or the branch most recently remembered using --remember.
+
+    When merging branches, by default it will merge the latest revision.  If
+    you specify a revision, that revision will be merged.  If you specify two
+    revisions, the first will be used as a BASE, and the second one as OTHER.
+    Revision numbers are always relative to the specified branch.
 
     By default, bzr will try to merge in all new work from the other
     branch, automatically determining an appropriate base.  If this
@@ -2784,11 +2788,15 @@ class cmd_merge(Command):
         To merge the changes introduced by 82, without previous changes::
 
             bzr merge -r 81..82 ../bzr.dev
+
+        To apply a merge directive contained in in /tmp/merge:
+
+            bzr merge /tmp/merge
     """
 
     encoding_type = 'exact'
     _see_also = ['update', 'remerge', 'status-flags']
-    takes_args = ['branch?']
+    takes_args = ['branch|merge_directive?']
     takes_options = [
         'change',
         'revision',
@@ -4049,6 +4057,8 @@ class cmd_send(Command):
     older formats.  It is compatible with Bazaar 0.19 and later.  It is the
     default.  "0.9" uses revision bundle format 0.9 and merge directive
     format 1.  It is compatible with Bazaar 0.12 - 0.18.
+    
+    Merge directives are applied using the merge command.
     """
 
     encoding_type = 'exact'
