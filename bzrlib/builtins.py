@@ -687,7 +687,7 @@ class cmd_push(Command):
     """
 
     _see_also = ['pull', 'update', 'working-trees']
-    takes_options = ['remember', 'overwrite', 'verbose',
+    takes_options = ['remember', 'overwrite', 'verbose', 'revision',
         Option('create-prefix',
                help='Create the path leading up to the branch '
                     'if it does not already exist.'),
@@ -707,7 +707,7 @@ class cmd_push(Command):
     encoding_type = 'replace'
 
     def run(self, location=None, remember=False, overwrite=False,
-            create_prefix=False, verbose=False,
+            create_prefix=False, verbose=False, revision=None,
             use_existing_dir=False,
             directory=None):
         # FIXME: Way too big!  Put this into a function called from the
@@ -746,6 +746,16 @@ class cmd_push(Command):
             else:
                 # Found a branch, so we must have found a repository
                 repository_to = br_to.repository
+
+        if revision is not None:
+            if len(revision) == 1:
+                revision_id = revision[0].in_history(br_from).rev_id
+            else:
+                raise errors.BzrCommandError(
+                    'bzr push --revision takes one value.')
+        else:
+            revision_id = br_from.last_revision()
+
         push_result = None
         if verbose:
             old_rh = []
@@ -786,7 +796,7 @@ class cmd_push(Command):
             # directory. So we need to create it, along with any work to create
             # all of the dependent branches, etc.
             dir_to = br_from.bzrdir.clone_on_transport(to_transport,
-                revision_id=br_from.last_revision())
+                                                       revision_id=revision_id)
             br_to = dir_to.open_branch()
             # TODO: Some more useful message about what was copied
             note('Created new branch.')
@@ -804,10 +814,8 @@ class cmd_push(Command):
         elif br_to is None:
             # We have a repository but no branch, copy the revisions, and then
             # create a branch.
-            last_revision_id = br_from.last_revision()
-            repository_to.fetch(br_from.repository,
-                                revision_id=last_revision_id)
-            br_to = br_from.clone(dir_to, revision_id=last_revision_id)
+            repository_to.fetch(br_from.repository, revision_id=revision_id)
+            br_to = br_from.clone(dir_to, revision_id=revision_id)
             note('Created new branch.')
             if br_from.get_push_location() is None or remember:
                 br_from.set_push_location(br_to.base)
@@ -825,13 +833,16 @@ class cmd_push(Command):
                     warning("This transport does not update the working " 
                             "tree of: %s. See 'bzr help working-trees' for "
                             "more information." % br_to.base)
-                    push_result = br_from.push(br_to, overwrite)
+                    push_result = br_from.push(br_to, overwrite,
+                                               stop_revision=revision_id)
                 except errors.NoWorkingTree:
-                    push_result = br_from.push(br_to, overwrite)
+                    push_result = br_from.push(br_to, overwrite,
+                                               stop_revision=revision_id)
                 else:
                     tree_to.lock_write()
                     try:
-                        push_result = br_from.push(tree_to.branch, overwrite)
+                        push_result = br_from.push(tree_to.branch, overwrite,
+                                                   stop_revision=revision_id)
                         tree_to.update()
                     finally:
                         tree_to.unlock()
