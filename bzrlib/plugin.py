@@ -40,7 +40,6 @@ import types
 import zipfile
 
 from bzrlib import (
-    config,
     osutils,
     trace,
     )
@@ -53,11 +52,37 @@ from bzrlib.symbol_versioning import deprecated_function, one_three
 DEFAULT_PLUGIN_PATH = None
 _loaded = False
 
+# XXX: copied and pasted from config.py to avoid importing configobj before
+#      we've installed lazy_regex.
+def _config_dir():
+    """Return per-user configuration directory.
+
+    By default this is ~/.bazaar/
+    
+    TODO: Global option --config-dir to override this.
+    """
+    base = os.environ.get('BZR_HOME', None)
+    if sys.platform == 'win32':
+        if base is None:
+            base = win32utils.get_appdata_location_unicode()
+        if base is None:
+            base = os.environ.get('HOME', None)
+        if base is None:
+            raise errors.BzrError('You must have one of BZR_HOME, APPDATA,'
+                                  ' or HOME set')
+        return osutils.pathjoin(base, 'bazaar', '2.0')
+    else:
+        # cygwin, linux, and darwin all have a $HOME directory
+        if base is None:
+            base = os.path.expanduser("~")
+        return osutils.pathjoin(base, ".bazaar")
+
+
 def get_default_plugin_path():
     """Get the DEFAULT_PLUGIN_PATH"""
     global DEFAULT_PLUGIN_PATH
     if DEFAULT_PLUGIN_PATH is None:
-        DEFAULT_PLUGIN_PATH = osutils.pathjoin(config.config_dir(), 'plugins')
+        DEFAULT_PLUGIN_PATH = osutils.pathjoin(_config_dir(), 'plugins')
     return DEFAULT_PLUGIN_PATH
 
 

@@ -25,11 +25,6 @@ if INTP_VER < (2, 2):
 
 import os, re
 compiler = None
-try:
-    import compiler
-except ImportError:
-    # for IronPython
-    pass
 from types import StringTypes
 from warnings import warn
 try:
