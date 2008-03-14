@@ -287,35 +287,38 @@ class Merge3(object):
         # Do not emit regions which match, only regions which do not match
         matches = bzrlib.patiencediff.PatienceSequenceMatcher(None,
             self.base[zstart:zend], self.b[bstart:bend]).get_matching_blocks()
-        zzcur = 0
-        bbcur = 0
+        last_base_idx = 0
+        last_b_idx = 0
+        last_b_idx = 0
         yielded_a = False
-        for region_iz, region_ib, region_len in matches:
-            conflict_z_len = region_iz - zzcur
-            conflict_b_len = region_ib - bbcur
+        for base_idx, b_idx, match_len in matches:
+            conflict_z_len = base_idx - last_base_idx
+            conflict_b_len = b_idx - last_b_idx
             if conflict_b_len == 0: # There are no lines in b which conflict,
                                     # so skip it
                 pass
             else:
                 if yielded_a:
-                    yield ('conflict', zstart + zzcur, zstart + region_iz,
-                           aend, aend, bstart + bbcur, bstart + region_ib)
+                    yield ('conflict',
+                           zstart + last_base_idx, zstart + base_idx,
+                           aend, aend, bstart + last_b_idx, bstart + b_idx)
                 else:
                     # The first conflict gets the a-range
                     yielded_a = True
-                    yield ('conflict', zstart + zzcur, zstart + region_iz,
-                           astart, aend, bstart + bbcur, bstart + region_ib)
-            zzcur = region_iz + region_len
-            bbcur = region_ib + region_len
-        if zzcur != zend - zstart or bbcur != bend - bstart:
+                    yield ('conflict', zstart + last_base_idx, zstart +
+                    base_idx,
+                           astart, aend, bstart + last_b_idx, bstart + b_idx)
+            last_base_idx = base_idx + match_len
+            last_b_idx = b_idx + match_len
+        if last_base_idx != zend - zstart or last_b_idx != bend - bstart:
             if yielded_a:
-                yield ('conflict', zstart + zzcur, zstart + region_iz,
-                       aend, aend, bstart + bbcur, bstart + region_ib)
+                yield ('conflict', zstart + last_base_idx, zstart + base_idx,
+                       aend, aend, bstart + last_b_idx, bstart + b_idx)
             else:
                 # The first conflict gets the a-range
                 yielded_a = True
-                yield ('conflict', zstart + zzcur, zstart + region_iz,
-                       astart, aend, bstart + bbcur, bstart + region_ib)
+                yield ('conflict', zstart + last_base_idx, zstart + base_idx,
+                       astart, aend, bstart + last_b_idx, bstart + b_idx)
         if not yielded_a:
             yield ('conflict', zstart, zend, astart, aend, bstart, bend)
 
@@ -396,8 +399,6 @@ class Merge3(object):
                 aend = asub + intlen
                 bend = bsub + intlen
 
-                # XXX: How much overhead is involved in slicing all of these
-                #      and doing an extra comparison
                 assert self.base[intbase:intend] == self.a[asub:aend], \
                        (self.base[intbase:intend], self.a[asub:aend])
 
