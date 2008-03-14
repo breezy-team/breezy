@@ -483,14 +483,12 @@ class FrozenHeadsCache(object):
     def heads(self, keys):
         """Return the heads of keys.
 
-        This matches the API of Graph.heads(), specifically the return value is
-        a set which can be mutated, and ordering of the input is not preserved
-        in the output.
+        Similar to Graph.heads(). The main difference is that the return value
+        is a frozen set which cannot be mutated.
 
         :see also: Graph.heads.
         :param keys: The keys to calculate heads for.
-        :return: A set containing the heads, which may be mutated without
-            affecting future lookups.
+        :return: A frozenset containing the heads.
         """
         keys = frozenset(keys)
         try:
