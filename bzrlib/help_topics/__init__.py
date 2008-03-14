@@ -291,6 +291,7 @@ development.
 -Dknit         Trace knit operations.
 -Dlock         Trace when lockdir locks are taken or released.
 -Dmerge        Emit information for debugging merges.
+-Dpack         Emit information about pack operations.
 """
 
 _standard_options = \
@@ -545,6 +546,8 @@ BZR_HOME         Directory holding .bazaar config dir. Overrides HOME.
 BZR_HOME (Win32) Directory holding bazaar config dir. Overrides APPDATA and HOME.
 BZR_REMOTE_PATH  Full name of remote 'bzr' command (for bzr+ssh:// URLs).
 BZR_SSH          SSH client: paramiko (default), openssh, ssh, plink.
+BZR_LOG          Location of .bzr.log (use '/dev/null' to suppress log).
+BZR_LOG (Win32)  Location of .bzr.log (use 'NUL' to suppress log).
 ================ =================================================================
 """
 

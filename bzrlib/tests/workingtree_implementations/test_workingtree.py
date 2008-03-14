@@ -17,6 +17,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from cStringIO import StringIO
+import errno
 import os
 import sys
 
@@ -825,6 +826,17 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             expected_kind = names[i]
             self.assertEqual(expected_kind, actual_kind)
 
+    def test_stored_kind_with_missing(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree(['tree/a', 'tree/b/'])
+        tree.add(['a', 'b'], ['a-id', 'b-id'])
+        os.unlink('tree/a')
+        os.rmdir('tree/b')
+        self.assertEqual('file', tree.stored_kind('a-id'))
+        self.assertEqual('directory', tree.stored_kind('b-id'))
+
     def test_missing_file_sha1(self):
         """If a file is missing, its sha1 should be reported as None."""
         tree = self.make_branch_and_tree('.')
@@ -863,3 +875,34 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         if tree.__class__ == WorkingTree2:
             raise TestSkipped('WorkingTree2 is not supported')
         self.assertEqual(case_sensitive, tree.case_sensitive)
+
+    def test_all_file_ids_with_missing(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree(['tree/a', 'tree/b'])
+        tree.add(['a', 'b'], ['a-id', 'b-id'])
+        os.unlink('tree/a')
+        self.assertEqual(set(['a-id', 'b-id', tree.get_root_id()]),
+                         tree.all_file_ids())
+
+    def test_sprout_hardlink(self):
+        source = self.make_branch_and_tree('source')
+        self.build_tree(['source/file'])
+        source.add('file')
+        source.commit('added file')
+        def fake_link(source, target):
+            raise OSError(errno.EPERM, 'Operation not permitted')
+        real_os_link = os.link
+        os.link = fake_link
+        try:
+            # Hard-link support is optional, so supplying hardlink=True may
+            # or may not raise an exception.  But if it does, it must be
+            # HardLinkNotSupported
+            try:
+                source.bzrdir.sprout('target', accelerator_tree=source,
+                                     hardlink=True)
+            except errors.HardLinkNotSupported:
+                pass
+        finally:
+            os.link = real_os_link

@@ -121,6 +121,26 @@ class TestFileIds(TestCaseWithTree):
         finally:
             tree.unlock()
 
+    def test_all_file_ids(self):
+        work_tree = self.make_branch_and_tree('wt')
+        tree = self.get_tree_no_parents_abc_content(work_tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEqual(tree.all_file_ids(),
+                         set(['b-id', 'root-id', 'c-id', 'a-id']))
+
+
+class TestStoredKind(TestCaseWithTree):
+
+    def test_stored_kind(self):
+        tree = self.make_branch_and_tree('tree')
+        work_tree = self.make_branch_and_tree('wt')
+        tree = self.get_tree_no_parents_abc_content(work_tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEqual('file', tree.stored_kind('a-id'))
+        self.assertEqual('directory', tree.stored_kind('b-id'))
+
 
 class TestFileContent(TestCaseWithTree):
 
