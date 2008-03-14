@@ -860,25 +860,6 @@ class SmartClientRequestProtocolThree(ProtocolThreeDecoder, SmartClientRequestPr
         self.state_accept = self._state_accept_expecting_headers
         self.response_handler = self.request_handler = self.message_handler
 
-    def _state_accept_expecting_response_status(self, bytes):
-        self._in_buffer += bytes
-        response_status = self._extract_single_byte()
-        if response_status not in ['S', 'F']:
-            raise errors.SmartProtocolError(
-                'Unknown response status: %r' % (response_status,))
-        self.successful_status = bool(response_status == 'S')
-        self.state_accept = self._state_accept_expecting_request_args
-
-    def _args_received(self, args):
-        if self.successful_status:
-            self.response_handler.args_received(args)
-        else:
-            if len(args) < 1:
-                raise errors.SmartProtocolError('Empty error details')
-            self.response_handler.error_received(args)
-        self.done()
-
-
     # XXX: the encoding of requests and decoding responses are somewhat
     # conflated into one class here.  The protocol is half-duplex, so combining
     # them just makes the code needlessly ugly.
