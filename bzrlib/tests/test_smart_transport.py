@@ -2105,7 +2105,7 @@ class TestVersionOneFeaturesInProtocolThree(
         return protocol.build_server_protocol_three
 
     def test_construct_version_three_server_protocol(self):
-        smart_protocol = protocol.SmartServerRequestProtocolThree(None)
+        smart_protocol = protocol.ProtocolThreeDecoder(None)
         self.assertEqual('', smart_protocol.excess_buffer)
         self.assertEqual('', smart_protocol._in_buffer)
         self.assertFalse(smart_protocol.has_dispatched)
@@ -2153,7 +2153,7 @@ class TestProtocolThree(TestSmartProtocol):
     """Tests for v3 of the server-side protocol."""
 
     client_protocol_class = protocol.SmartClientRequestProtocolThree
-    server_protocol_class = protocol.SmartServerRequestProtocolThree
+    server_protocol_class = protocol.ProtocolThreeDecoder
 
     def test_trivial_request(self):
         """Smoke test for the simplest possible v3 request: empty headers, no
@@ -2327,7 +2327,7 @@ class TestConventionalResponseHandler(tests.TestCase):
             )
         from bzrlib.smart.message import ConventionalResponseHandler
         response_handler = ConventionalResponseHandler()
-        protocol_decoder = protocol._ProtocolThreeBase(response_handler)
+        protocol_decoder = protocol.ProtocolThreeDecoder(response_handler)
         # put decoder in desired state (waiting for message parts)
         protocol_decoder.state_accept = protocol_decoder._state_accept_expecting_message_part
         output = StringIO()
@@ -2388,7 +2388,7 @@ class InstrumentedRequestHandler(object):
 class TestClientEncodingProtocolThree(TestSmartProtocol):
 
     client_protocol_class = protocol.SmartClientRequestProtocolThree
-    server_protocol_class = protocol.SmartServerRequestProtocolThree
+    server_protocol_class = protocol.ProtocolThreeDecoder
 
     def make_client_encoder_and_output(self):
         input = None

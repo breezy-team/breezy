@@ -684,10 +684,10 @@ def build_server_protocol_three(backing_transport, write_func):
         backing_transport, commands=request.request_handlers)
     responder = ProtocolThreeResponder(write_func)
     message_handler = message.ConventionalRequestHandler(request_handler, responder)
-    return _ProtocolThreeBase(message_handler)
+    return ProtocolThreeDecoder(message_handler)
 
 
-class _ProtocolThreeBase(_StatefulDecoder):
+class ProtocolThreeDecoder(_StatefulDecoder):
 
     response_marker = RESPONSE_VERSION_THREE
     request_marker = REQUEST_VERSION_THREE
@@ -846,23 +846,14 @@ class _ProtocolThreeBase(_StatefulDecoder):
                 return 1 # XXX !!!
 
 
-class SmartServerRequestProtocolThree(_ProtocolThreeBase):
-
-    def _args_received(self, args):
-        if len(args) < 1:
-            raise errors.SmartProtocolError('Empty argument sequence')
-        self.state_accept = self._state_accept_expecting_body_kind
-        self.request_handler.args_received(args)
-
-
-class SmartClientRequestProtocolThree(_ProtocolThreeBase, SmartClientRequestProtocolTwo):
+class SmartClientRequestProtocolThree(ProtocolThreeDecoder, SmartClientRequestProtocolTwo):
 
     response_marker = RESPONSE_VERSION_THREE
     request_marker = REQUEST_VERSION_THREE
 
     def __init__(self, client_medium_request):
         from bzrlib.smart.message import MessageHandler
-        _ProtocolThreeBase.__init__(self, MessageHandler())
+        ProtocolThreeDecoder.__init__(self, MessageHandler())
         SmartClientRequestProtocolTwo.__init__(self, client_medium_request)
         # Initial state
         self._in_buffer = ''
