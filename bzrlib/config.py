@@ -121,20 +121,25 @@ STORE_LOCATION_APPENDPATH = POLICY_APPENDPATH
 STORE_BRANCH = 3
 STORE_GLOBAL = 4
 
+_ConfigObj = None
+def ConfigObj(*args, **kwargs):
+    global _ConfigObj
+    if _ConfigObj is None:
+        class ConfigObj(configobj.ConfigObj):
 
-class ConfigObj(configobj.ConfigObj):
+            def get_bool(self, section, key):
+                return self[section].as_bool(key)
 
-    def get_bool(self, section, key):
-        return self[section].as_bool(key)
-
-    def get_value(self, section, name):
-        # Try [] for the old DEFAULT section.
-        if section == "DEFAULT":
-            try:
-                return self[name]
-            except KeyError:
-                pass
-        return self[section][name]
+            def get_value(self, section, name):
+                # Try [] for the old DEFAULT section.
+                if section == "DEFAULT":
+                    try:
+                        return self[name]
+                    except KeyError:
+                        pass
+                return self[section][name]
+        _ConfigObj = ConfigObj
+    return _ConfigObj(*args, **kwargs)
 
 
 class Config(object):
