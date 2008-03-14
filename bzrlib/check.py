@@ -36,6 +36,7 @@ from bzrlib import errors, osutils
 from bzrlib import repository as _mod_repository
 from bzrlib import revision
 from bzrlib.branch import Branch
+from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import BzrCheckError
 from bzrlib.repository import Repository
 from bzrlib.symbol_versioning import deprecated_function, one_three
@@ -273,43 +274,8 @@ def check_branch(branch, verbose):
     branch_result.report_results(verbose)
 
 
-def _get_elements(path):
-    try:
-        if path == '.':
-            tree = WorkingTree.open_containing(path)[0]
-        else:
-            tree = WorkingTree.open(path)
-    except (errors.NoWorkingTree, errors.NotLocalUrl):
-        pass
-    except errors.NotBranchError:
-        raise errors.NotVersionedError(path)
-    else:
-        return tree, tree.branch, tree.branch.repository
-
-    try:
-        if path == '.':
-            branch = Branch.open_containing(path)[0]
-        else:
-            branch = Branch.open(path)
-    except errors.NotBranchError:
-        pass
-    else:
-        return None, branch, branch.repository
-
-    try:
-        repo = Repository.open(path)
-    except errors.NoRepositoryPresent:
-        pass
-    except errors.NotBranchError:
-        raise errors.NotVersionedError(path)
-    else:
-        return None, None, repo
-
-    raise errors.NotVersionedError(path)
-
-
 def check_dwim(path, verbose):
-    tree, branch, repo = _get_elements(path)
+    tree, branch, repo = BzrDir.open_containing_tree_branch_or_repository(path)
 
     if tree is not None:
         note("Checking working tree at '%s'." 
