@@ -59,6 +59,7 @@ from bzrlib.osutils import (
     sha_strings,
     sha_string,
     )
+from bzrlib.repository import Repository
 from bzrlib.smart.client import _SmartClient
 from bzrlib.smart import protocol
 from bzrlib.store.revision.text import TextRevisionStore
@@ -786,6 +787,29 @@ class BzrDir(object):
         bzrdir, relpath = klass.open_containing(location)
         tree, branch = bzrdir._get_tree_branch()
         return tree, branch, relpath
+
+    @classmethod
+    def open_containing_tree_branch_or_repository(klass, location):
+        """Return the branch, working tree and repo contained by a location.
+
+        Returns (tree, branch, repository).
+        If there is no tree containing the location, tree will be None.
+        If there is no branch containing the location, branch will be None.
+        If there is no repository containing the location, repository will be
+        None.
+
+        If no branch, tree or repository is found, a NotVersionedError is
+        raised.
+        """
+        try:
+            tree, branch, relpath = \
+                klass.open_containing_tree_or_branch(location)
+        except errors.NotBranchError:
+            try:
+                return None, None, Repository.open(location)
+            except (errors.NoRepositoryPresent, errors.NotBranchError):
+                raise errors.NotVersionedError(location)
+        return tree, branch, branch.repository
 
     def open_repository(self, _unsupported=False):
         """Open the repository object at this BzrDir if one is present.
