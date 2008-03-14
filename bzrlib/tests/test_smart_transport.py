@@ -2094,15 +2094,12 @@ class TestVersionOneFeaturesInProtocolThree(
     """
 
     client_protocol_class = protocol.SmartClientRequestProtocolThree
-
     # build_server_protocol_three is a function, so we can't set it as a class
     # attribute directly, because then Python will assume it is actually a
-    # method.  So we make server_protocol_class be a property that returns
-    # build_server_protocol_three, rather than simply doing
+    # method.  So we make server_protocol_class be a static method, rather than
+    # simply doing:
     # "server_protocol_class = protocol.build_server_protocol_three".
-    @property
-    def server_protocol_class(self):
-        return protocol.build_server_protocol_three
+    server_protocol_class = staticmethod(protocol.build_server_protocol_three)
 
     def test_construct_version_three_server_protocol(self):
         smart_protocol = protocol.ProtocolThreeDecoder(None)
