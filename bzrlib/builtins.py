@@ -4040,8 +4040,9 @@ class cmd_send(Command):
     generic options are "default", "editor", "mapi", and "xdg-email".
 
     If mail is being sent, a to address is required.  This can be supplied
-    either on the commandline, or by setting the submit_to configuration
-    option.
+    either on the commandline, by setting the submit_to configuration
+    option in the branch itself or the child_submit_to configuration option 
+    in the submit branch.
 
     Two formats are currently supported: "4" uses revision bundle format 4 and
     merge directive format 2.  It is significantly faster and smaller than
@@ -4125,6 +4126,10 @@ class cmd_send(Command):
                                              ' specified')
             if remembered_submit_branch:
                 note('Using saved location: %s', submit_branch)
+
+            if mail_to is None:
+                submit_config = Branch.open(submit_branch).get_config()
+                mail_to = submit_config.get_user_option("child_submit_to")
 
             stored_public_branch = branch.get_public_branch()
             if public_branch is None:
