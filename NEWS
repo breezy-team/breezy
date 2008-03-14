@@ -60,6 +60,9 @@ IN DEVELOPMENT
      case of running ``bzr missing`` command for two identical branches.
      (Alexander Belchenko)
 
+   * The ``hooks`` command lists installed hooks, to assist in debugging.
+     (Daniel Watkins)
+
   BUGFIXES:
 
     * Disable plink's interactive prompt for password.
