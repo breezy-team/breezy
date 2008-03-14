@@ -478,6 +478,64 @@ class ChrootedTests(TestCaseWithTransport):
         branch, relpath = bzrdir.BzrDir.open_containing(self.get_readonly_url('g/p/q'))
         self.assertEqual('g/p/q', relpath)
 
+    def test_open_containing_tree_branch_or_repository(self):
+        def local_branch_path(branch):
+             return os.path.realpath(
+                urlutils.local_path_from_url(branch.base))
+        self.assertRaises(errors.NotVersionedError,
+            bzrdir.BzrDir.open_containing_tree_branch_or_repository,
+            self.get_readonly_url(''))
+
+        # Tree, branch and repository
+        self.make_branch_and_tree('topdir')
+        tree, branch, repo = \
+            bzrdir.BzrDir.open_containing_tree_branch_or_repository(
+                'topdir/foo')
+        self.assertEqual(os.path.realpath('topdir'),
+                         os.path.realpath(tree.basedir))
+        self.assertEqual(os.path.realpath('topdir'),
+                         local_branch_path(branch))
+        self.assertEqual(
+            os.path.realpath(os.path.join('topdir', '.bzr', 'repository')),
+            repo.bzrdir.transport.local_abspath('repository'))
+
+        # Branch and repository
+        self.make_branch('branch')
+        tree, branch, repo = \
+            bzrdir.BzrDir.open_containing_tree_branch_or_repository(
+                'branch/foo')
+        self.assertEqual(tree, None)
+        self.assertEqual(os.path.realpath('branch'),
+                         local_branch_path(branch))
+        self.assertEqual(
+            os.path.realpath(os.path.join('branch', '.bzr', 'repository')),
+            repo.bzrdir.transport.local_abspath('repository'))
+
+        # Repository
+        self.make_repository('repo')
+        tree, branch, repo = \
+            bzrdir.BzrDir.open_containing_tree_branch_or_repository(
+                'repo')
+        self.assertEqual(tree, None)
+        self.assertEqual(branch, None)
+        self.assertEqual(
+            os.path.realpath(os.path.join('repo', '.bzr', 'repository')),
+            repo.bzrdir.transport.local_abspath('repository'))
+
+        # Branch in shared repo
+        self.make_repository('shared', shared=True)
+        bzrdir.BzrDir.create_branch_convenience('shared/branch',
+                                                force_new_tree=False)
+        tree, branch, repo = \
+            bzrdir.BzrDir.open_containing_tree_branch_or_repository(
+                'shared/branch')
+        self.assertEqual(tree, None)
+        self.assertEqual(os.path.realpath('shared/branch'),
+                         local_branch_path(branch))
+        self.assertEqual(
+            os.path.realpath(os.path.join('shared', '.bzr', 'repository')),
+            repo.bzrdir.transport.local_abspath('repository'))
+
     def test_open_containing_from_transport(self):
         self.assertRaises(NotBranchError, bzrdir.BzrDir.open_containing_from_transport,
                           get_transport(self.get_readonly_url('')))
