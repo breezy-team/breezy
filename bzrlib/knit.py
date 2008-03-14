@@ -1794,7 +1794,10 @@ class KnitGraphIndex(object):
         entries = self._get_entries(self._version_ids_to_keys(version_ids), True)
         for entry in entries:
             version_id = self._keys_to_version_ids((entry[1],))[0]
-            parents = self._keys_to_version_ids(entry[3][0])
+            if not self._parents:
+                parents = ()
+            else:
+                parents = self._keys_to_version_ids(entry[3][0])
             if not self._deltas:
                 compression_parent = None
             else:
