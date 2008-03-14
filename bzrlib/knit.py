@@ -485,7 +485,7 @@ class KnitPlainFactory(_KnitFactory):
 
     def annotate_iter(self, knit, version_id):
         annotator = _KnitAnnotator(knit)
-        return iter(annotator.get_annotated_lines(version_id))
+        return iter(annotator.annotate(version_id))
 
 
 def make_empty_knit(transport, relpath):
@@ -2843,7 +2843,7 @@ def annotate_knit(knit, revision_id):
     recommended.
     """
     annotator = _KnitAnnotator(knit)
-    return iter(annotator.get_annotated_lines(revision_id))
+    return iter(annotator.annotate(revision_id))
 
 
 class _KnitAnnotator(object):
@@ -3079,7 +3079,7 @@ class _KnitAnnotator(object):
         self._heads_provider = head_cache
         return head_cache
 
-    def get_annotated_lines(self, revision_id):
+    def annotate(self, revision_id):
         """Return the annotated fulltext at the given revision.
 
         :param revision_id: The revision id for this file
