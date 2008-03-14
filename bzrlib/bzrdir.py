@@ -806,7 +806,8 @@ class BzrDir(object):
                 klass.open_containing_tree_or_branch(location)
         except errors.NotBranchError:
             try:
-                return None, None, Repository.open(location)
+                repo = klass.open_containing(location)[0].find_repository()
+                return None, None, repo
             except (errors.NoRepositoryPresent, errors.NotBranchError):
                 raise errors.NotVersionedError(location)
         return tree, branch, branch.repository
