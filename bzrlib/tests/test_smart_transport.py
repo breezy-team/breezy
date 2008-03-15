@@ -1390,13 +1390,9 @@ class TestSmartProtocol(tests.TestCase):
 
     def setUp(self):
         super(TestSmartProtocol, self).setUp()
-        self.to_server = StringIO()
-        self.to_client = StringIO()
-        self.client_medium = medium.SmartSimplePipesClientMedium(self.to_client,
-            self.to_server)
-        self.client_protocol = self.client_protocol_class(self.client_medium)
-        self.smart_server = medium.SmartServerStreamMedium(
-            memory.MemoryTransport())
+        client_medium = medium.SmartSimplePipesClientMedium(
+            StringIO(), StringIO())
+        self.client_protocol = self.client_protocol_class(client_medium)
         self.smart_server_request = request.SmartServerRequestHandler(
             None, request.request_handlers)
 
