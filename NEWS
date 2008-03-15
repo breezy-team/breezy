@@ -31,6 +31,9 @@ IN DEVELOPMENT
 
     * Restore auto-detection of plink.exe on Windows. (Dmitry Vasiliev)
 
+    * The backup directory created by ``upgrade`` is now called
+      ``backup.bzr``, not ``.bzr.backup``. (Martin Albisetti)
+
   FEATURES:
 
     * ``branch`` and ``checkout`` can hard-link working tree files, which is
