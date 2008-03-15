@@ -357,8 +357,7 @@ class ExtendedTestResult(unittest._TextTestResult):
             # seems best to treat this as success from point-of-view of unittest
             # -- it actually does nothing so it barely matters :)
             unittest.TestResult.addSuccess(self, test)
-            if getattr(test, '_log_contents', '') != '':
-                del test._log_contents
+            test._log_contents = ''
 
     def printErrorList(self, flavour, errors):
         for test, err in errors:
