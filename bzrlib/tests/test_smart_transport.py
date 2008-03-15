@@ -1391,7 +1391,7 @@ class TestSmartProtocol(tests.TestCase):
     def make_client_protocol(self):
         client_medium = medium.SmartSimplePipesClientMedium(
             StringIO(), StringIO())
-        return self.client_protocol_class(client_medium)
+        return self.client_protocol_class(client_medium.get_request())
 
     def assertOffsetSerialisation(self, expected_offsets, expected_serialised,
         client):
@@ -1468,11 +1468,7 @@ class CommonSmartProtocolTestMixin(object):
         self.assertContainsRe(test_log, 'SmartProtocolError')
 
     def test_connection_closed_reporting(self):
-        input = StringIO()
-        output = StringIO()
-        client_medium = medium.SmartSimplePipesClientMedium(input, output)
-        request = client_medium.get_request()
-        smart_protocol = self.client_protocol_class(request)
+        smart_protocol = self.make_client_protocol()
         smart_protocol.call('hello')
         ex = self.assertRaises(errors.ConnectionReset, 
             smart_protocol.read_response_tuple)
