@@ -65,6 +65,9 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+    * Cherrypicking when using ``--format=merge3`` now explictly excludes
+      BASE lines. (John Arbash Meinel, #151731)
+
     * Disable plink's interactive prompt for password.
       (#107593, Dmitry Vasiliev)
 
