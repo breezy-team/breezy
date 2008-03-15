@@ -220,6 +220,7 @@ class KnitRepository(MetaDirRepository):
             return a_weave.get_graph([revision_id])
 
     @needs_read_lock
+    @symbol_versioning.deprecated_method(symbol_versioning.one_three)
     def get_revision_graph_with_ghosts(self, revision_ids=None):
         """Return a graph of the revisions with ghosts marked as applicable.
 
