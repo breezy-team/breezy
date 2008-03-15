@@ -37,20 +37,21 @@ class cmd_upload(commands.Command):
     If no destination is specified use the last one used.
     If no revision is specified upload the changes since the last upload.
     """
-    takes_args = ['dest?']
+    takes_args = ['location?']
     takes_options = [
         'revision',
         option.Option('full', 'Upload the full working tree.'),
        ]
 
-    def run(self, dest, full=False, revision=None):
+    def run(self, location, full=False, revision=None):
         wt = workingtree.WorkingTree.open_containing(u'.')[0]
         b = wt.branch
 
-        if dest is None:
+        if location is None:
+            # XXX: use the remembered location
             raise NotImplementedError
         else:
-            self.dest = transport.get_transport(dest)
+            self.to_transport = transport.get_transport(location)
         if revision is None:
             rev_id = wt.last_revision()
         else:
@@ -71,10 +72,13 @@ class cmd_upload(commands.Command):
 
     def set_uploaded_revid(self, rev_id):
         # XXX: Rename to .bzr/uploaded ? Add tests for concurrent updates, etc.
-        self.dest.put_bytes('.bzr.uploaded', rev_id)
+        self.to_transport.put_bytes('.bzr.uploaded', rev_id)
+
+    def upload_file(self, relpath, id):
+        self.to_transport.put_bytes(relpath, self.tree.get_file_text(id))
 
     def upload_full_tree(self):
-        self.dest.ensure_base() # XXX: Handle errors
+        self.to_transport.ensure_base() # XXX: Handle errors
         self.tree.lock_read()
         try:
             inv = self.tree.inventory
@@ -86,27 +90,27 @@ class cmd_upload(commands.Command):
                 if dp == ".bzrignore":
                     continue
 
-                self.dest.put_bytes(dp, self.tree.get_file_text(ie.file_id))
+                self.upload_file(dp, ie.file_id)
             self.set_uploaded_revid(self.rev_id)
         finally:
             self.tree.unlock()
 
     def upload_tree(self, from_tree):
-        self.dest.ensure_base() # XXX: Handle errors
+        self.to_transport.ensure_base() # XXX: Handle errors
         # XXX: add tests for directories
         changes = self.tree.changes_from(from_tree)
         self.tree.lock_read()
         try:
             for (path, id, kind) in changes.added:
                 if kind is 'file':
-                    self.dest.put_bytes(path, self.tree.get_file_text(id))
+                    self.upload_file(path, id)
                 else:
                     raise NotImplementedError
             # XXX: Add a test for exec_change
             for (path, id, kind,
                  content_change, exec_change) in changes.modified:
                 if kind is 'file':
-                    self.dest.put_bytes(path, self.tree.get_file_text(id))
+                    self.upload_file(path, id)
                 else:
                     raise NotImplementedError
             self.set_uploaded_revid(self.rev_id)
