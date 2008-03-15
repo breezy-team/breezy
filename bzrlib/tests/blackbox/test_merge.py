@@ -491,4 +491,4 @@ class TestMerge(ExternalBase):
         this_tree.lock_read()
         self.addCleanup(this_tree.unlock)
         self.assertEqual([],
-                         list(this_tree._iter_changes(this_tree.basis_tree())))
+                         list(this_tree.iter_changes(this_tree.basis_tree())))

@@ -117,7 +117,7 @@ except NameError:
     True, False = 1, 0
 
 
-__version__ = '4.5.1'
+__version__ = '4.5.2'
 
 __revision__ = '$Id: configobj.py 156 2006-01-31 14:57:08Z fuzzyman $'
 

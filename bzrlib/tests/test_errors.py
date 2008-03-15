@@ -21,6 +21,7 @@
 from bzrlib import (
     bzrdir,
     errors,
+    osutils,
     symbol_versioning,
     urlutils,
     )
@@ -451,6 +452,16 @@ class TestErrors(TestCaseWithTransport):
             ("The URL for bug tracker \"foo\" doesn't contain {id}: "
              "http://bug.com/"),
             str(err))
+
+    def test_unable_encode_path(self):
+        err = errors.UnableEncodePath('foo', 'executable')
+        self.assertEquals("Unable to encode executable path 'foo' in "
+            "user encoding " + osutils.get_user_encoding(),
+            str(err))
+
+    def test_unknown_format(self):
+        err = errors.UnknownFormatError('bar', kind='foo')
+        self.assertEquals("Unknown foo format: 'bar'", str(err))
 
 
 class PassThroughError(errors.BzrError):

@@ -20,6 +20,7 @@ import subprocess
 import sys
 import tempfile
 
+import bzrlib
 from bzrlib import (
     email_message,
     errors,
@@ -153,7 +154,7 @@ class ExternalMailClient(MailClient):
             the attachment type.
         """
         for name in self._get_client_commands():
-            cmdline = [name]
+            cmdline = [self._encode_path(name, 'executable')]
             cmdline.extend(self._get_compose_commandline(to, subject,
                                                          attach_path))
             try:
@@ -176,6 +177,34 @@ class ExternalMailClient(MailClient):
         """
         raise NotImplementedError
 
+    def _encode_safe(self, u):
+        """Encode possible unicode string argument to 8-bit string
+        in user_encoding. Unencodable characters will be replaced
+        with '?'.
+
+        :param  u:  possible unicode string.
+        :return:    encoded string if u is unicode, u itself otherwise.
+        """
+        if isinstance(u, unicode):
+            return u.encode(bzrlib.user_encoding, 'replace')
+        return u
+
+    def _encode_path(self, path, kind):
+        """Encode unicode path in user encoding.
+
+        :param  path:   possible unicode path.
+        :param  kind:   path kind ('executable' or 'attachment').
+        :return:        encoded path if path is unicode,
+                        path itself otherwise.
+        :raise:         UnableEncodePath.
+        """
+        if isinstance(path, unicode):
+            try:
+                return path.encode(bzrlib.user_encoding)
+            except UnicodeEncodeError:
+                raise errors.UnableEncodePath(path, kind)
+        return path
+
 
 class Evolution(ExternalMailClient):
     """Evolution mail client."""
@@ -190,8 +219,9 @@ class Evolution(ExternalMailClient):
         if attach_path is not None:
             message_options['attach'] = attach_path
         options_list = ['%s=%s' % (k, urlutils.escape(v)) for (k, v) in
-                        message_options.iteritems()]
-        return ['mailto:%s?%s' % (to or '', '&'.join(options_list))]
+                        sorted(message_options.iteritems())]
+        return ['mailto:%s?%s' % (self._encode_safe(to or ''),
+            '&'.join(options_list))]
 
 
 class Mutt(ExternalMailClient):
@@ -203,11 +233,12 @@ class Mutt(ExternalMailClient):
         """See ExternalMailClient._get_compose_commandline"""
         message_options = []
         if subject is not None:
-            message_options.extend(['-s', subject ])
+            message_options.extend(['-s', self._encode_safe(subject)])
         if attach_path is not None:
-            message_options.extend(['-a', attach_path])
+            message_options.extend(['-a',
+                self._encode_path(attach_path, 'attachment')])
         if to is not None:
-            message_options.append(to)
+            message_options.append(self._encode_safe(to))
         return message_options
 
 
@@ -228,9 +259,9 @@ class Thunderbird(ExternalMailClient):
         """See ExternalMailClient._get_compose_commandline"""
         message_options = {}
         if to is not None:
-            message_options['to'] = to
+            message_options['to'] = self._encode_safe(to)
         if subject is not None:
-            message_options['subject'] = subject
+            message_options['subject'] = self._encode_safe(subject)
         if attach_path is not None:
             message_options['attachment'] = urlutils.local_path_to_url(
                 attach_path)
@@ -248,12 +279,12 @@ class KMail(ExternalMailClient):
         """See ExternalMailClient._get_compose_commandline"""
         message_options = []
         if subject is not None:
-            message_options.extend( ['-s', subject ] )
+            message_options.extend(['-s', self._encode_safe(subject)])
         if attach_path is not None:
-            message_options.extend( ['--attach', attach_path] )
+            message_options.extend(['--attach',
+                self._encode_path(attach_path, 'attachment')])
         if to is not None:
-            message_options.extend( [ to ] )
-
+            message_options.extend([self._encode_safe(to)])
         return message_options
 
 
@@ -266,11 +297,12 @@ class XDGEmail(ExternalMailClient):
         """See ExternalMailClient._get_compose_commandline"""
         if not to:
             raise errors.NoMailAddressSpecified()
-        commandline = [to]
+        commandline = [self._encode_safe(to)]
         if subject is not None:
-            commandline.extend(['--subject', subject])
+            commandline.extend(['--subject', self._encode_safe(subject)])
         if attach_path is not None:
-            commandline.extend(['--attach', attach_path])
+            commandline.extend(['--attach',
+                self._encode_path(attach_path, 'attachment')])
         return commandline
 
 
