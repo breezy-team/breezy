@@ -1393,8 +1393,6 @@ class TestSmartProtocol(tests.TestCase):
         client_medium = medium.SmartSimplePipesClientMedium(
             StringIO(), StringIO())
         self.client_protocol = self.client_protocol_class(client_medium)
-        self.smart_server_request = request.SmartServerRequestHandler(
-            None, request.request_handlers)
 
     def assertOffsetSerialisation(self, expected_offsets, expected_serialised,
         client):
@@ -1419,7 +1417,8 @@ class TestSmartProtocol(tests.TestCase):
         out_stream = StringIO()
         smart_protocol = self.server_protocol_class(None, out_stream.write)
         smart_protocol.has_dispatched = True
-        smart_protocol.request = self.smart_server_request
+        smart_protocol.request = request.SmartServerRequestHandler(
+            None, request.request_handlers)
         class FakeCommand(object):
             def do_body(cmd, body_bytes):
                 self.end_received = True
