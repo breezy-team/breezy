@@ -945,14 +945,19 @@ class KnitVersionedFile(VersionedFile):
         pending_components = version_ids
         while pending_components:
             build_details = self._index.get_build_details(pending_components)
+            current_components = set(pending_components)
             pending_components = set()
-            for version_id, details in build_details.items():
-                (index_memo, compression_parent, parents, record_details) = details
+            for version_id, details in build_details.iteritems():
+                (index_memo, compression_parent, parents,
+                 record_details) = details
                 method = record_details[0]
                 if compression_parent is not None:
                     pending_components.add(compression_parent)
                 component_data[version_id] = (record_details, index_memo,
                                               compression_parent)
+            missing = current_components.difference(build_details)
+            if missing:
+                raise errors.RevisionNotPresent(missing.pop(), self.filename)
         return component_data
        
     def _get_content(self, version_id, parent_texts={}):
@@ -1482,6 +1487,8 @@ class _KnitIndex(_KnitComponentFile):
     def get_build_details(self, version_ids):
         """Get the method, index_memo and compression parent for version_ids.
 
+        Ghosts are omitted from the result.
+
         :param version_ids: An iterable of version_ids.
         :return: A dict of version_id:(index_memo, compression_parent,
                                        parents, record_details).
@@ -1498,6 +1505,9 @@ class _KnitIndex(_KnitComponentFile):
         """
         result = {}
         for version_id in version_ids:
+            if version_id not in self._cache:
+                # ghosts are omitted
+                continue
             method = self.get_method(version_id)
             parents = self.get_parents_with_ghosts(version_id)
             if method == 'fulltext':
@@ -1775,6 +1785,8 @@ class KnitGraphIndex(object):
 
     def get_build_details(self, version_ids):
         """Get the method, index_memo and compression parent for version_ids.
+
+        Ghosts are omitted from the result.
 
         :param version_ids: An iterable of version_ids.
         :return: A dict of version_id:(index_memo, compression_parent,
@@ -2302,6 +2314,8 @@ class _StreamIndex(object):
     def get_build_details(self, version_ids):
         """Get the method, index_memo and compression parent for version_ids.
 
+        Ghosts are omitted from the result.
+
         :param version_ids: An iterable of version_ids.
         :return: A dict of version_id:(index_memo, compression_parent,
                                        parents, record_details).
@@ -2318,7 +2332,11 @@ class _StreamIndex(object):
         """
         result = {}
         for version_id in version_ids:
-            method = self.get_method(version_id)
+            try:
+                method = self.get_method(version_id)
+            except errors.RevisionNotPresent:
+                # ghosts are omitted
+                continue
             parent_ids = self.get_parents_with_ghosts(version_id)
             noeol = ('no-eol' in self.get_options(version_id))
             if method == 'fulltext':
@@ -2868,6 +2886,9 @@ class _KnitAnnotator(object):
         # annotated from it.
         self._pending_children = {}
 
+        # Nodes which cannot be extracted
+        self._ghosts = set()
+
         # Track how many children this node has, so we know if we need to keep
         # it
         self._annotate_children = {}
@@ -2903,7 +2924,7 @@ class _KnitAnnotator(object):
             nodes_to_annotate, otherwise put it back in self._pending_children
         """
         for parent_id in child[1]:
-            if parent_id not in self._annotated_lines:
+            if (parent_id not in self._annotated_lines):
                 # This parent is present, but another parent is missing
                 self._pending_children.setdefault(parent_id,
                                                   []).append(child)
@@ -2990,10 +3011,21 @@ class _KnitAnnotator(object):
                         self._nodes_to_keep_annotations.add(rev_id)
 
             missing_versions = this_iteration.difference(build_details.keys())
+            self._ghosts.update(missing_versions)
             for missing_version in missing_versions:
                 # add a key, no parents
-                self._revision_id_graph[missing_versions] = ()
+                self._revision_id_graph[missing_version] = ()
                 pending.discard(missing_version) # don't look for it
+        # XXX: This should probably be a real exception, as it is a data
+        #      inconsistency
+        assert not self._ghosts.intersection(self._compression_children), \
+            "We cannot have nodes which have a compression parent of a ghost."
+        # Cleanout anything that depends on a ghost so that we don't wait for
+        # the ghost to show up
+        for node in self._ghosts:
+            if node in self._annotate_children:
+                # We won't be building this node
+                del self._annotate_children[node]
         # Generally we will want to read the records in reverse order, because
         # we find the parent nodes after the children
         records.reverse()
@@ -3010,6 +3042,7 @@ class _KnitAnnotator(object):
             if rev_id in self._annotated_lines:
                 continue
             parent_ids = self._revision_id_graph[rev_id]
+            parent_ids = [p for p in parent_ids if p not in self._ghosts]
             details = self._all_build_details[rev_id]
             (index_memo, compression_parent, parents,
              record_details) = details
@@ -3088,6 +3121,8 @@ class _KnitAnnotator(object):
         :param revision_id: The revision id for this file
         """
         records = self._get_build_graph(revision_id)
+        if revision_id in self._ghosts:
+            raise errors.RevisionNotPresent(revision_id, self._knit)
         self._annotate_records(records)
         return self._annotated_lines[revision_id]
 
