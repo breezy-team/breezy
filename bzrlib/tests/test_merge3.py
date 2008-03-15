@@ -383,3 +383,42 @@ bbb
         m_lines = m3.merge_lines('OTHER', 'THIS')
         self.assertEqual('<<<<<<< OTHER\rc\r=======\rb\r'
             '>>>>>>> THIS\r'.splitlines(True), list(m_lines))
+
+    def test_merge3_cherrypick(self):
+        base_text = "a\nb\n"
+        this_text = "a\n"
+        other_text = "a\nb\nc\n"
+        # When cherrypicking, lines in base are not part of the conflict
+        m3 = Merge3(base_text.splitlines(True), this_text.splitlines(True),
+                    other_text.splitlines(True), is_cherrypick=True)
+        m_lines = m3.merge_lines()
+        self.assertEqualDiff('a\n<<<<<<<\n=======\nc\n>>>>>>>\n',
+                             ''.join(m_lines))
+
+        # This is not symmetric
+        m3 = Merge3(base_text.splitlines(True), other_text.splitlines(True),
+                    this_text.splitlines(True), is_cherrypick=True)
+        m_lines = m3.merge_lines()
+        self.assertEqualDiff('a\n<<<<<<<\nb\nc\n=======\n>>>>>>>\n',
+                             ''.join(m_lines))
+
+    def test_merge3_cherrypick_w_mixed(self):
+        base_text = 'a\nb\nc\nd\ne\n'
+        this_text = 'a\nb\nq\n'
+        other_text = 'a\nb\nc\nd\nf\ne\ng\n'
+        # When cherrypicking, lines in base are not part of the conflict
+        m3 = Merge3(base_text.splitlines(True), this_text.splitlines(True),
+                    other_text.splitlines(True), is_cherrypick=True)
+        m_lines = m3.merge_lines()
+        self.assertEqualDiff('a\n'
+                             'b\n'
+                             '<<<<<<<\n'
+                             'q\n'
+                             '=======\n'
+                             'f\n'
+                             '>>>>>>>\n'
+                             '<<<<<<<\n'
+                             '=======\n'
+                             'g\n'
+                             '>>>>>>>\n',
+                             ''.join(m_lines))
