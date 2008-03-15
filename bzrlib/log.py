@@ -660,7 +660,7 @@ class LongLogFormatter(LogFormatter):
         if revision.tags:
             to_file.write(indent + 'tags: %s\n' % (', '.join(revision.tags)))
         if self.show_ids:
-            to_file.write(indent + 'revision-id:' + revision.rev.revision_id)
+            to_file.write(indent + 'revision-id: ' + revision.rev.revision_id)
             to_file.write('\n')
             for parent_id in revision.rev.parent_ids:
                 to_file.write(indent + 'parent: %s\n' % (parent_id,))
