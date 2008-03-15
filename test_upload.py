@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,8 +22,47 @@ from bzrlib import (
     revisionspec,
     tests,
     )
+from bzrlib.tests import test_transport_implementations
 
 from bzrlib.plugins.upload import cmd_upload
+
+
+class TransportAdapter(
+    test_transport_implementations.TransportTestProviderAdapter):
+    """A tool to generate a suite testing all transports for a single test.
+
+    We restrict the transports to the ones we want to support.
+    """
+
+    def _test_permutations(self):
+        """Return a list of the klass, server_factory pairs to test."""
+        result = []
+        transport_modules =['bzrlib.transport.ftp',
+                            'bzrlib.transport.sftp']
+        for module in transport_modules:
+            try:
+                permutations = self.get_transport_test_permutations(
+                    reduce(getattr, (module).split('.')[1:],
+                           __import__(module)))
+                for (klass, server_factory) in permutations:
+                    scenario = (server_factory.__name__,
+                        {"transport_class":klass,
+                         "transport_server":server_factory})
+                    result.append(scenario)
+            except errors.DependencyNotPresent, e:
+                # Continue even if a dependency prevents us 
+                # from adding this test
+                pass
+        return result
+
+
+def load_tests(standard_tests, module, loader):
+    """Multiply tests for tranport implementations."""
+    result = loader.suiteClass()
+    adapter = TransportAdapter()
+    for test in tests.iter_suite_tests(standard_tests):
+        result.addTests(adapter.adapt(test))
+    return result
 
 
 class TestUpload(tests.TestCaseWithTransport):
@@ -45,8 +84,9 @@ class TestUpload(tests.TestCaseWithTransport):
 
         os.chdir('branch')
         upload = cmd_upload()
+        up_url = self.get_transport('upload').external_url()
 
-        upload.run('../upload', full=True)
+        upload.run(up_url, full=True)
 
         self.assertFileEqual('bar', '../upload/hello')
         self.assertFileEqual('baz', '../upload/goodbye')
@@ -56,16 +96,17 @@ class TestUpload(tests.TestCaseWithTransport):
 
         os.chdir('branch')
         upload = cmd_upload()
+        up_url = self.get_transport('upload').external_url()
 
         # Upload revision 1 only
         revspec = revisionspec.RevisionSpec.from_string('1')
-        upload.run('../upload', revision=[revspec], full=True)
+        upload.run(up_url, revision=[revspec], full=True)
 
         self.assertFileEqual('foo', '../upload/hello')
         self.failIfExists('../upload/goodbye')
 
         # Upload current revision
-        upload.run('../upload')
+        upload.run(up_url)
 
         self.assertFileEqual('bar','../upload/hello')
         self.assertFileEqual('baz', '../upload/goodbye')
@@ -75,6 +116,7 @@ class TestUpload(tests.TestCaseWithTransport):
         rev1 = revisionspec.RevisionSpec.from_string('1')
         rev2 = revisionspec.RevisionSpec.from_string('2')
         upload = cmd_upload()
+        up_url = self.get_transport('upload').external_url()
         self.assertRaises(errors.BzrCommandError, upload.run,
-                          '../upload', revision=[rev1, rev2])
+                          up_url, revision=[rev1, rev2])
 

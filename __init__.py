@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,7 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Upload a working tree, incrementally"""
+"""Upload a working tree, incrementally.
+
+The only bzr-related info uploaded with the working tree is the corrseponding
+revision id. The uploaded working tree is not linked to any other bzr data.
+
+The intended use is for web sites.
+"""
 
 from bzrlib import (
     commands,
@@ -70,7 +76,6 @@ class cmd_upload(commands.Command):
     def upload_full_tree(self):
         self.dest.ensure_base() # XXX: Handle errors
         self.tree.lock_read()
-        dpath = self.dest.local_abspath('.')
         try:
             inv = self.tree.inventory
             entries = inv.iter_entries()
@@ -81,7 +86,7 @@ class cmd_upload(commands.Command):
                 if dp == ".bzrignore":
                     continue
 
-                ie.put_on_disk(dpath, dp, self.tree)
+                self.dest.put_bytes(dp, self.tree.get_file_text(ie.file_id))
             self.set_uploaded_revid(self.rev_id)
         finally:
             self.tree.unlock()
