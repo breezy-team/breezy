@@ -33,39 +33,51 @@ IN DEVELOPMENT
 
   FEATURES:
 
-   * ``branch`` and ``checkout`` can hard-link working tree files, which is
-     faster and saves space.  (Aaron Bentley)
+    * ``branch`` and ``checkout`` can hard-link working tree files, which is
+      faster and saves space.  (Aaron Bentley)
 
-   * ``bzr send`` will now also look at the ``child_submit_to`` setting in
-     the submit branch to determine the email address to send to. 
-     (Jelmer Vernooij)
+    * ``bzr send`` will now also look at the ``child_submit_to`` setting in
+      the submit branch to determine the email address to send to. 
+      (Jelmer Vernooij)
 
   IMPROVEMENTS:
 
-   * BzrBranch._lefthand_history is faster on pack repos.  (Aaron Bentley)
+    * BzrBranch._lefthand_history is faster on pack repos.  (Aaron Bentley)
 
-   * Branch6.generate_revision_history is faster.  (Aaron Bentley)
+    * Branch6.generate_revision_history is faster.  (Aaron Bentley)
 
-   * Directory services can now be registered, allowing special URLs to be
-     dereferenced into real URLs.  This is a generalization and cleanup of
-     the lp: transport lookup.  (Aaron Bentley)
+    * Directory services can now be registered, allowing special URLs to be
+      dereferenced into real URLs.  This is a generalization and cleanup of
+      the lp: transport lookup.  (Aaron Bentley)
 
-   * Merge directives that are automatically attached to emails have nicer
-     filenames, based on branch-nick + revno. (Aaron Bentley)
+    * Merge directives that are automatically attached to emails have nicer
+      filenames, based on branch-nick + revno. (Aaron Bentley)
 
-   * ``push`` has a ``--revision`` option, to specify what revision to push up
-     to.  (Daniel Watkins)
+    * ``push`` has a ``--revision`` option, to specify what revision to push up
+      to.  (Daniel Watkins)
 
-   * Significantly reducing execution time and network traffic for trivial 
-     case of running ``bzr missing`` command for two identical branches.
-     (Alexander Belchenko)
+    * Significantly reducing execution time and network traffic for trivial 
+      case of running ``bzr missing`` command for two identical branches.
+      (Alexander Belchenko)
 
-   * Speed up operations that look at the revision graph (such as 'bzr log').
-     ``KnitPackRepositor.get_revision_graph`` uses ``Graph.iter_ancestry`` to
-     extract the revision history. This allows filtering ghosts as step
-     instead of needing to peek ahead all the time. (John Arbash Meinel)
+    * Speed up operations that look at the revision graph (such as 'bzr log').
+      ``KnitPackRepositor.get_revision_graph`` uses ``Graph.iter_ancestry`` to
+      extract the revision history. This allows filtering ghosts while
+      stepping instead of needing to peek ahead. (John Arbash Meinel)
+
+    * The ``hooks`` command lists installed hooks, to assist in debugging.
+      (Daniel Watkins)
+
+    * Updates to how ``annotate`` work. Should see a measurable improvement in
+      performance and memory consumption for file with a lot of merges.
+      Also, correctly handle when a line is introduced by both parents (it
+      should be attributed to the first merge which notices this, and not
+      too all subsequent merges.) (John Arbash Meinel)
 
   BUGFIXES:
+
+    * Cherrypicking when using ``--format=merge3`` now explictly excludes
+      BASE lines. (John Arbash Meinel, #151731)
 
     * Disable plink's interactive prompt for password.
       (#107593, Dmitry Vasiliev)
