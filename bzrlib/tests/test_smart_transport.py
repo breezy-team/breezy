@@ -1470,7 +1470,7 @@ class CommonSmartProtocolTestMixin(object):
     def test_connection_closed_reporting(self):
         smart_protocol = self.make_client_protocol()
         smart_protocol.call('hello')
-        ex = self.assertRaises(errors.ConnectionReset, 
+        ex = self.assertRaises(errors.ConnectionReset,
             smart_protocol.read_response_tuple)
         self.assertEqual("Connection closed: "
             "please check connectivity and permissions "
