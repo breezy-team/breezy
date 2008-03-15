@@ -94,7 +94,8 @@ class _SmartClient(object):
         anything but path, so it is only safe to use it in requests sent over
         the medium from the matching transport.
         """
-        if self._shared_connection.base.startswith('bzr+http://'):
+        base = self._shared_connection.base
+        if base.startswith('bzr+http://') or base.startswith('bzr+https://'):
             medium_base = self._shared_connection.base
         else:
             medium_base = urlutils.join(self._shared_connection.base, '/')
