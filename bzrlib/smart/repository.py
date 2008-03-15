@@ -334,7 +334,7 @@ class SmartServerRepositoryStreamKnitDataForRevisions(SmartServerRepositoryReque
                 for name_tuple, bytes in stream:
                     buffer.write(pack.bytes_record(bytes, [name_tuple]))
             except:
-                # Undo the lock_read that that happens once the iterator from
+                # Undo the lock_read that happens once the iterator from
                 # get_data_stream is started.
                 repository.unlock()
                 raise
