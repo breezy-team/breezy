@@ -314,8 +314,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.report_success(test)
         self._cleanupLogFile(test)
         unittest.TestResult.addSuccess(self, test)
-        if getattr(test, '_log_contents', '') != '':
-            del test._log_contents
+        test._log_contents = ''
 
     def _testConcluded(self, test):
         """Common code when a test has finished.
