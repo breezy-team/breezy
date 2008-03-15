@@ -684,7 +684,11 @@ class UnsupportedFormatError(BzrError):
 
 class UnknownFormatError(BzrError):
     
-    _fmt = "Unknown branch format: %(format)r"
+    _fmt = "Unknown %(kind)s format: %(format)r"
+
+    def __init__(self, format, kind='branch'):
+        self.kind = kind
+        self.format = format
 
 
 class IncompatibleFormat(BzrError):
@@ -2586,3 +2590,14 @@ class UnsupportedTimezoneFormat(BzrError):
 
     def __init__(self, timezone):
         self.timezone = timezone
+
+
+class UnableEncodePath(BzrError):
+
+    _fmt = ('Unable to encode %(kind)s path %(path)r in '
+            'user encoding %(user_encoding)s')
+
+    def __init__(self, path, kind):
+        self.path = path
+        self.kind = kind
+        self.user_encoding = osutils.get_user_encoding()

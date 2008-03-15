@@ -1366,14 +1366,6 @@ class TestRemoteTransport(tests.TestCase):
             transport._translate_error, ("ReadOnlyError", ))
 
 
-class InstrumentedServerProtocol(medium.SmartServerStreamMedium):
-    """A smart server which is backed by memory and saves its write requests."""
-
-    def __init__(self, write_output_list):
-        medium.SmartServerStreamMedium.__init__(self, memory.MemoryTransport())
-        self._write_output_list = write_output_list
-
-
 class TestSmartProtocol(tests.TestCase):
     """Base class for smart protocol tests.
 
@@ -1394,15 +1386,13 @@ class TestSmartProtocol(tests.TestCase):
 
     def setUp(self):
         super(TestSmartProtocol, self).setUp()
-        # XXX: self.server_to_client doesn't seem to be used.  If so,
-        # InstrumentedServerProtocol is redundant too.
-        self.server_to_client = []
         self.to_server = StringIO()
         self.to_client = StringIO()
         self.client_medium = medium.SmartSimplePipesClientMedium(self.to_client,
             self.to_server)
         self.client_protocol = self.client_protocol_class(self.client_medium)
-        self.smart_server = InstrumentedServerProtocol(self.server_to_client)
+        self.smart_server = medium.SmartServerStreamMedium(
+            memory.MemoryTransport())
         self.smart_server_request = request.SmartServerRequestHandler(
             None, request.request_handlers)
         self.response_marker = getattr(
