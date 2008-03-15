@@ -1393,6 +1393,11 @@ class TestSmartProtocol(tests.TestCase):
             StringIO(), StringIO())
         return self.client_protocol_class(client_medium.get_request())
 
+    def make_server_protocol(self):
+        out_stream = StringIO()
+        smart_protocol = self.server_protocol_class(None, out_stream.write)
+        return smart_protocol, out_stream
+
     def assertOffsetSerialisation(self, expected_offsets, expected_serialised,
         client):
         """Check that smart (de)serialises offsets as expected.
@@ -1413,8 +1418,7 @@ class TestSmartProtocol(tests.TestCase):
         self.assertEqual(expected_serialised, serialised)
 
     def build_protocol_waiting_for_body(self):
-        out_stream = StringIO()
-        smart_protocol = self.server_protocol_class(None, out_stream.write)
+        smart_protocol, out_stream = self.make_server_protocol()
         smart_protocol.has_dispatched = True
         smart_protocol.request = request.SmartServerRequestHandler(
             None, request.request_handlers)
@@ -1439,9 +1443,7 @@ class TestSmartProtocol(tests.TestCase):
         # check the encoding of the server for all input_tuples matches
         # expected bytes
         for input_tuple in input_tuples:
-            server_output = StringIO()
-            server_protocol = self.server_protocol_class(
-                None, server_output.write)
+            server_protocol, server_output = self.make_server_protocol()
             server_protocol._send_response(
                 _mod_request.SuccessfulSmartServerResponse(input_tuple))
             self.assertEqual(expected_bytes, server_output.getvalue())
@@ -1459,8 +1461,7 @@ class CommonSmartProtocolTestMixin(object):
 
     def test_errors_are_logged(self):
         """If an error occurs during testing, it is logged to the test log."""
-        out_stream = StringIO()
-        smart_protocol = self.server_protocol_class(None, out_stream.write)
+        smart_protocol, out_stream = self.make_server_protocol()
         # This triggers a "bad request" error.
         smart_protocol.accept_bytes('abc\n')
         test_log = self._get_log(keep_log_file=True)
