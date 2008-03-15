@@ -126,6 +126,10 @@ IN DEVELOPMENT
       repositories because the empty string is not a valid file-id.
       (Robert Collins)
 
+    * The test suite takes much less memory to run, and is a bit faster.  This
+      is done by clearing most attributes of TestCases after running them, if
+      they succeeded.  (Andrew Bennetts)
+
   INTERNALS:
 
     * Autopacking no longer holds the full set of inventory lines in
