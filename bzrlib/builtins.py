@@ -4040,8 +4040,9 @@ class cmd_send(Command):
     generic options are "default", "editor", "mapi", and "xdg-email".
 
     If mail is being sent, a to address is required.  This can be supplied
-    either on the commandline, or by setting the submit_to configuration
-    option.
+    either on the commandline, by setting the submit_to configuration
+    option in the branch itself or the child_submit_to configuration option 
+    in the submit branch.
 
     Two formats are currently supported: "4" uses revision bundle format 4 and
     merge directive format 2.  It is significantly faster and smaller than
@@ -4125,6 +4126,10 @@ class cmd_send(Command):
                                              ' specified')
             if remembered_submit_branch:
                 note('Using saved location: %s', submit_branch)
+
+            if mail_to is None:
+                submit_config = Branch.open(submit_branch).get_config()
+                mail_to = submit_config.get_user_option("child_submit_to")
 
             stored_public_branch = branch.get_public_branch()
             if public_branch is None:
@@ -4445,6 +4450,28 @@ class cmd_switch(Command):
         switch.switch(control_dir, to_branch, force)
         note('Switched to branch: %s',
             urlutils.unescape_for_display(to_branch.base, 'utf-8'))
+
+
+class cmd_hooks(Command):
+    """Show a branch's currently registered hooks.
+    """
+
+    hidden = True
+    takes_args = ['path?']
+
+    def run(self, path=None):
+        if path is None:
+            path = '.'
+        branch_hooks = Branch.open(path).hooks
+        for hook_type in branch_hooks:
+            hooks = branch_hooks[hook_type]
+            self.outf.write("%s:\n" % (hook_type,))
+            if hooks:
+                for hook in hooks:
+                    self.outf.write("  %s\n" %
+                                    (branch_hooks.get_hook_name(hook),))
+            else:
+                self.outf.write("  <no hooks installed>\n")
 
 
 def _create_prefix(cur_transport):

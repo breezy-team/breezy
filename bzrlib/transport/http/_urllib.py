@@ -48,6 +48,7 @@ class HttpTransport_urllib(http.HttpTransportBase):
             self._opener = _from_transport._opener
         else:
             self._opener = self._opener_class()
+        self._remote_is_at_least_1_2 = True
 
     def _perform(self, request):
         """Send the request to the server and handles common errors.
