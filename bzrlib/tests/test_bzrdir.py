@@ -482,12 +482,12 @@ class ChrootedTests(TestCaseWithTransport):
         branch, relpath = bzrdir.BzrDir.open_containing(self.get_readonly_url('g/p/q'))
         self.assertEqual('g/p/q', relpath)
 
-    def test_open_containing_tree_branch_or_repository(self):
+    def test_open_containing_tree_branch_or_repository_empty(self):
         self.assertRaises(errors.NotVersionedError,
             bzrdir.BzrDir.open_containing_tree_branch_or_repository,
             self.get_readonly_url(''))
 
-        # Tree, branch and repository
+    def test_open_containing_tree_branch_or_repository_all(self):
         self.make_branch_and_tree('topdir')
         tree, branch, repo = \
             bzrdir.BzrDir.open_containing_tree_branch_or_repository(
@@ -500,7 +500,7 @@ class ChrootedTests(TestCaseWithTransport):
             os.path.realpath(os.path.join('topdir', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
 
-        # Branch and repository
+    def test_open_containing_tree_branch_or_repository_no_tree(self):
         self.make_branch('branch')
         tree, branch, repo = \
             bzrdir.BzrDir.open_containing_tree_branch_or_repository(
@@ -512,7 +512,7 @@ class ChrootedTests(TestCaseWithTransport):
             os.path.realpath(os.path.join('branch', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
 
-        # Repository
+    def test_open_containing_tree_branch_or_repository_repo(self):
         self.make_repository('repo')
         tree, branch, repo = \
             bzrdir.BzrDir.open_containing_tree_branch_or_repository(
@@ -523,7 +523,7 @@ class ChrootedTests(TestCaseWithTransport):
             os.path.realpath(os.path.join('repo', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
 
-        # Branch in shared repo
+    def test_open_containing_tree_branch_or_repository_shared_repo(self):
         self.make_repository('shared', shared=True)
         bzrdir.BzrDir.create_branch_convenience('shared/branch',
                                                 force_new_tree=False)
@@ -537,6 +537,7 @@ class ChrootedTests(TestCaseWithTransport):
             os.path.realpath(os.path.join('shared', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
 
+    def test_open_containing_tree_branch_or_repository_subdirs(self):
         # Unversioned directory in branch
         self.make_branch_and_tree('foo')
         os.mkdir('foo/bar') #XXX
