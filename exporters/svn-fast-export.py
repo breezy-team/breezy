@@ -155,6 +155,12 @@ if __name__ == '__main__':
     if repos_path == '.': 
         repos_path = ''
 
+    try:
+        import msvcrt
+        msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
+    except ImportError:
+        pass
+
     # Call the app-wrapper, which takes care of APR initialization/shutdown
     # and the creation and cleanup of our top-level memory pool.
     run_app(crawl_revisions, repos_path)
