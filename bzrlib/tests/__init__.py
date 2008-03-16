@@ -112,6 +112,7 @@ default_transport = LocalURLServer
 
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = [
+        bzrlib,
         bzrlib.timestamp,
         bzrlib.errors,
         bzrlib.export,

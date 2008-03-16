@@ -40,30 +40,46 @@ version_info = (1, 2, 0, 'dev', 0)
 # API compatibility version: bzrlib is currently API compatible with 0.18.
 api_minimum_version = (0, 18, 0)
 
-# this format matches <http://docs.python.org/dist/meta-data.html>
-if version_info[2] == 0:
-    __main_version = '%d.%d' % version_info[:2]
-else:
-    __main_version = '%d.%d.%d' % version_info[:3]
+def _format_version_tuple(version_info):
+    """Turn a version number 5-tuple into a short string.
 
-__release_type = version_info[3]
-__sub = version_info[4]
+    This format matches <http://docs.python.org/dist/meta-data.html>
+    and the typical presentation used in Python output.
 
-# check they're consistent
-if __release_type == 'final' and __sub == 0:
-    __sub_string = ''
-elif __release_type == 'dev' and __sub == 0:
-    __sub_string = 'dev'
-elif __release_type in ('alpha', 'beta') and __sub != 0:
-    __sub_string = __release_type[0] + str(__sub)
-elif __release_type == 'candidate' and __sub != 0:
-    __sub_string = 'rc' + str(__sub)
-else:
-    raise AssertionError("version_info %r not valid" % version_info)
+    This also checks that the version is reasonable: the sub-release must be
+    zero for final releases, and non-zero for alpha, beta and preview.
 
-version_string = '%d.%d.%d.%s.%d' % version_info
-short_version_string = __main_version + __sub_string
-__version__ = short_version_string
+    >>> _format_version_tuple(1, 0, 0, 'final', 0)
+    "1.0"
+    >>> _format_version_tuple(1, 2, 0, 'dev', 0)
+    "1.2dev"
+    >>> _format_version_tuple(1, 1, 1, 'candidate', 2)
+    "1.1.1rc2"
+    """
+    if version_info[2] == 0:
+        main_version = '%d.%d' % version_info[:2]
+    else:
+        main_version = '%d.%d.%d' % version_info[:3]
+
+    __release_type = version_info[3]
+    __sub = version_info[4]
+
+    # check they're consistent
+    if __release_type == 'final' and __sub == 0:
+        __sub_string = ''
+    elif __release_type == 'dev' and __sub == 0:
+        __sub_string = 'dev'
+    elif __release_type in ('alpha', 'beta') and __sub != 0:
+        __sub_string = __release_type[0] + str(__sub)
+    elif __release_type == 'candidate' and __sub != 0:
+        __sub_string = 'rc' + str(__sub)
+    else:
+        raise AssertionError("version_info %r not valid" % version_info)
+
+    version_string = '%d.%d.%d.%s.%d' % version_info
+    return main_version + __sub_string
+
+__version__ = _format_version_tuple(version_info)
 
 
 # allow bzrlib plugins to be imported.
