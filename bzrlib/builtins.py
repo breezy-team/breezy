@@ -166,7 +166,9 @@ class cmd_status(Command):
                      Option('short', help='Use short status indicators.',
                             short_name='S'),
                      Option('versioned', help='Only show versioned files.',
-                            short_name='V')
+                            short_name='V'),
+                     Option('no-pending', help='Don\'t show pending merges.',
+                           ),
                      ]
     aliases = ['st', 'stat']
 
@@ -175,7 +177,7 @@ class cmd_status(Command):
     
     @display_command
     def run(self, show_ids=False, file_list=None, revision=None, short=False,
-            versioned=False):
+            versioned=False, no_pending=False):
         from bzrlib.status import show_tree_status
 
         if revision and len(revision) > 2:
@@ -186,7 +188,8 @@ class cmd_status(Command):
             
         show_tree_status(tree, show_ids=show_ids,
                          specific_files=file_list, revision=revision,
-                         to_file=self.outf, short=short, versioned=versioned)
+                         to_file=self.outf, short=short, versioned=versioned,
+                         show_pending=not no_pending)
 
 
 class cmd_cat_revision(Command):

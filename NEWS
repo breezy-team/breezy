@@ -86,6 +86,10 @@ IN DEVELOPMENT
     * Use correct indices when emitting LCA conflicts.  This fixes IndexError
       errors.  (Aaron Bentley, #196780)
 
+   * ``status`` now accepts ``--no-pending`` to show the status without listing
+     pending merges, which speeds up the command a lot on large histories.
+     (James Westby, #202830)
+
   API BREAKS:
 
     * Support for loading plugins from zip files and
