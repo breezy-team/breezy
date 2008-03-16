@@ -2750,8 +2750,10 @@ class cmd_merge(Command):
 
     When merging a branch, by default the tip will be merged. To pick a different
     revision, pass --revision. If you specify two values, the first will be used as
-    BASE and the second one as OTHER. Revision numbers are always relative to the
-    branch being merged.
+    BASE and the second one as OTHER (merging individual revisions, or a subset of
+    available revisions, like this is commonly referred to as "cherrypicking").
+
+    Revision numbers are always relative to the branch being merged.
 
     By default, bzr will try to merge in all new work from the other
     branch, automatically determining an appropriate base.  If this
