@@ -103,7 +103,7 @@ def show_tree_status(wt, show_unchanged=None,
             _raise_if_nonexistent(specific_files, old, new)
             want_unversioned = not versioned
             if short:
-                changes = new._iter_changes(old, show_unchanged, specific_files,
+                changes = new.iter_changes(old, show_unchanged, specific_files,
                     require_versioned=False, want_unversioned=want_unversioned)
                 reporter = _mod_delta._ChangeReporter(output_file=to_file,
                     unversioned_filter=new.is_ignored)
@@ -168,13 +168,15 @@ def show_pending_merges(new, to_file, short=False):
         ignore.add(merge)
         try:
             from bzrlib.osutils import terminal_width
-            width = terminal_width()
+            width = terminal_width() - 1    # we need one extra space to avoid
+                                            # extra blank lines
             m_revision = branch.repository.get_revision(merge)
             if short:
-                prefix = 'P  '
+                prefix = 'P   '
             else:
-                prefix = ' '
-            to_file.write(prefix + ' ' + line_log(m_revision, width - 4))
+                prefix = '  '
+            to_file.write(prefix)
+            to_file.write(line_log(m_revision, width - len(prefix)))
             to_file.write('\n')
             inner_merges = branch.repository.get_ancestry(merge)
             assert inner_merges[0] is None
@@ -185,10 +187,11 @@ def show_pending_merges(new, to_file, short=False):
                     continue
                 mm_revision = branch.repository.get_revision(mmerge)
                 if short:
-                    prefix = 'P.  '
+                    prefix = 'P.   '
                 else:
-                    prefix = '   '
-                to_file.write(prefix + ' ' + line_log(mm_revision, width - 5))
+                    prefix = '    '
+                to_file.write(prefix)
+                to_file.write(line_log(mm_revision, width - len(prefix)))
                 to_file.write('\n')
                 ignore.add(mmerge)
         except errors.NoSuchRevision:

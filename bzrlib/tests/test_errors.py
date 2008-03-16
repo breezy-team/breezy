@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #            and others
 #
@@ -21,12 +21,21 @@
 from bzrlib import (
     bzrdir,
     errors,
+    osutils,
     symbol_versioning,
+    urlutils,
     )
 from bzrlib.tests import TestCase, TestCaseWithTransport
 
 
 class TestErrors(TestCaseWithTransport):
+
+    def test_corrupt_dirstate(self):
+        error = errors.CorruptDirstate('path/to/dirstate', 'the reason why')
+        self.assertEqualDiff(
+            "Inconsistency in dirstate file path/to/dirstate.\n"
+            "Error: the reason why",
+            str(error))
 
     def test_disabled_method(self):
         error = errors.DisabledMethod("class name")
@@ -48,6 +57,13 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqualDiff(
             'The API for "module" is not compatible with "(1, 2, 3)". '
             'It supports versions "(4, 5, 6)" to "(7, 8, 9)".',
+            str(error))
+
+    def test_inconsistent_delta(self):
+        error = errors.InconsistentDelta('path', 'file-id', 'reason for foo')
+        self.assertEqualDiff(
+            "An inconsistent delta was supplied involving 'path', 'file-id'\n"
+            "reason: reason for foo",
             str(error))
 
     def test_in_process_transport(self):
@@ -121,7 +137,14 @@ class TestErrors(TestCaseWithTransport):
         error = errors.MediumNotConnected("a medium")
         self.assertEqualDiff(
             "The medium 'a medium' is not connected.", str(error))
-        
+ 
+    def test_no_public_branch(self):
+        b = self.make_branch('.')
+        error = errors.NoPublicBranch(b)
+        url = urlutils.unescape_for_display(b.base, 'ascii')
+        self.assertEqualDiff(
+            'There is no public branch set for "%s".' % url, str(error))
+
     def test_no_repo(self):
         dir = bzrdir.BzrDir.create(self.get_url())
         error = errors.NoRepositoryPresent(dir)
@@ -429,6 +452,16 @@ class TestErrors(TestCaseWithTransport):
             ("The URL for bug tracker \"foo\" doesn't contain {id}: "
              "http://bug.com/"),
             str(err))
+
+    def test_unable_encode_path(self):
+        err = errors.UnableEncodePath('foo', 'executable')
+        self.assertEquals("Unable to encode executable path 'foo' in "
+            "user encoding " + osutils.get_user_encoding(),
+            str(err))
+
+    def test_unknown_format(self):
+        err = errors.UnknownFormatError('bar', kind='foo')
+        self.assertEquals("Unknown foo format: 'bar'", str(err))
 
 
 class PassThroughError(errors.BzrError):

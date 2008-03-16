@@ -642,9 +642,11 @@ class Packer(object):
         # at this point.
         self.pb.update("Copying inventory texts", 2)
         total_items, readv_group_iter = self._least_readv_node_readv(inv_nodes)
+        # Only grab the output lines if we will be processing them
+        output_lines = bool(self.revision_ids)
         inv_lines = self._copy_nodes_graph(inventory_index_map,
             self.new_pack._writer, self.new_pack.inventory_index,
-            readv_group_iter, total_items, output_lines=True)
+            readv_group_iter, total_items, output_lines=output_lines)
         if self.revision_ids:
             self._process_inventory_lines(inv_lines)
         else:
@@ -656,7 +658,7 @@ class Packer(object):
                 time.ctime(), self._pack_collection._upload_transport.base,
                 self.new_pack.random_name,
                 self.new_pack.inventory_index.key_count(),
-                time.time() - new_pack.start_time)
+                time.time() - self.new_pack.start_time)
 
     def _copy_text_texts(self):
         # select text keys
@@ -1926,6 +1928,60 @@ class KnitPackRepository(KnitRepository):
             found_parents[key[0]] = parents
         return found_parents
 
+    @needs_read_lock
+    def get_revision_graph(self, revision_id=None):
+        """Return a dictionary containing the revision graph.
+
+        :param revision_id: The revision_id to get a graph from. If None, then
+        the entire revision graph is returned. This is a deprecated mode of
+        operation and will be removed in the future.
+        :return: a dictionary of revision_id->revision_parents_list.
+        """
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(3,
+                "get_revision_graph scales with size of history.")
+        # special case NULL_REVISION
+        if revision_id == _mod_revision.NULL_REVISION:
+            return {}
+        if revision_id is None:
+            revision_vf = self._get_revision_vf()
+            return revision_vf.get_graph()
+        g = self.get_graph()
+        first = g.get_parent_map([revision_id])
+        if revision_id not in first:
+            raise errors.NoSuchRevision(self, revision_id)
+        else:
+            ancestry = {}
+            children = {}
+            NULL_REVISION = _mod_revision.NULL_REVISION
+            ghosts = set([NULL_REVISION])
+            for rev_id, parent_ids in g.iter_ancestry([revision_id]):
+                if parent_ids is None: # This is a ghost
+                    ghosts.add(rev_id)
+                    continue
+                ancestry[rev_id] = parent_ids
+                for p in parent_ids:
+                    if p in children:
+                        children[p].append(rev_id)
+                    else:
+                        children[p] = [rev_id]
+
+            if NULL_REVISION in ancestry:
+                del ancestry[NULL_REVISION]
+
+            # Find all nodes that reference a ghost, and filter the ghosts out
+            # of their parent lists. To preserve the order of parents, and
+            # avoid double filtering nodes, we just find all children first,
+            # and then filter.
+            children_of_ghosts = set()
+            for ghost in ghosts:
+                children_of_ghosts.update(children[ghost])
+
+            for child in children_of_ghosts:
+                ancestry[child] = tuple(p for p in ancestry[child]
+                                           if p not in ghosts)
+            return ancestry
+
     def has_revisions(self, revision_ids):
         """See Repository.has_revisions()."""
         revision_ids = set(revision_ids)
@@ -2055,6 +2111,8 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
     # Set this attribute in derived clases to control the _serializer that the
     # repository objects will have passed to their constructor.
     _serializer = None
+    # External references are not supported in pack repositories yet.
+    supports_external_lookups = False
 
     def _get_control_store(self, repo_transport, control_files):
         """Return the control store for this repository."""
@@ -2249,3 +2307,80 @@ class RepositoryFormatKnitPack4(RepositoryFormatPack):
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return "Packs containing knits with rich root support\n"
+
+
+class RepositoryFormatPackDevelopment0(RepositoryFormatPack):
+    """A no-subtrees development repository.
+
+    This format should be retained until the second release after bzr 1.0.
+
+    No changes to the disk behaviour from pack-0.92.
+    """
+
+    repository_class = KnitPackRepository
+    _commit_builder_class = PackCommitBuilder
+    _serializer = xml5.serializer_v5
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir('development0')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return "Bazaar development format 0 (needs bzr.dev from before 1.3)\n"
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return ("Development repository format, currently the same as "
+            "pack-0.92\n")
+
+    def check_conversion_target(self, target_format):
+        pass
+
+
+class RepositoryFormatPackDevelopment0Subtree(RepositoryFormatPack):
+    """A subtrees development repository.
+
+    This format should be retained until the second release after bzr 1.0.
+
+    No changes to the disk behaviour from pack-0.92-subtree.
+    """
+
+    repository_class = KnitPackRepository
+    _commit_builder_class = PackRootCommitBuilder
+    rich_root_data = True
+    supports_tree_reference = True
+    _serializer = xml7.serializer_v7
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir(
+            'development0-subtree')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def check_conversion_target(self, target_format):
+        if not target_format.rich_root_data:
+            raise errors.BadConversionTarget(
+                'Does not support rich root data.', target_format)
+        if not getattr(target_format, 'supports_tree_reference', False):
+            raise errors.BadConversionTarget(
+                'Does not support nested trees', target_format)
+            
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return ("Bazaar development format 0 with subtree support "
+            "(needs bzr.dev from before 1.3)\n")
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return ("Development repository format, currently the same as "
+            "pack-0.92-subtree\n")
+
+

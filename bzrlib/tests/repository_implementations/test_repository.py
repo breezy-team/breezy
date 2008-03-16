@@ -36,7 +36,7 @@ from bzrlib.repofmt.weaverepo import (
     )
 from bzrlib.revision import NULL_REVISION, Revision
 from bzrlib.smart import server
-from bzrlib.symbol_versioning import one_two
+from bzrlib.symbol_versioning import one_two, one_three
 from bzrlib.tests import (
     KnownFailure,
     TestCaseWithTransport,
@@ -267,6 +267,11 @@ class TestRepository(TestCaseWithRepository):
         text = repo._format.get_format_description()
         self.failUnless(len(text))
 
+    def test_format_supports_external_lookups(self):
+        repo = self.make_repository('.')
+        self.assertSubset(
+            [repo._format.supports_external_lookups], (True, False))
+
     def assertMessageRoundtrips(self, message):
         """Assert that message roundtrips to a repository and back intact."""
         tree = self.make_branch_and_tree('.')
@@ -460,10 +465,10 @@ class TestRepository(TestCaseWithRepository):
         tree.commit('message', rev_id='rev_id')
         source_repo = tree.branch.repository
         dest_repo = self.make_repository('dest')
+        search = dest_repo.search_missing_revision_ids(source_repo,
+            revision_id='rev_id')
         try:
-            stream = source_repo.get_data_stream_for_search(
-                dest_repo.search_missing_revision_ids(source_repo,
-                    revision_id='rev_id'))
+            stream = source_repo.get_data_stream_for_search(search)
         except NotImplementedError, e:
             # Not all repositories support streaming.
             self.assertContainsRe(str(e), 'get_data_stream_for_search')
@@ -484,6 +489,26 @@ class TestRepository(TestCaseWithRepository):
         # reopen to be sure it was added.
         dest_repo = dest_repo.bzrdir.open_repository()
         self.assertTrue(dest_repo.has_revision('rev_id'))
+
+        # insert the same data stream again, should be no-op
+        stream = source_repo.get_data_stream_for_search(search)
+        dest_repo.lock_write()
+        try:
+            dest_repo.start_write_group()
+            try:
+                dest_repo.insert_data_stream(stream)
+            except:
+                dest_repo.abort_write_group()
+                raise
+            else:
+                dest_repo.commit_write_group()
+        finally:
+            dest_repo.unlock()
+
+        # try to insert data stream with invalid key
+        stream = [[('bogus-key',), '']]
+        self.assertRaises(errors.RepositoryDataStreamError,
+                          dest_repo.insert_data_stream, stream)
 
     def test_get_serializer_format(self):
         repo = self.make_repository('.')
@@ -913,7 +938,8 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         # we can get a graph object with roots, ghosts, ancestors and
         # descendants.
         repo = self.bzrdir.open_repository()
-        graph = repo.get_revision_graph_with_ghosts([])
+        graph = self.applyDeprecated(one_three,
+                                     repo.get_revision_graph_with_ghosts, [])
         self.assertEqual(set(['rev1']), graph.roots)
         self.assertEqual(set(['ghost1', 'ghost2']), graph.ghosts)
         self.assertEqual({'rev1':[],
@@ -931,7 +957,8 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
                           },
                           graph.get_descendants())
         # and we can ask for the NULLREVISION graph
-        graph = repo.get_revision_graph_with_ghosts([NULL_REVISION])
+        graph = self.applyDeprecated(one_three, 
+                    repo.get_revision_graph_with_ghosts, [NULL_REVISION])
         self.assertEqual({}, graph.get_ancestors())
         self.assertEqual({}, graph.get_descendants())
 

@@ -78,6 +78,7 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
         wt.apply_inventory_delta([('foo', 'baz', 'foo-id',
             inventory.InventoryDirectory('foo-id', 'baz', root_id))])
         # foo/bar should have been followed the rename of its parent to baz/bar
+        self.assertEqual('baz', wt.id2path('foo-id'))
         self.assertEqual('baz/bar', wt.id2path('bar-id'))
 
     def test_rename_dir_with_children_with_children(self):

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,6 +15,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 """bzr library"""
+
+import time
+
+# Keep track of when bzrlib was first imported, so that we can give rough
+# timestamps relative to program start in the log file kept by bzrlib.trace.
+_start_time = time.time()
 
 from bzrlib.osutils import get_user_encoding
 
@@ -35,7 +41,7 @@ __copyright__ = "Copyright 2005, 2006, 2007, 2008 Canonical Ltd."
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (1, 2, 0, 'dev', 0)
+version_info = (1, 3, 0, 'dev', 0)
 
 # API compatibility version: bzrlib is currently API compatible with 0.18.
 api_minimum_version = (0, 18, 0)

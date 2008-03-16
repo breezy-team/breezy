@@ -93,11 +93,15 @@ class Tree(object):
             want_unversioned=want_unversioned,
             )
 
-    def _iter_changes(self, from_tree, include_unchanged=False,
+    @symbol_versioning.deprecated_method(symbol_versioning.one_three)
+    def _iter_changes(self, *args, **kwargs):
+        return self.iter_changes(*args, **kwargs)
+
+    def iter_changes(self, from_tree, include_unchanged=False,
                      specific_files=None, pb=None, extra_trees=None,
                      require_versioned=True, want_unversioned=False):
         intertree = InterTree.get(from_tree, self)
-        return intertree._iter_changes(include_unchanged, specific_files, pb,
+        return intertree.iter_changes(include_unchanged, specific_files, pb,
             extra_trees, require_versioned, want_unversioned=want_unversioned)
     
     def conflicts(self):
@@ -145,6 +149,10 @@ class Tree(object):
     def __iter__(self):
         return iter(self.inventory)
 
+    def all_file_ids(self):
+        """Iterate through all file ids, including ids for missing files."""
+        return set(self.inventory)
+
     def id2path(self, file_id):
         """Return the path for a file id.
 
@@ -184,6 +192,14 @@ class Tree(object):
     def kind(self, file_id):
         raise NotImplementedError("Tree subclass %s must implement kind"
             % self.__class__.__name__)
+
+    def stored_kind(self, file_id):
+        """File kind stored for this file_id.
+
+        May not match kind on disk for working trees.  Always available
+        for versioned files, even when the file itself is missing.
+        """
+        return self.kind(file_id)
 
     def path_content_summary(self, path):
         """Get a summary of the information about path.
@@ -281,13 +297,17 @@ class Tree(object):
         """Return the file_id for the root of this tree."""
         raise NotImplementedError(self.get_root_id)
 
-    def annotate_iter(self, file_id):
+    def annotate_iter(self, file_id,
+                      default_revision=_mod_revision.CURRENT_REVISION):
         """Return an iterator of revision_id, line tuples.
 
         For working trees (and mutable trees in general), the special
         revision_id 'current:' will be used for lines that are new in this
         tree, e.g. uncommitted changes.
         :param file_id: The file to produce an annotated version from
+        :param default_revision: For lines that don't match a basis, mark them
+            with this revision id. Not all implementations will make use of
+            this value.
         """
         raise NotImplementedError(self.annotate_iter)
 
@@ -706,7 +726,7 @@ class InterTree(InterObject):
             require_versioned=require_versioned,
             want_unversioned=want_unversioned)
 
-    def _iter_changes(self, include_unchanged=False,
+    def iter_changes(self, include_unchanged=False,
                       specific_files=None, pb=None, extra_trees=[],
                       require_versioned=True, want_unversioned=False):
         """Generate an iterator of changes between trees.

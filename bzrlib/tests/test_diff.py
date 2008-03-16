@@ -1246,7 +1246,10 @@ class TestDiffFromTool(TestCaseWithTransport):
         self.addCleanup(diff_obj.finish)
         self.assertEqual(['diff', '%(old_path)s', '%(new_path)s'],
             diff_obj.command_template)
+
+    def test_from_string_u5(self):
         diff_obj = DiffFromTool.from_string('diff -u\\ 5', None, None, None)
+        self.addCleanup(diff_obj.finish)
         self.assertEqual(['diff', '-u 5', '%(old_path)s', '%(new_path)s'],
                          diff_obj.command_template)
         self.assertEqual(['diff', '-u 5', 'old-path', 'new-path'],

@@ -220,6 +220,7 @@ class KnitRepository(MetaDirRepository):
             return a_weave.get_graph([revision_id])
 
     @needs_read_lock
+    @symbol_versioning.deprecated_method(symbol_versioning.one_three)
     def get_revision_graph_with_ghosts(self, revision_ids=None):
         """Return a graph of the revisions with ghosts marked as applicable.
 
@@ -354,6 +355,8 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
     _serializer = xml5.serializer_v5
     # Knit based repositories handle ghosts reasonably well.
     supports_ghosts = True
+    # External lookups are not supported in this format.
+    supports_external_lookups = False
 
     def _get_control_store(self, repo_transport, control_files):
         """Return the control store for this repository."""

@@ -1420,6 +1420,19 @@ class CommonSmartProtocolTestMixin(object):
         self.assertContainsRe(test_log, 'Traceback')
         self.assertContainsRe(test_log, 'SmartProtocolError')
 
+    def test_connection_closed_reporting(self):
+        input = StringIO()
+        output = StringIO()
+        client_medium = medium.SmartSimplePipesClientMedium(input, output)
+        request = client_medium.get_request()
+        smart_protocol = self.client_protocol_class(request)
+        smart_protocol.call('hello')
+        ex = self.assertRaises(errors.ConnectionReset, 
+            smart_protocol.read_response_tuple)
+        self.assertEqual("Connection closed: "
+            "please check connectivity and permissions "
+            "(and try -Dhpss if further diagnosis is required)", str(ex))
+
 
 class TestSmartProtocolOne(TestSmartProtocol, CommonSmartProtocolTestMixin):
     """Tests for the smart protocol version one."""
@@ -1454,19 +1467,6 @@ class TestSmartProtocolOne(TestSmartProtocol, CommonSmartProtocolTestMixin):
             self.client_protocol)
         self.assertOffsetSerialisation([(1,2), (3,4), (100, 200)],
             '1,2\n3,4\n100,200', self.client_protocol)
-
-    def test_connection_closed_reporting(self):
-        input = StringIO()
-        output = StringIO()
-        client_medium = medium.SmartSimplePipesClientMedium(input, output)
-        request = client_medium.get_request()
-        smart_protocol = protocol.SmartClientRequestProtocolOne(request)
-        smart_protocol.call('hello')
-        ex = self.assertRaises(errors.ConnectionReset, 
-            smart_protocol.read_response_tuple)
-        self.assertEqual("Connection closed: "
-            "please check connectivity and permissions "
-            "(and try -Dhpss if further diagnosis is required)", str(ex))
 
     def test_accept_bytes_of_bad_request_to_protocol(self):
         out_stream = StringIO()

@@ -424,6 +424,31 @@ class Graph(object):
                 raise errors.NoCommonAncestor(left_revision, right_revision)
             revisions = lca
 
+    def iter_ancestry(self, revision_ids):
+        """Iterate the ancestry of this revision.
+
+        :param revision_ids: Nodes to start the search
+        :return: Yield tuples mapping a revision_id to its parents for the
+            ancestry of revision_id.
+            Ghosts will be returned with None as their parents, and nodes
+            with no parents will have NULL_REVISION as their only parent. (As
+            defined by get_parent_map.)
+            There will also be a node for (NULL_REVISION, ())
+        """
+        pending = set(revision_ids)
+        processed = set()
+        while pending:
+            processed.update(pending)
+            next_map = self.get_parent_map(pending)
+            next_pending = set()
+            for item in next_map.iteritems():
+                yield item
+                next_pending.update(p for p in item[1] if p not in processed)
+            ghosts = pending.difference(next_map)
+            for ghost in ghosts:
+                yield (ghost, None)
+            pending = next_pending
+
     def iter_topo_order(self, revisions):
         """Iterate through the input revisions in topological order.
 
@@ -473,8 +498,8 @@ class HeadsCache(object):
             return set(heads)
 
 
-class HeadsCache(object):
-    """A cache of results for graph heads calls."""
+class FrozenHeadsCache(object):
+    """Cache heads() calls, assuming the caller won't modify them."""
 
     def __init__(self, graph):
         self.graph = graph
@@ -483,18 +508,24 @@ class HeadsCache(object):
     def heads(self, keys):
         """Return the heads of keys.
 
+        Similar to Graph.heads(). The main difference is that the return value
+        is a frozen set which cannot be mutated.
+
         :see also: Graph.heads.
         :param keys: The keys to calculate heads for.
-        :return: A set containing the heads, which may be mutated without
-            affecting future lookups.
+        :return: A frozenset containing the heads.
         """
         keys = frozenset(keys)
         try:
-            return set(self._heads[keys])
+            return self._heads[keys]
         except KeyError:
-            heads = self.graph.heads(keys)
+            heads = frozenset(self.graph.heads(keys))
             self._heads[keys] = heads
-            return set(heads)
+            return heads
+
+    def cache(self, keys, heads):
+        """Store a known value."""
+        self._heads[frozenset(keys)] = frozenset(heads)
 
 
 class _BreadthFirstSearcher(object):
@@ -538,7 +569,7 @@ class _BreadthFirstSearcher(object):
             # exclude keys for them. However, while we could have a second
             # look-ahead result buffer and shuffle things around, this method
             # is typically only called once per search - when memoising the
-            # results of the search.
+            # results of the search. 
             found, ghosts, next, parents = self._do_query(self._next_query)
             # pretend we didn't query: perhaps we should tweak _do_query to be
             # entirely stateless?
