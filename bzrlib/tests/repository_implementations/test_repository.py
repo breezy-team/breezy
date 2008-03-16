@@ -36,7 +36,7 @@ from bzrlib.repofmt.weaverepo import (
     )
 from bzrlib.revision import NULL_REVISION, Revision
 from bzrlib.smart import server
-from bzrlib.symbol_versioning import one_two
+from bzrlib.symbol_versioning import one_two, one_three
 from bzrlib.tests import (
     KnownFailure,
     TestCaseWithTransport,
@@ -938,7 +938,8 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         # we can get a graph object with roots, ghosts, ancestors and
         # descendants.
         repo = self.bzrdir.open_repository()
-        graph = repo.get_revision_graph_with_ghosts([])
+        graph = self.applyDeprecated(one_three,
+                                     repo.get_revision_graph_with_ghosts, [])
         self.assertEqual(set(['rev1']), graph.roots)
         self.assertEqual(set(['ghost1', 'ghost2']), graph.ghosts)
         self.assertEqual({'rev1':[],
@@ -956,7 +957,8 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
                           },
                           graph.get_descendants())
         # and we can ask for the NULLREVISION graph
-        graph = repo.get_revision_graph_with_ghosts([NULL_REVISION])
+        graph = self.applyDeprecated(one_three, 
+                    repo.get_revision_graph_with_ghosts, [NULL_REVISION])
         self.assertEqual({}, graph.get_ancestors())
         self.assertEqual({}, graph.get_descendants())
 

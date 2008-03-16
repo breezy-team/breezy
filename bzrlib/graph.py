@@ -424,6 +424,31 @@ class Graph(object):
                 raise errors.NoCommonAncestor(left_revision, right_revision)
             revisions = lca
 
+    def iter_ancestry(self, revision_ids):
+        """Iterate the ancestry of this revision.
+
+        :param revision_ids: Nodes to start the search
+        :return: Yield tuples mapping a revision_id to its parents for the
+            ancestry of revision_id.
+            Ghosts will be returned with None as their parents, and nodes
+            with no parents will have NULL_REVISION as their only parent. (As
+            defined by get_parent_map.)
+            There will also be a node for (NULL_REVISION, ())
+        """
+        pending = set(revision_ids)
+        processed = set()
+        while pending:
+            processed.update(pending)
+            next_map = self.get_parent_map(pending)
+            next_pending = set()
+            for item in next_map.iteritems():
+                yield item
+                next_pending.update(p for p in item[1] if p not in processed)
+            ghosts = pending.difference(next_map)
+            for ghost in ghosts:
+                yield (ghost, None)
+            pending = next_pending
+
     def iter_topo_order(self, revisions):
         """Iterate through the input revisions in topological order.
 
