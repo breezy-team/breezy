@@ -86,6 +86,7 @@ def _format_version_tuple(version_info):
     return main_version + __sub_string
 
 __version__ = _format_version_tuple(version_info)
+version_string = __version__
 
 
 # allow bzrlib plugins to be imported.
