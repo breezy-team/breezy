@@ -81,6 +81,18 @@ class Response(httplib.HTTPResponse):
     # 8k chunks should be fine.
     _discarded_buf_size = 8192
 
+    def __init__(self, *args, **kwargs):
+        httplib.HTTPResponse.__init__(self, *args, **kwargs)
+        try:
+            # httplib creates a fileobject that doesn't do buffering, which
+            # makes fp.readline() very expensive because it only reads one byte
+            # at a time.  So we change the _rbufsize attribute here to fix
+            # this.
+            self.fp._rbufsize = 8192
+        except AttributeError:
+            # If self.fp is a cStringIO, it doesn't have a _rbufsize.
+            pass
+
     def begin(self):
         """Begin to read the response from the server.
 
@@ -534,7 +546,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
             req = request
             r = response
             r.recv = r.read
-            fp = socket._fileobject(r)
+            fp = socket._fileobject(r, bufsize=8192)
             resp = urllib2.addinfourl(fp, r.msg, req.get_full_url())
             resp.code = r.status
             resp.msg = r.reason
