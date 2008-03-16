@@ -234,7 +234,7 @@ tracker_registry.register(
     URLParametrizedIntegerBugTracker('bugzilla', 'show_bug.cgi?id='))
 
 
-class URLParametrizedIntegerBugTrackerURL(URLParametrizedIntegerBugTracker):
+class FixedBaseURLIntegerBugTracker(URLParametrizedIntegerBugTracker):
 
     def get(self, abbreviation, branch):
         if abbreviation != self.type_name:
@@ -248,7 +248,7 @@ class URLParametrizedIntegerBugTrackerURL(URLParametrizedIntegerBugTracker):
 
 
 tracker_registry.register('gnome',
-    URLParametrizedIntegerBugTrackerURL('gnome', 'show_bug.cgi?id=',
+    FixedBaseURLIntegerBugTracker('gnome', 'show_bug.cgi?id=',
         "http://bugzilla.gnome.org"))
 
 
