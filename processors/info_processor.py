@@ -173,7 +173,6 @@ class InfoProcessor(processor.ImportProcessor):
     def commit_handler(self, cmd):
         """Process a CommitCommand."""
         self.cmd_counts[cmd.name] += 1
-        self.parent_counts[len(cmd.parents)] += 1
         self.committers.add(cmd.committer)
         if cmd.author is not None:
             self.separate_authors_found = True
@@ -190,14 +189,15 @@ class InfoProcessor(processor.ImportProcessor):
                     else:
                         self.sha_blob_references = True
         # Track the heads
-        if cmd.parents:
-            parents = cmd.parents
+        if cmd.from_ is not None:
+            parents = [cmd.from_]
         else:
             last_id = self.last_ids.get(cmd.ref)
             if last_id is not None:
                 parents = [last_id]
             else:
                 parents = []
+        parents.extend(cmd.merges)
         for parent in parents:
             try:
                 del self.heads[parent]
@@ -207,6 +207,7 @@ class InfoProcessor(processor.ImportProcessor):
                 pass
         self.heads[cmd.id] = cmd.ref
         self.last_ids[cmd.ref] = cmd.id
+        self.parent_counts[len(parents)] += 1
 
     def reset_handler(self, cmd):
         """Process a ResetCommand."""

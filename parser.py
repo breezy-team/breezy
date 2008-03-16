@@ -339,18 +339,15 @@ class ImportParser(LineBasedParser):
         committer = self._get_user_info('commit', 'committer')
         message = self._get_data('commit', 'message')
         from_ = self._get_from()
-        if from_ is not None:
-            parents = [from_]
-            while True:
-                merge = self._get_merge()
-                if merge is not None:
-                    parents.append(merge)
-                else:
-                    break
-        else:
-            parents = []
+        merges = []
+        while True:
+            merge = self._get_merge()
+            if merge is not None:
+                merges.append(merge)
+            else:
+                break
         return commands.CommitCommand(ref, mark, author, committer, message,
-            parents, self.iter_file_commands, lineno)
+            from_, merges, self.iter_file_commands, lineno)
 
     def _parse_file_modify(self, info):
         """Parse a filemodify command within a commit.

@@ -85,15 +85,16 @@ class CheckpointCommand(ImportCommand):
 
 class CommitCommand(ImportCommand):
 
-    def __init__(self, ref, mark, author, committer, message, parents,
-        file_iter, lineno=0):
+    def __init__(self, ref, mark, author, committer, message, from_,
+        merges, file_iter, lineno=0):
         ImportCommand.__init__(self, 'commit')
         self.ref = ref
         self.mark = mark
         self.author = author
         self.committer = committer
         self.message = message
-        self.parents = parents
+        self.from_ = from_
+        self.merges = merges
         self.file_iter = file_iter
         self.lineno = lineno
         self._binary = ['file_iter']
