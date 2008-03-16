@@ -127,6 +127,7 @@ if __name__ == '__main__':
     if bzrlib.trace._trace_file:
         # this is also _bzr_log
         bzrlib.trace._trace_file.flush()
+    import gc; gc.collect()
     os._exit(exit_val)
 else:
     pass    # should this give an error? - it can't be used as a lib
