@@ -31,6 +31,9 @@ IN DEVELOPMENT
 
     * Restore auto-detection of plink.exe on Windows. (Dmitry Vasiliev)
 
+    * Version number is now shown as "1.2" or "1.2pr2", without zeroed or
+      missing final fields.  (Martin Pool)
+
     * The backup directory created by ``upgrade`` is now called
       ``backup.bzr``, not ``.bzr.backup``. (Martin Albisetti)
 
