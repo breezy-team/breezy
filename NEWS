@@ -179,10 +179,6 @@ features have been added.
       ``Repository.get_revision_graph()`` except it includes ghosts and you can
       stop part-way through. (John Arbash Meinel)
 
-    * ``Graph.iter_ancestry`` returns the ancestry of revision ids. Similar to
-      ``Repository.get_revision_graph()`` except it includes ghosts and you can
-      stop part-way through. (John Arbash Meinel)
-
     * New module ``tools/package_mf.py`` provide custom module finder for
       python packages (improves standard python library's modulefinder.py)
       used by ``setup.py`` script while building standalone bzr.exe.
