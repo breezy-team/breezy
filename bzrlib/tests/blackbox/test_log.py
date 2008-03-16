@@ -222,7 +222,7 @@ message:
     message:
       merge branch 2
         ------------------------------------------------------------
-        revno: 1.1.1.1.1
+        revno: 1.2.1
         committer: Lorem Ipsum <test@example.com>
         branch nick: smallerchild
         timestamp: Just now
@@ -258,7 +258,7 @@ timestamp: Just now
 message:
   merge branch 2
     ------------------------------------------------------------
-    revno: 1.1.1.1.1
+    revno: 1.2.1
     committer: Lorem Ipsum <test@example.com>
     branch nick: smallerchild
     timestamp: Just now
@@ -280,7 +280,7 @@ timestamp: Just now
 message:
   merge branch 2
     ------------------------------------------------------------
-    revno: 1.1.1.1.1
+    revno: 1.2.1
     committer: Lorem Ipsum <test@example.com>
     branch nick: smallerchild
     timestamp: Just now

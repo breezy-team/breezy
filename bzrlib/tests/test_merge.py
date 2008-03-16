@@ -24,6 +24,7 @@ from bzrlib import (
     merge as _mod_merge,
     option,
     progress,
+    transform,
     versionedfile,
     )
 from bzrlib.branch import Branch
@@ -351,6 +352,99 @@ class TestMerge(TestCaseWithTransport):
         merger.merge_type = _mod_merge.Merge3Merger
         merger.do_merge()
 
+    def test_merge3_will_detect_cherrypick(self):
+        this_tree = self.make_branch_and_tree('this')
+        self.build_tree_contents([('this/file', "a\n")])
+        this_tree.add('file')
+        this_tree.commit('rev1')
+        other_tree = this_tree.bzrdir.sprout('other').open_workingtree()
+        self.build_tree_contents([('other/file', "a\nb\n")])
+        other_tree.commit('rev2b', rev_id='rev2b')
+        self.build_tree_contents([('other/file', "a\nb\nc\n")])
+        other_tree.commit('rev3b', rev_id='rev3b')
+        this_tree.lock_write()
+        self.addCleanup(this_tree.unlock)
+
+        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+            this_tree, 'rev3b', 'rev2b', other_tree.branch)
+        merger.merge_type = _mod_merge.Merge3Merger
+        merger.do_merge()
+        self.assertFileEqual('a\n'
+                             '<<<<<<< TREE\n'
+                             '=======\n'
+                             'c\n'
+                             '>>>>>>> MERGE-SOURCE\n',
+                             'this/file')
+
+    def test_make_merger(self):
+        this_tree = self.make_branch_and_tree('this')
+        this_tree.commit('rev1', rev_id='rev1')
+        other_tree = this_tree.bzrdir.sprout('other').open_workingtree()
+        this_tree.commit('rev2', rev_id='rev2a')
+        other_tree.commit('rev2', rev_id='rev2b')
+        this_tree.lock_write()
+        self.addCleanup(this_tree.unlock)
+        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress,
+            this_tree, 'rev2b', other_branch=other_tree.branch)
+        merger.merge_type = _mod_merge.Merge3Merger
+        tree_merger = merger.make_merger()
+        self.assertIs(_mod_merge.Merge3Merger, tree_merger.__class__)
+        self.assertEqual('rev2b', tree_merger.other_tree.get_revision_id())
+        self.assertEqual('rev1', tree_merger.base_tree.get_revision_id())
+
+    def test_make_preview_transform(self):
+        this_tree = self.make_branch_and_tree('this')
+        self.build_tree_contents([('this/file', '1\n')])
+        this_tree.add('file', 'file-id')
+        this_tree.commit('rev1', rev_id='rev1')
+        other_tree = this_tree.bzrdir.sprout('other').open_workingtree()
+        self.build_tree_contents([('this/file', '1\n2a\n')])
+        this_tree.commit('rev2', rev_id='rev2a')
+        self.build_tree_contents([('other/file', '2b\n1\n')])
+        other_tree.commit('rev2', rev_id='rev2b')
+        this_tree.lock_write()
+        self.addCleanup(this_tree.unlock)
+        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+            this_tree, 'rev2b', other_branch=other_tree.branch)
+        merger.merge_type = _mod_merge.Merge3Merger
+        tree_merger = merger.make_merger()
+        tt = tree_merger.make_preview_transform()
+        self.addCleanup(tt.finalize)
+        preview_tree = tt.get_preview_tree()
+        tree_file = this_tree.get_file('file-id')
+        try:
+            self.assertEqual('1\n2a\n', tree_file.read())
+        finally:
+            tree_file.close()
+        preview_file = preview_tree.get_file('file-id')
+        try:
+            self.assertEqual('2b\n1\n2a\n', preview_file.read())
+        finally:
+            preview_file.close()
+
+    def test_do_merge(self):
+        this_tree = self.make_branch_and_tree('this')
+        self.build_tree_contents([('this/file', '1\n')])
+        this_tree.add('file', 'file-id')
+        this_tree.commit('rev1', rev_id='rev1')
+        other_tree = this_tree.bzrdir.sprout('other').open_workingtree()
+        self.build_tree_contents([('this/file', '1\n2a\n')])
+        this_tree.commit('rev2', rev_id='rev2a')
+        self.build_tree_contents([('other/file', '2b\n1\n')])
+        other_tree.commit('rev2', rev_id='rev2b')
+        this_tree.lock_write()
+        self.addCleanup(this_tree.unlock)
+        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+            this_tree, 'rev2b', other_branch=other_tree.branch)
+        merger.merge_type = _mod_merge.Merge3Merger
+        tree_merger = merger.make_merger()
+        tt = tree_merger.do_merge()
+        tree_file = this_tree.get_file('file-id')
+        try:
+            self.assertEqual('2b\n1\n2a\n', tree_file.read())
+        finally:
+            tree_file.close()
+
 
 class TestPlanMerge(TestCaseWithMemoryTransport):
 
@@ -521,11 +615,64 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
         self.add_version('REV2', ['ROOT'], 'abce')
         # both sides merge, discarding others' changes
         self.add_version('LCA1', ['REV1', 'REV2'], 'abcd')
-        self.add_version('LCA2', ['REV1', 'REV2'], 'abce')
+        self.add_version('LCA2', ['REV1', 'REV2'], 'fabce')
         plan = self.plan_merge_vf.plan_lca_merge('LCA1', 'LCA2')
-        self.assertEqual([('unchanged', 'a\n'),
+        self.assertEqual([('new-b', 'f\n'),
+                          ('unchanged', 'a\n'),
                           ('unchanged', 'b\n'),
                           ('unchanged', 'c\n'),
                           ('conflicted-a', 'd\n'),
                           ('conflicted-b', 'e\n'),
                          ], list(plan))
+
+
+class TestMergeImplementation(object):
+
+    def do_merge(self, target_tree, source_tree, **kwargs):
+        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+            target_tree, source_tree.last_revision(),
+            other_branch=source_tree.branch)
+        merger.merge_type=self.merge_type
+        for name, value in kwargs.items():
+            setattr(merger, name, value)
+        merger.do_merge()
+
+    def test_merge_specific_file(self):
+        this_tree = self.make_branch_and_tree('this')
+        this_tree.lock_write()
+        self.addCleanup(this_tree.unlock)
+        self.build_tree_contents([
+            ('this/file1', 'a\nb\n'),
+            ('this/file2', 'a\nb\n')
+        ])
+        this_tree.add(['file1', 'file2'])
+        this_tree.commit('Added files')
+        other_tree = this_tree.bzrdir.sprout('other').open_workingtree()
+        self.build_tree_contents([
+            ('other/file1', 'a\nb\nc\n'),
+            ('other/file2', 'a\nb\nc\n')
+        ])
+        other_tree.commit('modified both')
+        self.build_tree_contents([
+            ('this/file1', 'd\na\nb\n'),
+            ('this/file2', 'd\na\nb\n')
+        ])
+        this_tree.commit('modified both')
+        self.do_merge(this_tree, other_tree, interesting_files=['file1'])
+        self.assertFileEqual('d\na\nb\nc\n', 'this/file1')
+        self.assertFileEqual('d\na\nb\n', 'this/file2')
+
+
+class TestMerge3Merge(TestCaseWithTransport, TestMergeImplementation):
+
+    merge_type = _mod_merge.Merge3Merger
+
+
+class TestWeaveMerge(TestCaseWithTransport, TestMergeImplementation):
+
+    merge_type = _mod_merge.WeaveMerger
+
+
+class TestLCAMerge(TestCaseWithTransport, TestMergeImplementation):
+
+    merge_type = _mod_merge.LCAMerger

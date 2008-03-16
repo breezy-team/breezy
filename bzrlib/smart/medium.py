@@ -358,8 +358,10 @@ class SmartClientMediumRequest(object):
             new_char = self.read_bytes(1)
             line += new_char
             if new_char == '':
-                raise errors.SmartProtocolError(
-                    'unexpected end of file reading from server')
+                # end of file encountered reading from server
+                raise errors.ConnectionReset(
+                    "please check connectivity and permissions",
+                    "(and try -Dhpss if further diagnosis is required)")
         return line
 
 
@@ -384,6 +386,10 @@ class SmartClientStreamMedium(SmartClientMedium):
 
     def __init__(self):
         self._current_request = None
+        # Be optimistic: we assume the remote end can accept new remote
+        # requests until we get an error saying otherwise.  (1.2 adds some
+        # requests that send bodies, which confuses older servers.)
+        self._remote_is_at_least_1_2 = True
 
     def accept_bytes(self, bytes):
         self._accept_bytes(bytes)

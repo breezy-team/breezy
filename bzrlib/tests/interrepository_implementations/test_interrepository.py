@@ -32,6 +32,7 @@ from bzrlib.inventory import Inventory
 import bzrlib.repofmt.weaverepo as weaverepo
 import bzrlib.repository as repository
 from bzrlib.revision import NULL_REVISION, Revision
+from bzrlib.symbol_versioning import one_two
 from bzrlib.tests import (
     TestCase,
     TestCaseWithTransport,
@@ -287,7 +288,20 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         tree_a.branch.repository.commit_write_group()
         tree_a.branch.repository.unlock()
 
-    def test_missing_revision_ids(self):
+    def test_missing_revision_ids_is_deprecated(self):
+        repo_b = self.make_to_repository('rev1_only')
+        repo_a = self.bzrdir.open_repository()
+        repo_b.fetch(repo_a, 'rev1')
+        # check the test will be valid
+        self.assertFalse(repo_b.has_revision('rev2'))
+        self.assertEqual(['rev2'],
+            self.applyDeprecated(one_two, repo_b.missing_revision_ids, repo_a))
+        inter = repository.InterRepository.get(repo_a, repo_b)
+        self.assertEqual(['rev2'],
+            self.applyDeprecated(one_two, inter.missing_revision_ids, None,
+                True))
+
+    def test_search_missing_revision_ids(self):
         # revision ids in repository A but not B are returned, fake ones
         # are stripped. (fake meaning no revision object, but an inventory 
         # as some formats keyed off inventory data in the past.)
@@ -297,10 +311,11 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         repo_b.fetch(repo_a, 'rev1')
         # check the test will be valid
         self.assertFalse(repo_b.has_revision('rev2'))
-        self.assertEqual(['rev2'],
-                         repo_b.missing_revision_ids(repo_a))
+        result = repo_b.search_missing_revision_ids(repo_a)
+        self.assertEqual(set(['rev2']), result.get_keys())
+        self.assertEqual((set(['rev2']), set(['rev1']), 1), result.get_recipe())
 
-    def test_missing_revision_ids_absent_requested_raises(self):
+    def test_search_missing_revision_ids_absent_requested_raises(self):
         # Asking for missing revisions with a tip that is itself absent in the
         # source raises NoSuchRevision.
         repo_b = self.make_to_repository('target')
@@ -309,19 +324,21 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         self.assertFalse(repo_a.has_revision('pizza'))
         self.assertFalse(repo_b.has_revision('pizza'))
         # Asking specifically for an absent revision errors.
-        self.assertRaises(NoSuchRevision, repo_b.missing_revision_ids, repo_a,
+        self.assertRaises(NoSuchRevision, repo_b.search_missing_revision_ids, repo_a,
             revision_id='pizza', find_ghosts=True)
-        self.assertRaises(NoSuchRevision, repo_b.missing_revision_ids, repo_a,
+        self.assertRaises(NoSuchRevision, repo_b.search_missing_revision_ids, repo_a,
             revision_id='pizza', find_ghosts=False)
 
-    def test_missing_revision_ids_revision_limited(self):
+    def test_search_missing_revision_ids_revision_limited(self):
         # revision ids in repository A that are not referenced by the
         # requested revision are not returned.
         # make a repository to compare against that is empty
         repo_b = self.make_to_repository('empty')
         repo_a = self.bzrdir.open_repository()
-        self.assertEqual(['rev1'],
-                         repo_b.missing_revision_ids(repo_a, revision_id='rev1'))
+        result = repo_b.search_missing_revision_ids(repo_a, revision_id='rev1')
+        self.assertEqual(set(['rev1']), result.get_keys())
+        self.assertEqual((set(['rev1']), set([NULL_REVISION]), 1),
+            result.get_recipe())
         
     def test_fetch_fetches_signatures_too(self):
         from_repo = self.bzrdir.open_repository()
