@@ -109,7 +109,7 @@ features have been added.
       performance and memory consumption for file with a lot of merges.
       Also, correctly handle when a line is introduced by both parents (it
       should be attributed to the first merge which notices this, and not
-      too all subsequent merges.) (John Arbash Meinel)
+      to all subsequent merges.) (John Arbash Meinel)
 
   BUGFIXES:
 
