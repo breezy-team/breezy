@@ -55,12 +55,12 @@ def _format_version_tuple(version_info):
     This also checks that the version is reasonable: the sub-release must be
     zero for final releases, and non-zero for alpha, beta and preview.
 
-    >>> _format_version_tuple(1, 0, 0, 'final', 0)
-    "1.0"
-    >>> _format_version_tuple(1, 2, 0, 'dev', 0)
-    "1.2dev"
-    >>> _format_version_tuple(1, 1, 1, 'candidate', 2)
-    "1.1.1rc2"
+    >>> print _format_version_tuple((1, 0, 0, 'final', 0))
+    1.0
+    >>> print _format_version_tuple((1, 2, 0, 'dev', 0))
+    1.2dev
+    >>> print _format_version_tuple((1, 1, 1, 'candidate', 2))
+    1.1.1rc2
     """
     if version_info[2] == 0:
         main_version = '%d.%d' % version_info[:2]
