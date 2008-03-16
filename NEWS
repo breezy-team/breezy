@@ -15,7 +15,8 @@ features have been added.
 
   NOTES WHEN UPGRADING:
 
-    No special action is required from the user for this release.
+    * The backup directory created by ``upgrade`` is now called
+      ``backup.bzr``, not ``.bzr.backup``. (Martin Albisetti)
 
   CHANGES:
 
@@ -41,9 +42,6 @@ features have been added.
 
     * Version number is now shown as "1.2" or "1.2pr2", without zeroed or
       missing final fields.  (Martin Pool)
-
-    * The backup directory created by ``upgrade`` is now called
-      ``backup.bzr``, not ``.bzr.backup``. (Martin Albisetti)
 
   FEATURES:
 
