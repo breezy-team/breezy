@@ -2742,6 +2742,7 @@ def test_suite(keep_only=None):
                    'bzrlib.tests.test_tsort',
                    'bzrlib.tests.test_tuned_gzip',
                    'bzrlib.tests.test_ui',
+                   'bzrlib.tests.test_uncommit',
                    'bzrlib.tests.test_upgrade',
                    'bzrlib.tests.test_urlutils',
                    'bzrlib.tests.test_versionedfile',
