@@ -18,6 +18,10 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+    * ``bzr uncommit --local`` can now remove revisions from the local
+      branch to be symmetric with ``bzr commit --local``.
+      (John Arbash Meinel, #93412)
+
   DOCUMENTATION:
 
   API BREAKS:
