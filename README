@@ -3,7 +3,8 @@ README for Bazaar
 =================
 
 Bazaar (``bzr``) is a decentralized revision control system, designed to be
-easy for developers and end users alike.
+easy for developers and end users alike.  Bazaar is part of the GNU project to
+develop a complete free operating system.
 
 To install Bazaar from source, follow the instructions in the INSTALL
 file. Otherwise, you may want to check your distribution package manager
