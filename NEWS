@@ -52,6 +52,10 @@ IN DEVELOPMENT
    * ``push`` has a ``--revision`` option, to specify what revision to push up
      to.  (Daniel Watkins)
 
+   * The launchpad directory service now warns the user if they have not set
+     their launchpad login and are trying to resolve a URL using it, just
+     in case they want to do a write operation with it.
+
   BUGFIXES:
 
     * Disable plink's interactive prompt for password.
