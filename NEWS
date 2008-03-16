@@ -4,10 +4,16 @@ Bazaar Release Notes
 
 .. contents::
 
-IN DEVELOPMENT
---------------
+bzr 1.3rc1 2008-03-16
+---------------------
+
+Many operations that act on history, including ``log`` and ``annotate`` are now
+substantially faster.  Several bugs have been fixed and several new options and
+features have been added.
 
   NOTES WHEN UPGRADING:
+
+    No special action is required from the user for this release.
 
   CHANGES:
 
@@ -82,6 +88,11 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+    * Autopacking no longer holds the full set of inventory lines in
+      memory while copying. For large repositories, this can amount to
+      hundreds of MB of ram consumption.
+      (Ian Clatworthy, John Arbash Meinel)
+
     * Cherrypicking when using ``--format=merge3`` now explictly excludes
       BASE lines. (John Arbash Meinel, #151731)
 
@@ -138,11 +149,6 @@ IN DEVELOPMENT
       (Robert Collins)
 
   INTERNALS:
-
-    * Autopacking no longer holds the full set of inventory lines in
-      memory while copying. For large repositories, this can amount to
-      hundreds of MB of ram consumption.
-      (Ian Clatworthy, John Arbash Meinel)
 
     * ``Graph.iter_ancestry`` returns the ancestry of revision ids. Similar to
       ``Repository.get_revision_graph()`` except it includes ghosts and you can
