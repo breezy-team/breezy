@@ -4,10 +4,41 @@ Bazaar Release Notes
 
 .. contents::
 
+
 IN DEVELOPMENT
 --------------
 
   NOTES WHEN UPGRADING:
+
+  CHANGES:
+
+  FEATURES:
+
+  IMPROVEMENTS:
+
+  BUGFIXES:
+
+  DOCUMENTATION:
+
+  API BREAKS:
+
+  TESTING:
+
+  INTERNALS:
+
+
+bzr 1.3rc1 2008-03-16
+---------------------
+
+Bazaar has become part of the GNU project <http://www.gnu.org>
+
+Many operations that act on history, including ``log`` and ``annotate`` are now
+substantially faster.  Several bugs have been fixed and several new options and
+features have been added.
+
+  NOTES WHEN UPGRADING:
+
+    No special action is required from the user for this release.
 
   CHANGES:
 
@@ -30,6 +61,12 @@ IN DEVELOPMENT
       (Alexander Belchenko)
 
     * Restore auto-detection of plink.exe on Windows. (Dmitry Vasiliev)
+
+    * Version number is now shown as "1.2" or "1.2pr2", without zeroed or
+      missing final fields.  (Martin Pool)
+
+    * The backup directory created by ``upgrade`` is now called
+      ``backup.bzr``, not ``.bzr.backup``. (Martin Albisetti)
 
   FEATURES:
 
@@ -60,6 +97,11 @@ IN DEVELOPMENT
       case of running ``bzr missing`` command for two identical branches.
       (Alexander Belchenko)
 
+    * Speed up operations that look at the revision graph (such as 'bzr log').
+      ``KnitPackRepositor.get_revision_graph`` uses ``Graph.iter_ancestry`` to
+      extract the revision history. This allows filtering ghosts while
+      stepping instead of needing to peek ahead. (John Arbash Meinel)
+
     * The ``hooks`` command lists installed hooks, to assist in debugging.
       (Daniel Watkins)
 
@@ -70,6 +112,11 @@ IN DEVELOPMENT
       too all subsequent merges.) (John Arbash Meinel)
 
   BUGFIXES:
+
+    * Autopacking no longer holds the full set of inventory lines in
+      memory while copying. For large repositories, this can amount to
+      hundreds of MB of ram consumption.
+      (Ian Clatworthy, John Arbash Meinel)
 
     * Cherrypicking when using ``--format=merge3`` now explictly excludes
       BASE lines. (John Arbash Meinel, #151731)
@@ -128,10 +175,13 @@ IN DEVELOPMENT
 
   INTERNALS:
 
-    * Autopacking no longer holds the full set of inventory lines in
-      memory while copying. For large repositories, this can amount to
-      hundreds of MB of ram consumption.
-      (Ian Clatworthy, John Arbash Meinel)
+    * ``Graph.iter_ancestry`` returns the ancestry of revision ids. Similar to
+      ``Repository.get_revision_graph()`` except it includes ghosts and you can
+      stop part-way through. (John Arbash Meinel)
+
+    * ``Graph.iter_ancestry`` returns the ancestry of revision ids. Similar to
+      ``Repository.get_revision_graph()`` except it includes ghosts and you can
+      stop part-way through. (John Arbash Meinel)
 
     * New module ``tools/package_mf.py`` provide custom module finder for
       python packages (improves standard python library's modulefinder.py)
@@ -147,6 +197,10 @@ IN DEVELOPMENT
       ``supports_external_lookups`` used to indicate repositories which support
       falling back to other repositories when they have partial data.
       (Robert Collins)
+
+    * ``Repository.get_revision_graph_with_ghosts`` and
+      ``bzrlib.revision.(common_ancestor,MultipleRevisionSources,common_graph)``
+      have been deprecated.  (John Arbash Meinel)
 
     * ``Tree.iter_changes`` is now a public API, replacing the work-in-progress
       ``Tree._iter_changes``. The api is now considered stable and ready for
