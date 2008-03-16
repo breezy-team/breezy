@@ -52,6 +52,9 @@ IN DEVELOPMENT
    * ``push`` has a ``--revision`` option, to specify what revision to push up
      to.  (Daniel Watkins)
 
+   * bzr --fixes now recognises "gnome" as a tag by default.（James Westby,
+     Andrew Cowie)
+
   BUGFIXES:
 
     * Disable plink's interactive prompt for password.

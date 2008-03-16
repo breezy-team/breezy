@@ -81,6 +81,12 @@ class TestBuiltinTrackers(TestCaseWithMemoryTransport):
         self.assertEqual('http://bugs.debian.org/1234',
                          tracker.get_bug_url('1234'))
 
+    def test_gnome_registered(self):
+        branch = self.make_branch('some_branch')
+        tracker = bugtracker.tracker_registry.get_tracker('gnome', branch)
+        self.assertEqual('http://bugzilla.gnome.org/show_bug.cgi?id=1234',
+                         tracker.get_bug_url('1234'))
+
     def test_trac_registered(self):
         """The Trac bug tracker should be registered by default and generate
         Trac bug page URLs when the appropriate configuration is present.
