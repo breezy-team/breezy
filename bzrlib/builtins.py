@@ -2746,12 +2746,12 @@ class cmd_merge(Command):
     The source of the merge can be specified either in the form of a branch,
     or in the form of a path to a file containing a merge directive generated
     with bzr send. If neither is specified, the default is the upstream branch
-    or the branch most recently remembered using --remember.
+    or the branch most recently merged using --remember.
 
-    When merging branches, by default it will merge the latest revision.  If
-    you specify a revision, that revision will be merged.  If you specify two
-    revisions, the first will be used as a BASE, and the second one as OTHER.
-    Revision numbers are always relative to the specified branch.
+    When merging a branch, by default the tip will be merged. To pick a different
+    revision, pass --revision. If you specify two values, the first will be used as
+    BASE and the second one as OTHER. Revision numbers are always relative to the
+    branch being merged.
 
     By default, bzr will try to merge in all new work from the other
     branch, automatically determining an appropriate base.  If this
@@ -2796,7 +2796,7 @@ class cmd_merge(Command):
 
     encoding_type = 'exact'
     _see_also = ['update', 'remerge', 'status-flags']
-    takes_args = ['branch|merge_directive?']
+    takes_args = ['branch_or_merge_directive?']
     takes_options = [
         'change',
         'revision',
@@ -2822,15 +2822,15 @@ class cmd_merge(Command):
         Option('preview', help='Instead of merging, show a diff of the merge.')
     ]
 
-    def run(self, branch=None, revision=None, force=False, merge_type=None,
-            show_base=False, reprocess=False, remember=False,
+    def run(self, branch_or_merge_directive=None, revision=None, force=False,
+            merge_type=None, show_base=False, reprocess=False, remember=False,
             uncommitted=False, pull=False,
             directory=None,
             preview=False,
             ):
         # This is actually a branch (or merge-directive) *location*.
-        location = branch
-        del branch
+        location = branch_or_merge_directive
+        del branch_or_merge_directive
 
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
