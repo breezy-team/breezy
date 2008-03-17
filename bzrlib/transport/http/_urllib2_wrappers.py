@@ -88,7 +88,7 @@ class Response(httplib.HTTPResponse):
             # makes fp.readline() very expensive because it only reads one byte
             # at a time.  So we change the _rbufsize attribute here to fix
             # this.
-            self.fp._rbufsize = 8192
+            self.fp._rbufsize = 65536
         except AttributeError:
             # If self.fp is a cStringIO, it doesn't have a _rbufsize.
             pass
@@ -546,7 +546,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
             req = request
             r = response
             r.recv = r.read
-            fp = socket._fileobject(r, bufsize=8192)
+            fp = socket._fileobject(r, bufsize=65536)
             resp = urllib2.addinfourl(fp, r.msg, req.get_full_url())
             resp.code = r.status
             resp.msg = r.reason
