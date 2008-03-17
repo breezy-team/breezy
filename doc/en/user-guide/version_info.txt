@@ -15,7 +15,7 @@ Getting more version information
 --------------------------------
 
 The ``version-info`` command can be used to output more information
-about the lastest version like this::
+about the latest version like this::
 
   $ bzr version-info
   revision-id: pqm@pqm.ubuntu.com-20071211175118-s94sizduj201hrs5
@@ -67,14 +67,31 @@ This generates a file which contains 3 dictionaries:
     or ``--include-file-revisions``.
 
 
-Projects in other languages
----------------------------
+Getting version info in other formats
+-------------------------------------
 
-Support for dumping version information in other languages is currently
-in development. Please contact us on the mailing list about your
-requirements in this area. (As of the Bazaar 1.0 release date, some patches
-are available for other languages but are not yet merged into the core product.)
+Bazaar supports a template-based method for getting version information in
+arbitrary formats.  The ``--custom`` option to ``version-info`` can be
+used by providing a ``--template`` argument that contains variables that
+will be expanded based on the status of the working tree.  For example, to
+generate a C header file with a formatted string containing the current
+revision number::
 
+ bzr version-info --custom \
+      --template="#define VERSION_INFO \"Project 1.2.3 (r{revno})\"\n" \
+      > version_info.h
+
+where the ``{revno}`` will be replaced by the revision number of the
+working tree.  (If the example above doesn't work on your OS, try
+entering the command all on one line.) For more information on the
+variables that can be used in templates, see `Version Info`_ in the
+Bazaar User Reference.
+
+.. _Version Info: ../user-reference/bzr_man.html#version-info
+
+Predefined formats for dumping version information in specific languages
+are currently in development. Please contact us on the mailing list about
+your requirements in this area.
 
 Check clean
 -----------
