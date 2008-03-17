@@ -778,6 +778,7 @@ class GenericCommitHandler(processor.CommitHandler):
         if file_id in self.inventory:
             # HACK: no API for this (del+add does more than it needs to)
             self.inventory._byid[file_id] = ie
+            parent_ie.children[basename] = ie
         else:
             self.inventory.add(ie)
 
