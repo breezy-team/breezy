@@ -4,11 +4,46 @@ Bazaar Release Notes
 
 .. contents::
 
+
 IN DEVELOPMENT
 --------------
 
   NOTES WHEN UPGRADING:
-  
+
+  CHANGES:
+
+  FEATURES:
+
+  IMPROVEMENTS:
+
+  BUGFIXES:
+
+    * ``bzr mv a b`` can be now used also to rename previously renamed
+      directories, not only files. (Lukáš Lalinský, #107967)
+
+  DOCUMENTATION:
+
+  API BREAKS:
+
+  TESTING:
+
+  INTERNALS:
+
+
+bzr 1.3rc1 2008-03-16
+---------------------
+
+Bazaar has become part of the GNU project <http://www.gnu.org>
+
+Many operations that act on history, including ``log`` and ``annotate`` are now
+substantially faster.  Several bugs have been fixed and several new options and
+features have been added.
+
+  NOTES WHEN UPGRADING:
+
+    * The backup directory created by ``upgrade`` is now called
+      ``backup.bzr``, not ``.bzr.backup``. (Martin Albisetti)
+
   CHANGES:
 
     * A new repository format 'development' has been added. This format will
@@ -28,37 +63,104 @@ IN DEVELOPMENT
       bzr.exe, installed to ``C:\Program Files\Bazaar\plugins`` directory, 
       and standalone installer allows user to skip installation of this plugin.
       (Alexander Belchenko)
- 
+
     * Restore auto-detection of plink.exe on Windows. (Dmitry Vasiliev)
+
+    * Version number is now shown as "1.2" or "1.2pr2", without zeroed or
+      missing final fields.  (Martin Pool)
 
   FEATURES:
 
-   * ``branch`` and ``checkout`` can hard-link working tree files, which is
-     faster and saves space.  (Aaron Bentley)
+    * ``branch`` and ``checkout`` can hard-link working tree files, which is
+      faster and saves space.  (Aaron Bentley)
+
+    * ``bzr send`` will now also look at the ``child_submit_to`` setting in
+      the submit branch to determine the email address to send to. 
+      (Jelmer Vernooij)
 
   IMPROVEMENTS:
 
+    * BzrBranch._lefthand_history is faster on pack repos.  (Aaron Bentley)
+
+    * Branch6.generate_revision_history is faster.  (Aaron Bentley)
+
+    * Directory services can now be registered, allowing special URLs to be
+      dereferenced into real URLs.  This is a generalization and cleanup of
+      the lp: transport lookup.  (Aaron Bentley)
+
+    * Merge directives that are automatically attached to emails have nicer
+      filenames, based on branch-nick + revno. (Aaron Bentley)
+
+    * ``push`` has a ``--revision`` option, to specify what revision to push up
+      to.  (Daniel Watkins)
+
+    * Significantly reducing execution time and network traffic for trivial 
+      case of running ``bzr missing`` command for two identical branches.
+      (Alexander Belchenko)
+
+    * Speed up operations that look at the revision graph (such as 'bzr log').
+      ``KnitPackRepositor.get_revision_graph`` uses ``Graph.iter_ancestry`` to
+      extract the revision history. This allows filtering ghosts while
+      stepping instead of needing to peek ahead. (John Arbash Meinel)
+
+    * The ``hooks`` command lists installed hooks, to assist in debugging.
+      (Daniel Watkins)
+
+    * Updates to how ``annotate`` work. Should see a measurable improvement in
+      performance and memory consumption for file with a lot of merges.
+      Also, correctly handle when a line is introduced by both parents (it
+      should be attributed to the first merge which notices this, and not
+      to all subsequent merges.) (John Arbash Meinel)
+
   BUGFIXES:
 
-    * ``bzr mv a b`` can be now used also to rename previously renamed
-      directories, not only files. (Lukáš Lalinský, #107967)
+    * Autopacking no longer holds the full set of inventory lines in
+      memory while copying. For large repositories, this can amount to
+      hundreds of MB of ram consumption.
+      (Ian Clatworthy, John Arbash Meinel)
+
+    * Cherrypicking when using ``--format=merge3`` now explictly excludes
+      BASE lines. (John Arbash Meinel, #151731)
 
     * Disable plink's interactive prompt for password.
       (#107593, Dmitry Vasiliev)
 
+    * Encode command line arguments from unicode to user_encoding before
+      invoking external mail client in `bzr send` command.
+      (#139318, Alexander Belchenko)
+
+    * Improved error reporting in the Launchpad plugin. (Daniel Watkins,
+      #196618)
+
     * Include quick-start-summary.svg file to python-based installer(s)
       for Windows. (#192924, Alexander Belchenko)
+
+    * lca merge now respects specified files. (Aaron Bentley)
 
     * Make version-info --custom imply --all. (#195560, James Westby)
 
     * ``merge --preview`` now works for merges that add or modify
       symlinks (James Henstridge)
 
-    * Upgrade bundled ConfigObj to version 4.5.1, which properly quotes #
+    * Redirecting the output from ``bzr merge`` (when the remembered
+      location is used) now works. (John Arbash Meinel)
+
+    * setup.py script explicitly checks for Python version.
+      (Jari Aalto, Alexander Belchenko, #200569)
+
+    * UnknownFormatErrors no longer refer to branches regardless of kind of
+      unknown format. (Daniel Watkins, #173980)
+
+    * Upgrade bundled ConfigObj to version 4.5.2, which properly quotes #
       signs, among other small improvements. (Matt Nordhoff, #86838)
 
     * Use correct indices when emitting LCA conflicts.  This fixes IndexError
       errors.  (Aaron Bentley, #196780)
+
+  DOCUMENTATION:
+
+    * Explained how to use ``version-info --custom`` in the User Guide.
+      (Neil Martinsen-Burrell)
 
   API BREAKS:
 
@@ -74,6 +176,10 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * ``Graph.iter_ancestry`` returns the ancestry of revision ids. Similar to
+      ``Repository.get_revision_graph()`` except it includes ghosts and you can
+      stop part-way through. (John Arbash Meinel)
+
     * New module ``tools/package_mf.py`` provide custom module finder for
       python packages (improves standard python library's modulefinder.py)
       used by ``setup.py`` script while building standalone bzr.exe.
@@ -88,6 +194,14 @@ IN DEVELOPMENT
       ``supports_external_lookups`` used to indicate repositories which support
       falling back to other repositories when they have partial data.
       (Robert Collins)
+
+    * ``Repository.get_revision_graph_with_ghosts`` and
+      ``bzrlib.revision.(common_ancestor,MultipleRevisionSources,common_graph)``
+      have been deprecated.  (John Arbash Meinel)
+
+    * ``Tree.iter_changes`` is now a public API, replacing the work-in-progress
+      ``Tree._iter_changes``. The api is now considered stable and ready for
+      external users.  (Aaron Bentley)
 
     * The bzrdir format registry now accepts an ``alias`` keyword to
       register_metadir, used to indicate that a format name is an alias for

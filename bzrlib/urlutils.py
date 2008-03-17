@@ -274,7 +274,8 @@ def _win32_local_path_to_url(path):
     # check for UNC path \\HOST\path
     if win32_path.startswith('//'):
         return 'file:' + escape(win32_path)
-    return 'file:///' + win32_path[0].upper() + ':' + escape(win32_path[2:])
+    return ('file:///' + str(win32_path[0].upper()) + ':' +
+        escape(win32_path[2:]))
 
 
 local_path_to_url = _posix_local_path_to_url
