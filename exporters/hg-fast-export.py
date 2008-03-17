@@ -383,9 +383,9 @@ if __name__=='__main__':
   m=-1
   if options.max!=None: m=options.max
 
-  if options.marksfile==None: bail(parser,'--marks')
-  if options.headsfile==None: bail(parser,'--heads')
-  if options.statusfile==None: bail(parser,'--status')
+  if options.marksfile==None: options.marksfile = 'hg-export.marks'
+  if options.headsfile==None: options.headsfile = 'hg-export.heads'
+  if options.statusfile==None: options.statusfile = 'hg-export.status'
   if options.repourl==None: bail(parser,'--repo')
 
   a={}
