@@ -18,9 +18,11 @@ import os
 
 
 from bzrlib import (
+    bzrdir,
     errors,
     revisionspec,
     tests,
+    transport,
     )
 from bzrlib.tests import test_transport_implementations
 
@@ -68,55 +70,74 @@ def load_tests(standard_tests, module, loader):
 class TestUpload(tests.TestCaseWithTransport):
 
     def _create_branch(self):
-        tree = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/hello', 'foo')])
-        tree.add('hello')
-        tree.commit('setup')
-
-        self.build_tree_contents([('branch/hello', 'bar'),
-                                  ('branch/goodbye', 'baz')])
-        tree.add('goodbye')
-        tree.commit('setup')
+        # We need a local branch not a remote one
+        t = transport.get_transport('branch')
+        t.ensure_base()
+        branch = bzrdir.BzrDir.create_branch_convenience(
+            t.base,
+            format=bzrdir.format_registry.make_bzrdir('default'),
+            force_new_tree=False)
+        tree = branch.bzrdir.create_workingtree()
         return tree
 
-    def test_full_upload(self):
-        self._create_branch()
+    def _add_hello(self, tree):
+        self.build_tree_contents([('branch/hello', 'foo')])
+        tree.add('hello')
+        tree.commit('add hello')
 
-        os.chdir('branch')
+    def _modify_hello_add_goodbye(self, tree):
+        self.build_tree_contents([('branch/hello', 'bar'),
+                                  ('branch/dir/',),
+                                  ('branch/dir/goodbye', 'baz')])
+        tree.add('dir')
+        tree.add('dir/goodbye')
+        tree.commit('modify hello, add goodbye')
+
+    def test_full_upload(self):
+        tree = self._create_branch()
+        self._add_hello(tree)
+        self._modify_hello_add_goodbye(tree)
+
         upload = cmd_upload()
         up_url = self.get_transport('upload').external_url()
 
-        upload.run(up_url, full=True)
+        upload.run(up_url, full=True, working_dir='branch')
 
-        self.assertFileEqual('bar', '../upload/hello')
-        self.assertFileEqual('baz', '../upload/goodbye')
+        self.assertFileEqual('bar', 'upload/hello')
+        self.assertFileEqual('baz', 'upload/dir/goodbye')
 
     def test_incremental_upload(self):
-        self._create_branch()
+        tree = self._create_branch()
+        self._add_hello(tree)
+        self._modify_hello_add_goodbye(tree)
 
-        os.chdir('branch')
         upload = cmd_upload()
         up_url = self.get_transport('upload').external_url()
 
         # Upload revision 1 only
         revspec = revisionspec.RevisionSpec.from_string('1')
-        upload.run(up_url, revision=[revspec], full=True)
+        upload.run(up_url, revision=[revspec], full=True, working_dir='branch')
 
-        self.assertFileEqual('foo', '../upload/hello')
-        self.failIfExists('../upload/goodbye')
+        self.assertFileEqual('foo', 'upload/hello')
+        self.failIfExists('upload/dir/goodbye')
 
         # Upload current revision
-        upload.run(up_url)
+        upload.run(up_url, working_dir='branch')
 
-        self.assertFileEqual('bar','../upload/hello')
-        self.assertFileEqual('baz', '../upload/goodbye')
+        self.assertFileEqual('bar', 'upload/hello')
+        self.assertFileEqual('baz', 'upload/dir/goodbye')
 
     def test_invalid_revspec(self):
-        self._create_branch()
+        tree = self._create_branch()
+        self._add_hello(tree)
+        self._modify_hello_add_goodbye(tree)
         rev1 = revisionspec.RevisionSpec.from_string('1')
         rev2 = revisionspec.RevisionSpec.from_string('2')
+
         upload = cmd_upload()
         up_url = self.get_transport('upload').external_url()
+
         self.assertRaises(errors.BzrCommandError, upload.run,
-                          up_url, revision=[rev1, rev2])
+                          up_url, revision=[rev1, rev2],
+                          working_dir='branch')
 

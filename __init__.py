@@ -43,8 +43,12 @@ class cmd_upload(commands.Command):
         option.Option('full', 'Upload the full working tree.'),
        ]
 
-    def run(self, location, full=False, revision=None):
-        wt = workingtree.WorkingTree.open_containing(u'.')[0]
+    def run(self, location, full=False, revision=None,
+            working_dir=None, # For tests
+            ):
+        if working_dir is None:
+            working_dir = u'.'
+        wt = workingtree.WorkingTree.open_containing(working_dir)[0]
         b = wt.branch
 
         if location is None:
@@ -77,6 +81,10 @@ class cmd_upload(commands.Command):
     def upload_file(self, relpath, id):
         self.to_transport.put_bytes(relpath, self.tree.get_file_text(id))
 
+    def make_remote_dir(self, relpath):
+        # XXX: handle mode
+        self.to_transport.mkdir(relpath)
+
     def upload_full_tree(self):
         self.to_transport.ensure_base() # XXX: Handle errors
         self.tree.lock_read()
@@ -90,7 +98,16 @@ class cmd_upload(commands.Command):
                 if dp == ".bzrignore":
                     continue
 
-                self.upload_file(dp, ie.file_id)
+                if ie.kind == 'file':
+                    self.upload_file(dp, ie.file_id)
+                elif ie.kind == 'directory':
+                    try:
+                        self.make_remote_dir(dp)
+                    except errors.FileExists:
+                        # The directory existed before the upload
+                        pass
+                else:
+                    raise NotImplementedError
             self.set_uploaded_revid(self.rev_id)
         finally:
             self.tree.unlock()
@@ -101,9 +118,12 @@ class cmd_upload(commands.Command):
         changes = self.tree.changes_from(from_tree)
         self.tree.lock_read()
         try:
+            # XXX: handle removed, renamed, kind_changed
             for (path, id, kind) in changes.added:
                 if kind is 'file':
                     self.upload_file(path, id)
+                elif kind is 'directory':
+                    self.make_remote_dir(path)
                 else:
                     raise NotImplementedError
             # XXX: Add a test for exec_change
