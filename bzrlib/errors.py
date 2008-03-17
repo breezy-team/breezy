@@ -800,6 +800,17 @@ class BadFileKindError(BzrError):
         BzrError.__init__(self, filename=filename, kind=kind)
 
 
+class BadFilenameEncoding(BzrError):
+
+    _fmt = ('Filename %(filename)r is not valid in your current filesystem'
+            ' encoding %(fs_encoding)s')
+
+    def __init__(self, filename, fs_encoding):
+        BzrError.__init__(self)
+        self.filename = filename
+        self.fs_encoding = fs_encoding
+
+
 class ForbiddenControlFileError(BzrError):
 
     _fmt = 'Cannot operate on "%(filename)s" because it is a control file'

@@ -2414,8 +2414,13 @@ class InterDirStateTree(InterTree):
                                 new_executable = bool(
                                     stat.S_ISREG(current_path_info[3].st_mode)
                                     and stat.S_IEXEC & current_path_info[3].st_mode)
+                                try:
+                                    relpath_unicode = utf8_decode(current_path_info[0])[0]
+                                except UnicodeDecodeError:
+                                    raise errors.BadFilenameEncoding(
+                                        current_path_info[0], osutils._fs_enc)
                                 yield (None,
-                                    (None, utf8_decode(current_path_info[0])[0]),
+                                    (None, relpath_unicode),
                                     True,
                                     (False, False),
                                     (None, None),

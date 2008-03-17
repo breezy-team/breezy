@@ -98,15 +98,22 @@ class MetaTestLog(TestCase):
                               'a test message\n')
 
 
+class TestUnicodeFilename(TestCase):
+
+    def test_probe_passes(self):
+        """UnicodeFilename._probe passes."""
+        # We can't test much more than that because the behaviour depends
+        # on the platform.
+        tests.UnicodeFilename._probe()
+
+
 class TestTreeShape(TestCaseInTempDir):
 
     def test_unicode_paths(self):
+        self.requireFeature(tests.UnicodeFilename)
+
         filename = u'hell\u00d8'
-        try:
-            self.build_tree_contents([(filename, 'contents of hello')])
-        except UnicodeEncodeError:
-            raise TestSkipped("can't build unicode working tree in "
-                "filesystem encoding %s" % sys.getfilesystemencoding())
+        self.build_tree_contents([(filename, 'contents of hello')])
         self.failUnlessExists(filename)
 
 

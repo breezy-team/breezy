@@ -55,35 +55,6 @@ class _CompiledPatienceDiffFeature(Feature):
 CompiledPatienceDiffFeature = _CompiledPatienceDiffFeature()
 
 
-class _UnicodeFilename(Feature):
-    """Does the filesystem support Unicode filenames?"""
-
-    def _probe(self):
-        try:
-            os.stat(u'\u03b1')
-        except UnicodeEncodeError:
-            return False
-        except (IOError, OSError):
-            # The filesystem allows the Unicode filename but the file doesn't
-            # exist.
-            return True
-        else:
-            # The filesystem allows the Unicode filename and the file exists,
-            # for some reason.
-            return True
-
-UnicodeFilename = _UnicodeFilename()
-
-
-class TestUnicodeFilename(TestCase):
-
-    def test_probe_passes(self):
-        """UnicodeFilename._probe passes."""
-        # We can't test much more than that because the behaviour depends
-        # on the platform.
-        UnicodeFilename._probe()
-        
-
 def udiff_lines(old, new, allow_binary=False):
     output = StringIO()
     internal_diff('old', old, 'new', new, output, allow_binary)
