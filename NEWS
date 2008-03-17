@@ -16,6 +16,10 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * Fetching data over HTTP is a bit faster when urllib is used.  This is done
+      by forcing it to recv 64k at a time when reading lines in HTTP headers,
+      rather than just 1 byte at a time.  (Andrew Bennetts)
+
   BUGFIXES:
 
   DOCUMENTATION:
