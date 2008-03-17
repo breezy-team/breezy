@@ -12,6 +12,14 @@ IN DEVELOPMENT
 
   CHANGES:
 
+   * When a plugin cannot be loaded as the file path is not a valid
+     python module name bzr will now strip a "bzr_" prefix from the
+     front of the suggested name, as many plugins (e.g. bzr-svn)
+     want to be installed without this prefix. It is a common mistake
+     to have a folder named "bzr-svn" for that plugin, especially
+     as this is what bzr branch lp:bzr-svn will give you. (James Westby,
+     Andrew Cowie)
+
   FEATURES:
 
   IMPROVEMENTS:
