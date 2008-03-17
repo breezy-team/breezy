@@ -937,8 +937,8 @@ class TestCase(unittest.TestCase):
         """
         try:
             list(func(*args, **kwargs))
-        except excClass:
-            return
+        except excClass, e:
+            return e
         else:
             if getattr(excClass,'__name__', None) is not None:
                 excName = excClass.__name__
