@@ -788,6 +788,7 @@ class DiffFromTool(DiffPath):
         return proc.wait()
 
     def _try_symlink_root(self, tree, prefix):
+        return False
         if not (getattr(tree, 'abspath', None) is not None
                 and osutils.has_symlinks()):
             return False
