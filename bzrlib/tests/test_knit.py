@@ -2903,7 +2903,7 @@ class Test_StreamIndex(KnitTests):
         """Constructing a StreamIndex generates index data."""
         data_list = [('text-a', ['fulltext'], 127, []),
             ('text-b', ['option'], 128, ['text-c'])]
-        index = _StreamIndex(data_list)
+        index = _StreamIndex(data_list, None)
         self.assertEqual({'text-a':(['fulltext'], (0, 127), []),
             'text-b':(['option'], (127, 127 + 128), ['text-c'])},
             index._by_version)
