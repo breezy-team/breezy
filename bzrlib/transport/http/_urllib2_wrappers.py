@@ -64,6 +64,18 @@ from bzrlib import (
     )
 
 
+class _BufferedMakefileSocket(object):
+
+    def __init__(self, sock):
+        self.sock = sock
+
+    def makefile(self, mode='r', bufsize=-1):
+        return self.sock.makefile(mode, 65536)
+
+    def __getattr__(self, name):
+        return getattr(self.sock, name)
+
+
 # We define our own Response class to keep our httplib pipe clean
 class Response(httplib.HTTPResponse):
     """Custom HTTPResponse, to avoid the need to decorate.
@@ -81,17 +93,13 @@ class Response(httplib.HTTPResponse):
     # 8k chunks should be fine.
     _discarded_buf_size = 8192
 
-    def __init__(self, *args, **kwargs):
-        httplib.HTTPResponse.__init__(self, *args, **kwargs)
-        try:
-            # httplib creates a fileobject that doesn't do buffering, which
-            # makes fp.readline() very expensive because it only reads one byte
-            # at a time.  So we change the _rbufsize attribute here to fix
-            # this.
-            self.fp._rbufsize = 65536
-        except AttributeError:
-            # If self.fp is a cStringIO, it doesn't have a _rbufsize.
-            pass
+    def __init__(self, sock, *args, **kwargs):
+        # httplib creates a fileobject that doesn't do buffering, which
+        # makes fp.readline() very expensive because it only reads one byte
+        # at a time.  So we wrap the socket in an object that forces
+        # sock.makefile to make a buffered file.
+        sock = _BufferedMakefileSocket(sock)
+        httplib.HTTPResponse.__init__(self, sock, *args, **kwargs)
 
     def begin(self):
         """Begin to read the response from the server.
