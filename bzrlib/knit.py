@@ -1258,22 +1258,16 @@ class KnitVersionedFile(VersionedFile):
         """See VersionedFile.annotate_iter."""
         return self.factory.annotate_iter(self, version_id)
 
-    def get_parents(self, version_id):
-        """See VersionedFile.get_parents."""
-        # perf notes:
-        # optimism counts!
-        # 52554 calls in 1264 872 internal down from 3674
-        try:
-            return self._index.get_parents(version_id)
-        except KeyError:
-            raise RevisionNotPresent(version_id, self.filename)
-
-    def get_parents_with_ghosts(self, version_id):
-        """See VersionedFile.get_parents."""
-        try:
-            return self._index.get_parents_with_ghosts(version_id)
-        except KeyError:
-            raise RevisionNotPresent(version_id, self.filename)
+    def get_parent_map(self, version_ids):
+        """See VersionedFile.get_parent_map."""
+        result = {}
+        lookup = self._index.get_parents_with_ghosts
+        for version_id in version_ids:
+            try:
+                result[version_id] = tuple(lookup(version_id))
+            except KeyError:
+                pass
+        return result
 
     def get_ancestry(self, versions, topo_sorted=True):
         """See VersionedFile.get_ancestry."""

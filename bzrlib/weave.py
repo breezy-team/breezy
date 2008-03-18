@@ -245,9 +245,19 @@ class Weave(VersionedFile):
 
     __contains__ = has_version
 
-    def get_parents(self, version_id):
-        """See VersionedFile.get_parent."""
-        return map(self._idx_to_name, self._parents[self._lookup(version_id)])
+    def get_parent_map(self, version_ids):
+        """See VersionedFile.get_parent_map."""
+        result = {}
+        for version_id in version_ids:
+            try:
+                result[version_id] = tuple(
+                    map(self._idx_to_name, self._parents[self._lookup(version_id)]))
+            except RevisionNotPresent:
+                pass
+        return result
+
+    def get_parents_with_ghosts(self, version_id):
+        raise NotImplementedError(self.get_parents_with_ghosts)
 
     def _check_repeated_add(self, name, parents, text, sha1):
         """Check that a duplicated add is OK.

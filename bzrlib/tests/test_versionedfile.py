@@ -458,6 +458,29 @@ class VersionedFileTestMixIn(object):
         self.assertRaises(RevisionNotPresent,
             f.get_parents, 'y')
 
+    def test_get_parent_map(self):
+        f = self.get_file()
+        f.add_lines('r0', [], ['a\n', 'b\n'])
+        self.assertEqual(
+            {'r0':()}, f.get_parent_map(['r0']))
+        f.add_lines('r1', ['r0'], ['a\n', 'b\n'])
+        self.assertEqual(
+            {'r1':('r0',)}, f.get_parent_map(['r1']))
+        self.assertEqual(
+            {'r0':(),
+             'r1':('r0',)},
+            f.get_parent_map(['r0', 'r1']))
+        f.add_lines('r2', [], ['a\n', 'b\n'])
+        f.add_lines('r3', [], ['a\n', 'b\n'])
+        f.add_lines('m', ['r0', 'r1', 'r2', 'r3'], ['a\n', 'b\n'])
+        self.assertEqual(
+            {'m':('r0', 'r1', 'r2', 'r3')}, f.get_parent_map(['m']))
+        self.assertEqual({}, f.get_parent_map('y'))
+        self.assertEqual(
+            {'r0':(),
+             'r1':('r0',)},
+            f.get_parent_map(['r0', 'y', 'r1']))
+
     def test_annotate(self):
         f = self.get_file()
         f.add_lines('r0', [], ['a\n', 'b\n'])

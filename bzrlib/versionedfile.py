@@ -371,13 +371,30 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.get_graph_with_ghosts)
 
+    def get_parent_map(self, version_ids):
+        """Get a map of the parents of version_ids.
+
+        :param version_ids: The version ids to look up parents for.
+        :return: A mapping from version id to parents.
+        """
+        raise NotImplementedError(self.get_parent_map)
+
     def get_parents(self, version_id):
         """Return version names for parents of a version.
 
         Must raise RevisionNotPresent if version is not present in
         file history.
         """
-        raise NotImplementedError(self.get_parents)
+        try:
+            all = self.get_parent_map([version_id])[version_id]
+        except KeyError:
+            raise errors.RevisionNotPresent(version_id, self)
+        result = []
+        parent_parents = self.get_parent_map(all)
+        for version_id in all:
+            if version_id in parent_parents:
+                result.append(version_id)
+        return result
 
     def get_parents_with_ghosts(self, version_id):
         """Return version names for parents of version_id.
@@ -388,7 +405,10 @@ class VersionedFile(object):
         Ghosts that are known about will be included in the parent list,
         but are not explicitly marked.
         """
-        raise NotImplementedError(self.get_parents_with_ghosts)
+        try:
+            return list(self.get_parent_map([version_id])[version_id])
+        except KeyError:
+            raise errors.RevisionNotPresent(version_id, self)
 
     def annotate_iter(self, version_id):
         """Yield list of (version-id, line) pairs for the specified
