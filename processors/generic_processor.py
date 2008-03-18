@@ -235,7 +235,7 @@ class GenericProcessor(processor.ImportProcessor):
         self.note("Updating branch information ...")
         updater = GenericBranchUpdater(self.repo, self.branch, self.cache_mgr,
             helpers.invert_dict(self.cache_mgr.heads),
-            self.cache_mgr.last_ref)
+            self.cache_mgr.last_ref, self.tags)
         branches_updated, branches_lost = updater.update()
         self._branch_count = len(branches_updated)
 
@@ -824,7 +824,7 @@ class GenericCommitHandler(processor.CommitHandler):
 
 class GenericBranchUpdater(object):
 
-    def __init__(self, repo, branch, cache_mgr, heads_by_ref, last_ref):
+    def __init__(self, repo, branch, cache_mgr, heads_by_ref, last_ref, tags):
         """Create an object responsible for updating branches.
 
         :param heads_by_ref: a dictionary where
@@ -836,6 +836,7 @@ class GenericBranchUpdater(object):
         self.cache_mgr = cache_mgr
         self.heads_by_ref = heads_by_ref
         self.last_ref = last_ref
+        self.tags = tags
 
     def update(self):
         """Update the Bazaar branches and tips matching the heads.
@@ -948,14 +949,25 @@ class GenericBranchUpdater(object):
         :return: whether the branch was changed or not
         """
         last_rev_id = self.cache_mgr.revision_ids[last_mark]
-        revno = len(list(self.repo.iter_reverse_revision_history(last_rev_id)))
+        revs = list(self.repo.iter_reverse_revision_history(last_rev_id))
+        revno = len(revs)
         existing_revno, existing_last_rev_id = br.last_revision_info()
         changed = False
         if revno != existing_revno or last_rev_id != existing_last_rev_id:
             br.set_last_revision_info(revno, last_rev_id)
             changed = True
-            note("\t branch %s now has %d revisions", br.nick, revno)
-        # TODO: apply tags known in this branch
-        #if self.tags:
-        #    br.tags._set_tag_dict(self.tags)
+        # apply tags known in this branch
+        my_tags = {}
+        if self.tags:
+            for tag,rev in self.tags.items():
+                if rev in revs:
+                    my_tags[tag] = rev
+            if my_tags:
+                br.tags._set_tag_dict(my_tags)
+                changed = True
+        if changed:
+            tagno = len(my_tags)
+            note("\t branch %s now has %d %s and %d %s", br.nick,
+                revno, helpers.single_plural(revno, "revision", "revisions"),
+                tagno, helpers.single_plural(tagno, "tag", "tags"))
         return changed
