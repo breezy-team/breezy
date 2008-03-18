@@ -94,7 +94,7 @@ class LaunchpadDirectory(object):
                     if not _warned_login:
                         trace.warning('You have not informed bzr of your '
                                 'launchpad login. If you are attempting a '
-                                'write operation it may fail. If it does '
+                                'write operation it may fail. If it does, '
                                 'run "bzr launchpad-login <your-id>" to '
                                 'set your login and try again.')
                         _warned_login = True
