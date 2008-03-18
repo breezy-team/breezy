@@ -30,12 +30,13 @@ Things that ought to work:
   * import into a standalone tree - warnings are given
     for branches (heads) found but not imported
   
-Things that might work (not tested enough):
+* merge tracking
+
+Things that probably work (more testing needed):
 
 * separate author to committer
 
-* merge tracking
-
+* lightweight tags
 
 
 Known Limitations
@@ -54,16 +55,10 @@ Things not supported yet:
 
 * rfc2822 dates.
 
-Known bugs:
-
-* line number tracking isn't fully cooked
-
 fast-import
 -----------
 
 Things not supported yet:
-
-* incremental import
 
 * deterministic revision-ids as an option
 
@@ -86,12 +81,11 @@ General
 
 The date format is auto-detected.
 
-
 Parsing
 -------
 
 These enhancements over the specification are provided in order
-to read data produced by git-fast-export:
+to read data produced by some verisons of git-fast-export:
 
 * A person's name may be empty
 
