@@ -73,6 +73,7 @@ class SvnBranch(Branch):
         self._revision_history_revnum = None
         self.mapping = self.repository.get_mapping()
         self._branch_path = branch_path.strip("/")
+        assert isinstance(self._branch_path, str)
         try:
             if self.repository.transport.check_path(branch_path.strip("/"), 
                 self.get_revnum()) != svn.core.svn_node_dir:
@@ -128,11 +129,12 @@ class SvnBranch(Branch):
         """
         return BranchCheckResult(self)
 
-    def _create_heavyweight_checkout(self, to_location, revision_id=None):
+    def _create_heavyweight_checkout(self, to_location, revision_id=None, hardlink=False):
         """Create a new heavyweight checkout of this branch.
 
         :param to_location: URL of location to create the new checkout in.
         :param revision_id: Revision that should be the tip of the checkout.
+        :param hardlink: Whether to hardlink
         :return: WorkingTree object of checkout.
         """
         checkout_branch = BzrDir.create_branch_convenience(
@@ -142,7 +144,7 @@ class SvnBranch(Branch):
         # pull up to the specified revision_id to set the initial 
         # branch tip correctly, and seed it with history.
         checkout_branch.pull(self, stop_revision=revision_id)
-        return checkout.create_workingtree(revision_id)
+        return checkout.create_workingtree(revision_id, hardlink=hardlink)
 
     def lookup_revision_id(self, revid):
         """Look up the matching Subversion revision number on the mainline of 
@@ -183,12 +185,12 @@ class SvnBranch(Branch):
         return WorkingTree.open(to_location)
 
     def create_checkout(self, to_location, revision_id=None, lightweight=False,
-                        accelerator_tree=None):
+                        accelerator_tree=None, hardlink=False):
         """See Branch.create_checkout()."""
         if lightweight:
             return self._create_lightweight_checkout(to_location, revision_id)
         else:
-            return self._create_heavyweight_checkout(to_location, revision_id)
+            return self._create_heavyweight_checkout(to_location, revision_id, hardlink=hardlink)
 
     def generate_revision_id(self, revnum):
         """Generate a new revision id for a revision on this branch."""
@@ -230,6 +232,13 @@ class SvnBranch(Branch):
         """See Branch.last_revision_info()."""
         last_revid = self.last_revision()
         return self.revision_id_to_revno(last_revid), last_revid
+
+    def get_root_id(self, revnum=None):
+        if revnum is None:
+            tree = self.basis_tree()
+        else:
+            tree = self.repository.revision_tree(self.get_rev_id(revnum))
+        return tree.get_root_id()
 
     def revno(self):
         """See Branch.revno()."""

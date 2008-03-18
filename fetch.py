@@ -32,10 +32,12 @@ from bzrlib.plugins.svn.errors import InvalidFileName
 from mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_MERGE, 
                      SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVISION_INFO, 
                      SVN_PROP_BZR_BRANCHING_SCHEME, SVN_PROP_BZR_REVISION_ID,
-                     SVN_PROP_BZR_FILEIDS, parse_merge_property)
+                     SVN_PROP_BZR_FILEIDS, parse_merge_property,
+                     parse_revision_metadata)
 from repository import (SvnRepository, SvnRepositoryFormat)
 from svk import SVN_PROP_SVK_MERGE
-from tree import apply_txdelta_handler
+from tree import (apply_txdelta_handler, parse_externals_description, 
+                  inventory_add_external)
 
 
 def _escape_commit_message(message):
@@ -295,6 +297,8 @@ class RevisionBuildEditor(svn.delta.Editor):
             self.is_symlink = (value != None)
         elif name == svn.core.SVN_PROP_ENTRY_COMMITTED_REV:
             self.last_file_rev = int(value)
+        elif name == svn.core.SVN_PROP_EXTERNALS:
+            mutter('svn:externals property on file!')
         elif name in (svn.core.SVN_PROP_ENTRY_COMMITTED_DATE,
                       svn.core.SVN_PROP_ENTRY_LAST_AUTHOR,
                       svn.core.SVN_PROP_ENTRY_LOCK_TOKEN,

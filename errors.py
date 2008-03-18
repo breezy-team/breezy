@@ -23,6 +23,11 @@ from bzrlib.errors import (BzrError, ConnectionError, ConnectionReset,
 import urllib
 import svn.core
 
+
+class InvalidExternalsDescription(BzrError):
+    _fmt = """Unable to parse externals description."""
+
+
 # APR define, not in svn.core
 SVN_ERR_UNKNOWN_HOSTNAME = 670002
 
