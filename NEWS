@@ -16,7 +16,14 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * Fetching data over HTTP is a bit faster when urllib is used.  This is done
+      by forcing it to recv 64k at a time when reading lines in HTTP headers,
+      rather than just 1 byte at a time.  (Andrew Bennetts)
+
   BUGFIXES:
+
+    * ``bzr mv a b`` can be now used also to rename previously renamed
+      directories, not only files. (Lukáš Lalinský, #107967)
 
     * Don't ask for a password if there is no real terminal.
       (Alexander Belchenko, #69851)

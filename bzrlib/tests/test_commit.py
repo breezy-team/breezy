@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -444,14 +444,10 @@ class TestCommit(TestCaseWithTransport):
         bound = master.sprout('bound')
         wt = bound.open_workingtree()
         wt.branch.set_bound_location(os.path.realpath('master'))
-
-        orig_default = lockdir._DEFAULT_TIMEOUT_SECONDS
         master_branch.lock_write()
         try:
-            lockdir._DEFAULT_TIMEOUT_SECONDS = 1
             self.assertRaises(LockContention, wt.commit, 'silly')
         finally:
-            lockdir._DEFAULT_TIMEOUT_SECONDS = orig_default
             master_branch.unlock()
 
     def test_commit_bound_merge(self):
