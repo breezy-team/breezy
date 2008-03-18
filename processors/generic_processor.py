@@ -652,16 +652,25 @@ class GenericCommitHandler(processor.CommitHandler):
 
     def delete_handler(self, filecmd):
         path = filecmd.path
+        fileid = self.bzr_file_id(path)
         try:
-            del self.inventory[self.bzr_file_id(path)]
+            del self.inventory[fileid]
         except KeyError:
-            self.warning("ignoring delete of %s as not in inventory", path)
+            self._warn_unless_in_merges(fileid, path)
         except errors.NoSuchId:
-            self.warning("ignoring delete of %s as not in inventory", path)
+            self._warn_unless_in_merges(fileid, path)
         try:
             self.cache_mgr._delete_path(path)
         except KeyError:
             pass
+
+    def _warn_unless_in_merges(self, fileid, path):
+        if len(self.parents) <= 1:
+            return
+        for parent in self.parents[1:]:
+            if fileid in self.get_inventory(parent):
+                return
+        self.warning("ignoring delete of %s as not in parent inventories", path)
 
     def copy_handler(self, filecmd):
         raise NotImplementedError(self.copy_handler)
