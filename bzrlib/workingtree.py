@@ -1641,7 +1641,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 if subf == '.bzr':
                     continue
                 if subf not in dir_entry.children:
-                    subf_norm, can_access = osutils.normalized_filename(subf)
+                    try:
+                        (subf_norm,
+                         can_access = osutils.normalized_filename(subf)
+                    except UnicodeDecodeError:
+                        path_os_enc = path.encode(osutils._fs_enc)
+                        relpath = path_os_enc + '/' + subf
+                        raise errors.BadFilenameEncoding(relpath,
+                                                         osutils._fs_enc)
                     if subf_norm != subf and can_access:
                         if subf_norm not in dir_entry.children:
                             fl.append(subf_norm)

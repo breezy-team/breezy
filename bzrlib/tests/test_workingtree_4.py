@@ -25,7 +25,6 @@ from bzrlib import (
     errors,
     inventory,
     osutils,
-    tests,
     workingtree_4,
     )
 from bzrlib.lockdir import LockDir
@@ -671,34 +670,3 @@ class TestCorruptDirstate(TestCaseWithTransport):
             ('', [(('', 'dir', 'dir-id'), ['d', 'd'])]),
             ('dir', [(('dir', 'file', 'file-id'), ['a', 'f'])]),
         ],  self.get_simple_dirblocks(state))
-
-
-class TestIllegalPaths(TestCaseWithTransport):
-
-    def test_bad_fs_path(self):
-        self.requireFeature(tests.UTF8Filesystem)
-        # We require a UTF8 filesystem, because otherwise we would need to get
-        # tricky to figure out how to create an illegal filename.
-        # \xb5 is an illegal path because it should be \xc2\xb5 for UTF-8
-        tree = self.make_branch_and_tree('tree')
-        self.build_tree(['tree/subdir/'])
-        tree.add('subdir')
-
-        f = open('tree/subdir/m\xb5', 'wb')
-        try:
-            f.write('trivial\n')
-        finally:
-            f.close()
-
-        tree.lock_read()
-        self.addCleanup(tree.unlock)
-        basis = tree.basis_tree()
-        basis.lock_read()
-        self.addCleanup(basis.unlock)
-
-        e = self.assertListRaises(errors.BadFilenameEncoding,
-                                  tree.iter_changes, tree.basis_tree(),
-                                                     want_unversioned=True)
-        # We should display the relative path
-        self.assertEqual('subdir/m\xb5', e.filename)
-        self.assertEqual(osutils._fs_enc, e.fs_encoding)
