@@ -513,10 +513,10 @@ class GenericCacheManager(object):
 
     def _rename_path(self, old_path, new_path):
         """Rename a path in the caches."""
-        # we actually want to remember what file-id we gave a path,
-        # even when that file is renamed, so both paths should have
-        # the same value and we don't delete any information
+        # In this case, we need to forget the file-id we gave a path,
+        # otherwise, we'll get duplicate file-ids in the repository.
         self.file_ids[new_path] = self.file_ids[old_path]
+        del self.file_ids[old_path]
 
 
 def _track_heads(cmd, cache_mgr):
