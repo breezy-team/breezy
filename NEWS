@@ -25,6 +25,9 @@ IN DEVELOPMENT
     * ``bzr mv a b`` can be now used also to rename previously renamed
       directories, not only files. (Lukáš Lalinský, #107967)
 
+    * Don't ask for a password if there is no real terminal.
+      (Alexander Belchenko, #69851)
+
   DOCUMENTATION:
 
   API BREAKS:
