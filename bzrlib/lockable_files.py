@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -104,10 +104,7 @@ class LockableFiles(object):
 
     def __del__(self):
         if self.is_locked():
-            # XXX: This should show something every time, and be suitable for
-            # headless operation and embedding
-            from warnings import warn
-            warn("file group %r was not explicitly unlocked" % self)
+            mutter("file group %r was gc'd while locked" % self)
             self._lock.unlock()
 
     def break_lock(self):
