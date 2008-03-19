@@ -534,8 +534,13 @@ class cmd_mv(Command):
         if len(names_list) < 2:
             raise errors.BzrCommandError("missing file argument")
         tree, rel_names = tree_files(names_list)
-        
-        if os.path.isdir(names_list[-1]):
+
+        dest = names_list[-1]
+        isdir = os.path.isdir(dest)
+        if (isdir and not tree.case_sensitive and len(rel_names) == 2
+            and rel_names[0].lower() == rel_names[1].lower()):
+                isdir = False
+        if isdir:
             # move into existing directory
             for pair in tree.move(rel_names[:-1], rel_names[-1], after=after):
                 self.outf.write("%s => %s\n" % pair)
@@ -546,8 +551,8 @@ class cmd_mv(Command):
                                              ' directory')
             tree.rename_one(rel_names[0], rel_names[1], after=after)
             self.outf.write("%s => %s\n" % (rel_names[0], rel_names[1]))
-            
-    
+
+
 class cmd_pull(Command):
     """Turn this branch into a mirror of another branch.
 
@@ -610,7 +615,8 @@ class cmd_pull(Command):
             else:
                 display_url = urlutils.unescape_for_display(stored_loc,
                         self.outf.encoding)
-                self.outf.write("Using saved location: %s\n" % display_url)
+                if not is_quiet():
+                    self.outf.write("Using saved location: %s\n" % display_url)
                 location = stored_loc
                 location_transport = transport.get_transport(
                     location, possible_transports=possible_transports)
@@ -863,10 +869,12 @@ class cmd_branch(Command):
 
     _see_also = ['checkout']
     takes_args = ['from_location', 'to_location?']
-    takes_options = ['revision']
+    takes_options = ['revision', Option('hardlink',
+        help='Hard-link working tree files where possible.')]
     aliases = ['get', 'clone']
 
-    def run(self, from_location, to_location=None, revision=None):
+    def run(self, from_location, to_location=None, revision=None,
+            hardlink=False):
         from bzrlib.tag import _merge_tags_if_possible
         if revision is None:
             revision = [None]
@@ -904,7 +912,8 @@ class cmd_branch(Command):
                 # preserve whatever source format we have.
                 dir = br_from.bzrdir.sprout(to_transport.base, revision_id,
                                             possible_transports=[to_transport],
-                                            accelerator_tree=accelerator_tree)
+                                            accelerator_tree=accelerator_tree,
+                                            hardlink=hardlink)
                 branch = dir.open_branch()
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
@@ -949,13 +958,16 @@ class cmd_checkout(Command):
                                  "common operations like diff and status without "
                                  "such access, and also support local commits."
                             ),
-                     Option('files-from',
-                            help="Get file contents from this tree.", type=str)
+                     Option('files-from', type=str,
+                            help="Get file contents from this tree."),
+                     Option('hardlink',
+                            help='Hard-link working tree files where possible.'
+                            ),
                      ]
     aliases = ['co']
 
     def run(self, branch_location=None, to_location=None, revision=None,
-            lightweight=False, files_from=None):
+            lightweight=False, files_from=None, hardlink=False):
         if revision is None:
             revision = [None]
         elif len(revision) > 1:
@@ -986,7 +998,7 @@ class cmd_checkout(Command):
                 source.bzrdir.create_workingtree(revision_id)
                 return
         source.create_checkout(to_location, revision_id, lightweight,
-                               accelerator_tree)
+                               accelerator_tree, hardlink)
 
 
 class cmd_renames(Command):
@@ -1928,6 +1940,10 @@ class cmd_ignore(Command):
         Ignore .o files under the lib directory::
 
             bzr ignore "RE:lib/.*\.o"
+
+        Ignore everything but the "debian" toplevel directory::
+
+            bzr ignore "RE:(?!debian/).*"
     """
 
     _see_also = ['status', 'ignored']
@@ -2397,7 +2413,7 @@ class cmd_check(Command):
                 try:
                     repo_basis = tree.branch.repository.revision_tree(
                         tree.last_revision())
-                    if len(list(repo_basis._iter_changes(tree_basis))):
+                    if len(list(repo_basis.iter_changes(tree_basis))):
                         raise errors.BzrCheckError(
                             "Mismatched basis inventory content.")
                     tree._validate()
@@ -2598,9 +2614,8 @@ class cmd_selftest(Command):
                                  ' expression.'),
                      Option('strict', help='Fail on missing dependencies or '
                             'known failures.'),
-                     Option('coverage', type=str, argname="DIRECTORY",
-                            help='Generate line coverage report in this '
-                                 'directory.'),
+                     Option('load-list', type=str, argname='TESTLISTFILE',
+                            help='Load a test id list from a text file.'),
                      ]
     encoding_type = 'replace'
 
@@ -2608,7 +2623,8 @@ class cmd_selftest(Command):
             transport=None, benchmark=None,
             lsprof_timed=None, cache_dir=None,
             first=False, list_only=False,
-            randomize=None, exclude=None, strict=False, coverage=None):
+            randomize=None, exclude=None, strict=False,
+            load_list=None):
         import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
@@ -2650,15 +2666,15 @@ class cmd_selftest(Command):
                               random_seed=randomize,
                               exclude_pattern=exclude,
                               strict=strict,
-                              coverage_dir=coverage,
+                              load_list=load_list,
                               )
         finally:
             if benchfile is not None:
                 benchfile.close()
         if result:
-            info('tests passed')
+            note('tests passed')
         else:
-            info('tests failed')
+            note('tests failed')
         return int(not result)
 
 
@@ -2759,6 +2775,7 @@ class cmd_merge(Command):
             bzr merge -r 81..82 ../bzr.dev
     """
 
+    encoding_type = 'exact'
     _see_also = ['update', 'remerge', 'status-flags']
     takes_args = ['branch?']
     takes_options = [
@@ -2783,12 +2800,14 @@ class cmd_merge(Command):
                short_name='d',
                type=unicode,
                ),
+        Option('preview', help='Instead of merging, show a diff of the merge.')
     ]
 
     def run(self, branch=None, revision=None, force=False, merge_type=None,
             show_base=False, reprocess=False, remember=False,
             uncommitted=False, pull=False,
             directory=None,
+            preview=False,
             ):
         # This is actually a branch (or merge-directive) *location*.
         location = branch
@@ -2844,7 +2863,6 @@ class cmd_merge(Command):
             merger.merge_type = merge_type
             merger.reprocess = reprocess
             merger.show_base = show_base
-            merger.change_reporter = change_reporter
             self.sanity_check_merger(merger)
             if (merger.base_rev_id == merger.other_rev_id and
                 merger.other_rev_id != None):
@@ -2859,18 +2877,37 @@ class cmd_merge(Command):
                     result.report(self.outf)
                     return 0
             merger.check_basis(not force)
-            conflict_count = merger.do_merge()
-            if allow_pending:
-                merger.set_pending()
-            if verified == 'failed':
-                warning('Preview patch does not match changes')
-            if conflict_count != 0:
-                return 1
+            if preview:
+                return self._do_preview(merger)
             else:
-                return 0
+                return self._do_merge(merger, change_reporter, allow_pending,
+                                      verified)
         finally:
             for cleanup in reversed(cleanups):
                 cleanup()
+
+    def _do_preview(self, merger):
+        from bzrlib.diff import show_diff_trees
+        tree_merger = merger.make_merger()
+        tt = tree_merger.make_preview_transform()
+        try:
+            result_tree = tt.get_preview_tree()
+            show_diff_trees(merger.this_tree, result_tree, self.outf,
+                            old_label='', new_label='')
+        finally:
+            tt.finalize()
+
+    def _do_merge(self, merger, change_reporter, allow_pending, verified):
+        merger.change_reporter = change_reporter
+        conflict_count = merger.do_merge()
+        if allow_pending:
+            merger.set_pending()
+        if verified == 'failed':
+            warning('Preview patch does not match changes')
+        if conflict_count != 0:
+            return 1
+        else:
+            return 0
 
     def sanity_check_merger(self, merger):
         if (merger.show_base and
@@ -2975,10 +3012,8 @@ class cmd_merge(Command):
         mutter("%s", stored_location)
         if stored_location is None:
             raise errors.BzrCommandError("No location specified or remembered")
-        display_url = urlutils.unescape_for_display(stored_location,
-            self.outf.encoding)
-        self.outf.write("%s remembered location %s\n" % (verb_string,
-            display_url))
+        display_url = urlutils.unescape_for_display(stored_location, 'utf-8')
+        note(u"%s remembered location %s", verb_string, display_url)
         return stored_location
 
 
@@ -3327,8 +3362,10 @@ class cmd_pack(Command):
 class cmd_plugins(Command):
     """List the installed plugins.
     
-    This command displays the list of installed plugins including the
-    path where each one is located and a short description of each.
+    This command displays the list of installed plugins including
+    version of plugin and a short description of each.
+
+    --verbose shows the path where each plugin is located.
 
     A plugin is an external component for Bazaar that extends the
     revision control system, by adding or replacing code in Bazaar.
@@ -3341,16 +3378,30 @@ class cmd_plugins(Command):
     install them. Instructions are also provided there on how to
     write new plugins using the Python programming language.
     """
+    takes_options = ['verbose']
 
     @display_command
-    def run(self):
+    def run(self, verbose=False):
         import bzrlib.plugin
         from inspect import getdoc
+        result = []
         for name, plugin in bzrlib.plugin.plugins().items():
-            print plugin.path(), "[%s]" % plugin.__version__
+            version = plugin.__version__
+            if version == 'unknown':
+                version = ''
+            name_ver = '%s %s' % (name, version)
             d = getdoc(plugin.module)
             if d:
-                print '\t', d.split('\n')[0]
+                doc = d.split('\n')[0]
+            else:
+                doc = '(no description)'
+            result.append((name_ver, doc, plugin.path()))
+        for name_ver, doc, path in sorted(result):
+            print name_ver
+            print '   ', doc
+            if verbose:
+                print '   ', path
+            print
 
 
 class cmd_testament(Command):
@@ -4118,8 +4169,9 @@ class cmd_send(Command):
                 else:
                     revision = branch.repository.get_revision(revision_id)
                     subject += revision.get_summary()
+                basename = directive.get_disk_name(branch)
                 mail_client.compose_merge_request(mail_to, subject,
-                                                  outfile.getvalue())
+                                                  outfile.getvalue(), basename)
         finally:
             if output != '-':
                 outfile.close()

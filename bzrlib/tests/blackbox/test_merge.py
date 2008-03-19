@@ -175,9 +175,9 @@ class TestMerge(ExternalBase):
         out, err = self.run_bzr('merge')
         
         base = urlutils.local_path_from_url(branch_a.base)
-        self.assertEquals(out,
+        self.assertStartsWith(err,
                           'Merging from remembered location %s\n' % (base,))
-        self.assertEquals(err, '+N  b\nAll changes applied successfully.\n')
+        self.assertEndsWith(err, '+N  b\nAll changes applied successfully.\n')
         self.assertEquals(abspath(branch_b.get_submit_branch()),
                           abspath(parent))
         # re-open tree as external run_bzr modified it
@@ -418,10 +418,10 @@ class TestMerge(ExternalBase):
         tree_b = tree_a.bzrdir.sprout('b').open_workingtree()
         tree_c = tree_a.bzrdir.sprout('c').open_workingtree()
         out, err = self.run_bzr(['merge', '-d', 'c'])
-        self.assertContainsRe(out, 'Merging from remembered location .*a\/$')
+        self.assertContainsRe(err, 'Merging from remembered location .*a\/')
         tree_c.branch.set_submit_branch(tree_b.bzrdir.root_transport.base)
         out, err = self.run_bzr(['merge', '-d', 'c'])
-        self.assertContainsRe(out, 'Merging from remembered location .*b\/$')
+        self.assertContainsRe(err, 'Merging from remembered location .*b\/')
 
     def test_remember_sets_submit(self):
         tree_a = self.make_branch_and_tree('a')
@@ -476,3 +476,19 @@ class TestMerge(ExternalBase):
         self.assertFileEqual('base-contents\n<<<<<<< TREE\nthis-contents\n'
                              '=======\nother-contents\n>>>>>>> MERGE-SOURCE\n',
                              'a/file')
+
+    def test_merge_preview(self):
+        this_tree = self.make_branch_and_tree('this')
+        this_tree.commit('rev1')
+        other_tree = this_tree.bzrdir.sprout('other').open_workingtree()
+        self.build_tree_contents([('other/file', 'new line')])
+        other_tree.add('file')
+        other_tree.commit('rev2a')
+        this_tree.commit('rev2b')
+        out, err = self.run_bzr(['merge', '-d', 'this', 'other', '--preview'])
+        self.assertContainsRe(out, '\+new line')
+        self.assertNotContainsRe(err, '\+N  file\n')
+        this_tree.lock_read()
+        self.addCleanup(this_tree.unlock)
+        self.assertEqual([],
+                         list(this_tree.iter_changes(this_tree.basis_tree())))
