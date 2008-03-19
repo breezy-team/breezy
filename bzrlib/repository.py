@@ -1607,26 +1607,19 @@ class Repository(object):
             done.add(revision_id)
         return result
 
-    def _get_history_vf(self):
-        """Get a versionedfile whose history graph reflects all revisions.
-
-        For weave repositories, this is the inventory weave.
-        """
-        return self.get_inventory_weave()
-
     def iter_reverse_revision_history(self, revision_id):
         """Iterate backwards through revision ids in the lefthand history
 
         :param revision_id: The revision id to start with.  All its lefthand
             ancestors will be traversed.
         """
-        if revision_id in (None, _mod_revision.NULL_REVISION):
-            return
+        graph = self.get_graph()
         next_id = revision_id
-        versionedfile = self._get_history_vf()
         while True:
+            if next_id in (None, _mod_revision.NULL_REVISION):
+                return
             yield next_id
-            parents = versionedfile.get_parents(next_id)
+            parents = graph.get_parent_map([next_id])[next_id]
             if len(parents) == 0:
                 return
             else:
@@ -3124,7 +3117,9 @@ class _VersionedFileChecker(object):
         """
         wrong_parents = {}
         unused_versions = set()
-        for num, revision_id in enumerate(weave.versions()):
+        versions = weave.versions()
+        parent_map = weave.get_parent_map(versions)
+        for num, revision_id in enumerate(versions):
             try:
                 correct_parents = self.calculate_file_version_parents(
                     revision_id, file_id)
@@ -3133,7 +3128,7 @@ class _VersionedFileChecker(object):
                 unused_versions.add(revision_id)
             else:
                 try:
-                    knit_parents = tuple(weave.get_parents(revision_id))
+                    knit_parents = tuple(parent_map[revision_id])
                 except errors.RevisionNotPresent:
                     knit_parents = None
                 if correct_parents != knit_parents:

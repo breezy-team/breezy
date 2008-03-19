@@ -720,7 +720,7 @@ class KnitVersionedFile(VersionedFile):
     def get_delta(self, version_id):
         """Get a delta for constructing version from some other version."""
         self.check_not_reserved_id(version_id)
-        parents = self.get_parents(version_id)
+        parents = self.get_parent_map([version_id])[version_id]
         if len(parents):
             parent = parents[0]
         else:
@@ -977,11 +977,11 @@ class KnitVersionedFile(VersionedFile):
         self._index.check_versions_present(version_ids)
 
     def _add_lines_with_ghosts(self, version_id, parents, lines, parent_texts,
-        nostore_sha, random_id, check_content):
+        nostore_sha, random_id, check_content, left_matching_blocks):
         """See VersionedFile.add_lines_with_ghosts()."""
         self._check_add(version_id, lines, random_id, check_content)
         return self._add(version_id, lines, parents, self.delta,
-            parent_texts, None, nostore_sha, random_id)
+            parent_texts, left_matching_blocks, nostore_sha, random_id)
 
     def _add_lines(self, version_id, parents, lines, parent_texts,
         left_matching_blocks, nostore_sha, random_id, check_content):
@@ -1265,7 +1265,7 @@ class KnitVersionedFile(VersionedFile):
         for version_id in version_ids:
             try:
                 result[version_id] = tuple(lookup(version_id))
-            except KeyError:
+            except (KeyError, RevisionNotPresent):
                 pass
         return result
 
@@ -2828,9 +2828,10 @@ class WeaveToKnit(InterVersionedFile):
             # do the join:
             count = 0
             total = len(version_list)
+            parent_map = self.source.get_parent_map(version_list)
             for version_id in version_list:
                 pb.update("Converting to knit", count, total)
-                parents = self.source.get_parents(version_id)
+                parents = parent_map[version_id]
                 # check that its will be a consistent copy:
                 for parent in parents:
                     # if source has the parent, we must already have it

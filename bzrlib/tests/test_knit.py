@@ -1221,8 +1221,8 @@ class BasicKnitTests(KnitTests):
         """Store in knit with parents"""
         k = self.make_test_knit()
         self.add_stock_one_and_one_a(k)
-        self.assertEquals(k.get_parents('text-1'), [])
-        self.assertEquals(k.get_parents('text-1a'), ['text-1'])
+        self.assertEqual({'text-1':(), 'text-1a':('text-1',)},
+            k.get_parent_map(['text-1', 'text-1a']))
 
     def test_ancestry(self):
         """Store in knit with parents"""
@@ -1485,7 +1485,7 @@ class BasicKnitTests(KnitTests):
         # and when reading it revid3 should now appear.
         knit = KnitVersionedFile('test', get_transport('.'), access_mode='r')
         self.assertEqual(['revid', 'revid2', 'revid3'], knit.versions())
-        self.assertEqual(['revid2'], knit.get_parents('revid3'))
+        self.assertEqual({'revid3':('revid2',)}, knit.get_parent_map(['revid3']))
 
     def test_delay_create(self):
         """Test that passing delay_create=True creates files late"""
@@ -2385,14 +2385,6 @@ class TestGraphIndexKnit(KnitTests):
         self.assertEqual(['fulltext', 'no-eol'], index.get_options('tip'))
         self.assertEqual(['fulltext'], index.get_options('parent'))
 
-    def test_get_parents(self):
-        # get_parents ignores ghosts
-        index = self.two_graph_index()
-        self.assertEqual(('tail', ), index.get_parents('parent'))
-        # and errors on ghosts.
-        self.assertRaises(errors.RevisionNotPresent,
-            index.get_parents, 'ghost')
-
     def test_get_parents_with_ghosts(self):
         index = self.two_graph_index()
         self.assertEqual(('tail', 'ghost'), index.get_parents_with_ghosts('parent'))
@@ -2659,13 +2651,6 @@ class TestNoParentsGraphIndexKnit(KnitTests):
         index = self.two_graph_index()
         self.assertEqual(['fulltext', 'no-eol'], index.get_options('tip'))
         self.assertEqual(['fulltext'], index.get_options('parent'))
-
-    def test_get_parents(self):
-        index = self.two_graph_index()
-        self.assertEqual((), index.get_parents('parent'))
-        # and errors on ghosts.
-        self.assertRaises(errors.RevisionNotPresent,
-            index.get_parents, 'ghost')
 
     def test_get_parents_with_ghosts(self):
         index = self.two_graph_index()

@@ -96,8 +96,7 @@ class TestJoin(TestCaseWithTransport):
                          'v-1 v-2 v-3'.split())
         self.assertEqualDiff(w1.get_text('v-3'),
                 'line 1\n')
-        self.assertEqual(sorted(w1.get_parents('v-3')),
-                ['v-1'])
+        self.assertEqual({'v-3':('v-1',)}, w1.get_parent_map(['v-3']))
         ann = list(w1.annotate('v-3'))
         self.assertEqual(len(ann), 1)
         self.assertEqual(ann[0][0], 'v-1')
@@ -122,11 +121,11 @@ class TestJoin(TestCaseWithTransport):
     def verify_weave1(self, w1):
         self.assertEqual(sorted(w1.versions()), ['v1', 'v2', 'v3'])
         self.assertEqual(w1.get_lines('v1'), ['hello\n'])
-        self.assertEqual([], w1.get_parents('v1'))
+        self.assertEqual({'v1':()}, w1.get_parent_map(['v1']))
         self.assertEqual(w1.get_lines('v2'), ['hello\n', 'world\n'])
-        self.assertEqual(['v1'], w1.get_parents('v2'))
+        self.assertEqual({'v2':('v1',)}, w1.get_parent_map(['v2']))
         self.assertEqual(w1.get_lines('v3'), ['hello\n', 'cruel\n', 'world\n'])
-        self.assertEqual(['v2'], w1.get_parents('v3'))
+        self.assertEqual({'v3':('v2',)}, w1.get_parent_map(['v3']))
 
     def test_join_source_has_less_parents_preserves_parents(self):
         # when the target has a text with more parent info, join 
@@ -138,7 +137,7 @@ class TestJoin(TestCaseWithTransport):
         t.add_lines('base', [], [])
         t.add_lines('text', ['base'], [])
         t.join(s)
-        self.assertEqual(['base'], t.get_parents('text'))
+        self.assertEqual({'text':('base',)}, t.get_parent_map(['text']))
 
     def test_join_with_ghosts(self):
         """Join that inserts parents of an existing revision.
@@ -167,7 +166,7 @@ class TestJoin(TestCaseWithTransport):
         self.assertEqual(['v1', 'v2', 'v3', 'x1',], sorted(w1.versions()))
         self.assertEqual('line from x1\n', w1.get_text('x1'))
         self.assertEqual(['hello\n', 'world\n'], w1.get_lines('v2'))
-        self.assertEqual(['v1'], w1.get_parents('v2'))
+        self.assertEqual({'v2':('v1',)}, w1.get_parent_map(['v2']))
 
     def test_join_with_ignore_missing_versions(self):
         # test that ignore_missing=True makes a listed but absent version id
@@ -182,7 +181,7 @@ class TestJoin(TestCaseWithTransport):
         eq(sorted(w1.versions()), ['v1', 'v2', 'v3', 'x1'])
         eq(w1.get_text('x1'), 'line from x1\n')
         eq(w1.get_lines('v2'), ['hello\n', 'world\n'])
-        eq(w1.get_parents('v2'), ['v1'])
+        self.assertEqual({'v2':('v1',)}, w1.get_parent_map(['v2']))
     
     def build_source_weave(self, name, *pattern):
         w = self.get_source(name)
@@ -232,25 +231,32 @@ class TestJoin(TestCaseWithTransport):
 
         # try filling target with ghosts and filling in reverse -  
         target.add_lines_with_ghosts('notbase', ['base'], [])
-        source.join(target)
+        try:
+            source.join(target)
+        except errors.RevisionNotPresent:
+            # can't join a ghost containing target onto a non-ghost supporting
+            # source.
+            self.assertFalse(source_ghosts)
+            return
+        else:
+            self.assertTrue(source_ghosts)
         # legacy apis should behave
         self.assertEqual(['notbase'], source.get_ancestry(['notbase']))
-        self.assertEqual([], source.get_parents('notbase'))
         self.assertEqual({'notbase':()}, source.get_graph())
         self.assertFalse(source.has_version('base'))
-        if source_ghosts:
-            # ghost data should have been preserved
-            self.assertEqual(['base', 'notbase'], source.get_ancestry_with_ghosts(['notbase']))
-            self.assertEqual(['base'], source.get_parents_with_ghosts('notbase'))
-            self.assertEqual({'notbase':['base']}, source.get_graph_with_ghosts())
-            self.assertTrue(source.has_ghost('base'))
+        # ghost data should have been preserved
+        self.assertEqual(['base', 'notbase'], source.get_ancestry_with_ghosts(['notbase']))
+        self.assertEqual(['base'], source.get_parents_with_ghosts('notbase'))
+        self.assertEqual({'notbase':('base',)}, source.get_parent_map(['notbase']))
+        self.assertEqual({'notbase':['base']}, source.get_graph_with_ghosts())
+        self.assertTrue(source.has_ghost('base'))
 
         # if we add something that is fills out what is a ghost, then 
         # when joining into a ghost aware join it should flesh out the ghosts.
         source.add_lines('base', [], [])
         target.join(source, version_ids=['base']) 
         self.assertEqual(['base', 'notbase'], target.get_ancestry(['notbase']))
-        self.assertEqual(['base'], target.get_parents('notbase'))
+        self.assertEqual({'notbase':('base',)}, target.get_parent_map(['notbase']))
         self.assertEqual({'base':(),
                           'notbase':('base', ),
                           },

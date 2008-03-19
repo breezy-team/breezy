@@ -1339,7 +1339,8 @@ class V4BundleTester(BundleTester, TestCaseWithTransport):
         self.assertEqual('contents2\nstatic\n', vf.get_text('rev2'))
         rtree = target_repo.revision_tree('rev2')
         inventory_vf = target_repo.get_inventory_weave()
-        self.assertEqual(['rev1'], inventory_vf.get_parents('rev2'))
+        self.assertEqual({'rev2':('rev1',)},
+            inventory_vf.get_parent_map(['rev2']))
         self.assertEqual('changed file',
                          target_repo.get_revision('rev2').message)
 
