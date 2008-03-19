@@ -624,8 +624,9 @@ class cmd_test_builddeb(Command):
 
     def run(self):
         from bzrlib.tests import selftest
-        result = selftest(test_suite_factory=test_suite)
-        return not result
+        passed = selftest(test_suite_factory=test_suite)
+        # invert for shell exit code rules
+        return not passed
 
 
 register_command(cmd_test_builddeb)
