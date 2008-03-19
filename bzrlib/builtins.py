@@ -2666,7 +2666,7 @@ class cmd_selftest(Command):
             print '   %s (%s python%s)' % (
                     bzrlib.__path__[0],
                     bzrlib.version_string,
-                    '.'.join(map(str, sys.version_info)),
+                    bzrlib._format_version_tuple(sys.version_info),
                     )
         print
         if testspecs_list is not None:
