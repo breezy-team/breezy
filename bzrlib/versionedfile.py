@@ -399,7 +399,7 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.get_parent_map)
 
-    @deprecated_method(one_three)
+    @deprecated_method(one_four)
     def get_parents(self, version_id):
         """Return version names for parents of a version.
 

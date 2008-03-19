@@ -39,7 +39,7 @@ from bzrlib.knit import (
     KnitAnnotateFactory,
     KnitPlainFactory,
     )
-from bzrlib.symbol_versioning import one_three
+from bzrlib.symbol_versioning import one_four
 from bzrlib.tests import TestCaseWithMemoryTransport, TestSkipped
 from bzrlib.tests.http_utils import TestCaseWithWebserver
 from bzrlib.trace import mutter
@@ -454,9 +454,9 @@ class VersionedFileTestMixIn(object):
         f.add_lines('r3', [], ['a\n', 'b\n'])
         f.add_lines('m', ['r0', 'r1', 'r2', 'r3'], ['a\n', 'b\n'])
         self.assertEqual(['r0', 'r1', 'r2', 'r3'],
-            self.applyDeprecated(one_three, f.get_parents, 'm'))
+            self.applyDeprecated(one_four, f.get_parents, 'm'))
         self.assertRaises(RevisionNotPresent,
-            self.applyDeprecated, one_three, f.get_parents, 'y')
+            self.applyDeprecated, one_four, f.get_parents, 'y')
 
     def test_get_parent_map(self):
         f = self.get_file()
@@ -641,7 +641,7 @@ class VersionedFileTestMixIn(object):
         # - these are ghost unaware and must not be reflect ghosts
         self.assertEqual(['notbxbfse'], vf.get_ancestry('notbxbfse'))
         self.assertEqual([],
-            self.applyDeprecated(one_three, vf.get_parents, 'notbxbfse'))
+            self.applyDeprecated(one_four, vf.get_parents, 'notbxbfse'))
         self.assertEqual({'notbxbfse':()}, vf.get_graph())
         self.assertFalse(vf.has_version(parent_id_utf8))
         # we have _with_ghost apis to give us ghost information.
