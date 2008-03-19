@@ -23,7 +23,7 @@ build-python%:
 	python$* setup.py build
 ifeq (,$(findstring nocheck,$(DEBBUILDOPTS)))
 ifeq (,$(findstring notest,$(DEBBUILDOPTS)))
-	python$* run-tests.py
+	BZR_PLUGIN_PATH="$(CURDIR)/build/lib/bzrlib/plugins/" python$* /usr/bin/bzr test-builddeb
 endif
 endif
 	touch $@

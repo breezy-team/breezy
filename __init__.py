@@ -614,6 +614,20 @@ def test_suite():
     return result
 
 
+class cmd_test_builddeb(Command):
+    """Run the builddeb test suite"""
+
+    hidden = True
+
+    def run(self):
+        from bzrlib.tests import selftest
+        result = selftest(test_suite_factory=test_suite)
+        return result
+
+
+register_command(cmd_test_builddeb)
+
+
 if __name__ == '__main__':
   print ("This is a Bazaar plugin. Copy this directory to ~/.bazaar/plugins "
           "to use it.\n")
