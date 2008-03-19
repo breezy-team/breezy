@@ -625,7 +625,7 @@ class cmd_test_builddeb(Command):
     def run(self):
         from bzrlib.tests import selftest
         result = selftest(test_suite_factory=test_suite)
-        return result
+        return not result
 
 
 register_command(cmd_test_builddeb)
