@@ -21,6 +21,7 @@
 import gzip
 import os
 import shutil
+import sys
 import tarfile
 
 from bzrlib.config import ConfigObj
@@ -1204,77 +1205,78 @@ diff -Nru package/file package-0.2/file
 class _TarInfo(tarfile.TarInfo):
     """Subclass TarInfo to stop it normalising its path. Sorry Mum."""
 
-    def tobuf(self, posix=False):
-        """Return a tar header as a string of 512 byte blocks.
-        """
-        buf = ""
-        type = self.type
-        prefix = ""
+if sys.version > (2, 4):
+        def tobuf(self, posix=False):
+            """Return a tar header as a string of 512 byte blocks.
+            """
+            buf = ""
+            type = self.type
+            prefix = ""
 
-        if self.name.endswith("/"):
-            type = tarfile.DIRTYPE
+            if self.name.endswith("/"):
+                type = tarfile.DIRTYPE
 
-        name = self.name
+            name = self.name
 
-        if type == tarfile.DIRTYPE:
-            # directories should end with '/'
-            name += "/"
+            if type == tarfile.DIRTYPE:
+                # directories should end with '/'
+                name += "/"
 
-        linkname = self.linkname
-        if linkname:
-            # if linkname is empty we end up with a '.'
-            linkname = normpath(linkname)
+            linkname = self.linkname
+            if linkname:
+                # if linkname is empty we end up with a '.'
+                linkname = normpath(linkname)
 
-        if posix:
-            if self.size > tarfile.MAXSIZE_MEMBER:
-                raise ValueError("file is too large (>= 8 GB)")
+            if posix:
+                if self.size > tarfile.MAXSIZE_MEMBER:
+                    raise ValueError("file is too large (>= 8 GB)")
 
-            if len(self.linkname) > tarfile.LENGTH_LINK:
-                raise ValueError("linkname is too long (>%d)" % (LENGTH_LINK))
+                if len(self.linkname) > tarfile.LENGTH_LINK:
+                    raise ValueError("linkname is too long (>%d)" % (LENGTH_LINK))
 
-            if len(name) > tarfile.LENGTH_NAME:
-                prefix = name[:tarfile.LENGTH_PREFIX + 1]
-                while prefix and prefix[-1] != "/":
+                if len(name) > tarfile.LENGTH_NAME:
+                    prefix = name[:tarfile.LENGTH_PREFIX + 1]
+                    while prefix and prefix[-1] != "/":
+                        prefix = prefix[:-1]
+
+                    name = name[len(prefix):]
                     prefix = prefix[:-1]
 
-                name = name[len(prefix):]
-                prefix = prefix[:-1]
+                    if not prefix or len(name) > tarfile.LENGTH_NAME:
+                        raise ValueError("name is too long")
 
-                if not prefix or len(name) > tarfile.LENGTH_NAME:
-                    raise ValueError("name is too long")
+            else:
+                if len(self.linkname) > tarfile.LENGTH_LINK:
+                    buf += self._create_gnulong(self.linkname,
+                                                tarfile.GNUTYPE_LONGLINK)
 
-        else:
-            if len(self.linkname) > tarfile.LENGTH_LINK:
-                buf += self._create_gnulong(self.linkname,
-                                            tarfile.GNUTYPE_LONGLINK)
+                if len(name) > tarfile.LENGTH_NAME:
+                    buf += self._create_gnulong(name, tarfile.GNUTYPE_LONGNAME)
 
-            if len(name) > tarfile.LENGTH_NAME:
-                buf += self._create_gnulong(name, tarfile.GNUTYPE_LONGNAME)
+            parts = [
+                tarfile.stn(name, 100),
+                tarfile.itn(self.mode & 07777, 8, posix),
+                tarfile.itn(self.uid, 8, posix),
+                tarfile.itn(self.gid, 8, posix),
+                tarfile.itn(self.size, 12, posix),
+                tarfile.itn(self.mtime, 12, posix),
+                "        ", # checksum field
+                type,
+                tarfile.stn(self.linkname, 100),
+                tarfile.stn(tarfile.MAGIC, 6),
+                tarfile.stn(tarfile.VERSION, 2),
+                tarfile.stn(self.uname, 32),
+                tarfile.stn(self.gname, 32),
+                tarfile.itn(self.devmajor, 8, posix),
+                tarfile.itn(self.devminor, 8, posix),
+                tarfile.stn(prefix, 155)
+            ]
 
-        parts = [
-            tarfile.stn(name, 100),
-            tarfile.itn(self.mode & 07777, 8, posix),
-            tarfile.itn(self.uid, 8, posix),
-            tarfile.itn(self.gid, 8, posix),
-            tarfile.itn(self.size, 12, posix),
-            tarfile.itn(self.mtime, 12, posix),
-            "        ", # checksum field
-            type,
-            tarfile.stn(self.linkname, 100),
-            tarfile.stn(tarfile.MAGIC, 6),
-            tarfile.stn(tarfile.VERSION, 2),
-            tarfile.stn(self.uname, 32),
-            tarfile.stn(self.gname, 32),
-            tarfile.itn(self.devmajor, 8, posix),
-            tarfile.itn(self.devminor, 8, posix),
-            tarfile.stn(prefix, 155)
-        ]
-
-        buf += "".join(parts).ljust(tarfile.BLOCKSIZE, tarfile.NUL)
-        chksum = tarfile.calc_chksums(buf[-tarfile.BLOCKSIZE:])[0]
-        buf = buf[:-364] + "%06o\0" % chksum + buf[-357:]
-        self.buf = buf
-        return buf
+            buf += "".join(parts).ljust(tarfile.BLOCKSIZE, tarfile.NUL)
+            chksum = tarfile.calc_chksums(buf[-tarfile.BLOCKSIZE:])[0]
+            buf = buf[:-364] + "%06o\0" % chksum + buf[-357:]
+            self.buf = buf
+            return buf
 
 # vim: sw=2 sts=2 ts=2 
 
