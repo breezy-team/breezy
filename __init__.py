@@ -545,7 +545,10 @@ class cmd_bd_do(Command):
 
     give_instruction = False
     if command is None:
-      command = os.environ['SHELL']
+      try:
+        command = os.environ['SHELL']
+      except KeyError:
+        command = "/bin/sh"
       give_instruction = True
     t = WorkingTree.open_containing('.')[0]
     (changelog, larstiq) = find_changelog(t, True)
