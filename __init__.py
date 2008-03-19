@@ -149,13 +149,15 @@ class cmd_builddeb(Command):
   source_opt = Option('source', help="Build a source package, uses "
                       +"source-builder, which defaults to \"dpkg-buildpackage "
                       +"-rfakeroot -uc -us -S\"", short_name='S')
+  no_user_conf = Option('no-user-config', help="Stop builddeb from reading the user's "
+                        +"config file. Used mainly for tests")
   takes_args = ['branch?']
   aliases = ['bd']
   takes_options = [working_tree_opt, export_only_opt,
       dont_purge_opt, use_existing_opt, result_opt, builder_opt, merge_opt,
       build_dir_opt, orig_dir_opt, ignore_changes_opt, ignore_unknowns_opt,
       quick_opt, reuse_opt, native_opt, split_opt, export_upstream_opt,
-      export_upstream_revision_opt, source_opt, 'revision']
+      export_upstream_revision_opt, source_opt, 'revision', no_user_conf]
 
   def run(self, branch=None, verbose=False, working_tree=False,
           export_only=False, dont_purge=False, use_existing=False,
@@ -163,14 +165,18 @@ class cmd_builddeb(Command):
           orig_dir=None, ignore_changes=False, ignore_unknowns=False,
           quick=False, reuse=False, native=False, split=False,
           export_upstream=None, export_upstream_revision=None,
-          source=False, revision=None):
+          source=False, revision=None, no_user_config=False):
 
     goto_branch(branch)
 
     tree, relpath = WorkingTree.open_containing('.')
     
-    config = DebBuildConfig([(local_conf, True), (global_conf, True),
-                             (default_conf, False)])
+    if no_user_config:
+        config_files = [(local_conf, True), (default_conf, False)]
+    else:
+        config_files = [(local_conf, True), (global_conf, True),
+                             (default_conf, False)]
+    config = DebBuildConfig(config_files)
 
     if reuse:
       info("Reusing existing build dir")

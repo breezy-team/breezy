@@ -70,7 +70,8 @@ class TestBuilddeb(BuilddebTestCase):
     self.run_bzr("bd --help")
 
   def test_builddeb_not_package(self):
-    self.run_bzr_error(['Could not find changelog'], 'builddeb')
+    self.run_bzr_error(['Could not find changelog'], 'builddeb '
+            '--no-user-conf')
 
   def build_really_simple_tree(self):
     tree = self.make_unpacked_source()
@@ -83,27 +84,31 @@ class TestBuilddeb(BuilddebTestCase):
 
   def test_builddeb_uses_working_tree(self):
     self.build_really_simple_tree()
-    self.run_bzr("builddeb --native --builder true --dont-purge")
+    self.run_bzr("builddeb --no-user-conf --native --builder true "
+            "--dont-purge")
     self.assertInBuildDir([self.commited_file, self.uncommited_file])
     self.assertNotInBuildDir([self.unadded_file])
 
   def test_builddeb_uses_revision_when_told(self):
     self.build_really_simple_tree()
-    self.run_bzr("builddeb --native --builder true --dont-purge -r-1")
+    self.run_bzr("builddeb --no-user-conf "
+            "--native --builder true --dont-purge -r-1")
     self.assertInBuildDir([self.commited_file])
     self.assertNotInBuildDir([self.unadded_file, self.uncommited_file])
 
   def test_builddeb_error_on_two_revisions(self):
     tree = self.make_unpacked_source()
     self.run_bzr_error(['--revision takes exactly one revision specifier.'],
-                       "builddeb --native --builder true -r0..1")
+                       "builddeb --no-user-conf --native --builder "
+                       "true -r0..1")
 
   def test_builddeb_allows_building_revision_0(self):
     self.build_really_simple_tree()
     # This may break if there is something else that needs files in the
     # branch before the changelog is looked for.
     self.run_bzr_error(['Could not find changelog'],
-                       "builddeb --native --builder true --dont-purge -r0")
+                       "builddeb --no-user-conf --native --builder true "
+                       "--dont-purge -r0")
     self.assertNotInBuildDir([self.commited_file, self.unadded_file,
                               self.uncommited_file])
 
@@ -119,7 +124,8 @@ class TestBuilddeb(BuilddebTestCase):
 
   def test_builder(self):
     tree = self.make_unpacked_source()
-    self.run_bzr('bd --dont-purge --native --builder "touch built"')
+    self.run_bzr('bd --no-user-conf --dont-purge --native --builder '
+            '"touch built"')
     self.assertInBuildDir('built')
 
   def test_hooks(self):
@@ -132,7 +138,7 @@ class TestBuilddeb(BuilddebTestCase):
       f.write('pre-build = touch pre-build\npost-build = touch post-build\n')
     finally:
       f.close()
-    self.run_bzr('bd --dont-purge --builder true')
+    self.run_bzr('bd --no-user-conf --dont-purge --builder true')
     self.failUnlessExists('pre-export')
     self.assertInBuildDir(['pre-build', 'post-build'])
 
@@ -154,7 +160,7 @@ class TestBuilddeb(BuilddebTestCase):
       f.write('export-upstream-revision = tag:test-$UPSTREAM_VERSION\n')
     finally:
       f.close()
-    self.run_bzr('bd --dont-purge --builder true')
+    self.run_bzr('bd --no-user-conf --dont-purge --builder true')
     self.assertInBuildDir(['a'])
     self.assertNotInBuildDir(['b'])
 

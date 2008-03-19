@@ -28,8 +28,9 @@ bzr-builddeb (0.93) unstable; urgency=low
     in bd-do.
   * Update the dependencies on bzr and bzrtools to more recent versions.
   * Update the VCS-Bzr: header for the new branch location.
+  * Avoid failing the testsuite because of a user's ~/.bazaar/builddeb.conf.
 
- -- James Westby <jw+debian@jameswestby.net>  Wed, 19 Mar 2008 20:32:30 +0000
+ -- James Westby <jw+debian@jameswestby.net>  Wed, 19 Mar 2008 21:27:37 +0000
 
 bzr-builddeb (0.92) unstable; urgency=low
 
