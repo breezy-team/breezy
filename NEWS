@@ -14,7 +14,11 @@ Many operations that act on history, including ``log`` and ``annotate`` are now
 substantially faster.  Several bugs have been fixed and several new options and
 features have been added.
 
-  (no code changes since 1.3rc1)
+  TESTING:
+
+    * Avoid spurious failure of ``TestVersion.test_version`` matching
+      directory names.
+      (#202778, Martin Pool)
 
 bzr 1.3rc1 2008-03-16
 ---------------------
