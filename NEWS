@@ -126,6 +126,9 @@ features have been added.
       invoking external mail client in `bzr send` command.
       (#139318, Alexander Belchenko)
 
+    * Fixed problem connecting to ``bzr+https://`` servers.
+      (#198793, John Ferlito)
+
     * Improved error reporting in the Launchpad plugin. (Daniel Watkins,
       #196618)
 
