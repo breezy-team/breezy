@@ -417,6 +417,8 @@ class TestRevisionSpec_before(TestRevisionSpec):
         self.assertInBranchSupportsNeedRevno('before:revid:r2')
 
     def test_as_revision_id(self):
+        self.tree.lock_read()
+        self.addCleanup(self.tree.unlock)
         self.assertAsRevisionId('r1', 'before:revid:r2')
         self.assertAsRevisionId('r1', 'before:2')
         self.assertAsRevisionId('r1', 'before:1.1.1')
