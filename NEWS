@@ -28,6 +28,9 @@ IN DEVELOPMENT
       by forcing it to recv 64k at a time when reading lines in HTTP headers,
       rather than just 1 byte at a time.  (Andrew Bennetts)
 
+    * Merge is faster.  We no longer check a file's existence unnecessarily
+      when merging the execute bit.  (Aaron Bentley)
+
   BUGFIXES:
 
     * ``bzr mv a b`` can be now used also to rename previously renamed
