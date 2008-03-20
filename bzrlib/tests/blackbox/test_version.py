@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -34,7 +34,8 @@ class TestVersion(TestCase):
     def test_version(self):
         out = self.run_bzr("version")[0]
         self.assertTrue(len(out) > 0)
-        self.assertEquals(1, out.count(bzrlib.__version__))
+        # must occur once; could be more if it matches a file path
+        self.assertTrue(out.count(bzrlib.__version__) > 1)
         self.assertContainsRe(out, r"(?m)^  Python interpreter:")
         self.assertContainsRe(out, r"(?m)^  Python standard library:")
         self.assertContainsRe(out, r"(?m)^  bzrlib:")
