@@ -35,7 +35,9 @@ class TestVersion(TestCase):
         out = self.run_bzr("version")[0]
         self.assertTrue(len(out) > 0)
         # must occur once; could be more if it matches a file path
-        self.assertTrue(out.count(bzrlib.__version__) > 1)
+        first = out.splitlines()[0]
+        self.assertEqualDiff(first,
+            "Bazaar (bzr) %s" % bzrlib.__version__)
         self.assertContainsRe(out, r"(?m)^  Python interpreter:")
         self.assertContainsRe(out, r"(?m)^  Python standard library:")
         self.assertContainsRe(out, r"(?m)^  bzrlib:")
