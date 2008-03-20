@@ -300,6 +300,10 @@ class RevisionSpec_revno(RevisionSpec):
 
     def _match_on(self, branch, revs):
         """Lookup a revision by revision number"""
+        branch, revno, revision_id = self._lookup(branch, revs)
+        return RevisionInfo(branch, revno, revision_id)
+
+    def _lookup(self, branch, revs_or_none):
         loc = self.spec.find(':')
         if loc == -1:
             revno_spec = self.spec
@@ -334,7 +338,7 @@ class RevisionSpec_revno(RevisionSpec):
             # the branch object.
             from bzrlib.branch import Branch
             branch = Branch.open(branch_spec)
-            revs = None
+            revs_or_none = None
 
         if dotted:
             branch.lock_read()
@@ -346,11 +350,11 @@ class RevisionSpec_revno(RevisionSpec):
             finally:
                 branch.unlock()
             if len(revisions) != 1:
-                return RevisionInfo(branch, None, None)
+                return branch, None, None
             else:
                 # there is no traditional 'revno' for dotted-decimal revnos.
                 # so for  API compatability we return None.
-                return RevisionInfo(branch, None, revisions[0])
+                return branch, None, revisions[0]
         else:
             last_revno, last_revision_id = branch.last_revision_info()
             if revno < 0:
@@ -361,14 +365,15 @@ class RevisionSpec_revno(RevisionSpec):
                 else:
                     revno = last_revno + revno + 1
             try:
-                revision_id = branch.get_rev_id(revno, revs)
+                revision_id = branch.get_rev_id(revno, revs_or_none)
             except errors.NoSuchRevision:
                 raise errors.InvalidRevisionSpec(self.user_spec, branch)
-        return RevisionInfo(branch, revno, revision_id)
+        return branch, revno, revision_id
 
     def _as_revision_id(self, context_branch):
         # We would have the revno here, but we don't really care
-        return self._match_on(context_branch, None).rev_id
+        branch, revno, revision_id = self._lookup(context_branch, None)
+        return revision_id
 
     def needs_branch(self):
         return self.spec.find(':') == -1
