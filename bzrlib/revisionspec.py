@@ -232,8 +232,18 @@ class RevisionSpec(object):
     # aliases for now, when we fix the core logic, then they
     # will do what you expect.
     in_store = in_history
-    in_branch = in_store
-        
+
+    def in_branch(self, branch, need_revno=True):
+        """Evaluate this revision spec and return a RevisionInfo object.
+
+        If need_revno is False, the returned RevisionInfo object might
+        have the revno attribute set as None (for performance reasons),
+        even if the revno exists in the specified branch.
+
+        The default implementation is an alias for RevisionSpec.in_history.
+        """
+        return self.in_history(branch)
+
     def __repr__(self):
         # this is mostly for helping with testing
         return '<%s %s>' % (self.__class__.__name__,
@@ -315,9 +325,7 @@ class RevisionSpec_revno(RevisionSpec):
             # the branch object.
             from bzrlib.branch import Branch
             branch = Branch.open(branch_spec)
-            # Need to use a new revision history
-            # because we are using a specific branch
-            revs = branch.revision_history()
+            revs = None
 
         if dotted:
             branch.lock_read()
@@ -335,19 +343,23 @@ class RevisionSpec_revno(RevisionSpec):
                 # so for  API compatability we return None.
                 return RevisionInfo(branch, None, revisions[0])
         else:
+            last_revno, last_revision_id = branch.last_revision_info()
             if revno < 0:
                 # if get_rev_id supported negative revnos, there would not be a
                 # need for this special case.
-                if (-revno) >= len(revs):
+                if (-revno) >= last_revno:
                     revno = 1
                 else:
-                    revno = len(revs) + revno + 1
+                    revno = last_revno + revno + 1
             try:
                 revision_id = branch.get_rev_id(revno, revs)
             except errors.NoSuchRevision:
                 raise errors.InvalidRevisionSpec(self.user_spec, branch)
         return RevisionInfo(branch, revno, revision_id)
-        
+
+    def in_branch(self, branch, need_revno=True):
+        return self._match_on(branch, None)
+
     def needs_branch(self):
         return self.spec.find(':') == -1
 
@@ -374,15 +386,27 @@ class RevisionSpec_revid(RevisionSpec):
     Examples::
 
       revid:aaaa@bbbb-123456789 -> Select revision 'aaaa@bbbb-123456789'
-    """    
+    """
+
     prefix = 'revid:'
 
-    def _match_on(self, branch, revs):
+    def _match_on(self, branch, revs, need_revno=True):
         # self.spec comes straight from parsing the command line arguments,
         # so we expect it to be a Unicode string. Switch it to the internal
         # representation.
         revision_id = osutils.safe_revision_id(self.spec, warn=False)
-        return RevisionInfo.from_revision_id(branch, revision_id, revs)
+        if need_revno:
+            try:
+                revno = branch.revision_id_to_revno(revision_id)
+            except errors.NoSuchRevision:
+                revno = None
+        else:
+            revno = None
+        return RevisionInfo(branch, revno, revision_id)
+
+    def in_branch(self, branch, need_revno=True):
+        # Same as RevisionSpec.in_history, but without history loading.
+        return self._match_on(branch, None, need_revno)
 
 SPEC_TYPES.append(RevisionSpec_revid)
 
@@ -398,15 +422,17 @@ class RevisionSpec_last(RevisionSpec):
 
       last:1        -> return the last revision
       last:3        -> return the revision 2 before the end.
-    """    
+    """
 
     prefix = 'last:'
 
     def _match_on(self, branch, revs):
+        last_revno, last_revision_id = branch.last_revision_info()
+
         if self.spec == '':
-            if not revs:
+            if not last_revno:
                 raise errors.NoCommits(branch)
-            return RevisionInfo(branch, len(revs), revs[-1])
+            return RevisionInfo(branch, last_revno, last_revision_id)
 
         try:
             offset = int(self.spec)
@@ -416,12 +442,18 @@ class RevisionSpec_last(RevisionSpec):
         if offset <= 0:
             raise errors.InvalidRevisionSpec(self.user_spec, branch,
                                              'you must supply a positive value')
-        revno = len(revs) - offset + 1
+
+        revno = last_revno - offset + 1
         try:
             revision_id = branch.get_rev_id(revno, revs)
         except errors.NoSuchRevision:
             raise errors.InvalidRevisionSpec(self.user_spec, branch)
         return RevisionInfo(branch, revno, revision_id)
+
+    def in_branch(self, branch, need_revno=True):
+        # Same as RevisionSpec.in_history, but without history loading.
+        return self._match_on(branch, None)
+
 
 SPEC_TYPES.append(RevisionSpec_last)
 
@@ -448,8 +480,12 @@ class RevisionSpec_before(RevisionSpec):
 
     prefix = 'before:'
     
-    def _match_on(self, branch, revs):
-        r = RevisionSpec.from_string(self.spec)._match_on(branch, revs)
+    def _match_on(self, branch, revs, need_revno=True, in_branch=False):
+        revspec = RevisionSpec.from_string(self.spec)
+        if in_branch:
+            r = revspec.in_branch(branch, need_revno)
+        else:
+            r = revspec._match_on(branch, revs)
         if r.revno == 0:
             raise errors.InvalidRevisionSpec(self.user_spec, branch,
                                          'cannot go before the null: revision')
@@ -461,9 +497,12 @@ class RevisionSpec_before(RevisionSpec):
                 revision_id = revision.NULL_REVISION
             else:
                 revision_id = rev.parent_ids[0]
-                try:
-                    revno = revs.index(revision_id) + 1
-                except ValueError:
+                if need_revno:
+                    try:
+                        revno = branch.revision_id_to_revno(revision_id)
+                    except errors.NoSuchRevision:
+                        revno = None
+                else:
                     revno = None
         else:
             revno = r.revno - 1
@@ -473,6 +512,9 @@ class RevisionSpec_before(RevisionSpec):
                 raise errors.InvalidRevisionSpec(self.user_spec,
                                                  branch)
         return RevisionInfo(branch, revno, revision_id)
+
+    def in_branch(self, branch, need_revno=True):
+        return self._match_on(branch, None, need_revno, True)
 
 SPEC_TYPES.append(RevisionSpec_before)
 
@@ -487,11 +529,20 @@ class RevisionSpec_tag(RevisionSpec):
 
     prefix = 'tag:'
 
-    def _match_on(self, branch, revs):
+    def _match_on(self, branch, revs, need_revno=True):
         # Can raise tags not supported, NoSuchTag, etc
-        return RevisionInfo.from_revision_id(branch,
-            branch.tags.lookup_tag(self.spec),
-            revs)
+        revision_id = branch.tags.lookup_tag(self.spec)
+        if need_revno:
+            try:
+                revno = branch.revision_id_to_revno(revision_id)
+            except errors.NoSuchRevision:
+                revno = None
+        else:
+            revno = None
+        return RevisionInfo(branch, revno, revision_id)
+
+    def in_branch(self, branch, need_revno=True):
+        return self._match_on(branch, None, need_revno)
 
 SPEC_TYPES.append(RevisionSpec_tag)
 

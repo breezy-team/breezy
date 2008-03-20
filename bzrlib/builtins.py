@@ -466,7 +466,7 @@ class cmd_inventory(Command):
                     raise errors.BzrCommandError(
                         'bzr inventory --revision takes exactly one revision'
                         ' identifier')
-                revision_id = revision[0].in_history(work_tree.branch).rev_id
+                revision_id = revision[0].in_branch(work_tree.branch, need_revno=False).rev_id
                 tree = work_tree.branch.repository.revision_tree(revision_id)
 
                 extra_trees = [work_tree]
@@ -655,7 +655,7 @@ class cmd_pull(Command):
 
         if revision is not None:
             if len(revision) == 1:
-                revision_id = revision[0].in_history(branch_from).rev_id
+                revision_id = revision[0].in_branch(branch_from, need_revno=False).rev_id
             else:
                 raise errors.BzrCommandError(
                     'bzr pull --revision takes one value.')
@@ -916,7 +916,8 @@ class cmd_branch(Command):
         br_from.lock_read()
         try:
             if len(revision) == 1 and revision[0] is not None:
-                revision_id = revision[0].in_history(br_from)[1]
+                revision_id = revision[0].in_branch(br_from,
+                                                    need_revno=False).rev_id
             else:
                 # FIXME - wt.last_revision, fallback to branch, fall back to
                 # None or perhaps NULL_REVISION to mean copy nothing
@@ -1011,7 +1012,7 @@ class cmd_checkout(Command):
             accelerator_tree = WorkingTree.open(files_from)
         if len(revision) == 1 and revision[0] is not None:
             revision_id = _mod_revision.ensure_null(
-                revision[0].in_history(source)[1])
+                revision[0].in_branch(source, need_revno=False).rev_id)
         else:
             revision_id = None
         if to_location is None:
@@ -1871,7 +1872,7 @@ class cmd_ls(Command):
             relpath += '/'
         if revision is not None:
             tree = branch.repository.revision_tree(
-                revision[0].in_history(branch).rev_id)
+                revision[0].in_branch(branch, need_revno=False).rev_id)
         elif tree is None:
             tree = branch.basis_tree()
 
@@ -2136,7 +2137,7 @@ class cmd_export(Command):
         else:
             if len(revision) != 1:
                 raise errors.BzrCommandError('bzr export --revision takes exactly 1 argument')
-            rev_id = revision[0].in_history(b).rev_id
+            rev_id = revision[0].in_branch(b, need_revno=False).rev_id
         t = b.repository.revision_tree(rev_id)
         try:
             export(t, dest, format, root)
@@ -2181,7 +2182,7 @@ class cmd_cat(Command):
         if revision is None:
             revision_id = b.last_revision()
         else:
-            revision_id = revision[0].in_history(b).rev_id
+            revision_id = revision[0].in_branch(b, need_revno=False).rev_id
 
         cur_file_id = tree.path2id(relpath)
         rev_tree = b.repository.revision_tree(revision_id)
@@ -2979,12 +2980,12 @@ class cmd_merge(Command):
         else:
             other_revision_id = \
                 _mod_revision.ensure_null(
-                    revision[-1].in_history(other_branch).rev_id)
+                    revision[-1].in_branch(other_branch, need_revno=False).rev_id)
         if (revision is not None and len(revision) == 2
             and revision[0] is not None):
             base_revision_id = \
                 _mod_revision.ensure_null(
-                    revision[0].in_history(base_branch).rev_id)
+                    revision[0].in_branch(base_branch, need_revno=False).rev_id)
         else:
             base_revision_id = None
         # Remember where we merge from
@@ -3203,7 +3204,7 @@ class cmd_revert(Command):
         elif len(revision) != 1:
             raise errors.BzrCommandError('bzr revert --revision takes exactly 1 argument')
         else:
-            rev_id = revision[0].in_history(tree.branch).rev_id
+            rev_id = revision[0].in_branch(tree.branch, need_revno=False).rev_id
         pb = ui.ui_factory.nested_progress_bar()
         try:
             tree.revert(file_list,
@@ -3454,7 +3455,7 @@ class cmd_testament(Command):
             if revision is None:
                 rev_id = b.last_revision()
             else:
-                rev_id = revision[0].in_history(b).rev_id
+                rev_id = revision[0].in_branch(b, need_revno=False).rev_id
             t = testament_class.from_revision(b.repository, rev_id)
             if long:
                 sys.stdout.writelines(t.as_text_lines())
@@ -3501,7 +3502,7 @@ class cmd_annotate(Command):
             elif len(revision) != 1:
                 raise errors.BzrCommandError('bzr annotate --revision takes exactly 1 argument')
             else:
-                revision_id = revision[0].in_history(branch).rev_id
+                revision_id = revision[0].in_branch(branch, need_revno=False).rev_id
             tree = branch.repository.revision_tree(revision_id)
             if wt is not None:
                 file_id = wt.path2id(relpath)
@@ -3996,9 +3997,11 @@ class cmd_merge_directive(Command):
             if len(revision) > 2:
                 raise errors.BzrCommandError('bzr merge-directive takes '
                     'at most two one revision identifiers')
-            revision_id = revision[-1].in_history(branch).rev_id
+            revision_id = revision[-1].in_branch(branch,
+                                                 need_revno=False).rev_id
             if len(revision) == 2:
-                base_revision_id = revision[0].in_history(branch).rev_id
+                base_revision_id = revision[0].in_branch(
+                    branch, need_revno=False).rev_id
                 base_revision_id = ensure_null(base_revision_id)
         else:
             revision_id = branch.last_revision()
@@ -4163,9 +4166,9 @@ class cmd_send(Command):
                 if len(revision) > 2:
                     raise errors.BzrCommandError('bzr send takes '
                         'at most two one revision identifiers')
-                revision_id = revision[-1].in_history(branch).rev_id
+                revision_id = revision[-1].in_branch(branch, need_revno=False).rev_id
                 if len(revision) == 2:
-                    base_revision_id = revision[0].in_history(branch).rev_id
+                    base_revision_id = revision[0].in_branch(branch, need_revno=False).rev_id
             if revision_id is None:
                 revision_id = branch.last_revision()
             if revision_id == NULL_REVISION:
@@ -4331,7 +4334,7 @@ class cmd_tag(Command):
                         raise errors.BzrCommandError(
                             "Tags can only be placed on a single revision, "
                             "not on a range")
-                    revision_id = revision[0].in_history(branch).rev_id
+                    revision_id = revision[0].in_branch(branch, need_revno=False).rev_id
                 else:
                     revision_id = branch.last_revision()
                 if (not force) and branch.tags.has_tag(tag_name):

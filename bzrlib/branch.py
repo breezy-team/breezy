@@ -1375,8 +1375,8 @@ class BzrBranch(Branch):
         """See Branch.set_revision_history."""
         if 'evil' in debug.debug_flags:
             mutter_callsite(3, "set_revision_history scales with history.")
-        self._clear_cached_state()
         self._write_revision_history(rev_history)
+        self._clear_cached_state()
         self._cache_revision_history(rev_history)
         for hook in Branch.hooks['set_rh']:
             hook(self, rev_history)
@@ -1809,13 +1809,29 @@ class BzrBranch5(BzrBranch):
 
 class BzrBranch6(BzrBranch5):
 
+    def __init__(self, *ignored, **ignored_too):
+        super(BzrBranch6, self).__init__(*ignored, **ignored_too)
+        self._last_revision_info_cache = None
+        self._partial_revision_history_cache = None
+
+    def _clear_cached_state(self):
+        super(BzrBranch6, self)._clear_cached_state()
+        self._last_revision_info_cache = None
+        self._partial_revision_history_cache = None
+
     @needs_read_lock
     def last_revision_info(self):
-        revision_string = self.control_files.get('last-revision').read()
-        revno, revision_id = revision_string.rstrip('\n').split(' ', 1)
-        revision_id = cache_utf8.get_cached_utf8(revision_id)
-        revno = int(revno)
-        return revno, revision_id
+        """Return information about the last revision.
+
+        :return: A tuple (revno, revision_id).
+        """
+        if self._last_revision_info_cache is None:
+            revision_string = self.control_files.get('last-revision').read()
+            revno, revision_id = revision_string.rstrip('\n').split(' ', 1)
+            revision_id = cache_utf8.get_cached_utf8(revision_id)
+            revno = int(revno)
+            self._last_revision_info_cache = revno, revision_id
+        return self._last_revision_info_cache
 
     def _write_last_revision_info(self, revno, revision_id):
         """Simply write out the revision id, with no checks.
@@ -1837,6 +1853,7 @@ class BzrBranch6(BzrBranch5):
             self._check_history_violation(revision_id)
         self._write_last_revision_info(revno, revision_id)
         self._clear_cached_state()
+        self._last_revision_info_cache = revno, revision_id
 
     def _check_history_violation(self, revision_id):
         last_revision = _mod_revision.ensure_null(self.last_revision())
@@ -1848,10 +1865,18 @@ class BzrBranch6(BzrBranch5):
     def _gen_revision_history(self):
         """Generate the revision history from last revision
         """
+        if self._partial_revision_history_cache:
+            last_revision = self._partial_revision_history_cache.pop(-1)
+            partial_history = self._partial_revision_history_cache
+            partial_history.reverse()
+            self._partial_revision_history_cache = None
+        else:
+            last_revision = self.last_revision()
+            partial_history = []
         history = list(self.repository.iter_reverse_revision_history(
-            self.last_revision()))
+            last_revision))
         history.reverse()
-        return history
+        return history + partial_history
 
     def _write_revision_history(self, history):
         """Factored out of set_revision_history.
@@ -1968,6 +1993,47 @@ class BzrBranch6(BzrBranch5):
         history = self._lefthand_history(revision_id, last_rev, other_branch)
         revno = len(history)
         self.set_last_revision_info(revno, revision_id)
+
+    @needs_read_lock
+    def get_rev_id(self, revno, history=None):
+        """Find the revision id of the specified revno."""
+        if revno == 0:
+            return _mod_revision.NULL_REVISION
+
+        last_revno, last_revision_id = self.last_revision_info()
+        if revno == last_revno:
+            return last_revision_id
+
+        if revno <= 0 or revno > last_revno:
+            raise errors.NoSuchRevision(self, revno)
+
+        if history is None:
+            history = self._revision_history_cache
+        if history is not None:
+            return history[revno - 1]
+
+        distance = last_revno - revno
+        if self._partial_revision_history_cache:
+            try:
+                return self._partial_revision_history_cache[distance]
+            except IndexError:
+                pass
+            distance -= len(self._partial_revision_history_cache) - 1
+            revision_id = self._partial_revision_history_cache[-1]
+        else:
+            self._partial_revision_history_cache = [last_revision_id]
+            revision_id = last_revision_id
+
+        history_iter = self.repository.iter_reverse_revision_history(
+            revision_id)
+        history_iter.next()
+        for i in xrange(distance):
+            try:
+                revision_id = history_iter.next()
+            except StopIteration:
+                raise errors.NoSuchRevision(self, revno)
+            self._partial_revision_history_cache.append(revision_id)
+        return revision_id
 
 
 ######################################################################
