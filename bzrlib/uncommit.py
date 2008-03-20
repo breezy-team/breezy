@@ -20,7 +20,10 @@
 
 import os
 
-from bzrlib import revision as _mod_revision
+from bzrlib import (
+    errors,
+    revision as _mod_revision,
+    )
 from bzrlib.branch import Branch
 from bzrlib.errors import BoundBranchOutOfDate
 
@@ -48,6 +51,8 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None,
 
         if local:
             master = None
+            if branch.get_bound_location() is None:
+                raise errors.LocalRequiresBoundBranch()
         else:
             master = branch.get_master_branch()
             if master is not None:
