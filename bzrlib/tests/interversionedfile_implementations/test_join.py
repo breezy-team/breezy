@@ -248,7 +248,7 @@ class TestJoin(TestCaseWithTransport):
         self.assertEqual(['base', 'notbase'], source.get_ancestry_with_ghosts(['notbase']))
         self.assertEqual(['base'], source.get_parents_with_ghosts('notbase'))
         self.assertEqual({'notbase':('base',)}, source.get_parent_map(['notbase']))
-        self.assertEqual({'notbase':['base']}, source.get_graph_with_ghosts())
+        self.assertEqual({'notbase':('base',)}, source.get_graph_with_ghosts())
         self.assertTrue(source.has_ghost('base'))
 
         # if we add something that is fills out what is a ghost, then 
@@ -265,8 +265,8 @@ class TestJoin(TestCaseWithTransport):
         # we have _with_ghost apis to give us ghost information.
         self.assertEqual(['base', 'notbase'], target.get_ancestry_with_ghosts(['notbase']))
         self.assertEqual(['base'], target.get_parents_with_ghosts('notbase'))
-        self.assertEqual({'base':[],
-                          'notbase':['base'],
+        self.assertEqual({'base':(),
+                          'notbase':('base',),
                           },
                          target.get_graph_with_ghosts())
         self.assertFalse(target.has_ghost('base'))

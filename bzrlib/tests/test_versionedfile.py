@@ -647,7 +647,7 @@ class VersionedFileTestMixIn(object):
         # we have _with_ghost apis to give us ghost information.
         self.assertEqual([parent_id_utf8, 'notbxbfse'], vf.get_ancestry_with_ghosts(['notbxbfse']))
         self.assertEqual([parent_id_utf8], vf.get_parents_with_ghosts('notbxbfse'))
-        self.assertEqual({'notbxbfse':[parent_id_utf8]}, vf.get_graph_with_ghosts())
+        self.assertEqual({'notbxbfse':(parent_id_utf8,)}, vf.get_graph_with_ghosts())
         self.assertTrue(vf.has_ghost(parent_id_utf8))
         # if we add something that is a ghost of another, it should correct the
         # results of the prior apis
@@ -664,8 +664,8 @@ class VersionedFileTestMixIn(object):
         self.assertEqual([parent_id_utf8, 'notbxbfse'],
             vf.get_ancestry_with_ghosts(['notbxbfse']))
         self.assertEqual([parent_id_utf8], vf.get_parents_with_ghosts('notbxbfse'))
-        self.assertEqual({parent_id_utf8:[],
-                          'notbxbfse':[parent_id_utf8],
+        self.assertEqual({parent_id_utf8:(),
+                          'notbxbfse':(parent_id_utf8,),
                           },
                          vf.get_graph_with_ghosts())
         self.assertFalse(vf.has_ghost(parent_id_utf8))

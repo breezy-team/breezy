@@ -1260,14 +1260,7 @@ class KnitVersionedFile(VersionedFile):
 
     def get_parent_map(self, version_ids):
         """See VersionedFile.get_parent_map."""
-        result = {}
-        lookup = self._index.get_parents_with_ghosts
-        for version_id in version_ids:
-            try:
-                result[version_id] = tuple(lookup(version_id))
-            except (KeyError, RevisionNotPresent):
-                pass
-        return result
+        return self._index.get_parent_map(version_ids)
 
     def get_ancestry(self, versions, topo_sorted=True):
         """See VersionedFile.get_ancestry."""
@@ -1576,7 +1569,7 @@ class _KnitIndex(_KnitComponentFile):
                 assert isinstance(line, str), \
                     'content must be utf-8 encoded: %r' % (line,)
                 lines.append(line)
-                self._cache_version(version_id, options, pos, size, parents)
+                self._cache_version(version_id, options, pos, size, tuple(parents))
             if not self._need_to_create:
                 self._transport.append_bytes(self._filename, ''.join(lines))
             else:
@@ -1631,6 +1624,16 @@ class _KnitIndex(_KnitComponentFile):
         """
         return self._cache[version_id][1]
 
+    def get_parent_map(self, version_ids):
+        """Passed through to by KnitVersionedFile.get_parent_map."""
+        result = {}
+        for version_id in version_ids:
+            try:
+                result[version_id] = tuple(self._cache[version_id][4])
+            except KeyError:
+                pass
+        return result
+
     def get_parents(self, version_id):
         """Return parents of specified version ignoring ghosts."""
         return [parent for parent in self._cache[version_id][4] 
@@ -1638,7 +1641,10 @@ class _KnitIndex(_KnitComponentFile):
 
     def get_parents_with_ghosts(self, version_id):
         """Return parents of specified version with ghosts."""
-        return self._cache[version_id][4] 
+        try:
+            return self.get_parent_map([version_id])[version_id]
+        except KeyError:
+            raise RevisionNotPresent(version_id, self)
 
     def check_versions_present(self, version_ids):
         """Check that all specified versions are present."""
@@ -1929,6 +1935,18 @@ class KnitGraphIndex(object):
             options.append('no-eol')
         return options
 
+    def get_parent_map(self, version_ids):
+        """Passed through to by KnitVersionedFile.get_parent_map."""
+        nodes = self._get_entries(self._version_ids_to_keys(version_ids))
+        result = {}
+        if self._parents:
+            for node in nodes:
+                result[node[1][0]] = self._keys_to_version_ids(node[3][0])
+        else:
+            for node in nodes:
+                result[node[1][0]] = ()
+        return result
+
     def get_parents(self, version_id):
         """Return parents of specified version ignoring ghosts."""
         parents = list(self.iter_parents([version_id]))
@@ -1939,11 +1957,10 @@ class KnitGraphIndex(object):
 
     def get_parents_with_ghosts(self, version_id):
         """Return parents of specified version with ghosts."""
-        nodes = list(self._get_entries(self._version_ids_to_keys([version_id]),
-            check_present=True))
-        if not self._parents:
-            return ()
-        return self._keys_to_version_ids(nodes[0][3][0])
+        try:
+            return self.get_parent_map([version_id])[version_id]
+        except KeyError:
+            raise RevisionNotPresent(version_id, self)
 
     def check_versions_present(self, version_ids):
         """Check that all specified versions are present."""
@@ -2367,12 +2384,24 @@ class _StreamIndex(object):
         except KeyError:
             return self.backing_index.get_options(version_id)
 
+    def get_parent_map(self, version_ids):
+        """Passed through to by KnitVersionedFile.get_parent_map."""
+        result = {}
+        pending_ids = set()
+        for version_id in version_ids:
+            try:
+                result[version_id] = self._by_version[version_id][2]
+            except KeyError:
+                pending_ids.add(version_id)
+        result.update(self.backing_index.get_parent_map(pending_ids))
+        return result
+
     def get_parents_with_ghosts(self, version_id):
         """Return parents of specified version with ghosts."""
         try:
-            return self._by_version[version_id][2]
+            return self.get_parent_map([version_id])[version_id]
         except KeyError:
-            return self.backing_index.get_parents_with_ghosts(version_id)
+            raise RevisionNotPresent(version_id, self)
 
     def get_position(self, version_id):
         """Return details needed to access the version.
