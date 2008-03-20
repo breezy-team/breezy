@@ -599,8 +599,8 @@ class LowLevelKnitIndexTests(TestCase):
             "c option 0 1 1 0 :",
             ])
         index = self.get_knit_index(transport, "filename", "r")
-        self.assertEqual(["a"], index.get_parents("b"))
-        self.assertEqual(["b", "a"], index.get_parents("c"))
+        self.assertEqual({"b":("a",), "c":("b", "a")},
+            index.get_parent_map(["b", "c"]))
 
     def test_write_utf8_version_id(self):
         unicode_revision_id = u"version-\N{CYRILLIC CAPITAL LETTER A}"
@@ -902,7 +902,7 @@ class LowLevelKnitIndexTests(TestCase):
         self.assertEqual(["opt1"], index.get_options("a"))
         self.assertEqual(["opt2", "opt3"], index.get_options("b"))
 
-    def test_get_parents(self):
+    def test_get_parent_map(self):
         transport = MockTransport([
             _KnitIndex.HEADER,
             "a option 0 1 :",
@@ -911,9 +911,11 @@ class LowLevelKnitIndexTests(TestCase):
             ])
         index = self.get_knit_index(transport, "filename", "r")
 
-        self.assertEqual([], index.get_parents("a"))
-        self.assertEqual(["a", "c"], index.get_parents("b"))
-        self.assertEqual(["b", "a"], index.get_parents("c"))
+        self.assertEqual({
+            "a":(),
+            "b":("a", "c"),
+            "c":("b", "a", "e"),
+            }, index.get_parent_map(["a", "b", "c"]))
 
     def test_get_parents_with_ghosts(self):
         transport = MockTransport([

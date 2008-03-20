@@ -575,7 +575,7 @@ class KnitVersionedFile(VersionedFile):
                 fulltext_size = size
                 break
             delta_size += size
-            delta_parents = self._index.get_parents(parent)
+            delta_parents = self._index.get_parent_map([parent])[parent]
         else:
             # We couldn't find a fulltext, so we must create a new one
             return False
@@ -1516,11 +1516,18 @@ class _KnitIndex(_KnitComponentFile):
             The order is undefined, allowing for different optimisations in
             the underlying implementation.
         """
-        for version_id in version_ids:
-            try:
-                yield version_id, tuple(self.get_parents(version_id))
-            except KeyError:
-                pass
+        parent_map = self.get_parent_map(version_ids)
+        parent_map_set = set(parent_map)
+        unknown_existence = set()
+        for parents in parent_map.itervalues():
+            unknown_existence.update(parents)
+        unknown_existence.difference_update(parent_map_set)
+        present_parents = set(self.get_parent_map(unknown_existence))
+        present_parents.update(parent_map_set)
+        for version_id, parents in parent_map.iteritems():
+            parents = tuple(parent for parent in parents
+                if parent in present_parents)
+            yield version_id, parents
 
     def num_versions(self):
         return len(self._history)
@@ -1633,11 +1640,6 @@ class _KnitIndex(_KnitComponentFile):
             except KeyError:
                 pass
         return result
-
-    def get_parents(self, version_id):
-        """Return parents of specified version ignoring ghosts."""
-        return [parent for parent in self._cache[version_id][4] 
-                if parent in self._cache]
 
     def get_parents_with_ghosts(self, version_id):
         """Return parents of specified version with ghosts."""
@@ -1946,14 +1948,6 @@ class KnitGraphIndex(object):
             for node in nodes:
                 result[node[1][0]] = ()
         return result
-
-    def get_parents(self, version_id):
-        """Return parents of specified version ignoring ghosts."""
-        parents = list(self.iter_parents([version_id]))
-        if not parents:
-            # missing key
-            raise errors.RevisionNotPresent(version_id, self)
-        return parents[0][1]
 
     def get_parents_with_ghosts(self, version_id):
         """Return parents of specified version with ghosts."""
