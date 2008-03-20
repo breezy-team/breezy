@@ -232,10 +232,7 @@ class RevisionSpec(object):
     # aliases for now, when we fix the core logic, then they
     # will do what you expect.
     in_store = in_history
-    # in_branch = in_store
-
-    def in_branch(self, branch, need_revno=True):
-        return self.in_history(branch)
+    in_branch = in_store
 
     def as_revision_id(self, context_branch):
         """Return just the revision_id for this revisions spec.

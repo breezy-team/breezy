@@ -37,11 +37,6 @@ def spec_in_history(spec, branch):
     return RevisionSpec.from_string(spec).in_history(branch)
 
 
-def spec_in_branch(spec, branch, *args, **kwargs):
-    """A simple helper to change a revision spec into a branch search"""
-    return RevisionSpec.from_string(spec).in_branch(branch, *args, **kwargs)
-
-
 # Basic class, which just creates a really basic set of revisions
 class TestRevisionSpec(TestCaseWithTransport):
 
@@ -70,9 +65,6 @@ class TestRevisionSpec(TestCaseWithTransport):
     def get_in_history(self, revision_spec):
         return spec_in_history(revision_spec, self.tree.branch)
 
-    def get_in_branch(self, revision_spec, *args, **kwargs):
-        return spec_in_branch(revision_spec, self.tree.branch, *args, **kwargs)
-
     def assertInHistoryIs(self, exp_revno, exp_revision_id, revision_spec):
         rev_info = self.get_in_history(revision_spec)
         self.assertEqual(exp_revno, rev_info.revno,
@@ -92,27 +84,6 @@ class TestRevisionSpec(TestCaseWithTransport):
         else:
             self.fail('Expected InvalidRevisionSpec to be raised for %s'
                       % (revision_spec,))
-
-    def assertInBranchSupportsNeedRevno(self, revision_spec,
-                                        has_simple_revno=True):
-        """Assert that the in_branch() helper supports need_revno
-
-        If need_revno=False, then the RevisionInfo can have None for revno.
-        But if it has a real number, then it should be the same as when
-        need_revno=True is passed.
-
-        :param revision_spec: The revision spec to test.
-        :param has_simple_revno: If true, then 'need_revno=True' must set the
-            .revno property to something other than None.
-        """
-        info_true = self.get_in_branch(revision_spec, need_revno=True)
-        if has_simple_revno:
-            self.assertIsNot(None, info_true.revno)
-        else:
-            self.assertIs(None, info_true.revno)
-        info_false = self.get_in_branch(revision_spec, need_revno=False)
-        if info_false.revno is not None:
-            self.assertEqual(info_true.revno, info_false.revno)
 
     def assertAsRevisionId(self, revision_id, revision_spec):
         """Calling as_revision_id() should return the specified id."""
@@ -283,12 +254,6 @@ class TestRevisionSpec_revno(TestRevisionSpec):
         self.assertEqual((2, 'b@r-0-2'),
                          spec_in_history('revno:2:b/', None))
 
-    def test_supports_need_revno(self):
-        self.assertInBranchSupportsNeedRevno('1')
-        self.assertInBranchSupportsNeedRevno('2')
-        self.assertInBranchSupportsNeedRevno('1.1.1',
-            has_simple_revno=False)
-
     def test_as_revision_id(self):
         self.assertAsRevisionId('r1', '1')
         self.assertAsRevisionId('r2', '2')
@@ -332,12 +297,6 @@ class TestRevisionSpec_revid(TestRevisionSpec):
         self.assertInHistoryIs(3, revision_id, u'revid:\N{SNOWMAN}')
         self.assertInHistoryIs(3, revision_id, 'revid:' + revision_id)
 
-    def test_supports_need_revno(self):
-        self.assertInBranchSupportsNeedRevno('revid:r1')
-        self.assertInBranchSupportsNeedRevno('revid:r2')
-        self.assertInBranchSupportsNeedRevno('revid:alt_r2',
-            has_simple_revno=False)
-
     def test_as_revision_id(self):
         self.assertAsRevisionId('r1', 'revid:r1')
         self.assertAsRevisionId('r2', 'revid:r2')
@@ -374,9 +333,6 @@ class TestRevisionSpec_last(TestRevisionSpec):
             pass
         self.assertInvalid('last:Y', extra='\n' + str(e))
 
-    def test_supports_need_revno(self):
-        self.assertInBranchSupportsNeedRevno('last:1')
-
     def test_as_revision_id(self):
         self.assertAsRevisionId('r2', 'last:1')
         self.assertAsRevisionId('r1', 'last:2')
@@ -412,10 +368,6 @@ class TestRevisionSpec_before(TestRevisionSpec):
                                           revision_id='new_r1')
         self.assertInHistoryIs(0, 'null:', 'before:revid:new_r1')
 
-    def test_supports_need_revno(self):
-        self.assertInBranchSupportsNeedRevno('before:2')
-        self.assertInBranchSupportsNeedRevno('before:revid:r2')
-
     def test_as_revision_id(self):
         self.tree.lock_read()
         self.addCleanup(self.tree.unlock)
@@ -447,10 +399,6 @@ class TestRevisionSpec_tag(TestRevisionSpec):
         self.assertRaises(errors.NoSuchTag,
             self.get_in_history,
             'tag:some-random-tag')
-
-    def test_supports_need_revno(self):
-        self.tree.branch.tags.set_tag('bzr-0.14', 'r1')
-        self.assertInBranchSupportsNeedRevno('tag:bzr-0.14')
 
     def test_as_revision_id(self):
         self.tree.branch.tags.set_tag('my-tag', 'r2')
@@ -492,9 +440,6 @@ class TestRevisionSpec_date(TestRevisionSpec):
         now = datetime.datetime.now()
         self.assertInHistoryIs(2, 'new_r2',
             'date:%04d-%02d-%02d' % (now.year, now.month, now.day))
-
-    def test_supports_need_revno(self):
-        self.assertInBranchSupportsNeedRevno('date:today')
 
     def test_as_revision_id(self):
         self.assertAsRevisionId('new_r2', 'date:today')
@@ -542,10 +487,6 @@ class TestRevisionSpec_ancestor(TestRevisionSpec):
                           spec_in_history, 'ancestor:tree',
                                            new_tree.branch)
 
-    def test_supports_need_revno(self):
-        self.assertInBranchSupportsNeedRevno('ancestor:tree2',
-            has_simple_revno=False)
-
     def test_as_revision_id(self):
         self.assertAsRevisionId('alt_r2', 'ancestor:tree2')
 
@@ -583,10 +524,6 @@ class TestRevisionSpec_branch(TestRevisionSpec):
         self.assertRaises(errors.NoCommits,
                           self.get_in_history, 'branch:new_tree')
 
-    def test_supports_need_revno(self):
-        self.assertInBranchSupportsNeedRevno('branch:tree2',
-            has_simple_revno=False)
-
     def test_as_revision_id(self):
         self.assertAsRevisionId('alt_r2', 'branch:tree2')
 
@@ -605,11 +542,6 @@ class TestRevisionSpec_submit(TestRevisionSpec):
         # submit branch overrides parent branch
         self.tree.branch.set_submit_branch('tree2')
         self.assertInHistoryIs(None, 'alt_r2', 'submit:')
-
-    def test_supports_need_revno(self):
-        self.tree.branch.set_submit_branch('tree2')
-        self.assertInBranchSupportsNeedRevno('submit:',
-            has_simple_revno=False)
 
     def test_as_revision_id(self):
         self.tree.branch.set_submit_branch('tree2')
