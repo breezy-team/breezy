@@ -5,36 +5,19 @@ Bazaar Release Notes
 .. contents::
 
 
-IN DEVELOPMENT
---------------
-
-  NOTES WHEN UPGRADING:
-
-  CHANGES:
-
-  FEATURES:
-
-  IMPROVEMENTS:
-
-  BUGFIXES:
-
-  DOCUMENTATION:
-
-  API BREAKS:
-
-  TESTING:
-
-  INTERNALS:
-
-
-bzr 1.3rc1 2008-03-16
----------------------
+bzr 1.3 2008-03-20
+------------------
 
 Bazaar has become part of the GNU project <http://www.gnu.org>
 
 Many operations that act on history, including ``log`` and ``annotate`` are now
 substantially faster.  Several bugs have been fixed and several new options and
 features have been added.
+
+  (no code changes since 1.3rc1)
+
+bzr 1.3rc1 2008-03-16
+---------------------
 
   NOTES WHEN UPGRADING:
 
