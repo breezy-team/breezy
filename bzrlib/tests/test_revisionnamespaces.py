@@ -114,6 +114,12 @@ class TestRevisionSpec(TestCaseWithTransport):
         if info_false.revno is not None:
             self.assertEqual(info_true.revno, info_false.revno)
 
+    def assertAsRevisionId(self, revision_id, revision_spec):
+        """Calling as_revision_id() should return the specified id."""
+        spec = RevisionSpec.from_string(revision_spec)
+        self.assertEqual(revision_id,
+                         spec.as_revision_id(self.tree.branch))
+
 
 class TestOddRevisionSpec(TestRevisionSpec):
     """Test things that aren't normally thought of as revision specs"""
@@ -283,6 +289,13 @@ class TestRevisionSpec_revno(TestRevisionSpec):
         self.assertInBranchSupportsNeedRevno('1.1.1',
             has_simple_revno=False)
 
+    def test_as_revision_id(self):
+        self.assertAsRevisionId('r1', '1')
+        self.assertAsRevisionId('r2', '2')
+        self.assertAsRevisionId('r1', '-2')
+        self.assertAsRevisionId('r2', '-1')
+        self.assertAsRevisionId('alt_r2', '1.1.1')
+
 
 class TestRevisionSpec_revid(TestRevisionSpec):
     
@@ -325,6 +338,11 @@ class TestRevisionSpec_revid(TestRevisionSpec):
         self.assertInBranchSupportsNeedRevno('revid:alt_r2',
             has_simple_revno=False)
 
+    def test_as_revision_id(self):
+        self.assertAsRevisionId('r1', 'revid:r1')
+        self.assertAsRevisionId('r2', 'revid:r2')
+        self.assertAsRevisionId('alt_r2', 'revid:alt_r2')
+
 
 class TestRevisionSpec_last(TestRevisionSpec):
 
@@ -358,6 +376,10 @@ class TestRevisionSpec_last(TestRevisionSpec):
 
     def test_supports_need_revno(self):
         self.assertInBranchSupportsNeedRevno('last:1')
+
+    def test_as_revision_id(self):
+        self.assertAsRevisionId('r2', 'last:1')
+        self.assertAsRevisionId('r1', 'last:2')
 
 
 class TestRevisionSpec_before(TestRevisionSpec):
@@ -394,6 +416,12 @@ class TestRevisionSpec_before(TestRevisionSpec):
         self.assertInBranchSupportsNeedRevno('before:2')
         self.assertInBranchSupportsNeedRevno('before:revid:r2')
 
+    def test_as_revision_id(self):
+        self.assertAsRevisionId('r1', 'before:revid:r2')
+        self.assertAsRevisionId('r1', 'before:2')
+        self.assertAsRevisionId('r1', 'before:1.1.1')
+        self.assertAsRevisionId('r1', 'before:revid:alt_r2')
+
 
 class TestRevisionSpec_tag(TestRevisionSpec):
     
@@ -421,6 +449,11 @@ class TestRevisionSpec_tag(TestRevisionSpec):
     def test_supports_need_revno(self):
         self.tree.branch.tags.set_tag('bzr-0.14', 'r1')
         self.assertInBranchSupportsNeedRevno('tag:bzr-0.14')
+
+    def test_as_revision_id(self):
+        self.tree.branch.tags.set_tag('my-tag', 'r2')
+        self.assertAsRevisionId('r2', 'tag:my-tag')
+        self.assertAsRevisionId('r1', 'before:tag:my-tag')
 
 
 class TestRevisionSpec_date(TestRevisionSpec):
@@ -460,6 +493,9 @@ class TestRevisionSpec_date(TestRevisionSpec):
 
     def test_supports_need_revno(self):
         self.assertInBranchSupportsNeedRevno('date:today')
+
+    def test_as_revision_id(self):
+        self.assertAsRevisionId('new_r2', 'date:today')
 
 
 class TestRevisionSpec_ancestor(TestRevisionSpec):
@@ -508,6 +544,9 @@ class TestRevisionSpec_ancestor(TestRevisionSpec):
         self.assertInBranchSupportsNeedRevno('ancestor:tree2',
             has_simple_revno=False)
 
+    def test_as_revision_id(self):
+        self.assertAsRevisionId('alt_r2', 'ancestor:tree2')
+
 
 class TestRevisionSpec_branch(TestRevisionSpec):
     
@@ -546,6 +585,9 @@ class TestRevisionSpec_branch(TestRevisionSpec):
         self.assertInBranchSupportsNeedRevno('branch:tree2',
             has_simple_revno=False)
 
+    def test_as_revision_id(self):
+        self.assertAsRevisionId('alt_r2', 'branch:tree2')
+
 
 class TestRevisionSpec_submit(TestRevisionSpec):
 
@@ -566,3 +608,7 @@ class TestRevisionSpec_submit(TestRevisionSpec):
         self.tree.branch.set_submit_branch('tree2')
         self.assertInBranchSupportsNeedRevno('submit:',
             has_simple_revno=False)
+
+    def test_as_revision_id(self):
+        self.tree.branch.set_submit_branch('tree2')
+        self.assertAsRevisionId('alt_r2', 'branch:tree2')

@@ -232,17 +232,26 @@ class RevisionSpec(object):
     # aliases for now, when we fix the core logic, then they
     # will do what you expect.
     in_store = in_history
+    # in_branch = in_store
 
     def in_branch(self, branch, need_revno=True):
-        """Evaluate this revision spec and return a RevisionInfo object.
-
-        If need_revno is False, the returned RevisionInfo object might
-        have the revno attribute set as None (for performance reasons),
-        even if the revno exists in the specified branch.
-
-        The default implementation is an alias for RevisionSpec.in_history.
-        """
         return self.in_history(branch)
+
+    def as_revision_id(self, context_branch):
+        """Return just the revision_id for this revisions spec.
+
+        Some revision specs require a context_branch to be able to determine
+        their value. Not all specs will make use of it.
+        """
+        return self._as_revision_id(context_branch)
+
+    def _as_revision_id(self, context_branch):
+        """Implementation of as_revision_id()
+
+        Classes should override this function to provide appropriate
+        functionality. The default is to just call '.in_history().rev_id'
+        """
+        return self.in_history(context_branch).rev_id
 
     def __repr__(self):
         # this is mostly for helping with testing
