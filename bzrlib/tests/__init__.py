@@ -417,20 +417,29 @@ class TextTestResult(ExtendedTestResult):
         self.pb.update('[test 0/%d] starting...' % (self.num_tests))
 
     def _progress_prefix_text(self):
-        a = '[%d' % self.count
+        # the longer this text, the less space we have to show the test
+        # name...
+        a = '[%d' % self.count              # total that have been run
+        # tests skipped as known not to be relevant are not important enough
+        # to show here
+        ## if self.skip_count:
+        ##     a += ', %d skip' % self.skip_count
+        ## if self.known_failure_count:
+        ##     a += '+%dX' % self.known_failure_count
         if self.num_tests is not None:
             a +='/%d' % self.num_tests
-        a += ' in %ds' % (time.time() - self._overall_start_time)
         if self.error_count:
-            a += ', %d errors' % self.error_count
+            a += ', %derr' % self.error_count
         if self.failure_count:
-            a += ', %d failed' % self.failure_count
-        if self.known_failure_count:
-            a += ', %d known failures' % self.known_failure_count
-        if self.skip_count:
-            a += ', %d skipped' % self.skip_count
+            a += ', %dfail' % self.failure_count
         if self.unsupported:
-            a += ', %d missing features' % len(self.unsupported)
+            a += ', %dmiss' % len(self.unsupported)
+        a += ' in '
+        runtime = time.time() - self._overall_start_time
+        if runtime >= 60:
+            a += '%dm%ds' % (runtime / 60, runtime % 60)
+        else:
+            a += '%ds' % runtime
         a += ']'
         return a
 

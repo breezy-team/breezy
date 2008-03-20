@@ -42,6 +42,11 @@ IN DEVELOPMENT
 
   TESTING:
 
+    * Slightly more concise format for the selftest progress bar, so there's
+      more space to show the test name.  (Martin Pool) ::
+
+        [2500/10884, 1fail, 3miss in 1m29s] test_revisionnamespaces.TestRev
+
   INTERNALS:
 
 
