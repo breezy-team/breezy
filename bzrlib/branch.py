@@ -1809,8 +1809,8 @@ class BzrBranch5(BzrBranch):
 
 class BzrBranch6(BzrBranch5):
 
-    def __init__(self, *ignored, **ignored_too):
-        super(BzrBranch6, self).__init__(*ignored, **ignored_too)
+    def __init__(self, *args, **kwargs):
+        super(BzrBranch6, self).__init__(*args, **kwargs)
         self._last_revision_info_cache = None
         self._partial_revision_history_cache = None
 
@@ -2014,10 +2014,8 @@ class BzrBranch6(BzrBranch5):
 
         distance = last_revno - revno
         if self._partial_revision_history_cache:
-            try:
+            if len(self._partial_revision_history_cache) > distance:
                 return self._partial_revision_history_cache[distance]
-            except IndexError:
-                pass
             distance -= len(self._partial_revision_history_cache) - 1
             revision_id = self._partial_revision_history_cache[-1]
         else:
@@ -2026,6 +2024,8 @@ class BzrBranch6(BzrBranch5):
 
         history_iter = self.repository.iter_reverse_revision_history(
             revision_id)
+        # iter_reverse_revision_history returns the revision_id we passed in as
+        # the first node, so skip past it.
         history_iter.next()
         for i in xrange(distance):
             try:
