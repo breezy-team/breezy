@@ -36,6 +36,10 @@ IN DEVELOPMENT
     * ``bzr mv a b`` can be now used also to rename previously renamed
       directories, not only files. (Lukáš Lalinský, #107967)
 
+    * ``bzr uncommit --local`` can now remove revisions from the local
+      branch to be symmetric with ``bzr commit --local``.
+      (John Arbash Meinel, #93412)
+
     * Don't ask for a password if there is no real terminal.
       (Alexander Belchenko, #69851)
 
