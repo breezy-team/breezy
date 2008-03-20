@@ -467,6 +467,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         self._request = request
         self._body_buffer = None
         self._request_start_time = None
+        self._last_verb = None
 
     def call(self, *args):
         if 'hpss' in debug.debug_flags:
@@ -476,6 +477,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
             self._request_start_time = time.time()
         self._write_args(args)
         self._request.finished_writing()
+        self._last_verb = args[0]
 
     def call_with_body_bytes(self, args, body):
         """Make a remote call of args with body bytes 'body'.
@@ -494,6 +496,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         bytes = self._encode_bulk_data(body)
         self._request.accept_bytes(bytes)
         self._request.finished_writing()
+        self._last_verb = args[0]
 
     def call_with_body_readv_array(self, args, body):
         """Make a remote call with a readv array.
@@ -513,6 +516,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         self._request.finished_writing()
         if 'hpss' in debug.debug_flags:
             mutter('              %d bytes in readv request', len(readv_bytes))
+        self._last_verb = args[0]
 
     def cancel_read_body(self):
         """After expecting a body, a response code may indicate one otherwise.
@@ -537,10 +541,28 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
                 self._request_start_time = None
             else:
                 mutter('   result:   %s', repr(result)[1:-1])
+        self._response_is_unknown_method(result)
         if not expect_body:
             self._request.finished_reading()
         return result
 
+    def _response_is_unknown_method(self, result_tuple):
+        """Raise UnexpectedSmartServerResponse if the response is an 'unknonwn
+        method' response to the request.
+        
+        :param response: The response from a smart client call_expecting_body
+            call.
+        :param verb: The verb used in that call.
+        :raises: UnexpectedSmartServerResponse
+        """
+        if (result_tuple == ('error', "Generic bzr smart protocol error: "
+                "bad request '%s'" % self._last_verb) or
+              result_tuple == ('error', "Generic bzr smart protocol error: "
+                "bad request u'%s'" % self._last_verb)):
+            # The response will have no body, so we've finished reading.
+            self._request.finished_reading()
+            raise errors.UnknownSmartMethod(self._last_verb)
+        
     def read_body_bytes(self, count=-1):
         """Read bytes from the body, decoding into a byte stream.
         

@@ -18,7 +18,10 @@ import urllib
 from urlparse import urlparse
 
 from bzrlib.smart import protocol
-from bzrlib import urlutils
+from bzrlib import (
+    errors,
+    urlutils,
+    )
 
 
 class _SmartClient(object):
@@ -95,3 +98,4 @@ class _SmartClient(object):
             
         rel_url = urlutils.relative_url(medium_base, transport.base)
         return urllib.unquote(rel_url)
+
