@@ -124,6 +124,14 @@ def parse_list_scheme_text(text):
     return branches
 
 
+def prop_name_unquote(text):
+    return urlsafe_b64decode(text).encode("ascii").replace(".", "=")
+
+
+def prop_name_quote(text):
+    return urlsafe_b64encode(text).replace("=", ".")
+
+
 class ListBranchingScheme(BranchingScheme):
     """Branching scheme that keeps a list of branch paths, including 
     wildcards."""
@@ -134,13 +142,13 @@ class ListBranchingScheme(BranchingScheme):
         """
         assert isinstance(branch_list, list) or isinstance(branch_list, str)
         if isinstance(branch_list, str):
-            branch_list = bz2.decompress(urlsafe_b64decode(branch_list.encode("ascii").replace(".", "="))).splitlines()
+            branch_list = bz2.decompress(prop_name_unquote(branch_list)).splitlines()
         self.branch_list = [p.strip("/") for p in branch_list]
         self.split_branch_list = [p.split("/") for p in self.branch_list]
 
     def __str__(self):
-        return "list-%s" % urlsafe_b64encode(bz2.compress("".join(map(lambda x:x+"\n", self.branch_list)))).replace("=", ".")
-
+        return "list-%s" % prop_name_quote(bz2.compress("".join(map(lambda x:x+"\n", self.branch_list))))
+            
     def is_tag(self, path):
         """See BranchingScheme.is_tag()."""
         return False

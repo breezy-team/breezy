@@ -36,6 +36,14 @@ from mapping import parse_revision_id
 from repository import (SvnRepositoryFormat, SvnRepository)
 import urllib
 
+
+def is_valid_property_name(prop):
+    for c in prop:
+        if not c.isalnum() and not "-:".contains(c):
+            return False
+    return True
+
+
 def _revision_id_to_svk_feature(revid):
     """Create a SVK feature identifier from a revision id.
 
@@ -142,9 +150,6 @@ class SvnCommitBuilder(RootCommitBuilder):
                 return default
             return self.repository.branchprop_list.get_property(self.base_path, self.base_revnum, name, default)
         (self._svn_revprops, self._svnprops) = self.base_mapping.export_revision(self.branch.get_branch_path(), timestamp, timezone, committer, revprops, revision_id, self.base_revno+1, merges, get_branch_file_property)
-        if 'commit' in debug.debug_flags:
-            for n,v in self._svnprops.items():
-                mutter(' root file property: %r -> %r' % (n, v))
 
         if len(merges) > 0:
             old_svk_features = parse_svk_features(get_branch_file_property(SVN_PROP_SVK_MERGE, ""))
@@ -448,6 +453,8 @@ class SvnCommitBuilder(RootCommitBuilder):
             existing_bp_parts = _check_dirs_exist(self.repository.transport, 
                                               bp_parts, -1)
             self.revision_metadata = None
+            for prop in self._svn_revprops:
+                assert is_valid_property_name(prop)
             try:
                 self.editor = self.repository.transport.get_commit_editor(
                         self._svn_revprops, done, None, False)
@@ -482,10 +489,12 @@ class SvnCommitBuilder(RootCommitBuilder):
 
             # Set all the revprops
             for prop, value in self._svnprops.items():
+                assert is_valid_property_name(prop)
                 if value is not None:
                     value = value.encode('utf-8')
                 self.editor.change_dir_prop(branch_batons[-1], prop, value, 
                                             self.pool)
+                self.mutter("Setting root file property %r -> %r" % (prop, value))
 
             for baton in reversed(branch_batons):
                 self.editor.close_directory(baton, self.pool)
