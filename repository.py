@@ -294,7 +294,7 @@ class SvnRepository(Repository):
     def transform_fileid_map(self, uuid, revnum, branch, changes, renames, 
                              mapping):
         return self.fileid_map.apply_changes(uuid, revnum, branch, changes, 
-                                             renames, mapping)
+                                             renames, mapping)[0]
 
     def all_revision_ids(self, mapping=None):
         if mapping is None:

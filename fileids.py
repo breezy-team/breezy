@@ -55,6 +55,29 @@ def get_local_changes(paths, mapping, generate_revid, get_children=None):
 
 FILEIDMAP_VERSION = 1
 
+def simple_apply_changes(new_file_id, changes, find_children=None):
+    """Simple function that can apply file id changes.
+    
+    Does not track renames. """
+    map = {}
+    for p in sorted(changes.keys()):
+        data = changes[p]
+
+        if data[0] in ('A', 'R'):
+            inv_p = p.decode("utf-8")
+            map[inv_p] = new_file_id(inv_p)
+
+            if data[1] is not None:
+                mutter('%r copied from %r:%s' % (inv_p, data[1], data[2]))
+                if find_children is not None:
+                    for c in find_children(data[1], data[2]):
+                        inv_c = c.decode("utf-8")
+                        path = c.replace(data[1].decode("utf-8"), inv_p+"/", 1).replace(u"//", u"/")
+                        map[path] = new_file_id(path)
+                        mutter('added mapping %r -> %r' % (path, map[path]))
+
+    return map
+
 class FileIdMap:
     """File id store. 
 
@@ -62,25 +85,9 @@ class FileIdMap:
 
     revnum -> branch -> path -> fileid
     """
-    def __init__(self, repos, cache_transport):
+    def __init__(self, apply_changes_fn, repos):
+        self.apply_changes_fn = apply_changes_fn
         self.repos = repos
-        self.idmap_knit = KnitVersionedFile("fileidmap-v%d" % FILEIDMAP_VERSION, cache_transport, create=True)
-
-    def save(self, revid, parent_revids, _map):
-        mutter('saving file id map for %r' % revid)
-                
-        self.idmap_knit.add_lines_with_ghosts(revid, parent_revids, 
-                ["%s\t%s\t%s\n" % (urllib.quote(filename), urllib.quote(_map[filename][0]), 
-                                        urllib.quote(_map[filename][1])) for filename in sorted(_map.keys())])
-
-    def load(self, revid):
-        map = {}
-        for line in self.idmap_knit.get_lines(revid):
-            (filename, id, create_revid) = line.rstrip("\n").split("\t", 3)
-            map[urllib.unquote(filename)] = (urllib.unquote(id), urllib.unquote(create_revid))
-            assert isinstance(map[urllib.unquote(filename)][0], str)
-
-        return map
 
     def apply_changes(self, uuid, revnum, branch, global_changes, 
                       renames, mapping, find_children=None):
@@ -104,11 +111,55 @@ class FileIdMap:
             get_children = None
 
         def new_file_id(x):
-            return mapping.generate_file_id(self.repos.uuid, revnum, branch, x)
+            return mapping.generate_file_id(uuid, revnum, branch, x)
          
-        idmap = self._apply_changes(new_file_id, changes, get_children)
+        idmap = self.apply_changes_fn(new_file_id, changes, get_children)
         idmap.update(renames)
-        return idmap
+        return (idmap, changes)
+
+    def get_map(self, uuid, revnum, branch, renames_cb, mapping):
+        raise NotImplementedError(self.get_map)
+
+    def update_map(self, map, revid, idmap, changes):
+        for p in changes:
+            if changes[p][0] == 'M' and not idmap.has_key(p):
+                idmap[p] = map[p][0]
+
+        map.update(dict([(x, (str(idmap[x]), revid)) for x in idmap]))
+
+        # Mark all parent paths as changed
+        for p in idmap:
+            parts = p.split("/")
+            for j in range(1, len(parts)+1):
+                parent = "/".join(parts[0:len(parts)-j])
+                assert map.has_key(parent), "Parent item %s of %s doesn't exist in map" % (parent, p)
+                if map[parent][1] == revid:
+                    break
+                map[parent] = map[parent][0], revid
+
+
+class CachingFileIdMap:
+    """A file id map that uses a cache."""
+    def __init__(self, cache_transport, actual):
+        self.idmap_knit = KnitVersionedFile("fileidmap-v%d" % FILEIDMAP_VERSION, cache_transport, create=True)
+        self.actual = actual
+        self.apply_changes = actual.apply_changes
+
+    def save(self, revid, parent_revids, _map):
+        mutter('saving file id map for %r' % revid)
+                
+        self.idmap_knit.add_lines_with_ghosts(revid, parent_revids, 
+                ["%s\t%s\t%s\n" % (urllib.quote(filename), urllib.quote(_map[filename][0]), 
+                                        urllib.quote(_map[filename][1])) for filename in sorted(_map.keys())])
+
+    def load(self, revid):
+        map = {}
+        for line in self.idmap_knit.get_lines(revid):
+            (filename, id, create_revid) = line.rstrip("\n").split("\t", 3)
+            map[urllib.unquote(filename)] = (urllib.unquote(id), urllib.unquote(create_revid))
+            assert isinstance(map[urllib.unquote(filename)][0], str)
+
+        return map
 
     def get_map(self, uuid, revnum, branch, renames_cb, mapping):
         """Make sure the map is up to date until revnum."""
@@ -117,8 +168,8 @@ class FileIdMap:
         next_parent_revs = []
         if revnum == 0:
             assert branch == ""
-            return {"": (mapping.generate_file_id(uuid, revnum, branch, u""), 
-              self.repos.generate_revision_id(revnum, branch, mapping))}
+            return {"": (mapping.generate_file_id(uuid, 0, "", u""), 
+              self.repos.generate_revision_id(0, "", mapping))}
 
         quickrevidmap = {}
 
@@ -154,41 +205,17 @@ class FileIdMap:
                 def log_find_children(path, revnum):
                     expensive = True
                     return self.repos._log.find_children(path, revnum)
-                changes = get_local_changes(global_changes, mapping,
-                                            self.repos.generate_revision_id, 
-                                            log_find_children)
-                pb.update('generating file id map', i, len(todo))
 
-                def find_children(path, revid):
-                    (revnum, bp) = quickrevidmap[revid]
-                    for p in log_find_children(bp+"/"+path, revnum):
-                        yield mapping.unprefix(bp, p)
+                (revnum, branch) = quickrevidmap[revid]
+                (idmap, changes) = self.actual.apply_changes(self.repos.uuid, revnum, branch, 
+                                          global_changes, renames_cb(revid), mapping,
+                                          log_find_children)
+                pb.update('generating file id map', i, len(todo))
 
                 parent_revs = next_parent_revs
 
-                def new_file_id(x):
-                    (revnum, branch) = quickrevidmap[revid]
-                    return mapping.generate_file_id(self.repos.uuid, revnum, branch, x)
-                
-                revmap = self._apply_changes(new_file_id, changes, find_children)
-                revmap.update(renames_cb(revid))
-
-                for p in changes:
-                    if changes[p][0] == 'M' and not revmap.has_key(p):
-                        revmap[p] = map[p][0]
-
-                map.update(dict([(x, (str(revmap[x]), revid)) for x in revmap]))
-
-                # Mark all parent paths as changed
-                for p in revmap:
-                    parts = p.split("/")
-                    for j in range(1, len(parts)+1):
-                        parent = "/".join(parts[0:len(parts)-j])
-                        assert map.has_key(parent), "Parent item %s of %s doesn't exist in map" % (parent, p)
-                        if map[parent][1] == revid:
-                            break
-                        map[parent] = map[parent][0], revid
-                        
+                self.actual.update_map(map, revid, idmap, changes)
+                       
                 saved = False
                 if i % 500 == 0 or expensive:
                     self.save(revid, parent_revs, map)
@@ -202,24 +229,10 @@ class FileIdMap:
         return map
 
 
-class SimpleFileIdMap(FileIdMap):
-    @staticmethod
-    def _apply_changes(new_file_id, changes, find_children=None):
-        map = {}
-        for p in sorted(changes.keys()):
-            data = changes[p]
+class SimpleFileIdMap(CachingFileIdMap):
+    def __init__(self, repos, cache_transport):
+        CachingFileIdMap.__init__(self, cache_transport, FileIdMap(simple_apply_changes, repos))
+        self.repos = repos
 
-            if data[0] in ('A', 'R'):
-                inv_p = p.decode("utf-8")
-                map[inv_p] = new_file_id(inv_p)
 
-                if data[1] is not None:
-                    mutter('%r copied from %r:%s' % (inv_p, data[1], data[2]))
-                    if find_children is not None:
-                        for c in find_children(data[1], data[2]):
-                            inv_c = c.decode("utf-8")
-                            path = c.replace(data[1].decode("utf-8"), inv_p+"/", 1).replace(u"//", u"/")
-                            map[path] = new_file_id(path)
-                            mutter('added mapping %r -> %r' % (path, map[path]))
 
-        return map

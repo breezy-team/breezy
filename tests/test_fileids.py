@@ -21,7 +21,7 @@ from bzrlib.repository import Repository
 from bzrlib.trace import mutter
 from bzrlib.tests import TestCase
 
-from fileids import SimpleFileIdMap
+from fileids import SimpleFileIdMap, simple_apply_changes
 from mapping import BzrSvnMappingv3FileProps
 from scheme import TrunkBranchingScheme, NoBranchingScheme
 from tests import TestCaseWithSubversionRepository
@@ -175,7 +175,7 @@ class TestFileMapping(TestCase):
                 if renames.has_key(r) and renames[r].has_key(x):
                     return renames[r][x]
                 return self.mapping.generate_file_id("uuid", revnum, branchpath, x)
-            revmap = SimpleFileIdMap._apply_changes(new_file_id, mappings[r], find_children)
+            revmap = simple_apply_changes(new_file_id, mappings[r], find_children)
             map.update(dict([(x, (revmap[x],r)) for x in revmap]))
         return map
 
