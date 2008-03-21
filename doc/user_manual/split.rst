@@ -47,7 +47,7 @@ then you can run
 
 ::
 
-  $ bzr init --dirstate-with-tags scruff/
+  $ bzr init scruff/
   $ cd scruff/
 
 if you already have some code, then you can rename the directory containing
@@ -56,7 +56,7 @@ that code to ``~/packages/scruff/scruff`` and then run
 ::
 
   $ cd scruff/
-  $ bzr init --dirstate-with-tags
+  $ bzr init
   $ bzr add
 
 which will create a branch and add all of your current code to it.

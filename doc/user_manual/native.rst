@@ -48,11 +48,8 @@ the command
 
 ::
 
-  $ bzr init --dirstate-trees scruff/
+  $ bzr init scruff/
   $ cd scruff/
-
-The ``--dirstate-tags`` option here ensures that the branch supports tags,
-as the current default branch format in Bazaar does not.
 
 Now you have a branch that you will create the package in you need to tell
 `bzr-builddeb` that it will be a native package. To do this you need to
