@@ -94,7 +94,7 @@ class cmd_upload(commands.Command):
             entries.next() # skip root
             for dp, ie in entries:
                 # .bzrignore has no meaning outside of a working tree
-                # so do not export it
+                # so do not upload it
                 if dp == ".bzrignore":
                     continue
 
@@ -114,7 +114,6 @@ class cmd_upload(commands.Command):
 
     def upload_tree(self, from_tree):
         self.to_transport.ensure_base() # XXX: Handle errors
-        # XXX: add tests for directories
         changes = self.tree.changes_from(from_tree)
         self.tree.lock_read()
         try:

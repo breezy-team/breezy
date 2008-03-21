@@ -80,15 +80,43 @@ class TestUpload(tests.TestCaseWithTransport):
         tree = branch.bzrdir.create_workingtree()
         return tree
 
+    def build_branch_contents(self, reltree, relpath='branch/'):
+        """Build the tree content at relpath."""
+        abstree = []
+        for relitem in reltree:
+            abstree.append((relpath + relitem[0],) + relitem[1:])
+        self.build_tree_contents(abstree)
+
+    def assertUpFileEqual(self, content, path, relpath='upload/'):
+        self.assertFileEqual(content, relpath + path)
+
+    def failIfUpFileExists(self, path, relpath='upload/'):
+        self.failIfExists(relpath + path)
+
+    def full_upload(self, *args, **kwargs):
+        upload = cmd_upload()
+        up_url = self.get_transport('upload').external_url()
+        if kwargs.get('working_dir', None) is None:
+            kwargs['working_dir'] = 'branch'
+        kwargs['full'] = True
+        upload.run(up_url, *args, **kwargs)
+
+    def incremental_upload(self, *args, **kwargs):
+        upload = cmd_upload()
+        up_url = self.get_transport('upload').external_url()
+        if kwargs.get('working_dir', None) is None:
+            kwargs['working_dir'] = 'branch'
+        upload.run(up_url, *args, **kwargs)
+
     def _add_hello(self, tree):
-        self.build_tree_contents([('branch/hello', 'foo')])
+        self.build_branch_contents([('hello', 'foo')])
         tree.add('hello')
         tree.commit('add hello')
 
     def _modify_hello_add_goodbye(self, tree):
-        self.build_tree_contents([('branch/hello', 'bar'),
-                                  ('branch/dir/',),
-                                  ('branch/dir/goodbye', 'baz')])
+        self.build_branch_contents([('hello', 'bar'),
+                                  ('dir/',),
+                                  ('dir/goodbye', 'baz')])
         tree.add('dir')
         tree.add('dir/goodbye')
         tree.commit('modify hello, add goodbye')
@@ -98,34 +126,28 @@ class TestUpload(tests.TestCaseWithTransport):
         self._add_hello(tree)
         self._modify_hello_add_goodbye(tree)
 
-        upload = cmd_upload()
-        up_url = self.get_transport('upload').external_url()
+        self.full_upload()
 
-        upload.run(up_url, full=True, working_dir='branch')
-
-        self.assertFileEqual('bar', 'upload/hello')
-        self.assertFileEqual('baz', 'upload/dir/goodbye')
+        self.assertUpFileEqual('bar', 'hello')
+        self.assertUpFileEqual('baz', 'dir/goodbye')
 
     def test_incremental_upload(self):
         tree = self._create_branch()
         self._add_hello(tree)
         self._modify_hello_add_goodbye(tree)
 
-        upload = cmd_upload()
-        up_url = self.get_transport('upload').external_url()
-
         # Upload revision 1 only
         revspec = revisionspec.RevisionSpec.from_string('1')
-        upload.run(up_url, revision=[revspec], full=True, working_dir='branch')
+        self.full_upload(revision=[revspec])
 
-        self.assertFileEqual('foo', 'upload/hello')
-        self.failIfExists('upload/dir/goodbye')
+        self.assertUpFileEqual('foo', 'hello')
+        self.failIfUpFileExists('upload/dir/goodbye')
 
         # Upload current revision
-        upload.run(up_url, working_dir='branch')
+        self.incremental_upload()
 
-        self.assertFileEqual('bar', 'upload/hello')
-        self.assertFileEqual('baz', 'upload/dir/goodbye')
+        self.assertUpFileEqual('bar', 'hello')
+        self.assertUpFileEqual('baz', 'dir/goodbye')
 
     def test_invalid_revspec(self):
         tree = self._create_branch()
@@ -134,10 +156,8 @@ class TestUpload(tests.TestCaseWithTransport):
         rev1 = revisionspec.RevisionSpec.from_string('1')
         rev2 = revisionspec.RevisionSpec.from_string('2')
 
-        upload = cmd_upload()
-        up_url = self.get_transport('upload').external_url()
+        self.incremental_upload()
 
-        self.assertRaises(errors.BzrCommandError, upload.run,
-                          up_url, revision=[rev1, rev2],
-                          working_dir='branch')
+        self.assertRaises(errors.BzrCommandError,
+                          self.incremental_upload, revision=[rev1, rev2])
 
