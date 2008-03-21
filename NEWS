@@ -4,6 +4,10 @@ bzr-svn 0.4.9	UNRELEASED
 
    * Set revision properties when possible.
 
+   * Avoid doing two branch property lookups when getting revision metadata.
+
+   * Use caching revision graph.
+
   BUGS
   
    * Fix compatibility with bzr 1.3.

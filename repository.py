@@ -20,6 +20,7 @@ from bzrlib import osutils, ui, urlutils
 from bzrlib.branch import Branch, BranchCheckResult
 from bzrlib.errors import (InvalidRevisionId, NoSuchRevision, NotBranchError, 
                            UninitializableFormat, UnrelatedBranches)
+from bzrlib.graph import CachingParentsProvider
 from bzrlib.inventory import Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.repository import Repository, RepositoryFormat
@@ -197,6 +198,9 @@ class SvnRepository(Repository):
 
     def get_mapping(self):
         return get_default_mapping()(self.get_scheme())
+
+    def _make_parents_provider(self):
+        return CachingParentsProvider(self)
 
     def get_scheme(self):
         """Determine the branching scheme to use for this repository.
@@ -527,8 +531,7 @@ class SvnRepository(Repository):
         try:
             revprops = lazy_dict(lambda: self._log._get_transport().revprop_list(revnum))
             fileprops = lazy_dict(lambda: self.branchprop_list.get_changed_properties(path, revnum))
-            (bzr_revno, revid) = mapping.get_revision_id(path, revprops, 
-                                                         fileprops)
+            (bzr_revno, revid) = mapping.get_revision_id(path, revprops, fileprops)
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
                 raise NoSuchRevision(path, revnum)
@@ -822,39 +825,20 @@ class SvnRepository(Repository):
         # SVN doesn't store GPG signatures
         raise NoSuchRevision(self, revision_id)
 
-    def _full_revision_graph(self, mapping, _latest_revnum=None):
-        if _latest_revnum is None:
-            _latest_revnum = self.transport.get_latest_revnum()
-        graph = {}
-        for (branch, revnum) in self.follow_history(_latest_revnum, 
-                                                    mapping):
-            mutter('%r, %r' % (branch, revnum))
-            revid = self.generate_revision_id(revnum, branch, mapping)
-            graph[revid] = self.revision_parents(revid)
-        return graph
-
     def get_revision_graph(self, revision_id=None):
         """See Repository.get_revision_graph()."""
-        if revision_id == NULL_REVISION:
-            return {}
+        graph = self.get_graph()
 
         if revision_id is None:
-            return self._full_revision_graph(self.get_mapping())
+            revision_ids = self.all_revision_ids(self.get_mapping())
+        else:
+            revision_ids = [revision_id]
 
-        (path, revnum, mapping) = self.lookup_revision_id(revision_id)
+        ret = {}
+        for (revid, parents) in graph.iter_ancestry(revision_ids):
+            ret[revid] = parents
 
-        _previous = revision_id
-        self._ancestry = {}
-        
-        if revnum > 0:
-            for (branch, rev) in self.follow_branch(path, revnum - 1, mapping):
-                revid = self.generate_revision_id(rev, branch, mapping)
-                self._ancestry[_previous] = [revid]
-                _previous = revid
-
-        self._ancestry[_previous] = []
-
-        return self._ancestry
+        return ret
 
     def find_branches(self, using=False):
         """Find branches underneath this repository.
