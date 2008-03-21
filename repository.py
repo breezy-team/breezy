@@ -126,9 +126,9 @@ def parse_merge_property(line):
     """
     if ' ' in line:
         mutter('invalid revision id %r in merged property, skipping' % line)
-        return []
+        return ()
 
-    return filter(lambda x: x != "", line.split("\t"))
+    return tuple(filter(lambda x: x != "", line.split("\t")))
 
 
 def parse_revid_property(line):
@@ -563,7 +563,7 @@ class SvnRepository(Repository):
         change = self.branchprop_list.get_property_diff(branch, revnum, 
                                        SVN_PROP_BZR_ANCESTRY+str(scheme)).splitlines()
         if len(change) == 0:
-            return []
+            return ()
 
         assert len(change) == 1
 
@@ -623,11 +623,11 @@ class SvnRepository(Repository):
 
     def revision_parents(self, revision_id, bzr_merges=None, svk_merges=None):
         """See Repository.revision_parents()."""
-        parent_ids = []
+        parent_ids = ()
         (branch, revnum, scheme) = self.lookup_revision_id(revision_id)
         mainline_parent = self._mainline_revision_parent(branch, revnum, scheme)
         if mainline_parent is not None:
-            parent_ids.append(mainline_parent)
+            parent_ids += (mainline_parent,)
 
         # if the branch didn't change, bzr:merge or svk:merge can't have changed
         if not self._log.touches_path(branch, revnum):
@@ -638,11 +638,11 @@ class SvnRepository(Repository):
         if svk_merges is None:
             svk_merges = self._svk_merged_revisions(branch, revnum, scheme)
 
-        parent_ids.extend(bzr_merges)
+        parent_ids += bzr_merges
 
-        if bzr_merges == []:
+        if bzr_merges == ():
             # Commit was doing using svk apparently
-            parent_ids.extend(svk_merges)
+            parent_ids += tuple(svk_merges)
 
         return parent_ids
 
