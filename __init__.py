@@ -175,8 +175,10 @@ class cmd_svn_import(Command):
     @display_command
     def run(self, from_location, to_location=None, trees=False, 
             standalone=False, scheme=None, all=False, prefix=None):
-        from bzrlib.errors import BzrCommandError, NoRepositoryPresent
+        from bzrlib.branch import Branch
         from bzrlib.bzrdir import BzrDir
+        from bzrlib.errors import BzrCommandError, NoRepositoryPresent, NotBranchError
+        from bzrlib import urlutils
         from convert import convert_repository
         from repository import SvnRepository
         import os
@@ -202,8 +204,20 @@ class cmd_svn_import(Command):
         try:
             from_repos = from_dir.open_repository()
         except NoRepositoryPresent, e:
-            raise BzrCommandError("No Repository found at %s. "
-                "For individual branches, use 'bzr branch'." % from_location)
+            try:
+                Branch.open(from_location)
+                raise BzrCommandError("No Repository found at %s. "
+                    "For individual branches, use 'bzr branch'." % from_location)
+            except NotBranchError:
+                if prefix is not None:
+                    raise BzrCommandError("Path inside repository specified and --prefix specified")
+                from_repos = from_dir.find_repository()
+                prefix = urlutils.relative_url(from_repos.base, from_location)
+                self.outf.write("Importing branches below %s\n" % 
+                        urlutils.unescape_for_display(prefix, self.outf.encoding))
+
+        if prefix is not None:
+            prefix = prefix.strip("/") + "/"
 
         if not isinstance(from_repos, SvnRepository):
             raise BzrCommandError(

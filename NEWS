@@ -8,11 +8,15 @@ bzr-svn 0.4.9	UNRELEASED
 
    * Use caching revision graph.
 
+   * --prefix is now determined from the specified url in svn-import. (#160335)
+
   BUGS
   
    * Fix compatibility with bzr 1.3.
 
    * Be a bit quieter with messages about experimental mappings. (#162496)
+
+   * More correct implementation of Repository.get_ancestry(). 
 
   INTERNALS
 
