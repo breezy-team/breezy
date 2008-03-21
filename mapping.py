@@ -163,7 +163,6 @@ class BzrSvnMappingv3(BzrSvnMapping):
         return osutils.safe_file_id(ret)
 
 
-
 class BzrSvnMappingRegistry(registry.Registry):
     def register(self, key, factory, help):
         """Register a mapping between Bazaar and Subversion semantics.
