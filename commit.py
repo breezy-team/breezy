@@ -491,7 +491,7 @@ class SvnCommitBuilder(RootCommitBuilder):
 
             # Set all the revprops
             for prop, value in self._svnprops.items():
-                assert is_valid_property_name(prop), "Invalid property name" % prop
+                assert is_valid_property_name(prop), "Invalid property name %r" % prop
                 if value is not None:
                     value = value.encode('utf-8')
                 self.editor.change_dir_prop(branch_batons[-1], prop, value, 
