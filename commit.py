@@ -39,7 +39,7 @@ import urllib
 
 def is_valid_property_name(prop):
     for c in prop:
-        if not c.isalnum() and not "-:".contains(c):
+        if not c.isalnum() and not c in "-:":
             return False
     return True
 

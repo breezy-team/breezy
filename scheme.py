@@ -125,7 +125,7 @@ def parse_list_scheme_text(text):
 
 
 def prop_name_unquote(text):
-    return urlsafe_b64decode(text).encode("ascii").replace(".", "=")
+    return urlsafe_b64decode(text.replace(".", "="))
 
 
 def prop_name_quote(text):
@@ -142,7 +142,7 @@ class ListBranchingScheme(BranchingScheme):
         """
         assert isinstance(branch_list, list) or isinstance(branch_list, str)
         if isinstance(branch_list, str):
-            branch_list = bz2.decompress(prop_name_unquote(branch_list)).splitlines()
+            branch_list = bz2.decompress(prop_name_unquote(branch_list.encode("ascii"))).splitlines()
         self.branch_list = [p.strip("/") for p in branch_list]
         self.split_branch_list = [p.split("/") for p in self.branch_list]
 
