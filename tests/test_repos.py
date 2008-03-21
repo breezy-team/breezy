@@ -564,7 +564,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repository = Repository.open("svn+%s" % repos_url)
         rev = repository.get_revision(
             repository.generate_revision_id(2, "", "none"))
-        self.assertEqual([repository.generate_revision_id(1, "", "none")],
+        self.assertEqual((repository.generate_revision_id(1, "", "none"),),
                 rev.parent_ids)
         self.assertEqual(rev.revision_id, 
                 repository.generate_revision_id(2, "", "none"))
@@ -586,7 +586,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repository = Repository.open("svn+%s" % repos_url)
         revid = default_mapping.generate_revision_id(repository.uuid, 2, "", "none")
         rev = repository.get_revision("myrevid")
-        self.assertEqual([repository.generate_revision_id(1, "", "none")],
+        self.assertEqual((repository.generate_revision_id(1, "", "none"),),
                 rev.parent_ids)
         self.assertEqual(rev.revision_id, 
                          repository.generate_revision_id(2, "", "none"))
@@ -664,13 +664,13 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
     def test_get_revision_graph_all_empty(self):
         repos_url = self.make_client('d', 'dc')
         repository = Repository.open(repos_url)
-        self.assertEqual({repository.generate_revision_id(0, "", "none"): ()}, 
+        self.assertEqual({repository.generate_revision_id(0, "", "none"): []}, 
                 repository.get_revision_graph())
 
     def test_get_revision_graph_zero(self):
         repos_url = self.make_client('d', 'dc')
         repository = Repository.open(repos_url)
-        self.assertEqual({repository.generate_revision_id(0, "", "none"): ()}, 
+        self.assertEqual({repository.generate_revision_id(0, "", "none"): []}, 
                 repository.get_revision_graph(
                     repository.generate_revision_id(0, "", "none")))
 
@@ -684,9 +684,9 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "second commit")
         repository = Repository.open(repos_url)
         repository.set_branching_scheme(TrunkBranchingScheme())
-        self.assertEqual({repository.generate_revision_id(1, "trunk", "trunk0"): (),
-                          repository.generate_revision_id(2, "trunk", "trunk0"): (repository.generate_revision_id(1, "trunk", "trunk0"),),
-                          repository.generate_revision_id(1, "branches/foo", "trunk0"): ()
+        self.assertEqual({repository.generate_revision_id(1, "trunk", "trunk0"): [],
+                          repository.generate_revision_id(2, "trunk", "trunk0"): [repository.generate_revision_id(1, "trunk", "trunk0")],
+                          repository.generate_revision_id(1, "branches/foo", "trunk0"): []
                           }, repository.get_revision_graph())
 
     def test_get_revision_graph(self):
@@ -704,29 +704,29 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_update("dc")
         repository = Repository.open("svn+%s" % repos_url)
         self.assertEqual({
-            repository.generate_revision_id(0, "", "none"): (),
-           repository.generate_revision_id(3, "", "none"): (
-               repository.generate_revision_id(2, "", "none"),),
-           repository.generate_revision_id(2, "", "none"): (
-               repository.generate_revision_id(1, "", "none"),), 
-           repository.generate_revision_id(1, "", "none"): (
-               repository.generate_revision_id(0, "", "none"),)},
+            repository.generate_revision_id(0, "", "none"): [],
+           repository.generate_revision_id(3, "", "none"): [
+               repository.generate_revision_id(2, "", "none")],
+           repository.generate_revision_id(2, "", "none"): [
+               repository.generate_revision_id(1, "", "none")], 
+           repository.generate_revision_id(1, "", "none"): [
+               repository.generate_revision_id(0, "", "none")]},
                 repository.get_revision_graph(
                     repository.generate_revision_id(3, "", "none")))
         self.assertEqual({
-            repository.generate_revision_id(0, "", "none"): (),
-           repository.generate_revision_id(2, "", "none"): (
-               repository.generate_revision_id(1, "", "none"),),
-           repository.generate_revision_id(1, "", "none"): (
-                repository.generate_revision_id(0, "", "none"),
-               )},
+            repository.generate_revision_id(0, "", "none"): [],
+           repository.generate_revision_id(2, "", "none"): [
+               repository.generate_revision_id(1, "", "none")],
+           repository.generate_revision_id(1, "", "none"): [
+                repository.generate_revision_id(0, "", "none")
+               ]},
                 repository.get_revision_graph(
                     repository.generate_revision_id(2, "", "none")))
         self.assertEqual({
-            repository.generate_revision_id(0, "", "none"): (),
-            repository.generate_revision_id(1, "", "none"): (
+            repository.generate_revision_id(0, "", "none"): [],
+            repository.generate_revision_id(1, "", "none"): [
                 repository.generate_revision_id(0, "", "none"),
-                )},
+                ]},
                 repository.get_revision_graph(
                     repository.generate_revision_id(1, "", "none")))
 
