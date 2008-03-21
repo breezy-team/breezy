@@ -753,7 +753,7 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         trunk = Branch.open(repos_url + "/trunk")
         trunk.pull(bzrwt.branch)
 
-        self.assertEquals(bzr_parents, 
+        self.assertEquals(tuple(bzr_parents), 
                 trunk.repository.get_revision(revid2).parent_ids)
 
         self.assertEquals([revid1, revid2], trunk.revision_history())
