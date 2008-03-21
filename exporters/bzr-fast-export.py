@@ -143,6 +143,10 @@ def emit_commit(revid, branch, git_branch):
     for path, id_, kind in changes.removed:
         sys.stdout.write('D %s\n' % (my_quote(path),))
 
+    for path, id_, kind1, kind2 in changes.kind_changed:
+        sys.stdout.write('D %s\n' % (my_quote(path),))
+        my_modified.append((path, id_, kind2))
+
     for path, id_, kind in changes.added + my_modified:
         if kind in ('file', 'symlink'):
             entry = tree_new.inventory[id_]
