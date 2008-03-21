@@ -145,14 +145,14 @@ class SvnCommitBuilder(RootCommitBuilder):
 
         self.modified_files = {}
         self.modified_dirs = set()
-        def get_branch_file_property(name, default):
-            if self.base_revid is None:
-                return default
-            return self.repository.branchprop_list.get_property(self.base_path, self.base_revnum, name, default)
-        (self._svn_revprops, self._svnprops) = self.base_mapping.export_revision(self.branch.get_branch_path(), timestamp, timezone, committer, revprops, revision_id, self.base_revno+1, merges, get_branch_file_property)
+        if self.base_revid is None:
+            base_branch_props = {}
+        else:
+            base_branch_props = self.repository.branchprop_list.get_properties(self.base_path, self.base_revnum)
+        (self._svn_revprops, self._svnprops) = self.base_mapping.export_revision(self.branch.get_branch_path(), timestamp, timezone, committer, revprops, revision_id, self.base_revno+1, merges, base_branch_props)
 
         if len(merges) > 0:
-            old_svk_features = parse_svk_features(get_branch_file_property(SVN_PROP_SVK_MERGE, ""))
+            old_svk_features = parse_svk_features(base_branch_props.get(SVN_PROP_SVK_MERGE, ""))
             svk_features = set(old_svk_features)
 
             # SVK compatibility

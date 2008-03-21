@@ -43,7 +43,6 @@ def parse_externals_description(base_url, val):
               as value. revnum is the revision number and is 
               set to None if not applicable.
     """
-    # TODO: Use svn.wc.parse_externals_description3 instead ?
     ret = {}
     for l in val.splitlines():
         if l == "" or l[0] == "#":

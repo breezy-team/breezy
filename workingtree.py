@@ -602,10 +602,12 @@ class SvnWorkingTree(WorkingTree):
         if wc is None:
             svn.wc.adm_close(subwc)
 
+    def _get_base_branch_props(self):
+        return self.branch.repository.branchprop_list.get_properties(
+                self.branch.get_branch_path(self.base_revnum), self.base_revnum)
+
     def _get_new_file_ids(self, wc):
-        committed = self.branch.repository.branchprop_list.get_property(
-                self.branch.get_branch_path(self.base_revnum), self.base_revnum, 
-                SVN_PROP_BZR_FILEIDS, "")
+        committed = self._get_base_branch_props().get(SVN_PROP_BZR_FILEIDS, "")
         existing = svn.wc.prop_get(SVN_PROP_BZR_FILEIDS, self.basedir, wc)
         if existing is None or committed == existing:
             return {}
@@ -613,20 +615,13 @@ class SvnWorkingTree(WorkingTree):
             existing.splitlines()))
 
     def _get_bzr_revids(self):
-        return self.branch.repository.branchprop_list.get_property(
-                self.branch.get_branch_path(self.base_revnum), 
-                self.base_revnum, 
-                SVN_PROP_BZR_REVISION_ID+str(self.branch.mapping.scheme), "")
+        return self._get_base_branch_props().get(SVN_PROP_BZR_REVISION_ID+str(self.branch.mapping.scheme), "")
 
     def _get_bzr_merges(self):
-        return self.branch.repository.branchprop_list.get_property(
-                self.branch.get_branch_path(self.base_revnum), 
-                self.base_revnum, SVN_PROP_BZR_ANCESTRY+str(self.branch.mapping.scheme), "")
+        return self._get_base_branch_props().get(SVN_PROP_BZR_ANCESTRY+str(self.branch.mapping.scheme), "")
 
     def _get_svk_merges(self):
-        return self.branch.repository.branchprop_list.get_property(
-                self.branch.get_branch_path(self.base_revnum), 
-                self.base_revnum, SVN_PROP_SVK_MERGE, "")
+        return self._get_base_branch_props().get(SVN_PROP_SVK_MERGE, "")
 
     def set_pending_merges(self, merges):
         """See MutableTree.set_pending_merges()."""
