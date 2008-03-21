@@ -744,15 +744,19 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         # Merge 
         self.build_tree({'c/registry/generic.c': "DE"})
         bzrwt.add_pending_merge(merge_revid)
+        self.assertEquals(bzrwt.get_parent_ids()[1], merge_revid)
         revid2 = bzrwt.commit("Merge something", rev_id="mergerevid")
-
+        bzr_parents = bzrwt.branch.repository.revision_parents(revid2)
         trunk = Branch.open(repos_url + "/trunk")
         trunk.pull(bzrwt.branch)
+
+        self.assertEquals(bzr_parents, 
+                trunk.repository.revision_parents(revid2))
 
         self.assertEquals([revid1, revid2], trunk.revision_history())
         self.client_update("dc")
         self.assertEquals(
-                '1 initialrevid\n2 mergerevid\n',
+                '1 initialrevid\n',
                 self.client_get_prop("dc/trunk", SVN_PROP_BZR_REVISION_ID+"trunk0"))
 
 
