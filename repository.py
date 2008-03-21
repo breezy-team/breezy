@@ -823,7 +823,15 @@ class SvnRepository(Repository):
 
         ret = {}
         for (revid, parents) in graph.iter_ancestry(revision_ids):
-            ret[revid] = parents
+            if revid == NULL_REVISION:
+                continue
+            if (NULL_REVISION,) == parents:
+                ret[revid] = ()
+            else:
+                ret[revid] = parents
+
+        if revision_id is not None and revision_id != NULL_REVISION and ret[revision_id] is None:
+            raise NoSuchRevision(self, revision_id)
 
         return ret
 

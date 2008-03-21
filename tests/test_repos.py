@@ -670,14 +670,14 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos_url = self.make_client('d', 'dc')
         repository = Repository.open(repos_url)
         mapping = repository.get_mapping()
-        self.assertEqual({repository.generate_revision_id(0, "", mapping): []}, 
+        self.assertEqual({repository.generate_revision_id(0, "", mapping): ()}, 
                 repository.get_revision_graph())
 
     def test_get_revision_graph_zero(self):
         repos_url = self.make_client('d', 'dc')
         repository = Repository.open(repos_url)
         mapping = repository.get_mapping()
-        self.assertEqual({repository.generate_revision_id(0, "", mapping): []}, 
+        self.assertEqual({repository.generate_revision_id(0, "", mapping): ()}, 
                 repository.get_revision_graph(
                     repository.generate_revision_id(0, "", mapping)))
 
@@ -692,9 +692,9 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repository = Repository.open(repos_url)
         repository.set_branching_scheme(TrunkBranchingScheme())
         mapping = repository.get_mapping()
-        self.assertEqual({repository.generate_revision_id(1, "trunk", mapping): [],
-                          repository.generate_revision_id(2, "trunk", mapping): [repository.generate_revision_id(1, "trunk", mapping)],
-                          repository.generate_revision_id(1, "branches/foo", mapping): []
+        self.assertEqual({repository.generate_revision_id(1, "trunk", mapping): (),
+                          repository.generate_revision_id(2, "trunk", mapping): (repository.generate_revision_id(1, "trunk", mapping),),
+                          repository.generate_revision_id(1, "branches/foo", mapping): ()
                           }, repository.get_revision_graph())
 
     def test_get_revision_graph(self):
@@ -713,29 +713,29 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repository = Repository.open("svn+%s" % repos_url)
         mapping = repository.get_mapping()
         self.assertEqual({
-            repository.generate_revision_id(0, "", mapping): [],
-           repository.generate_revision_id(3, "", mapping): [
-               repository.generate_revision_id(2, "", mapping)],
-           repository.generate_revision_id(2, "", mapping): [
-               repository.generate_revision_id(1, "", mapping)], 
-           repository.generate_revision_id(1, "", mapping): [
-               repository.generate_revision_id(0, "", mapping)]},
+            repository.generate_revision_id(0, "", mapping): (),
+           repository.generate_revision_id(3, "", mapping): (
+               repository.generate_revision_id(2, "", mapping),),
+           repository.generate_revision_id(2, "", mapping): (
+               repository.generate_revision_id(1, "", mapping),), 
+           repository.generate_revision_id(1, "", mapping): (
+               repository.generate_revision_id(0, "", mapping),)},
                 repository.get_revision_graph(
                     repository.generate_revision_id(3, "", mapping)))
         self.assertEqual({
-            repository.generate_revision_id(0, "", mapping): [],
-           repository.generate_revision_id(2, "", mapping): [
-               repository.generate_revision_id(1, "", mapping)],
-           repository.generate_revision_id(1, "", mapping): [
-                repository.generate_revision_id(0, "", mapping)
-               ]},
+            repository.generate_revision_id(0, "", mapping): (),
+           repository.generate_revision_id(2, "", mapping): (
+               repository.generate_revision_id(1, "", mapping),),
+           repository.generate_revision_id(1, "", mapping): (
+                repository.generate_revision_id(0, "", mapping),
+               )},
                 repository.get_revision_graph(
                     repository.generate_revision_id(2, "", mapping)))
         self.assertEqual({
-            repository.generate_revision_id(0, "", mapping): [],
-            repository.generate_revision_id(1, "", mapping): [
-                repository.generate_revision_id(0, "", mapping)
-                ]},
+            repository.generate_revision_id(0, "", mapping): (),
+            repository.generate_revision_id(1, "", mapping): (
+                repository.generate_revision_id(0, "", mapping),
+                )},
                 repository.get_revision_graph(
                     repository.generate_revision_id(1, "", mapping)))
 
