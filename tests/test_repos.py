@@ -631,28 +631,28 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_update("dc")
         repository = Repository.open("svn+%s" % repos_url)
         mapping = repository.get_mapping()
-        self.assertEqual([NULL_REVISION, 
+        self.assertEqual([None, 
             repository.generate_revision_id(0, "", mapping),
             repository.generate_revision_id(1, "", mapping),
             repository.generate_revision_id(2, "", mapping),
             repository.generate_revision_id(3, "", mapping)],
                 repository.get_ancestry(
                     repository.generate_revision_id(3, "", mapping)))
-        self.assertEqual([NULL_REVISION, 
+        self.assertEqual([None, 
             repository.generate_revision_id(0, "", mapping),
             repository.generate_revision_id(1, "", mapping),
             repository.generate_revision_id(2, "", mapping)],
                 repository.get_ancestry(
                     repository.generate_revision_id(2, "", mapping)))
-        self.assertEqual([NULL_REVISION,
+        self.assertEqual([None,
                     repository.generate_revision_id(0, "", mapping),
                     repository.generate_revision_id(1, "", mapping)],
                 repository.get_ancestry(
                     repository.generate_revision_id(1, "", mapping)))
-        self.assertEqual([NULL_REVISION, repository.generate_revision_id(0, "", mapping)],
+        self.assertEqual([None, repository.generate_revision_id(0, "", mapping)],
                 repository.get_ancestry(
                     repository.generate_revision_id(0, "", mapping)))
-        self.assertEqual([NULL_REVISION], repository.get_ancestry(NULL_REVISION))
+        self.assertEqual([None], repository.get_ancestry(NULL_REVISION))
 
     def test_get_revision_graph_empty(self):
         repos_url = self.make_client('d', 'dc')
@@ -748,14 +748,14 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Second Message")
         repository = Repository.open("svn+%s" % repos_url)
         mapping = repository.get_mapping()
-        self.assertEqual([NULL_REVISION, repository.generate_revision_id(0, "", mapping)],
+        self.assertEqual([None, repository.generate_revision_id(0, "", mapping)],
                 repository.get_ancestry(
                     repository.generate_revision_id(0, "", mapping)))
-        self.assertEqual([NULL_REVISION, repository.generate_revision_id(0, "", mapping),
+        self.assertEqual([None, repository.generate_revision_id(0, "", mapping),
             repository.generate_revision_id(1, "", mapping)],
                 repository.get_ancestry(
                     repository.generate_revision_id(1, "", mapping)))
-        self.assertEqual([NULL_REVISION, 
+        self.assertEqual([None, 
             repository.generate_revision_id(0, "", mapping),
             repository.generate_revision_id(1, "", mapping),
             repository.generate_revision_id(2, "", mapping)], 
@@ -773,14 +773,14 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Second Message")
         repository = Repository.open("svn+%s" % repos_url)
         mapping = repository.get_mapping()
-        self.assertEqual([NULL_REVISION, repository.generate_revision_id(0, "", mapping)],
+        self.assertEqual([None, repository.generate_revision_id(0, "", mapping)],
                 repository.get_ancestry(
                     repository.generate_revision_id(0, "", mapping)))
-        self.assertEqual([NULL_REVISION, repository.generate_revision_id(0, "", mapping),
+        self.assertEqual([None, repository.generate_revision_id(0, "", mapping),
             repository.generate_revision_id(1, "", mapping)],
                 repository.get_ancestry(
                     repository.generate_revision_id(1, "", mapping)))
-        self.assertEqual([NULL_REVISION, 
+        self.assertEqual([None, 
             repository.generate_revision_id(0, "", mapping), "a-parent", 
             repository.generate_revision_id(1, "", mapping), 
                   repository.generate_revision_id(2, "", mapping)], 

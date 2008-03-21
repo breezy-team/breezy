@@ -321,12 +321,12 @@ class SvnRepository(Repository):
 
     def get_ancestry(self, revision_id, topo_sorted=True):
         """See Repository.get_ancestry().
-        
-        Note: only the first bit is topologically ordered!
         """
         ancestry = []
         graph = self.get_graph()
         for rev, parents in graph.iter_ancestry([revision_id]):
+            if rev == NULL_REVISION:
+                rev = None
             ancestry.append(rev)
         ancestry.reverse()
         return ancestry
