@@ -69,8 +69,7 @@ def load_tests(standard_tests, module, loader):
 
 class TestUpload(tests.TestCaseWithTransport):
 
-    def _create_branch(self):
-        # We need a local branch not a remote one
+    def make_local_branch(self):
         t = transport.get_transport('branch')
         t.ensure_base()
         branch = bzrdir.BzrDir.create_branch_convenience(
@@ -122,7 +121,7 @@ class TestUpload(tests.TestCaseWithTransport):
         tree.commit('modify hello, add goodbye')
 
     def test_full_upload(self):
-        tree = self._create_branch()
+        tree = self.make_local_branch()
         self._add_hello(tree)
         self._modify_hello_add_goodbye(tree)
 
@@ -132,7 +131,7 @@ class TestUpload(tests.TestCaseWithTransport):
         self.assertUpFileEqual('baz', 'dir/goodbye')
 
     def test_incremental_upload(self):
-        tree = self._create_branch()
+        tree = self.make_local_branch()
         self._add_hello(tree)
         self._modify_hello_add_goodbye(tree)
 
@@ -150,13 +149,11 @@ class TestUpload(tests.TestCaseWithTransport):
         self.assertUpFileEqual('baz', 'dir/goodbye')
 
     def test_invalid_revspec(self):
-        tree = self._create_branch()
-        self._add_hello(tree)
-        self._modify_hello_add_goodbye(tree)
+        tree = self.make_local_branch()
         rev1 = revisionspec.RevisionSpec.from_string('1')
         rev2 = revisionspec.RevisionSpec.from_string('2')
 
-        self.incremental_upload()
+        self.full_upload()
 
         self.assertRaises(errors.BzrCommandError,
                           self.incremental_upload, revision=[rev1, rev2])
