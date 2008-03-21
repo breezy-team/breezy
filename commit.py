@@ -142,6 +142,9 @@ class SvnCommitBuilder(RootCommitBuilder):
                 return default
             return self.repository.branchprop_list.get_property(self.base_path, self.base_revnum, name, default)
         (self._svn_revprops, self._svnprops) = self.base_mapping.export_revision(self.branch.get_branch_path(), timestamp, timezone, committer, revprops, revision_id, self.base_revno+1, merges, get_branch_file_property)
+        if 'commit' in debug.debug_flags:
+            for n,v in self._svnprops.items():
+                mutter(' root file property: %r -> %r' % (n, v))
 
         if len(merges) > 0:
             old_svk_features = parse_svk_features(get_branch_file_property(SVN_PROP_SVK_MERGE, ""))
