@@ -324,23 +324,10 @@ class SvnRepository(Repository):
         
         Note: only the first bit is topologically ordered!
         """
-        if revision_id is None: 
-            return [None]
-
-        (path, revnum, mapping) = self.lookup_revision_id(revision_id)
-
-        ancestry = [revision_id]
-
-        svn_revprops = lazy_dict(lambda: self.transport.revprop_list(revnum))
-        svn_fileprops = lazy_dict(lambda: self.branchprop_list.get_properties(path, revnum))
-        ancestry.extend(mapping.get_rhs_ancestors(path, svn_revprops, svn_fileprops))
-
-        if revnum > 0:
-            for (branch, rev) in self.follow_branch(path, revnum - 1, mapping):
-                ancestry.append(
-                    self.generate_revision_id(rev, branch, mapping))
-
-        ancestry.append(None)
+        ancestry = []
+        graph = self.get_graph()
+        for rev, parents in graph.iter_ancestry([revision_id]):
+            ancestry.append(rev)
         ancestry.reverse()
         return ancestry
 
