@@ -41,14 +41,20 @@ class cmd_upload(commands.Command):
     takes_options = [
         'revision',
         option.Option('full', 'Upload the full working tree.'),
+        option.Option('directory',
+                      help='Branch to upload from, '
+                      'rather than the one containing the working directory.',
+                      short_name='d',
+                      type=unicode,
+                      ),
        ]
 
     def run(self, location, full=False, revision=None,
-            working_dir=None, # For tests
+            directory=None,
             ):
-        if working_dir is None:
-            working_dir = u'.'
-        wt = workingtree.WorkingTree.open_containing(working_dir)[0]
+        if directory is None:
+            directory = u'.'
+        wt = workingtree.WorkingTree.open_containing(directory)[0]
         self.branch = wt.branch
 
         if location is None:

@@ -95,16 +95,16 @@ class TestUpload(tests.TestCaseWithTransport):
     def full_upload(self, *args, **kwargs):
         upload = cmd_upload()
         up_url = self.get_transport('upload').external_url()
-        if kwargs.get('working_dir', None) is None:
-            kwargs['working_dir'] = 'branch'
+        if kwargs.get('directory', None) is None:
+            kwargs['directory'] = 'branch'
         kwargs['full'] = True
         upload.run(up_url, *args, **kwargs)
 
     def incremental_upload(self, *args, **kwargs):
         upload = cmd_upload()
         up_url = self.get_transport('upload').external_url()
-        if kwargs.get('working_dir', None) is None:
-            kwargs['working_dir'] = 'branch'
+        if kwargs.get('directory', None) is None:
+            kwargs['directory'] = 'branch'
         upload.run(up_url, *args, **kwargs)
 
     def _add_hello(self, tree):
