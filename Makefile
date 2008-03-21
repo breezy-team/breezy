@@ -22,7 +22,7 @@ $(TMP_PLUGINS_DIR):
 	mkdir -p $@
 
 $(TMP_PLUGINS_DIR)/svn: $(TMP_PLUGINS_DIR)
-	ln -sf `pwd` $(TMP_PLUGINS_DIR)/svn
+	ln -sf $@ `pwd`
 
 check:: $(TMP_PLUGINS_DIR)/svn
 	BZR_PLUGIN_PATH=$(TMP_PLUGINS_DIR) $(BZR) selftest $(TEST_OPTIONS) $(TESTS)
