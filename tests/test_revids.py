@@ -141,12 +141,12 @@ class RevisionIdMappingTest(TestCase):
               revision_id_to_svk_feature("svn-v%d-undefined:auuid::6" % MAPPING_VERSION))
 
     def test_parse_merge_space(self):
-        self.assertEqual([], parse_merge_property("bla bla"))
+        self.assertEqual((), parse_merge_property("bla bla"))
 
     def test_parse_merge_empty(self):
-        self.assertEqual([], parse_merge_property(""))
+        self.assertEqual((), parse_merge_property(""))
 
     def test_parse_merge_simple(self):
-        self.assertEqual(["bla", "bloe"], parse_merge_property("bla\tbloe"))
+        self.assertEqual(("bla", "bloe"), parse_merge_property("bla\tbloe"))
 
 

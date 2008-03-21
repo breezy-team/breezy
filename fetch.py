@@ -102,7 +102,7 @@ class RevisionBuildEditor(svn.delta.Editor):
                               self.scheme)
         self.dir_baserev = {}
         self._revinfo = None
-        self._bzr_merges = []
+        self._bzr_merges = ()
         self._svk_merges = []
         self._premature_deletes = set()
         self.pool = Pool()
