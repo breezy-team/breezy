@@ -645,6 +645,9 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         check(copybranch)
 
     def test_push_non_lhs_parent(self):        
+        from bzrlib.debug import debug_flags
+        debug_flags.add("commit")
+        debug_flags.add("fetch")
         repos_url = self.make_client("a", "dc")
         bzrwt = BzrDir.create_standalone_workingtree("c", 
             format=format.get_rich_root_format())

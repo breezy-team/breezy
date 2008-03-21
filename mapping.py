@@ -561,20 +561,19 @@ class BzrSvnMappingFileProps:
 
         return svnprops
  
-    def export_revision(self, branch_root, timestamp, timezone, committer, revprops, revision_id, revno, merges, 
-                        fileprops):
+    def export_revision(self, branch_root, timestamp, timezone, committer, revprops, revision_id, revno, merges, old_fileprops):
         # Keep track of what Subversion properties to set later on
         fileprops = {}
         fileprops[SVN_PROP_BZR_REVISION_INFO] = generate_revision_metadata(
             timestamp, timezone, committer, revprops)
 
         if len(merges) > 0:
-            fileprops.update(self._record_merges(merges, fileprops))
+            fileprops.update(self._record_merges(merges, old_fileprops))
 
         # Set appropriate property if revision id was specified by 
         # caller
         if revision_id is not None:
-            old = fileprops.get(SVN_PROP_BZR_REVISION_ID+str(self.scheme), "")
+            old = old_fileprops.get(SVN_PROP_BZR_REVISION_ID+str(self.scheme), "")
             fileprops[SVN_PROP_BZR_REVISION_ID+str(self.scheme)] = old + "%d %s\n" % (revno, revision_id)
 
         return ({}, fileprops)
