@@ -114,7 +114,6 @@ class SvnRepositoryFormat(RepositoryFormat):
         return "Subversion Repository"
 
     def initialize(self, url, shared=False, _internal=False):
-        """Svn repositories cannot be created (yet)."""
         raise UninitializableFormat(self)
 
     def check_conversion_target(self, target_repo_format):
@@ -454,7 +453,8 @@ class SvnRepository(Repository):
             if revid is not None:
                 yield revid
 
-    def revision_parents(self, revision_id, svn_fileprops=None):
+    def revision_parents(self, revision_id, svn_fileprops=None, 
+                         svn_revprops=None):
         """See Repository.revision_parents()."""
         parent_ids = []
         (branch, revnum, mapping) = self.lookup_revision_id(revision_id)
@@ -465,7 +465,8 @@ class SvnRepository(Repository):
         if svn_fileprops is None:
             svn_fileprops = lazy_dict(lambda: self.branchprop_list.get_changed_properties(branch, revnum))
 
-        svn_revprops = lazy_dict(lambda: self.transport.revprop_list(revnum))
+        if svn_revprops is None:
+            svn_revprops = lazy_dict(lambda: self.transport.revprop_list(revnum))
 
         extra_rhs_parents = mapping.get_rhs_parents(branch, svn_revprops, svn_fileprops)
         parent_ids.extend(extra_rhs_parents)
@@ -482,15 +483,15 @@ class SvnRepository(Repository):
 
         (path, revnum, mapping) = self.lookup_revision_id(revision_id)
         
-        parent_ids = self.revision_parents(revision_id)
+        svn_revprops = lazy_dict(lambda: self.transport.revprop_list(revnum))
+        svn_fileprops = lazy_dict(lambda: self.branchprop_list.get_changed_properties(path, revnum))
+        parent_ids = self.revision_parents(revision_id, svn_fileprops=svn_fileprops, svn_revprops=svn_revprops)
 
         # Commit SVN revision properties to a Revision object
         class LazySvnRevision(Revision):
             inventory_sha1 = property(lambda rev: self.get_inventory_sha1(rev.revision_id))
 
         rev = LazySvnRevision(revision_id=revision_id, parent_ids=parent_ids)
-        svn_revprops = lazy_dict(lambda: self.transport.revprop_list(revnum))
-        svn_fileprops = lazy_dict(lambda: self.branchprop_list.get_changed_properties(path, revnum))
 
         mapping.import_revision(svn_revprops, svn_fileprops, rev)
 

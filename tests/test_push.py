@@ -714,8 +714,8 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
 
     def test_push_unnecessary_merge(self):        
         from bzrlib.debug import debug_flags
-        debug_flags.add('transport')
-        debug_flags.add('commit')
+        debug_flags.add("commit")
+        debug_flags.add("fetch")
         repos_url = self.make_client("a", "dc")
         bzrwt = BzrDir.create_standalone_workingtree("c", 
             format=format.get_rich_root_format())
@@ -751,7 +751,7 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         trunk.pull(bzrwt.branch)
 
         self.assertEquals(bzr_parents, 
-                trunk.repository.revision_parents(revid2))
+                trunk.repository.get_revision(revid2).parent_ids)
 
         self.assertEquals([revid1, revid2], trunk.revision_history())
         self.client_update("dc")
