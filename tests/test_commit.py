@@ -131,7 +131,7 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         wt.commit(message="data")
         self.assertEqual("some-ghost-revision\n", 
                 self.client_get_prop(repos_url, "bzr:ancestry:v3-none", 1))
-        self.assertEqual([wt.branch.generate_revision_id(0), "some-ghost-revision"],
+        self.assertEqual((wt.branch.generate_revision_id(0), "some-ghost-revision"),
                          wt.branch.repository.revision_parents(
                              wt.branch.last_revision()))
 

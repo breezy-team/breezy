@@ -22,7 +22,7 @@ bzr-svn 0.4.9	UNRELEASED
 
    * Allow multiple mappings to be available at the same time.
 
-bzr-svn 0.4.8	2008-03-11
+bzr-svn 0.4.8	2008-03-21
 
   BUG FIXES
 

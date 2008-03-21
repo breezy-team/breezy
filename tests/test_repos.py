@@ -487,14 +487,14 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Second Message")
         repository = Repository.open("svn+%s" % repos_url)
         mapping = repository.get_mapping()
-        self.assertEqual([],
+        self.assertEqual((),
                 repository.revision_parents(
                     repository.generate_revision_id(0, "", mapping)))
-        self.assertEqual([repository.generate_revision_id(0, "", mapping)],
+        self.assertEqual((repository.generate_revision_id(0, "", mapping),),
                 repository.revision_parents(
                     repository.generate_revision_id(1, "", mapping)))
-        self.assertEqual([
-            repository.generate_revision_id(1, "", mapping)],
+        self.assertEqual((
+            repository.generate_revision_id(1, "", mapping),),
             repository.revision_parents(
                 repository.generate_revision_id(2, "", mapping)))
 
@@ -521,14 +521,14 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Second Message")
         repository = Repository.open("svn+%s" % repos_url)
         mapping = repository.get_mapping()
-        self.assertEqual([],
+        self.assertEqual((),
                 repository.revision_parents(
                     repository.generate_revision_id(0, "", mapping)))
-        self.assertEqual([repository.generate_revision_id(0, "", mapping)],
+        self.assertEqual((repository.generate_revision_id(0, "", mapping),),
                 repository.revision_parents(
                     repository.generate_revision_id(1, "", mapping)))
-        self.assertEqual([repository.generate_revision_id(1, "", mapping),
-            "ghostparent"], 
+        self.assertEqual((repository.generate_revision_id(1, "", mapping),
+            "ghostparent"), 
                 repository.revision_parents(
                     repository.generate_revision_id(2, "", mapping)))
  
@@ -546,8 +546,8 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
             "%s:/branches/foo:1\n" % repository.uuid)
         self.client_commit("dc", "Second Message")
         mapping = repository.get_mapping()
-        self.assertEqual([repository.generate_revision_id(1, "trunk", mapping),
-            repository.generate_revision_id(1, "branches/foo", mapping)], 
+        self.assertEqual((repository.generate_revision_id(1, "trunk", mapping),
+            repository.generate_revision_id(1, "branches/foo", mapping)), 
                 repository.revision_parents(
                     repository.generate_revision_id(2, "trunk", mapping)))
     
@@ -566,7 +566,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         mapping = repository.get_mapping()
         rev = repository.get_revision(
             repository.generate_revision_id(2, "", mapping))
-        self.assertEqual([repository.generate_revision_id(1, "", mapping)],
+        self.assertEqual((repository.generate_revision_id(1, "", mapping),),
                 rev.parent_ids)
         self.assertEqual(rev.revision_id, 
                 repository.generate_revision_id(2, "", mapping))
@@ -589,7 +589,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         mapping = repository.get_mapping()
         revid = mapping.generate_revision_id(repository.uuid, 2, "")
         rev = repository.get_revision("myrevid")
-        self.assertEqual([repository.generate_revision_id(1, "", mapping)],
+        self.assertEqual((repository.generate_revision_id(1, "", mapping),),
                 rev.parent_ids)
         self.assertEqual(rev.revision_id, 
                          repository.generate_revision_id(2, "", mapping))
@@ -1176,13 +1176,13 @@ class TestSvnRevisionTree(TestCaseWithSubversionRepository):
 
     def test_get_parent_ids(self):
         mapping = self.repos.get_mapping()
-        self.assertEqual([self.repos.generate_revision_id(0, "", mapping)], self.tree.get_parent_ids())
+        self.assertEqual((self.repos.generate_revision_id(0, "", mapping),), self.tree.get_parent_ids())
 
     def test_get_parent_ids_zero(self):
         mapping = self.repos.get_mapping()
         tree = self.repos.revision_tree(
                 self.repos.generate_revision_id(0, "", mapping))
-        self.assertEqual([], tree.get_parent_ids())
+        self.assertEqual((), tree.get_parent_ids())
 
     def test_get_revision_id(self):
         mapping = self.repos.get_mapping()

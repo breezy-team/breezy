@@ -447,11 +447,11 @@ class SvnRepository(Repository):
     def revision_parents(self, revision_id, svn_fileprops=None, 
                          svn_revprops=None):
         """See Repository.revision_parents()."""
-        parent_ids = []
+        parent_ids = ()
         (branch, revnum, mapping) = self.lookup_revision_id(revision_id)
         mainline_parent = self._mainline_revision_parent(branch, revnum, mapping)
         if mainline_parent is not None:
-            parent_ids.append(mainline_parent)
+            parent_ids += (mainline_parent,)
 
         if svn_fileprops is None:
             svn_fileprops = lazy_dict(lambda: self.branchprop_list.get_changed_properties(branch, revnum))
@@ -460,10 +460,10 @@ class SvnRepository(Repository):
             svn_revprops = lazy_dict(lambda: self.transport.revprop_list(revnum))
 
         extra_rhs_parents = mapping.get_rhs_parents(branch, svn_revprops, svn_fileprops)
-        parent_ids.extend(extra_rhs_parents)
+        parent_ids += extra_rhs_parents
 
-        if extra_rhs_parents == []:
-            parent_ids.extend(self._svk_merged_revisions(branch, revnum, mapping, svn_fileprops))
+        if extra_rhs_parents == ():
+            parent_ids += tuple(self._svk_merged_revisions(branch, revnum, mapping, svn_fileprops))
 
         return parent_ids
 

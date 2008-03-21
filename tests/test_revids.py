@@ -85,5 +85,3 @@ class TestRevidMap(TestCase):
         revidmap.insert_revid("bla", "mypath", 200, 42, "brainslug")
         self.assertEquals(None, 
                 revidmap.lookup_branch_revnum(42, "mypath", "brainslug"))
-
-

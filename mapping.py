@@ -135,9 +135,9 @@ def parse_merge_property(line):
     """
     if ' ' in line:
         mutter('invalid revision id %r in merged property, skipping' % line)
-        return []
+        return ()
 
-    return filter(lambda x: x != "", line.split("\t"))
+    return tuple(filter(lambda x: x != "", line.split("\t")))
 
 def parse_svn_revprops(svn_revprops, rev):
     if svn_revprops.has_key(svn.core.SVN_PROP_REVISION_AUTHOR):
@@ -531,12 +531,11 @@ class BzrSvnMappingFileProps:
                 fileprops.get(SVN_PROP_BZR_REVISION_INFO, ""), rev)
 
     def get_rhs_parents(self, branch_path, revprops, fileprops):
-        rhs_parents = []
         bzr_merges = fileprops.get(SVN_PROP_BZR_ANCESTRY+str(self.scheme), None)
         if bzr_merges is not None:
             return parse_merge_property(bzr_merges.splitlines()[-1])
 
-        return []
+        return ()
 
     def get_rhs_ancestors(self, branch_path, revprops, fileprops):
         ancestry = []
@@ -750,7 +749,6 @@ class BzrSvnMappingv3Hybrid(BzrSvnMappingv3):
     def import_revision(self, svn_revprops, fileprops, rev):
         self.fileprops.import_revision(svn_revprops, fileprops, rev)
         self.revprops.import_revision(svn_revprops, fileprops, rev)
-
 
 class BzrSvnMappingRegistry(registry.Registry):
     """Registry for the various Bzr<->Svn mappings."""

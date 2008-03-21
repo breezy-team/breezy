@@ -101,6 +101,9 @@ class RevisionBuildEditor(svn.delta.Editor):
                               self.revnum, self.branch_path, changes, renames, 
                               self.mapping)
         self.dir_baserev = {}
+        self._revinfo = None
+        self._bzr_merges = ()
+        self._svk_merges = []
         self._premature_deletes = set()
         self.pool = Pool()
         self.old_inventory = prev_inventory
