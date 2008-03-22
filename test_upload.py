@@ -136,6 +136,9 @@ class TestUpload(tests.TestCaseWithTransport):
     def failIfUpFileExists(self, path, relpath='upload/'):
         self.failIfExists(relpath + path)
 
+    def failUnlessUpFileExists(self, path, relpath='upload/'):
+        self.failUnlessExists(relpath + path)
+
     def full_upload(self, *args, **kwargs):
         upload = cmd_upload()
         up_url = self.get_transport('upload').external_url()
@@ -163,6 +166,14 @@ class TestUpload(tests.TestCaseWithTransport):
         tree.add('dir')
         tree.add('dir/goodbye')
         tree.commit('modify hello, add goodbye')
+
+    def test_full_upload_empty_tree(self):
+        self.make_local_branch()
+
+        self.full_upload()
+
+        upload = cmd_upload()
+        self.failUnlessUpFileExists(upload.bzr_upload_revid_file_name)
 
     def test_full_upload(self):
         tree = self.make_local_branch()

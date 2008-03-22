@@ -115,7 +115,6 @@ class cmd_upload(commands.Command):
         self.tree.lock_read()
         try:
             for dp, ie in self.tree.inventory.iter_entries():
-                # XXX: add an explicit test with an empty tree.
                 if dp in ('', '.bzrignore'):
                     # skip root ('')
                     # .bzrignore has no meaning outside of a working tree
