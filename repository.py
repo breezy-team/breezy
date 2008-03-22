@@ -34,7 +34,7 @@ import svn.core
 
 import os
 
-from branchprops import BranchPropertyList
+from branchprops import CachingPathPropertyProvider, PathPropertyProvider
 from cache import create_cache_dir, sqlite3
 from config import SvnRepositoryConfig
 import errors
@@ -175,7 +175,7 @@ class SvnRepository(Repository):
 
         # TODO: Only use branchprop_list and fileid_map when 
         # fileprops-based mappings are being used
-        self.branchprop_list = BranchPropertyList(self._log, self.cachedb)
+        self.branchprop_list = CachingPathPropertyProvider(PathPropertyProvider(self._log), self.cachedb)
         self.fileid_map = SimpleFileIdMap(self, cachedir_transport)
         self.revmap = RevidMap(self.cachedb)
         self._scheme = None
@@ -246,8 +246,7 @@ class SvnRepository(Repository):
     def _get_property_scheme(self, revnum=None):
         if revnum is None:
             revnum = self.transport.get_latest_revnum()
-        text = self.branchprop_list.get_property("", 
-            revnum, SVN_PROP_BZR_BRANCHING_SCHEME, None)
+        text = self.branchprop_list.get_properties("", revnum).get(SVN_PROP_BZR_BRANCHING_SCHEME, None)
         if text is None:
             return None
         return ListBranchingScheme(parse_list_scheme_text(text))
@@ -461,8 +460,7 @@ class SvnRepository(Repository):
         if prev_path is None and prev_revnum == -1:
             previous = ""
         else:
-            previous = self.branchprop_list.get_property(prev_path.encode("utf-8"), 
-                         prev_revnum, SVN_PROP_SVK_MERGE, "")
+            previous = self.branchprop_list.get_properties(prev_path.encode("utf-8"), prev_revnum).get(SVN_PROP_SVK_MERGE, "")
         for feature in svk_features_merged_since(current, previous):
             revid = svk_feature_to_revision_id(feature, mapping)
             if revid is not None:
@@ -610,8 +608,7 @@ class SvnRepository(Repository):
                 # Look at their bzr:revision-id-vX
                 revids = []
                 try:
-                    for line in self.branchprop_list.get_property(branch, revno, 
-                            SVN_PROP_BZR_REVISION_ID+str(scheme), "").splitlines():
+                    for line in self.branchprop_list.get_properties(branch, revno).get(SVN_PROP_BZR_REVISION_ID+str(scheme), "").splitlines():
                         try:
                             revids.append(parse_revid_property(line))
                         except errors.InvalidPropertyValue, ie:
