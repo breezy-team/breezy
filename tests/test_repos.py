@@ -37,7 +37,7 @@ import format
 from mapping import (escape_svn_path, unescape_svn_path, 
                      SVN_PROP_BZR_REVISION_ID, SVN_PROP_BZR_BRANCHING_SCHEME)
 from scheme import (TrunkBranchingScheme, NoBranchingScheme, 
-                    ListBranchingScheme)
+                    ListBranchingScheme, SingleBranchingScheme)
 from transport import SvnRaTransport
 from tests import TestCaseWithSubversionRepository
 from repository import SvnRepositoryFormat
@@ -180,6 +180,18 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos = Repository.open(repos_url)
         self.assertEquals([('pygments/trunk', 3), ('pykleur/trunk', 2), ('pykleur/trunk', 1)], 
                 list(repos.follow_branch("pygments/trunk", 3, TrunkBranchingScheme(1))))
+
+    def test_follow_branch_move_single(self):
+        repos_url = self.make_client('a', 'dc')
+        self.build_tree({'dc/pykleur/bla': None})
+        self.client_add("dc/pykleur")
+        self.client_commit("dc", "initial")
+        self.client_copy("dc/pykleur", "dc/pygments", 1)
+        self.client_update("dc")
+        self.client_commit("dc", "commit")
+        repos = Repository.open(repos_url)
+        self.assertEquals([('pygments', 2)], 
+                list(repos.follow_branch("pygments", 2, SingleBranchingScheme("pygments"))))
 
     def test_history_all(self):
         repos_url = self.make_client("a", "dc")
