@@ -27,6 +27,7 @@ from bzrlib import (
     option,
     )
 
+
 class cmd_upload(commands.Command):
     """Upload a working tree, as a whole or incrementally.
 
@@ -84,6 +85,7 @@ class cmd_upload(commands.Command):
 
         self.tree = self.branch.repository.revision_tree(rev_id)
         self.rev_id = rev_id
+        self._pending_renames = []
         if full:
             self.upload_full_tree()
         else:
@@ -114,6 +116,33 @@ class cmd_upload(commands.Command):
     def make_remote_dir(self, relpath):
         # XXX: handle mode
         self.to_transport.mkdir(relpath)
+
+    def rename_remote(self, old_relpath, new_relpath):
+        """Rename a remote file or directory taking care of collisions.
+
+        To avoid collisions during bulk renames, each renamed target is
+        temporarily assigned a unique name. When all renames have been done,
+        each target get its proper name.
+        """
+        # We generate a sufficiently random name to *assume* that
+        # no collisions will occur and don't worry about it (nor
+        # handle it).
+        import os
+        import random
+        import time
+
+        stamp = '.tmp.%.9f.%d.%d' % (time.time(),
+                                     os.getpid(),
+                                     random.randint(0,0x7FFFFFFF))
+        self.to_transport.rename(old_relpath, stamp)
+        self._pending_renames.append((stamp, new_relpath))
+
+    def finish_renames(self):
+        for (stamp, new_path) in self._pending_renames:
+            self.to_transport.rename(stamp, new_path)
+        # The following shouldn't be needed since we use it once per upload,
+        # but better safe than sorry ;-)
+        self._pending_renames = []
 
     def upload_full_tree(self):
         self.to_transport.ensure_base() # XXX: Handle errors (add
@@ -156,8 +185,9 @@ class cmd_upload(commands.Command):
             # XXX: handle removed, kind_changed
             for (old_path, new_path, id, kind,
                  content_change, exec_change) in changes.renamed:
-                # XXX: This may fail if some renames involded the same names
-                self.to_transport.rename(old_path, new_path)
+                self.rename_remote(old_path, new_path)
+            self.finish_renames()
+
             for (path, id, kind) in changes.added:
                 if kind is 'file':
                     self.upload_file(path, id)

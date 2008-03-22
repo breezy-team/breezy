@@ -214,7 +214,7 @@ class TestUploadMixin(object):
         self.do_upload()
         self.assertUpFileEqual('bar', 'hello')
 
-    def test_rename_file(self):
+    def test_rename_one_file(self):
         self.make_local_branch()
         self.add_file('hello', 'foo')
         self.do_full_upload()
@@ -223,6 +223,22 @@ class TestUploadMixin(object):
         self.assertUpFileEqual('foo', 'hello')
         self.do_upload()
         self.assertUpFileEqual('foo', 'goodbye')
+
+    def test_rename_two_files(self):
+        self.make_local_branch()
+        self.add_file('a', 'foo')
+        self.add_file('b', 'qux')
+        self.do_full_upload()
+        # We rely on the assumption that bzr will topologically sort the
+        # renames which will cause a -> b to appear *before* b -> c
+        self.rename_any('b', 'c')
+        self.rename_any('a', 'b')
+
+        self.assertUpFileEqual('foo', 'a')
+        self.assertUpFileEqual('qux', 'b')
+        self.do_upload()
+        self.assertUpFileEqual('foo', 'b')
+        self.assertUpFileEqual('qux', 'c')
 
     def test_upload_revision(self):
         self.make_local_branch() # rev1
