@@ -410,19 +410,28 @@ class SvnRepository(Repository):
             raise NoSuchRevision(self, 
                     self.generate_revision_id(revnum, path, mapping))
 
-        it = self.follow_branch(path, revnum, mapping)
-        # the first tuple returned should match the one specified. 
-        # if it's not, then the branch, revnum didn't change in the specified 
-        # revision and so it is invalid
-        if (path, revnum) != it.next():
+        # Make sure the specified revision actually exists
+        changes = self._log.get_revision_paths(revnum)
+        if not changes_path(changes, path):
+            # the specified revno should be changing the branch or 
+            # otherwise it is invalid
             raise NoSuchRevision(self, 
                     self.generate_revision_id(revnum, path, mapping))
-        try:
-            (branch, rev) = it.next()
-            return self.generate_revision_id(rev, branch, mapping)
-        except StopIteration:
-            # The specified revision was the first one in the branch
-            return None
+
+        while True:
+            next = logwalker.changes_find_prev_location(changes, path, revnum)
+            if next is None:
+                break
+            (path, revnum) = next
+            changes = self._log.get_revision_paths(revnum)
+
+            if changes_path(changes, path):
+                revid = self.generate_revision_id(revnum, path, mapping)
+                if not mapping.is_branch(path) and \
+                   not mapping.is_tag(path):
+                       return None
+                return revid
+        return None
 
     def get_parents(self, revids):
         parents_list = []
