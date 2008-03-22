@@ -33,7 +33,7 @@ from errors import ChangesRootLHSHistory, MissingPrefix, RevpropChangeFailed
 from svk import (generate_svk_feature, serialize_svk_features, 
                  parse_svk_features, SVN_PROP_SVK_MERGE)
 from mapping import parse_revision_id
-from repository import (SvnRepositoryFormat, SvnRepository)
+from repository import (SvnRepositoryFormat, SvnRepository, lazy_dict)
 import urllib
 
 
@@ -150,7 +150,7 @@ class SvnCommitBuilder(RootCommitBuilder):
         if self.base_revid is None:
             base_branch_props = {}
         else:
-            base_branch_props = self.repository.branchprop_list.get_properties(self.base_path, self.base_revnum)
+            base_branch_props = lazy_dict(lambda: self.repository.branchprop_list.get_properties(self.base_path, self.base_revnum))
         (self._svn_revprops, self._svnprops) = self.base_mapping.export_revision(self.branch.get_branch_path(), timestamp, timezone, committer, revprops, revision_id, self.base_revno+1, merges, base_branch_props)
 
         if len(merges) > 0:
