@@ -48,6 +48,7 @@ SVN_REVPROP_BZR_ROOT = 'bzr:root'
 SVN_REVPROP_BZR_SCHEME = 'bzr:scheme'
 SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
 SVN_REVPROP_BZR_TIMESTAMP = 'bzr:timestamp'
+SVN_REVPROP_BZR_LOG = 'bzr:log'
 
 
 def escape_svn_path(x):
@@ -144,7 +145,7 @@ def parse_svn_revprops(svn_revprops, rev):
         rev.committer = svn_revprops[svn.core.SVN_PROP_REVISION_AUTHOR]
     else:
         rev.committer = ""
-
+    
     rev.message = svn_revprops.get(svn.core.SVN_PROP_REVISION_LOG)
 
     if rev.message:
@@ -240,6 +241,9 @@ def parse_bzr_svn_revprops(props, rev):
 
     if props.has_key(SVN_REVPROP_BZR_COMMITTER):
         rev.committer = props[SVN_REVPROP_BZR_COMMITTER].decode("utf-8")
+
+    if props.has_key(SVN_REVPROP_BZR_LOG):
+        rev.message = props[SVN_REVPROP_BZR_LOG]
 
     for name, value in props.items():
         if name.startswith(SVN_REVPROP_BZR_REVPROP_PREFIX):
