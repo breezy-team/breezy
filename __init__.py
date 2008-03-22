@@ -23,12 +23,12 @@ The intended use is for web sites.
 """
 
 from bzrlib import (
+    branch,
     commands,
     errors,
     option,
     revisionspec,
     transport,
-    workingtree,
     )
 
 class cmd_upload(commands.Command):
@@ -40,6 +40,7 @@ class cmd_upload(commands.Command):
     takes_args = ['location?']
     takes_options = [
         'revision',
+        'remember',
         option.Option('full', 'Upload the full working tree.'),
         option.Option('directory',
                       help='Branch to upload from, '
@@ -49,33 +50,49 @@ class cmd_upload(commands.Command):
                       ),
        ]
 
-    def run(self, location, full=False, revision=None,
+    def run(self, location, full=False, revision=None, remember=None,
             directory=None,
             ):
         if directory is None:
             directory = u'.'
-        wt = workingtree.WorkingTree.open_containing(directory)[0]
-        self.branch = wt.branch
+        self.branch = branch.Branch.open_containing(directory)[0]
 
         if location is None:
-            # XXX: use the remembered location
-            raise NotImplementedError
-        else:
-            self.to_transport = transport.get_transport(location)
+            stored_loc = self.get_upload_location()
+            if stored_loc is None:
+                raise errors.BzrCommandError('No upload location'
+                                             ' known or specified.')
+            else:
+                display_url = urlutils.unescape_for_display(stored_loc,
+                        self.outf.encoding)
+                self.outf.write("Using saved location: %s\n" % display_url)
+                location = stored_loc
+
+        self.to_transport = transport.get_transport(location)
         if revision is None:
-            rev_id = wt.last_revision()
+            rev_id = self.branch.last_revision()
         else:
             if len(revision) != 1:
                 raise errors.BzrCommandError(
                     'bzr upload --revision takes exactly 1 argument')
             rev_id = revision[0].in_history(self.branch).rev_id
 
-        self.rev_id = rev_id
         self.tree = self.branch.repository.revision_tree(rev_id)
+        self.rev_id = rev_id
         if full:
             self.upload_full_tree()
         else:
             self.upload_tree()
+
+        # We uploaded successfully, remember it
+        if self.get_upload_location() is None or remember:
+            self.set_upload_location(self.to_transport.base)
+
+    def set_upload_location(self, location):
+        self.branch.get_config().set_user_option('upload_location', location)
+
+    def get_upload_location(self):
+        return self.branch.get_config().get_user_option('upload_location')
 
     bzr_upload_revid_file_name = '.bzr-upload.revid'
 
@@ -120,7 +137,8 @@ class cmd_upload(commands.Command):
             self.tree.unlock()
 
     def upload_tree(self):
-        # XXX: default to --full if NoSuchFile ? Add tests.
+        # XXX: errors out if NoSuchFile and recommand --full on first upload ?
+        # Add tests.
         rev_id = self.get_uploaded_revid()
         # XXX: errors out if rev_id not in branch history (probably someone
         # uploaded from a different branch).

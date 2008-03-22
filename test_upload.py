@@ -18,13 +18,21 @@ import os
 
 
 from bzrlib import (
+    branch,
     bzrdir,
     errors,
+    remote,
     revisionspec,
     tests,
     transport,
     )
-from bzrlib.tests import test_transport_implementations
+from bzrlib.smart import server as smart_server
+
+from bzrlib.tests import (
+    test_transport_implementations,
+    branch_implementations,
+    )
+
 
 from bzrlib.plugins.upload import cmd_upload
 
@@ -61,9 +69,45 @@ class TransportAdapter(
 def load_tests(standard_tests, module, loader):
     """Multiply tests for tranport implementations."""
     result = loader.suiteClass()
-    adapter = TransportAdapter()
-    for test in tests.iter_suite_tests(standard_tests):
-        result.addTests(adapter.adapt(test))
+
+    is_testing_for_transports = tests.condition_isinstance((TestUpload,))
+    transport_adapter = TransportAdapter()
+
+    is_testing_for_branches = tests.condition_isinstance(
+        (TestBranchUploadLocations,))
+    # Generate a list of branch formats and their associated bzrdir formats to
+    # use.
+    combinations = [(format, format._matchingbzrdir) for format in
+         branch.BranchFormat._formats.values() + branch._legacy_formats]
+    BTPA = branch_implementations.BranchTestProviderAdapter
+    branch_adapter = BTPA(
+        # None here will cause the default vfs transport server to be used.
+        None,
+        # None here will cause a readonly decorator to be created
+        # by the TestCaseWithTransport.get_readonly_transport method.
+        None,
+        combinations)
+    branch_adapter_for_ss = BTPA(
+        smart_server.SmartTCPServer_for_testing,
+        smart_server.ReadonlySmartTCPServer_for_testing,
+        [(remote.RemoteBranchFormat(), remote.RemoteBzrDirFormat())],
+        # XXX: Report to bzr list, this parameter is not used in the
+        # constructor
+
+        # MemoryServer
+        )
+
+    for test_class in tests.iter_suite_tests(standard_tests):
+        # Each test class is either standalone or testing for some combination
+        # of transport or branch. Use the right adpater (or none) depending on
+        # the class.
+        if is_testing_for_transports(test_class):
+            result.addTests(transport_adapter.adapt(test_class))
+        elif is_testing_for_branches(test_class):
+            result.addTests(branch_adapter.adapt(test_class))
+            result.addTests(branch_adapter_for_ss.adapt(test_class))
+        else:
+            result.addTest(test_class)
     return result
 
 
@@ -157,4 +201,28 @@ class TestUpload(tests.TestCaseWithTransport):
 
         self.assertRaises(errors.BzrCommandError,
                           self.incremental_upload, revision=[rev1, rev2])
+
+
+class TestBranchUploadLocations(branch_implementations.TestCaseWithBranch):
+
+    def test_get_upload_location_unset(self):
+        config = self.get_branch().get_config()
+        self.assertEqual(None, config.get_user_option('upload_location'))
+
+    def test_get_push_location_exact(self):
+        from bzrlib.config import (locations_config_filename,
+                                   ensure_config_dir_exists)
+        ensure_config_dir_exists()
+        fn = locations_config_filename()
+        b = self.get_branch()
+        open(fn, 'wt').write(("[%s]\n"
+                                  "upload_location=foo\n" %
+                                  b.base[:-1]))
+        config = b.get_config()
+        self.assertEqual("foo", config.get_user_option('upload_location'))
+
+    def test_set_push_location(self):
+        config = self.get_branch().get_config()
+        config.set_user_option('upload_location', 'foo')
+        self.assertEqual('foo', config.get_user_option('upload_location'))
 
