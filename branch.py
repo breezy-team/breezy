@@ -415,7 +415,6 @@ class SvnBranch(Branch):
         """See Branch.sprout()."""
         result = to_bzrdir.create_branch()
         self.copy_content_into(result, revision_id=revision_id)
-        result.set_parent(self.base)
         return result
 
     def __str__(self):
