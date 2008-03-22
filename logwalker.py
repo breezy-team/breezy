@@ -35,7 +35,7 @@ def changes_find_prev_location(paths, branch_path, revnum):
     assert isinstance(revnum, int)
     if revnum == 0:
         assert branch_path == ""
-        return
+        return None
     # If there are no special cases, just go try the 
     # next revnum in history
     revnum -= 1
@@ -59,9 +59,9 @@ def changes_find_prev_location(paths, branch_path, revnum):
         if paths[p][0] == 'M':
             continue
         if branch_path.startswith(p+"/"):
-            assert paths[p][0] in ('A', 'R'), "Parent wasn't added"
+            assert paths[p][0] in ('A', 'R'), "Parent %r wasn't added" % p
             assert paths[p][1] is not None, \
-                "Empty parent added, but child wasn't added !? %r" % paths
+                "Empty parent %r added, but child %r wasn't added !?" % (p, branch_path)
 
             revnum = paths[p][2]
             branch_path = paths[p][1].encode("utf-8") + branch_path[len(p):]
