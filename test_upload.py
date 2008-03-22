@@ -116,6 +116,16 @@ def load_tests(standard_tests, module, loader):
 
 
 class TestUploadMixin(object):
+    """Helper class to share tests between full and incremental uploads.
+
+    This class also provides helpers to simplify test writing. The emphasis is
+    on easy test writing, so each tree modification is committed. This doesn't
+    preclude writing tests spawning several revisions to upload more complex
+    changes.
+    """
+
+    upload_dir = 'upload/'
+    branch_dir = 'branch/'
 
     def make_local_branch(self):
         t = transport.get_transport('branch')
@@ -124,28 +134,46 @@ class TestUploadMixin(object):
             t.base,
             format=bzrdir.format_registry.make_bzrdir('default'),
             force_new_tree=False)
-        tree = branch.bzrdir.create_workingtree()
-        return tree
+        self.tree = branch.bzrdir.create_workingtree()
+        self.tree.commit('initial empty tree')
 
-    def build_branch_contents(self, reltree, relpath='branch/'):
-        """Build the tree content at relpath."""
-        abstree = []
-        for relitem in reltree:
-            abstree.append((relpath + relitem[0],) + relitem[1:])
-        self.build_tree_contents(abstree)
+    def assertUpFileEqual(self, content, path, base=upload_dir):
+        self.assertFileEqual(content, base + path)
 
-    def assertUpFileEqual(self, content, path, relpath='upload/'):
-        self.assertFileEqual(content, relpath + path)
+    def failIfUpFileExists(self, path, base=upload_dir):
+        self.failIfExists(base + path)
 
-    def failIfUpFileExists(self, path, relpath='upload/'):
-        self.failIfExists(relpath + path)
+    def failUnlessUpFileExists(self, path, base=upload_dir):
+        self.failUnlessExists(base + path)
 
-    def failUnlessUpFileExists(self, path, relpath='upload/'):
-        self.failUnlessExists(relpath + path)
+    def set_file_content(self, name, content, base=branch_dir):
+        f = file(base + name, 'wb')
+        try:
+            f.write(content)
+        finally:
+            f.close()
+
+    def add_file(self, name, content, base=branch_dir):
+        self.set_file_content(name, content, base)
+        self.tree.add(name)
+        self.tree.commit('add file %s' % name)
+
+    def modify_file(self, name, content, base=branch_dir):
+        self.set_file_content(name, content, base)
+        self.tree.commit('modify file %s' % name)
+
+    def add_dir(self, name, base=branch_dir):
+        os.mkdir(base + name)
+        self.tree.add(name)
+        self.tree.commit('add directory %s' % name)
+
+    def rename_any(self, old_name, new_name):
+        self.tree.rename_one(old_name, new_name)
+        self.tree.commit('rename %s into %s' % (old_name, new_name))
 
     def do_full_upload(self, *args, **kwargs):
         upload = cmd_upload()
-        up_url = self.get_transport('upload').external_url()
+        up_url = self.get_transport(self.upload_dir).external_url()
         if kwargs.get('directory', None) is None:
             kwargs['directory'] = 'branch'
         kwargs['full'] = True
@@ -153,88 +181,57 @@ class TestUploadMixin(object):
 
     def do_incremental_upload(self, *args, **kwargs):
         upload = cmd_upload()
-        up_url = self.get_transport('upload').external_url()
+        up_url = self.get_transport(self.upload_dir).external_url()
         if kwargs.get('directory', None) is None:
             kwargs['directory'] = 'branch'
         upload.run(up_url, *args, **kwargs)
 
-    def _add_hello(self, tree):
-        self.build_branch_contents([('hello', 'foo')])
-        tree.add('hello')
-        tree.commit('add hello')
-
-    def _modify_hello_add_goodbye(self, tree):
-        self.build_branch_contents([('hello', 'bar'),
-                                    ('dir/',),
-                                    ('dir/goodbye', 'baz')])
-        tree.add('dir')
-        tree.add('dir/goodbye')
-        tree.commit('modify hello, add goodbye')
-
     def test_create_file(self):
-        tree = self.make_local_branch()
+        self.make_local_branch()
         self.do_full_upload()
-        self.build_branch_contents([('hello', 'foo')])
-        tree.add('hello')
-        tree.commit('add hello')
+        self.add_file('hello', 'foo')
         self.do_upload()
 
         self.assertUpFileEqual('foo', 'hello')
 
     def test_create_file_in_subdir(self):
-        tree = self.make_local_branch()
+        self.make_local_branch()
         self.do_full_upload()
-
-        self.build_branch_contents([('dir/',),
-                                    ('dir/goodbye', 'baz')])
-        tree.add('dir')
-        tree.add('dir/goodbye')
-        tree.commit('add dir/goodbye')
+        self.add_dir('dir')
+        self.add_file('dir/goodbye', 'baz')
 
         self.failIfUpFileExists('dir/goodbye')
         self.do_upload()
         self.assertUpFileEqual('baz', 'dir/goodbye')
 
     def test_modify_file(self):
-        tree = self.make_local_branch()
-        self.build_branch_contents([('hello', 'foo')])
-        tree.add('hello')
-        tree.commit('add hello')
+        self.make_local_branch()
+        self.add_file('hello', 'foo')
         self.do_full_upload()
-
-        self.build_branch_contents([('hello', 'bar'),])
-        tree.commit('modify hello')
+        self.modify_file('hello', 'bar')
 
         self.assertUpFileEqual('foo', 'hello')
         self.do_upload()
         self.assertUpFileEqual('bar', 'hello')
 
     def test_rename_file(self):
-        tree = self.make_local_branch()
-        self.build_branch_contents([('hello', 'foo')])
-        tree.add('hello')
-        tree.commit('add hello')
+        self.make_local_branch()
+        self.add_file('hello', 'foo')
         self.do_full_upload()
-
-        tree.rename_one('hello', 'goodbye')
-        tree.commit('rename hello to goodbye')
+        self.rename_any('hello', 'goodbye')
 
         self.assertUpFileEqual('foo', 'hello')
         self.do_upload()
         self.assertUpFileEqual('foo', 'goodbye')
 
     def test_upload_revision(self):
-        tree = self.make_local_branch()
+        self.make_local_branch() # rev1
         self.do_full_upload()
-        self.build_branch_contents([('hello', 'foo')])
-        tree.add('hello')
-        tree.commit('add hello')
-
-        self.build_branch_contents([('hello', 'bar'),])
-        tree.commit('modify hello')
+        self.add_file('hello', 'foo') # rev2
+        self.modify_file('hello', 'bar') # rev3
 
         self.failIfUpFileExists('hello')
-        revspec = revisionspec.RevisionSpec.from_string('1')
+        revspec = revisionspec.RevisionSpec.from_string('2')
         self.do_upload(revision=[revspec])
         self.assertUpFileEqual('foo', 'hello')
 
@@ -252,7 +249,7 @@ class TestFullUpload(tests.TestCaseWithTransport, TestUploadMixin):
         self.failUnlessUpFileExists(upload.bzr_upload_revid_file_name)
 
     def test_invalid_revspec(self):
-        tree = self.make_local_branch()
+        self.make_local_branch()
         rev1 = revisionspec.RevisionSpec.from_string('1')
         rev2 = revisionspec.RevisionSpec.from_string('2')
 
