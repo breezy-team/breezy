@@ -28,6 +28,45 @@ from cache import sqlite3
 
 LOG_CHUNK_LIMIT = 0
 
+def changes_find_prev_location(paths, branch_path, revnum):
+    if revnum == 0:
+        assert branch_path == ""
+        return
+    # If there are no special cases, just go try the 
+    # next revnum in history
+    revnum -= 1
+
+    # Make sure we get the right location for next time, if 
+    # the branch itself was copied
+    if (paths.has_key(branch_path) and 
+        paths[branch_path][0] in ('R', 'A')):
+        if paths[branch_path][1] is None: 
+            return None # Was added here
+        revnum = paths[branch_path][2]
+        branch_path = paths[branch_path][1].encode("utf-8")
+        return (branch_path, revnum)
+    
+    # Make sure we get the right location for the next time if 
+    # one of the parents changed
+
+    # Path names need to be sorted so the longer paths 
+    # override the shorter ones
+    for p in sorted(paths.keys(), reverse=True):
+        if paths[p][0] == 'M':
+            continue
+        if branch_path.startswith(p+"/"):
+            assert paths[p][0] in ('A', 'R'), "Parent wasn't added"
+            assert paths[p][1] is not None, \
+                "Empty parent added, but child wasn't added !?"
+
+            revnum = paths[p][2]
+            branch_path = paths[p][1].encode("utf-8") + branch_path[len(p):]
+            return (branch_path, revnum)
+
+    return (branch_path, revnum)
+
+
+
 class LogWalker(object):
     """Easy way to access the history of a Subversion repository."""
     def __init__(self, transport, cache_db=None, limit=None):
@@ -144,29 +183,12 @@ class LogWalker(object):
             if revpaths != {}:
                 yield (path, copy(revpaths), revnum)
 
-            if path == "":
-                revnum -= 1
-                continue
+            next = changes_find_prev_location(revpaths, path, revnum)
 
-            if revpaths.has_key(path):
-                if revpaths[path][1] is None:
-                    if revpaths[path][0] in ('A', 'R'):
-                        # this path didn't exist before this revision
-                        return
-                else:
-                    # In this revision, this path was copied from 
-                    # somewhere else
-                    revnum = revpaths[path][2]
-                    path = revpaths[path][1]
-                    assert path == "" or revnum > 0
-                    continue
-            revnum -= 1
-            for p in sorted(revpaths.keys()):
-                if path.startswith(p+"/") and revpaths[p][0] in ('A', 'R'):
-                    assert revpaths[p][1]
-                    path = path.replace(p, revpaths[p][1])
-                    revnum = revpaths[p][2]
-                    break
+            if next is None:
+                break
+
+            (path, revnum) = next
 
     def get_revision_paths(self, revnum, path=None, recurse=False):
         """Obtain dictionary with all the changes in a particular revision.

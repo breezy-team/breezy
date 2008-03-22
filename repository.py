@@ -132,40 +132,6 @@ def changes_path(changes, path):
     return False
 
 
-def changes_find_prev_location(paths, branch_path, revnum):
-    # If there are no special cases, just go try the 
-    # next revnum in history
-    revnum -= 1
-
-    # Make sure we get the right location for next time, if 
-    # the branch itself was copied
-    if (paths.has_key(branch_path) and 
-        paths[branch_path][0] in ('R', 'A')):
-        if paths[branch_path][1] is None: 
-            return None # Was added here
-        revnum = paths[branch_path][2]
-        branch_path = paths[branch_path][1].encode("utf-8")
-        return (branch_path, revnum)
-    
-    # Make sure we get the right location for the next time if 
-    # one of the parents changed
-
-    # Path names need to be sorted so the longer paths 
-    # override the shorter ones
-    for p in sorted(paths.keys(), reverse=True):
-        if paths[p][0] == 'M':
-            continue
-        if branch_path.startswith(p+"/"):
-            assert paths[p][0] in ('A', 'R'), "Parent wasn't added"
-            assert paths[p][1] is not None, \
-                "Empty parent added, but child wasn't added !?"
-
-            revnum = paths[p][2]
-            branch_path = paths[p][1].encode("utf-8") + branch_path[len(p):]
-            return (branch_path, revnum)
-
-    return (branch_path, revnum)
-
 
 CACHE_DB_VERSION = 3
 
@@ -755,7 +721,7 @@ class SvnRepository(Repository):
             # revision there, so yield it.
             if changes_path(paths, branch_path):
                 yield (branch_path, revnum)
-            next = changes_find_prev_location(paths, branch_path, revnum)
+            next = logwalker.changes_find_prev_location(paths, branch_path, revnum)
             if next is None:
                 break
             (branch_path, revnum) = next
@@ -768,7 +734,7 @@ class SvnRepository(Repository):
         
     def follow_branch_history(self, branch_path, revnum, mapping):
         """Return all the changes that happened in a branch 
-        between branch_path and revnum. 
+        until branch_path,revnum. 
 
         :return: iterator that returns tuples with branch path, 
             changed paths and revision number.
