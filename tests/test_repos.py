@@ -133,10 +133,21 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertRaises(NotImplementedError, repos.add_revision, "revid", 
                 None)
 
-    def test_has_signature_for_revision_id(self):
+    def test_has_signature_for_revision_id_no(self):
         repos_url = self.make_client("a", "dc")
         repos = Repository.open(repos_url)
         self.assertFalse(repos.has_signature_for_revision_id("foo"))
+
+    def test_set_signature(self):
+        repos_url = self.make_client("a", "dc")
+        repos = Repository.open(repos_url)
+        self.build_tree({"dc/foo": "bar"})
+        self.client_add("dc/foo")
+        self.client_commit("dc", "msg")
+        revid = repos.get_mapping().generate_revision_id(repos.uuid, 1, "")
+        repos.add_signature_text(revid, "TEXT")
+        self.assertTrue(repos.has_signature_for_revision_id(revid))
+        self.assertEquals(repos.get_signature_text(revid), "TEXT")
 
     def test_repr(self):
         repos_url = self.make_client("a", "dc")

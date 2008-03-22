@@ -10,6 +10,8 @@ bzr-svn 0.4.9	UNRELEASED
 
    * --prefix is now determined from the specified url in svn-import. (#160335)
 
+   * Support storing revision signatures.
+
   BUGS
   
    * Fix compatibility with bzr 1.3.

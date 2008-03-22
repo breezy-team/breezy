@@ -39,7 +39,7 @@ from cache import create_cache_dir, sqlite3
 from config import SvnRepositoryConfig
 import errors
 import logwalker
-from mapping import (SVN_PROP_BZR_REVISION_ID, 
+from mapping import (SVN_PROP_BZR_REVISION_ID, SVN_REVPROP_BZR_SIGNATURE,
                      SVN_PROP_BZR_BRANCHING_SCHEME, BzrSvnMappingv3FileProps,
                      parse_revision_metadata, parse_revid_property, 
                      parse_merge_property, BzrSvnMapping,
@@ -796,10 +796,9 @@ class SvnRepository(Repository):
         :return: False, as no signatures are stored for revisions in Subversion 
             at the moment.
         """
-        # TODO: Retrieve from SVN_PROP_BZR_SIGNATURE 
-        return False # SVN doesn't store GPG signatures. Perhaps 
-                     # store in SVN revision property?
-
+        (path, revnum, mapping) = self.lookup_revision_id(revision_id)
+        revprops = self.transport.revprop_list(revnum)
+        return revprops.has_key(SVN_REVPROP_BZR_SIGNATURE)
 
     def get_signature_text(self, revision_id):
         """Return the signature text for a particular revision.
@@ -808,9 +807,16 @@ class SvnRepository(Repository):
                             signature.
         :raises NoSuchRevision: Always
         """
-        # TODO: Retrieve from SVN_PROP_BZR_SIGNATURE 
-        # SVN doesn't store GPG signatures
-        raise NoSuchRevision(self, revision_id)
+        (path, revnum, mapping) = self.lookup_revision_id(revision_id)
+        revprops = self.transport.revprop_list(revnum)
+        try:
+            return revprops[SVN_REVPROP_BZR_SIGNATURE]
+        except KeyError:
+            raise NoSuchRevision(self, revision_id)
+
+    def add_signature_text(self, revision_id, signature):
+        (path, revnum, mapping) = self.lookup_revision_id(revision_id)
+        self.transport.change_rev_prop(revnum, SVN_REVPROP_BZR_SIGNATURE, signature)
 
     def get_revision_graph(self, revision_id=None):
         """See Repository.get_revision_graph()."""
