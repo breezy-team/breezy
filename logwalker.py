@@ -15,8 +15,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Cache of the Subversion history log."""
 
-from bzrlib import urlutils
+from bzrlib import urlutils, debug
 from bzrlib.errors import NoSuchRevision
+from bzrlib.trace import mutter
 import bzrlib.ui as ui
 from copy import copy
 
@@ -29,6 +30,9 @@ from cache import sqlite3
 LOG_CHUNK_LIMIT = 0
 
 def changes_find_prev_location(paths, branch_path, revnum):
+    assert isinstance(paths, dict)
+    assert isinstance(branch_path, str)
+    assert isinstance(revnum, int)
     if revnum == 0:
         assert branch_path == ""
         return
@@ -57,7 +61,7 @@ def changes_find_prev_location(paths, branch_path, revnum):
         if branch_path.startswith(p+"/"):
             assert paths[p][0] in ('A', 'R'), "Parent wasn't added"
             assert paths[p][1] is not None, \
-                "Empty parent added, but child wasn't added !?"
+                "Empty parent added, but child wasn't added !? %r" % paths
 
             revnum = paths[p][2]
             branch_path = paths[p][1].encode("utf-8") + branch_path[len(p):]
@@ -107,6 +111,10 @@ class LogWalker(object):
             return self._transport
         self._transport = SvnRaTransport(self.url)
         return self._transport
+
+    def mutter(self, text):
+        if "cache" in debug.debug_flags:
+            mutter(text)
 
     def fetch_revisions(self, to_revnum=None):
         """Fetch information about all revisions in the remote repository
@@ -172,6 +180,8 @@ class LogWalker(object):
         if revnum == 0 and path == "":
             return
 
+        self.mutter("follow path %r:%r" % (path, revnum))
+
         recurse = (path != "")
 
         path = path.strip("/")
@@ -203,6 +213,8 @@ class LogWalker(object):
         if revnum == 0:
             assert path is None or path == ""
             return {'': ('A', None, -1)}
+
+        self.mutter("revision paths: %r" % revnum)
                 
         self.fetch_revisions(revnum)
 
@@ -231,6 +243,8 @@ class LogWalker(object):
         assert isinstance(revnum, int) and revnum >= 0
         self.fetch_revisions(revnum)
 
+        self.mutter("latest change: %r:%r" % (path, revnum))
+
         extra = ""
         if include_children:
             if path == "":
@@ -257,6 +271,7 @@ class LogWalker(object):
         :param revnum:  Revision to check
         """
         self.fetch_revisions(revnum)
+        self.mutter("touches path %r:%r" % (path, revnum))
         if revnum == 0:
             return (path == "")
         return (self.db.execute("select 1 from changed_path where path='%s' and rev=%d" % (path, revnum)).fetchone() is not None)
@@ -267,6 +282,7 @@ class LogWalker(object):
         :param path:  Path to check
         :param revnum:  Revision to check
         """
+        self.mutter("find children %r:%r" % (path, revnum))
         path = path.strip("/")
         transport = self._get_transport()
         ft = transport.check_path(path, revnum)
@@ -337,6 +353,7 @@ class LogWalker(object):
         """
         assert revnum >= 0
         self.fetch_revisions(revnum)
+        self.mutter("get previous %r:%r" % (path, revnum))
         if revnum == 0:
             return (None, -1)
         row = self.db.execute("select action, copyfrom_path, copyfrom_rev from changed_path where path='%s' and rev=%d" % (path, revnum)).fetchone()
