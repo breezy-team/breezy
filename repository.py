@@ -444,8 +444,7 @@ class SvnRepository(Repository):
             if revid is not None:
                 yield revid
 
-    def revision_parents(self, revision_id, svn_fileprops=None, 
-                         svn_revprops=None):
+    def revision_parents(self, revision_id, svn_fileprops=None, svn_revprops=None):
         """See Repository.revision_parents()."""
         parent_ids = ()
         (branch, revnum, mapping) = self.lookup_revision_id(revision_id)
@@ -467,15 +466,17 @@ class SvnRepository(Repository):
 
         return parent_ids
 
-    def get_revision(self, revision_id):
+    def get_revision(self, revision_id, svn_revprops=None, svn_fileprops=None):
         """See Repository.get_revision."""
         if not revision_id or not isinstance(revision_id, str):
             raise InvalidRevisionId(revision_id=revision_id, branch=self)
 
         (path, revnum, mapping) = self.lookup_revision_id(revision_id)
         
-        svn_revprops = lazy_dict(lambda: self.transport.revprop_list(revnum))
-        svn_fileprops = lazy_dict(lambda: self.branchprop_list.get_changed_properties(path, revnum))
+        if svn_revprops is None:
+            svn_revprops = lazy_dict(lambda: self.transport.revprop_list(revnum))
+        if svn_fileprops is None:
+            svn_fileprops = lazy_dict(lambda: self.branchprop_list.get_changed_properties(path, revnum))
         parent_ids = self.revision_parents(revision_id, svn_fileprops=svn_fileprops, svn_revprops=svn_revprops)
 
         # Commit SVN revision properties to a Revision object
@@ -546,7 +547,6 @@ class SvnRepository(Repository):
 
         # Try a simple parse
         try:
-            # FIXME: Also try to parse with the other formats..
             (uuid, branch_path, revnum, mapping) = parse_revision_id(revid)
             assert isinstance(branch_path, str)
             assert isinstance(mapping, BzrSvnMapping)

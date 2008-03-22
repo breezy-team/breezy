@@ -794,12 +794,9 @@ def parse_revision_id(revid):
     """
     if not revid.startswith("svn-"):
         raise InvalidRevisionId(revid, None)
-    try:
-        mapping_version = revid[len("svn-"):len("svn-vx")]
-        mapping = mapping_registry.get(mapping_version)
-        return mapping.parse_revision_id(revid)
-    except KeyError:
-        pass
+    mapping_version = revid[len("svn-"):len("svn-vx")]
+    mapping = mapping_registry.get(mapping_version)
+    return mapping.parse_revision_id(revid)
 
 
 def get_default_mapping():
