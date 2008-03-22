@@ -15,6 +15,8 @@
 
 """Utility functions for dealing with SVK properties."""
 
+import errors
+
 SVN_PROP_SVK_MERGE = 'svk:merge'
 
 parse_svk_features = lambda text: set(text.splitlines())
