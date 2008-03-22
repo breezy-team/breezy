@@ -378,18 +378,20 @@ class SvnRepository(Repository):
 
         return SvnRevisionTree(self, revision_id)
 
-    def revision_fileid_renames(self, revid):
+    def revision_fileid_renames(self, path, revnum, mapping,
+                                revprops=None, fileprops=None):
         """Check which files were renamed in a particular revision.
         
-        :param revid: Id of revision to look up.
+        :param path: Branch path
+        :
         :return: dictionary with paths as keys, file ids as values
         """
-        (path, revnum, mapping) = self.lookup_revision_id(revid)
+        if revprops is None:
+            revprops = lazy_dict(lambda: self._log.transport.revprop_list(revnum))
+        if fileprops is None:
+            fileprops = lazy_dict(lambda: self.branchprop_list.get_changed_properties(path, revnum))
 
-        svn_revprops = lazy_dict(lambda: self.transport.revprop_list(revnum))
-        svn_fileprops = lazy_dict(lambda: self.branchprop_list.get_changed_properties(path, revnum))
-
-        return mapping.import_fileid_map(svn_revprops, svn_fileprops)
+        return mapping.import_fileid_map(revprops, fileprops)
 
     def _mainline_revision_parent(self, path, revnum, mapping):
         """Find the mainline parent of the specified revision.

@@ -208,7 +208,7 @@ class CachingFileIdMap:
 
                 (revnum, branch) = quickrevidmap[revid]
                 (idmap, changes) = self.actual.apply_changes(self.repos.uuid, revnum, branch, 
-                                          global_changes, renames_cb(revid), mapping,
+                                          global_changes, renames_cb(branch, revnum, mapping), mapping,
                                           log_find_children)
                 pb.update('generating file id map', i, len(todo))
 

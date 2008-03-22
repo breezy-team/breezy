@@ -96,8 +96,10 @@ class RevisionBuildEditor(svn.delta.Editor):
     def start_revision(self, revid, prev_inventory):
         self.revid = revid
         (self.branch_path, self.revnum, self.mapping) = self.source.lookup_revision_id(revid)
+        self.svn_revprops = self.source._log._get_transport().revprop_list(self.revnum)
         changes = self.source._log.get_revision_paths(self.revnum, self.branch_path)
-        renames = self.source.revision_fileid_renames(revid)
+        renames = self.source.revision_fileid_renames(self.branch_path, self.revnum, self.mapping, 
+                                                      revprops=self.svn_revprops)
         self.id_map = self.source.transform_fileid_map(self.source.uuid, 
                               self.revnum, self.branch_path, changes, renames, 
                               self.mapping)
@@ -124,10 +126,9 @@ class RevisionBuildEditor(svn.delta.Editor):
         # Commit SVN revision properties to a Revision object
         rev = Revision(revision_id=revid, parent_ids=self._get_parent_ids())
 
-        svn_revprops = self.source._log._get_transport().revprop_list(self.revnum)
-        self.mapping.import_revision(svn_revprops, self._branch_fileprops, rev)
+        self.mapping.import_revision(self.svn_revprops, self._branch_fileprops, rev)
 
-        signature = svn_revprops.get(SVN_REVPROP_BZR_SIGNATURE)
+        signature = self.svn_revprops.get(SVN_REVPROP_BZR_SIGNATURE)
 
         return (rev, signature)
 
