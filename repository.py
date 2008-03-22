@@ -120,6 +120,53 @@ class SvnRepositoryFormat(RepositoryFormat):
     def check_conversion_target(self, target_repo_format):
         return target_repo_format.rich_root_data
 
+
+def changes_path(changes, path):
+    """Check if one of the specified changes applies 
+    to path or one of its children.
+    """
+    for p in changes:
+        assert isinstance(p, str)
+        if p == path or p.startswith(path+"/") or path == "":
+            return True
+    return False
+
+
+def changes_find_prev_location(paths, branch_path, revnum):
+    # If there are no special cases, just go try the 
+    # next revnum in history
+    revnum -= 1
+
+    # Make sure we get the right location for next time, if 
+    # the branch itself was copied
+    if (paths.has_key(branch_path) and 
+        paths[branch_path][0] in ('R', 'A')):
+        if paths[branch_path][1] is None: 
+            return None # Was added here
+        revnum = paths[branch_path][2]
+        branch_path = paths[branch_path][1].encode("utf-8")
+        return (branch_path, revnum)
+    
+    # Make sure we get the right location for the next time if 
+    # one of the parents changed
+
+    # Path names need to be sorted so the longer paths 
+    # override the shorter ones
+    for p in sorted(paths.keys(), reverse=True):
+        if paths[p][0] == 'M':
+            continue
+        if branch_path.startswith(p+"/"):
+            assert paths[p][0] in ('A', 'R'), "Parent wasn't added"
+            assert paths[p][1] is not None, \
+                "Empty parent added, but child wasn't added !?"
+
+            revnum = paths[p][2]
+            branch_path = paths[p][1].encode("utf-8") + branch_path[len(p):]
+            return (branch_path, revnum)
+
+    return (branch_path, revnum)
+
+
 CACHE_DB_VERSION = 3
 
 cachedbs = {}
@@ -704,57 +751,21 @@ class SvnRepository(Repository):
             assert revnum > 0 or branch_path == ""
             paths = self._log.get_revision_paths(revnum)
 
-            yielded = False
             # If something underneath branch_path changed, there is a 
             # revision there, so yield it.
-            for p in paths:
-                assert isinstance(p, str)
-                if (p == branch_path or 
-                    p.startswith(branch_path+"/") or 
-                    branch_path == ""):
-                    yield (branch_path, revnum)
-                    yielded = True
-                    break
-            
-            # If there are no special cases, just go try the 
-            # next revnum in history
-            revnum -= 1
-
-            # Make sure we get the right location for next time, if 
-            # the branch itself was copied
-            if (paths.has_key(branch_path) and 
-                paths[branch_path][0] in ('R', 'A')):
-                if not yielded:
-                    yield (branch_path, revnum+1)
-                if paths[branch_path][1] is None:
-                    return
-                if not mapping.is_branch(paths[branch_path][1]) and \
-                   not mapping.is_tag(paths[branch_path][1]):
-                    # FIXME: if copyfrom_path is not a branch path, 
-                    # should simulate a reverse "split" of a branch
-                    # for now, just make it look like the branch ended here
-                    return
-                revnum = paths[branch_path][2]
-                branch_path = paths[branch_path][1].encode("utf-8")
-                continue
-            
-            # Make sure we get the right location for the next time if 
-            # one of the parents changed
-
-            # Path names need to be sorted so the longer paths 
-            # override the shorter ones
-            for p in sorted(paths.keys(), reverse=True):
-                if paths[p][0] == 'M':
-                    continue
-                if branch_path.startswith(p+"/"):
-                    assert paths[p][0] in ('A', 'R'), "Parent wasn't added"
-                    assert paths[p][1] is not None, \
-                        "Empty parent added, but child wasn't added !?"
-
-                    revnum = paths[p][2]
-                    branch_path = paths[p][1].encode("utf-8") + branch_path[len(p):]
-                    break
-
+            if changes_path(paths, branch_path):
+                yield (branch_path, revnum)
+            next = changes_find_prev_location(paths, branch_path, revnum)
+            if next is None:
+                break
+            (branch_path, revnum) = next
+            if not mapping.is_branch(branch_path) and \
+               not mapping.is_tag(branch_path):
+                # FIXME: if copyfrom_path is not a branch path, 
+                # should simulate a reverse "split" of a branch
+                # for now, just make it look like the branch ended here
+                break
+        
     def follow_branch_history(self, branch_path, revnum, mapping):
         """Return all the changes that happened in a branch 
         between branch_path and revnum. 

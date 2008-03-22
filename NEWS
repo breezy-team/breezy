@@ -20,6 +20,8 @@ bzr-svn 0.4.9	UNRELEASED
 
    * More correct implementation of Repository.get_ancestry(). 
 
+   * Properly use current branching scheme when following branches. (#183361)
+
   INTERNALS
 
    * Allow multiple mappings to be available at the same time.

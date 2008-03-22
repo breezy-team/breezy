@@ -139,7 +139,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
     def test_get_parent(self):
         repos_url = self.make_client('a', 'dc')
         branch = Branch.open("svn+"+repos_url)
-        self.assertEqual("svn+"+repos_url, branch.get_parent())
+        self.assertEqual(None, branch.get_parent())
 
     def test_append_revision(self):
         repos_url = self.make_client('a', 'dc')
