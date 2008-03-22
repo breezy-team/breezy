@@ -23,12 +23,8 @@ The intended use is for web sites.
 """
 
 from bzrlib import (
-    branch,
     commands,
-    errors,
     option,
-    revisionspec,
-    transport,
     )
 
 class cmd_upload(commands.Command):
@@ -53,6 +49,15 @@ class cmd_upload(commands.Command):
     def run(self, location, full=False, revision=None, remember=None,
             directory=None,
             ):
+        # Import the needed modules but only once we are required to run to
+        # avoid degrading bzr startup time
+        from bzrlib import (
+            branch,
+            errors,
+            revisionspec,
+            transport,
+            )
+
         if directory is None:
             directory = u'.'
         self.branch = branch.Branch.open_containing(directory)[0]
@@ -111,7 +116,8 @@ class cmd_upload(commands.Command):
         self.to_transport.mkdir(relpath)
 
     def upload_full_tree(self):
-        self.to_transport.ensure_base() # XXX: Handle errors
+        self.to_transport.ensure_base() # XXX: Handle errors (add
+                                        # --create-prefix option ?)
         self.tree.lock_read()
         try:
             for dp, ie in self.tree.inventory.iter_entries():
@@ -142,11 +148,16 @@ class cmd_upload(commands.Command):
         # XXX: errors out if rev_id not in branch history (probably someone
         # uploaded from a different branch).
         from_tree = self.branch.repository.revision_tree(rev_id)
-        self.to_transport.ensure_base() # XXX: Handle errors
+        self.to_transport.ensure_base() # XXX: Handle errors (add
+                                        # --create-prefix option ?)
         changes = self.tree.changes_from(from_tree)
         self.tree.lock_read()
         try:
-            # XXX: handle removed, renamed, kind_changed
+            # XXX: handle removed, kind_changed
+            for (old_path, new_path, id, kind,
+                 content_change, exec_change) in changes.renamed:
+                # XXX: This may fail if some renames involded the same names
+                self.to_transport.rename(old_path, new_path)
             for (path, id, kind) in changes.added:
                 if kind is 'file':
                     self.upload_file(path, id)

@@ -70,13 +70,17 @@ def load_tests(standard_tests, module, loader):
     """Multiply tests for tranport implementations."""
     result = loader.suiteClass()
 
-    is_testing_for_transports = tests.condition_isinstance((TestUpload,))
+    is_testing_for_transports = tests.condition_isinstance(
+        (TestFullUpload,
+         TestIncrementalUpload,))
     transport_adapter = TransportAdapter()
 
     is_testing_for_branches = tests.condition_isinstance(
         (TestBranchUploadLocations,))
     # Generate a list of branch formats and their associated bzrdir formats to
     # use.
+    # XXX: This was copied from bzrlib.tests.branch_implementations.tests_suite
+    # and need to be shared in a better way.
     combinations = [(format, format._matchingbzrdir) for format in
          branch.BranchFormat._formats.values() + branch._legacy_formats]
     BTPA = branch_implementations.BranchTestProviderAdapter
@@ -111,7 +115,7 @@ def load_tests(standard_tests, module, loader):
     return result
 
 
-class TestUpload(tests.TestCaseWithTransport):
+class TestUploadMixin(object):
 
     def make_local_branch(self):
         t = transport.get_transport('branch')
@@ -139,7 +143,7 @@ class TestUpload(tests.TestCaseWithTransport):
     def failUnlessUpFileExists(self, path, relpath='upload/'):
         self.failUnlessExists(relpath + path)
 
-    def full_upload(self, *args, **kwargs):
+    def do_full_upload(self, *args, **kwargs):
         upload = cmd_upload()
         up_url = self.get_transport('upload').external_url()
         if kwargs.get('directory', None) is None:
@@ -147,7 +151,7 @@ class TestUpload(tests.TestCaseWithTransport):
         kwargs['full'] = True
         upload.run(up_url, *args, **kwargs)
 
-    def incremental_upload(self, *args, **kwargs):
+    def do_incremental_upload(self, *args, **kwargs):
         upload = cmd_upload()
         up_url = self.get_transport('upload').external_url()
         if kwargs.get('directory', None) is None:
@@ -161,57 +165,104 @@ class TestUpload(tests.TestCaseWithTransport):
 
     def _modify_hello_add_goodbye(self, tree):
         self.build_branch_contents([('hello', 'bar'),
-                                  ('dir/',),
-                                  ('dir/goodbye', 'baz')])
+                                    ('dir/',),
+                                    ('dir/goodbye', 'baz')])
         tree.add('dir')
         tree.add('dir/goodbye')
         tree.commit('modify hello, add goodbye')
 
+    def test_create_file(self):
+        tree = self.make_local_branch()
+        self.do_full_upload()
+        self.build_branch_contents([('hello', 'foo')])
+        tree.add('hello')
+        tree.commit('add hello')
+        self.do_upload()
+
+        self.assertUpFileEqual('foo', 'hello')
+
+    def test_create_file_in_subdir(self):
+        tree = self.make_local_branch()
+        self.do_full_upload()
+
+        self.build_branch_contents([('dir/',),
+                                    ('dir/goodbye', 'baz')])
+        tree.add('dir')
+        tree.add('dir/goodbye')
+        tree.commit('add dir/goodbye')
+
+        self.failIfUpFileExists('dir/goodbye')
+        self.do_upload()
+        self.assertUpFileEqual('baz', 'dir/goodbye')
+
+    def test_modify_file(self):
+        tree = self.make_local_branch()
+        self.build_branch_contents([('hello', 'foo')])
+        tree.add('hello')
+        tree.commit('add hello')
+        self.do_full_upload()
+
+        self.build_branch_contents([('hello', 'bar'),])
+        tree.commit('modify hello')
+
+        self.assertUpFileEqual('foo', 'hello')
+        self.do_upload()
+        self.assertUpFileEqual('bar', 'hello')
+
+    def test_rename_file(self):
+        tree = self.make_local_branch()
+        self.build_branch_contents([('hello', 'foo')])
+        tree.add('hello')
+        tree.commit('add hello')
+        self.do_full_upload()
+
+        tree.rename_one('hello', 'goodbye')
+        tree.commit('rename hello to goodbye')
+
+        self.assertUpFileEqual('foo', 'hello')
+        self.do_upload()
+        self.assertUpFileEqual('foo', 'goodbye')
+
+    def test_upload_revision(self):
+        tree = self.make_local_branch()
+        self.do_full_upload()
+        self.build_branch_contents([('hello', 'foo')])
+        tree.add('hello')
+        tree.commit('add hello')
+
+        self.build_branch_contents([('hello', 'bar'),])
+        tree.commit('modify hello')
+
+        self.failIfUpFileExists('hello')
+        revspec = revisionspec.RevisionSpec.from_string('1')
+        self.do_upload(revision=[revspec])
+        self.assertUpFileEqual('foo', 'hello')
+
+
+class TestFullUpload(tests.TestCaseWithTransport, TestUploadMixin):
+
+    do_upload = TestUploadMixin.do_full_upload
+
     def test_full_upload_empty_tree(self):
         self.make_local_branch()
 
-        self.full_upload()
+        self.do_full_upload()
 
         upload = cmd_upload()
         self.failUnlessUpFileExists(upload.bzr_upload_revid_file_name)
-
-    def test_full_upload(self):
-        tree = self.make_local_branch()
-        self._add_hello(tree)
-        self._modify_hello_add_goodbye(tree)
-
-        self.full_upload()
-
-        self.assertUpFileEqual('bar', 'hello')
-        self.assertUpFileEqual('baz', 'dir/goodbye')
-
-    def test_incremental_upload(self):
-        tree = self.make_local_branch()
-        self._add_hello(tree)
-        self._modify_hello_add_goodbye(tree)
-
-        # Upload revision 1 only
-        revspec = revisionspec.RevisionSpec.from_string('1')
-        self.full_upload(revision=[revspec])
-
-        self.assertUpFileEqual('foo', 'hello')
-        self.failIfUpFileExists('upload/dir/goodbye')
-
-        # Upload current revision
-        self.incremental_upload()
-
-        self.assertUpFileEqual('bar', 'hello')
-        self.assertUpFileEqual('baz', 'dir/goodbye')
 
     def test_invalid_revspec(self):
         tree = self.make_local_branch()
         rev1 = revisionspec.RevisionSpec.from_string('1')
         rev2 = revisionspec.RevisionSpec.from_string('2')
 
-        self.full_upload()
-
         self.assertRaises(errors.BzrCommandError,
-                          self.incremental_upload, revision=[rev1, rev2])
+                          self.do_incremental_upload, revision=[rev1, rev2])
+
+
+class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
+
+    do_upload = TestUploadMixin.do_incremental_upload
 
 
 class TestBranchUploadLocations(branch_implementations.TestCaseWithBranch):
