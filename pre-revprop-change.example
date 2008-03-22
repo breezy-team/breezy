@@ -17,7 +17,9 @@ ACTION="$5"
 
 if [ "$ACTION" = "M" -a "$PROPNAME" = "svn:log" ]; then exit 0; fi
 
-# Allow adding bzr-svm revision properties:
+if [ "$ACTION" = "M" -a "$PROPNAME" = "bzr:gpg-signature" ]; then exit 0; fi
+
+# Allow adding bzr-svn revision properties:
 if [ "$ACTION" = "A" -a "`echo "$PROPNAME" | cut -d : -f 1`" = "bzr" ]; then exit 0; fi
 
 echo "Changing revision properties other than svn:log or bzr:* is prohibited" >&2
