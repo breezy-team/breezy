@@ -148,6 +148,12 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         rev.kind = svn.core.svn_opt_revision_number
         rev.value.number = revnum
         return svn.client.revprop_get(name, url, rev, self.client_ctx)[0]
+
+    def client_set_revprop(self, url, revnum, name, value):
+        rev = svn.core.svn_opt_revision_t()
+        rev.kind = svn.core.svn_opt_revision_number
+        rev.value.number = revnum
+        svn.client.revprop_set(name, value, url, rev, True, self.client_ctx)
         
     def client_commit(self, dir, message=None, recursive=True):
         """Commit current changes in specified working copy.

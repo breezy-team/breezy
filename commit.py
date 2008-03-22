@@ -713,6 +713,8 @@ def push(target, source, revision_id):
     except ChangesRootLHSHistory:
         raise BzrError("Unable to push revision %r because it would change the ordering of existing revisions on the Subversion repository root. Use rebase and try again or push to a non-root path" % revision_id)
 
+    # FIXME: copy revisions signature
+
     if 'validate' in debug.debug_flags:
         crev = target.repository.get_revision(revision_id)
         ctree = target.repository.revision_tree(revision_id)
@@ -776,6 +778,8 @@ class InterToSvnRepository(InterRepository):
                              
                 replay_delta(builder, base_tree, old_tree)
                 builder.commit(rev.message)
+
+                # FIXME: Copy revision signature for rev
         finally:
             self.source.unlock()
  

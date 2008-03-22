@@ -32,7 +32,8 @@ from bzrlib.plugins.svn.errors import InvalidFileName
 from mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_MERGE, 
                      SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVISION_INFO, 
                      SVN_PROP_BZR_BRANCHING_SCHEME, SVN_PROP_BZR_REVISION_ID,
-                     SVN_PROP_BZR_FILEIDS, parse_merge_property,
+                     SVN_PROP_BZR_FILEIDS, SVN_REVPROP_BZR_SIGNATURE,
+                     parse_merge_property,
                      parse_revision_metadata)
 from repository import (SvnRepository, SvnRepositoryFormat)
 from svk import SVN_PROP_SVK_MERGE
@@ -126,7 +127,9 @@ class RevisionBuildEditor(svn.delta.Editor):
         svn_revprops = self.source._log._get_transport().revprop_list(self.revnum)
         self.mapping.import_revision(svn_revprops, self._branch_fileprops, rev)
 
-        return rev
+        signature = svn_revprops.get(SVN_REVPROP_BZR_SIGNATURE)
+
+        return (rev, signature)
 
     def open_root(self, base_revnum, baton):
         if self.old_inventory.root is None:
@@ -452,13 +455,15 @@ class WeaveRevisionBuildEditor(RevisionBuildEditor):
             file_weave.add_lines(self.revid, parents, lines)
 
     def _finish_commit(self):
-        rev = self._get_revision(self.revid)
+        (rev, signature) = self._get_revision(self.revid)
         self.inventory.revision_id = self.revid
         # Escaping the commit message is really the task of the serialiser
         rev.message = _escape_commit_message(rev.message)
         rev.inventory_sha1 = osutils.sha_string(
                 self.target.serialise_inventory(self.inventory))
         self.target.add_revision(self.revid, rev, self.inventory)
+        if signature is not None:
+            self.target.add_signature_text(self.revid, signature)
         self.target.commit_write_group()
         self._write_group_active = False
 
