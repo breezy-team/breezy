@@ -21,7 +21,7 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import (NoSuchFile, DivergedBranches, NoSuchRevision, 
                            NotBranchError)
 from bzrlib.inventory import (Inventory)
-from bzrlib.revision import ensure_null
+from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.workingtree import WorkingTree
 
 import svn.client, svn.core
@@ -200,12 +200,7 @@ class SvnBranch(Branch):
        
     def _generate_revision_history(self, last_revnum):
         """Generate the revision history up until a specified revision."""
-        revhistory = []
-        for (branch, rev) in self.repository.follow_branch(
-                self.get_branch_path(last_revnum), last_revnum, self.mapping):
-            revhistory.append(
-                self.repository.generate_revision_id(rev, branch, 
-                    self.mapping))
+        revhistory = list(self.repository.iter_lhs_ancestry(self.generate_revision_id(last_revnum)))
         revhistory.reverse()
         return revhistory
 
@@ -401,7 +396,7 @@ class SvnBranch(Branch):
 
     def get_parent(self):
         """See Branch.get_parent()."""
-        return self.base
+        return None
 
     def set_parent(self, url):
         """See Branch.set_parent()."""
@@ -420,6 +415,7 @@ class SvnBranch(Branch):
         """See Branch.sprout()."""
         result = to_bzrdir.create_branch()
         self.copy_content_into(result, revision_id=revision_id)
+        result.set_parent(self.base)
         return result
 
     def __str__(self):

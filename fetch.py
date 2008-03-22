@@ -558,15 +558,11 @@ class InterFromSvnRepository(InterRepository):
         """
         needed = []
         parents = {}
-        (path, until_revnum, mapping) = self.source.lookup_revision_id(revision_id)
 
         prev_revid = None
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            for (branch, revnum) in self.source.follow_branch(path, 
-                                                              until_revnum, mapping):
-                pb.update("determining revisions to fetch", until_revnum-revnum, until_revnum)
-                revid = self.source.generate_revision_id(revnum, branch, mapping)
+            for revid in self.source.iter_lhs_ancestry(revision_id, pb):
 
                 if prev_revid is not None:
                     parents[prev_revid] = revid

@@ -678,6 +678,13 @@ class SvnRepository(Repository):
                     pass
             revnum -= 1
 
+    def iter_lhs_ancestry(self, revid, pb=None):
+        (branch_path, revnum, mapping) = self.lookup_revision_id(revid)
+        for (bp, rev) in self.follow_branch(branch_path, revnum, mapping):
+            if pb is not None:
+                pb.update("determining revision ancestry", revnum-rev, revnum)
+            yield self.generate_revision_id(rev, bp, mapping)
+
     def follow_branch(self, branch_path, revnum, mapping):
         """Follow the history of a branch. Will yield all the 
         left-hand side ancestors of a specified revision.
@@ -796,7 +803,10 @@ class SvnRepository(Repository):
         :return: False, as no signatures are stored for revisions in Subversion 
             at the moment.
         """
-        (path, revnum, mapping) = self.lookup_revision_id(revision_id)
+        try:
+            (path, revnum, mapping) = self.lookup_revision_id(revision_id)
+        except NoSuchRevision:
+            return False
         revprops = self.transport.revprop_list(revnum)
         return revprops.has_key(SVN_REVPROP_BZR_SIGNATURE)
 
