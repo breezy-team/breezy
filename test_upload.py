@@ -162,6 +162,10 @@ class TestUploadMixin(object):
         self.set_file_content(name, content, base)
         self.tree.commit('modify file %s' % name)
 
+    def delete_any(self, name, base=branch_dir):
+        self.tree.remove([name], keep_files=False)
+        self.tree.commit('delete %s' % name)
+
     def add_dir(self, name, base=branch_dir):
         os.mkdir(base + name)
         self.tree.add(name)
@@ -276,6 +280,18 @@ class TestFullUpload(tests.TestCaseWithTransport, TestUploadMixin):
 class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
 
     do_upload = TestUploadMixin.do_incremental_upload
+
+    # Note that full upload doesn't handle deletions....
+
+    def test_delete_one_file(self):
+        self.make_local_branch()
+        self.add_file('hello', 'foo')
+        self.do_full_upload()
+        self.delete_any('hello')
+
+        self.assertUpFileEqual('foo', 'hello')
+        self.do_upload()
+        self.failIfUpFileExists('hello')
 
 
 class TestBranchUploadLocations(branch_implementations.TestCaseWithBranch):

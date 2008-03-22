@@ -16,11 +16,24 @@
 
 """Upload a working tree, incrementally.
 
-The only bzr-related info uploaded with the working tree is the corrseponding
+The only bzr-related info uploaded with the working tree is the corresponding
 revision id. The uploaded working tree is not linked to any other bzr data.
 
-The intended use is for web sites.
+The intended use is for web developers with no shell access on their web site
+forced to used FTP or SFTP to upload thei site content.
+
+Known limitations:
+- Symlinks are ignored,
+
+- chmod bits are not supported.
 """
+
+# TODO: the chmod bits *can* be supported via the upload protocols
+# (i.e. poorly), but since the web developers use these protocols to upload
+# manually, it is expected that the associated web server is coherent with
+# their presence/absence. In other words, if a web hosting provider requires
+# chmod bits but don't provide an ftp server that support them, well, better
+# find another provider ;-)
 
 from bzrlib import (
     commands,
@@ -117,6 +130,9 @@ class cmd_upload(commands.Command):
         # XXX: handle mode
         self.to_transport.mkdir(relpath)
 
+    def delete_remote_any(self, relpath):
+        self.to_transport.delete(relpath)
+
     def rename_remote(self, old_relpath, new_relpath):
         """Rename a remote file or directory taking care of collisions.
 
@@ -155,7 +171,9 @@ class cmd_upload(commands.Command):
                     # .bzrignore has no meaning outside of a working tree
                     # so do not upload it
                     continue
-
+                # XXX: We need to be more robust in case we upload on top of an
+                # existing tree which may contains existing files or dirs whose
+                # names will make attempts to upload dirs or files fail.
                 if ie.kind == 'file':
                     self.upload_file(dp, ie.file_id)
                 elif ie.kind == 'directory':
@@ -171,8 +189,8 @@ class cmd_upload(commands.Command):
             self.tree.unlock()
 
     def upload_tree(self):
-        # XXX: errors out if NoSuchFile and recommand --full on first upload ?
-        # Add tests.
+        # XXX: if we get NoSuchFile shoudl we consider it the first upload ever
+        # and upload changes since the first revision ?  Add tests.
         rev_id = self.get_uploaded_revid()
         # XXX: errors out if rev_id not in branch history (probably someone
         # uploaded from a different branch).
@@ -182,7 +200,13 @@ class cmd_upload(commands.Command):
         changes = self.tree.changes_from(from_tree)
         self.tree.lock_read()
         try:
-            # XXX: handle removed, kind_changed
+            # XXX: handle kind_changed
+            for (path, id, kind) in changes.removed:
+                if kind is 'file':
+                    self.delete_remote_any(path)
+                # XXX: handle dirs
+                else:
+                    raise NotImplementedError
             for (old_path, new_path, id, kind,
                  content_change, exec_change) in changes.renamed:
                 self.rename_remote(old_path, new_path)
