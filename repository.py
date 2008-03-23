@@ -442,7 +442,7 @@ class SvnRepository(Repository):
         parents_list = []
         for revision_id in revids:
             if revision_id == NULL_REVISION:
-                parents = []
+                parents = ()
             else:
                 try:
                     parents = self.revision_parents(revision_id)
@@ -450,7 +450,7 @@ class SvnRepository(Repository):
                     parents = None
                 else:
                     if len(parents) == 0:
-                        parents = [NULL_REVISION]
+                        parents = (NULL_REVISION,)
             parents_list.append(parents)
         return parents_list
 
@@ -705,12 +705,9 @@ class SvnRepository(Repository):
                     pass
             revnum -= 1
 
-    def iter_lhs_ancestry(self, revid, pb=None):
+    def get_lhs_parent(self, revid):
         (branch_path, revnum, mapping) = self.lookup_revision_id(revid)
-        for (bp, rev) in self.follow_branch(branch_path, revnum, mapping):
-            if pb is not None:
-                pb.update("determining revision ancestry", revnum-rev, revnum)
-            yield self.generate_revision_id(rev, bp, mapping)
+        return lhs_revision_parent(branch_path, revnum, mapping)
 
     def follow_branch(self, branch_path, revnum, mapping):
         """Follow the history of a branch. Will yield all the 

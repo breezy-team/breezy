@@ -14,8 +14,21 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from bzrlib import graph
+from bzrlib.revision import NULL_REVISION
 
 class Graph(graph.Graph):
     def __init__(self, parents_provider):
         graph.Graph.__init__(self, parents_provider)
+        if hasattr(parents_provider, "get_lhs_parent"):
+            self.get_lhs_parent = parents_provider.get_lhs_parent
 
+    def get_lhs_parent(self, revid):
+        parents = self.get_parent_map([revid])[revid]
+        if parents == () or parents == (NULL_REVISION,):
+            return None
+        return parents[0]
+
+    def iter_lhs_ancestry(self, revid):
+        while revid is not None:
+            yield revid
+            revid = self.get_lhs_parent(revid)

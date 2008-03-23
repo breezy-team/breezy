@@ -201,9 +201,7 @@ class SvnBranch(Branch):
        
     def _generate_revision_history(self, last_revnum):
         """Generate the revision history up until a specified revision."""
-        revhistory = list(self.repository.get_graph().iter_lhs_ancestry(self.generate_revision_id(last_revnum)))
-        revhistory.reverse()
-        return revhistory
+        return list(reversed(self.repository.get_graph().iter_lhs_ancestry(self.generate_revision_id(last_revnum))))
 
     def _get_nick(self):
         """Find the nick name for this branch.

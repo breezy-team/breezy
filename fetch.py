@@ -558,21 +558,17 @@ class InterFromSvnRepository(InterRepository):
         parents = {}
 
         prev_revid = None
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
-            for revid in self.source.iter_lhs_ancestry(revision_id, pb):
+        for revid in self.source.get_graph().iter_ancestry(revision_id):
 
-                if prev_revid is not None:
-                    parents[prev_revid] = revid
+            if prev_revid is not None:
+                parents[prev_revid] = revid
 
-                prev_revid = revid
+            prev_revid = revid
 
-                if not self.target.has_revision(revid):
-                    needed.append(revid)
-                elif not find_ghosts:
-                    break
-        finally:
-            pb.finished()
+            if not self.target.has_revision(revid):
+                needed.append(revid)
+            elif not find_ghosts:
+                break
 
         parents[prev_revid] = None
         needed.reverse()
