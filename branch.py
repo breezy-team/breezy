@@ -75,8 +75,11 @@ class SvnBranch(Branch):
         self._branch_path = branch_path.strip("/")
         assert isinstance(self._branch_path, str)
         try:
+            revnum = self.get_revnum()
+            if revnum is None:
+                raise NotBranchError(self.base)
             if self.repository.transport.check_path(branch_path.strip("/"), 
-                self.get_revnum()) != svn.core.svn_node_dir:
+                revnum) != svn.core.svn_node_dir:
                 raise NotBranchError(self.base)
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
@@ -201,7 +204,9 @@ class SvnBranch(Branch):
        
     def _generate_revision_history(self, last_revnum):
         """Generate the revision history up until a specified revision."""
-        return list(reversed(self.repository.get_graph().iter_lhs_ancestry(self.generate_revision_id(last_revnum))))
+        hist = list(self.repository.get_graph().iter_lhs_ancestry(self.generate_revision_id(last_revnum)))
+        hist.reverse()
+        return hist
 
     def _get_nick(self):
         """Find the nick name for this branch.
