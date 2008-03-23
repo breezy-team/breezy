@@ -47,6 +47,10 @@ IN DEVELOPMENT
 
   API BREAKS:
 
+    * Log formatters must now provide log_revision instead of
+      show and show_merge_revno methods. The latter had been
+      deprecated since the 0.17 release. (James Westby)
+
   TESTING:
 
   INTERNALS:
@@ -189,10 +193,6 @@ features have been added.
     * Support for loading plugins from zip files and
       ``bzrlib.plugin.load_from_zip()`` function are deprecated.
       (Alexander Belchenko)
-
-    * Log formatters must now provide log_revision instead of
-      show and show_merge_revno methods. The latter had been
-      deprecated since the 0.17 release.
 
   TESTING:
 

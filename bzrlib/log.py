@@ -217,8 +217,7 @@ def _show_log(branch,
     if direction == 'reverse':
         start_rev_id, end_rev_id = end_rev_id, start_rev_id
         
-    generate_merge_revisions = getattr(lf, 'supports_merge_revisions', 
-                                       False)
+    generate_merge_revisions = getattr(lf, 'supports_merge_revisions', False)
     generate_single_revision = False
     if ((not generate_merge_revisions)
         and ((start_rev_id and (start_rev_id not in rev_nos))
