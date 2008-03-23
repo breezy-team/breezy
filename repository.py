@@ -15,8 +15,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Subversion repository access."""
 
-import bzrlib, bzrlib.xml5
-from bzrlib import osutils, ui, urlutils
+import bzrlib
+from bzrlib import osutils, ui, urlutils, xml5
 from bzrlib.branch import Branch, BranchCheckResult
 from bzrlib.errors import (InvalidRevisionId, NoSuchRevision, NotBranchError, 
                            UninitializableFormat, UnrelatedBranches)
@@ -160,7 +160,7 @@ class SvnRepository(Repository):
         assert self.uuid is not None
         self.base = transport.base
         assert self.base is not None
-        self._serializer = None
+        self._serializer = xml5.serializer_v5
         self.dir_cache = {}
         self.pool = Pool()
         self.get_config().add_location(self.base)
@@ -660,8 +660,7 @@ class SvnRepository(Repository):
 
     def get_inventory_xml(self, revision_id):
         """See Repository.get_inventory_xml()."""
-        return bzrlib.xml5.serializer_v5.write_inventory_to_string(
-            self.get_inventory(revision_id))
+        return self.serialise_inventory(self.get_inventory(revision_id))
 
     def get_inventory_sha1(self, revision_id):
         """Get the sha1 for the XML representation of an inventory.
@@ -679,7 +678,7 @@ class SvnRepository(Repository):
         :param revision_id: Revision for which to return the XML.
         :return: XML string
         """
-        return bzrlib.xml5.serializer_v5.write_revision_to_string(
+        return self._serializer.write_revision_to_string(
             self.get_revision(revision_id))
 
     def follow_history(self, revnum, mapping):
