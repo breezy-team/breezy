@@ -31,6 +31,9 @@ IN DEVELOPMENT
     * Merge is faster.  We no longer check a file's existence unnecessarily
       when merging the execute bit.  (Aaron Bentley)
 
+    * Diff is now more specific about execute-bit changes it describes
+      (Chad Miller)
+
   BUGFIXES:
 
     * ``bzr mv a b`` can be now used also to rename previously renamed
