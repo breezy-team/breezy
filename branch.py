@@ -204,7 +204,7 @@ class SvnBranch(Branch):
        
     def _generate_revision_history(self, last_revnum):
         """Generate the revision history up until a specified revision."""
-        hist = list(self.repository.get_graph().iter_lhs_ancestry(self.generate_revision_id(last_revnum)))
+        hist = [revid for (revid, parent_revid) in self.repository.get_graph().iter_lhs_ancestry(self.generate_revision_id(last_revnum))]
         hist.reverse()
         return hist
 

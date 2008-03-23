@@ -20,7 +20,6 @@ from bzrlib import osutils, ui, urlutils, xml5
 from bzrlib.branch import Branch, BranchCheckResult
 from bzrlib.errors import (InvalidRevisionId, NoSuchRevision, NotBranchError, 
                            UninitializableFormat, UnrelatedBranches)
-from bzrlib.graph import CachingParentsProvider
 from bzrlib.inventory import Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.repository import Repository, RepositoryFormat
@@ -38,7 +37,7 @@ from branchprops import PathPropertyProvider
 from cache import create_cache_dir, sqlite3
 from config import SvnRepositoryConfig
 import errors
-from graph import Graph
+from graph import Graph, CachingParentsProvider
 import logwalker
 from mapping import (SVN_PROP_BZR_REVISION_ID, SVN_REVPROP_BZR_SIGNATURE,
                      SVN_PROP_BZR_BRANCHING_SCHEME, BzrSvnMappingv3FileProps,
@@ -451,7 +450,7 @@ class SvnRepository(Repository):
                 else:
                     if len(parents) == 0:
                         parents = (NULL_REVISION,)
-                parent_map[revision_id] = parents
+                    parent_map[revision_id] = parents
         return parent_map
 
     def _svk_merged_revisions(self, branch, revnum, mapping, 

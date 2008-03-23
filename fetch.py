@@ -556,11 +556,12 @@ class InterFromSvnRepository(InterRepository):
         needed = []
         parents = {}
 
-        for (revid, parent_revids) in self.source.get_graph().iter_ancestry([revision_id]):
+        for (revid, parent_revid) in self.source.get_graph().iter_lhs_ancestry(revision_id):
             if revid == NULL_REVISION:
                 continue
-            assert not None in parent_revids, "None in parents %r for %r" % (parent_revids, revid)
-            parents[revid] = parent_revids
+            if parent_revid is None: # Ghost
+                continue
+            parents[revid] = (parent_revid,)
 
             if not self.target.has_revision(revid):
                 needed.append(revid)
