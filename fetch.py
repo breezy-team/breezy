@@ -531,8 +531,7 @@ class InterFromSvnRepository(InterRepository):
                         self.source.all_revision_ids())
         for revid in needed:
             (branch, revnum, mapping) = self.source.lookup_revision_id(revid)
-            parents[revid] = self.source._mainline_revision_parent(branch, 
-                                               revnum, mapping)
+            parents[revid] = self.source.lhs_revision_parent(branch, revnum, mapping)
         needed.reverse()
         return (needed, parents)
 

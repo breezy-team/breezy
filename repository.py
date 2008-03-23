@@ -392,7 +392,7 @@ class SvnRepository(Repository):
 
         return mapping.import_fileid_map(revprops, fileprops)
 
-    def _mainline_revision_parent(self, path, revnum, mapping):
+    def lhs_revision_parent(self, path, revnum, mapping):
         """Find the mainline parent of the specified revision.
 
         :param path: Path of the revision in Subversion
@@ -470,7 +470,7 @@ class SvnRepository(Repository):
         """See Repository.revision_parents()."""
         parent_ids = ()
         (branch, revnum, mapping) = self.lookup_revision_id(revision_id)
-        mainline_parent = self._mainline_revision_parent(branch, revnum, mapping)
+        mainline_parent = self.lhs_revision_parent(branch, revnum, mapping)
         if mainline_parent is not None:
             parent_ids += (mainline_parent,)
 
