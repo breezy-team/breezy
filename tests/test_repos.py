@@ -1014,8 +1014,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
 
         repos = Repository.open(repos_url)
         mapping = repos.get_mapping()
-        renames = repos.revision_fileid_renames(
-                repos.generate_revision_id(1, "", mapping))
+        renames = repos.revision_fileid_renames("", 1, mapping)
         self.assertEqual({"test": "bla"}, renames)
 
     def test_fetch_property_change_only_trunk(self):
