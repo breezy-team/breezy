@@ -17,9 +17,6 @@ bzr-svn 0.4.9	UNRELEASED
 
    * Avoid using copy in several places.
 
-   * Branching from a Subversion repository will now fetch right-hand side 
-     parents as well as left hand side (mainline) parents, if present.
-
   BUGS
   
    * Fix compatibility with bzr 1.3.
@@ -36,6 +33,9 @@ bzr-svn 0.4.9	UNRELEASED
   INTERNALS
 
    * Allow multiple mappings to be available at the same time.
+
+   * Branching from a Subversion repository will now fetch right-hand side 
+     parents as well as left hand side (mainline) parents, if specified.
 
   DOCUMENTATION
 

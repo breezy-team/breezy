@@ -532,12 +532,12 @@ class InterFromSvnRepository(InterRepository):
         parents = graph.get_parent_map(needed)
         return (needed, parents)
 
-    def _find_branches(self, branches, find_ghosts=False):
+    def _find_branches(self, branches, find_ghosts=False, fetch_rhs_ancestry=False):
         set_needed = set()
         ret_needed = list()
         ret_parents = dict()
         for revid in branches:
-            (needed, parents) = self._find_until(revid, find_ghosts=find_ghosts)
+            (needed, parents) = self._find_until(revid, find_ghosts=find_ghosts, fetch_rhs_ancestry=False)
             for rev in needed:
                 if not rev in set_needed:
                     ret_needed.append(rev)
@@ -545,28 +545,39 @@ class InterFromSvnRepository(InterRepository):
             ret_parents.update(parents)
         return ret_needed, ret_parents
 
-    def _find_until(self, revision_id, find_ghosts=False):
+    def _find_until(self, revision_id, find_ghosts=False, fetch_rhs_ancestry=False):
         """Find all missing revisions until revision_id
 
         :param revision_id: Stop revision
         :param find_ghosts: Find ghosts
+        :param fetch_rhs_ancestry: Fetch right hand side ancestors
         :return: Tuple with revisions missing and a dictionary with 
             parents for those revision.
         """
         needed = []
         parents = {}
 
-        for (revid, parent_revid) in self.source.get_graph().iter_lhs_ancestry(revision_id):
-            if revid == NULL_REVISION:
-                continue
-            if parent_revid is None: # Ghost
-                continue
-            parents[revid] = (parent_revid,)
-
-            if not self.target.has_revision(revid):
-                needed.append(revid)
-            elif not find_ghosts:
-                break
+        graph = self.source.get_graph()
+        if fetch_rhs_ancestry:
+            for (revid, parent_revids) in graph.iter_ancestry([revision_id]):
+                if revid == NULL_REVISION:
+                    continue
+                if parent_revids is None: # Ghost
+                    continue
+                parents[revid] = parent_revids
+                if not self.target.has_revision(revid):
+                    needed.append(revid)
+                elif not find_ghosts:
+                    break
+        else:
+r           for (revid, parent_revid) in graph.iter_lhs_ancestry(revision_id):
+                if revid == NULL_REVISION:
+                    continue
+                parents[revid] = (parent_revid,)
+                if not self.target.has_revision(revid):
+                    needed.append(revid)
+                elif not find_ghosts:
+                    break
 
         needed.reverse()
         return (needed, parents)
@@ -670,7 +681,7 @@ class InterFromSvnRepository(InterRepository):
         self.source.transport.reparent_root()
 
     def fetch(self, revision_id=None, pb=None, find_ghosts=False, 
-              branches=None):
+              branches=None, fetch_rhs_ancestry=False):
         """Fetch revisions. """
         if revision_id == NULL_REVISION:
             return
@@ -683,12 +694,12 @@ class InterFromSvnRepository(InterRepository):
         try:
             if branches is not None:
                 (needed, parents) = self._find_branches(branches, 
-                                                           find_ghosts)
+                                                        find_ghosts, fetch_rhs_ancestry)
             elif revision_id is None:
                 (needed, parents) = self._find_all()
             else:
                 (needed, parents) = self._find_until(revision_id, 
-                                                        find_ghosts)
+                                                     find_ghosts, fetch_rhs_ancestry)
         finally:
             self.target.unlock()
 
