@@ -15,10 +15,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Cache of the Subversion history log."""
 
-from bzrlib import urlutils
+from bzrlib import urlutils, debug
 from bzrlib.errors import NoSuchRevision
+from bzrlib.trace import mutter
 import bzrlib.ui as ui
-from copy import copy
 
 from svn.core import SubversionException, Pool
 from transport import SvnRaTransport
@@ -27,6 +27,51 @@ import svn.core
 from cache import sqlite3
 
 LOG_CHUNK_LIMIT = 0
+
+def changes_find_prev_location(paths, branch_path, revnum):
+    assert isinstance(paths, dict)
+    assert isinstance(branch_path, str)
+    assert isinstance(revnum, int)
+    if revnum == 0:
+        assert branch_path == ""
+        return None
+    # If there are no special cases, just go try the 
+    # next revnum in history
+    revnum -= 1
+
+    # Make sure we get the right location for next time, if 
+    # the branch itself was copied
+    if (paths.has_key(branch_path) and 
+        paths[branch_path][0] in ('R', 'A')):
+        if paths[branch_path][1] is None: 
+            return None # Was added here
+        revnum = paths[branch_path][2]
+        branch_path = paths[branch_path][1].encode("utf-8")
+        return (branch_path, revnum)
+    
+    # Make sure we get the right location for the next time if 
+    # one of the parents changed
+
+    # Path names need to be sorted so the longer paths 
+    # override the shorter ones
+    for p in sorted(paths.keys(), reverse=True):
+        if paths[p][0] == 'M':
+            continue
+        if branch_path.startswith(p+"/"):
+            assert paths[p][0] in ('A', 'R'), "Parent %r wasn't added" % p
+            assert paths[p][1] is not None, \
+                "Empty parent %r added, but child %r wasn't added !?" % (p, branch_path)
+
+            revnum = paths[p][2]
+            branch_path = paths[p][1].encode("utf-8") + branch_path[len(p):]
+            return (branch_path, revnum)
+
+    return (branch_path, revnum)
+
+
+
+
+
 
 class LogWalker(object):
     """Easy way to access the history of a Subversion repository."""
@@ -68,6 +113,10 @@ class LogWalker(object):
             return self._transport
         self._transport = SvnRaTransport(self.url)
         return self._transport
+
+    def mutter(self, text):
+        if "cache" in debug.debug_flags:
+            mutter(text)
 
     def fetch_revisions(self, to_revnum=None):
         """Fetch information about all revisions in the remote repository
@@ -119,7 +168,7 @@ class LogWalker(object):
             raise
         self.db.commit()
 
-    def follow_path(self, path, revnum):
+    def iter_changes(self, path, revnum):
         """Return iterator over all the revisions between revnum and 0 named path or inside path.
 
         :param path:    Branch path to start reporting (in revnum)
@@ -133,6 +182,8 @@ class LogWalker(object):
         if revnum == 0 and path == "":
             return
 
+        self.mutter("follow path %r:%r" % (path, revnum))
+
         recurse = (path != "")
 
         path = path.strip("/")
@@ -141,32 +192,15 @@ class LogWalker(object):
             assert revnum > 0 or path == ""
             revpaths = self.get_revision_paths(revnum, path, recurse=recurse)
 
+            next = changes_find_prev_location(revpaths, path, revnum)
+
             if revpaths != {}:
-                yield (path, copy(revpaths), revnum)
+                yield (path, revpaths, revnum)
 
-            if path == "":
-                revnum -= 1
-                continue
+            if next is None:
+                break
 
-            if revpaths.has_key(path):
-                if revpaths[path][1] is None:
-                    if revpaths[path][0] in ('A', 'R'):
-                        # this path didn't exist before this revision
-                        return
-                else:
-                    # In this revision, this path was copied from 
-                    # somewhere else
-                    revnum = revpaths[path][2]
-                    path = revpaths[path][1]
-                    assert path == "" or revnum > 0
-                    continue
-            revnum -= 1
-            for p in sorted(revpaths.keys()):
-                if path.startswith(p+"/") and revpaths[p][0] in ('A', 'R'):
-                    assert revpaths[p][1]
-                    path = path.replace(p, revpaths[p][1])
-                    revnum = revpaths[p][2]
-                    break
+            (path, revnum) = next
 
     def get_revision_paths(self, revnum, path=None, recurse=False):
         """Obtain dictionary with all the changes in a particular revision.
@@ -181,6 +215,8 @@ class LogWalker(object):
         if revnum == 0:
             assert path is None or path == ""
             return {'': ('A', None, -1)}
+
+        self.mutter("revision paths: %r" % revnum)
                 
         self.fetch_revisions(revnum)
 
@@ -209,6 +245,8 @@ class LogWalker(object):
         assert isinstance(revnum, int) and revnum >= 0
         self.fetch_revisions(revnum)
 
+        self.mutter("latest change: %r:%r" % (path, revnum))
+
         extra = ""
         if include_children:
             if path == "":
@@ -235,6 +273,7 @@ class LogWalker(object):
         :param revnum:  Revision to check
         """
         self.fetch_revisions(revnum)
+        self.mutter("touches path %r:%r" % (path, revnum))
         if revnum == 0:
             return (path == "")
         return (self.db.execute("select 1 from changed_path where path='%s' and rev=%d" % (path, revnum)).fetchone() is not None)
@@ -245,6 +284,7 @@ class LogWalker(object):
         :param path:  Path to check
         :param revnum:  Revision to check
         """
+        self.mutter("find children %r:%r" % (path, revnum))
         path = path.strip("/")
         transport = self._get_transport()
         ft = transport.check_path(path, revnum)
@@ -315,6 +355,7 @@ class LogWalker(object):
         """
         assert revnum >= 0
         self.fetch_revisions(revnum)
+        self.mutter("get previous %r:%r" % (path, revnum))
         if revnum == 0:
             return (None, -1)
         row = self.db.execute("select action, copyfrom_path, copyfrom_rev from changed_path where path='%s' and rev=%d" % (path, revnum)).fetchone()

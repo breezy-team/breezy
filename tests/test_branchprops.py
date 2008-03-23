@@ -19,52 +19,15 @@
 from bzrlib.errors import NoSuchRevision
 
 from tests import TestCaseWithSubversionRepository
-from branchprops import BranchPropertyList
+from branchprops import PathPropertyProvider
 from logwalker import LogWalker
 from transport import SvnRaTransport
-
-try:
-    import sqlite3
-except ImportError:
-    from pysqlite2 import dbapi2 as sqlite3
 
 class TestBranchProps(TestCaseWithSubversionRepository):
     def setUp(self):
         super(TestBranchProps, self).setUp()
-        self.db = sqlite3.connect(":memory:")
 
-    def test_get_property(self):
-        repos_url = self.make_client('d', 'dc')
-        self.client_set_prop("dc", "myprop", "data")
-        self.client_commit("dc", "My Message")
-
-        logwalk = LogWalker(transport=SvnRaTransport(repos_url))
-
-        bp = BranchPropertyList(logwalk, self.db)
-        self.assertEqual("data", bp.get_property("", 1, "myprop"))
-
-    def test_get_property_multiple(self):
-        repos_url = self.make_client('d', 'dc')
-        self.client_set_prop("dc", "aprop", "foo")
-        self.client_set_prop("dc", "myprop", "data")
-        self.client_commit("dc", "My Message")
-
-        logwalk = LogWalker(transport=SvnRaTransport(repos_url))
-
-        bp = BranchPropertyList(logwalk, self.db)
-        self.assertEqual("data", bp.get_property("", 1, "myprop"))
-
-    def test_get_property_norev(self):
-        repos_url = self.make_client('d', 'dc')
-        self.client_set_prop("dc", "myprop", "data")
-        self.client_commit("dc", "My Message")
-
-        logwalk = LogWalker(transport=SvnRaTransport(repos_url))
-
-        bp = BranchPropertyList(logwalk, self.db)
-        self.assertRaises(NoSuchRevision, bp.get_property, "", 10, "myprop")
-
-    def test_get_old_property(self):
+    def test_get_old_properties(self):
         repos_url = self.make_client('d', 'dc')
         self.client_set_prop("dc", "myprop", "data")
         self.client_commit("dc", "My Message")
@@ -74,18 +37,9 @@ class TestBranchProps(TestCaseWithSubversionRepository):
 
         logwalk = LogWalker(transport=SvnRaTransport(repos_url))
 
-        bp = BranchPropertyList(logwalk, self.db)
-        self.assertEqual("data", bp.get_property("", 2, "myprop"))
+        bp = PathPropertyProvider(logwalk)
 
-    def test_get_nonexistent_property(self):
-        repos_url = self.make_client('d', 'dc')
-        self.client_set_prop("dc", "myprop", "data")
-        self.client_commit("dc", "My Message")
-
-        logwalk = LogWalker(transport=SvnRaTransport(repos_url))
-
-        bp = BranchPropertyList(logwalk, self.db)
-        self.assertEqual(None, bp.get_property("", 1, "otherprop"))
+        self.assertEqual("data", bp.get_properties("", 2)["myprop"])
 
     def test_get_properties(self):
         repos_url = self.make_client('d', 'dc')
@@ -95,7 +49,7 @@ class TestBranchProps(TestCaseWithSubversionRepository):
         transport = SvnRaTransport(repos_url)
         logwalk = LogWalker(transport=transport)
 
-        bp = BranchPropertyList(logwalk, self.db)
+        bp = PathPropertyProvider(logwalk)
         props = bp.get_properties("", 1)
         self.assertEqual("data", props["myprop"])
         self.assertEqual(transport.get_uuid(), props["svn:entry:uuid"])
@@ -112,7 +66,7 @@ class TestBranchProps(TestCaseWithSubversionRepository):
 
         logwalk = LogWalker(transport=SvnRaTransport(repos_url))
 
-        bp = BranchPropertyList(logwalk, self.db)
+        bp = PathPropertyProvider(logwalk)
         self.assertEqual("data2\n", bp.get_property_diff("", 2, "myprop"))
 
     def test_get_changed_properties(self):
@@ -129,31 +83,17 @@ class TestBranchProps(TestCaseWithSubversionRepository):
 
         logwalk = LogWalker(transport=SvnRaTransport(repos_url))
 
-        bp = BranchPropertyList(logwalk, self.db)
+        bp = PathPropertyProvider(logwalk)
         self.assertEquals("data\n",
                           bp.get_changed_properties("", 1)["myprop"])
 
-        bp = BranchPropertyList(logwalk, self.db)
+        bp = PathPropertyProvider(logwalk)
         self.assertEquals("newdata\n", 
                           bp.get_changed_properties("", 2)["myprop"])
 
-        bp = BranchPropertyList(logwalk, self.db)
+        bp = PathPropertyProvider(logwalk)
         self.assertEquals("newdata\n", 
                           bp.get_changed_properties("", 3)["myp2"])
-
-    def test_touches_property(self):
-        repos_url = self.make_client('d', 'dc')
-        self.client_set_prop("dc", "myprop", "data\n")
-        self.client_commit("dc", "My Message")
-        self.client_set_prop("dc", "myprop", "data\ndata2\n")
-        self.client_commit("dc", "My Message")
-
-        logwalk = LogWalker(transport=SvnRaTransport(repos_url))
-
-        bp = BranchPropertyList(logwalk, self.db)
-        self.assertTrue(bp.touches_property("", 2, "myprop"))
-        self.assertTrue(bp.touches_property("", 1, "myprop"))
-        self.assertFalse(bp.touches_property("", 1, "nonexistant-property"))
 
     def test_get_property_diff_ignore_origchange(self):
         repos_url = self.make_client('d', 'dc')
@@ -164,5 +104,5 @@ class TestBranchProps(TestCaseWithSubversionRepository):
 
         logwalk = LogWalker(transport=SvnRaTransport(repos_url))
 
-        bp = BranchPropertyList(logwalk, self.db)
+        bp = PathPropertyProvider(logwalk)
         self.assertEqual("", bp.get_property_diff("", 2, "myprop"))

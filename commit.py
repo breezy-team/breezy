@@ -27,23 +27,14 @@ from bzrlib.repository import RootCommitBuilder, InterRepository
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 
-from copy import deepcopy
 from cStringIO import StringIO
 from errors import ChangesRootLHSHistory, MissingPrefix, RevpropChangeFailed
 from svk import (generate_svk_feature, serialize_svk_features, 
                  parse_svk_features, SVN_PROP_SVK_MERGE)
 from mapping import parse_revision_id
-from repository import (SvnRepositoryFormat, SvnRepository)
+from repository import (SvnRepositoryFormat, SvnRepository, lazy_dict)
+from scheme import is_valid_property_name
 import urllib
-
-
-def is_valid_property_name(prop):
-    if not prop[0].isalnum() and not prop[0] in ":_":
-        return False
-    for c in prop[1:]:
-        if not c.isalnum() and not c in "-:._":
-            return False
-    return True
 
 
 def _revision_id_to_svk_feature(revid):
@@ -150,7 +141,7 @@ class SvnCommitBuilder(RootCommitBuilder):
         if self.base_revid is None:
             base_branch_props = {}
         else:
-            base_branch_props = self.repository.branchprop_list.get_properties(self.base_path, self.base_revnum)
+            base_branch_props = lazy_dict(lambda: self.repository.branchprop_list.get_properties(self.base_path, self.base_revnum))
         (self._svn_revprops, self._svnprops) = self.base_mapping.export_revision(self.branch.get_branch_path(), timestamp, timezone, committer, revprops, revision_id, self.base_revno+1, merges, base_branch_props)
 
         if len(merges) > 0:
@@ -617,7 +608,7 @@ def push_new(target_repository, target_branch_path, source,
     if stop_revision is None:
         stop_revision = source.last_revision()
     history = source.revision_history()
-    revhistory = deepcopy(history)
+    revhistory = list(history)
     start_revid = NULL_REVISION
     while len(revhistory) > 0:
         revid = revhistory.pop()
@@ -713,6 +704,8 @@ def push(target, source, revision_id):
     except ChangesRootLHSHistory:
         raise BzrError("Unable to push revision %r because it would change the ordering of existing revisions on the Subversion repository root. Use rebase and try again or push to a non-root path" % revision_id)
 
+    # FIXME: copy revisions signature
+
     if 'validate' in debug.debug_flags:
         crev = target.repository.get_revision(revision_id)
         ctree = target.repository.revision_tree(revision_id)
@@ -776,6 +769,8 @@ class InterToSvnRepository(InterRepository):
                              
                 replay_delta(builder, base_tree, old_tree)
                 builder.commit(rev.message)
+
+                # FIXME: Copy revision signature for rev
         finally:
             self.source.unlock()
  

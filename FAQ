@@ -22,7 +22,10 @@ you have that version installed.
 If you have an older version installed, bzr-svn can 
 use passwords cached by Subversion. Subversion can be forced to cache 
 the password by accessing the repository using the Subversion command-line 
-client. For example, try running 'svn info <url>'.
+client. For example, try running 'svn info <url>'. If you are using a 
+Subversion repository over http or https it may be necessary to prefix the
+repository URL with "svn+", e.g. 
+svn+http://svn.python.org/projects/python/trunk/
 
 Trying to branch into repository gives an error about incompatibility.
 ----------------------------------------------------------------------

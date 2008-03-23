@@ -19,25 +19,15 @@
 from bzrlib.errors import NoSuchRevision
 from bzrlib.trace import mutter
 
-from cache import CacheTable
-
 from svn.core import SubversionException, Pool
 import svn.core
 
-class BranchPropertyList(CacheTable):
-    """Simple class that retrieves file properties set on branches."""
-    def __init__(self, log, cachedb=None):
-        CacheTable.__init__(self, cachedb)
+
+class PathPropertyProvider:
+    def __init__(self, log):
         self.log = log
 
-    def _create_table(self):
-        self.cachedb.executescript("""
-            create table if not exists branchprop (name text, value text, branchpath text, revnum integer);
-            create index if not exists branch_path_revnum on branchprop (branchpath, revnum);
-            create index if not exists branch_path_revnum_name on branchprop (branchpath, revnum, name);
-        """)
-
-    def _get_dir_props(self, path, revnum):
+    def get_properties(self, path, revnum):
         """Obtain all the directory properties set on a path/revnum pair.
 
         :param path: Subversion path
@@ -56,40 +46,6 @@ class BranchPropertyList(CacheTable):
             raise
 
         return props
-
-    def get_properties(self, path, origrevnum):
-        """Obtain the file properties set on a path/revnum pair.
-
-        Will use the cache.
-
-        :param path: Subversion path.
-        :param origrevnum: Subversion revision number.
-        :return: Dictionary with properties
-        """
-        assert path is not None
-        assert isinstance(path, str)
-        assert isinstance(origrevnum, int) and origrevnum >= 0
-        revnum = self.log.find_latest_change(path, origrevnum, 
-                                             include_parents=True)
-        assert revnum is not None, \
-                "can't find latest change for %r:%r" % (path, origrevnum)
-
-        if revnum == 0: # no properties are set in revision 0
-            return {}
-
-        proplist = {}
-        for (name, value) in self.cachedb.execute("select name, value from branchprop where revnum=%d and branchpath='%s'" % (revnum, path)):
-            proplist[name] = value.encode("utf-8")
-
-        if proplist != {}:
-            return proplist
-
-        proplist = self._get_dir_props(path, revnum)
-        for name in proplist:
-            self.cachedb.execute("insert into branchprop (name, value, revnum, branchpath) values (?,?,?,?)", (name, proplist[name], revnum, path))
-        self.cachedb.commit()
-
-        return proplist
 
     def get_changed_properties(self, path, revnum):
         """Get the contents of a Subversion file property.
@@ -119,41 +75,6 @@ class BranchPropertyList(CacheTable):
                 ret[key] = val
         return ret
 
-    def get_property(self, path, revnum, name, default=None):
-        """Get the contents of a Subversion file property.
-
-        Will use the cache.
-
-        :param path: Subversion path.
-        :param revnum: Subversion revision number.
-        :param default: Default value to return if property wasn't found.
-        :return: Contents of property or default if property didn't exist.
-        """
-        assert isinstance(revnum, int)
-        assert isinstance(path, str)
-        props = self.get_properties(path, revnum)
-        if props.has_key(name):
-            return props[name]
-        return default
-
-    def touches_property(self, path, revnum, name):
-        """Check whether a property was modified in a revision."""
-        assert isinstance(path, str)
-        assert isinstance(revnum, int)
-        assert isinstance(name, str)
-        # If the path this property is set on didn't change, then 
-        # the property can't have changed.
-        if not self.log.touches_path(path, revnum):
-            return ""
-
-        current = self.get_property(path, revnum, name, None)
-        (prev_path, prev_revnum) = self.log.get_previous(path, revnum)
-        if prev_path is None and prev_revnum == -1:
-            return (current is not None)
-        previous = self.get_property(prev_path.encode("utf-8"), 
-                                     prev_revnum, name, None)
-        return (previous != current)
-
     def get_property_diff(self, path, revnum, name):
         """Returns the new lines that were added to a particular property."""
         assert isinstance(path, str)
@@ -162,14 +83,14 @@ class BranchPropertyList(CacheTable):
         if not self.log.touches_path(path, revnum):
             return ""
 
-        current = self.get_property(path, revnum, name, "")
+        current = self.get_properties(path, revnum).get(name, "")
         (prev_path, prev_revnum) = self.log.get_previous(path, revnum)
         if prev_path is None and prev_revnum == -1:
             previous = ""
         else:
-            previous = self.get_property(prev_path.encode("utf-8"), 
-                                         prev_revnum, name, "")
+            previous = self.get_properties(prev_path.encode("utf-8"), prev_revnum).get(name, "")
         if len(previous) > len(current) or current[0:len(previous)] != previous:
             mutter('original part changed for %r between %s:%d -> %s:%d' % (name, prev_path, prev_revnum, path, revnum))
             return ""
         return current[len(previous):] 
+

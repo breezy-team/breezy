@@ -32,7 +32,8 @@ from bzrlib.plugins.svn.errors import InvalidFileName
 from mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_MERGE, 
                      SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVISION_INFO, 
                      SVN_PROP_BZR_BRANCHING_SCHEME, SVN_PROP_BZR_REVISION_ID,
-                     SVN_PROP_BZR_FILEIDS, parse_merge_property,
+                     SVN_PROP_BZR_FILEIDS, SVN_REVPROP_BZR_SIGNATURE,
+                     parse_merge_property,
                      parse_revision_metadata)
 from repository import (SvnRepository, SvnRepositoryFormat)
 from svk import SVN_PROP_SVK_MERGE
@@ -95,8 +96,10 @@ class RevisionBuildEditor(svn.delta.Editor):
     def start_revision(self, revid, prev_inventory):
         self.revid = revid
         (self.branch_path, self.revnum, self.mapping) = self.source.lookup_revision_id(revid)
+        self.svn_revprops = self.source._log._get_transport().revprop_list(self.revnum)
         changes = self.source._log.get_revision_paths(self.revnum, self.branch_path)
-        renames = self.source.revision_fileid_renames(revid)
+        renames = self.source.revision_fileid_renames(self.branch_path, self.revnum, self.mapping, 
+                                                      revprops=self.svn_revprops)
         self.id_map = self.source.transform_fileid_map(self.source.uuid, 
                               self.revnum, self.branch_path, changes, renames, 
                               self.mapping)
@@ -123,10 +126,11 @@ class RevisionBuildEditor(svn.delta.Editor):
         # Commit SVN revision properties to a Revision object
         rev = Revision(revision_id=revid, parent_ids=self._get_parent_ids())
 
-        svn_revprops = self.source._log._get_transport().revprop_list(self.revnum)
-        self.mapping.import_revision(svn_revprops, self._branch_fileprops, rev)
+        self.mapping.import_revision(self.svn_revprops, self._branch_fileprops, rev)
 
-        return rev
+        signature = self.svn_revprops.get(SVN_REVPROP_BZR_SIGNATURE)
+
+        return (rev, signature)
 
     def open_root(self, base_revnum, baton):
         if self.old_inventory.root is None:
@@ -264,9 +268,6 @@ class RevisionBuildEditor(svn.delta.Editor):
                 return
             
             self._bzr_merges = parse_merge_property(value.splitlines()[-1])
-        elif (name.startswith(SVN_PROP_BZR_ANCESTRY) or 
-              name.startswith(SVN_PROP_BZR_REVISION_ID)):
-            pass
         elif name == SVN_PROP_SVK_MERGE:
             self._svk_merges = None # Force Repository.revision_parents() to look it up
         elif name == SVN_PROP_BZR_REVISION_INFO:
@@ -279,11 +280,12 @@ class RevisionBuildEditor(svn.delta.Editor):
                       svn.core.SVN_PROP_ENTRY_LAST_AUTHOR,
                       svn.core.SVN_PROP_ENTRY_LOCK_TOKEN,
                       svn.core.SVN_PROP_ENTRY_UUID,
-                      svn.core.SVN_PROP_EXECUTABLE):
+                      svn.core.SVN_PROP_EXECUTABLE,
+                      SVN_PROP_BZR_MERGE, SVN_PROP_BZR_FILEIDS):
             pass
-        elif name.startswith(svn.core.SVN_PROP_WC_PREFIX):
-            pass
-        elif name in (SVN_PROP_BZR_MERGE, SVN_PROP_BZR_FILEIDS):
+        elif (name.startswith(SVN_PROP_BZR_ANCESTRY) or 
+              name.startswith(SVN_PROP_BZR_REVISION_ID) or 
+              name.startswith(svn.core.SVN_PROP_WC_PREFIX)):
             pass
         elif (name.startswith(svn.core.SVN_PROP_PREFIX) or
               name.startswith(SVN_PROP_BZR_PREFIX)):
@@ -308,7 +310,7 @@ class RevisionBuildEditor(svn.delta.Editor):
                       svn.core.SVN_PROP_ENTRY_UUID,
                       svn.core.SVN_PROP_MIME_TYPE):
             pass
-        elif name.startswith(svn.core.SVN_PROP_WC_PREFIX):
+        elif name.startswith(svn.core.SVN_PROP_WC_PREFIX) or 
             pass
         elif (name.startswith(svn.core.SVN_PROP_PREFIX) or
               name.startswith(SVN_PROP_BZR_PREFIX)):
@@ -452,13 +454,15 @@ class WeaveRevisionBuildEditor(RevisionBuildEditor):
             file_weave.add_lines(self.revid, parents, lines)
 
     def _finish_commit(self):
-        rev = self._get_revision(self.revid)
+        (rev, signature) = self._get_revision(self.revid)
         self.inventory.revision_id = self.revid
         # Escaping the commit message is really the task of the serialiser
         rev.message = _escape_commit_message(rev.message)
         rev.inventory_sha1 = osutils.sha_string(
                 self.target.serialise_inventory(self.inventory))
         self.target.add_revision(self.revid, rev, self.inventory)
+        if signature is not None:
+            self.target.add_signature_text(self.revid, signature)
         self.target.commit_write_group()
         self._write_group_active = False
 
@@ -525,8 +529,7 @@ class InterFromSvnRepository(InterRepository):
                         self.source.all_revision_ids())
         for revid in needed:
             (branch, revnum, mapping) = self.source.lookup_revision_id(revid)
-            parents[revid] = self.source._mainline_revision_parent(branch, 
-                                               revnum, mapping)
+            parents[revid] = self.source.lhs_revision_parent(branch, revnum, mapping)
         needed.reverse()
         return (needed, parents)
 
@@ -553,15 +556,11 @@ class InterFromSvnRepository(InterRepository):
         """
         needed = []
         parents = {}
-        (path, until_revnum, mapping) = self.source.lookup_revision_id(revision_id)
 
         prev_revid = None
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            for (branch, revnum) in self.source.follow_branch(path, 
-                                                              until_revnum, mapping):
-                pb.update("determining revisions to fetch", until_revnum-revnum, until_revnum)
-                revid = self.source.generate_revision_id(revnum, branch, mapping)
+            for revid in self.source.iter_lhs_ancestry(revision_id, pb):
 
                 if prev_revid is not None:
                     parents[prev_revid] = revid

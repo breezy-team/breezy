@@ -189,6 +189,19 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
 
+    def test_fetch_signature(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/trunk/bar': "data"})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "My Message")
+        self.client_set_revprop(repos_url, 1, "bzr:gpg-signature", "SIGNATURE")
+        oldrepos = Repository.open(repos_url)
+        oldrepos.set_branching_scheme(TrunkBranchingScheme(0))
+        dir = BzrDir.create("f", format.get_rich_root_format())
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+        self.assertEquals("SIGNATURE", newrepos.get_signature_text(oldrepos.generate_revision_id(1, "trunk", oldrepos.get_mapping())))
+
     def test_fetch_special_char_edit(self):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({u'dc/trunk/IöC': None})
