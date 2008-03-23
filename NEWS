@@ -190,6 +190,10 @@ features have been added.
       ``bzrlib.plugin.load_from_zip()`` function are deprecated.
       (Alexander Belchenko)
 
+    * Log formatters must now provide log_revision instead of
+      show and show_merge_revno methods. The latter had been
+      deprecated since the 0.17 release.
+
   TESTING:
 
     * The branch interface tests were invalid for branches using rich-root

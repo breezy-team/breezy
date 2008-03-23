@@ -63,7 +63,6 @@ from bzrlib import (
     config,
     lazy_regex,
     registry,
-    symbol_versioning,
     )
 from bzrlib.errors import (
     BzrCommandError,
@@ -78,10 +77,6 @@ from bzrlib.revision import (
     )
 from bzrlib.revisionspec import (
     RevisionInfo,
-    )
-from bzrlib.symbol_versioning import (
-    deprecated_method,
-    zero_seventeen,
     )
 from bzrlib.trace import mutter
 from bzrlib.tsort import (
@@ -222,26 +217,8 @@ def _show_log(branch,
     if direction == 'reverse':
         start_rev_id, end_rev_id = end_rev_id, start_rev_id
         
-    legacy_lf = getattr(lf, 'log_revision', None) is None
-    if legacy_lf:
-        # pre-0.17 formatters use show for mainline revisions.
-        # how should we show merged revisions ?
-        #   pre-0.11 api: show_merge
-        #   0.11-0.16 api: show_merge_revno
-        show_merge_revno = getattr(lf, 'show_merge_revno', None)
-        show_merge = getattr(lf, 'show_merge', None)
-        if show_merge is None and show_merge_revno is None:
-            # no merged-revno support
-            generate_merge_revisions = False
-        else:
-            generate_merge_revisions = True
-        # tell developers to update their code
-        symbol_versioning.warn('LogFormatters should provide log_revision '
-            'instead of show and show_merge_revno since bzr 0.17.',
-            DeprecationWarning, stacklevel=3)
-    else:
-        generate_merge_revisions = getattr(lf, 'supports_merge_revisions', 
-                                           False)
+    generate_merge_revisions = getattr(lf, 'supports_merge_revisions', 
+                                       False)
     generate_single_revision = False
     if ((not generate_merge_revisions)
         and ((start_rev_id and (start_rev_id not in rev_nos))
@@ -306,26 +283,9 @@ def _show_log(branch,
             if not searchRE.search(rev.message):
                 continue
 
-        if not legacy_lf:
-            lr = LogRevision(rev, revno, merge_depth, delta,
-                             rev_tag_dict.get(rev_id))
-            lf.log_revision(lr)
-        else:
-            # support for legacy (pre-0.17) LogFormatters
-            if merge_depth == 0:
-                if generate_tags:
-                    lf.show(revno, rev, delta, rev_tag_dict.get(rev_id))
-                else:
-                    lf.show(revno, rev, delta)
-            else:
-                if show_merge_revno is None:
-                    lf.show_merge(rev, merge_depth)
-                else:
-                    if generate_tags:
-                        lf.show_merge_revno(rev, merge_depth, revno,
-                                            rev_tag_dict.get(rev_id))
-                    else:
-                        lf.show_merge_revno(rev, merge_depth, revno)
+        lr = LogRevision(rev, revno, merge_depth, delta,
+                         rev_tag_dict.get(rev_id))
+        lf.log_revision(lr)
         if limit:
             log_count += 1
             if log_count >= limit:
@@ -616,10 +576,6 @@ class LogFormatter(object):
 #        """
 #        raise NotImplementedError('not implemented in abstract base')
 
-    @deprecated_method(zero_seventeen)
-    def show(self, revno, rev, delta):
-        raise NotImplementedError('not implemented in abstract base')
-
     def short_committer(self, rev):
         name, address = config.parse_username(rev.committer)
         if name:
@@ -638,17 +594,6 @@ class LongLogFormatter(LogFormatter):
     supports_merge_revisions = True
     supports_delta = True
     supports_tags = True
-
-    @deprecated_method(zero_seventeen)
-    def show(self, revno, rev, delta, tags=None):
-        lr = LogRevision(rev, revno, 0, delta, tags)
-        return self.log_revision(lr)
-
-    @deprecated_method(zero_seventeen)
-    def show_merge_revno(self, rev, merge_depth, revno, tags=None):
-        """Show a merged revision rev, with merge_depth and a revno."""
-        lr = LogRevision(rev, revno, merge_depth, tags=tags)
-        return self.log_revision(lr)
 
     def log_revision(self, revision):
         """Log a revision, either merged or not."""
@@ -694,11 +639,6 @@ class ShortLogFormatter(LogFormatter):
 
     supports_delta = True
     supports_single_merge_revision = True
-
-    @deprecated_method(zero_seventeen)
-    def show(self, revno, rev, delta):
-        lr = LogRevision(rev, revno, 0, delta)
-        return self.log_revision(lr)
 
     def log_revision(self, revision):
         to_file = self.to_file
@@ -754,11 +694,6 @@ class LineLogFormatter(LogFormatter):
             return '(no message)'
         else:
             return rev.message
-
-    @deprecated_method(zero_seventeen)
-    def show(self, revno, rev, delta):
-        self.to_file.write(self.log_string(revno, rev, terminal_width()-1))
-        self.to_file.write('\n')
 
     def log_revision(self, revision):
         self.to_file.write(self.log_string(revision.revno, revision.rev,
