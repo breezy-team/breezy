@@ -35,6 +35,12 @@ Known limitations:
 # chmod bits but don't provide an ftp server that support them, well, better
 # find another provider ;-)
 
+# TODO: can't upload with conflicts present (or even uncommited changes ? Or at
+# a least a warning ?) . Something along the lines:
+
+#            if len(self.tree.conflicts()) > 0:
+#                raise ConflictsInTree
+
 from bzrlib import (
     commands,
     lazy_import,
@@ -211,8 +217,8 @@ class cmd_upload(commands.Command):
             self.tree.unlock()
 
     def upload_tree(self):
-        # XXX: if we get NoSuchFile shoudl we consider it the first upload ever
-        # and upload changes since the first revision ?  Add tests.
+        # XXX: if we get NoSuchFile should we consider it the first upload ever
+        # and upload changes since the zeroth revision ?  Add tests.
         rev_id = self.get_uploaded_revid()
         # XXX: errors out if rev_id not in branch history (probably someone
         # uploaded from a different branch).
@@ -222,7 +228,6 @@ class cmd_upload(commands.Command):
         changes = self.tree.changes_from(from_tree)
         self.tree.lock_read()
         try:
-            # XXX: handle kind_changed
             for (path, id, kind) in changes.removed:
                 if kind is 'file':
                     self.delete_remote_file(path)
@@ -236,6 +241,21 @@ class cmd_upload(commands.Command):
                 self.rename_remote(old_path, new_path)
             self.finish_renames()
             self.finish_deletions()
+
+            for (path, id, old_kind, new_kind) in changes.kind_changed:
+                if old_kind is 'file':
+                    self.delete_remote_file(path)
+                elif old_kind is  'directory':
+                    self.delete_remote_dir(path)
+                else:
+                    raise NotImplementedError
+
+                if new_kind is 'file':
+                    self.upload_file(path, id)
+                elif new_kind is 'directory':
+                    self.make_remote_dir(path)
+                else:
+                    raise NotImplementedError
 
             for (path, id, kind) in changes.added:
                 if kind is 'file':

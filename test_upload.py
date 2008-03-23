@@ -21,6 +21,7 @@ from bzrlib import (
     branch,
     bzrdir,
     errors,
+    osutils,
     remote,
     revisionspec,
     tests,
@@ -175,6 +176,16 @@ class TestUploadMixin(object):
         self.tree.rename_one(old_name, new_name)
         self.tree.commit('rename %s into %s' % (old_name, new_name))
 
+    def transform_dir_into_file(self, name, content, base=branch_dir):
+        osutils.delete_any(base + name)
+        self.set_file_content(name, content, base)
+        self.tree.commit('change %s from dir to file' % name)
+
+    def transform_file_into_dir(self, name, base=branch_dir):
+        osutils.delete_any(base + name)
+        os.mkdir(base + name)
+        self.tree.commit('change %s from file to dir' % name)
+
     def do_full_upload(self, *args, **kwargs):
         upload = cmd_upload()
         up_url = self.get_transport(self.upload_dir).external_url()
@@ -281,7 +292,7 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
 
     do_upload = TestUploadMixin.do_incremental_upload
 
-    # Note that full upload doesn't handle deletions....
+    # XXX: full upload doesn't handle deletions....
 
     def test_delete_one_file(self):
         self.make_local_branch()
@@ -336,6 +347,32 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
         self.failIfUpFileExists('dir/a')
         self.failIfUpFileExists('dir')
         self.assertUpFileEqual('foo', 'a')
+
+    # XXX: full upload doesn't handle kind changes
+
+    def test_change_file_into_dir(self):
+        self.make_local_branch()
+        self.add_file('hello', 'foo')
+        self.do_full_upload()
+        self.transform_file_into_dir('hello')
+        self.add_file('hello/file', 'bar')
+
+        self.assertUpFileEqual('foo', 'hello')
+        self.do_upload()
+        self.assertUpFileEqual('bar', 'hello/file')
+
+    def test_change_dir_into_file(self):
+        raise tests.KnownFailure('bug 205636')
+        self.make_local_branch()
+        self.add_dir('hello')
+        self.add_file('hello/file', 'foo')
+        self.do_full_upload()
+        self.delete_any('hello/file')
+        self.transform_dir_into_file('hello', 'bar')
+
+        self.assertUpFileEqual('foo', 'hello/file')
+        self.do_upload()
+        self.assertUpFileEqual('bar', 'hello')
 
 
 class TestBranchUploadLocations(branch_implementations.TestCaseWithBranch):
