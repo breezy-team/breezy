@@ -46,6 +46,8 @@ IN DEVELOPMENT
     * Don't ask for a password if there is no real terminal.
       (Alexander Belchenko, #69851)
 
+    * Implement handling of basename parameter for DefaultMail.  (James Westby)
+
   DOCUMENTATION:
 
   API BREAKS:
