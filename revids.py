@@ -16,7 +16,9 @@
 
 """Revision id generation and caching."""
 
+from bzrlib import debug
 from bzrlib.errors import (InvalidRevisionId, NoSuchRevision)
+from bzrlib.trace import mutter
 
 from cache import CacheTable
 
@@ -25,6 +27,10 @@ class RevidMap(CacheTable):
 
     Stores mapping from revid -> (path, revnum, scheme)
     """
+    def mutter(self, text):
+        if "cache" in debug.debug_flags:
+            mutter(text)
+
     def _create_table(self):
         self.cachedb.executescript("""
         create table if not exists revmap (revid text, path text, min_revnum integer, max_revnum integer, scheme text);
@@ -54,6 +60,7 @@ class RevidMap(CacheTable):
         :param scheme: Branching scheme name.
         :return: Last revision number checked or 0.
         """
+        self.mutter("last revnum checked %r" % scheme)
         ret = self.cachedb.execute(
             "select max_revnum from revids_seen where scheme = ?", (scheme,)).fetchone()
         if ret is None:
@@ -68,6 +75,7 @@ class RevidMap(CacheTable):
             branching scheme.
         """
         assert isinstance(revid, str)
+        self.mutter("lookup revid %r" % revid)
         ret = self.cachedb.execute(
             "select path, min_revnum, max_revnum, scheme from revmap where revid='%s'" % revid).fetchone()
         if ret is None:
@@ -81,6 +89,7 @@ class RevidMap(CacheTable):
         :param path: Subversion branch path.
         :param scheme: Branching scheme name
         """
+        self.mutter("lookup branch,revnum %r:%r" % (path, revnum))
         assert isinstance(revnum, int)
         assert isinstance(path, str)
         assert isinstance(scheme, str)
@@ -126,6 +135,7 @@ class RevidMap(CacheTable):
         :param revid: Revision id of the revision for which to do the lookup.
         :return: None if the distance is not known, or an integer.
         """
+        self.mutter("lookup dist to origin %r" % revid)
         assert isinstance(revid, str)
         revno = self.cachedb.execute(
                 "select dist_to_origin from revno_cache where revid='%s'" % revid).fetchone()
