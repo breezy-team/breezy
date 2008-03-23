@@ -19,7 +19,6 @@ from bzrlib import urlutils, debug
 from bzrlib.errors import NoSuchRevision
 from bzrlib.trace import mutter
 import bzrlib.ui as ui
-from copy import copy
 
 from svn.core import SubversionException, Pool
 from transport import SvnRaTransport
@@ -190,10 +189,10 @@ class LogWalker(object):
             assert revnum > 0 or path == ""
             revpaths = self.get_revision_paths(revnum, path, recurse=recurse)
 
-            if revpaths != {}:
-                yield (path, copy(revpaths), revnum)
-
             next = changes_find_prev_location(revpaths, path, revnum)
+
+            if revpaths != {}:
+                yield (path, revpaths, revnum)
 
             if next is None:
                 break

@@ -15,6 +15,8 @@ bzr-svn 0.4.9	UNRELEASED
    * Re-use file properties on branch root more efficiently. This made 
      the cache of branch properties unnecessary.
 
+   * Avoid using copy in several places.
+
   BUGS
   
    * Fix compatibility with bzr 1.3.

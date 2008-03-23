@@ -27,7 +27,6 @@ from bzrlib.repository import RootCommitBuilder, InterRepository
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 
-from copy import deepcopy
 from cStringIO import StringIO
 from errors import ChangesRootLHSHistory, MissingPrefix, RevpropChangeFailed
 from svk import (generate_svk_feature, serialize_svk_features, 
@@ -617,7 +616,7 @@ def push_new(target_repository, target_branch_path, source,
     if stop_revision is None:
         stop_revision = source.last_revision()
     history = source.revision_history()
-    revhistory = deepcopy(history)
+    revhistory = list(history)
     start_revid = NULL_REVISION
     while len(revhistory) > 0:
         revid = revhistory.pop()
