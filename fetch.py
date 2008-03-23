@@ -525,12 +525,11 @@ class InterFromSvnRepository(InterRepository):
         yet in the target repository.
         """
         parents = {}
-        needed = filter(lambda x: not self.target.has_revision(x), 
-                        self.source.all_revision_ids())
-        for revid in needed:
-            (branch, revnum, mapping) = self.source.lookup_revision_id(revid)
-            parents[revid] = self.source.lhs_revision_parent(branch, revnum, mapping)
-        needed.reverse()
+        graph = self.source.get_graph()
+        available_revs = set(self.source.all_revision_ids())
+        missing = available_revs.difference(self.target.has_revisions(available_revs))
+        needed = list(graph.iter_topo_order(missing))
+        parents = graph.get_parent_map(needed)
         return (needed, parents)
 
     def _find_branches(self, branches, find_ghosts=False):
@@ -557,20 +556,17 @@ class InterFromSvnRepository(InterRepository):
         needed = []
         parents = {}
 
-        prev_revid = None
-        for revid in self.source.get_graph().iter_ancestry(revision_id):
-
-            if prev_revid is not None:
-                parents[prev_revid] = revid
-
-            prev_revid = revid
+        for (revid, parent_revids) in self.source.get_graph().iter_ancestry([revision_id]):
+            if revid == NULL_REVISION:
+                continue
+            assert not None in parent_revids, "None in parents %r for %r" % (parent_revids, revid)
+            parents[revid] = parent_revids
 
             if not self.target.has_revision(revid):
                 needed.append(revid)
             elif not find_ghosts:
                 break
 
-        parents[prev_revid] = None
         needed.reverse()
         return (needed, parents)
 
@@ -586,7 +582,7 @@ class InterFromSvnRepository(InterRepository):
         """
         raise NotImplementedError(self._copy_revisions_replay)
 
-    def _fetch_switch(self, revids, pb=None, lhs_parent=None):
+    def _fetch_switch(self, revids, pb=None, parents=None):
         """Copy a set of related revisions using svn.ra.switch.
 
         :param revids: List of revision ids of revisions to copy, 
@@ -613,9 +609,11 @@ class InterFromSvnRepository(InterRepository):
             for revid in revids:
                 pb.update('copying revision', num, len(revids))
 
-                parent_revid = lhs_parent[revid]
+                parent_revid = parents[revid][0]
 
-                if parent_revid is None:
+                assert parent_revid is not None
+
+                if parent_revid == NULL_REVISION:
                     parent_inv = Inventory(root_id=None)
                 elif prev_revid != parent_revid:
                     parent_inv = self.target.get_inventory(parent_revid)
@@ -627,7 +625,7 @@ class InterFromSvnRepository(InterRepository):
                 try:
                     pool = Pool()
 
-                    if parent_revid is None:
+                    if parent_revid == NULL_REVISION:
                         branch_url = urlutils.join(repos_root, 
                                                    editor.branch_path)
                         transport.reparent(branch_url)
@@ -683,12 +681,12 @@ class InterFromSvnRepository(InterRepository):
         self.target.lock_read()
         try:
             if branches is not None:
-                (needed, lhs_parent) = self._find_branches(branches, 
+                (needed, parents) = self._find_branches(branches, 
                                                            find_ghosts)
             elif revision_id is None:
-                (needed, lhs_parent) = self._find_all()
+                (needed, parents) = self._find_all()
             else:
-                (needed, lhs_parent) = self._find_until(revision_id, 
+                (needed, parents) = self._find_until(revision_id, 
                                                         find_ghosts)
         finally:
             self.target.unlock()
@@ -697,7 +695,7 @@ class InterFromSvnRepository(InterRepository):
             # Nothing to fetch
             return
 
-        self._fetch_switch(needed, pb, lhs_parent)
+        self._fetch_switch(needed, pb, parents)
 
     @staticmethod
     def is_compatible(source, target):
