@@ -266,7 +266,7 @@ class SvnRepository(Repository):
 
     def _guess_scheme(self, last_revnum, branch_path=None):
         scheme = guess_scheme_from_history(
-            self._log.follow_path("", last_revnum), last_revnum, 
+            self._log.iter_changes("", last_revnum), last_revnum, 
             branch_path)
         mutter("Guessed branching scheme: %r" % scheme)
         return scheme
@@ -757,7 +757,7 @@ class SvnRepository(Repository):
         assert mapping.is_branch(branch_path) or mapping.is_tag(branch_path), \
                 "Mapping %r doesn't accept %s as branch or tag" % (mapping, branch_path)
 
-        for (bp, paths, revnum) in self._log.follow_path(branch_path, revnum):
+        for (bp, paths, revnum) in self._log.iter_changes(branch_path, revnum):
             assert revnum > 0 or bp == ""
             assert mapping.is_branch(bp) or mapping.is_tag(bp)
             # Remove non-bp paths from paths

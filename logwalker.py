@@ -70,6 +70,9 @@ def changes_find_prev_location(paths, branch_path, revnum):
 
 
 
+
+
+
 class LogWalker(object):
     """Easy way to access the history of a Subversion repository."""
     def __init__(self, transport, cache_db=None, limit=None):
@@ -165,7 +168,7 @@ class LogWalker(object):
             raise
         self.db.commit()
 
-    def follow_path(self, path, revnum):
+    def iter_changes(self, path, revnum):
         """Return iterator over all the revisions between revnum and 0 named path or inside path.
 
         :param path:    Branch path to start reporting (in revnum)
