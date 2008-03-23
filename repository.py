@@ -175,7 +175,7 @@ class SvnRepository(Repository):
 
         # TODO: Only use branchprop_list and fileid_map when 
         # fileprops-based mappings are being used
-        self.branchprop_list = CachingPathPropertyProvider(PathPropertyProvider(self._log), self.cachedb)
+        self.branchprop_list = PathPropertyProvider(self._log)
         self.fileid_map = SimpleFileIdMap(self, cachedir_transport)
         self.revmap = RevidMap(self.cachedb)
         self._scheme = None

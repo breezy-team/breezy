@@ -12,6 +12,9 @@ bzr-svn 0.4.9	UNRELEASED
 
    * Support storing revision signatures.
 
+   * Re-use file properties on branch root more efficiently. This made 
+     the cache of branch properties unnecessary.
+
   BUGS
   
    * Fix compatibility with bzr 1.3.

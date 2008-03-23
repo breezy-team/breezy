@@ -19,19 +19,13 @@
 from bzrlib.errors import NoSuchRevision
 
 from tests import TestCaseWithSubversionRepository
-from branchprops import CachingPathPropertyProvider, PathPropertyProvider
+from branchprops import PathPropertyProvider
 from logwalker import LogWalker
 from transport import SvnRaTransport
-
-try:
-    import sqlite3
-except ImportError:
-    from pysqlite2 import dbapi2 as sqlite3
 
 class TestBranchProps(TestCaseWithSubversionRepository):
     def setUp(self):
         super(TestBranchProps, self).setUp()
-        self.db = sqlite3.connect(":memory:")
 
     def test_get_old_properties(self):
         repos_url = self.make_client('d', 'dc')
@@ -43,7 +37,7 @@ class TestBranchProps(TestCaseWithSubversionRepository):
 
         logwalk = LogWalker(transport=SvnRaTransport(repos_url))
 
-        bp = CachingPathPropertyProvider(PathPropertyProvider(logwalk), self.db)
+        bp = PathPropertyProvider(logwalk)
 
         self.assertEqual("data", bp.get_properties("", 2)["myprop"])
 
@@ -55,7 +49,7 @@ class TestBranchProps(TestCaseWithSubversionRepository):
         transport = SvnRaTransport(repos_url)
         logwalk = LogWalker(transport=transport)
 
-        bp = CachingPathPropertyProvider(PathPropertyProvider(logwalk), self.db)
+        bp = PathPropertyProvider(logwalk)
         props = bp.get_properties("", 1)
         self.assertEqual("data", props["myprop"])
         self.assertEqual(transport.get_uuid(), props["svn:entry:uuid"])
@@ -72,7 +66,7 @@ class TestBranchProps(TestCaseWithSubversionRepository):
 
         logwalk = LogWalker(transport=SvnRaTransport(repos_url))
 
-        bp = CachingPathPropertyProvider(PathPropertyProvider(logwalk), self.db)
+        bp = PathPropertyProvider(logwalk)
         self.assertEqual("data2\n", bp.get_property_diff("", 2, "myprop"))
 
     def test_get_changed_properties(self):
@@ -89,15 +83,15 @@ class TestBranchProps(TestCaseWithSubversionRepository):
 
         logwalk = LogWalker(transport=SvnRaTransport(repos_url))
 
-        bp = CachingPathPropertyProvider(PathPropertyProvider(logwalk), self.db)
+        bp = PathPropertyProvider(logwalk)
         self.assertEquals("data\n",
                           bp.get_changed_properties("", 1)["myprop"])
 
-        bp = CachingPathPropertyProvider(PathPropertyProvider(logwalk), self.db)
+        bp = PathPropertyProvider(logwalk)
         self.assertEquals("newdata\n", 
                           bp.get_changed_properties("", 2)["myprop"])
 
-        bp = CachingPathPropertyProvider(PathPropertyProvider(logwalk), self.db)
+        bp = PathPropertyProvider(logwalk)
         self.assertEquals("newdata\n", 
                           bp.get_changed_properties("", 3)["myp2"])
 
@@ -110,5 +104,5 @@ class TestBranchProps(TestCaseWithSubversionRepository):
 
         logwalk = LogWalker(transport=SvnRaTransport(repos_url))
 
-        bp = CachingPathPropertyProvider(PathPropertyProvider(logwalk), self.db)
+        bp = PathPropertyProvider(logwalk)
         self.assertEqual("", bp.get_property_diff("", 2, "myprop"))
