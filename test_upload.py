@@ -293,6 +293,50 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
         self.do_upload()
         self.failIfUpFileExists('hello')
 
+    def test_delete_dir_and_subdir(self):
+        self.make_local_branch()
+        self.add_dir('dir')
+        self.add_dir('dir/subdir')
+        self.add_file('dir/subdir/a', 'foo')
+        self.do_full_upload()
+        self.rename_any('dir/subdir/a', 'a')
+        self.delete_any('dir/subdir')
+        self.delete_any('dir')
+
+        self.assertUpFileEqual('foo', 'dir/subdir/a')
+        self.do_upload()
+        self.failIfUpFileExists('dir/subdir/a')
+        self.failIfUpFileExists('dir/subdir')
+        self.failIfUpFileExists('dir')
+        self.assertUpFileEqual('foo', 'a')
+
+    def test_delete_one_file_rename_to_deleted(self):
+        self.make_local_branch()
+        self.add_file('a', 'foo')
+        self.add_file('b', 'bar')
+        self.do_full_upload()
+        self.delete_any('a')
+        self.rename_any('b', 'a')
+
+        self.assertUpFileEqual('foo', 'a')
+        self.do_upload()
+        self.failIfUpFileExists('b')
+        self.assertUpFileEqual('bar', 'a')
+
+    def test_rename_outside_dir_delete_dir(self):
+        self.make_local_branch()
+        self.add_dir('dir')
+        self.add_file('dir/a', 'foo')
+        self.do_full_upload()
+        self.rename_any('dir/a', 'a')
+        self.delete_any('dir')
+
+        self.assertUpFileEqual('foo', 'dir/a')
+        self.do_upload()
+        self.failIfUpFileExists('dir/a')
+        self.failIfUpFileExists('dir')
+        self.assertUpFileEqual('foo', 'a')
+
 
 class TestBranchUploadLocations(branch_implementations.TestCaseWithBranch):
 

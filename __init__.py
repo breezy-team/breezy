@@ -37,9 +37,17 @@ Known limitations:
 
 from bzrlib import (
     commands,
+    lazy_import,
     option,
     )
-
+lazy_import.lazy_import(globals(), """
+from bzrlib import (
+    branch,
+    errors,
+    revisionspec,
+    transport,
+    )
+""")
 
 class cmd_upload(commands.Command):
     """Upload a working tree, as a whole or incrementally.
@@ -63,15 +71,6 @@ class cmd_upload(commands.Command):
     def run(self, location, full=False, revision=None, remember=None,
             directory=None,
             ):
-        # Import the needed modules but only once we are required to run to
-        # avoid degrading bzr startup time
-        from bzrlib import (
-            branch,
-            errors,
-            revisionspec,
-            transport,
-            )
-
         if directory is None:
             directory = u'.'
         self.branch = branch.Branch.open_containing(directory)[0]
@@ -99,6 +98,7 @@ class cmd_upload(commands.Command):
         self.tree = self.branch.repository.revision_tree(rev_id)
         self.rev_id = rev_id
         self._pending_renames = []
+        self._pending_deletions = []
         if full:
             self.upload_full_tree()
         else:
@@ -130,8 +130,30 @@ class cmd_upload(commands.Command):
         # XXX: handle mode
         self.to_transport.mkdir(relpath)
 
-    def delete_remote_any(self, relpath):
+    def delete_remote_file(self, relpath):
         self.to_transport.delete(relpath)
+
+    def delete_remote_dir(self, relpath):
+        self.to_transport.rmdir(relpath)
+
+    def delete_remote_dir_maybe(self, relpath):
+        """Try to delete relpath, keeping failures to retry later."""
+        try:
+            self.to_transport.rmdir(relpath)
+        # any kind of PathError would be OK, though we normally expect
+        # DirectoryNotEmpty
+        except errors.PathError:
+            self._pending_deletions.append(relpath)
+
+    def finish_deletions(self):
+        if self._pending_deletions:
+            # Process the previously failed deletions in reverse order to
+            # delete children before parents
+            for relpath in reversed(self._pending_deletions):
+                self.to_transport.rmdir(relpath)
+            # The following shouldn't be needed since we use it once per
+            # upload, but better safe than sorry ;-)
+            self._pending_deletions = []
 
     def rename_remote(self, old_relpath, new_relpath):
         """Rename a remote file or directory taking care of collisions.
@@ -203,14 +225,17 @@ class cmd_upload(commands.Command):
             # XXX: handle kind_changed
             for (path, id, kind) in changes.removed:
                 if kind is 'file':
-                    self.delete_remote_any(path)
-                # XXX: handle dirs
+                    self.delete_remote_file(path)
+                elif kind is  'directory':
+                    self.delete_remote_dir_maybe(path)
                 else:
                     raise NotImplementedError
+
             for (old_path, new_path, id, kind,
                  content_change, exec_change) in changes.renamed:
                 self.rename_remote(old_path, new_path)
             self.finish_renames()
+            self.finish_deletions()
 
             for (path, id, kind) in changes.added:
                 if kind is 'file':
@@ -219,6 +244,7 @@ class cmd_upload(commands.Command):
                     self.make_remote_dir(path)
                 else:
                     raise NotImplementedError
+
             # XXX: Add a test for exec_change
             for (path, id, kind,
                  content_change, exec_change) in changes.modified:
@@ -226,6 +252,7 @@ class cmd_upload(commands.Command):
                     self.upload_file(path, id)
                 else:
                     raise NotImplementedError
+
             self.set_uploaded_revid(self.rev_id)
         finally:
             self.tree.unlock()
