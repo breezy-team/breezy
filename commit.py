@@ -33,16 +33,8 @@ from svk import (generate_svk_feature, serialize_svk_features,
                  parse_svk_features, SVN_PROP_SVK_MERGE)
 from mapping import parse_revision_id
 from repository import (SvnRepositoryFormat, SvnRepository, lazy_dict)
+from scheme import is_valid_property_name
 import urllib
-
-
-def is_valid_property_name(prop):
-    if not prop[0].isalnum() and not prop[0] in ":_":
-        return False
-    for c in prop[1:]:
-        if not c.isalnum() and not c in "-:._":
-            return False
-    return True
 
 
 def _revision_id_to_svk_feature(revid):

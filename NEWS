@@ -27,6 +27,9 @@ bzr-svn 0.4.9	UNRELEASED
 
    * Properly use current branching scheme when following branches. (#183361)
 
+   * Avoid using special characters in branching scheme names because it 
+     breaks over http/https. (#204759). 
+
   INTERNALS
 
    * Allow multiple mappings to be available at the same time.

@@ -347,6 +347,20 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         self.assertEquals(revid, newbranch.last_revision())
         self.assertEquals([revid], newbranch.revision_history())
 
+    def test_single_revision_single_branching_scheme(self):
+        repos_url = self.make_client("a", "dc")
+        bzrwt = BzrDir.create_standalone_workingtree("c", 
+            format=format.get_rich_root_format())
+        self.build_tree({'c/test': "Tour"})
+        bzrwt.add("test")
+        revid = bzrwt.commit("Do a commit")
+        self.build_tree({"dc/some/funny/branch": None})
+        self.client_add("dc/some")
+        self.client_commit("dc", "msg")
+        newdir = BzrDir.open("%s/some/funny/branch/name" % repos_url)
+        newbranch = newdir.import_branch(bzrwt.branch)
+        self.assertEquals(revid, newbranch.last_revision())
+
     # revision graph for the two tests below:
     # svn-1
     # |

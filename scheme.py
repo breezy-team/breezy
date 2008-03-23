@@ -24,6 +24,17 @@ from errors import InvalidSvnBranchPath
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 import bz2
 
+def is_valid_property_name(prop):
+    if not prop[0].isalnum() and not prop[0] in ":_":
+        return False
+    for c in prop[1:]:
+        if not c.isalnum() and not c in "-:._":
+            return False
+    return True
+
+
+
+
 class BranchingScheme:
     """ Divides SVN repository data up into branches. Since there
     is no proper way to do this, there are several subclasses of this class
@@ -67,7 +78,10 @@ class BranchingScheme:
             return NoBranchingScheme()
 
         if name.startswith("single-"):
-            return SingleBranchingScheme(name[len("single-"):])
+            return SingleBranchingSchemev0(name[len("single-"):])
+
+        if name.startswith("single1-"):
+            return SingleBranchingScheme(encoded=name[len("single1-"):])
 
         if name.startswith("list-"):
             return ListBranchingScheme(name[len("list-"):])
@@ -308,7 +322,9 @@ class UnknownBranchingScheme(BzrError):
 class SingleBranchingScheme(ListBranchingScheme):
     """Recognizes just one directory in the repository as branch.
     """
-    def __init__(self, path):
+    def __init__(self, path=None, encoded=None):
+        if encoded is not None:
+            path = prop_name_unquote(encoded)
         self.path = path.strip("/")
         if self.path == "":
             raise BzrError("NoBranchingScheme should be used")
@@ -333,7 +349,10 @@ class SingleBranchingScheme(ListBranchingScheme):
                 path[len(self.path):].strip("/"))
 
     def __str__(self):
-        return "single-%s" % self.path
+        if is_valid_property_name(self.path):
+            return "single-%s" % self.path
+        else:
+            return "single1-%s" % prop_name_quote(self.path)
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self.path)
@@ -345,6 +364,16 @@ class SingleBranchingScheme(ListBranchingScheme):
 
     def is_tag_parent(self, path):
         return False
+
+
+class SingleBranchingSchemev0(SingleBranchingScheme):
+    """Version of SingleBranchingSchemev0 that *never* quotes.
+    """
+    def __init__(self, path=None, allow_quotes=True):
+        SingleBranchingScheme.__init__(self, path)
+
+    def __str__(self):
+        return "single-%s" % self.path
 
 
 def _find_common_prefix(paths):
