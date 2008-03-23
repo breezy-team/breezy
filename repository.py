@@ -34,10 +34,11 @@ import svn.core
 
 import os
 
-from branchprops import CachingPathPropertyProvider, PathPropertyProvider
+from branchprops import PathPropertyProvider
 from cache import create_cache_dir, sqlite3
 from config import SvnRepositoryConfig
 import errors
+from graph import Graph
 import logwalker
 from mapping import (SVN_PROP_BZR_REVISION_ID, SVN_REVPROP_BZR_SIGNATURE,
                      SVN_PROP_BZR_BRANCHING_SCHEME, BzrSvnMappingv3FileProps,
@@ -330,6 +331,11 @@ class SvnRepository(Repository):
         Subversion repositories.
         """
         return False
+
+    def get_graph(self, other_repository=None):
+        """Return the graph walker for this repository format"""
+        parents_provider = self._make_parents_provider()
+        return Graph(parents_provider)
 
     def get_ancestry(self, revision_id, topo_sorted=True):
         """See Repository.get_ancestry().
