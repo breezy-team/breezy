@@ -39,6 +39,9 @@ def changes_find_prev_location(paths, branch_path, revnum):
     # next revnum in history
     revnum -= 1
 
+    if branch_path == "":
+        return (branch_path, revnum)
+
     # Make sure we get the right location for next time, if 
     # the branch itself was copied
     if (paths.has_key(branch_path) and 
@@ -67,10 +70,6 @@ def changes_find_prev_location(paths, branch_path, revnum):
             return (branch_path, revnum)
 
     return (branch_path, revnum)
-
-
-
-
 
 
 class LogWalker(object):
@@ -182,7 +181,7 @@ class LogWalker(object):
         if revnum == 0 and path == "":
             return
 
-        self.mutter("follow path %r:%r" % (path, revnum))
+        self.mutter("iter changes %r:%r" % (path, revnum))
 
         recurse = (path != "")
 

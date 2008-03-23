@@ -570,7 +570,7 @@ class InterFromSvnRepository(InterRepository):
                 elif not find_ghosts:
                     break
         else:
-r           for (revid, parent_revid) in graph.iter_lhs_ancestry(revision_id):
+            for (revid, parent_revid) in graph.iter_lhs_ancestry(revision_id):
                 if revid == NULL_REVISION:
                     continue
                 parents[revid] = (parent_revid,)

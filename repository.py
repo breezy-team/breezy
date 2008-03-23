@@ -690,9 +690,8 @@ class SvnRepository(Repository):
         """
         assert mapping is not None
 
-        while revnum >= 0:
+        for (_, paths, revnum) in self._log.iter_changes("", revnum):
             yielded_paths = []
-            paths = self._log.get_revision_paths(revnum)
             for p in paths:
                 try:
                     bp = mapping.scheme.unprefix(p)[0]
@@ -703,7 +702,6 @@ class SvnRepository(Repository):
                         yielded_paths.append(bp)
                 except NotBranchError:
                     pass
-            revnum -= 1
 
     def get_lhs_parent(self, revid):
         (branch_path, revnum, mapping) = self.lookup_revision_id(revid)
