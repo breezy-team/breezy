@@ -119,7 +119,8 @@ class SvnBranch(Branch):
         """
         if self._lock_mode == 'r' and self._cached_revnum:
             return self._cached_revnum
-        self._cached_revnum = self.repository.transport.get_latest_revnum()
+        latest_revnum = self.repository.transport.get_latest_revnum()
+        self._cached_revnum = self.repository._log.find_latest_change(self.get_branch_path(), latest_revnum, include_children=True)
         return self._cached_revnum
 
     def check(self):
@@ -200,7 +201,7 @@ class SvnBranch(Branch):
        
     def _generate_revision_history(self, last_revnum):
         """Generate the revision history up until a specified revision."""
-        revhistory = list(self.repository.iter_lhs_ancestry(self.generate_revision_id(last_revnum)))
+        revhistory = list(self.repository.get_graph().iter_lhs_ancestry(self.generate_revision_id(last_revnum)))
         revhistory.reverse()
         return revhistory
 
@@ -279,11 +280,7 @@ class SvnBranch(Branch):
         last_revnum = self.get_revnum()
         if (self._revision_history is None or 
             self._revision_history_revnum != last_revnum):
-            for (branch, rev) in self.repository.follow_branch(
-                self.get_branch_path(), last_revnum, self.mapping):
-                return self.repository.generate_revision_id(rev, branch, 
-                                                            self.mapping)
-            return NULL_REVISION
+            return self.repository.generate_revision_id(last_revnum, self.get_branch_path(last_revnum), self.mapping)
 
         ph = self.revision_history(last_revnum)
         if ph:
