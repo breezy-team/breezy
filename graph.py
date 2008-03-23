@@ -115,12 +115,12 @@ class Graph(graph.Graph):
 
     def get_lhs_parent(self, revid):
         parents = self.get_parent_map([revid])[revid]
-        if parents == () or parents == (NULL_REVISION,):
-            return None
+        if parents == ():
+            return NULL_REVISION
         return parents[0]
 
     def iter_lhs_ancestry(self, revid):
-        while revid is not None:
+        while revid != NULL_REVISION:
             parent_revid = self.get_lhs_parent(revid)
             yield (revid, parent_revid)
             revid = parent_revid
