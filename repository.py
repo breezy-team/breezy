@@ -614,7 +614,8 @@ class SvnRepository(Repository):
                 # Look at their bzr:revision-id-vX
                 revids = []
                 try:
-                    for line in self.branchprop_list.get_properties(branch, revno).get(SVN_PROP_BZR_REVISION_ID+str(scheme), "").splitlines():
+                    props = self.branchprop_list.get_properties(branch, revno)
+                    for line in props.get(SVN_PROP_BZR_REVISION_ID+str(scheme), "").splitlines():
                         try:
                             revids.append(parse_revid_property(line))
                         except errors.InvalidPropertyValue, ie:
