@@ -376,13 +376,13 @@ class TestInterRepositoryProviderAdapter(TestCase):
         formats = [(str, "C1", "C2"), (int, "D1", "D2")]
         adapter = InterRepositoryTestProviderAdapter(server1, server2, formats)
         self.assertEqual([
-            ('str',
+            ('str,str,str',
              {'interrepo_class': str,
               'repository_format': 'C1',
               'repository_format_to': 'C2',
               'transport_readonly_server': 'b',
               'transport_server': 'a'}),
-            ('int',
+            ('int,str,str',
              {'interrepo_class': int,
               'repository_format': 'D1',
               'repository_format_to': 'D2',
