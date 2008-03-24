@@ -1963,23 +1963,23 @@ class TestTestIdList(tests.TestCase):
              'mod1.submod1',
              'mod1.submod2.cl1.meth1', 'mod1.submod2.cl2.meth2',
              ])
-        self.assertTrue(id_list.is_module_name_used('mod1'))
-        self.assertTrue(id_list.is_module_name_used('mod1.submod1'))
-        self.assertTrue(id_list.is_module_name_used('mod1.submod2'))
-        self.assertTrue(id_list.test_in('mod1.cl1.meth1'))
-        self.assertTrue(id_list.test_in('mod1.submod1'))
-        self.assertTrue(id_list.test_in('mod1.func1'))
+        self.assertTrue(id_list.refers_to('mod1'))
+        self.assertTrue(id_list.refers_to('mod1.submod1'))
+        self.assertTrue(id_list.refers_to('mod1.submod2'))
+        self.assertTrue(id_list.includes('mod1.cl1.meth1'))
+        self.assertTrue(id_list.includes('mod1.submod1'))
+        self.assertTrue(id_list.includes('mod1.func1'))
 
     def test_bad_chars_in_params(self):
         id_list = self._create_id_list(['mod1.cl1.meth1(xx.yy)'])
-        self.assertTrue(id_list.is_module_name_used('mod1'))
-        self.assertTrue(id_list.test_in('mod1.cl1.meth1(xx.yy)'))
+        self.assertTrue(id_list.refers_to('mod1'))
+        self.assertTrue(id_list.includes('mod1.cl1.meth1(xx.yy)'))
 
     def test_module_used(self):
         id_list = self._create_id_list(['mod.class.meth'])
-        self.assertTrue(id_list.is_module_name_used('mod'))
-        self.assertTrue(id_list.is_module_name_used('mod.class'))
-        self.assertTrue(id_list.is_module_name_used('mod.class.meth'))
+        self.assertTrue(id_list.refers_to('mod'))
+        self.assertTrue(id_list.refers_to('mod.class'))
+        self.assertTrue(id_list.refers_to('mod.class.meth'))
 
     def test_test_suite(self):
         # This test is slow, so we do a single test with one test in each
@@ -2039,7 +2039,7 @@ class TestFilteredByModuleTestLoader(tests.TestCase):
     def _create_loader(self, test_list):
         id_filter = tests.TestIdList(test_list)
         loader = TestUtil.FilteredByModuleTestLoader(
-            id_filter.is_module_name_used)
+            id_filter.refers_to)
         return loader
 
     def test_load_tests(self):
