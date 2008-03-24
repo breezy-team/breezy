@@ -76,6 +76,14 @@ class ReposConfigTests(TestCaseInTempDir):
         c.set_user_option("set-revprops", "False")
         self.assertEquals(False, c.get_set_revprops())
 
+    def test_log_strip_trailing_newline(self):
+        c = SvnRepositoryConfig("blabla3")
+        self.assertEquals(False, c.get_log_strip_trailing_newline())
+        c.set_user_option("log-strip-trailing-newline", "True")
+        self.assertEquals(True, c.get_log_strip_trailing_newline())
+        c.set_user_option("log-strip-trailing-newline", "False")
+        self.assertEquals(False, c.get_log_strip_trailing_newline())
+
     def test_supports_change_revprop(self):
         c = SvnRepositoryConfig("blabla2")
         self.assertEquals(None, c.get_supports_change_revprop())

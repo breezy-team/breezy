@@ -142,6 +142,19 @@ class MappingTestAdapter:
         self.assertEquals(fileids, 
                 self.mapping.import_fileid_map(revprops, fileprops))
 
+    def test_message(self):
+        if not self.mapping.supports_roundtripping():
+            raise TestNotApplicable
+        (revprops, fileprops) = self.mapping.export_revision("branchp", 432432432.0, 0, "somebody", 
+                                     {"arevprop": "val"}, "arevid", 4, ["merge1"], dict())
+        try:
+            self.mapping.export_message("My Commit message", revprops, fileprops)
+        except NotImplementedError:
+            raise TestNotApplicable
+        targetrev = Revision(None)
+        self.mapping.import_revision(revprops, fileprops, targetrev)
+        self.assertEquals("My Commit message", targetrev.message)
+
     def test_revision(self):
         if not self.mapping.supports_roundtripping():
             raise TestNotApplicable

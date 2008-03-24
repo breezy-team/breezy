@@ -83,6 +83,14 @@ class SvnRepositoryConfig(IniBasedConfig):
         except KeyError:
             return None
 
+    def get_log_strip_trailing_newline(self):
+        """Check whether or not trailing newlines should be stripped in the 
+        Subversion log message (where support by the bzr<->svn mapping used)."""
+        try:
+            return self._get_parser().get_bool(self.uuid, "log-strip-trailing-newline")
+        except KeyError:
+            return False
+
     def branching_scheme_is_mandatory(self):
         """Check whether or not the branching scheme for this repository 
         is mandatory.

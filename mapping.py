@@ -352,12 +352,15 @@ class BzrSvnMapping:
         """
         raise NotImplementedError(self.export_fileid_map)
 
-    def export_revision(self, branch_root, message, timestamp, timezone, committer, revprops, 
+    def export_revision(self, branch_root, timestamp, timezone, committer, revprops, 
                         revision_id, revno, merges, fileprops):
         """Determines the revision properties and branch root file 
         properties.
         """
         raise NotImplementedError(self.export_revision)
+
+    def export_message(self, log, revprops, fileprops):
+        raise NotImplementedError(self.export_message)
 
     def get_revision_id(self, branch_path, revprops, fileprops):
         raise NotImplementedError(self.get_revision_id)
@@ -564,10 +567,7 @@ class BzrSvnMappingFileProps:
 
         return svnprops
  
-    def export_revision(self, branch_root, message, timestamp, timezone, committer, revprops, revision_id, revno, merges, old_fileprops):
-
-        if message is not None:
-            raise Exception("This mapping does not support setting a different message for Subversion")
+    def export_revision(self, branch_root, timestamp, timezone, committer, revprops, revision_id, revno, merges, old_fileprops):
 
         # Keep track of what Subversion properties to set later on
         fileprops = {}
@@ -641,7 +641,10 @@ class BzrSvnMappingRevProps:
             return (revno, revid)
         return (None, None)
 
-    def export_revision(self, branch_root, message, timestamp, timezone, committer, 
+    def export_message(self, message, revprops, fileprops):
+        revprops[SVN_REVPROP_BZR_LOG] = message.encode("utf-8")
+
+    def export_revision(self, branch_root, timestamp, timezone, committer, 
                         revprops, revision_id, revno, merges, 
                         fileprops):
         svn_revprops = {SVN_REVPROP_BZR_MAPPING_VERSION: str(MAPPING_VERSION)}
@@ -651,9 +654,6 @@ class BzrSvnMappingRevProps:
 
         if committer is not None:
             svn_revprops[SVN_REVPROP_BZR_COMMITTER] = committer.encode("utf-8")
-
-        if message is not None:
-            svn_revprops[SVN_REVPROP_BZR_LOG] = message.encode("utf-8")
 
         if revprops is not None:
             for name, value in revprops.items():
@@ -745,11 +745,11 @@ class BzrSvnMappingv3Hybrid(BzrSvnMappingv3):
         else:
             return self.fileprops.import_fileid_map(svn_revprops, fileprops)
 
-    def export_revision(self, branch_root, message, timestamp, timezone, committer, revprops, revision_id, 
+    def export_revision(self, branch_root, timestamp, timezone, committer, revprops, revision_id, 
                         revno, merges, fileprops):
-        (_, fileprops) = self.fileprops.export_revision(branch_root, message, timestamp, timezone, committer, 
+        (_, fileprops) = self.fileprops.export_revision(branch_root, timestamp, timezone, committer, 
                                       revprops, revision_id, revno, merges, fileprops)
-        (revprops, _) = self.revprops.export_revision(branch_root, message, timestamp, timezone, committer, 
+        (revprops, _) = self.revprops.export_revision(branch_root, timestamp, timezone, committer, 
                                       revprops, revision_id, revno, merges, fileprops)
         return (revprops, fileprops)
 

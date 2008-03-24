@@ -17,6 +17,11 @@ bzr-svn 0.4.9	UNRELEASED
 
    * Avoid using copy in several places.
 
+   * Add new ``log-strip-trailing-newline'' option which removes 
+     the last trailing newline from the log message when pushing 
+	 to Subversion. This feature is only available for the 
+	 experimental mappings. (#189227)
+
   BUGS
   
    * Fix compatibility with bzr 1.3.
