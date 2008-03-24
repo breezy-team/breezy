@@ -25,7 +25,7 @@ from bzrlib.errors import (BzrError, InvalidRevisionId, DivergedBranches,
 from bzrlib.inventory import Inventory
 from bzrlib.repository import RootCommitBuilder, InterRepository
 from bzrlib.revision import NULL_REVISION
-from bzrlib.trace import mutter
+from bzrlib.trace import mutter, warning
 
 from cStringIO import StringIO
 from errors import ChangesRootLHSHistory, MissingPrefix, RevpropChangeFailed
@@ -450,7 +450,8 @@ class SvnCommitBuilder(RootCommitBuilder):
                                               bp_parts, -1)
             self.revision_metadata = None
             for prop in self._svn_revprops:
-                assert is_valid_property_name(prop), "Invalid property name %r" % prop
+                if not is_valid_property_name(prop):
+                    warning("Setting property %r with invalid characters in name" % prop)
             try:
                 self.editor = self.repository.transport.get_commit_editor(
                         self._svn_revprops, done, None, False)
@@ -485,7 +486,8 @@ class SvnCommitBuilder(RootCommitBuilder):
 
             # Set all the revprops
             for prop, value in self._svnprops.items():
-                assert is_valid_property_name(prop), "Invalid property name %r" % prop
+                if not is_valid_property_name(prop):
+                    warning("Setting property %r with invalid characters in name" % prop)
                 if value is not None:
                     value = value.encode('utf-8')
                 self.editor.change_dir_prop(branch_batons[-1], prop, value, 
