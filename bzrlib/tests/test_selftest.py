@@ -77,6 +77,11 @@ from bzrlib.transport.memory import MemoryServer, MemoryTransport
 from bzrlib.version import _get_bzr_source_tree
 
 
+def _test_ids(test_suite):
+    """Get the ids for the tests in a test suite."""
+    return [t.id() for t in iter_suite_tests(test_suite)]
+
+
 class SelftestTests(TestCase):
 
     def test_import_tests(self):
@@ -1721,18 +1726,14 @@ class TestSelftestFiltering(TestCase):
         self.loader = TestUtil.TestLoader()
         self.suite.addTest(self.loader.loadTestsFromModuleNames([
             'bzrlib.tests.test_selftest']))
-        self.all_names = self._test_ids(self.suite)
-
-    def _test_ids(self, test_suite):
-        """Get the ids for the tests in a test suite."""
-        return [t.id() for t in iter_suite_tests(test_suite)]
+        self.all_names = _test_ids(self.suite)
 
     def test_condition_id_re(self):
         test_name = ('bzrlib.tests.test_selftest.TestSelftestFiltering.'
             'test_condition_id_re')
         filtered_suite = filter_suite_by_condition(self.suite,
             condition_id_re('test_condition_id_re'))
-        self.assertEqual([test_name], self._test_ids(filtered_suite))
+        self.assertEqual([test_name], _test_ids(filtered_suite))
 
     def test_condition_id_in_list(self):
         test_names = ['bzrlib.tests.test_selftest.TestSelftestFiltering.'
@@ -1742,16 +1743,14 @@ class TestSelftestFiltering(TestCase):
             self.suite, tests.condition_id_in_list(id_list))
         my_pattern = 'TestSelftestFiltering.*test_condition_id_in_list'
         re_filtered = filter_suite_by_re(self.suite, my_pattern)
-        self.assertEqual(self._test_ids(re_filtered),
-                         self._test_ids(filtered_suite))
+        self.assertEqual(_test_ids(re_filtered), _test_ids(filtered_suite))
 
     def test_condition_isinstance(self):
         filtered_suite = filter_suite_by_condition(self.suite,
             condition_isinstance(self.__class__))
         class_pattern = 'bzrlib.tests.test_selftest.TestSelftestFiltering.'
         re_filtered = filter_suite_by_re(self.suite, class_pattern)
-        self.assertEqual(self._test_ids(re_filtered),
-            self._test_ids(filtered_suite))
+        self.assertEqual(_test_ids(re_filtered), _test_ids(filtered_suite))
 
     def test_exclude_tests_by_condition(self):
         excluded_name = ('bzrlib.tests.test_selftest.TestSelftestFiltering.'
@@ -1760,33 +1759,33 @@ class TestSelftestFiltering(TestCase):
             lambda x:x.id() == excluded_name)
         self.assertEqual(len(self.all_names) - 1,
             filtered_suite.countTestCases())
-        self.assertFalse(excluded_name in self._test_ids(filtered_suite))
+        self.assertFalse(excluded_name in _test_ids(filtered_suite))
         remaining_names = list(self.all_names)
         remaining_names.remove(excluded_name)
-        self.assertEqual(remaining_names, self._test_ids(filtered_suite))
+        self.assertEqual(remaining_names, _test_ids(filtered_suite))
 
     def test_exclude_tests_by_re(self):
-        self.all_names = self._test_ids(self.suite)
+        self.all_names = _test_ids(self.suite)
         filtered_suite = exclude_tests_by_re(self.suite, 'exclude_tests_by_re')
         excluded_name = ('bzrlib.tests.test_selftest.TestSelftestFiltering.'
             'test_exclude_tests_by_re')
         self.assertEqual(len(self.all_names) - 1,
             filtered_suite.countTestCases())
-        self.assertFalse(excluded_name in self._test_ids(filtered_suite))
+        self.assertFalse(excluded_name in _test_ids(filtered_suite))
         remaining_names = list(self.all_names)
         remaining_names.remove(excluded_name)
-        self.assertEqual(remaining_names, self._test_ids(filtered_suite))
+        self.assertEqual(remaining_names, _test_ids(filtered_suite))
 
     def test_filter_suite_by_condition(self):
         test_name = ('bzrlib.tests.test_selftest.TestSelftestFiltering.'
             'test_filter_suite_by_condition')
         filtered_suite = filter_suite_by_condition(self.suite,
             lambda x:x.id() == test_name)
-        self.assertEqual([test_name], self._test_ids(filtered_suite))
+        self.assertEqual([test_name], _test_ids(filtered_suite))
 
     def test_filter_suite_by_re(self):
         filtered_suite = filter_suite_by_re(self.suite, 'test_filter_suite_by_r')
-        filtered_names = self._test_ids(filtered_suite)
+        filtered_names = _test_ids(filtered_suite)
         self.assertEqual(filtered_names, ['bzrlib.tests.test_selftest.'
             'TestSelftestFiltering.test_filter_suite_by_re'])
 
@@ -1795,7 +1794,7 @@ class TestSelftestFiltering(TestCase):
                      'TestSelftestFiltering.test_filter_suite_by_id_list']
         filtered_suite = tests.filter_suite_by_id_list(
             self.suite, tests.TestIdList(test_list))
-        filtered_names = self._test_ids(filtered_suite)
+        filtered_names = _test_ids(filtered_suite)
         self.assertEqual(
             filtered_names,
             ['bzrlib.tests.test_selftest.'
@@ -1809,37 +1808,37 @@ class TestSelftestFiltering(TestCase):
     def test_randomize_suite(self):
         randomized_suite = randomize_suite(self.suite)
         # randomizing should not add or remove test names.
-        self.assertEqual(set(self._test_ids(self.suite)),
-            set(self._test_ids(randomized_suite)))
+        self.assertEqual(set(_test_ids(self.suite)),
+                         set(_test_ids(randomized_suite)))
         # Technically, this *can* fail, because random.shuffle(list) can be
         # equal to list. Trying multiple times just pushes the frequency back.
         # As its len(self.all_names)!:1, the failure frequency should be low
         # enough to ignore. RBC 20071021.
         # It should change the order.
-        self.assertNotEqual(self.all_names, self._test_ids(randomized_suite))
+        self.assertNotEqual(self.all_names, _test_ids(randomized_suite))
         # But not the length. (Possibly redundant with the set test, but not
         # necessarily.)
         self.assertEqual(len(self.all_names),
-            len(self._test_ids(randomized_suite)))
+            len(_test_ids(randomized_suite)))
 
     def test_sort_suite_by_re(self):
         sorted_suite = self.applyDeprecated(one_zero,
             sort_suite_by_re, self.suite, 'test_filter_suite_by_r')
-        sorted_names = self._test_ids(sorted_suite)
+        sorted_names = _test_ids(sorted_suite)
         self.assertEqual(sorted_names[0], 'bzrlib.tests.test_selftest.'
             'TestSelftestFiltering.test_filter_suite_by_re')
         self.assertEquals(sorted(self.all_names), sorted(sorted_names))
 
     def test_split_suit_by_re(self):
-        self.all_names = self._test_ids(self.suite)
+        self.all_names = _test_ids(self.suite)
         split_suite = split_suite_by_re(self.suite, 'test_filter_suite_by_r')
         filtered_name = ('bzrlib.tests.test_selftest.TestSelftestFiltering.'
             'test_filter_suite_by_re')
-        self.assertEqual([filtered_name], self._test_ids(split_suite[0]))
-        self.assertFalse(filtered_name in self._test_ids(split_suite[1]))
+        self.assertEqual([filtered_name], _test_ids(split_suite[0]))
+        self.assertFalse(filtered_name in _test_ids(split_suite[1]))
         remaining_names = list(self.all_names)
         remaining_names.remove(filtered_name)
-        self.assertEqual(remaining_names, self._test_ids(split_suite[1]))
+        self.assertEqual(remaining_names, _test_ids(split_suite[1]))
 
 
 class TestCheckInventoryShape(TestCaseWithTransport):
@@ -1989,7 +1988,7 @@ class TestTestIdList(tests.TestCase):
             # --no-plugins
             ]
         suite = tests.test_suite(test_list)
-        self.assertEquals(test_list, self._test_ids(suite))
+        self.assertEquals(test_list, _test_ids(suite))
 
 
 class TestLoadTestIdList(tests.TestCaseInTempDir):
