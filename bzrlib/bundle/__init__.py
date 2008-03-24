@@ -35,7 +35,7 @@ def read_bundle_from_url(url):
     return read_mergeable_from_url(url, _do_directive=False)
 
 
-def read_mergeable_from_url(url, _do_directive=True):
+def read_mergeable_from_url(url, _do_directive=True, possible_transports=None):
     """Read mergable object from a given URL.
 
     :return: An object supporting get_target_revision.  Raises NotABundle if
@@ -48,7 +48,7 @@ def read_mergeable_from_url(url, _do_directive=True):
         # definitely not a bundle
         raise errors.NotABundle('A directory cannot be a bundle')
 
-    transport = get_transport(url)
+    transport = get_transport(url, possible_transports=possible_transports)
     mergeable, transport = read_mergeable_from_transport(transport, filename,
                                                          _do_directive)
     return mergeable

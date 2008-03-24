@@ -48,6 +48,8 @@ IN DEVELOPMENT
 
     * Implement handling of basename parameter for DefaultMail.  (James Westby)
 
+    * Launchpad locations can be pulled.  (Aaron Bentley, #181945)
+
   DOCUMENTATION:
 
   API BREAKS:

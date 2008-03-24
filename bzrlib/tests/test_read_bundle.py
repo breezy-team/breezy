@@ -86,3 +86,14 @@ class TestReadBundleFromURL(TestTransportImplementation):
         self.assertRaises(errors.NotABundle, 
             bzrlib.bundle.read_bundle_from_url, 
             self.get_url('tree/a'))
+
+    def test_read_mergeable_populates_possible_transports(self):
+        self._captureVar('BZR_NO_SMART_VFS', None)
+        wt = self.create_test_bundle()
+        if wt is None:
+            return
+        possible_transports = []
+        url = unicode(self.get_url('test_bundle'))
+        info = bzrlib.bundle.read_mergeable_from_url(url,
+            possible_transports=possible_transports)
+        self.assertEqual(1, len(possible_transports))
