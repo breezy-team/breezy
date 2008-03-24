@@ -294,7 +294,7 @@ def _linear_view_revisions(branch):
     repo = branch.repository
     revision_ids = repo.iter_reverse_revision_history(start_revision_id)
     for num, revision_id in enumerate(revision_ids):
-        yield revision_id, start_revno - num, 0
+        yield revision_id, str(start_revno - num), 0
 
 
 def _iter_revisions(repository, view_revisions, generate_delta):
