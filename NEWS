@@ -19,6 +19,12 @@ bzr-svn 0.4.10  UNRELEASED
    * Branching from a Subversion repository will now fetch right-hand side 
      parents as well as left hand side (mainline) parents, if specified.
 
+   * Removed revision number cache.
+
+  BUGS
+
+    * Avoid sometimes incorrect determination of Bazaar revision numbers. (#181773)
+
 bzr-svn 0.4.9	2008-03-23
 
   FEATURES

@@ -69,8 +69,6 @@ class SvnBranch(Branch):
         self._lock_mode = None
         self._lock_count = 0
         self._cached_revnum = None
-        self._revision_history = None
-        self._revision_history_revnum = None
         self.mapping = self.repository.get_mapping()
         self._branch_path = branch_path.strip("/")
         assert isinstance(self._branch_path, str)
@@ -202,12 +200,6 @@ class SvnBranch(Branch):
         return self.repository.generate_revision_id(
                 revnum, self.get_branch_path(revnum), self.mapping)
        
-    def _generate_revision_history(self, last_revnum):
-        """Generate the revision history up until a specified revision."""
-        hist = [revid for (revid, parent_revid) in self.repository.get_graph().iter_lhs_ancestry(self.generate_revision_id(last_revnum))]
-        hist.reverse()
-        return hist
-
     def _get_nick(self):
         """Find the nick name for this branch.
 
@@ -239,23 +231,6 @@ class SvnBranch(Branch):
             tree = self.repository.revision_tree(self.get_rev_id(revnum))
         return tree.get_root_id()
 
-    def revno(self):
-        """See Branch.revno()."""
-        return self.last_revision_info()[0]
-
-    def revision_id_to_revno(self, revision_id):
-        """See Branch.revision_id_to_revno()."""
-        if revision_id is None:
-            return 0
-        revno = self.repository.revmap.lookup_dist_to_origin(revision_id)
-        if revno is not None:
-            return revno
-        history = self.revision_history()
-        try:
-            return history.index(revision_id) + 1
-        except ValueError:
-            raise NoSuchRevision(self, revision_id)
-
     def set_push_location(self, location):
         """See Branch.set_push_location()."""
         raise NotImplementedError(self.set_push_location)
@@ -265,31 +240,20 @@ class SvnBranch(Branch):
         # get_push_location not supported on Subversion
         return None
 
-    def revision_history(self, last_revnum=None):
-        """See Branch.revision_history()."""
-        if last_revnum is None:
-            last_revnum = self.get_revnum()
-        if (self._revision_history is None or 
-            self._revision_history_revnum != last_revnum):
-            self._revision_history = self._generate_revision_history(last_revnum)
-            self._revision_history_revnum = last_revnum
-            self.repository.revmap.insert_revision_history(self._revision_history)
-        return self._revision_history
+    def _gen_revision_history(self):
+        """Generate the revision history from last revision
+        """
+        history = list(self.repository.iter_reverse_revision_history(
+            self.last_revision()))
+        history.reverse()
+        return history
 
     def last_revision(self):
         """See Branch.last_revision()."""
         # Shortcut for finding the tip. This avoids expensive generation time
         # on large branches.
         last_revnum = self.get_revnum()
-        if (self._revision_history is None or 
-            self._revision_history_revnum != last_revnum):
-            return self.repository.generate_revision_id(last_revnum, self.get_branch_path(last_revnum), self.mapping)
-
-        ph = self.revision_history(last_revnum)
-        if ph:
-            return ph[-1]
-        else:
-            return NULL_REVISION
+        return self.repository.generate_revision_id(last_revnum, self.get_branch_path(last_revnum), self.mapping)
 
     def pull(self, source, overwrite=False, stop_revision=None, 
              _hook_master=None, run_hooks=True):
@@ -365,6 +329,7 @@ class SvnBranch(Branch):
                 pb.update("pushing revisions", todo.index(revid), 
                           len(todo))
                 push(self, other, revid)
+                self._clear_cached_state()
         finally:
             pb.finished()
 
@@ -393,6 +358,7 @@ class SvnBranch(Branch):
         if self._lock_count == 0:
             self._lock_mode = None
             self._cached_revnum = None
+            self._clear_cached_state()
 
     def get_parent(self):
         """See Branch.get_parent()."""
@@ -403,6 +369,7 @@ class SvnBranch(Branch):
 
     def append_revision(self, *revision_ids):
         """See Branch.append_revision()."""
+        self._clear_cached_state()
         #raise NotImplementedError(self.append_revision)
         #FIXME: Make sure the appended revision is already 
         # part of the revision history

@@ -331,6 +331,17 @@ class SvnRepository(Repository):
         """
         return False
 
+    def iter_reverse_revision_history(self, revision_id):
+        """Iterate backwards through revision ids in the lefthand history
+
+        :param revision_id: The revision id to start with.  All its lefthand
+            ancestors will be traversed.
+        """
+        if revision_id in (None, NULL_REVISION):
+            return
+        for (revid, parent_revid) in self.get_graph().iter_lhs_ancestry(revision_id):
+            yield revid
+
     def get_graph(self, other_repository=None):
         """Return the graph walker for this repository format"""
         parents_provider = self._make_parents_provider()
@@ -557,7 +568,7 @@ class SvnRepository(Repository):
         if revid is None:
             revid = mapping.generate_revision_id(self.uuid, revnum, path)
         self.revmap.insert_revid(revid, path, revnum, revnum, 
-                str(mapping.scheme), bzr_revno)
+                str(mapping.scheme))
         return revid
 
     def lookup_revision_id(self, revid, scheme=None):
@@ -629,7 +640,7 @@ class SvnRepository(Repository):
                     if entry_revid == revid:
                         found = True
                     self.revmap.insert_revid(entry_revid, branch, 0, revno, 
-                            str(scheme), entry_revno)
+                            str(scheme))
                 
             # We've added all the revision ids for this scheme in the repository,
             # so no need to check again unless new revisions got added
@@ -652,8 +663,7 @@ class SvnRepository(Repository):
                 # that will already have happened earlier
                 continue
             if entry_revid == revid:
-                self.revmap.insert_revid(revid, bp, rev, rev, scheme, 
-                                         entry_revno)
+                self.revmap.insert_revid(revid, bp, rev, rev, scheme)
                 return (bp, rev, BzrSvnMappingv3FileProps(get_scheme(scheme)))
 
         raise AssertionError("Revision id %s was added incorrectly" % revid)
