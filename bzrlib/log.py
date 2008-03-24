@@ -188,6 +188,7 @@ def show_log(branch,
     finally:
         branch.unlock()
 
+
 def _show_log(branch,
              lf,
              specific_fileid=None,
@@ -256,28 +257,10 @@ def _show_log(branch,
 
     generate_delta = verbose and getattr(lf, 'supports_delta', False)
 
-    def iter_revisions():
-        # r = revision, n = revno, d = merge depth
-        revision_ids = [r for r, n, d in view_revisions]
-        num = 9
-        repository = branch.repository
-        while revision_ids:
-            cur_deltas = {}
-            revisions = repository.get_revisions(revision_ids[:num])
-            if generate_delta:
-                deltas = repository.get_deltas_for_revisions(revisions)
-                cur_deltas = dict(izip((r.revision_id for r in revisions),
-                                       deltas))
-            for revision in revisions:
-                yield revision, cur_deltas.get(revision.revision_id)
-            revision_ids  = revision_ids[num:]
-            num = min(int(num * 1.5), 200)
-
     # now we just print all the revisions
     log_count = 0
-    for ((rev_id, revno, merge_depth), (rev, delta)) in \
-         izip(view_revisions, iter_revisions()):
-
+    for (rev_id, revno, merge_depth), rev, delta in _iter_revisions(
+        branch.repository, view_revisions, generate_delta):
         if searchRE:
             if not searchRE.search(rev.message):
                 continue
@@ -289,6 +272,26 @@ def _show_log(branch,
             log_count += 1
             if log_count >= limit:
                 break
+
+
+def _iter_revisions(repository, view_revisions, generate_delta):
+    num = 9
+    view_revisions = iter(view_revisions)
+    while True:
+        cur_view_revisions = [d for x, d in zip(range(num), view_revisions)]
+        if len(cur_view_revisions) == 0:
+            break
+        cur_deltas = {}
+        # r = revision, n = revno, d = merge depth
+        revision_ids = [r for (r, n, d) in cur_view_revisions]
+        revisions = repository.get_revisions(revision_ids)
+        if generate_delta:
+            deltas = repository.get_deltas_for_revisions(revisions)
+            cur_deltas = dict(izip((r.revision_id for r in revisions),
+                                   deltas))
+        for view_data, revision in izip(cur_view_revisions, revisions):
+            yield view_data, revision, cur_deltas.get(revision.revision_id)
+        num = min(int(num * 1.5), 200)
 
 
 def _get_mainline_revs(branch, start_revision, end_revision):
