@@ -109,7 +109,6 @@ __unittest = 1
 
 default_transport = LocalURLServer
 
-MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = [
         bzrlib,
         bzrlib.timestamp,
