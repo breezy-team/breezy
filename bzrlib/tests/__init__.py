@@ -2573,6 +2573,40 @@ def load_test_id_list(file_name):
     ftest.close()
     return test_list
 
+def suite_matches_id_list(test_suite, id_list):
+    """Warns about tests not appearing or appearing more than once.
+
+    :param test_suite: A TestSuite object.
+    :param test_id_list: The list of test ids that should be found in 
+         test_suite.
+
+    :return: (absents, duplicates) absents is a list containing the test found
+        in id_list but not in test_suite, duplicates is a list containing the
+        test found multiple times in test_suite.
+
+    When using a prefined test id list, it may occurs that some tests do not
+    exist anymore or that some tests use the same id. This function warns the
+    tester about potential problems in his workflow (test lists are volatile)
+    or in the test suite itself (using the same id for several tests does not
+    help to localize defects).
+    """
+    # Build a dict counting id occurrences
+    tests = dict()
+    for test in iter_suite_tests(test_suite):
+        id = test.id()
+        tests[id] = tests.get(id, 0) + 1
+
+    not_found = []
+    duplicates = []
+    for id in id_list:
+        occurs = tests.get(id, 0)
+        if not occurs:
+            not_found.append(id)
+        elif occurs > 1:
+            duplicates.append(id)
+
+    return not_found, duplicates
+
 
 class TestIdList(object):
     """Test id list to filter a test suite.
@@ -2838,6 +2872,15 @@ def test_suite(keep_only=None):
                 sys.getdefaultencoding())
             reload(sys)
             sys.setdefaultencoding(default_encoding)
+
+    if keep_only is not None:
+        # Do some sanity checks on the id_list filtering
+        not_found, duplicates = suite_matches_id_list(suite, keep_only)
+        for id in not_found:
+            bzrlib.trace.warning('"%s" not found in the test suite', id)
+        for id in duplicates:
+            bzrlib.trace.warning('"%s" is used as an id by several tests', id)
+
     return suite
 
 
