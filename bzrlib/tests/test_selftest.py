@@ -2034,3 +2034,24 @@ class TestLoadTestIdList(tests.TestCaseInTempDir):
         self.assertEquals('bar baz', tlist[3])
 
 
+class TestFilteredByModuleTestLoader(tests.TestCase):
+
+    def _create_loader(self, test_list):
+        id_filter = tests.TestIdList(test_list)
+        loader = TestUtil.FilteredByModuleTestLoader(
+            id_filter.is_module_name_used)
+        return loader
+
+    def test_load_tests(self):
+        test_list = ['bzrlib.tests.test_sampler.DemoTest.test_nothing']
+        loader = self._create_loader(test_list)
+
+        suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
+        self.assertEquals(test_list, _test_ids(suite))
+
+    def test_exclude_tests(self):
+        test_list = ['bogus']
+        loader = self._create_loader(test_list)
+
+        suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
+        self.assertEquals([], _test_ids(suite))
