@@ -1818,8 +1818,7 @@ class TestSelftestFiltering(TestCase):
         self.assertNotEqual(self.all_names, _test_ids(randomized_suite))
         # But not the length. (Possibly redundant with the set test, but not
         # necessarily.)
-        self.assertEqual(len(self.all_names),
-            len(_test_ids(randomized_suite)))
+        self.assertEqual(len(self.all_names), len(_test_ids(randomized_suite)))
 
     def test_sort_suite_by_re(self):
         sorted_suite = self.applyDeprecated(one_zero,
