@@ -66,47 +66,6 @@ class CachingParentsProvider(object):
         return parent_map
 
 
-class CachingParentsProvider(object):
-    """A parents provider which will cache the revision => parents in a dict.
-
-    This is useful for providers that have an expensive lookup.
-    """
-
-    def __init__(self, parent_provider):
-        self._real_provider = parent_provider
-        # Theoretically we could use an LRUCache here
-        self._cache = {}
-
-    def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self._real_provider)
-
-    def get_parent_map(self, keys):
-        """See _StackedParentsProvider.get_parent_map"""
-        needed = set()
-        # If the _real_provider doesn't have a key, we cache a value of None,
-        # which we then later use to realize we cannot provide a value for that
-        # key.
-        parent_map = {}
-        cache = self._cache
-        for key in keys:
-            if key in cache:
-                value = cache[key]
-                if value is not None:
-                    parent_map[key] = value
-            else:
-                needed.add(key)
-
-        if needed:
-            new_parents = self._real_provider.get_parent_map(needed)
-            cache.update(new_parents)
-            parent_map.update(new_parents)
-            needed.difference_update(new_parents)
-            cache.update(dict.fromkeys(needed, None))
-        return parent_map
-
-
-
-
 class Graph(graph.Graph):
     def __init__(self, parents_provider):
         graph.Graph.__init__(self, parents_provider)

@@ -705,7 +705,10 @@ class SvnRepository(Repository):
 
     def get_lhs_parent(self, revid):
         (branch_path, revnum, mapping) = self.lookup_revision_id(revid)
-        return lhs_revision_parent(branch_path, revnum, mapping)
+        parent_revid = self.lhs_revision_parent(branch_path, revnum, mapping)
+        if parent_revid is None:
+            return NULL_REVISION
+        return parent_revid
 
     def follow_branch(self, branch_path, revnum, mapping):
         """Follow the history of a branch. Will yield all the 
