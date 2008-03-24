@@ -1,5 +1,9 @@
 bzr-svn 0.4.10  UNRELEASED
 
+  CHANGES
+
+   * Changed license from GPLv2 or later to GPLv3 or later.
+
   FEATURES
 
    * Add new ``log-strip-trailing-newline'' option which removes 
