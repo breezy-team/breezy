@@ -2001,8 +2001,7 @@ class TestTestIdList(tests.TestCase):
 
     def test_test_suite_matches_id_list_with_unknown(self):
         loader = TestUtil.TestLoader()
-        import bzrlib.tests.test_sampler
-        suite = loader.loadTestsFromModule(bzrlib.tests.test_sampler)
+        suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
         test_list = ['bzrlib.tests.test_sampler.DemoTest.test_nothing',
                      'bogus']
         not_found, duplicates = tests.suite_matches_id_list(suite, test_list)
@@ -2011,8 +2010,7 @@ class TestTestIdList(tests.TestCase):
 
     def test_suite_matches_id_list_with_duplicates(self):
         loader = TestUtil.TestLoader()
-        import bzrlib.tests.test_sampler
-        suite = loader.loadTestsFromModule(bzrlib.tests.test_sampler)
+        suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
         dupes = loader.suiteClass()
         for test in iter_suite_tests(suite):
             dupes.addTest(test)
