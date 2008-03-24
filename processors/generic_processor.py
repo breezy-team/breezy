@@ -22,6 +22,7 @@ import time
 from bzrlib import (
     builtins,
     bzrdir,
+    debug,
     delta,
     errors,
     generate_ids,
@@ -35,9 +36,10 @@ from bzrlib import (
     )
 from bzrlib.repofmt import pack_repo
 from bzrlib.trace import (
+    error,
+    mutter,
     note,
     warning,
-    error,
     )
 import bzrlib.util.configobj.configobj as configobj
 from bzrlib.plugins.fastimport import (
@@ -123,11 +125,17 @@ class GenericProcessor(processor.ImportProcessor):
         msg = "%s WARNING: %s" % (self._time_of_day(), msg)
         warning(msg, *args)
 
+    def debug(self, mgs, *args):
+        """Output a debug message if the appropriate -D option was given."""
+        if "fast-import" in debug.debug_flags:
+            msg = "%s DEBUG: %s" % (self._time_of_day(), msg)
+            mutter(msg, *args)
+
     def _time_of_day(self):
         """Time of day as a string."""
         # Note: this is a separate method so tests can patch in a fixed value
         return time.strftime("%H:%M:%S")
-
+    
     def pre_process(self):
         self._start_time = time.time()
         self._load_info_and_params()
@@ -248,7 +256,7 @@ class GenericProcessor(processor.ImportProcessor):
             for lost_info in branches_lost:
                 head_revision = lost_info[1]
                 branch_name = lost_info[0]
-                note("\t %s = %s", head_revision, branch_name)
+                self.note("\t %s = %s", head_revision, branch_name)
 
         # Update the working trees as requested and dump stats
         self._tree_count = 0
@@ -569,6 +577,12 @@ class GenericCommitHandler(processor.CommitHandler):
         msg = "WARNING: %s (%s)" % (msg, self.command.id)
         warning(msg, *args)
 
+    def debug(self, msg, *args):
+        """Output a mutter if the appropriate -D option was given."""
+        if "fast-import" in debug.debug_flags:
+            msg = "%s (%s)" % (msg, self.command.id)
+            mutter(msg, *args)
+
     def pre_process_files(self):
         """Prepare for committing."""
         self.revision_id = self.gen_revision_id()
@@ -584,6 +598,7 @@ class GenericCommitHandler(processor.CommitHandler):
                 for p in parents]
         else:
             self.parents = []
+        self.debug("revision parents are %s", str(self.parents))
 
         # Seed the inventory from the previous one
         if len(self.parents) == 0:
@@ -647,11 +662,13 @@ class GenericCommitHandler(processor.CommitHandler):
             data = self.cache_mgr.fetch_blob(filecmd.dataref)
         else:
             data = filecmd.data
+        self.debug("modifying %s", filecmd.path)
         self._modify_inventory(filecmd.path, filecmd.kind,
             filecmd.is_executable, data)
 
     def delete_handler(self, filecmd):
         path = filecmd.path
+        self.debug("deleting %s", path)
         fileid = self.bzr_file_id(path)
         try:
             del self.inventory[fileid]
@@ -678,9 +695,13 @@ class GenericCommitHandler(processor.CommitHandler):
     def rename_handler(self, filecmd):
         old_path = filecmd.old_path
         new_path = filecmd.new_path
+        self.debug("renaming %s to %s", old_path, new_path)
         file_id = self.bzr_file_id(old_path)
         basename, new_parent_ie = self._ensure_directory(new_path)
         new_parent_id = new_parent_ie.file_id
+        existing_id = self.inventory.path2id(new_path)
+        if existing_id is not None:
+            self.inventory.remove_recursive_id(existing_id)
         self.inventory.rename(file_id, new_parent_id, basename)
         self.cache_mgr._rename_path(old_path, new_path)
 
@@ -694,10 +715,12 @@ class GenericCommitHandler(processor.CommitHandler):
           is_new = True if the file_id is newly created
         """
         try:
-            return self.cache_mgr.file_ids[path], False
+            id = self.cache_mgr.file_ids[path]
+            return id, False
         except KeyError:
             id = generate_ids.gen_file_id(path)
             self.cache_mgr.file_ids[path] = id
+            self.debug("Generated new file id %s for '%s'", id, path)
             return id, True
 
     def bzr_file_id(self, path):
