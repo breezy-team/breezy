@@ -204,51 +204,19 @@ def _show_log(branch,
 
     if specific_fileid:
         mutter('get log for file_id %r', specific_fileid)
-
+    generate_merge_revisions = getattr(lf, 'supports_merge_revisions', False)
+    allow_single_merge_revision = getattr(lf,
+        'supports_single_merge_revision', False)
+    view_revisions = calculate_view_revisions(branch, start_revision,
+                                              end_revision, direction,
+                                              specific_fileid,
+                                              generate_merge_revisions,
+                                              allow_single_merge_revision)
     if search is not None:
         searchRE = re.compile(search, re.IGNORECASE)
     else:
         searchRE = None
 
-    mainline_revs, rev_nos, start_rev_id, end_rev_id = \
-        _get_mainline_revs(branch, start_revision, end_revision)
-    if not mainline_revs:
-        return
-
-    if direction == 'reverse':
-        start_rev_id, end_rev_id = end_rev_id, start_rev_id
-        
-    generate_merge_revisions = getattr(lf, 'supports_merge_revisions', False)
-    generate_single_revision = False
-    if ((not generate_merge_revisions)
-        and ((start_rev_id and (start_rev_id not in rev_nos))
-            or (end_rev_id and (end_rev_id not in rev_nos)))):
-        generate_single_revision = ((start_rev_id == end_rev_id)
-            and getattr(lf, 'supports_single_merge_revision', False))
-        if not generate_single_revision:
-            raise BzrCommandError('Selected log formatter only supports '
-                'mainline revisions.')
-        generate_merge_revisions = generate_single_revision
-    view_revs_iter = get_view_revisions(mainline_revs, rev_nos, branch,
-                          direction, include_merges=generate_merge_revisions)
-    view_revisions = _filter_revision_range(list(view_revs_iter),
-                                            start_rev_id,
-                                            end_rev_id)
-    if view_revisions and generate_single_revision:
-        view_revisions = view_revisions[0:1]
-    if specific_fileid:
-        view_revisions = _filter_revisions_touching_file_id(branch,
-                                                         specific_fileid,
-                                                         mainline_revs,
-                                                         view_revisions)
-
-    # rebase merge_depth - unless there are no revisions or 
-    # either the first or last revision have merge_depth = 0.
-    if view_revisions and view_revisions[0][2] and view_revisions[-1][2]:
-        min_depth = min([d for r,n,d in view_revisions])
-        if min_depth != 0:
-            view_revisions = [(r,n,d-min_depth) for r,n,d in view_revisions]
-        
     rev_tag_dict = {}
     generate_tags = getattr(lf, 'supports_tags', False)
     if generate_tags:
@@ -272,6 +240,49 @@ def _show_log(branch,
             log_count += 1
             if log_count >= limit:
                 break
+
+
+def calculate_view_revisions(branch, start_revision, end_revision, direction,
+                             specific_fileid, generate_merge_revisions,
+                             allow_single_merge_revision):
+    mainline_revs, rev_nos, start_rev_id, end_rev_id = \
+        _get_mainline_revs(branch, start_revision, end_revision)
+    if not mainline_revs:
+        return []
+
+    if direction == 'reverse':
+        start_rev_id, end_rev_id = end_rev_id, start_rev_id
+
+    generate_single_revision = False
+    if ((not generate_merge_revisions)
+        and ((start_rev_id and (start_rev_id not in rev_nos))
+            or (end_rev_id and (end_rev_id not in rev_nos)))):
+        generate_single_revision = ((start_rev_id == end_rev_id)
+            and allow_single_merge_revision)
+        if not generate_single_revision:
+            raise BzrCommandError('Selected log formatter only supports '
+                'mainline revisions.')
+        generate_merge_revisions = generate_single_revision
+    view_revs_iter = get_view_revisions(mainline_revs, rev_nos, branch,
+                          direction, include_merges=generate_merge_revisions)
+    view_revisions = _filter_revision_range(list(view_revs_iter),
+                                            start_rev_id,
+                                            end_rev_id)
+    if view_revisions and generate_single_revision:
+        view_revisions = view_revisions[0:1]
+    if specific_fileid:
+        view_revisions = _filter_revisions_touching_file_id(branch,
+                                                         specific_fileid,
+                                                         mainline_revs,
+                                                         view_revisions)
+
+    # rebase merge_depth - unless there are no revisions or 
+    # either the first or last revision have merge_depth = 0.
+    if view_revisions and view_revisions[0][2] and view_revisions[-1][2]:
+        min_depth = min([d for r,n,d in view_revisions])
+        if min_depth != 0:
+            view_revisions = [(r,n,d-min_depth) for r,n,d in view_revisions]
+    return view_revisions
 
 
 def _iter_revisions(repository, view_revisions, generate_delta):
