@@ -21,6 +21,7 @@ from bzrlib.config import IniBasedConfig, config_dir, ensure_config_dir_exists, 
 import os
 
 from scheme import BranchingScheme
+import svn.core
 
 # Settings are stored by UUID. 
 # Data stored includes default branching scheme and locations the repository 
@@ -103,15 +104,20 @@ class SvnRepositoryConfig(IniBasedConfig):
     def get_override_svn_revprops(self):
         """Check whether or not bzr-svn should attempt to override Subversion revision 
         properties after committing."""
-        try:
-            return self._get_parser().get_bool(self.uuid, "override-svn-revprops")
-        except KeyError:
-            pass
+        def get_list(parser, section):
+            try:
+                if parser.get_bool(section, "override-svn-revprops"):
+                    return [svn.core.SVN_PROP_REVISION_DATE, svn.core.SVN_PROP_REVISION_AUTHOR]
+                return []
+            except ValueError:
+                return parser.get_value(section, "override-svn-revprops").split(",")
+            except KeyError:
+                return None
+        ret = get_list(self._get_parser(), self.uuid)
+        if ret is not None:
+            return ret
         global_config = GlobalConfig()
-        try:
-            return global_config._get_parser().get_bool(global_config._get_section(), "override-svn-revprops")
-        except KeyError:
-            return None
+        return get_list(global_config._get_parser(), global_config._get_section())
 
     def get_locations(self):
         """Find the locations this repository has been seen at.

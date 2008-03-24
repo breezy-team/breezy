@@ -22,6 +22,9 @@ bzr-svn 0.4.9	UNRELEASED
 	 to Subversion. This feature is only available for the 
 	 experimental mappings. (#189227)
 
+   * Allow more granularity over what properties are overridden using 
+     ``override-svn-revprops''. (#159143)
+
   BUGS
   
    * Fix compatibility with bzr 1.3.
