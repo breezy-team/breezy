@@ -1384,17 +1384,18 @@ class TestSmartProtocol(tests.TestCase):
     client_protocol_class = None
     server_protocol_class = None
 
+    def make_client_protocol(self):
+        client_medium = medium.SmartSimplePipesClientMedium(
+            StringIO(), StringIO())
+        return self.client_protocol_class(client_medium.get_request())
+
+    def make_server_protocol(self):
+        out_stream = StringIO()
+        smart_protocol = self.server_protocol_class(None, out_stream.write)
+        return smart_protocol, out_stream
+
     def setUp(self):
         super(TestSmartProtocol, self).setUp()
-        self.to_server = StringIO()
-        self.to_client = StringIO()
-        self.client_medium = medium.SmartSimplePipesClientMedium(self.to_client,
-            self.to_server)
-        self.client_protocol = self.client_protocol_class(self.client_medium)
-        self.smart_server = medium.SmartServerStreamMedium(
-            memory.MemoryTransport())
-        self.smart_server_request = request.SmartServerRequestHandler(
-            None, request.request_handlers)
         self.response_marker = getattr(
             self.client_protocol_class, 'response_marker', None)
         self.request_marker = getattr(
@@ -1420,10 +1421,10 @@ class TestSmartProtocol(tests.TestCase):
         self.assertEqual(expected_serialised, serialised)
 
     def build_protocol_waiting_for_body(self):
-        out_stream = StringIO()
-        smart_protocol = self.server_protocol_class(None, out_stream.write)
+        smart_protocol, out_stream = self.make_server_protocol()
         smart_protocol.has_dispatched = True
-        smart_protocol.request = self.smart_server_request
+        smart_protocol.request = request.SmartServerRequestHandler(
+            None, request.request_handlers)
         class FakeCommand(object):
             def do_body(cmd, body_bytes):
                 self.end_received = True
@@ -1445,9 +1446,7 @@ class TestSmartProtocol(tests.TestCase):
         # check the encoding of the server for all input_tuples matches
         # expected bytes
         for input_tuple in input_tuples:
-            server_output = StringIO()
-            server_protocol = self.server_protocol_class(
-                None, server_output.write)
+            server_protocol, server_output = self.make_server_protocol()
             server_protocol._send_response(
                 _mod_request.SuccessfulSmartServerResponse(input_tuple))
             self.assertEqual(expected_bytes, server_output.getvalue())
@@ -1463,26 +1462,11 @@ class TestSmartProtocol(tests.TestCase):
 
 class CommonSmartProtocolTestMixin(object):
 
-    def test_server_offset_serialisation(self):
-        """The Smart protocol serialises offsets as a comma and \n string.
-
-        We check a number of boundary cases are as expected: empty, one offset,
-        one with the order of reads not increasing (an out of order read), and
-        one that should coalesce.
-        """
-        self.assertOffsetSerialisation([], '', self.client_protocol)
-        self.assertOffsetSerialisation([(1,2)], '1,2', self.client_protocol)
-        self.assertOffsetSerialisation([(10,40), (0,5)], '10,40\n0,5',
-            self.client_protocol)
-        self.assertOffsetSerialisation([(1,2), (3,4), (100, 200)],
-            '1,2\n3,4\n100,200', self.client_protocol)
-
     def test_errors_are_logged(self):
         """If an error occurs during testing, it is logged to the test log."""
         # XXX: should also test than an error inside a SmartServerRequest would
         # get logged.
-        out_stream = StringIO()
-        smart_protocol = self.server_protocol_class(None, out_stream.write)
+        smart_protocol, out_stream = self.make_server_protocol()
         # This triggers a "bad request" error in all protocol versions.
         smart_protocol.accept_bytes('\0\0\0\0malformed request\n')
         test_log = self._get_log(keep_log_file=True)
@@ -1490,17 +1474,28 @@ class CommonSmartProtocolTestMixin(object):
         self.assertContainsRe(test_log, 'SmartProtocolError')
 
     def test_connection_closed_reporting(self):
-        input = StringIO()
-        output = StringIO()
-        client_medium = medium.SmartSimplePipesClientMedium(input, output)
-        request = client_medium.get_request()
-        smart_protocol = self.client_protocol_class(request)
+        smart_protocol = self.make_client_protocol()
         smart_protocol.call('hello')
-        ex = self.assertRaises(errors.ConnectionReset, 
+        ex = self.assertRaises(errors.ConnectionReset,
             smart_protocol.read_response_tuple)
         self.assertEqual("Connection closed: "
             "please check connectivity and permissions "
             "(and try -Dhpss if further diagnosis is required)", str(ex))
+
+    def test_server_offset_serialisation(self):
+        """The Smart protocol serialises offsets as a comma and \n string.
+
+        We check a number of boundary cases are as expected: empty, one offset,
+        one with the order of reads not increasing (an out of order read), and
+        one that should coalesce.
+        """
+        client_protocol = self.make_client_protocol()
+        self.assertOffsetSerialisation([], '', client_protocol)
+        self.assertOffsetSerialisation([(1,2)], '1,2', client_protocol)
+        self.assertOffsetSerialisation([(10,40), (0,5)], '10,40\n0,5',
+            client_protocol)
+        self.assertOffsetSerialisation([(1,2), (3,4), (100, 200)],
+            '1,2\n3,4\n100,200', client_protocol)
 
 
 class TestVersionOneFeaturesInProtocolOne(
