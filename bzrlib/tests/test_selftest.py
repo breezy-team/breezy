@@ -2038,8 +2038,7 @@ class TestFilteredByModuleTestLoader(tests.TestCase):
 
     def _create_loader(self, test_list):
         id_filter = tests.TestIdList(test_list)
-        loader = TestUtil.FilteredByModuleTestLoader(
-            id_filter.refers_to)
+        loader = TestUtil.FilteredByModuleTestLoader(id_filter.refers_to)
         return loader
 
     def test_load_tests(self):

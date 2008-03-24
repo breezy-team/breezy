@@ -2269,7 +2269,7 @@ def condition_isinstance(klass_or_klass_list):
 def condition_id_in_list(id_list):
     """Create a condition filter which verify that test's id in a list.
     
-    :param name: A TestIdList object.
+    :param id_list: A TestIdList object.
     :return: A callable that returns True if the test's id appears in the list.
     """
     def condition(test):
