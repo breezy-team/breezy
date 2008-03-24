@@ -1338,8 +1338,9 @@ class Repository(object):
         """
         # All revisions, to find inventory parents.
         if ancestors is None:
-            revision_graph = self.get_revision_graph_with_ghosts()
-            ancestors = revision_graph.get_ancestors()
+            # self.get_revision_graph_with_ghosts().get_ancestors() wasn't
+            # returning any ghosts anyway.
+            ancestors = self.get_revision_graph()
         if text_key_references is None:
             text_key_references = self.find_text_key_references()
         pb = ui.ui_factory.nested_progress_bar()
@@ -1565,6 +1566,7 @@ class Repository(object):
         raise NotImplementedError(self.get_revision_graph)
 
     @needs_read_lock
+    @deprecated_method(symbol_versioning.one_three)
     def get_revision_graph_with_ghosts(self, revision_ids=None):
         """Return a graph of the revisions with ghosts marked as applicable.
 
@@ -2119,7 +2121,8 @@ class RepositoryFormat(object):
         except errors.NoSuchFile:
             raise errors.NoRepositoryPresent(a_bzrdir)
         except KeyError:
-            raise errors.UnknownFormatError(format=format_string)
+            raise errors.UnknownFormatError(format=format_string,
+                                            kind='repository')
 
     @classmethod
     def register_format(klass, format):

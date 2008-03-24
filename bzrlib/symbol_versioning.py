@@ -71,6 +71,7 @@ zero_ninetythree = one_zero # Maintained for backwards compatibility
 one_one = "%s was deprecated in version 1.1."
 one_two = "%s was deprecated in version 1.2."
 one_three = "%s was deprecated in version 1.3."
+one_four = "%s was deprecated in version 1.4."
 
 def set_warning_method(method):
     """Set the warning method to be used by this module.

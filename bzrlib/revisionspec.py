@@ -642,8 +642,6 @@ class RevisionSpec_ancestor(RevisionSpec):
         branch.lock_read()
         other_branch.lock_read()
         try:
-            revision_source = revision.MultipleRevisionSources(
-                    branch.repository, other_branch.repository)
             graph = branch.repository.get_graph(other_branch.repository)
             revision_a = revision.ensure_null(revision_a)
             revision_b = revision.ensure_null(revision_b)

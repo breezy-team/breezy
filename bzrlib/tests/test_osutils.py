@@ -1117,6 +1117,7 @@ Options include:
  * knit - trace knit operations
  * lock - trace when lockdir locks are taken or released
  * merge - emit information for debugging merges
+ * pack - emit information about pack operations
 
 """
 '''
