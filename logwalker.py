@@ -178,9 +178,6 @@ class LogWalker(object):
         """
         assert revnum >= 0
 
-        if revnum == 0 and path == "":
-            return
-
         self.mutter("iter changes %r:%r" % (path, revnum))
 
         recurse = (path != "")
