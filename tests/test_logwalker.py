@@ -341,7 +341,7 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         repos_url = self.make_client("a", "dc")
         walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))
 
-        self.assertEqual([], list(walker.iter_changes("", 0)))
+        self.assertEqual([('', {'': ('A', None, -1)}, 0)], list(walker.iter_changes("", 0)))
 
     def test_later_update(self):
         repos_url = self.make_client("a", "dc")
