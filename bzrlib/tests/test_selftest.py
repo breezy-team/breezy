@@ -1915,6 +1915,16 @@ class TestTestLoader(TestCase):
         module.__class__.load_tests = load_tests
         self.assertEqual(2, loader.loadTestsFromModule(module).countTestCases())
 
+    def test_load_tests_from_module_name_smoke_test(self):
+        loader = TestUtil.TestLoader()
+        suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
+        self.assertEquals(['bzrlib.tests.test_sampler.DemoTest.test_nothing'],
+                          _test_ids(suite))
+
+    def test_load_tests_from_module_name_with_bougs_module_name(self):
+        loader = TestUtil.TestLoader()
+        self.assertRaises(ImportError, loader.loadTestsFromModuleName, 'bogus')
+
 
 class TestTestIdList(tests.TestCase):
 

@@ -89,8 +89,14 @@ class TestLoader(unittest.TestLoader):
         """
         result = self.suiteClass()
         for name in names:
-            module = _load_module_by_name(name)
-            result.addTests(self.loadTestsFromModule(module))
+            result.addTests(self.loadTestsFromModuleName(name))
+        return result
+
+    def loadTestsFromModuleName(self, name):
+        result = self.suiteClass()
+        module = _load_module_by_name(name)
+
+        result.addTests(self.loadTestsFromModule(module))
         return result
 
     def loadTestsFromModule(self, module):
