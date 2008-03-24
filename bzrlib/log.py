@@ -245,6 +245,10 @@ def _show_log(branch,
 def calculate_view_revisions(branch, start_revision, end_revision, direction,
                              specific_fileid, generate_merge_revisions,
                              allow_single_merge_revision):
+    if (not generate_merge_revisions and start_revision is end_revision is
+        None and direction == 'reverse' and specific_fileid is None):
+        return _linear_view_revisions(branch)
+
     mainline_revs, rev_nos, start_rev_id, end_rev_id = \
         _get_mainline_revs(branch, start_revision, end_revision)
     if not mainline_revs:
@@ -283,6 +287,14 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
         if min_depth != 0:
             view_revisions = [(r,n,d-min_depth) for r,n,d in view_revisions]
     return view_revisions
+
+
+def _linear_view_revisions(branch):
+    start_revno, start_revision_id = branch.last_revision_info()
+    repo = branch.repository
+    revision_ids = repo.iter_reverse_revision_history(start_revision_id)
+    for num, revision_id in enumerate(revision_ids):
+        yield revision_id, start_revno - num, 0
 
 
 def _iter_revisions(repository, view_revisions, generate_delta):
