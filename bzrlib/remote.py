@@ -31,7 +31,7 @@ from bzrlib.config import BranchConfig, TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import NoSuchRevision
 from bzrlib.lockable_files import LockableFiles
-from bzrlib.revision import NULL_REVISION
+from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.smart import client, vfs
 from bzrlib.symbol_versioning import (
     deprecated_method,
@@ -886,6 +886,7 @@ class RemoteBranch(branch.Branch):
         self._control_files = None
         self._lock_mode = None
         self._lock_token = None
+        self._repo_lock_token = None
         self._lock_count = 0
         self._leave_lock = False
 
@@ -1138,10 +1139,19 @@ class RemoteBranch(branch.Branch):
     def is_locked(self):
         return self._lock_count >= 1
 
+    @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
-        self._ensure_real()
-        self._clear_cached_state()
-        return self._real_branch.set_last_revision_info(revno, revision_id)
+        assert type(revno) is int
+        revision_id = ensure_null(revision_id)
+        path = self.bzrdir._path_for_remote_call(self._client)
+        response = self._client.call('Branch.set_last_revision_info',
+            path, self._lock_token, self._repo_lock_token, str(revno), revision_id)
+        if response == ('ok',):
+            self._clear_cached_state()
+        elif response[0] == 'NoSuchRevision':
+            raise NoSuchRevision(self, response[1])
+        else:
+            raise errors.UnexpectedSmartServerResponse(response)
 
     def generate_revision_history(self, revision_id, last_rev=None,
                                   other_branch=None):

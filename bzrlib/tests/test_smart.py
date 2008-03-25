@@ -362,6 +362,32 @@ class TestSmartServerBranchRequestSetLastRevision(tests.TestCaseWithTransport):
             tree.branch.unlock()
 
 
+class TestSmartServerBranchRequestSetLastRevisionInfo(tests.TestCaseWithTransport):
+
+    def test_revision_id_present(self):
+        backing = self.get_transport()
+        request = smart.branch.SmartServerBranchRequestSetLastRevision(backing)
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
+        rev_id_utf8 = u'\xc8'.encode('utf-8')
+        r1 = tree.commit('1st commit', rev_id=rev_id_utf8)
+        r2 = tree.commit('2nd commit')
+        tree.unlock()
+        branch_token = tree.branch.lock_write()
+        repo_token = tree.branch.repository.lock_write()
+        tree.branch.repository.unlock()
+        try:
+            self.assertEqual(
+                SmartServerResponse(('ok',)),
+                request.execute(
+                    backing.local_abspath(''), branch_token, repo_token,
+                    rev_id_utf8))
+            self.assertEqual([rev_id_utf8], tree.branch.revision_history())
+        finally:
+            tree.branch.unlock()
+
+
 class TestSmartServerBranchRequestLockWrite(tests.TestCaseWithTransport):
 
     def setUp(self):
@@ -803,6 +829,9 @@ class TestHandlers(tests.TestCase):
         self.assertEqual(
             smart.request.request_handlers.get('Branch.set_last_revision'),
             smart.branch.SmartServerBranchRequestSetLastRevision)
+        self.assertEqual(
+            smart.request.request_handlers.get('Branch.set_last_revision_info'),
+            smart.branch.SmartServerBranchRequestSetLastRevisionInfo)
         self.assertEqual(
             smart.request.request_handlers.get('Branch.unlock'),
             smart.branch.SmartServerBranchRequestUnlock)

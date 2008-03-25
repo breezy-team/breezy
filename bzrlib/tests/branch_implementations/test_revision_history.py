@@ -20,6 +20,7 @@ from bzrlib import (
     branch,
     errors,
     )
+from bzrlib.revision import NULL_REVISION
 from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
 
 
@@ -139,7 +140,7 @@ class TestRevisionHistoryCaching(TestCaseWithBranch):
         # Lock the branch, set the last revision info, then call
         # last_revision_info.
         a_branch.lock_write()
-        a_branch.set_last_revision_info(0, None)
+        a_branch.set_last_revision_info(0, NULL_REVISION)
         del calls[:]
         try:
             a_branch.last_revision_info()
