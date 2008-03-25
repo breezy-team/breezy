@@ -811,9 +811,10 @@ class TestCase(unittest.TestCase):
         Tests that want to use debug flags can just set them in the
         debug_flags set during setup/teardown.
         """
-        self._preserved_debug_flags = set(debug.debug_flags)
-        debug.debug_flags.clear()
-        self.addCleanup(self._restore_debug_flags)
+        if 'selftest_debug' not in debug.debug_flags:
+            self._preserved_debug_flags = set(debug.debug_flags)
+            debug.debug_flags.clear()
+            self.addCleanup(self._restore_debug_flags)
 
     def _clear_hooks(self):
         # prevent hooks affecting tests
