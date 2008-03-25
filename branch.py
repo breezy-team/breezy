@@ -28,6 +28,7 @@ import svn.client, svn.core
 from svn.core import SubversionException, Pool
 
 from commit import push
+from config import BranchConfig
 from errors import NotSvnBranchPath
 from format import get_rich_root_format
 from repository import SvnRepository
@@ -92,6 +93,10 @@ class SvnBranch(Branch):
         :param branch_path: New branch path.
         """
         self._branch_path = branch_path.strip("/")
+
+    def _get_append_revisions_only(self):
+        value = self.get_config().get_user_option('append_revisions_only')
+        return value == 'True'
 
     def unprefix(self, relpath):
         """Remove the branch path from a relpath.
@@ -199,6 +204,9 @@ class SvnBranch(Branch):
         assert isinstance(revnum, int)
         return self.repository.generate_revision_id(
                 revnum, self.get_branch_path(revnum), self.mapping)
+
+    def get_config(self):
+        return BranchConfig(self)
        
     def _get_nick(self):
         """Find the nick name for this branch.

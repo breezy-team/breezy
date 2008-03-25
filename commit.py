@@ -21,7 +21,8 @@ from svn.core import Pool, SubversionException, svn_time_to_cstring
 from bzrlib import debug, osutils, urlutils
 from bzrlib.branch import Branch
 from bzrlib.errors import (BzrError, InvalidRevisionId, DivergedBranches, 
-                           UnrelatedBranches)
+                           UnrelatedBranches, AppendRevisionsOnlyViolation,
+                           )
 from bzrlib.inventory import Inventory
 from bzrlib.repository import RootCommitBuilder, InterRepository
 from bzrlib.revision import NULL_REVISION
@@ -475,6 +476,9 @@ class SvnCommitBuilder(RootCommitBuilder):
                     replace_existing = True
                 elif self.base_revnum < self.repository._log.find_latest_change(self.branch.get_branch_path(), repository_latest_revnum, include_children=True):
                     replace_existing = True
+
+            if replace_existing and self.branch._get_append_revisions_only():
+                raise AppendRevisionsOnlyViolation(self.branch.base)
 
             # TODO: Accept create_prefix argument (#118787)
             branch_batons = self.open_branch_batons(root, bp_parts,

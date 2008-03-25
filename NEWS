@@ -14,6 +14,9 @@ bzr-svn 0.4.10  UNRELEASED
    * Allow more granularity over what properties are overridden using 
      ``override-svn-revprops''. (#159143)
 
+   * Add new ``append-revisions-only'' option with similar behaviour 
+     as in standard bzr formats. (#206242)
+
   INTERNALS
 
    * Branching from a Subversion repository will now fetch right-hand side 

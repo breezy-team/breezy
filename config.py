@@ -16,7 +16,7 @@
 """Stores per-repository settings."""
 
 from bzrlib import osutils
-from bzrlib.config import IniBasedConfig, config_dir, ensure_config_dir_exists, GlobalConfig
+from bzrlib.config import IniBasedConfig, config_dir, ensure_config_dir_exists, GlobalConfig, LocationConfig, Config
 
 import os
 
@@ -119,6 +119,14 @@ class SvnRepositoryConfig(IniBasedConfig):
         global_config = GlobalConfig()
         return get_list(global_config._get_parser(), global_config._get_section())
 
+    def get_append_revisions_only(self):
+        """Check whether it is possible to remove revisions from the mainline.
+        """
+        try:
+            return self._get_parser().get_bool(self.uuid, "append_revisions_only")
+        except KeyError:
+            return None
+
     def get_locations(self):
         """Find the locations this repository has been seen at.
 
@@ -150,3 +158,34 @@ class SvnRepositoryConfig(IniBasedConfig):
         f = open(self._get_filename(), 'wb')
         self._get_parser().write(f)
         f.close()
+
+
+class BranchConfig(Config):
+    def __init__(self, branch):
+        super(BranchConfig, self).__init__()
+        self._location_config = None
+        self._repository_config = None
+        self.branch = branch
+        self.option_sources = (self._get_location_config, 
+                               self._get_repository_config)
+
+    def _get_location_config(self):
+        if self._location_config is None:
+            self._location_config = LocationConfig(self.branch.base)
+        return self._location_config
+
+    def _get_repository_config(self):
+        if self._repository_config is None:
+            self._repository_config = SvnRepositoryConfig(branch.repository.uuid)
+        return self._repository_config
+
+    def _get_user_option(self, option_name):
+        """See Config._get_user_option."""
+        for source in self.option_sources:
+            value = source()._get_user_option(option_name)
+            if value is not None:
+                return value
+        return None
+
+    def get_append_revisions_only(self):
+        return self.get_user_option("append_revision_only")
