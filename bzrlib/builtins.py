@@ -2666,7 +2666,7 @@ class cmd_selftest(Command):
             print '   %s (%s python%s)' % (
                     bzrlib.__path__[0],
                     bzrlib.version_string,
-                    '.'.join(map(str, sys.version_info)),
+                    bzrlib._format_version_tuple(sys.version_info),
                     )
         print
         if testspecs_list is not None:
@@ -3657,14 +3657,19 @@ class cmd_uncommit(Command):
     _see_also = ['commit']
     takes_options = ['verbose', 'revision',
                     Option('dry-run', help='Don\'t actually make changes.'),
-                    Option('force', help='Say yes to all questions.')]
+                    Option('force', help='Say yes to all questions.'),
+                    Option('local',
+                           help="Only remove the commits from the local branch"
+                                " when in a checkout."
+                           ),
+                    ]
     takes_args = ['location?']
     aliases = []
     encoding_type = 'replace'
 
     def run(self, location=None,
             dry_run=False, verbose=False,
-            revision=None, force=False):
+            revision=None, force=False, local=False):
         if location is None:
             location = u'.'
         control, relpath = bzrdir.BzrDir.open_containing(location)
@@ -3680,14 +3685,15 @@ class cmd_uncommit(Command):
         else:
             b.lock_write()
         try:
-            return self._run(b, tree, dry_run, verbose, revision, force)
+            return self._run(b, tree, dry_run, verbose, revision, force,
+                             local=local)
         finally:
             if tree is not None:
                 tree.unlock()
             else:
                 b.unlock()
 
-    def _run(self, b, tree, dry_run, verbose, revision, force):
+    def _run(self, b, tree, dry_run, verbose, revision, force, local=False):
         from bzrlib.log import log_formatter, show_log
         from bzrlib.uncommit import uncommit
 
@@ -3735,7 +3741,7 @@ class cmd_uncommit(Command):
                     return 0
 
         uncommit(b, tree=tree, dry_run=dry_run, verbose=verbose,
-                 revno=revno)
+                 revno=revno, local=local)
 
 
 class cmd_break_lock(Command):

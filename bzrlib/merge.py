@@ -950,12 +950,6 @@ class Merge3Merger(object):
         base_executable, other_executable, this_executable = executable
         if file_status == "deleted":
             return
-        trans_id = self.tt.trans_id_file_id(file_id)
-        try:
-            if self.tt.final_kind(trans_id) != "file":
-                return
-        except NoSuchFile:
-            return
         winner = self._three_way(*executable)
         if winner == "conflict":
         # There must be a None in here, if we have a conflict, but we
@@ -964,12 +958,16 @@ class Merge3Merger(object):
                 winner = "this"
             else:
                 winner = "other"
+        if winner == 'this' and file_status != "modified":
+            return
+        trans_id = self.tt.trans_id_file_id(file_id)
+        try:
+            if self.tt.final_kind(trans_id) != "file":
+                return
+        except NoSuchFile:
+            return
         if winner == "this":
-            if file_status == "modified":
-                executability = this_executable
-                if executability is not None:
-                    trans_id = self.tt.trans_id_file_id(file_id)
-                    self.tt.set_executability(executability, trans_id)
+            executability = this_executable
         else:
             assert winner == "other"
             if file_id in self.other_tree:
@@ -978,9 +976,9 @@ class Merge3Merger(object):
                 executability = this_executable
             elif file_id in self.base_tree:
                 executability = base_executable
-            if executability is not None:
-                trans_id = self.tt.trans_id_file_id(file_id)
-                self.tt.set_executability(executability, trans_id)
+        if executability is not None:
+            trans_id = self.tt.trans_id_file_id(file_id)
+            self.tt.set_executability(executability, trans_id)
 
     def cook_conflicts(self, fs_conflicts):
         """Convert all conflicts into a form that doesn't depend on trans_id"""

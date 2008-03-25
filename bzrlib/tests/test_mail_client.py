@@ -159,3 +159,34 @@ class TestEditor(tests.TestCase):
         self.assertContainsRe(prompt, u'foo\u1234(.|\n)*bar\u1234'
                               u'(.|\n)*baz\u1234(.|\n)*qux\u1234')
         editor._get_merge_prompt(u'foo', u'bar', u'baz', 'qux\xff')
+
+
+class DummyMailClient(object):
+
+    def compose_merge_request(self, *args, **kwargs):
+        self.args = args
+        self.kwargs = kwargs
+
+
+class DefaultMailDummyClient(mail_client.DefaultMail):
+
+    def __init__(self):
+        self.client = DummyMailClient()
+
+    def _mail_client(self):
+        return self.client
+
+
+class TestDefaultMail(tests.TestCase):
+
+    def test_compose_merge_request(self):
+        client = DefaultMailDummyClient()
+        to = "a@b.com"
+        subject = "[MERGE]"
+        directive = "directive",
+        basename = "merge"
+        client.compose_merge_request(to, subject, directive,
+                                     basename=basename)
+        dummy_client = client.client
+        self.assertEqual(dummy_client.args, (to, subject, directive))
+        self.assertEqual(dummy_client.kwargs, {"basename":basename})

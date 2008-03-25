@@ -28,13 +28,25 @@ IN DEVELOPMENT
       by forcing it to recv 64k at a time when reading lines in HTTP headers,
       rather than just 1 byte at a time.  (Andrew Bennetts)
 
+    * Merge is faster.  We no longer check a file's existence unnecessarily
+      when merging the execute bit.  (Aaron Bentley)
+
+    * Diff is now more specific about execute-bit changes it describes
+      (Chad Miller)
+
   BUGFIXES:
 
     * ``bzr mv a b`` can be now used also to rename previously renamed
       directories, not only files. (Lukáš Lalinský, #107967)
 
+    * ``bzr uncommit --local`` can now remove revisions from the local
+      branch to be symmetric with ``bzr commit --local``.
+      (John Arbash Meinel, #93412)
+
     * Don't ask for a password if there is no real terminal.
       (Alexander Belchenko, #69851)
+
+    * Implement handling of basename parameter for DefaultMail.  (James Westby)
 
   DOCUMENTATION:
 
@@ -43,6 +55,10 @@ IN DEVELOPMENT
     * Attempting to pull data from a ghost aware repository (e.g. knits) into a
       non-ghost aware repository such as weaves will now fail if there are
       ghosts.  (Robert Collins)
+
+    * Log formatters must now provide log_revision instead of show and
+      show_merge_revno methods. The latter had been deprecated since the 0.17
+      release. (James Westby)
 
     * ``VersionedFile.get_parents`` is deprecated, please use
       ``VersionedFile.get_parent_map``. (Robert Collins)
