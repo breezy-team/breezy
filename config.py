@@ -176,7 +176,7 @@ class BranchConfig(Config):
 
     def _get_repository_config(self):
         if self._repository_config is None:
-            self._repository_config = SvnRepositoryConfig(branch.repository.uuid)
+            self._repository_config = SvnRepositoryConfig(self.branch.repository.uuid)
         return self._repository_config
 
     def _get_user_option(self, option_name):
