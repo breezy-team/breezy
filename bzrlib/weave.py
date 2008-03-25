@@ -772,7 +772,7 @@ class Weave(VersionedFile):
         pending_graph = pending_parents.items()
         if len(pending_graph) != len(version_ids):
             raise RevisionNotPresent(
-                set(version_ids) - pending_parents.keys(), self)
+                set(version_ids) - set(pending_parents.keys()), self)
         for name in topo_sort(pending_graph):
             other_idx = other._name_map[name]
             # returns True if we have it, False if we need it.
