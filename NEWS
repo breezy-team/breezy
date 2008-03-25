@@ -48,7 +48,7 @@ IN DEVELOPMENT
 
     * Implement handling of basename parameter for DefaultMail.  (James Westby)
 
-    * Launchpad locations can be pulled.  (Aaron Bentley, #181945)
+    * Launchpad locations (lp: URLs) can be pulled.  (Aaron Bentley, #181945)
 
   DOCUMENTATION:
 

@@ -326,7 +326,7 @@ class TestPull(ExternalBase):
         self.assertEqual(err, '')
         self.assertEqual(tree_b.last_revision(), revision_id)
 
-    def test_pull_directory(self):
+    def test_pull_from_directory_service(self):
         source = self.make_branch_and_tree('source')
         source.commit('commit 1')
         target = source.bzrdir.sprout('target').open_workingtree()
@@ -336,7 +336,7 @@ class TestPull(ExternalBase):
 
             def look_up(self, name, url):
                 return 'source'
-        directories.register('foo:', FooService, 'Map foo URLs to http urls')
+        directories.register('foo:', FooService, 'Testing directory service')
         self.addCleanup(lambda: directories.remove('foo:'))
         self.run_bzr('pull foo:bar -d target')
         self.assertEqual(source_last, target.last_revision())

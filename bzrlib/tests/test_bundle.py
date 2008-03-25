@@ -1575,7 +1575,7 @@ class TestReadMergeableFromUrl(TestCaseWithTransport):
 
             def look_up(self, name, url):
                 return 'source'
-        directories.register('foo:', FooService, 'Map foo URLs to http urls')
+        directories.register('foo:', FooService, 'Testing directory service')
         self.addCleanup(lambda: directories.remove('foo:'))
         self.build_tree_contents([('./foo:bar', out.getvalue())])
         self.assertRaises(errors.NotABundle, read_mergeable_from_url,
