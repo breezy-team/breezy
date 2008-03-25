@@ -534,8 +534,9 @@ class BzrSvnMappingFileProps:
 
     def import_revision(self, svn_revprops, fileprops, rev):
         parse_svn_revprops(svn_revprops, rev)
-        parse_revision_metadata(
-                fileprops.get(SVN_PROP_BZR_REVISION_INFO, ""), rev)
+        metadata = fileprops.get(SVN_PROP_BZR_REVISION_INFO)
+        if metadata is not None:
+            parse_revision_metadata(metadata, rev)
 
     def get_rhs_parents(self, branch_path, revprops, fileprops):
         bzr_merges = fileprops.get(SVN_PROP_BZR_ANCESTRY+str(self.scheme), None)
