@@ -331,6 +331,13 @@ class SvnRepository(Repository):
         """
         return False
 
+    def iter_changes(self):
+        """
+        
+        :return: iterator over tuples with (revid, parent_revids, changes, revprops, branchprops)
+        """
+        raise NotImplementedError
+
     def iter_reverse_revision_history(self, revision_id):
         """Iterate backwards through revision ids in the lefthand history
 
@@ -735,24 +742,13 @@ class SvnRepository(Repository):
         assert mapping.is_branch(branch_path) or mapping.is_tag(branch_path)
         branch_path = branch_path.strip("/")
 
-        while revnum >= 0:
-            assert revnum > 0 or branch_path == ""
-            paths = self._log.get_revision_paths(revnum)
-
-            # If something underneath branch_path changed, there is a 
-            # revision there, so yield it.
-            if changes_path(paths, branch_path):
-                yield (branch_path, revnum)
-            next = logwalker.changes_find_prev_location(paths, branch_path, revnum)
-            if next is None:
-                break
-            (branch_path, revnum) = next
-            if not mapping.is_branch(branch_path) and \
-               not mapping.is_tag(branch_path):
+        for (path, paths, revnum) in self._log.iter_changes(branch_path, revnum):
+            if not mapping.is_branch(path) and not mapping.is_tag(path):
                 # FIXME: if copyfrom_path is not a branch path, 
                 # should simulate a reverse "split" of a branch
                 # for now, just make it look like the branch ended here
                 break
+            yield (path, revnum)
         
     def follow_branch_history(self, branch_path, revnum, mapping):
         """Return all the changes that happened in a branch 
