@@ -41,14 +41,14 @@ def read_mergeable_from_url(url, _do_directive=True, possible_transports=None):
     :return: An object supporting get_target_revision.  Raises NotABundle if
         the target is not a mergeable type.
     """
-    url = urlutils.normalize_url(url)
-    url, filename = urlutils.split(url, exclude_trailing_slash=False)
-    if not filename:
+    child_transport = get_transport(url,
+        possible_transports=possible_transports)
+    transport = child_transport.clone('..')
+    filename = transport.relpath(child_transport.base)
+    if filename.endswith('/'):
         # A path to a directory was passed in
         # definitely not a bundle
         raise errors.NotABundle('A directory cannot be a bundle')
-
-    transport = get_transport(url, possible_transports=possible_transports)
     mergeable, transport = read_mergeable_from_transport(transport, filename,
                                                          _do_directive)
     return mergeable

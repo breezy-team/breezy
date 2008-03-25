@@ -28,8 +28,10 @@ from bzrlib import (
     treebuilder,
     )
 from bzrlib.bzrdir import BzrDir
+from bzrlib.bundle import read_mergeable_from_url
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.bundle.bundle_data import BundleTree
+from bzrlib.directory_service import directories
 from bzrlib.bundle.serializer import write_bundle, read_bundle, v09, v4
 from bzrlib.bundle.serializer.v08 import BundleSerializerV08
 from bzrlib.bundle.serializer.v09 import BundleSerializerV09
@@ -47,6 +49,7 @@ from bzrlib.tests import (
     TestCaseInTempDir,
     TestCaseWithTransport,
     TestSkipped,
+    test_read_bundle,
     test_commit,
     )
 from bzrlib.transform import TreeTransform
@@ -1559,3 +1562,21 @@ class TestBundleWriterReader(TestCase):
         self.assertEqual((None, {'foo': 'bar', 'storage_kind': 'header'},
             'info', None, None), record)
         self.assertRaises(BadBundle, record_iter.next)
+
+
+class TestReadMergeableFromUrl(TestCaseWithTransport):
+
+    def test_read_mergeable_skips_local(self):
+        """A local bundle named like the URL should not be read.
+        """
+        out, wt = test_read_bundle.create_bundle_file(self)
+        class FooService(object):
+            """A directory service that always returns source"""
+
+            def look_up(self, name, url):
+                return 'source'
+        directories.register('foo:', FooService, 'Map foo URLs to http urls')
+        self.addCleanup(lambda: directories.remove('foo:'))
+        self.build_tree_contents([('./foo:bar', out.getvalue())])
+        self.assertRaises(errors.NotABundle, read_mergeable_from_url,
+                          'foo:bar')

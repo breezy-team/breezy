@@ -23,11 +23,31 @@ import bzrlib.bundle
 from bzrlib.bundle.serializer import write_bundle
 import bzrlib.bzrdir
 import bzrlib.errors as errors
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib import tests
 from bzrlib.tests.test_transport import TestTransportImplementation
 import bzrlib.transport
 from bzrlib.transport.memory import MemoryTransport
 import bzrlib.urlutils
+
+
+def create_bundle_file(test_case):
+    test_case.build_tree(['tree/', 'tree/a', 'tree/subdir/'])
+
+    format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
+
+    bzrdir = format.initialize('tree')
+    repo = bzrdir.create_repository()
+    branch = repo.bzrdir.create_branch()
+    wt = branch.bzrdir.create_workingtree()
+
+    wt.add(['a', 'subdir/'])
+    wt.commit('new project', rev_id='commit-1')
+
+    out = cStringIO.StringIO()
+    rev_ids = write_bundle(wt.branch.repository,
+                           wt.get_parent_ids()[0], 'null:', out)
+    out.seek(0)
+    return out, wt
 
 
 class TestReadBundleFromURL(TestTransportImplementation):
@@ -37,22 +57,7 @@ class TestReadBundleFromURL(TestTransportImplementation):
         return bzrlib.urlutils.join(self._server.get_url(), relpath)
 
     def create_test_bundle(self):
-        self.build_tree(['tree/', 'tree/a', 'tree/subdir/'])
-
-        format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
-
-        bzrdir = format.initialize('tree')
-        repo = bzrdir.create_repository()
-        branch = repo.bzrdir.create_branch()
-        wt = branch.bzrdir.create_workingtree()
-
-        wt.add(['a', 'subdir/'])
-        wt.commit('new project', rev_id='commit-1')
-
-        out = cStringIO.StringIO()
-        rev_ids = write_bundle(wt.branch.repository,
-                               wt.get_parent_ids()[0], 'null:', out)
-        out.seek(0)
+        out, wt = create_bundle_file(self)
         if self.get_transport().is_readonly():
             f = open('test_bundle', 'wb')
             f.write(out.getvalue())
