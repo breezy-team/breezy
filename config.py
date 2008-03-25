@@ -189,3 +189,7 @@ class BranchConfig(Config):
 
     def get_append_revisions_only(self):
         return self.get_user_option("append_revision_only")
+
+    def _get_user_id(self):
+        """Get the user id from the 'email' key in the current section."""
+        return self._get_user_option('email')
