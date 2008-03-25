@@ -24,15 +24,18 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * Diff is now more specific about execute-bit changes it describes
+      (Chad Miller)
+
     * Fetching data over HTTP is a bit faster when urllib is used.  This is done
       by forcing it to recv 64k at a time when reading lines in HTTP headers,
       rather than just 1 byte at a time.  (Andrew Bennetts)
 
+    * Log --short and --line are much faster when -r is not specified.
+      (Aaron Bentley)
+
     * Merge is faster.  We no longer check a file's existence unnecessarily
       when merging the execute bit.  (Aaron Bentley)
-
-    * Diff is now more specific about execute-bit changes it describes
-      (Chad Miller)
 
   BUGFIXES:
 
