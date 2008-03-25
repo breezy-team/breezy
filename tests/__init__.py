@@ -2,7 +2,7 @@
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 
 # This program is distributed in the hope that it will be useful,
@@ -297,6 +297,7 @@ def test_suite():
             'test_errors',
             'test_fetch',
             'test_fileids', 
+            'test_graph', 
             'test_logwalker',
             'test_mapping',
             'test_push',

@@ -2,7 +2,7 @@
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 
 # This program is distributed in the hope that it will be useful,
@@ -16,11 +16,12 @@
 """Stores per-repository settings."""
 
 from bzrlib import osutils
-from bzrlib.config import IniBasedConfig, config_dir, ensure_config_dir_exists, GlobalConfig
+from bzrlib.config import IniBasedConfig, config_dir, ensure_config_dir_exists, GlobalConfig, LocationConfig, Config
 
 import os
 
 from scheme import BranchingScheme
+import svn.core
 
 # Settings are stored by UUID. 
 # Data stored includes default branching scheme and locations the repository 
@@ -83,6 +84,14 @@ class SvnRepositoryConfig(IniBasedConfig):
         except KeyError:
             return None
 
+    def get_log_strip_trailing_newline(self):
+        """Check whether or not trailing newlines should be stripped in the 
+        Subversion log message (where support by the bzr<->svn mapping used)."""
+        try:
+            return self._get_parser().get_bool(self.uuid, "log-strip-trailing-newline")
+        except KeyError:
+            return False
+
     def branching_scheme_is_mandatory(self):
         """Check whether or not the branching scheme for this repository 
         is mandatory.
@@ -95,13 +104,26 @@ class SvnRepositoryConfig(IniBasedConfig):
     def get_override_svn_revprops(self):
         """Check whether or not bzr-svn should attempt to override Subversion revision 
         properties after committing."""
-        try:
-            return self._get_parser().get_bool(self.uuid, "override-svn-revprops")
-        except KeyError:
-            pass
+        def get_list(parser, section):
+            try:
+                if parser.get_bool(section, "override-svn-revprops"):
+                    return [svn.core.SVN_PROP_REVISION_DATE, svn.core.SVN_PROP_REVISION_AUTHOR]
+                return []
+            except ValueError:
+                return parser.get_value(section, "override-svn-revprops").split(",")
+            except KeyError:
+                return None
+        ret = get_list(self._get_parser(), self.uuid)
+        if ret is not None:
+            return ret
         global_config = GlobalConfig()
+        return get_list(global_config._get_parser(), global_config._get_section())
+
+    def get_append_revisions_only(self):
+        """Check whether it is possible to remove revisions from the mainline.
+        """
         try:
-            return global_config._get_parser().get_bool(global_config._get_section(), "override-svn-revprops")
+            return self._get_parser().get_bool(self.uuid, "append_revisions_only")
         except KeyError:
             return None
 
@@ -136,3 +158,34 @@ class SvnRepositoryConfig(IniBasedConfig):
         f = open(self._get_filename(), 'wb')
         self._get_parser().write(f)
         f.close()
+
+
+class BranchConfig(Config):
+    def __init__(self, branch):
+        super(BranchConfig, self).__init__()
+        self._location_config = None
+        self._repository_config = None
+        self.branch = branch
+        self.option_sources = (self._get_location_config, 
+                               self._get_repository_config)
+
+    def _get_location_config(self):
+        if self._location_config is None:
+            self._location_config = LocationConfig(self.branch.base)
+        return self._location_config
+
+    def _get_repository_config(self):
+        if self._repository_config is None:
+            self._repository_config = SvnRepositoryConfig(branch.repository.uuid)
+        return self._repository_config
+
+    def _get_user_option(self, option_name):
+        """See Config._get_user_option."""
+        for source in self.option_sources:
+            value = source()._get_user_option(option_name)
+            if value is not None:
+                return value
+        return None
+
+    def get_append_revisions_only(self):
+        return self.get_user_option("append_revision_only")

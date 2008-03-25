@@ -2,7 +2,7 @@
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 
 # This program is distributed in the hope that it will be useful,
@@ -16,7 +16,9 @@
 
 """Revision id generation and caching."""
 
+from bzrlib import debug
 from bzrlib.errors import (InvalidRevisionId, NoSuchRevision)
+from bzrlib.trace import mutter
 
 from cache import CacheTable
 
@@ -25,6 +27,10 @@ class RevidMap(CacheTable):
 
     Stores mapping from revid -> (path, revnum, scheme)
     """
+    def mutter(self, text):
+        if "cache" in debug.debug_flags:
+            mutter(text)
+
     def _create_table(self):
         self.cachedb.executescript("""
         create table if not exists revmap (revid text, path text, min_revnum integer, max_revnum integer, scheme text);
@@ -32,8 +38,6 @@ class RevidMap(CacheTable):
         create unique index if not exists revid_path_scheme on revmap (revid, path, scheme);
         drop index if exists lookup_branch_revnum;
         create index if not exists lookup_branch_revnum_non_unique on revmap (max_revnum, min_revnum, path, scheme);
-        create table if not exists revno_cache (revid text unique, dist_to_origin integer);
-        create index if not exists revid on revno_cache (revid);
         create table if not exists revids_seen (scheme text, max_revnum int);
         create unique index if not exists scheme on revids_seen (scheme);
         """)
@@ -54,6 +58,7 @@ class RevidMap(CacheTable):
         :param scheme: Branching scheme name.
         :return: Last revision number checked or 0.
         """
+        self.mutter("last revnum checked %r" % scheme)
         ret = self.cachedb.execute(
             "select max_revnum from revids_seen where scheme = ?", (scheme,)).fetchone()
         if ret is None:
@@ -68,6 +73,7 @@ class RevidMap(CacheTable):
             branching scheme.
         """
         assert isinstance(revid, str)
+        self.mutter("lookup revid %r" % revid)
         ret = self.cachedb.execute(
             "select path, min_revnum, max_revnum, scheme from revmap where revid='%s'" % revid).fetchone()
         if ret is None:
@@ -81,6 +87,7 @@ class RevidMap(CacheTable):
         :param path: Subversion branch path.
         :param scheme: Branching scheme name
         """
+        self.mutter("lookup branch,revnum %r:%r" % (path, revnum))
         assert isinstance(revnum, int)
         assert isinstance(path, str)
         assert isinstance(scheme, str)
@@ -90,8 +97,7 @@ class RevidMap(CacheTable):
             return str(revid[0])
         return None
 
-    def insert_revid(self, revid, branch, min_revnum, max_revnum, scheme, 
-                     dist_to_origin=None):
+    def insert_revid(self, revid, branch, min_revnum, max_revnum, scheme):
         """Insert a revision id into the revision id cache.
 
         :param revid: Revision id for which to insert metadata.
@@ -102,13 +108,11 @@ class RevidMap(CacheTable):
                            revid was found
         :param scheme: Name of the branching scheme with which the revision 
                        was found
-        :param dist_to_origin: Optional distance to the origin of this branch.
         """
         assert revid is not None and revid != ""
         assert isinstance(scheme, str)
         assert isinstance(branch, str)
         assert isinstance(min_revnum, int) and isinstance(max_revnum, int)
-        assert dist_to_origin is None or isinstance(dist_to_origin, int)
         cursor = self.cachedb.execute(
             "update revmap set min_revnum = MAX(min_revnum,?), max_revnum = MIN(max_revnum, ?) WHERE revid=? AND path=? AND scheme=?",
             (min_revnum, max_revnum, revid, branch, scheme))
@@ -116,29 +120,3 @@ class RevidMap(CacheTable):
             self.cachedb.execute(
                 "insert into revmap (revid,path,min_revnum,max_revnum,scheme) VALUES (?,?,?,?,?)",
                 (revid, branch, min_revnum, max_revnum, scheme))
-        if dist_to_origin is not None:
-            self.cachedb.execute(
-                "replace into revno_cache (revid,dist_to_origin) VALUES (?,?)", 
-                (revid, dist_to_origin))
-
-    def lookup_dist_to_origin(self, revid):
-        """Lookup the number of lhs revisions between the revid and NULL_REVISIOn.
-        :param revid: Revision id of the revision for which to do the lookup.
-        :return: None if the distance is not known, or an integer.
-        """
-        assert isinstance(revid, str)
-        revno = self.cachedb.execute(
-                "select dist_to_origin from revno_cache where revid='%s'" % revid).fetchone()
-        if revno is not None and revno[0] is not None:
-            return int(revno[0])
-        return None
-
-    def insert_revision_history(self, revhistory):
-        i = 1
-        for revid in revhistory:
-            self.cachedb.execute(
-                "replace into revno_cache (revid,dist_to_origin) VALUES (?,?)",
-                (revid, i))
-            i += 1
-        self.cachedb.commit()
-

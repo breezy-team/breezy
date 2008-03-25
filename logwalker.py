@@ -2,7 +2,7 @@
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 
 # This program is distributed in the hope that it will be useful,
@@ -39,6 +39,9 @@ def changes_find_prev_location(paths, branch_path, revnum):
     # next revnum in history
     revnum -= 1
 
+    if branch_path == "":
+        return (branch_path, revnum)
+
     # Make sure we get the right location for next time, if 
     # the branch itself was copied
     if (paths.has_key(branch_path) and 
@@ -67,10 +70,6 @@ def changes_find_prev_location(paths, branch_path, revnum):
             return (branch_path, revnum)
 
     return (branch_path, revnum)
-
-
-
-
 
 
 class LogWalker(object):
@@ -179,10 +178,7 @@ class LogWalker(object):
         """
         assert revnum >= 0
 
-        if revnum == 0 and path == "":
-            return
-
-        self.mutter("follow path %r:%r" % (path, revnum))
+        self.mutter("iter changes %r:%r" % (path, revnum))
 
         recurse = (path != "")
 

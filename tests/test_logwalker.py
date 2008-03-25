@@ -2,7 +2,7 @@
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 
 # This program is distributed in the hope that it will be useful,
@@ -341,7 +341,7 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         repos_url = self.make_client("a", "dc")
         walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))
 
-        self.assertEqual([], list(walker.iter_changes("", 0)))
+        self.assertEqual([('', {'': ('A', None, -1)}, 0)], list(walker.iter_changes("", 0)))
 
     def test_later_update(self):
         repos_url = self.make_client("a", "dc")

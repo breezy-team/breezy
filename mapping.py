@@ -359,6 +359,9 @@ class BzrSvnMapping:
         """
         raise NotImplementedError(self.export_revision)
 
+    def export_message(self, log, revprops, fileprops):
+        raise NotImplementedError(self.export_message)
+
     def get_revision_id(self, branch_path, revprops, fileprops):
         raise NotImplementedError(self.get_revision_id)
 
@@ -565,6 +568,7 @@ class BzrSvnMappingFileProps:
         return svnprops
  
     def export_revision(self, branch_root, timestamp, timezone, committer, revprops, revision_id, revno, merges, old_fileprops):
+
         # Keep track of what Subversion properties to set later on
         fileprops = {}
         fileprops[SVN_PROP_BZR_REVISION_INFO] = generate_revision_metadata(
@@ -636,6 +640,9 @@ class BzrSvnMappingRevProps:
             revno = int(revprops[SVN_REVPROP_BZR_REVNO])
             return (revno, revid)
         return (None, None)
+
+    def export_message(self, message, revprops, fileprops):
+        revprops[SVN_REVPROP_BZR_LOG] = message.encode("utf-8")
 
     def export_revision(self, branch_root, timestamp, timezone, committer, 
                         revprops, revision_id, revno, merges, 
@@ -738,8 +745,8 @@ class BzrSvnMappingv3Hybrid(BzrSvnMappingv3):
         else:
             return self.fileprops.import_fileid_map(svn_revprops, fileprops)
 
-    def export_revision(self, branch_root, timestamp, timezone, committer, revprops, revision_id, revno, 
-                        merges, fileprops):
+    def export_revision(self, branch_root, timestamp, timezone, committer, revprops, revision_id, 
+                        revno, merges, fileprops):
         (_, fileprops) = self.fileprops.export_revision(branch_root, timestamp, timezone, committer, 
                                       revprops, revision_id, revno, merges, fileprops)
         (revprops, _) = self.revprops.export_revision(branch_root, timestamp, timezone, committer, 
@@ -753,6 +760,7 @@ class BzrSvnMappingv3Hybrid(BzrSvnMappingv3):
     def import_revision(self, svn_revprops, fileprops, rev):
         self.fileprops.import_revision(svn_revprops, fileprops, rev)
         self.revprops.import_revision(svn_revprops, fileprops, rev)
+
 
 class BzrSvnMappingRegistry(registry.Registry):
     """Registry for the various Bzr<->Svn mappings."""

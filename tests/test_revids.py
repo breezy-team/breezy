@@ -2,7 +2,7 @@
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 
 # This program is distributed in the hope that it will be useful,
@@ -46,34 +46,6 @@ class TestRevidMap(TestCase):
         revidmap.insert_revid("bla", "mypath", 42, 42, "brainslug")
         self.assertEquals("bla", 
                 revidmap.lookup_branch_revnum(42, "mypath", "brainslug"))
-
-    def test_lookup_dist(self):
-        revidmap = RevidMap()
-        revidmap.insert_revid("bla", "mypath", 42, 42, "brainslug", 
-                                    50)
-        self.assertEquals(50,
-                revidmap.lookup_dist_to_origin("bla"))
-
-    def test_lookup_dist_notset(self):
-        revidmap = RevidMap()
-        revidmap.insert_revid("bloe", "someotherpath", 42, 42, "brainslug") 
-        self.assertIs(None,
-                revidmap.lookup_dist_to_origin("bloe"))
-
-    def test_insert_revhistory(self):
-        revidmap = RevidMap()
-        revidmap.insert_revision_history(["bla", "bloe", "blo"])
-        self.assertIs(1,
-                revidmap.lookup_dist_to_origin("bla"))
-        self.assertIs(2,
-                revidmap.lookup_dist_to_origin("bloe"))
-        self.assertIs(3,
-                revidmap.lookup_dist_to_origin("blo"))
-
-    def test_lookup_dist_notfound(self):
-        revidmap = RevidMap()
-        self.assertIs(None,
-                revidmap.lookup_dist_to_origin("blabla"))
 
     def test_lookup_branch_nonexistant(self):
         revidmap = RevidMap()

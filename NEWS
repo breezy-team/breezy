@@ -1,4 +1,34 @@
-bzr-svn 0.4.9	UNRELEASED
+bzr-svn 0.4.10  UNRELEASED
+
+  CHANGES
+
+   * Changed license from GPLv2 or later to GPLv3 or later.
+
+  FEATURES
+
+   * Add new ``log-strip-trailing-newline'' option which removes 
+     the last trailing newline from the log message when pushing 
+	 to Subversion. This feature is only available for the 
+	 experimental mappings. (#189227)
+
+   * Allow more granularity over what properties are overridden using 
+     ``override-svn-revprops''. (#159143)
+
+   * Add new ``append-revisions-only'' option with similar behaviour 
+     as in standard bzr formats. (#206242)
+
+  INTERNALS
+
+   * Branching from a Subversion repository will now fetch right-hand side 
+     parents as well as left hand side (mainline) parents, if specified.
+
+   * Removed revision number cache.
+
+  BUGS
+
+    * Avoid sometimes incorrect determination of Bazaar revision numbers. (#181773)
+
+bzr-svn 0.4.9	2008-03-23
 
   FEATURES
 

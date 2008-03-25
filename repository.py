@@ -2,7 +2,7 @@
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 
 # This program is distributed in the hope that it will be useful,
@@ -15,12 +15,11 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Subversion repository access."""
 
-import bzrlib, bzrlib.xml5
-from bzrlib import osutils, ui, urlutils
+import bzrlib
+from bzrlib import osutils, ui, urlutils, xml5
 from bzrlib.branch import Branch, BranchCheckResult
 from bzrlib.errors import (InvalidRevisionId, NoSuchRevision, NotBranchError, 
                            UninitializableFormat, UnrelatedBranches)
-from bzrlib.graph import CachingParentsProvider
 from bzrlib.inventory import Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.repository import Repository, RepositoryFormat
@@ -38,7 +37,7 @@ from branchprops import PathPropertyProvider
 from cache import create_cache_dir, sqlite3
 from config import SvnRepositoryConfig
 import errors
-from graph import Graph
+from graph import Graph, CachingParentsProvider
 import logwalker
 from mapping import (SVN_PROP_BZR_REVISION_ID, SVN_REVPROP_BZR_SIGNATURE,
                      SVN_PROP_BZR_BRANCHING_SCHEME, BzrSvnMappingv3FileProps,
@@ -160,7 +159,7 @@ class SvnRepository(Repository):
         assert self.uuid is not None
         self.base = transport.base
         assert self.base is not None
-        self._serializer = None
+        self._serializer = xml5.serializer_v5
         self.dir_cache = {}
         self.pool = Pool()
         self.get_config().add_location(self.base)
@@ -332,6 +331,17 @@ class SvnRepository(Repository):
         """
         return False
 
+    def iter_reverse_revision_history(self, revision_id):
+        """Iterate backwards through revision ids in the lefthand history
+
+        :param revision_id: The revision id to start with.  All its lefthand
+            ancestors will be traversed.
+        """
+        if revision_id in (None, NULL_REVISION):
+            return
+        for (revid, parent_revid) in self.get_graph().iter_lhs_ancestry(revision_id):
+            yield revid
+
     def get_graph(self, other_repository=None):
         """Return the graph walker for this repository format"""
         parents_provider = self._make_parents_provider()
@@ -438,21 +448,21 @@ class SvnRepository(Repository):
                 return revid
         return None
 
-    def get_parents(self, revids):
-        parents_list = []
+    def get_parent_map(self, revids):
+        parent_map = {}
         for revision_id in revids:
             if revision_id == NULL_REVISION:
-                parents = []
+                parent_map[revision_id] = ()
             else:
                 try:
                     parents = self.revision_parents(revision_id)
                 except NoSuchRevision:
-                    parents = None
+                    pass
                 else:
                     if len(parents) == 0:
-                        parents = [NULL_REVISION]
-            parents_list.append(parents)
-        return parents_list
+                        parents = (NULL_REVISION,)
+                    parent_map[revision_id] = parents
+        return parent_map
 
     def _svk_merged_revisions(self, branch, revnum, mapping, 
                               fileprops):
@@ -474,11 +484,12 @@ class SvnRepository(Repository):
 
     def revision_parents(self, revision_id, svn_fileprops=None, svn_revprops=None):
         """See Repository.revision_parents()."""
-        parent_ids = ()
         (branch, revnum, mapping) = self.lookup_revision_id(revision_id)
         mainline_parent = self.lhs_revision_parent(branch, revnum, mapping)
-        if mainline_parent is not None:
-            parent_ids += (mainline_parent,)
+        if mainline_parent is None:
+            return ()
+
+        parent_ids = (mainline_parent,)
 
         if svn_fileprops is None:
             svn_fileprops = lazy_dict(lambda: self.branchprop_list.get_changed_properties(branch, revnum))
@@ -557,7 +568,7 @@ class SvnRepository(Repository):
         if revid is None:
             revid = mapping.generate_revision_id(self.uuid, revnum, path)
         self.revmap.insert_revid(revid, path, revnum, revnum, 
-                str(mapping.scheme), bzr_revno)
+                str(mapping.scheme))
         return revid
 
     def lookup_revision_id(self, revid, scheme=None):
@@ -629,7 +640,7 @@ class SvnRepository(Repository):
                     if entry_revid == revid:
                         found = True
                     self.revmap.insert_revid(entry_revid, branch, 0, revno, 
-                            str(scheme), entry_revno)
+                            str(scheme))
                 
             # We've added all the revision ids for this scheme in the repository,
             # so no need to check again unless new revisions got added
@@ -652,16 +663,14 @@ class SvnRepository(Repository):
                 # that will already have happened earlier
                 continue
             if entry_revid == revid:
-                self.revmap.insert_revid(revid, bp, rev, rev, scheme, 
-                                         entry_revno)
+                self.revmap.insert_revid(revid, bp, rev, rev, scheme)
                 return (bp, rev, BzrSvnMappingv3FileProps(get_scheme(scheme)))
 
         raise AssertionError("Revision id %s was added incorrectly" % revid)
 
     def get_inventory_xml(self, revision_id):
         """See Repository.get_inventory_xml()."""
-        return bzrlib.xml5.serializer_v5.write_inventory_to_string(
-            self.get_inventory(revision_id))
+        return self.serialise_inventory(self.get_inventory(revision_id))
 
     def get_inventory_sha1(self, revision_id):
         """Get the sha1 for the XML representation of an inventory.
@@ -679,7 +688,7 @@ class SvnRepository(Repository):
         :param revision_id: Revision for which to return the XML.
         :return: XML string
         """
-        return bzrlib.xml5.serializer_v5.write_revision_to_string(
+        return self._serializer.write_revision_to_string(
             self.get_revision(revision_id))
 
     def follow_history(self, revnum, mapping):
@@ -691,9 +700,8 @@ class SvnRepository(Repository):
         """
         assert mapping is not None
 
-        while revnum >= 0:
+        for (_, paths, revnum) in self._log.iter_changes("", revnum):
             yielded_paths = []
-            paths = self._log.get_revision_paths(revnum)
             for p in paths:
                 try:
                     bp = mapping.scheme.unprefix(p)[0]
@@ -704,14 +712,13 @@ class SvnRepository(Repository):
                         yielded_paths.append(bp)
                 except NotBranchError:
                     pass
-            revnum -= 1
 
-    def iter_lhs_ancestry(self, revid, pb=None):
+    def get_lhs_parent(self, revid):
         (branch_path, revnum, mapping) = self.lookup_revision_id(revid)
-        for (bp, rev) in self.follow_branch(branch_path, revnum, mapping):
-            if pb is not None:
-                pb.update("determining revision ancestry", revnum-rev, revnum)
-            yield self.generate_revision_id(rev, bp, mapping)
+        parent_revid = self.lhs_revision_parent(branch_path, revnum, mapping)
+        if parent_revid is None:
+            return NULL_REVISION
+        return parent_revid
 
     def follow_branch(self, branch_path, revnum, mapping):
         """Follow the history of a branch. Will yield all the 

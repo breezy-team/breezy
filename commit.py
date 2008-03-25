@@ -2,7 +2,7 @@
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 
 # This program is distributed in the hope that it will be useful,
@@ -21,11 +21,12 @@ from svn.core import Pool, SubversionException, svn_time_to_cstring
 from bzrlib import debug, osutils, urlutils
 from bzrlib.branch import Branch
 from bzrlib.errors import (BzrError, InvalidRevisionId, DivergedBranches, 
-                           UnrelatedBranches)
+                           UnrelatedBranches, AppendRevisionsOnlyViolation,
+                           )
 from bzrlib.inventory import Inventory
 from bzrlib.repository import RootCommitBuilder, InterRepository
 from bzrlib.revision import NULL_REVISION
-from bzrlib.trace import mutter
+from bzrlib.trace import mutter, warning
 
 from cStringIO import StringIO
 from errors import ChangesRootLHSHistory, MissingPrefix, RevpropChangeFailed
@@ -440,6 +441,9 @@ class SvnCommitBuilder(RootCommitBuilder):
             fileids[path] = id
 
         self.base_mapping.export_fileid_map(fileids, self._svn_revprops, self._svnprops)
+        if self.repository.get_config().get_log_strip_trailing_newline():
+            self.base_mapping.export_message(message, self._svn_revprops, self._svnprops)
+            message = message.rstrip("\n")
         self._svn_revprops[svn.core.SVN_PROP_REVISION_LOG] = message.encode("utf-8")
 
         try:
@@ -447,7 +451,8 @@ class SvnCommitBuilder(RootCommitBuilder):
                                               bp_parts, -1)
             self.revision_metadata = None
             for prop in self._svn_revprops:
-                assert is_valid_property_name(prop), "Invalid property name %r" % prop
+                if not is_valid_property_name(prop):
+                    warning("Setting property %r with invalid characters in name" % prop)
             try:
                 self.editor = self.repository.transport.get_commit_editor(
                         self._svn_revprops, done, None, False)
@@ -472,6 +477,9 @@ class SvnCommitBuilder(RootCommitBuilder):
                 elif self.base_revnum < self.repository._log.find_latest_change(self.branch.get_branch_path(), repository_latest_revnum, include_children=True):
                     replace_existing = True
 
+            if replace_existing and self.branch._get_append_revisions_only():
+                raise AppendRevisionsOnlyViolation(self.branch.base)
+
             # TODO: Accept create_prefix argument (#118787)
             branch_batons = self.open_branch_batons(root, bp_parts,
                 existing_bp_parts, self.base_path, self.base_revnum, 
@@ -482,7 +490,8 @@ class SvnCommitBuilder(RootCommitBuilder):
 
             # Set all the revprops
             for prop, value in self._svnprops.items():
-                assert is_valid_property_name(prop), "Invalid property name %r" % prop
+                if not is_valid_property_name(prop):
+                    warning("Setting property %r with invalid characters in name" % prop)
                 if value is not None:
                     value = value.encode('utf-8')
                 self.editor.change_dir_prop(branch_batons[-1], prop, value, 
@@ -510,11 +519,14 @@ class SvnCommitBuilder(RootCommitBuilder):
                (self.revision_metadata.revision, self.revision_metadata.author, 
                    self.revision_metadata.date, revid))
 
-        if self.repository.get_config().get_override_svn_revprops():
-            set_svn_revprops(self.repository.transport, 
-                 self.revision_metadata.revision, {
-                svn.core.SVN_PROP_REVISION_AUTHOR: self._committer,
-                svn.core.SVN_PROP_REVISION_DATE: svn_time_to_cstring(1000000*self._timestamp)})
+        override_svn_revprops = self.repository.get_config().get_override_svn_revprops()
+        if override_svn_revprops is not None:
+            new_revprops = {}
+            if svn.core.SVN_PROP_REVISION_AUTHOR in override_svn_revprops:
+                new_revprops[svn.core.SVN_PROP_REVISION_AUTHOR] = self._committer
+            if svn.core.SVN_PROP_REVISION_DATE in override_svn_revprops:
+                new_revprops[svn.core.SVN_PROP_REVISION_DATE] = svn_time_to_cstring(1000000*self._timestamp)
+            set_svn_revprops(self.repository.transport, self.revision_metadata.revision, new_revprops)
 
         try:
             set_svn_revprops(self.repository.transport, self.revision_metadata.revision, 

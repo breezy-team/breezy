@@ -2,7 +2,7 @@
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 
 # This program is distributed in the hope that it will be useful,
@@ -310,7 +310,7 @@ class RevisionBuildEditor(svn.delta.Editor):
                       svn.core.SVN_PROP_ENTRY_UUID,
                       svn.core.SVN_PROP_MIME_TYPE):
             pass
-        elif name.startswith(svn.core.SVN_PROP_WC_PREFIX) or 
+        elif name.startswith(svn.core.SVN_PROP_WC_PREFIX):
             pass
         elif (name.startswith(svn.core.SVN_PROP_PREFIX) or
               name.startswith(SVN_PROP_BZR_PREFIX)):
@@ -525,20 +525,19 @@ class InterFromSvnRepository(InterRepository):
         yet in the target repository.
         """
         parents = {}
-        needed = filter(lambda x: not self.target.has_revision(x), 
-                        self.source.all_revision_ids())
-        for revid in needed:
-            (branch, revnum, mapping) = self.source.lookup_revision_id(revid)
-            parents[revid] = self.source.lhs_revision_parent(branch, revnum, mapping)
-        needed.reverse()
+        graph = self.source.get_graph()
+        available_revs = set(self.source.all_revision_ids())
+        missing = available_revs.difference(self.target.has_revisions(available_revs))
+        needed = list(graph.iter_topo_order(missing))
+        parents = graph.get_parent_map(needed)
         return (needed, parents)
 
-    def _find_branches(self, branches, find_ghosts=False):
+    def _find_branches(self, branches, find_ghosts=False, fetch_rhs_ancestry=False):
         set_needed = set()
         ret_needed = list()
         ret_parents = dict()
         for revid in branches:
-            (needed, parents) = self._find_until(revid, find_ghosts=find_ghosts)
+            (needed, parents) = self._find_until(revid, find_ghosts=find_ghosts, fetch_rhs_ancestry=False)
             for rev in needed:
                 if not rev in set_needed:
                     ret_needed.append(rev)
@@ -546,35 +545,40 @@ class InterFromSvnRepository(InterRepository):
             ret_parents.update(parents)
         return ret_needed, ret_parents
 
-    def _find_until(self, revision_id, find_ghosts=False):
+    def _find_until(self, revision_id, find_ghosts=False, fetch_rhs_ancestry=False):
         """Find all missing revisions until revision_id
 
         :param revision_id: Stop revision
         :param find_ghosts: Find ghosts
+        :param fetch_rhs_ancestry: Fetch right hand side ancestors
         :return: Tuple with revisions missing and a dictionary with 
             parents for those revision.
         """
         needed = []
         parents = {}
 
-        prev_revid = None
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
-            for revid in self.source.iter_lhs_ancestry(revision_id, pb):
-
-                if prev_revid is not None:
-                    parents[prev_revid] = revid
-
-                prev_revid = revid
-
+        graph = self.source.get_graph()
+        if fetch_rhs_ancestry:
+            for (revid, parent_revids) in graph.iter_ancestry([revision_id]):
+                if revid == NULL_REVISION:
+                    continue
+                if parent_revids is None: # Ghost
+                    continue
+                parents[revid] = parent_revids
                 if not self.target.has_revision(revid):
                     needed.append(revid)
                 elif not find_ghosts:
                     break
-        finally:
-            pb.finished()
+        else:
+            for (revid, parent_revid) in graph.iter_lhs_ancestry(revision_id):
+                if revid == NULL_REVISION:
+                    continue
+                parents[revid] = (parent_revid,)
+                if not self.target.has_revision(revid):
+                    needed.append(revid)
+                elif not find_ghosts:
+                    break
 
-        parents[prev_revid] = None
         needed.reverse()
         return (needed, parents)
 
@@ -590,7 +594,7 @@ class InterFromSvnRepository(InterRepository):
         """
         raise NotImplementedError(self._copy_revisions_replay)
 
-    def _fetch_switch(self, revids, pb=None, lhs_parent=None):
+    def _fetch_switch(self, revids, pb=None, parents=None):
         """Copy a set of related revisions using svn.ra.switch.
 
         :param revids: List of revision ids of revisions to copy, 
@@ -617,9 +621,11 @@ class InterFromSvnRepository(InterRepository):
             for revid in revids:
                 pb.update('copying revision', num, len(revids))
 
-                parent_revid = lhs_parent[revid]
+                parent_revid = parents[revid][0]
 
-                if parent_revid is None:
+                assert parent_revid is not None
+
+                if parent_revid == NULL_REVISION:
                     parent_inv = Inventory(root_id=None)
                 elif prev_revid != parent_revid:
                     parent_inv = self.target.get_inventory(parent_revid)
@@ -631,7 +637,7 @@ class InterFromSvnRepository(InterRepository):
                 try:
                     pool = Pool()
 
-                    if parent_revid is None:
+                    if parent_revid == NULL_REVISION:
                         branch_url = urlutils.join(repos_root, 
                                                    editor.branch_path)
                         transport.reparent(branch_url)
@@ -675,7 +681,7 @@ class InterFromSvnRepository(InterRepository):
         self.source.transport.reparent_root()
 
     def fetch(self, revision_id=None, pb=None, find_ghosts=False, 
-              branches=None):
+              branches=None, fetch_rhs_ancestry=False):
         """Fetch revisions. """
         if revision_id == NULL_REVISION:
             return
@@ -687,13 +693,13 @@ class InterFromSvnRepository(InterRepository):
         self.target.lock_read()
         try:
             if branches is not None:
-                (needed, lhs_parent) = self._find_branches(branches, 
-                                                           find_ghosts)
+                (needed, parents) = self._find_branches(branches, 
+                                                        find_ghosts, fetch_rhs_ancestry)
             elif revision_id is None:
-                (needed, lhs_parent) = self._find_all()
+                (needed, parents) = self._find_all()
             else:
-                (needed, lhs_parent) = self._find_until(revision_id, 
-                                                        find_ghosts)
+                (needed, parents) = self._find_until(revision_id, 
+                                                     find_ghosts, fetch_rhs_ancestry)
         finally:
             self.target.unlock()
 
@@ -701,7 +707,7 @@ class InterFromSvnRepository(InterRepository):
             # Nothing to fetch
             return
 
-        self._fetch_switch(needed, pb, lhs_parent)
+        self._fetch_switch(needed, pb, parents)
 
     @staticmethod
     def is_compatible(source, target):
