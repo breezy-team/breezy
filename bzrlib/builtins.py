@@ -2798,7 +2798,7 @@ class cmd_merge(Command):
 
     encoding_type = 'exact'
     _see_also = ['update', 'remerge', 'status-flags']
-    takes_args = ['branch_or_merge_directive?']
+    takes_args = ['location?']
     takes_options = [
         'change',
         'revision',
@@ -2824,16 +2824,12 @@ class cmd_merge(Command):
         Option('preview', help='Instead of merging, show a diff of the merge.')
     ]
 
-    def run(self, branch_or_merge_directive=None, revision=None, force=False,
+    def run(self, location=None, revision=None, force=False,
             merge_type=None, show_base=False, reprocess=False, remember=False,
             uncommitted=False, pull=False,
             directory=None,
             preview=False,
             ):
-        # This is actually a branch (or merge-directive) *location*.
-        location = branch_or_merge_directive
-        del branch_or_merge_directive
-
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
 
