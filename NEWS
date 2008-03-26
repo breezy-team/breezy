@@ -57,9 +57,16 @@ IN DEVELOPMENT
 
   API BREAKS:
 
-    * Log formatters must now provide log_revision instead of
-      show and show_merge_revno methods. The latter had been
-      deprecated since the 0.17 release. (James Westby)
+    * Attempting to pull data from a ghost aware repository (e.g. knits) into a
+      non-ghost aware repository such as weaves will now fail if there are
+      ghosts.  (Robert Collins)
+
+    * Log formatters must now provide log_revision instead of show and
+      show_merge_revno methods. The latter had been deprecated since the 0.17
+      release. (James Westby)
+
+    * ``VersionedFile.get_parents`` is deprecated, please use
+      ``VersionedFile.get_parent_map``. (Robert Collins)
 
   TESTING:
 
@@ -69,6 +76,9 @@ IN DEVELOPMENT
       spurious test failures if used with the full suite. (Andrew Bennetts)
 
   INTERNALS:
+
+    * ``VersionedFile`` now has a new method ``get_parent_map`` which, like
+      ``Graph.get_parent_map`` returns a dict of key:parents. (Robert Collins)
 
 
 bzr 1.3rc1 2008-03-16

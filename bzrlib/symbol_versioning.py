@@ -45,6 +45,7 @@ __all__ = ['deprecated_function',
            'one_one',
            'one_two',
            'one_three',
+           'one_four',
            ]
 
 from warnings import warn
