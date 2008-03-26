@@ -54,6 +54,7 @@ from bzrlib.symbol_versioning import (
         deprecated_method,
         deprecated_function,
         DEPRECATED_PARAMETER,
+        one_four,
         zero_eight,
         zero_eleven,
         zero_ninety,
@@ -613,6 +614,7 @@ class Transport(object):
         """
         return self.get(relpath).read()
 
+    @deprecated_method(one_four)
     def get_smart_client(self):
         """Return a smart client for this transport if possible.
 
