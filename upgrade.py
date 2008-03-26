@@ -94,22 +94,17 @@ def generate_upgrade_map(new_mapping, revs):
              dictionary.
     """
     rename_map = {}
-    pb = ui.ui_factory.nested_progress_bar()
     # Create a list of revisions that can be renamed during the upgade
-    try:
-        for revid in revs:
-            pb.update('gather revision information', revs.index(revid), len(revs))
-            try:
-                (uuid, bp, rev, mapping) = parse_revision_id(revid)
-            except InvalidRevisionId:
-                # Not a bzr-svn revision, nothing to do
-                continue
-            newrevid = new_mapping.generate_revision_id(uuid, rev, bp)
-            if revid == newrevid:
-                continue
-            rename_map[revid] = newrevid
-    finally:
-        pb.finished()
+    for revid in revs:
+        try:
+            (uuid, bp, rev, mapping) = parse_revision_id(revid)
+        except InvalidRevisionId:
+            # Not a bzr-svn revision, nothing to do
+            continue
+        newrevid = new_mapping.generate_revision_id(uuid, rev, bp)
+        if revid == newrevid:
+            continue
+        rename_map[revid] = newrevid
 
     return rename_map
 
@@ -148,8 +143,9 @@ def create_upgrade_plan(repository, svn_repository, new_mapping,
     from bzrlib.plugins.rebase.rebase import generate_transpose_plan
     check_rebase_version()
 
-    graph = repository.get_revision_graph(revision_id)
-    upgrade_map = generate_upgrade_map(new_mapping, graph.keys())
+    graph = repository.get_graph()
+    upgrade_map = generate_upgrade_map(new_mapping, 
+                      graph.iter_ancestry(revision_id))
    
     # Make sure all the required current version revisions are present
     for revid in upgrade_map.values():
