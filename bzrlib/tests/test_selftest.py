@@ -1125,10 +1125,11 @@ class TestRunner(TestCase):
         self.assertTrue(result.wasSuccessful())
 
     def test_skipped_from_setup(self):
+        calls = []
         class SkippedSetupTest(TestCase):
 
             def setUp(self):
-                self.counter = 1
+                calls.append('setUp')
                 self.addCleanup(self.cleanup)
                 raise TestSkipped('skipped setup')
 
@@ -1136,34 +1137,35 @@ class TestRunner(TestCase):
                 self.fail('test reached')
 
             def cleanup(self):
-                self.counter -= 1
+                calls.append('cleanup')
 
         runner = TextTestRunner(stream=self._log_file)
         test = SkippedSetupTest('test_skip')
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
         # Check if cleanup was called the right number of times.
-        self.assertEqual(0, test.counter)
+        self.assertEqual(['setUp', 'cleanup'], calls)
 
     def test_skipped_from_test(self):
+        calls = []
         class SkippedTest(TestCase):
 
             def setUp(self):
-                self.counter = 1
+                calls.append('setUp')
                 self.addCleanup(self.cleanup)
 
             def test_skip(self):
                 raise TestSkipped('skipped test')
 
             def cleanup(self):
-                self.counter -= 1
+                calls.append('cleanup')
 
         runner = TextTestRunner(stream=self._log_file)
         test = SkippedTest('test_skip')
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
         # Check if cleanup was called the right number of times.
-        self.assertEqual(0, test.counter)
+        self.assertEqual(['setUp', 'cleanup'], calls)
 
     def test_not_applicable(self):
         # run a test that is skipped because it's not applicable
@@ -1920,7 +1922,7 @@ class TestTestLoader(TestCase):
         self.assertEquals(['bzrlib.tests.test_sampler.DemoTest.test_nothing'],
                           _test_ids(suite))
 
-    def test_load_tests_from_module_name_with_bougs_module_name(self):
+    def test_load_tests_from_module_name_with_bogus_module_name(self):
         loader = TestUtil.TestLoader()
         self.assertRaises(ImportError, loader.loadTestsFromModuleName, 'bogus')
 

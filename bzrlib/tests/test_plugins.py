@@ -32,7 +32,11 @@ import bzrlib.plugins
 import bzrlib.commands
 import bzrlib.help
 from bzrlib.symbol_versioning import one_three
-from bzrlib.tests import TestCase, TestCaseInTempDir
+from bzrlib.tests import (
+    TestCase,
+    TestCaseInTempDir,
+    TestUtil,
+    )
 from bzrlib.osutils import pathjoin, abspath, normpath
 
 
@@ -281,6 +285,21 @@ class TestPlugins(TestCaseInTempDir):
         self.setup_plugin(source)
         plugin = bzrlib.plugin.plugins()['plugin']
         self.assertEqual('foo', plugin.test_suite())
+
+    def test_no_load_tests_gives_None_for_load_tests(self):
+        self.setup_plugin()
+        loader = TestUtil.TestLoader()
+        plugin = bzrlib.plugin.plugins()['plugin']
+        self.assertEqual(None, plugin.load_tests(loader))
+
+    def test_load_tests_gives_load_tests_result(self):
+        source = """
+def load_tests(standard_tests, module, loader):
+    return 'foo'"""
+        self.setup_plugin(source)
+        loader = TestUtil.TestLoader()
+        plugin = bzrlib.plugin.plugins()['plugin']
+        self.assertEqual('foo', plugin.load_tests(loader))
 
     def test_no_version_info(self):
         self.setup_plugin()

@@ -109,22 +109,6 @@ __unittest = 1
 
 default_transport = LocalURLServer
 
-MODULES_TO_DOCTEST = [
-        bzrlib,
-        bzrlib.timestamp,
-        bzrlib.errors,
-        bzrlib.export,
-        bzrlib.inventory,
-        bzrlib.iterablefile,
-        bzrlib.lockdir,
-        bzrlib.merge3,
-        bzrlib.option,
-        bzrlib.store,
-        bzrlib.version_info_formats.format_custom,
-        # quoted to avoid module-loading circularity
-        'bzrlib.tests',
-        ]
-
 
 def packages_to_test():
     """Return a list of packages to test.
@@ -314,6 +298,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.report_success(test)
         self._cleanupLogFile(test)
         unittest.TestResult.addSuccess(self, test)
+        test._log_contents = ''
 
     def _testConcluded(self, test):
         """Common code when a test has finished.
@@ -356,6 +341,7 @@ class ExtendedTestResult(unittest._TextTestResult):
             # seems best to treat this as success from point-of-view of unittest
             # -- it actually does nothing so it barely matters :)
             unittest.TestResult.addSuccess(self, test)
+            test._log_contents = ''
 
     def printErrorList(self, flavour, errors):
         for test, err in errors:
@@ -789,6 +775,9 @@ class TestCase(unittest.TestCase):
     _keep_log_file = False
     # record lsprof data when performing benchmark calls.
     _gather_lsprof_in_benchmarks = False
+    attrs_to_keep = ('_testMethodName', '_testMethodDoc',
+                     '_log_contents', '_log_file_name', '_benchtime',
+                     '_TestCase__testMethodName')
 
     def __init__(self, methodName='testMethod'):
         super(TestCase, self).__init__(methodName)
@@ -810,9 +799,10 @@ class TestCase(unittest.TestCase):
         Tests that want to use debug flags can just set them in the
         debug_flags set during setup/teardown.
         """
-        self._preserved_debug_flags = set(debug.debug_flags)
-        debug.debug_flags.clear()
-        self.addCleanup(self._restore_debug_flags)
+        if 'selftest_debug' not in debug.debug_flags:
+            self._preserved_debug_flags = set(debug.debug_flags)
+            debug.debug_flags.clear()
+            self.addCleanup(self._restore_debug_flags)
 
     def _clear_hooks(self):
         # prevent hooks affecting tests
@@ -1282,7 +1272,16 @@ class TestCase(unittest.TestCase):
                     result.addSuccess(self)
                 result.stopTest(self)
                 return
-        return unittest.TestCase.run(self, result)
+        try:
+            return unittest.TestCase.run(self, result)
+        finally:
+            saved_attrs = {}
+            absent_attr = object()
+            for attr_name in self.attrs_to_keep:
+                attr = getattr(self, attr_name, absent_attr)
+                if attr is not absent_attr:
+                    saved_attrs[attr_name] = attr
+            self.__dict__ = saved_attrs
 
     def tearDown(self):
         self._runCleanups()
@@ -2794,61 +2793,54 @@ def test_suite(keep_only=None):
         'bzrlib.tests.test_transport_implementations',
         'bzrlib.tests.test_read_bundle',
         ]
-    suite = TestUtil.TestSuite()
     loader = TestUtil.TestLoader()
 
-    if keep_only is not None:
+    if keep_only is None:
+        loader = TestUtil.TestLoader()
+    else:
         id_filter = TestIdList(keep_only)
+        loader = TestUtil.FilteredByModuleTestLoader(id_filter.refers_to)
+    suite = loader.suiteClass()
 
     # modules building their suite with loadTestsFromModuleNames
-    if keep_only is None:
-        suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
-    else:
-        for mod in [m for m in testmod_names
-                    if id_filter.refers_to(m)]:
-            mod_suite = loader.loadTestsFromModuleNames([mod])
-            mod_suite = filter_suite_by_id_list(mod_suite, id_filter)
-            suite.addTest(mod_suite)
+    suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
 
     # modules adapted for transport implementations
     from bzrlib.tests.test_transport_implementations import TransportTestProviderAdapter
     adapter = TransportTestProviderAdapter()
-    if keep_only is None:
-        adapt_modules(test_transport_implementations, adapter, loader, suite)
-    else:
-        for mod in [m for m in test_transport_implementations
-                    if id_filter.refers_to(m)]:
-            mod_suite = TestUtil.TestSuite()
-            adapt_modules([mod], adapter, loader, mod_suite)
-            mod_suite = filter_suite_by_id_list(mod_suite, id_filter)
-            suite.addTest(mod_suite)
+    adapt_modules(test_transport_implementations, adapter, loader, suite)
 
     # modules defining their own test_suite()
     for package in [p for p in packages_to_test()
                     if (keep_only is None
                         or id_filter.refers_to(p.__name__))]:
         pack_suite = package.test_suite()
-        if keep_only is not None:
-            pack_suite = filter_suite_by_id_list(pack_suite, id_filter)
         suite.addTest(pack_suite)
 
-    # XXX: MODULES_TO_TEST should be obsoleted ?
-    for mod in [m for m in MODULES_TO_TEST
-                if keep_only is None or id_filter.refers_to(m)]:
-        mod_suite = loader.loadTestsFromModule(mod)
-        if keep_only is not None:
-            mod_suite = filter_suite_by_id_list(mod_suite, id_filter)
-        suite.addTest(mod_suite)
+    modules_to_doctest = [
+        'bzrlib',
+        'bzrlib.errors',
+        'bzrlib.export',
+        'bzrlib.inventory',
+        'bzrlib.iterablefile',
+        'bzrlib.lockdir',
+        'bzrlib.merge3',
+        'bzrlib.option',
+        'bzrlib.store',
+        'bzrlib.tests',
+        'bzrlib.timestamp',
+        'bzrlib.version_info_formats.format_custom',
+        ]
 
-    for mod in MODULES_TO_DOCTEST:
+    for mod in modules_to_doctest:
+        if not (keep_only is None or id_filter.refers_to(mod)):
+            # No tests to keep here, move along
+            continue
         try:
             doc_suite = doctest.DocTestSuite(mod)
         except ValueError, e:
             print '**failed to get doctest for: %s\n%s' % (mod, e)
             raise
-        if keep_only is not None:
-            # DocTests may use ids which doesn't contain the module name
-            doc_suite = filter_suite_by_id_list(doc_suite, id_filter)
         suite.addTest(doc_suite)
 
     default_encoding = sys.getdefaultencoding()
@@ -2860,10 +2852,9 @@ def test_suite(keep_only=None):
         # We used to catch ImportError here and turn it into just a warning,
         # but really if you don't have --no-plugins this should be a failure.
         # mbp 20080213 - see http://bugs.launchpad.net/bugs/189771
+        if plugin_suite is None:
+            plugin_suite = plugin.load_tests(loader)
         if plugin_suite is not None:
-            if keep_only is not None:
-                plugin_suite = filter_suite_by_id_list(plugin_suite,
-                                                       id_filter)
             suite.addTest(plugin_suite)
         if default_encoding != sys.getdefaultencoding():
             bzrlib.trace.warning(
@@ -2873,6 +2864,9 @@ def test_suite(keep_only=None):
             sys.setdefaultencoding(default_encoding)
 
     if keep_only is not None:
+        # Now that the referred modules have loaded their tests, keep only the
+        # requested ones.
+        suite = filter_suite_by_id_list(suite, id_filter)
         # Do some sanity checks on the id_list filtering
         not_found, duplicates = suite_matches_id_list(suite, keep_only)
         for id in not_found:

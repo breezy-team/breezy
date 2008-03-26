@@ -407,13 +407,28 @@ class PlugIn(object):
         else:
             return None
 
+    def load_tests(self, loader):
+        """Return the adapted plugin's test suite.
+
+        :param loader: The custom loader that should be used to load additional
+            tests.
+
+        Note that TestUtil.TestLoader defines load_tests(self, standard_tests,
+        module, loader), but here we are handling the associated plugin module
+        ourselves.
+        """
+        if getattr(self.module, 'load_tests', None) is not None:
+            return loader.loadTestsFromModule(self.module)
+        else:
+            return None
+
     def version_info(self):
         """Return the plugin's version_tuple or None if unknown."""
         version_info = getattr(self.module, 'version_info', None)
         if version_info is not None and len(version_info) == 3:
             version_info = tuple(version_info) + ('final', 0)
         return version_info
-    
+
     def _get__version__(self):
         version_info = self.version_info()
         if version_info is None:
