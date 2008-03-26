@@ -662,8 +662,8 @@ class WorkingTree4(WorkingTree3):
         if self._inventory is not None:
             update_inventory = True
             inv = self.inventory
-            to_dir_ie = inv[to_dir_id]
             to_dir_id = to_entry[0][2]
+            to_dir_ie = inv[to_dir_id]
         else:
             update_inventory = False
 
