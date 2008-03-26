@@ -24,6 +24,7 @@ from bzrlib import (
     bzrdir,
     errors,
     graph,
+    osutils,
     remote,
     repository,
     )
@@ -641,6 +642,23 @@ class TestRepository(TestCaseWithRepository):
         repo.add_signature_text('A', 'This might be a signature')
         self.assertEqual('This might be a signature',
                          repo.get_signature_text('A'))
+
+    def test_add_revision_inventory_sha1(self):
+        repo = self.make_repository('repo')
+        inv = Inventory(revision_id='A')
+        inv.root.revision = 'A'
+        inv.root.file_id = 'fixed-root'
+        repo.lock_write()
+        repo.start_write_group()
+        repo.add_revision('A', Revision('A', committer='B', timestamp=0,
+                          timezone=0, message='C'), inv=inv)
+        repo.commit_write_group()
+        repo.unlock()
+        repo.lock_read()
+        self.assertEquals(osutils.sha_string(
+            repo._serializer.write_inventory_to_string(inv)),
+            repo.get_revision('A').inventory_sha1)
+        repo.unlock()
 
     def test_install_revisions(self):
         wt = self.make_branch_and_tree('source')

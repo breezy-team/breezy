@@ -51,6 +51,8 @@ IN DEVELOPMENT
 
     * Implement handling of basename parameter for DefaultMail.  (James Westby)
 
+    * Launchpad locations (lp: URLs) can be pulled.  (Aaron Bentley, #181945)
+
   DOCUMENTATION:
 
   API BREAKS:
@@ -70,6 +72,15 @@ IN DEVELOPMENT
       ``VersionedFile.get_parent_map``. (Robert Collins)
 
   TESTING:
+
+    * New -Dselftest_debug flag disables clearing of the debug flags during
+      tests.  This is useful if you want to use e.g. -Dhpss to help debug a
+      failing test.  Be aware that using this feature is likely to cause
+      spurious test failures if used with the full suite. (Andrew Bennetts)
+
+    * The test suite takes much less memory to run, and is a bit faster.  This
+      is done by clearing most attributes of TestCases after running them, if
+      they succeeded.  (Andrew Bennetts)
 
   INTERNALS:
 

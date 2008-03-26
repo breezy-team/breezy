@@ -551,7 +551,8 @@ class Repository(object):
                                                      self.get_inventory_weave())
             else:
                 # yes, this is not suitable for adding with ghosts.
-                self.add_inventory(revision_id, inv, rev.parent_ids)
+                rev.inventory_sha1 = self.add_inventory(revision_id, inv, 
+                                                        rev.parent_ids)
         self._revision_store.add_revision(rev, self.get_transaction())
 
     def _add_revision_text(self, revision_id, text):
@@ -1619,6 +1620,11 @@ class Repository(object):
             if next_id in (None, _mod_revision.NULL_REVISION):
                 return
             yield next_id
+            # Note: The following line may raise KeyError in the event of
+            # truncated history. We decided not to have a try:except:raise
+            # RevisionNotPresent here until we see a use for it, because of the
+            # cost in an inner loop that is by its very nature O(history).
+            # Robert Collins 20080326
             parents = graph.get_parent_map([next_id])[next_id]
             if len(parents) == 0:
                 return

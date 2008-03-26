@@ -277,21 +277,22 @@ See doc/developers/profiling.txt for more information on profiling.
 A number of debug flags are also available to assist troubleshooting and
 development.
 
--Dauth         Trace authentication sections used.
--Derror        Instead of normal error handling, always print a traceback on
-               error.
--Devil         Capture call sites that do expensive or badly-scaling
-               operations.
--Dfetch        Trace history copying between repositories.
--Dhashcache    Log every time a working file is read to determine its hash.
--Dhooks        Trace hook execution.
--Dhpss         Trace smart protocol requests and responses.
--Dhttp         Trace http connections, requests and responses
--Dindex        Trace major index operations.
--Dknit         Trace knit operations.
--Dlock         Trace when lockdir locks are taken or released.
--Dmerge        Emit information for debugging merges.
--Dpack         Emit information about pack operations.
+-Dauth            Trace authentication sections used.
+-Derror           Instead of normal error handling, always print a traceback
+                  on error.
+-Devil            Capture call sites that do expensive or badly-scaling
+                  operations.
+-Dfetch           Trace history copying between repositories.
+-Dhashcache       Log every time a working file is read to determine its hash.
+-Dhooks           Trace hook execution.
+-Dhpss            Trace smart protocol requests and responses.
+-Dhttp            Trace http connections, requests and responses
+-Dindex           Trace major index operations.
+-Dknit            Trace knit operations.
+-Dlock            Trace when lockdir locks are taken or released.
+-Dmerge           Emit information for debugging merges.
+-Dpack            Emit information about pack operations.
+-Dselftest_debug  Do not disable all debug flags when running selftest.
 """
 
 _standard_options = \
