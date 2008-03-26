@@ -107,10 +107,11 @@ class AllInOneRepository(Repository):
         consistency and is only applicable to inventory-weave-for-ancestry
         using repository formats & fetchers.
         """
-        weave_parents = inventory.get_parents(revision.revision_id)
-        weave_names = inventory.versions()
+        weave_parents = inventory.get_parent_map(
+            [revision.revision_id])[revision.revision_id]
+        parent_map = inventory.get_parent_map(revision.parent_ids)
         for parent_id in revision.parent_ids:
-            if parent_id in weave_names:
+            if parent_id in parent_map:
                 # this parent must not be a ghost.
                 if not parent_id in weave_parents:
                     # but it is a ghost
@@ -158,8 +159,7 @@ class AllInOneRepository(Repository):
         a_weave = self.get_inventory_weave()
         all_revisions = self._eliminate_revisions_not_present(
                                 a_weave.versions())
-        entire_graph = dict([(node, tuple(a_weave.get_parents(node))) for 
-                             node in all_revisions])
+        entire_graph = a_weave.get_parent_map(all_revisions)
         if revision_id is None:
             return entire_graph
         elif revision_id not in entire_graph:
@@ -247,10 +247,11 @@ class WeaveMetaDirRepository(MetaDirRepository):
         consistency and is only applicable to inventory-weave-for-ancestry
         using repository formats & fetchers.
         """
-        weave_parents = inventory.get_parents(revision.revision_id)
-        weave_names = inventory.versions()
+        weave_parents = inventory.get_parent_map(
+            [revision.revision_id])[revision.revision_id]
+        parent_map = inventory.get_parent_map(revision.parent_ids)
         for parent_id in revision.parent_ids:
-            if parent_id in weave_names:
+            if parent_id in parent_map:
                 # this parent must not be a ghost.
                 if not parent_id in weave_parents:
                     # but it is a ghost
@@ -299,8 +300,7 @@ class WeaveMetaDirRepository(MetaDirRepository):
         a_weave = self.get_inventory_weave()
         all_revisions = self._eliminate_revisions_not_present(
                                 a_weave.versions())
-        entire_graph = dict([(node, tuple(a_weave.get_parents(node))) for 
-                             node in all_revisions])
+        entire_graph = a_weave.get_parent_map(all_revisions)
         if revision_id is None:
             return entire_graph
         elif revision_id not in entire_graph:
