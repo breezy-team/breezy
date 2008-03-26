@@ -228,15 +228,15 @@ class RepoReconciler(object):
                 parents.append(parent)
             else:
                 mutter('found ghost %s', parent)
-        self._rev_graph[rev_id] = parents   
+        self._rev_graph[rev_id] = parents
         if self._parents_are_inconsistent(rev_id, parents):
             self.inconsistent_parents += 1
             mutter('Inconsistent inventory parents: id {%s} '
                    'inventory claims %r, '
                    'available parents are %r, '
                    'unavailable parents are %r',
-                   rev_id, 
-                   set(self.inventory.get_parents(rev_id)),
+                   rev_id,
+                   set(self.inventory.get_parent_map([rev_id])[rev_id]),
                    set(parents),
                    set(rev.parent_ids).difference(set(parents)))
 
@@ -248,7 +248,7 @@ class RepoReconciler(object):
         differences.
         Otherwise only the ghost differences are evaluated.
         """
-        weave_parents = self.inventory.get_parents(rev_id)
+        weave_parents = self.inventory.get_parent_map([rev_id])[rev_id]
         weave_missing_old_ghosts = set(weave_parents) != set(parents)
         first_parent_is_wrong = (
             len(weave_parents) and len(parents) and
@@ -333,16 +333,20 @@ class KnitReconciler(RepoReconciler):
 
         # we have topological order of revisions and non ghost parents ready.
         self._setup_steps(len(self.revisions))
-        for rev_id in TopoSorter(self.revisions.get_graph().items()).iter_topo_order():
-            parents = self.revisions.get_parents(rev_id)
-            # double check this really is in topological order.
-            unavailable = [p for p in parents if p not in new_inventory_vf]
+        graph = self.revisions.get_graph()
+        parent_map = self.revisions.get_parent_map(graph.keys())
+        for rev_id in TopoSorter(graph.items()).iter_topo_order():
+            parents = parent_map[rev_id]
+            # double check this really is in topological order, ignoring existing ghosts.
+            unavailable = [p for p in parents if p not in new_inventory_vf and
+                p in self.revisions]
             assert len(unavailable) == 0
             # this entry has all the non ghost parents in the inventory
             # file already.
             self._reweave_step('adding inventories')
             # ugly but needed, weaves are just way tooooo slow else.
-            new_inventory_vf.add_lines(rev_id, parents, self.inventory.get_lines(rev_id))
+            new_inventory_vf.add_lines_with_ghosts(rev_id, parents,
+                self.inventory.get_lines(rev_id))
 
         # if this worked, the set of new_inventory_vf.names should equal
         # self.pending
@@ -412,7 +416,7 @@ class KnitReconciler(RepoReconciler):
             elif version in versions_with_bad_parents:
                 parents = versions_with_bad_parents[version][1]
             else:
-                parents = vf.get_parents(version)
+                parents = vf.get_parent_map([version])[version]
             new_parents[version] = parents
         if not len(new_parents):
             # No used versions, remove the VF.
