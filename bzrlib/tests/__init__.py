@@ -2832,14 +2832,6 @@ def test_suite(keep_only=None):
             pack_suite = filter_suite_by_id_list(pack_suite, id_filter)
         suite.addTest(pack_suite)
 
-    # XXX: MODULES_TO_TEST should be obsoleted ?
-    for mod in [m for m in MODULES_TO_TEST
-                if keep_only is None or id_filter.refers_to(m)]:
-        mod_suite = loader.loadTestsFromModule(mod)
-        if keep_only is not None:
-            mod_suite = filter_suite_by_id_list(mod_suite, id_filter)
-        suite.addTest(mod_suite)
-
     for mod in MODULES_TO_DOCTEST:
         try:
             doc_suite = doctest.DocTestSuite(mod)
