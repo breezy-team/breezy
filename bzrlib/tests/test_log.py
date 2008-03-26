@@ -685,6 +685,8 @@ class TestGetViewRevisions(TestCaseWithTransport):
     def test_get_view_revisions_forward(self):
         """Test the get_view_revisions method"""
         mainline_revs, rev_nos, wt = self.make_tree_with_commits()
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                             'forward'))
         self.assertEqual([('1', '1', 0), ('2', '2', 0), ('3', '3', 0)],
@@ -696,6 +698,8 @@ class TestGetViewRevisions(TestCaseWithTransport):
     def test_get_view_revisions_reverse(self):
         """Test the get_view_revisions with reverse"""
         mainline_revs, rev_nos, wt = self.make_tree_with_commits()
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                             'reverse'))
         self.assertEqual([('3', '3', 0), ('2', '2', 0), ('1', '1', 0), ],
@@ -707,6 +711,8 @@ class TestGetViewRevisions(TestCaseWithTransport):
     def test_get_view_revisions_merge(self):
         """Test get_view_revisions when there are merges"""
         mainline_revs, rev_nos, wt = self.make_tree_with_merges()
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                             'forward'))
         self.assertEqual([('1', '1', 0), ('2', '2', 0), ('3', '3', 0),
@@ -721,6 +727,8 @@ class TestGetViewRevisions(TestCaseWithTransport):
     def test_get_view_revisions_merge_reverse(self):
         """Test get_view_revisions in reverse when there are merges"""
         mainline_revs, rev_nos, wt = self.make_tree_with_merges()
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                             'reverse'))
         self.assertEqual([('4b', '4', 0), ('4a', '3.1.1', 1),
@@ -735,6 +743,8 @@ class TestGetViewRevisions(TestCaseWithTransport):
     def test_get_view_revisions_merge2(self):
         """Test get_view_revisions when there are merges"""
         mainline_revs, rev_nos, wt = self.make_tree_with_many_merges()
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                             'forward'))
         expected = [('1', '1', 0), ('2', '2', 0), ('3c', '3', 0),

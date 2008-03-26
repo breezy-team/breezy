@@ -459,11 +459,18 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
     weave_modifed_revisions = set(file_weave.versions())
     # build the ancestry of each revision in the graph
     # - only listing the ancestors that change the specific file.
-    rev_graph = branch.repository.get_revision_graph(mainline_revisions[-1])
-    sorted_rev_list = topo_sort(rev_graph)
+    graph = branch.repository.get_graph()
+    # This asks for all mainline revisions, which means we only have to spider
+    # sideways, rather than depth history. That said, its still size-of-history
+    # and should be addressed.
+    search = graph._make_breadth_first_searcher(mainline_revisions)
+    transitive_ids = set()
+    map(transitive_ids.update, list(search))
+    parent_map = graph.get_parent_map(transitive_ids)
+    sorted_rev_list = topo_sort(parent_map.items())
     ancestry = {}
     for rev in sorted_rev_list:
-        parents = rev_graph[rev]
+        parents = parent_map[rev]
         if rev not in weave_modifed_revisions and len(parents) == 1:
             # We will not be adding anything new, so just use a reference to
             # the parent ancestry.
@@ -477,7 +484,7 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
         ancestry[rev] = rev_ancestry
 
     def is_merging_rev(r):
-        parents = rev_graph[r]
+        parents = parent_map[r]
         if len(parents) > 1:
             leftparent = parents[0]
             for rightparent in parents[1:]:
@@ -505,8 +512,24 @@ def get_view_revisions(mainline_revs, rev_nos, branch, direction,
         for revision_id in revision_ids:
             yield revision_id, str(rev_nos[revision_id]), 0
         return
+    graph = branch.repository.get_graph()
+    # This asks for all mainline revisions, which means we only have to spider
+    # sideways, rather than depth history. That said, its still size-of-history
+    # and should be addressed.
+    search = graph._make_breadth_first_searcher(mainline_revs)
+    transitive_ids = set()
+    map(transitive_ids.update, list(search))
+    parent_map = graph.get_parent_map(transitive_ids)
+    # filter out ghosts; merge_sort errors on ghosts.
+    rev_graph = {}
+    # Filter ghosts, and null:
+    if NULL_REVISION in parent_map:
+        del parent_map[NULL_REVISION]
+    for key, parents in parent_map.iteritems():
+        rev_graph[key] = tuple(parent for parent in parents if parent in
+            parent_map)
     merge_sorted_revisions = merge_sort(
-        branch.repository.get_revision_graph(mainline_revs[-1]),
+        rev_graph,
         mainline_revs[-1],
         mainline_revs,
         generate_revno=True)

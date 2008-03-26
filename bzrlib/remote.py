@@ -361,6 +361,7 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository._generate_text_key_index()
 
+    @symbol_versioning.deprecated_method(symbol_versioning.one_four)
     def get_revision_graph(self, revision_id=None):
         """See Repository.get_revision_graph()."""
         if revision_id is None:
@@ -836,6 +837,10 @@ class RemoteRepository(object):
             # We already found out that the server can't understand
             # Repository.get_parent_map requests, so just fetch the whole
             # graph.
+            # XXX: Note that this will issue a deprecation warning. This is ok
+            # :- its because we're working with a deprecated server anyway, and
+            # the user will almost certainly have seen a warning about the
+            # server version already.
             return self.get_revision_graph()
 
         keys = set(keys)

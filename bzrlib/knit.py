@@ -101,7 +101,7 @@ from bzrlib.errors import (
     RevisionNotPresent,
     RevisionAlreadyPresent,
     )
-from bzrlib.tuned_gzip import GzipFile, bytes_to_gzip
+from bzrlib.graph import Graph
 from bzrlib.osutils import (
     contains_whitespace,
     contains_linebreaks,
@@ -110,9 +110,10 @@ from bzrlib.osutils import (
     )
 from bzrlib.symbol_versioning import DEPRECATED_PARAMETER, deprecated_passed
 from bzrlib.tsort import topo_sort
+from bzrlib.tuned_gzip import GzipFile, bytes_to_gzip
 import bzrlib.ui
-import bzrlib.weave
 from bzrlib.versionedfile import VersionedFile, InterVersionedFile
+import bzrlib.weave
 
 
 # TODO: Split out code specific to this format into an associated object.
@@ -2673,8 +2674,14 @@ class InterKnit(InterVersionedFile):
         see join() for the parameter definitions.
         """
         version_ids = self._get_source_version_ids(version_ids, ignore_missing)
-        graph = self.source.get_graph(version_ids)
-        order = topo_sort(graph.items())
+        # --- the below is factorable out with VersionedFile.join, but wait for
+        # VersionedFiles, it may all be simpler then.
+        graph = Graph(self.source)
+        search = graph._make_breadth_first_searcher(version_ids)
+        transitive_ids = set()
+        map(transitive_ids.update, list(search))
+        parent_map = self.source.get_parent_map(transitive_ids)
+        order = topo_sort(parent_map.items())
 
         def size_of_content(content):
             return sum(len(line) for line in content.text())
@@ -2741,7 +2748,8 @@ class InterKnit(InterVersionedFile):
     
             if not needed_versions:
                 return 0
-            full_list = topo_sort(self.source.get_graph())
+            full_list = topo_sort(
+                self.source.get_parent_map(self.source.versions()))
     
             version_list = [i for i in full_list if (not self.target.has_version(i)
                             and i in needed_versions)]
@@ -2843,7 +2851,8 @@ class WeaveToKnit(InterVersionedFile):
     
             if not needed_versions:
                 return 0
-            full_list = topo_sort(self.source.get_graph())
+            full_list = topo_sort(
+                self.source.get_parent_map(self.source.versions()))
     
             version_list = [i for i in full_list if (not self.target.has_version(i)
                             and i in needed_versions)]

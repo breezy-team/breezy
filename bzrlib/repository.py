@@ -1338,9 +1338,8 @@ class Repository(object):
         """
         # All revisions, to find inventory parents.
         if ancestors is None:
-            # self.get_revision_graph_with_ghosts().get_ancestors() wasn't
-            # returning any ghosts anyway.
-            ancestors = self.get_revision_graph()
+            graph = self.get_graph()
+            ancestors = graph.get_parent_map(self.all_revision_ids())
         if text_key_references is None:
             text_key_references = self.find_text_key_references()
         pb = ui.ui_factory.nested_progress_bar()
@@ -1552,6 +1551,7 @@ class Repository(object):
         return self.get_revision(revision_id).inventory_sha1
 
     @needs_read_lock
+    @deprecated_method(symbol_versioning.one_four)
     def get_revision_graph(self, revision_id=None):
         """Return a dictionary containing the revision graph.
 

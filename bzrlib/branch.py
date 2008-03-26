@@ -192,7 +192,17 @@ class Branch(object):
         :return: A dictionary mapping revision_id => dotted revno.
         """
         last_revision = self.last_revision()
-        revision_graph = self.repository.get_revision_graph(last_revision)
+        graph = self.repository.get_graph()
+        search = graph._make_breadth_first_searcher([last_revision])
+        transitive_ids = set()
+        map(transitive_ids.update, list(search))
+        revision_graph = graph.get_parent_map(transitive_ids)
+        # Filter ghosts, and null:
+        if _mod_revision.NULL_REVISION in revision_graph:
+            del revision_graph[_mod_revision.NULL_REVISION]
+        for key, parents in revision_graph.items():
+            revision_graph[key] = tuple(parent for parent in parents if parent
+                in revision_graph)
         merge_sorted_revisions = tsort.merge_sort(
             revision_graph,
             last_revision,

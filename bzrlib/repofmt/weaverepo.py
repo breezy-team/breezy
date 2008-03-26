@@ -43,6 +43,7 @@ from bzrlib.repository import (
     RepositoryFormat,
     )
 from bzrlib.store.text import TextStore
+from bzrlib.symbol_versioning import deprecated_method, one_four
 from bzrlib.trace import mutter
 
 
@@ -141,6 +142,7 @@ class AllInOneRepository(Repository):
             self._check_revision_parents(rev, inv)
         return revs
 
+    @deprecated_method(one_four)
     @needs_read_lock
     def get_revision_graph(self, revision_id=None):
         """Return a dictionary containing the revision graph.
@@ -282,6 +284,7 @@ class WeaveMetaDirRepository(MetaDirRepository):
         self._check_revision_parents(r, inv)
         return r
 
+    @deprecated_method(one_four)
     @needs_read_lock
     def get_revision_graph(self, revision_id=None):
         """Return a dictionary containing the revision graph.

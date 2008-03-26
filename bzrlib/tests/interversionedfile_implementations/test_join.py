@@ -242,7 +242,6 @@ class TestJoin(TestCaseWithTransport):
             self.assertTrue(source_ghosts)
         # legacy apis should behave
         self.assertEqual(['notbase'], source.get_ancestry(['notbase']))
-        self.assertEqual({'notbase':()}, source.get_graph())
         self.assertFalse(source.has_version('base'))
         # ghost data should have been preserved
         self.assertEqual(['base', 'notbase'], source.get_ancestry_with_ghosts(['notbase']))
@@ -254,13 +253,12 @@ class TestJoin(TestCaseWithTransport):
         # if we add something that is fills out what is a ghost, then 
         # when joining into a ghost aware join it should flesh out the ghosts.
         source.add_lines('base', [], [])
-        target.join(source, version_ids=['base']) 
+        target.join(source, version_ids=['base'])
         self.assertEqual(['base', 'notbase'], target.get_ancestry(['notbase']))
-        self.assertEqual({'notbase':('base',)}, target.get_parent_map(['notbase']))
         self.assertEqual({'base':(),
                           'notbase':('base', ),
                           },
-                         target.get_graph())
+                         target.get_parent_map(target.versions()))
         self.assertTrue(target.has_version('base'))
         # we have _with_ghost apis to give us ghost information.
         self.assertEqual(['base', 'notbase'], target.get_ancestry_with_ghosts(['notbase']))
