@@ -299,6 +299,8 @@ class TestHttpFetch(TestCaseWithWebserver):
         # check there is nothing more to fetch.  We take care to re-use the
         # existing transport so that the request logs we're about to examine
         # aren't cluttered with redundant probes for a smart server.
+        # XXX: Perhaps this further parameterisation: test http with smart
+        # server, and test http without smart server?
         source = Branch.open(
             self.get_readonly_url("source/"),
             possible_transports=[source.bzrdir.root_transport])
