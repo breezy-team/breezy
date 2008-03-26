@@ -732,9 +732,9 @@ class SvnCheckout(BzrDir):
         finally:
             svn.wc.adm_close(wc)
 
-        remote_transport = SvnRaTransport(svn_url)
-        self.remote_bzrdir = SvnRemoteAccess(remote_transport)
-        self.svn_root_transport = remote_transport.clone_root()
+        self.remote_transport = SvnRaTransport(svn_url)
+        self.remote_bzrdir = SvnRemoteAccess(self.remote_transport)
+        self.svn_root_transport = self.remote_transport.clone_root()
         self.root_transport = self.transport = transport
         
     def clone(self, path, revision_id=None, force_new_repo=False):
@@ -788,7 +788,7 @@ class SvnCheckout(BzrDir):
         repos = self._find_repository()
 
         try:
-            branch = SvnBranch(self.svn_root_transport.base, repos, 
+            branch = SvnBranch(self.remote_transport.base, repos, 
                                self.remote_bzrdir.branch_path)
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_WC_NOT_DIRECTORY:
