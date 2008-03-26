@@ -356,12 +356,15 @@ class Inter1and2Helper(object):
         parent_texts = {}
         versionedfile = {}
         to_store = self.target.weave_store
+        parent_map = self.source.get_graph().get_parent_map(revs)
         for tree in self.iter_rev_trees(revs):
             revision_id = tree.inventory.root.revision
             root_id = tree.get_root_id()
-            parents = inventory_weave.get_parents(revision_id)
+            parents = parent_map[revision_id]
+            if parents[0] == NULL_REVISION:
+                parents = ()
             if root_id not in versionedfile:
-                versionedfile[root_id] = to_store.get_weave_or_empty(root_id, 
+                versionedfile[root_id] = to_store.get_weave_or_empty(root_id,
                     self.target.get_transaction())
             _, _, parent_texts[root_id] = versionedfile[root_id].add_lines(
                 revision_id, parents, [], parent_texts)

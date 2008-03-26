@@ -424,7 +424,6 @@ class TestSmartServerBranchRequestLockWrite(tests.TestCaseWithTransport):
 
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
-        self.reduceLockdirTimeout()
 
     def test_lock_write_on_unlocked_branch(self):
         backing = self.get_transport()
@@ -508,7 +507,6 @@ class TestSmartServerBranchRequestUnlock(tests.TestCaseWithTransport):
 
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
-        self.reduceLockdirTimeout()
 
     def test_unlock_on_locked_branch_and_repo(self):
         backing = self.get_transport()
@@ -752,7 +750,6 @@ class TestSmartServerRepositoryLockWrite(tests.TestCaseWithTransport):
 
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
-        self.reduceLockdirTimeout()
 
     def test_lock_write_on_unlocked_repo(self):
         backing = self.get_transport()
@@ -790,7 +787,6 @@ class TestSmartServerRepositoryUnlock(tests.TestCaseWithTransport):
 
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
-        self.reduceLockdirTimeout()
 
     def test_unlock_on_locked_repo(self):
         backing = self.get_transport()

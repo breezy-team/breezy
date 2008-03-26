@@ -437,7 +437,7 @@ def report_bug(exc_info, err_file):
     err_file.write('\n')
     err_file.write('bzr %s on python %s (%s)\n' % \
                        (bzrlib.__version__,
-                        '.'.join(map(str, sys.version_info)),
+                        bzrlib._format_version_tuple(sys.version_info),
                         sys.platform))
     err_file.write('arguments: %r\n' % sys.argv)
     err_file.write(

@@ -28,6 +28,7 @@ from bzrlib import (
     lockdir,
     repository,
     revision,
+    symbol_versioning,
 )
 from bzrlib.branch import BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, RemoteBzrDirFormat
@@ -914,6 +915,7 @@ class RemoteRepository(object):
         return self._real_repository.get_signature_text(revision_id)
 
     @needs_read_lock
+    @symbol_versioning.deprecated_method(symbol_versioning.one_three)
     def get_revision_graph_with_ghosts(self, revision_ids=None):
         self._ensure_real()
         return self._real_repository.get_revision_graph_with_ghosts(
