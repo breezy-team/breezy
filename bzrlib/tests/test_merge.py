@@ -32,7 +32,6 @@ from bzrlib.conflicts import ConflictList, TextConflict
 from bzrlib.errors import UnrelatedBranches, NoCommits, BzrCommandError
 from bzrlib.merge import transform_tree, merge_inner, _PlanMerge
 from bzrlib.osutils import pathjoin, file_kind
-from bzrlib.revision import common_ancestor
 from bzrlib.tests import TestCaseWithTransport, TestCaseWithMemoryTransport
 from bzrlib.trace import (enable_test_log, disable_test_log)
 from bzrlib.workingtree import WorkingTree
@@ -106,8 +105,14 @@ class TestMerge(TestCaseWithTransport):
         """Merge base is sane when two unrelated branches are merged"""
         wt1, br2 = self.test_pending_with_null()
         wt1.commit("blah")
-        last = wt1.branch.last_revision()
-        self.assertEqual(common_ancestor(last, last, wt1.branch.repository), last)
+        wt1.lock_read()
+        try:
+            last = wt1.branch.last_revision()
+            last2 = br2.last_revision()
+            graph = wt1.branch.repository.get_graph()
+            self.assertEqual(last2, graph.find_unique_lca(last, last2))
+        finally:
+            wt1.unlock()
 
     def test_create_rename(self):
         """Rename an inventory entry while creating the file"""
