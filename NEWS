@@ -65,6 +65,12 @@ IN DEVELOPMENT
       show_merge_revno methods. The latter had been deprecated since the 0.17
       release. (James Westby)
 
+    * ``Repository.get_revision_graph`` is deprecated, with no replacement
+      method. The method was size(history) and not desirable. (Robert Collins)
+
+    * ``revision.revision_graph`` is deprecated, with no replacement function.
+      The function was size(history) and not desirable. (Robert Collins)
+
     * ``VersionedFile.get_graph`` is deprecated, with no replacement method.
       The method was size(history) and not desirable. (Robert Collins)
 
