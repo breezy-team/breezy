@@ -282,6 +282,20 @@ class TestPlugins(TestCaseInTempDir):
         plugin = bzrlib.plugin.plugins()['plugin']
         self.assertEqual('foo', plugin.test_suite())
 
+    def test_no_load_tests_gives_None_for_load_tests(self):
+        self.setup_plugin()
+        plugin = bzrlib.plugin.plugins()['plugin']
+        self.assertEqual(None, plugin.load_tests('bar', 'bzr'))
+
+    def test_load_tests_gives_load_tests_result(self):
+        source = """
+def load_tests(standard_tests, module, loader):
+    return 'foo'"""
+        self.setup_plugin(source)
+        plugin = bzrlib.plugin.plugins()['plugin']
+        # Note that 
+        self.assertEqual('foo', plugin.load_tests('bar', 'bzr'))
+
     def test_no_version_info(self):
         self.setup_plugin()
         plugin = bzrlib.plugin.plugins()['plugin']
