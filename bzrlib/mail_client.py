@@ -306,6 +306,37 @@ class XDGEmail(ExternalMailClient):
         return commandline
 
 
+class EmacsMailMode (ExternalMailClient):
+    """Call emacsclient in mail-mode. This only work for emacs >= 22.1"""
+    _client_commands = ['emacsclient']
+
+    def _get_compose_commandline (self, to, subject, attach_path):
+        commandline = ["--eval"]
+        #Ensure we can at least have an empty mail-mode buffer
+        _to = "nil"
+        _subject = "nil"
+
+        if to is not None:
+            _to = ("\"%s\"" % self._encode_safe(to))
+        if subject is not None:
+            _subject = ("\"%s\"" % self._encode_safe(subject))
+        mmform = "(mail nil %s %s)" %(_to ,_subject)
+
+        # call mail-mode, move the point to body and insert a new blank line
+        # we *must* force this point movement for the case when To is not passed
+        # with --mail-to. Without this, the patch could be inserted at the wrong place
+
+        commandline.append(mmform)
+        commandline.append("(mail-text)")
+        commandline.append("(newline)")
+
+        # ... and put a MIME attachment (if any)
+        if attach_path is not None:
+            ifform = "(attach \"%s\")" % self._encode_path(attach_path,'attachment')
+            commandline.append(ifform)
+        return commandline
+
+
 class MAPIClient(ExternalMailClient):
     """Default Windows mail client launched using MAPI."""
 
