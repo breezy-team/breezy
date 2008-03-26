@@ -2394,15 +2394,20 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
     def probe_transport(klass, transport):
         """Return a RemoteBzrDirFormat object if it looks possible."""
         try:
-            medium = transport.get_smart_client()
+            medium = transport.get_smart_medium()
         except (NotImplementedError, AttributeError,
-                errors.TransportNotPossible):
+                errors.TransportNotPossible, errors.NoSmartMedium):
             # no smart server, so not a branch for this format type.
             raise errors.NotBranchError(path=transport.base)
         else:
             # Decline to open it if the server doesn't support our required
             # version (2) so that the VFS-based transport will do it.
-            server_version = medium.protocol_version()
+            try:
+                server_version = medium.protocol_version()
+            except errors.SmartProtocolError:
+                # Apparently there's no usable smart server there, even though
+                # the medium supports the smart protocol.
+                raise errors.NotBranchError(path=transport.base)
             if server_version != 2:
                 raise errors.NotBranchError(path=transport.base)
             return klass()
