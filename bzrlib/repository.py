@@ -551,7 +551,8 @@ class Repository(object):
                                                      self.get_inventory_weave())
             else:
                 # yes, this is not suitable for adding with ghosts.
-                self.add_inventory(revision_id, inv, rev.parent_ids)
+                rev.inventory_sha1 = self.add_inventory(revision_id, inv, 
+                                                        rev.parent_ids)
         self._revision_store.add_revision(rev, self.get_transaction())
 
     def _add_revision_text(self, revision_id, text):
