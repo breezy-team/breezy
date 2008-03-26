@@ -525,11 +525,8 @@ class SvnRepository(Repository):
             svn_fileprops = lazy_dict(lambda: self.branchprop_list.get_changed_properties(path, revnum))
         parent_ids = self.revision_parents(revision_id, svn_fileprops=svn_fileprops, svn_revprops=svn_revprops)
 
-        # Commit SVN revision properties to a Revision object
-        class LazySvnRevision(Revision):
-            inventory_sha1 = property(lambda rev: self.get_inventory_sha1(rev.revision_id))
-
-        rev = LazySvnRevision(revision_id=revision_id, parent_ids=parent_ids)
+        rev = Revision(revision_id=revision_id, parent_ids=parent_ids,
+                       inventory_sha1=None)
 
         mapping.import_revision(svn_revprops, svn_fileprops, rev)
 

@@ -17,6 +17,9 @@ bzr-svn 0.4.10  UNRELEASED
    * Add new ``append-revisions-only'' option with similar behaviour 
      as in standard bzr formats. (#206242)
 
+   * No longer calculate inventory sha1's for svn revisions. Should provide 
+     some minor speed improvements.
+
   INTERNALS
 
    * Branching from a Subversion repository will now fetch right-hand side 

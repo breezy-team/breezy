@@ -458,8 +458,7 @@ class WeaveRevisionBuildEditor(RevisionBuildEditor):
         self.inventory.revision_id = self.revid
         # Escaping the commit message is really the task of the serialiser
         rev.message = _escape_commit_message(rev.message)
-        rev.inventory_sha1 = osutils.sha_string(
-                self.target.serialise_inventory(self.inventory))
+        rev.inventory_sha1 = None
         self.target.add_revision(self.revid, rev, self.inventory)
         if signature is not None:
             self.target.add_signature_text(self.revid, signature)
