@@ -59,6 +59,10 @@ def find_unmerged(local_branch, remote_branch):
     try:
         remote_branch.lock_read()
         try:
+            # check for special case: both branches are equivalent
+            if (local_branch.last_revision_info() ==
+                remote_branch.last_revision_info()):
+                return [], []
             local_rev_history, local_rev_history_map = \
                 _get_history(local_branch, progress, "local", 0)
             remote_rev_history, remote_rev_history_map = \

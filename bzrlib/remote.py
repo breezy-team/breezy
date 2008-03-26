@@ -28,6 +28,7 @@ from bzrlib import (
     lockdir,
     repository,
     revision,
+    symbol_versioning,
 )
 from bzrlib.branch import BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, RemoteBzrDirFormat
@@ -297,9 +298,6 @@ class RemoteRepository(object):
         self._reconcile_fixes_text_parents = False
         self._reconcile_backsup_inventory = False
         self.base = self.bzrdir.transport.base
-        # Can this repository be given external locations to lookup additional
-        # data.
-        self.supports_external_lookups = False
 
     def __str__(self):
         return "%s(%s)" % (self.__class__.__name__, self.base)
@@ -917,6 +915,7 @@ class RemoteRepository(object):
         return self._real_repository.get_signature_text(revision_id)
 
     @needs_read_lock
+    @symbol_versioning.deprecated_method(symbol_versioning.one_three)
     def get_revision_graph_with_ghosts(self, revision_ids=None):
         self._ensure_real()
         return self._real_repository.get_revision_graph_with_ghosts(

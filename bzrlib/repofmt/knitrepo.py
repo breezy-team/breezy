@@ -220,6 +220,7 @@ class KnitRepository(MetaDirRepository):
             return a_weave.get_graph([revision_id])
 
     @needs_read_lock
+    @symbol_versioning.deprecated_method(symbol_versioning.one_three)
     def get_revision_graph_with_ghosts(self, revision_ids=None):
         """Return a graph of the revisions with ghosts marked as applicable.
 
@@ -267,13 +268,6 @@ class KnitRepository(MetaDirRepository):
         """:return: a versioned file containing the revisions."""
         vf = self._revision_store.get_revision_file(self.get_transaction())
         return vf
-
-    def _get_history_vf(self):
-        """Get a versionedfile whose history graph reflects all revisions.
-
-        For knit repositories, this is the revision knit.
-        """
-        return self._get_revision_vf()
 
     def has_revisions(self, revision_ids):
         """See Repository.has_revisions()."""

@@ -836,17 +836,17 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform.apply()
         transform, root = self.get_transform()
         try:
-            self.assertEqual([], list(transform._iter_changes()))
+            self.assertEqual([], list(transform.iter_changes()))
             old = transform.trans_id_tree_file_id('id-1')
             transform.unversion_file(old)
             self.assertEqual([('id-1', ('old', None), False, (True, False),
                 ('eert_toor', 'eert_toor'), ('old', 'old'), ('file', 'file'),
-                (True, True))], list(transform._iter_changes()))
+                (True, True))], list(transform.iter_changes()))
             transform.new_directory('new', root, 'id-1')
             self.assertEqual([('id-1', ('old', 'new'), True, (True, True),
                 ('eert_toor', 'eert_toor'), ('old', 'new'),
                 ('file', 'directory'),
-                (True, False))], list(transform._iter_changes()))
+                (True, False))], list(transform.iter_changes()))
         finally:
             transform.finalize()
 
@@ -861,7 +861,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             transform.version_file('id-1', old)
             self.assertEqual([('id-1', (None, 'old'), False, (False, True),
                 ('eert_toor', 'eert_toor'), ('old', 'old'), ('file', 'file'),
-                (False, False))], list(transform._iter_changes()))
+                (False, False))], list(transform.iter_changes()))
         finally:
             transform.finalize()
 
@@ -877,61 +877,61 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             old = transform.trans_id_tree_path('old')
             subdir = transform.trans_id_tree_file_id('subdir-id')
             new = transform.trans_id_tree_path('new')
-            self.assertEqual([], list(transform._iter_changes()))
+            self.assertEqual([], list(transform.iter_changes()))
 
             #content deletion
             transform.delete_contents(old)
             self.assertEqual([('id-1', ('old', 'old'), True, (True, True),
                 ('eert_toor', 'eert_toor'), ('old', 'old'), ('file', None),
-                (False, False))], list(transform._iter_changes()))
+                (False, False))], list(transform.iter_changes()))
 
             #content change
             transform.create_file('blah', old)
             self.assertEqual([('id-1', ('old', 'old'), True, (True, True),
                 ('eert_toor', 'eert_toor'), ('old', 'old'), ('file', 'file'),
-                (False, False))], list(transform._iter_changes()))
+                (False, False))], list(transform.iter_changes()))
             transform.cancel_deletion(old)
             self.assertEqual([('id-1', ('old', 'old'), True, (True, True),
                 ('eert_toor', 'eert_toor'), ('old', 'old'), ('file', 'file'),
-                (False, False))], list(transform._iter_changes()))
+                (False, False))], list(transform.iter_changes()))
             transform.cancel_creation(old)
 
             # move file_id to a different file
-            self.assertEqual([], list(transform._iter_changes()))
+            self.assertEqual([], list(transform.iter_changes()))
             transform.unversion_file(old)
             transform.version_file('id-1', new)
             transform.adjust_path('old', root, new)
             self.assertEqual([('id-1', ('old', 'old'), True, (True, True),
                 ('eert_toor', 'eert_toor'), ('old', 'old'), ('file', 'file'),
-                (False, False))], list(transform._iter_changes()))
+                (False, False))], list(transform.iter_changes()))
             transform.cancel_versioning(new)
             transform._removed_id = set()
 
             #execute bit
-            self.assertEqual([], list(transform._iter_changes()))
+            self.assertEqual([], list(transform.iter_changes()))
             transform.set_executability(True, old)
             self.assertEqual([('id-1', ('old', 'old'), False, (True, True),
                 ('eert_toor', 'eert_toor'), ('old', 'old'), ('file', 'file'),
-                (False, True))], list(transform._iter_changes()))
+                (False, True))], list(transform.iter_changes()))
             transform.set_executability(None, old)
 
             # filename
-            self.assertEqual([], list(transform._iter_changes()))
+            self.assertEqual([], list(transform.iter_changes()))
             transform.adjust_path('new', root, old)
             transform._new_parent = {}
             self.assertEqual([('id-1', ('old', 'new'), False, (True, True),
                 ('eert_toor', 'eert_toor'), ('old', 'new'), ('file', 'file'),
-                (False, False))], list(transform._iter_changes()))
+                (False, False))], list(transform.iter_changes()))
             transform._new_name = {}
 
             # parent directory
-            self.assertEqual([], list(transform._iter_changes()))
+            self.assertEqual([], list(transform.iter_changes()))
             transform.adjust_path('new', subdir, old)
             transform._new_name = {}
             self.assertEqual([('id-1', ('old', 'subdir/old'), False,
                 (True, True), ('eert_toor', 'subdir-id'), ('old', 'old'),
                 ('file', 'file'), (False, False))],
-                list(transform._iter_changes()))
+                list(transform.iter_changes()))
             transform._new_path = {}
 
         finally:
@@ -959,7 +959,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
                 ('id-2', (u'file2', u'file2'), False, (True, True),
                 ('eert_toor', 'eert_toor'), ('file2', u'file2'),
                 ('file', 'file'), (False, True))],
-                list(transform._iter_changes()))
+                list(transform.iter_changes()))
         finally:
             transform.finalize()
 
@@ -979,7 +979,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             transform.adjust_path('flitter', root, floater)
             self.assertEqual([('floater-id', ('floater', 'flitter'), False,
             (True, True), ('toor_eert', 'toor_eert'), ('floater', 'flitter'),
-            (None, None), (False, False))], list(transform._iter_changes()))
+            (None, None), (False, False))], list(transform.iter_changes()))
         finally:
             transform.finalize()
 
@@ -994,14 +994,14 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         try:
             old = transform.trans_id_tree_path('old')
             subdir = transform.trans_id_tree_file_id('subdir-id')
-            self.assertEqual([], list(transform._iter_changes()))
+            self.assertEqual([], list(transform.iter_changes()))
             transform.delete_contents(subdir)
             transform.create_directory(subdir)
             transform.set_executability(False, old)
             transform.unversion_file(old)
             transform.version_file('id-1', old)
             transform.adjust_path('old', root, old)
-            self.assertEqual([], list(transform._iter_changes()))
+            self.assertEqual([], list(transform.iter_changes()))
         finally:
             transform.finalize()
 
@@ -1617,7 +1617,7 @@ class TestBuildTree(tests.TestCaseWithTransport):
         self.assertEqual(['file1-id'], calls)
         target.lock_read()
         self.addCleanup(target.unlock)
-        self.assertEqual([], list(target._iter_changes(revision_tree)))
+        self.assertEqual([], list(target.iter_changes(revision_tree)))
 
     def test_build_tree_accelerator_tree_missing_file(self):
         source = self.create_ab_tree()
@@ -1630,7 +1630,7 @@ class TestBuildTree(tests.TestCaseWithTransport):
         build_tree(revision_tree, target, source)
         target.lock_read()
         self.addCleanup(target.unlock)
-        self.assertEqual([], list(target._iter_changes(revision_tree)))
+        self.assertEqual([], list(target.iter_changes(revision_tree)))
 
     def test_build_tree_accelerator_wrong_kind(self):
         self.requireFeature(SymlinkFeature)
@@ -1657,7 +1657,7 @@ class TestBuildTree(tests.TestCaseWithTransport):
         self.assertEqual([], calls)
         target.lock_read()
         self.addCleanup(target.unlock)
-        self.assertEqual([], list(target._iter_changes(revision_tree)))
+        self.assertEqual([], list(target.iter_changes(revision_tree)))
 
     def test_build_tree_hardlink(self):
         self.requireFeature(HardlinkFeature)
@@ -1669,7 +1669,7 @@ class TestBuildTree(tests.TestCaseWithTransport):
         build_tree(revision_tree, target, source, hardlink=True)
         target.lock_read()
         self.addCleanup(target.unlock)
-        self.assertEqual([], list(target._iter_changes(revision_tree)))
+        self.assertEqual([], list(target.iter_changes(revision_tree)))
         source_stat = os.stat('source/file1')
         target_stat = os.stat('target/file1')
         self.assertEqual(source_stat, target_stat)
@@ -1679,7 +1679,7 @@ class TestBuildTree(tests.TestCaseWithTransport):
         build_tree(revision_tree, target2, source, hardlink=False)
         target2.lock_read()
         self.addCleanup(target2.unlock)
-        self.assertEqual([], list(target2._iter_changes(revision_tree)))
+        self.assertEqual([], list(target2.iter_changes(revision_tree)))
         source_stat = os.stat('source/file1')
         target2_stat = os.stat('target2/file1')
         self.assertNotEqual(source_stat, target2_stat)
@@ -1699,7 +1699,7 @@ class TestBuildTree(tests.TestCaseWithTransport):
         build_tree(revision_tree, target, source)
         target.lock_read()
         self.addCleanup(target.unlock)
-        self.assertEqual([], list(target._iter_changes(revision_tree)))
+        self.assertEqual([], list(target.iter_changes(revision_tree)))
 
     def test_build_tree_hardlinks_preserve_execute(self):
         self.requireFeature(HardlinkFeature)
@@ -1716,7 +1716,7 @@ class TestBuildTree(tests.TestCaseWithTransport):
         build_tree(revision_tree, target, source, hardlink=True)
         target.lock_read()
         self.addCleanup(target.unlock)
-        self.assertEqual([], list(target._iter_changes(revision_tree)))
+        self.assertEqual([], list(target.iter_changes(revision_tree)))
         self.assertTrue(source.is_executable('file1-id'))
 
 
@@ -1955,29 +1955,29 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.assertEqual([('a-id', ('a', 'a'), True, (True, True),
                           (root, root), ('a', 'a'), ('file', 'file'),
                           (False, False))],
-                          list(preview_tree._iter_changes(revision_tree)))
+                          list(preview_tree.iter_changes(revision_tree)))
 
     def test_wrong_tree_value_error(self):
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
-        e = self.assertRaises(ValueError, preview_tree._iter_changes,
+        e = self.assertRaises(ValueError, preview_tree.iter_changes,
                               preview_tree)
         self.assertEqual('from_tree must be transform source tree.', str(e))
 
     def test_include_unchanged_value_error(self):
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
-        e = self.assertRaises(ValueError, preview_tree._iter_changes,
+        e = self.assertRaises(ValueError, preview_tree.iter_changes,
                               revision_tree, include_unchanged=True)
         self.assertEqual('include_unchanged is not supported', str(e))
 
     def test_specific_files(self):
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
-        e = self.assertRaises(ValueError, preview_tree._iter_changes,
+        e = self.assertRaises(ValueError, preview_tree.iter_changes,
                               revision_tree, specific_files=['pete'])
         self.assertEqual('specific_files is not supported', str(e))
 
     def test_want_unversioned_value_error(self):
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
-        e = self.assertRaises(ValueError, preview_tree._iter_changes,
+        e = self.assertRaises(ValueError, preview_tree.iter_changes,
                               revision_tree, want_unversioned=True)
         self.assertEqual('want_unversioned is not supported', str(e))
 
@@ -1985,17 +1985,17 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         # extra_trees is harmless without specific_files, so we'll silently
         # accept it, even though we won't use it.
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
-        preview_tree._iter_changes(revision_tree, extra_trees=[preview_tree])
+        preview_tree.iter_changes(revision_tree, extra_trees=[preview_tree])
 
     def test_ignore_require_versioned_no_specific_files(self):
         # require_versioned is meaningless without specific_files.
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
-        preview_tree._iter_changes(revision_tree, require_versioned=False)
+        preview_tree.iter_changes(revision_tree, require_versioned=False)
 
     def test_ignore_pb(self):
         # pb could be supported, but TT.iter_changes doesn't support it.
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
-        preview_tree._iter_changes(revision_tree, pb=progress.DummyProgress())
+        preview_tree.iter_changes(revision_tree, pb=progress.DummyProgress())
 
     def test_kind(self):
         revision_tree = self.create_tree()
