@@ -109,22 +109,6 @@ __unittest = 1
 
 default_transport = LocalURLServer
 
-MODULES_TO_DOCTEST = [
-        bzrlib,
-        bzrlib.timestamp,
-        bzrlib.errors,
-        bzrlib.export,
-        bzrlib.inventory,
-        bzrlib.iterablefile,
-        bzrlib.lockdir,
-        bzrlib.merge3,
-        bzrlib.option,
-        bzrlib.store,
-        bzrlib.version_info_formats.format_custom,
-        # quoted to avoid module-loading circularity
-        'bzrlib.tests',
-        ]
-
 
 def packages_to_test():
     """Return a list of packages to test.
@@ -2818,10 +2802,25 @@ def test_suite(keep_only=None):
         pack_suite = package.test_suite()
         suite.addTest(pack_suite)
 
-    for mod in MODULES_TO_DOCTEST:
-        # FIXME: Can't filter on 'mod' since it can be either a module or its
-        # name.
+    modules_to_doctest = [
+        'bzrlib',
+        'bzrlib.errors',
+        'bzrlib.export',
+        'bzrlib.inventory',
+        'bzrlib.iterablefile',
+        'bzrlib.lockdir',
+        'bzrlib.merge3',
+        'bzrlib.option',
+        'bzrlib.store',
+        'bzrlib.tests',
+        'bzrlib.timestamp',
+        'bzrlib.version_info_formats.format_custom',
+        ]
 
+    for mod in modules_to_doctest:
+        if not (keep_only is None or id_filter.refers_to(mod)):
+            # No tests to keep here, move along
+            continue
         try:
             doc_suite = doctest.DocTestSuite(mod)
         except ValueError, e:
