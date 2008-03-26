@@ -351,6 +351,7 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
     # XXX: full upload doesn't handle kind changes
 
     def test_change_file_into_dir(self):
+        raise tests.KnownFailure('bug 205636')
         self.make_local_branch()
         self.add_file('hello', 'foo')
         self.do_full_upload()
@@ -362,7 +363,6 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
         self.assertUpFileEqual('bar', 'hello/file')
 
     def test_change_dir_into_file(self):
-        raise tests.KnownFailure('bug 205636')
         self.make_local_branch()
         self.add_dir('hello')
         self.add_file('hello/file', 'foo')
