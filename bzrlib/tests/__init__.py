@@ -793,7 +793,8 @@ class TestCase(unittest.TestCase):
     # record lsprof data when performing benchmark calls.
     _gather_lsprof_in_benchmarks = False
     attrs_to_keep = ('_testMethodName', '_testMethodDoc',
-                     '_log_contents', '_log_file_name', '_benchtime')
+                     '_log_contents', '_log_file_name', '_benchtime',
+                     '_TestCase__testMethodName')
 
     def __init__(self, methodName='testMethod'):
         super(TestCase, self).__init__(methodName)
