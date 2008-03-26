@@ -33,14 +33,10 @@ import sys
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import errno
-from collections import deque
 from stat import S_ISDIR
-import unittest
 import urllib
 import urlparse
-import warnings
 
-import bzrlib
 from bzrlib import (
     errors,
     osutils,
@@ -50,19 +46,14 @@ from bzrlib import (
 """)
 
 from bzrlib.symbol_versioning import (
-        deprecated_passed,
         deprecated_method,
         deprecated_function,
         DEPRECATED_PARAMETER,
         one_four,
-        zero_eight,
-        zero_eleven,
         zero_ninety,
         )
 from bzrlib.trace import (
-    note,
     mutter,
-    warning,
     )
 from bzrlib import registry
 
