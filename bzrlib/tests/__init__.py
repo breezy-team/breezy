@@ -314,6 +314,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.report_success(test)
         self._cleanupLogFile(test)
         unittest.TestResult.addSuccess(self, test)
+        test._log_contents = ''
 
     def _testConcluded(self, test):
         """Common code when a test has finished.
@@ -356,6 +357,7 @@ class ExtendedTestResult(unittest._TextTestResult):
             # seems best to treat this as success from point-of-view of unittest
             # -- it actually does nothing so it barely matters :)
             unittest.TestResult.addSuccess(self, test)
+            test._log_contents = ''
 
     def printErrorList(self, flavour, errors):
         for test, err in errors:
@@ -789,6 +791,9 @@ class TestCase(unittest.TestCase):
     _keep_log_file = False
     # record lsprof data when performing benchmark calls.
     _gather_lsprof_in_benchmarks = False
+    attrs_to_keep = ('_testMethodName', '_testMethodDoc',
+                     '_log_contents', '_log_file_name', '_benchtime',
+                     '_TestCase__testMethodName')
 
     def __init__(self, methodName='testMethod'):
         super(TestCase, self).__init__(methodName)
@@ -810,9 +815,10 @@ class TestCase(unittest.TestCase):
         Tests that want to use debug flags can just set them in the
         debug_flags set during setup/teardown.
         """
-        self._preserved_debug_flags = set(debug.debug_flags)
-        debug.debug_flags.clear()
-        self.addCleanup(self._restore_debug_flags)
+        if 'selftest_debug' not in debug.debug_flags:
+            self._preserved_debug_flags = set(debug.debug_flags)
+            debug.debug_flags.clear()
+            self.addCleanup(self._restore_debug_flags)
 
     def _clear_hooks(self):
         # prevent hooks affecting tests
@@ -1282,7 +1288,16 @@ class TestCase(unittest.TestCase):
                     result.addSuccess(self)
                 result.stopTest(self)
                 return
-        return unittest.TestCase.run(self, result)
+        try:
+            return unittest.TestCase.run(self, result)
+        finally:
+            saved_attrs = {}
+            absent_attr = object()
+            for attr_name in self.attrs_to_keep:
+                attr = getattr(self, attr_name, absent_attr)
+                if attr is not absent_attr:
+                    saved_attrs[attr_name] = attr
+            self.__dict__ = saved_attrs
 
     def tearDown(self):
         self._runCleanups()
