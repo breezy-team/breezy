@@ -407,11 +407,8 @@ class PlugIn(object):
         else:
             return None
 
-    def load_tests(self, standard_tests, loader):
+    def load_tests(self, loader):
         """Return the adapted plugin's test suite.
-
-        :param standard_tests: The test suite as returned by the regular python
-            loadTestsFromModule.
 
         :param loader: The custom loader that should be used to load additional
             tests.
@@ -421,7 +418,7 @@ class PlugIn(object):
         ourselves.
         """
         if getattr(self.module, 'load_tests', None) is not None:
-            return self.module.load_tests(standard_tests, self.module, loader)
+            return loader.loadTestsFromModule(self.module)
         else:
             return None
 
