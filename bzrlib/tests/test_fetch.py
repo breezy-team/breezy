@@ -296,8 +296,12 @@ class TestHttpFetch(TestCaseWithWebserver):
                                                      http_logs))
         # FIXME naughty poking in there.
         self.get_readonly_server().logs = []
-        # check there is nothing more to fetch
-        source = Branch.open(self.get_readonly_url("source/"))
+        # check there is nothing more to fetch.  We take care to re-use the
+        # existing transport so that the request logs we're about to examine
+        # aren't cluttered with redundant probes for a smart server.
+        source = Branch.open(
+            self.get_readonly_url("source/"),
+            possible_transports=[source.bzrdir.root_transport])
         self.assertEqual(target.fetch(source), (0, []))
         # should make just two requests
         http_logs = self.get_readonly_server().logs

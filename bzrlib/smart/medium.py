@@ -395,16 +395,25 @@ class SmartClientMedium(object):
 
     def __init__(self):
         super(SmartClientMedium, self).__init__()
+        self._protocol_version_error = None
         self._protocol_version = None
 
     def protocol_version(self):
         """Find out the best protocol version to use."""
+        if self._protocol_version_error is not None:
+            raise self._protocol_version_error
         if self._protocol_version is None:
-            medium_request = self.get_request()
-            # Send a 'hello' request in protocol version one, for maximum
-            # backwards compatibility.
-            client_protocol = SmartClientRequestProtocolOne(medium_request)
-            self._protocol_version = client_protocol.query_version()
+            try:
+                medium_request = self.get_request()
+                # Send a 'hello' request in protocol version one, for maximum
+                # backwards compatibility.
+                client_protocol = SmartClientRequestProtocolOne(medium_request)
+                self._protocol_version = client_protocol.query_version()
+            except errors.SmartProtocolError, e:
+                # Cache the error, just like we would cache a successful
+                # result.
+                self._protocol_version_error = e
+                raise
         return self._protocol_version
 
     def disconnect(self):
