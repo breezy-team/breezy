@@ -126,7 +126,7 @@ For example::
   Committed revision 20.
   (release the code)
   (hmm - bad fix)
-  bzr revert -r 20
+  bzr revert -r 19
   bzr commit -m "Backout fix for bug #5"
 
 Correcting a tag
