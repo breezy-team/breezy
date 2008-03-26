@@ -514,8 +514,14 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         return ','.join(strings)
 
     def send_http_smart_request(self, bytes):
-        code, body_filelike = self._post(bytes)
-        assert code == 200, 'unexpected HTTP response code %r' % (code,)
+        try:
+            code, body_filelike = self._post(bytes)
+            if code != 200:
+                raise InvalidHttpResponse(
+                    self._remote_path('.bzr/smart'),
+                    'Expected 200 response code, got %r' % (code,))
+        except errors.InvalidHttpResponse, e:
+            raise errors.SmartProtocolError(str(e))
         return body_filelike
 
 
