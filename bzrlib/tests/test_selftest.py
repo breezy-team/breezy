@@ -1920,7 +1920,7 @@ class TestTestLoader(TestCase):
         self.assertEquals(['bzrlib.tests.test_sampler.DemoTest.test_nothing'],
                           _test_ids(suite))
 
-    def test_load_tests_from_module_name_with_bougs_module_name(self):
+    def test_load_tests_from_module_name_with_bogus_module_name(self):
         loader = TestUtil.TestLoader()
         self.assertRaises(ImportError, loader.loadTestsFromModuleName, 'bogus')
 
