@@ -2592,6 +2592,11 @@ class UnsupportedTimezoneFormat(BzrError):
         self.timezone = timezone
 
 
+class NotATerminal(BzrError):
+
+    _fmt = 'Unable to ask for a password without real terminal.'
+
+
 class UnableEncodePath(BzrError):
 
     _fmt = ('Unable to encode %(kind)s path %(path)r in '

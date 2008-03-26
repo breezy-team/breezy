@@ -346,11 +346,11 @@ class DefaultMail(MailClient):
             return Editor(self.config).compose(prompt, to, subject,
                           attachment, mimie_subtype, extension)
 
-    def compose_merge_request(self, to, subject, directive):
+    def compose_merge_request(self, to, subject, directive, basename=None):
         """See MailClient.compose_merge_request"""
         try:
             return self._mail_client().compose_merge_request(to, subject,
-                                                             directive)
+                    directive, basename=basename)
         except errors.MailClientNotFound:
             return Editor(self.config).compose_merge_request(to, subject,
-                          directive)
+                          directive, basename=basename)

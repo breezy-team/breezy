@@ -111,6 +111,7 @@ default_transport = LocalURLServer
 
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = [
+        bzrlib,
         bzrlib.timestamp,
         bzrlib.errors,
         bzrlib.export,
@@ -810,9 +811,10 @@ class TestCase(unittest.TestCase):
         Tests that want to use debug flags can just set them in the
         debug_flags set during setup/teardown.
         """
-        self._preserved_debug_flags = set(debug.debug_flags)
-        debug.debug_flags.clear()
-        self.addCleanup(self._restore_debug_flags)
+        if 'selftest_debug' not in debug.debug_flags:
+            self._preserved_debug_flags = set(debug.debug_flags)
+            debug.debug_flags.clear()
+            self.addCleanup(self._restore_debug_flags)
 
     def _clear_hooks(self):
         # prevent hooks affecting tests
@@ -2742,6 +2744,7 @@ def test_suite(keep_only=None):
                    'bzrlib.tests.test_tsort',
                    'bzrlib.tests.test_tuned_gzip',
                    'bzrlib.tests.test_ui',
+                   'bzrlib.tests.test_uncommit',
                    'bzrlib.tests.test_upgrade',
                    'bzrlib.tests.test_urlutils',
                    'bzrlib.tests.test_versionedfile',
