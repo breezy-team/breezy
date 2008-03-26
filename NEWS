@@ -75,6 +75,10 @@ IN DEVELOPMENT
       failing test.  Be aware that using this feature is likely to cause
       spurious test failures if used with the full suite. (Andrew Bennetts)
 
+    * The test suite takes much less memory to run, and is a bit faster.  This
+      is done by clearing most attributes of TestCases after running them, if
+      they succeeded.  (Andrew Bennetts)
+
   INTERNALS:
 
     * ``VersionedFile`` now has a new method ``get_parent_map`` which, like
