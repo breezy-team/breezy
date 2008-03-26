@@ -20,6 +20,8 @@ bzr-svn 0.4.10  UNRELEASED
    * No longer calculate inventory sha1's for svn revisions. Should provide 
      some minor speed improvements.
 
+   * Parse mergeWithUpstream set by svn-buildpackage.
+
   INTERNALS
 
    * Branching from a Subversion repository will now fetch right-hand side 
