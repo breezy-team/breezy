@@ -108,7 +108,12 @@ from bzrlib.osutils import (
     sha_string,
     sha_strings,
     )
-from bzrlib.symbol_versioning import DEPRECATED_PARAMETER, deprecated_passed
+from bzrlib.symbol_versioning import (
+    DEPRECATED_PARAMETER,
+    deprecated_method,
+    deprecated_passed,
+    one_four,
+    )
 from bzrlib.tsort import topo_sort
 from bzrlib.tuned_gzip import GzipFile, bytes_to_gzip
 import bzrlib.ui
@@ -771,18 +776,18 @@ class KnitVersionedFile(VersionedFile):
         """See VersionedFile.get_suffixes()."""
         return [DATA_SUFFIX, INDEX_SUFFIX]
 
+    @deprecated_method(one_four)
     def has_ghost(self, version_id):
         """True if there is a ghost reference in the file to version_id."""
         # maybe we have it
         if self.has_version(version_id):
             return False
         # optimisable if needed by memoising the _ghosts set.
-        items = self._index.get_graph()
+        items = self.get_parent_map(self.versions())
         for node, parents in items:
             for parent in parents:
-                if parent not in self._index._cache:
-                    if parent == version_id:
-                        return True
+                if parent == version_id and parent not in items:
+                    return True
         return False
 
     def insert_data_stream(self, (format, data_list, reader_callable)):

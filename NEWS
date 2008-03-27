@@ -77,6 +77,9 @@ IN DEVELOPMENT
     * ``VersionedFile.get_parents`` is deprecated, please use
       ``VersionedFile.get_parent_map``. (Robert Collins)
 
+    * ``VersionedFile.has_ghost`` is now deprecated, as it is both expensive
+      and unused outside of a single test. (Robert Collins)
+
   TESTING:
 
     * New -Dselftest_debug flag disables clearing of the debug flags during

@@ -205,41 +205,17 @@ class TestJoin(TestCaseWithTransport):
         # does not must discard it, and when filling a ghost for a listed
         # ghost must reconcile it
         source = self.get_source()
-        try:
-            source.has_ghost('a')
-            source_ghosts = True
-        except NotImplementedError:
-            source_ghosts = False
         target = self.get_target()
-        try:
-            target.has_ghost('a')
-            target_ghosts = True
-        except NotImplementedError:
-            target_ghosts = False
-
-        if not source_ghosts and not target_ghosts:
-            # nothing to do
-            return
-        if source_ghosts and not target_ghosts:
-            # switch source and target so source is ghostless
-            t = source
-            source = target
-            target = t
-            source_ghosts = False
-            target_ghosts = True
-        # now target always supports ghosts.
-
         # try filling target with ghosts and filling in reverse -  
-        target.add_lines_with_ghosts('notbase', ['base'], [])
+        try:
+            target.add_lines_with_ghosts('notbase', ['base'], [])
+        except NotImplementedError:
+            # The target does not support ghosts; the test is irrelevant.
+            return
         try:
             source.join(target)
         except errors.RevisionNotPresent:
-            # can't join a ghost containing target onto a non-ghost supporting
-            # source.
-            self.assertFalse(source_ghosts)
             return
-        else:
-            self.assertTrue(source_ghosts)
         # legacy apis should behave
         self.assertEqual(['notbase'], source.get_ancestry(['notbase']))
         self.assertFalse(source.has_version('base'))

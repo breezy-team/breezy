@@ -1897,7 +1897,9 @@ class BasicKnitTests(KnitTests):
         # The target knit object is in a consistent state, i.e. the record we
         # just added is immediately visible.
         self.assertTrue(target.has_version('text-a'))
-        self.assertTrue(target.has_ghost('text-ghost'))
+        self.assertFalse(target.has_version('text-ghost'))
+        self.assertEqual({'text-a':('text-ghost',)},
+            target.get_parent_map(['text-a', 'text-ghost']))
         self.assertEqual(split_lines(TEXT_1), target.get_lines('text-a'))
 
     def test_insert_data_stream_inconsistent_version_lines(self):

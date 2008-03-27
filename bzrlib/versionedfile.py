@@ -71,6 +71,7 @@ class VersionedFile(object):
         """Return a unsorted list of versions."""
         raise NotImplementedError(self.versions)
 
+    @deprecated_method(one_four)
     def has_ghost(self, version_id):
         """Returns whether version is present as a ghost."""
         raise NotImplementedError(self.has_ghost)
