@@ -45,6 +45,7 @@ from bzrlib.remote import (
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import server, medium
 from bzrlib.smart.client import _SmartClient
+from bzrlib.symbol_versioning import one_four
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.transport.remote import RemoteTransport
 
@@ -705,7 +706,8 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
         transport_path = 'empty'
         repo, client = self.setup_fake_client_and_repository(
             responses, transport_path)
-        result = repo.get_revision_graph(NULL_REVISION)
+        result = self.applyDeprecated(one_four, repo.get_revision_graph,
+            NULL_REVISION)
         self.assertEqual([], client._calls)
         self.assertEqual({}, result)
 
@@ -720,7 +722,7 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
         transport_path = 'sinhala'
         repo, client = self.setup_fake_client_and_repository(
             responses, transport_path)
-        result = repo.get_revision_graph()
+        result = self.applyDeprecated(one_four, repo.get_revision_graph)
         self.assertEqual(
             [('call_expecting_body', 'Repository.get_revision_graph',
              ('sinhala/', ''))],
@@ -740,7 +742,7 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
         transport_path = 'sinhala'
         repo, client = self.setup_fake_client_and_repository(
             responses, transport_path)
-        result = repo.get_revision_graph(r2)
+        result = self.applyDeprecated(one_four, repo.get_revision_graph, r2)
         self.assertEqual(
             [('call_expecting_body', 'Repository.get_revision_graph',
              ('sinhala/', r2))],
@@ -755,7 +757,7 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
             responses, transport_path)
         # also check that the right revision is reported in the error
         self.assertRaises(errors.NoSuchRevision,
-            repo.get_revision_graph, revid)
+            self.applyDeprecated, one_four, repo.get_revision_graph, revid)
         self.assertEqual(
             [('call_expecting_body', 'Repository.get_revision_graph',
              ('sinhala/', revid))],
