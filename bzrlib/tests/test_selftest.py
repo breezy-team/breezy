@@ -32,6 +32,7 @@ from bzrlib import (
     osutils,
     repository,
     symbol_versioning,
+    tests,
     )
 from bzrlib.progress import _BaseProgressBar
 from bzrlib.repofmt import weaverepo
@@ -1119,10 +1120,11 @@ class TestRunner(TestCase):
         self.assertTrue(result.wasSuccessful())
 
     def test_skipped_from_setup(self):
+        calls = []
         class SkippedSetupTest(TestCase):
 
             def setUp(self):
-                self.counter = 1
+                calls.append('setUp')
                 self.addCleanup(self.cleanup)
                 raise TestSkipped('skipped setup')
 
@@ -1130,34 +1132,35 @@ class TestRunner(TestCase):
                 self.fail('test reached')
 
             def cleanup(self):
-                self.counter -= 1
+                calls.append('cleanup')
 
         runner = TextTestRunner(stream=self._log_file)
         test = SkippedSetupTest('test_skip')
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
         # Check if cleanup was called the right number of times.
-        self.assertEqual(0, test.counter)
+        self.assertEqual(['setUp', 'cleanup'], calls)
 
     def test_skipped_from_test(self):
+        calls = []
         class SkippedTest(TestCase):
 
             def setUp(self):
-                self.counter = 1
+                calls.append('setUp')
                 self.addCleanup(self.cleanup)
 
             def test_skip(self):
                 raise TestSkipped('skipped test')
 
             def cleanup(self):
-                self.counter -= 1
+                calls.append('cleanup')
 
         runner = TextTestRunner(stream=self._log_file)
         test = SkippedTest('test_skip')
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
         # Check if cleanup was called the right number of times.
-        self.assertEqual(0, test.counter)
+        self.assertEqual(['setUp', 'cleanup'], calls)
 
     def test_not_applicable(self):
         # run a test that is skipped because it's not applicable
@@ -1220,6 +1223,12 @@ class TestRunner(TestCase):
             revision_id = workingtree.get_parent_ids()[0]
             self.assertEndsWith(output_string.rstrip(), revision_id)
 
+    def assertLogDeleted(self, test):
+        log = test._get_log()
+        self.assertEqual("DELETED log file to reduce memory footprint", log)
+        self.assertEqual('', test._log_contents)
+        self.assertIs(None, test._log_file_name)
+
     def test_success_log_deleted(self):
         """Successful tests have their log deleted"""
 
@@ -1233,10 +1242,55 @@ class TestRunner(TestCase):
         test = LogTester('test_success')
         result = self.run_test_runner(runner, test)
 
-        log = test._get_log()
-        self.assertEqual("DELETED log file to reduce memory footprint", log)
-        self.assertEqual('', test._log_contents)
-        self.assertIs(None, test._log_file_name)
+        self.assertLogDeleted(test)
+
+    def test_skipped_log_deleted(self):
+        """Skipped tests have their log deleted"""
+
+        class LogTester(TestCase):
+
+            def test_skipped(self):
+                self.log('this will be removed\n')
+                raise tests.TestSkipped()
+
+        sio = cStringIO.StringIO()
+        runner = TextTestRunner(stream=sio)
+        test = LogTester('test_skipped')
+        result = self.run_test_runner(runner, test)
+
+        self.assertLogDeleted(test)
+
+    def test_not_aplicable_log_deleted(self):
+        """Not applicable tests have their log deleted"""
+
+        class LogTester(TestCase):
+
+            def test_not_applicable(self):
+                self.log('this will be removed\n')
+                raise tests.TestNotApplicable()
+
+        sio = cStringIO.StringIO()
+        runner = TextTestRunner(stream=sio)
+        test = LogTester('test_not_applicable')
+        result = self.run_test_runner(runner, test)
+
+        self.assertLogDeleted(test)
+
+    def test_known_failure_log_deleted(self):
+        """Know failure tests have their log deleted"""
+
+        class LogTester(TestCase):
+
+            def test_known_failure(self):
+                self.log('this will be removed\n')
+                raise tests.KnownFailure()
+
+        sio = cStringIO.StringIO()
+        runner = TextTestRunner(stream=sio)
+        test = LogTester('test_known_failure')
+        result = self.run_test_runner(runner, test)
+
+        self.assertLogDeleted(test)
 
     def test_fail_log_kept(self):
         """Failed tests have their log kept"""
@@ -1682,6 +1736,17 @@ class TestSelftestFiltering(TestCase):
             condition_id_re('test_condition_id_re'))
         self.assertEqual([test_name], self._test_ids(filtered_suite))
 
+    def test_condition_id_in_list(self):
+        test_names = ['bzrlib.tests.test_selftest.TestSelftestFiltering.'
+                      'test_condition_id_in_list']
+        id_list = tests.TestIdList(test_names)
+        filtered_suite = filter_suite_by_condition(
+            self.suite, tests.condition_id_in_list(id_list))
+        my_pattern = 'TestSelftestFiltering.*test_condition_id_in_list'
+        re_filtered = filter_suite_by_re(self.suite, my_pattern)
+        self.assertEqual(self._test_ids(re_filtered),
+                         self._test_ids(filtered_suite))
+
     def test_condition_isinstance(self):
         filtered_suite = filter_suite_by_condition(self.suite,
             condition_isinstance(self.__class__))
@@ -1726,6 +1791,17 @@ class TestSelftestFiltering(TestCase):
         filtered_names = self._test_ids(filtered_suite)
         self.assertEqual(filtered_names, ['bzrlib.tests.test_selftest.'
             'TestSelftestFiltering.test_filter_suite_by_re'])
+
+    def test_filter_suite_by_id_list(self):
+        test_list = ['bzrlib.tests.test_selftest.'
+                     'TestSelftestFiltering.test_filter_suite_by_id_list']
+        filtered_suite = tests.filter_suite_by_id_list(
+            self.suite, tests.TestIdList(test_list))
+        filtered_names = self._test_ids(filtered_suite)
+        self.assertEqual(
+            filtered_names,
+            ['bzrlib.tests.test_selftest.'
+             'TestSelftestFiltering.test_filter_suite_by_id_list'])
 
     def test_preserve_input(self):
         # NB: Surely this is something in the stdlib to do this?
@@ -1841,4 +1917,113 @@ class TestTestLoader(TestCase):
         # add a load_tests() method which multiplies the tests from the module.
         module.__class__.load_tests = load_tests
         self.assertEqual(2, loader.loadTestsFromModule(module).countTestCases())
+
+
+class TestTestIdList(tests.TestCase):
+
+    def _create_id_list(self, test_list):
+        return tests.TestIdList(test_list)
+
+    def _create_suite(self, test_id_list):
+
+        class Stub(TestCase):
+            def test_foo(self):
+                pass
+
+        def _create_test_id(id):
+            return lambda: id
+
+        suite = TestUtil.TestSuite()
+        for id in test_id_list:
+            t  = Stub('test_foo')
+            t.id = _create_test_id(id)
+            suite.addTest(t)
+        return suite
+
+    def _test_ids(self, test_suite):
+        """Get the ids for the tests in a test suite."""
+        return [t.id() for t in iter_suite_tests(test_suite)]
+
+    def test_empty_list(self):
+        id_list = self._create_id_list([])
+        self.assertEquals({}, id_list.tests)
+        self.assertEquals({}, id_list.modules)
+
+    def test_valid_list(self):
+        id_list = self._create_id_list(
+            ['mod1.cl1.meth1', 'mod1.cl1.meth2',
+             'mod1.func1', 'mod1.cl2.meth2',
+             'mod1.submod1',
+             'mod1.submod2.cl1.meth1', 'mod1.submod2.cl2.meth2',
+             ])
+        self.assertTrue(id_list.is_module_name_used('mod1'))
+        self.assertTrue(id_list.is_module_name_used('mod1.submod1'))
+        self.assertTrue(id_list.is_module_name_used('mod1.submod2'))
+        self.assertTrue(id_list.test_in('mod1.cl1.meth1'))
+        self.assertTrue(id_list.test_in('mod1.submod1'))
+        self.assertTrue(id_list.test_in('mod1.func1'))
+
+    def test_bad_chars_in_params(self):
+        id_list = self._create_id_list(['mod1.cl1.meth1(xx.yy)'])
+        self.assertTrue(id_list.is_module_name_used('mod1'))
+        self.assertTrue(id_list.test_in('mod1.cl1.meth1(xx.yy)'))
+
+    def test_module_used(self):
+        id_list = self._create_id_list(['mod.class.meth'])
+        self.assertTrue(id_list.is_module_name_used('mod'))
+        self.assertTrue(id_list.is_module_name_used('mod.class'))
+        self.assertTrue(id_list.is_module_name_used('mod.class.meth'))
+
+    def test_test_suite(self):
+        # This test is slow, so we do a single test with one test in each
+        # category
+        test_list = [
+            # testmod_names
+            'bzrlib.tests.test_selftest.TestTestIdList.test_test_suite',
+            # transport implementations
+            'bzrlib.tests.test_transport_implementations.TransportTests'
+            '.test_abspath(LocalURLServer)',
+            # packages_to_test()
+            'bzrlib.tests.blackbox.test_branch.TestBranch.test_branch',
+            # MODULES_TO_DOCTEST
+            'bzrlib.timestamp.format_highres_date',
+            # plugins can't be tested that way since selftest may be run with
+            # --no-plugins
+            ]
+        suite = tests.test_suite(test_list)
+        self.assertEquals(test_list, self._test_ids(suite))
+
+
+class TestLoadTestIdList(tests.TestCaseInTempDir):
+
+    def _create_test_list_file(self, file_name, content):
+        fl = open(file_name, 'wt')
+        fl.write(content)
+        fl.close()
+
+    def test_load_unknown(self):
+        self.assertRaises(errors.NoSuchFile,
+                          tests.load_test_id_list, 'i_do_not_exist')
+
+    def test_load_test_list(self):
+        test_list_fname = 'test.list'
+        self._create_test_list_file(test_list_fname,
+                                    'mod1.cl1.meth1\nmod2.cl2.meth2\n')
+        tlist = tests.load_test_id_list(test_list_fname)
+        self.assertEquals(2, len(tlist))
+        self.assertEquals('mod1.cl1.meth1', tlist[0])
+        self.assertEquals('mod2.cl2.meth2', tlist[1])
+
+    def test_load_dirty_file(self):
+        test_list_fname = 'test.list'
+        self._create_test_list_file(test_list_fname,
+                                    '  mod1.cl1.meth1\n\nmod2.cl2.meth2  \n'
+                                    'bar baz\n')
+        tlist = tests.load_test_id_list(test_list_fname)
+        self.assertEquals(4, len(tlist))
+        self.assertEquals('mod1.cl1.meth1', tlist[0])
+        self.assertEquals('', tlist[1])
+        self.assertEquals('mod2.cl2.meth2', tlist[2])
+        self.assertEquals('bar baz', tlist[3])
+
 

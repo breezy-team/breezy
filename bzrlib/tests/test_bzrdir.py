@@ -170,6 +170,16 @@ class TestFormatRegistry(TestCase):
         finally:
             bzrdir.format_registry.set_default_repository(old_default)
 
+    def test_aliases(self):
+        a_registry = bzrdir.BzrDirFormatRegistry()
+        a_registry.register('weave', bzrdir.BzrDirFormat6,
+            'Pre-0.8 format.  Slower and does not support checkouts or shared'
+            ' repositories', deprecated=True)
+        a_registry.register('weavealias', bzrdir.BzrDirFormat6,
+            'Pre-0.8 format.  Slower and does not support checkouts or shared'
+            ' repositories', deprecated=True, alias=True)
+        self.assertEqual(frozenset(['weavealias']), a_registry.aliases())
+    
 
 class SampleBranch(bzrlib.branch.Branch):
     """A dummy branch for guess what, dummy use."""

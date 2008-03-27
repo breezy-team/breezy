@@ -31,7 +31,7 @@ import bzrlib.plugin
 import bzrlib.plugins
 import bzrlib.commands
 import bzrlib.help
-from bzrlib.symbol_versioning import zero_ninetyone
+from bzrlib.symbol_versioning import one_three
 from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.osutils import pathjoin, abspath, normpath
 
@@ -191,7 +191,7 @@ class TestLoadingPlugins(TestCaseInTempDir):
 
     def test_plugin_with_bad_name_does_not_load(self):
         # Create badly-named plugin
-        file('bad plugin-name..py', 'w').close()
+        file('bzr-bad plugin-name..py', 'w').close()
 
         # Capture output
         stream = StringIO()
@@ -207,35 +207,11 @@ class TestLoadingPlugins(TestCaseInTempDir):
         log.removeHandler(handler)
 
         self.assertContainsRe(stream.getvalue(),
-            r"Unable to load 'bad plugin-name\.' in '\.' as a plugin because"
-            " file path isn't a valid module name; try renaming it to"
-            " 'bad_plugin_name_'\.")
+            r"Unable to load 'bzr-bad plugin-name\.' in '\.' as a plugin "
+            "because the file path isn't a valid module name; try renaming "
+            "it to 'bad_plugin_name_'\.")
 
         stream.close()
-
-
-class TestAllPlugins(TestCaseInTempDir):
-
-    def test_plugin_appears_in_all_plugins(self):
-        # This test tests a new plugin appears in bzrlib.plugin.all_plugins().
-        # check the plugin is not loaded already
-        self.failIf(getattr(bzrlib.plugins, 'plugin', None))
-        # write a plugin that _cannot_ fail to load.
-        file('plugin.py', 'w').write("\n")
-        try:
-            bzrlib.plugin.load_from_path(['.'])
-            all_plugins = self.applyDeprecated(zero_ninetyone,
-                bzrlib.plugin.all_plugins)
-            self.failUnless('plugin' in all_plugins)
-            self.failUnless(getattr(bzrlib.plugins, 'plugin', None))
-            self.assertEqual(all_plugins['plugin'], bzrlib.plugins.plugin)
-        finally:
-            # remove the plugin 'plugin'
-            if 'bzrlib.plugins.plugin' in sys.modules:
-                del sys.modules['bzrlib.plugins.plugin']
-            if getattr(bzrlib.plugins, 'plugin', None):
-                del bzrlib.plugins.plugin
-        self.failIf(getattr(bzrlib.plugins, 'plugin', None))
 
 
 class TestPlugins(TestCaseInTempDir):
@@ -271,6 +247,28 @@ class TestPlugins(TestCaseInTempDir):
         plugins = bzrlib.plugin.plugins()
         plugin = plugins['plugin']
         plugin_path = self.test_dir + '/plugin.py'
+        self.assertIsSameRealPath(plugin_path, normpath(plugin.path()))
+
+    def test_plugin_get_path_py_not_pyc(self):
+        self.setup_plugin()         # after first import there will be plugin.pyc
+        self.teardown_plugin()
+        bzrlib.plugin.load_from_path(['.']) # import plugin.pyc
+        plugins = bzrlib.plugin.plugins()
+        plugin = plugins['plugin']
+        plugin_path = self.test_dir + '/plugin.py'
+        self.assertIsSameRealPath(plugin_path, normpath(plugin.path()))
+
+    def test_plugin_get_path_pyc_only(self):
+        self.setup_plugin()         # after first import there will be plugin.pyc
+        self.teardown_plugin()
+        os.unlink(self.test_dir + '/plugin.py')
+        bzrlib.plugin.load_from_path(['.']) # import plugin.pyc
+        plugins = bzrlib.plugin.plugins()
+        plugin = plugins['plugin']
+        if __debug__:
+            plugin_path = self.test_dir + '/plugin.pyc'
+        else:
+            plugin_path = self.test_dir + '/plugin.pyo'
         self.assertIsSameRealPath(plugin_path, normpath(plugin.path()))
 
     def test_no_test_suite_gives_None_for_test_suite(self):
@@ -386,7 +384,8 @@ class TestPluginFromZip(TestCaseInTempDir):
         try:
             # this is normally done by load_plugins -> set_plugins_path
             bzrlib.plugins.__path__ = [zip_name]
-            bzrlib.plugin.load_from_zip(zip_name)
+            self.applyDeprecated(one_three,
+                bzrlib.plugin.load_from_zip, zip_name)
             self.assertTrue(plugin_name in dir(bzrlib.plugins),
                             'Plugin is not loaded')
         finally:

@@ -24,6 +24,7 @@ properties.
 Tests for low-level protocol encoding are found in test_smart_transport.
 """
 
+import bz2
 from cStringIO import StringIO
 import tarfile
 
@@ -45,8 +46,36 @@ from bzrlib.smart.request import (
     SmartServerResponse,
     SuccessfulSmartServerResponse,
     )
+from bzrlib.tests import (
+    iter_suite_tests,
+    split_suite_by_re,
+    TestScenarioApplier,
+    )
 from bzrlib.transport import chroot, get_transport
 from bzrlib.util import bencode
+
+
+def load_tests(standard_tests, module, loader):
+    """Multiply tests version and protocol consistency."""
+    # FindRepository tests.
+    bzrdir_mod = bzrlib.smart.bzrdir
+    applier = TestScenarioApplier()
+    applier.scenarios = [
+        ("find_repository", {
+            "_request_class":bzrdir_mod.SmartServerRequestFindRepositoryV1}),
+        ("find_repositoryV2", {
+            "_request_class":bzrdir_mod.SmartServerRequestFindRepositoryV2}),
+        ]
+    to_adapt, result = split_suite_by_re(standard_tests,
+        "TestSmartServerRequestFindRepository")
+    v2_only, v1_and_2 = split_suite_by_re(to_adapt,
+        "_v2")
+    for test in iter_suite_tests(v1_and_2):
+        result.addTests(applier.adapt(test))
+    del applier.scenarios[0]
+    for test in iter_suite_tests(v2_only):
+        result.addTests(applier.adapt(test))
+    return result
 
 
 class TestCaseWithChrootedTransport(tests.TestCaseWithTransport):
@@ -134,7 +163,7 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithMemoryTransport):
     def test_no_repository(self):
         """When there is no repository to be found, ('norepository', ) is returned."""
         backing = self.get_transport()
-        request = smart.bzrdir.SmartServerRequestFindRepository(backing)
+        request = self._request_class(backing)
         self.make_bzrdir('.')
         self.assertEqual(SmartServerResponse(('norepository', )),
             request.execute(''))
@@ -144,7 +173,7 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithMemoryTransport):
         # path the repository is being searched on is the same as that that 
         # the repository is at.
         backing = self.get_transport()
-        request = smart.bzrdir.SmartServerRequestFindRepository(backing)
+        request = self._request_class(backing)
         result = self._make_repository_and_result()
         self.assertEqual(result, request.execute(''))
         self.make_bzrdir('subdir')
@@ -165,12 +194,19 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithMemoryTransport):
             subtrees = 'yes'
         else:
             subtrees = 'no'
-        return SmartServerResponse(('ok', '', rich_root, subtrees))
+        if (smart.bzrdir.SmartServerRequestFindRepositoryV2 ==
+            self._request_class):
+            # All tests so far are on formats, and for non-external
+            # repositories.
+            return SuccessfulSmartServerResponse(
+                ('ok', '', rich_root, subtrees, 'no'))
+        else:
+            return SuccessfulSmartServerResponse(('ok', '', rich_root, subtrees))
 
     def test_shared_repository(self):
         """When there is a shared repository, we get 'ok', 'relpath-to-repo'."""
         backing = self.get_transport()
-        request = smart.bzrdir.SmartServerRequestFindRepository(backing)
+        request = self._request_class(backing)
         result = self._make_repository_and_result(shared=True)
         self.assertEqual(result, request.execute(''))
         self.make_bzrdir('subdir')
@@ -185,11 +221,20 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithMemoryTransport):
     def test_rich_root_and_subtree_encoding(self):
         """Test for the format attributes for rich root and subtree support."""
         backing = self.get_transport()
-        request = smart.bzrdir.SmartServerRequestFindRepository(backing)
+        request = self._request_class(backing)
         result = self._make_repository_and_result(format='dirstate-with-subtree')
         # check the test will be valid
         self.assertEqual('yes', result.args[2])
         self.assertEqual('yes', result.args[3])
+        self.assertEqual(result, request.execute(''))
+
+    def test_supports_external_lookups_no_v2(self):
+        """Test for the supports_external_lookups attribute."""
+        backing = self.get_transport()
+        request = self._request_class(backing)
+        result = self._make_repository_and_result(format='dirstate-with-subtree')
+        # check the test will be valid
+        self.assertEqual('no', result.args[4])
         self.assertEqual(result, request.execute(''))
 
 
@@ -435,7 +480,6 @@ class TestSmartServerBranchRequestLockWrite(tests.TestCaseWithMemoryTransport):
 
     def setUp(self):
         tests.TestCaseWithMemoryTransport.setUp(self)
-        self.reduceLockdirTimeout()
 
     def test_lock_write_on_unlocked_branch(self):
         backing = self.get_transport()
@@ -521,7 +565,6 @@ class TestSmartServerBranchRequestUnlock(tests.TestCaseWithMemoryTransport):
 
     def setUp(self):
         tests.TestCaseWithMemoryTransport.setUp(self)
-        self.reduceLockdirTimeout()
 
     def test_unlock_on_locked_branch_and_repo(self):
         backing = self.get_transport()
@@ -585,6 +628,22 @@ class TestSmartServerRepositoryRequest(tests.TestCaseWithMemoryTransport):
         self.make_bzrdir('subdir')
         self.assertRaises(errors.NoRepositoryPresent,
             request.execute, 'subdir')
+
+
+class TestSmartServerRepositoryGetParentMap(tests.TestCaseWithTransport):
+
+    def test_trivial_bzipped(self):
+        # This tests that the wire encoding is actually bzipped
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryGetParentMap(backing)
+        tree = self.make_branch_and_memory_tree('.')
+
+        self.assertEqual(None,
+            request.execute('', 'missing-id'))
+        # Note that it returns a body (of '' bzipped).
+        self.assertEqual(
+            SuccessfulSmartServerResponse(('ok', ), bz2.compress('')),
+            request.do_body('\n\n0\n'))
 
 
 class TestSmartServerRepositoryGetRevisionGraph(tests.TestCaseWithMemoryTransport):
@@ -749,7 +808,6 @@ class TestSmartServerRepositoryLockWrite(tests.TestCaseWithMemoryTransport):
 
     def setUp(self):
         tests.TestCaseWithMemoryTransport.setUp(self)
-        self.reduceLockdirTimeout()
 
     def test_lock_write_on_unlocked_repo(self):
         backing = self.get_transport()
@@ -787,7 +845,6 @@ class TestSmartServerRepositoryUnlock(tests.TestCaseWithMemoryTransport):
 
     def setUp(self):
         tests.TestCaseWithMemoryTransport.setUp(self)
-        self.reduceLockdirTimeout()
 
     def test_unlock_on_locked_repo(self):
         backing = self.get_transport()
@@ -886,11 +943,13 @@ class TestSmartServerRepositoryStreamRevisionsChunked(tests.TestCaseWithMemoryTr
         tree.add('')
         rev_id1_utf8 = u'\xc8'.encode('utf-8')
         rev_id2_utf8 = u'\xc9'.encode('utf-8')
-        r1 = tree.commit('1st commit', rev_id=rev_id1_utf8)
-        r1 = tree.commit('2nd commit', rev_id=rev_id2_utf8)
+        tree.commit('1st commit', rev_id=rev_id1_utf8)
+        tree.commit('2nd commit', rev_id=rev_id2_utf8)
         tree.unlock()
 
-        response = request.execute('', rev_id2_utf8)
+        response = request.execute('')
+        self.assertEqual(None, response)
+        response = request.do_body("%s\n%s\n1" % (rev_id2_utf8, rev_id1_utf8))
         self.assertEqual(('ok',), response.args)
         parser = pack.ContainerPushParser()
         names = []
@@ -909,17 +968,12 @@ class TestSmartServerRepositoryStreamRevisionsChunked(tests.TestCaseWithMemoryTr
             backing)
         repo = self.make_repository('.')
         rev_id1_utf8 = u'\xc8'.encode('utf-8')
-        response = request.execute('', rev_id1_utf8)
-        # There's no error initially.
-        self.assertTrue(response.is_successful())
-        self.assertEqual(('ok',), response.args)
-        # We only get an error while streaming the body.
-        body = list(response.body_stream)
-        last_chunk = body[-1]
-        self.assertIsInstance(last_chunk, FailedSmartServerResponse)
+        response = request.execute('')
+        self.assertEqual(None, response)
+        response = request.do_body("%s\n\n1" % (rev_id1_utf8,))
         self.assertEqual(
-            last_chunk,
-            FailedSmartServerResponse(('NoSuchRevision', rev_id1_utf8)))
+            FailedSmartServerResponse(('NoSuchRevision', )),
+            response)
 
 
 class TestSmartServerIsReadonly(tests.TestCaseWithMemoryTransport):
@@ -964,7 +1018,10 @@ class TestHandlers(tests.TestCase):
             smart.branch.SmartServerBranchRequestUnlock)
         self.assertEqual(
             smart.request.request_handlers.get('BzrDir.find_repository'),
-            smart.bzrdir.SmartServerRequestFindRepository)
+            smart.bzrdir.SmartServerRequestFindRepositoryV1)
+        self.assertEqual(
+            smart.request.request_handlers.get('BzrDir.find_repositoryV2'),
+            smart.bzrdir.SmartServerRequestFindRepositoryV2)
         self.assertEqual(
             smart.request.request_handlers.get('BzrDirFormat.initialize'),
             smart.bzrdir.SmartServerRequestInitializeBzrDir)
@@ -974,6 +1031,9 @@ class TestHandlers(tests.TestCase):
         self.assertEqual(
             smart.request.request_handlers.get('Repository.gather_stats'),
             smart.repository.SmartServerRepositoryGatherStats)
+        self.assertEqual(
+            smart.request.request_handlers.get('Repository.get_parent_map'),
+            smart.repository.SmartServerRepositoryGetParentMap)
         self.assertEqual(
             smart.request.request_handlers.get(
                 'Repository.get_revision_graph'),
@@ -987,10 +1047,6 @@ class TestHandlers(tests.TestCase):
         self.assertEqual(
             smart.request.request_handlers.get('Repository.lock_write'),
             smart.repository.SmartServerRepositoryLockWrite)
-        self.assertEqual(
-            smart.request.request_handlers.get(
-                'Repository.chunked_stream_knit_data_for_revisions'),
-            smart.repository.SmartServerRepositoryStreamKnitDataForRevisions)
         self.assertEqual(
             smart.request.request_handlers.get('Repository.tarball'),
             smart.repository.SmartServerRepositoryTarball)

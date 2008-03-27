@@ -16,6 +16,7 @@
 
 """Server-side repository related request implmentations."""
 
+import bz2
 from cStringIO import StringIO
 import os
 import sys
@@ -30,6 +31,7 @@ from bzrlib.smart.request import (
     SmartServerRequest,
     SuccessfulSmartServerResponse,
     )
+from bzrlib import revision as _mod_revision
 
 
 class SmartServerRepositoryRequest(SmartServerRequest):
@@ -50,8 +52,128 @@ class SmartServerRepositoryRequest(SmartServerRequest):
         """
         transport = self.transport_from_client_path(path)
         bzrdir = BzrDir.open_from_transport(transport)
-        repository = bzrdir.open_repository()
-        return self.do_repository_request(repository, *args)
+        # Save the repository for use with do_body.
+        self._repository = bzrdir.open_repository()
+        return self.do_repository_request(self._repository, *args)
+
+    def do_repository_request(self, repository, *args):
+        """Override to provide an implementation for a verb."""
+        # No-op for verbs that take bodies (None as a result indicates a body
+        # is expected)
+        return None
+
+    def recreate_search(self, repository, recipe_bytes):
+        lines = recipe_bytes.split('\n')
+        start_keys = set(lines[0].split(' '))
+        exclude_keys = set(lines[1].split(' '))
+        revision_count = int(lines[2])
+        repository.lock_read()
+        try:
+            search = repository.get_graph()._make_breadth_first_searcher(
+                start_keys)
+            while True:
+                try:
+                    next_revs = search.next()
+                except StopIteration:
+                    break
+                search.stop_searching_any(exclude_keys.intersection(next_revs))
+            search_result = search.get_result()
+            if search_result.get_recipe()[2] != revision_count:
+                # we got back a different amount of data than expected, this
+                # gets reported as NoSuchRevision, because less revisions
+                # indicates missing revisions, and more should never happen as
+                # the excludes list considers ghosts and ensures that ghost
+                # filling races are not a problem.
+                return (None, FailedSmartServerResponse(('NoSuchRevision',)))
+            return (search, None)
+        finally:
+            repository.unlock()
+
+
+class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
+    """Bzr 1.2+ - get parent data for revisions during a graph search."""
+    
+    def do_repository_request(self, repository, *revision_ids):
+        """Get parent details for some revisions.
+        
+        All the parents for revision_ids are returned. Additionally up to 64KB
+        of additional parent data found by performing a breadth first search
+        from revision_ids is returned. The verb takes a body containing the
+        current search state, see do_body for details.
+
+        :param repository: The repository to query in.
+        :param revision_ids: The utf8 encoded revision_id to answer for.
+        """
+        self._revision_ids = revision_ids
+        return None # Signal that we want a body.
+
+    def do_body(self, body_bytes):
+        """Process the current search state and perform the parent lookup.
+
+        :return: A smart server response where the body contains an utf8
+            encoded flattened list of the parents of the revisions (the same
+            format as Repository.get_revision_graph) which has been bz2
+            compressed.
+        """
+        repository = self._repository
+        repository.lock_read()
+        try:
+            return self._do_repository_request(body_bytes)
+        finally:
+            repository.unlock()
+
+    def _do_repository_request(self, body_bytes):
+        repository = self._repository
+        revision_ids = set(self._revision_ids)
+        search, error = self.recreate_search(repository, body_bytes)
+        if error is not None:
+            return error
+        # TODO might be nice to start up the search again; but thats not
+        # written or tested yet.
+        client_seen_revs = set(search.get_result().get_keys())
+        # Always include the requested ids.
+        client_seen_revs.difference_update(revision_ids)
+        lines = []
+        repo_graph = repository.get_graph()
+        result = {}
+        queried_revs = set()
+        size_so_far = 0
+        next_revs = revision_ids
+        first_loop_done = False
+        while next_revs:
+            queried_revs.update(next_revs)
+            parent_map = repo_graph.get_parent_map(next_revs)
+            next_revs = set()
+            for revision_id, parents in parent_map.iteritems():
+                # adjust for the wire
+                if parents == (_mod_revision.NULL_REVISION,):
+                    parents = ()
+                # prepare the next query
+                next_revs.update(parents)
+                if revision_id not in client_seen_revs:
+                    # Client does not have this revision, give it to it.
+                    # add parents to the result
+                    result[revision_id] = parents
+                    # Approximate the serialized cost of this revision_id.
+                    size_so_far += 2 + len(revision_id) + sum(map(len, parents))
+            # get all the directly asked for parents, and then flesh out to
+            # 64K (compressed) or so. We do one level of depth at a time to
+            # stay in sync with the client. The 250000 magic number is
+            # estimated compression ratio taken from bzr.dev itself.
+            if first_loop_done and size_so_far > 250000:
+                next_revs = set()
+                break
+            # don't query things we've already queried
+            next_revs.difference_update(queried_revs)
+            first_loop_done = True
+
+        # sorting trivially puts lexographically similar revision ids together.
+        # Compression FTW.
+        for revision, parents in sorted(result.items()):
+            lines.append(' '.join((revision, ) + tuple(parents)))
+
+        return SuccessfulSmartServerResponse(
+            ('ok', ), bz2.compress('\n'.join(lines)))
 
 
 class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryRequest):
@@ -251,6 +373,7 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
 
 
 class SmartServerRepositoryStreamKnitDataForRevisions(SmartServerRepositoryRequest):
+    """Bzr <= 1.1 streaming pull, buffers all data on server."""
 
     def do_repository_request(self, repository, *revision_ids):
         repository.lock_read()
@@ -260,7 +383,8 @@ class SmartServerRepositoryStreamKnitDataForRevisions(SmartServerRepositoryReque
             repository.unlock()
 
     def _do_repository_request(self, repository, revision_ids):
-        stream = repository.get_data_stream(revision_ids)
+        stream = repository.get_data_stream_for_search(
+            repository.revision_ids_to_search_result(set(revision_ids)))
         buffer = StringIO()
         pack = ContainerSerialiser()
         buffer.write(pack.begin())
@@ -269,7 +393,7 @@ class SmartServerRepositoryStreamKnitDataForRevisions(SmartServerRepositoryReque
                 for name_tuple, bytes in stream:
                     buffer.write(pack.bytes_record(bytes, [name_tuple]))
             except:
-                # Undo the lock_read that that happens once the iterator from
+                # Undo the lock_read that happens once the iterator from
                 # get_data_stream is started.
                 repository.unlock()
                 raise
@@ -280,12 +404,19 @@ class SmartServerRepositoryStreamKnitDataForRevisions(SmartServerRepositoryReque
 
 
 class SmartServerRepositoryStreamRevisionsChunked(SmartServerRepositoryRequest):
+    """Bzr 1.1+ streaming pull."""
 
-    def do_repository_request(self, repository, *revision_ids):
+    def do_body(self, body_bytes):
+        repository = self._repository
         repository.lock_read()
         try:
-            stream = repository.get_data_stream(revision_ids)
+            search, error = self.recreate_search(repository, body_bytes)
+            if error is not None:
+                repository.unlock()
+                return error
+            stream = repository.get_data_stream_for_search(search.get_result())
         except Exception:
+            # On non-error, unlocking is done by the body stream handler.
             repository.unlock()
             raise
         return SuccessfulSmartServerResponse(('ok',),
@@ -304,6 +435,8 @@ class SmartServerRepositoryStreamRevisionsChunked(SmartServerRepositoryRequest):
                 repository.unlock()
                 raise
         except errors.RevisionNotPresent, e:
+            # This shouldn't be able to happen, but as we don't buffer
+            # everything it can in theory happen.
             repository.unlock()
             yield FailedSmartServerResponse(('NoSuchRevision', e.revision_id))
         else:

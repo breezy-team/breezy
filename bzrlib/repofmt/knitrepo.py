@@ -157,10 +157,20 @@ class KnitRepository(MetaDirRepository):
         except errors.RevisionNotPresent:
             raise errors.NoSuchRevision(self, revision_id)
 
+    @symbol_versioning.deprecated_method(symbol_versioning.one_two)
     @needs_read_lock
     def get_data_stream(self, revision_ids):
-        """See Repository.get_data_stream."""
-        item_keys = self.item_keys_introduced_by(revision_ids)
+        """See Repository.get_data_stream.
+        
+        Deprecated in 1.2 for get_data_stream_for_search.
+        """
+        search_result = self.revision_ids_to_search_result(set(revision_ids))
+        return self.get_data_stream_for_search(search_result)
+
+    @needs_read_lock
+    def get_data_stream_for_search(self, search):
+        """See Repository.get_data_stream_for_search."""
+        item_keys = self.item_keys_introduced_by(search.get_keys())
         for knit_kind, file_id, versions in item_keys:
             name = (knit_kind,)
             if knit_kind == 'file':
@@ -210,6 +220,7 @@ class KnitRepository(MetaDirRepository):
             return a_weave.get_graph([revision_id])
 
     @needs_read_lock
+    @symbol_versioning.deprecated_method(symbol_versioning.one_three)
     def get_revision_graph_with_ghosts(self, revision_ids=None):
         """Return a graph of the revisions with ghosts marked as applicable.
 
@@ -257,13 +268,6 @@ class KnitRepository(MetaDirRepository):
         """:return: a versioned file containing the revisions."""
         vf = self._revision_store.get_revision_file(self.get_transaction())
         return vf
-
-    def _get_history_vf(self):
-        """Get a versionedfile whose history graph reflects all revisions.
-
-        For knit repositories, this is the revision knit.
-        """
-        return self._get_revision_vf()
 
     def has_revisions(self, revision_ids):
         """See Repository.has_revisions()."""
@@ -344,6 +348,8 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
     _serializer = xml5.serializer_v5
     # Knit based repositories handle ghosts reasonably well.
     supports_ghosts = True
+    # External lookups are not supported in this format.
+    supports_external_lookups = False
 
     def _get_control_store(self, repo_transport, control_files):
         """Return the control store for this repository."""

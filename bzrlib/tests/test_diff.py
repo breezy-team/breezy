@@ -34,6 +34,7 @@ from bzrlib.diff import (
     )
 from bzrlib.errors import BinaryFile, NoDiff, ExecutableMissing
 import bzrlib.osutils as osutils
+import bzrlib.transform as transform
 import bzrlib.patiencediff
 import bzrlib._patiencediff_py
 from bzrlib.tests import (Feature, TestCase, TestCaseWithTransport,
@@ -508,6 +509,39 @@ class TestShowDiffTrees(TestShowDiffTreesHelper):
         self.assertContainsRe(diff, '\\+\\+\\+ new/newname\t')
         self.assertContainsRe(diff, '-contents\n'
                                     '\\+new contents\n')
+
+
+    def test_internal_diff_exec_property(self):
+        tree = self.make_branch_and_tree('tree')
+
+        tt = transform.TreeTransform(tree)
+        tt.new_file('a', tt.root, 'contents\n', 'a-id', True)
+        tt.new_file('b', tt.root, 'contents\n', 'b-id', False)
+        tt.new_file('c', tt.root, 'contents\n', 'c-id', True)
+        tt.new_file('d', tt.root, 'contents\n', 'd-id', False)
+        tt.new_file('e', tt.root, 'contents\n', 'control-e-id', True)
+        tt.new_file('f', tt.root, 'contents\n', 'control-f-id', False)
+        tt.apply()
+        tree.commit('one', rev_id='rev-1')
+
+        tt = transform.TreeTransform(tree)
+        tt.set_executability(False, tt.trans_id_file_id('a-id'))
+        tt.set_executability(True, tt.trans_id_file_id('b-id'))
+        tt.set_executability(False, tt.trans_id_file_id('c-id'))
+        tt.set_executability(True, tt.trans_id_file_id('d-id'))
+        tt.apply()
+        tree.rename_one('c', 'new-c')
+        tree.rename_one('d', 'new-d')
+
+        diff = self.get_diff(tree.basis_tree(), tree)
+
+        self.assertContainsRe(diff, r"file 'a'.*\(properties changed:.*\+x to -x.*\)")
+        self.assertContainsRe(diff, r"file 'b'.*\(properties changed:.*-x to \+x.*\)")
+        self.assertContainsRe(diff, r"file 'c'.*\(properties changed:.*\+x to -x.*\)")
+        self.assertContainsRe(diff, r"file 'd'.*\(properties changed:.*-x to \+x.*\)")
+        self.assertNotContainsRe(diff, r"file 'e'")
+        self.assertNotContainsRe(diff, r"file 'f'")
+
 
     def test_binary_unicode_filenames(self):
         """Test that contents of files are *not* encoded in UTF-8 when there
@@ -1246,7 +1280,10 @@ class TestDiffFromTool(TestCaseWithTransport):
         self.addCleanup(diff_obj.finish)
         self.assertEqual(['diff', '%(old_path)s', '%(new_path)s'],
             diff_obj.command_template)
+
+    def test_from_string_u5(self):
         diff_obj = DiffFromTool.from_string('diff -u\\ 5', None, None, None)
+        self.addCleanup(diff_obj.finish)
         self.assertEqual(['diff', '-u 5', '%(old_path)s', '%(new_path)s'],
                          diff_obj.command_template)
         self.assertEqual(['diff', '-u 5', 'old-path', 'new-path'],

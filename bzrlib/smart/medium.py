@@ -35,6 +35,7 @@ from bzrlib import (
     )
 from bzrlib.smart.protocol import (
     REQUEST_VERSION_TWO,
+    SmartClientRequestProtocolOne,
     SmartServerRequestProtocolOne,
     SmartServerRequestProtocolTwo,
     )
@@ -361,13 +362,38 @@ class SmartClientMediumRequest(object):
             new_char = self.read_bytes(1)
             line += new_char
             if new_char == '':
-                raise errors.SmartProtocolError(
-                    'unexpected end of file reading from server')
+                # end of file encountered reading from server
+                raise errors.ConnectionReset(
+                    "please check connectivity and permissions",
+                    "(and try -Dhpss if further diagnosis is required)")
         return line
 
 
 class SmartClientMedium(object):
     """Smart client is a medium for sending smart protocol requests over."""
+
+    def __init__(self):
+        super(SmartClientMedium, self).__init__()
+        self._protocol_version_error = None
+        self._protocol_version = None
+
+    def protocol_version(self):
+        """Find out the best protocol version to use."""
+        if self._protocol_version_error is not None:
+            raise self._protocol_version_error
+        if self._protocol_version is None:
+            try:
+                medium_request = self.get_request()
+                # Send a 'hello' request in protocol version one, for maximum
+                # backwards compatibility.
+                client_protocol = SmartClientRequestProtocolOne(medium_request)
+                self._protocol_version = client_protocol.query_version()
+            except errors.SmartProtocolError, e:
+                # Cache the error, just like we would cache a successful
+                # result.
+                self._protocol_version_error = e
+                raise
+        return self._protocol_version
 
     def disconnect(self):
         """If this medium maintains a persistent connection, close it.
@@ -386,7 +412,12 @@ class SmartClientStreamMedium(SmartClientMedium):
     """
 
     def __init__(self):
+        SmartClientMedium.__init__(self)
         self._current_request = None
+        # Be optimistic: we assume the remote end can accept new remote
+        # requests until we get an error saying otherwise.  (1.2 adds some
+        # requests that send bodies, which confuses older servers.)
+        self._remote_is_at_least_1_2 = True
 
     def accept_bytes(self, bytes):
         self._accept_bytes(bytes)
@@ -548,10 +579,17 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
             port = BZR_DEFAULT_PORT
         else:
             port = int(self._port)
-        result = self._socket.connect_ex((self._host, port))
-        if result:
+        try:
+            self._socket.connect((self._host, port))
+        except socket.error, err:
+            # socket errors either have a (string) or (errno, string) as their
+            # args.
+            if type(err.args) is str:
+                err_msg = err.args
+            else:
+                err_msg = err.args[1]
             raise errors.ConnectionError("failed to connect to %s:%d: %s" %
-                    (self._host, port, os.strerror(result)))
+                    (self._host, port, err_msg))
         self._connected = True
 
     def _flush(self):

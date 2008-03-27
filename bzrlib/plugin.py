@@ -46,7 +46,7 @@ from bzrlib import (
 from bzrlib import plugins as _mod_plugins
 """)
 
-from bzrlib.symbol_versioning import deprecated_function, zero_ninetyone
+from bzrlib.symbol_versioning import deprecated_function, one_three
 from bzrlib.trace import mutter, warning, log_exception_quietly
 
 
@@ -57,28 +57,8 @@ def get_default_plugin_path():
     """Get the DEFAULT_PLUGIN_PATH"""
     global DEFAULT_PLUGIN_PATH
     if DEFAULT_PLUGIN_PATH is None:
-        path = [osutils.pathjoin(config.config_dir(), 'plugins')]
-        if getattr(sys, 'frozen', None):    # bzr.exe
-            # We need to use relative path to system-wide plugin
-            # directory because bzrlib from standalone bzr.exe
-            # could be imported by another standalone program
-            # (e.g. bzr-config; or TortoiseBzr/Olive if/when they
-            # will become standalone exe). [bialix 20071123]
-            # __file__ typically is
-            # C:\Program Files\Bazaar\lib\library.zip\bzrlib\plugin.pyc
-            # then plugins directory is
-            # C:\Program Files\Bazaar\plugins
-            # so relative path is ../../../plugins
-            path.append(osutils.abspath(osutils.pathjoin(
-                osutils.dirname(__file__), '../../../plugins')))
-        DEFAULT_PLUGIN_PATH = os.pathsep.join(path)
+        DEFAULT_PLUGIN_PATH = osutils.pathjoin(config.config_dir(), 'plugins')
     return DEFAULT_PLUGIN_PATH
-
-
-@deprecated_function(zero_ninetyone)
-def all_plugins():
-    """Return a dictionary of the plugins."""
-    return dict((name, plugin.module) for name, plugin in plugins().items())
 
 
 def disable_plugins():
@@ -100,11 +80,26 @@ def set_plugins_path():
     """Set the path for plugins to be loaded from."""
     path = os.environ.get('BZR_PLUGIN_PATH',
                           get_default_plugin_path()).split(os.pathsep)
+    bzr_exe = bool(getattr(sys, 'frozen', None))
+    if bzr_exe:    # expand path for bzr.exe
+        # We need to use relative path to system-wide plugin
+        # directory because bzrlib from standalone bzr.exe
+        # could be imported by another standalone program
+        # (e.g. bzr-config; or TortoiseBzr/Olive if/when they
+        # will become standalone exe). [bialix 20071123]
+        # __file__ typically is
+        # C:\Program Files\Bazaar\lib\library.zip\bzrlib\plugin.pyc
+        # then plugins directory is
+        # C:\Program Files\Bazaar\plugins
+        # so relative path is ../../../plugins
+        path.append(osutils.abspath(osutils.pathjoin(
+            osutils.dirname(__file__), '../../../plugins')))
     # Get rid of trailing slashes, since Python can't handle them when
     # it tries to import modules.
     path = map(_strip_trailing_sep, path)
-    # search the plugin path before the bzrlib installed dir
-    path.append(os.path.dirname(_mod_plugins.__file__))
+    if not bzr_exe:     # don't look inside library.zip
+        # search the plugin path before the bzrlib installed dir
+        path.append(os.path.dirname(_mod_plugins.__file__))
     _mod_plugins.__path__ = path
     return path
 
@@ -154,9 +149,6 @@ def load_from_path(dirs):
         mutter('looking for plugins in %s', d)
         if os.path.isdir(d):
             load_from_dir(d)
-        else:
-            # it might be a zip: try loading from the zip.
-            load_from_zip(d)
 
 
 # backwards compatability: load_from_dirs was the old name
@@ -207,19 +199,21 @@ def load_from_dir(d):
             ## import pdb; pdb.set_trace()
             if re.search('\.|-| ', name):
                 sanitised_name = re.sub('[-. ]', '_', name)
-                warning("Unable to load %r in %r as a plugin because file path"
-                        " isn't a valid module name; try renaming it to %r."
-                        % (name, d, sanitised_name))
+                if sanitised_name.startswith('bzr_'):
+                    sanitised_name = sanitised_name[len('bzr_'):]
+                warning("Unable to load %r in %r as a plugin because the "
+                        "file path isn't a valid module name; try renaming "
+                        "it to %r." % (name, d, sanitised_name))
             else:
                 warning('Unable to load plugin %r from %r' % (name, d))
             log_exception_quietly()
 
 
+@deprecated_function(one_three)
 def load_from_zip(zip_name):
     """Load all the plugins in a zip."""
     valid_suffixes = ('.py', '.pyc', '.pyo')    # only python modules/packages
                                                 # is allowed
-
     try:
         index = zip_name.rindex('.zip')
     except ValueError:
@@ -390,7 +384,12 @@ class PlugIn(object):
         if getattr(self.module, '__path__', None) is not None:
             return os.path.abspath(self.module.__path__[0])
         elif getattr(self.module, '__file__', None) is not None:
-            return os.path.abspath(self.module.__file__)
+            path = os.path.abspath(self.module.__file__)
+            if path[-4:] in ('.pyc', '.pyo'):
+                pypath = path[:-4] + '.py'
+                if os.path.isfile(pypath):
+                    path = pypath
+            return path
         else:
             return repr(self.module)
 

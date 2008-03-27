@@ -21,6 +21,7 @@ import os
 import sys
 
 from bzrlib.branch import Branch
+from bzrlib.directory_service import directories
 from bzrlib.osutils import pathjoin
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.uncommit import uncommit
@@ -305,3 +306,37 @@ class TestPull(ExternalBase):
         self.assertContainsRe(out, 'bar')
         self.assertNotContainsRe(out, 'added:')
         self.assertNotContainsRe(out, 'foo')
+
+    def test_pull_quiet(self):
+        """Check that bzr pull --quiet does not print anything"""
+        tree_a = self.make_branch_and_tree('tree_a')
+        self.build_tree(['tree_a/foo'])
+        tree_a.add('foo')
+        revision_id = tree_a.commit('bar')
+        tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
+        out, err = self.run_bzr('pull --quiet -d tree_b')
+        self.assertEqual(out, '')
+        self.assertEqual(err, '')
+        self.assertEqual(tree_b.last_revision(), revision_id)
+        self.build_tree(['tree_a/moo'])
+        tree_a.add('moo')
+        revision_id = tree_a.commit('quack')
+        out, err = self.run_bzr('pull --quiet -d tree_b')
+        self.assertEqual(out, '')
+        self.assertEqual(err, '')
+        self.assertEqual(tree_b.last_revision(), revision_id)
+
+    def test_pull_from_directory_service(self):
+        source = self.make_branch_and_tree('source')
+        source.commit('commit 1')
+        target = source.bzrdir.sprout('target').open_workingtree()
+        source_last = source.commit('commit 2')
+        class FooService(object):
+            """A directory service that always returns source"""
+
+            def look_up(self, name, url):
+                return 'source'
+        directories.register('foo:', FooService, 'Testing directory service')
+        self.addCleanup(lambda: directories.remove('foo:'))
+        self.run_bzr('pull foo:bar -d target')
+        self.assertEqual(source_last, target.last_revision())

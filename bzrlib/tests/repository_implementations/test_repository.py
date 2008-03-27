@@ -23,6 +23,8 @@ import bzrlib
 from bzrlib import (
     bzrdir,
     errors,
+    graph,
+    osutils,
     remote,
     repository,
     )
@@ -35,6 +37,7 @@ from bzrlib.repofmt.weaverepo import (
     )
 from bzrlib.revision import NULL_REVISION, Revision
 from bzrlib.smart import server
+from bzrlib.symbol_versioning import one_two, one_three
 from bzrlib.tests import (
     KnownFailure,
     TestCaseWithTransport,
@@ -265,6 +268,11 @@ class TestRepository(TestCaseWithRepository):
         text = repo._format.get_format_description()
         self.failUnless(len(text))
 
+    def test_format_supports_external_lookups(self):
+        repo = self.make_repository('.')
+        self.assertSubset(
+            [repo._format.supports_external_lookups], (True, False))
+
     def assertMessageRoundtrips(self, message):
         """Assert that message roundtrips to a repository and back intact."""
         tree = self.make_branch_and_tree('.')
@@ -389,7 +397,23 @@ class TestRepository(TestCaseWithRepository):
         repo._format.rich_root_data
         repo._format.supports_tree_reference
 
-    def test_get_data_stream(self):
+    def test_get_data_stream_deprecated(self):
+        # If get_data_stream is present it must be deprecated
+        tree = self.make_branch_and_tree('t')
+        self.build_tree(['t/foo'])
+        tree.add('foo', 'file1')
+        tree.commit('message', rev_id='rev_id')
+        repo = tree.branch.repository
+        try:
+            stream = self.applyDeprecated(one_two, repo.get_data_stream,
+                ['rev_id'])
+        except NotImplementedError:
+            raise TestNotApplicable("%s doesn't support get_data_stream"
+                % repo._format)
+        except AttributeError:
+            pass
+
+    def test_get_data_stream_for_search(self):
         # Make a repo with a revision
         tree = self.make_branch_and_tree('t')
         self.build_tree(['t/foo'])
@@ -398,8 +422,10 @@ class TestRepository(TestCaseWithRepository):
         repo = tree.branch.repository
 
         # Get a data stream (a file-like object) for that revision
+        search = graph.SearchResult(set(['rev_id']), set([NULL_REVISION]), 1,
+            set(['rev_id']))
         try:
-            stream = repo.get_data_stream(['rev_id'])
+            stream = repo.get_data_stream_for_search(search)
         except NotImplementedError:
             raise TestNotApplicable("%s doesn't support get_data_stream"
                 % repo._format)
@@ -440,11 +466,13 @@ class TestRepository(TestCaseWithRepository):
         tree.commit('message', rev_id='rev_id')
         source_repo = tree.branch.repository
         dest_repo = self.make_repository('dest')
+        search = dest_repo.search_missing_revision_ids(source_repo,
+            revision_id='rev_id')
         try:
-            stream = source_repo.get_data_stream(['rev_id'])
+            stream = source_repo.get_data_stream_for_search(search)
         except NotImplementedError, e:
             # Not all repositories support streaming.
-            self.assertContainsRe(str(e), 'get_data_stream')
+            self.assertContainsRe(str(e), 'get_data_stream_for_search')
             raise TestSkipped('This format does not support streaming.')
 
         dest_repo.lock_write()
@@ -462,6 +490,26 @@ class TestRepository(TestCaseWithRepository):
         # reopen to be sure it was added.
         dest_repo = dest_repo.bzrdir.open_repository()
         self.assertTrue(dest_repo.has_revision('rev_id'))
+
+        # insert the same data stream again, should be no-op
+        stream = source_repo.get_data_stream_for_search(search)
+        dest_repo.lock_write()
+        try:
+            dest_repo.start_write_group()
+            try:
+                dest_repo.insert_data_stream(stream)
+            except:
+                dest_repo.abort_write_group()
+                raise
+            else:
+                dest_repo.commit_write_group()
+        finally:
+            dest_repo.unlock()
+
+        # try to insert data stream with invalid key
+        stream = [[('bogus-key',), '']]
+        self.assertRaises(errors.RepositoryDataStreamError,
+                          dest_repo.insert_data_stream, stream)
 
     def test_get_serializer_format(self):
         repo = self.make_repository('.')
@@ -594,6 +642,23 @@ class TestRepository(TestCaseWithRepository):
         repo.add_signature_text('A', 'This might be a signature')
         self.assertEqual('This might be a signature',
                          repo.get_signature_text('A'))
+
+    def test_add_revision_inventory_sha1(self):
+        repo = self.make_repository('repo')
+        inv = Inventory(revision_id='A')
+        inv.root.revision = 'A'
+        inv.root.file_id = 'fixed-root'
+        repo.lock_write()
+        repo.start_write_group()
+        repo.add_revision('A', Revision('A', committer='B', timestamp=0,
+                          timezone=0, message='C'), inv=inv)
+        repo.commit_write_group()
+        repo.unlock()
+        repo.lock_read()
+        self.assertEquals(osutils.sha_string(
+            repo._serializer.write_inventory_to_string(inv)),
+            repo.get_revision('A').inventory_sha1)
+        repo.unlock()
 
     def test_install_revisions(self):
         wt = self.make_branch_and_tree('source')
@@ -891,7 +956,8 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         # we can get a graph object with roots, ghosts, ancestors and
         # descendants.
         repo = self.bzrdir.open_repository()
-        graph = repo.get_revision_graph_with_ghosts([])
+        graph = self.applyDeprecated(one_three,
+                                     repo.get_revision_graph_with_ghosts, [])
         self.assertEqual(set(['rev1']), graph.roots)
         self.assertEqual(set(['ghost1', 'ghost2']), graph.ghosts)
         self.assertEqual({'rev1':[],
@@ -909,7 +975,8 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
                           },
                           graph.get_descendants())
         # and we can ask for the NULLREVISION graph
-        graph = repo.get_revision_graph_with_ghosts([NULL_REVISION])
+        graph = self.applyDeprecated(one_three, 
+                    repo.get_revision_graph_with_ghosts, [NULL_REVISION])
         self.assertEqual({}, graph.get_ancestors())
         self.assertEqual({}, graph.get_descendants())
 
