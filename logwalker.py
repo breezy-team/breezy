@@ -262,18 +262,6 @@ class LogWalker(object):
 
         return row[0]
 
-    def touches_path(self, path, revnum):
-        """Check whether path was changed in specified revision.
-
-        :param path:  Path to check
-        :param revnum:  Revision to check
-        """
-        self.fetch_revisions(revnum)
-        self.mutter("touches path %r:%r" % (path, revnum))
-        if revnum == 0:
-            return (path == "")
-        return (self.db.execute("select 1 from changed_path where path='%s' and rev=%d" % (path, revnum)).fetchone() is not None)
-
     def find_children(self, path, revnum):
         """Find all children of path in revnum.
 

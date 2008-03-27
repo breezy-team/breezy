@@ -377,48 +377,6 @@ class TestLogWalker(TestCaseWithSubversionRepository):
                           ('trunk', {'trunk/afile': ('A', None, -1), 
                                      'trunk': (u'A', None, -1)}, 1)], items)
 
-    def test_touches_path(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/trunk/afile': "data"})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "My Message")
-
-        walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))
-
-        self.assertTrue(walker.touches_path("trunk", 1))
-
-    def test_touches_path_null(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/trunk/afile': "data"})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "My Message")
-
-        walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))
-
-        self.assertTrue(walker.touches_path("", 0))
-
-    def test_touches_path_not(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/trunk/afile': "data"})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "My Message")
-
-        walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))
-
-        self.assertFalse(walker.touches_path("", 1))
-
-    def test_touches_path_child(self):
-        repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/trunk/afile': "data"})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "My Message")
-        self.build_tree({'dc/trunk/afile': "data2"})
-        self.client_commit("dc", "My Message")
-
-        walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))
-
-        self.assertFalse(walker.touches_path("trunk", 2))
-
     def test_get_previous_root(self):
         repos_url = self.make_client("a", "dc")
 

@@ -58,7 +58,7 @@ class PathPropertyProvider:
         """
         assert isinstance(revnum, int)
         assert isinstance(path, str)
-        if not self.log.touches_path(path, revnum):
+        if not path in self.log.get_revision_paths(revnum):
             return {}
         current = self.get_properties(path, revnum)
         if current == {}:
@@ -80,7 +80,7 @@ class PathPropertyProvider:
         assert isinstance(path, str)
         # If the path this property is set on didn't change, then 
         # the property can't have changed.
-        if not self.log.touches_path(path, revnum):
+        if not path in self.log.get_revision_paths(revnum):
             return ""
 
         current = self.get_properties(path, revnum).get(name, "")
