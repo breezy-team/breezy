@@ -21,7 +21,7 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoSuchFile, OutOfDateTree
 from bzrlib.inventory import Inventory
 from bzrlib.osutils import has_symlinks, supports_executable
-from bzrlib.tests import KnownFailure
+from bzrlib.tests import KnownFailure, TestCase
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
@@ -32,6 +32,7 @@ import os, sys
 
 from transport import svn_config
 from tests import TestCaseWithSubversionRepository
+from workingtree import generate_ignore_list
 
 class TestWorkingTree(TestCaseWithSubversionRepository):
     def test_add_duplicate(self):
@@ -646,3 +647,22 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         tree = self.open_checkout("de")
         self.build_tree({'de/some strange file': 'data-y'})
         self.assertRaises(OutOfDateTree, lambda: tree.commit("bar"))
+
+
+class IgnoreListTests(TestCase):
+    def test_empty(self):
+        self.assertEquals([], generate_ignore_list({}))
+
+    def test_simple(self):
+        self.assertEquals(["./twin/peaks"], 
+                generate_ignore_list({"twin": "peaks"}))
+
+    def test_toplevel(self):
+        self.assertEquals(["./twin*"], 
+                generate_ignore_list({"": "twin*"}))
+
+    def test_multiple(self):
+        self.assertEquals(["./twin*", "./twin/peaks"], 
+                generate_ignore_list({"twin": "peaks", "": "twin*"}))
+
+
