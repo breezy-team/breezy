@@ -37,6 +37,11 @@ IN DEVELOPMENT
     * Merge is faster.  We no longer check a file's existence unnecessarily
       when merging the execute bit.  (Aaron Bentley)
 
+    * The smart protocol client is slightly faster, because it now only queries
+      the server for the protocol version once per connection.  Also, the HTTP
+      transport will now automatically use a smart server if one is present.
+      (Andrew Bennetts)
+
   BUGFIXES:
 
     * ``bzr mv a b`` can be now used also to rename previously renamed

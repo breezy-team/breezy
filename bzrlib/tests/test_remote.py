@@ -55,7 +55,6 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
         self.transport_server = server.SmartTCPServer_for_testing
         super(BasicRemoteObjectTests, self).setUp()
         self.transport = self.get_transport()
-        self.client = self.transport.get_smart_client()
         # make a branch that can be opened over the smart transport
         self.local_wt = BzrDir.create_standalone_workingtree('.')
 
@@ -300,6 +299,9 @@ class OldSmartClient(object):
         client_medium = medium.SmartSimplePipesClientMedium(
             input_file, output_file)
         return medium.SmartClientStreamMediumRequest(client_medium)
+
+    def protocol_version(self):
+        return 1
 
 
 class OldServerTransport(object):
