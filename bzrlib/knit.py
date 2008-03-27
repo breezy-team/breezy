@@ -784,7 +784,7 @@ class KnitVersionedFile(VersionedFile):
             return False
         # optimisable if needed by memoising the _ghosts set.
         items = self.get_parent_map(self.versions())
-        for node, parents in items:
+        for parents in items.itervalues():
             for parent in parents:
                 if parent == version_id and parent not in items:
                     return True
