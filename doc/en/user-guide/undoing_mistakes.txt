@@ -129,6 +129,12 @@ For example::
   bzr revert -r 19
   bzr commit -m "Backout fix for bug #5"
 
+This will change your entire tree back to the state as of revision 19,
+which is probably only what you want if you haven't made any new commits
+since then. If you have, the ``revert`` would wipe them out as well. In that
+case, you probably want to use `Reverse cherrypicking`_ instead to
+back out the bad fix.
+
 Correcting a tag
 ----------------
 
