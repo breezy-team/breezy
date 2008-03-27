@@ -75,6 +75,10 @@ IN DEVELOPMENT
       failing test.  Be aware that using this feature is likely to cause
       spurious test failures if used with the full suite. (Andrew Bennetts)
 
+    * selftest --load-list now does some sanity checks regarding duplicate test
+      IDs and tests present in the list but not found in the actual test suite.
+      (Vincent Ladeuil)
+
     * The test suite takes much less memory to run, and is a bit faster.  This
       is done by clearing most attributes of TestCases after running them, if
       they succeeded.  (Andrew Bennetts)
