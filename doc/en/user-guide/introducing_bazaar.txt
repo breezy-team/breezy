@@ -26,13 +26,12 @@ A brief history of version control systems
 ------------------------------------------
 
 Version control tools have been evolving for several decades now. In
-simple terms, there have been 5 generations of tools:
+simple terms, there have been 4 generations of tools:
 
  1. file versioning tools, e.g. SCCS, RCS
  2. tree versioning tools - central style, e.g. CVS
- 3. tree versioning tools - central style, done right, e.g. Subversion
- 4. tree versioning tools - distributed style, e.g. Arch
- 5. tree versioning tools - distributed style, done right, e.g. Bazaar.
+ 3. tree versioning tools - central style, take two, e.g. Subversion
+ 4. tree versioning tools - distributed style, e.g. Bazaar.
 
 The design and implementation of Bazaar builds on the lessons learned
 from all the previous generations of tools. In particular, Bazaar
@@ -98,38 +97,13 @@ Key features of Bazaar
 
 While Bazaar is not the only distributed VCS tool around, it does have some
 notable features that make it an excellent choice for many teams and
-communities. These include:
+communities. A summary of these and comparisons with other VCS tools
+can be found on the Bazaar Wiki, http://bazaar-vcs.org.
 
- * it **Just Works** - a high focus on usability and performance
- * **adaptive** - cleanly supports many different ways of working together
- * **rich metadata** that tracks merge history across distributed locations,
-   understands directories as first-class objects and correctly tracks
-   renames of both files and directories
- * **integrated merging** that uses this metadata intelligently to
-   ensure that merging is safe without being painful, letting you
-   collaborate without fear
- * **truly portable** across many operating systems including Windows
- * **safe with your data** - integrity is checked using cryptographic
-   techniques and all changes can be digitally signed if required
- * **low administration**, e.g. access to FTP or SFTP is enough to
-   share with others - no special server required
- * **efficiently stores data** across branches in a flexible and safe way
- * an **open architecture and API** that makes it easy to integrate
-   with other tools
- * a **large number of plugins** including bzr-svn and GUI front-ends
- * **excellent integration** with a range of companion tools and services
-   including PQM, Bundle Buggy and Launchpad
- * **completely open source**
- * **commercial training and support** available from Canonical,
-   the company that sponsors Ubuntu.
-
-While all of these are important, perhaps the greatest asset Bazaar has is
-an active and growing open source community behind it. Bazaar is completely
-free software written in Python so it is easy to contribute improvements.
-Our collective goal is to build and support a distributed VCS tool that
-developers love to use, a tool that helps them get their job done without
-getting in their way. If you wish to get involved, please see
-http://bazaar-vcs.org/BzrSupport.
+Of the many features, one in particular is worth highlighting:
+Bazaar is completely free software written in Python. As a result,
+it is easy to contribute improvements. If you wish to get involved,
+please see http://bazaar-vcs.org/BzrSupport.
 
 
 Learning more
@@ -155,8 +129,8 @@ you may wish to get started quickly by reading the following documents:
 
  * `Bazaar Quick Start Card`_ - a one page summary of commonly used commands.
 
-The online help and `Bazaar User Reference`_ are also particularly useful as
-they provide all the gory details on the commands and options available.
+The online help and `Bazaar User Reference`_ provide all the gory details
+on the commands and options available.
 
 .. _Bazaar in five minutes: ../mini-tutorial/index.html
 .. _Bazaar Quick Start Card: ../quick-reference/quick-start-summary.svg
