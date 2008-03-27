@@ -2,7 +2,7 @@
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 
 # This program is distributed in the hope that it will be useful,
@@ -60,7 +60,8 @@ class SvnRemoteAccess(BzrDir):
         raise NotImplementedError(SvnRemoteAccess.clone)
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
-            recurse='down', possible_transports=None):
+            recurse='down', possible_transports=None, accelerator_tree=None,
+            hardlink=False):
         """See BzrDir.sprout()."""
         # FIXME: Use possible_transports
         # FIXME: Use recurse
@@ -78,7 +79,7 @@ class SvnRemoteAccess(BzrDir):
         branch = self.open_branch()
         result_branch = branch.sprout(result, revision_id)
         if result_branch.repository.make_working_trees():
-            result.create_workingtree()
+            result.create_workingtree(hardlink=hardlink)
         return result
 
     def open_repository(self, _unsupported=False):
@@ -110,7 +111,7 @@ class SvnRemoteAccess(BzrDir):
         # Working trees never exist on remote Subversion repositories
         raise NoWorkingTree(self.root_transport.base)
 
-    def create_workingtree(self, revision_id=None):
+    def create_workingtree(self, revision_id=None, hardlink=None):
         """See BzrDir.create_workingtree().
 
         Will always raise NotLocalUrl as this 

@@ -4,7 +4,7 @@
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 
 # This program is distributed in the hope that it will be useful,
@@ -21,16 +21,18 @@
 from bzrlib.branch import Branch, PullResult
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import DivergedBranches, BzrError
+from bzrlib.tests import TestCase
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
-from commit import set_svn_revprops
+from commit import set_svn_revprops, _revision_id_to_svk_feature
 from copy import copy
 from errors import RevpropChangeFailed
-from repository import MAPPING_VERSION
 import os
 from remote import SvnRaTransport
 from tests import TestCaseWithSubversionRepository
+
+from svn.core import svn_time_to_cstring
 
 class TestNativeCommit(TestCaseWithSubversionRepository):
     def test_simple_commit(self):
@@ -129,7 +131,7 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         wt.commit(message="data")
         self.assertEqual("some-ghost-revision\n", 
                 self.client_get_prop(repos_url, "bzr:ancestry:v3-none", 1))
-        self.assertEqual([wt.branch.generate_revision_id(0), "some-ghost-revision"],
+        self.assertEqual((wt.branch.generate_revision_id(0), "some-ghost-revision"),
                          wt.branch.repository.revision_parents(
                              wt.branch.last_revision()))
 
@@ -188,7 +190,7 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
 
         self.assertEqual("3 my-revision-id\n", 
             self.client_get_prop("dc", 
-                "bzr:revision-id:v%d-none" % MAPPING_VERSION, 2))
+                "bzr:revision-id:v3-none", 2))
 
     def test_commit_metadata(self):
         repos_url = self.make_client('d', 'dc')
@@ -210,7 +212,7 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         builder.commit("foo")
 
         self.assertEqual("3 my-revision-id\n", 
-                self.client_get_prop("dc", "bzr:revision-id:v%d-none" % MAPPING_VERSION, 2))
+                self.client_get_prop("dc", "bzr:revision-id:v3-none", 2))
 
         self.assertEqual(
                 "timestamp: 1970-01-01 01:15:36.000000000 +0000\ncommitter: fry\n",
@@ -309,16 +311,17 @@ class TestPush(TestCaseWithSubversionRepository):
 
         self.olddir.open_branch().pull(self.newdir.open_branch())
 
-        repos = self.olddir.find_repository()
-        inv = repos.get_inventory(repos.generate_revision_id(2, "", "none"))
-        self.assertEqual(repos.generate_revision_id(2, "", "none"),
+        repos = self.olddir._find_repository()
+        mapping = repos.get_mapping()
+        inv = repos.get_inventory(repos.generate_revision_id(2, "", mapping))
+        self.assertEqual(repos.generate_revision_id(2, "", mapping),
                          inv[inv.path2id('foo/bla')].revision)
         self.assertEqual(wt.branch.last_revision(),
-          repos.generate_revision_id(2, "", "none"))
+          repos.generate_revision_id(2, "", mapping))
         self.assertEqual(wt.branch.last_revision(),
                         self.olddir.open_branch().last_revision())
         self.assertEqual("other data", 
-            repos.revision_tree(repos.generate_revision_id(2, "", "none")).get_file_text( inv.path2id("foo/bla")))
+            repos.revision_tree(repos.generate_revision_id(2, "", mapping)).get_file_text( inv.path2id("foo/bla")))
 
     def test_simple(self):
         self.build_tree({'dc/file': 'data'})
@@ -328,12 +331,13 @@ class TestPush(TestCaseWithSubversionRepository):
 
         self.olddir.open_branch().pull(self.newdir.open_branch())
 
-        repos = self.olddir.find_repository()
-        inv = repos.get_inventory(repos.generate_revision_id(2, "", "none"))
+        repos = self.olddir._find_repository()
+        mapping = repos.get_mapping()
+        inv = repos.get_inventory(repos.generate_revision_id(2, "", mapping))
         self.assertTrue(inv.has_filename('file'))
         self.assertEqual(wt.branch.last_revision(), 
-                repos.generate_revision_id(2, "", "none"))
-        self.assertEqual(repos.generate_revision_id(2, "", "none"),
+                repos.generate_revision_id(2, "", mapping))
+        self.assertEqual(repos.generate_revision_id(2, "", mapping),
                         self.olddir.open_branch().last_revision())
 
     def test_pull_after_push(self):
@@ -344,18 +348,19 @@ class TestPush(TestCaseWithSubversionRepository):
 
         self.olddir.open_branch().pull(self.newdir.open_branch())
 
-        repos = self.olddir.find_repository()
-        inv = repos.get_inventory(repos.generate_revision_id(2, "", "none"))
+        repos = self.olddir._find_repository()
+        mapping = repos.get_mapping()
+        inv = repos.get_inventory(repos.generate_revision_id(2, "", mapping))
         self.assertTrue(inv.has_filename('file'))
         self.assertEquals(wt.branch.last_revision(), 
-                         repos.generate_revision_id(2, "", "none"))
+                         repos.generate_revision_id(2, "", mapping))
 
-        self.assertEqual(repos.generate_revision_id(2, "", "none"),
+        self.assertEqual(repos.generate_revision_id(2, "", mapping),
                         self.olddir.open_branch().last_revision())
 
         self.newdir.open_branch().pull(self.olddir.open_branch())
 
-        self.assertEqual(repos.generate_revision_id(2, "", "none"),
+        self.assertEqual(repos.generate_revision_id(2, "", mapping),
                         self.newdir.open_branch().last_revision())
 
     def test_message(self):
@@ -366,10 +371,11 @@ class TestPush(TestCaseWithSubversionRepository):
 
         self.olddir.open_branch().pull(self.newdir.open_branch())
 
-        repos = self.olddir.find_repository()
+        repos = self.olddir._find_repository()
+        mapping = repos.get_mapping()
         self.assertEqual("Commit from Bzr",
             repos.get_revision(
-                repos.generate_revision_id(2, "", "none")).message)
+                repos.generate_revision_id(2, "", mapping)).message)
 
     def test_message_nordic(self):
         self.build_tree({'dc/file': 'data'})
@@ -379,9 +385,10 @@ class TestPush(TestCaseWithSubversionRepository):
 
         self.olddir.open_branch().pull(self.newdir.open_branch())
 
-        repos = self.olddir.find_repository()
+        repos = self.olddir._find_repository()
+        mapping = repos.get_mapping()
         self.assertEqual(u"\xe6\xf8\xe5", repos.get_revision(
-            repos.generate_revision_id(2, "", "none")).message)
+            repos.generate_revision_id(2, "", mapping)).message)
 
     def test_commit_rename_file(self):
         self.build_tree({'dc/vla': "data"})
@@ -478,7 +485,7 @@ class TestPushNested(TestCaseWithSubversionRepository):
         wt.add('file')
         wt.commit(message="Commit from Bzr")
         self.olddir.open_branch().pull(self.newdir.open_branch())
-        repos = self.olddir.find_repository()
+        repos = self.olddir._find_repository()
         self.client_update("sc")
         self.assertTrue(os.path.exists("sc/foo/trunk/file"))
         self.assertFalse(os.path.exists("sc/foo/trunk/filel"))
@@ -559,7 +566,8 @@ class RevpropTests(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My commit")
 
         transport = SvnRaTransport(repos_url)
-        set_svn_revprops(transport, 1, "Somebody", 473385600)
+        set_svn_revprops(transport, 1, {"svn:author": "Somebody", 
+                                        "svn:date": svn_time_to_cstring(1000000*473385600)})
 
         self.assertEquals(("Somebody", "1985-01-01T00:00:00.000000Z", "My commit"), 
                           self.client_log("dc")[1][1:])
@@ -572,4 +580,11 @@ class RevpropTests(TestCaseWithSubversionRepository):
 
         transport = SvnRaTransport(repos_url)
         self.assertRaises(RevpropChangeFailed, 
-            lambda: set_svn_revprops(transport, 1, "Somebody", 473385600))
+                lambda: set_svn_revprops(transport, 1, {"svn:author": "Somebody", "svn:date": svn_time_to_cstring(1000000*473385600)}))
+
+class SvkTestCase(TestCase):
+    def test_revid_svk_map(self):
+        self.assertEqual("auuid:/:6", 
+              _revision_id_to_svk_feature("svn-v3-undefined:auuid::6"))
+
+

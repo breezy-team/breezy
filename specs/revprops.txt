@@ -1,0 +1,70 @@
+Revision properties
+===================
+
+.. contents:: :local:
+
+
+Motivation
+----------
+At the moment, Bazaar revision properties and metadata are stored in file 
+properties on the branch root. Getting the revision properties for a series of
+revisions currently requires iterating over all of these revisions and calling 
+svn_ls() on the branch root of the revision itself and the revision before 
+that to obtain the properties set. 
+
+This has several disadvantages:
+
+ - svn_ls() is quite expensive and slow
+ - file property changes are picked up by "svn diff" and commit notification 
+   mailers. They should rather be ignored.
+ - they require you to know the branch root before being able to do anything
+
+Subversion custom revision property support
+-------------------------------------------
+Subversion supports storing custom revision properties. In older versions (pre 
+1.5), setting these revision properties is only possible after committing. This 
+also requires the change of the revision property to be accepted by the 
+pre-change-revprop hook, which is disabled by default.
+
+Subversion 1.5 allows setting custom revision properties as part of commit, 
+without the need to change any hooks on the server side. It also supports 
+iterating over custom revision properties using svn_ra_log().
+
+This should allow for a massive performance improvement and user experience. 
+However, the problem is that this will not work with a lot of older Subversion 
+repositories.
+
+Legacy repositories
+~~~~~~~~~~~~~~~~~~~
+There are already repositories out there that have the old file properties 
+set (version 3 and lower of the bzr<->svn mappings). In order to interoperate 
+with existing versions of bzr-svn that support file properties only, 
+file properties should always be set together with revision properties.
+
+In order to make sure that it is possible to rely on revision properties 
+as much as possible, the following policy will be followed where it concerns 
+pushing new revisions:
+
+- Set both file properties and revision properties unless support_legacy is 
+  set to False or the previous revision with revprops set didn't have file 
+  props set
+- Refuse to set revision properties unless all revisions since the last 
+  revision with bzr revision properties contain no bzr file props or contain 
+  both bzr file props and bzr revprops. When revprops are seen, scan only for 
+  file properties since that point 
+
+Upgrade command
+~~~~~~~~~~~~~~~
+`bzr svn-upgrade` needs to support being run on a Subversion repository or a 
+new command should be added to allow setting matching revision properties for 
+the existing file properties. This will iterate over the repository since the 
+last revision with revprops set and set matching revision properties for each 
+revision with file props.
+
+New settings
+~~~~~~~~~~~~
+A new per-Subversion-repository setting `support_legacy` will be added. This 
+setting controls whether file properties should be set when pushing to the 
+specified repository. It defaults to True.
+
+..  vim: ft=rest

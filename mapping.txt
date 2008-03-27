@@ -1,19 +1,16 @@
-#FORMAT rst
+Bazaar Subversion Mapping Specification
+=======================================
 
 This document specifies mapping between Subversion and Bazaar semantics.
 
 Revision: 4
-Jelmer Vernooij <jelmer@samba.org>, June 2006.
-Updated October 2006.
-Updated December 2006.
-Updated January 2007.
-Updated February 2007.
-Updated June 2007.
-Updated July 2007.
 
-============
+Written by Jelmer Vernooij <jelmer@samba.org>
+
+.. contents::
+
 Branch paths
-============
+------------
 
 It is hard to know, given a SVN URL, to figure out what branch a particular 
 file is in. Other then the convention that branches are named 'trunk' and 
@@ -32,21 +29,19 @@ implementation. At the moment, the following branching schemes are available:
 - ListBranchingScheme: There is a list of branches. This branching 
   scheme is present in the code, but is never used automatically (yet).
 
-- SingleBranchingScheme: There is a single branch (path of that branch is also 
-	part of the scheme name).
+- SingleBranchingScheme: There is a single branch (path of that branch is also part of the scheme name).
 
 The branching scheme can be explicitly specified or automatically guessed. 
 
-============
 Revision ids
-============
+------------
 
 An easy way to generate globally unique and reproducible revision ids is to 
 simply combine the repositories UUID and commit revision number. 
 
 However, this can lead to overlap in revision ids when a commit touches more 
 then one branch (something that is possible in SVN). This can be fixed by 
-including the branch path (trunk, branches/SAMBA_4_0, etc) in the 
+including the branch path (``trunk``, ``branches/SAMBA_4_0``, etc) in the 
 revision-id. Example revision id:
 
 ``svn-v3-trunk0:0c0555d6-39d7-0310-84fc-f1cc0bd64818:trunk:14323``
@@ -72,16 +67,17 @@ of the mappings.
 
 To override the revision id this way, set the branch path file property:
 
-bzr:revision-id-v%d:%s (where %d is the current mapping version and %s is 
-					    the name of the branching scheme in use) 
+``bzr:revision-id-v%d:%s`` (where %d is the current mapping version and %s is 
+                            the name of the branching scheme in use) 
 
 to the bzr revision number following by a space and the revision id. This 
 property should only be honored for the revision in which it was set, as 
 subversion will not erase the property for subsequent commits.
 
 A (path,revnum) tuple is valid if:
-* path is valid according to the branching scheme
-* either path, revnum or one of its children was touched in the particular 
+
+- path is valid according to the branching scheme
+- either path, revnum or one of its children was touched in the particular 
   revision
 
 If possible, the Subversion revision property ``bzr:revision-id`` should be 
@@ -89,9 +85,8 @@ set to the revision id. The revision property ``bzr:root`` should be set to
 the root path of the revision and revision property ``bzr:scheme`` should be 
 set to the name of the branching scheme.
 
-========
 File ids
-========
+--------
 
 Subversion does not use file ids. It is not possible to know whether a file in 
 revision X and a file in revision Y are the same without traversing over all 
@@ -140,23 +135,13 @@ where <SHA1> is the sha1 of the file's path.
 
 NEXT VERSION: Special rules are applied to make sure that renames are tracked.
 
-==========
 Properties
-==========
+----------
 
 SVN allows setting properties on versioned files and also interprets several 
 of these properties. 
 
 "svn:executable" is mapped to bzr's executable bit. 
-
-A fake .bzrignore file is generated containing the contents of the "svn:ignore"
-properties. If a .bzrignore file already exists in the tree, 
-the file already in the tree is used. 
-
-The .bzrignore file contains the directories in which the ignores are 
-set, ordered alphabetically by directory path. 
-
-Ignores are only recognized on directories.
 
 "svn:mime-type" is currently ignored.
 
@@ -164,9 +149,8 @@ Ignores are only recognized on directories.
 
 "svk:merge" is understood and set where possible.
 
-====================
 Ancestry Information
-====================
+--------------------
 
 Ancestry in Subversion is linear. Most revisions have just one parent. Files 
 can be copied, moved or merged from other branches, which can result in partial 
@@ -198,9 +182,8 @@ parents of a commit.
 This means svk and bzr *should be* interoperable. However, there are no tests 
 for this yet. 
 
-===================
 Revision properties
-===================
+-------------------
 
 If possible, the Bazaar revision metadata should be stored in Subversion 
 revision properties. The names of the revision properties are:
@@ -215,16 +198,14 @@ Bazaar revision metadata is also stored in a Subversion revision property
 by version 0.9 of the bundle format.
 
 
-==========
 Signatures
-==========
+----------
 
 NEXT VERSION: GPG Signatures for commits will be stored in the SVN revision 
 property 'bzr:gpg-signature'. 
 
-=========
 Revisions
-=========
+---------
 
 Revision 1 was the original version of this document.
 
@@ -241,7 +222,5 @@ Revision 3 uses real file ids for the tree root rather than the hardcoded
 
 Revision 4 adds revision properties in addition to file properties.
 
-=======
-Authors
-=======
-Jelmer Vernooij <jelmer@samba.org>
+..
+	vim: ft=rest

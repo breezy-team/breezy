@@ -2,7 +2,7 @@
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 
 # This program is distributed in the hope that it will be useful,
@@ -21,7 +21,9 @@ from bzrlib.errors import NotBranchError, BzrError
 from bzrlib.tests import TestCase
 from scheme import (ListBranchingScheme, NoBranchingScheme, 
                     BranchingScheme, TrunkBranchingScheme, 
-                    SingleBranchingScheme, UnknownBranchingScheme,
+                    SingleBranchingSchemev0, 
+                    SingleBranchingScheme, 
+                    UnknownBranchingScheme,
                     parse_list_scheme_text, find_commit_paths, 
                     guess_scheme_from_branch_path, guess_scheme_from_history,
                     guess_scheme_from_path, scheme_from_branch_list)
@@ -73,6 +75,11 @@ class BranchingSchemeTest(TestCase):
 
     def test_find_scheme_single(self):
         scheme = BranchingScheme.find_scheme("single-habla")
+        self.assertIsInstance(scheme, SingleBranchingSchemev0)
+        self.assertEqual("habla", scheme.path)
+
+    def test_find_scheme_single1(self):
+        scheme = BranchingScheme.find_scheme("single1-aGFibGE.")
         self.assertIsInstance(scheme, SingleBranchingScheme)
         self.assertEqual("habla", scheme.path)
 
@@ -140,10 +147,6 @@ class ListScheme(TestCase):
 
     def test_create_from_string(self):
         self.scheme = ListBranchingScheme('QlpoOTFBWSZTWXb2s-UAAADBAAAQAQCgACGYGYQYXckU4UJB29rPlA..')
-        self.assertEquals(["foo"], self.scheme.branch_list)
-
-    def test_create_from_unicode(self):
-        self.scheme = ListBranchingScheme(u'QlpoOTFBWSZTWXb2s-UAAADBAAAQAQCgACGYGYQYXckU4UJB29rPlA..')
         self.assertEquals(["foo"], self.scheme.branch_list)
 
     def test_is_tag_empty(self):
@@ -485,7 +488,13 @@ class SingleBranchingSchemeTests(TestCase):
         self.assertRaises(BzrError, SingleBranchingScheme, "")
 
     def test_str(self):
-        self.assertEquals("single-ha/bla", str(SingleBranchingScheme("ha/bla")))
+        self.assertEquals("single1-aGEvYmxh", str(SingleBranchingScheme("ha/bla")))
+
+    def test_str_no_need(self):
+        self.assertEquals("single-ha", str(SingleBranchingScheme("ha")))
+        
+    def test_str_v0(self):
+        self.assertEquals("single-ha/bla", str(SingleBranchingSchemev0("ha/bla")))
 
 
 class FindCommitPathsTester(TestCase):

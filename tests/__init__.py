@@ -2,7 +2,7 @@
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 
 # This program is distributed in the hope that it will be useful,
@@ -17,14 +17,14 @@
 """Tests for the bzr-svn plugin."""
 
 import os
+import sys
 import bzrlib
 from bzrlib import osutils
 from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.trace import mutter
+from bzrlib.urlutils import local_path_to_url
 from bzrlib.workingtree import WorkingTree
-
-RENAMES = False
 
 import svn.repos, svn.wc
 from bzrlib.plugins.svn.errors import NoCheckoutSupport
@@ -48,16 +48,19 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         :return: Handle to the repository.
         """
         abspath = os.path.join(self.test_dir, relpath)
-        repos_url = "file://%s" % abspath
 
         svn.repos.create(abspath, '', '', None, None)
 
         if allow_revprop_changes:
-            revprop_hook = os.path.join(abspath, "hooks", "pre-revprop-change")
-            open(revprop_hook, 'w').write("#!/bin/sh")
-            os.chmod(revprop_hook, os.stat(revprop_hook).st_mode | 0111)
+            if sys.platform == 'win32':
+                revprop_hook = os.path.join(abspath, "hooks", "pre-revprop-change.bat")
+                open(revprop_hook, 'w').write("exit 0\n")
+            else:
+                revprop_hook = os.path.join(abspath, "hooks", "pre-revprop-change")
+                open(revprop_hook, 'w').write("#!/bin/sh\n")
+                os.chmod(revprop_hook, os.stat(revprop_hook).st_mode | 0111)
 
-        return repos_url
+        return local_path_to_url(abspath)
 
     def make_remote_bzrdir(self, relpath):
         """Create a repository."""
@@ -145,6 +148,12 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         rev.kind = svn.core.svn_opt_revision_number
         rev.value.number = revnum
         return svn.client.revprop_get(name, url, rev, self.client_ctx)[0]
+
+    def client_set_revprop(self, url, revnum, name, value):
+        rev = svn.core.svn_opt_revision_t()
+        rev.kind = svn.core.svn_opt_revision_number
+        rev.value.number = revnum
+        svn.client.revprop_set(name, value, url, rev, True, self.client_ctx)
         
     def client_commit(self, dir, message=None, recursive=True):
         """Commit current changes in specified working copy.
@@ -171,11 +180,13 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         if revnum is None:
             rev.kind = svn.core.svn_opt_revision_head
         else:
+            assert isinstance(revnum, int)
             rev.kind = svn.core.svn_opt_revision_number
             rev.value.number = revnum
         return rev
 
     def client_log(self, path, start_revnum=None, stop_revnum=None):
+        assert isinstance(path, str)
         ret = {}
         def rcvr(orig_paths, rev, author, date, message, pool):
             ret[rev] = (orig_paths, author, date, message)
@@ -286,13 +297,16 @@ def test_suite():
             'test_errors',
             'test_fetch',
             'test_fileids', 
+            'test_graph', 
             'test_logwalker',
+            'test_mapping',
             'test_push',
             'test_radir',
             'test_repos', 
             'test_revids',
             'test_revspec',
             'test_scheme', 
+            'test_svk',
             'test_transport',
             'test_tree',
             'test_upgrade',

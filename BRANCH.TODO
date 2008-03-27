@@ -1,0 +1,6 @@
+- Needs more tests
+ - Run all tests against repository with revprop changing allowed and without
+- Needs upgrade command that can use legacy file properties and set revprops
+- Support disabling legacy file property support somehow
+- implement set_svn_revprops
+- remove set revision properties settings

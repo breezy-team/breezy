@@ -1,8 +1,8 @@
-# Copyright (C) 2006-2007 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2006-2008 Jelmer Vernooij <jelmer@samba.org>
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 
 # This program is distributed in the hope that it will be useful,
@@ -34,8 +34,8 @@ def get_rich_root_format():
     if format.repository_format.rich_root_data:
         return format
     # Default format does not support rich root data, 
-    # fall back to dirstate-with-subtree
-    format = format_registry.make_bzrdir('dirstate-with-subtree')
+    # fall back to rich-root
+    format = format_registry.make_bzrdir('rich-root-pack')
     assert format.repository_format.rich_root_data
     return format
 

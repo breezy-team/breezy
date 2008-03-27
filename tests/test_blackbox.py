@@ -2,7 +2,7 @@
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 
 # This program is distributed in the hope that it will be useful,
@@ -19,13 +19,13 @@ from bzrlib.repository import Repository
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.trace import mutter
 
+from mapping import BzrSvnMappingv3FileProps
+from scheme import NoBranchingScheme
 from tests import TestCaseWithSubversionRepository
 
 import os
 
-from revids import generate_svn_revision_id
-
-class TestBranch(ExternalBase,TestCaseWithSubversionRepository):
+class TestBranch(ExternalBase, TestCaseWithSubversionRepository):
     def test_branch_empty(self):
         repos_url = self.make_client('d', 'de')
         self.run_bzr("branch %s dc" % repos_url)
@@ -182,14 +182,15 @@ Node-copyfrom-path: x
 """)
         self.check_output("", 'svn-import --scheme=none %s dc' % filename)
         newrepos = Repository.open("dc")
+        mapping = BzrSvnMappingv3FileProps(NoBranchingScheme())
         self.assertTrue(newrepos.has_revision(
-            generate_svn_revision_id(uuid, 5, "", "none")))
+            mapping.generate_revision_id(uuid, 5, "")))
         self.assertTrue(newrepos.has_revision(
-            generate_svn_revision_id(uuid, 1, "", "none")))
+            mapping.generate_revision_id(uuid, 1, "")))
         inv1 = newrepos.get_inventory(
-                generate_svn_revision_id(uuid, 1, "", "none"))
+                mapping.generate_revision_id(uuid, 1, ""))
         inv2 = newrepos.get_inventory(
-                generate_svn_revision_id(uuid, 5, "", "none"))
+                mapping.generate_revision_id(uuid, 5, ""))
         self.assertNotEqual(inv1.path2id("y"), inv2.path2id("y"))
 
 
@@ -208,5 +209,13 @@ Node-copyfrom-path: x
         self.client_add("dc/bla")
         self.client_commit("dc", "Msg")
         self.check_output(
-                "Repository branch (format: subversion)\nLocation:\n  shared repository: a\n  repository branch: a\n\nRelated branches:\n  parent branch: a\n", 'info a')
+                "Repository branch (format: subversion)\nLocation:\n  shared repository: a\n  repository branch: a\n", 'info a')
+
+    def test_lightweight_checkout_lightweight_checkout(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/foo': "test", 'dc/bla': "ha"})
+        self.client_add("dc/foo")
+        self.client_add("dc/bla")
+        self.client_commit("dc", "Msg")
+        self.run_bzr("checkout --lightweight dc de")
 

@@ -1,0 +1,54 @@
+Unicode policy
+==============
+
+.. contents:: :local:
+
+Motivation
+----------
+In order to reduce the number of conversions between unicode and regular 
+strings, it is useful to be consistent in what encoding APIs accept their 
+arguments.
+
+Without a proper policy, it is possible to get the encoding wrong, or 
+end up with indexing bugs.
+
+Policy
+------
+
+Revision and file ids
+~~~~~~~~~~~~~~~~~~~~~
+Revision and file ids will be passed as regular strings, consistent with 
+Bazaar itself.
+
+Subversion paths
+~~~~~~~~~~~~~~~~
+Subversion itself returns regular strings using the utf-8 encoding. For that 
+reason, all branch paths also use that encoding and are not converted to 
+unicode objects until they are added to the inventory.
+
+Subversion properties
+~~~~~~~~~~~~~~~~~~~~~
+Subversion itself returns regular strings using the utf-8 encoding. Since the 
+bzr:file-ids property contains metadata to be used to construct 
+Bazaar inventories, the dictionary with file ids returned by various APIs 
+should use unicode objects for the keys and regular string objects for the 
+values (paths as unicode, file ids as regular strings).
+
+Branching schemes
+~~~~~~~~~~~~~~~~~
+Since serialized branching schemes are part of revision ids, which are 
+regular strings, they are also regular strings.
+
+SQLite cache
+~~~~~~~~~~~~~
+Since SQLite tends to return unicode strings, most strings need to be 
+encoded as utf8 before they are returned for use by other parts of the
+code. The LogWalker object should take care of this.
+
+Working Trees
+~~~~~~~~~~~~~
+Bazaars working tree functions assume all relative paths are unicode, 
+so the same convention will be used for bzr-svn's working tree-related code.
+
+..
+    vim: ft=rest

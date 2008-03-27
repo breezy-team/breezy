@@ -2,7 +2,7 @@
 # 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
@@ -124,17 +124,9 @@ def convert_repository(source_repos, output_url, scheme=None,
             target_repos = get_dir("").create_repository(shared=True)
         target_repos.set_make_working_trees(working_trees)
 
-    if filter_branch is None:
-        filter_branch = lambda (bp, rev, exists): exists
-
-    existing_branches = [(bp, revnum) for (bp, revnum, _) in 
-            filter(filter_branch,
-                   source_repos.find_branches(source_repos.get_scheme()))]
-
-    def is_dir((branch, revnum)):
-        return source_repos.transport.check_path(branch, revnum) == svn.core.svn_node_dir
-
-    existing_branches = filter(is_dir, existing_branches)
+    existing_branches = source_repos.find_branches(scheme=source_repos.get_scheme())
+    if filter_branch is not None:
+        existing_branches = filter(filter_branch, existing_branches)
 
     if create_shared_repo:
         inter = InterRepository.get(source_repos, target_repos)
@@ -144,32 +136,26 @@ def convert_repository(source_repos, output_url, scheme=None,
         elif (target_repos.is_shared() and 
               hasattr(inter, '_supports_branches') and 
               inter._supports_branches):
-            inter.fetch(branches=[source_repos.generate_revision_id(revnum, branch, str(source_repos.get_scheme())) for (branch, revnum) in existing_branches])
-
+            inter.fetch(branches=[branch.last_revision() for branch in existing_branches])
 
     source_graph = source_repos.get_graph()
     pb = ui.ui_factory.nested_progress_bar()
     try:
         i = 0
-        for (branch, revnum) in existing_branches:
-            pb.update("%s:%d" % (branch, revnum), i, len(existing_branches))
-            revid = source_repos.generate_revision_id(revnum, branch, 
-                                          str(source_repos.get_scheme()))
-
-            target_dir = get_dir(branch)
+        for source_branch in existing_branches:
+            pb.update("%s:%d" % (source_branch.get_branch_path(), source_branch.get_revnum()), i, len(existing_branches))
+            target_dir = get_dir(source_branch.get_branch_path())
             if not create_shared_repo:
                 try:
                     target_dir.open_repository()
                 except NoRepositoryPresent:
                     target_dir.create_repository()
-            source_branch_url = urlutils.join(source_repos.base, branch)
             try:
                 target_branch = target_dir.open_branch()
             except NotBranchError:
                 target_branch = target_dir.create_branch()
-                target_branch.set_parent(source_branch_url)
-            if revid != target_branch.last_revision():
-                source_branch = Branch.open(source_branch_url)
+                target_branch.set_parent(source_branch.base)
+            if source_branch.last_revision() != target_branch.last_revision():
                 # Check if target_branch contains a subset of 
                 # source_branch. If that is not the case, 
                 # assume that source_branch has been replaced 

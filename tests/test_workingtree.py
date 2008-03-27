@@ -1,8 +1,9 @@
 # Copyright (C) 2006 Jelmer Vernooij <jelmer@samba.org>
+# -*- coding: utf-8 -*-
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 
 # This program is distributed in the hope that it will be useful,
@@ -19,6 +20,7 @@
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoSuchFile, OutOfDateTree
 from bzrlib.inventory import Inventory
+from bzrlib.osutils import has_symlinks, supports_executable
 from bzrlib.tests import KnownFailure, TestCase
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
@@ -26,12 +28,10 @@ from bzrlib.workingtree import WorkingTree
 import svn.core
 import svn.wc
 
-import os
+import os, sys
 
-from fileids import generate_svn_file_id
-from repository import MAPPING_VERSION
 from transport import svn_config
-from tests import TestCaseWithSubversionRepository, RENAMES
+from tests import TestCaseWithSubversionRepository
 from workingtree import generate_ignore_list
 
 class TestWorkingTree(TestCaseWithSubversionRepository):
@@ -57,6 +57,15 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertIsInstance(inv, Inventory)
         self.assertTrue(inv.has_filename("bl"))
         self.assertFalse(inv.has_filename("aa"))
+
+    def test_special_char(self):
+        self.make_client('a', 'dc')
+        self.build_tree({u"dc/I²C": "data"})
+        self.client_add("dc/I²C")
+        tree = self.open_checkout("dc")
+        inv = tree.read_working_inventory()
+        self.assertIsInstance(inv, Inventory)
+        self.assertTrue(inv.has_filename(u"I²C"))
 
     def test_smart_add_file(self):
         self.make_client('a', 'dc')
@@ -284,7 +293,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertEqual(wt.branch.generate_revision_id(0), 
                          wt.basis_tree().inventory.revision_id)
         inv = Inventory()
-        root_id = generate_svn_file_id(wt.branch.repository.uuid, 0, "", "")
+        root_id = wt.branch.repository.get_mapping().generate_file_id(wt.branch.repository.uuid, 0, "", u"")
         inv.revision_id = wt.branch.generate_revision_id(0)
         inv.add_path('', 'directory', root_id).revision = inv.revision_id
                               
@@ -319,11 +328,6 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertTrue(inv.has_filename("dir/a"))
         mutter('basis: %r' % basis_inv.entries())
         mutter('working: %r' % inv.entries())
-        if RENAMES:
-            self.assertEqual(basis_inv.path2id("bl"), 
-                             inv.path2id("dir/bl"))
-            self.assertEqual(basis_inv.path2id("a"), 
-                            inv.path2id("dir/a"))
         self.assertFalse(inv.has_filename("bl"))
         self.assertFalse(basis_inv.has_filename("dir/bl"))
 
@@ -418,6 +422,8 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertEqual(['.svn', 'bl'], list(tree.extras()))
 
     def test_executable(self):
+        if not supports_executable():
+            return
         self.make_client('a', 'dc')
         self.build_tree({"dc/bla": "data"})
         self.client_add("dc/bla")
@@ -427,6 +433,8 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertTrue(inv[inv.path2id("bla")].executable)
 
     def test_symlink(self):
+        if not has_symlinks():
+            return
         self.make_client('a', 'dc')
         os.symlink("target", "dc/bla")
         self.client_add("dc/bla")
@@ -452,9 +460,9 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         
         tree = self.open_checkout("dc")
         tree.set_pending_merges([
-            "svn-v%d:1@a-uuid-foo-branch%%2fpath" % MAPPING_VERSION, "c"])
+            tree.branch.mapping.generate_revision_id("a-uuid-foo", 1, "branch/fpath"), "c"])
         self.assertEqual(
-                "svn-v%d:1@a-uuid-foo-branch%%2fpath\tc\n" % MAPPING_VERSION, 
+                "svn-v3-none:a-uuid-foo:branch%2Ffpath:1\tc\n",
                 self.client_get_prop("dc", "bzr:ancestry:v3-none"))
 
     def test_set_pending_merges_svk(self):
@@ -464,7 +472,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         
         tree = self.open_checkout("dc")
         tree.set_pending_merges([
-            "svn-v%d-undefined:a-uuid-foo:branch%%2fpath:1" % MAPPING_VERSION, "c"])
+            tree.branch.mapping.generate_revision_id("a-uuid-foo", 1, "branch/path"), "c"])
         self.assertEqual("a-uuid-foo:/branch/path:1\n", 
                          self.client_get_prop("dc", "svk:merge"))
 
@@ -525,8 +533,8 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
     def test_status(self):
         self.make_client('a', 'dc')
         tree = self.open_checkout("dc")
-        self.assertTrue(os.path.exists("dc/.svn"))
-        self.assertFalse(os.path.exists("dc/.bzr"))
+        self.assertTrue(os.path.exists(os.path.join("dc", ".svn")))
+        self.assertFalse(os.path.exists(os.path.join("dc", ".bzr")))
         tree.read_working_inventory()
 
     def test_update(self):
@@ -537,14 +545,14 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.client_commit("dc", "msg")
         tree = self.open_checkout("de")
         tree.update()
-        self.assertTrue(os.path.exists("de/.svn"))
-        self.assertTrue(os.path.exists("de/bla"))
+        self.assertTrue(os.path.exists(os.path.join("de", ".svn")))
+        self.assertTrue(os.path.exists(os.path.join("de", "bla")))
 
     def test_status_bzrdir(self):
         self.make_client('a', 'dc')
         bzrdir = self.open_checkout_bzrdir("dc")
-        self.assertTrue(os.path.exists("dc/.svn"))
-        self.assertTrue(not os.path.exists("dc/.bzr"))
+        self.assertTrue(os.path.exists(os.path.join("dc", ".svn")))
+        self.assertTrue(not os.path.exists(os.path.join("dc", ".bzr")))
         bzrdir.open_workingtree()
 
     def test_file_id_consistent(self):

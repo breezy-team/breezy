@@ -2,7 +2,7 @@
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 
 # This program is distributed in the hope that it will be useful,
@@ -15,7 +15,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Access to stored Subversion basis trees."""
 
-from bzrlib.inventory import Inventory
+from bzrlib import urlutils
+from bzrlib.branch import Branch
+from bzrlib.inventory import Inventory, InventoryDirectory, TreeReference
 
 from bzrlib import osutils, urlutils
 from bzrlib.trace import mutter
@@ -28,6 +30,68 @@ import urllib
 
 import svn.core, svn.wc, svn.delta
 from svn.core import Pool
+
+import errors
+
+def parse_externals_description(base_url, val):
+    """Parse an svn:externals property value.
+
+    :param base_url: URL on which the property is set. Used for 
+        relative externals.
+
+    :returns: dictionary with local names as keys, (revnum, url)
+              as value. revnum is the revision number and is 
+              set to None if not applicable.
+    """
+    ret = {}
+    for l in val.splitlines():
+        if l == "" or l[0] == "#":
+            continue
+        pts = l.rsplit(None, 2) 
+        if len(pts) == 3:
+            if not pts[1].startswith("-r"):
+                raise errors.InvalidExternalsDescription()
+            ret[pts[0]] = (int(pts[1][2:]), urlutils.join(base_url, pts[2]))
+        elif len(pts) == 2:
+            ret[pts[0]] = (None, urlutils.join(base_url, pts[1]))
+        else:
+            raise errors.InvalidExternalsDescription()
+    return ret
+
+
+def inventory_add_external(inv, parent_id, path, revid, ref_revnum, url):
+    """Add an svn:externals entry to an inventory as a tree-reference.
+    
+    :param inv: Inventory to add to.
+    :param parent_id: File id of directory the entry was set on.
+    :param path: Path of the entry, relative to entry with parent_id.
+    :param revid: Revision to store in newly created inventory entries.
+    :param ref_revnum: Referenced revision of tree that's being referenced, or 
+        None if no specific revision is being referenced.
+    :param url: URL of referenced tree.
+    """
+    assert ref_revnum is None or isinstance(ref_revnum, int)
+    assert revid is None or isinstance(revid, str)
+    (dir, name) = os.path.split(path)
+    parent = inv[parent_id]
+    if dir != "":
+        for part in dir.split("/"):
+            if parent.children.has_key(part):
+                parent = parent.children[part]
+            else:
+                # Implicitly add directory if it doesn't exist yet
+                # TODO: Generate a file id
+                parent = inv.add(InventoryDirectory('someid', part, 
+                                 parent_id=parent.file_id))
+                parent.revision = revid
+
+    reference_branch = Branch.open(url)
+    file_id = reference_branch.get_root_id()
+    ie = TreeReference(file_id, name, parent.file_id, revision=revid)
+    if ref_revnum is not None:
+        ie.reference_revision = reference_branch.get_rev_id(ref_revnum)
+    inv.add(ie)
+
 
 # Deal with Subversion 1.5 and the patched Subversion 1.4 (which are 
 # slightly different).
@@ -61,10 +125,10 @@ class SvnRevisionTree(RevisionTree):
         self._repository = repository
         self._revision_id = revision_id
         pool = Pool()
-        (self.branch_path, self.revnum, scheme) = repository.lookup_revision_id(revision_id)
+        (self.branch_path, self.revnum, mapping) = repository.lookup_revision_id(revision_id)
         self._inventory = Inventory()
         self.id_map = repository.get_fileid_map(self.revnum, self.branch_path, 
-                                                scheme)
+                                                mapping)
         editor = TreeBuildEditor(self, pool)
         self.file_data = {}
         root_repos = repository.transport.get_svn_repos_root()
@@ -107,7 +171,7 @@ class TreeBuildEditor(svn.delta.Editor):
         return file_id
 
     def change_dir_prop(self, id, name, value, pool):
-        from repository import (SVN_PROP_BZR_ANCESTRY, 
+        from mapping import (SVN_PROP_BZR_ANCESTRY, 
                         SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVISION_INFO, 
                         SVN_PROP_BZR_FILEIDS, SVN_PROP_BZR_REVISION_ID,
                         SVN_PROP_BZR_BRANCHING_SCHEME, SVN_PROP_BZR_MERGE)
@@ -142,12 +206,14 @@ class TreeBuildEditor(svn.delta.Editor):
             mutter('unsupported dir property %r' % name)
 
     def change_file_prop(self, id, name, value, pool):
-        from repository import SVN_PROP_BZR_PREFIX
+        from mapping import SVN_PROP_BZR_PREFIX
 
         if name == svn.core.SVN_PROP_EXECUTABLE:
             self.is_executable = (value != None)
         elif name == svn.core.SVN_PROP_SPECIAL:
             self.is_symlink = (value != None)
+        elif name == svn.core.SVN_PROP_EXTERNALS:
+            mutter('%r property on file!' % name)
         elif name == svn.core.SVN_PROP_ENTRY_COMMITTED_REV:
             self.last_file_rev = int(value)
         elif name in (svn.core.SVN_PROP_ENTRY_COMMITTED_DATE,
@@ -224,7 +290,7 @@ class SvnBasisTree(RevisionTree):
         self.id_map = workingtree.branch.repository.get_fileid_map(
                 workingtree.base_revnum, 
                 workingtree.branch.get_branch_path(workingtree.base_revnum), 
-                workingtree.branch.scheme)
+                workingtree.branch.mapping)
         self._inventory = Inventory(root_id=None)
         self._repository = workingtree.branch.repository
 

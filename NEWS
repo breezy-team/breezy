@@ -1,4 +1,166 @@
-bzr-svn 0.4.5	UNRELEASED
+bzr-svn 0.4.10  UNRELEASED
+
+  CHANGES
+
+   * Changed license from GPLv2 or later to GPLv3 or later.
+
+  FEATURES
+
+   * Add new ``log-strip-trailing-newline'' option which removes 
+     the last trailing newline from the log message when pushing 
+	 to Subversion. This feature is only available for the 
+	 experimental mappings. (#189227)
+
+   * Allow more granularity over what properties are overridden using 
+     ``override-svn-revprops''. (#159143)
+
+   * Add new ``append-revisions-only'' option with similar behaviour 
+     as in standard bzr formats. (#206242)
+
+   * No longer calculate inventory sha1's for svn revisions. Should provide 
+     some minor speed improvements.
+
+   * Parse mergeWithUpstream set by svn-buildpackage.
+
+  INTERNALS
+
+   * Branching from a Subversion repository will now fetch right-hand side 
+     parents as well as left hand side (mainline) parents, if specified.
+
+   * Removed revision number cache.
+
+  BUGS
+
+    * Avoid sometimes incorrect determination of Bazaar revision numbers. (#181773)
+
+	* Deal with bzr:svn-revision-info property being removed. (#206728)
+
+bzr-svn 0.4.9	2008-03-23
+
+  FEATURES
+
+   * Set revision properties when possible.
+
+   * Avoid doing two branch property lookups when getting revision metadata.
+
+   * Use caching revision graph.
+
+   * --prefix is now determined from the specified url in svn-import. (#160335)
+
+   * Support storing revision signatures.
+
+   * Re-use file properties on branch root more efficiently. This made 
+     the cache of branch properties unnecessary.
+
+   * Avoid using copy in several places.
+
+  BUGS
+  
+   * Fix compatibility with bzr 1.3.
+
+   * Be a bit quieter with messages about experimental mappings. (#162496)
+
+   * More correct implementation of Repository.get_ancestry(). 
+
+   * Properly use current branching scheme when following branches. (#183361)
+
+   * Avoid using special characters in branching scheme names because it 
+     breaks over http/https. (#204759). 
+
+  INTERNALS
+
+   * Allow multiple mappings to be available at the same time.
+
+  DOCUMENTATION
+
+   * Add note about svn+ prefix to authentication question.
+
+bzr-svn 0.4.8	2008-03-21
+
+  BUG FIXES
+
+   * Fix compatibility with Bazaar 1.2. (#196002)
+
+   * Don't provide find_repository() implementation. (#193814)
+
+   * Allow specifying path inside repository in svn-branching-scheme. (#190331)
+
+   * Support using platform-specific auth providers when available.
+
+   * Fix path to URL conversion for Windows NT. (#188233)
+
+   * Fix performance regression in sqlite queries.
+
+  FEATURES
+
+   * Add progress bar to fetch initialization code. 
+
+   * Add another progress bar to the branch detection code.
+
+   * Add -d option to the svn-push command. 
+
+bzr-svn 0.4.7	2008-02-01
+ 
+  FEATURES
+
+   * Implement Repository.find_branches(). (#178108)
+
+   * Warn about location when initializing Subversion repository cache.
+
+  BUGS
+
+   * Fix opening unicode file names during fetch. (#162368)
+
+   * Consistently handle unicode characters. (#129334, #164381)
+
+   * Handle unicode strings appropriately when reading working tree 
+     inventory. (#183853)
+
+   * Fix too strict indexing in old existing cache databases. (#165136)
+
+   * Handle children of replaced directories, themselve replaced correctly. (#181790)
+
+   * Handle corner cases tracking branches. (#184457)
+
+   * Avoid errors about invalid branching paths unless the branching scheme 
+     was specified explicitly.
+
+   * Change default format to rich-root-pack. (#187008)
+
+   * Fix handling of weird file change after replacing from other branch.
+     (#186876)
+
+bzr-svn 0.4.6	2008-01-08
+
+  PERFORMANCE
+  
+   * Remember where revids have already been detected. Makes incremental
+     push a lot faster, in particular in Subversion repositories 
+     with a lot of branches. (#139364)
+
+   * Work around memory leak in the Python Subversion bindings of svn.ra.get_log(). 
+
+  FEATURES
+
+   * Support retrieving credentials from Bazaar rather than relying on Subversions' cache. (#120768)
+
+  INTERNALS
+  
+   * Added pydoctor configuration file.
+
+  BUG FIXES
+
+   * Fix compatibility with Bazaar 1.1.
+
+   * Improved compatibility with Subversion 1.5.
+
+   * Actually set symlink target when pushing commits that add or change symlinks. (#177890)
+
+   * Don't mask exception in fetch code. (#165177)
+
+   * Deal with kind changes that don't change file contents. (#178149)
+
+bzr-svn 0.4.5	2007-12-01
 
   IMPROVEMENTS
 
@@ -8,11 +170,22 @@ bzr-svn 0.4.5	UNRELEASED
 
    * No longer store svn:author, svn:date and svn:log in the bzr-svn cache. 
      This should make it easier to use bzr-specific revprops later on and 
-	 saves some disk space.
+     saves some disk space.
+
+   * Use new rich-roots format everywhere rather than experimental 
+     dirstate-with-subtree.
 
   BUG FIXES
 
    * Properly decode unicode commit messages. 
+
+   * Handle some corner cases when finding branches.
+
+   * Print comprehensible error when unsupport characters occur in file names.
+     (partial fix of #163585)
+
+   * Fix compatibility with Bazaar 1.0rc1.
+
 
 bzr-svn 0.4.4	2007-11-02
 

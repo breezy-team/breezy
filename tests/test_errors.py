@@ -2,7 +2,7 @@
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 
 # This program is distributed in the hope that it will be useful,
@@ -20,6 +20,7 @@ from bzrlib.errors import (ConnectionError, ConnectionReset, LockError,
 from bzrlib.tests import TestCase
 
 from errors import (convert_svn_error, convert_error, InvalidPropertyValue, 
+                    InvalidSvnBranchPath, NotSvnBranchPath, 
                     SVN_ERR_UNKNOWN_HOSTNAME)
 
 import svn.core
@@ -66,6 +67,9 @@ class TestConvertError(TestCase):
     def test_convert_unknown_hostname(self):
         self.assertIsInstance(convert_error(SubversionException("Unknown hostname 'bla'", SVN_ERR_UNKNOWN_HOSTNAME)), ConnectionError)
 
+    def test_not_implemented(self):
+        self.assertIsInstance(convert_error(SubversionException("Remote server doesn't support ...", svn.core.SVN_ERR_RA_NOT_IMPLEMENTED)), NotImplementedError)
+
     def test_decorator_nothrow(self):
         @convert_svn_error
         def test_nothrow(foo):
@@ -78,3 +82,9 @@ class TestConvertError(TestCase):
         self.assertEqual(
           "Invalid property value for Subversion property svn:foobar: corrupt", 
           str(error))
+
+    def test_invalidsvnbranchpath_nonascii(self):
+        InvalidSvnBranchPath('\xc3\xb6', None)
+
+    def test_notsvnbranchpath_nonascii(self):
+        NotSvnBranchPath('\xc3\xb6', None)

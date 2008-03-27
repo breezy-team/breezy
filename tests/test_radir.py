@@ -2,7 +2,7 @@
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 
 # This program is distributed in the hope that it will be useful,
@@ -131,7 +131,7 @@ class TestRemoteAccess(TestCaseWithSubversionRepository):
     def test_needs_format_upgrade_other(self):
         repos_url = self.make_client("d", "dc")
         x = BzrDir.open(repos_url+"/trunk")
-        self.assertTrue(x.needs_format_conversion(format_registry.make_bzrdir("dirstate-with-subtree")))
+        self.assertTrue(x.needs_format_conversion(format_registry.make_bzrdir("rich-root")))
 
     def test_needs_format_upgrade_default(self):
         repos_url = self.make_client("d", "dc")

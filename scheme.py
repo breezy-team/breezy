@@ -2,7 +2,7 @@
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 
 # This program is distributed in the hope that it will be useful,
@@ -16,11 +16,24 @@
 """Branching scheme implementations."""
 
 from bzrlib import ui
-from bzrlib.errors import NotBranchError, BzrError
+from bzrlib.errors import BzrError
 from bzrlib.trace import mutter
+
+from errors import InvalidSvnBranchPath
 
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 import bz2
+
+def is_valid_property_name(prop):
+    if not prop[0].isalnum() and not prop[0] in ":_":
+        return False
+    for c in prop[1:]:
+        if not c.isalnum() and not c in "-:._":
+            return False
+    return True
+
+
+
 
 class BranchingScheme:
     """ Divides SVN repository data up into branches. Since there
@@ -52,6 +65,7 @@ class BranchingScheme:
         :param name: Name of branching scheme.
         :return: Branching scheme instance.
         """
+        assert isinstance(name, str)
         if name.startswith("trunk"):
             if name == "trunk":
                 return TrunkBranchingScheme()
@@ -64,7 +78,10 @@ class BranchingScheme:
             return NoBranchingScheme()
 
         if name.startswith("single-"):
-            return SingleBranchingScheme(name[len("single-"):])
+            return SingleBranchingSchemev0(name[len("single-"):])
+
+        if name.startswith("single1-"):
+            return SingleBranchingScheme(encoded=name[len("single1-"):])
 
         if name.startswith("list-"):
             return ListBranchingScheme(name[len("list-"):])
@@ -121,6 +138,14 @@ def parse_list_scheme_text(text):
     return branches
 
 
+def prop_name_unquote(text):
+    return urlsafe_b64decode(text.replace(".", "="))
+
+
+def prop_name_quote(text):
+    return urlsafe_b64encode(text).replace("=", ".")
+
+
 class ListBranchingScheme(BranchingScheme):
     """Branching scheme that keeps a list of branch paths, including 
     wildcards."""
@@ -129,14 +154,15 @@ class ListBranchingScheme(BranchingScheme):
 
         :param branch_list: List of know branch locations.
         """
-        if isinstance(branch_list, basestring):
-            branch_list = bz2.decompress(urlsafe_b64decode(branch_list.encode("ascii").replace(".", "="))).splitlines()
+        assert isinstance(branch_list, list) or isinstance(branch_list, str)
+        if isinstance(branch_list, str):
+            branch_list = bz2.decompress(prop_name_unquote(branch_list.encode("ascii"))).splitlines()
         self.branch_list = [p.strip("/") for p in branch_list]
         self.split_branch_list = [p.split("/") for p in self.branch_list]
 
     def __str__(self):
-        return "list-%s" % urlsafe_b64encode(bz2.compress("".join(map(lambda x:x+"\n", self.branch_list)))).replace("=", ".")
-
+        return "list-%s" % prop_name_quote(bz2.compress("".join(map(lambda x:x+"\n", self.branch_list))))
+            
     def is_tag(self, path):
         """See BranchingScheme.is_tag()."""
         return False
@@ -160,12 +186,13 @@ class ListBranchingScheme(BranchingScheme):
 
     def unprefix(self, path):
         """See BranchingScheme.unprefix()."""
+        assert isinstance(path, str)
         parts = path.strip("/").split("/")
         for pattern in self.split_branch_list:
             if self._pattern_cmp(parts[:len(pattern)], pattern):
                 return ("/".join(parts[:len(pattern)]), 
                         "/".join(parts[len(pattern):]))
-        raise NotBranchError(path=path)
+        raise InvalidSvnBranchPath(path=path, scheme=self)
 
     def __eq__(self, other):
         return self.branch_list == other.branch_list
@@ -202,10 +229,14 @@ class NoBranchingScheme(ListBranchingScheme):
 
     def unprefix(self, path):
         """See BranchingScheme.unprefix()."""
+        assert isinstance(path, str)
         return ("", path.strip("/"))
 
     def __str__(self):
         return "none"
+
+    def __repr__(self):
+        return "%s()" % self.__class__.__name__
 
     def is_branch_parent(self, path):
         return False
@@ -215,8 +246,9 @@ class NoBranchingScheme(ListBranchingScheme):
 
 
 class TrunkBranchingScheme(ListBranchingScheme):
-    """Standard Subversion repository layout. Each project contains three 
-    directories `trunk', `tags' and `branches'. 
+    """Standard Subversion repository layout. 
+    
+    Each project contains three directories `trunk`, `tags` and `branches`. 
     """
     def __init__(self, level=0):
         self.level = level
@@ -247,9 +279,10 @@ class TrunkBranchingScheme(ListBranchingScheme):
 
     def unprefix(self, path):
         """See BranchingScheme.unprefix()."""
+        assert isinstance(path, str)
         parts = path.strip("/").split("/")
         if len(parts) == 0 or self.level >= len(parts):
-            raise NotBranchError(path=path)
+            raise InvalidSvnBranchPath(path=path, scheme=self)
 
         if parts[self.level] == "trunk" or parts[self.level] == "hooks":
             return ("/".join(parts[0:self.level+1]).strip("/"), 
@@ -259,10 +292,13 @@ class TrunkBranchingScheme(ListBranchingScheme):
             return ("/".join(parts[0:self.level+2]).strip("/"), 
                     "/".join(parts[self.level+2:]).strip("/"))
         else:
-            raise NotBranchError(path=path)
+            raise InvalidSvnBranchPath(path=path, scheme=self)
 
     def __str__(self):
         return "trunk%d" % self.level
+
+    def __repr__(self):
+        return "%s(%d)" % (self.__class__.__name__, self.level)
 
     def is_branch_parent(self, path):
         parts = path.strip("/").split("/")
@@ -286,7 +322,9 @@ class UnknownBranchingScheme(BzrError):
 class SingleBranchingScheme(ListBranchingScheme):
     """Recognizes just one directory in the repository as branch.
     """
-    def __init__(self, path):
+    def __init__(self, path=None, encoded=None):
+        if encoded is not None:
+            path = prop_name_unquote(encoded)
         self.path = path.strip("/")
         if self.path == "":
             raise BzrError("NoBranchingScheme should be used")
@@ -302,15 +340,22 @@ class SingleBranchingScheme(ListBranchingScheme):
 
     def unprefix(self, path):
         """See BranchingScheme.unprefix()."""
+        assert isinstance(path, str)
         path = path.strip("/")
         if not path.startswith(self.path):
-            raise NotBranchError(path=path)
+            raise InvalidSvnBranchPath(path=path, scheme=self)
 
         return (path[0:len(self.path)].strip("/"), 
                 path[len(self.path):].strip("/"))
 
     def __str__(self):
-        return "single-%s" % self.path
+        if is_valid_property_name(self.path):
+            return "single-%s" % self.path
+        else:
+            return "single1-%s" % prop_name_quote(self.path)
+
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self.path)
 
     def is_branch_parent(self, path):
         if not "/" in self.path:
@@ -319,6 +364,16 @@ class SingleBranchingScheme(ListBranchingScheme):
 
     def is_tag_parent(self, path):
         return False
+
+
+class SingleBranchingSchemev0(SingleBranchingScheme):
+    """Version of SingleBranchingSchemev0 that *never* quotes.
+    """
+    def __init__(self, path=None, allow_quotes=True):
+        SingleBranchingScheme.__init__(self, path)
+
+    def __str__(self):
+        return "single-%s" % self.path
 
 
 def _find_common_prefix(paths):

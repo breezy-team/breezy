@@ -2,7 +2,7 @@
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 
 # This program is distributed in the hope that it will be useful,
@@ -20,7 +20,13 @@ from bzrlib.errors import (BzrError, ConnectionError, ConnectionReset,
                            DependencyNotPresent, NoRepositoryPresent,
                            TransportError, UnexpectedEndOfContainerError)
 
+import urllib
 import svn.core
+
+
+class InvalidExternalsDescription(BzrError):
+    _fmt = """Unable to parse externals description."""
+
 
 # APR define, not in svn.core
 SVN_ERR_UNKNOWN_HOSTNAME = 670002
@@ -31,7 +37,19 @@ class NotSvnBranchPath(NotBranchError):
 See 'bzr help svn-branching-schemes' for details."""
 
     def __init__(self, branch_path, scheme=None):
-        NotBranchError.__init__(self, branch_path)
+        NotBranchError.__init__(self, urllib.quote(branch_path))
+        self.scheme = scheme
+
+
+class InvalidSvnBranchPath(NotBranchError):
+    """Error raised when a path was specified that is not a child of or itself
+    a valid branch path in the current branching scheme."""
+    _fmt = """%(path)s is not a valid Subversion branch path in the current 
+branching scheme. See 'bzr help svn-branching-schemes' for details."""
+
+    def __init__(self, path, scheme):
+        assert isinstance(path, str)
+        NotBranchError.__init__(self, urllib.quote(path))
         self.scheme = scheme
 
 
@@ -80,6 +98,8 @@ def convert_error(err):
         return UnexpectedEndOfContainerError()
     elif num == svn.core.SVN_ERR_RA_SVN_MALFORMED_DATA:
         return TransportError("Malformed data", msg)
+    elif num == svn.core.SVN_ERR_RA_NOT_IMPLEMENTED:
+        return NotImplementedError("Function not implemented in remote server")
     elif num == SVN_ERR_UNKNOWN_HOSTNAME:
         return ConnectionError(msg=msg)
     elif num > 0 and num < 1000:
@@ -126,3 +146,19 @@ class RebaseNotPresent(DependencyNotPresent):
 
     def __init__(self, error):
         DependencyNotPresent.__init__(self, 'bzr-rebase', error)
+
+
+class InvalidFileName(BzrError):
+    _fmt = "Unable to convert Subversion path %(path)s because it contains characters invalid in Bazaar."
+
+    def __init__(self, path):
+        BzrError.__init__(self)
+        self.path = path
+
+
+class CorruptMappingData(BzrError):
+    _fmt = """An invalid change was made to the bzr-specific properties in %(path)s."""
+
+    def __init__(self, path):
+        BzrError.__init__(self)
+        self.path = path

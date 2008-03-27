@@ -1,0 +1,26 @@
+#!/bin/sh
+
+# This is an example prev-revprop-change hook that 
+# allows setting bzr revision properties on Subversion 
+# revisions.
+
+# This script is only needed if you would like to use 
+# revision properties rather than file properties and 
+# is not necessary when the server and client are 
+# both running Subversion 1.5.
+
+REPOS="$1"
+REV="$2"
+USER="$3"
+PROPNAME="$4"
+ACTION="$5"
+
+if [ "$ACTION" = "M" -a "$PROPNAME" = "svn:log" ]; then exit 0; fi
+
+if [ "$ACTION" = "M" -a "$PROPNAME" = "bzr:gpg-signature" ]; then exit 0; fi
+
+# Allow adding bzr-svn revision properties:
+if [ "$ACTION" = "A" -a "`echo "$PROPNAME" | cut -d : -f 1`" = "bzr" ]; then exit 0; fi
+
+echo "Changing revision properties other than svn:log or bzr:* is prohibited" >&2
+exit 1

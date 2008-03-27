@@ -2,7 +2,7 @@
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 
 # This program is distributed in the hope that it will be useful,
@@ -15,12 +15,13 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Stores per-repository settings."""
 
-from bzrlib import osutils
-from bzrlib.config import IniBasedConfig, config_dir, ensure_config_dir_exists, GlobalConfig
+from bzrlib import osutils, urlutils
+from bzrlib.config import IniBasedConfig, config_dir, ensure_config_dir_exists, GlobalConfig, LocationConfig, Config
 
 import os
 
 from scheme import BranchingScheme
+import svn.core
 
 # Settings are stored by UUID. 
 # Data stored includes default branching scheme and locations the repository 
@@ -41,12 +42,13 @@ class SvnRepositoryConfig(IniBasedConfig):
         if not self.uuid in self._get_parser():
             self._get_parser()[self.uuid] = {}
 
-    def set_branching_scheme(self, scheme):
+    def set_branching_scheme(self, scheme, mandatory=False):
         """Change the branching scheme.
 
         :param scheme: New branching scheme.
         """
         self.set_user_option('branching-scheme', str(scheme))
+        self.set_user_option('branching-scheme-mandatory', str(mandatory))
 
     def _get_user_option(self, name, use_global=True):
         try:
@@ -63,19 +65,65 @@ class SvnRepositoryConfig(IniBasedConfig):
         """
         schemename = self._get_user_option("branching-scheme", use_global=False)
         if schemename is not None:
-            return BranchingScheme.find_scheme(schemename)
+            return BranchingScheme.find_scheme(schemename.encode('ascii'))
         return None
+
+    def get_set_revprops(self):
+        """Check whether or not bzr-svn should attempt to store Bazaar
+        revision properties in Subversion revision properties during commit."""
+        try:
+            return self._get_parser().get_bool(self.uuid, "set-revprops")
+        except KeyError:
+            return None
+
+    def get_supports_change_revprop(self):
+        """Check whether or not the repository supports changing existing 
+        revision properties."""
+        try:
+            return self._get_parser().get_bool(self.uuid, "supports-change-revprop")
+        except KeyError:
+            return None
+
+    def get_log_strip_trailing_newline(self):
+        """Check whether or not trailing newlines should be stripped in the 
+        Subversion log message (where support by the bzr<->svn mapping used)."""
+        try:
+            return self._get_parser().get_bool(self.uuid, "log-strip-trailing-newline")
+        except KeyError:
+            return False
+
+    def branching_scheme_is_mandatory(self):
+        """Check whether or not the branching scheme for this repository 
+        is mandatory.
+        """
+        try:
+            return self._get_parser().get_bool(self.uuid, "branching-scheme-mandatory")
+        except KeyError:
+            return False
 
     def get_override_svn_revprops(self):
         """Check whether or not bzr-svn should attempt to override Subversion revision 
         properties after committing."""
-        try:
-            return self._get_parser().get_bool(self.uuid, "override-svn-revprops")
-        except KeyError:
-            pass
+        def get_list(parser, section):
+            try:
+                if parser.get_bool(section, "override-svn-revprops"):
+                    return [svn.core.SVN_PROP_REVISION_DATE, svn.core.SVN_PROP_REVISION_AUTHOR]
+                return []
+            except ValueError:
+                return parser.get_value(section, "override-svn-revprops").split(",")
+            except KeyError:
+                return None
+        ret = get_list(self._get_parser(), self.uuid)
+        if ret is not None:
+            return ret
         global_config = GlobalConfig()
+        return get_list(global_config._get_parser(), global_config._get_section())
+
+    def get_append_revisions_only(self):
+        """Check whether it is possible to remove revisions from the mainline.
+        """
         try:
-            return global_config._get_parser().get_bool(global_config._get_section(), "override-svn-revprops")
+            return self._get_parser().get_bool(self.uuid, "append_revisions_only")
         except KeyError:
             return None
 
@@ -110,3 +158,51 @@ class SvnRepositoryConfig(IniBasedConfig):
         f = open(self._get_filename(), 'wb')
         self._get_parser().write(f)
         f.close()
+
+
+class BranchConfig(Config):
+    def __init__(self, branch):
+        super(BranchConfig, self).__init__()
+        self._location_config = None
+        self._repository_config = None
+        self.branch = branch
+        self.option_sources = (self._get_location_config, 
+                               self._get_repository_config)
+
+    def _get_location_config(self):
+        if self._location_config is None:
+            self._location_config = LocationConfig(self.branch.base)
+        return self._location_config
+
+    def _get_repository_config(self):
+        if self._repository_config is None:
+            self._repository_config = SvnRepositoryConfig(self.branch.repository.uuid)
+        return self._repository_config
+
+    def _get_user_option(self, option_name):
+        """See Config._get_user_option."""
+        for source in self.option_sources:
+            value = source()._get_user_option(option_name)
+            if value is not None:
+                return value
+        return None
+
+    def get_append_revisions_only(self):
+        return self.get_user_option("append_revision_only")
+
+    def _get_user_id(self):
+        """Get the user id from the 'email' key in the current section."""
+        return self._get_user_option('email')
+
+    def get_option(self, key, section=None):
+        if section == "BUILDDEB" and key == "merge":
+            revnum = self.branch.get_revnum()
+            try:
+                props = self.branch.repository.transport.get_dir(urlutils.join(self.branch.get_branch_path(revnum), "debian"), revnum)[2]
+                if props.has_key("mergeWithUpstream"):
+                    return "True"
+                else:
+                    return "False"
+            except svn.core.SubversionException:
+                return None
+        return None

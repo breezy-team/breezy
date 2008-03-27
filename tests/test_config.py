@@ -2,7 +2,7 @@
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 
 # This program is distributed in the hope that it will be useful,
@@ -49,10 +49,55 @@ class ReposConfigTests(TestCaseInTempDir):
         c.set_branching_scheme(TrunkBranchingScheme())
         self.assertEquals("trunk0", str(c.get_branching_scheme()))
 
+    def test_get_scheme_mandatory_none(self):
+        c = SvnRepositoryConfig("blabla3")
+        self.assertEquals(False, c.branching_scheme_is_mandatory())
+
+    def test_get_scheme_mandatory_set(self):
+        c = SvnRepositoryConfig("blabla3")
+        c.set_branching_scheme(TrunkBranchingScheme(), mandatory=True)
+        self.assertEquals(True, c.branching_scheme_is_mandatory())
+        c.set_branching_scheme(TrunkBranchingScheme(), mandatory=False)
+        self.assertEquals(False, c.branching_scheme_is_mandatory())
+
     def test_override_revprops(self):
         c = SvnRepositoryConfig("blabla2")
         self.assertEquals(None, c.get_override_svn_revprops())
         c.set_user_option("override-svn-revprops", "True")
-        self.assertEquals(True, c.get_override_svn_revprops())
+        self.assertEquals(["svn:date", "svn:author"], c.get_override_svn_revprops())
         c.set_user_option("override-svn-revprops", "False")
-        self.assertEquals(False, c.get_override_svn_revprops())
+        self.assertEquals([], c.get_override_svn_revprops())
+        c.set_user_option("override-svn-revprops", "svn:author,svn:date")
+        self.assertEquals(["svn:author","svn:date"], c.get_override_svn_revprops())
+
+    def test_get_append_revisions_only(self):
+        c = SvnRepositoryConfig("blabla2")
+        self.assertEquals(None, c.get_append_revisions_only())
+        c.set_user_option("append_revisions_only", "True")
+        self.assertEquals(True, c.get_append_revisions_only())
+        c.set_user_option("append_revisions_only", "False")
+        self.assertEquals(False, c.get_append_revisions_only())
+
+    def test_set_revprops(self):
+        c = SvnRepositoryConfig("blabla2")
+        self.assertEquals(None, c.get_set_revprops())
+        c.set_user_option("set-revprops", "True")
+        self.assertEquals(True, c.get_set_revprops())
+        c.set_user_option("set-revprops", "False")
+        self.assertEquals(False, c.get_set_revprops())
+
+    def test_log_strip_trailing_newline(self):
+        c = SvnRepositoryConfig("blabla3")
+        self.assertEquals(False, c.get_log_strip_trailing_newline())
+        c.set_user_option("log-strip-trailing-newline", "True")
+        self.assertEquals(True, c.get_log_strip_trailing_newline())
+        c.set_user_option("log-strip-trailing-newline", "False")
+        self.assertEquals(False, c.get_log_strip_trailing_newline())
+
+    def test_supports_change_revprop(self):
+        c = SvnRepositoryConfig("blabla2")
+        self.assertEquals(None, c.get_supports_change_revprop())
+        c.set_user_option("supports-change-revprop", "True")
+        self.assertEquals(True, c.get_supports_change_revprop())
+        c.set_user_option("supports-change-revprop", "False")
+        self.assertEquals(False, c.get_supports_change_revprop())
