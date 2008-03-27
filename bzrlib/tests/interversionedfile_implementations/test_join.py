@@ -222,9 +222,8 @@ class TestJoin(TestCaseWithTransport):
         # ghost data should have been preserved
         self.assertEqual(['base', 'notbase'], source.get_ancestry_with_ghosts(['notbase']))
         self.assertEqual(['base'], source.get_parents_with_ghosts('notbase'))
-        self.assertEqual({'notbase':('base',)}, source.get_parent_map(['notbase']))
-        self.assertEqual({'notbase':('base',)}, source.get_graph_with_ghosts())
-        self.assertTrue(source.has_ghost('base'))
+        self.assertEqual({'notbase':('base',)},
+            source.get_parent_map(source.versions()))
 
         # if we add something that is fills out what is a ghost, then 
         # when joining into a ghost aware join it should flesh out the ghosts.
@@ -242,8 +241,7 @@ class TestJoin(TestCaseWithTransport):
         self.assertEqual({'base':(),
                           'notbase':('base',),
                           },
-                         target.get_graph_with_ghosts())
-        self.assertFalse(target.has_ghost('base'))
+            source.get_parent_map(source.versions()))
 
     def test_restricted_join_into_empty(self):
         # joining into an empty versioned file with a version_ids list

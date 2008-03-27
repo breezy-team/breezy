@@ -632,7 +632,6 @@ class VersionedFileTestMixIn(object):
             # check the other ghost apis are also not implemented
             self.assertRaises(NotImplementedError, vf.get_ancestry_with_ghosts, ['foo'])
             self.assertRaises(NotImplementedError, vf.get_parents_with_ghosts, 'foo')
-            self.assertRaises(NotImplementedError, vf.get_graph_with_ghosts)
             return
         vf = self.reopen_file()
         # test key graph related apis: getncestry, _graph, get_parents
@@ -646,7 +645,8 @@ class VersionedFileTestMixIn(object):
         # we have _with_ghost apis to give us ghost information.
         self.assertEqual([parent_id_utf8, 'notbxbfse'], vf.get_ancestry_with_ghosts(['notbxbfse']))
         self.assertEqual([parent_id_utf8], vf.get_parents_with_ghosts('notbxbfse'))
-        self.assertEqual({'notbxbfse':(parent_id_utf8,)}, vf.get_graph_with_ghosts())
+        self.assertEqual({'notbxbfse':(parent_id_utf8,)},
+            self.applyDeprecated(one_four, vf.get_graph_with_ghosts))
         self.assertTrue(self.applyDeprecated(one_four, vf.has_ghost,
             parent_id_utf8))
         # if we add something that is a ghost of another, it should correct the
@@ -667,7 +667,7 @@ class VersionedFileTestMixIn(object):
         self.assertEqual({parent_id_utf8:(),
                           'notbxbfse':(parent_id_utf8,),
                           },
-                         vf.get_graph_with_ghosts())
+            self.applyDeprecated(one_four, vf.get_graph_with_ghosts))
         self.assertFalse(self.applyDeprecated(one_four, vf.has_ghost,
             parent_id_utf8))
 

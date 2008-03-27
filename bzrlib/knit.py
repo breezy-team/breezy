@@ -757,10 +757,10 @@ class KnitVersionedFile(VersionedFile):
             annotated_part = "plain"
         return "knit-%s" % (annotated_part,)
         
+    @deprecated_method(one_four)
     def get_graph_with_ghosts(self):
         """See VersionedFile.get_graph_with_ghosts()."""
-        graph_items = self._index.get_graph()
-        return dict(graph_items)
+        return self.get_parent_map(self.versions())
 
     def get_sha1(self, version_id):
         return self.get_sha1s([version_id])[0]
@@ -1433,10 +1433,6 @@ class _KnitIndex(_KnitComponentFile):
                 self._transport.put_bytes_non_atomic(
                     self._filename, self.HEADER, mode=self._file_mode)
 
-    def get_graph(self):
-        """Return a list of the node:parents lists from this knit index."""
-        return [(vid, idx[4]) for vid, idx in self._cache.iteritems()]
-
     def get_ancestry(self, versions, topo_sorted=True):
         """See VersionedFile.get_ancestry."""
         # get a graph of all the mentioned versions:
@@ -1853,15 +1849,6 @@ class KnitGraphIndex(object):
             return 'line-delta'
         else:
             return 'fulltext'
-
-    def get_graph(self):
-        """Return a list of the node:parents lists from this knit index."""
-        if not self._parents:
-            return [(key, ()) for key in self.get_versions()]
-        result = []
-        for index, key, value, refs in self._graph_index.iter_all_entries():
-            result.append((key[0], tuple([ref[0] for ref in refs[0]])))
-        return result
 
     def iter_parents(self, version_ids):
         """Iterate through the parents for many version ids.

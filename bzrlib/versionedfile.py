@@ -385,6 +385,7 @@ class VersionedFile(object):
                     pending.add(parent)
         return result
 
+    @deprecated_method(one_four)
     def get_graph_with_ghosts(self):
         """Return a graph for the entire versioned file.
         

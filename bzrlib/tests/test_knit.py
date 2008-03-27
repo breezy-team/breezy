@@ -628,18 +628,6 @@ class LowLevelKnitIndexTests(TestCase):
             {}),
             transport.calls.pop(0))
 
-    def test_get_graph(self):
-        transport = MockTransport()
-        index = self.get_knit_index(transport, "filename", "w", create=True)
-        self.assertEqual([], index.get_graph())
-
-        index.add_version("a", ["option"], (None, 0, 1), ["b"])
-        self.assertEqual([("a", ("b",))], index.get_graph())
-
-        index.add_version("c", ["option"], (None, 0, 1), ["d"])
-        self.assertEqual([("a", ("b",)), ("c", ("d",))],
-            sorted(index.get_graph()))
-
     def test_get_ancestry(self):
         transport = MockTransport([
             _KnitIndex.HEADER,
@@ -2291,15 +2279,6 @@ class TestGraphIndexKnit(KnitTests):
         return KnitGraphIndex(combined_index, deltas=deltas,
             add_callback=add_callback)
 
-    def test_get_graph(self):
-        index = self.two_graph_index()
-        self.assertEqual(set([
-            ('tip', ('parent', )),
-            ('tail', ()),
-            ('parent', ('tail', 'ghost')),
-            ('separate', ()),
-            ]), set(index.get_graph()))
-
     def test_get_ancestry(self):
         # get_ancestry is defined as eliding ghosts, not erroring.
         index = self.two_graph_index()
@@ -2588,15 +2567,6 @@ class TestNoParentsGraphIndexKnit(KnitTests):
             add_callback = None
         return KnitGraphIndex(combined_index, parents=False,
             add_callback=add_callback)
-
-    def test_get_graph(self):
-        index = self.two_graph_index()
-        self.assertEqual(set([
-            ('tip', ()),
-            ('tail', ()),
-            ('parent', ()),
-            ('separate', ()),
-            ]), set(index.get_graph()))
 
     def test_get_ancestry(self):
         # with no parents, ancestry is always just the key.
