@@ -843,7 +843,7 @@ class SvnRepository(Repository):
 
         return ret
 
-    def find_branches(self, using=False):
+    def find_branches(self, using=False, scheme=None):
         """Find branches underneath this repository.
 
         This will include branches inside other branches.
@@ -852,7 +852,8 @@ class SvnRepository(Repository):
         """
         # All branches use this repository, so the using argument can be 
         # ignored.
-        scheme = self.get_scheme()
+        if scheme is None:
+            scheme = self.get_scheme()
 
         existing_branches = [bp for (bp, revnum, _) in 
                 filter(lambda (bp, rev, exists): exists,
