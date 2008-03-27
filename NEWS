@@ -55,6 +55,8 @@ IN DEVELOPMENT
 
   DOCUMENTATION:
 
+    * Minor fixes to the User Guide. (Matthew Fuller)
+
   API BREAKS:
 
     * Attempting to pull data from a ghost aware repository (e.g. knits) into a
