@@ -427,6 +427,20 @@ class TestSerializer(TestCase):
         self.assertEqual(bzrlib.osutils.split_lines(txt), lines)
         self.assertEqualDiff(_expected_inv_v8, txt)
 
+    def test_revision_text_v6(self):
+        """Pack revision to XML v6"""
+        rev = bzrlib.xml6.serializer_v6.read_revision_from_string(
+            _expected_rev_v5)
+        serialized = bzrlib.xml6.serializer_v6.write_revision_to_string(rev)
+        self.assertEqualDiff(serialized, _expected_rev_v5)
+
+    def test_revision_text_v7(self):
+        """Pack revision to XML v7"""
+        rev = bzrlib.xml7.serializer_v7.read_revision_from_string(
+            _expected_rev_v5)
+        serialized = bzrlib.xml7.serializer_v7.write_revision_to_string(rev)
+        self.assertEqualDiff(serialized, _expected_rev_v5)
+
     def test_revision_text_v8(self):
         """Pack revision to XML v8"""
         rev = bzrlib.xml8.serializer_v8.read_revision_from_string(

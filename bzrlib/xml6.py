@@ -26,6 +26,8 @@ class Serializer_v6(xml8.Serializer_v8):
     """
 
     format_num = '6'
+    # Format 6 & 7 reported their revision format as 5.
+    revision_format_num = '5'
 
 
 serializer_v6 = Serializer_v6()
