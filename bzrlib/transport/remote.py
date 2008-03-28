@@ -106,6 +106,8 @@ class RemoteTransport(transport.ConnectedTransport):
                                                                   self.base)
         else:
             if medium is None:
+                # No medium was specified, so share the medium from the
+                # _from_transport.
                 medium = self._shared_connection.connection
 
         if _client is None:
