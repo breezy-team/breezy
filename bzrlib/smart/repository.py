@@ -31,6 +31,7 @@ from bzrlib.smart.request import (
     SmartServerRequest,
     SuccessfulSmartServerResponse,
     )
+from bzrlib.repository import _strip_NULL_ghosts
 from bzrlib import revision as _mod_revision
 
 
@@ -86,6 +87,18 @@ class SmartServerRepositoryRequest(SmartServerRequest):
                 # filling races are not a problem.
                 return (None, FailedSmartServerResponse(('NoSuchRevision',)))
             return (search, None)
+        finally:
+            repository.unlock()
+
+
+class SmartServerRepositoryReadLocked(SmartServerRepositoryRequest):
+    """Calls self.do_readlocked_repository_request."""
+
+    def do_repository_request(self, repository, *args):
+        """Read lock a repository for do_readlocked_repository_request."""
+        repository.lock_read()
+        try:
+            return self.do_readlocked_repository_request(repository, *args)
         finally:
             repository.unlock()
 
@@ -176,10 +189,12 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
             ('ok', ), bz2.compress('\n'.join(lines)))
 
 
-class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryRequest):
+class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryReadLocked):
     
-    def do_repository_request(self, repository, revision_id):
+    def do_readlocked_repository_request(self, repository, revision_id):
         """Return the result of repository.get_revision_graph(revision_id).
+
+        Deprecated as of bzr 1.4, but supported for older clients.
         
         :param repository: The repository to query in.
         :param revision_id: The utf8 encoded revision_id to get a graph from.
@@ -190,9 +205,17 @@ class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryRequest):
             revision_id = None
 
         lines = []
-        try:
-            revision_graph = repository.get_revision_graph(revision_id)
-        except errors.NoSuchRevision:
+        graph = repository.get_graph()
+        if revision_id:
+            search_ids = [revision_id]
+        else:
+            search_ids = repository.all_revision_ids()
+        search = graph._make_breadth_first_searcher(search_ids)
+        transitive_ids = set()
+        map(transitive_ids.update, list(search))
+        parent_map = graph.get_parent_map(transitive_ids)
+        revision_graph = _strip_NULL_ghosts(parent_map)
+        if revision_id and revision_id not in revision_graph:
             # Note that we return an empty body, rather than omitting the body.
             # This way the client knows that it can always expect to find a body
             # in the response for this method, even in the error case.

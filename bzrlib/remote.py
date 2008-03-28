@@ -361,8 +361,13 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository._generate_text_key_index()
 
+    @symbol_versioning.deprecated_method(symbol_versioning.one_four)
     def get_revision_graph(self, revision_id=None):
         """See Repository.get_revision_graph()."""
+        return self._get_revision_graph(revision_id)
+
+    def _get_revision_graph(self, revision_id):
+        """Private method for using with old (< 1.2) servers to fallback."""
         if revision_id is None:
             revision_id = ''
         elif revision.is_null(revision_id):
@@ -836,6 +841,10 @@ class RemoteRepository(object):
             # We already found out that the server can't understand
             # Repository.get_parent_map requests, so just fetch the whole
             # graph.
+            # XXX: Note that this will issue a deprecation warning. This is ok
+            # :- its because we're working with a deprecated server anyway, and
+            # the user will almost certainly have seen a warning about the
+            # server version already.
             return self.get_revision_graph()
 
         keys = set(keys)
@@ -889,7 +898,7 @@ class RemoteRepository(object):
             # To avoid having to disconnect repeatedly, we keep track of the
             # fact the server doesn't understand remote methods added in 1.2.
             medium._remote_is_at_least_1_2 = False
-            return self.get_revision_graph()
+            return self._get_revision_graph(None)
         elif response[0][0] not in ['ok']:
             reponse[1].cancel_read_body()
             raise errors.UnexpectedSmartServerResponse(response[0])
