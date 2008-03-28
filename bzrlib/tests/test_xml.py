@@ -511,31 +511,31 @@ class TestEncodeAndEscape(TestCase):
 
     def setUp(self):
         # Keep the cache clear before and after the test
-        bzrlib.xml5._ensure_utf8_re()
-        bzrlib.xml5._clear_cache()
-        self.addCleanup(bzrlib.xml5._clear_cache)
+        bzrlib.xml8._ensure_utf8_re()
+        bzrlib.xml8._clear_cache()
+        self.addCleanup(bzrlib.xml8._clear_cache)
 
     def test_simple_ascii(self):
         # _encode_and_escape always appends a final ", because these parameters
         # are being used in xml attributes, and by returning it now, we have to
         # do fewer string operations later.
-        val = bzrlib.xml5._encode_and_escape('foo bar')
+        val = bzrlib.xml8._encode_and_escape('foo bar')
         self.assertEqual('foo bar"', val)
         # The second time should be cached
-        val2 = bzrlib.xml5._encode_and_escape('foo bar')
+        val2 = bzrlib.xml8._encode_and_escape('foo bar')
         self.assertIs(val2, val)
 
     def test_ascii_with_xml(self):
         self.assertEqual('&amp;&apos;&quot;&lt;&gt;"',
-                         bzrlib.xml5._encode_and_escape('&\'"<>'))
+                         bzrlib.xml8._encode_and_escape('&\'"<>'))
 
     def test_utf8_with_xml(self):
         # u'\xb5\xe5&\u062c'
         utf8_str = '\xc2\xb5\xc3\xa5&\xd8\xac'
         self.assertEqual('&#181;&#229;&amp;&#1580;"',
-                         bzrlib.xml5._encode_and_escape(utf8_str))
+                         bzrlib.xml8._encode_and_escape(utf8_str))
 
     def test_unicode(self):
         uni_str = u'\xb5\xe5&\u062c'
         self.assertEqual('&#181;&#229;&amp;&#1580;"',
-                         bzrlib.xml5._encode_and_escape(uni_str))
+                         bzrlib.xml8._encode_and_escape(uni_str))
