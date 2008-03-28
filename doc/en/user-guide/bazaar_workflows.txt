@@ -4,13 +4,16 @@ Workflows
 Bazaar is just a tool
 ---------------------
 
-One of the best things about Bazaar is that it supports many
-different ways of working together. This means that you can
+Bazaar supports many different ways of working together.
+This means that you can
 start with one workflow and adapt it over time as circumstances
 change. There is no "one true way" that always makes sense and
 there never will be. This section provides a brief overview of
 some popular workflows supported by Bazaar.
 
+Keep in mind that these workflow are just *some* examples of how
+Bazaar can be used. You may want to use a workflow not listed here,
+perhaps building on the ideas below.
 
 Solo
 ----
@@ -65,8 +68,7 @@ then ``bzr commit`` to publish their changes to the central location.
 .. image:: images/workflows_centralized.png
 
 Subversion and CVS are good choices for implementing this workflow because they
-make it easy. Unlike the vast majority of distributed VCS tools, Bazaar makes
-it easy as well by directly supporting it. In addition, Bazaar provides some
+make it easy. Bazaar directly supports it as well while providing some
 important advantages over CVS and Subversion:
 
  * better branching and merging

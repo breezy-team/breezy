@@ -62,6 +62,8 @@ IN DEVELOPMENT
 
     * Minor fixes to the User Guide. (Matthew Fuller)
 
+    * Reduced the evangelism in the User Guide. (Ian Clatworthy)
+
   API BREAKS:
 
     * Attempting to pull data from a ghost aware repository (e.g. knits) into a
