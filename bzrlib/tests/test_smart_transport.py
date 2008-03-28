@@ -2047,7 +2047,7 @@ class TestSmartClientUnicode(tests.TestCase):
         input = StringIO("\n")
         output = StringIO()
         client_medium = medium.SmartSimplePipesClientMedium(input, output)
-        smart_client = client._SmartClient(client_medium)
+        smart_client = client._SmartClient(client_medium, 'ignored base')
         self.assertRaises(TypeError,
             smart_client.call_with_body_bytes, method, args, body)
         self.assertEqual("", output.getvalue())

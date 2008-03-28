@@ -104,9 +104,12 @@ class RemoteTransport(transport.ConnectedTransport):
             self._shared_connection = transport._SharedConnection(medium,
                                                                   credentials,
                                                                   self.base)
+        else:
+            if medium is None:
+                medium = self._shared_connection.connection
 
         if _client is None:
-            self._client = client._SmartClient(self.get_shared_medium())
+            self._client = client._SmartClient(medium, self.base)
         else:
             self._client = _client
 
