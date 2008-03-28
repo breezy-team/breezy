@@ -302,7 +302,7 @@ class Serializer_v5(Serializer):
                        timestamp = '%.3f' % rev.timestamp,
                        revision_id = revision_id,
                        inventory_sha1 = rev.inventory_sha1,
-                       format='5',
+                       format=self.format_num,
                        )
         if rev.timezone is not None:
             root.set('timezone', str(rev.timezone))
@@ -405,7 +405,7 @@ class Serializer_v5(Serializer):
         assert elt.tag == 'revision'
         format = elt.get('format')
         if format is not None:
-            if format != '5':
+            if format != self.format_num:
                 raise BzrError("invalid format version %r on inventory"
                                 % format)
         get_cached = _get_utf8_or_ascii
