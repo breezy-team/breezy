@@ -62,9 +62,8 @@ class RemoteBzrDir(BzrDir):
         self._real_bzrdir = None
 
         if _client is None:
-            shared_connection = transport.get_shared_medium()
-            self._client = client._SmartClient(
-                shared_connection.connection, shared_connection.base)
+            medium = transport.get_smart_medium()
+            self._client = client._SmartClient(medium, transport.base)
         else:
             self._client = _client
             return
