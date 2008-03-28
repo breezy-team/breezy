@@ -60,6 +60,8 @@ IN DEVELOPMENT
 
   DOCUMENTATION:
 
+    * Improved documentation on send/merge relationship. (Peter Schuller)
+
     * Minor fixes to the User Guide. (Matthew Fuller)
 
     * Reduced the evangelism in the User Guide. (Ian Clatworthy)
