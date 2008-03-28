@@ -31,6 +31,7 @@ from bzrlib.smart.request import (
     SmartServerRequest,
     SuccessfulSmartServerResponse,
     )
+from bzrlib.repository import _strip_NULL_ghosts
 from bzrlib import revision as _mod_revision
 
 
@@ -210,12 +211,7 @@ class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryReadLocked):
         transitive_ids = set()
         map(transitive_ids.update, list(search))
         parent_map = graph.get_parent_map(transitive_ids)
-        revision_graph = {}
-        if _mod_revision.NULL_REVISION in parent_map:
-            del parent_map[_mod_revision.NULL_REVISION]
-        for key, parents in parent_map.iteritems():
-            revision_graph[key] = tuple(parent for parent in parents if
-                parent in parent_map)
+        revision_graph = _strip_NULL_ghosts(parent_map)
         if revision_id and revision_id not in revision_graph:
             # Note that we return an empty body, rather than omitting the body.
             # This way the client knows that it can always expect to find a body

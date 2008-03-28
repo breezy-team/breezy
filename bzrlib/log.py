@@ -72,6 +72,7 @@ from bzrlib.osutils import (
     get_terminal_encoding,
     terminal_width,
     )
+from bzrlib.repository import _strip_NULL_ghosts
 from bzrlib.revision import (
     NULL_REVISION,
     )
@@ -463,10 +464,8 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
     # This asks for all mainline revisions, which means we only have to spider
     # sideways, rather than depth history. That said, its still size-of-history
     # and should be addressed.
-    search = graph._make_breadth_first_searcher(mainline_revisions)
-    transitive_ids = set()
-    map(transitive_ids.update, list(search))
-    parent_map = graph.get_parent_map(transitive_ids)
+    parent_map = dict(((key, value) for key, value in
+        graph.iter_ancestry(mainline_revisions) if value is not None))
     sorted_rev_list = topo_sort(parent_map.items())
     ancestry = {}
     for rev in sorted_rev_list:
@@ -516,18 +515,10 @@ def get_view_revisions(mainline_revs, rev_nos, branch, direction,
     # This asks for all mainline revisions, which means we only have to spider
     # sideways, rather than depth history. That said, its still size-of-history
     # and should be addressed.
-    search = graph._make_breadth_first_searcher(mainline_revs)
-    transitive_ids = set()
-    map(transitive_ids.update, list(search))
-    parent_map = graph.get_parent_map(transitive_ids)
+    parent_map = dict(((key, value) for key, value in
+        graph.iter_ancestry(mainline_revs) if value is not None))
     # filter out ghosts; merge_sort errors on ghosts.
-    rev_graph = {}
-    # Filter ghosts, and null:
-    if NULL_REVISION in parent_map:
-        del parent_map[NULL_REVISION]
-    for key, parents in parent_map.iteritems():
-        rev_graph[key] = tuple(parent for parent in parents if parent in
-            parent_map)
+    rev_graph = _strip_NULL_ghosts(parent_map)
     merge_sorted_revisions = merge_sort(
         rev_graph,
         mainline_revs[-1],

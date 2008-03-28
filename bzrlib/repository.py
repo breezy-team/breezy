@@ -3140,3 +3140,22 @@ class _VersionedFileChecker(object):
                 if correct_parents != knit_parents:
                     wrong_parents[revision_id] = (knit_parents, correct_parents)
         return wrong_parents, unused_versions
+
+
+def _old_get_graph(repository, revision_id):
+    """DO NOT USE. That is all. I'm serious."""
+    graph = repository.get_graph()
+    revision_graph = dict(((key, value) for key, value in
+        graph.iter_ancestry([revision_id]) if value is not None))
+    return _strip_NULL_ghosts(revision_graph)
+
+
+def _strip_NULL_ghosts(revision_graph):
+    """Also don't use this. more compatibility code for unmigrated clients."""
+    # Filter ghosts, and null:
+    if _mod_revision.NULL_REVISION in revision_graph:
+        del revision_graph[_mod_revision.NULL_REVISION]
+    for key, parents in revision_graph.items():
+        revision_graph[key] = tuple(parent for parent in parents if parent
+            in revision_graph)
+    return revision_graph
