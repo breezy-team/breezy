@@ -171,7 +171,8 @@ class UniqueIntegerBugTracker(IntegerBugTracker):
     """A style of bug tracker that exists in one place only, such as Launchpad.
 
     If you have one of these trackers then register an instance passing in an
-    abbreviated name for the bug tracker and a base URL.
+    abbreviated name for the bug tracker and a base URL. The bug ids are
+    appended directly to the URL.
     """
 
     def __init__(self, abbreviated_bugtracker_name, base_url):
@@ -187,7 +188,7 @@ class UniqueIntegerBugTracker(IntegerBugTracker):
 
     def _get_bug_url(self, bug_id):
         """Return the URL for bug_id."""
-        return urlutils.join(self.base_url, bug_id)
+        return self.base_url + bug_id
 
 
 tracker_registry.register(
@@ -196,6 +197,10 @@ tracker_registry.register(
 
 tracker_registry.register(
     'debian', UniqueIntegerBugTracker('deb', 'http://bugs.debian.org/'))
+
+
+tracker_registry.register('gnome',
+    UniqueIntegerBugTracker('gnome', 'http://bugzilla.gnome.org/show_bug.cgi?id='))
 
 
 class URLParametrizedIntegerBugTracker(IntegerBugTracker):
@@ -232,24 +237,6 @@ tracker_registry.register(
 tracker_registry.register(
     'bugzilla',
     URLParametrizedIntegerBugTracker('bugzilla', 'show_bug.cgi?id='))
-
-
-class FixedBaseURLIntegerBugTracker(URLParametrizedIntegerBugTracker):
-
-    def get(self, abbreviation, branch):
-        if abbreviation != self.type_name:
-            return None
-        return self
-
-    def __init__(self, type_name, bug_area, base_url):
-        self.type_name = type_name
-        self._bug_area = bug_area
-        self._base_url = base_url
-
-
-tracker_registry.register('gnome',
-    FixedBaseURLIntegerBugTracker('gnome', 'show_bug.cgi?id=',
-        "http://bugzilla.gnome.org"))
 
 
 class GenericBugTracker(URLParametrizedIntegerBugTracker):
