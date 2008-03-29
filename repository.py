@@ -348,13 +348,6 @@ class SvnRepository(Repository):
         """
         return False
 
-    def iter_changes(self):
-        """
-        
-        :return: iterator over tuples with (revid, parent_revids, changes, revprops, branchprops)
-        """
-        raise NotImplementedError
-
     def iter_reverse_revision_history(self, revision_id):
         """Iterate backwards through revision ids in the lefthand history
 
@@ -622,20 +615,11 @@ class SvnRepository(Repository):
         for (bp, paths, revnum) in self._log.iter_changes(branch_path, revnum):
             assert revnum > 0 or bp == ""
             assert mapping.is_branch(bp) or mapping.is_tag(bp)
-            # Remove non-bp paths from paths
-            for p in paths.keys():
-                if not p.startswith(bp+"/") and bp != p and bp != "":
-                    del paths[p]
-
-            if paths == {}:
-                continue
 
             if (paths.has_key(bp) and paths[bp][1] is not None and 
-                not mapping.is_branch(paths[bp][1]) and
-                not mapping.is_tag(paths[bp][1])):
-                # FIXME: if copyfrom_path is not a branch path, 
-                # should simulate a reverse "split" of a branch
-                # for now, just make it look like the branch ended here
+                not (mapping.is_branch(paths[bp][1]) or not mapping.is_tag(paths[bp][1]))):
+                # Make it look like the branch started here if the mapping 
+                # doesn't support weird paths as branches
                 for c in self._log.find_children(paths[bp][1], paths[bp][2]):
                     path = c.replace(paths[bp][1], bp+"/", 1).replace("//", "/")
                     paths[path] = ('A', None, -1)
