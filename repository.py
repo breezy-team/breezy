@@ -608,29 +608,6 @@ class SvnRepository(Repository):
         return self._serializer.write_revision_to_string(
             self.get_revision(revision_id))
 
-    def follow_branch(self, branch_path, revnum, mapping):
-        """Follow the history of a branch. Will yield all the 
-        left-hand side ancestors of a specified revision.
-    
-        :param branch_path: Subversion path to search.
-        :param revnum: Revision number in Subversion to start.
-        :param mapping: Mapping.
-        :return: iterator over the ancestors
-        """
-        assert branch_path is not None
-        assert isinstance(branch_path, str)
-        assert isinstance(revnum, int) and revnum >= 0
-        assert mapping.is_branch(branch_path) or mapping.is_tag(branch_path)
-        branch_path = branch_path.strip("/")
-
-        for (path, paths, revnum) in self._log.iter_changes(branch_path, revnum):
-            if not mapping.is_branch(path) and not mapping.is_tag(path):
-                # FIXME: if copyfrom_path is not a branch path, 
-                # should simulate a reverse "split" of a branch
-                # for now, just make it look like the branch ended here
-                break
-            yield (path, revnum)
-        
     def follow_branch_history(self, branch_path, revnum, mapping):
         """Return all the changes that happened in a branch 
         until branch_path,revnum. 

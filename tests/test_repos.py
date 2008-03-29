@@ -178,8 +178,14 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_update("dc")
         self.client_commit("dc", "commit")
         repos = Repository.open(repos_url)
-        self.assertEquals([('pygments/trunk', 3), ('pykleur/trunk', 2), ('pykleur/trunk', 1)], 
-                list(repos.follow_branch("pygments/trunk", 3, TrunkBranchingScheme(1))))
+        self.assertEquals([
+            ('pygments/trunk', {'pygments/trunk': (u'R', 'pykleur/trunk', 2)}, 3),
+            ('pykleur/trunk', {'pykleur/trunk/pykleur/afile': (u'A', None, -1)}, 2),
+            ('pykleur/trunk',
+                    {'pykleur/trunk': (u'A', None, -1),
+                           'pykleur/trunk/pykleur': (u'A', None, -1)},
+             1)],
+                list(repos.follow_branch_history("pygments/trunk", 3, TrunkBranchingScheme(1))))
 
     def test_follow_branch_move_single(self):
         repos_url = self.make_client('a', 'dc')
@@ -190,8 +196,10 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_update("dc")
         self.client_commit("dc", "commit")
         repos = Repository.open(repos_url)
-        self.assertEquals([('pygments', 2)], 
-                list(repos.follow_branch("pygments", 2, SingleBranchingScheme("pygments"))))
+        self.assertEquals([('pygments',
+              {'pygments/bla': ('A', None, -1), 'pygments': ('A', None, -1)},
+                2)],
+                list(repos.follow_branch_history("pygments", 2, SingleBranchingScheme("pygments"))))
 
     def test_history_all(self):
         repos_url = self.make_client("a", "dc")
@@ -1030,7 +1038,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My 4")
         oldrepos = Repository.open("svn+"+repos_url)
         self.assertEquals([('trunk', 3), ('trunk', 2), ('trunk', 1)], 
-            list(oldrepos.follow_branch("trunk", 3, TrunkBranchingScheme())))
+            list(oldrepos.follow_branch_history("trunk", 3, TrunkBranchingScheme())))
 
     def test_control_code_msg(self):
         repos_url = self.make_client('d', 'dc')
