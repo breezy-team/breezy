@@ -601,7 +601,7 @@ class SvnRepository(Repository):
         return self._serializer.write_revision_to_string(
             self.get_revision(revision_id))
 
-    def follow_branch_history(self, branch_path, revnum, mapping):
+    def iter_reverse_branch_changes(self, branch_path, revnum, mapping):
         """Return all the changes that happened in a branch 
         until branch_path,revnum. 
 

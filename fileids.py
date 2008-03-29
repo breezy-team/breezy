@@ -135,7 +135,7 @@ class FileIdMap(object):
         quickrevidmap = {}
 
         # No history -> empty map
-        for (bp, paths, rev) in self.repos.follow_branch_history(branch, 
+        for (bp, paths, rev) in self.repos.iter_reverse_branch_changes(branch, 
                                              revnum, mapping):
             revid = self.repos.generate_revision_id(rev, bp, mapping)
             quickrevidmap[revid] = (rev, bp)
@@ -222,7 +222,7 @@ class CachingFileIdMap(object):
         quickrevidmap = {}
 
         # No history -> empty map
-        for (bp, paths, rev) in self.repos.follow_branch_history(branch, 
+        for (bp, paths, rev) in self.repos.iter_reverse_branch_changes(branch, 
                                              revnum, mapping):
             revid = self.repos.generate_revision_id(rev, bp, mapping)
             quickrevidmap[revid] = (rev, bp)

@@ -64,7 +64,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEqual([
             ('', {'foo': ('A', None, -1)}, 1), 
             ('', {'': ('A', None, -1)}, 0)],
-             list(repos.follow_branch_history("", 1, NoBranchingScheme())))
+             list(repos.iter_reverse_branch_changes("", 1, NoBranchingScheme())))
 
     def test_make_working_trees(self):
         repos_url = self.make_client("a", "dc")
@@ -163,7 +163,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos_url = self.make_client("a", "dc")
         repos = Repository.open(repos_url)
         self.assertRaises(NoSuchRevision, list, 
-               repos.follow_branch_history("/", 20, NoBranchingScheme()))
+               repos.iter_reverse_branch_changes("/", 20, NoBranchingScheme()))
 
     def test_follow_branch_switched_parents(self):
         repos_url = self.make_client('a', 'dc')
@@ -185,7 +185,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                     {'pykleur/trunk': (u'A', None, -1),
                            'pykleur/trunk/pykleur': (u'A', None, -1)},
              1)],
-                list(repos.follow_branch_history("pygments/trunk", 3, TrunkBranchingScheme(1))))
+                list(repos.iter_reverse_branch_changes("pygments/trunk", 3, TrunkBranchingScheme(1))))
 
     def test_follow_branch_move_single(self):
         repos_url = self.make_client('a', 'dc')
@@ -199,7 +199,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEquals([('pygments',
               {'pygments/bla': ('A', None, -1), 'pygments': ('A', None, -1)},
                 2)],
-                list(repos.follow_branch_history("pygments", 2, SingleBranchingScheme("pygments"))))
+                list(repos.iter_reverse_branch_changes("pygments", 2, SingleBranchingScheme("pygments"))))
 
     def test_history_all(self):
         repos_url = self.make_client("a", "dc")
@@ -287,7 +287,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos = Repository.open(repos_url)
         repos.set_branching_scheme(TrunkBranchingScheme())
 
-        self.assertEqual(1, len(list(repos.follow_branch_history("branches/brancha",
+        self.assertEqual(1, len(list(repos.iter_reverse_branch_changes("branches/brancha",
             1, TrunkBranchingScheme()))))
 
     def test_branch_log_specific_ignore(self):
@@ -308,7 +308,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos = Repository.open(repos_url)
         repos.set_branching_scheme(TrunkBranchingScheme())
 
-        self.assertEqual(1, len(list(repos.follow_branch_history("branches/brancha",
+        self.assertEqual(1, len(list(repos.iter_reverse_branch_changes("branches/brancha",
             2, TrunkBranchingScheme()))))
 
     def test_find_branches(self):
@@ -1038,7 +1038,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My 4")
         oldrepos = Repository.open("svn+"+repos_url)
         self.assertEquals([('trunk', 3), ('trunk', 2), ('trunk', 1)], 
-            list(oldrepos.follow_branch_history("trunk", 3, TrunkBranchingScheme())))
+            list(oldrepos.iter_reverse_branch_changes("trunk", 3, TrunkBranchingScheme())))
 
     def test_control_code_msg(self):
         repos_url = self.make_client('d', 'dc')

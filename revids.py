@@ -96,7 +96,7 @@ class RevidMap(object):
     def bisect_revid_revnum(self, revid, branch_path, max_revnum, scheme):
         # Find the branch property between min_revnum and max_revnum that 
         # added revid
-        for (bp, changes, rev) in self.repos.follow_branch_history(branch_path, max_revnum, scheme):
+        for (bp, changes, rev) in self.repos.iter_reverse_branch_changes(branch_path, max_revnum, scheme):
             if not bp in changes:
                 continue
             try:
