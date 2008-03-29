@@ -552,8 +552,8 @@ class InterFromSvnRepository(InterRepository):
         """
         needed = []
 
-        graph = self.source.get_graph()
         if fetch_rhs_ancestry:
+            graph = self.source.get_graph()
             for (revid, parent_revids) in graph.iter_ancestry([revision_id]):
                 if revid == NULL_REVISION:
                     continue
@@ -563,16 +563,22 @@ class InterFromSvnRepository(InterRepository):
                     needed.append((revid, parent_revids))
                 elif not find_ghosts:
                     break
+            needed.reverse()
         else:
-            for (revid, parent_revid) in graph.iter_lhs_ancestry(revision_id):
-                if revid == NULL_REVISION:
-                    continue
+            revs = []
+            prev = None
+            parents = {}
+            for revid in self.source.iter_reverse_revision_history(revision_id):
+                parents[prev] = revid
                 if not self.target.has_revision(revid):
-                    needed.append((revid, (parent_revid,)))
+                    revs.append(revid)
                 elif not find_ghosts:
                     break
+                prev = revid
+            parents[prev] = NULL_REVISION
 
-        needed.reverse()
+            needed = [(revid, (parents[revid],)) for revid in reversed(revs)]
+
         return needed
 
     def copy_content(self, revision_id=None, pb=None):
