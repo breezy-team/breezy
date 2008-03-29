@@ -314,7 +314,7 @@ class SvnRepository(Repository):
         revnum = self.transport.get_latest_revnum()
 
         for (_, paths, revnum) in self._log.iter_changes("", revnum):
-            yielded_paths = []
+            yielded_paths = set()
             for p in paths:
                 try:
                     bp = mapping.scheme.unprefix(p)[0]
@@ -322,7 +322,7 @@ class SvnRepository(Repository):
                         if not paths.has_key(bp) or paths[bp][0] != 'D':
                             assert revnum > 0 or bp == ""
                             yield self.generate_revision_id(revnum, bp, mapping)
-                        yielded_paths.append(bp)
+                        yielded_paths.add(bp)
                 except NotBranchError:
                     pass
 
