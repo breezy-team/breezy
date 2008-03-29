@@ -24,28 +24,76 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * Diff is now more specific about execute-bit changes it describes
+      (Chad Miller)
+
     * Fetching data over HTTP is a bit faster when urllib is used.  This is done
       by forcing it to recv 64k at a time when reading lines in HTTP headers,
       rather than just 1 byte at a time.  (Andrew Bennetts)
 
+    * Log --short and --line are much faster when -r is not specified.
+      (Aaron Bentley)
+
     * Merge is faster.  We no longer check a file's existence unnecessarily
       when merging the execute bit.  (Aaron Bentley)
+
+    * The smart protocol client is slightly faster, because it now only queries
+      the server for the protocol version once per connection.  Also, the HTTP
+      transport will now automatically use a smart server if one is present.
+      (Andrew Bennetts)
 
   BUGFIXES:
 
     * ``bzr mv a b`` can be now used also to rename previously renamed
       directories, not only files. (Lukáš Lalinský, #107967)
 
+    * ``bzr uncommit --local`` can now remove revisions from the local
+      branch to be symmetric with ``bzr commit --local``.
+      (John Arbash Meinel, #93412)
+
     * Don't ask for a password if there is no real terminal.
       (Alexander Belchenko, #69851)
 
+    * Implement handling of basename parameter for DefaultMail.  (James Westby)
+
+    * Launchpad locations (lp: URLs) can be pulled.  (Aaron Bentley, #181945)
+
   DOCUMENTATION:
+
+    * Minor fixes to the User Guide. (Matthew Fuller)
 
   API BREAKS:
 
+    * Attempting to pull data from a ghost aware repository (e.g. knits) into a
+      non-ghost aware repository such as weaves will now fail if there are
+      ghosts.  (Robert Collins)
+
+    * Log formatters must now provide log_revision instead of show and
+      show_merge_revno methods. The latter had been deprecated since the 0.17
+      release. (James Westby)
+
+    * ``VersionedFile.get_parents`` is deprecated, please use
+      ``VersionedFile.get_parent_map``. (Robert Collins)
+
   TESTING:
 
+    * New -Dselftest_debug flag disables clearing of the debug flags during
+      tests.  This is useful if you want to use e.g. -Dhpss to help debug a
+      failing test.  Be aware that using this feature is likely to cause
+      spurious test failures if used with the full suite. (Andrew Bennetts)
+
+    * selftest --load-list now does some sanity checks regarding duplicate test
+      IDs and tests present in the list but not found in the actual test suite.
+      (Vincent Ladeuil)
+
+    * The test suite takes much less memory to run, and is a bit faster.  This
+      is done by clearing most attributes of TestCases after running them, if
+      they succeeded.  (Andrew Bennetts)
+
   INTERNALS:
+
+    * ``VersionedFile`` now has a new method ``get_parent_map`` which, like
+      ``Graph.get_parent_map`` returns a dict of key:parents. (Robert Collins)
 
 
 bzr 1.3rc1 2008-03-16

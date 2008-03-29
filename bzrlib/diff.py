@@ -41,6 +41,7 @@ from bzrlib import (
 from bzrlib.symbol_versioning import (
         deprecated_function,
         one_zero,
+        one_three
         )
 from bzrlib.trace import mutter, warning
 
@@ -540,11 +541,19 @@ def _raise_if_nonexistent(paths, old_tree, new_tree):
         raise errors.PathsDoNotExist(sorted(s))
 
 
+@deprecated_function(one_three)
 def get_prop_change(meta_modified):
     if meta_modified:
         return " (properties changed)"
     else:
         return  ""
+
+def get_executable_change(old_is_x, new_is_x):
+    descr = { True:"+x", False:"-x", None:"??" }
+    if old_is_x != new_is_x:
+        return ["%s to %s" % (descr[old_is_x], descr[new_is_x],)]
+    else:
+        return []
 
 
 class DiffPath(object):
@@ -954,7 +963,15 @@ class DiffTree(object):
             old_present = (kind[0] is not None and versioned[0])
             new_present = (kind[1] is not None and versioned[1])
             renamed = (parent[0], name[0]) != (parent[1], name[1])
-            prop_str = get_prop_change(executable[0] != executable[1])
+
+            properties_changed = []
+            properties_changed.extend(get_executable_change(executable[0], executable[1]))
+
+            if properties_changed:
+                prop_str = " (properties changed: %s)" % (", ".join(properties_changed),)
+            else:
+                prop_str = ""
+
             if (old_present, new_present) == (True, False):
                 self.to_file.write("=== removed %s '%s'\n" %
                                    (kind[0], oldpath_encoded))

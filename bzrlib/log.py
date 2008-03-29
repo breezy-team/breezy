@@ -63,7 +63,6 @@ from bzrlib import (
     config,
     lazy_regex,
     registry,
-    symbol_versioning,
     )
 from bzrlib.errors import (
     BzrCommandError,
@@ -78,10 +77,6 @@ from bzrlib.revision import (
     )
 from bzrlib.revisionspec import (
     RevisionInfo,
-    )
-from bzrlib.symbol_versioning import (
-    deprecated_method,
-    zero_seventeen,
     )
 from bzrlib.trace import mutter
 from bzrlib.tsort import (
@@ -193,6 +188,7 @@ def show_log(branch,
     finally:
         branch.unlock()
 
+
 def _show_log(branch,
              lf,
              specific_fileid=None,
@@ -208,46 +204,65 @@ def _show_log(branch,
 
     if specific_fileid:
         mutter('get log for file_id %r', specific_fileid)
-
+    generate_merge_revisions = getattr(lf, 'supports_merge_revisions', False)
+    allow_single_merge_revision = getattr(lf,
+        'supports_single_merge_revision', False)
+    view_revisions = calculate_view_revisions(branch, start_revision,
+                                              end_revision, direction,
+                                              specific_fileid,
+                                              generate_merge_revisions,
+                                              allow_single_merge_revision)
     if search is not None:
         searchRE = re.compile(search, re.IGNORECASE)
     else:
         searchRE = None
 
+    rev_tag_dict = {}
+    generate_tags = getattr(lf, 'supports_tags', False)
+    if generate_tags:
+        if branch.supports_tags():
+            rev_tag_dict = branch.tags.get_reverse_tag_dict()
+
+    generate_delta = verbose and getattr(lf, 'supports_delta', False)
+
+    # now we just print all the revisions
+    log_count = 0
+    for (rev_id, revno, merge_depth), rev, delta in _iter_revisions(
+        branch.repository, view_revisions, generate_delta):
+        if searchRE:
+            if not searchRE.search(rev.message):
+                continue
+
+        lr = LogRevision(rev, revno, merge_depth, delta,
+                         rev_tag_dict.get(rev_id))
+        lf.log_revision(lr)
+        if limit:
+            log_count += 1
+            if log_count >= limit:
+                break
+
+
+def calculate_view_revisions(branch, start_revision, end_revision, direction,
+                             specific_fileid, generate_merge_revisions,
+                             allow_single_merge_revision):
+    if (not generate_merge_revisions and start_revision is end_revision is
+        None and direction == 'reverse' and specific_fileid is None):
+        return _linear_view_revisions(branch)
+
     mainline_revs, rev_nos, start_rev_id, end_rev_id = \
         _get_mainline_revs(branch, start_revision, end_revision)
     if not mainline_revs:
-        return
+        return []
 
     if direction == 'reverse':
         start_rev_id, end_rev_id = end_rev_id, start_rev_id
-        
-    legacy_lf = getattr(lf, 'log_revision', None) is None
-    if legacy_lf:
-        # pre-0.17 formatters use show for mainline revisions.
-        # how should we show merged revisions ?
-        #   pre-0.11 api: show_merge
-        #   0.11-0.16 api: show_merge_revno
-        show_merge_revno = getattr(lf, 'show_merge_revno', None)
-        show_merge = getattr(lf, 'show_merge', None)
-        if show_merge is None and show_merge_revno is None:
-            # no merged-revno support
-            generate_merge_revisions = False
-        else:
-            generate_merge_revisions = True
-        # tell developers to update their code
-        symbol_versioning.warn('LogFormatters should provide log_revision '
-            'instead of show and show_merge_revno since bzr 0.17.',
-            DeprecationWarning, stacklevel=3)
-    else:
-        generate_merge_revisions = getattr(lf, 'supports_merge_revisions', 
-                                           False)
+
     generate_single_revision = False
     if ((not generate_merge_revisions)
         and ((start_rev_id and (start_rev_id not in rev_nos))
             or (end_rev_id and (end_rev_id not in rev_nos)))):
         generate_single_revision = ((start_rev_id == end_rev_id)
-            and getattr(lf, 'supports_single_merge_revision', False))
+            and allow_single_merge_revision)
         if not generate_single_revision:
             raise BzrCommandError('Selected log formatter only supports '
                 'mainline revisions.')
@@ -271,65 +286,35 @@ def _show_log(branch,
         min_depth = min([d for r,n,d in view_revisions])
         if min_depth != 0:
             view_revisions = [(r,n,d-min_depth) for r,n,d in view_revisions]
-        
-    rev_tag_dict = {}
-    generate_tags = getattr(lf, 'supports_tags', False)
-    if generate_tags:
-        if branch.supports_tags():
-            rev_tag_dict = branch.tags.get_reverse_tag_dict()
+    return view_revisions
 
-    generate_delta = verbose and getattr(lf, 'supports_delta', False)
 
-    def iter_revisions():
+def _linear_view_revisions(branch):
+    start_revno, start_revision_id = branch.last_revision_info()
+    repo = branch.repository
+    revision_ids = repo.iter_reverse_revision_history(start_revision_id)
+    for num, revision_id in enumerate(revision_ids):
+        yield revision_id, str(start_revno - num), 0
+
+
+def _iter_revisions(repository, view_revisions, generate_delta):
+    num = 9
+    view_revisions = iter(view_revisions)
+    while True:
+        cur_view_revisions = [d for x, d in zip(range(num), view_revisions)]
+        if len(cur_view_revisions) == 0:
+            break
+        cur_deltas = {}
         # r = revision, n = revno, d = merge depth
-        revision_ids = [r for r, n, d in view_revisions]
-        num = 9
-        repository = branch.repository
-        while revision_ids:
-            cur_deltas = {}
-            revisions = repository.get_revisions(revision_ids[:num])
-            if generate_delta:
-                deltas = repository.get_deltas_for_revisions(revisions)
-                cur_deltas = dict(izip((r.revision_id for r in revisions),
-                                       deltas))
-            for revision in revisions:
-                yield revision, cur_deltas.get(revision.revision_id)
-            revision_ids  = revision_ids[num:]
-            num = min(int(num * 1.5), 200)
-
-    # now we just print all the revisions
-    log_count = 0
-    for ((rev_id, revno, merge_depth), (rev, delta)) in \
-         izip(view_revisions, iter_revisions()):
-
-        if searchRE:
-            if not searchRE.search(rev.message):
-                continue
-
-        if not legacy_lf:
-            lr = LogRevision(rev, revno, merge_depth, delta,
-                             rev_tag_dict.get(rev_id))
-            lf.log_revision(lr)
-        else:
-            # support for legacy (pre-0.17) LogFormatters
-            if merge_depth == 0:
-                if generate_tags:
-                    lf.show(revno, rev, delta, rev_tag_dict.get(rev_id))
-                else:
-                    lf.show(revno, rev, delta)
-            else:
-                if show_merge_revno is None:
-                    lf.show_merge(rev, merge_depth)
-                else:
-                    if generate_tags:
-                        lf.show_merge_revno(rev, merge_depth, revno,
-                                            rev_tag_dict.get(rev_id))
-                    else:
-                        lf.show_merge_revno(rev, merge_depth, revno)
-        if limit:
-            log_count += 1
-            if log_count >= limit:
-                break
+        revision_ids = [r for (r, n, d) in cur_view_revisions]
+        revisions = repository.get_revisions(revision_ids)
+        if generate_delta:
+            deltas = repository.get_deltas_for_revisions(revisions)
+            cur_deltas = dict(izip((r.revision_id for r in revisions),
+                                   deltas))
+        for view_data, revision in izip(cur_view_revisions, revisions):
+            yield view_data, revision, cur_deltas.get(revision.revision_id)
+        num = min(int(num * 1.5), 200)
 
 
 def _get_mainline_revs(branch, start_revision, end_revision):
@@ -616,10 +601,6 @@ class LogFormatter(object):
 #        """
 #        raise NotImplementedError('not implemented in abstract base')
 
-    @deprecated_method(zero_seventeen)
-    def show(self, revno, rev, delta):
-        raise NotImplementedError('not implemented in abstract base')
-
     def short_committer(self, rev):
         name, address = config.parse_username(rev.committer)
         if name:
@@ -638,17 +619,6 @@ class LongLogFormatter(LogFormatter):
     supports_merge_revisions = True
     supports_delta = True
     supports_tags = True
-
-    @deprecated_method(zero_seventeen)
-    def show(self, revno, rev, delta, tags=None):
-        lr = LogRevision(rev, revno, 0, delta, tags)
-        return self.log_revision(lr)
-
-    @deprecated_method(zero_seventeen)
-    def show_merge_revno(self, rev, merge_depth, revno, tags=None):
-        """Show a merged revision rev, with merge_depth and a revno."""
-        lr = LogRevision(rev, revno, merge_depth, tags=tags)
-        return self.log_revision(lr)
 
     def log_revision(self, revision):
         """Log a revision, either merged or not."""
@@ -694,11 +664,6 @@ class ShortLogFormatter(LogFormatter):
 
     supports_delta = True
     supports_single_merge_revision = True
-
-    @deprecated_method(zero_seventeen)
-    def show(self, revno, rev, delta):
-        lr = LogRevision(rev, revno, 0, delta)
-        return self.log_revision(lr)
 
     def log_revision(self, revision):
         to_file = self.to_file
@@ -754,11 +719,6 @@ class LineLogFormatter(LogFormatter):
             return '(no message)'
         else:
             return rev.message
-
-    @deprecated_method(zero_seventeen)
-    def show(self, revno, rev, delta):
-        self.to_file.write(self.log_string(revno, rev, terminal_width()-1))
-        self.to_file.write('\n')
 
     def log_revision(self, revision):
         self.to_file.write(self.log_string(revision.revno, revision.rev,
