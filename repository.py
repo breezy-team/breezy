@@ -170,8 +170,8 @@ class SvnRepository(Repository):
             cachedbs[cache_file] = sqlite3.connect(cache_file)
         self.cachedb = cachedbs[cache_file]
 
-        self._log = logwalker.LogWalker(transport=transport, 
-                                        cache_db=self.cachedb)
+        self._log = logwalker.CachingLogWalker(logwalker.LogWalker(transport=transport), 
+                        cache_db=self.cachedb)
 
         # TODO: Only use fileid_map when 
         # fileprops-based mappings are being used

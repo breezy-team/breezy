@@ -16,6 +16,7 @@
 """Subversion cache directory access."""
 
 import bzrlib
+from bzrlib import debug
 from bzrlib.config import config_dir, ensure_config_dir_exists
 from bzrlib.trace import warning
 
@@ -78,3 +79,7 @@ class CacheTable(object):
 
     def _create_table(self):
         pass
+
+    def mutter(self, text):
+        if "cache" in debug.debug_flags:
+            mutter(text)

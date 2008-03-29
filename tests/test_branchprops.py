@@ -20,12 +20,15 @@ from bzrlib.errors import NoSuchRevision
 
 from tests import TestCaseWithSubversionRepository
 from branchprops import PathPropertyProvider
-from logwalker import LogWalker
+from logwalker import LogWalker, CachingLogWalker
 from transport import SvnRaTransport
 
 class TestBranchProps(TestCaseWithSubversionRepository):
     def setUp(self):
         super(TestBranchProps, self).setUp()
+
+    def get_log_walker(self, transport):
+        return CachingLogWalker(LogWalker(transport=transport))
 
     def test_get_old_properties(self):
         repos_url = self.make_client('d', 'dc')
@@ -35,7 +38,7 @@ class TestBranchProps(TestCaseWithSubversionRepository):
         self.client_add("dc/foo")
         self.client_commit("dc", "My Message")
 
-        logwalk = LogWalker(transport=SvnRaTransport(repos_url))
+        logwalk = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
         bp = PathPropertyProvider(logwalk)
 
@@ -47,7 +50,7 @@ class TestBranchProps(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My Message")
 
         transport = SvnRaTransport(repos_url)
-        logwalk = LogWalker(transport=transport)
+        logwalk = self.get_log_walker(transport=transport)
 
         bp = PathPropertyProvider(logwalk)
         props = bp.get_properties("", 1)
@@ -64,7 +67,7 @@ class TestBranchProps(TestCaseWithSubversionRepository):
         self.client_set_prop("dc", "myprop", "data\ndata2\n")
         self.client_commit("dc", "My Message")
 
-        logwalk = LogWalker(transport=SvnRaTransport(repos_url))
+        logwalk = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
         bp = PathPropertyProvider(logwalk)
         self.assertEqual("data2\n", bp.get_property_diff("", 2, "myprop"))
@@ -81,7 +84,7 @@ class TestBranchProps(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My Message")
         self.client_update("dc")
 
-        logwalk = LogWalker(transport=SvnRaTransport(repos_url))
+        logwalk = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
         bp = PathPropertyProvider(logwalk)
         self.assertEquals("data\n",
@@ -102,7 +105,7 @@ class TestBranchProps(TestCaseWithSubversionRepository):
         self.client_set_prop("dc", "myprop", "data\ndata2\n")
         self.client_commit("dc", "My Message")
 
-        logwalk = LogWalker(transport=SvnRaTransport(repos_url))
+        logwalk = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
         bp = PathPropertyProvider(logwalk)
         self.assertEqual("", bp.get_property_diff("", 2, "myprop"))

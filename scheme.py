@@ -436,7 +436,7 @@ def guess_scheme_from_history(changed_paths, last_revnum,
     """Try to determine the best fitting branching scheme.
 
     :param changed_paths: Iterator over (branch_path, changes, revnum)
-        as returned from LogWalker.follow_path().
+        as returned from LogWalker.iter_changes().
     :param last_revnum: Number of entries in changed_paths.
     :param relpath: Branch path that should be accepted by the branching 
                     scheme as a branch.
