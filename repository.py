@@ -348,7 +348,10 @@ class SvnRepository(Repository):
             return
         while revision_id != NULL_REVISION:
             yield revision_id
-            revision_id = self.get_lhs_parent(revision_id)
+            (branch_path, revnum, mapping) = self.lookup_revision_id(revision_id)
+            revision_id = self.lhs_revision_parent(branch_path, revnum, mapping)
+            if revision_id is None:
+                return
 
     def get_ancestry(self, revision_id, topo_sorted=True):
         """See Repository.get_ancestry().
@@ -712,13 +715,6 @@ class SvnRepository(Repository):
                         yielded_paths.append(bp)
                 except NotBranchError:
                     pass
-
-    def get_lhs_parent(self, revid):
-        (branch_path, revnum, mapping) = self.lookup_revision_id(revid)
-        parent_revid = self.lhs_revision_parent(branch_path, revnum, mapping)
-        if parent_revid is None:
-            return NULL_REVISION
-        return parent_revid
 
     def follow_branch(self, branch_path, revnum, mapping):
         """Follow the history of a branch. Will yield all the 
