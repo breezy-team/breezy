@@ -617,7 +617,7 @@ class SvnRepository(Repository):
                 # check again.
                 raise e
             found = False
-            for (branch, revno, _) in self.find_branchpaths(scheme, 
+            for (branch, revno, _) in self.find_branchpaths(layout, 
                     self.revmap.last_revnum_checked(str(scheme)),
                     last_revnum):
                 assert isinstance(branch, str)
@@ -859,28 +859,23 @@ class SvnRepository(Repository):
         """
         # All branches use this repository, so the using argument can be 
         # ignored.
-        scheme = self.get_scheme()
+        layout = self.get_layout()
 
-        existing_branches = [bp for (bp, revnum, _) in 
-                filter(lambda (bp, rev, exists): exists,
-                       self.find_branchpaths(scheme))]
-
-        branches = []
-        for bp in existing_branches:
+        for project, bp in layout.get_branches():
             try:
                 branches.append(Branch.open(urlutils.join(self.base, bp)))
             except NotBranchError: # Skip non-directories
                 pass
         return branches
 
-    def find_branchpaths(self, scheme, from_revnum=0, to_revnum=None):
+    def find_branchpaths(self, layout, from_revnum=0, to_revnum=None):
         """Find all branch paths that were changed in the specified revision 
         range.
 
         :param revnum: Revision to search for branches.
         :return: iterator that returns tuples with (path, revision number, still exists). The revision number is the revision in which the branch last existed.
         """
-        assert scheme is not None
+        assert layout is not None
         if to_revnum is None:
             to_revnum = self.transport.get_latest_revnum()
 
@@ -894,7 +889,7 @@ class SvnRepository(Repository):
                 pb.update("finding branches", i, to_revnum+1)
                 paths = self._log.get_revision_paths(i)
                 for p in sorted(paths.keys()):
-                    if scheme.is_branch(p) or scheme.is_tag(p):
+                    if layout.is_branch(p) or layout.is_tag(p):
                         if paths[p][0] in ('R', 'D') and p in created_branches:
                             del created_branches[p]
                             if paths[p][1]:
@@ -910,8 +905,8 @@ class SvnRepository(Repository):
 
                         if paths[p][0] in ('A', 'R'): 
                             created_branches[p] = i
-                    elif scheme.is_branch_parent(p) or \
-                            scheme.is_tag_parent(p):
+                    elif layout.is_branch_parent(p) or \
+                            layout.is_tag_parent(p):
                         if paths[p][0] in ('R', 'D'):
                             k = created_branches.keys()
                             for c in k:
@@ -929,10 +924,10 @@ class SvnRepository(Repository):
                                 try:
                                     for c in self.transport.get_dir(p, i)[0].keys():
                                         n = p+"/"+c
-                                        if scheme.is_branch(n) or scheme.is_tag(n):
+                                        if layout.is_branch(n) or layout.is_tag(n):
                                             created_branches[n] = i
-                                        elif (scheme.is_branch_parent(n) or 
-                                              scheme.is_tag_parent(n)):
+                                        elif (layout.is_branch_parent(n) or 
+                                              layout.is_tag_parent(n)):
                                             parents.append(n)
                                 except SubversionException, (_, svn.core.SVN_ERR_FS_NOT_DIRECTORY):
                                     pass
