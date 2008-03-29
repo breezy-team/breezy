@@ -1868,10 +1868,10 @@ class BzrBranch6(BzrBranch5):
     def _gen_revision_history(self):
         """Generate the revision history from last revision
         """
-        self._extend_partial_history(self.revno() - 1)
+        self._extend_partial_history()
         return list(reversed(self._partial_revision_history_cache))
 
-    def _extend_partial_history(self, index):
+    def _extend_partial_history(self, stop_index=None, stop_revision=None):
         """Extend the partial history to include a given index
 
         If the supplied index is shorter than the maximum available history,
@@ -1879,7 +1879,8 @@ class BzrBranch6(BzrBranch5):
 
         :param index: The index which should be present.
         """
-        if len(self._partial_revision_history_cache) > index:
+        if (stop_index is not None and
+            len(self._partial_revision_history_cache) > stop_index):
             return
         repo = self.repository
         if len(self._partial_revision_history_cache) == 0:
@@ -1891,7 +1892,10 @@ class BzrBranch6(BzrBranch5):
             assert iterator.next() == start_revision
         for revision_id in iterator:
             self._partial_revision_history_cache.append(revision_id)
-            if len(self._partial_revision_history_cache) > index:
+            if (stop_index is not None and
+                len(self._partial_revision_history_cache) > stop_index):
+                break
+            if revision_id == stop_revision:
                 break
 
     def _write_revision_history(self, history):
@@ -2024,11 +2028,25 @@ class BzrBranch6(BzrBranch5):
             return history[revno - 1]
 
         index = last_revno - revno
-        self._extend_partial_history(index)
+        self._extend_partial_history(stop_index=index)
         if len(self._partial_revision_history_cache) > index:
             return self._partial_revision_history_cache[index]
         else:
             raise errors.NoSuchRevision(self, revno)
+
+    @needs_read_lock
+    def revision_id_to_revno(self, revision_id):
+        """Given a revision id, return its revno"""
+        if _mod_revision.is_null(revision_id):
+            return 0
+        try:
+            index = self._partial_revision_history_cache.index(revision_id)
+        except ValueError:
+            self._extend_partial_history(stop_revision=revision_id)
+            index = len(self._partial_revision_history_cache) - 1
+            if self._partial_revision_history_cache[index] != revision_id:
+                raise errors.NoSuchRevision(self, revision_id)
+        return self.revno() - index
 
 
 ######################################################################
