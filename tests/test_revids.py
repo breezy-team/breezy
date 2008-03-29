@@ -18,12 +18,12 @@ from bzrlib.errors import NoSuchRevision, InvalidRevisionId
 from bzrlib.repository import Repository
 from bzrlib.tests import TestCase
 
-from revids import RevidMap
+from revids import RevisionIdMapCache
 from tests import TestCaseWithSubversionRepository
 
-class TestRevidMap(TestCase):
+class TestRevidMapCache(TestCase):
     def test_create(self):
-        revidmap = RevidMap()
+        revidmap = RevisionIdMapCache()
 
     def test_lookup_revids_seen(self):
         revidmap = RevidMap()
