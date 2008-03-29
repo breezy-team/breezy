@@ -163,23 +163,26 @@ class SvnRepository(Repository):
         self.dir_cache = {}
         self.pool = Pool()
         self.get_config().add_location(self.base)
-        cache_dir = self.create_cache_dir()
-        cachedir_transport = get_transport(cache_dir)
-        cache_file = os.path.join(cache_dir, 'cache-v%d' % CACHE_DB_VERSION)
-        if not cachedbs.has_key(cache_file):
-            cachedbs[cache_file] = sqlite3.connect(cache_file)
-        self.cachedb = cachedbs[cache_file]
-
-        self._log = logwalker.CachingLogWalker(logwalker.LogWalker(transport=transport), 
-                        cache_db=self.cachedb)
-
-        # TODO: Only use fileid_map when 
-        # fileprops-based mappings are being used
-        self.branchprop_list = PathPropertyProvider(self._log)
-        self.fileid_map = CachingFileIdMap(cachedir_transport, FileIdMap(simple_apply_changes, self))
-        self.revmap = CachingRevidMap(RevidMap(self), self.cachedb)
+        self._log = logwalker.LogWalker(transport=transport)
+        self.fileid_map = FileIdMap(simple_apply_changes, self)
+        self.revmap = RevidMap(self)
         self._scheme = None
         self._hinted_branch_path = branch_path
+
+        cache = self.get_config().get_use_cache()
+
+        if cache:
+            cache_dir = self.create_cache_dir()
+            cachedir_transport = get_transport(cache_dir)
+            cache_file = os.path.join(cache_dir, 'cache-v%d' % CACHE_DB_VERSION)
+            if not cachedbs.has_key(cache_file):
+                cachedbs[cache_file] = sqlite3.connect(cache_file)
+            self.cachedb = cachedbs[cache_file]
+            self._log = logwalker.CachingLogWalker(self._log, cache_db=self.cachedb)
+            self.fileid_map = CachingFileIdMap(cachedir_transport, self.fileid_map)
+            self.revmap = CachingRevidMap(self.revmap, self.cachedb)
+
+        self.branchprop_list = PathPropertyProvider(self._log)
 
     def get_revmap(self):
         return self.revmap
@@ -314,9 +317,20 @@ class SvnRepository(Repository):
     def all_revision_ids(self, mapping=None):
         if mapping is None:
             mapping = self.get_mapping()
-        for (bp, rev) in self.follow_history(
-                self.transport.get_latest_revnum(), mapping):
-            yield self.generate_revision_id(rev, bp, mapping)
+        revnum = self.transport.get_latest_revnum()
+
+        for (_, paths, revnum) in self._log.iter_changes("", revnum):
+            yielded_paths = set()
+            for p in paths:
+                try:
+                    bp = mapping.scheme.unprefix(p)[0]
+                    if not bp in yielded_paths:
+                        if not paths.has_key(bp) or paths[bp][0] != 'D':
+                            assert revnum > 0 or bp == ""
+                            yield self.generate_revision_id(revnum, bp, mapping)
+                        yielded_paths.add(bp)
+                except NotBranchError:
+                    pass
 
     def get_inventory_weave(self):
         """See Repository.get_inventory_weave()."""
@@ -593,28 +607,6 @@ class SvnRepository(Repository):
         """
         return self._serializer.write_revision_to_string(
             self.get_revision(revision_id))
-
-    def follow_history(self, revnum, mapping):
-        """Yield all the branches found between the start of history 
-        and a specified revision number.
-
-        :param revnum: Revision number up to which to search.
-        :return: iterator over branches in the range 0..revnum
-        """
-        assert mapping is not None
-
-        for (_, paths, revnum) in self._log.iter_changes("", revnum):
-            yielded_paths = []
-            for p in paths:
-                try:
-                    bp = mapping.scheme.unprefix(p)[0]
-                    if not bp in yielded_paths:
-                        if not paths.has_key(bp) or paths[bp][0] != 'D':
-                            assert revnum > 0 or bp == ""
-                            yield (bp, revnum)
-                        yielded_paths.append(bp)
-                except NotBranchError:
-                    pass
 
     def follow_branch(self, branch_path, revnum, mapping):
         """Follow the history of a branch. Will yield all the 

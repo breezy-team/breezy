@@ -84,6 +84,12 @@ class SvnRepositoryConfig(IniBasedConfig):
         except KeyError:
             return None
 
+    def get_use_cache(self):
+        try:
+            return self._get_parser().get_bool(self.uuid, "use-cache")
+        except KeyError:
+            return True
+
     def get_log_strip_trailing_newline(self):
         """Check whether or not trailing newlines should be stripped in the 
         Subversion log message (where support by the bzr<->svn mapping used)."""

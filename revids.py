@@ -23,7 +23,9 @@ from bzrlib.trace import mutter
 import svn.core
 
 from cache import CacheTable
-from mapping import parse_revision_id, BzrSvnMapping, BzrSvnMappingv3FileProps
+from errors import InvalidPropertyValue
+from mapping import (parse_revision_id, BzrSvnMapping, BzrSvnMappingv3FileProps,
+                     SVN_PROP_BZR_REVISION_ID, parse_revid_property)
 
 class RevidMap(object):
     def __init__(self, repos):
@@ -81,7 +83,7 @@ class RevidMap(object):
                 for line in props.get(SVN_PROP_BZR_REVISION_ID+str(scheme), "").splitlines():
                     try:
                         revids.add(parse_revid_property(line))
-                    except errors.InvalidPropertyValue, ie:
+                    except InvalidPropertyValue, ie:
                         mutter(str(ie))
             except svn.core.SubversionException, (_, svn.core.SVN_ERR_FS_NOT_DIRECTORY):
                 continue
@@ -89,7 +91,7 @@ class RevidMap(object):
             # If there are any new entries that are not yet in the cache, 
             # add them
             for (entry_revno, entry_revid) in revids:
-                yield (revid, branch, revno)
+                yield (entry_revid, branch, revno)
 
     def bisect_revid_revnum(self, revid, branch_path, max_revnum, scheme):
         # Find the branch property between min_revnum and max_revnum that 
@@ -99,7 +101,7 @@ class RevidMap(object):
                 (entry_revno, entry_revid) = parse_revid_property(
                  self.repos.branchprop_list.get_property_diff(bp, rev, 
                      SVN_PROP_BZR_REVISION_ID+str(scheme)).strip("\n"))
-            except errors.InvalidPropertyValue:
+            except InvalidPropertyValue:
                 # Don't warn about encountering an invalid property, 
                 # that will already have happened earlier
                 continue
