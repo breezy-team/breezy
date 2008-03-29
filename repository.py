@@ -145,7 +145,7 @@ class SvnRepository(Repository):
     def __init__(self, bzrdir, transport, branch_path=None):
         from bzrlib.plugins.svn import lazy_register_optimizers
         lazy_register_optimizers()
-        from fileids import SimpleFileIdMap
+        from fileids import CachingFileIdMap, simple_apply_changes, FileIdMap
         _revision_store = None
 
         assert isinstance(transport, Transport)
@@ -176,7 +176,7 @@ class SvnRepository(Repository):
         # TODO: Only use fileid_map when 
         # fileprops-based mappings are being used
         self.branchprop_list = PathPropertyProvider(self._log)
-        self.fileid_map = SimpleFileIdMap(self, cachedir_transport)
+        self.fileid_map = CachingFileIdMap(cachedir_transport, FileIdMap(simple_apply_changes, self))
         self.revmap = RevidMap(self.cachedb)
         self._scheme = None
         self._hinted_branch_path = branch_path
