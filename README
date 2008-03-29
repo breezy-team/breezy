@@ -16,26 +16,6 @@ repositories, as if you were using bzr with a native bzr repository.
 The plugin can at the moment be used to commit to, pull from, merge from, push 
 to and view logs of Subversion branches from Bazaar.
 
-Dependencies
-------------
-
-You will need a recent version of Bazaar, usually the release of Bazaar 
-released in the same month as the release of bzr-svn you are using.
-
-You also need a fairly recent version of the official Python bindings to the 
-Subversion libraries. At the moment, the svn plugin only works with 
-Subversion 1.5 (trunk). The python-subversion (not python-svn!) package 
-in Ubuntu since Feisty and Debian since Etch also contain the 
-required changes. 
-
-If you are running an older version of Python (under 2.5), you will also 
-need to have the pysqlite package installed.
-
-In order to be able to use the ``svn-upgrade`` command (for those 
-who used earlier versions of bzr-svn), you will need the `bzr-rebase`_ 
-plugin.
-
-.. _bzr-rebase: http://bazaar-vcs.org/Rebase
 
 Features
 --------
@@ -65,11 +45,13 @@ The following features are currently present:
 - Follow branch copies. Revision history is not 
   truncated when a branch was copied in Subversion.
 
-- Efficiently uses network bandwidth. 
+- Efficiently uses network bandwidth.
 
 - Recognizes file metadata (executable bits, symbolic links).
 
 - 'svn-import' command with functionality similar to svn2bzr_.
+
+.. _svn2bzr: http://bazaar-vcs.org/svn2bzr
 
 - Ability to track merges done with SVK_ and write merges from SVK/Subversion branches in a format understandable by SVK.
 
@@ -108,6 +90,32 @@ Ask bzr-svn related questions on the `Bazaar mailing list`_ or in the
 .. _Bazaar mailing list: http://lists.canonical.com/listinfo/bazaar/
 .. _Freenode: http://www.freenode.net/
 
+Missing Features
+----------------
+
+Subversion File Properties
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Some Subversion properties can currently not be represented in Bazaar and are 
+therefore ignored for the time being:
+
+- 'svn:ignore' is not imported. There should be a `Repository.get_ignores(revid)` call in 
+  Bazaar rather than a magic '.bzrignore' file. 
+  Spec at https://launchpad.net/products/bzr/+spec/new-ignore-rules
+
+- 'svn:mime-type'
+
+- 'svn:eol-style'. Requires eol support in Bazaar.
+
+- 'svn:keywords'. Requires keywords support in Bazaar. Spec at https://launchpad.net/products/bzr/+spec/bzr-keyword-expansion. `#81463 <https://bugs.launchpad.net/bzr-svn/+bug/81463>`_
+
+- 'svn:externals'. Externals should be mapped to Bazaar 'by-reference' 
+  nested branches and the other way around. This can't be implemented 
+  this until Bazaars nested branch support lands. AaronBentley's work 
+  in progress is at http://code.aaronbentley.com/bzr/bzrrepo/nested-trees/.
+  This has been delayed until after 0.9 because of required repository
+  format changes.
+
 
 
 Future Enhancements
@@ -131,24 +139,7 @@ In the future, I also hope to support:
 Some Subversion properties can currently not be represented in Bazaar 
 and are therefore ignored for the time being:
 
-- 'svn:ignore' is not imported. There should be a 
-  'Repository.get_ignores(revid)' call in Bazaar rather than a magic 
-  '.bzrignore' file. 
    
-- 'svn:externals'. Externals should be mapped to Bazaar 'by-reference' 
-  nested branches and the other way around. This can't be implemented 
-  this until Bazaars nested branch support lands. AaronBentley's work 
-  in progress is at http://code.aaronbentley.com/bzr/bzrrepo/nested-trees/.
-  This has been delayed until after 0.9 because of required repository
-  format changes.
-
-- 'svn:mime-type'
-
-- 'svn:eol-style'
-
-- 'svn:keywords'. Requires keywords support in Bazaar. Spec at 
-  https://launchpad.net/products/bzr/+spec/bzr-keyword-expansion
-
 Other features currently held back by Bazaars feature set:
 
 - Tracking copies. 
@@ -163,12 +154,48 @@ Other features currently held back by Bazaars feature set:
    
   Spec at https://launchpad.net/products/bzr/+spec/bzr-cpick-data
 
+Requirements
+------------
+
+Bazaar
+~~~~~~
+
+You will need a recent version of Bazaar, usually the release of Bazaar 
+released in the same month as the release of bzr-svn you are using. bzr-svn 
+will warn if the Bazaar release used is too old or too new.
+
+SQLite
+~~~~~~
+
+If you are using Python 2.4, you will need to have the pysqlite module installed. Python 2.5 and higher have sqlite support built in. 
+
+Python-Subversion >= 1.5
+~~~~~~~~~~~~~~~~~~~~~~~~
+ 
+You also need a fairly recent version of the official Python bindings to the 
+Subversion libraries. At the moment, the svn plugin only works with 
+Subversion 1.5 (trunk). The python-subversion (not python-svn!) package 
+in Ubuntu since Feisty and Debian since Etch also contain the 
+required changes. 
+
+The plugin requires a couple of fixes to the Python bindings for Subversion that are only available in Subversion 1.5 and higher. Subversion 1.5 has not been released yet, but packages with the appropriate patches applied to older versions are available for some platforms.
+
+bzr-rebase
+~~~~~~~~~~
+
+In order to be able to use the ``svn-upgrade`` command (for those 
+who used versions of bzr-svn older than 0.4.0), you will need the `bzr-rebase`_ 
+plugin.
+
+.. _bzr-rebase: http://bazaar-vcs.org/Rebase
+
 Bugs
 ----
 
 Please file bug reports in launchpad. The product URL for bzr-svn is
-https://launchpad.net/bzr-svn/. The wiki for this 
-plugin is at http://bazaar-vcs.org/BzrSvn.
+https://launchpad.net/bzr-svn/. 
+
+The wiki for this plugin is at http://bazaar-vcs.org/BzrSvn.
 
 Installation
 ------------
@@ -184,7 +211,11 @@ Unit testing
 ~~~~~~~~~~~~
 To run the bzr-svn testsuite, simply run 'bzr selftest svn'
 
+Credits
+-------
+bzr-svn was written by JelmerVernooij_ with the help from various other people. See the AUTHORS file for a full list of contributors.
 
+.. _JelmerVernooij: http://samba.org/~jelmer/
 
 ..
 	vim: ft=rest
