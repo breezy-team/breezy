@@ -1,0 +1,14 @@
+Ignores
+=======
+
+A fake .bzrignore file is generated containing the contents of the "svn:ignore"
+properties. If a .bzrignore file already exists in the tree, 
+the file already in the tree is used. 
+
+The .bzrignore file contains the directories in which the ignores are 
+set, ordered alphabetically by directory path. 
+
+Ignores are only recognized on directories.
+
+
+.. vim: ft=rst

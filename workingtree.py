@@ -57,6 +57,20 @@ from svn.core import SubversionException, Pool
 from errors import NoCheckoutSupport
 from format import get_rich_root_format
 
+def generate_ignore_list(ignore_map):
+    """Create a list of ignores, ordered by directory.
+    
+    :param ignore_map: Dictionary with paths as keys, patterns as values.
+    :return: list of ignores
+    """
+    ignores = []
+    keys = ignore_map.keys()
+    keys.sort()
+    for k in keys:
+        ignores.append("./" + os.path.join(k.strip("/"), ignore_map[k].strip("/")))
+    return ignores
+
+
 class WorkingTreeInconsistent(BzrError):
     _fmt = """Working copy is in inconsistent state (%(min_revnum)d:%(max_revnum)d)"""
 
@@ -121,6 +135,7 @@ class SvnWorkingTree(WorkingTree):
                 if entry == "":
                     continue
 
+                # Ignore ignores on things that aren't directories
                 if entries[entry].kind != svn.core.svn_node_dir:
                     continue
 
@@ -732,9 +747,9 @@ class SvnCheckout(BzrDir):
         finally:
             svn.wc.adm_close(wc)
 
-        remote_transport = SvnRaTransport(svn_url)
-        self.remote_bzrdir = SvnRemoteAccess(remote_transport)
-        self.svn_root_transport = remote_transport.clone_root()
+        self.remote_transport = SvnRaTransport(svn_url)
+        self.remote_bzrdir = SvnRemoteAccess(self.remote_transport)
+        self.svn_root_transport = self.remote_transport.clone_root()
         self.root_transport = self.transport = transport
         
     def clone(self, path, revision_id=None, force_new_repo=False):
@@ -788,7 +803,7 @@ class SvnCheckout(BzrDir):
         repos = self._find_repository()
 
         try:
-            branch = SvnBranch(self.svn_root_transport.base, repos, 
+            branch = SvnBranch(self.remote_transport.base, repos, 
                                self.remote_bzrdir.branch_path)
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_WC_NOT_DIRECTORY:

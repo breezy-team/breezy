@@ -41,6 +41,7 @@ class TestWorkingTreeFormat(TestCase):
     def test_open(self):
         self.assertRaises(NotImplementedError, self.format.open, None)
 
+
 class TestCheckoutFormat(TestCase):
     def setUp(self):
         super(TestCheckoutFormat, self).setUp()
@@ -91,3 +92,10 @@ class TestCheckout(TestCaseWithSubversionRepository):
         x = Branch.open("dc")
         x.create_checkout("de", lightweight=True)
 
+    def test_checkout_branch(self):
+        repos_url = self.make_client("d", "dc")
+        self.build_tree({"dc/trunk": None})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "msg")
+        x = self.open_checkout_bzrdir("dc/trunk")
+        self.assertEquals(repos_url+"/trunk", x.open_branch().base)

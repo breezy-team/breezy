@@ -16,6 +16,7 @@
 """Subversion cache directory access."""
 
 import bzrlib
+from bzrlib import debug
 from bzrlib.config import config_dir, ensure_config_dir_exists
 from bzrlib.trace import warning
 
@@ -66,7 +67,7 @@ except:
     raise bzrlib.errors.BzrError("missing sqlite library")
 
 
-class CacheTable:
+class CacheTable(object):
     """Simple base class for SQLite-based caches."""
     def __init__(self, cache_db=None):
         if cache_db is None:
@@ -78,3 +79,7 @@ class CacheTable:
 
     def _create_table(self):
         pass
+
+    def mutter(self, text):
+        if "cache" in debug.debug_flags:
+            mutter(text)

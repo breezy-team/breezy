@@ -53,6 +53,10 @@ def parse_externals_description(base_url, val):
                 raise errors.InvalidExternalsDescription()
             ret[pts[0]] = (int(pts[1][2:]), urlutils.join(base_url, pts[2]))
         elif len(pts) == 2:
+            if pts[1].startswith("//"):
+                raise NotImplementedError("Relative to the scheme externals not yet supported")
+            if pts[1].startswith("^/"):
+                raise NotImplementedError("Relative to the repository root externals not yet supported")
             ret[pts[0]] = (None, urlutils.join(base_url, pts[1]))
         else:
             raise errors.InvalidExternalsDescription()

@@ -130,7 +130,7 @@ class TestConversion(TestCaseWithSubversionRepository):
         oldrepos = Repository.open(self.repos_url)
         convert_repository(oldrepos, "e", TrunkBranchingScheme(), 
             create_shared_repo=True,
-            filter_branch=lambda (bp, revnum, exists): bp.endswith("somebranch"))
+            filter_branch=lambda branch: branch.get_branch_path().endswith("somebranch"))
         newrepos = Repository.open("e")
         self.assertTrue(os.path.exists("e/branches/somebranch"))
         self.assertFalse(os.path.exists("e/branches/anotherbranch"))

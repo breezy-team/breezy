@@ -633,7 +633,7 @@ def push_new(target_repository, target_branch_path, source,
 
     # Get commit builder but specify that target_branch_path should
     # be created and copied from (copy_path, copy_revnum)
-    class ImaginaryBranch:
+    class ImaginaryBranch(object):
         """Simple branch that pretends to be empty but already exist."""
         def __init__(self, repository):
             self.repository = repository

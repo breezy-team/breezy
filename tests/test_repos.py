@@ -203,7 +203,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos = Repository.open(repos_url)
 
         self.assertEqual(2, 
-                   len(list(repos.follow_history(1, repos.get_mapping()))))
+                   len(list(repos.all_revision_ids(repos.get_mapping()))))
 
     def test_all_revs_empty(self):
         repos_url = self.make_client("a", "dc")
@@ -233,9 +233,8 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
     def test_follow_history_empty(self):
         repos_url = self.make_client("a", "dc")
         repos = Repository.open(repos_url)
-        self.assertEqual([('', 0)], 
-              list(repos.follow_history(0, 
-                  repos.get_mapping())))
+        self.assertEqual([repos.generate_revision_id(0, '', repos.get_mapping())], 
+              list(repos.all_revision_ids(repos.get_mapping())))
 
     def test_follow_history_empty_branch(self):
         repos_url = self.make_client("a", "dc")
@@ -245,8 +244,8 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My Message")
         repos = Repository.open(repos_url)
         repos.set_branching_scheme(TrunkBranchingScheme())
-        self.assertEqual([('trunk', 1)], 
-                list(repos.follow_history(1, repos.get_mapping())))
+        self.assertEqual([repos.generate_revision_id(1, 'trunk', repos.get_mapping())], 
+                list(repos.all_revision_ids(repos.get_mapping())))
 
     def test_follow_history_follow(self):
         repos_url = self.make_client("a", "dc")
@@ -261,9 +260,9 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos = Repository.open(repos_url)
         repos.set_branching_scheme(TrunkBranchingScheme())
 
-        items = list(repos.follow_history(2, repos.get_mapping()))
-        self.assertEqual([('branches/abranch', 2), 
-                          ('trunk', 1)], items)
+        items = list(repos.all_revision_ids(repos.get_mapping()))
+        self.assertEqual([repos.generate_revision_id(2, 'branches/abranch', repos.get_mapping()), 
+                          repos.generate_revision_id(1, 'trunk', repos.get_mapping())], items)
 
     def test_branch_log_specific(self):
         repos_url = self.make_client("a", "dc")

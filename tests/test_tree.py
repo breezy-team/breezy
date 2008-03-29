@@ -98,6 +98,14 @@ class TestBasisTree(TestCaseWithSubversionRepository):
 
 
 class TestExternalsParser(TestCase):
+    def test_parse_root_relative_externals(self):
+        self.assertRaises(NotImplementedError, parse_externals_description, 
+                    "http://example.com", "third-party/skins              ^/foo")
+
+    def test_parse_scheme_relative_externals(self):
+        self.assertRaises(NotImplementedError, parse_externals_description, 
+                    "http://example.com", "third-party/skins              //foo")
+
     def test_parse_externals(self):
         self.assertEqual({
             'third-party/sounds': (None, "http://sounds.red-bean.com/repos"),
@@ -125,6 +133,13 @@ third-party/sounds             http://sounds.red-bean.com/repos
                 },
             parse_externals_description("http://example.com/trunk",
 "third-party/sounds             ../branches/other"))
+
+    def test_parse_repos_root_relative(self):
+        self.assertEqual({
+            'third-party/sounds': (None, "http://example.com/bar/bla/branches/other"),
+                },
+            parse_externals_description("http://example.com/trunk",
+"third-party/sounds             /bar/bla/branches/other"))
 
     def test_parse_invalid_missing_url(self):
         """No URL specified."""

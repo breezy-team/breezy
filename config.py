@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Stores per-repository settings."""
 
-from bzrlib import osutils
+from bzrlib import osutils, urlutils
 from bzrlib.config import IniBasedConfig, config_dir, ensure_config_dir_exists, GlobalConfig, LocationConfig, Config
 
 import os
@@ -176,7 +176,7 @@ class BranchConfig(Config):
 
     def _get_repository_config(self):
         if self._repository_config is None:
-            self._repository_config = SvnRepositoryConfig(branch.repository.uuid)
+            self._repository_config = SvnRepositoryConfig(self.branch.repository.uuid)
         return self._repository_config
 
     def _get_user_option(self, option_name):
@@ -189,3 +189,20 @@ class BranchConfig(Config):
 
     def get_append_revisions_only(self):
         return self.get_user_option("append_revision_only")
+
+    def _get_user_id(self):
+        """Get the user id from the 'email' key in the current section."""
+        return self._get_user_option('email')
+
+    def get_option(self, key, section=None):
+        if section == "BUILDDEB" and key == "merge":
+            revnum = self.branch.get_revnum()
+            try:
+                props = self.branch.repository.transport.get_dir(urlutils.join(self.branch.get_branch_path(revnum), "debian"), revnum)[2]
+                if props.has_key("mergeWithUpstream"):
+                    return "True"
+                else:
+                    return "False"
+            except svn.core.SubversionException:
+                return None
+        return None

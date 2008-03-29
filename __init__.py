@@ -39,7 +39,7 @@ else:
     version_string = '%d.%d.%d%s%d' % version_info
 __version__ = version_string
 
-COMPATIBLE_BZR_VERSIONS = [(1, 3)]
+COMPATIBLE_BZR_VERSIONS = [(1, 4)]
 
 def check_bzrlib_version(desired):
     """Check that bzrlib is compatible.
@@ -223,10 +223,10 @@ class cmd_svn_import(Command):
             raise BzrCommandError(
                     "Not a Subversion repository: %s" % from_location)
 
-        def filter_branch((branch_path, revnum, exists)):
-            if prefix is not None and not branch_path.startswith(prefix):
+        def filter_branch(branch):
+            if prefix is not None and not branch.get_branch_path().startswith(prefix):
                 return False
-            return exists
+            return True
 
         convert_repository(from_repos, to_location, scheme, not standalone, 
                 trees, all, filter_branch=filter_branch)

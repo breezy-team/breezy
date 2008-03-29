@@ -582,6 +582,7 @@ class RevpropTests(TestCaseWithSubversionRepository):
         self.assertRaises(RevpropChangeFailed, 
                 lambda: set_svn_revprops(transport, 1, {"svn:author": "Somebody", "svn:date": svn_time_to_cstring(1000000*473385600)}))
 
+
 class SvkTestCase(TestCase):
     def test_revid_svk_map(self):
         self.assertEqual("auuid:/:6", 

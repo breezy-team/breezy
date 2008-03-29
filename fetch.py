@@ -458,8 +458,7 @@ class WeaveRevisionBuildEditor(RevisionBuildEditor):
         self.inventory.revision_id = self.revid
         # Escaping the commit message is really the task of the serialiser
         rev.message = _escape_commit_message(rev.message)
-        rev.inventory_sha1 = osutils.sha_string(
-                self.target.serialise_inventory(self.inventory))
+        rev.inventory_sha1 = None
         self.target.add_revision(self.revid, rev, self.inventory)
         if signature is not None:
             self.target.add_signature_text(self.revid, signature)
@@ -530,20 +529,17 @@ class InterFromSvnRepository(InterRepository):
         missing = available_revs.difference(self.target.has_revisions(available_revs))
         needed = list(graph.iter_topo_order(missing))
         parents = graph.get_parent_map(needed)
-        return (needed, parents)
+        return [(revid, parents[revid]) for revid in needed]
 
     def _find_branches(self, branches, find_ghosts=False, fetch_rhs_ancestry=False):
         set_needed = set()
         ret_needed = list()
-        ret_parents = dict()
         for revid in branches:
-            (needed, parents) = self._find_until(revid, find_ghosts=find_ghosts, fetch_rhs_ancestry=False)
-            for rev in needed:
-                if not rev in set_needed:
-                    ret_needed.append(rev)
+            for (rev, parents) in self._find_until(revid, find_ghosts=find_ghosts, fetch_rhs_ancestry=False):
+                if rev not in set_needed:
+                    ret_needed.append((rev, parents))
                     set_needed.add(rev)
-            ret_parents.update(parents)
-        return ret_needed, ret_parents
+        return ret_needed
 
     def _find_until(self, revision_id, find_ghosts=False, fetch_rhs_ancestry=False):
         """Find all missing revisions until revision_id
@@ -555,32 +551,35 @@ class InterFromSvnRepository(InterRepository):
             parents for those revision.
         """
         needed = []
-        parents = {}
 
-        graph = self.source.get_graph()
         if fetch_rhs_ancestry:
+            graph = self.source.get_graph()
             for (revid, parent_revids) in graph.iter_ancestry([revision_id]):
                 if revid == NULL_REVISION:
                     continue
                 if parent_revids is None: # Ghost
                     continue
-                parents[revid] = parent_revids
                 if not self.target.has_revision(revid):
-                    needed.append(revid)
+                    needed.append((revid, parent_revids))
                 elif not find_ghosts:
                     break
+            needed.reverse()
         else:
-            for (revid, parent_revid) in graph.iter_lhs_ancestry(revision_id):
-                if revid == NULL_REVISION:
-                    continue
-                parents[revid] = (parent_revid,)
+            revs = []
+            prev = None
+            parents = {}
+            for revid in self.source.iter_reverse_revision_history(revision_id):
+                parents[prev] = revid
                 if not self.target.has_revision(revid):
-                    needed.append(revid)
+                    revs.append(revid)
                 elif not find_ghosts:
                     break
+                prev = revid
+            parents[prev] = NULL_REVISION
 
-        needed.reverse()
-        return (needed, parents)
+            needed = [(revid, (parents[revid],)) for revid in reversed(revs)]
+
+        return needed
 
     def copy_content(self, revision_id=None, pb=None):
         """See InterRepository.copy_content."""
@@ -594,7 +593,7 @@ class InterFromSvnRepository(InterRepository):
         """
         raise NotImplementedError(self._copy_revisions_replay)
 
-    def _fetch_switch(self, revids, pb=None, parents=None):
+    def _fetch_switch(self, revids, pb=None):
         """Copy a set of related revisions using svn.ra.switch.
 
         :param revids: List of revision ids of revisions to copy, 
@@ -618,10 +617,10 @@ class InterFromSvnRepository(InterRepository):
         editor = revbuildklass(self.source, self.target)
 
         try:
-            for revid in revids:
+            for (revid, parent_revids) in revids:
                 pb.update('copying revision', num, len(revids))
 
-                parent_revid = parents[revid][0]
+                parent_revid = parent_revids[0]
 
                 assert parent_revid is not None
 
@@ -693,12 +692,11 @@ class InterFromSvnRepository(InterRepository):
         self.target.lock_read()
         try:
             if branches is not None:
-                (needed, parents) = self._find_branches(branches, 
-                                                        find_ghosts, fetch_rhs_ancestry)
+                needed = self._find_branches(branches, find_ghosts, fetch_rhs_ancestry)
             elif revision_id is None:
-                (needed, parents) = self._find_all()
+                needed = self._find_all()
             else:
-                (needed, parents) = self._find_until(revision_id, 
+                needed = self._find_until(revision_id, 
                                                      find_ghosts, fetch_rhs_ancestry)
         finally:
             self.target.unlock()
@@ -707,7 +705,7 @@ class InterFromSvnRepository(InterRepository):
             # Nothing to fetch
             return
 
-        self._fetch_switch(needed, pb, parents)
+        self._fetch_switch(needed, pb)
 
     @staticmethod
     def is_compatible(source, target):

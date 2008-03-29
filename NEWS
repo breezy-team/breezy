@@ -17,6 +17,11 @@ bzr-svn 0.4.10  UNRELEASED
    * Add new ``append-revisions-only'' option with similar behaviour 
      as in standard bzr formats. (#206242)
 
+   * No longer calculate inventory sha1's for svn revisions. Should provide 
+     some minor speed improvements.
+
+   * Parse mergeWithUpstream set by svn-buildpackage.
+
   INTERNALS
 
    * Branching from a Subversion repository will now fetch right-hand side 
@@ -27,6 +32,8 @@ bzr-svn 0.4.10  UNRELEASED
   BUGS
 
     * Avoid sometimes incorrect determination of Bazaar revision numbers. (#181773)
+
+	* Deal with bzr:svn-revision-info property being removed. (#206728)
 
 bzr-svn 0.4.9	2008-03-23
 

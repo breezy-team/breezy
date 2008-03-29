@@ -20,6 +20,7 @@ from bzrlib import osutils, ui, urlutils, xml5
 from bzrlib.branch import Branch, BranchCheckResult
 from bzrlib.errors import (InvalidRevisionId, NoSuchRevision, NotBranchError, 
                            UninitializableFormat, UnrelatedBranches)
+from bzrlib.graph import CachingParentsProvider
 from bzrlib.inventory import Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.repository import Repository, RepositoryFormat
@@ -37,7 +38,6 @@ from branchprops import PathPropertyProvider
 from cache import create_cache_dir, sqlite3
 from config import SvnRepositoryConfig
 import errors
-from graph import Graph, CachingParentsProvider
 import logwalker
 from mapping import (SVN_PROP_BZR_REVISION_ID, SVN_REVPROP_BZR_SIGNATURE,
                      SVN_PROP_BZR_BRANCHING_SCHEME, BzrSvnMappingv3FileProps,
@@ -52,7 +52,7 @@ from svk import (SVN_PROP_SVK_MERGE, svk_features_merged_since,
 from tree import SvnRevisionTree
 import urllib
 
-class lazy_dict:
+class lazy_dict(object):
     def __init__(self, create_fn):
         self.create_fn = create_fn
         self.dict = None
@@ -145,7 +145,7 @@ class SvnRepository(Repository):
     def __init__(self, bzrdir, transport, branch_path=None):
         from bzrlib.plugins.svn import lazy_register_optimizers
         lazy_register_optimizers()
-        from fileids import SimpleFileIdMap
+        from fileids import CachingFileIdMap, simple_apply_changes, FileIdMap
         _revision_store = None
 
         assert isinstance(transport, Transport)
@@ -170,13 +170,13 @@ class SvnRepository(Repository):
             cachedbs[cache_file] = sqlite3.connect(cache_file)
         self.cachedb = cachedbs[cache_file]
 
-        self._log = logwalker.LogWalker(transport=transport, 
-                                        cache_db=self.cachedb)
+        self._log = logwalker.CachingLogWalker(logwalker.LogWalker(transport=transport), 
+                        cache_db=self.cachedb)
 
         # TODO: Only use fileid_map when 
         # fileprops-based mappings are being used
         self.branchprop_list = PathPropertyProvider(self._log)
-        self.fileid_map = SimpleFileIdMap(self, cachedir_transport)
+        self.fileid_map = CachingFileIdMap(cachedir_transport, FileIdMap(simple_apply_changes, self))
         self.revmap = RevidMap(self.cachedb)
         self._scheme = None
         self._hinted_branch_path = branch_path
@@ -311,9 +311,20 @@ class SvnRepository(Repository):
     def all_revision_ids(self, mapping=None):
         if mapping is None:
             mapping = self.get_mapping()
-        for (bp, rev) in self.follow_history(
-                self.transport.get_latest_revnum(), mapping):
-            yield self.generate_revision_id(rev, bp, mapping)
+        revnum = self.transport.get_latest_revnum()
+
+        for (_, paths, revnum) in self._log.iter_changes("", revnum):
+            yielded_paths = []
+            for p in paths:
+                try:
+                    bp = mapping.scheme.unprefix(p)[0]
+                    if not bp in yielded_paths:
+                        if not paths.has_key(bp) or paths[bp][0] != 'D':
+                            assert revnum > 0 or bp == ""
+                            yield self.generate_revision_id(revnum, bp, mapping)
+                        yielded_paths.append(bp)
+                except NotBranchError:
+                    pass
 
     def get_inventory_weave(self):
         """See Repository.get_inventory_weave()."""
@@ -331,6 +342,13 @@ class SvnRepository(Repository):
         """
         return False
 
+    def iter_changes(self):
+        """
+        
+        :return: iterator over tuples with (revid, parent_revids, changes, revprops, branchprops)
+        """
+        raise NotImplementedError
+
     def iter_reverse_revision_history(self, revision_id):
         """Iterate backwards through revision ids in the lefthand history
 
@@ -339,13 +357,12 @@ class SvnRepository(Repository):
         """
         if revision_id in (None, NULL_REVISION):
             return
-        for (revid, parent_revid) in self.get_graph().iter_lhs_ancestry(revision_id):
-            yield revid
-
-    def get_graph(self, other_repository=None):
-        """Return the graph walker for this repository format"""
-        parents_provider = self._make_parents_provider()
-        return Graph(parents_provider)
+        while revision_id != NULL_REVISION:
+            yield revision_id
+            (branch_path, revnum, mapping) = self.lookup_revision_id(revision_id)
+            revision_id = self.lhs_revision_parent(branch_path, revnum, mapping)
+            if revision_id is None:
+                return
 
     def get_ancestry(self, revision_id, topo_sorted=True):
         """See Repository.get_ancestry().
@@ -518,11 +535,8 @@ class SvnRepository(Repository):
             svn_fileprops = lazy_dict(lambda: self.branchprop_list.get_changed_properties(path, revnum))
         parent_ids = self.revision_parents(revision_id, svn_fileprops=svn_fileprops, svn_revprops=svn_revprops)
 
-        # Commit SVN revision properties to a Revision object
-        class LazySvnRevision(Revision):
-            inventory_sha1 = property(lambda rev: self.get_inventory_sha1(rev.revision_id))
-
-        rev = LazySvnRevision(revision_id=revision_id, parent_ids=parent_ids)
+        rev = Revision(revision_id=revision_id, parent_ids=parent_ids,
+                       inventory_sha1=None)
 
         mapping.import_revision(svn_revprops, svn_fileprops, rev)
 
@@ -691,35 +705,6 @@ class SvnRepository(Repository):
         return self._serializer.write_revision_to_string(
             self.get_revision(revision_id))
 
-    def follow_history(self, revnum, mapping):
-        """Yield all the branches found between the start of history 
-        and a specified revision number.
-
-        :param revnum: Revision number up to which to search.
-        :return: iterator over branches in the range 0..revnum
-        """
-        assert mapping is not None
-
-        for (_, paths, revnum) in self._log.iter_changes("", revnum):
-            yielded_paths = []
-            for p in paths:
-                try:
-                    bp = mapping.scheme.unprefix(p)[0]
-                    if not bp in yielded_paths:
-                        if not paths.has_key(bp) or paths[bp][0] != 'D':
-                            assert revnum > 0 or bp == ""
-                            yield (bp, revnum)
-                        yielded_paths.append(bp)
-                except NotBranchError:
-                    pass
-
-    def get_lhs_parent(self, revid):
-        (branch_path, revnum, mapping) = self.lookup_revision_id(revid)
-        parent_revid = self.lhs_revision_parent(branch_path, revnum, mapping)
-        if parent_revid is None:
-            return NULL_REVISION
-        return parent_revid
-
     def follow_branch(self, branch_path, revnum, mapping):
         """Follow the history of a branch. Will yield all the 
         left-hand side ancestors of a specified revision.
@@ -735,24 +720,13 @@ class SvnRepository(Repository):
         assert mapping.is_branch(branch_path) or mapping.is_tag(branch_path)
         branch_path = branch_path.strip("/")
 
-        while revnum >= 0:
-            assert revnum > 0 or branch_path == ""
-            paths = self._log.get_revision_paths(revnum)
-
-            # If something underneath branch_path changed, there is a 
-            # revision there, so yield it.
-            if changes_path(paths, branch_path):
-                yield (branch_path, revnum)
-            next = logwalker.changes_find_prev_location(paths, branch_path, revnum)
-            if next is None:
-                break
-            (branch_path, revnum) = next
-            if not mapping.is_branch(branch_path) and \
-               not mapping.is_tag(branch_path):
+        for (path, paths, revnum) in self._log.iter_changes(branch_path, revnum):
+            if not mapping.is_branch(path) and not mapping.is_tag(path):
                 # FIXME: if copyfrom_path is not a branch path, 
                 # should simulate a reverse "split" of a branch
                 # for now, just make it look like the branch ended here
                 break
+            yield (path, revnum)
         
     def follow_branch_history(self, branch_path, revnum, mapping):
         """Return all the changes that happened in a branch 
@@ -850,7 +824,7 @@ class SvnRepository(Repository):
 
         return ret
 
-    def find_branches(self, using=False):
+    def find_branches(self, using=False, layout=None):
         """Find branches underneath this repository.
 
         This will include branches inside other branches.
@@ -859,9 +833,11 @@ class SvnRepository(Repository):
         """
         # All branches use this repository, so the using argument can be 
         # ignored.
-        layout = self.get_layout()
+        if layout is None:
+            layout = self.get_layout()
 
-        for project, bp in layout.get_branches():
+        branches = []
+        for project, bp, nick in layout.get_branches():
             try:
                 branches.append(Branch.open(urlutils.join(self.base, bp)))
             except NotBranchError: # Skip non-directories

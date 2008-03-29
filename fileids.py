@@ -78,7 +78,7 @@ def simple_apply_changes(new_file_id, changes, find_children=None):
 
     return map
 
-class FileIdMap:
+class FileIdMap(object):
     """File id store. 
 
     Keeps a map
@@ -118,7 +118,54 @@ class FileIdMap:
         return (idmap, changes)
 
     def get_map(self, uuid, revnum, branch, renames_cb, mapping):
-        raise NotImplementedError(self.get_map)
+        """Make sure the map is up to date until revnum."""
+        # First, find the last cached map
+        if revnum == 0:
+            assert branch == ""
+            return {"": (mapping.generate_file_id(uuid, 0, "", u""), 
+              self.repos.generate_revision_id(0, "", mapping))}
+
+        todo = []
+        next_parent_revs = []
+        if mapping.scheme.is_branch(""):
+            map = {u"": (mapping.generate_file_id(uuid, 0, "", u""), NULL_REVISION)}
+        else:
+            map = {}
+
+        quickrevidmap = {}
+
+        # No history -> empty map
+        for (bp, paths, rev) in self.repos.follow_branch_history(branch, 
+                                             revnum, mapping):
+            revid = self.repos.generate_revision_id(rev, bp, mapping)
+            quickrevidmap[revid] = (rev, bp)
+            todo.append((revid, paths))
+   
+        pb = ui.ui_factory.nested_progress_bar()
+
+        try:
+            i = 1
+            for (revid, global_changes) in reversed(todo):
+                expensive = False
+                def log_find_children(path, revnum):
+                    expensive = True
+                    return self.repos._log.find_children(path, revnum)
+
+                (revnum, branch) = quickrevidmap[revid]
+                (idmap, changes) = self.actual.apply_changes(self.repos.uuid, revnum, branch, 
+                                          global_changes, renames_cb(branch, revnum, mapping), mapping,
+                                          log_find_children)
+                pb.update('generating file id map', i, len(todo))
+
+                parent_revs = next_parent_revs
+
+                self.actual.update_map(map, revid, idmap, changes)
+                       
+                next_parent_revs = [revid]
+                i += 1
+        finally:
+            pb.finished()
+        return map
 
     def update_map(self, map, revid, idmap, changes):
         for p in changes:
@@ -138,12 +185,13 @@ class FileIdMap:
                 map[parent] = map[parent][0], revid
 
 
-class CachingFileIdMap:
+class CachingFileIdMap(object):
     """A file id map that uses a cache."""
     def __init__(self, cache_transport, actual):
         self.idmap_knit = KnitVersionedFile("fileidmap-v%d" % FILEIDMAP_VERSION, cache_transport, create=True)
         self.actual = actual
         self.apply_changes = actual.apply_changes
+        self.repos = actual.repos
 
     def save(self, revid, parent_revids, _map):
         mutter('saving file id map for %r' % revid)
@@ -164,13 +212,13 @@ class CachingFileIdMap:
     def get_map(self, uuid, revnum, branch, renames_cb, mapping):
         """Make sure the map is up to date until revnum."""
         # First, find the last cached map
-        todo = []
-        next_parent_revs = []
         if revnum == 0:
             assert branch == ""
             return {"": (mapping.generate_file_id(uuid, 0, "", u""), 
               self.repos.generate_revision_id(0, "", mapping))}
 
+        todo = []
+        next_parent_revs = []
         quickrevidmap = {}
 
         # No history -> empty map
@@ -227,12 +275,4 @@ class CachingFileIdMap:
         if not saved:
             self.save(revid, parent_revs, map)
         return map
-
-
-class SimpleFileIdMap(CachingFileIdMap):
-    def __init__(self, repos, cache_transport):
-        CachingFileIdMap.__init__(self, cache_transport, FileIdMap(simple_apply_changes, repos))
-        self.repos = repos
-
-
 

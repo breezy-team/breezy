@@ -37,17 +37,21 @@ class RepositoryLayout:
     def parse(self, path):
         """Parse a path.
 
-        :return: Tuple with type ('tag' or 'branch'), project name, branch name and path 
+        :return: Tuple with type ('tag' or 'branch'), project name, branch path and path 
             inside the branch
         """
         raise NotImplementedError
 
     def get_branches(self, project="", revnum=None):
         """Retrieve a list of paths that refer to branches in a specific revision.
+
+        :result: Iterator over tuples with (project, branch path)
         """
         raise NotImplementedError
 
     def get_tags(self, project="", revnum=None):
         """Retrieve a list of paths that refer to tags in a specific revision.
+
+        :result: Iterator over tuples with (project, branch path)
         """
         raise NotImplementedError
