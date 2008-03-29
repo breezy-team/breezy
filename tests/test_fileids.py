@@ -26,7 +26,7 @@ from mapping import BzrSvnMappingv3FileProps
 from scheme import TrunkBranchingScheme, NoBranchingScheme
 from tests import TestCaseWithSubversionRepository
 
-class MockRepo:
+class MockRepo(object):
     def __init__(self, mapping, uuid="uuid"):
         self.uuid = uuid
 
@@ -161,6 +161,7 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         self.assertEqual(fileid, inv1.path2id("dir/file"))
         self.assertEqual(repository.generate_revision_id(1, "trunk", mapping), revid)
 
+
 class TestFileMapping(TestCase):
     def setUp(self):
         self.mapping = BzrSvnMappingv3FileProps(NoBranchingScheme())
@@ -244,6 +245,7 @@ class TestFileMapping(TestCase):
                 renames={(2, ""): {"foo": "myid"}})
         self.assertEqual("1@uuid::foo", map["foo"][0])
         self.assertEqual((1, ""), map["foo"][1])
+
 
 class GetMapTests(TestCaseWithSubversionRepository):
     def setUp(self):

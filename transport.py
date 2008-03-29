@@ -116,7 +116,7 @@ def needs_busy(unbound):
     return convert
 
 
-class Editor:
+class Editor(object):
     """Simple object wrapper around the Subversion delta editor interface."""
     def __init__(self, transport, (editor, editor_baton)):
         self.editor = editor
@@ -251,7 +251,7 @@ class SvnRaTransport(Transport):
         if 'transport' in debug.debug_flags:
             mutter(text)
 
-    class Reporter:
+    class Reporter(object):
         def __init__(self, transport, (reporter, report_baton)):
             self._reporter = reporter
             self._baton = report_baton
@@ -355,7 +355,7 @@ class SvnRaTransport(Transport):
                            strict_node_history, False, 
                            revprops, rcvr, pool)
 
-        class LogEntry:
+        class LogEntry(object):
             def __init__(self, changed_paths, rev, author, date, message):
                 self.changed_paths = changed_paths
                 self.revprops = {}
@@ -455,7 +455,7 @@ class SvnRaTransport(Transport):
     def get_lock(self, path):
         return svn.ra.get_lock(self._ra, path)
 
-    class SvnLock:
+    class SvnLock(object):
         def __init__(self, transport, tokens):
             self._tokens = tokens
             self._transport = transport
@@ -557,7 +557,7 @@ class SvnRaTransport(Transport):
     # There is no real way to do locking directly on the transport 
     # nor is there a need to as the remote server will take care of 
     # locking
-    class PhonyLock:
+    class PhonyLock(object):
         def unlock(self):
             pass
 

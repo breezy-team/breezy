@@ -52,7 +52,7 @@ from svk import (SVN_PROP_SVK_MERGE, svk_features_merged_since,
 from tree import SvnRevisionTree
 import urllib
 
-class lazy_dict:
+class lazy_dict(object):
     def __init__(self, create_fn):
         self.create_fn = create_fn
         self.dict = None

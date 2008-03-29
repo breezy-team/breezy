@@ -78,7 +78,7 @@ def simple_apply_changes(new_file_id, changes, find_children=None):
 
     return map
 
-class FileIdMap:
+class FileIdMap(object):
     """File id store. 
 
     Keeps a map
@@ -138,7 +138,7 @@ class FileIdMap:
                 map[parent] = map[parent][0], revid
 
 
-class CachingFileIdMap:
+class CachingFileIdMap(object):
     """A file id map that uses a cache."""
     def __init__(self, cache_transport, actual):
         self.idmap_knit = KnitVersionedFile("fileidmap-v%d" % FILEIDMAP_VERSION, cache_transport, create=True)

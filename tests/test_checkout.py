@@ -41,6 +41,7 @@ class TestWorkingTreeFormat(TestCase):
     def test_open(self):
         self.assertRaises(NotImplementedError, self.format.open, None)
 
+
 class TestCheckoutFormat(TestCase):
     def setUp(self):
         super(TestCheckoutFormat, self).setUp()

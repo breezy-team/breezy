@@ -23,7 +23,7 @@ from svn.core import SubversionException, Pool
 import svn.core
 
 
-class PathPropertyProvider:
+class PathPropertyProvider(object):
     def __init__(self, log):
         self.log = log
 

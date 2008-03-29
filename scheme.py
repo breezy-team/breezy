@@ -33,9 +33,7 @@ def is_valid_property_name(prop):
     return True
 
 
-
-
-class BranchingScheme:
+class BranchingScheme(object):
     """ Divides SVN repository data up into branches. Since there
     is no proper way to do this, there are several subclasses of this class
     each of which handles a particular convention that may be in use.

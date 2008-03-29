@@ -274,6 +274,7 @@ class ListScheme(TestCase):
     def test_parse_text_comment(self):
         self.assertEqual(["bla/bloe", "blie"], parse_list_scheme_text("bla/bloe\n# comment\nblie"))
 
+
 class TrunkScheme(TestCase):
     def test_is_branch_empty(self):
         self.assertFalse(TrunkBranchingScheme().is_branch(""))
@@ -635,6 +636,7 @@ class TestGuessBranchingSchemeFromHistory(TestCase):
     def test_simple_no_history_bp(self):
         scheme = guess_scheme_from_history([], 0, "trunk")
         self.assertIsInstance(scheme, TrunkBranchingScheme)
+
 
 class SchemeFromBranchListTests(TestCase):
     def test_nobranchingscheme(self):

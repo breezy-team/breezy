@@ -66,7 +66,7 @@ except:
     raise bzrlib.errors.BzrError("missing sqlite library")
 
 
-class CacheTable:
+class CacheTable(object):
     """Simple base class for SQLite-based caches."""
     def __init__(self, cache_db=None):
         if cache_db is None:

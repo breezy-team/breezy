@@ -123,7 +123,7 @@ class ParseMergePropertyTestCase(TestCase):
         self.assertEqual(("bla", "bloe"), parse_merge_property("bla\tbloe"))
 
 
-class MappingTestAdapter:
+class MappingTestAdapter(object):
     def test_roundtrip_revision(self):
         revid = self.mapping.generate_revision_id("myuuid", 42, "path")
         (uuid, path, revnum, mapping) = self.mapping.parse_revision_id(revid)
@@ -281,7 +281,7 @@ class Mappingv4TestAdapter(MappingTestAdapter,TestCase):
         self.mapping = BzrSvnMappingv4()
 
 
-class ParseRevisionIdTests:
+class ParseRevisionIdTests(object):
     def test_current(self):
         self.assertEqual(("uuid", "trunk", 1, BzrSvnMappingv3FileProps(TrunkBranchingScheme())), 
                 parse_revision_id("svn-v3-trunk0:uuid:trunk:1"))
