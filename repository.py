@@ -20,6 +20,7 @@ from bzrlib import osutils, ui, urlutils, xml5
 from bzrlib.branch import Branch, BranchCheckResult
 from bzrlib.errors import (InvalidRevisionId, NoSuchRevision, NotBranchError, 
                            UninitializableFormat, UnrelatedBranches)
+from bzrlib.graph import CachingParentsProvider
 from bzrlib.inventory import Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.repository import Repository, RepositoryFormat
@@ -37,7 +38,6 @@ from branchprops import PathPropertyProvider
 from cache import create_cache_dir, sqlite3
 from config import SvnRepositoryConfig
 import errors
-from graph import Graph, CachingParentsProvider
 import logwalker
 from mapping import (SVN_PROP_BZR_REVISION_ID, SVN_REVPROP_BZR_SIGNATURE,
                      SVN_PROP_BZR_BRANCHING_SCHEME, BzrSvnMappingv3FileProps,
@@ -346,13 +346,9 @@ class SvnRepository(Repository):
         """
         if revision_id in (None, NULL_REVISION):
             return
-        for (revid, parent_revid) in self.get_graph().iter_lhs_ancestry(revision_id):
-            yield revid
-
-    def get_graph(self, other_repository=None):
-        """Return the graph walker for this repository format"""
-        parents_provider = self._make_parents_provider()
-        return Graph(parents_provider)
+        while revision_id != NULL_REVISION:
+            yield revision_id
+            revision_id = self.get_lhs_parent(revision_id)
 
     def get_ancestry(self, revision_id, topo_sorted=True):
         """See Repository.get_ancestry().
