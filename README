@@ -49,12 +49,14 @@ The following features are currently present:
 
   Checkouts, lightweight checkouts and branching works.
 
+- Integrates well with Bazaar.
+
 - Track Bazaar merges in Subversion. Merged revisions show up 
   as ghosts.
 
 - Subversion working copies. Can be modified, queried 
-  ('bzr status' on a vanilla working copied created with 
-  'svn co' works) and committed from.
+  (``bzr status`` on a svn- native working copy created with 
+  ``svn co`` works) and committed from.
 
 - Committing to Subversion from Bazaar.
 
@@ -65,12 +67,13 @@ The following features are currently present:
 
 - Efficiently uses network bandwidth. 
 
-- Recognizes file metadata (executable bits, symlinks).
- 
-- 'svn-import' command with functionality similar to svn2bzr.
+- Recognizes file metadata (executable bits, symbolic links).
 
-- Ability to track merges done with SVK (http://svk.elixus.org/) 
-  and write merges.
+- 'svn-import' command with functionality similar to svn2bzr_.
+
+- Ability to track merges done with SVK_ and write merges from SVK/Subversion branches in a format understandable by SVK.
+
+.. _SVK: http://svk.elixus.org/
 
 - Generates consistent file ids and revision ids. Two branches made using 
   this plugin of the same Subversion branch will result in *exactly* the same 
@@ -78,6 +81,34 @@ The following features are currently present:
 
 - Handles complex operations in Subversion: committing to two branches at 
   once, upgrading directories to branches, copies from early revisions, ...
+
+- Tested on Linux, Windows and Mac OS X. 
+
+Documentation
+-------------
+
+bzr-svn can be used through the regular Bazaar user interface, see the 
+`Bazaar Documentation Overview`_ for documentation on that.
+
+.. _Bazaar Documentation Overview: Documentation
+
+Some bzr-svn specific issues are answered by the FAQ_.
+
+.. _FAQ: http://samba.org/~jelmer/bzr-svn/FAQ.html
+
+The way Bazaar metadata is stored in Subversion and the other way around is specified in the `mapping specification`_.
+
+.. _mapping specification: BzrForeignBranches/Subversion/mapping
+
+Support
+-------
+Ask bzr-svn related questions on the `Bazaar mailing list`_ or in the 
+#bzr IRC channel on Freenode_.
+
+.. _Bazaar mailing list: http://lists.canonical.com/listinfo/bazaar/
+.. _Freenode: http://www.freenode.net/
+
+
 
 Future Enhancements
 -------------------
@@ -134,9 +165,9 @@ Other features currently held back by Bazaars feature set:
 
 Bugs
 ----
- 
+
 Please file bug reports in launchpad. The product URL for bzr-svn is
-https://launchpad.net/products/bzr-svn/. The wiki for this 
+https://launchpad.net/bzr-svn/. The wiki for this 
 plugin is at http://bazaar-vcs.org/BzrSvn.
 
 Installation
@@ -145,6 +176,15 @@ Installation
 Simply place this directory in ~/.bazaar/plugins and you should be able 
 to check out branches from Subversion using bzr. Make sure the directory 
 name is 'svn'.
+
+Development
+-----------
+
+Unit testing
+~~~~~~~~~~~~
+To run the bzr-svn testsuite, simply run 'bzr selftest svn'
+
+
 
 ..
 	vim: ft=rest
