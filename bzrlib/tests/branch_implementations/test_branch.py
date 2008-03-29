@@ -57,8 +57,11 @@ class TestBranch(TestCaseWithBranch):
 
     def test_create_tree_with_merge(self):
         tree = self.create_tree_with_merge()
-        ancestry_graph = tree.branch.repository.get_revision_graph('rev-3')
-        self.assertEqual({'rev-1':(),
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        graph = tree.branch.repository.get_graph()
+        ancestry_graph = graph.get_parent_map(tree.branch.repository.all_revision_ids())
+        self.assertEqual({'rev-1':('null:',),
                           'rev-2':('rev-1', ),
                           'rev-1.1.1':('rev-1', ),
                           'rev-3':('rev-2', 'rev-1.1.1', ),

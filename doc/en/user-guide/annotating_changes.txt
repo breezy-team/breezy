@@ -31,5 +31,5 @@ provides a GUI tool for this that can be launched using the
 
 The GUI tools typically provide a much richer display of
 interesting information (e.g. all the changes in each commit)
-so they are often preferred over the text-based command by users.
+so you may prefer them over the text-based command.
 

@@ -33,14 +33,10 @@ import sys
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import errno
-from collections import deque
 from stat import S_ISDIR
-import unittest
 import urllib
 import urlparse
-import warnings
 
-import bzrlib
 from bzrlib import (
     errors,
     osutils,
@@ -50,18 +46,14 @@ from bzrlib import (
 """)
 
 from bzrlib.symbol_versioning import (
-        deprecated_passed,
         deprecated_method,
         deprecated_function,
         DEPRECATED_PARAMETER,
-        zero_eight,
-        zero_eleven,
+        one_four,
         zero_ninety,
         )
 from bzrlib.trace import (
-    note,
     mutter,
-    warning,
     )
 from bzrlib import registry
 
@@ -613,6 +605,7 @@ class Transport(object):
         """
         return self.get(relpath).read()
 
+    @deprecated_method(one_four)
     def get_smart_client(self):
         """Return a smart client for this transport if possible.
 
@@ -1572,6 +1565,8 @@ def get_transport(base, possible_transports=None):
     if base is None:
         base = '.'
     last_err = None
+    from bzrlib.directory_service import directories
+    base = directories.dereference(base)
 
     def convert_path_to_url(base, error_str):
         m = _urlRE.match(base)
