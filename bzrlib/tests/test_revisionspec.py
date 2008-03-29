@@ -50,17 +50,15 @@ class TestRevisionSpec(TestCaseWithTransport):
         self.tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a'])
         self.tree.lock_write()
-        try:
-            self.tree.add(['a'])
-            self.tree.commit('a', rev_id='r1')
+        self.addCleanup(self.tree.unlock)
+        self.tree.add(['a'])
+        self.tree.commit('a', rev_id='r1')
 
-            self.tree2 = self.tree.bzrdir.sprout('tree2').open_workingtree()
-            self.tree2.commit('alt', rev_id='alt_r2')
+        self.tree2 = self.tree.bzrdir.sprout('tree2').open_workingtree()
+        self.tree2.commit('alt', rev_id='alt_r2')
 
-            self.tree.merge_from_branch(self.tree2.branch)
-            self.tree.commit('second', rev_id='r2')
-        finally:
-            self.tree.unlock()
+        self.tree.merge_from_branch(self.tree2.branch)
+        self.tree.commit('second', rev_id='r2')
 
     def get_in_history(self, revision_spec):
         return spec_in_history(revision_spec, self.tree.branch)
@@ -96,7 +94,7 @@ class TestOddRevisionSpec(TestRevisionSpec):
     """Test things that aren't normally thought of as revision specs"""
 
     def test_none(self):
-        self.assertInHistoryIs(0, None, None)
+        self.assertInHistoryIs(None, None, None)
 
     def test_object(self):
         self.assertRaises(TypeError, RevisionSpec.from_string, object())
@@ -255,6 +253,7 @@ class TestRevisionSpec_revno(TestRevisionSpec):
                          spec_in_history('revno:2:b/', None))
 
     def test_as_revision_id(self):
+        self.assertAsRevisionId('null:', '0')
         self.assertAsRevisionId('r1', '1')
         self.assertAsRevisionId('r2', '2')
         self.assertAsRevisionId('r1', '-2')
@@ -369,8 +368,6 @@ class TestRevisionSpec_before(TestRevisionSpec):
         self.assertInHistoryIs(0, 'null:', 'before:revid:new_r1')
 
     def test_as_revision_id(self):
-        self.tree.lock_read()
-        self.addCleanup(self.tree.unlock)
         self.assertAsRevisionId('r1', 'before:revid:r2')
         self.assertAsRevisionId('r1', 'before:2')
         self.assertAsRevisionId('r1', 'before:1.1.1')
@@ -392,6 +389,8 @@ class TestRevisionSpec_tag(TestRevisionSpec):
     def test_lookup_tag(self):
         self.tree.branch.tags.set_tag('bzr-0.14', 'r1')
         self.assertInHistoryIs(1, 'r1', 'tag:bzr-0.14')
+        self.tree.branch.tags.set_tag('null_rev', 'null:')
+        self.assertInHistoryIs(0, 'null:', 'tag:null_rev')
 
     def test_failed_lookup(self):
         # tags that don't exist give a specific message: arguably we should
@@ -402,7 +401,9 @@ class TestRevisionSpec_tag(TestRevisionSpec):
 
     def test_as_revision_id(self):
         self.tree.branch.tags.set_tag('my-tag', 'r2')
+        self.tree.branch.tags.set_tag('null_rev', 'null:')
         self.assertAsRevisionId('r2', 'tag:my-tag')
+        self.assertAsRevisionId('null:', 'tag:null_rev')
         self.assertAsRevisionId('r1', 'before:tag:my-tag')
 
 

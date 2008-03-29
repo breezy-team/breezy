@@ -100,6 +100,8 @@ class RevisionInfo(object):
 
         Use this if you don't know or care what the revno is.
         """
+        if revision_id == revision.NULL_REVISION:
+            return RevisionInfo(branch, 0, revision_id)
         try:
             revno = revs.index(revision_id) + 1
         except ValueError:
@@ -201,14 +203,14 @@ class RevisionSpec(object):
 
     def _match_on(self, branch, revs):
         trace.mutter('Returning RevisionSpec._match_on: None')
-        return RevisionInfo(branch, 0, None)
+        return RevisionInfo(branch, None, None)
 
     def _match_on_and_check(self, branch, revs):
         info = self._match_on(branch, revs)
         if info:
             return info
-        elif info == (0, None):
-            # special case - the empty tree
+        elif info == (None, None):
+            # special case - nothing supplied
             return info
         elif self.prefix:
             raise errors.InvalidRevisionSpec(self.user_spec, branch)
@@ -662,7 +664,7 @@ class RevisionSpec_date(RevisionSpec):
         finally:
             branch.unlock()
         if rev == len(revs):
-            return RevisionInfo(branch, None)
+            raise errors.InvalidRevisionSpec(self.user_spec, branch)
         else:
             return RevisionInfo(branch, rev + 1)
 
