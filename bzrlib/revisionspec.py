@@ -521,8 +521,12 @@ class RevisionSpec_before(RevisionSpec):
         if base_revision_id == revision.NULL_REVISION:
             raise errors.InvalidRevisionSpec(self.user_spec, branch,
                                          'cannot go before the null: revision')
-        context_repo = context_branch.repository 
-        parent_map = context_repo.get_parent_map([base_revision_id])
+        context_repo = context_branch.repository
+        context_repo.lock_read()
+        try:
+            parent_map = context_repo.get_parent_map([base_revision_id])
+        finally:
+            context_repo.unlock()
         if base_revision_id not in parent_map:
             # Ghost, or unknown revision id
             raise errors.InvalidRevisionSpec(self.user_spec, context_branch,

@@ -1812,12 +1812,12 @@ class BzrBranch6(BzrBranch5):
     def __init__(self, *args, **kwargs):
         super(BzrBranch6, self).__init__(*args, **kwargs)
         self._last_revision_info_cache = None
-        self._partial_revision_history_cache = None
+        self._partial_revision_history_cache = []
 
     def _clear_cached_state(self):
         super(BzrBranch6, self)._clear_cached_state()
         self._last_revision_info_cache = None
-        self._partial_revision_history_cache = None
+        self._partial_revision_history_cache = []
 
     @needs_read_lock
     def last_revision_info(self):
@@ -1826,12 +1826,15 @@ class BzrBranch6(BzrBranch5):
         :return: A tuple (revno, revision_id).
         """
         if self._last_revision_info_cache is None:
-            revision_string = self.control_files.get('last-revision').read()
-            revno, revision_id = revision_string.rstrip('\n').split(' ', 1)
-            revision_id = cache_utf8.get_cached_utf8(revision_id)
-            revno = int(revno)
-            self._last_revision_info_cache = revno, revision_id
+            self._last_revision_info_cache = self._last_revision_info()
         return self._last_revision_info_cache
+
+    def _last_revision_info(self):
+        revision_string = self.control_files.get('last-revision').read()
+        revno, revision_id = revision_string.rstrip('\n').split(' ', 1)
+        revision_id = cache_utf8.get_cached_utf8(revision_id)
+        revno = int(revno)
+        return revno, revision_id
 
     def _write_last_revision_info(self, revno, revision_id):
         """Simply write out the revision id, with no checks.
@@ -1865,18 +1868,31 @@ class BzrBranch6(BzrBranch5):
     def _gen_revision_history(self):
         """Generate the revision history from last revision
         """
-        if self._partial_revision_history_cache:
-            last_revision = self._partial_revision_history_cache.pop(-1)
-            partial_history = self._partial_revision_history_cache
-            partial_history.reverse()
-            self._partial_revision_history_cache = None
+        self._extend_partial_history(self.revno() - 1)
+        return list(reversed(self._partial_revision_history_cache))
+
+    def _extend_partial_history(self, index):
+        """Extend the partial history to include a given index
+
+        If the supplied index is shorter than the maximum available history,
+        a the maximum available history will be used.
+
+        :param index: The index which should be present.
+        """
+        if len(self._partial_revision_history_cache) > index:
+            return
+        repo = self.repository
+        if len(self._partial_revision_history_cache) == 0:
+            iterator = repo.iter_reverse_revision_history(self.last_revision())
         else:
-            last_revision = self.last_revision()
-            partial_history = []
-        history = list(self.repository.iter_reverse_revision_history(
-            last_revision))
-        history.reverse()
-        return history + partial_history
+            start_revision = self._partial_revision_history_cache[-1]
+            iterator = repo.iter_reverse_revision_history(start_revision)
+            #skip the last revision in the list
+            assert iterator.next() == start_revision
+        for revision_id in iterator:
+            self._partial_revision_history_cache.append(revision_id)
+            if len(self._partial_revision_history_cache) > index:
+                break
 
     def _write_revision_history(self, history):
         """Factored out of set_revision_history.
@@ -2001,39 +2017,18 @@ class BzrBranch6(BzrBranch5):
             return _mod_revision.NULL_REVISION
 
         last_revno, last_revision_id = self.last_revision_info()
-        if revno == last_revno:
-            return last_revision_id
-
         if revno <= 0 or revno > last_revno:
             raise errors.NoSuchRevision(self, revno)
 
-        if history is None:
-            history = self._revision_history_cache
         if history is not None:
             return history[revno - 1]
 
-        distance = last_revno - revno
-        if self._partial_revision_history_cache:
-            if len(self._partial_revision_history_cache) > distance:
-                return self._partial_revision_history_cache[distance]
-            distance -= len(self._partial_revision_history_cache) - 1
-            revision_id = self._partial_revision_history_cache[-1]
+        index = last_revno - revno
+        self._extend_partial_history(index)
+        if len(self._partial_revision_history_cache) > index:
+            return self._partial_revision_history_cache[index]
         else:
-            self._partial_revision_history_cache = [last_revision_id]
-            revision_id = last_revision_id
-
-        history_iter = self.repository.iter_reverse_revision_history(
-            revision_id)
-        # iter_reverse_revision_history returns the revision_id we passed in as
-        # the first node, so skip past it.
-        history_iter.next()
-        for i in xrange(distance):
-            try:
-                revision_id = history_iter.next()
-            except StopIteration:
-                raise errors.NoSuchRevision(self, revno)
-            self._partial_revision_history_cache.append(revision_id)
-        return revision_id
+            raise errors.NoSuchRevision(self, revno)
 
 
 ######################################################################
