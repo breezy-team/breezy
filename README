@@ -6,10 +6,12 @@ Bazaar support for Subversion branches, working trees and repositories
 Introduction
 ------------
 
-This directory contains a simple plugin that adds 
-Subversion (http://subversion.tigris.org/) branch support to 
-Bazaar (http://www.bazaar-vcs.org/). This allows ``bzr branch``, ``bzr push``, 
-``bzr pull``, and ``bzr co`` to work directly against Subversion repositories.
+bzr-svn is a plugin that allows Bazaar_ direct access to Subversion_ 
+repositories. It allows most bzr commands to work directly against Subversion 
+repositories, as if you were using bzr with a native bzr repository.
+
+.. _Bazaar: http://bazaar-vcs.org/
+.. _Subversion: http://subversion.tigris.org/
 
 The plugin can at the moment be used to commit to, pull from, merge from, push 
 to and view logs of Subversion branches from Bazaar.
@@ -17,20 +19,23 @@ to and view logs of Subversion branches from Bazaar.
 Dependencies
 ------------
 
-You will need at least version 0.92 of Bazaar or higher.
+You will need a recent version of Bazaar, usually the release of Bazaar 
+released in the same month as the release of bzr-svn you are using.
 
 You also need a fairly recent version of the official Python bindings to the 
 Subversion libraries. At the moment, the svn plugin only works with 
 Subversion 1.5 (trunk). The python-subversion (not python-svn!) package 
-in Ubuntu Feisty and Gutsy and Debian Etch, Lenny and Sid also contain the 
+in Ubuntu since Feisty and Debian since Etch also contain the 
 required changes. 
 
 If you are running an older version of Python (under 2.5), you will also 
 need to have the pysqlite package installed.
 
 In order to be able to use the ``svn-upgrade`` command (for those 
-who used earlier versions of bzr-svn), you will need the bzr-rebase 
-plugin (http://bazaar-vcs.org/BzrSvn).
+who used earlier versions of bzr-svn), you will need the `bzr-rebase`_ 
+plugin.
+
+.. _bzr-rebase: http://bazaar-vcs.org/Rebase
 
 Features
 --------
@@ -83,14 +88,10 @@ In the future, I also hope to support:
   but the number of corner cases is wide, so support for this 
   has not been enabled by default yet.
 
-- Better performance. Network-wise (both bandwidth and roundtrips), the plugin 
-  is in good shape. However, it is currently quite CPU-intensive for no good 
-  reason and I hope to make a couple of improvements in that area.
-
 - Override implementation of get_revision_delta(). Will speed up 'bzr log -v'
 	
-- use svn_ra_replay() on systems that have Subversion 1.4. Saves a couple of 
-  roundtrips when fetching history.
+- use svn_ra_replay() when using servers that have Subversion 1.4. Saves a 
+  couple of roundtrips when fetching history.
 
 - Shallow branches. Most of the existing Subversion repositories 
   are quite large and it would therefore be nice to be able to limit 

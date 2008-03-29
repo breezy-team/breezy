@@ -8,7 +8,7 @@ PYLINT ?= pylint
 RST2HTML ?= rst2html
 TESTS ?= svn
 
-all:: build
+all:: build README.html FAQ.html AUTHORS.html
 
 build::
 	$(SETUP) build
@@ -48,7 +48,7 @@ lint::
 pydoctor::
 	$(PYDOCTOR) --make-html -c bzr-svn.cfg
 
-FAQ.html README.html: %.html: %
+FAQ.html README.html AUTHORS.html: %.html: %
 	$(RST2HTML) $< > $@
 
 tags::
