@@ -1401,7 +1401,7 @@ class _PlanMerge(_PlanMergeBase):
         """
         if version_id not in self.uncommon:
             return set()
-        parents = self.vf.get_parents(version_id)
+        parents = self.vf.get_parent_map([version_id])[version_id]
         if len(parents) == 0:
             return set(range(len(self.vf.get_lines(version_id))))
         new = None

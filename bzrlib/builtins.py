@@ -589,6 +589,10 @@ class cmd_pull(Command):
     that, you can omit the location to use the default.  To change the
     default, use --remember. The value will only be saved if the remote
     location can be accessed.
+
+    Note: The location can be specified either in the form of a branch,
+    or in the form of a path to a file containing a merge directive generated
+    with bzr send.
     """
 
     _see_also = ['push', 'update', 'status-flags']
@@ -622,8 +626,11 @@ class cmd_pull(Command):
 
         possible_transports = []
         if location is not None:
-            mergeable, location_transport = _get_mergeable_helper(location)
-            possible_transports.append(location_transport)
+            try:
+                mergeable = bundle.read_mergeable_from_url(location,
+                    possible_transports=possible_transports)
+            except errors.NotABundle:
+                mergeable = None
 
         stored_loc = branch_to.get_parent()
         if location is None:
@@ -636,8 +643,6 @@ class cmd_pull(Command):
                 if not is_quiet():
                     self.outf.write("Using saved location: %s\n" % display_url)
                 location = stored_loc
-                location_transport = transport.get_transport(
-                    location, possible_transports=possible_transports)
 
         if mergeable is not None:
             if revision is not None:
@@ -648,7 +653,8 @@ class cmd_pull(Command):
                 mergeable.get_merge_request(branch_to.repository)
             branch_from = branch_to
         else:
-            branch_from = Branch.open_from_transport(location_transport)
+            branch_from = Branch.open(location,
+                possible_transports=possible_transports)
 
             if branch_to.get_parent() is None or remember:
                 branch_to.set_parent(branch_from.base)
@@ -2761,11 +2767,17 @@ class cmd_find_merge_base(Command):
 class cmd_merge(Command):
     """Perform a three-way merge.
     
-    The branch is the branch you will merge from.  By default, it will merge
-    the latest revision.  If you specify a revision, that revision will be
-    merged.  If you specify two revisions, the first will be used as a BASE,
-    and the second one as OTHER.  Revision numbers are always relative to the
-    specified branch.
+    The source of the merge can be specified either in the form of a branch,
+    or in the form of a path to a file containing a merge directive generated
+    with bzr send. If neither is specified, the default is the upstream branch
+    or the branch most recently merged using --remember.
+
+    When merging a branch, by default the tip will be merged. To pick a different
+    revision, pass --revision. If you specify two values, the first will be used as
+    BASE and the second one as OTHER. Merging individual revisions, or a subset of
+    available revisions, like this is commonly referred to as "cherrypicking".
+
+    Revision numbers are always relative to the branch being merged.
 
     By default, bzr will try to merge in all new work from the other
     branch, automatically determining an appropriate base.  If this
@@ -2802,11 +2814,15 @@ class cmd_merge(Command):
         To merge the changes introduced by 82, without previous changes::
 
             bzr merge -r 81..82 ../bzr.dev
+
+        To apply a merge directive contained in in /tmp/merge:
+
+            bzr merge /tmp/merge
     """
 
     encoding_type = 'exact'
     _see_also = ['update', 'remerge', 'status-flags']
-    takes_args = ['branch?']
+    takes_args = ['location?']
     takes_options = [
         'change',
         'revision',
@@ -2832,16 +2848,12 @@ class cmd_merge(Command):
         Option('preview', help='Instead of merging, show a diff of the merge.')
     ]
 
-    def run(self, branch=None, revision=None, force=False, merge_type=None,
-            show_base=False, reprocess=False, remember=False,
+    def run(self, location=None, revision=None, force=False,
+            merge_type=None, show_base=False, reprocess=False, remember=False,
             uncommitted=False, pull=False,
             directory=None,
             preview=False,
             ):
-        # This is actually a branch (or merge-directive) *location*.
-        location = branch
-        del branch
-
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
 
@@ -2860,8 +2872,12 @@ class cmd_merge(Command):
             tree.lock_write()
             cleanups.append(tree.unlock)
             if location is not None:
-                mergeable, other_transport = _get_mergeable_helper(location)
-                if mergeable:
+                try:
+                    mergeable = bundle.read_mergeable_from_url(location,
+                        possible_transports=possible_transports)
+                except errors.NotABundle:
+                    mergeable = None
+                else:
                     if uncommitted:
                         raise errors.BzrCommandError('Cannot use --uncommitted'
                             ' with bundles or merge directives.')
@@ -2871,7 +2887,6 @@ class cmd_merge(Command):
                             'Cannot use -r with merge directives or bundles')
                     merger, verified = _mod_merge.Merger.from_mergeable(tree,
                        mergeable, pb)
-                possible_transports.append(other_transport)
 
             if merger is None and uncommitted:
                 if revision is not None and len(revision) > 0:
@@ -4073,11 +4088,13 @@ class cmd_send(Command):
     older formats.  It is compatible with Bazaar 0.19 and later.  It is the
     default.  "0.9" uses revision bundle format 0.9 and merge directive
     format 1.  It is compatible with Bazaar 0.12 - 0.18.
+    
+    Merge directives are applied using the merge command or the pull command.
     """
 
     encoding_type = 'exact'
 
-    _see_also = ['merge']
+    _see_also = ['merge', 'pull']
 
     takes_args = ['submit_branch?', 'public_branch?']
 
@@ -4518,34 +4535,6 @@ def _create_prefix(cur_transport):
     while needed:
         cur_transport = needed.pop()
         cur_transport.ensure_base()
-
-
-def _get_mergeable_helper(location):
-    """Get a merge directive or bundle if 'location' points to one.
-
-    Try try to identify a bundle and returns its mergeable form. If it's not,
-    we return the tried transport anyway so that it can reused to access the
-    branch
-
-    :param location: can point to a bundle or a branch.
-
-    :return: mergeable, transport
-    """
-    mergeable = None
-    url = urlutils.normalize_url(location)
-    url, filename = urlutils.split(url, exclude_trailing_slash=False)
-    location_transport = transport.get_transport(url)
-    if filename:
-        try:
-            # There may be redirections but we ignore the intermediate
-            # and final transports used
-            read = bundle.read_mergeable_from_transport
-            mergeable, t = read(location_transport, filename)
-        except errors.NotABundle:
-            # Continue on considering this url a Branch but adjust the
-            # location_transport
-            location_transport = location_transport.clone(filename)
-    return mergeable, location_transport
 
 
 # these get imported and then picked up by the scan for cmd_*
