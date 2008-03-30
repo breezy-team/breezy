@@ -27,9 +27,7 @@ rather than in tests/interversionedfile_implementations/*.py.
 from bzrlib.tests import (
                           adapt_modules,
                           default_transport,
-                          TestLoader,
                           TestScenarioApplier,
-                          TestSuite,
                           )
 
 
@@ -89,8 +87,11 @@ class InterVersionedFileTestProviderAdapter(TestScenarioApplier):
         return result
 
 
-def test_suite():
-    result = TestSuite()
+def load_tests(basic_tests, module, loader):
+    result = loader.suiteClass()
+    # add the tests for this module
+    result.addTests(basic_tests)
+
     test_interversionedfile_implementations = [
         'bzrlib.tests.interversionedfile_implementations.test_join',
         ]
@@ -101,6 +102,6 @@ def test_suite():
         None,
         InterVersionedFileTestProviderAdapter.default_test_list()
         )
-    loader = TestLoader()
-    adapt_modules(test_interversionedfile_implementations, adapter, loader, result)
+    adapt_modules(test_interversionedfile_implementations,
+                  adapter, loader, result)
     return result
