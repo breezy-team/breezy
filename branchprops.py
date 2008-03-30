@@ -74,23 +74,3 @@ class PathPropertyProvider(object):
             if previous.get(key) != val:
                 ret[key] = val
         return ret
-
-    def get_property_diff(self, path, revnum, name):
-        """Returns the new lines that were added to a particular property."""
-        assert isinstance(path, str)
-        # If the path this property is set on didn't change, then 
-        # the property can't have changed.
-        if not path in self.log.get_revision_paths(revnum):
-            return ""
-
-        current = self.get_properties(path, revnum).get(name, "")
-        (prev_path, prev_revnum) = self.log.get_previous(path, revnum)
-        if prev_path is None and prev_revnum == -1:
-            previous = ""
-        else:
-            previous = self.get_properties(prev_path.encode("utf-8"), prev_revnum).get(name, "")
-        if len(previous) > len(current) or current[0:len(previous)] != previous:
-            mutter('original part changed for %r between %s:%d -> %s:%d' % (name, prev_path, prev_revnum, path, revnum))
-            return ""
-        return current[len(previous):] 
-

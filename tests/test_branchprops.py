@@ -60,18 +60,6 @@ class TestBranchProps(TestCaseWithSubversionRepository):
         self.assertTrue("svn:entry:last-author" in props)
         self.assertTrue("svn:entry:committed-date" in props)
 
-    def test_get_property_diff(self):
-        repos_url = self.make_client('d', 'dc')
-        self.client_set_prop("dc", "myprop", "data\n")
-        self.client_commit("dc", "My Message")
-        self.client_set_prop("dc", "myprop", "data\ndata2\n")
-        self.client_commit("dc", "My Message")
-
-        logwalk = self.get_log_walker(transport=SvnRaTransport(repos_url))
-
-        bp = PathPropertyProvider(logwalk)
-        self.assertEqual("data2\n", bp.get_property_diff("", 2, "myprop"))
-
     def test_get_changed_properties(self):
         repos_url = self.make_client('d', 'dc')
         self.client_set_prop("dc", "myprop", "data\n")
@@ -97,15 +85,3 @@ class TestBranchProps(TestCaseWithSubversionRepository):
         bp = PathPropertyProvider(logwalk)
         self.assertEquals("newdata\n", 
                           bp.get_changed_properties("", 3)["myp2"])
-
-    def test_get_property_diff_ignore_origchange(self):
-        repos_url = self.make_client('d', 'dc')
-        self.client_set_prop("dc", "myprop", "foodata\n")
-        self.client_commit("dc", "My Message")
-        self.client_set_prop("dc", "myprop", "data\ndata2\n")
-        self.client_commit("dc", "My Message")
-
-        logwalk = self.get_log_walker(transport=SvnRaTransport(repos_url))
-
-        bp = PathPropertyProvider(logwalk)
-        self.assertEqual("", bp.get_property_diff("", 2, "myprop"))

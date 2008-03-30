@@ -93,13 +93,13 @@ class RevidMap(object):
     def bisect_revid_revnum(self, revid, branch_path, max_revnum, scheme):
         # Find the branch property between min_revnum and max_revnum that 
         # added revid
+        propname = SVN_PROP_BZR_REVISION_ID+str(scheme)
         for (bp, changes, rev, revprops, changed_fileprops) in self.repos.iter_reverse_branch_changes(branch_path, max_revnum, scheme):
-            if not bp in changes:
+            if not propname in changed_fileprops:
                 continue
             try:
                 (entry_revno, entry_revid) = parse_revid_property(
-                 self.repos.branchprop_list.get_property_diff(bp, rev, 
-                     SVN_PROP_BZR_REVISION_ID+str(scheme)).strip("\n"))
+                    changed_fileprops[propname].splitlines()[-1])
             except InvalidPropertyValue:
                 # Don't warn about encountering an invalid property, 
                 # that will already have happened earlier
