@@ -24,10 +24,11 @@ test the usage of the commands).
 # FIXME: If the separation described above from the blackbox tests is not worth
 # it, all the tests defined below should be moved to blackbox instead. 
 
-from bzrlib.tests import TestLoader
+def load_tests(basic_tests, module, loader):
+    suite = loader.suiteClass()
+    # add the tests for this module
+    suite.addTests(basic_tests)
 
-
-def test_suite():
     testmod_names = [
         'bzrlib.tests.commands.test_branch',
         'bzrlib.tests.commands.test_cat',
@@ -41,7 +42,6 @@ def test_suite():
         'bzrlib.tests.commands.test_push',
         'bzrlib.tests.commands.test_update',
         ]
-    loader = TestLoader()
     suite = loader.loadTestsFromModuleNames(testmod_names)
 
     return suite
