@@ -31,12 +31,9 @@ class RevidMap(object):
     def __init__(self, repos):
         self.repos = repos
 
-    def get_revision_id(self, revnum, path, mapping):
+    def get_revision_id(self, revnum, path, mapping, revprops, fileprops):
         # See if there is a bzr:revision-id revprop set
         try:
-            from repository import lazy_dict
-            revprops = lazy_dict(lambda: self.repos._log._get_transport().revprop_list(revnum))
-            fileprops = lazy_dict(lambda: self.repos.branchprop_list.get_changed_properties(path, revnum))
             (bzr_revno, revid) = mapping.get_revision_id(path, revprops, fileprops)
         except svn.core.SubversionException, (_, num):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
@@ -96,7 +93,7 @@ class RevidMap(object):
     def bisect_revid_revnum(self, revid, branch_path, max_revnum, scheme):
         # Find the branch property between min_revnum and max_revnum that 
         # added revid
-        for (bp, changes, rev) in self.repos.iter_reverse_branch_changes(branch_path, max_revnum, scheme):
+        for (bp, changes, rev, changed_fileprops, revprops) in self.repos.iter_reverse_branch_changes(branch_path, max_revnum, scheme):
             if not bp in changes:
                 continue
             try:
@@ -118,13 +115,13 @@ class CachingRevidMap(object):
         self.cache = RevisionIdMapCache(cachedb)
         self.actual = actual
 
-    def get_revision_id(self, revnum, path, mapping):
+    def get_revision_id(self, revnum, path, mapping, changed_fileprops, revprops):
         # Look in the cache to see if it already has a revision id
         revid = self.cache.lookup_branch_revnum(revnum, path, str(mapping.scheme))
         if revid is not None:
             return revid
 
-        revid = self.actual.get_revision_id(revnum, path, mapping)
+        revid = self.actual.get_revision_id(revnum, path, mapping, changed_fileprops, revprops)
 
         self.cache.insert_revid(revid, path, revnum, revnum, str(mapping.scheme))
         return revid

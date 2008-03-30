@@ -81,6 +81,18 @@ class lazy_dict(object):
         self._ensure_init()
         return self.dict.has_key(key)
 
+    def keys(self):
+        self._ensure_init()
+        return self.dict.keys()
+
+    def values(self):
+        self._ensure_init()
+        return self.dict.values()
+
+    def items(self):
+        self._ensure_init()
+        return self.dict.items()
+
 
 def svk_feature_to_revision_id(feature, mapping):
     """Convert a SVK feature to a revision id for this repository.
@@ -356,12 +368,9 @@ class SvnRepository(Repository):
         """
         if revision_id in (None, NULL_REVISION):
             return
-        while revision_id != NULL_REVISION:
-            yield revision_id
-            (branch_path, revnum, mapping) = self.lookup_revision_id(revision_id)
-            revision_id = self.lhs_revision_parent(branch_path, revnum, mapping)
-            if revision_id is None:
-                return
+        (branch_path, revnum, mapping) = self.lookup_revision_id(revision_id)
+        for (bp, changes, rev, svn_fileprops, svn_revprops) in self.iter_reverse_branch_changes(branch_path, revnum, mapping):
+            yield self.generate_revision_id(rev, bp, mapping, svn_revprops, svn_fileprops)
 
     def get_ancestry(self, revision_id, topo_sorted=True):
         """See Repository.get_ancestry().
@@ -549,7 +558,7 @@ class SvnRepository(Repository):
     def add_revision(self, rev_id, rev, inv=None, config=None):
         raise NotImplementedError(self.add_revision)
 
-    def generate_revision_id(self, revnum, path, mapping):
+    def generate_revision_id(self, revnum, path, mapping, revprops=None, changed_fileprops=None):
         """Generate an unambiguous revision id. 
         
         :param revnum: Subversion revision number.
@@ -562,7 +571,13 @@ class SvnRepository(Repository):
         assert isinstance(revnum, int)
         assert isinstance(mapping, BzrSvnMapping)
 
-        return self.get_revmap().get_revision_id(revnum, path, mapping)
+        if revprops is None:
+            revprops = lazy_dict(lambda: self._log._get_transport().revprop_list(revnum))
+
+        if changed_fileprops is None:
+            changed_fileprops = lazy_dict(lambda: self.branchprop_list.get_changed_properties(path, revnum))
+
+        return self.get_revmap().get_revision_id(revnum, path, mapping, revprops, changed_fileprops)
 
     def lookup_revision_id(self, revid, scheme=None):
         """Parse an existing Subversion-based revision id.
@@ -606,7 +621,8 @@ class SvnRepository(Repository):
         until branch_path,revnum. 
 
         :return: iterator that returns tuples with branch path, 
-            changed paths and revision number.
+            changed paths, revision number, changed file properties and 
+            revision properties.
         """
         assert isinstance(branch_path, str)
         assert mapping.is_branch(branch_path) or mapping.is_tag(branch_path), \
@@ -614,10 +630,16 @@ class SvnRepository(Repository):
 
         for (bp, paths, revnum) in self._log.iter_changes(branch_path, revnum):
             assert revnum > 0 or bp == ""
-            assert mapping.is_branch(bp) or mapping.is_tag(bp)
+            assert mapping.is_branch(bp) or mapping.is_tag(bp), "%r is not a valid path" % bp
+
+            if not bp in paths:
+                svn_fileprops = {}
+            else:
+                svn_fileprops = lazy_dict(lambda: self.branchprop_list.get_changed_properties(bp, revnum))
+            svn_revprops = lazy_dict(lambda: self.transport.revprop_list(revnum))
 
             if (paths.has_key(bp) and paths[bp][1] is not None and 
-                not (mapping.is_branch(paths[bp][1]) or not mapping.is_tag(paths[bp][1]))):
+                not (mapping.is_branch(paths[bp][1]) or mapping.is_tag(paths[bp][1]))):
                 # Make it look like the branch started here if the mapping 
                 # doesn't support weird paths as branches
                 for c in self._log.find_children(paths[bp][1], paths[bp][2]):
@@ -625,10 +647,10 @@ class SvnRepository(Repository):
                     paths[path] = ('A', None, -1)
                 paths[bp] = ('A', None, -1)
 
-                yield (bp, paths, revnum)
+                yield (bp, paths, revnum, svn_fileprops, svn_revprops)
                 return
                      
-            yield (bp, paths, revnum)
+            yield (bp, paths, revnum, svn_fileprops, svn_revprops)
 
     def get_config(self):
         return SvnRepositoryConfig(self.uuid)

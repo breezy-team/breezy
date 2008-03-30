@@ -135,17 +135,16 @@ class FileIdMap(object):
         quickrevidmap = {}
 
         # No history -> empty map
-        for (bp, paths, rev) in self.repos.iter_reverse_branch_changes(branch, 
-                                             revnum, mapping):
-            revid = self.repos.generate_revision_id(rev, bp, mapping)
+        for (bp, paths, rev, changed_fileprops, revprops) in self.repos.iter_reverse_branch_changes(branch, revnum, mapping):
+            revid = self.repos.generate_revision_id(rev, bp, mapping, changed_fileprops, revprops)
             quickrevidmap[revid] = (rev, bp)
-            todo.append((revid, paths))
+            todo.append((revid, paths, changed_fileprops, revprops))
    
         pb = ui.ui_factory.nested_progress_bar()
 
         try:
             i = 1
-            for (revid, global_changes) in reversed(todo):
+            for (revid, global_changes, changed_fileprops, revprops) in reversed(todo):
                 expensive = False
                 def log_find_children(path, revnum):
                     expensive = True
@@ -222,9 +221,8 @@ class CachingFileIdMap(object):
         quickrevidmap = {}
 
         # No history -> empty map
-        for (bp, paths, rev) in self.repos.iter_reverse_branch_changes(branch, 
-                                             revnum, mapping):
-            revid = self.repos.generate_revision_id(rev, bp, mapping)
+        for (bp, paths, rev, changed_fileprops, revprops) in self.repos.iter_reverse_branch_changes(branch, revnum, mapping):
+            revid = self.repos.generate_revision_id(rev, bp, mapping, changed_fileprops, revprops)
             quickrevidmap[revid] = (rev, bp)
             try:
                 map = self.load(revid)

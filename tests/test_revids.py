@@ -26,34 +26,34 @@ class TestRevidMapCache(TestCase):
         revidmap = RevisionIdMapCache()
 
     def test_lookup_revids_seen(self):
-        revidmap = RevidMap()
+        revidmap = RevisionIdMapCache()
         self.assertEquals(0, revidmap.last_revnum_checked("trunk"))
         revidmap.set_last_revnum_checked("trunk", 45)
         self.assertEquals(45, revidmap.last_revnum_checked("trunk"))
 
     def test_lookup_revid_nonexistant(self):
-        revidmap = RevidMap()
+        revidmap = RevisionIdMapCache()
         self.assertRaises(NoSuchRevision, lambda: revidmap.lookup_revid("bla"))
 
     def test_lookup_revid(self):
-        revidmap = RevidMap()
+        revidmap = RevisionIdMapCache()
         revidmap.insert_revid("bla", "mypath", 42, 42, "brainslug")
         self.assertEquals(("mypath", 42, 42, "brainslug"), 
                 revidmap.lookup_revid("bla"))
 
     def test_lookup_branch(self):
-        revidmap = RevidMap()
+        revidmap = RevisionIdMapCache()
         revidmap.insert_revid("bla", "mypath", 42, 42, "brainslug")
         self.assertEquals("bla", 
                 revidmap.lookup_branch_revnum(42, "mypath", "brainslug"))
 
     def test_lookup_branch_nonexistant(self):
-        revidmap = RevidMap()
+        revidmap = RevisionIdMapCache()
         self.assertIs(None,
                 revidmap.lookup_branch_revnum(42, "mypath", "foo"))
 
     def test_lookup_branch_incomplete(self):
-        revidmap = RevidMap()
+        revidmap = RevisionIdMapCache()
         revidmap.insert_revid("bla", "mypath", 200, 42, "brainslug")
         self.assertEquals(None, 
                 revidmap.lookup_branch_revnum(42, "mypath", "brainslug"))

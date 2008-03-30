@@ -35,7 +35,7 @@ from mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_MERGE,
                      SVN_PROP_BZR_FILEIDS, SVN_REVPROP_BZR_SIGNATURE,
                      parse_merge_property,
                      parse_revision_metadata)
-from repository import (SvnRepository, SvnRepositoryFormat)
+from repository import (SvnRepository, SvnRepositoryFormat, lazy_dict)
 from svk import SVN_PROP_SVK_MERGE
 from tree import (apply_txdelta_handler, parse_externals_description, 
                   inventory_add_external)
@@ -98,8 +98,8 @@ class RevisionBuildEditor(svn.delta.Editor):
         (self.branch_path, self.revnum, self.mapping) = self.source.lookup_revision_id(revid)
         self.svn_revprops = self.source._log._get_transport().revprop_list(self.revnum)
         changes = self.source._log.get_revision_paths(self.revnum, self.branch_path)
-        renames = self.source.revision_fileid_renames(self.branch_path, self.revnum, self.mapping, 
-                                                      revprops=self.svn_revprops)
+        fileprops = lazy_dict(lambda: self.source.branchprop_list.get_changed_properties(self.branch_path, self.revnum))
+        renames = self.mapping.import_fileid_map(self.svn_revprops, fileprops)
         self.id_map = self.source.transform_fileid_map(self.source.uuid, 
                               self.revnum, self.branch_path, changes, renames, 
                               self.mapping)
