@@ -97,12 +97,8 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.revid = revid
         (self.branch_path, self.revnum, self.mapping) = self.source.lookup_revision_id(revid)
         self.svn_revprops = self.source._log._get_transport().revprop_list(self.revnum)
-        changes = self.source._log.get_revision_paths(self.revnum, self.branch_path)
-        fileprops = lazy_dict(self.source.branchprop_list.get_changed_properties, self.branch_path, self.revnum)
-        renames = self.mapping.import_fileid_map(self.svn_revprops, fileprops)
-        self.id_map = self.source.transform_fileid_map(self.source.uuid, 
-                              self.revnum, self.branch_path, changes, renames, 
-                              self.mapping)
+        self._branch_fileprops = None
+        self._id_map = None
         self.dir_baserev = {}
         self._revinfo = None
         self._bzr_merges = ()
@@ -111,11 +107,31 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.pool = Pool()
         self.old_inventory = prev_inventory
         self.inventory = prev_inventory.copy()
-        self._branch_fileprops = {}
         self._start_revision()
 
     def _get_parent_ids(self):
         return self.source.revision_parents(self.revid, self._branch_fileprops)
+
+    def _get_id_map(self):
+        if self._id_map is not None:
+            return self._id_map
+
+        changes = self.source._log.get_revision_paths(self.revnum)
+        # The API allows the property changes on the root 
+        # to be reported after all children have been processed. 
+        # If this was the case, fetch the file properties now, since 
+        # we need them for the renames.
+        if self._branch_fileprops is None:
+            if self.branch_path in changes:
+                self._branch_fileprops = lazy_dict(self.source.branchprop_list.get_changed_properties, self.branch_path, self.revnum)
+            else:
+                self._branch_fileprops = {}
+        renames = self.mapping.import_fileid_map(self.svn_revprops, self._branch_fileprops)
+        self._id_map = self.source.transform_fileid_map(self.source.uuid, 
+                              self.revnum, self.branch_path, changes, renames, 
+                              self.mapping)
+
+        return self._id_map
 
     def _get_revision(self, revid):
         """Creates the revision object.
@@ -141,10 +157,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         else:
             assert self.old_inventory.root.revision is not None
             old_file_id = self.old_inventory.root.file_id
-            if self.id_map.has_key(""):
-                file_id = self.id_map[""]
-            else:
-                file_id = old_file_id
+            file_id = self._get_id_map().get("", old_file_id)
             self.dir_baserev[file_id] = [self.old_inventory.root.revision]
 
         if self.inventory.root is not None and \
@@ -159,8 +172,9 @@ class RevisionBuildEditor(svn.delta.Editor):
         assert isinstance(path, unicode)
         assert isinstance(old_parent_id, str)
         assert isinstance(new_parent_id, str)
-        if self.id_map.has_key(path):
-            return self.id_map[path]
+        ret = self._get_id_map().get(path)
+        if ret is not None:
+            return ret
         return self.old_inventory[old_parent_id].children[urlutils.basename(path)].file_id
 
     def _get_old_id(self, parent_id, old_path):
@@ -171,8 +185,9 @@ class RevisionBuildEditor(svn.delta.Editor):
     def _get_new_id(self, parent_id, new_path):
         assert isinstance(new_path, unicode)
         assert isinstance(parent_id, str)
-        if self.id_map.has_key(new_path):
-            return self.id_map[new_path]
+        ret = self._get_id_map().get(new_path)
+        if ret is not None:
+            return ret
         return self.mapping.generate_file_id(self.source.uuid, self.revnum, self.branch_path, new_path)
 
     def _rename(self, file_id, parent_id, path):
@@ -256,6 +271,8 @@ class RevisionBuildEditor(svn.delta.Editor):
 
     def change_dir_prop(self, (old_id, new_id), name, value, pool):
         if new_id == self.inventory.root.file_id:
+            if self._branch_fileprops is None:
+                self._branch_fileprops = {}
             self._branch_fileprops[name] = value
 
         if name == SVN_PROP_BZR_BRANCHING_SCHEME:

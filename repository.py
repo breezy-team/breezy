@@ -36,6 +36,8 @@ import os
 
 from branchprops import PathPropertyProvider
 from cache import create_cache_dir, sqlite3
+import changes
+from changes import changes_path, find_prev_location
 from config import SvnRepositoryConfig
 import errors
 import logwalker
@@ -144,18 +146,6 @@ class SvnRepositoryFormat(RepositoryFormat):
 
     def check_conversion_target(self, target_repo_format):
         return target_repo_format.rich_root_data
-
-
-def changes_path(changes, path):
-    """Check if one of the specified changes applies 
-    to path or one of its children.
-    """
-    for p in changes:
-        assert isinstance(p, str)
-        if p == path or p.startswith(path+"/") or path == "":
-            return True
-    return False
-
 
 
 CACHE_DB_VERSION = 3
@@ -456,7 +446,7 @@ class SvnRepository(Repository):
                     self.generate_revision_id(revnum, path, mapping))
 
         while True:
-            next = logwalker.changes_find_prev_location(changes, path, revnum)
+            next = find_prev_location(changes, path, revnum)
             if next is None:
                 break
             (path, revnum) = next

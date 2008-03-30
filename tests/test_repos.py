@@ -179,7 +179,9 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "commit")
         repos = Repository.open(repos_url)
         self.assertEquals([
-            ('pygments/trunk', {'pygments/trunk': (u'R', 'pykleur/trunk', 2)}, 3),
+            ('pygments/trunk', {'pygments': (u'A', 'pykleur', 1),
+                                'pygments/trunk': (u'R', 'pykleur/trunk', 2),
+                                'pykleur': (u'D', None, -1)}, 3),
             ('pykleur/trunk', {'pykleur/trunk/pykleur/afile': (u'A', None, -1)}, 2),
             ('pykleur/trunk',
                     {'pykleur': (u'A', None, -1),
@@ -1028,7 +1030,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEquals([('trunk', {'trunk': (u'M', None, -1)}, 3), 
                            ('trunk', {'trunk': (u'M', None, -1)}, 2), 
                            ('trunk', {'trunk/bla': (u'A', None, -1), 'trunk': (u'A', None, -1)}, 1)], 
-            list(oldrepos.iter_reverse_branch_changes("trunk", 3, TrunkBranchingScheme())))
+                   [l[:3] for l in oldrepos.iter_reverse_branch_changes("trunk", 3, TrunkBranchingScheme())])
 
     def test_control_code_msg(self):
         repos_url = self.make_client('d', 'dc')

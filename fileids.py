@@ -23,18 +23,14 @@ from bzrlib.trace import mutter
 
 import urllib
 
+import changes
 from mapping import escape_svn_path
-
-def path_is_child(branch_path, path):
-    return (branch_path == "" or 
-            branch_path == path or 
-            path.startswith(branch_path+"/"))
 
 def get_local_changes(paths, branch, mapping, generate_revid, 
                       get_children=None):
     new_paths = {}
     for p in sorted(paths.keys()):
-        if not path_is_child(branch, p):
+        if not changes.path_is_child(branch, p):
             continue
         data = paths[p]
         new_p = mapping.scheme.unprefix(p)[1]

@@ -95,8 +95,8 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My Message")
         walker = self.get_log_walker(SvnRaTransport(repos_url))
         self.assertEqual({"foo": ('A', None, -1)}, walker.get_revision_paths(1))
-        self.assertEqual({"foo": ('A', None, -1)}, walker.get_revision_paths(1, "foo"))
-        self.assertEqual({"": ('A', None, -1)}, walker.get_revision_paths(0, ""))
+        self.assertEqual({"foo": ('A', None, -1)}, walker.get_revision_paths(1))
+        self.assertEqual({"": ('A', None, -1)}, walker.get_revision_paths(0))
 
     def test_get_revision_paths_zero(self):
         repos_url = self.make_client("a", "dc")
@@ -377,7 +377,8 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
         items = list(walker.iter_changes("branches/abranch", 2))
         self.assertEqual([('branches/abranch', {'branches/abranch': ('A', 'trunk', 1)}, 2), 
-                          ('trunk', {'trunk/afile': ('A', None, -1), 
+                          ('trunk', {'branches': (u'A', None, -1),
+                                     'trunk/afile': ('A', None, -1), 
                                      'trunk': (u'A', None, -1)}, 1)], items)
 
     def test_get_previous_root(self):

@@ -502,6 +502,7 @@ foohosts""")
         weave = newbranch.repository.weave_store.get_weave(
             tree.inventory.path2id("hosts"),
             newbranch.repository.get_transaction())
+
         self.assertEqual(set([
             oldbranch.generate_revision_id(6),
             oldbranch.generate_revision_id(7)]),

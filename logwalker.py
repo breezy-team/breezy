@@ -25,51 +25,9 @@ from transport import SvnRaTransport
 import svn.core
 
 from cache import CacheTable
+import changes
 
 LOG_CHUNK_LIMIT = 0
-
-def changes_find_prev_location(paths, branch_path, revnum):
-    assert isinstance(paths, dict)
-    assert isinstance(branch_path, str)
-    assert isinstance(revnum, int)
-    if revnum == 0:
-        assert branch_path == ""
-        return None
-    # If there are no special cases, just go try the 
-    # next revnum in history
-    revnum -= 1
-
-    if branch_path == "":
-        return (branch_path, revnum)
-
-    # Make sure we get the right location for next time, if 
-    # the branch itself was copied
-    if (paths.has_key(branch_path) and 
-        paths[branch_path][0] in ('R', 'A')):
-        if paths[branch_path][1] is None: 
-            return None # Was added here
-        revnum = paths[branch_path][2]
-        branch_path = paths[branch_path][1].encode("utf-8")
-        return (branch_path, revnum)
-    
-    # Make sure we get the right location for the next time if 
-    # one of the parents changed
-
-    # Path names need to be sorted so the longer paths 
-    # override the shorter ones
-    for p in sorted(paths.keys(), reverse=True):
-        if paths[p][0] == 'M':
-            continue
-        if branch_path.startswith(p+"/"):
-            assert paths[p][0] in ('A', 'R'), "Parent %r wasn't added" % p
-            assert paths[p][1] is not None, \
-                "Empty parent %r added, but child %r wasn't added !?" % (p, branch_path)
-
-            revnum = paths[p][2]
-            branch_path = paths[p][1].encode("utf-8") + branch_path[len(p):]
-            return (branch_path, revnum)
-
-    return (branch_path, revnum)
 
 
 class CachingLogWalker(CacheTable):
@@ -144,11 +102,11 @@ class CachingLogWalker(CacheTable):
 
         while revnum >= 0:
             assert revnum > 0 or path == ""
-            revpaths = self.get_revision_paths(revnum, path, recurse=recurse)
+            revpaths = self.get_revision_paths(revnum)
 
-            next = changes_find_prev_location(revpaths, path, revnum)
+            next = changes.find_prev_location(revpaths, path, revnum)
 
-            if revpaths != {}:
+            if changes.changes_path(revpaths, path, True):
                 yield (path, revpaths, revnum)
 
             if next is None:
@@ -176,18 +134,15 @@ class CachingLogWalker(CacheTable):
             return (path, revnum-1)
         return (row[1], row[2])
 
-    def get_revision_paths(self, revnum, path=None, recurse=False):
+    def get_revision_paths(self, revnum):
         """Obtain dictionary with all the changes in a particular revision.
 
         :param revnum: Subversion revision number
-        :param path: optional path under which to return all entries
-        :param recurse: Report changes to parents as well
         :returns: dictionary with paths as keys and 
                   (action, copyfrom_path, copyfrom_rev) as values.
         """
 
         if revnum == 0:
-            assert path is None or path == ""
             return {'': ('A', None, -1)}
 
         self.mutter("revision paths: %r" % revnum)
@@ -195,11 +150,6 @@ class CachingLogWalker(CacheTable):
         self.fetch_revisions(revnum)
 
         query = "select path, action, copyfrom_path, copyfrom_rev from changed_path where rev="+str(revnum)
-        if path is not None and path != "":
-            query += " and (path='%s' or path like '%s/%%'" % (path, path)
-            if recurse:
-                query += " or ('%s' LIKE path || '/%%')" % path
-            query += ")"
 
         paths = {}
         for p, act, cf, cr in self.cachedb.execute(query):
@@ -306,12 +256,10 @@ class LogWalker(object):
 
         raise NotImplementedError
 
-    def get_revision_paths(self, revnum, path=None, recurse=False):
+    def get_revision_paths(self, revnum):
         """Obtain dictionary with all the changes in a particular revision.
 
         :param revnum: Subversion revision number
-        :param path: optional path under which to return all entries
-        :param recurse: Report changes to parents as well
         :returns: dictionary with paths as keys and 
                   (action, copyfrom_path, copyfrom_rev) as values.
         """
