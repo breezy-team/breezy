@@ -135,8 +135,11 @@ class TestCaseWithBranch(TestCaseWithBzrDir):
         return tree
 
 
-def test_suite():
-    result = tests.TestSuite()
+def load_tests(basic_tests, module, loader):
+    result = loader.suiteClass()
+    # add the tests for this module
+    result.addTests(basic_tests)
+
     test_branch_implementations = [
         'bzrlib.tests.branch_implementations.test_bound_sftp',
         'bzrlib.tests.branch_implementations.test_branch',
@@ -170,7 +173,6 @@ def test_suite():
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
         combinations)
-    loader = tests.TestLoader()
     tests.adapt_modules(test_branch_implementations, adapter, loader, result)
 
     adapt_to_smart_server = BranchTestProviderAdapter(
