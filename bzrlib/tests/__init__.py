@@ -116,7 +116,6 @@ def packages_to_test():
     The packages are not globally imported so that import failures are
     triggered when running selftest, not when importing the command.
     """
-    import bzrlib.tests.blackbox
     import bzrlib.tests.branch_implementations
     import bzrlib.tests.bzrdir_implementations
     import bzrlib.tests.commands
@@ -130,7 +129,6 @@ def packages_to_test():
     import bzrlib.tests.tree_implementations
     import bzrlib.tests.workingtree_implementations
     return [
-            bzrlib.tests.blackbox,
             bzrlib.tests.branch_implementations,
             bzrlib.tests.bzrdir_implementations,
             bzrlib.tests.commands,
@@ -2660,6 +2658,7 @@ def test_suite(keep_only=None):
     testmod_names = [
                    'bzrlib.doc',
                    'bzrlib.util.tests.test_bencode',
+                   'bzrlib.tests.blackbox',
                    'bzrlib.tests.test__dirstate_helpers',
                    'bzrlib.tests.test_ancestry',
                    'bzrlib.tests.test_annotate',

@@ -27,8 +27,6 @@ import sys
 from bzrlib.tests import (
                           adapt_modules,
                           TestCaseWithTransport,
-                          TestSuite,
-                          TestLoader,
                           iter_suite_tests,
                           )
 from bzrlib.tests.EncodingAdapter import EncodingTestAdapter
@@ -39,7 +37,11 @@ from bzrlib.symbol_versioning import (
 import bzrlib.ui as ui
 
 
-def test_suite():
+def load_tests(basic_tests, module, loader):
+    suite = loader.suiteClass()
+    # add the tests for this module
+    suite.addTests(basic_tests)
+
     testmod_names = [
                      'bzrlib.tests.blackbox.test_add',
                      'bzrlib.tests.blackbox.test_added',
@@ -115,12 +117,11 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_versioning',
                      'bzrlib.tests.blackbox.test_whoami',
                      ]
+    suite.addTests(loader.loadTestsFromModuleNames(testmod_names))
+
     test_encodings = [
         'bzrlib.tests.blackbox.test_non_ascii',
     ]
-
-    loader = TestLoader()
-    suite = loader.loadTestsFromModuleNames(testmod_names) 
 
     adapter = EncodingTestAdapter()
     adapt_modules(test_encodings, adapter, loader, suite)
