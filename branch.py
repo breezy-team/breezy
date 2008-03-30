@@ -260,8 +260,7 @@ class SvnBranch(Branch):
         """See Branch.last_revision()."""
         # Shortcut for finding the tip. This avoids expensive generation time
         # on large branches.
-        last_revnum = self.get_revnum()
-        return self.repository.generate_revision_id(last_revnum, self.get_branch_path(last_revnum), self.mapping)
+        return self.generate_revision_id(self.get_revnum())
 
     def pull(self, source, overwrite=False, stop_revision=None, 
              _hook_master=None, run_hooks=True):
