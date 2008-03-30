@@ -40,6 +40,7 @@ import shutil
 from shutil import (
     rmtree,
     )
+import subprocess
 import tempfile
 from tempfile import (
     mkdtemp,
@@ -457,15 +458,37 @@ def get_terminal_encoding():
 
 
 def normalizepath(f):
-    if getattr(os.path, 'realpath', None) is not None:
+    if sys.platform == 'cygwin':
+        F = cygpath
+    elif getattr(os.path, 'realpath', None) is not None:
         F = realpath
     else:
         F = abspath
     [p,e] = os.path.split(f)
+    print "p: ", p, ", e: ", e
     if e == "" or e == "." or e == "..":
         return F(f)
     else:
+        #print "F(p): ", F(p), ", e: ", e
         return pathjoin(F(p), e)
+
+
+def cygpath(f):
+    print "f: ", f
+    command = ['cygpath', '-am', f]
+    try:
+        proc = subprocess.Popen(command, stdout=subprocess.PIPE)
+    except OSError, e:
+        if e.errno == errno.ENOENT:
+            raise errors.ExecutableMissing(command[0])
+        else:
+            raise
+    s = proc.stdout.read()
+    code = proc.wait()
+    #print "code: ", code
+    print "cwd: ", os.path.abspath(os.path.curdir)
+    print "s: ", s[0:-1]
+    return s[0:-1]
 
 
 @deprecated_function(one_zero)

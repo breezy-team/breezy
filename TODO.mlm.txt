@@ -13,3 +13,5 @@ because bzr uses a symbolic link instead of copying the relevant files.
 
 I implemented a quick fix, but I need to make it a Cygwin-specific
 workaround.
+
+Idea: perhaps bzr should retrieve the physical path for each file and use that instead of the logical (symlink) path.

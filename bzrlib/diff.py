@@ -19,6 +19,7 @@ import os
 import re
 import shutil
 import sys
+import traceback
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -760,6 +761,8 @@ class DiffFromTool(DiffPath):
                     path_encoding='utf-8'):
         command_template = commands.shlex_split_unicode(command_string)
         command_template.extend(['%(old_path)s', '%(new_path)s'])
+        print "command_template: ",
+        print command_template
         return klass(command_template, old_tree, new_tree, to_file,
                      path_encoding)
 
@@ -772,7 +775,11 @@ class DiffFromTool(DiffPath):
 
     def _get_command(self, old_path, new_path):
         my_map = {'old_path': old_path, 'new_path': new_path}
-        return [t % my_map for t in self.command_template]
+        result = [t % my_map for t in self.command_template]
+        print "result: ",
+        print result
+        traceback.print_stack()
+        return result
 
     def _execute(self, old_path, new_path):
         command = self._get_command(old_path, new_path)
@@ -788,9 +795,8 @@ class DiffFromTool(DiffPath):
         return proc.wait()
 
     def _try_symlink_root(self, tree, prefix):
-        return False
-        if not (getattr(tree, 'abspath', None) is not None
-                and osutils.has_symlinks()):
+        if (getattr(tree, 'abspath', None) is None
+            or not osutils.has_symlinks()):
             return False
         try:
             os.symlink(tree.abspath(''), osutils.pathjoin(self._root, prefix))
@@ -837,8 +843,9 @@ class DiffFromTool(DiffPath):
         if (old_kind, new_kind) != ('file', 'file'):
             return DiffPath.CANNOT_DIFF
         self._prepare_files(file_id, old_path, new_path)
+        print osutils.pathjoin('new', new_path)
         self._execute(osutils.pathjoin('old', old_path),
-                      osutils.pathjoin('new', new_path))
+                      osutils.normalizepath(osutils.pathjoin(self._root, 'new', new_path)))
 
 
 class DiffTree(object):
@@ -901,6 +908,7 @@ class DiffTree(object):
         :param using: Commandline to use to invoke an external diff tool
         """
         if using is not None:
+            print "using: " + using
             extra_factories = [DiffFromTool.make_from_diff_tree(using)]
         else:
             extra_factories = []
@@ -986,6 +994,9 @@ class DiffTree(object):
         :param old_path: The path of the file in the old tree
         :param new_path: The path of the file in the new tree
         """
+        print "old_path: " + old_path
+        print "new_path: " + new_path
+
         try:
             old_kind = self.old_tree.kind(file_id)
         except (errors.NoSuchId, errors.NoSuchFile):
