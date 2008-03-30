@@ -6,15 +6,15 @@ A simple user model
 
 To use Bazaar you need to understand four core concepts:
 
-* **revision** - a snapshot of the files you're working with.
+* **Revision** - a snapshot of the files you're working with.
 
-* **working tree** - the directory containing your version-controlled
+* **Working tree** - the directory containing your version-controlled
   files and sub-directories.
 
-* **branch** - an ordered set of revisions that describe the history of a
+* **Branch** - an ordered set of revisions that describe the history of a
   set of files.
 
-* **repository** - a store of revisions.
+* **Repository** - a store of revisions.
 
 Let's look at each in more detail.
 
