@@ -1868,18 +1868,19 @@ class BzrBranch6(BzrBranch5):
     def _gen_revision_history(self):
         """Generate the revision history from last revision
         """
-        self._extend_partial_history(self.revno() - 1)
+        self._extend_partial_history()
         return list(reversed(self._partial_revision_history_cache))
 
-    def _extend_partial_history(self, index):
-        """Extend the partial history to include a given index
+    def _extend_partial_history(self, stop_index=None):
+        """Extend the partial history
 
-        If the supplied index is shorter than the maximum available history,
-        a the maximum available history will be used.
+        If a stop_index is supplied, stop when that index has been reached.
+        Otherwise, stop when the end of history is reached.
 
         :param index: The index which should be present.
         """
-        if len(self._partial_revision_history_cache) > index:
+        if (stop_index is not None and
+            len(self._partial_revision_history_cache) > stop_index):
             return
         repo = self.repository
         if len(self._partial_revision_history_cache) == 0:
@@ -1891,7 +1892,8 @@ class BzrBranch6(BzrBranch5):
             assert iterator.next() == start_revision
         for revision_id in iterator:
             self._partial_revision_history_cache.append(revision_id)
-            if len(self._partial_revision_history_cache) > index:
+            if (stop_index is not None and
+                len(self._partial_revision_history_cache) > stop_index):
                 break
 
     def _write_revision_history(self, history):
@@ -2024,7 +2026,7 @@ class BzrBranch6(BzrBranch5):
             return history[revno - 1]
 
         index = last_revno - revno
-        self._extend_partial_history(index)
+        self._extend_partial_history(stop_index=index)
         if len(self._partial_revision_history_cache) > index:
             return self._partial_revision_history_cache[index]
         else:
