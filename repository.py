@@ -68,11 +68,15 @@ class lazy_dict(object):
 
     def __getitem__(self, key):
         self._ensure_init()
-        return self.dict[key]
+        return self.dict.__getitem__(key)
 
     def __setitem__(self, key, value):
         self._ensure_init()
-        self.dict[key] = value
+        return self.dict.__setitem__(key, value)
+
+    def __contains__(self, key):
+        self._ensure_init()
+        return self.dict.__contains__(key)
 
     def get(self, key, default=None):
         self._ensure_init()
@@ -483,18 +487,14 @@ class SvnRepository(Repository):
         return parent_map
 
     def _svk_merged_revisions(self, branch, revnum, mapping, 
-                              fileprops):
+                              current_fileprops, previous_fileprops):
         """Find out what SVK features were merged in a revision.
 
         """
-        current = fileprops.get(SVN_PROP_SVK_MERGE, "")
+        current = current_fileprops.get(SVN_PROP_SVK_MERGE, "")
         if current == "":
             return
-        (prev_path, prev_revnum) = self._log.get_previous(branch, revnum)
-        if prev_path is None and prev_revnum == -1:
-            previous = ""
-        else:
-            previous = self.branchprop_list.get_properties(prev_path.encode("utf-8"), prev_revnum).get(SVN_PROP_SVK_MERGE, "")
+        previous = previous_fileprops.get(SVN_PROP_SVK_MERGE, "")
         for feature in svk_features_merged_since(current, previous):
             revid = svk_feature_to_revision_id(feature, mapping)
             if revid is not None:
@@ -519,7 +519,12 @@ class SvnRepository(Repository):
         parent_ids += extra_rhs_parents
 
         if extra_rhs_parents == ():
-            parent_ids += tuple(self._svk_merged_revisions(branch, revnum, mapping, svn_fileprops))
+            (prev_path, prev_revnum) = self._log.get_previous(branch, revnum)
+            if prev_path is None and prev_revnum == -1:
+                previous = {}
+            else:
+                previous = lazy_dict(self.branchprop_list.get_properties, prev_path.encode("utf-8"), prev_revnum)
+            parent_ids += tuple(self._svk_merged_revisions(branch, revnum, mapping, svn_fileprops, previous))
 
         return parent_ids
 

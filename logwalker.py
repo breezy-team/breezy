@@ -168,6 +168,8 @@ class CachingLogWalker(CacheTable):
         if revnum == 0:
             return (None, -1)
         row = self.cachedb.execute("select action, copyfrom_path, copyfrom_rev from changed_path where path='%s' and rev=%d" % (path, revnum)).fetchone()
+        if row is None:
+            return (None, -1)
         if row[2] == -1:
             if row[0] == 'A':
                 return (None, -1)
@@ -255,8 +257,6 @@ class CachingLogWalker(CacheTable):
                     revision="Revision number %d" % to_revnum)
             raise
         self.cachedb.commit()
-
-
 
 
 class LogWalker(object):
