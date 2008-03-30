@@ -98,7 +98,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         (self.branch_path, self.revnum, self.mapping) = self.source.lookup_revision_id(revid)
         self.svn_revprops = self.source._log._get_transport().revprop_list(self.revnum)
         changes = self.source._log.get_revision_paths(self.revnum, self.branch_path)
-        fileprops = lazy_dict(lambda: self.source.branchprop_list.get_changed_properties(self.branch_path, self.revnum))
+        fileprops = lazy_dict(self.source.branchprop_list.get_changed_properties, self.branch_path, self.revnum)
         renames = self.mapping.import_fileid_map(self.svn_revprops, fileprops)
         self.id_map = self.source.transform_fileid_map(self.source.uuid, 
                               self.revnum, self.branch_path, changes, renames, 

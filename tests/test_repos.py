@@ -1012,19 +1012,6 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repository = Repository.open("svn+%s" % repos_url)
         self.assertTrue(repository.is_shared())
 
-    def test_revision_fileid_renames(self):
-        repos_url = self.make_client('d', 'dc')
-        self.build_tree({'dc/test': "data"})
-        self.client_add("dc/test")
-        self.client_set_prop("dc", "bzr:revision-info", "")
-        self.client_set_prop("dc", "bzr:file-ids", "test\tbla\n")
-        self.client_commit("dc", "Msg")
-
-        repos = Repository.open(repos_url)
-        mapping = repos.get_mapping()
-        renames = repos.revision_fileid_renames("", 1, mapping)
-        self.assertEqual({"test": "bla"}, renames)
-
     def test_fetch_property_change_only_trunk(self):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/trunk/bla': "data"})

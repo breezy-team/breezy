@@ -117,7 +117,7 @@ class FileIdMap(object):
         idmap.update(renames)
         return (idmap, changes)
 
-    def get_map(self, uuid, revnum, branch, renames_cb, mapping):
+    def get_map(self, uuid, revnum, branch, mapping):
         """Make sure the map is up to date until revnum."""
         # First, find the last cached map
         if revnum == 0:
@@ -135,25 +135,26 @@ class FileIdMap(object):
         quickrevidmap = {}
 
         # No history -> empty map
-        for (bp, paths, rev, changed_fileprops, revprops) in self.repos.iter_reverse_branch_changes(branch, revnum, mapping):
+        for (bp, paths, rev, revprops, changed_fileprops) in self.repos.iter_reverse_branch_changes(branch, revnum, mapping):
             revid = self.repos.generate_revision_id(rev, bp, mapping, changed_fileprops, revprops)
             quickrevidmap[revid] = (rev, bp)
-            todo.append((revid, paths, changed_fileprops, revprops))
+            todo.append((revid, paths, revprops, changed_fileprops))
    
         pb = ui.ui_factory.nested_progress_bar()
 
         try:
             i = 1
-            for (revid, global_changes, changed_fileprops, revprops) in reversed(todo):
+            for (revid, global_changes, revprops, changed_fileprops) in reversed(todo):
                 expensive = False
                 def log_find_children(path, revnum):
                     expensive = True
                     return self.repos._log.find_children(path, revnum)
 
                 (revnum, branch) = quickrevidmap[revid]
-                (idmap, changes) = self.actual.apply_changes(self.repos.uuid, revnum, branch, 
-                                          global_changes, renames_cb(branch, revnum, mapping), mapping,
-                                          log_find_children)
+                (idmap, changes) = self.actual.apply_changes(self.repos.uuid, 
+                        revnum, branch, global_changes, 
+                        mapping.import_fileid_map(revprops, changed_fileprops), 
+                        mapping, log_find_children)
                 pb.update('generating file id map', i, len(todo))
 
                 parent_revs = next_parent_revs
@@ -208,7 +209,7 @@ class CachingFileIdMap(object):
 
         return map
 
-    def get_map(self, uuid, revnum, branch, renames_cb, mapping):
+    def get_map(self, uuid, revnum, branch, mapping):
         """Make sure the map is up to date until revnum."""
         # First, find the last cached map
         if revnum == 0:
@@ -221,8 +222,9 @@ class CachingFileIdMap(object):
         quickrevidmap = {}
 
         # No history -> empty map
-        for (bp, paths, rev, changed_fileprops, revprops) in self.repos.iter_reverse_branch_changes(branch, revnum, mapping):
-            revid = self.repos.generate_revision_id(rev, bp, mapping, changed_fileprops, revprops)
+        for (bp, paths, rev, revprops, changed_fileprops) in self.repos.iter_reverse_branch_changes(branch, revnum, mapping):
+            revid = self.repos.generate_revision_id(rev, bp, mapping, 
+                        changed_fileprops, revprops)
             quickrevidmap[revid] = (rev, bp)
             try:
                 map = self.load(revid)
@@ -230,7 +232,7 @@ class CachingFileIdMap(object):
                 next_parent_revs = [revid]
                 break
             except RevisionNotPresent:
-                todo.append((revid, paths))
+                todo.append((revid, paths, revprops, changed_fileprops))
    
         # target revision was present
         if len(todo) == 0:
@@ -246,16 +248,17 @@ class CachingFileIdMap(object):
 
         try:
             i = 1
-            for (revid, global_changes) in reversed(todo):
+            for (revid, global_changes, revprops, changed_fileprops) in reversed(todo):
                 expensive = False
                 def log_find_children(path, revnum):
                     expensive = True
                     return self.repos._log.find_children(path, revnum)
 
                 (revnum, branch) = quickrevidmap[revid]
-                (idmap, changes) = self.actual.apply_changes(self.repos.uuid, revnum, branch, 
-                                          global_changes, renames_cb(branch, revnum, mapping), mapping,
-                                          log_find_children)
+                (idmap, changes) = self.actual.apply_changes(self.repos.uuid, 
+                        revnum, branch, global_changes, 
+                        mapping.import_fileid_map(revprops, changed_fileprops), 
+                        mapping, log_find_children)
                 pb.update('generating file id map', i, len(todo))
 
                 parent_revs = next_parent_revs

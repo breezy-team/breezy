@@ -53,13 +53,14 @@ from tree import SvnRevisionTree
 import urllib
 
 class lazy_dict(object):
-    def __init__(self, create_fn):
+    def __init__(self, create_fn, *args):
         self.create_fn = create_fn
+        self.args = args
         self.dict = None
 
     def _ensure_init(self):
         if self.dict is None:
-            self.dict = self.create_fn()
+            self.dict = self.create_fn(*self.args)
 
     def __len__(self):
         self._ensure_init()
@@ -326,8 +327,7 @@ class SvnRepository(Repository):
         return self.revision_tree(revision_id).inventory
 
     def get_fileid_map(self, revnum, path, mapping):
-        return self.fileid_map.get_map(self.uuid, revnum, path, 
-                                       self.revision_fileid_renames, mapping)
+        return self.fileid_map.get_map(self.uuid, revnum, path, mapping)
 
     def transform_fileid_map(self, uuid, revnum, branch, changes, renames, 
                              mapping):
@@ -377,7 +377,7 @@ class SvnRepository(Repository):
         if revision_id in (None, NULL_REVISION):
             return
         (branch_path, revnum, mapping) = self.lookup_revision_id(revision_id)
-        for (bp, changes, rev, svn_fileprops, svn_revprops) in self.iter_reverse_branch_changes(branch_path, revnum, mapping):
+        for (bp, changes, rev, svn_revprops, svn_fileprops) in self.iter_reverse_branch_changes(branch_path, revnum, mapping):
             yield self.generate_revision_id(rev, bp, mapping, svn_revprops, svn_fileprops)
 
     def get_ancestry(self, revision_id, topo_sorted=True):
@@ -425,21 +425,6 @@ class SvnRepository(Repository):
             return RevisionTree(self, inventory, revision_id)
 
         return SvnRevisionTree(self, revision_id)
-
-    def revision_fileid_renames(self, path, revnum, mapping,
-                                revprops=None, fileprops=None):
-        """Check which files were renamed in a particular revision.
-        
-        :param path: Branch path
-        :
-        :return: dictionary with paths as keys, file ids as values
-        """
-        if revprops is None:
-            revprops = lazy_dict(lambda: self._log.transport.revprop_list(revnum))
-        if fileprops is None:
-            fileprops = lazy_dict(lambda: self.branchprop_list.get_changed_properties(path, revnum))
-
-        return mapping.import_fileid_map(revprops, fileprops)
 
     def lhs_revision_parent(self, path, revnum, mapping):
         """Find the mainline parent of the specified revision.
@@ -525,10 +510,10 @@ class SvnRepository(Repository):
         parent_ids = (mainline_parent,)
 
         if svn_fileprops is None:
-            svn_fileprops = lazy_dict(lambda: self.branchprop_list.get_changed_properties(branch, revnum))
+            svn_fileprops = lazy_dict(self.branchprop_list.get_changed_properties, branch, revnum)
 
         if svn_revprops is None:
-            svn_revprops = lazy_dict(lambda: self.transport.revprop_list(revnum))
+            svn_revprops = lazy_dict(self.transport.revprop_list, revnum)
 
         extra_rhs_parents = mapping.get_rhs_parents(branch, svn_revprops, svn_fileprops)
         parent_ids += extra_rhs_parents
@@ -546,9 +531,9 @@ class SvnRepository(Repository):
         (path, revnum, mapping) = self.lookup_revision_id(revision_id)
         
         if svn_revprops is None:
-            svn_revprops = lazy_dict(lambda: self.transport.revprop_list(revnum))
+            svn_revprops = lazy_dict(self.transport.revprop_list, revnum)
         if svn_fileprops is None:
-            svn_fileprops = lazy_dict(lambda: self.branchprop_list.get_changed_properties(path, revnum))
+            svn_fileprops = lazy_dict(self.branchprop_list.get_changed_properties, path, revnum)
         parent_ids = self.revision_parents(revision_id, svn_fileprops=svn_fileprops, svn_revprops=svn_revprops)
 
         rev = Revision(revision_id=revision_id, parent_ids=parent_ids,
@@ -580,10 +565,10 @@ class SvnRepository(Repository):
         assert isinstance(mapping, BzrSvnMapping)
 
         if revprops is None:
-            revprops = lazy_dict(lambda: self._log._get_transport().revprop_list(revnum))
+            revprops = lazy_dict(self._log._get_transport().revprop_list, revnum)
 
         if changed_fileprops is None:
-            changed_fileprops = lazy_dict(lambda: self.branchprop_list.get_changed_properties(path, revnum))
+            changed_fileprops = lazy_dict(self.branchprop_list.get_changed_properties, path, revnum)
 
         return self.get_revmap().get_revision_id(revnum, path, mapping, revprops, changed_fileprops)
 
@@ -643,8 +628,8 @@ class SvnRepository(Repository):
             if not bp in paths:
                 svn_fileprops = {}
             else:
-                svn_fileprops = lazy_dict(lambda: self.branchprop_list.get_changed_properties(bp, revnum))
-            svn_revprops = lazy_dict(lambda: self.transport.revprop_list(revnum))
+                svn_fileprops = lazy_dict(self.branchprop_list.get_changed_properties, bp, revnum)
+            svn_revprops = lazy_dict(self.transport.revprop_list, revnum)
 
             if (paths.has_key(bp) and paths[bp][1] is not None and 
                 not (mapping.is_branch(paths[bp][1]) or mapping.is_tag(paths[bp][1]))):
@@ -655,10 +640,10 @@ class SvnRepository(Repository):
                     paths[path] = ('A', None, -1)
                 paths[bp] = ('A', None, -1)
 
-                yield (bp, paths, revnum, svn_fileprops, svn_revprops)
+                yield (bp, paths, revnum, svn_revprops, svn_fileprops)
                 return
                      
-            yield (bp, paths, revnum, svn_fileprops, svn_revprops)
+            yield (bp, paths, revnum, svn_revprops, svn_fileprops)
 
     def get_config(self):
         return SvnRepositoryConfig(self.uuid)
