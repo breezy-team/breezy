@@ -29,7 +29,9 @@ import os
 
 from bzrlib import tests
 
-def test_suite():
+def load_tests(basic_tests, module, loader):
+    """This module creates its own test suite with DocFileSuite."""
+
     dir_ = os.path.dirname(__file__)
     if os.path.isdir(dir_):
         candidates = os.listdir(dir_)

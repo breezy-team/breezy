@@ -20,7 +20,16 @@ See bzrlib.doc.api for api documentation and in the future bzrlib.doc.man
 for man page generation.
 """
 
-    
-def test_suite():
-    import bzrlib.doc.api
-    return bzrlib.doc.api.test_suite()
+
+def load_tests(basic_tests, module, loader):
+    suite = loader.suiteClass()
+    # add the tests for this module (obviously none so far)
+    suite.addTests(basic_tests)
+
+    testmod_names = [
+        'bzrlib.doc.api',
+        ]
+
+    suite.addTests(loader.loadTestsFromModuleNames(testmod_names))
+
+    return suite
