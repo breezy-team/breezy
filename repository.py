@@ -54,61 +54,6 @@ from svk import (SVN_PROP_SVK_MERGE, svk_features_merged_since,
 from tree import SvnRevisionTree
 import urllib
 
-class lazy_dict(object):
-    def __init__(self, create_fn, *args):
-        self.create_fn = create_fn
-        self.args = args
-        self.dict = None
-
-    def _ensure_init(self):
-        if self.dict is None:
-            self.dict = self.create_fn(*self.args)
-
-    def __len__(self):
-        self._ensure_init()
-        return len(self.dict)
-
-    def __getitem__(self, key):
-        self._ensure_init()
-        return self.dict.__getitem__(key)
-
-    def __setitem__(self, key, value):
-        self._ensure_init()
-        return self.dict.__setitem__(key, value)
-
-    def __contains__(self, key):
-        self._ensure_init()
-        return self.dict.__contains__(key)
-
-    def get(self, key, default=None):
-        self._ensure_init()
-        return self.dict.get(key, default)
-
-    def has_key(self, key):
-        self._ensure_init()
-        return self.dict.has_key(key)
-
-    def keys(self):
-        self._ensure_init()
-        return self.dict.keys()
-
-    def values(self):
-        self._ensure_init()
-        return self.dict.values()
-
-    def items(self):
-        self._ensure_init()
-        return self.dict.items()
-
-    def __repr__(self):
-        self._ensure_init()
-        return repr(self.dict)
-
-    def __eq__(self, other):
-        self._ensure_init()
-        return self.dict.__eq__(other)
-
-
 def svk_feature_to_revision_id(feature, mapping):
     """Convert a SVK feature to a revision id for this repository.
 
@@ -333,7 +278,7 @@ class SvnRepository(Repository):
             mapping = self.get_mapping()
         revnum = self.transport.get_latest_revnum()
 
-        for (_, paths, revnum) in self._log.iter_changes("", revnum):
+        for (_, paths, revnum, revprops) in self._log.iter_changes("", revnum):
             yielded_paths = set()
             for p in paths:
                 try:
@@ -341,7 +286,7 @@ class SvnRepository(Repository):
                     if not bp in yielded_paths:
                         if not paths.has_key(bp) or paths[bp][0] != 'D':
                             assert revnum > 0 or bp == ""
-                            yield self.generate_revision_id(revnum, bp, mapping)
+                            yield self.generate_revision_id(revnum, bp, mapping, revprops)
                         yielded_paths.add(bp)
                 except NotBranchError:
                     pass
@@ -500,10 +445,10 @@ class SvnRepository(Repository):
         parent_ids = (mainline_parent,)
 
         if svn_fileprops is None:
-            svn_fileprops = lazy_dict(self.branchprop_list.get_changed_properties, branch, revnum)
+            svn_fileprops = logwalker.lazy_dict(self.branchprop_list.get_changed_properties, branch, revnum)
 
         if svn_revprops is None:
-            svn_revprops = lazy_dict(self.transport.revprop_list, revnum)
+            svn_revprops = logwalker.lazy_dict(self.transport.revprop_list, revnum)
 
         extra_rhs_parents = mapping.get_rhs_parents(branch, svn_revprops, svn_fileprops)
         parent_ids += extra_rhs_parents
@@ -513,7 +458,7 @@ class SvnRepository(Repository):
             if prev_path is None and prev_revnum == -1:
                 previous = {}
             else:
-                previous = lazy_dict(self.branchprop_list.get_properties, prev_path.encode("utf-8"), prev_revnum)
+                previous = logwalker.lazy_dict(self.branchprop_list.get_properties, prev_path.encode("utf-8"), prev_revnum)
             parent_ids += tuple(self._svk_merged_revisions(branch, revnum, mapping, svn_fileprops, previous))
 
         return parent_ids
@@ -526,9 +471,9 @@ class SvnRepository(Repository):
         (path, revnum, mapping) = self.lookup_revision_id(revision_id)
         
         if svn_revprops is None:
-            svn_revprops = lazy_dict(self.transport.revprop_list, revnum)
+            svn_revprops = logwalker.lazy_dict(self.transport.revprop_list, revnum)
         if svn_fileprops is None:
-            svn_fileprops = lazy_dict(self.branchprop_list.get_changed_properties, path, revnum)
+            svn_fileprops = logwalker.lazy_dict(self.branchprop_list.get_changed_properties, path, revnum)
         parent_ids = self.revision_parents(revision_id, svn_fileprops=svn_fileprops, svn_revprops=svn_revprops)
 
         rev = Revision(revision_id=revision_id, parent_ids=parent_ids,
@@ -560,10 +505,10 @@ class SvnRepository(Repository):
         assert isinstance(mapping, BzrSvnMapping)
 
         if revprops is None:
-            revprops = lazy_dict(self._log._get_transport().revprop_list, revnum)
+            revprops = logwalker.lazy_dict(self._log._get_transport().revprop_list, revnum)
 
         if changed_fileprops is None:
-            changed_fileprops = lazy_dict(self.branchprop_list.get_changed_properties, path, revnum)
+            changed_fileprops = logwalker.lazy_dict(self.branchprop_list.get_changed_properties, path, revnum)
 
         return self.get_revmap().get_revision_id(revnum, path, mapping, revprops, changed_fileprops)
 
@@ -614,11 +559,9 @@ class SvnRepository(Repository):
         assert mapping.is_branch(branch_path) or mapping.is_tag(branch_path), \
                 "Mapping %r doesn't accept %s as branch or tag" % (mapping, branch_path)
 
-        for (bp, paths, revnum) in self._log.iter_changes(branch_path, revnum):
+        for (bp, paths, revnum, revprops) in self._log.iter_changes(branch_path, revnum):
             assert revnum > 0 or bp == ""
             assert mapping.is_branch(bp) or mapping.is_tag(bp), "%r is not a valid path" % bp
-
-            svn_revprops = lazy_dict(self.transport.revprop_list, revnum)
 
             if (paths.has_key(bp) and paths[bp][1] is not None and 
                 not (mapping.is_branch(paths[bp][1]) or mapping.is_tag(paths[bp][1]))):
@@ -629,10 +572,10 @@ class SvnRepository(Repository):
                     paths[path] = ('A', None, -1)
                 paths[bp] = ('A', None, -1)
 
-                yield (bp, paths, revnum, svn_revprops)
+                yield (bp, paths, revnum, revprops)
                 return
                      
-            yield (bp, paths, revnum, svn_revprops)
+            yield (bp, paths, revnum, revprops)
 
     def iter_reverse_branch_changes(self, branch_path, revnum, mapping):
         """Return all the changes that happened in a branch 
@@ -642,11 +585,12 @@ class SvnRepository(Repository):
             changed paths, revision number, changed file properties and 
             revision properties.
         """
-        for (bp, paths, revnum, revprops) in self.iter_changes(branch_path, revnum, mapping):
+        history_iter = self.iter_changes(branch_path, revnum, mapping)
+        for (bp, paths, revnum, revprops) in history_iter:
             if not bp in paths:
                 svn_fileprops = {}
             else:
-                svn_fileprops = lazy_dict(self.branchprop_list.get_changed_properties, bp, revnum)
+                svn_fileprops = logwalker.lazy_dict(self.branchprop_list.get_changed_properties, bp, revnum)
 
             yield (bp, paths, revnum, revprops, svn_fileprops)
 

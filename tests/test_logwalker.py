@@ -86,7 +86,7 @@ class TestLogWalker(TestCaseWithSubversionRepository):
             ("branches/abranch/foo", {"branches/abranch": ('A', 'trunk', 2)}, 3),
             ("trunk/foo", {"trunk/foo": ('A', None, -1), 
                            "trunk": ('A', None, -1)}, 1)
-        ], list(walker.iter_changes("branches/abranch/foo", 3)))
+            ], [l[:3] for l in walker.iter_changes("branches/abranch/foo", 3)])
 
     def test_get_revision_paths(self):
         repos_url = self.make_client("a", "dc")
@@ -325,7 +325,7 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
         self.assertEqual([("trunk", {"trunk/data": ('A', None, -1),
                                      "trunk": ('A', None, -1)}, 3)], 
-                list(walker.iter_changes("trunk", 3)))
+                                     [l[:3] for l in walker.iter_changes("trunk", 3)])
 
     def test_follow_history(self):
         repos_url = self.make_client("a", "dc")
@@ -335,7 +335,7 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         self.client_add("dc/foo")
         self.client_commit("dc", "My Message")
 
-        for (branch, paths, rev) in walker.iter_changes("", 1):
+        for (branch, paths, rev, revprops) in walker.iter_changes("", 1):
             self.assertEqual(branch, "")
             self.assertTrue(rev == 0 or paths.has_key("foo"))
             self.assertTrue(rev in (0,1))
@@ -344,7 +344,7 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         repos_url = self.make_client("a", "dc")
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
-        self.assertEqual([('', {'': ('A', None, -1)}, 0)], list(walker.iter_changes("", 0)))
+        self.assertEqual([('', {'': ('A', None, -1)}, 0)], [l[:3] for l in walker.iter_changes("", 0)])
 
     def test_later_update(self):
         repos_url = self.make_client("a", "dc")
@@ -355,7 +355,7 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         self.client_add("dc/foo")
         self.client_commit("dc", "My Message")
 
-        for (branch, paths, rev) in walker.iter_changes("", 1):
+        for (branch, paths, rev, revprops) in walker.iter_changes("", 1):
             self.assertEqual(branch, "")
             self.assertTrue(rev == 0 or paths.has_key("foo"))
             self.assertTrue(rev in (0,1))
@@ -375,7 +375,7 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
-        items = list(walker.iter_changes("branches/abranch", 2))
+        items = [l[:3] for l in walker.iter_changes("branches/abranch", 2)]
         self.assertEqual([('branches/abranch', {'branches/abranch': ('A', 'trunk', 1)}, 2), 
                           ('trunk', {'branches': (u'A', None, -1),
                                      'trunk/afile': ('A', None, -1), 

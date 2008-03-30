@@ -29,6 +29,63 @@ import changes
 
 LOG_CHUNK_LIMIT = 0
 
+class lazy_dict(object):
+    def __init__(self, create_fn, *args):
+        self.create_fn = create_fn
+        self.args = args
+        self.dict = None
+
+    def _ensure_init(self):
+        if self.dict is None:
+            self.dict = self.create_fn(*self.args)
+
+    def __len__(self):
+        self._ensure_init()
+        return len(self.dict)
+
+    def __getitem__(self, key):
+        self._ensure_init()
+        return self.dict.__getitem__(key)
+
+    def __setitem__(self, key, value):
+        self._ensure_init()
+        return self.dict.__setitem__(key, value)
+
+    def __contains__(self, key):
+        self._ensure_init()
+        return self.dict.__contains__(key)
+
+    def get(self, key, default=None):
+        self._ensure_init()
+        return self.dict.get(key, default)
+
+    def has_key(self, key):
+        self._ensure_init()
+        return self.dict.has_key(key)
+
+    def keys(self):
+        self._ensure_init()
+        return self.dict.keys()
+
+    def values(self):
+        self._ensure_init()
+        return self.dict.values()
+
+    def items(self):
+        self._ensure_init()
+        return self.dict.items()
+
+    def __repr__(self):
+        self._ensure_init()
+        return repr(self.dict)
+
+    def __eq__(self, other):
+        self._ensure_init()
+        return self.dict.__eq__(other)
+
+
+
+
 
 class CachingLogWalker(CacheTable):
     """Subversion log browser."""
@@ -88,7 +145,7 @@ class CachingLogWalker(CacheTable):
 
         :param path:    Branch path to start reporting (in revnum)
         :param revnum:  Start revision.
-        :return: An iterator that yields tuples with (path, paths, revnum)
+        :return: An iterator that yields tuples with (path, paths, revnum, revprops)
             where paths is a dictionary with all changes that happened in path 
             in revnum.
         """
@@ -106,8 +163,10 @@ class CachingLogWalker(CacheTable):
 
             next = changes.find_prev_location(revpaths, path, revnum)
 
+            revprops = lazy_dict(self._get_transport().revprop_list, revnum)
+
             if changes.changes_path(revpaths, path, True):
-                yield (path, revpaths, revnum)
+                yield (path, revpaths, revnum, revprops)
 
             if next is None:
                 break
@@ -248,7 +307,7 @@ class LogWalker(object):
 
         :param path:    Branch path to start reporting (in revnum)
         :param revnum:  Start revision.
-        :return: An iterator that yields tuples with (path, paths, revnum)
+        :return: An iterator that yields tuples with (path, paths, revnum, revprops)
             where paths is a dictionary with all changes that happened in path 
             in revnum.
         """
