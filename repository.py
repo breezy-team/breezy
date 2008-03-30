@@ -93,6 +93,14 @@ class lazy_dict(object):
         self._ensure_init()
         return self.dict.items()
 
+    def __repr__(self):
+        self._ensure_init()
+        return repr(self.dict)
+
+    def __eq__(self, other):
+        self._ensure_init()
+        return self.dict.__eq__(other)
+
 
 def svk_feature_to_revision_id(feature, mapping):
     """Convert a SVK feature to a revision id for this repository.
