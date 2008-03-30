@@ -78,7 +78,7 @@ class ConversionTests(TestCaseWithTransport):
                 ["bloe"], {"bla": "bloe"})
         self.assertEqual("bla4", newrev)
         self.assertTrue(wt.branch.repository.has_revision(newrev))
-        self.assertEqual(("bloe",), 
+        self.assertEqual(["bloe"], 
                 wt.branch.repository.revision_parents(newrev))
         self.assertEqual("bla2", 
             wt.branch.repository.get_revision(newrev).properties["rebase-of"])
@@ -99,12 +99,14 @@ class PlanCreatorTests(TestCaseWithTransport):
         file('hello', 'w').write('world')
         wt.commit(message='change hello', rev_id="bla2")
 
+        b.repository.lock_read()
         self.assertEquals({'bla2': ('newbla2', ["bloe"])}, 
                 generate_simple_plan(b.revision_history(), "bla2", None, 
                     "bloe", 
                     ["bloe", "bla"],
                     b.repository.revision_parents, 
                     lambda y: "new"+y))
+        b.repository.unlock()
      
     def test_simple_plan_creator_extra_history(self):
         wt = self.make_branch_and_tree('.')
@@ -121,11 +123,13 @@ class PlanCreatorTests(TestCaseWithTransport):
         file('hello', 'w').write('universe')
         wt.commit(message='change hello again', rev_id="bla3")
 
+        b.repository.lock_read()
         self.assertEquals({'bla2': ('newbla2', ["bloe"]), 'bla3': ('newbla3', ['newbla2'])}, 
                 generate_simple_plan(b.revision_history(), "bla2", None, "bloe", 
                     ["bloe", "bla"],
                     b.repository.revision_parents,
                     lambda y: "new"+y))
+        b.repository.unlock()
  
 
     def test_generate_transpose_plan(self):
@@ -151,6 +155,7 @@ class PlanCreatorTests(TestCaseWithTransport):
         wt.add('hello')
         wt.commit(message='add hello', rev_id="lala")
 
+        b.repository.lock_read()
         self.assertEquals({
             'blie': ('newblie', ['lala'])},
             generate_transpose_plan(b.repository.get_revision_graph("blie"), 
@@ -163,6 +168,7 @@ class PlanCreatorTests(TestCaseWithTransport):
             generate_transpose_plan(b.repository.get_revision_graph(), 
             {"bla": "lala"}, 
             b.repository.revision_parents, lambda y: "new"+y))
+        b.repository.unlock()
 
     def test_generate_transpose_plan_one(self):
         self.assertEquals({"bla": ("newbla", ["lala"])},
@@ -518,22 +524,19 @@ class TestReplayWorkingtree(TestCaseWithTransport):
         wt.add(["afile"], ids=["originalid"])
         wt.commit("bla", rev_id="oldparent")
         file("old/afile", "w").write("bloe")
-        wt.commit("bla", rev_id="oldcommit", committer="c")
+        wt.commit("bla", rev_id="oldcommit")
         wt = wt.bzrdir.sprout("new").open_workingtree()
         self.build_tree(['new/bfile'])
         wt.add(["bfile"], ids=["newid"])
         wt.commit("bla", rev_id="newparent")
-        wt.lock_write()
         replay_delta_workingtree(wt, "oldcommit", "newcommit", 
             ["newparent"])
-        wt.unlock()
         oldrev = wt.branch.repository.get_revision("oldcommit")
         newrev = wt.branch.repository.get_revision("newcommit")
         self.assertEquals(["newparent"], newrev.parent_ids)
         self.assertEquals("newcommit", newrev.revision_id)
         self.assertEquals(oldrev.timestamp, newrev.timestamp)
         self.assertEquals(oldrev.timezone, newrev.timezone)
-        self.assertEquals("c", newrev.get_apparent_author())
 
     def test_multiple(self):
         wt = self.make_branch_and_tree("old")

@@ -25,7 +25,7 @@ $(TMP_PLUGINS_DIR):
 $(TMP_PLUGINS_DIR)/rebase: $(TMP_PLUGINS_DIR)
 	ln -sf .. $@
 
-check:: build-inplace $(TMP_PLUGINS_DIR)rebase/
+check:: $(TMP_PLUGINS_DIR)/rebase/
 	BZR_PLUGIN_PATH=$(TMP_PLUGINS_DIR) $(DEBUGGER) $(PYTHON) $(BZR) selftest $(TEST_OPTIONS) $(TESTS)
 
 check-verbose::
