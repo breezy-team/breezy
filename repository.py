@@ -604,13 +604,11 @@ class SvnRepository(Repository):
         return self._serializer.write_revision_to_string(
             self.get_revision(revision_id))
 
-    def iter_reverse_branch_changes(self, branch_path, revnum, mapping):
-        """Return all the changes that happened in a branch 
-        until branch_path,revnum. 
-
+    def iter_changes(self, branch_path, revnum, mapping):
+        """Iterate over all revisions backwards.
+        
         :return: iterator that returns tuples with branch path, 
             changed paths, revision number, changed file properties and 
-            revision properties.
         """
         assert isinstance(branch_path, str)
         assert mapping.is_branch(branch_path) or mapping.is_tag(branch_path), \
@@ -620,10 +618,6 @@ class SvnRepository(Repository):
             assert revnum > 0 or bp == ""
             assert mapping.is_branch(bp) or mapping.is_tag(bp), "%r is not a valid path" % bp
 
-            if not bp in paths:
-                svn_fileprops = {}
-            else:
-                svn_fileprops = lazy_dict(self.branchprop_list.get_changed_properties, bp, revnum)
             svn_revprops = lazy_dict(self.transport.revprop_list, revnum)
 
             if (paths.has_key(bp) and paths[bp][1] is not None and 
@@ -635,10 +629,26 @@ class SvnRepository(Repository):
                     paths[path] = ('A', None, -1)
                 paths[bp] = ('A', None, -1)
 
-                yield (bp, paths, revnum, svn_revprops, svn_fileprops)
+                yield (bp, paths, revnum, svn_revprops)
                 return
                      
-            yield (bp, paths, revnum, svn_revprops, svn_fileprops)
+            yield (bp, paths, revnum, svn_revprops)
+
+    def iter_reverse_branch_changes(self, branch_path, revnum, mapping):
+        """Return all the changes that happened in a branch 
+        until branch_path,revnum. 
+
+        :return: iterator that returns tuples with branch path, 
+            changed paths, revision number, changed file properties and 
+            revision properties.
+        """
+        for (bp, paths, revnum, revprops) in self.iter_changes(branch_path, revnum, mapping):
+            if not bp in paths:
+                svn_fileprops = {}
+            else:
+                svn_fileprops = lazy_dict(self.branchprop_list.get_changed_properties, bp, revnum)
+
+            yield (bp, paths, revnum, revprops, svn_fileprops)
 
     def get_config(self):
         return SvnRepositoryConfig(self.uuid)
@@ -739,7 +749,7 @@ class SvnRepository(Repository):
 
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            for i in range(from_revnum, to_revnum+1):
+            for i in xrange(from_revnum, to_revnum+1):
                 pb.update("finding branches", i, to_revnum+1)
                 paths = self._log.get_revision_paths(i)
                 for p in sorted(paths.keys()):
