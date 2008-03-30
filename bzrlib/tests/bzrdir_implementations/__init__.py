@@ -29,9 +29,7 @@ from bzrlib.tests import (
                           adapt_modules,
                           default_transport,
                           TestCaseWithTransport,
-                          TestLoader,
                           TestScenarioApplier,
-                          TestSuite,
                           )
 from bzrlib.transport.memory import MemoryServer
 
@@ -90,8 +88,11 @@ class TestCaseWithBzrDir(TestCaseWithTransport):
             relpath, format=self.bzrdir_format)
 
 
-def test_suite():
-    result = TestSuite()
+def load_tests(basic_tests, module, loader):
+    result = loader.suiteClass()
+    # add the tests for this module
+    result.addTests(basic_tests)
+
     test_bzrdir_implementations = [
         'bzrlib.tests.bzrdir_implementations.test_bzrdir',
         ]
@@ -103,16 +104,18 @@ def test_suite():
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
         formats)
-    loader = TestLoader()
     adapt_modules(test_bzrdir_implementations, adapter, loader, result)
 
     # This will always add the tests for smart server transport, regardless of
     # the --transport option the user specified to 'bzr selftest'.
-    from bzrlib.smart.server import SmartTCPServer_for_testing, ReadonlySmartTCPServer_for_testing
+    from bzrlib.smart.server import (
+        SmartTCPServer_for_testing,
+        ReadonlySmartTCPServer_for_testing,
+        )
     from bzrlib.remote import RemoteBzrDirFormat
 
     # test the remote server behaviour using a MemoryTransport
-    smart_server_suite = TestSuite()
+    smart_server_suite = loader.suiteClass()
     adapt_to_smart_server = BzrDirTestProviderAdapter(
         MemoryServer,
         SmartTCPServer_for_testing,
@@ -120,7 +123,7 @@ def test_suite():
         [(RemoteBzrDirFormat())])
     adapt_modules(test_bzrdir_implementations,
                   adapt_to_smart_server,
-                  TestLoader(),
+                  loader,
                   smart_server_suite)
     result.addTests(smart_server_suite)
 
