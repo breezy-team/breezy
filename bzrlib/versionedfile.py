@@ -30,6 +30,7 @@ from bzrlib import (
     revision,
     ui,
     )
+from bzrlib.graph import Graph
 from bzrlib.transport.memory import MemoryTransport
 """)
 
@@ -70,6 +71,7 @@ class VersionedFile(object):
         """Return a unsorted list of versions."""
         raise NotImplementedError(self.versions)
 
+    @deprecated_method(one_four)
     def has_ghost(self, version_id):
         """Returns whether version is present as a ghost."""
         raise NotImplementedError(self.has_ghost)
@@ -383,6 +385,7 @@ class VersionedFile(object):
                     pending.add(parent)
         return result
 
+    @deprecated_method(one_four)
     def get_graph_with_ghosts(self):
         """Return a graph for the entire versioned file.
         
@@ -775,8 +778,12 @@ class InterVersionedFile(InterObject):
             temp_source = self.target.create_empty("temp", MemoryTransport())
             target = temp_source
         version_ids = self._get_source_version_ids(version_ids, ignore_missing)
-        graph = self.source.get_graph(version_ids)
-        order = tsort.topo_sort(graph.items())
+        graph = Graph(self.source)
+        search = graph._make_breadth_first_searcher(version_ids)
+        transitive_ids = set()
+        map(transitive_ids.update, list(search))
+        parent_map = self.source.get_parent_map(transitive_ids)
+        order = tsort.topo_sort(parent_map.items())
         pb = ui.ui_factory.nested_progress_bar()
         parent_texts = {}
         try:
@@ -794,7 +801,6 @@ class InterVersionedFile(InterObject):
             # memory pressure reduction. RBC 20060313
             # pb.update('Converting versioned data', 0, len(order))
             total = len(order)
-            parent_map = self.source.get_parent_map(order)
             for index, version in enumerate(order):
                 pb.update('Converting versioned data', index, total)
                 _, _, parent_text = target.add_lines(version,

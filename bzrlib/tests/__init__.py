@@ -2587,6 +2587,7 @@ def load_test_id_list(file_name):
     ftest.close()
     return test_list
 
+
 def suite_matches_id_list(test_suite, id_list):
     """Warns about tests not appearing or appearing more than once.
 
