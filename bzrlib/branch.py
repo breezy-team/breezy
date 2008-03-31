@@ -1874,14 +1874,11 @@ class BzrBranch6(BzrBranch5):
     def _extend_partial_history(self, stop_index=None, stop_revision=None):
         """Extend the partial history to include a given index
 
-        If the supplied index is shorter than the maximum available history,
-        a the maximum available history will be used.
+        If a stop_index is supplied, stop when that index has been reached.
+        Otherwise, stop when the beginning of history is reached.
 
         :param index: The index which should be present.
         """
-        if (stop_index is not None and
-            len(self._partial_revision_history_cache) > stop_index):
-            return
         repo = self.repository
         if len(self._partial_revision_history_cache) == 0:
             iterator = repo.iter_reverse_revision_history(self.last_revision())
@@ -2025,10 +2022,11 @@ class BzrBranch6(BzrBranch5):
             raise errors.NoSuchRevision(self, revno)
 
         if history is not None:
-            return history[revno - 1]
+            assert len(history) == last_revno, 'revno/history mismatch'
 
         index = last_revno - revno
-        self._extend_partial_history(stop_index=index)
+        if len(self._partial_revision_history_cache) <= index:
+            self._extend_partial_history(stop_index=index)
         if len(self._partial_revision_history_cache) > index:
             return self._partial_revision_history_cache[index]
         else:
