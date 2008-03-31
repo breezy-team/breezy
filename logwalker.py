@@ -313,11 +313,15 @@ class LogWalker(object):
         """
         assert revnum >= 0
 
-        for log_entry in self.actual._get_transport().iter_log(path, revnum, 0, 0, True, True, []):
-            revpaths = log_entry.changed_paths
+        for log_entry in self._get_transport().iter_log(path, revnum, 0, 0, True, True, []):
+            revpaths = {}
+            for k,v in log_entry.changed_paths.items():
+                revpaths[k] = (v.action, v.copyfrom_path, v.copyfrom_rev)
+            revnum = log_entry.revision
             next = changes.find_prev_location(revpaths, path, revnum)
             revprops = lazy_dict(self._get_transport().revprop_list, revnum)
             yield (path, revpaths, revnum, revprops)
+            path = next[0]
 
     def get_revision_paths(self, revnum):
         """Obtain dictionary with all the changes in a particular revision.
