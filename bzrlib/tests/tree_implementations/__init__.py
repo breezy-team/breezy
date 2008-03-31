@@ -36,9 +36,7 @@ from bzrlib.tests import (
                           adapt_modules,
                           default_transport,
                           TestCaseWithTransport,
-                          TestLoader,
                           TestSkipped,
-                          TestSuite,
                           )
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.tests.workingtree_implementations import (
@@ -319,8 +317,11 @@ class TreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
         self.scenarios[-1][1]["workingtree_to_test_tree"] = _dirstate_tree_from_workingtree
 
 
-def test_suite():
-    result = TestSuite()
+def load_tests(basic_tests, module, loader):
+    result = loader.suiteClass()
+    # add the tests for this module
+    result.addTests(basic_tests)
+
     test_tree_implementations = [
         'bzrlib.tests.tree_implementations.test_annotate_iter',
         'bzrlib.tests.tree_implementations.test_get_file_mtime',
@@ -334,14 +335,14 @@ def test_suite():
         'bzrlib.tests.tree_implementations.test_tree',
         'bzrlib.tests.tree_implementations.test_walkdirs',
         ]
+
     adapter = TreeTestProviderAdapter(
         default_transport,
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
-        [(format, format._matchingbzrdir) for format in 
+        [(format, format._matchingbzrdir) for format in
          WorkingTreeFormat._formats.values() + _legacy_formats])
-    loader = TestLoader()
+
     adapt_modules(test_tree_implementations, adapter, loader, result)
-    result.addTests(loader.loadTestsFromModuleNames(['bzrlib.tests.tree_implementations']))
     return result

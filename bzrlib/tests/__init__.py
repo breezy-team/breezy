@@ -118,12 +118,10 @@ def packages_to_test():
     """
     import bzrlib.tests.inventory_implementations
     import bzrlib.tests.repository_implementations
-    import bzrlib.tests.tree_implementations
     import bzrlib.tests.workingtree_implementations
     return [
             bzrlib.tests.inventory_implementations,
             bzrlib.tests.repository_implementations,
-            bzrlib.tests.tree_implementations,
             bzrlib.tests.workingtree_implementations,
             ]
 
@@ -2779,6 +2777,7 @@ def test_suite(keep_only=None):
                    'bzrlib.tests.test_workingtree_4',
                    'bzrlib.tests.test_wsgi',
                    'bzrlib.tests.test_xml',
+                   'bzrlib.tests.tree_implementations',
                    ]
     test_transport_implementations = [
         'bzrlib.tests.test_transport_implementations',
