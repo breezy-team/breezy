@@ -112,7 +112,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         self._start_revision()
 
     def _get_parent_ids(self):
-        return self.source.revision_parents(self.revid, self._branch_fileprops)
+        return self.source.revision_parents(self.revid, self._branch_fileprops, self.svn_revprops)
 
     def _get_id_map(self):
         if self._id_map is not None:
