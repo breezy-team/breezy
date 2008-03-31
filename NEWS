@@ -44,6 +44,13 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+    * Add ``root_client_path`` parameter to SmartWSGIApp and
+      SmartServerRequest.  This makes it possible to publish filesystem
+      locations that don't exactly match URL paths. SmartServerRequest
+      subclasses should use the new ``translate_client_path`` and
+      ``transport_from_client_path`` methods when dealing with paths received
+      from a client to take this into account.  (Andrew Bennetts, #124089)
+
     * ``bzr mv a b`` can be now used also to rename previously renamed
       directories, not only files. (Lukáš Lalinský, #107967)
 
@@ -804,13 +811,6 @@ bzr 1.0rc2 2007-12-07
     * New -Dmerge debug option, which emits merge plans for merge-type=weave.
 
   BUGFIXES:
-
-   * Add ``root_client_path`` parameter to SmartWSGIApp and SmartServerRequest.
-     This makes it possible to publish filesystem locations that don't exactly
-     match URL paths. SmartServerRequest subclasses should now use the new
-     ``translate_client_path`` and ``transport_from_client_path`` methods when
-     dealing with paths received from a client to take this into account.
-     (Andrew Bennetts, #124089)
 
    * Better error message when running ``bzr cat`` on a non-existant branch.
      (Lukáš Lalinský, #133782)
