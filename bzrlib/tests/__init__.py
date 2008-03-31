@@ -117,14 +117,12 @@ def packages_to_test():
     triggered when running selftest, not when importing the command.
     """
     import bzrlib.tests.inventory_implementations
-    import bzrlib.tests.per_lock
     import bzrlib.tests.repository_implementations
     import bzrlib.tests.revisionstore_implementations
     import bzrlib.tests.tree_implementations
     import bzrlib.tests.workingtree_implementations
     return [
             bzrlib.tests.inventory_implementations,
-            bzrlib.tests.per_lock,
             bzrlib.tests.repository_implementations,
             bzrlib.tests.revisionstore_implementations,
             bzrlib.tests.tree_implementations,
@@ -2653,6 +2651,7 @@ def test_suite(keep_only=None):
                    'bzrlib.tests.interrepository_implementations',
                    'bzrlib.tests.intertree_implementations',
                    'bzrlib.tests.interversionedfile_implementations',
+                   'bzrlib.tests.per_lock',
                    'bzrlib.tests.test__dirstate_helpers',
                    'bzrlib.tests.test_ancestry',
                    'bzrlib.tests.test_annotate',

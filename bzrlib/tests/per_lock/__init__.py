@@ -63,13 +63,15 @@ class LockTestProviderAdapter(object):
         return result
 
 
-def test_suite():
-    result = tests.TestSuite()
+def load_tests(basic_tests, module, loader):
+    result = loader.suiteClass()
+    # add the tests for this module
+    result.addTests(basic_tests)
+
     test_lock_implementations = [
         'bzrlib.tests.per_lock.test_lock',
         'bzrlib.tests.per_lock.test_temporary_write_lock',
         ]
     adapter = LockTestProviderAdapter(lock._lock_classes)
-    loader = tests.TestLoader()
     tests.adapt_modules(test_lock_implementations, adapter, loader, result)
     return result
