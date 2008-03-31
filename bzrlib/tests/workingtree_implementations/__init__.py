@@ -27,9 +27,7 @@ from bzrlib.transport import get_transport
 from bzrlib.tests import (
                           adapt_modules,
                           default_transport,
-                          TestLoader,
                           TestScenarioApplier,
-                          TestSuite,
                           )
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.workingtree import (WorkingTreeFormat,
@@ -78,8 +76,11 @@ class TestCaseWithWorkingTree(TestCaseWithBzrDir):
         return self.workingtree_format.initialize(made_control)
 
 
-def test_suite():
-    result = TestSuite()
+def load_tests(basic_tests, module, loader):
+    result = loader.suiteClass()
+    # add the tests for this module
+    result.addTests(basic_tests)
+
     test_workingtree_implementations = [
         'bzrlib.tests.workingtree_implementations.test_add_reference',
         'bzrlib.tests.workingtree_implementations.test_add',
@@ -116,6 +117,7 @@ def test_suite():
         'bzrlib.tests.workingtree_implementations.test_walkdirs',
         'bzrlib.tests.workingtree_implementations.test_workingtree',
         ]
+
     adapter = WorkingTreeTestProviderAdapter(
         default_transport,
         # None here will cause a readonly decorator to be created
@@ -123,6 +125,6 @@ def test_suite():
         None,
         [(format, format._matchingbzrdir) for format in 
          WorkingTreeFormat._formats.values() + _legacy_formats])
-    loader = TestLoader()
+
     adapt_modules(test_workingtree_implementations, adapter, loader, result)
     return result
