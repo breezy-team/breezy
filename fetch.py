@@ -94,8 +94,11 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.source = source
         self.transact = target.get_transaction()
 
-    def start_revision(self, revid, prev_inventory, changes, revprops):
+    def start_revision(self, revid, parent_revids, prev_inventory, changes, revprops):
         self.revid = revid
+        self.parent_revids = parent_revids
+        if self.parent_revids == (NULL_REVISION,):
+            self.parent_revids = ()
         (self.branch_path, self.revnum, self.mapping) = self.source.lookup_revision_id(revid)
         self.svn_revprops = revprops
         self.changes = changes
@@ -110,9 +113,6 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.old_inventory = prev_inventory
         self.inventory = prev_inventory.copy()
         self._start_revision()
-
-    def _get_parent_ids(self):
-        return self.source.revision_parents(self.revid, self._branch_fileprops, self.svn_revprops)
 
     def _get_id_map(self):
         if self._id_map is not None:
@@ -141,7 +141,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         """
 
         # Commit SVN revision properties to a Revision object
-        rev = Revision(revision_id=revid, parent_ids=self._get_parent_ids())
+        rev = Revision(revision_id=revid, parent_ids=self.parent_revids)
 
         self.mapping.import_revision(self.svn_revprops, self._branch_fileprops, rev)
 
@@ -584,24 +584,26 @@ class InterFromSvnRepository(InterRepository):
         revs = []
         revprop_map = {}
         changes_map = {}
-        parents = {}
+        lhs_parent = {}
+        rhs_parents = {}
         def check_revid(revision_id):
             prev = None
             (branch_path, revnum, mapping) = self.source.lookup_revision_id(revision_id)
             for (bp, changes, rev, svn_revprops, svn_fileprops) in self.source.iter_reverse_branch_changes(branch_path, revnum, mapping):
                 revid = self.source.generate_revision_id(rev, bp, mapping, svn_revprops, svn_fileprops)
-                parents[prev] = revid
+                rhs_parents[revid] = mapping.get_rhs_parents(bp, svn_revprops, svn_fileprops)
+                lhs_parent[prev] = revid
                 revprop_map[revid] = svn_revprops
                 changes_map[revid] = changes
                 if fetch_rhs_ancestry:
-                    extra.update(mapping.get_rhs_parents(bp, svn_revprops, svn_fileprops))
+                    extra.update(rhs_parents)
                 if not self.target.has_revision(revid):
                     revs.append(revid)
                 elif not find_ghosts:
                     prev = None
                     break
                 prev = revid
-            parents[prev] = NULL_REVISION
+            lhs_parent[prev] = NULL_REVISION
 
         check_revid(revision_id)
 
@@ -609,7 +611,7 @@ class InterFromSvnRepository(InterRepository):
             if revid not in revs:
                 check_revid(revid)
 
-        needed = [(revid, (parents[revid],), changes_map[revid], revprop_map[revid]) for revid in reversed(revs)]
+        needed = [(revid, (lhs_parent[revid],)+rhs_parents[revid], changes_map[revid], revprop_map[revid]) for revid in reversed(revs)]
 
         return needed
 
@@ -663,7 +665,7 @@ class InterFromSvnRepository(InterRepository):
                 else:
                     parent_inv = prev_inv
 
-                editor.start_revision(revid, parent_inv, changes, revprops)
+                editor.start_revision(revid, parent_revids, parent_inv, changes, revprops)
 
                 try:
                     pool = Pool()
