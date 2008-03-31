@@ -465,16 +465,13 @@ def normalizepath(f):
     else:
         F = abspath
     [p,e] = os.path.split(f)
-    print "p: ", p, ", e: ", e
     if e == "" or e == "." or e == "..":
         return F(f)
     else:
-        #print "F(p): ", F(p), ", e: ", e
         return pathjoin(F(p), e)
 
 
 def cygpath(f):
-    print "f: ", f
     command = ['cygpath', '-am', f]
     try:
         proc = subprocess.Popen(command, stdout=subprocess.PIPE)
@@ -483,12 +480,10 @@ def cygpath(f):
             raise errors.ExecutableMissing(command[0])
         else:
             raise
-    s = proc.stdout.read()
+    result = proc.stdout.read()[0:-1]
     code = proc.wait()
-    #print "code: ", code
-    print "cwd: ", os.path.abspath(os.path.curdir)
-    print "s: ", s[0:-1]
-    return s[0:-1]
+    print "code: ", code
+    return result
 
 
 @deprecated_function(one_zero)
