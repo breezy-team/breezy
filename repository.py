@@ -273,12 +273,15 @@ class SvnRepository(Repository):
         return self.fileid_map.apply_changes(uuid, revnum, branch, changes, 
                                              renames, mapping)[0]
 
-    def all_revision_ids(self, mapping=None):
+    def iter_all_changes(self, mapping=None, pb=None):
         if mapping is None:
             mapping = self.get_mapping()
-        revnum = self.transport.get_latest_revnum()
+    
+        latest_revnum = self.transport.get_latest_revnum()
 
-        for (_, paths, revnum, revprops) in self._log.iter_changes("", revnum):
+        for (_, paths, revnum, revprops) in self._log.iter_changes("", latest_revnum):
+            if pb:
+                pb.update("discovering revisions", revnum, latest_revnum)
             yielded_paths = set()
             for p in paths:
                 try:
@@ -286,10 +289,14 @@ class SvnRepository(Repository):
                     if not bp in yielded_paths:
                         if not paths.has_key(bp) or paths[bp][0] != 'D':
                             assert revnum > 0 or bp == ""
-                            yield self.generate_revision_id(revnum, bp, mapping, revprops)
-                        yielded_paths.add(bp)
+                            yielded_paths.add(bp)
+                            yield (revnum, bp, mapping, revprops)
                 except NotBranchError:
                     pass
+
+    def all_revision_ids(self, mapping=None):
+        for (revnum, bp, mapping, revprops) in self.iter_all_changes(mapping):
+            yield self.generate_revision_id(revnum, bp, mapping, revprops)
 
     def get_inventory_weave(self):
         """See Repository.get_inventory_weave()."""
