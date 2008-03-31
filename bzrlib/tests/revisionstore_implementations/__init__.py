@@ -27,9 +27,7 @@ rather than in tests/revisionstore_implementations/*.py.
 from bzrlib.tests import (
                           adapt_modules,
                           default_transport,
-                          TestLoader,
                           TestScenarioApplier,
-                          TestSuite,
                           )
 
 
@@ -74,8 +72,11 @@ class RevisionStoreTestProviderAdapter(TestScenarioApplier):
         return result
 
 
-def test_suite():
-    result = TestSuite()
+def load_tests(basic_tests, module, loader):
+    result = loader.suiteClass()
+    # add the tests for this module
+    result.addTests(basic_tests)
+
     test_revisionstore_implementations = [
         'bzrlib.tests.revisionstore_implementations.test_all',
         ]
@@ -86,6 +87,5 @@ def test_suite():
         None,
         RevisionStoreTestProviderAdapter.default_test_list()
         )
-    loader = TestLoader()
     adapt_modules(test_revisionstore_implementations, adapter, loader, result)
     return result
