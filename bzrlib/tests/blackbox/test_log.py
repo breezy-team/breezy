@@ -187,7 +187,6 @@ class TestLog(ExternalBase):
         
     def test_log_with_custom_properties(self):
         tree = self._prepare()
-        # add a new revision containing a custom property
         tree.commit(message='', revprops={'first_prop':'first_value'})
         
         # define a trivial custom property handler
@@ -198,12 +197,43 @@ class TestLog(ExternalBase):
             'trivial_custom_prop_handler', 
             trivial_custom_prop_handler)
         log = self.run_bzr("log --limit 1")[0]
-        # check if it's in the output
         self.assertContainsRe(log, r'first_prop: first_value\n')
-        
         log = self.run_bzr("log -r1")[0]
-        # should no be any extra properties in the first revision
         self.assertNotContainsRe(log, r'first_prop: first_value\n')
+        bzrlib.log.custom_properties_handler_registry.remove(
+            'trivial_custom_prop_handler')
+    
+    def test_log_without_custom_properties_handler(self):
+        tree = self._prepare()
+        tree.commit(message='', revprops={'first_prop':'first_value'})
+        log = self.run_bzr("log --limit 1")[0]
+        self.assertNotContainsRe(log, r'first_prop: first_value\n')
+        log = self.run_bzr("log -r1")[0]
+        self.assertNotContainsRe(log, r'first_prop: first_value\n')
+    
+    def test_log_broken_custom_properties_handler(self):
+        tree = self._prepare()
+        tree.commit(message='', revprops={'first_prop':'first_value'})
+        
+        # define a broken custom property handler
+        def broken_custom_prop_handler(props_dict):
+            raise errors.BzrError('a test error')
+        
+        bzrlib.log.custom_properties_handler_registry.register(
+            'broken_custom_prop_handler', 
+            broken_custom_prop_handler)
+        log = self.run_bzr("log --limit 1")[0]
+        self.assertNotContainsRe(log, r'first_prop: first_value\n')
+        log = self.run_bzr("log -r1")[0]
+        self.assertNotContainsRe(log, r'first_prop: first_value\n')
+        bzr_log = self._get_log(keep_log_file=True)
+        self.assertContainsRe(bzr_log, 
+            "custom property handler: %s raised an error" % \
+            'broken_custom_prop_handler')
+        self.assertContainsRe(bzr_log, 'a test error')
+        bzrlib.log.custom_properties_handler_registry.remove(
+            'broken_custom_prop_handler')
+
 
 class TestLogMerges(ExternalBase):
 

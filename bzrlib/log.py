@@ -63,6 +63,7 @@ from bzrlib import (
     config,
     lazy_regex,
     registry,
+    trace,
     )
 from bzrlib.errors import (
     BzrCommandError,
@@ -635,15 +636,23 @@ class LogFormatter(object):
         return address
 
     def show_properties(self, properties):
-        """Display the custom properties returned by each 
-        registered function.
+        """Displays the custom properties returned by each registered handler.
+        
+        If a registered handler raise an error, it's silently logged and the
+        next handler in the registry is executed.
         """
         filtered_props = properties.copy()
-        if filtered_props.has_key('branch-nick'): 
+        if 'branch-nick' in filtered_props: 
             del filtered_props['branch-nick']
-        for key, function in custom_properties_handler_registry.iteritems():
-            for key, value in function(filtered_props).items():
-                self.to_file.write(key + ': ' + value + '\n')
+        for key, handler in custom_properties_handler_registry.iteritems():
+            try:
+                for key, value in handler(filtered_props).items():
+                    self.to_file.write(key + ': ' + value + '\n')
+            except:
+                mutter('custom property handler: %s raised an error', 
+                        key)
+                trace.log_exception_quietly()
+
 
 class LongLogFormatter(LogFormatter):
 
@@ -665,8 +674,6 @@ class LongLogFormatter(LogFormatter):
             to_file.write('\n')
             for parent_id in revision.rev.parent_ids:
                 to_file.write(indent + 'parent: %s\n' % (parent_id,))
-        
-        # show custom properties
         self.show_properties(revision.rev.properties)
 
         author = revision.rev.properties.get('author', None)

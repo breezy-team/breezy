@@ -41,6 +41,11 @@ IN DEVELOPMENT
       the server for the protocol version once per connection.  Also, the HTTP
       transport will now automatically use a smart server if one is present.
       (Andrew Bennetts)
+    
+    * New registry for custom log displayers and the method in 
+      LongLogFormatter to display the custom properties returned by the 
+      registered handlers. (Guillermo Gonzalez, #162469)
+
 
   BUGFIXES:
 
@@ -242,10 +247,6 @@ features have been added.
 
     * Use correct indices when emitting LCA conflicts.  This fixes IndexError
       errors.  (Aaron Bentley, #196780)
-    
-    * New registry for custom log displayers and the method in 
-      LongLogFormatter to display the custom properties returned by the 
-      registered handlers. (Guillermo Gonzalez, #162469)
 
   DOCUMENTATION:
 
