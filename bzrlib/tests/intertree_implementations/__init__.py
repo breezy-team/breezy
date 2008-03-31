@@ -27,8 +27,6 @@ from bzrlib.transport import get_transport
 from bzrlib.tests import (
                           adapt_modules,
                           default_transport,
-                          TestLoader,
-                          TestSuite,
                           )
 from bzrlib.tests.tree_implementations import (
     return_parameter,
@@ -95,11 +93,10 @@ class InterTreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
         return result
 
 
-def test_suite():
-    result = TestSuite()
-    loader = TestLoader()
+def load_tests(basic_tests, module, loader):
+    result = loader.suiteClass()
     # load the tests of the infrastructure for these tests
-    result.addTests(loader.loadTestsFromModuleNames(['bzrlib.tests.intertree_implementations']))
+    result.addTests(basic_tests)
 
     default_tree_format = WorkingTreeFormat3()
     test_intertree_implementations = [
