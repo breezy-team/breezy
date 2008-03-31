@@ -94,10 +94,11 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.source = source
         self.transact = target.get_transaction()
 
-    def start_revision(self, revid, prev_inventory, revprops):
+    def start_revision(self, revid, prev_inventory, changes, revprops):
         self.revid = revid
         (self.branch_path, self.revnum, self.mapping) = self.source.lookup_revision_id(revid)
         self.svn_revprops = revprops
+        self.changes = changes
         self._branch_fileprops = None
         self._id_map = None
         self.dir_baserev = {}
@@ -117,19 +118,18 @@ class RevisionBuildEditor(svn.delta.Editor):
         if self._id_map is not None:
             return self._id_map
 
-        changes = self.source._log.get_revision_paths(self.revnum)
         # The API allows the property changes on the root 
         # to be reported after all children have been processed. 
         # If this was the case, fetch the file properties now, since 
         # we need them for the renames.
         if self._branch_fileprops is None:
-            if self.branch_path in changes:
+            if self.branch_path in self.changes:
                 self._branch_fileprops = lazy_dict(self.source.branchprop_list.get_changed_properties, self.branch_path, self.revnum)
             else:
                 self._branch_fileprops = {}
         renames = self.mapping.import_fileid_map(self.svn_revprops, self._branch_fileprops)
         self._id_map = self.source.transform_fileid_map(self.source.uuid, 
-                              self.revnum, self.branch_path, changes, renames, 
+                              self.revnum, self.branch_path, self.changes, renames, 
                               self.mapping)
 
         return self._id_map
@@ -543,20 +543,22 @@ class InterFromSvnRepository(InterRepository):
         """
         parents = {}
         revprops_map = {}
+        changes_map = {}
         graph = self.source.get_graph()
         available_revs = set()
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            for (revnum, bp, mapping, revprops) in self.source.iter_all_changes(pb=pb):
+            for (revnum, bp, mapping, changes, revprops) in self.source.iter_all_changes(pb=pb):
                 revid = self.source.generate_revision_id(revnum, bp, mapping, revprops)
                 available_revs.add(revid)
                 revprops_map[revid] = revprops
+                changes_map[revid] = changes
         finally:
             pb.finished()
         missing = available_revs.difference(self.target.has_revisions(available_revs))
         needed = list(graph.iter_topo_order(missing))
         parents = graph.get_parent_map(needed)
-        return [(revid, parents[revid], revprops_map[revid]) for revid in needed]
+        return [(revid, parents[revid], changes_map[revid], revprops_map[revid]) for revid in needed]
 
     def _find_branches(self, branches, find_ghosts=False, fetch_rhs_ancestry=False):
         set_needed = set()
@@ -581,6 +583,7 @@ class InterFromSvnRepository(InterRepository):
         needed = []
         revs = []
         revprop_map = {}
+        changes_map = {}
         parents = {}
         def check_revid(revision_id):
             prev = None
@@ -589,6 +592,7 @@ class InterFromSvnRepository(InterRepository):
                 revid = self.source.generate_revision_id(rev, bp, mapping, svn_revprops, svn_fileprops)
                 parents[prev] = revid
                 revprop_map[revid] = svn_revprops
+                changes_map[revid] = changes
                 if fetch_rhs_ancestry:
                     extra.update(mapping.get_rhs_parents(bp, svn_revprops, svn_fileprops))
                 if not self.target.has_revision(revid):
@@ -605,7 +609,7 @@ class InterFromSvnRepository(InterRepository):
             if revid not in revs:
                 check_revid(revid)
 
-        needed = [(revid, (parents[revid],), revprop_map[revid]) for revid in reversed(revs)]
+        needed = [(revid, (parents[revid],), changes_map[revid], revprop_map[revid]) for revid in reversed(revs)]
 
         return needed
 
@@ -645,7 +649,7 @@ class InterFromSvnRepository(InterRepository):
         editor = revbuildklass(self.source, self.target)
 
         try:
-            for (revid, parent_revids, revprops) in revids:
+            for (revid, parent_revids, changes, revprops) in revids:
                 pb.update('copying revision', num, len(revids))
 
                 parent_revid = parent_revids[0]
@@ -659,7 +663,7 @@ class InterFromSvnRepository(InterRepository):
                 else:
                     parent_inv = prev_inv
 
-                editor.start_revision(revid, parent_inv, revprops)
+                editor.start_revision(revid, parent_inv, changes, revprops)
 
                 try:
                     pool = Pool()

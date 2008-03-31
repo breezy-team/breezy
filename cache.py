@@ -18,7 +18,7 @@
 import bzrlib
 from bzrlib import debug
 from bzrlib.config import config_dir, ensure_config_dir_exists
-from bzrlib.trace import warning
+from bzrlib.trace import mutter, warning
 
 import os
 

@@ -290,12 +290,12 @@ class SvnRepository(Repository):
                         if not paths.has_key(bp) or paths[bp][0] != 'D':
                             assert revnum > 0 or bp == ""
                             yielded_paths.add(bp)
-                            yield (revnum, bp, mapping, revprops)
+                            yield (revnum, bp, mapping, paths, revprops)
                 except NotBranchError:
                     pass
 
     def all_revision_ids(self, mapping=None):
-        for (revnum, bp, mapping, revprops) in self.iter_all_changes(mapping):
+        for (revnum, bp, mapping, changes, revprops) in self.iter_all_changes(mapping):
             yield self.generate_revision_id(revnum, bp, mapping, revprops)
 
     def get_inventory_weave(self):
