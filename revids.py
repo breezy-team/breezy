@@ -61,7 +61,7 @@ class RevidMap(object):
             pass
 
         found = False
-        for entry_revid, branch, revno in discover_revids(scheme, 0, self.repos.transport.get_latest_revnum()):
+        for entry_revid, branch, revno in self.discover_revids(scheme, 0, self.repos.transport.get_latest_revnum()):
             if revid == entry_revid:
                 found = True
                 break

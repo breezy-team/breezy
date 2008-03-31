@@ -131,14 +131,15 @@ class SvnRepository(Repository):
 
         cache = self.get_config().get_use_cache()
 
+        # Unfortunately, logwalker still requires a cache at the moment
+        cache_dir = self.create_cache_dir()
+        cache_file = os.path.join(cache_dir, 'cache-v%d' % CACHE_DB_VERSION)
+        if not cachedbs.has_key(cache_file):
+            cachedbs[cache_file] = sqlite3.connect(cache_file)
+        self.cachedb = cachedbs[cache_file]
+        self._log = logwalker.CachingLogWalker(self._log, cache_db=self.cachedb)
         if cache:
-            cache_dir = self.create_cache_dir()
             cachedir_transport = get_transport(cache_dir)
-            cache_file = os.path.join(cache_dir, 'cache-v%d' % CACHE_DB_VERSION)
-            if not cachedbs.has_key(cache_file):
-                cachedbs[cache_file] = sqlite3.connect(cache_file)
-            self.cachedb = cachedbs[cache_file]
-            self._log = logwalker.CachingLogWalker(self._log, cache_db=self.cachedb)
             self.fileid_map = CachingFileIdMap(cachedir_transport, self.fileid_map)
             self.revmap = CachingRevidMap(self.revmap, self.cachedb)
 
