@@ -140,7 +140,7 @@ class CachingLogWalker(CacheTable):
 
         return row[0]
 
-    def iter_changes(self, path, revnum):
+    def iter_changes(self, path, revnum, limit=0):
         """Return iterator over all the revisions between revnum and 0 named path or inside path.
 
         :param path:    Branch path to start reporting (in revnum)
@@ -157,6 +157,8 @@ class CachingLogWalker(CacheTable):
 
         path = path.strip("/")
 
+        i = 0
+
         while revnum >= 0:
             assert revnum > 0 or path == ""
             revpaths = self._get_revision_paths(revnum)
@@ -167,6 +169,9 @@ class CachingLogWalker(CacheTable):
 
             if changes.changes_path(revpaths, path, True):
                 yield (path, revpaths, revnum, revprops)
+                i += 1
+                if limit != 0 and i == limit:
+                    break
 
             if next is None:
                 break
@@ -302,7 +307,7 @@ class LogWalker(object):
         log_entry = self.actual._get_transport().iter_log(path, revnum, revnum, 1, True, True, []).next()
         return log_entry.revision
 
-    def iter_changes(self, path, revnum):
+    def iter_changes(self, path, revnum, limit=0):
         """Return iterator over all the revisions between revnum and 0 named path or inside path.
 
         :param path:    Branch path to start reporting (in revnum)
@@ -313,7 +318,7 @@ class LogWalker(object):
         """
         assert revnum >= 0
 
-        for log_entry in self._get_transport().iter_log(path, revnum, 0, 0, True, True, []):
+        for log_entry in self._get_transport().iter_log(path, revnum, 0, limit, True, True, []):
             revpaths = {}
             for k,v in log_entry.changed_paths.items():
                 revpaths[k] = (v.action, v.copyfrom_path, v.copyfrom_rev)
