@@ -344,6 +344,34 @@ class SvnRaTransport(Transport):
         return self.Reporter(self, svn.ra.do_switch(self._ra, switch_rev, "", 
                              recurse, switch_url, edit, edit_baton, pool))
 
+    def iter_log(self, path, from_revnum, to_revnum, limit, discover_changed_paths, 
+                 strict_node_history, revprops):
+        from threading import Thread, Semaphore
+
+        class logfetcher(Thread):
+            def __init__(self, get_log):
+                Thread.__init__(self)
+                self.setDaemon(True)
+                self.get_log = get_log
+                self.pending = []
+                self.semaphore = Semaphore(0)
+
+            def next(self):
+                self.semaphore.acquire()
+                return self.pending.pop()
+
+            def run(self):
+                def rcvr(log_entry, pool):
+                    self.pending.append(log_entry)
+                    self.semaphore.release()
+                self.get_log(rcvr)
+                self.pending.append(None)
+                self.semaphore.release()
+        
+        fetcher = logfetcher(lambda rcvr: self.get_log(path, from_revnum, to_revnum, limit, discover_changed_paths, strict_node_history, revprops, rcvr))
+        fetcher.start()
+        return iter(fetcher.next, None)
+
     @convert_svn_error
     @needs_busy
     def get_log(self, path, from_revnum, to_revnum, limit, discover_changed_paths, 
