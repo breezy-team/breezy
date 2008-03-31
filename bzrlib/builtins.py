@@ -221,7 +221,7 @@ class cmd_cat_revision(Command):
                 if rev is None:
                     raise errors.BzrCommandError('You cannot specify a NULL'
                                                  ' revision.')
-                revno, rev_id = rev.in_history(b)
+                rev_id = rev.as_revision_id(b)
                 self.outf.write(b.repository.get_revision_xml(rev_id).decode('utf-8'))
     
 
@@ -295,13 +295,13 @@ class cmd_revision_info(Command):
             revs.append(RevisionSpec.from_string('-1'))
 
         for rev in revs:
-            revinfo = rev.in_history(b)
-            if revinfo.revno is None:
+            revision_id = rev.as_revision_id(b)
+            try:
+                revno = '%4d' % (b.revision_id_to_revno(revision_id))
+            except errors.NoSuchRevision:
                 dotted_map = b.get_revision_id_to_revno_map()
-                revno = '.'.join(str(i) for i in dotted_map[revinfo.rev_id])
-                print '%s %s' % (revno, revinfo.rev_id)
-            else:
-                print '%4d %s' % (revinfo.revno, revinfo.rev_id)
+                revno = '.'.join(str(i) for i in dotted_map[revision_id])
+            print '%s %s' % (revno, revision_id)
 
     
 class cmd_add(Command):
