@@ -481,8 +481,7 @@ def cygpath(f):
         else:
             raise
     result = proc.stdout.read()[0:-1]
-    code = proc.wait()
-    print "code: ", code
+    proc.wait()
     return result
 
 
