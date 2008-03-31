@@ -2866,7 +2866,7 @@ def test_suite(keep_only=None):
     return suite
 
 
-def multiply_tests_from_modules(module_name_list, scenario_iter):
+def multiply_tests_from_modules(module_name_list, scenario_iter, loader=None):
     """Adapt all tests in some given modules to given scenarios.
 
     This is the recommended public interface for test parameterization.
@@ -2878,6 +2878,8 @@ def multiply_tests_from_modules(module_name_list, scenario_iter):
         modules.
     :param scenario_iter: Iterable of pairs of (scenario_name, 
         scenario_param_dict).
+    :param loader: If provided, will be used instead of a new 
+        bzrlib.tests.TestLoader() instance.
 
     This returns a new TestSuite containing the cross product of
     all the tests in all the modules, each repeated for each scenario.
@@ -2899,8 +2901,13 @@ def multiply_tests_from_modules(module_name_list, scenario_iter):
     >>> tests[1].param
     2
     """
-    loader = TestLoader()
-    suite = TestSuite()
+    # XXX: Isn't load_tests() a better way to provide the same functionality
+    # without forcing a predefined TestScenarioApplier ? --vila 080215
+    if loader is None:
+        loader = TestUtil.TestLoader()
+
+    suite = loader.suiteClass()
+
     adapter = TestScenarioApplier()
     adapter.scenarios = list(scenario_iter)
     adapt_modules(module_name_list, adapter, loader, suite)
