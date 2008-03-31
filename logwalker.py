@@ -233,34 +233,30 @@ class CachingLogWalker(CacheTable):
 
         pb = ui.ui_factory.nested_progress_bar()
 
-        def rcvr(log_entry, pool):
-            pb.update('fetching svn revision info', log_entry.revision, to_revnum)
-            orig_paths = log_entry.changed_paths
-            if orig_paths is None:
-                orig_paths = {}
-            for p in orig_paths:
-                copyfrom_path = orig_paths[p].copyfrom_path
-                if copyfrom_path is not None:
-                    copyfrom_path = copyfrom_path.strip("/")
-
-                self.cachedb.execute(
-                     "replace into changed_path (rev, path, action, copyfrom_path, copyfrom_rev) values (?, ?, ?, ?, ?)", 
-                     (log_entry.revision, p.strip("/"), orig_paths[p].action, copyfrom_path, orig_paths[p].copyfrom_rev))
-                # Work around nasty memory leak in Subversion
-                orig_paths[p]._parent_pool.destroy()
-
-            self.saved_revnum = log_entry.revision
-            if self.saved_revnum % 1000 == 0:
-                self.cachedb.commit()
-
         try:
             try:
                 while self.saved_revnum < to_revnum:
-                    pool = Pool()
-                    self.actual._get_transport().get_log("", self.saved_revnum, 
+                    for log_entry in self.actual._get_transport().iter_log("", self.saved_revnum, 
                                              to_revnum, self.actual._limit, True, 
-                                             True, [], rcvr, pool)
-                    pool.destroy()
+                                             True, []):
+                        pb.update('fetching svn revision info', log_entry.revision, to_revnum)
+                        orig_paths = log_entry.changed_paths
+                        if orig_paths is None:
+                            orig_paths = {}
+                        for p in orig_paths:
+                            copyfrom_path = orig_paths[p].copyfrom_path
+                            if copyfrom_path is not None:
+                                copyfrom_path = copyfrom_path.strip("/")
+
+                            self.cachedb.execute(
+                                 "replace into changed_path (rev, path, action, copyfrom_path, copyfrom_rev) values (?, ?, ?, ?, ?)", 
+                                 (log_entry.revision, p.strip("/"), orig_paths[p].action, copyfrom_path, orig_paths[p].copyfrom_rev))
+                            # Work around nasty memory leak in Subversion
+                            orig_paths[p]._parent_pool.destroy()
+
+                        self.saved_revnum = log_entry.revision
+                        if self.saved_revnum % 1000 == 0:
+                            self.cachedb.commit()
             finally:
                 pb.finished()
         except SubversionException, (_, num):
@@ -303,7 +299,8 @@ class LogWalker(object):
         """
         assert isinstance(path, str)
         assert isinstance(revnum, int) and revnum >= 0
-        raise NotImplementedError
+        log_entry = self.actual._get_transport().iter_log(path, revnum, revnum, 1, True, True, []).next()
+        return log_entry.revision
 
     def iter_changes(self, path, revnum):
         """Return iterator over all the revisions between revnum and 0 named path or inside path.
@@ -316,7 +313,11 @@ class LogWalker(object):
         """
         assert revnum >= 0
 
-        raise NotImplementedError
+        for log_entry in self.actual._get_transport().iter_log(path, revnum, 0, 0, True, True, []):
+            revpaths = log_entry.changed_paths
+            next = changes.find_prev_location(revpaths, path, revnum)
+            revprops = lazy_dict(self._get_transport().revprop_list, revnum)
+            yield (path, revpaths, revnum, revprops)
 
     def get_revision_paths(self, revnum):
         """Obtain dictionary with all the changes in a particular revision.
@@ -325,7 +326,8 @@ class LogWalker(object):
         :returns: dictionary with paths as keys and 
                   (action, copyfrom_path, copyfrom_rev) as values.
         """
-        raise NotImplementedError
+        log_entry = self.actual._get_transport().iter_log("", revnum, revnum, 1, True, True, []).next()
+        return log_entry.changed_paths
         
     def find_children(self, path, revnum):
         """Find all children of path in revnum.
