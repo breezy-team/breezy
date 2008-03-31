@@ -22,6 +22,9 @@ __all__ = ['needs_read_lock',
            ]
 
 
+import sys
+
+
 def _get_parameters(func):
     """Recreate the parameters for a function using introspection.
 
@@ -138,9 +141,16 @@ def _pretty_needs_write_lock(unbound):
 def %(name)s_write_locked(%(params)s):
     self.lock_write()
     try:
-        return unbound(%(passed_params)s)
-    finally:
+        result = unbound(self, *args, **kwargs)
+    except:
+        exc_info = sys.exc_info()
+        try:
+            self.unlock()
+        finally:
+            raise exc_info[0], exc_info[1], exc_info[2]
+    else:
         self.unlock()
+        return result
 write_locked = %(name)s_write_locked
 """
     params, passed_params = _get_parameters(unbound)
@@ -162,9 +172,16 @@ def _fast_needs_write_lock(unbound):
     def write_locked(self, *args, **kwargs):
         self.lock_write()
         try:
-            return unbound(self, *args, **kwargs)
-        finally:
+            result = unbound(self, *args, **kwargs)
+        except:
+            exc_info = sys.exc_info()
+            try:
+                self.unlock()
+            finally:
+                raise exc_info[0], exc_info[1], exc_info[2]
+        else:
             self.unlock()
+            return result
     write_locked.__doc__ = unbound.__doc__
     write_locked.__name__ = unbound.__name__
     return write_locked
