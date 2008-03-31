@@ -33,10 +33,16 @@ def _inventory_test_scenarios():
     yield ('Inventory', dict(inventory_class=Inventory))
 
 
-def test_suite():
+def load_tests(basic_tests, module, loader):
     """Generate suite containing all parameterized tests"""
+    suite = loader.suiteClass()
+    # add the tests for this module
+    suite.addTests(basic_tests)
+
     modules_to_test = [
-            'bzrlib.tests.inventory_implementations.basics',
-            ]
-    return multiply_tests_from_modules(modules_to_test,
-            _inventory_test_scenarios())
+        'bzrlib.tests.inventory_implementations.basics',
+        ]
+    suite.addTests(multiply_tests_from_modules(modules_to_test,
+                                               _inventory_test_scenarios(),
+                                               loader))
+    return suite

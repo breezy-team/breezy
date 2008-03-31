@@ -43,8 +43,6 @@ from bzrlib.tests import (
                           multiply_scenarios,
                           multiply_tests_from_modules,
                           TestScenarioApplier,
-                          TestLoader,
-                          TestSuite,
                           )
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.transport.memory import MemoryServer
@@ -834,7 +832,11 @@ all_broken_scenario_classes = [
     ]
     
 
-def test_suite():
+def load_tests(basic_tests, module, loader):
+    result = loader.suiteClass()
+    # add the tests for this module
+    result.addTests(basic_tests)
+
     registry = repository.format_registry
     all_formats = [registry.get(k) for k in registry.keys()]
     all_formats.extend(weaverepo._legacy_formats)
@@ -882,7 +884,9 @@ def test_suite():
                         for module_name in test_repository_modules]
 
     # Parameterize repository_implementations test modules by format.
-    result = multiply_tests_from_modules(module_name_list, format_scenarios)
+    result.addTests(multiply_tests_from_modules(module_name_list,
+                                                format_scenarios,
+                                                loader))
 
     # test_check_reconcile needs to be parameterized by format *and* by broken
     # repository scenario.
@@ -892,7 +896,6 @@ def test_suite():
         format_scenarios, broken_scenarios)
     broken_scenario_applier = TestScenarioApplier()
     broken_scenario_applier.scenarios = broken_scenarios_for_all_formats
-    loader = TestLoader()
     adapt_modules(
         [prefix + 'test_check_reconcile'],
         broken_scenario_applier, loader, result)

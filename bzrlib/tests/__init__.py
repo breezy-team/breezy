@@ -116,11 +116,7 @@ def packages_to_test():
     The packages are not globally imported so that import failures are
     triggered when running selftest, not when importing the command.
     """
-    import bzrlib.tests.inventory_implementations
-    import bzrlib.tests.repository_implementations
     return [
-            bzrlib.tests.inventory_implementations,
-            bzrlib.tests.repository_implementations,
             ]
 
 
@@ -2642,10 +2638,12 @@ def test_suite(keep_only=None):
                    'bzrlib.tests.branch_implementations',
                    'bzrlib.tests.bzrdir_implementations',
                    'bzrlib.tests.commands',
+                   'bzrlib.tests.inventory_implementations',
                    'bzrlib.tests.interrepository_implementations',
                    'bzrlib.tests.intertree_implementations',
                    'bzrlib.tests.interversionedfile_implementations',
                    'bzrlib.tests.per_lock',
+                   'bzrlib.tests.repository_implementations',
                    'bzrlib.tests.revisionstore_implementations',
                    'bzrlib.tests.test__dirstate_helpers',
                    'bzrlib.tests.test_ancestry',
