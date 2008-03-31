@@ -159,7 +159,7 @@ class CachingLogWalker(CacheTable):
 
         while revnum >= 0:
             assert revnum > 0 or path == ""
-            revpaths = self.get_revision_paths(revnum)
+            revpaths = self._get_revision_paths(revnum)
 
             next = changes.find_prev_location(revpaths, path, revnum)
 
@@ -193,19 +193,10 @@ class CachingLogWalker(CacheTable):
             return (path, revnum-1)
         return (row[1], row[2])
 
-    def get_revision_paths(self, revnum):
-        """Obtain dictionary with all the changes in a particular revision.
-
-        :param revnum: Subversion revision number
-        :returns: dictionary with paths as keys and 
-                  (action, copyfrom_path, copyfrom_rev) as values.
-        """
-
+    def _get_revision_paths(self, revnum):
         if revnum == 0:
             return {'': ('A', None, -1)}
 
-        self.mutter("revision paths: %r" % revnum)
-                
         self.fetch_revisions(revnum)
 
         query = "select path, action, copyfrom_path, copyfrom_rev from changed_path where rev="+str(revnum)
@@ -216,6 +207,18 @@ class CachingLogWalker(CacheTable):
                 cf = cf.encode("utf-8")
             paths[p.encode("utf-8")] = (act, cf, cr)
         return paths
+
+    def get_revision_paths(self, revnum):
+        """Obtain dictionary with all the changes in a particular revision.
+
+        :param revnum: Subversion revision number
+        :returns: dictionary with paths as keys and 
+                  (action, copyfrom_path, copyfrom_rev) as values.
+        """
+        self.mutter("revision paths: %r" % revnum)
+
+        return self._get_revision_paths(revnum)
+                
 
     def fetch_revisions(self, to_revnum=None):
         """Fetch information about all revisions in the remote repository
