@@ -2415,15 +2415,14 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
     def initialize_on_transport(self, transport):
         try:
             # hand off the request to the smart server
-            shared_medium = transport.get_shared_medium()
+            client_medium = transport.get_smart_medium()
         except errors.NoSmartMedium:
             # TODO: lookup the local format from a server hint.
             local_dir_format = BzrDirMetaFormat1()
             return local_dir_format.initialize_on_transport(transport)
-        client = _SmartClient(shared_medium)
+        client = _SmartClient(client_medium, transport.base)
         path = client.remote_path_from_transport(transport)
-        response = _SmartClient(shared_medium).call('BzrDirFormat.initialize',
-                                                    path)
+        response = client.call('BzrDirFormat.initialize', path)
         assert response[0] in ('ok', ), 'unexpected response code %s' % (response,)
         return remote.RemoteBzrDir(transport)
 

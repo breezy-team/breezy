@@ -626,6 +626,7 @@ class Transport(object):
         """
         raise errors.NoSmartMedium(self)
 
+    @deprecated_method(one_four)
     def get_shared_medium(self):
         """Return a smart client shared medium for this transport if possible.
 
