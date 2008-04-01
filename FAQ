@@ -13,8 +13,8 @@ proposed for inclusion in Subversion 1.4.7.
 One way to work around this problem is to Ctrl+C the branch operation 
 and restart it.
 
-I am unable to access a repository that requires user/password authentication.
-------------------------------------------------------------------------------
+I am unable to access a repository that requires user/password authentication or uses self-signed SSL certificates
+------------------------------------------------------------------------------------------------------------------
 The Python bindings required for password prompting are only present in 
 version 1.5 of Subversion so password prompting is only possible if 
 you have that version installed.
@@ -29,7 +29,6 @@ svn+http://svn.python.org/projects/python/trunk/
 
 Trying to branch into repository gives an error about incompatibility.
 ----------------------------------------------------------------------
-
 Creating a repository and then trying to clone a Subversion branch into 
 that repository may cause the following error:
 
@@ -70,8 +69,8 @@ would like to use Subversion revision numbers, use the "svn:" revision specifier
 
   $ bzr ls -rsvn:34 svn://example.com/bar
 
-Bazaar reports branches have diverged while pulling, when they haven't
-----------------------------------------------------------------------
+After upgrading bzr-svn, Bazaar reports branches have diverged while pulling, when they haven't
+-----------------------------------------------------------------------------------------------
 As of version 0.4, bzr-svn creates revisions with different revision ids than 
 previous versions. In other words, existing bzr-svn branches created with 
 0.3.x can not be used directly with 0.4.0 but will have to be upgraded to 
@@ -86,7 +85,7 @@ See hooks/pre-revprop-change in the Subversion repository for
 more information about how to do this.
 
 You also need to enable support for this in bzr-svn by setting 
-override-svn-revprops to True in ~/.bazaar/bazaar.conf.
+``override-svn-revprops`` to True in ~/.bazaar/bazaar.conf.
 
 I converted my Subversion repository using svn-import, but now all branches are empty!
 --------------------------------------------------------------------------------------
@@ -95,13 +94,28 @@ bzr-svn does not create working trees by default. If you need
 the working trees, run "bzr checkout" in the branch or 
 specify --trees to svn-import.
 
-bzr-svn did a replace operation when I tried to push a merge commit to Subversion
----------------------------------------------------------------------------------
-Yes, this is because bzr-svn has to preserve the left-hand side history of your 
+bzr-svn did a replace operation on the branch I pushed to when I tried to push a merge commit to Subversion
+-----------------------------------------------------------------------------------------------------------
+Yes, this is because bzr-svn has to preserve the mainline history of your 
 branch. 
 
 If you would like to avoid this, use a checkout and merge into that ("bzr co") 
-or rebase on trunk rather than merge it.
+or rebase on trunk rather than merge it. 
+
+For example::
+
+ $ bzr push ../trunk
+ bzr: ERROR: These branches have diverged.  Try using "merge" and then "push".
+ $ bzr rebase ../trunk
+ All changes applied successfully.
+ ...
+ $ bzr push ../trunk
+ All changes applied successfully.
+ Pushed up to revision 1075.
+
+If you would like to forbid Bazaar from ever doing these operations, set the 
+``append-revisions-only`` setting to True for the repository you're 
+pushing to.
 
 ..
 	vim: ft=rest
