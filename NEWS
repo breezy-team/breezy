@@ -67,6 +67,9 @@ IN DEVELOPMENT
 
     * Launchpad locations (lp: URLs) can be pulled.  (Aaron Bentley, #181945)
 
+    * vsftp's return ``550 RNFR command failed.`` supported.
+      (Marcus Trautwig, #129786)
+
   DOCUMENTATION:
 
     * Improved documentation on send/merge relationship. (Peter Schuller)
