@@ -129,4 +129,4 @@ if __name__ == '__main__':
         bzrlib.trace._trace_file.flush()
     os._exit(exit_val)
 else:
-    pass    # should this give an error? - it can't be used as a lib
+    raise ImportError("The bzr script cannot be imported.")
