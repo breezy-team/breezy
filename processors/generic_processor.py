@@ -173,10 +173,6 @@ class GenericProcessor(processor.ImportProcessor):
         # Checkpointing closes the current one and starts a new one.
         self.repo.start_write_group()
 
-        # Turn on caching for the inventory versioned file
-        inv_vf = self.repo.get_inventory_weave()
-        inv_vf.enable_cache()
-
     def _load_info_and_params(self):
         self._experimental = bool(self.params.get('experimental', False))
 
