@@ -836,8 +836,10 @@ class DiffFromTool(DiffPath):
         if (old_kind, new_kind) != ('file', 'file'):
             return DiffPath.CANNOT_DIFF
         self._prepare_files(file_id, old_path, new_path)
-        self._execute(osutils.pathjoin('old', old_path),
-                      osutils.pathjoin('new', new_path))
+        old_full_path = osutils.pathjoin(self._root, 'old', old_path)
+        new_full_path = osutils.pathjoin(self._root, 'new', new_path)
+        self._execute(osutils.normalizepath(old_full_path),
+                      osutils.normalizepath(new_full_path))
 
 
 class DiffTree(object):
