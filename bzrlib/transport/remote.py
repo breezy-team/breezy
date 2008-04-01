@@ -35,6 +35,7 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.smart import client, medium, protocol
+from bzrlib.symbol_versioning import (deprecated_method, one_four)
 
 
 class _SmartStat(object):
@@ -104,9 +105,14 @@ class RemoteTransport(transport.ConnectedTransport):
             self._shared_connection = transport._SharedConnection(medium,
                                                                   credentials,
                                                                   self.base)
+        else:
+            if medium is None:
+                # No medium was specified, so share the medium from the
+                # _from_transport.
+                medium = self._shared_connection.connection
 
         if _client is None:
-            self._client = client._SmartClient(self.get_shared_medium())
+            self._client = client._SmartClient(medium, self.base)
         else:
             self._client = _client
 
@@ -144,6 +150,7 @@ class RemoteTransport(transport.ConnectedTransport):
     def get_smart_medium(self):
         return self._get_connection()
 
+    @deprecated_method(one_four)
     def get_shared_medium(self):
         return self._get_shared_connection()
 

@@ -140,7 +140,7 @@ class FakeClient(_SmartClient):
         self.responses = responses
         self._calls = []
         self.expecting_body = False
-        _SmartClient.__init__(self, FakeMedium(fake_medium_base, self._calls))
+        _SmartClient.__init__(self, FakeMedium(self._calls), fake_medium_base)
 
     def call(self, method, *args):
         self._calls.append(('call', method, args))
@@ -161,14 +161,6 @@ class FakeClient(_SmartClient):
 
 
 class FakeMedium(object):
-
-    def __init__(self, base, client_calls):
-        self.base = base
-        self.connection = FakeConnection(client_calls)
-        self._client_calls = client_calls
-
-
-class FakeConnection(object):
 
     def __init__(self, client_calls):
         self._remote_is_at_least_1_2 = True

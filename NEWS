@@ -24,6 +24,9 @@ IN DEVELOPMENT
 
   FEATURES:
 
+    * Added mail-mode GNU Emacs mail package as a mail_client.
+      (Xavier Maillard, Bojan Nikolic)
+
   IMPROVEMENTS:
 
     * Diff is now more specific about execute-bit changes it describes
@@ -46,6 +49,13 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+    * Add ``root_client_path`` parameter to SmartWSGIApp and
+      SmartServerRequest.  This makes it possible to publish filesystem
+      locations that don't exactly match URL paths. SmartServerRequest
+      subclasses should use the new ``translate_client_path`` and
+      ``transport_from_client_path`` methods when dealing with paths received
+      from a client to take this into account.  (Andrew Bennetts, #124089)
+
     * ``bzr mv a b`` can be now used also to rename previously renamed
       directories, not only files. (Lukáš Lalinský, #107967)
 
@@ -59,6 +69,9 @@ IN DEVELOPMENT
     * Implement handling of basename parameter for DefaultMail.  (James Westby)
 
     * Launchpad locations (lp: URLs) can be pulled.  (Aaron Bentley, #181945)
+
+    * vsftp's return ``550 RNFR command failed.`` supported.
+      (Marcus Trautwig, #129786)
 
   DOCUMENTATION:
 
@@ -83,6 +96,9 @@ IN DEVELOPMENT
 
     * ``revision.revision_graph`` is deprecated, with no replacement function.
       The function was size(history) and not desirable. (Robert Collins)
+
+    * ``Transport.get_shared_medium`` is deprecated.  Use
+      ``Transport.get_smart_medium`` instead.  (Andrew Bennetts)
 
     * ``VersionedFile.get_graph`` is deprecated, with no replacement method.
       The method was size(history) and not desirable. (Robert Collins)

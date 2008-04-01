@@ -62,11 +62,10 @@ class RemoteBzrDir(BzrDir):
         self._real_bzrdir = None
 
         if _client is None:
-            self._shared_medium = transport.get_shared_medium()
-            self._client = client._SmartClient(self._shared_medium)
+            medium = transport.get_smart_medium()
+            self._client = client._SmartClient(medium, transport.base)
         else:
             self._client = _client
-            self._shared_medium = None
             return
 
         path = self._path_for_remote_call(self._client)
@@ -277,7 +276,7 @@ class RemoteRepository(object):
             self._real_repository = None
         self.bzrdir = remote_bzrdir
         if _client is None:
-            self._client = client._SmartClient(self.bzrdir._shared_medium)
+            self._client = remote_bzrdir._client
         else:
             self._client = _client
         self._format = format
@@ -836,7 +835,7 @@ class RemoteRepository(object):
 
     def _get_parent_map(self, keys):
         """Helper for get_parent_map that performs the RPC."""
-        medium = self._client.get_smart_medium()
+        medium = self._client._medium
         if not medium._remote_is_at_least_1_2:
             # We already found out that the server can't understand
             # Repository.get_parent_map requests, so just fetch the whole
@@ -1055,7 +1054,7 @@ class RemoteRepository(object):
         return self._real_repository.has_signature_for_revision_id(revision_id)
 
     def get_data_stream_for_search(self, search):
-        medium = self._client.get_smart_medium()
+        medium = self._client._medium
         if not medium._remote_is_at_least_1_2:
             self._ensure_real()
             return self._real_repository.get_data_stream_for_search(search)
@@ -1229,7 +1228,7 @@ class RemoteBranch(branch.Branch):
         if _client is not None:
             self._client = _client
         else:
-            self._client = client._SmartClient(self.bzrdir._shared_medium)
+            self._client = remote_bzrdir._client
         self.repository = remote_repository
         if real_branch is not None:
             self._real_branch = real_branch
