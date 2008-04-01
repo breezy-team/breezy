@@ -31,6 +31,7 @@ import unittest
 from bzrlib import (
     errors,
     osutils,
+    tests,
     urlutils,
     )
 from bzrlib.errors import (ConnectionError,
@@ -38,6 +39,7 @@ from bzrlib.errors import (ConnectionError,
                            FileExists,
                            InvalidURL,
                            LockError,
+                           NoSmartServer,
                            NoSuchFile,
                            NotLocalUrl,
                            PathError,
@@ -74,10 +76,9 @@ class TransportTestProviderAdapter(TestScenarioApplier):
     def get_transport_test_permutations(self, module):
         """Get the permutations module wants to have tested."""
         if getattr(module, 'get_test_permutations', None) is None:
-            raise AssertionError("transport module %s doesn't provide get_test_permutations()"
-                    % module.__name__)
-            ##warning("transport module %s doesn't provide get_test_permutations()"
-            ##       % module.__name__)
+            raise AssertionError(
+                "transport module %s doesn't provide get_test_permutations()"
+                % module.__name__)
             return []
         return module.get_test_permutations()
 
@@ -99,6 +100,14 @@ class TransportTestProviderAdapter(TestScenarioApplier):
                 pass
         return result
 
+
+def load_tests(standard_tests, module, loader):
+    """Multiply tests for tranport implementations."""
+    result = loader.suiteClass()
+    adapter = TransportTestProviderAdapter()
+    for test in tests.iter_suite_tests(standard_tests):
+        result.addTests(adapter.adapt(test))
+    return result
 
 
 class TransportTests(TestTransportImplementation):

@@ -2755,6 +2755,7 @@ def test_suite(keep_only=None):
                    'bzrlib.tests.test_transactions',
                    'bzrlib.tests.test_transform',
                    'bzrlib.tests.test_transport',
+                   'bzrlib.tests.test_transport_implementations',
                    'bzrlib.tests.test_tree',
                    'bzrlib.tests.test_treebuilder',
                    'bzrlib.tests.test_tsort',
@@ -2777,7 +2778,6 @@ def test_suite(keep_only=None):
                    'bzrlib.tests.workingtree_implementations',
                    ]
     test_transport_implementations = [
-        'bzrlib.tests.test_transport_implementations',
         'bzrlib.tests.test_read_bundle',
         ]
     loader = TestUtil.TestLoader()
