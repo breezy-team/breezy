@@ -110,16 +110,6 @@ __unittest = 1
 default_transport = LocalURLServer
 
 
-def packages_to_test():
-    """Return a list of packages to test.
-
-    The packages are not globally imported so that import failures are
-    triggered when running selftest, not when importing the command.
-    """
-    return [
-            ]
-
-
 class ExtendedTestResult(unittest._TextTestResult):
     """Accepts, reports and accumulates the results of running tests.
 
@@ -2778,8 +2768,7 @@ def test_suite(keep_only=None):
                    'bzrlib.tests.tree_implementations',
                    'bzrlib.tests.workingtree_implementations',
                    ]
-    test_transport_implementations = [
-        ]
+
     loader = TestUtil.TestLoader()
 
     if keep_only is None:
@@ -2791,18 +2780,6 @@ def test_suite(keep_only=None):
 
     # modules building their suite with loadTestsFromModuleNames
     suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
-
-    # modules adapted for transport implementations
-    from bzrlib.tests.test_transport_implementations import TransportTestProviderAdapter
-    adapter = TransportTestProviderAdapter()
-    adapt_modules(test_transport_implementations, adapter, loader, suite)
-
-    # modules defining their own test_suite()
-    for package in [p for p in packages_to_test()
-                    if (keep_only is None
-                        or id_filter.refers_to(p.__name__))]:
-        pack_suite = package.test_suite()
-        suite.addTest(pack_suite)
 
     modules_to_doctest = [
         'bzrlib',

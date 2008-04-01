@@ -1987,13 +1987,12 @@ class TestTestIdList(tests.TestCase):
         # category
         test_list = [
             # testmod_names
+            'bzrlib.tests.blackbox.test_branch.TestBranch.test_branch',
             'bzrlib.tests.test_selftest.TestTestIdList.test_test_suite',
             # transport implementations
             'bzrlib.tests.test_transport_implementations.TransportTests'
             '.test_abspath(LocalURLServer)',
-            # packages_to_test()
-            'bzrlib.tests.blackbox.test_branch.TestBranch.test_branch',
-            # MODULES_TO_DOCTEST
+            # modules_to_doctest
             'bzrlib.timestamp.format_highres_date',
             # plugins can't be tested that way since selftest may be run with
             # --no-plugins

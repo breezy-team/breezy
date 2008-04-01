@@ -123,8 +123,8 @@ IN DEVELOPMENT
     * selftest --load-list now uses a new more agressive test loader that will
       avoid loading unneeded modules and building their tests. Plugins can use
       this new loader by defining a load_tests function instead of a test_suite
-      function. (a forthcoming patch will provide many examples on how to
-      implement this).
+      function. All tests modules have been updated and provides many examples
+      (grep for load_tests).
       (Vincent Ladeuil)
 
     * selftest --load-list now does some sanity checks regarding duplicate test
