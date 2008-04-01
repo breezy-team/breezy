@@ -446,6 +446,13 @@ class TestErrors(TestCaseWithTransport):
             "Unable to create symlink u'\\xb5' on this platform",
             str(err))
 
+    def test_invalid_url_join(self):
+        """Test the formatting of InvalidURLJoin."""
+        e = errors.InvalidURLJoin('Reason', 'base path', ('args',))
+        self.assertEqual(
+            "Invalid URL join request: Reason: 'base path' + ('args',)",
+            str(e))
+
     def test_incorrect_url(self):
         err = errors.InvalidBugTrackerURL('foo', 'http://bug.com/')
         self.assertEquals(
