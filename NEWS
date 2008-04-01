@@ -82,6 +82,10 @@ IN DEVELOPMENT
     * ``revision.revision_graph`` is deprecated, with no replacement function.
       The function was size(history) and not desirable. (Robert Collins)
 
+    * ``VersionedFile.create_empty`` is removed. This method presupposed a
+      sensible mapping to a transport for individual files, but pack backed
+      versioned files have no such mapping. (Robert Collins)
+
     * ``VersionedFile.get_graph`` is deprecated, with no replacement method.
       The method was size(history) and not desirable. (Robert Collins)
 
