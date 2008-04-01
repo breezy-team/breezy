@@ -1025,10 +1025,41 @@ class BranchHooks(Hooks):
         # local is the local branch or None, master is the target branch,
         # and an empty branch recieves new_revno of 0, new_revid of None.
         self['post_uncommit'] = []
+        # Invoked after the tip of a branch changes.
+        # the api signature is
+        # (params) where params is a ChangeBranchTipParams object.
+        self['post_change_branch_tip'] = []
 
 
 # install the default hooks into the Branch class.
 Branch.hooks = BranchHooks()
+
+
+class ChangeBranchTipParams(object):
+    """Object holding parameters passed to *_change_branch_tip hooks.
+    
+    There are 4 fields that hooks may wish to access:
+        
+        * old_revid - revision id before the change
+        * new_revid - revision id after the change
+        * old_revno - revision number before the change
+        * new_revno - revision number after the change
+        
+    The revid fields are strings. The revno fields are integers.
+    """
+
+    def __init__(self, old_revid, new_revid, old_revno, new_revno):
+        """Create a group of ChangeBranchTip parameters.
+
+        :param old_revid: Tip revision id before the change.
+        :param new_revid: Tip revision id after the change.
+        :param old_revno: Revision number before the change.
+        :param new_revno: Revision number after the change.
+        """
+        self.old_revid = old_revid
+        self.new_revid = new_revid
+        self.old_revno = old_revno
+        self.new_revno = new_revno
 
 
 class BzrBranchFormat4(BranchFormat):
@@ -1383,6 +1414,22 @@ class BzrBranch(Branch):
         for hook in Branch.hooks['set_rh']:
             hook(self, rev_history)
 
+    def _make_branch_tip_hook_params(self, new_revision_id, new_revno=None):
+        """Construct a Params object for passing to *branch_tip hooks."""
+        if Branch.hooks['post_change_branch_tip']:
+            old_revno, old_revison_id = self.last_revision_info()
+            params = ChangeBranchTipParams(old_revision_id, new_revision_id,
+                old_revno, new_revno)
+        else:
+            return None
+
+    def _run_post_change_branch_tip_hooks(self, params):
+        """Run the post_change_branch_tip hooks."""
+        if params is None:
+            return
+        for hook in Branch.hooks['post_change_branch_tip']:
+            hook(self, params)
+ 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
         """Set the last revision of this branch.
@@ -1395,10 +1442,12 @@ class BzrBranch(Branch):
         configured to check constraints on history, in which case this may not
         be permitted.
         """
+        hook_params = self._make_branch_tip_hook_params(revision_id, revno)
         revision_id = _mod_revision.ensure_null(revision_id)
         history = self._lefthand_history(revision_id)
         assert len(history) == revno, '%d != %d' % (len(history), revno)
         self.set_revision_history(history)
+        self._run_post_change_branch_tip_hooks(hook_params)
 
     def _gen_revision_history(self):
         history = self.control_files.get('revision-history').read().split('\n')
@@ -1834,10 +1883,12 @@ class BzrBranch6(BzrBranch5):
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
+        hook_params = self._make_branch_tip_hook_params(revision_id, revno)
         revision_id = _mod_revision.ensure_null(revision_id)
         if self._get_append_revisions_only():
             self._check_history_violation(revision_id)
         self._write_last_revision_info(revno, revision_id)
+        self._run_post_change_branch_tip_hooks(hook_params)
         self._clear_cached_state()
 
     def _check_history_violation(self, revision_id):
