@@ -24,6 +24,9 @@ IN DEVELOPMENT
 
   FEATURES:
 
+    * Added mail-mode GNU Emacs mail package as a mail_client.
+      (Xavier Maillard, Bojan Nikolic)
+
   IMPROVEMENTS:
 
     * Diff is now more specific about execute-bit changes it describes
