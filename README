@@ -174,7 +174,7 @@ Python-Subversion >= 1.5
  
 You also need a fairly recent version of the official Python bindings to the 
 Subversion libraries. At the moment, the svn plugin only works with 
-Subversion 1.5 (trunk). The python-subversion (not python-svn!) package 
+Subversion 1.5. The python-subversion (not python-svn!) package 
 in Ubuntu since Feisty and Debian since Etch also contain the 
 required changes. 
 
