@@ -601,7 +601,12 @@ are emitted.
 
 The ``weave`` merge type is not affected by this problem because it uses
 line-origin detection instead of a basis revision to determine the cause of
-differences."""
+differences.
+
+If you have conflicts from a criss-cross merge in your working directory,
+running "bzr remerge --weave FILE..." on particular affected files may 
+help resolve the conflicts.  This command will discard any changes already
+made to the working file.  See "bzr help remerge" for more."""
 
 
 # Register help topics
