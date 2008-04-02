@@ -42,6 +42,10 @@ IN DEVELOPMENT
     * Merge is faster.  We no longer check a file's existence unnecessarily
       when merging the execute bit.  (Aaron Bentley)
 
+    * The launchpad directory service now warns the user if they have not set
+      their launchpad login and are trying to resolve a URL using it, just
+      in case they want to do a write operation with it.  (James Westby)
+
     * The smart protocol client is slightly faster, because it now only queries
       the server for the protocol version once per connection.  Also, the HTTP
       transport will now automatically use a smart server if one is present.
