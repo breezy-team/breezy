@@ -41,8 +41,9 @@ IN DEVELOPMENT
 
     * The smart protocol client is slightly faster, because it now only queries
       the server for the protocol version once per connection.  Also, the HTTP
-      transport will now automatically use a smart server if one is present.
-      (Andrew Bennetts)
+      transport will now automatically probe for and use a smart server if
+      one is present.  You can use the new ``nosmart+`` transport decorator
+      to get the old behaviour.  (Andrew Bennetts)
 
   BUGFIXES:
 
