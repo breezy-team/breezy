@@ -248,9 +248,19 @@ class Weave(VersionedFile):
 
     __contains__ = has_version
 
-    def get_parents(self, version_id):
-        """See VersionedFile.get_parent."""
-        return map(self._idx_to_name, self._parents[self._lookup(version_id)])
+    def get_parent_map(self, version_ids):
+        """See VersionedFile.get_parent_map."""
+        result = {}
+        for version_id in version_ids:
+            try:
+                result[version_id] = tuple(
+                    map(self._idx_to_name, self._parents[self._lookup(version_id)]))
+            except RevisionNotPresent:
+                pass
+        return result
+
+    def get_parents_with_ghosts(self, version_id):
+        raise NotImplementedError(self.get_parents_with_ghosts)
 
     def _check_repeated_add(self, name, parents, text, sha1):
         """Check that a duplicated add is OK.
@@ -761,15 +771,17 @@ class Weave(VersionedFile):
         version_ids = set(other.versions()).intersection(set(version_ids))
         # pull in the referenced graph.
         version_ids = other.get_ancestry(version_ids)
-        pending_graph = [(version, other.get_parents(version)) for
-                         version in version_ids]
+        pending_parents = other.get_parent_map(version_ids)
+        pending_graph = pending_parents.items()
+        if len(pending_graph) != len(version_ids):
+            raise RevisionNotPresent(
+                set(version_ids) - set(pending_parents.keys()), self)
         for name in tsort.topo_sort(pending_graph):
             other_idx = other._name_map[name]
             # returns True if we have it, False if we need it.
             if not self._check_version_consistent(other, other_idx, name):
                 names_to_join.append((other_idx, name))
             processed += 1
-
 
         if pb and not msg:
             msg = 'weave join'

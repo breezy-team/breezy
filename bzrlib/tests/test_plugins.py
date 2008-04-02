@@ -191,7 +191,7 @@ class TestLoadingPlugins(TestCaseInTempDir):
 
     def test_plugin_with_bad_name_does_not_load(self):
         # Create badly-named plugin
-        file('bad plugin-name..py', 'w').close()
+        file('bzr-bad plugin-name..py', 'w').close()
 
         # Capture output
         stream = StringIO()
@@ -207,9 +207,9 @@ class TestLoadingPlugins(TestCaseInTempDir):
         log.removeHandler(handler)
 
         self.assertContainsRe(stream.getvalue(),
-            r"Unable to load 'bad plugin-name\.' in '\.' as a plugin because"
-            " file path isn't a valid module name; try renaming it to"
-            " 'bad_plugin_name_'\.")
+            r"Unable to load 'bzr-bad plugin-name\.' in '\.' as a plugin "
+            "because the file path isn't a valid module name; try renaming "
+            "it to 'bad_plugin_name_'\.")
 
         stream.close()
 

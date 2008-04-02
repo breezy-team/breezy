@@ -195,6 +195,7 @@ class KnitRepository(MetaDirRepository):
         revision_id = osutils.safe_revision_id(revision_id)
         return self.get_revision_reconcile(revision_id)
 
+    @symbol_versioning.deprecated_method(symbol_versioning.one_four)
     @needs_read_lock
     def get_revision_graph(self, revision_id=None):
         """Return a dictionary containing the revision graph.
@@ -268,13 +269,6 @@ class KnitRepository(MetaDirRepository):
         """:return: a versioned file containing the revisions."""
         vf = self._revision_store.get_revision_file(self.get_transaction())
         return vf
-
-    def _get_history_vf(self):
-        """Get a versionedfile whose history graph reflects all revisions.
-
-        For knit repositories, this is the revision knit.
-        """
-        return self._get_revision_vf()
 
     def has_revisions(self, revision_ids):
         """See Repository.has_revisions()."""

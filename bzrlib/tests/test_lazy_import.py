@@ -156,6 +156,8 @@ class TestScopeReplacer(TestCase):
         An object should appear in globals() by constructing a ScopeReplacer,
         and it will be replaced with the real object upon the first request.
         """
+        actions = []
+        TestClass.use_actions(actions)
         def factory(replacer, scope, name):
             return TestClass()
         try:
