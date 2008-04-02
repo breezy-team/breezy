@@ -134,7 +134,8 @@ def show_tree_status(wt, show_unchanged=None,
                 else:
                     prefix = ' '
                 to_file.write("%s %s\n" % (prefix, conflict))
-            if new_is_working_tree and show_pending:
+            if (new_is_working_tree and show_pending
+                and specific_files is None):
                 show_pending_merges(new, to_file, short)
         finally:
             old.unlock()

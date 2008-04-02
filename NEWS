@@ -42,6 +42,9 @@ IN DEVELOPMENT
     * Merge is faster.  We no longer check a file's existence unnecessarily
       when merging the execute bit.  (Aaron Bentley)
 
+    * ``bzr status`` on an explicit list of files no longer shows pending
+      merges, making it much faster on large trees. (John Arbash Meinel)
+
     * The launchpad directory service now warns the user if they have not set
       their launchpad login and are trying to resolve a URL using it, just
       in case they want to do a write operation with it.  (James Westby)
