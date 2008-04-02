@@ -2854,7 +2854,7 @@ def test_suite(keep_only=None):
         # but really if you don't have --no-plugins this should be a failure.
         # mbp 20080213 - see http://bugs.launchpad.net/bugs/189771
         if plugin_suite is None:
-            plugin_suite = plugin.load_tests(loader)
+            plugin_suite = plugin.load_plugin_tests(loader)
         if plugin_suite is not None:
             suite.addTest(plugin_suite)
         if default_encoding != sys.getdefaultencoding():

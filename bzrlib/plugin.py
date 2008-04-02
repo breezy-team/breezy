@@ -407,15 +407,12 @@ class PlugIn(object):
         else:
             return None
 
-    def load_tests(self, loader):
+    def load_plugin_tests(self, loader):
         """Return the adapted plugin's test suite.
 
         :param loader: The custom loader that should be used to load additional
             tests.
 
-        Note that TestUtil.TestLoader defines load_tests(self, standard_tests,
-        module, loader), but here we are handling the associated plugin module
-        ourselves.
         """
         if getattr(self.module, 'load_tests', None) is not None:
             return loader.loadTestsFromModule(self.module)
