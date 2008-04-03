@@ -240,6 +240,7 @@ class BisectLog(object):
 
         if self._middle_revid == self._high_revid and \
            self._current.is_merge_point():
+            sys.stderr.write("final found!\n")
             for parent in self._current.get_parent_revids():
                 if parent == self._low_revid:
                     continue
@@ -359,7 +360,10 @@ class cmd_bisect(Command):
     def start(self):
         "Reset the bisect state, then prepare for a new bisection."
 
-        self.reset()
+        if os.path.exists(bisect_info_path):
+            BisectCurrent().reset()
+            os.unlink(bisect_info_path)
+
         bisect_log = BisectLog()
         bisect_log.set_current("start")
         bisect_log.save()
