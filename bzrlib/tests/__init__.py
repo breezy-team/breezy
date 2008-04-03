@@ -2759,7 +2759,7 @@ def test_suite(keep_only=None):
                    'bzrlib.tests.test_repository',
                    'bzrlib.tests.test_revert',
                    'bzrlib.tests.test_revision',
-                   'bzrlib.tests.test_revisionnamespaces',
+                   'bzrlib.tests.test_revisionspec',
                    'bzrlib.tests.test_revisiontree',
                    'bzrlib.tests.test_rio',
                    'bzrlib.tests.test_sampler',
