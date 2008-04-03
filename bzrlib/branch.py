@@ -1028,7 +1028,7 @@ class BranchHooks(Hooks):
         # Introduced in 1.4
         # invoked when the last_revision_info is set.
         # the api signature is
-        # (branch, revid, revno)
+        # (branch, revno, revid)
         # revid is NULL_REVISION for an empty branch.
         self['set_last_revision_info'] = []
 
@@ -1405,6 +1405,8 @@ class BzrBranch(Branch):
         history = self._lefthand_history(revision_id)
         assert len(history) == revno, '%d != %d' % (len(history), revno)
         self.set_revision_history(history)
+        for hook in Branch.hooks['set_last_revision_info']:
+            hook(self, revno, revision_id)
 
     def _gen_revision_history(self):
         history = self.control_files.get('revision-history').read().split('\n')
@@ -1865,6 +1867,8 @@ class BzrBranch6(BzrBranch5):
         self._write_last_revision_info(revno, revision_id)
         self._clear_cached_state()
         self._last_revision_info_cache = revno, revision_id
+        for hook in Branch.hooks['set_last_revision_info']:
+            hook(self, revno, revision_id)
 
     def _check_history_violation(self, revision_id):
         last_revision = _mod_revision.ensure_null(self.last_revision())

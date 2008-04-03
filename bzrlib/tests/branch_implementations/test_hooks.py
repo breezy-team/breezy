@@ -17,6 +17,7 @@
 """Tests that branch classes implement hook callouts correctly."""
 
 from bzrlib.branch import Branch
+from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCaseWithMemoryTransport
 
 
@@ -71,4 +72,64 @@ class TestSetRevisionHistoryHook(TestCaseWithMemoryTransport):
         self.assertEqual(self.hook_calls,
             [('set_rh', branch, [], True),
              ('set_rh', branch, [], True),
+            ])
+
+
+class TestSetLastRevisionInfoHook(TestCaseWithMemoryTransport):
+
+    def setUp(self):
+        self.hook_calls = []
+        TestCaseWithMemoryTransport.setUp(self)
+
+    def capture_set_last_revision_info_hook(self, branch, revno, revid):
+        """Capture set_last_revision_info hook calls to self.hook_calls.
+
+        The call is logged, as is some state of the branch.
+        """
+        self.hook_calls.append(
+            ('set_last_revision_info', branch, revno, revid,
+             branch.is_locked()))
+
+    def test_set_last_revision_info_empty_history(self):
+        branch = self.make_branch('source')
+        Branch.hooks.install_hook('set_last_revision_info',
+                                  self.capture_set_last_revision_info_hook)
+        branch.set_last_revision_info(0, NULL_REVISION)
+        self.assertEqual(self.hook_calls,
+            [('set_last_revision_info', branch, 0, NULL_REVISION, True)])
+
+    def test_set_last_revision_info_nonempty_history(self):
+        tree = self.make_branch_and_memory_tree('source')
+        tree.lock_write()
+        tree.add('')
+        tree.commit('another commit', rev_id='f\xc2\xb5')
+        tree.commit('empty commit', rev_id='foo')
+        tree.unlock()
+        branch = tree.branch
+        Branch.hooks.install_hook('set_last_revision_info',
+                                  self.capture_set_last_revision_info_hook)
+        # some branches require that their history be set to a revision in the
+        # repository
+        branch.set_last_revision_info(1, 'f\xc2\xb5')
+        self.assertEqual(self.hook_calls,
+            [('set_last_revision_info', branch, 1, 'f\xc2\xb5', True)])
+
+    def test_set_last_revision_info_branch_is_locked(self):
+        branch = self.make_branch('source')
+        Branch.hooks.install_hook('set_last_revision_info',
+                                  self.capture_set_last_revision_info_hook)
+        branch.set_last_revision_info(0, NULL_REVISION)
+        self.assertEqual(self.hook_calls,
+            [('set_last_revision_info', branch, 0, NULL_REVISION, True)])
+
+    def test_set_last_revision_info_calls_all_hooks_no_errors(self):
+        branch = self.make_branch('source')
+        Branch.hooks.install_hook('set_last_revision_info',
+                                  self.capture_set_last_revision_info_hook)
+        Branch.hooks.install_hook('set_last_revision_info',
+                                  self.capture_set_last_revision_info_hook)
+        branch.set_last_revision_info(0, NULL_REVISION)
+        self.assertEqual(self.hook_calls,
+            [('set_last_revision_info', branch, 0, NULL_REVISION, True),
+             ('set_last_revision_info', branch, 0, NULL_REVISION, True),
             ])
