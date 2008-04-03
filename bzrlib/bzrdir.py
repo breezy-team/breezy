@@ -358,17 +358,30 @@ class BzrDir(object):
 
     def determine_repository_policy(self, force_new_repo=False):
         def repository_policy(found_bzrdir):
+            stack_on = None
+            config = found_bzrdir.get_config()
+            stop = False
+            if config is not None:
+                stack_on = config.get_option('default_stack_on')
+                if stack_on is not None:
+                    stop = True
             # does it have a repository ?
             try:
                 repository = found_bzrdir.open_repository()
             except errors.NoRepositoryPresent:
-                return None, False
-            stop = not repository.is_shared()
-            if ((found_bzrdir.root_transport.base ==
-                 self.root_transport.base) or repository.is_shared()):
-                return UseExistingRepository(repository), True
+                repository = None
             else:
-                return None, stop
+                if ((found_bzrdir.root_transport.base !=
+                     self.root_transport.base) and not repository.is_shared()):
+                    repository = None
+                else:
+                    stop = True
+            if not stop:
+                return None, False
+            if repository:
+                return UseExistingRepository(repository, stack_on), True
+            else:
+                return CreateRepository(repository, stack_on), True
 
         if not force_new_repo:
             policy = self._find_containing(repository_policy)
@@ -2673,8 +2686,9 @@ class BzrDirFormatRegistry(registry.Registry):
 
 class CreateRepository(object):
 
-    def __init__(self, bzrdir):
+    def __init__(self, bzrdir, stack_on=None):
         self._bzrdir = bzrdir
+        self._stack_on = stack_on
 
     def apply(self):
         return self._bzrdir.create_repository()
@@ -2682,8 +2696,9 @@ class CreateRepository(object):
 
 class UseExistingRepository(object):
 
-    def __init__(self, repository):
+    def __init__(self, repository, stack_on=None):
         self._repository = repository
+        self._stack_on = stack_on
 
     def apply(self):
         return self._repository

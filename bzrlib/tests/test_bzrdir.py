@@ -460,6 +460,15 @@ class TestBzrDirFormat(TestCaseWithTransport):
         self.assertEqual(repo.bzrdir.root_transport.base,
                          my_bzrdir.root_transport.base)
 
+    def test_determine_stacking_policy(self):
+        parent_bzrdir = self.make_bzrdir('.')
+        child_bzrdir = self.make_bzrdir('child')
+        parent_bzrdir.get_config().set_option('http://example.org',
+                                              'default_stack_on')
+        repo_policy = child_bzrdir.determine_repository_policy()
+        self.assertEqual('http://example.org', repo_policy._stack_on)
+
+
 class ChrootedTests(TestCaseWithTransport):
     """A support class that provides readonly urls outside the local namespace.
 
