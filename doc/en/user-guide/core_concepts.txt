@@ -71,7 +71,7 @@ If this name sounds scary, don't worry. The important things
 to remember are:
 
 * The primary line of development within the DAG is called
-  the *mainline*, *trunk* or simply the *left hand side* (LHS).
+  the *mainline*, *trunk*, or simply the *left hand side* (LHS).
 
 * A branch might have other lines of development and if it does,
   these other lines of development begin at some point and end at
@@ -96,10 +96,10 @@ should become easier to understand. The simplest way of using Bazaar is
 to use a *standalone tree*, which has a working tree, branch, and repository
 all in a single location. Other common scenarios include:
 
-* *shared repositories* - working tree and branch are collocated
+* *Shared repositories* - working tree and branch are collocated
   but the repository is in a higher level directory.
 
-* *lightweight checkouts* - branch is stored is a different location
+* *Lightweight checkouts* - branch is stored is a different location
   to the working tree.
 
 The best way to use Bazaar, however, depends on your needs. Let's take a
