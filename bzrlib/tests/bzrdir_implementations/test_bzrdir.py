@@ -1618,6 +1618,27 @@ class TestBreakLock(TestCaseWithBzrDir):
         self.assertRaises(errors.LockBroken, tree.unlock)
 
 
+class TestBzrDirConfig(TestCaseWithBzrDir):
+
+    def setUp(self):
+        TestCaseWithBzrDir.setUp(self)
+
+    def test_get_config(self):
+        my_dir = self.make_bzrdir('.')
+        config = my_dir.get_config()
+        if config is None:
+            self.assertFalse(isinstance(my_dir, bzrdir.BzrDirMeta1))
+            raise TestNotApplicable(
+                'This BzrDir format does not support configs.')
+        config.set_option('http://example.com', 'default_stacking_base')
+        self.assertEqual('http://example.com',
+                         config.get_option('default_stacking_base'))
+        my_dir2 = bzrdir.BzrDir.open('.')
+        config2 = my_dir.get_config()
+        self.assertEqual('http://example.com',
+                         config2.get_option('default_stacking_base'))
+
+
 class ChrootedBzrDirTests(ChrootedTestCase):
 
     def test_find_repository_no_repository(self):

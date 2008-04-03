@@ -1136,6 +1136,35 @@ class TestTreeConfig(tests.TestCaseWithTransport):
         self.assertEqual(value, 'value3-section')
 
 
+class TestBzrDirConfig(tests.TestCaseWithTransport):
+
+    def test_get_value(self):
+        """Test that retreiving a value from a section is possible"""
+        my_dir = self.make_bzrdir('.')
+        bzrdir_config = config.BzrDirConfig(my_dir.transport)
+        bzrdir_config.set_option('value', 'key', 'SECTION')
+        bzrdir_config.set_option('value2', 'key2')
+        bzrdir_config.set_option('value3-top', 'key3')
+        bzrdir_config.set_option('value3-section', 'key3', 'SECTION')
+        value = bzrdir_config.get_option('key', 'SECTION')
+        self.assertEqual(value, 'value')
+        value = bzrdir_config.get_option('key2')
+        self.assertEqual(value, 'value2')
+        self.assertEqual(bzrdir_config.get_option('non-existant'), None)
+        value = bzrdir_config.get_option('non-existant', 'SECTION')
+        self.assertEqual(value, None)
+        value = bzrdir_config.get_option('non-existant', default='default')
+        self.assertEqual(value, 'default')
+        self.assertEqual(bzrdir_config.get_option('key2', 'NOSECTION'), None)
+        value = bzrdir_config.get_option('key2', 'NOSECTION',
+                                         default='default')
+        self.assertEqual(value, 'default')
+        value = bzrdir_config.get_option('key3')
+        self.assertEqual(value, 'value3-top')
+        value = bzrdir_config.get_option('key3', 'SECTION')
+        self.assertEqual(value, 'value3-section')
+
+
 class TestAuthenticationConfigFile(tests.TestCase):
     """Test the authentication.conf file matching"""
 
