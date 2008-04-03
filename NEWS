@@ -47,6 +47,9 @@ IN DEVELOPMENT
       transport will now automatically use a smart server if one is present.
       (Andrew Bennetts)
 
+     * Various operations with revision specs and commands that calculate
+       revnos and revision ids are faster.  (John A. Meinel, Aaron Bentley)
+
   BUGFIXES:
 
     * Add ``root_client_path`` parameter to SmartWSGIApp and
