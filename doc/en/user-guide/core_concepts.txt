@@ -25,10 +25,10 @@ A revision is a *snapshot* of the state of a tree of files and directories,
 including their content and shape. A revision also has some metadata
 associated with it, including:
 
-* Who committed it.
-* When it was committed.
-* A commit message.
-* Parent revisions from which it was derived.
+* Who committed it
+* When it was committed
+* A commit message
+* Parent revisions from which it was derived
 
 Revisions are immutable and can be globally, uniquely identified
 by a *revision-id*. An example revision-id is::
