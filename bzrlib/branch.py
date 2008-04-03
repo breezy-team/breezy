@@ -25,6 +25,7 @@ from bzrlib import (
         errors,
         lockdir,
         lockable_files,
+        repository,
         revision as _mod_revision,
         transport,
         tsort,
@@ -192,7 +193,8 @@ class Branch(object):
         :return: A dictionary mapping revision_id => dotted revno.
         """
         last_revision = self.last_revision()
-        revision_graph = self.repository.get_revision_graph(last_revision)
+        revision_graph = repository._old_get_graph(self.repository,
+            last_revision)
         merge_sorted_revisions = tsort.merge_sort(
             revision_graph,
             last_revision,
