@@ -182,35 +182,29 @@ class BzrDir(object):
         """
         transport.ensure_base()
         result = self._format.initialize_on_transport(transport)
+        repository_policy = None
         try:
             local_repo = self.find_repository()
         except errors.NoRepositoryPresent:
             local_repo = None
         if local_repo:
             # may need to copy content in
-            if force_new_repo:
-                result_repo = local_repo.clone(
-                    result,
-                    revision_id=revision_id)
-                result_repo.set_make_working_trees(local_repo.make_working_trees())
-            else:
-                try:
-                    result_repo = result.find_repository()
-                    # fetch content this dir needs.
-                    result_repo.fetch(local_repo, revision_id=revision_id)
-                except errors.NoRepositoryPresent:
-                    # needed to make one anyway.
-                    result_repo = local_repo.clone(
-                        result,
-                        revision_id=revision_id)
-                    result_repo.set_make_working_trees(local_repo.make_working_trees())
+            repository_policy = result.determine_repository_policy(
+                force_new_repo)
+            result_repo = repository_policy.apply(
+                local_repo.make_working_trees())
+            result_repo.fetch(local_repo, revision_id=revision_id)
         # 1 if there is a branch present
         #   make sure its content is available in the target repository
         #   clone it.
         try:
-            self.open_branch().clone(result, revision_id=revision_id)
+            local_branch = self.open_branch()
         except errors.NotBranchError:
             pass
+        else:
+            result_branch = local_branch.clone(result, revision_id=revision_id)
+            if repository_policy._stack_on:
+                result_branch.set_stacked_on(repository_policy._stack_on)
         try:
             result_repo = result.find_repository()
         except errors.NoRepositoryPresent:
@@ -381,7 +375,7 @@ class BzrDir(object):
             if repository:
                 return UseExistingRepository(repository, stack_on), True
             else:
-                return CreateRepository(repository, stack_on), True
+                return CreateRepository(self, stack_on), True
 
         if not force_new_repo:
             policy = self._find_containing(repository_policy)
@@ -2690,8 +2684,10 @@ class CreateRepository(object):
         self._bzrdir = bzrdir
         self._stack_on = stack_on
 
-    def apply(self):
-        return self._bzrdir.create_repository()
+    def apply(self, make_working_trees=True):
+        repository = self._bzrdir.create_repository()
+        repository.set_make_working_trees(make_working_trees)
+        return repository
 
 
 class UseExistingRepository(object):
@@ -2700,7 +2696,7 @@ class UseExistingRepository(object):
         self._repository = repository
         self._stack_on = stack_on
 
-    def apply(self):
+    def apply(self, make_working_trees=True):
         return self._repository
 
 
