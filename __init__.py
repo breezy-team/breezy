@@ -343,6 +343,9 @@ class cmd_bisect(Command):
             self.log(output)
         elif subcommand == "replay":
             self.replay(log_fn)
+        else:
+            raise BzrCommandError(
+                "Unknown bisect command: " + subcommand)
 
     def reset(self):
         "Reset the bisect state to no state."
