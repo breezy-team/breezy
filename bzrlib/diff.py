@@ -315,9 +315,9 @@ def diff_cmd_helper(tree, specific_files, external_diff_options,
 
     def spec_tree(spec):
         if tree:
-            revision = spec.as_revision_id(tree.branch)
+            revision = spec.in_store(tree.branch)
         else:
-            revision = spec.as_revision_id(None)
+            revision = spec.in_store(None)
         revision_id = revision.rev_id
         branch = revision.branch
         return branch.repository.revision_tree(revision_id)
