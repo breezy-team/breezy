@@ -22,12 +22,20 @@ IN DEVELOPMENT
      as this is what bzr branch lp:bzr-svn will give you. (James Westby,
      Andrew Cowie)
 
+   * UniqueIntegerBugTracker now appends bug-ids instead of joining
+     them to the base URL. Plugins that register bug trackers may
+     need a trailing / added to the base URL if one is not already there.
+     (James Wesby, Andrew Cowie)
+
   FEATURES:
 
     * Added mail-mode GNU Emacs mail package as a mail_client.
       (Xavier Maillard, Bojan Nikolic)
 
   IMPROVEMENTS:
+
+    * ``bzr commit --fixes`` now recognises "gnome" as a tag by default.
+      (James Westby, Andrew Cowie)
 
     * Diff is now more specific about execute-bit changes it describes
       (Chad Miller)
