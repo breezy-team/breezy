@@ -1025,6 +1025,12 @@ class BranchHooks(Hooks):
         # local is the local branch or None, master is the target branch,
         # and an empty branch recieves new_revno of 0, new_revid of None.
         self['post_uncommit'] = []
+        # Introduced in 1.4
+        # invoked when the last_revision_info is set.
+        # the api signature is
+        # (branch, revid, revno)
+        # revid is NULL_REVISION for an empty branch.
+        self['set_last_revision_info'] = []
 
 
 # install the default hooks into the Branch class.
