@@ -697,19 +697,46 @@ class cmd_push(Command):
                     ' directory exists, but does not already'
                     ' have a control directory.  This flag will'
                     ' allow push to proceed.'),
+        Option('reference',
+            help='Create a shallow branch that only refers to another branch '
+                'for the commit history. Only the work not present in that '
+                'other branch is included in this shallow branch.',
+            type=unicode),
+        Option('shallow',
+            help='Create a shallow branch with an automatic reference url. '
+                'The chosen url is the parent branches public location. See '
+                '--reference for more information.'),
         ]
     takes_args = ['location?']
     encoding_type = 'replace'
 
     def run(self, location=None, remember=False, overwrite=False,
-            create_prefix=False, verbose=False,
-            use_existing_dir=False,
-            directory=None):
+        create_prefix=False, verbose=False, use_existing_dir=False,
+        directory=None, reference=None, shallow=False):
         # FIXME: Way too big!  Put this into a function called from the
         # command.
         if directory is None:
             directory = '.'
         br_from = Branch.open_containing(directory)[0]
+        # shallow branch where to refer to logic:
+        if reference is not None:
+            reference = urlutils.normalize_url(reference)
+        if shallow:
+            reference = None
+            parent_url = br_from.get_parent()
+            if parent_url:
+                parent = Branch.open(parent_url)
+                reference = parent.get_public_branch()
+                if not reference:
+                    # I considered excluding non-http url's here, thus forcing
+                    # 'public' branches only, but that only works for some
+                    # users, so its best to just depend on the user spotting an
+                    # error by the feedback given to them. RBC 20080227.
+                    reference = parent_url
+            if not reference:
+                raise errors.BzrCommandError(
+                    "Could not determine branch to refer to.")
+        # where to push logic:
         stored_loc = br_from.get_push_location()
         if location is None:
             if stored_loc is None:
@@ -780,11 +807,31 @@ class cmd_push(Command):
             # Now the target directory exists, but doesn't have a .bzr
             # directory. So we need to create it, along with any work to create
             # all of the dependent branches, etc.
-            dir_to = br_from.bzrdir.clone_on_transport(to_transport,
-                revision_id=br_from.last_revision())
+            if reference is not None:
+                # This should be buried in the clone method itself. TODO.
+                try:
+                    # if the from format is stackable, this will either work or
+                    # trigger NotStacked. If its not an error will be given to
+                    # the user.
+                    br_from.get_stacked_on()
+                except errors.NotStacked:
+                    pass
+                # now we need to sprout the repository,
+                dir_to = br_from.bzrdir._format.initialize_on_transport(to_transport)
+                br_from.repository._format.initialize(dir_to)
+                br_to = br_from._format.initialize(dir_to)
+                br_to.set_stacked_on(reference)
+                # and copy the data up.
+                br_from.push(br_to)
+            else:
+                dir_to = br_from.bzrdir.clone_on_transport(to_transport,
+                    revision_id=br_from.last_revision())
             br_to = dir_to.open_branch()
             # TODO: Some more useful message about what was copied
-            note('Created new branch.')
+            if reference is not None:
+                note('Created new shallow branch referring to %s.' % reference)
+            else:
+                note('Created new branch.')
             # We successfully created the target, remember it
             if br_from.get_push_location() is None or remember:
                 br_from.set_push_location(br_to.base)
@@ -865,11 +912,16 @@ class cmd_branch(Command):
     _see_also = ['checkout']
     takes_args = ['from_location', 'to_location?']
     takes_options = ['revision', Option('hardlink',
-        help='Hard-link working tree files where possible.')]
+        help='Hard-link working tree files where possible.'),
+        Option('shallow',
+            help='Create a shallow branch referring to the source branch. '
+                'The new branch will depend on the availability of the source '
+                'branch for all operations.'),
+        ]
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None,
-            hardlink=False):
+            hardlink=False, shallow=False):
         from bzrlib.tag import _merge_tags_if_possible
         if revision is None:
             revision = [None]
@@ -908,7 +960,7 @@ class cmd_branch(Command):
                 dir = br_from.bzrdir.sprout(to_transport.base, revision_id,
                                             possible_transports=[to_transport],
                                             accelerator_tree=accelerator_tree,
-                                            hardlink=hardlink)
+                                            hardlink=hardlink, shallow=shallow)
                 branch = dir.open_branch()
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
@@ -917,7 +969,12 @@ class cmd_branch(Command):
             if name:
                 branch.control_files.put_utf8('branch-name', name)
             _merge_tags_if_possible(br_from, branch)
-            note('Branched %d revision(s).' % branch.revno())
+            try:
+                note('Created new shallow branch referring to %s.' %
+                    branch.get_stacked_on())
+            except (errors.NotStacked, errors.UnstackableBranchFormat,
+                errors.UnstackableRepositoryFormat), e:
+                note('Branched %d revision(s).' % branch.revno())
         finally:
             br_from.unlock()
 

@@ -123,10 +123,10 @@ class TestCommitHook(TestCaseWithBranch):
     def test_pre_commit_passes(self):
         empty_delta = TreeDelta()
         root_delta = TreeDelta()
-        root_delta.added = [('', '', 'directory')]
         tree = self.make_branch_and_memory_tree('branch')
         tree.lock_write()
-        tree.add('', '')
+        tree.add('')
+        root_delta.added = [('', tree.path2id(''), 'directory')]
         Branch.hooks.install_hook("pre_commit", self.capture_pre_commit_hook)
         revid1 = tree.commit('first revision')
         revid2 = tree.commit('second revision')
@@ -140,10 +140,10 @@ class TestCommitHook(TestCaseWithBranch):
     def test_pre_commit_fails(self):
         empty_delta = TreeDelta()
         root_delta = TreeDelta()
-        root_delta.added = [('', '', 'directory')]
         tree = self.make_branch_and_memory_tree('branch')
         tree.lock_write()
-        tree.add('', '')
+        tree.add('')
+        root_delta.added = [('', tree.path2id(''), 'directory')]
         class PreCommitException(Exception): pass
         def hook_func(local, master,
                       old_revno, old_revid, new_revno, new_revid,

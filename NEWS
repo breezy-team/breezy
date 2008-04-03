@@ -31,6 +31,9 @@ IN DEVELOPMENT
  
     * Restore auto-detection of plink.exe on Windows. (Dmitry Vasiliev)
 
+    * Shallow branches are now supported. See ``bzr help branch`` and 
+      ``bzr help push``. (Robert Collins)
+
   FEATURES:
 
    * ``branch`` and ``checkout`` can hard-link working tree files, which is
@@ -60,7 +63,19 @@ IN DEVELOPMENT
 
   TESTING:
 
+    * ``bzrlib.tests.adapt_tests`` was broken and unused - it has been fixed.
+      (Robert Collins)
+
+    * Fix the test HTTPServer to be isolated from chdir calls made while it is
+      running, allowing it to be used in blackbox tests. (Robert Collins)
+
+    * The branch interface tests were invalid for branches using subtree
+      repositories by default. This has been fixed. (Robert Collins)
+
   INTERNALS:
+
+    * ``bzrlib.bzrdir.BzrDir.sprout`` now accepts ``shallow`` to control
+      creating shallow branches. (Robert Collins)
 
     * New module ``tools/package_mf.py`` provide custom module finder for
       python packages (improves standard python library's modulefinder.py)

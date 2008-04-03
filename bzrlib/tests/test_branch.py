@@ -200,26 +200,36 @@ class TestBzrBranchFormat(TestCaseWithTransport):
         self.make_branch_and_tree('bar')
 
 
-class TestBranch6(TestCaseWithTransport):
+class TestBranch67(object):
+    """Common tests for both branch 6 and 7 which are mostly the same."""
+
+    def get_format_name(self):
+        raise NotImplementedError(self.get_format_name)
+
+    def get_format_name_subtree(self):
+        raise NotImplementedError(self.get_format_name)
+
+    def get_class(self):
+        raise NotImplementedError(self.get_class)
 
     def test_creation(self):
         format = BzrDirMetaFormat1()
         format.set_branch_format(_mod_branch.BzrBranchFormat6())
         branch = self.make_branch('a', format=format)
-        self.assertIsInstance(branch, _mod_branch.BzrBranch6)
-        branch = self.make_branch('b', format='dirstate-tags')
-        self.assertIsInstance(branch, _mod_branch.BzrBranch6)
+        self.assertIsInstance(branch, self.get_class())
+        branch = self.make_branch('b', format=self.get_format_name())
+        self.assertIsInstance(branch, self.get_class())
         branch = _mod_branch.Branch.open('a')
-        self.assertIsInstance(branch, _mod_branch.BzrBranch6)
+        self.assertIsInstance(branch, self.get_class())
 
     def test_layout(self):
-        branch = self.make_branch('a', format='dirstate-tags')
+        branch = self.make_branch('a', format=self.get_format_name())
         self.failUnlessExists('a/.bzr/branch/last-revision')
         self.failIfExists('a/.bzr/branch/revision-history')
 
     def test_config(self):
         """Ensure that all configuration data is stored in the branch"""
-        branch = self.make_branch('a', format='dirstate-tags')
+        branch = self.make_branch('a', format=self.get_format_name())
         branch.set_parent('http://bazaar-vcs.org')
         self.failIfExists('a/.bzr/branch/parent')
         self.assertEqual('http://bazaar-vcs.org', branch.get_parent())
@@ -233,7 +243,7 @@ class TestBranch6(TestCaseWithTransport):
 
     def test_set_revision_history(self):
         tree = self.make_branch_and_memory_tree('.',
-            format='dirstate-tags')
+            format=self.get_format_name())
         tree.lock_write()
         try:
             tree.add('.')
@@ -247,11 +257,12 @@ class TestBranch6(TestCaseWithTransport):
             tree.unlock()
 
     def do_checkout_test(self, lightweight=False):
-        tree = self.make_branch_and_tree('source', format='dirstate-with-subtree')
+        tree = self.make_branch_and_tree('source',
+            format=self.get_format_name_subtree())
         subtree = self.make_branch_and_tree('source/subtree',
-            format='dirstate-with-subtree')
+            format=self.get_format_name_subtree())
         subsubtree = self.make_branch_and_tree('source/subtree/subsubtree',
-            format='dirstate-with-subtree')
+            format=self.get_format_name_subtree())
         self.build_tree(['source/subtree/file',
                          'source/subtree/subsubtree/file'])
         subsubtree.add('file')
@@ -279,7 +290,7 @@ class TestBranch6(TestCaseWithTransport):
         self.do_checkout_test(lightweight=True)
 
     def test_set_push(self):
-        branch = self.make_branch('source', format='dirstate-tags')
+        branch = self.make_branch('source', format=self.get_format_name())
         branch.get_config().set_user_option('push_location', 'old',
             store=config.STORE_LOCATION)
         warnings = []
@@ -293,6 +304,75 @@ class TestBranch6(TestCaseWithTransport):
             trace.warning = _warning
         self.assertEqual(warnings[0], 'Value "new" is masked by "old" from '
                          'locations.conf')
+
+
+class TestBranch6(TestBranch67, TestCaseWithTransport):
+
+    def get_class(self):
+        return _mod_branch.BzrBranch6
+
+    def get_format_name(self):
+        return "dirstate-tags"
+
+    def get_format_name_subtree(self):
+        return "dirstate-with-subtree"
+
+    def test_set_stacked_on_errors(self):
+        branch = self.make_branch('a', format=self.get_format_name())
+        self.assertRaises(errors.UnstackableBranchFormat,
+            branch.set_stacked_on, None)
+
+    def test_default_stacked_location(self):
+        branch = self.make_branch('a', format=self.get_format_name())
+        self.assertRaises(errors.UnstackableBranchFormat, branch.get_stacked_on)
+
+
+class TestBranch7(TestBranch67, TestCaseWithTransport):
+
+    def get_class(self):
+        return _mod_branch.BzrBranch7
+
+    def get_format_name(self):
+        return "development"
+
+    def get_format_name_subtree(self):
+        return "development-subtree"
+
+    def test_set_stacked_on_unstackable_repo(self):
+        repo = self.make_repository('a', format='dirstate-tags')
+        control = repo.bzrdir
+        branch = _mod_branch.BzrBranchFormat7().initialize(control)
+        target = self.make_branch('b')
+        self.assertRaises(errors.UnstackableRepositoryFormat,
+            branch.set_stacked_on, target.base)
+
+    def _test_default_stacked_location(self):
+        branch = self.make_branch('a', format=self.get_format_name())
+        self.assertRaises(errors.NotStacked, branch.get_stacked_on)
+
+    def test_stacked_location_file(self):
+        branch = self.make_branch('a', format=self.get_format_name())
+        self.assertFileEqual('\n', 'a/.bzr/branch/stacked-on')
+
+    def test_stack_and_unstack(self):
+        branch = self.make_branch('a', format=self.get_format_name())
+        target = self.make_branch_and_tree('b', format=self.get_format_name())
+        branch.set_stacked_on(target.branch.base)
+        self.assertEqual(target.branch.base, branch.get_stacked_on())
+        revid = target.commit('foo')
+        self.assertTrue(branch.repository.has_revision(revid))
+        branch.set_stacked_on(None)
+        self.assertRaises(errors.NotStacked, branch.get_stacked_on)
+        self.assertFalse(branch.repository.has_revision(revid))
+
+    def test_open_opens_stacked_reference(self):
+        branch = self.make_branch('a', format=self.get_format_name())
+        target = self.make_branch_and_tree('b', format=self.get_format_name())
+        branch.set_stacked_on(target.branch.base)
+        branch = branch.bzrdir.open_branch()
+        revid = target.commit('foo')
+        self.assertTrue(branch.repository.has_revision(revid))
+
 
 class TestBranchReference(TestCaseWithTransport):
     """Tests for the branch reference facility."""

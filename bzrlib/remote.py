@@ -297,6 +297,8 @@ class RemoteRepository(object):
         self._reconcile_fixes_text_parents = False
         self._reconcile_backsup_inventory = False
         self.base = self.bzrdir.transport.base
+        # Additional places to query for data.
+        self._fallback_repositories = []
 
     def __str__(self):
         return "%s(%s)" % (self.__class__.__name__, self.base)
@@ -674,6 +676,17 @@ class RemoteRepository(object):
                 config, timestamp=timestamp, timezone=timezone,
                 committer=committer, revprops=revprops, revision_id=revision_id)
         return builder
+
+    def add_fallback_repository(self, repository):
+        """Add a repository to use for looking up data not held locally.
+        
+        :param repository: A repository.
+        """
+        if not self._format.supports_external_lookups:
+            raise errors.UnstackableRepositoryFormat(self._format, self.base)
+        # We need to accumulate additional repositories here, to pass them in
+        # on various RPC's.
+        self._fallback_repositories.append(repository)
 
     def add_inventory(self, revid, inv, parents):
         self._ensure_real()
@@ -1286,6 +1299,18 @@ class RemoteBranch(branch.Branch):
         self._ensure_real()
         return self._real_branch.get_physical_lock_status()
 
+    def get_stacked_on(self):
+        """Get the URL this branch is stacked against.
+
+        :raises NotStacked: If the branch is not stacked.
+        :raises UnstackableBranchFormat: If the branch does not support
+            stacking.
+        :raises UnstackableRepositoryFormat: If the repository does not support
+            stacking.
+        """
+        self._ensure_real()
+        return self._real_branch.get_stacked_on()
+
     def lock_read(self):
         if not self._lock_mode:
             self._lock_mode = 'r'
@@ -1461,6 +1486,17 @@ class RemoteBranch(branch.Branch):
         self._ensure_real()
         return self._real_branch.set_parent(url)
         
+    def set_stacked_on(self, stacked_location):
+        """set the URL this branch is stacked against.
+
+        :raises UnstackableBranchFormat: If the branch does not support
+            stacking.
+        :raises UnstackableRepositoryFormat: If the repository does not support
+            stacking.
+        """
+        self._ensure_real()
+        return self._real_branch.set_stacked_on(stacked_location)
+
     def get_config(self):
         return RemoteBranchConfig(self)
 

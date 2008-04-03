@@ -898,7 +898,7 @@ class BzrDir(object):
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
                recurse='down', possible_transports=None,
-               accelerator_tree=None, hardlink=False):
+               accelerator_tree=None, hardlink=False, shallow=False):
         """Create a copy of this bzrdir prepared for use as a new line of
         development.
 
@@ -917,6 +917,8 @@ class BzrDir(object):
             content is different.
         :param hardlink: If true, hard-link files from accelerator_tree,
             where possible.
+        :param shallow: If true, create a shallow branch referring to the
+            location of this control directory.
         """
         target_transport = get_transport(url, possible_transports)
         target_transport.ensure_base()
@@ -925,6 +927,15 @@ class BzrDir(object):
         try:
             source_branch = self.open_branch()
             source_repository = source_branch.repository
+            if shallow:
+                shallow_branch_url = self.root_transport.base
+            else:
+                shallow_branch_url = None
+                try:
+                    shallow_branch_url = source_branch.get_stacked_on()
+                except (errors.NotStacked, errors.UnstackableBranchFormat,
+                    errors.UnstackableRepositoryFormat):
+                    shallow_branch_url = None
         except errors.NotBranchError:
             source_branch = None
             try:
@@ -943,6 +954,16 @@ class BzrDir(object):
         elif source_repository is None and result_repo is None:
             # no repo available, make a new one
             result.create_repository()
+        elif shallow_branch_url:
+            if result_repo is None:
+                result_repo = source_repository._format.initialize(result)
+            stacked_dir = BzrDir.open(shallow_branch_url)
+            try:
+                stacked_repo = stacked_dir.open_branch().repository
+            except errors.NotBranchError:
+                stacked_repo = stacked_dir.open_repository()
+            result_repo.add_fallback_repository(stacked_repo)
+            result_repo.fetch(source_repository, revision_id=revision_id)
         elif source_repository is not None and result_repo is None:
             # have source, and want to make a new target repo
             result_repo = source_repository.sprout(result,
@@ -956,9 +977,11 @@ class BzrDir(object):
                 # so we can override the copy method
                 result_repo.fetch(source_repository, revision_id=revision_id)
         if source_branch is not None:
-            source_branch.sprout(result, revision_id=revision_id)
+            result_branch = source_branch.sprout(result, revision_id=revision_id)
         else:
-            result.create_branch()
+            result_branch = result.create_branch()
+        if shallow_branch_url:
+            result_branch.set_stacked_on(shallow_branch_url)
         if isinstance(target_transport, LocalTransport) and (
             result_repo is None or result_repo.make_working_trees()):
             wt = result.create_workingtree(accelerator_tree=accelerator_tree,
@@ -1132,8 +1155,11 @@ class BzrDirPreSplitOut(BzrDir):
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
                possible_transports=None, accelerator_tree=None,
-               hardlink=False):
+               hardlink=False, shallow=False):
         """See BzrDir.sprout()."""
+        if shallow:
+            raise errors.UnstackableBranchFormat(
+                self._format, self.root_transport.base)
         from bzrlib.workingtree import WorkingTreeFormat2
         self._make_tail(url)
         result = self._format._initialize_for_clone(url)
@@ -2367,14 +2393,24 @@ class ConvertMetaToMeta(Converter):
             pass
         else:
             # TODO: conversions of Branch and Tree should be done by
-            # InterXFormat lookups
+            # InterXFormat lookups/some sort of registry.
             # Avoid circular imports
             from bzrlib import branch as _mod_branch
-            if (branch._format.__class__ is _mod_branch.BzrBranchFormat5 and
-                self.target_format.get_branch_format().__class__ is
-                _mod_branch.BzrBranchFormat6):
-                branch_converter = _mod_branch.Converter5to6()
+            old = branch._format.__class__
+            new = self.target_format.get_branch_format().__class__
+            while old != new:
+                if (old == _mod_branch.BzrBranchFormat5 and
+                    new in (_mod_branch.BzrBranchFormat6,
+                        _mod_branch.BzrBranchFormat7)):
+                    branch_converter = _mod_branch.Converter5to6()
+                elif (old == _mod_branch.BzrBranchFormat6 and
+                    new == _mod_branch.BzrBranchFormat7):
+                    branch_converter = _mod_branch.Converter6to7()
+                else:
+                    raise errors.BadConversionTarget("No converter", new)
                 branch_converter.convert(branch)
+                branch = self.bzrdir.open_branch()
+                old = branch._format.__class__
         try:
             tree = self.bzrdir.open_workingtree(recommend_upgrade=False)
         except (errors.NoWorkingTree, errors.NotLocalUrl):
@@ -2720,27 +2756,27 @@ format_registry.register_metadir('rich-root-pack',
     )
 # The following two formats should always just be aliases.
 format_registry.register_metadir('development',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment0',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment1',
     help='Current development format. Can convert data to and from pack-0.92 '
         '(and anything compatible with pack-0.92) format repositories. '
-        'Repositories in this format can only be read by bzr.dev. '
+        'Repositories and branches in this format can only be read by bzr.dev. '
         'Please read '
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
         'before use.',
-    branch_format='bzrlib.branch.BzrBranchFormat6',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     experimental=True,
     alias=True,
     )
 format_registry.register_metadir('development-subtree',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment0Subtree',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment1Subtree',
     help='Current development format, subtree variant. Can convert data to and '
-        'from pack-0.92 (and anything compatible with pack-0.92) format '
-        'repositories. Repositories in this format can only be read by '
-        'bzr.dev. Please read '
+        'from pack-0.92-subtree (and anything compatible with '
+        'pack-0.92-subtree) format repositories. Repositories and branches in '
+        'this format can only be read by bzr.dev. Please read '
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
         'before use.',
-    branch_format='bzrlib.branch.BzrBranchFormat6',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     experimental=True,
     alias=True,
@@ -2768,4 +2804,27 @@ format_registry.register_metadir('development0-subtree',
     hidden=True,
     experimental=True,
     )
+format_registry.register_metadir('development1',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment1',
+    help='A branch and pack based repository that support stacking. '
+        'Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    hidden=True,
+    experimental=True,
+    )
+format_registry.register_metadir('development1-subtree',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment1Subtree',
+    help='A branch and pack based repository that support stacking. '
+        'Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    hidden=True,
+    experimental=True,
+    )
+# The current format that is made on 'bzr init'.
 format_registry.set_default('pack-0.92')
