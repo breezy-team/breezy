@@ -52,6 +52,7 @@ from bzrlib import (
     errors,
     revisionspec,
     transport,
+    urlutils,
     )
 """)
 
@@ -74,7 +75,7 @@ class cmd_upload(commands.Command):
                       ),
        ]
 
-    def run(self, location, full=False, revision=None, remember=None,
+    def run(self, location=None, full=False, revision=None, remember=None,
             directory=None,
             ):
         if directory is None:
