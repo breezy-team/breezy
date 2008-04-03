@@ -178,6 +178,7 @@ class FtpTransport(ConnectedTransport):
             or 'no such dir' in s
             or 'could not create file' in s # vsftpd
             or 'file doesn\'t exist' in s
+            or 'rnfr command failed.' in s # vsftpd RNFR reply if file not found
             or 'file/directory not found' in s # filezilla server
             ):
             raise errors.NoSuchFile(path, extra=extra)
@@ -576,9 +577,21 @@ def get_test_permutations():
         return [(FtpTransport, ftp_server.FTPServer)]
     else:
         # Dummy server to have the test suite report the number of tests
-        # needing that feature.
+        # needing that feature. We raise UnavailableFeature from methods before
+        # the test server is being used. Doing so in the setUp method has bad
+        # side-effects (tearDown is never called).
         class UnavailableFTPServer(object):
+
             def setUp(self):
+                pass
+
+            def tearDown(self):
+                pass
+
+            def get_url(self):
+                raise tests.UnavailableFeature(tests.FTPServerFeature)
+
+            def get_bogus_url(self):
                 raise tests.UnavailableFeature(tests.FTPServerFeature)
 
         return [(FtpTransport, UnavailableFTPServer)]

@@ -205,12 +205,25 @@ nonactive = False
 
 
 class TestConfigObj(tests.TestCase):
+
     def test_get_bool(self):
         co = config.ConfigObj(StringIO(bool_config))
         self.assertIs(co.get_bool('DEFAULT', 'active'), True)
         self.assertIs(co.get_bool('DEFAULT', 'inactive'), False)
         self.assertIs(co.get_bool('UPPERCASE', 'active'), True)
         self.assertIs(co.get_bool('UPPERCASE', 'nonactive'), False)
+
+    def test_hash_sign_in_value(self):
+        """
+        Before 4.5.0, ConfigObj did not quote # signs in values, so they'd be
+        treated as comments when read in again. (#86838)
+        """
+        co = config.ConfigObj()
+        co['test'] = 'foo#bar'
+        lines = co.write()
+        self.assertEqual(lines, ['test = "foo#bar"'])
+        co2 = config.ConfigObj(lines)
+        self.assertEqual(co2['test'], 'foo#bar')
 
 
 erroneous_config = """[section] # line 1
@@ -425,7 +438,7 @@ class TestBranchConfig(tests.TestCaseWithTransport):
         self.check_file_contents(locations,
                                  '[%s/branch]\n'
                                  'push_location = http://foobar\n'
-                                 'push_location:policy = norecurse'
+                                 'push_location:policy = norecurse\n'
                                  % (local_path,))
 
     def test_autonick_urlencoded(self):
@@ -897,7 +910,7 @@ class TestLocationConfig(tests.TestCaseInTempDir):
         self.my_config.set_user_option('foo', 'bar')
         self.assertEqual(
             self.my_config.branch.control_files.files['branch.conf'],
-            'foo = bar')
+            'foo = bar\n')
         self.assertEqual(self.my_config.get_user_option('foo'), 'bar')
         self.my_config.set_user_option('foo', 'baz',
                                        store=config.STORE_LOCATION)

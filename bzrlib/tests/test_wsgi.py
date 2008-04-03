@@ -83,7 +83,7 @@ class TestWSGI(tests.TestCase):
         self.assertEqual('405 Method not allowed', self.status)
         self.assertTrue(('Allow', 'POST') in self.headers)
         
-    def _fake_make_request(self, transport, write_func, bytes):
+    def _fake_make_request(self, transport, write_func, bytes, rcp):
         request = FakeRequest(transport, write_func)
         request.accept_bytes(bytes)
         self.request = request
@@ -106,7 +106,7 @@ class TestWSGI(tests.TestCase):
         })
         iterable = wsgi_app(environ, self.start_response)
         response = self.read_response(iterable)
-        self.assertEqual([('clone', 'foo/bar')] , transport.calls)
+        self.assertEqual([('clone', 'foo/bar/')] , transport.calls)
 
     def test_smart_wsgi_app_request_and_response(self):
         # SmartWSGIApp reads the smart request from the 'wsgi.input' file-like
@@ -179,13 +179,13 @@ class TestWSGI(tests.TestCase):
         backing_transport = app.app.backing_transport
         chroot_backing_transport = backing_transport.server.backing_transport
         self.assertEndsWith(chroot_backing_transport.base, 'a%20root/')
-        self.assertEqual(app.prefix, 'a prefix')
+        self.assertEqual(app.app.root_client_path, 'a prefix')
         self.assertEqual(app.path_var, 'a path_var')
 
     def test_incomplete_request(self):
         transport = FakeTransport()
         wsgi_app = wsgi.SmartWSGIApp(transport)
-        def make_request(transport, write_func, bytes):
+        def make_request(transport, write_func, bytes, root_client_path):
             request = IncompleteRequest(transport, write_func)
             request.accept_bytes(bytes)
             self.request = request

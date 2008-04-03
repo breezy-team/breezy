@@ -456,7 +456,7 @@ class BzrDir(object):
         return bzrdir.create_workingtree()
 
     def create_workingtree(self, revision_id=None, from_branch=None,
-        accelerator_tree=None):
+        accelerator_tree=None, hardlink=False):
         """Create a working tree at this BzrDir.
         
         :param revision_id: create it as of this revision id.
@@ -890,7 +890,7 @@ class BzrDir(object):
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
                recurse='down', possible_transports=None,
-               accelerator_tree=None):
+               accelerator_tree=None, hardlink=False):
         """Create a copy of this bzrdir prepared for use as a new line of
         development.
 
@@ -907,6 +907,8 @@ class BzrDir(object):
             contents more quickly than the revision tree, i.e. a workingtree.
             The revision tree will be used for cases where accelerator_tree's
             content is different.
+        :param hardlink: If true, hard-link files from accelerator_tree,
+            where possible.
         """
         target_transport = get_transport(url, possible_transports)
         target_transport.ensure_base()
@@ -951,7 +953,8 @@ class BzrDir(object):
             result.create_branch()
         if isinstance(target_transport, LocalTransport) and (
             result_repo is None or result_repo.make_working_trees()):
-            wt = result.create_workingtree(accelerator_tree=accelerator_tree)
+            wt = result.create_workingtree(accelerator_tree=accelerator_tree,
+                hardlink=hardlink)
             wt.lock_write()
             try:
                 if wt.path2id('') is None:
@@ -1046,7 +1049,7 @@ class BzrDirPreSplitOut(BzrDir):
         raise errors.UnsupportedOperation(self.destroy_repository, self)
 
     def create_workingtree(self, revision_id=None, from_branch=None,
-                           accelerator_tree=None):
+                           accelerator_tree=None, hardlink=False):
         """See BzrDir.create_workingtree."""
         # this looks buggy but is not -really-
         # because this format creates the workingtree when the bzrdir is
@@ -1120,7 +1123,8 @@ class BzrDirPreSplitOut(BzrDir):
         return format.open(self, _found=True)
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
-               possible_transports=None, accelerator_tree=None):
+               possible_transports=None, accelerator_tree=None,
+               hardlink=False):
         """See BzrDir.sprout()."""
         from bzrlib.workingtree import WorkingTreeFormat2
         self._make_tail(url)
@@ -1135,7 +1139,8 @@ class BzrDirPreSplitOut(BzrDir):
             pass
         # we always want a working tree
         WorkingTreeFormat2().initialize(result,
-                                        accelerator_tree=accelerator_tree)
+                                        accelerator_tree=accelerator_tree,
+                                        hardlink=hardlink)
         return result
 
 
@@ -1230,11 +1235,11 @@ class BzrDirMeta1(BzrDir):
         self.transport.delete_tree('repository')
 
     def create_workingtree(self, revision_id=None, from_branch=None,
-                           accelerator_tree=None):
+                           accelerator_tree=None, hardlink=False):
         """See BzrDir.create_workingtree."""
         return self._format.workingtree_format.initialize(
             self, revision_id, from_branch=from_branch,
-            accelerator_tree=accelerator_tree)
+            accelerator_tree=accelerator_tree, hardlink=hardlink)
 
     def destroy_workingtree(self):
         """See BzrDir.destroy_workingtree."""
@@ -1431,7 +1436,7 @@ class BzrDirFormat(object):
         try:
             return klass._formats[format_string]
         except KeyError:
-            raise errors.UnknownFormatError(format=format_string)
+            raise errors.UnknownFormatError(format=format_string, kind='bzrdir')
 
     @classmethod
     def get_default_format(klass):
@@ -1486,8 +1491,9 @@ class BzrDirFormat(object):
         mutter('created control directory in ' + transport.base)
         control = transport.clone('.bzr')
         utf8_files = [('README', 
-                       "This is a Bazaar-NG control directory.\n"
-                       "Do not change any files in this directory.\n"),
+                       "This is a Bazaar control directory.\n"
+                       "Do not change any files in this directory.\n"
+                       "See http://bazaar-vcs.org/ for more information about Bazaar.\n"),
                       ('branch-format', self.get_format_string()),
                       ]
         # NB: no need to escape relative paths that are url safe.
@@ -2388,18 +2394,20 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
     def probe_transport(klass, transport):
         """Return a RemoteBzrDirFormat object if it looks possible."""
         try:
-            client = transport.get_smart_client()
+            medium = transport.get_smart_medium()
         except (NotImplementedError, AttributeError,
-                errors.TransportNotPossible):
+                errors.TransportNotPossible, errors.NoSmartMedium):
             # no smart server, so not a branch for this format type.
             raise errors.NotBranchError(path=transport.base)
         else:
-            # Send a 'hello' request in protocol version one, and decline to
-            # open it if the server doesn't support our required version (2) so
-            # that the VFS-based transport will do it.
-            request = client.get_request()
-            smart_protocol = protocol.SmartClientRequestProtocolOne(request)
-            server_version = smart_protocol.query_version()
+            # Decline to open it if the server doesn't support our required
+            # version (2) so that the VFS-based transport will do it.
+            try:
+                server_version = medium.protocol_version()
+            except errors.SmartProtocolError:
+                # Apparently there's no usable smart server there, even though
+                # the medium supports the smart protocol.
+                raise errors.NotBranchError(path=transport.base)
             if server_version != 2:
                 raise errors.NotBranchError(path=transport.base)
             return klass()
@@ -2407,15 +2415,14 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
     def initialize_on_transport(self, transport):
         try:
             # hand off the request to the smart server
-            shared_medium = transport.get_shared_medium()
+            client_medium = transport.get_smart_medium()
         except errors.NoSmartMedium:
             # TODO: lookup the local format from a server hint.
             local_dir_format = BzrDirMetaFormat1()
             return local_dir_format.initialize_on_transport(transport)
-        client = _SmartClient(shared_medium)
+        client = _SmartClient(client_medium, transport.base)
         path = client.remote_path_from_transport(transport)
-        response = _SmartClient(shared_medium).call('BzrDirFormat.initialize',
-                                                    path)
+        response = client.call('BzrDirFormat.initialize', path)
         assert response[0] in ('ok', ), 'unexpected response code %s' % (response,)
         return remote.RemoteBzrDir(transport)
 
