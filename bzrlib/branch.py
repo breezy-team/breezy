@@ -25,6 +25,7 @@ from bzrlib import (
         errors,
         lockdir,
         lockable_files,
+        repository,
         revision as _mod_revision,
         transport,
         tsort,
@@ -192,7 +193,8 @@ class Branch(object):
         :return: A dictionary mapping revision_id => dotted revno.
         """
         last_revision = self.last_revision()
-        revision_graph = self.repository.get_revision_graph(last_revision)
+        revision_graph = repository._old_get_graph(self.repository,
+            last_revision)
         merge_sorted_revisions = tsort.merge_sort(
             revision_graph,
             last_revision,
@@ -1886,7 +1888,8 @@ class BzrBranch6(BzrBranch5):
             start_revision = self._partial_revision_history_cache[-1]
             iterator = repo.iter_reverse_revision_history(start_revision)
             #skip the last revision in the list
-            assert iterator.next() == start_revision
+            next_revision = iterator.next()
+            assert next_revision == start_revision
         for revision_id in iterator:
             self._partial_revision_history_cache.append(revision_id)
             if (stop_index is not None and
@@ -2023,6 +2026,7 @@ class BzrBranch6(BzrBranch5):
 
         if history is not None:
             assert len(history) == last_revno, 'revno/history mismatch'
+            return history[revno - 1]
 
         index = last_revno - revno
         if len(self._partial_revision_history_cache) <= index:
