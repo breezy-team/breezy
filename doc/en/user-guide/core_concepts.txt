@@ -34,7 +34,7 @@ Revisions are immutable and can be globally, uniquely identified
 by a *revision-id*. An example revision-id is::
 
  pqm@pqm.ubuntu.com-20071129184101-u9506rihe4zbzyyz
- 
+
 While these identifiers are necessary for internal use and external tool
 integration, branch-specific *revision numbers* are the preferred
 interface for humans. Typical revision numbers are 1, 42 and 2977.1.59.
