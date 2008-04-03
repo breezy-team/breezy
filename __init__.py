@@ -54,6 +54,11 @@ class BisectCurrent(object):
         "Return the current revision id."
         return self._revid
 
+    def get_current_revno(self):
+        "Return the current revision number as a tuple."
+        revdict = self._bzrbranch.get_revision_id_to_revno_map()
+        return revdict[self.get_current_revid()]
+
     def get_parent_revids(self):
         "Return the IDs of the current revision's predecessors."
         repo = self._bzrbranch.repository
@@ -69,8 +74,8 @@ class BisectCurrent(object):
     def show_rev_log(self, out = sys.stdout):
         "Write the current revision's log entry to a file."
         rev = self._bzrbranch.repository.get_revision(self._revid)
-        revno = self._bzrbranch.revision_id_to_revno(rev.revision_id)
-        out.write("On revision %d (%s):\n%s\n" % (revno, rev.revision_id,
+        revno = ".".join([str(x) for x in self.get_current_revno()])
+        out.write("On revision %s (%s):\n%s\n" % (revno, rev.revision_id,
                                                   rev.message))
 
     def switch(self, revid):
