@@ -1,0 +1,339 @@
+Bazaar Windows Shell Extension Options
+========================================
+
+.. contents:: :local:
+
+Introduction
+------------
+
+This document outlines the options available for Bazaar to integrate with the
+Windows Shell. It first describes the general architecture of Windows Shell
+Extensions, then looks at the C++ implemented TortoiseSvn and the Python
+implemented TortoiseBzr, and concludes with a number of concrete proposals
+for moving TortoiseBzr forward.
+
+The facts about shell extensions
+----------------------------------
+
+Well - the facts as I understand them :)
+
+Shell Extensions are COM objects. They are implemented as DLLs which are
+loaded by the Windows shell. There is no facility for shell extensions to
+exist in a separate process - DLLs are the only option, and they are loaded
+into other processes which take advantage of the Windows shell (although
+obviously this DLL is free to do whatever it likes)
+ 
+For the sake of this discussion, there are 2 categories of shell extensions:
+ 
+* Ones that create a new "namespace". The file-system itself is an example of
+  such a namespace, as is the "Recycle Bin". For a user-created example,
+  picture a new tree under "My Computer" which allows you to browse a remote
+  server - it creates a new, stand-alone tree that doesn't really interact
+  with the existing namespaces.
+ 
+* Ones that enhance existing namespaces, including the filesystem. An example
+  would be an extension which uses Icon Overlays to modify how existing files
+  on disk are displayed or add items to their context menu, for example.
+
+The latter category is the kind of shell extension relevant for TortoiseBzr,
+and it has an important implication - it will be pulled into any process
+which uses the shell to display a list of files. While this is somewhat
+obvious for Windows Explorer (which many people consider the shell), every
+other process that shows a FileOpen/FileSave dialog will have these shell
+extensions loaded into its process space. This may surprise many people - the
+simple fact of allowing the user to select a filename will result in an
+unknown number of DLLs being loaded into your process. For a concrete
+example, when notepad.exe first starts with an empty file it is using around
+3.5MB of RAM. As soon as the FileOpen dialog is loaded, TortoiseSvn loads
+well over 20 additional DLLs, including the MSVC8 runtime, into the Notepad
+process causing its memory usage to more than double - all without doing
+anything tortoise specific at all.
+ 
+This has wide-ranging implications. It means that such shell extensions
+should be developed using a tool which can never cause conflict with
+arbitrary processes. For this very reason, MS recommend against using .NET
+to write shell extensions[1], as there is a significant risk of being loaded
+into a process that uses a different version of the .NET runtime, and this
+will kill the process. Similarly, Python implemented shell extension may well
+conflict badly with other Python implemented applications (and will certainly
+kill them in some situations). A similar issue exists with GUI toolkits used
+- using (say) PyGTK directly in the shell extension would need to be avoided
+(which it currently is best I can tell). It should also be obvious the shell
+extension will be in many processes simultaneously, meaning use of a simple
+log-file etc is problematic.
+
+In practice, there is only 1 truly safe option - a low-level language (such
+as C/C++) which makes use of only the win32 API, and a static version of the
+C runtime library if necessary. Obviously, this sucks from our POV :)
+
+[1]: http://blogs.msdn.com/oldnewthing/archive/2006/12/18/1317290.aspx
+
+Analysis of TortoiseSVN code
+-----------------------------
+
+TortoiseSVN is implemented in C++. It relies on an external process to
+perform most UI (such as diff, log, commit etc commands), but it appears to
+directly embed the SVN C libraries for the purposes of obtaining status for
+icon overlays, context menu, drag&drop, etc.
+
+The use of an external process to perform commands is fairly simplistic in
+terms of parent and modal windows - for example, when selecting "Commit", a
+new process starts and *usually* ends up as the foreground window, but it may
+occasionally be lost underneath the window which created it, and the user may
+accidently start many processes when they only need 1. Best I can tell, this
+isn't necessarily a limitation of the approach, just the implementation.
+
+Advantages of using the external process is that it keeps all the UI code
+outside Windows explorer - only the minimum needed to perform operations
+directly needed by the shell are part of the "shell extension" and the rest
+of TortoiseSvn is "just" a fairly large GUI application implementing many
+commands. The command-line to the app has even been documented for people who
+wish to automate tasks using that GUI. This GUI appears to also be
+implemented in C++ using Windows resource files.
+ 
+TortoiseSvn appears to cache using a separate process, aptly named
+TSVNCache.exe. It uses a named pipe to accept connections from other
+processes for various operations. At this stage, it's still unclear exactly
+what is fetched from the cache and exactly what the shell extension fetches
+directly via the subversion C libraries. 
+
+There doesn't seem to be a good story for logging or debugging - which is
+what you expect from C++ based apps :( Most of the heavy lifting is done by
+the external application, which might offer better facilities.
+ 
+Analysis of existing TortoiseBzr code
+--------------------------------------
+
+The existing code is actually quite cool given its history (SoC student,
+etc), so this should not be taken as criticism of the implementer nor of the
+implementation - indeed, many criticisms are also true of the TortoiseSvn
+implementation - see above. However, I have attempted to list the bad things
+rather than the good things so a clear future strategy can be agreed, with
+all limitations understood.
+
+The existing TortoiseBzr code has been ported into Python from other tortoise
+implementations (probably svn). This means it is very nice to implement and
+develop, but suffers the problems described above - it is likely to conflict
+with other Python based processes, and it means the entire CPython runtime
+and libraries are pulled into many arbitrary processes.
+
+The existing TortoiseBzr code pulls in the bzrlib library to determine the
+path of the bzr library, and also to determine the status of files, but uses
+an external process for most GUI commands - ie, very similar to TortoiseSvn
+as described above - and as such, all comments above apply equally here - but
+note that the bzr library *is* pulled into the shell, and therefore every
+application using the shell. The GUI in the external application is written
+in PyGTK, which may not offer the best Windows "look and feel", but that
+discussion is beyond the scope of this document.
+ 
+It has a better story for logging and debugging for the developer - but not
+for diagnosing issues in the field - although again, much of the heavy
+lifting remains done by the external application.
+ 
+It uses a rudimentary in-memory cache for the status of files and
+directories, the implementation of which isn't really suitable (ie, no
+theoretical upper bound on cache size), and also means that there is no
+sharing of cached information between processes, which is unfortunate (eg,
+imagine a user using Windows explorer, then switching back to their editor)
+and also error prone (it's possible the editor will check the file in,
+meaning Windows explorer will be showing stale data). This may be possible to
+address via file-system notifications, but a shared cache would be preferred
+(although clearly more difficult to implement)
+
+One tortoise port recently announced a technique for all tortoise ports to
+share the same icon overlays to help work around a limitation in Windows on
+the total number of overlays (its limited to 15, due to the number of bits
+reserved in a 32bit int for overlays). TBZR needs to take advantage of that
+(but to be fair, this overlay sharing technique was probably done after the
+TBZR implementation)
+
+The current code appears to recursively walk a tree to check if *any* file in
+the tree has changed, so it can reflect this in the parent directory status.
+This is almost certainly an evil thing to do (Shell Extensions are optimized
+so that a folder doesn't even need to look in its direct children for another
+folder, let alone recurse for any reason at all. It may be a network mounted
+drive that doesn't perform at all)
+
+Although somewhat dependent on bzr itself, we need a strategy for binary
+releases (ie, it assumes python.exe, etc) and integration into an existing
+"blessed" installer.
+
+Trivially, the code is not PEP8 compliant and was written by someone fairly
+inexperienced with the language.
+
+Conclusions
+------------
+
+A strategic decision needs to be made about the use of Python in the shell
+extension itself. The use of Python means that there is a larger chance of
+conflicting with existing applications, or even existing Python implemented
+shell extensions. It will also increase the memory usage of all applications
+which use the shell. While this may create problems for a small number of
+users, it may create a wider perception of instability or resource hogging.
+
+There are 2 credible options:
+
+Stick to Python
+~~~~~~~~~~~~~~~~~
+
+This is the simplest to implement but has all the limitations above. We just
+continue to develop the existing code and commit to this model for the
+foreseeable future.
+
+We probably need something similar to TSVNCache.exe - an external process
+used to share state between processes - and this too could be implemented in
+Python.
+
+Hybrid Python and C++ implementation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In this model, we would still use something like TSVNCache.exe (this external
+process doesn't have the same restrictions as the shell extension itself) but
+go one step further - use this remote process for *all* interactions with
+bzr, including status and other "must be fast" operations. This would allow
+the shell extension itself to be implemented in C++, but still take advantage
+of Python for much of the logic. If we resisted the temptation to abstract
+the Windows shell requirements into a more general purpose mechanism, the
+shell could remain thin and not too painful to implement in C++ - it becomes
+an RPC-stub to the Python implemented process.
+
+One possible implementation strategy could be to work towards the above
+infrastructure (ie, a single process doing all VCS work), while keeping the
+shell extension implemented in Python - but without using bzrlib. This would
+allow us to focus on this shared-cache/remote-process infrastructure without
+immediately re-implementing a shell extension in C++. Longer term, once the
+infrastructure is in place and as optimized as possible, we can move to C++
+code in the shell calling our remote Python process. This port should try and
+share as much code as possible from TortoiseSvn, including overlay handlers.
+
+External Command Processor
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The external command application (ie, the app invoked by the shell extension
+to perform commands) can remain as-is, and remain a "shell" for other
+external commands. The implementation of this application is not particularly
+relevant to the shell extension, just the interface to the application (ie,
+its command-line) is. In the short term this will remain PyGTK and will only
+change if there is compelling reason - cross-platform GUI tools are a better
+for bazaar than Windows specific ones, although native look-and-feel is
+important. Either way, this can change independently from the shell
+extension.
+
+
+Performance considerations
+----------------------------
+
+The following discussions assume the "Hybrid Python and C++ implementation"
+strategy, discussed above, is chosen for implementation. To recap, TSVN
+becomes a C++ implemented DLL using RPC to talk to a Python implemented
+"server" which does all BZR work.
+
+As discussed above, the model used by Tortoise is that most "interesting"
+things are done by external applications. TSVN does show read-only columns in
+the "detail" view, and shows a few read only properties in the "Properties"
+dialog - but most of these properties are "state" related (eg, revision
+number), or editing of others is done by launching an external application.
+This means that the shell extension itself really has 2 basic requirements
+WRT RPC: 1) get the local state of a file and 2) get some named state-related
+"properties" for a file. Everything else can be built on that.
+
+There are 2 aspects of the shell integration which are performance critical -
+the "icon overlays" and "column providers"
+
+The short-story with Icon Overlays is that we need to register 12 global
+"overlay providers" - one for each state we show. Each provider is called for
+every icon ever shown in Windows explorer or in any application's FileOpen
+dialog. While most versions of Windows update icons in the background, we
+still need to perform well. On the positive side, this just needs the simple
+"local state" of a file - information that can probably be carried in a
+single byte. On the negative side, it is the shell which makes a synchronous
+call to us with a single filename as an arg, which makes it difficult to
+"batch" multiple status requests into a single RPC call.
+
+The story with columns is messier - these have changed significantly for
+Vista and the new system may not work with the VCS model (see below).
+However, if we implement this, it will be fairly critical to have
+high-performance name/value pairs implemented, as described above.
+
+Note that the nature of the shell implementation means we will have a large
+number of "unrelated" handlers, each called somewhat independently by the
+shell, often for information about the same file (eg, imagine each of our
+overlay providers all called in turn with the same filename, followed by our
+column providers called in turn with the same filename. However, that isn't
+exactly what happens!). This means we will need a kind of cache, geared
+towards reducing the number of status or property requests we make to the RPC
+server.
+
+We will also allow all of the above to be disabled via user preferences.
+Thus, Icon Overlays could be disabled if it did cause a problem for some
+people, for example.
+ 
+RPC options
+-------------
+
+Due to the high number of calls for icon overlays, the RPC overhead must be
+kept as low as possible. Due to the client side being implemented in C++,
+reducing complexity is also a goal. Our requirements are quite simple and no
+existing RPC options exist we can leverage. It does not seen prudent to build
+an XMLRPC solution for tbzr - which is not to preclude the use of such a
+server in the future, but tbzr need not become the "pilot" project for an
+XMLRPC server given these constraints.
+
+I propose that a custom RPC mechanism, built initially using windows-specific
+named-pipes, be used. A binary format, designed with an eye towards
+implementation speed and C++ simplicity, will be used. If we succeed here, we
+can build on that infrastructure, and even replace it should other more
+general frameworks materialize.
+
+FWIW, with a Python process at each end, my P4 2.4G machine can achieve
+around 25000 "calls" per-second across an open named pipe. C++ at one end
+should increase this a little, but obviously any real work done by the Python
+side of the process will be the bottle-neck. However, this throughput would
+appear sufficient to implement a prototype.
+
+Vista versus XP
+------------------
+
+Let's try and avoid an OS advocacy debate :) But it is probably true that
+TBZR will, over its life, be used by more Vista computers than XP ones. In
+short, Vista has changed a number of shell related interfaces, and while TSVN
+is slowly catching up (http://tortoisesvn.net/vistaproblems) they are a pain.
+
+XP has IColumnProvider (as implemented by Tortoise), but Vista changes this
+model. The new model is based around "file types" (eg, .jpg files) and it
+appears each file type can only have 1 provider! TSVN also seems to think the
+Vista model isn't going to work (see previous link). It's not clear how much
+effort we should expend on a column system that has already been abandoned by
+MS. I would argue we spend effort on other parts of the system (ie, the
+external GUI apps themselves, etc) and see if a path forward does emerge for
+Vista. Re can re-evaluate this based on user feedback and more information
+about features of the Vista property system.
+ 
+Implementation plan:
+--------------------
+
+* Design the RPC mechanism used for icon overlays (ie, binary format used for
+  communication)
+
+* Create Python prototype of the C++ "shim": modify the existing TBZR Python
+  code so that all references to "bzrlib" are removed. Implement the client
+  side of the RPC mechanism and implement icon overlays using this RPC
+  mechanism.
+
+* Create initial implementation of RPC server in Python. This will use
+  bzrlib, but will also maintain a local cache to achieve the required
+  performance. The initial implementation may even be single-threaded, just
+  to keep synchronization issues to a minimum.
+
+* Analyze performance of prototype. Verify that technique is feasible and
+  will offer reasonable performance and user experience.
+
+* Implement C++ shim: replace the Python prototype with a light-weight C++
+  version. We would work from the current TSVN sources, including its new
+  support for sharing icon overlays. Advice on if we should "fork" TSVN, or
+  try and manage our own svn based branch in bazaar are invited.
+ 
+* Implement property pages and context menus in C++. Expand RPC server as
+  necessary.
+
+* Create binary for alpha releases, then go round-and-round until its baked.
