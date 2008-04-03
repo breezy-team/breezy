@@ -2686,7 +2686,8 @@ class CreateRepository(object):
 
     def apply(self, make_working_trees=True):
         repository = self._bzrdir.create_repository()
-        repository.set_make_working_trees(make_working_trees)
+        if not isinstance(repository, str):
+            repository.set_make_working_trees(make_working_trees)
         return repository
 
 
