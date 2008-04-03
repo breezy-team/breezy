@@ -137,11 +137,42 @@ class FtpTransport(ConnectedTransport):
         try:
             connection = ftplib.FTP()
             connection.connect(host=self._host, port=self._port)
-            if user and user != 'anonymous' and \
-                    password is None: # '' is a valid password
-                password = auth.get_password('ftp', self._host, user,
-                                             port=self._port)
-            connection.login(user=user, passwd=password)
+            acct = ''
+            if user is None:
+                user = 'anonymous'
+            resp = connection.sendcmd('AUTH GSSAPI')
+            if resp[:3] == '334':
+                import kerberos
+                rc, vc = kerberos.authGSSClientInit("ftp@%s" % self._host)
+
+                kerberos.authGSSClientStep(vc, "")
+                while resp[:3] in ('334', '335'):
+                    authdata = kerberos.authGSSClientResponse(vc)
+                    resp = connection.sendcmd('ADAT ' + authdata)
+                    if resp[:3] in ('235', '335'):
+                        kerberos.authGSSClientStep(vc, resp[9:])
+                    elif resp[:3] == '535':
+                        raise errors.TransportError(
+                             msg="Error during GSSAPI authentication", 
+                             orig_error=resp)
+                    else:
+                        raise errors.TransportError(
+                              msg="Unexpected reply from FTP server",
+                              orig_error=resp)
+            else:
+                resp = connection.sendcmd('USER ' + user)
+                if resp[0] == '3': 
+                    if password is None:
+                        if user == 'anonymous':
+                            password = password + 'anonymous@'
+                        else:
+                            password = auth.get_password('ftp', self._host, 
+                                user, port=self._port)
+                    resp = connection.sendcmd('PASS ' + password)
+                if resp[0] == '3': 
+                    resp = connection.sendcmd('ACCT ' + acct)
+                if resp[0] != '2':
+                    raise ftplib.error_reply, resp
             connection.set_pasv(not self.is_active)
         except socket.error, e:
             raise errors.SocketConnectionError(self._host, self._port,
