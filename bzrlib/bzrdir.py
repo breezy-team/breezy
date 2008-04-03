@@ -890,7 +890,7 @@ class BzrDir(object):
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
                recurse='down', possible_transports=None,
-               accelerator_tree=None, hardlink=False):
+               accelerator_tree=None, hardlink=False, no_tree=False):
         """Create a copy of this bzrdir prepared for use as a new line of
         development.
 
@@ -909,6 +909,7 @@ class BzrDir(object):
             content is different.
         :param hardlink: If true, hard-link files from accelerator_tree,
             where possible.
+        :param no_tree: If true, no working-tree will be created.
         """
         target_transport = get_transport(url, possible_transports)
         target_transport.ensure_base()
@@ -951,7 +952,7 @@ class BzrDir(object):
             source_branch.sprout(result, revision_id=revision_id)
         else:
             result.create_branch()
-        if isinstance(target_transport, LocalTransport) and (
+        if isinstance(target_transport, LocalTransport) and not no_tree and (
             result_repo is None or result_repo.make_working_trees()):
             wt = result.create_workingtree(accelerator_tree=accelerator_tree,
                 hardlink=hardlink)

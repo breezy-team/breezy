@@ -905,11 +905,13 @@ class cmd_branch(Command):
     _see_also = ['checkout']
     takes_args = ['from_location', 'to_location?']
     takes_options = ['revision', Option('hardlink',
-        help='Hard-link working tree files where possible.')]
+        help='Hard-link working tree files where possible.'),
+                     Option('no-tree',
+                            help="Create a branch without a working-tree.")]
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None,
-            hardlink=False):
+            hardlink=False, no_tree=False):
         from bzrlib.tag import _merge_tags_if_possible
         if revision is None:
             revision = [None]
@@ -948,7 +950,8 @@ class cmd_branch(Command):
                 dir = br_from.bzrdir.sprout(to_transport.base, revision_id,
                                             possible_transports=[to_transport],
                                             accelerator_tree=accelerator_tree,
-                                            hardlink=hardlink)
+                                            hardlink=hardlink,
+                                            no_tree=no_tree)
                 branch = dir.open_branch()
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
