@@ -281,6 +281,20 @@ class BisectFuncTests(BisectTestCase):
         self.run_bzr(['bisect', 'reset'])
         self.assertRevno(5)
 
+        # Check that reset doesn't do anything unless there's a
+        # bisection in progress.
+
+        test_file = open("test_file", "w")
+        test_file.write("keep me")
+        test_file.close()
+
+        self.run_bzr(['bisect', 'reset'])
+
+        test_file = open("test_file")
+        content = test_file.read().strip()
+        test_file.close()
+        self.failUnless(content == "keep me")
+
     def testLog(self):
         "Test saving the current bisection state, and re-loading it."
 

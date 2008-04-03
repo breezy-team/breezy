@@ -347,9 +347,11 @@ class cmd_bisect(Command):
     def reset(self):
         "Reset the bisect state to no state."
 
-        BisectCurrent().reset()
         if os.path.exists(bisect_info_path):
+            BisectCurrent().reset()
             os.unlink(bisect_info_path)
+        else:
+            sys.stdout.write("No bisection in progress; nothing to do.\n")
 
     def start(self):
         "Reset the bisect state, then prepare for a new bisection."
