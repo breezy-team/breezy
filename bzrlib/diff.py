@@ -799,6 +799,19 @@ class DiffFromTool(DiffPath):
                 raise
         return True
 
+    def _try_symlink_file(self, tree, relpath, target_path):
+        if (getattr(tree, 'abspath', None) is None
+            or not osutils.has_symlinks()):
+            return False
+        try:
+            source_path = osutils.pathjoin(tree.abspath(''), relpath)
+            os.symlink(source_path, target_path)
+        except OSError, e:
+            if e.errno != errno.EEXIST:
+                raise
+        return True
+
+
     def _write_file(self, file_id, tree, prefix, relpath):
         full_path = osutils.pathjoin(self._root, prefix, relpath)
         if self._try_symlink_root(tree, prefix):
@@ -809,6 +822,8 @@ class DiffFromTool(DiffPath):
         except OSError, e:
             if e.errno != errno.EEXIST:
                 raise
+        if self._try_symlink_file(tree, relpath, full_path):
+            return full_path
         source = tree.get_file(file_id, relpath)
         try:
             target = open(full_path, 'wb')
