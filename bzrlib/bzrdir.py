@@ -356,14 +356,17 @@ class BzrDir(object):
         bzrdir._find_or_create_repository(force_new_repo)
         return bzrdir.create_branch()
 
+    def determine_repository_policy(self, force_new_repo=False):
+        if not force_new_repo:
+            try:
+                return UseExistingRepository(self.find_repository())
+            except errors.NoRepositoryPresent:
+                pass
+        return CreateRepository(self)
+
     def _find_or_create_repository(self, force_new_repo):
         """Create a new repository if needed, returning the repository."""
-        if force_new_repo:
-            return self.create_repository()
-        try:
-            return self.find_repository()
-        except errors.NoRepositoryPresent:
-            return self.create_repository()
+        return self.determine_repository_policy(force_new_repo).apply()
         
     @staticmethod
     def create_branch_convenience(base, force_new_repo=False,
@@ -2613,6 +2616,24 @@ class BzrDirFormatRegistry(registry.Registry):
                 output += wrapped(key, help, info)
 
         return output
+
+
+class CreateRepository(object):
+
+    def __init__(self, bzrdir):
+        self._bzrdir = bzrdir
+
+    def apply(self):
+        return self._bzrdir.create_repository()
+
+
+class UseExistingRepository(object):
+
+    def __init__(self, repository):
+        self._repository = repository
+
+    def apply(self):
+        return self._repository
 
 
 format_registry = BzrDirFormatRegistry()
