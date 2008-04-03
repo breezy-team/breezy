@@ -1886,7 +1886,8 @@ class BzrBranch6(BzrBranch5):
             start_revision = self._partial_revision_history_cache[-1]
             iterator = repo.iter_reverse_revision_history(start_revision)
             #skip the last revision in the list
-            assert iterator.next() == start_revision
+            next_revision = iterator.next()
+            assert next_revision == start_revision
         for revision_id in iterator:
             self._partial_revision_history_cache.append(revision_id)
             if (stop_index is not None and
@@ -2021,6 +2022,7 @@ class BzrBranch6(BzrBranch5):
 
         if history is not None:
             assert len(history) == last_revno, 'revno/history mismatch'
+            return history[revno - 1]
 
         index = last_revno - revno
         if len(self._partial_revision_history_cache) <= index:
