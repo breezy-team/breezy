@@ -96,8 +96,8 @@ should become easier to understand. The simplest way of using Bazaar is
 to use a *standalone tree*, which has a working tree, branch, and repository
 all in a single location. Other common scenarios include:
 
-* *Shared repositories* - working tree and branch are collocated
-  but the repository is in a higher level directory.
+* *Shared repositories* - working tree and branch are colocated, but the
+  repository is in a higher level directory.
 
 * *Lightweight checkouts* - branch is stored is a different location
   to the working tree.
