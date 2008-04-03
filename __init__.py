@@ -106,6 +106,15 @@ class cmd_upload(commands.Command):
         self.rev_id = rev_id
         self._pending_renames = []
         self._pending_deletions = []
+
+        # We check to see if we have previously uploaded, if not
+        # we do a full initial upload. I believe this should be
+        # the default behaviour
+        try:
+            rev_id = self.get_uploaded_revid()
+        except errors.PathError:
+            full = True
+
         if full:
             self.upload_full_tree()
         else:
