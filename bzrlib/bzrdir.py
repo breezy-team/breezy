@@ -511,6 +511,23 @@ class BzrDir(object):
         """
         raise NotImplementedError(self.destroy_workingtree_metadata)
 
+    def _find_containing(self, evaluate):
+        found_bzrdir = self
+        while True:
+            result, stop = evaluate(found_bzrdir)
+            if stop:
+                return result
+            next_transport = found_bzrdir.root_transport.clone('..')
+            if (found_bzrdir.root_transport.base == next_transport.base):
+                # top of the file system
+                return None
+            # find the next containing bzrdir
+            try:
+                found_bzrdir = BzrDir.open_containing_from_transport(
+                    next_transport)[0]
+            except errors.NotBranchError:
+                return None
+
     def find_repository(self):
         """Find the repository that should be used.
 
@@ -518,35 +535,23 @@ class BzrDir(object):
         new branches as well as to hook existing branches up to their
         repository.
         """
-        try:
-            return self.open_repository()
-        except errors.NoRepositoryPresent:
-            pass
-        next_transport = self.root_transport.clone('..')
-        while True:
-            # find the next containing bzrdir
-            try:
-                found_bzrdir = BzrDir.open_containing_from_transport(
-                    next_transport)[0]
-            except errors.NotBranchError:
-                # none found
-                raise errors.NoRepositoryPresent(self)
+        def usable_repository(found_bzrdir):
             # does it have a repository ?
             try:
                 repository = found_bzrdir.open_repository()
             except errors.NoRepositoryPresent:
-                next_transport = found_bzrdir.root_transport.clone('..')
-                if (found_bzrdir.root_transport.base == next_transport.base):
-                    # top of the file system
-                    break
-                else:
-                    continue
+                return None, False
+            stop = not repository.is_shared()
             if ((found_bzrdir.root_transport.base ==
                  self.root_transport.base) or repository.is_shared()):
-                return repository
+                return repository, True
             else:
-                raise errors.NoRepositoryPresent(self)
-        raise errors.NoRepositoryPresent(self)
+                return None, stop
+
+        found_repo = self._find_containing(usable_repository)
+        if found_repo is None:
+            raise errors.NoRepositoryPresent(self)
+        return found_repo
 
     def get_branch_reference(self):
         """Return the referenced URL for the branch in this bzrdir.
