@@ -12,6 +12,8 @@ IN DEVELOPMENT
 
   CHANGES:
 
+   * bzr main script cannot be imported (Benjamin Peterson)
+
    * When a plugin cannot be loaded as the file path is not a valid
      python module name bzr will now strip a ``bzr_`` prefix from the
      front of the suggested name, as many plugins (e.g. bzr-svn)
@@ -21,6 +23,9 @@ IN DEVELOPMENT
      Andrew Cowie)
 
   FEATURES:
+
+    * Added mail-mode GNU Emacs mail package as a mail_client.
+      (Xavier Maillard, Bojan Nikolic)
 
   IMPROVEMENTS:
 
@@ -37,12 +42,29 @@ IN DEVELOPMENT
     * Merge is faster.  We no longer check a file's existence unnecessarily
       when merging the execute bit.  (Aaron Bentley)
 
+    * ``bzr status`` on an explicit list of files no longer shows pending
+      merges, making it much faster on large trees. (John Arbash Meinel)
+
+    * The launchpad directory service now warns the user if they have not set
+      their launchpad login and are trying to resolve a URL using it, just
+      in case they want to do a write operation with it.  (James Westby)
+
     * The smart protocol client is slightly faster, because it now only queries
       the server for the protocol version once per connection.  Also, the HTTP
       transport will now automatically use a smart server if one is present.
       (Andrew Bennetts)
 
+     * Various operations with revision specs and commands that calculate
+       revnos and revision ids are faster.  (John A. Meinel, Aaron Bentley)
+
   BUGFIXES:
+
+    * Add ``root_client_path`` parameter to SmartWSGIApp and
+      SmartServerRequest.  This makes it possible to publish filesystem
+      locations that don't exactly match URL paths. SmartServerRequest
+      subclasses should use the new ``translate_client_path`` and
+      ``transport_from_client_path`` methods when dealing with paths received
+      from a client to take this into account.  (Andrew Bennetts, #124089)
 
     * ``bzr mv a b`` can be now used also to rename previously renamed
       directories, not only files. (Lukáš Lalinský, #107967)
@@ -57,6 +79,9 @@ IN DEVELOPMENT
     * Implement handling of basename parameter for DefaultMail.  (James Westby)
 
     * Launchpad locations (lp: URLs) can be pulled.  (Aaron Bentley, #181945)
+
+    * vsftp's return ``550 RNFR command failed.`` supported.
+      (Marcus Trautwig, #129786)
 
   DOCUMENTATION:
 
@@ -81,6 +106,9 @@ IN DEVELOPMENT
 
     * ``revision.revision_graph`` is deprecated, with no replacement function.
       The function was size(history) and not desirable. (Robert Collins)
+
+    * ``Transport.get_shared_medium`` is deprecated.  Use
+      ``Transport.get_smart_medium`` instead.  (Andrew Bennetts)
 
     * ``VersionedFile.get_graph`` is deprecated, with no replacement method.
       The method was size(history) and not desirable. (Robert Collins)
@@ -116,14 +144,24 @@ IN DEVELOPMENT
       ``Graph.get_parent_map`` returns a dict of key:parents. (Robert Collins)
 
 
-bzr 1.3rc1 2008-03-16
----------------------
+bzr 1.3 2008-03-20
+------------------
 
 Bazaar has become part of the GNU project <http://www.gnu.org>
 
 Many operations that act on history, including ``log`` and ``annotate`` are now
 substantially faster.  Several bugs have been fixed and several new options and
 features have been added.
+
+  TESTING:
+
+    * Avoid spurious failure of ``TestVersion.test_version`` matching
+      directory names.
+      (#202778, Martin Pool)
+
+
+bzr 1.3rc1 2008-03-16
+---------------------
 
   NOTES WHEN UPGRADING:
 
@@ -151,7 +189,7 @@ features have been added.
       (Alexander Belchenko)
 
     * Restore auto-detection of plink.exe on Windows. (Dmitry Vasiliev)
-
+    
     * Version number is now shown as "1.2" or "1.2pr2", without zeroed or
       missing final fields.  (Martin Pool)
 
@@ -214,6 +252,9 @@ features have been added.
     * Encode command line arguments from unicode to user_encoding before
       invoking external mail client in `bzr send` command.
       (#139318, Alexander Belchenko)
+
+    * Fixed problem connecting to ``bzr+https://`` servers.
+      (#198793, John Ferlito)
 
     * Improved error reporting in the Launchpad plugin. (Daniel Watkins,
       #196618)
