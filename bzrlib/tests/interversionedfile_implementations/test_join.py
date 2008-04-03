@@ -205,62 +205,35 @@ class TestJoin(TestCaseWithTransport):
         # does not must discard it, and when filling a ghost for a listed
         # ghost must reconcile it
         source = self.get_source()
-        try:
-            source.has_ghost('a')
-            source_ghosts = True
-        except NotImplementedError:
-            source_ghosts = False
         target = self.get_target()
-        try:
-            target.has_ghost('a')
-            target_ghosts = True
-        except NotImplementedError:
-            target_ghosts = False
-
-        if not source_ghosts and not target_ghosts:
-            # nothing to do
-            return
-        if source_ghosts and not target_ghosts:
-            # switch source and target so source is ghostless
-            t = source
-            source = target
-            target = t
-            source_ghosts = False
-            target_ghosts = True
-        # now target always supports ghosts.
-
         # try filling target with ghosts and filling in reverse -  
-        target.add_lines_with_ghosts('notbase', ['base'], [])
+        try:
+            target.add_lines_with_ghosts('notbase', ['base'], [])
+        except NotImplementedError:
+            # The target does not support ghosts; the test is irrelevant.
+            return
         try:
             source.join(target)
         except errors.RevisionNotPresent:
-            # can't join a ghost containing target onto a non-ghost supporting
-            # source.
-            self.assertFalse(source_ghosts)
             return
-        else:
-            self.assertTrue(source_ghosts)
         # legacy apis should behave
         self.assertEqual(['notbase'], source.get_ancestry(['notbase']))
-        self.assertEqual({'notbase':()}, source.get_graph())
         self.assertFalse(source.has_version('base'))
         # ghost data should have been preserved
         self.assertEqual(['base', 'notbase'], source.get_ancestry_with_ghosts(['notbase']))
         self.assertEqual(['base'], source.get_parents_with_ghosts('notbase'))
-        self.assertEqual({'notbase':('base',)}, source.get_parent_map(['notbase']))
-        self.assertEqual({'notbase':('base',)}, source.get_graph_with_ghosts())
-        self.assertTrue(source.has_ghost('base'))
+        self.assertEqual({'notbase':('base',)},
+            source.get_parent_map(source.versions()))
 
         # if we add something that is fills out what is a ghost, then 
         # when joining into a ghost aware join it should flesh out the ghosts.
         source.add_lines('base', [], [])
-        target.join(source, version_ids=['base']) 
+        target.join(source, version_ids=['base'])
         self.assertEqual(['base', 'notbase'], target.get_ancestry(['notbase']))
-        self.assertEqual({'notbase':('base',)}, target.get_parent_map(['notbase']))
         self.assertEqual({'base':(),
                           'notbase':('base', ),
                           },
-                         target.get_graph())
+                         target.get_parent_map(target.versions()))
         self.assertTrue(target.has_version('base'))
         # we have _with_ghost apis to give us ghost information.
         self.assertEqual(['base', 'notbase'], target.get_ancestry_with_ghosts(['notbase']))
@@ -268,8 +241,7 @@ class TestJoin(TestCaseWithTransport):
         self.assertEqual({'base':(),
                           'notbase':('base',),
                           },
-                         target.get_graph_with_ghosts())
-        self.assertFalse(target.has_ghost('base'))
+            source.get_parent_map(source.versions()))
 
     def test_restricted_join_into_empty(self):
         # joining into an empty versioned file with a version_ids list

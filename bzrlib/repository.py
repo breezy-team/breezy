@@ -1339,9 +1339,8 @@ class Repository(object):
         """
         # All revisions, to find inventory parents.
         if ancestors is None:
-            # self.get_revision_graph_with_ghosts().get_ancestors() wasn't
-            # returning any ghosts anyway.
-            ancestors = self.get_revision_graph()
+            graph = self.get_graph()
+            ancestors = graph.get_parent_map(self.all_revision_ids())
         if text_key_references is None:
             text_key_references = self.find_text_key_references()
         pb = ui.ui_factory.nested_progress_bar()
@@ -1553,6 +1552,7 @@ class Repository(object):
         return self.get_revision(revision_id).inventory_sha1
 
     @needs_read_lock
+    @deprecated_method(symbol_versioning.one_four)
     def get_revision_graph(self, revision_id=None):
         """Return a dictionary containing the revision graph.
 
@@ -3140,3 +3140,22 @@ class _VersionedFileChecker(object):
                 if correct_parents != knit_parents:
                     wrong_parents[revision_id] = (knit_parents, correct_parents)
         return wrong_parents, unused_versions
+
+
+def _old_get_graph(repository, revision_id):
+    """DO NOT USE. That is all. I'm serious."""
+    graph = repository.get_graph()
+    revision_graph = dict(((key, value) for key, value in
+        graph.iter_ancestry([revision_id]) if value is not None))
+    return _strip_NULL_ghosts(revision_graph)
+
+
+def _strip_NULL_ghosts(revision_graph):
+    """Also don't use this. more compatibility code for unmigrated clients."""
+    # Filter ghosts, and null:
+    if _mod_revision.NULL_REVISION in revision_graph:
+        del revision_graph[_mod_revision.NULL_REVISION]
+    for key, parents in revision_graph.items():
+        revision_graph[key] = tuple(parent for parent in parents if parent
+            in revision_graph)
+    return revision_graph

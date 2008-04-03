@@ -109,7 +109,6 @@ __unittest = 1
 
 default_transport = LocalURLServer
 
-MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = [
         bzrlib,
         bzrlib.timestamp,
@@ -2849,14 +2848,6 @@ def test_suite(keep_only=None):
             pack_suite = filter_suite_by_id_list(pack_suite, id_filter)
         suite.addTest(pack_suite)
 
-    # XXX: MODULES_TO_TEST should be obsoleted ?
-    for mod in [m for m in MODULES_TO_TEST
-                if keep_only is None or id_filter.is_module_name_used(m)]:
-        mod_suite = loader.loadTestsFromModule(mod)
-        if keep_only is not None:
-            mod_suite = filter_suite_by_id_list(mod_suite, id_filter)
-        suite.addTest(mod_suite)
-
     for mod in MODULES_TO_DOCTEST:
         try:
             doc_suite = doctest.DocTestSuite(mod)
@@ -2900,7 +2891,7 @@ def test_suite(keep_only=None):
     return suite
 
 
-def multiply_tests_from_modules(module_name_list, scenario_iter):
+def multiply_tests_from_modules(module_name_list, scenario_iter, loader=None):
     """Adapt all tests in some given modules to given scenarios.
 
     This is the recommended public interface for test parameterization.
@@ -2912,6 +2903,8 @@ def multiply_tests_from_modules(module_name_list, scenario_iter):
         modules.
     :param scenario_iter: Iterable of pairs of (scenario_name, 
         scenario_param_dict).
+    :param loader: If provided, will be used instead of a new 
+        bzrlib.tests.TestLoader() instance.
 
     This returns a new TestSuite containing the cross product of
     all the tests in all the modules, each repeated for each scenario.
@@ -2933,8 +2926,13 @@ def multiply_tests_from_modules(module_name_list, scenario_iter):
     >>> tests[1].param
     2
     """
-    loader = TestLoader()
-    suite = TestSuite()
+    # XXX: Isn't load_tests() a better way to provide the same functionality
+    # without forcing a predefined TestScenarioApplier ? --vila 080215
+    if loader is None:
+        loader = TestUtil.TestLoader()
+
+    suite = loader.suiteClass()
+
     adapter = TestScenarioApplier()
     adapter.scenarios = list(scenario_iter)
     adapt_modules(module_name_list, adapter, loader, suite)

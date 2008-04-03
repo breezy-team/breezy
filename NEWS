@@ -12,6 +12,8 @@ IN DEVELOPMENT
 
   CHANGES:
 
+   * bzr main script cannot be imported (Benjamin Peterson)
+
    * When a plugin cannot be loaded as the file path is not a valid
      python module name bzr will now strip a ``bzr_`` prefix from the
      front of the suggested name, as many plugins (e.g. bzr-svn)
@@ -21,6 +23,9 @@ IN DEVELOPMENT
      Andrew Cowie)
 
   FEATURES:
+
+    * Added mail-mode GNU Emacs mail package as a mail_client.
+      (Xavier Maillard, Bojan Nikolic)
 
   IMPROVEMENTS:
 
@@ -44,6 +49,13 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+    * Add ``root_client_path`` parameter to SmartWSGIApp and
+      SmartServerRequest.  This makes it possible to publish filesystem
+      locations that don't exactly match URL paths. SmartServerRequest
+      subclasses should use the new ``translate_client_path`` and
+      ``transport_from_client_path`` methods when dealing with paths received
+      from a client to take this into account.  (Andrew Bennetts, #124089)
+
     * ``bzr mv a b`` can be now used also to rename previously renamed
       directories, not only files. (Lukáš Lalinský, #107967)
 
@@ -58,9 +70,16 @@ IN DEVELOPMENT
 
     * Launchpad locations (lp: URLs) can be pulled.  (Aaron Bentley, #181945)
 
+    * vsftp's return ``550 RNFR command failed.`` supported.
+      (Marcus Trautwig, #129786)
+
   DOCUMENTATION:
 
+    * Improved documentation on send/merge relationship. (Peter Schuller)
+
     * Minor fixes to the User Guide. (Matthew Fuller)
+
+    * Reduced the evangelism in the User Guide. (Ian Clatworthy)
 
   API BREAKS:
 
@@ -72,8 +91,27 @@ IN DEVELOPMENT
       show_merge_revno methods. The latter had been deprecated since the 0.17
       release. (James Westby)
 
+    * ``Repository.get_revision_graph`` is deprecated, with no replacement
+      method. The method was size(history) and not desirable. (Robert Collins)
+
+    * ``revision.revision_graph`` is deprecated, with no replacement function.
+      The function was size(history) and not desirable. (Robert Collins)
+
+    * ``Transport.get_shared_medium`` is deprecated.  Use
+      ``Transport.get_smart_medium`` instead.  (Andrew Bennetts)
+
+    * ``VersionedFile.get_graph`` is deprecated, with no replacement method.
+      The method was size(history) and not desirable. (Robert Collins)
+
+    * ``VersionedFile.get_graph_with_ghosts`` is deprecated, with no
+      replacement method.  The method was size(history) and not desirable.
+      (Robert Collins)
+
     * ``VersionedFile.get_parents`` is deprecated, please use
       ``VersionedFile.get_parent_map``. (Robert Collins)
+
+    * ``VersionedFile.has_ghost`` is now deprecated, as it is both expensive
+      and unused outside of a single test. (Robert Collins)
 
   TESTING:
 
@@ -131,7 +169,7 @@ features have been added.
       (Alexander Belchenko)
 
     * Restore auto-detection of plink.exe on Windows. (Dmitry Vasiliev)
-
+    
     * Version number is now shown as "1.2" or "1.2pr2", without zeroed or
       missing final fields.  (Martin Pool)
 
