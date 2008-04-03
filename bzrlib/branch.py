@@ -1877,9 +1877,14 @@ class BzrBranch6(BzrBranch5):
         """Extend the partial history to include a given index
 
         If a stop_index is supplied, stop when that index has been reached.
-        Otherwise, stop when the beginning of history is reached.
+        If a stop_revision is supplied, stop when that revision is
+        encountered.  Otherwise, stop when the beginning of history is
+        reached.
 
-        :param index: The index which should be present.
+        :param stop_index: The index which should be present.  When it is
+            present, history extension will stop.
+        :param revision_id: The revision id which should be present.  When
+            it is encountered, history extension will stop.
         """
         repo = self.repository
         if len(self._partial_revision_history_cache) == 0:
