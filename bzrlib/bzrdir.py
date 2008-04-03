@@ -357,11 +357,23 @@ class BzrDir(object):
         return bzrdir.create_branch()
 
     def determine_repository_policy(self, force_new_repo=False):
-        if not force_new_repo:
+        def repository_policy(found_bzrdir):
+            # does it have a repository ?
             try:
-                return UseExistingRepository(self.find_repository())
+                repository = found_bzrdir.open_repository()
             except errors.NoRepositoryPresent:
-                pass
+                return None, False
+            stop = not repository.is_shared()
+            if ((found_bzrdir.root_transport.base ==
+                 self.root_transport.base) or repository.is_shared()):
+                return UseExistingRepository(repository), True
+            else:
+                return None, stop
+
+        if not force_new_repo:
+            policy = self._find_containing(repository_policy)
+            if policy is not None:
+                return policy
         return CreateRepository(self)
 
     def _find_or_create_repository(self, force_new_repo):
