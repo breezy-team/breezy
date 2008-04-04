@@ -110,6 +110,7 @@ from cStringIO import StringIO
 from bzrlib import (
     debug,
     errors,
+    lock,
     )
 import bzrlib.config
 from bzrlib.errors import (
@@ -298,6 +299,7 @@ class LockDir(object):
             self._locked_via_token = False
             self._lock_held = False
         else:
+            old_nonce = self.nonce
             # rename before deleting, because we can't atomically remove the
             # whole tree
             start_time = time.time()
@@ -323,6 +325,9 @@ class LockDir(object):
                 self.transport.delete_tree(tmpname)
             self._trace("... unlock succeeded after %dms",
                     (time.time() - start_time) * 1000)
+            result = lock.LockResult(self, old_nonce)
+            for hook in lock.hooks['released']:
+                hook(result)
 
     def break_lock(self):
         """Break a lock not held by this instance of LockDir.
@@ -455,7 +460,11 @@ class LockDir(object):
         """
         if self._fake_read_lock:
             raise LockContention(self)
-        return self._attempt_lock()
+        result = self._attempt_lock()
+        hook_result = lock.LockResult(self, result)
+        for hook in lock.hooks['acquired']:
+            hook(hook_result)
+        return result
 
     def wait_lock(self, timeout=None, poll=None, max_attempts=None):
         """Wait a certain period for a lock.

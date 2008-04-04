@@ -42,6 +42,40 @@ from bzrlib import (
     osutils,
     trace,
     )
+from bzrlib.hooks import Hooks
+
+
+class PhysicalLockHooks(Hooks):
+    """hooks for physical lock activity."""
+
+    def __init__(self):
+        """Create the default hooks.
+
+        There are no default hooks present.
+        """
+        Hooks.__init__(self)
+        # Introduced in 1.4:
+        # invoked when a physical lock has been successfully acquired.
+        self['acquired'] = []
+        # Introduced in 1.5:
+        # invoked when a physical lock has been successfully released.
+        self['released'] = []
+
+
+# The hooks instance clients should register against. Do *NOT* import this
+# symbol, always reference it through lock.hooks.
+hooks = PhysicalLockHooks()
+
+
+class LockResult(object):
+
+    def __init__(self, lock, details=None):
+        """Create a lock result for lock with optional details about the lock."""
+        self.lock = lock
+        self.details = details
+
+    def __eq__(self, other):
+        return self.lock == other.lock and self.details == other.details
 
 
 class _OSLock(object):

@@ -1,5 +1,5 @@
-Hooks
-=====
+Branch Hooks
+============
 
 post_push
 ---------
@@ -84,6 +84,23 @@ and uncommit can all modify the revision history).
 
 The hook signature is (branch, revision_history), and the branch will be
 write-locked.
+
+
+PhysicalLock hooks
+==================
+
+These are hooked into via bzrlib.lock.hooks.
+
+acquired
+--------
+
+Called with a LockResult object when a lock has been successfully acquired.
+
+released
+--------
+
+Called with a LockResult object when a lock has been successfully released.
+
 
 See also `Using hooks`_ in the User Guide.
 

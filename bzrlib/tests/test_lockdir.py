@@ -25,6 +25,7 @@ import bzrlib
 from bzrlib import (
     config,
     errors,
+    lock,
     osutils,
     tests,
     transport,
@@ -645,3 +646,68 @@ class TestLockDir(TestCaseWithTransport):
         self.assertRaises(errors.LockContention, ld2.attempt_lock)
         # no kibble
         check_dir(['held'])
+
+    def record_hook(self, result):
+        self._calls.append(result)
+
+    def reset_hooks(self):
+        self._old_hooks = lock.hooks
+        self.addCleanup(self.restore_hooks)
+        lock.hooks = lock.PhysicalLockHooks()
+
+    def restore_hooks(self):
+        lock.hooks = self._old_hooks
+
+    def test_PhysicalLock_dot_acquired_success(self):
+        # the PhysicalLock.acquired hook fires when a lock is acquired.
+        self._calls = []
+        self.reset_hooks()
+        lock.hooks.install_hook('acquired', self.record_hook)
+        ld = self.get_lock()
+        ld.create()
+        self.assertEqual([], self._calls)
+        result = ld.attempt_lock()
+        self.assertEqual([lock.LockResult(ld, result)], self._calls)
+        ld.unlock()
+        self.assertEqual([lock.LockResult(ld, result)], self._calls)
+
+    def test_PhysicalLock_dot_acquired_fail(self):
+        # the PhysicalLock.acquired hook does not fire on failure.
+        self._calls = []
+        self.reset_hooks()
+        ld = self.get_lock()
+        ld.create()
+        ld2 = self.get_lock()
+        ld2.attempt_lock()
+        # install a lock hook now, when the disk lock is locked
+        lock.hooks.install_hook('acquired', self.record_hook)
+        self.assertRaises(errors.LockContention, ld.attempt_lock)
+        self.assertEqual([], self._calls)
+        ld2.unlock()
+        self.assertEqual([], self._calls)
+
+    def test_PhysicalLock_dot_released_success(self):
+        # the PhysicalLock.released hook fires when a lock is acquired.
+        self._calls = []
+        self.reset_hooks()
+        lock.hooks.install_hook('released', self.record_hook)
+        ld = self.get_lock()
+        ld.create()
+        self.assertEqual([], self._calls)
+        result = ld.attempt_lock()
+        self.assertEqual([], self._calls)
+        ld.unlock()
+        self.assertEqual([lock.LockResult(ld, result)], self._calls)
+
+    def test_PhysicalLock_dot_released_fail(self):
+        # the PhysicalLock.released hook does not fire on failure.
+        self._calls = []
+        self.reset_hooks()
+        ld = self.get_lock()
+        ld.create()
+        ld2 = self.get_lock()
+        ld.attempt_lock()
+        ld2.force_break(ld2.peek())
+        lock.hooks.install_hook('released', self.record_hook)
+        self.assertRaises(LockBroken, ld.unlock)
+        self.assertEqual([], self._calls)
