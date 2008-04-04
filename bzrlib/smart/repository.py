@@ -41,14 +41,17 @@ class SmartServerRepositoryRequest(SmartServerRequest):
     def do(self, path, *args):
         """Execute a repository request.
         
-        The repository must be at the exact path - no searching is done.
+        All Repository requests take a path to the repository as their first
+        argument.  The repository must be at the exact path given by the
+        client - no searching is done.
 
         The actual logic is delegated to self.do_repository_request.
 
-        :param path: The path for the repository.
-        :return: A smart server from self.do_repository_request().
+        :param client_path: The path for the repository as received from the
+            client.
+        :return: A SmartServerResponse from self.do_repository_request().
         """
-        transport = self._backing_transport.clone(path)
+        transport = self.transport_from_client_path(path)
         bzrdir = BzrDir.open_from_transport(transport)
         # Save the repository for use with do_body.
         self._repository = bzrdir.open_repository()
@@ -446,12 +449,20 @@ class SmartServerRepositoryStreamRevisionsChunked(SmartServerRepositoryRequest):
         pack = ContainerSerialiser()
         yield pack.begin()
         try:
-            for name_tuple, bytes in stream:
-                yield pack.bytes_record(bytes, [name_tuple])
+            try:
+                for name_tuple, bytes in stream:
+                    yield pack.bytes_record(bytes, [name_tuple])
+            except:
+                # Undo the lock_read that that happens once the iterator from
+                # get_data_stream is started.
+                repository.unlock()
+                raise
         except errors.RevisionNotPresent, e:
             # This shouldn't be able to happen, but as we don't buffer
             # everything it can in theory happen.
+            repository.unlock()
             yield FailedSmartServerResponse(('NoSuchRevision', e.revision_id))
-        repository.unlock()
-        pack.end()
+        else:
+            repository.unlock()
+            pack.end()
 
