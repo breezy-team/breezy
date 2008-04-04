@@ -21,6 +21,7 @@
 from bzrlib import (
     bzrdir,
     errors,
+    osutils,
     symbol_versioning,
     urlutils,
     )
@@ -445,12 +446,29 @@ class TestErrors(TestCaseWithTransport):
             "Unable to create symlink u'\\xb5' on this platform",
             str(err))
 
+    def test_invalid_url_join(self):
+        """Test the formatting of InvalidURLJoin."""
+        e = errors.InvalidURLJoin('Reason', 'base path', ('args',))
+        self.assertEqual(
+            "Invalid URL join request: Reason: 'base path' + ('args',)",
+            str(e))
+
     def test_incorrect_url(self):
         err = errors.InvalidBugTrackerURL('foo', 'http://bug.com/')
         self.assertEquals(
             ("The URL for bug tracker \"foo\" doesn't contain {id}: "
              "http://bug.com/"),
             str(err))
+
+    def test_unable_encode_path(self):
+        err = errors.UnableEncodePath('foo', 'executable')
+        self.assertEquals("Unable to encode executable path 'foo' in "
+            "user encoding " + osutils.get_user_encoding(),
+            str(err))
+
+    def test_unknown_format(self):
+        err = errors.UnknownFormatError('bar', kind='foo')
+        self.assertEquals("Unknown foo format: 'bar'", str(err))
 
 
 class PassThroughError(errors.BzrError):

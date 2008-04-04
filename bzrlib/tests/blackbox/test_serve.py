@@ -57,6 +57,16 @@ class TestBzrServe(TestCaseWithTransport):
         self.assertEqual('', result[0])
         self.assertEqual('bzr: interrupted\n', result[1])
 
+    def make_read_requests(self, branch):
+        """Do some read only requests."""
+        branch.lock_read()
+        try:
+            branch.repository.all_revision_ids()
+            self.assertEqual(_mod_revision.NULL_REVISION,
+                             _mod_revision.ensure_null(branch.last_revision()))
+        finally:
+            branch.unlock()
+
     def start_server_inet(self, extra_options=()):
         """Start a bzr server subprocess using the --inet option.
 
@@ -107,9 +117,7 @@ class TestBzrServe(TestCaseWithTransport):
 
         # We get a working branch
         branch = BzrDir.open_from_transport(transport).open_branch()
-        branch.repository.get_revision_graph()
-        self.assertEqual(_mod_revision.NULL_REVISION,
-                         _mod_revision.ensure_null(branch.last_revision()))
+        self.make_read_requests(branch)
         self.assertInetServerShutsdownCleanly(process)
 
     def test_bzr_serve_port_readonly(self):
@@ -127,12 +135,7 @@ class TestBzrServe(TestCaseWithTransport):
 
         # Connect to the server
         branch = Branch.open(url)
-
-        # We get a working branch
-        branch.repository.get_revision_graph()
-        self.assertEqual(_mod_revision.NULL_REVISION,
-                         _mod_revision.ensure_null(branch.last_revision()))
-
+        self.make_read_requests(branch)
         self.assertServerFinishesCleanly(process)
 
     def test_bzr_connect_to_bzr_ssh(self):
@@ -208,10 +211,7 @@ class TestBzrServe(TestCaseWithTransport):
                 path_to_branch = os.path.splitdrive(path_to_branch)[1]
             branch = Branch.open(
                 'bzr+ssh://fred:secret@localhost:%d%s' % (port, path_to_branch))
-            
-            branch.repository.get_revision_graph()
-            self.assertEqual(_mod_revision.NULL_REVISION,
-                             _mod_revision.ensure_null(branch.last_revision()))
+            self.make_read_requests(branch)
             # Check we can perform write operations
             branch.bzrdir.root_transport.mkdir('foo')
         finally:

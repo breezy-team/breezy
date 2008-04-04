@@ -35,8 +35,8 @@ In many cases, you can resolve conflicts by simply manually editing
 each file in question, fixing the relevant areas and removing the
 conflict markers as you go.
 
-After fixing all the files in conflict, ask Bazaar to mark them as
-resolved using the ``resolve`` command like this::
+After fixing all the files in conflict, and removing the markers, 
+ask Bazaar to mark them as resolved using the ``resolve`` command like this::
 
   bzr resolve
 
