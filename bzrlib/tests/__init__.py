@@ -109,22 +109,6 @@ __unittest = 1
 
 default_transport = LocalURLServer
 
-MODULES_TO_DOCTEST = [
-        bzrlib,
-        bzrlib.timestamp,
-        bzrlib.errors,
-        bzrlib.export,
-        bzrlib.inventory,
-        bzrlib.iterablefile,
-        bzrlib.lockdir,
-        bzrlib.merge3,
-        bzrlib.option,
-        bzrlib.store,
-        bzrlib.version_info_formats.format_custom,
-        # quoted to avoid module-loading circularity
-        'bzrlib.tests',
-        ]
-
 
 def packages_to_test():
     """Return a list of packages to test.
@@ -2283,11 +2267,11 @@ def condition_isinstance(klass_or_klass_list):
 def condition_id_in_list(id_list):
     """Create a condition filter which verify that test's id in a list.
     
-    :param name: A TestIdList object.
+    :param id_list: A TestIdList object.
     :return: A callable that returns True if the test's id appears in the list.
     """
     def condition(test):
-        return id_list.test_in(test.id())
+        return id_list.includes(test.id())
     return condition
 
 
@@ -2659,11 +2643,11 @@ class TestIdList(object):
                 modules[mod_name] = True
         self.modules = modules
 
-    def is_module_name_used(self, module_name):
+    def refers_to(self, module_name):
         """Is there tests for the module or one of its sub modules."""
         return self.modules.has_key(module_name)
 
-    def test_in(self, test_id):
+    def includes(self, test_id):
         return self.tests.has_key(test_id)
 
 
@@ -2810,68 +2794,68 @@ def test_suite(keep_only=None):
         'bzrlib.tests.test_transport_implementations',
         'bzrlib.tests.test_read_bundle',
         ]
-    suite = TestUtil.TestSuite()
     loader = TestUtil.TestLoader()
 
-    if keep_only is not None:
+    if keep_only is None:
+        loader = TestUtil.TestLoader()
+    else:
         id_filter = TestIdList(keep_only)
+        loader = TestUtil.FilteredByModuleTestLoader(id_filter.refers_to)
+    suite = loader.suiteClass()
 
     # modules building their suite with loadTestsFromModuleNames
-    if keep_only is None:
-        suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
-    else:
-        for mod in [m for m in testmod_names
-                    if id_filter.is_module_name_used(m)]:
-            mod_suite = loader.loadTestsFromModuleNames([mod])
-            mod_suite = filter_suite_by_id_list(mod_suite, id_filter)
-            suite.addTest(mod_suite)
+    suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
 
     # modules adapted for transport implementations
     from bzrlib.tests.test_transport_implementations import TransportTestProviderAdapter
     adapter = TransportTestProviderAdapter()
-    if keep_only is None:
-        adapt_modules(test_transport_implementations, adapter, loader, suite)
-    else:
-        for mod in [m for m in test_transport_implementations
-                    if id_filter.is_module_name_used(m)]:
-            mod_suite = TestUtil.TestSuite()
-            adapt_modules([mod], adapter, loader, mod_suite)
-            mod_suite = filter_suite_by_id_list(mod_suite, id_filter)
-            suite.addTest(mod_suite)
+    adapt_modules(test_transport_implementations, adapter, loader, suite)
 
     # modules defining their own test_suite()
     for package in [p for p in packages_to_test()
                     if (keep_only is None
-                        or id_filter.is_module_name_used(p.__name__))]:
+                        or id_filter.refers_to(p.__name__))]:
         pack_suite = package.test_suite()
-        if keep_only is not None:
-            pack_suite = filter_suite_by_id_list(pack_suite, id_filter)
         suite.addTest(pack_suite)
 
-    for mod in MODULES_TO_DOCTEST:
+    modules_to_doctest = [
+        'bzrlib',
+        'bzrlib.errors',
+        'bzrlib.export',
+        'bzrlib.inventory',
+        'bzrlib.iterablefile',
+        'bzrlib.lockdir',
+        'bzrlib.merge3',
+        'bzrlib.option',
+        'bzrlib.store',
+        'bzrlib.tests',
+        'bzrlib.timestamp',
+        'bzrlib.version_info_formats.format_custom',
+        ]
+
+    for mod in modules_to_doctest:
+        if not (keep_only is None or id_filter.refers_to(mod)):
+            # No tests to keep here, move along
+            continue
         try:
             doc_suite = doctest.DocTestSuite(mod)
         except ValueError, e:
             print '**failed to get doctest for: %s\n%s' % (mod, e)
             raise
-        if keep_only is not None:
-            # DocTests may use ids which doesn't contain the module name
-            doc_suite = filter_suite_by_id_list(doc_suite, id_filter)
         suite.addTest(doc_suite)
 
     default_encoding = sys.getdefaultencoding()
     for name, plugin in bzrlib.plugin.plugins().items():
         if keep_only is not None:
-            if not id_filter.is_module_name_used(plugin.module.__name__):
+            if not id_filter.refers_to(plugin.module.__name__):
                 continue
         plugin_suite = plugin.test_suite()
         # We used to catch ImportError here and turn it into just a warning,
         # but really if you don't have --no-plugins this should be a failure.
         # mbp 20080213 - see http://bugs.launchpad.net/bugs/189771
+        if plugin_suite is None:
+            plugin_suite = plugin.load_plugin_tests(loader)
         if plugin_suite is not None:
-            if keep_only is not None:
-                plugin_suite = filter_suite_by_id_list(plugin_suite,
-                                                       id_filter)
             suite.addTest(plugin_suite)
         if default_encoding != sys.getdefaultencoding():
             bzrlib.trace.warning(
@@ -2881,6 +2865,9 @@ def test_suite(keep_only=None):
             sys.setdefaultencoding(default_encoding)
 
     if keep_only is not None:
+        # Now that the referred modules have loaded their tests, keep only the
+        # requested ones.
+        suite = filter_suite_by_id_list(suite, id_filter)
         # Do some sanity checks on the id_list filtering
         not_found, duplicates = suite_matches_id_list(suite, keep_only)
         for id in not_found:
