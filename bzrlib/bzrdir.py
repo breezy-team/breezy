@@ -194,18 +194,20 @@ class BzrDir(object):
             result_repo = repository_policy.acquire_repository(
                 local_repo.make_working_trees(),
                 local_repo.is_shared())
-            result_repo.fetch(local_repo, revision_id=revision_id)
         # 1 if there is a branch present
         #   make sure its content is available in the target repository
         #   clone it.
         try:
             local_branch = self.open_branch()
         except errors.NotBranchError:
-            pass
+            if repository_policy is not None:
+                result_repo.fetch(local_repo, revision_id=revision_id)
         else:
             result_branch = local_branch.clone(result, revision_id=revision_id)
             if repository_policy is not None:
                 repository_policy.configure_branch(result_branch)
+                result_branch.repository.fetch(local_repo,
+                                               revision_id=revision_id)
         try:
             result_repo = result.find_repository()
         except errors.NoRepositoryPresent:
