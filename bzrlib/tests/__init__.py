@@ -51,6 +51,7 @@ from bzrlib import (
     bzrdir,
     debug,
     errors,
+    lock as _mod_lock,
     memorytree,
     osutils,
     progress,
@@ -807,6 +808,7 @@ class TestCase(unittest.TestCase):
         self._benchcalls = []
         self._benchtime = None
         self._clear_hooks()
+        self._track_locks()
         self._clear_debug_flags()
 
     def _clear_debug_flags(self):
@@ -841,6 +843,47 @@ class TestCase(unittest.TestCase):
             ui.ui_factory = saved
         ui.ui_factory = ui.SilentUIFactory()
         self.addCleanup(_restore)
+
+    def _check_locks(self):
+        """Check that all lock take/release actions have been paired."""
+        # once we have fixed all the current lock problems, we can change the
+        # following code to always check for mismatched locks, but only do
+        # traceback showing with -Dlock (self._lock_check_thorough is True).
+        # For now, because the test suite will fail, we only assert that lock
+        # matching has occured with -Dlock.
+        # unhook:
+        _mod_lock.hooks = self._original_lock_hooks
+        acquired_locks = [lock for action, lock in self._lock_actions
+            if action == 'acquired']
+        released_locks = [lock for action, lock in self._lock_actions
+            if action == 'released']
+        # trivially, given the tests for lock acquistion and release, if we
+        # have as many in each list, it should be ok.
+        if len(acquired_locks) != len(released_locks):
+            message = \
+                ("Different number of acquired and released locks. (%s, %s)" %
+                (acquired_locks, released_locks))
+            if not self._lock_check_thorough:
+                # Rather than fail, just warn
+                print "Broken test %s: %s" % (self, message)
+                return
+            self.fail(message)
+
+    def _track_locks(self):
+        """Track lock activity during tests."""
+        self._lock_actions = []
+        self._original_lock_hooks = _mod_lock.hooks
+        self._lock_check_thorough = 'lock' in debug.debug_flags
+        self.addCleanup(self._check_locks)
+        _mod_lock.hooks = _mod_lock.PhysicalLockHooks()
+        _mod_lock.hooks.install_hook('acquired', self._lock_acquired)
+        _mod_lock.hooks.install_hook('released', self._lock_released)
+
+    def _lock_acquired(self, result):
+        self._lock_actions.append(('acquired', result))
+
+    def _lock_released(self, result):
+        self._lock_actions.append(('released', result))
 
     def _ndiff_strings(self, a, b):
         """Return ndiff between two strings containing lines.

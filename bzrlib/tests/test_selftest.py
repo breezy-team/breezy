@@ -27,7 +27,9 @@ import warnings
 import bzrlib
 from bzrlib import (
     bzrdir,
+    debug,
     errors,
+    lockdir,
     memorytree,
     osutils,
     repository,
@@ -640,6 +642,25 @@ class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
         self.run_bzr(['commit', '-mfoo', '--unchanged'])
         # But we have a safety net in place.
         self.assertRaises(AssertionError, self._check_safety_net)
+
+    def test_dangling_locks_cause_failures(self):
+        # This is currently only enabled during debug runs, so turn debugging
+        # on.
+        debug.debug_flags.add('lock')
+        class InstrumentedTestResult(ExtendedTestResult):
+
+            def report_test_start(self, test): pass
+            def report_error(self, test, error): pass
+        result = InstrumentedTestResult(None, None, None, None)
+        class TestDanglingLock(TestCaseWithMemoryTransport):
+            def test_function(self):
+                t = self.get_transport('.')
+                l = lockdir.LockDir(t, 'lock')
+                l.create()
+                l.attempt_lock()
+        test = TestDanglingLock('test_function')
+        test.run(result)
+        self.assertEqual(1, len(result.errors))
 
 
 class TestTestCaseWithTransport(TestCaseWithTransport):
