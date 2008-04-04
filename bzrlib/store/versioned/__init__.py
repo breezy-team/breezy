@@ -54,6 +54,8 @@ class VersionedFileStore(TransportStore):
         self._precious = precious
         self._versionedfile_class = versionedfile_class
         self._versionedfile_kwargs = versionedfile_kwargs
+        # Used for passing get_scope to versioned file constructors;
+        self.get_scope = None
 
     def _clear_cache_id(self, file_id, transaction):
         """WARNING may lead to inconsistent object references for file_id.
@@ -138,7 +140,7 @@ class VersionedFileStore(TransportStore):
             _filename = self.filename(file_id)
         if transaction.writeable():
             w = self._versionedfile_class(_filename, self._transport, self._file_mode,
-                                          **self._versionedfile_kwargs)
+                get_scope=self.get_scope, **self._versionedfile_kwargs)
             transaction.map.add_weave(file_id, w)
             transaction.register_dirty(w)
         else:
@@ -147,6 +149,7 @@ class VersionedFileStore(TransportStore):
                                           self._file_mode,
                                           create=False,
                                           access_mode='r',
+                                          get_scope=self.get_scope,
                                           **self._versionedfile_kwargs)
             transaction.map.add_weave(file_id, w)
             transaction.register_clean(w, precious=self._precious)
@@ -168,15 +171,16 @@ class VersionedFileStore(TransportStore):
             # we try without making the directory first because thats optimising
             # for the common case.
             weave = self._versionedfile_class(_filename, self._transport, self._file_mode, create=True,
-                                              **self._versionedfile_kwargs)
+                get_scope=self.get_scope, **self._versionedfile_kwargs)
         except errors.NoSuchFile:
             if not self._prefixed:
                 # unexpected error - NoSuchFile is expected to be raised on a
                 # missing dir only and that only occurs when we are prefixed.
                 raise
             self._transport.mkdir(self.hash_prefix(file_id), mode=self._dir_mode)
-            weave = self._versionedfile_class(_filename, self._transport, 
+            weave = self._versionedfile_class(_filename, self._transport,
                                               self._file_mode, create=True,
+                                              get_scope=self.get_scope,
                                               **self._versionedfile_kwargs)
         return weave
 

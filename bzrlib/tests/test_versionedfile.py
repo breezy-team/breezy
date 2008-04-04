@@ -30,12 +30,12 @@ from bzrlib import (
     progress,
     )
 from bzrlib.errors import (
-                           RevisionNotPresent, 
+                           RevisionNotPresent,
                            RevisionAlreadyPresent,
                            WeaveParentMismatch
                            )
 from bzrlib.knit import (
-    KnitVersionedFile,
+    make_file_knit,
     KnitAnnotateFactory,
     KnitPlainFactory,
     )
@@ -58,6 +58,11 @@ class VersionedFileTestMixIn(object):
     theres no dynamic substitution of versioned file implementations,
     they are strictly controlled by their owning repositories.
     """
+
+    def get_transaction(self):
+        if not hasattr(self, '_transaction'):
+            self._transaction = None
+        return self._transaction
 
     def test_add(self):
         f = self.get_file()
@@ -348,8 +353,9 @@ class VersionedFileTestMixIn(object):
             set(f.get_ancestry('rM', topo_sorted=False)))
 
     def test_mutate_after_finish(self):
+        self._transaction = 'before'
         f = self.get_file()
-        f.transaction_finished()
+        self._transaction = 'after'
         self.assertRaises(errors.OutSideTransaction, f.add_lines, '', [], [])
         self.assertRaises(errors.OutSideTransaction, f.add_lines_with_ghosts, '', [], [])
         self.assertRaises(errors.OutSideTransaction, f.join, '')
@@ -384,15 +390,13 @@ class VersionedFileTestMixIn(object):
         f.add_lines('0', [], ['a\n'])
         t = MemoryTransport()
         f.copy_to('foo', t)
-        for suffix in f.__class__.get_suffixes():
+        for suffix in self.get_factory().get_suffixes():
             self.assertTrue(t.has('foo' + suffix))
 
     def test_get_suffixes(self):
         f = self.get_file()
-        # should be the same
-        self.assertEqual(f.__class__.get_suffixes(), f.__class__.get_suffixes())
         # and should be a list
-        self.assertTrue(isinstance(f.__class__.get_suffixes(), list))
+        self.assertTrue(isinstance(self.get_factory().get_suffixes(), list))
 
     def build_graph(self, file, graph):
         for node in topo_sort(graph.items()):
@@ -720,10 +724,12 @@ class VersionedFileTestMixIn(object):
 class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
 
     def get_file(self, name='foo'):
-        return WeaveFile(name, get_transport(self.get_url('.')), create=True)
+        return WeaveFile(name, get_transport(self.get_url('.')), create=True,
+            get_scope=self.get_transaction)
 
     def get_file_corrupted_text(self):
-        w = WeaveFile('foo', get_transport(self.get_url('.')), create=True)
+        w = WeaveFile('foo', get_transport(self.get_url('.')), create=True,
+            get_scope=self.get_transaction)
         w.add_lines('v1', [], ['hello\n'])
         w.add_lines('v2', ['v1'], ['hello\n', 'there\n'])
         
@@ -757,13 +763,15 @@ class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
         return w
 
     def reopen_file(self, name='foo', create=False):
-        return WeaveFile(name, get_transport(self.get_url('.')), create=create)
+        return WeaveFile(name, get_transport(self.get_url('.')), create=create,
+            get_scope=self.get_transaction)
 
     def test_no_implicit_create(self):
         self.assertRaises(errors.NoSuchFile,
                           WeaveFile,
                           'foo',
-                          get_transport(self.get_url('.')))
+                          get_transport(self.get_url('.')),
+                          get_scope=self.get_transaction)
 
     def get_factory(self):
         return WeaveFile
@@ -773,10 +781,10 @@ class TestKnit(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
 
     def get_file(self, name='foo'):
         return self.get_factory()(name, get_transport(self.get_url('.')),
-                                  delta=True, create=True)
+            delta=True, create=True, get_scope=self.get_transaction)
 
     def get_factory(self):
-        return KnitVersionedFile
+        return make_file_knit
 
     def get_file_corrupted_text(self):
         knit = self.get_file()
@@ -794,31 +802,23 @@ class TestKnit(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
         knit.check()
 
     def test_no_implicit_create(self):
-        self.assertRaises(errors.NoSuchFile,
-                          KnitVersionedFile,
-                          'foo',
-                          get_transport(self.get_url('.')))
+        self.assertRaises(errors.NoSuchFile, self.get_factory(), 'foo',
+            get_transport(self.get_url('.')))
 
 
 class TestPlaintextKnit(TestKnit):
     """Test a knit with no cached annotations"""
 
-    def _factory(self, name, transport, file_mode=None, access_mode=None,
-                 delta=True, create=False):
-        return KnitVersionedFile(name, transport, file_mode, access_mode,
-                                 KnitPlainFactory(), delta=delta,
-                                 create=create)
-
     def get_factory(self):
-        return self._factory
+        return make_file_knit
 
 
 class TestPlanMergeVersionedFile(TestCaseWithMemoryTransport):
 
     def setUp(self):
         TestCaseWithMemoryTransport.setUp(self)
-        self.vf1 = KnitVersionedFile('root', self.get_transport(), create=True)
-        self.vf2 = KnitVersionedFile('root', self.get_transport(), create=True)
+        self.vf1 = make_file_knit('root', self.get_transport(), create=True)
+        self.vf2 = make_file_knit('root', self.get_transport(), create=True)
         self.plan_merge_vf = versionedfile._PlanMergeVersionedFile('root',
             [self.vf1, self.vf2])
 
@@ -946,6 +946,9 @@ class TestInterVersionedFile(TestCaseWithMemoryTransport):
 
 class TestReadonlyHttpMixin(object):
 
+    def get_transaction(self):
+        return 1
+
     def test_readonly_http_works(self):
         # we should be able to read from http with a versioned file.
         vf = self.get_file()
@@ -964,7 +967,8 @@ class TestReadonlyHttpMixin(object):
 class TestWeaveHTTP(TestCaseWithWebserver, TestReadonlyHttpMixin):
 
     def get_file(self):
-        return WeaveFile('foo', get_transport(self.get_url('.')), create=True)
+        return WeaveFile('foo', get_transport(self.get_url('.')), create=True,
+            get_scope=self.get_transaction)
 
     def get_factory(self):
         return WeaveFile
@@ -973,11 +977,11 @@ class TestWeaveHTTP(TestCaseWithWebserver, TestReadonlyHttpMixin):
 class TestKnitHTTP(TestCaseWithWebserver, TestReadonlyHttpMixin):
 
     def get_file(self):
-        return KnitVersionedFile('foo', get_transport(self.get_url('.')),
-                                 delta=True, create=True)
+        return make_file_knit('foo', get_transport(self.get_url('.')),
+            delta=True, create=True, get_scope=self.get_transaction)
 
     def get_factory(self):
-        return KnitVersionedFile
+        return make_file_knit
 
 
 class MergeCasesMixin(object):
@@ -1220,7 +1224,7 @@ class MergeCasesMixin(object):
 class TestKnitMerge(TestCaseWithMemoryTransport, MergeCasesMixin):
 
     def get_file(self, name='foo'):
-        return KnitVersionedFile(name, get_transport(self.get_url('.')),
+        return make_file_knit(name, get_transport(self.get_url('.')),
                                  delta=True, create=True)
 
     def log_contents(self, w):
@@ -1240,23 +1244,3 @@ class TestWeaveMerge(TestCaseWithMemoryTransport, MergeCasesMixin):
 
     overlappedInsertExpected = ['aaa', '<<<<<<< ', 'xxx', 'yyy', '=======', 
                                 'xxx', '>>>>>>> ', 'bbb']
-
-
-class TestFormatSignatures(TestCaseWithMemoryTransport):
-
-    def get_knit_file(self, name, annotated):
-        if annotated:
-            factory = KnitAnnotateFactory()
-        else:
-            factory = KnitPlainFactory()
-        return KnitVersionedFile(
-            name, get_transport(self.get_url('.')), create=True,
-            factory=factory)
-
-    def test_knit_format_signatures(self):
-        """Different formats of knit have different signature strings."""
-        knit = self.get_knit_file('a', True)
-        self.assertEqual('knit-annotated', knit.get_format_signature())
-        knit = self.get_knit_file('p', False)
-        self.assertEqual('knit-plain', knit.get_format_signature())
-

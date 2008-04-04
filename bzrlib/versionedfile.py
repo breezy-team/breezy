@@ -55,10 +55,6 @@ class VersionedFile(object):
     Texts are identified by a version-id string.
     """
 
-    def __init__(self, access_mode):
-        self.finished = False
-        self._access_mode = access_mode
-
     @staticmethod
     def check_not_reserved_id(version_id):
         revision.check_not_reserved_id(version_id)
@@ -160,13 +156,6 @@ class VersionedFile(object):
         for line in lines:
             if '\n' in line[:-1]:
                 raise errors.BzrBadParameterContainsNewline("lines")
-
-    def _check_write_ok(self):
-        """Is the versioned file marked as 'finished' ? Raise if it is."""
-        if self.finished:
-            raise errors.OutSideTransaction()
-        if self._access_mode != 'w':
-            raise errors.ReadOnlyObjectDirtiedError(self)
 
     def enable_cache(self):
         """Tell this versioned file that it should cache any data it reads.
@@ -297,10 +286,6 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.get_sha1s)
 
-    def get_suffixes(self):
-        """Return the file suffixes associated with this versioned file."""
-        raise NotImplementedError(self.get_suffixes)
-    
     def get_text(self, version_id):
         """Return version contents as a text string.
 
@@ -487,14 +472,6 @@ class VersionedFile(object):
             the underlying implementation.
         """
         return self.get_parent_map(version_ids).iteritems()
-
-    def transaction_finished(self):
-        """The transaction that this file was opened in has finished.
-
-        This records self.finished = True and should cause all mutating
-        operations to error.
-        """
-        self.finished = True
 
     def plan_merge(self, ver_a, ver_b):
         """Return pseudo-annotation indicating how the two versions merge.

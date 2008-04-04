@@ -37,6 +37,8 @@ from bzrlib.errors import (
 from bzrlib.index import *
 from bzrlib.knit import (
     AnnotatedKnitContent,
+    DATA_SUFFIX,
+    INDEX_SUFFIX,
     KnitContent,
     KnitGraphIndex,
     KnitVersionedFile,
@@ -45,6 +47,7 @@ from bzrlib.knit import (
     _KnitAccess,
     _KnitData,
     _KnitIndex,
+    make_file_knit,
     _PackAccess,
     PlainKnitContent,
     _StreamAccess,
@@ -492,7 +495,7 @@ class LowLevelKnitIndexTests(TestCase):
         self.addCleanup(reset)
         from bzrlib._knit_load_data_py import _load_data_py
         knit._load_data = _load_data_py
-        return _KnitIndex(*args, **kwargs)
+        return _KnitIndex(get_scope=lambda:None, *args, **kwargs)
 
     def test_no_such_file(self):
         transport = MockTransport()
@@ -1075,22 +1078,28 @@ class LowLevelKnitIndexTests_c(LowLevelKnitIndexTests):
         self.addCleanup(reset)
         from bzrlib._knit_load_data_c import _load_data_c
         knit._load_data = _load_data_c
-        return _KnitIndex(*args, **kwargs)
-
+        return _KnitIndex(get_scope=lambda:None, *args, **kwargs)
 
 
 class KnitTests(TestCaseWithTransport):
     """Class containing knit test helper routines."""
 
     def make_test_knit(self, annotate=False, delay_create=False, index=None,
-                       name='test'):
+                       name='test', delta=True, access_mode='w'):
         if not annotate:
             factory = KnitPlainFactory()
         else:
             factory = None
-        return KnitVersionedFile(name, get_transport('.'), access_mode='w',
-                                 factory=factory, create=True,
-                                 delay_create=delay_create, index=index)
+        if index is None:
+            index = _KnitIndex(get_transport('.'), name + INDEX_SUFFIX,
+                access_mode, create=True, file_mode=None,
+                create_parent_dir=False, delay_create=delay_create,
+                dir_mode=None, get_scope=lambda:None)
+        access = _KnitAccess(get_transport('.'), name + DATA_SUFFIX, None,
+            None, delay_create, False)
+        return KnitVersionedFile(name, get_transport('.'), factory=factory,
+            create=True, delay_create=delay_create, index=index,
+            access_method=access, delta=delta)
 
     def assertRecordContentEqual(self, knit, version_id, candidate_content):
         """Assert that some raw record content matches the raw record content
@@ -1115,7 +1124,7 @@ class BasicKnitTests(KnitTests):
     def test_make_explicit_index(self):
         """We can supply an index to use."""
         knit = KnitVersionedFile('test', get_transport('.'),
-            index='strangelove')
+            index='strangelove', access_method="a")
         self.assertEqual(knit._index, 'strangelove')
 
     def test_knit_add(self):
@@ -1162,7 +1171,8 @@ class BasicKnitTests(KnitTests):
         k = self.make_test_knit()
         k.add_lines('text-1', [], split_lines(TEXT_1))
         del k
-        k2 = KnitVersionedFile('test', get_transport('.'), access_mode='r', factory=KnitPlainFactory(), create=True)
+        k2 = make_file_knit('test', get_transport('.'), access_mode='r',
+            factory=KnitPlainFactory(), create=True)
         self.assertTrue(k2.has_version('text-1'))
         self.assertEqualDiff(''.join(k2.get_lines('text-1')), TEXT_1)
 
@@ -1190,11 +1200,11 @@ class BasicKnitTests(KnitTests):
     def test_incomplete(self):
         """Test if texts without a ending line-end can be inserted and
         extracted."""
-        k = KnitVersionedFile('test', get_transport('.'), delta=False, create=True)
+        k = make_file_knit('test', get_transport('.'), delta=False, create=True)
         k.add_lines('text-1', [], ['a\n',    'b'  ])
         k.add_lines('text-2', ['text-1'], ['a\rb\n', 'b\n'])
         # reopening ensures maximum room for confusion
-        k = KnitVersionedFile('test', get_transport('.'), delta=False, create=True)
+        k = make_file_knit('test', get_transport('.'), delta=False, create=True)
         self.assertEquals(k.get_lines('text-1'), ['a\n',    'b'  ])
         self.assertEquals(k.get_lines('text-2'), ['a\rb\n', 'b\n'])
 
@@ -1222,8 +1232,7 @@ class BasicKnitTests(KnitTests):
 
     def test_add_delta(self):
         """Store in knit with parents"""
-        k = KnitVersionedFile('test', get_transport('.'), factory=KnitPlainFactory(),
-            delta=True, create=True)
+        k = self.make_test_knit(annotate=False)
         self.add_stock_one_and_one_a(k)
         k.clear_cache()
         self.assertEqualDiff(''.join(k.get_lines('text-1a')), TEXT_1A)
@@ -1233,8 +1242,7 @@ class BasicKnitTests(KnitTests):
         index = InMemoryGraphIndex(2)
         knit_index = KnitGraphIndex(index, add_callback=index.add_nodes,
             deltas=True)
-        k = KnitVersionedFile('test', get_transport('.'),
-            delta=True, create=True, index=knit_index)
+        k = self.make_test_knit(annotate=True, index=knit_index)
         self.add_stock_one_and_one_a(k)
         k.clear_cache()
         self.assertEqualDiff(''.join(k.get_lines('text-1a')), TEXT_1A)
@@ -1248,8 +1256,7 @@ class BasicKnitTests(KnitTests):
 
     def test_annotate(self):
         """Annotations"""
-        k = KnitVersionedFile('knit', get_transport('.'), factory=KnitAnnotateFactory(),
-            delta=True, create=True)
+        k = self.make_test_knit(annotate=True, name='knit')
         self.insert_and_test_small_annotate(k)
 
     def insert_and_test_small_annotate(self, k):
@@ -1263,8 +1270,7 @@ class BasicKnitTests(KnitTests):
 
     def test_annotate_fulltext(self):
         """Annotations"""
-        k = KnitVersionedFile('knit', get_transport('.'), factory=KnitAnnotateFactory(),
-            delta=False, create=True)
+        k = self.make_test_knit(annotate=True, name='knit', delta=False)
         self.insert_and_test_small_annotate(k)
 
     def test_annotate_merge_1(self):
@@ -1341,13 +1347,13 @@ class BasicKnitTests(KnitTests):
         self.assertEquals(origins[2], ('text-1', 'c\n'))
 
     def _test_join_with_factories(self, k1_factory, k2_factory):
-        k1 = KnitVersionedFile('test1', get_transport('.'), factory=k1_factory, create=True)
+        k1 = make_file_knit('test1', get_transport('.'), factory=k1_factory, create=True)
         k1.add_lines('text-a', [], ['a1\n', 'a2\n', 'a3\n'])
         k1.add_lines('text-b', ['text-a'], ['a1\n', 'b2\n', 'a3\n'])
         k1.add_lines('text-c', [], ['c1\n', 'c2\n', 'c3\n'])
         k1.add_lines('text-d', ['text-c'], ['c1\n', 'd2\n', 'd3\n'])
         k1.add_lines('text-m', ['text-b', 'text-d'], ['a1\n', 'b2\n', 'd3\n'])
-        k2 = KnitVersionedFile('test2', get_transport('.'), factory=k2_factory, create=True)
+        k2 = make_file_knit('test2', get_transport('.'), factory=k2_factory, create=True)
         count = k2.join(k1, version_ids=['text-m'])
         self.assertEquals(count, 5)
         self.assertTrue(k2.has_version('text-a'))
@@ -1374,14 +1380,14 @@ class BasicKnitTests(KnitTests):
         self._test_join_with_factories(KnitPlainFactory(), None)
 
     def test_reannotate(self):
-        k1 = KnitVersionedFile('knit1', get_transport('.'),
+        k1 = make_file_knit('knit1', get_transport('.'),
                                factory=KnitAnnotateFactory(), create=True)
         # 0
         k1.add_lines('text-a', [], ['a\n', 'b\n'])
         # 1
         k1.add_lines('text-b', ['text-a'], ['a\n', 'c\n'])
 
-        k2 = KnitVersionedFile('test2', get_transport('.'),
+        k2 = make_file_knit('test2', get_transport('.'),
                                factory=KnitAnnotateFactory(), create=True)
         k2.join(k1, version_ids=['text-b'])
 
@@ -1404,8 +1410,8 @@ class BasicKnitTests(KnitTests):
 
     def test_get_line_delta_texts(self):
         """Make sure we can call get_texts on text with reused line deltas"""
-        k1 = KnitVersionedFile('test1', get_transport('.'), 
-                               factory=KnitPlainFactory(), create=True)
+        k1 = make_file_knit('test1', get_transport('.'),
+            factory=KnitPlainFactory(), create=True)
         for t in range(3):
             if t == 0:
                 parents = []
@@ -1416,7 +1422,7 @@ class BasicKnitTests(KnitTests):
         
     def test_iter_lines_reads_in_order(self):
         instrumented_t = get_transport('trace+memory:///')
-        k1 = KnitVersionedFile('id', instrumented_t, create=True, delta=True)
+        k1 = make_file_knit('id', instrumented_t, create=True, delta=True)
         self.assertEqual([('get', 'id.kndx',)], instrumented_t._activity)
         # add texts with no required ordering
         k1.add_lines('base', [], ['text\n'])
@@ -1452,19 +1458,19 @@ class BasicKnitTests(KnitTests):
             "\nrevid2 line-delta 84 82 0 :",
             'test.kndx')
         # we should be able to load this file again
-        knit = KnitVersionedFile('test', get_transport('.'), access_mode='r')
+        knit = make_file_knit('test', get_transport('.'), access_mode='r')
         self.assertEqual(['revid', 'revid2'], knit.versions())
         # write a short write to the file and ensure that its ignored
         indexfile = file('test.kndx', 'ab')
         indexfile.write('\nrevid3 line-delta 166 82 1 2 3 4 5 .phwoar:demo ')
         indexfile.close()
         # we should be able to load this file again
-        knit = KnitVersionedFile('test', get_transport('.'), access_mode='w')
+        knit = make_file_knit('test', get_transport('.'), access_mode='w')
         self.assertEqual(['revid', 'revid2'], knit.versions())
         # and add a revision with the same id the failed write had
         knit.add_lines('revid3', ['revid2'], ['a\n'])
         # and when reading it revid3 should now appear.
-        knit = KnitVersionedFile('test', get_transport('.'), access_mode='r')
+        knit = make_file_knit('test', get_transport('.'), access_mode='r')
         self.assertEqual(['revid', 'revid2', 'revid3'], knit.versions())
         self.assertEqual({'revid3':('revid2',)}, knit.get_parent_map(['revid3']))
 
@@ -1485,11 +1491,11 @@ class BasicKnitTests(KnitTests):
         """create_parent_dir can create knits in nonexistant dirs"""
         # Has no effect if we don't set 'delay_create'
         trans = get_transport('.')
-        self.assertRaises(NoSuchFile, KnitVersionedFile, 'dir/test',
+        self.assertRaises(NoSuchFile, make_file_knit, 'dir/test',
                           trans, access_mode='w', factory=None,
                           create=True, create_parent_dir=True)
         # Nothing should have changed yet
-        knit = KnitVersionedFile('dir/test', trans, access_mode='w',
+        knit = make_file_knit('dir/test', trans, access_mode='w',
                                  factory=None, create=True,
                                  create_parent_dir=True,
                                  delay_create=True)
@@ -1510,12 +1516,9 @@ class BasicKnitTests(KnitTests):
         if not trans._can_roundtrip_unix_modebits():
             # Can't roundtrip, so no need to run this test
             return
-        knit = KnitVersionedFile('dir/test', trans, access_mode='w',
-                                 factory=None, create=True,
-                                 create_parent_dir=True,
-                                 delay_create=True,
-                                 file_mode=0600,
-                                 dir_mode=0700)
+        knit = make_file_knit('dir/test', trans, access_mode='w', factory=None,
+            create=True, create_parent_dir=True, delay_create=True,
+            file_mode=0600, dir_mode=0700)
         knit.add_lines('revid', [], ['a\n'])
         self.assertTransportMode(trans, 'dir', 0700)
         self.assertTransportMode(trans, 'dir/test.knit', 0600)
@@ -1526,12 +1529,9 @@ class BasicKnitTests(KnitTests):
         if not trans._can_roundtrip_unix_modebits():
             # Can't roundtrip, so no need to run this test
             return
-        knit = KnitVersionedFile('dir/test', trans, access_mode='w',
-                                 factory=None, create=True,
-                                 create_parent_dir=True,
-                                 delay_create=True,
-                                 file_mode=0660,
-                                 dir_mode=0770)
+        knit = make_file_knit('dir/test', trans, access_mode='w', factory=None,
+            create=True, create_parent_dir=True, delay_create=True,
+            file_mode=0660, dir_mode=0770)
         knit.add_lines('revid', [], ['a\n'])
         self.assertTransportMode(trans, 'dir', 0770)
         self.assertTransportMode(trans, 'dir/test.knit', 0660)
@@ -1542,12 +1542,9 @@ class BasicKnitTests(KnitTests):
         if not trans._can_roundtrip_unix_modebits():
             # Can't roundtrip, so no need to run this test
             return
-        knit = KnitVersionedFile('dir/test', trans, access_mode='w',
-                                 factory=None, create=True,
-                                 create_parent_dir=True,
-                                 delay_create=True,
-                                 file_mode=0666,
-                                 dir_mode=0777)
+        knit = make_file_knit('dir/test', trans, access_mode='w', factory=None,
+            create=True, create_parent_dir=True, delay_create=True,
+            file_mode=0666, dir_mode=0777)
         knit.add_lines('revid', [], ['a\n'])
         self.assertTransportMode(trans, 'dir', 0777)
         self.assertTransportMode(trans, 'dir/test.knit', 0666)
@@ -2056,7 +2053,7 @@ class TestWeaveToKnit(KnitTests):
     def test_weave_to_knit_matches(self):
         # check that the WeaveToKnit is_compatible function
         # registers True for a Weave to a Knit.
-        w = Weave()
+        w = Weave(get_scope=lambda:None)
         k = self.make_test_knit()
         self.failUnless(WeaveToKnit.is_compatible(w, k))
         self.failIf(WeaveToKnit.is_compatible(k, w))
@@ -2981,3 +2978,13 @@ class Test_StreamAccess(KnitTests):
             knit.get_data_stream([]))
         self.assertRaises(errors.KnitCorrupt,
             list, access.get_raw_records([(True, "A", None, None)]))
+
+
+class TestFormatSignatures(KnitTests):
+
+    def test_knit_format_signatures(self):
+        """Different formats of knit have different signature strings."""
+        knit = self.make_test_knit(name='a', annotate=True)
+        self.assertEqual('knit-annotated', knit.get_format_signature())
+        knit = self.make_test_knit(name='p', annotate=False)
+        self.assertEqual('knit-plain', knit.get_format_signature())

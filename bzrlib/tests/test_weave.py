@@ -65,7 +65,7 @@ class TestBase(TestCase):
 class WeaveContains(TestBase):
     """Weave __contains__ operator"""
     def runTest(self):
-        k = Weave()
+        k = Weave(get_scope=lambda:None)
         self.assertFalse('foo' in k)
         k.add_lines('foo', [], TEXT_1)
         self.assertTrue('foo' in k)

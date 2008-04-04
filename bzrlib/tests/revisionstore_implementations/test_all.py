@@ -37,6 +37,10 @@ class TestAll(TestCaseWithTransport):
         super(TestAll, self).setUp()
         self.store = self.store_factory.create(self.get_url('.'))
         self.transaction = PassThroughTransaction()
+        self.store.get_scope = self.get_transaction
+
+    def get_transaction(self):
+        return self.transaction
 
     def test_add_has_get(self):
         rev = self.add_sample_rev()

@@ -496,7 +496,35 @@ class KnitPlainFactory(_KnitFactory):
 
 def make_empty_knit(transport, relpath):
     """Construct a empty knit at the specified location."""
-    k = KnitVersionedFile(transport, relpath, 'w', KnitPlainFactory)
+    k = make_file_knit(transport, relpath, 'w', KnitPlainFactory)
+
+
+def make_file_knit(name, transport, file_mode=None, access_mode='w',
+    factory=None, delta=True, create=False, create_parent_dir=False,
+    delay_create=False, dir_mode=None, get_scope=None):
+    """Factory to create a KnitVersionedFile for a .knit/.kndx file pair."""
+    if factory is None:
+        factory = KnitAnnotateFactory()
+    else:
+        factory = KnitPlainFactory()
+    if get_scope is None:
+        get_scope = lambda:None
+    index = _KnitIndex(transport, name + INDEX_SUFFIX,
+        access_mode, create=create, file_mode=file_mode,
+        create_parent_dir=create_parent_dir, delay_create=delay_create,
+        dir_mode=dir_mode, get_scope=get_scope)
+    access = _KnitAccess(transport, name + DATA_SUFFIX, file_mode,
+        dir_mode, ((create and not len(index)) and delay_create),
+        create_parent_dir)
+    return KnitVersionedFile(name, transport, factory=factory,
+        create=create, delay_create=delay_create, index=index,
+        access_method=access)
+
+
+def get_suffixes():
+    """Return the suffixes used by file based knits."""
+    return [DATA_SUFFIX, INDEX_SUFFIX]
+make_file_knit.get_suffixes = get_suffixes
 
 
 class KnitVersionedFile(VersionedFile):
@@ -514,7 +542,7 @@ class KnitVersionedFile(VersionedFile):
     stored and retrieved.
     """
 
-    def __init__(self, relpath, transport, file_mode=None, access_mode=None,
+    def __init__(self, relpath, transport, file_mode=None,
         factory=None, delta=True, create=False, create_parent_dir=False,
         delay_create=False, dir_mode=None, index=None, access_method=None):
         """Construct a knit at location specified by relpath.
@@ -527,30 +555,18 @@ class KnitVersionedFile(VersionedFile):
             actually be created until the first data is stored.
         :param index: An index to use for the knit.
         """
-        if access_mode is None:
-            access_mode = 'w'
-        super(KnitVersionedFile, self).__init__(access_mode)
-        assert access_mode in ('r', 'w'), "invalid mode specified %r" % access_mode
+        super(KnitVersionedFile, self).__init__()
         self.transport = transport
         self.filename = relpath
         self.factory = factory or KnitAnnotateFactory()
-        self.writable = (access_mode == 'w')
         self.delta = delta
 
         self._max_delta_chain = 200
 
-        if index is None:
-            self._index = _KnitIndex(transport, relpath + INDEX_SUFFIX,
-                access_mode, create=create, file_mode=file_mode,
-                create_parent_dir=create_parent_dir, delay_create=delay_create,
-                dir_mode=dir_mode)
-        else:
-            self._index = index
-        if access_method is None:
-            _access = _KnitAccess(transport, relpath + DATA_SUFFIX, file_mode, dir_mode,
-                ((create and not len(self)) and delay_create), create_parent_dir)
-        else:
-            _access = access_method
+        if None in (access_method, index):
+            raise NotImplementedError, "No default access_method or index any more"
+        self._index = index
+        _access = access_method
         if create and not len(self) and not delay_create:
             _access.create()
         self._data = _KnitData(_access)
@@ -587,6 +603,9 @@ class KnitVersionedFile(VersionedFile):
             return False
 
         return fulltext_size > delta_size
+
+    def _check_write_ok(self):
+        return self._index._check_write_ok()
 
     def _add_raw_records(self, records, data):
         """Add all the records 'records' with data pre-joined in 'data'.
@@ -766,11 +785,6 @@ class KnitVersionedFile(VersionedFile):
         record_map = self._get_record_map(version_ids)
         # record entry 2 is the 'digest'.
         return [record_map[v][2] for v in version_ids]
-
-    @staticmethod
-    def get_suffixes():
-        """See VersionedFile.get_suffixes()."""
-        return [DATA_SUFFIX, INDEX_SUFFIX]
 
     @deprecated_method(one_four)
     def has_ghost(self, version_id):
@@ -1400,8 +1414,15 @@ class _KnitIndex(_KnitComponentFile):
                                    parents,
                                    index)
 
+    def _check_write_ok(self):
+        if self.get_scope() != self.scope:
+            raise errors.OutSideTransaction()
+        if self._mode != 'w':
+            raise errors.ReadOnlyObjectDirtiedError(self)
+
     def __init__(self, transport, filename, mode, create=False, file_mode=None,
-                 create_parent_dir=False, delay_create=False, dir_mode=None):
+        create_parent_dir=False, delay_create=False, dir_mode=None,
+        get_scope=None):
         _KnitComponentFile.__init__(self, transport, filename, mode,
                                     file_mode=file_mode,
                                     create_parent_dir=create_parent_dir,
@@ -1428,6 +1449,8 @@ class _KnitIndex(_KnitComponentFile):
             else:
                 self._transport.put_bytes_non_atomic(
                     self._filename, self.HEADER, mode=self._file_mode)
+        self.scope = get_scope()
+        self.get_scope = get_scope
 
     def get_ancestry(self, versions, topo_sorted=True):
         """See VersionedFile.get_ancestry."""
@@ -1675,6 +1698,9 @@ class KnitGraphIndex(object):
         if deltas and not parents:
             raise KnitCorrupt(self, "Cannot do delta compression without "
                 "parent tracking.")
+
+    def _check_write_ok(self):
+        pass
 
     def _get_entries(self, keys, check_present=False):
         """Get the entries for keys.
@@ -2644,8 +2670,8 @@ class _KnitData(object):
 class InterKnit(InterVersionedFile):
     """Optimised code paths for knit to knit operations."""
     
-    _matching_file_from_factory = KnitVersionedFile
-    _matching_file_to_factory = KnitVersionedFile
+    _matching_file_from_factory = staticmethod(make_file_knit)
+    _matching_file_to_factory = staticmethod(make_file_knit)
     
     @staticmethod
     def is_compatible(source, target):
@@ -2808,7 +2834,7 @@ class WeaveToKnit(InterVersionedFile):
     """Optimised code paths for weave to knit operations."""
     
     _matching_file_from_factory = bzrlib.weave.WeaveFile
-    _matching_file_to_factory = KnitVersionedFile
+    _matching_file_to_factory = staticmethod(make_file_knit)
     
     @staticmethod
     def is_compatible(source, target):

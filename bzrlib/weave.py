@@ -185,7 +185,7 @@ class Weave(VersionedFile):
     __slots__ = ['_weave', '_parents', '_sha1s', '_names', '_name_map',
                  '_weave_name', '_matcher']
     
-    def __init__(self, weave_name=None, access_mode='w', matcher=None):
+    def __init__(self, weave_name=None, access_mode='w', matcher=None, get_scope=None):
         super(Weave, self).__init__(access_mode)
         self._weave = []
         self._parents = []
@@ -197,9 +197,21 @@ class Weave(VersionedFile):
             self._matcher = bzrlib.patiencediff.PatienceSequenceMatcher
         else:
             self._matcher = matcher
+        if get_scope is None:
+            get_scope = lambda:None
+        self.get_scope = get_scope
+        self.scope = get_scope()
+        self._access_mode = access_mode
 
     def __repr__(self):
         return "Weave(%r)" % self._weave_name
+
+    def _check_write_ok(self):
+        """Is the versioned file marked as 'finished' ? Raise if it is."""
+        if self.get_scope() != self.scope:
+            raise errors.OutSideTransaction()
+        if self._access_mode != 'w':
+            raise errors.ReadOnlyObjectDirtiedError(self)
 
     def copy(self):
         """Return a deep copy of self.
@@ -865,12 +877,12 @@ class WeaveFile(Weave):
 
     WEAVE_SUFFIX = '.weave'
     
-    def __init__(self, name, transport, filemode=None, create=False, access_mode='w'):
+    def __init__(self, name, transport, filemode=None, create=False, access_mode='w', get_scope=None):
         """Create a WeaveFile.
         
         :param create: If not True, only open an existing knit.
         """
-        super(WeaveFile, self).__init__(name, access_mode)
+        super(WeaveFile, self).__init__(name, access_mode, get_scope=get_scope)
         self._transport = transport
         self._filemode = filemode
         try:

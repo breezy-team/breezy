@@ -106,6 +106,10 @@ IN DEVELOPMENT
       non-ghost aware repository such as weaves will now fail if there are
       ghosts.  (Robert Collins)
 
+    * ``KnitVersionedFile`` no longer accepts an ``access_mode`` parameter, and
+      now requires the ``index`` and ``access_method`` parameters to be
+      supplied. (Robert Collins)
+
     * Log formatters must now provide log_revision instead of show and
       show_merge_revno methods. The latter had been deprecated since the 0.17
       release. (James Westby)
@@ -118,6 +122,10 @@ IN DEVELOPMENT
 
     * ``Transport.get_shared_medium`` is deprecated.  Use
       ``Transport.get_smart_medium`` instead.  (Andrew Bennetts)
+
+    * ``VersionedFile`` factories now accept a get_scope parameter rather
+      than using a call to ``transaction_finished``, allowing the removal of
+      the fixed list of versioned files per repository. (Robert Collins)
 
     * ``VersionedFile.create_empty`` is removed. This method presupposed a
       sensible mapping to a transport for individual files, but pack backed

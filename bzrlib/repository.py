@@ -2038,6 +2038,21 @@ class MetaDirRepository(Repository):
         return not self.control_files._transport.has('no-working-trees')
 
 
+class MetaDirVersionedFileRepository(MetaDirRepository):
+    """Repositories in a meta-dir, that work via versioned file objects."""
+
+    def __init__(self, _format, a_bzrdir, control_files, _revision_store, control_store, text_store):
+        super(MetaDirVersionedFileRepository, self).__init__(_format,
+                                                a_bzrdir,
+                                                control_files,
+                                                _revision_store,
+                                                control_store,
+                                                text_store)
+        _revision_store.get_scope = self.get_transaction
+        control_store.get_scope = self.get_transaction
+        text_store.get_scope = self.get_transaction
+
+
 class RepositoryFormatRegistry(registry.Registry):
     """Registry of RepositoryFormats."""
 
