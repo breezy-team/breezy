@@ -898,9 +898,6 @@ class TreeConfig(IniBasedConfig):
     def _get_parser(self, file=None):
         if file is not None:
             return IniBasedConfig._get_parser(file)
-        return self._get_config()
-
-    def _get_config(self):
         return self._config._get_configobj()
 
     def get_option(self, name, section=None, default=None):
@@ -1137,6 +1134,12 @@ class BzrDirConfig(object):
 
 
 class TransportConfig(object):
+    """A configuration representation that stores data on a Transport.
+
+    It is a low-level object that considers config data to be name/value pairs
+    that may be associated with a section.  Assigning meaning to the these
+    values is done at higher levels like TreeConfig.
+    """
 
     def __init__(self, transport, filename):
         self._transport = transport
