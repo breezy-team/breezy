@@ -358,14 +358,20 @@ class SvnRaTransport(Transport):
 
             def next(self):
                 self.semaphore.acquire()
-                return self.pending.pop()
+                ret = self.pending.pop()
+                if isinstance(ret, Exception):
+                    raise ret
+                return ret
 
             def run(self):
                 def rcvr(log_entry, pool):
                     self.pending.append(log_entry)
                     self.semaphore.release()
-                self.get_log(rcvr)
-                self.pending.append(None)
+                try:
+                    self.get_log(rcvr)
+                    self.pending.append(None)
+                except Exception, e:
+                    self.pending.append(e)
                 self.semaphore.release()
         
         fetcher = logfetcher(lambda rcvr: self.get_log(path, from_revnum, to_revnum, limit, discover_changed_paths, strict_node_history, revprops, rcvr))
