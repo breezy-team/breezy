@@ -192,7 +192,8 @@ class BzrDir(object):
             repository_policy = result.determine_repository_policy(
                 force_new_repo)
             result_repo = repository_policy.apply(
-                local_repo.make_working_trees())
+                local_repo.make_working_trees(),
+                local_repo.is_shared())
             result_repo.fetch(local_repo, revision_id=revision_id)
         # 1 if there is a branch present
         #   make sure its content is available in the target repository
@@ -2643,7 +2644,7 @@ class RepositoryPolicy(object):
     def configure_branch(self, branch):
         pass
 
-    def apply(self):
+    def apply(self, make_working_trees=True, shared=False):
         raise NotImplemented(RepositoryPolicy.apply)
 
 
@@ -2653,8 +2654,8 @@ class CreateRepository(RepositoryPolicy):
         RepositoryPolicy.__init__(self)
         self._bzrdir = bzrdir
 
-    def apply(self, make_working_trees=True):
-        repository = self._bzrdir.create_repository()
+    def apply(self, make_working_trees=True, shared=False):
+        repository = self._bzrdir.create_repository(shared=shared)
         if not isinstance(repository, str):
             repository.set_make_working_trees(make_working_trees)
         return repository
@@ -2666,7 +2667,7 @@ class UseExistingRepository(RepositoryPolicy):
         RepositoryPolicy.__init__(self)
         self._repository = repository
 
-    def apply(self, make_working_trees=True):
+    def apply(self, make_working_trees=True, shared=False):
         return self._repository
 
 
