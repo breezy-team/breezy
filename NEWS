@@ -89,6 +89,9 @@ IN DEVELOPMENT
 
     * Launchpad locations (lp: URLs) can be pulled.  (Aaron Bentley, #181945)
 
+    * Merges that add files to deleted root directories complete.  They
+      do create conflicts.  (Aaron Bentley, #210092)
+
     * vsftp's return ``550 RNFR command failed.`` supported.
       (Marcus Trautwig, #129786)
 
