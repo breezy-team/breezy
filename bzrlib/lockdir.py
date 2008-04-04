@@ -325,7 +325,8 @@ class LockDir(object):
                 self.transport.delete_tree(tmpname)
             self._trace("... unlock succeeded after %dms",
                     (time.time() - start_time) * 1000)
-            result = lock.LockResult(self, old_nonce)
+            result = lock.LockResult(self.transport.abspath(self.path),
+                old_nonce)
             for hook in lock.hooks['released']:
                 hook(result)
 
@@ -461,7 +462,8 @@ class LockDir(object):
         if self._fake_read_lock:
             raise LockContention(self)
         result = self._attempt_lock()
-        hook_result = lock.LockResult(self, result)
+        hook_result = lock.LockResult(self.transport.abspath(self.path),
+                self.nonce)
         for hook in lock.hooks['acquired']:
             hook(hook_result)
         return result

@@ -667,9 +667,10 @@ class TestLockDir(TestCaseWithTransport):
         ld.create()
         self.assertEqual([], self._calls)
         result = ld.attempt_lock()
-        self.assertEqual([lock.LockResult(ld, result)], self._calls)
+        lock_path = ld.transport.abspath(ld.path)
+        self.assertEqual([lock.LockResult(lock_path, result)], self._calls)
         ld.unlock()
-        self.assertEqual([lock.LockResult(ld, result)], self._calls)
+        self.assertEqual([lock.LockResult(lock_path, result)], self._calls)
 
     def test_PhysicalLock_dot_acquired_fail(self):
         # the PhysicalLock.acquired hook does not fire on failure.
@@ -697,7 +698,8 @@ class TestLockDir(TestCaseWithTransport):
         result = ld.attempt_lock()
         self.assertEqual([], self._calls)
         ld.unlock()
-        self.assertEqual([lock.LockResult(ld, result)], self._calls)
+        lock_path = ld.transport.abspath(ld.path)
+        self.assertEqual([lock.LockResult(lock_path, result)], self._calls)
 
     def test_PhysicalLock_dot_released_fail(self):
         # the PhysicalLock.released hook does not fire on failure.

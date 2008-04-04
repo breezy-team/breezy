@@ -69,13 +69,13 @@ hooks = PhysicalLockHooks()
 
 class LockResult(object):
 
-    def __init__(self, lock, details=None):
+    def __init__(self, lock_url, details=None):
         """Create a lock result for lock with optional details about the lock."""
-        self.lock = lock
+        self.lock_url = lock_url
         self.details = details
 
     def __eq__(self, other):
-        return self.lock == other.lock and self.details == other.details
+        return self.lock_url == other.lock_url and self.details == other.details
 
 
 class _OSLock(object):
