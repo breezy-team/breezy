@@ -204,7 +204,8 @@ class BzrDir(object):
             pass
         else:
             result_branch = local_branch.clone(result, revision_id=revision_id)
-            repository_policy.configure_branch(result_branch)
+            if repository_policy is not None:
+                repository_policy.configure_branch(result_branch)
         try:
             result_repo = result.find_repository()
         except errors.NoRepositoryPresent:
