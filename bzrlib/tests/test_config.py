@@ -33,6 +33,7 @@ from bzrlib import (
     urlutils,
     tests,
     trace,
+    transport,
     )
 from bzrlib.util.configobj import configobj
 
@@ -160,6 +161,7 @@ class FakeControlFiles(object):
     def __init__(self, user_id=None):
         self.email = user_id
         self.files = {}
+        self._transport = self
 
     def get_utf8(self, filename):
         if filename != 'email':
@@ -176,6 +178,9 @@ class FakeControlFiles(object):
 
     def put(self, filename, fileobj):
         self.files[filename] = fileobj.read()
+
+    def put_file(self, filename, fileobj):
+        return self.put(filename, fileobj)
 
 
 class InstrumentedConfig(config.Config):
@@ -1136,12 +1141,12 @@ class TestTreeConfig(tests.TestCaseWithTransport):
         self.assertEqual(value, 'value3-section')
 
 
-class TestBzrDirConfig(tests.TestCaseWithTransport):
+class TestTransportConfig(tests.TestCaseWithTransport):
 
     def test_get_value(self):
         """Test that retreiving a value from a section is possible"""
-        my_dir = self.make_bzrdir('.')
-        bzrdir_config = config.BzrDirConfig(my_dir.transport)
+        bzrdir_config = config.TransportConfig(transport.get_transport('.'),
+                                               'control.conf')
         bzrdir_config.set_option('value', 'key', 'SECTION')
         bzrdir_config.set_option('value2', 'key2')
         bzrdir_config.set_option('value3-top', 'key3')
