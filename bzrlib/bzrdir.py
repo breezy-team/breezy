@@ -2644,7 +2644,7 @@ class RepositoryPolicy(object):
     def configure_branch(self, branch):
         pass
 
-    def apply(self, make_working_trees=True, shared=False):
+    def apply(self, make_working_trees=None, shared=False):
         raise NotImplemented(RepositoryPolicy.apply)
 
 
@@ -2654,9 +2654,9 @@ class CreateRepository(RepositoryPolicy):
         RepositoryPolicy.__init__(self)
         self._bzrdir = bzrdir
 
-    def apply(self, make_working_trees=True, shared=False):
+    def apply(self, make_working_trees=None, shared=False):
         repository = self._bzrdir.create_repository(shared=shared)
-        if not isinstance(repository, str):
+        if make_working_trees is not None:
             repository.set_make_working_trees(make_working_trees)
         return repository
 
@@ -2667,7 +2667,7 @@ class UseExistingRepository(RepositoryPolicy):
         RepositoryPolicy.__init__(self)
         self._repository = repository
 
-    def apply(self, make_working_trees=True, shared=False):
+    def apply(self, make_working_trees=None, shared=False):
         return self._repository
 
 
