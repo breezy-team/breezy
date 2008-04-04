@@ -2815,6 +2815,9 @@ class InterPackRepo(InterSameDataRepository):
             graph = self.target.get_graph(other_repository=self.source)
             found_ids = frozenset(chain(*graph._make_breadth_first_searcher(
                 [revision_id])))
+            if (len(found_ids) == 1 and revision_id not in
+                graph.get_parent_map(revision_id)):
+                raise errors.NoSuchRevision(self.target, revision_id)
             # Double query here: should be able to avoid this by changing the
             # graph api further.
             result_set = found_ids - frozenset(
