@@ -554,12 +554,12 @@ class BzrDir(object):
                 repository = found_bzrdir.open_repository()
             except errors.NoRepositoryPresent:
                 return None, False
-            stop = not repository.is_shared()
-            if ((found_bzrdir.root_transport.base ==
-                 self.root_transport.base) or repository.is_shared()):
+            if found_bzrdir.root_transport.base == self.root_transport.base:
+                return repository, True
+            elif repository.is_shared():
                 return repository, True
             else:
-                return None, stop
+                return None, True
 
         found_repo = self._find_containing(usable_repository)
         if found_repo is None:
