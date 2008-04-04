@@ -203,8 +203,7 @@ class BzrDir(object):
             pass
         else:
             result_branch = local_branch.clone(result, revision_id=revision_id)
-            if repository_policy._stack_on:
-                result_branch.set_stacked_on(repository_policy._stack_on)
+            repository_policy.configure_branch(result_branch)
         try:
             result_repo = result.find_repository()
         except errors.NoRepositoryPresent:
@@ -2678,11 +2677,24 @@ class BzrDirFormatRegistry(registry.Registry):
         return output
 
 
-class CreateRepository(object):
+class RepositoryPolicy(object):
+
+    def __init__(self, stack_on):
+        self._stack_on = stack_on
+
+    def configure_branch(self, branch):
+        if self._stack_on:
+            branch.set_stacked_on(self._stack_on)
+
+    def apply(self):
+        raise NotImplemented(RepositoryPolicy.apply)
+
+
+class CreateRepository(RepositoryPolicy):
 
     def __init__(self, bzrdir, stack_on=None):
+        RepositoryPolicy.__init__(self, stack_on)
         self._bzrdir = bzrdir
-        self._stack_on = stack_on
 
     def apply(self, make_working_trees=True):
         repository = self._bzrdir.create_repository()
@@ -2691,11 +2703,11 @@ class CreateRepository(object):
         return repository
 
 
-class UseExistingRepository(object):
+class UseExistingRepository(RepositoryPolicy):
 
     def __init__(self, repository, stack_on=None):
+        RepositoryPolicy.__init__(self, stack_on)
         self._repository = repository
-        self._stack_on = stack_on
 
     def apply(self, make_working_trees=True):
         return self._repository
