@@ -967,13 +967,13 @@ class BzrDir(object):
         target_transport.ensure_base()
         cloning_format = self.cloning_metadir()
         result = cloning_format.initialize_on_transport(target_transport)
+        shallow_branch_url = None
         try:
             source_branch = self.open_branch()
             source_repository = source_branch.repository
             if shallow:
                 shallow_branch_url = self.root_transport.base
             else:
-                shallow_branch_url = None
                 try:
                     shallow_branch_url = source_branch.get_stacked_on()
                 except (errors.NotStacked, errors.UnstackableBranchFormat,
