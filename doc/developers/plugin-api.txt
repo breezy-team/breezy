@@ -9,16 +9,22 @@ Status
 
 bzrlib has a very flexible internal structure allowing plugins for many
 operations. Plugins can add commands, new storage formats, diff and merge
-features and more.
-
+features and more. This document provides an overview of the API and
+conventions for plugin authors.
 
 .. contents::
 
 
-Motivation
-==========
+Structure of a plugin
+=====================
 
-To provide a pithy central document for plugin authors to refer to.
+Plugins are Python modules under ``bzrlib.plugins``. They can be installed
+either into the PYTHONPATH in that location, or in ~/.bazaar/plugins.
+
+Plugins should have a setup.py.
+
+As for other Python modules, the name of the directory must match the
+expected name of the plugin.
 
 
 Plugin metadata before installation
@@ -29,14 +35,11 @@ they are compatible with. This allows tools to be written to work with plugins,
 such as to generate a directory of plugins, or install them via a
 symlink/checkout to ~/.bazaar/plugins.
 
-Design
-------
+This interface allows bzr to interrogate a plugin without actually loading
+it. This is useful because loading a plugin may have side effects such
+as registering or overriding commands, or the plugin may raise an error,
+if for example a prerequisite is not present.
 
-Because loading a plugin is all that is required to activate it, and
-because plugins may require external dependencies to load properly (such
-as being specific to the Windows platform), we use a separate interface to
-obtain plugin metadata from the setup.py script which plugins will
-typically have.
 
 Metadata protocol
 -----------------
@@ -97,7 +100,7 @@ Control Formats
 ---------------
 
 Because disk format detection for formats that bzr does not understand at
-all can be useful, we allow a declaritive description of the shape of a
+all can be useful, we allow a declarative description of the shape of a
 control directory. Each description has a name for showing to users, and a
 dictonary of relative paths, and the content needed at each path. Paths
 that end in '/' are required to be directories and the value for that key
