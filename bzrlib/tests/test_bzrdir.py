@@ -721,6 +721,16 @@ class TestMeta1DirFormat(TestCaseWithTransport):
         finally:
             bzrdir.BzrDirFormat._set_default_format(old_format)
 
+    def test_clone_on_transport_preserves_repo_format(self):
+        source_branch = self.make_branch('source', format='knit')
+        # Ensure no format data is cached
+        a_dir = bzrlib.branch.Branch.open_from_transport(
+            self.get_transport('source')).bzrdir
+        target_transport = a_dir.root_transport.clone('..').clone('target')
+        target_bzrdir = a_dir.clone_on_transport(target_transport)
+        target_repo = target_bzrdir.open_repository()
+        self.assertEqual(target_repo._format, source_branch.repository._format)
+
 
 class TestFormat5(TestCaseWithTransport):
     """Tests specific to the version 5 bzrdir format."""

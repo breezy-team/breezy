@@ -180,7 +180,7 @@ class BzrDir(object):
                                even if one is available.
         """
         transport.ensure_base()
-        result = self._format.initialize_on_transport(transport)
+        result = self.cloning_metadir().initialize_on_transport(transport)
         repository_policy = None
         try:
             local_repo = self.find_repository()
