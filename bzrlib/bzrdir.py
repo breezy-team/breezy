@@ -182,35 +182,28 @@ class BzrDir(object):
         """
         transport.ensure_base()
         result = self._format.initialize_on_transport(transport)
+        repository_policy = None
         try:
             local_repo = self.find_repository()
         except errors.NoRepositoryPresent:
             local_repo = None
         if local_repo:
             # may need to copy content in
-            if force_new_repo:
-                result_repo = local_repo.clone(
-                    result,
-                    revision_id=revision_id)
-                result_repo.set_make_working_trees(local_repo.make_working_trees())
-            else:
-                try:
-                    result_repo = result.find_repository()
-                    # fetch content this dir needs.
-                    result_repo.fetch(local_repo, revision_id=revision_id)
-                except errors.NoRepositoryPresent:
-                    # needed to make one anyway.
-                    result_repo = local_repo.clone(
-                        result,
-                        revision_id=revision_id)
-                    result_repo.set_make_working_trees(local_repo.make_working_trees())
+            repository_policy = result.determine_repository_policy(
+                force_new_repo)
+            result_repo = repository_policy.apply(
+                local_repo.make_working_trees())
+            result_repo.fetch(local_repo, revision_id=revision_id)
         # 1 if there is a branch present
         #   make sure its content is available in the target repository
         #   clone it.
         try:
-            self.open_branch().clone(result, revision_id=revision_id)
+            local_branch = self.open_branch()
         except errors.NotBranchError:
             pass
+        else:
+            result_branch = local_branch.clone(result, revision_id=revision_id)
+            repository_policy.configure_branch(result_branch)
         try:
             result_repo = result.find_repository()
         except errors.NoRepositoryPresent:
@@ -357,11 +350,30 @@ class BzrDir(object):
         return bzrdir.create_branch()
 
     def determine_repository_policy(self, force_new_repo=False):
-        if not force_new_repo:
+        def repository_policy(found_bzrdir):
+            stop = False
+            # does it have a repository ?
             try:
-                return UseExistingRepository(self.find_repository())
+                repository = found_bzrdir.open_repository()
             except errors.NoRepositoryPresent:
-                pass
+                repository = None
+            else:
+                if ((found_bzrdir.root_transport.base !=
+                     self.root_transport.base) and not repository.is_shared()):
+                    repository = None
+                else:
+                    stop = True
+            if not stop:
+                return None, False
+            if repository:
+                return UseExistingRepository(repository), True
+            else:
+                return CreateRepository(self), True
+
+        if not force_new_repo:
+            policy = self._find_containing(repository_policy)
+            if policy is not None:
+                return policy
         return CreateRepository(self)
 
     def _find_or_create_repository(self, force_new_repo):
@@ -511,6 +523,23 @@ class BzrDir(object):
         """
         raise NotImplementedError(self.destroy_workingtree_metadata)
 
+    def _find_containing(self, evaluate):
+        found_bzrdir = self
+        while True:
+            result, stop = evaluate(found_bzrdir)
+            if stop:
+                return result
+            next_transport = found_bzrdir.root_transport.clone('..')
+            if (found_bzrdir.root_transport.base == next_transport.base):
+                # top of the file system
+                return None
+            # find the next containing bzrdir
+            try:
+                found_bzrdir = BzrDir.open_containing_from_transport(
+                    next_transport)[0]
+            except errors.NotBranchError:
+                return None
+
     def find_repository(self):
         """Find the repository that should be used.
 
@@ -518,35 +547,23 @@ class BzrDir(object):
         new branches as well as to hook existing branches up to their
         repository.
         """
-        try:
-            return self.open_repository()
-        except errors.NoRepositoryPresent:
-            pass
-        next_transport = self.root_transport.clone('..')
-        while True:
-            # find the next containing bzrdir
-            try:
-                found_bzrdir = BzrDir.open_containing_from_transport(
-                    next_transport)[0]
-            except errors.NotBranchError:
-                # none found
-                raise errors.NoRepositoryPresent(self)
+        def usable_repository(found_bzrdir):
             # does it have a repository ?
             try:
                 repository = found_bzrdir.open_repository()
             except errors.NoRepositoryPresent:
-                next_transport = found_bzrdir.root_transport.clone('..')
-                if (found_bzrdir.root_transport.base == next_transport.base):
-                    # top of the file system
-                    break
-                else:
-                    continue
+                return None, False
+            stop = not repository.is_shared()
             if ((found_bzrdir.root_transport.base ==
                  self.root_transport.base) or repository.is_shared()):
-                return repository
+                return repository, True
             else:
-                raise errors.NoRepositoryPresent(self)
-        raise errors.NoRepositoryPresent(self)
+                return None, stop
+
+        found_repo = self._find_containing(usable_repository)
+        if found_repo is None:
+            raise errors.NoRepositoryPresent(self)
+        return found_repo
 
     def get_branch_reference(self):
         """Return the referenced URL for the branch in this bzrdir.
@@ -2618,21 +2635,38 @@ class BzrDirFormatRegistry(registry.Registry):
         return output
 
 
-class CreateRepository(object):
+class RepositoryPolicy(object):
+
+    def __init__(self):
+        pass
+
+    def configure_branch(self, branch):
+        pass
+
+    def apply(self):
+        raise NotImplemented(RepositoryPolicy.apply)
+
+
+class CreateRepository(RepositoryPolicy):
 
     def __init__(self, bzrdir):
+        RepositoryPolicy.__init__(self)
         self._bzrdir = bzrdir
 
-    def apply(self):
-        return self._bzrdir.create_repository()
+    def apply(self, make_working_trees=True):
+        repository = self._bzrdir.create_repository()
+        if not isinstance(repository, str):
+            repository.set_make_working_trees(make_working_trees)
+        return repository
 
 
-class UseExistingRepository(object):
+class UseExistingRepository(RepositoryPolicy):
 
     def __init__(self, repository):
+        RepositoryPolicy.__init__(self)
         self._repository = repository
 
-    def apply(self):
+    def apply(self, make_working_trees=True):
         return self._repository
 
 
