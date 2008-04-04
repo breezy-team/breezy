@@ -4470,6 +4470,11 @@ class cmd_switch(Command):
     are merged. The user can commit or revert these as they desire.
 
     Pending merges need to be committed or reverted before using switch.
+
+    The path to the branch to switch to can be specified relative to the parent
+    directory of the current branch. For example, if you are currently in a
+    checkout of /path/to/branch, specifying 'newbranch' will find a branch at
+    /path/to/newbranch.
     """
 
     takes_args = ['to_location']
@@ -4479,9 +4484,13 @@ class cmd_switch(Command):
 
     def run(self, to_location, force=False):
         from bzrlib import switch
-        to_branch = Branch.open(to_location)
         tree_location = '.'
         control_dir = bzrdir.BzrDir.open_containing(tree_location)[0]
+        try:
+            to_branch = Branch.open(to_location)
+        except errors.NotBranchError:
+            to_branch = Branch.open(
+                control_dir.open_branch().base + '../' + to_location)
         switch.switch(control_dir, to_branch, force)
         note('Switched to branch: %s',
             urlutils.unescape_for_display(to_branch.base, 'utf-8'))
