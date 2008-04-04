@@ -2373,7 +2373,7 @@ class _StreamIndex(object):
         try:
             return self._by_version[version_id][0]
         except KeyError:
-            orig_options = self.backing_index.get_options(version_id)
+            orig_options = list(self.backing_index.get_options(version_id))
             if 'fulltext' in orig_options:
                 pass
             elif 'line-delta' in orig_options:
