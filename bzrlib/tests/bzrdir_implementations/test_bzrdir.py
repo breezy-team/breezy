@@ -1618,7 +1618,7 @@ class TestBreakLock(TestCaseWithBzrDir):
         self.assertRaises(errors.LockBroken, tree.unlock)
 
 
-class TestBzrDirConfig(TestCaseWithBzrDir):
+class TestTransportConfig(TestCaseWithBzrDir):
 
     def setUp(self):
         TestCaseWithBzrDir.setUp(self)
