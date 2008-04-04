@@ -177,7 +177,8 @@ def _get_cmd_object(cmd_name, plugins_override=True):
         except errors.NoPluginAvailable:
             pass
         else:
-            raise errors.CommandAvailableInPlugin(cmd_name, plugin_metadata, provider)
+            raise errors.CommandAvailableInPlugin(cmd_name, 
+                                                plugin_metadata, provider)
 
     raise KeyError
 
@@ -895,17 +896,23 @@ class HelpCommandIndex(object):
 
 
 class Provider(object):
+    '''Generic class to be overriden by plugins'''
 
     def plugin_for_command(self, cmd_name):
+        '''Takes a command and returns the information for that plugin
+        
+        :return: A dictionary with all the available information 
+        for the requested plugin
+        '''
         raise NotImplementedError
 
 
 class ProvidersRegistry(registry.Registry):
     '''This registry exists to allow other providers to exist'''
+
     def __iter__(self):
         for key, provider in self.iteritems():
             yield provider
-    pass
 
 command_providers_registry = ProvidersRegistry()
 
