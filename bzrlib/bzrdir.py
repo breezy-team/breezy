@@ -352,6 +352,11 @@ class BzrDir(object):
         return bzrdir.create_branch()
 
     def determine_repository_policy(self, force_new_repo=False):
+        """Return an object representing a policy to use.
+
+        This controls whether a new repository is created, or a shared
+        repository used instead.
+        """
         def repository_policy(found_bzrdir):
             stop = False
             # does it have a repository ?
@@ -527,6 +532,18 @@ class BzrDir(object):
         raise NotImplementedError(self.destroy_workingtree_metadata)
 
     def _find_containing(self, evaluate):
+        """Find something in a containing control directory.
+
+        This method will scan containing control dirs, until it finds what
+        it is looking for, decides that it will never find it, or runs out
+        of containing control directories to check.
+
+        It is used to implement find_repository and
+        determine_repository_policy.
+
+        :param evaluate: A function returning (value, stop).  If stop is True,
+            the value will be returned.
+        """
         found_bzrdir = self
         while True:
             result, stop = evaluate(found_bzrdir)
@@ -2635,24 +2652,35 @@ class BzrDirFormatRegistry(registry.Registry):
 
 
 class RepositoryPolicy(object):
+    """Base class for other policies to inherit from"""
 
     def __init__(self):
         pass
 
     def configure_branch(self, branch):
+        """Apply any configuration data from this policy to the branch.
+
+        Default implementation does nothing.
+        """
         pass
 
     def acquire_repository(self, make_working_trees=None, shared=False):
+        """Apply any configuration data from this policy to the branch"""
         raise NotImplemented(RepositoryPolicy.acquire_repository)
 
 
 class CreateRepository(RepositoryPolicy):
+    """A policy of creating a new repository"""
 
     def __init__(self, bzrdir):
         RepositoryPolicy.__init__(self)
         self._bzrdir = bzrdir
 
     def acquire_repository(self, make_working_trees=None, shared=False):
+        """Implementation of RepositoryPolicy.acquire_repository
+
+        Creates the desired repository
+        """
         repository = self._bzrdir.create_repository(shared=shared)
         if make_working_trees is not None:
             repository.set_make_working_trees(make_working_trees)
@@ -2660,12 +2688,17 @@ class CreateRepository(RepositoryPolicy):
 
 
 class UseExistingRepository(RepositoryPolicy):
+    """A policy of reusing an existing repository"""
 
     def __init__(self, repository):
         RepositoryPolicy.__init__(self)
         self._repository = repository
 
     def acquire_repository(self, make_working_trees=None, shared=False):
+        """Implementation of RepositoryPolicy.acquire_repository
+
+        Returns an existing repository to use
+        """
         return self._repository
 
 
