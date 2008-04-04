@@ -37,6 +37,11 @@ IN DEVELOPMENT
     * ``bzr commit --fixes`` now recognises "gnome" as a tag by default.
       (James Westby, Andrew Cowie)
 
+    * ``bzr switch`` will attempt to find branches to switch to relative to the
+      current branch. E.g. ``bzr switch branchname`` will look for
+      ``current_branch/../branchname``. (Robert Collins, Jelmer Vernooij,
+      Wouter van Heyst)
+
     * Diff is now more specific about execute-bit changes it describes
       (Chad Miller)
 
