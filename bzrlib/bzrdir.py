@@ -1429,7 +1429,7 @@ class BzrDirMeta1(BzrDir):
         return format.open(self, _found=True)
 
     def _get_config(self):
-        return config.TransportConfig(self.transport, 'control.conf')
+        return config.BzrDirConfig(self.transport)
 
 
 class BzrDirFormat(object):

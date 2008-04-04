@@ -1630,13 +1630,11 @@ class TestTransportConfig(TestCaseWithBzrDir):
             self.assertFalse(isinstance(my_dir, bzrdir.BzrDirMeta1))
             raise TestNotApplicable(
                 'This BzrDir format does not support configs.')
-        config.set_option('http://example.com', 'default_stacking_base')
-        self.assertEqual('http://example.com',
-                         config.get_option('default_stacking_base'))
+        config.set_default_stack_on('http://example.com')
+        self.assertEqual('http://example.com', config.get_default_stack_on())
         my_dir2 = bzrdir.BzrDir.open('.')
         config2 = my_dir.get_config()
-        self.assertEqual('http://example.com',
-                         config2.get_option('default_stacking_base'))
+        self.assertEqual('http://example.com', config2.get_default_stack_on())
 
 
 class ChrootedBzrDirTests(ChrootedTestCase):

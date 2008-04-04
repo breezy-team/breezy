@@ -1104,12 +1104,10 @@ class AuthenticationConfig(object):
     def decode_password(self, credentials, encoding):
         return credentials
 
+class BzrDirConfig(object):
 
-class TransportConfig(object):
-
-    def __init__(self, transport, filename):
-        self._transport = transport
-        self._filename = filename
+    def __init__(self, transport):
+        self._config = TransportConfig(transport, 'control.conf')
 
     def set_default_stack_on(self, value):
         """Set the default stacking location.
@@ -1120,9 +1118,9 @@ class TransportConfig(object):
         those under repositories.
         """
         if value is None:
-            self.set_option('', 'default_stack_on')
+            self._config.set_option('', 'default_stack_on')
         else:
-            self.set_option(value, 'default_stack_on')
+            self._config.set_option(value, 'default_stack_on')
 
     def get_default_stack_on(self):
         """Return the default stacking location.
@@ -1132,10 +1130,18 @@ class TransportConfig(object):
         This policy affects all branches contained by this bzrdir, except for
         those under repositories.
         """
-        value = self.get_option('default_stack_on')
+        value = self._config.get_option('default_stack_on')
         if value == '':
             value = None
         return value
+
+
+class TransportConfig(object):
+
+    def __init__(self, transport, filename):
+        self._transport = transport
+        self._filename = filename
+
 
     def get_option(self, name, section=None, default=None):
         """Return the value associated with a named option.
