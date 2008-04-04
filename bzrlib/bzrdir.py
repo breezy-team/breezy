@@ -1033,6 +1033,10 @@ class BzrDirPreSplitOut(BzrDir):
         """Pre-splitout bzrdirs do not suffer from stale locks."""
         raise NotImplementedError(self.break_lock)
 
+    def cloning_metadir(self):
+        """Produce a metadir suitable for cloning with."""
+        return self._format.__class__()
+
     def clone(self, url, revision_id=None, force_new_repo=False):
         """See BzrDir.clone()."""
         from bzrlib.workingtree import WorkingTreeFormat2
