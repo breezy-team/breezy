@@ -2377,10 +2377,11 @@ class _StreamIndex(object):
             if 'fulltext' in orig_options:
                 pass
             elif 'line-delta' in orig_options:
+                orig_options = orig_options[:]
                 # Texts from the backing knit are always returned from the stream
                 # as full texts
-                orig_options.remove('fulltext')
-                orig_options.append('line-delta')
+                orig_options.remove('line-delta')
+                orig_options.append('fulltext')
             else:
                 raise errors.KnitIndexUnknownMethod(self, options)
             return orig_options
