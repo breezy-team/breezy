@@ -55,13 +55,13 @@ get things working.
 Running the development version
 -------------------------------
 
-If you wish to always be using the very latest development version of
-Bazaar, it is easy to do so. Note that this is not recommended for
+You may wish to always be using the very latest development version of
+Bazaar. Note that this is not recommended for
 the majority of users as there is an increased risk of bugs. On the other
 hand, the development version is remarkably solid (thanks to the processes
-we follow) and running it makes it easier for you to help us make Bazaar
-even better, either through increased testing or sending us changes for
-bugs and improvements.
+we follow) and running it makes it easier for you to send us changes for
+bugs and improvements. It also helps us by having more people testing
+the latest software.
 
 Here are the steps to follow:
 
@@ -81,8 +81,8 @@ Please contact us on email or IRC if you need assistance with this.
 Running multiple versions
 -------------------------
 
-One of the neat things about Bazaar is that it's really easy to have
-multiple versions installed and to switch between them. To do this,
+It's easy to have multiple versions of Bazaar installed and to switch
+between them. To do this,
 simply provide the full pathname to the **bzr** command you wish to run.
 The relevant libraries will be automatically detected and used. Of course,
 if you do not provide a pathname, then the **bzr** used will be the one
@@ -90,4 +90,3 @@ found on your system path as normal.
 
 Note that this capability is particularly useful if you wish to run
 (or test) both the latest released version and the development version say.
-

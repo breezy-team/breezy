@@ -24,6 +24,7 @@ from bzrlib import (
     bzrdir,
     errors,
     graph,
+    osutils,
     remote,
     repository,
     )
@@ -36,7 +37,7 @@ from bzrlib.repofmt.weaverepo import (
     )
 from bzrlib.revision import NULL_REVISION, Revision
 from bzrlib.smart import server
-from bzrlib.symbol_versioning import one_two
+from bzrlib.symbol_versioning import one_two, one_three, one_four
 from bzrlib.tests import (
     KnownFailure,
     TestCaseWithTransport,
@@ -642,6 +643,23 @@ class TestRepository(TestCaseWithRepository):
         self.assertEqual('This might be a signature',
                          repo.get_signature_text('A'))
 
+    def test_add_revision_inventory_sha1(self):
+        repo = self.make_repository('repo')
+        inv = Inventory(revision_id='A')
+        inv.root.revision = 'A'
+        inv.root.file_id = 'fixed-root'
+        repo.lock_write()
+        repo.start_write_group()
+        repo.add_revision('A', Revision('A', committer='B', timestamp=0,
+                          timezone=0, message='C'), inv=inv)
+        repo.commit_write_group()
+        repo.unlock()
+        repo.lock_read()
+        self.assertEquals(osutils.sha_string(
+            repo._serializer.write_inventory_to_string(inv)),
+            repo.get_revision('A').inventory_sha1)
+        repo.unlock()
+
     def test_install_revisions(self):
         wt = self.make_branch_and_tree('source')
         wt.commit('A', allow_pointless=True, rev_id='A')
@@ -915,30 +933,35 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
                           'rev3':('rev2', ),
                           'rev4':('rev3', ),
                           },
-                         self.bzrdir.open_repository().get_revision_graph(None))
+            self.applyDeprecated(one_four,
+                self.bzrdir.open_repository().get_revision_graph, None))
         self.assertEqual({'rev1':()},
-                         self.bzrdir.open_repository().get_revision_graph('rev1'))
+            self.applyDeprecated(one_four,
+                self.bzrdir.open_repository().get_revision_graph, 'rev1'))
         self.assertEqual({'rev1':(),
                           'rev2':('rev1', )},
-                         self.bzrdir.open_repository().get_revision_graph('rev2'))
-        self.assertRaises(errors.NoSuchRevision,
-                          self.bzrdir.open_repository().get_revision_graph,
-                          'orphan')
+            self.applyDeprecated(one_four,
+                self.bzrdir.open_repository().get_revision_graph, 'rev2'))
+        self.assertRaises(errors.NoSuchRevision, self.applyDeprecated, one_four,
+            self.bzrdir.open_repository().get_revision_graph, 'orphan')
         # and ghosts are not mentioned
         self.assertEqual({'rev1':(),
                           'rev2':('rev1', ),
                           'rev3':('rev2', ),
                           },
-                         self.bzrdir.open_repository().get_revision_graph('rev3'))
+            self.applyDeprecated(one_four,
+                self.bzrdir.open_repository().get_revision_graph, 'rev3'))
         # and we can ask for the NULLREVISION graph
         self.assertEqual({},
-            self.bzrdir.open_repository().get_revision_graph(NULL_REVISION))
+            self.applyDeprecated(one_four,
+                self.bzrdir.open_repository().get_revision_graph, NULL_REVISION))
 
     def test_get_revision_graph_with_ghosts(self):
         # we can get a graph object with roots, ghosts, ancestors and
         # descendants.
         repo = self.bzrdir.open_repository()
-        graph = repo.get_revision_graph_with_ghosts([])
+        graph = self.applyDeprecated(one_three,
+                                     repo.get_revision_graph_with_ghosts, [])
         self.assertEqual(set(['rev1']), graph.roots)
         self.assertEqual(set(['ghost1', 'ghost2']), graph.ghosts)
         self.assertEqual({'rev1':[],
@@ -956,7 +979,8 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
                           },
                           graph.get_descendants())
         # and we can ask for the NULLREVISION graph
-        graph = repo.get_revision_graph_with_ghosts([NULL_REVISION])
+        graph = self.applyDeprecated(one_three, 
+                    repo.get_revision_graph_with_ghosts, [NULL_REVISION])
         self.assertEqual({}, graph.get_ancestors())
         self.assertEqual({}, graph.get_descendants())
 
