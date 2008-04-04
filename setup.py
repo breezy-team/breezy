@@ -7,21 +7,55 @@ Run it with
 """
 
 import os
+import os.path
 import sys
 
+if sys.version_info < (2, 4):
+    sys.stderr.write("[ERROR] Not a supported Python version. Need 2.4+\n")
+    sys.exit(1)
+
+# NOTE: The directory containing setup.py, whether run by 'python setup.py' or
+# './setup.py' or the equivalent with another path, should always be at the
+# start of the path, so this should find the right one...
 import bzrlib
+
+def get_long_description():
+    dirname = os.path.dirname(__file__)
+    readme = os.path.join(dirname, 'README')
+    f = open(readme, 'rb')
+    try:
+        return f.read()
+    finally:
+        f.close()
+
 
 ##
 # META INFORMATION FOR SETUP
-
-META_INFO = {'name':         'bzr',
-             'version':      bzrlib.__version__,
-             'author':       'Canonical Ltd',
-             'author_email': 'bazaar@lists.canonical.com',
-             'url':          'http://www.bazaar-vcs.org/',
-             'description':  'Friendly distributed version control system',
-             'license':      'GNU GPL v2',
-            }
+# see http://docs.python.org/dist/meta-data.html
+META_INFO = {
+    'name':         'bzr',
+    'version':      bzrlib.__version__,
+    'author':       'Canonical Ltd',
+    'author_email': 'bazaar@lists.canonical.com',
+    'url':          'http://www.bazaar-vcs.org/',
+    'description':  'Friendly distributed version control system',
+    'license':      'GNU GPL v2',
+    'download_url': 'http://bazaar-vcs.org/Download',
+    'long_description': get_long_description(),
+    'classifiers': [
+        'Development Status :: 6 - Mature',
+        'Environment :: Console',
+        'Intended Audience :: Developers',
+        'Intended Audience :: System Administrators',
+        'License :: OSI Approved :: GNU General Public License (GPL)',
+        'Operating System :: Microsoft :: Windows',
+        'Operating System :: OS Independent',
+        'Operating System :: POSIX',
+        'Programming Language :: Python',
+        'Programming Language :: C',
+        'Topic :: Software Development :: Version Control',
+        ],
+    }
 
 # The list of packages is automatically generated later. Add other things
 # that are part of BZRLIB here.
@@ -33,35 +67,6 @@ PKG_DATA = {# install files from selftest suite
                                         'help_topics/en/*.txt',
                                        ]},
            }
-
-######################################################################
-# Reinvocation stolen from bzr, we need python2.4 by virtue of bzr_man
-# including bzrlib.help
-
-try:
-    version_info = sys.version_info
-except AttributeError:
-    version_info = 1, 5 # 1.5 or older
-
-REINVOKE = "__BZR_REINVOKE"
-NEED_VERS = (2, 4)
-KNOWN_PYTHONS = ('python2.4',)
-
-if version_info < NEED_VERS:
-    if not os.environ.has_key(REINVOKE):
-        # mutating os.environ doesn't work in old Pythons
-        os.putenv(REINVOKE, "1")
-        for python in KNOWN_PYTHONS:
-            try:
-                os.execvp(python, [python] + sys.argv)
-            except OSError:
-                pass
-    sys.stderr.write("bzr: error: cannot find a suitable python interpreter\n")
-    sys.stderr.write("  (need %d.%d or later)" % NEED_VERS)
-    sys.stderr.write('\n')
-    sys.exit(1)
-if getattr(os, "unsetenv", None) is not None:
-    os.unsetenv(REINVOKE)
 
 
 def get_bzrlib_packages():

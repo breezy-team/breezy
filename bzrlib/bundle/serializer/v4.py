@@ -327,7 +327,7 @@ class BundleWriteOperation(object):
                 if revision_id in self.base_ancestry:
                     continue
                 new_revision_ids.add(revision_id)
-                pending.extend(vf.get_parents(revision_id))
+                pending.extend(vf.get_parent_map([revision_id])[revision_id])
             yield vf, file_id, new_revision_ids
 
     def write_files(self):
@@ -376,8 +376,9 @@ class BundleWriteOperation(object):
         revision_ids = list(multiparent.topo_iter(vf, revision_ids))
         mpdiffs = vf.make_mpdiffs(revision_ids)
         sha1s = vf.get_sha1s(revision_ids)
+        parent_map = vf.get_parent_map(revision_ids)
         for mpdiff, revision_id, sha1, in zip(mpdiffs, revision_ids, sha1s):
-            parents = vf.get_parents(revision_id)
+            parents = parent_map[revision_id]
             text = ''.join(mpdiff.to_patch())
             self.bundle.add_multiparent_record(text, sha1, parents, repo_kind,
                                                revision_id, file_id)

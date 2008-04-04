@@ -89,8 +89,14 @@ class TestLoader(unittest.TestLoader):
         """
         result = self.suiteClass()
         for name in names:
-            module = _load_module_by_name(name)
-            result.addTests(self.loadTestsFromModule(module))
+            result.addTests(self.loadTestsFromModuleName(name))
+        return result
+
+    def loadTestsFromModuleName(self, name):
+        result = self.suiteClass()
+        module = _load_module_by_name(name)
+
+        result.addTests(self.loadTestsFromModule(module))
         return result
 
     def loadTestsFromModule(self, module):
@@ -127,7 +133,7 @@ class TestLoader(unittest.TestLoader):
     def getTestCaseNames(self, test_case_class):
         test_fn_names = self.test_func_names.get(test_case_class, None)
         if test_fn_names is not None:
-            # We already calculate that
+            # We already know them
             return test_fn_names
 
         test_fn_names = unittest.TestLoader.getTestCaseNames(self,
