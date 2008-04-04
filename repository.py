@@ -161,6 +161,9 @@ class SvnRepository(Repository):
     def get_transaction(self):
         raise NotImplementedError(self.get_transaction)
 
+    def get_latest_revnum(self):
+        return self.transport.get_latest_revnum()
+
     def get_stored_scheme(self):
         """Retrieve the stored branching scheme, either in the repository 
         or in the configuration file.
@@ -169,7 +172,7 @@ class SvnRepository(Repository):
         if scheme is not None:
             return (scheme, self.get_config().branching_scheme_is_mandatory())
 
-        last_revnum = self.transport.get_latest_revnum()
+        last_revnum = self.get_latest_revnum()
         scheme = self._get_property_scheme(last_revnum)
         if scheme is not None:
             return (scheme, True)
@@ -202,7 +205,7 @@ class SvnRepository(Repository):
                 self._scheme = scheme
                 return scheme
 
-        last_revnum = self.transport.get_latest_revnum()
+        last_revnum = self.get_latest_revnum()
         self.set_branching_scheme(
             self._guess_scheme(last_revnum, self._hinted_branch_path),
             store=(last_revnum > 20),
@@ -212,7 +215,7 @@ class SvnRepository(Repository):
 
     def _get_property_scheme(self, revnum=None):
         if revnum is None:
-            revnum = self.transport.get_latest_revnum()
+            revnum = self.get_latest_revnum()
         text = self.branchprop_list.get_properties("", revnum).get(SVN_PROP_BZR_BRANCHING_SCHEME, None)
         if text is None:
             return None
@@ -278,7 +281,7 @@ class SvnRepository(Repository):
         if mapping is None:
             mapping = self.get_mapping()
     
-        latest_revnum = self.transport.get_latest_revnum()
+        latest_revnum = self.get_latest_revnum()
 
         for (_, paths, revnum, revprops) in self._log.iter_changes("", latest_revnum):
             if pb:
@@ -693,7 +696,7 @@ class SvnRepository(Repository):
         """
         assert scheme is not None
         if to_revnum is None:
-            to_revnum = self.transport.get_latest_revnum()
+            to_revnum = self.get_latest_revnum()
 
         created_branches = {}
 

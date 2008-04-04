@@ -61,7 +61,7 @@ class RevidMap(object):
             pass
 
         found = False
-        for entry_revid, branch, revno in self.discover_revids(scheme, 0, self.repos.transport.get_latest_revnum()):
+        for entry_revid, branch, revno in self.discover_revids(scheme, 0, self.repos.get_latest_revnum()):
             if revid == entry_revid:
                 found = True
                 break
@@ -155,7 +155,7 @@ class CachingRevidMap(object):
             if min_revnum == max_revnum:
                 return (branch_path, min_revnum, BzrSvnMappingv3FileProps(get_scheme(scheme)))
         except NoSuchRevision, e:
-            last_revnum = self.actual.repos.transport.get_latest_revnum()
+            last_revnum = self.actual.repos.get_latest_revnum()
             if (last_revnum <= self.cache.last_revnum_checked(str(scheme))):
                 # All revision ids in this repository for the current 
                 # scheme have already been discovered. No need to 

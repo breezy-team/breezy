@@ -125,7 +125,7 @@ class SvnBranch(Branch):
         """
         if self._lock_mode == 'r' and self._cached_revnum:
             return self._cached_revnum
-        latest_revnum = self.repository.transport.get_latest_revnum()
+        latest_revnum = self.repository.get_latest_revnum()
         self._cached_revnum = self.repository._log.find_latest_change(self.get_branch_path(), latest_revnum, include_children=True)
         return self._cached_revnum
 

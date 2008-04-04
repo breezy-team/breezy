@@ -409,7 +409,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             self.revision_metadata = revision_data
         
         bp_parts = self.branch.get_branch_path().split("/")
-        repository_latest_revnum = self.repository.transport.get_latest_revnum()
+        repository_latest_revnum = self.repository.get_latest_revnum()
         lock = self.repository.transport.lock_write(".")
         set_revprops = self.repository.get_config().get_set_revprops()
         remaining_revprops = self._svn_revprops # Keep track of the revprops that haven't been set yet
