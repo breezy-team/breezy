@@ -39,7 +39,6 @@ from warnings import warn
 
 import bzrlib
 from bzrlib import (
-    config,
     errors,
     graph,
     lockable_files,
@@ -319,6 +318,7 @@ class BzrDir(object):
                 branches.append(branch)
         return branches
 
+
     def destroy_repository(self):
         """Destroy the repository in this BzrDir"""
         raise NotImplementedError(self.destroy_repository)
@@ -592,12 +592,7 @@ class BzrDir(object):
         guaranteed to point to an existing directory ready for use.
         """
         raise NotImplementedError(self.get_workingtree_transport)
-
-    def get_config(self):
-        if getattr(self, '_get_config', None) is None:
-            return None
-        return self._get_config()
-
+        
     def __init__(self, _transport, _format):
         """Initialize a Bzr control dir object.
         
@@ -1373,9 +1368,6 @@ class BzrDirMeta1(BzrDir):
             recommend_upgrade,
             basedir=self.root_transport.base)
         return format.open(self, _found=True)
-
-    def _get_config(self):
-        return config.TransportConfig(self.transport, 'control.conf')
 
 
 class BzrDirFormat(object):
