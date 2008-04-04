@@ -1433,15 +1433,6 @@ class BasicKnitTests(KnitTests):
             instrumented_t._activity)
         self.assertEqual([('text\n', 'base'), ('text2\n', 'base2')], results)
 
-    def test_create_empty_annotated(self):
-        k1 = self.make_test_knit(True)
-        # 0
-        k1.add_lines('text-a', [], ['a\n', 'b\n'])
-        k2 = k1.create_empty('t', MemoryTransport())
-        self.assertTrue(isinstance(k2.factory, KnitAnnotateFactory))
-        self.assertEqual(k1.delta, k2.delta)
-        # the generic test checks for empty content and file class
-
     def test_knit_format(self):
         # this tests that a new knit index file has the expected content
         # and that is writes the data we expect as records are added.
