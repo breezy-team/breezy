@@ -190,7 +190,7 @@ class BzrDir(object):
             # may need to copy content in
             repository_policy = result.determine_repository_policy(
                 force_new_repo)
-            result_repo = repository_policy.apply(
+            result_repo = repository_policy.acquire_repository(
                 local_repo.make_working_trees(),
                 local_repo.is_shared())
             result_repo.fetch(local_repo, revision_id=revision_id)
@@ -380,8 +380,9 @@ class BzrDir(object):
 
     def _find_or_create_repository(self, force_new_repo):
         """Create a new repository if needed, returning the repository."""
-        return self.determine_repository_policy(force_new_repo).apply()
-        
+        policy = self.determine_repository_policy(force_new_repo)
+        return policy.acquire_repository()
+
     @staticmethod
     def create_branch_convenience(base, force_new_repo=False,
                                   force_new_tree=None, format=None,
@@ -2637,8 +2638,8 @@ class RepositoryPolicy(object):
     def configure_branch(self, branch):
         pass
 
-    def apply(self, make_working_trees=None, shared=False):
-        raise NotImplemented(RepositoryPolicy.apply)
+    def acquire_repository(self, make_working_trees=None, shared=False):
+        raise NotImplemented(RepositoryPolicy.acquire_repository)
 
 
 class CreateRepository(RepositoryPolicy):
@@ -2647,7 +2648,7 @@ class CreateRepository(RepositoryPolicy):
         RepositoryPolicy.__init__(self)
         self._bzrdir = bzrdir
 
-    def apply(self, make_working_trees=None, shared=False):
+    def acquire_repository(self, make_working_trees=None, shared=False):
         repository = self._bzrdir.create_repository(shared=shared)
         if make_working_trees is not None:
             repository.set_make_working_trees(make_working_trees)
@@ -2660,7 +2661,7 @@ class UseExistingRepository(RepositoryPolicy):
         RepositoryPolicy.__init__(self)
         self._repository = repository
 
-    def apply(self, make_working_trees=None, shared=False):
+    def acquire_repository(self, make_working_trees=None, shared=False):
         return self._repository
 
 

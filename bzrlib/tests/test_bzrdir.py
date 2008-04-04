@@ -453,10 +453,10 @@ class TestBzrDirFormat(TestCaseWithTransport):
         branch.bzrdir.open_repository()
         branch.bzrdir.open_workingtree()
 
-    def test_apply_repository_policy_standalone(self):
+    def test_acquire_repository_standalone(self):
         my_bzrdir = self.make_bzrdir('.')
         repo_policy = my_bzrdir.determine_repository_policy()
-        repo = repo_policy.apply()
+        repo = repo_policy.acquire_repository()
         self.assertEqual(repo.bzrdir.root_transport.base,
                          my_bzrdir.root_transport.base)
 
