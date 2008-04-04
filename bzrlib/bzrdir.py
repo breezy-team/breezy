@@ -356,7 +356,7 @@ class BzrDir(object):
             config = found_bzrdir.get_config()
             stop = False
             if config is not None:
-                stack_on = config.get_option('default_stack_on')
+                stack_on = config.get_default_stack_on()
                 if stack_on is not None:
                     stop = True
             # does it have a repository ?

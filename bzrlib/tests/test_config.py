@@ -1164,6 +1164,16 @@ class TestBzrDirConfig(tests.TestCaseWithTransport):
         value = bzrdir_config.get_option('key3', 'SECTION')
         self.assertEqual(value, 'value3-section')
 
+    def test_set_unset_default_stack_on(self):
+        my_dir = self.make_bzrdir('.')
+        bzrdir_config = config.BzrDirConfig(my_dir.transport)
+        self.assertIs(None, bzrdir_config.get_default_stack_on())
+        bzrdir_config.set_default_stack_on('Foo')
+        self.assertEqual('Foo', bzrdir_config.get_option('default_stack_on'))
+        self.assertEqual('Foo', bzrdir_config.get_default_stack_on())
+        bzrdir_config.set_default_stack_on(None)
+        self.assertIs(None, bzrdir_config.get_default_stack_on())
+
 
 class TestAuthenticationConfigFile(tests.TestCase):
     """Test the authentication.conf file matching"""
