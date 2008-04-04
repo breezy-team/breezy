@@ -891,6 +891,8 @@ class TreeConfig(IniBasedConfig):
     """Branch configuration data associated with its contents, not location"""
 
     def __init__(self, branch):
+        transport = branch.control_files._transport
+        self._config = TransportConfig(transport, 'branch.conf')
         self.branch = branch
 
     def _get_parser(self, file=None):
@@ -899,23 +901,12 @@ class TreeConfig(IniBasedConfig):
         return self._get_config()
 
     def _get_config(self):
-        try:
-            obj = ConfigObj(self.branch.control_files.get('branch.conf'),
-                            encoding='utf-8')
-        except errors.NoSuchFile:
-            obj = ConfigObj(encoding='utf=8')
-        return obj
+        return self._config._get_configobj()
 
     def get_option(self, name, section=None, default=None):
         self.branch.lock_read()
         try:
-            obj = self._get_config()
-            try:
-                if section is not None:
-                    obj = obj[section]
-                result = obj[name]
-            except KeyError:
-                result = default
+            return self._config.get_option(name, section, default)
         finally:
             self.branch.unlock()
         return result
@@ -924,20 +915,7 @@ class TreeConfig(IniBasedConfig):
         """Set a per-branch configuration option"""
         self.branch.lock_write()
         try:
-            cfg_obj = self._get_config()
-            if section is None:
-                obj = cfg_obj
-            else:
-                try:
-                    obj = cfg_obj[section]
-                except KeyError:
-                    cfg_obj[section] = {}
-                    obj = cfg_obj[section]
-            obj[name] = value
-            out_file = StringIO()
-            cfg_obj.write(out_file)
-            out_file.seek(0)
-            self.branch.control_files.put('branch.conf', out_file)
+            self._config.set_option(value, name, section)
         finally:
             self.branch.unlock()
 
@@ -1127,12 +1105,11 @@ class AuthenticationConfig(object):
         return credentials
 
 
-class BzrDirConfig(object):
+class TransportConfig(object):
 
-    _filename = 'control.conf'
-
-    def __init__(self, transport):
+    def __init__(self, transport, filename):
         self._transport = transport
+        self._filename = filename
 
     def get_option(self, name, section=None, default=None):
         """Return the value associated with a named option.
