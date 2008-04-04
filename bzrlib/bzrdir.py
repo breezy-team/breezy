@@ -560,12 +560,12 @@ class BzrDir(object):
                 repository = found_bzrdir.open_repository()
             except errors.NoRepositoryPresent:
                 return None, False
-            stop = not repository.is_shared()
-            if ((found_bzrdir.root_transport.base ==
-                 self.root_transport.base) or repository.is_shared()):
+            if found_bzrdir.root_transport.base == self.root_transport.base:
+                return repository, True
+            elif repository.is_shared():
                 return repository, True
             else:
-                return None, stop
+                return None, True
 
         found_repo = self._find_containing(usable_repository)
         if found_repo is None:
@@ -2687,7 +2687,7 @@ class RepositoryPolicy(object):
         if self._stack_on:
             branch.set_stacked_on(self._stack_on)
 
-    def apply(self, make_working_trees=True, shared=False):
+    def apply(self, make_working_trees=None, shared=False):
         raise NotImplemented(RepositoryPolicy.apply)
 
 
@@ -2697,9 +2697,9 @@ class CreateRepository(RepositoryPolicy):
         RepositoryPolicy.__init__(self, stack_on)
         self._bzrdir = bzrdir
 
-    def apply(self, make_working_trees=True, shared=False):
+    def apply(self, make_working_trees=None, shared=False):
         repository = self._bzrdir.create_repository(shared=shared)
-        if not isinstance(repository, str):
+        if make_working_trees is not None:
             repository.set_make_working_trees(make_working_trees)
         return repository
 
@@ -2710,7 +2710,7 @@ class UseExistingRepository(RepositoryPolicy):
         RepositoryPolicy.__init__(self, stack_on)
         self._repository = repository
 
-    def apply(self, make_working_trees=True, shared=False):
+    def apply(self, make_working_trees=None, shared=False):
         return self._repository
 
 
