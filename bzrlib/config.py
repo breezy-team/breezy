@@ -1101,6 +1101,7 @@ class AuthenticationConfig(object):
     def decode_password(self, credentials, encoding):
         return credentials
 
+
 class BzrDirConfig(object):
 
     def __init__(self, transport):
@@ -1144,7 +1145,6 @@ class TransportConfig(object):
     def __init__(self, transport, filename):
         self._transport = transport
         self._filename = filename
-
 
     def get_option(self, name, section=None, default=None):
         """Return the value associated with a named option.
