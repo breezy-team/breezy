@@ -126,8 +126,19 @@ For example::
   Committed revision 20.
   (release the code)
   (hmm - bad fix)
-  bzr revert -r 20
+  bzr revert -r 19
   bzr commit -m "Backout fix for bug #5"
+
+This will change your entire tree back to the state as of revision 19,
+which is probably only what you want if you haven't made any new commits
+since then. If you have, the ``revert`` would wipe them out as well. In that
+case, you probably want to use `Reverse cherrypicking`_ instead to
+back out the bad fix.
+
+Note: As an alternative to using an absolute bug number (like 19), you can
+specify one relative to the tip (-1) using a negative number like this::
+
+  bzr revert -r -2
 
 Correcting a tag
 ----------------
@@ -137,6 +148,7 @@ the ``tag`` command to redefine it. For example::
 
   bzr tag 2.0-beta-1
   (oops, we're not yet ready for that)
+  (make more commits to include more fixes)
   bzr tag 2.0-beta-1 --force
 
 Clearing a tag

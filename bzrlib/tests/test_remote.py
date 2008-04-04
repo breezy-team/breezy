@@ -45,6 +45,8 @@ from bzrlib.remote import (
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import server, medium
 from bzrlib.smart.client import _SmartClient
+from bzrlib.symbol_versioning import one_four
+from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.transport.remote import RemoteTransport
 
@@ -55,7 +57,6 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
         self.transport_server = server.SmartTCPServer_for_testing
         super(BasicRemoteObjectTests, self).setUp()
         self.transport = self.get_transport()
-        self.client = self.transport.get_smart_client()
         # make a branch that can be opened over the smart transport
         self.local_wt = BzrDir.create_standalone_workingtree('.')
 
@@ -140,7 +141,7 @@ class FakeClient(_SmartClient):
         self.responses = responses
         self._calls = []
         self.expecting_body = False
-        _SmartClient.__init__(self, FakeMedium(fake_medium_base, self._calls))
+        _SmartClient.__init__(self, FakeMedium(self._calls), fake_medium_base)
 
     def call(self, method, *args):
         self._calls.append(('call', method, args))
@@ -162,14 +163,6 @@ class FakeClient(_SmartClient):
 
 class FakeMedium(object):
 
-    def __init__(self, base, client_calls):
-        self.base = base
-        self.connection = FakeConnection(client_calls)
-        self._client_calls = client_calls
-
-
-class FakeConnection(object):
-
     def __init__(self, client_calls):
         self._remote_is_at_least_1_2 = True
         self._client_calls = client_calls
@@ -189,6 +182,39 @@ class TestVfsHas(tests.TestCase):
             [('call', 'has', (filename,))],
             client._calls)
         self.assertTrue(result)
+
+
+class Test_SmartClient_remote_path_from_transport(tests.TestCase):
+    """Tests for the behaviour of _SmartClient.remote_path_from_transport."""
+
+    def assertRemotePath(self, expected, client_base, transport_base):
+        """Assert that the result of _SmartClient.remote_path_from_transport
+        is the expected value for a given client_base and transport_base.
+        """
+        dummy_medium = 'dummy medium'
+        client = _SmartClient(dummy_medium, client_base)
+        transport = get_transport(transport_base)
+        result = client.remote_path_from_transport(transport)
+        self.assertEqual(expected, result)
+        
+    def test_remote_path_from_transport(self):
+        """_SmartClient.remote_path_from_transport calculates a URL for the
+        given transport relative to the root of the client base URL.
+        """
+        self.assertRemotePath('xyz/', 'bzr://host/path', 'bzr://host/xyz')
+        self.assertRemotePath(
+            'path/xyz/', 'bzr://host/path', 'bzr://host/path/xyz')
+
+    def test_remote_path_from_transport_http(self):
+        """Remote paths for HTTP transports are calculated differently to other
+        transports.  They are just relative to the client base, not the root
+        directory of the host.
+        """
+        for scheme in ['http:', 'https:', 'bzr+http:', 'bzr+https:']:
+            self.assertRemotePath(
+                '../xyz/', scheme + '//host/path', scheme + '//host/xyz')
+            self.assertRemotePath(
+                'xyz/', scheme + '//host/path', scheme + '//host/path/xyz')
 
 
 class TestBzrDirOpenBranch(tests.TestCase):
@@ -300,6 +326,9 @@ class OldSmartClient(object):
         client_medium = medium.SmartSimplePipesClientMedium(
             input_file, output_file)
         return medium.SmartClientStreamMediumRequest(client_medium)
+
+    def protocol_version(self):
+        return 1
 
 
 class OldServerTransport(object):
@@ -705,7 +734,8 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
         transport_path = 'empty'
         repo, client = self.setup_fake_client_and_repository(
             responses, transport_path)
-        result = repo.get_revision_graph(NULL_REVISION)
+        result = self.applyDeprecated(one_four, repo.get_revision_graph,
+            NULL_REVISION)
         self.assertEqual([], client._calls)
         self.assertEqual({}, result)
 
@@ -720,7 +750,7 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
         transport_path = 'sinhala'
         repo, client = self.setup_fake_client_and_repository(
             responses, transport_path)
-        result = repo.get_revision_graph()
+        result = self.applyDeprecated(one_four, repo.get_revision_graph)
         self.assertEqual(
             [('call_expecting_body', 'Repository.get_revision_graph',
              ('sinhala/', ''))],
@@ -740,7 +770,7 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
         transport_path = 'sinhala'
         repo, client = self.setup_fake_client_and_repository(
             responses, transport_path)
-        result = repo.get_revision_graph(r2)
+        result = self.applyDeprecated(one_four, repo.get_revision_graph, r2)
         self.assertEqual(
             [('call_expecting_body', 'Repository.get_revision_graph',
              ('sinhala/', r2))],
@@ -755,7 +785,7 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
             responses, transport_path)
         # also check that the right revision is reported in the error
         self.assertRaises(errors.NoSuchRevision,
-            repo.get_revision_graph, revid)
+            self.applyDeprecated, one_four, repo.get_revision_graph, revid)
         self.assertEqual(
             [('call_expecting_body', 'Repository.get_revision_graph',
              ('sinhala/', revid))],

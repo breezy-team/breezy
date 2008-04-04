@@ -188,6 +188,7 @@ def __get_closest(intersection):
     return matches
 
 
+@deprecated_function(symbol_versioning.one_four)
 def revision_graph(revision, revision_source):
     """Produce a graph of the ancestry of the specified revision.
     

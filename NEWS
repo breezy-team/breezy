@@ -12,6 +12,8 @@ IN DEVELOPMENT
 
   CHANGES:
 
+   * bzr main script cannot be imported (Benjamin Peterson)
+
    * When a plugin cannot be loaded as the file path is not a valid
      python module name bzr will now strip a ``bzr_`` prefix from the
      front of the suggested name, as many plugins (e.g. bzr-svn)
@@ -20,42 +22,159 @@ IN DEVELOPMENT
      as this is what bzr branch lp:bzr-svn will give you. (James Westby,
      Andrew Cowie)
 
+   * UniqueIntegerBugTracker now appends bug-ids instead of joining
+     them to the base URL. Plugins that register bug trackers may
+     need a trailing / added to the base URL if one is not already there.
+     (James Wesby, Andrew Cowie)
+
   FEATURES:
 
+    * Added mail-mode GNU Emacs mail package as a mail_client.
+      (Xavier Maillard, Bojan Nikolic)
+
   IMPROVEMENTS:
+
+    * ``bzr commit --fixes`` now recognises "gnome" as a tag by default.
+      (James Westby, Andrew Cowie)
+
+    * Diff is now more specific about execute-bit changes it describes
+      (Chad Miller)
 
     * Fetching data over HTTP is a bit faster when urllib is used.  This is done
       by forcing it to recv 64k at a time when reading lines in HTTP headers,
       rather than just 1 byte at a time.  (Andrew Bennetts)
 
+    * Log --short and --line are much faster when -r is not specified.
+      (Aaron Bentley)
+
     * Merge is faster.  We no longer check a file's existence unnecessarily
       when merging the execute bit.  (Aaron Bentley)
 
+    * ``bzr status`` on an explicit list of files no longer shows pending
+      merges, making it much faster on large trees. (John Arbash Meinel)
+
+    * The launchpad directory service now warns the user if they have not set
+      their launchpad login and are trying to resolve a URL using it, just
+      in case they want to do a write operation with it.  (James Westby)
+
+    * The smart protocol client is slightly faster, because it now only queries
+      the server for the protocol version once per connection.  Also, the HTTP
+      transport will now automatically probe for and use a smart server if
+      one is present.  You can use the new ``nosmart+`` transport decorator
+      to get the old behaviour.  (Andrew Bennetts)
+
+     * Various operations with revision specs and commands that calculate
+       revnos and revision ids are faster.  (John A. Meinel, Aaron Bentley)
+
   BUGFIXES:
+
+    * Add ``root_client_path`` parameter to SmartWSGIApp and
+      SmartServerRequest.  This makes it possible to publish filesystem
+      locations that don't exactly match URL paths. SmartServerRequest
+      subclasses should use the new ``translate_client_path`` and
+      ``transport_from_client_path`` methods when dealing with paths received
+      from a client to take this into account.  (Andrew Bennetts, #124089)
 
     * ``bzr mv a b`` can be now used also to rename previously renamed
       directories, not only files. (Lukáš Lalinský, #107967)
 
+    * ``bzr uncommit --local`` can now remove revisions from the local
+      branch to be symmetric with ``bzr commit --local``.
+      (John Arbash Meinel, #93412)
+
     * Don't ask for a password if there is no real terminal.
       (Alexander Belchenko, #69851)
 
+    * Implement handling of basename parameter for DefaultMail.  (James Westby)
+
+    * Launchpad locations (lp: URLs) can be pulled.  (Aaron Bentley, #181945)
+
+    * vsftp's return ``550 RNFR command failed.`` supported.
+      (Marcus Trautwig, #129786)
+
   DOCUMENTATION:
+
+    * Improved documentation on send/merge relationship. (Peter Schuller)
+
+    * Minor fixes to the User Guide. (Matthew Fuller)
+
+    * Reduced the evangelism in the User Guide. (Ian Clatworthy)
 
   API BREAKS:
 
+    * Attempting to pull data from a ghost aware repository (e.g. knits) into a
+      non-ghost aware repository such as weaves will now fail if there are
+      ghosts.  (Robert Collins)
+
+    * Log formatters must now provide log_revision instead of show and
+      show_merge_revno methods. The latter had been deprecated since the 0.17
+      release. (James Westby)
+
+    * ``Repository.get_revision_graph`` is deprecated, with no replacement
+      method. The method was size(history) and not desirable. (Robert Collins)
+
+    * ``revision.revision_graph`` is deprecated, with no replacement function.
+      The function was size(history) and not desirable. (Robert Collins)
+
+    * ``Transport.get_shared_medium`` is deprecated.  Use
+      ``Transport.get_smart_medium`` instead.  (Andrew Bennetts)
+
+    * ``VersionedFile.create_empty`` is removed. This method presupposed a
+      sensible mapping to a transport for individual files, but pack backed
+      versioned files have no such mapping. (Robert Collins)
+
+    * ``VersionedFile.get_graph`` is deprecated, with no replacement method.
+      The method was size(history) and not desirable. (Robert Collins)
+
+    * ``VersionedFile.get_graph_with_ghosts`` is deprecated, with no
+      replacement method.  The method was size(history) and not desirable.
+      (Robert Collins)
+
+    * ``VersionedFile.get_parents`` is deprecated, please use
+      ``VersionedFile.get_parent_map``. (Robert Collins)
+
+    * ``VersionedFile.has_ghost`` is now deprecated, as it is both expensive
+      and unused outside of a single test. (Robert Collins)
+
   TESTING:
+
+    * New -Dselftest_debug flag disables clearing of the debug flags during
+      tests.  This is useful if you want to use e.g. -Dhpss to help debug a
+      failing test.  Be aware that using this feature is likely to cause
+      spurious test failures if used with the full suite. (Andrew Bennetts)
+
+    * selftest --load-list now does some sanity checks regarding duplicate test
+      IDs and tests present in the list but not found in the actual test suite.
+      (Vincent Ladeuil)
+
+    * The test suite takes much less memory to run, and is a bit faster.  This
+      is done by clearing most attributes of TestCases after running them, if
+      they succeeded.  (Andrew Bennetts)
 
   INTERNALS:
 
+    * ``VersionedFile`` now has a new method ``get_parent_map`` which, like
+      ``Graph.get_parent_map`` returns a dict of key:parents. (Robert Collins)
 
-bzr 1.3rc1 2008-03-16
----------------------
+
+bzr 1.3 2008-03-20
+------------------
 
 Bazaar has become part of the GNU project <http://www.gnu.org>
 
 Many operations that act on history, including ``log`` and ``annotate`` are now
 substantially faster.  Several bugs have been fixed and several new options and
 features have been added.
+
+  TESTING:
+
+    * Avoid spurious failure of ``TestVersion.test_version`` matching
+      directory names.
+      (#202778, Martin Pool)
+
+
+bzr 1.3rc1 2008-03-16
+---------------------
 
   NOTES WHEN UPGRADING:
 
@@ -83,7 +202,7 @@ features have been added.
       (Alexander Belchenko)
 
     * Restore auto-detection of plink.exe on Windows. (Dmitry Vasiliev)
-
+    
     * Version number is now shown as "1.2" or "1.2pr2", without zeroed or
       missing final fields.  (Martin Pool)
 
@@ -146,6 +265,9 @@ features have been added.
     * Encode command line arguments from unicode to user_encoding before
       invoking external mail client in `bzr send` command.
       (#139318, Alexander Belchenko)
+
+    * Fixed problem connecting to ``bzr+https://`` servers.
+      (#198793, John Ferlito)
 
     * Improved error reporting in the Launchpad plugin. (Daniel Watkins,
       #196618)

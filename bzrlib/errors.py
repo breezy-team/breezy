@@ -541,11 +541,13 @@ class InvalidURL(PathError):
 
 class InvalidURLJoin(PathError):
 
-    _fmt = 'Invalid URL join request: "%(args)s"%(extra)s'
+    _fmt = "Invalid URL join request: %(reason)s: %(base)r + %(join_args)r"
 
-    def __init__(self, msg, base, args):
-        PathError.__init__(self, base, msg)
-        self.args = [base] + list(args)
+    def __init__(self, reason, base, join_args):
+        self.reason = reason
+        self.base = base
+        self.join_args = join_args
+        PathError.__init__(self, base, reason)
 
 
 class UnknownHook(BzrError):
@@ -2182,6 +2184,7 @@ class NoSmartServer(NotBranchError):
 
     _fmt = "No smart server available at %(url)s"
 
+    @symbol_versioning.deprecated_method(symbol_versioning.one_four)
     def __init__(self, url):
         self.url = url
 
