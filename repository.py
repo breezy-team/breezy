@@ -114,6 +114,9 @@ class SvnRepository(Repository):
         Repository.__init__(self, SvnRepositoryFormat(), bzrdir, 
             control_files, None, None, None)
 
+        self._cached_revnum = None
+        self._lock_mode = None
+        self._lock_count = 0
         self.transport = transport
         self.uuid = transport.get_uuid()
         assert self.uuid is not None
@@ -161,8 +164,39 @@ class SvnRepository(Repository):
     def get_transaction(self):
         raise NotImplementedError(self.get_transaction)
 
+    def lock_read(self):
+        if self._lock_mode:
+            assert self._lock_mode in ('r', 'w')
+            self._lock_count += 1
+        else:
+            self._lock_mode = 'r'
+            self._lock_count = 1
+
+    def unlock(self):
+        """See Branch.unlock()."""
+        self._lock_count -= 1
+        if self._lock_count == 0:
+            self._lock_mode = None
+            self._clear_cached_state()
+
+    def _clear_cached_state(self):
+        self._cached_revnum = None
+
+    def lock_write(self):
+        """See Branch.lock_write()."""
+        # TODO: Obtain lock on the remote server?
+        if self._lock_mode:
+            assert self._lock_mode == 'w'
+            self._lock_count += 1
+        else:
+            self._lock_mode = 'w'
+            self._lock_count = 1
+
     def get_latest_revnum(self):
-        return self.transport.get_latest_revnum()
+        if self._lock_mode in ('r','w') and self._cached_revnum:
+            return self._cached_revnum
+        self._cached_revnum = self.transport.get_latest_revnum()
+        return self._cached_revnum
 
     def get_stored_scheme(self):
         """Retrieve the stored branching scheme, either in the repository 

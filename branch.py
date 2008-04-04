@@ -69,7 +69,6 @@ class SvnBranch(Branch):
         self._format = SvnBranchFormat()
         self._lock_mode = None
         self._lock_count = 0
-        self._cached_revnum = None
         self.mapping = self.repository.get_mapping()
         self._branch_path = branch_path.strip("/")
         assert isinstance(self._branch_path, str)
@@ -349,6 +348,7 @@ class SvnBranch(Branch):
         else:
             self._lock_mode = 'w'
             self._lock_count = 1
+        self.repository.lock_write()
         
     def lock_read(self):
         """See Branch.lock_read()."""
@@ -358,14 +358,19 @@ class SvnBranch(Branch):
         else:
             self._lock_mode = 'r'
             self._lock_count = 1
+        self.repository.lock_read()
 
     def unlock(self):
         """See Branch.unlock()."""
         self._lock_count -= 1
         if self._lock_count == 0:
             self._lock_mode = None
-            self._cached_revnum = None
             self._clear_cached_state()
+        self.repository.unlock()
+
+    def _clear_cached_state(self):
+        super(SvnBranch,self)._clear_cached_state()
+        self._cached_revnum = None
 
     def get_parent(self):
         """See Branch.get_parent()."""

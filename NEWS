@@ -22,6 +22,9 @@ bzr-svn 0.4.10  UNRELEASED
 
    * Parse mergeWithUpstream set by svn-buildpackage.
 
+   * Cache last revision number during read locks, significantly speeds
+     up push.
+
   INTERNALS
 
    * Branching from a Subversion repository will now fetch right-hand side 
