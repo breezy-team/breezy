@@ -19,6 +19,7 @@ import os.path
 from cStringIO import StringIO
 import errno
 import subprocess
+import sys
 from tempfile import TemporaryFile
 
 from bzrlib import tests
@@ -1290,6 +1291,7 @@ class TestDiffFromTool(TestCaseWithTransport):
                                  'print "%(old_path)s %(new_path)s"'],
                                 old_tree, tree, output)
         self.addCleanup(diff_obj.finish)
+        print diff_obj._root
         self.assertContainsRe(diff_obj._root, 'bzr-diff-[^/]*')
         old_path, new_path = diff_obj._prepare_files('file-id', 'oldname',
                                                      'newname')
@@ -1298,7 +1300,7 @@ class TestDiffFromTool(TestCaseWithTransport):
         self.assertContainsRe(new_path, 'new/newname$')
         self.assertFileEqual('oldcontent', old_path)
         self.assertFileEqual('newcontent', new_path)
-        if osutils.has_symlinks():
+        if osutils.has_symlinks() and sys.platform != 'cygwin':
             self.assertTrue(os.path.samefile('tree/newname', new_path))
         # make sure we can create files with the same parent directories
         diff_obj._prepare_files('file-id', 'oldname2', 'newname2')
