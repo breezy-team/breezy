@@ -810,6 +810,7 @@ class TestCase(unittest.TestCase):
         import bzrlib.smart.server
         self._preserved_hooks = {
             bzrlib.branch.Branch: bzrlib.branch.Branch.hooks,
+            bzrlib.mutabletree.MutableTree: bzrlib.mutabletree.MutableTree.hooks,
             bzrlib.smart.server.SmartTCPServer: bzrlib.smart.server.SmartTCPServer.hooks,
             }
         self.addCleanup(self._restoreHooks)
@@ -2726,6 +2727,7 @@ def test_suite(keep_only=None):
                    'bzrlib.tests.test_missing',
                    'bzrlib.tests.test_msgeditor',
                    'bzrlib.tests.test_multiparent',
+                   'bzrlib.tests.test_mutabletree',
                    'bzrlib.tests.test_nonascii',
                    'bzrlib.tests.test_options',
                    'bzrlib.tests.test_osutils',
