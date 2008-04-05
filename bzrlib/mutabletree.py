@@ -470,7 +470,8 @@ class MutableTree(tree.Tree):
 
 
 class MutableTreeHooks(hooks.Hooks):
-    """A dictionary mapping a hook name to a list of callables for mutabletree hooks.
+    """A dictionary mapping a hook name to a list of callables for mutabletree 
+    hooks.
     """
 
     def __init__(self):
@@ -478,7 +479,7 @@ class MutableTreeHooks(hooks.Hooks):
 
         """
         hooks.Hooks.__init__(self)
-        # invoked before a commit is done in a tree
+        # Invoked before a commit is done in a tree. New in 1.4
         self['start_commit'] = []
 
 
