@@ -1281,6 +1281,8 @@ class TestDiffFromTool(TestCaseWithTransport):
         tree.commit('old tree', timestamp=0)
         tree.rename_one('oldname', 'newname')
         self.build_tree_contents([('tree/newname', 'newcontent')])
+        self.build_tree_contents([('tree/newname2', 'newcontent2')])
+        tree.add('newname2', 'file-id2')
         old_tree = tree.basis_tree()
         old_tree.lock_read()
         self.addCleanup(old_tree.unlock)
