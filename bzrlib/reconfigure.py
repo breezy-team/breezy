@@ -18,6 +18,7 @@
 
 from bzrlib import (
     branch,
+    bzrdir,
     errors,
     )
 
@@ -115,6 +116,13 @@ class Reconfigure(object):
             raise errors.AlreadyLightweightCheckout(bzrdir)
         return reconfiguration
 
+    @classmethod
+    def to_sharing(klass, bzrdir):
+        """Convert a standalone branch into a sharing branch"""
+        reconfiguration = klass(bzrdir)
+        reconfiguration._set_sharing(sharing=True)
+        return reconfiguration
+
     def _plan_changes(self, want_tree, want_branch, want_bound,
                       want_reference):
         """Determine which changes are needed to assume the configuration"""
@@ -154,6 +162,12 @@ class Reconfigure(object):
             self._destroy_tree = True
         if want_tree and self.tree is None:
             self._create_tree = True
+
+    def _set_sharing(self, sharing=None):
+        if sharing is None:
+            return
+        if sharing:
+            self._destroy_repository = True
 
     def changes_planned(self):
         """Return True if changes are planned, False otherwise"""
@@ -223,6 +237,11 @@ class Reconfigure(object):
         if self._destroy_repository:
             if self._create_reference:
                 reference_branch.repository.fetch(self.repository)
+            elif self.local_branch is not None and not self._destroy_branch:
+                up = self.local_branch.bzrdir.root_transport.clone('..')
+                up_bzrdir = bzrdir.BzrDir.open_containing_from_transport(up)[0]
+                new_repo = up_bzrdir.find_repository()
+                new_repo.fetch(self.repository)
         last_revision_info = None
         if self._destroy_reference:
             last_revision_info = self.referenced_branch.last_revision_info()
