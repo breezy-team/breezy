@@ -197,9 +197,11 @@ class BisectLog(object):
 
     def _set_status(self, revid, status):
         "Set the bisect status for the given revid."
-        if revid in [x[0] for x in self._items if x[1] in ['yes', 'no']]:
-            raise RuntimeError("attempting to add revid %s twice" % revid)
-        self._items.append((revid, status))
+        if not self.is_done():
+            if status != "done" and revid in [x[0] for x in self._items 
+                                              if x[1] in ['yes', 'no']]:
+                raise RuntimeError("attempting to add revid %s twice" % revid)
+            self._items.append((revid, status))
 
     def change_file_name(self, filename):
         "Switch log files."
@@ -220,6 +222,10 @@ class BisectLog(object):
         for (revid, status) in self._items:
             revlog.write("%s %s\n" % (revid, status))
 
+    def is_done(self):
+        "Report whether we've found the right revision."
+        return len(self._items) > 0 and self._items[-1][1] == "done"
+
     def set_status_from_revspec(self, revspec, status):
         "Set the bisection status for the revision in revspec."
         self._load_bzr_tree()
@@ -238,16 +244,18 @@ class BisectLog(object):
         # If we've found the "final" revision, check for a
         # merge point.
 
-        if self._middle_revid == self._high_revid and \
-           self._current.is_merge_point():
-            sys.stderr.write("final found!\n")
-            for parent in self._current.get_parent_revids():
-                if parent == self._low_revid:
-                    continue
-                else:
-                    self._find_range_and_middle(parent)
-                    self._switch_wc_to_revno(self._middle_revid)
-                    break
+        if self._middle_revid == self._high_revid or \
+           self._middle_revid == self._low_revid:
+            if self._current.is_merge_point():
+                for parent in self._current.get_parent_revids():
+                    if parent == self._low_revid:
+                        continue
+                    else:
+                        self._find_range_and_middle(parent)
+                        self._switch_wc_to_revno(self._middle_revid)
+                        break
+            else:
+                self.set_current("done")
 
 
 class cmd_bisect(Command):
@@ -306,6 +314,11 @@ class cmd_bisect(Command):
     def _set_state(self, revspec, state):
         "Set the state of the given revspec and bisecting."
         bisect_log = BisectLog()
+        if bisect_log.is_done():
+            sys.stdout.write("No further bisection is possible.\n")
+            bisect_log._current.show_rev_log(sys.stdout)
+            return
+
         if revspec:
             bisect_log.set_status_from_revspec(revspec, state)
         else:

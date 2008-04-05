@@ -221,6 +221,11 @@ class BisectFuncTests(BisectTestCase):
         self.run_bzr(['bisect', 'no'])
         self.assertRevno(3)
 
+        # Run again.  Since we're done, this should do nothing.
+
+        self.run_bzr(['bisect', 'no'])
+        self.assertRevno(3)
+
     def testWorkflowSubtree(self):
         """Run through a usage scenario where the offending change
         is in a subtree."""
@@ -249,6 +254,11 @@ class BisectFuncTests(BisectTestCase):
 
         self.run_bzr(['bisect', 'yes'])
         self.assertRevno(1.1)
+        self.run_bzr(['bisect', 'yes'])
+        self.assertRevno(1.1)
+
+        # Run again.  Since we're done, this should do nothing.
+
         self.run_bzr(['bisect', 'yes'])
         self.assertRevno(1.1)
 
