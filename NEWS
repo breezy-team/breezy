@@ -32,6 +32,8 @@ IN DEVELOPMENT
     * Added mail-mode GNU Emacs mail package as a mail_client.
       (Xavier Maillard, Bojan Nikolic)
 
+    * Added start_commit hook for mutable trees. (Jelmer Vernooij, #186422)
+
   IMPROVEMENTS:
 
     * ``bzr commit --fixes`` now recognises "gnome" as a tag by default.
