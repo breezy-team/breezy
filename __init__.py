@@ -110,14 +110,6 @@ class cmd_upload(commands.Command):
         self._pending_renames = []
         self._pending_deletions = []
 
-        # We check to see if we have previously uploaded, if not
-        # we do a full initial upload. I believe this should be
-        # the default behaviour
-        try:
-            rev_id = self.get_uploaded_revid()
-        except errors.PathError:
-            full = True
-
         if full:
             self.upload_full_tree()
         else:
@@ -230,9 +222,13 @@ class cmd_upload(commands.Command):
             self.tree.unlock()
 
     def upload_tree(self):
-        # XXX: if we get NoSuchFile should we consider it the first upload ever
-        # and upload changes since the zeroth revision ?  Add tests.
-        rev_id = self.get_uploaded_revid()
+        # If we can't find the revid file on the remote location, upload the
+        # full tree instead
+        try:
+            rev_id = self.get_uploaded_revid()
+        except errors.NoSuchFile:
+            self.upload_full_tree()
+
         # XXX: errors out if rev_id not in branch history (probably someone
         # uploaded from a different branch).
         from_tree = self.branch.repository.revision_tree(rev_id)
