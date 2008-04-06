@@ -20,20 +20,22 @@ itself, and its parent classes MutableTree and Tree - its worth having a
 look through these three files (workingtree.py, mutabletree.py and tree.py)
 to see which methods are available.
 
-Checking Status
+Compare trees
 ===============
-To check status (equivalent of bzr status) we need to create a Delta object
-showing changes::
+There are two methods for comparing trees: ``changes_from`` and
+``iter_changes``.  ``iter_changes`` is more regular and precise, but it is
+somewhat harder to work with.  See the API documentation for more details.
+
+``changes_from`` creates a Delta object showing changes::
 
   from bzrlib import delta
   changes = wt.changes_from(wt.basis_tree())
 
-
-This gives us Delta object with different lists of files for each type of
+This gives us a Delta object, which has several lists of files for each type of
 change, eg changes.added is a list of added files, changes.removed is list
 of removed files, changes.modified is a list of modified files. The contents
-of the lists aren't just filenames, but included other information as well.
-To grab just the filename we want the first value, eg::
+of the lists aren't just filenames, but include other information as well.
+ To grab just the filename we want the first value, eg::
 
   print("list of newly added files")
   for filename in changes.added:
@@ -293,20 +295,8 @@ revision id::
 
   revtree = repo.revision_tree(rev_id)
 
-There's a lot going on in a RevisionTree, but there are a couple of things
-that may be interesting::
-
-  revtree.changes_from(other_revtree)
-
-gives you a TreeDelta which you is a form of diff.
-
-A more regular and precise comparison can be derived from
-``Tree.iter_changes``::
-
-  revtree.iter_changes(other_revtree)
-
-See the API documentation for more details.
-
+RevisionTrees, like all trees, can be compared as described in "Comparing
+Trees" above.
 
 The most common way to list files in a tree is ``Tree.iter_entries()``.
 The simplest way to get file content is ``Tree.get_file()``.  The best way
