@@ -626,6 +626,7 @@ class Transport(object):
         """
         raise errors.NoSmartMedium(self)
 
+    @deprecated_method(one_four)
     def get_shared_medium(self):
         """Return a smart client shared medium for this transport if possible.
 
@@ -1796,6 +1797,10 @@ register_transport_proto('vfat+')
 register_lazy_transport('vfat+',
                         'bzrlib.transport.fakevfat',
                         'FakeVFATTransportDecorator')
+
+register_transport_proto('nosmart+')
+register_lazy_transport('nosmart+', 'bzrlib.transport.nosmart',
+                        'NoSmartTransportDecorator')
 
 # These two schemes were registered, but don't seem to have an actual transport
 # protocol registered

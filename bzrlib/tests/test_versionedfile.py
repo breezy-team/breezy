@@ -379,15 +379,6 @@ class VersionedFileTestMixIn(object):
         verify_file(f)
         verify_file(self.reopen_file())
 
-    def test_create_empty(self):
-        f = self.get_file()
-        f.add_lines('0', [], ['a\n'])
-        new_f = f.create_empty('t', MemoryTransport())
-        # smoke test, specific types should check it is honoured correctly for
-        # non type attributes
-        self.assertEqual([], new_f.versions())
-        self.assertTrue(isinstance(new_f, f.__class__))
-
     def test_copy_to(self):
         f = self.get_file()
         f.add_lines('0', [], ['a\n'])
@@ -630,10 +621,8 @@ class VersionedFileTestMixIn(object):
             vf.add_lines_with_ghosts('notbxbfse', [parent_id_utf8], [])
         except NotImplementedError:
             # check the other ghost apis are also not implemented
-            self.assertRaises(NotImplementedError, vf.has_ghost, 'foo')
             self.assertRaises(NotImplementedError, vf.get_ancestry_with_ghosts, ['foo'])
             self.assertRaises(NotImplementedError, vf.get_parents_with_ghosts, 'foo')
-            self.assertRaises(NotImplementedError, vf.get_graph_with_ghosts)
             return
         vf = self.reopen_file()
         # test key graph related apis: getncestry, _graph, get_parents
@@ -647,8 +636,10 @@ class VersionedFileTestMixIn(object):
         # we have _with_ghost apis to give us ghost information.
         self.assertEqual([parent_id_utf8, 'notbxbfse'], vf.get_ancestry_with_ghosts(['notbxbfse']))
         self.assertEqual([parent_id_utf8], vf.get_parents_with_ghosts('notbxbfse'))
-        self.assertEqual({'notbxbfse':(parent_id_utf8,)}, vf.get_graph_with_ghosts())
-        self.assertTrue(vf.has_ghost(parent_id_utf8))
+        self.assertEqual({'notbxbfse':(parent_id_utf8,)},
+            self.applyDeprecated(one_four, vf.get_graph_with_ghosts))
+        self.assertTrue(self.applyDeprecated(one_four, vf.has_ghost,
+            parent_id_utf8))
         # if we add something that is a ghost of another, it should correct the
         # results of the prior apis
         vf.add_lines(parent_id_utf8, [], [])
@@ -667,8 +658,9 @@ class VersionedFileTestMixIn(object):
         self.assertEqual({parent_id_utf8:(),
                           'notbxbfse':(parent_id_utf8,),
                           },
-                         vf.get_graph_with_ghosts())
-        self.assertFalse(vf.has_ghost(parent_id_utf8))
+            self.applyDeprecated(one_four, vf.get_graph_with_ghosts))
+        self.assertFalse(self.applyDeprecated(one_four, vf.has_ghost,
+            parent_id_utf8))
 
     def test_add_lines_with_ghosts_after_normal_revs(self):
         # some versioned file formats allow lines to be added with parent
@@ -678,10 +670,9 @@ class VersionedFileTestMixIn(object):
         vf = self.get_file()
         # probe for ghost support
         try:
-            vf.has_ghost('hoo')
+            vf.add_lines_with_ghosts('base', [], ['line\n', 'line_b\n'])
         except NotImplementedError:
             return
-        vf.add_lines_with_ghosts('base', [], ['line\n', 'line_b\n'])
         vf.add_lines_with_ghosts('references_ghost',
                                  ['base', 'a_ghost'],
                                  ['line\n', 'line_b\n', 'line_c\n'])

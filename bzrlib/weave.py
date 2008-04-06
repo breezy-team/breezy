@@ -904,9 +904,6 @@ class WeaveFile(Weave):
         sio.seek(0)
         transport.put_file(name + WeaveFile.WEAVE_SUFFIX, sio, self._filemode)
 
-    def create_empty(self, name, transport, filemode=None):
-        return WeaveFile(name, transport, filemode, create=True)
-
     def _save(self):
         """Save the weave."""
         self._check_write_ok()

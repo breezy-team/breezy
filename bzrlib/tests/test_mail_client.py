@@ -71,6 +71,32 @@ class TestThunderbird(tests.TestCase):
                 'Command-line item %r is unicode!' % item)
 
 
+class TestEmacsMailMode(tests.TestCase):
+
+    def test_commandline(self):
+        eclient = mail_client.EmacsMailMode(None)
+        commandline = eclient._get_compose_commandline(None, None, 'file%')
+        self.assertEqual(['--eval', '(mail nil nil nil)',
+                          '(mail-text)', '(newline)',
+                          '(attach "file%")'], commandline)
+
+        commandline = eclient._get_compose_commandline('jrandom@example.org',
+                                                     'Hi there!', None)
+        self.assertEqual(['--eval', '(mail nil "jrandom@example.org" "Hi there!")',
+                          '(mail-text)', '(newline)'], commandline)
+
+    def test_commandline_is_8bit(self):
+        eclient = mail_client.EmacsMailMode(None)
+        commandline = eclient._get_compose_commandline(u'jrandom@example.org',
+            u'Hi there!', u'file%')
+        self.assertEqual(['--eval', '(mail nil "jrandom@example.org" "Hi there!")',
+                          '(mail-text)', '(newline)',
+                          '(attach "file%")'], commandline)
+        for item in commandline:
+            self.assertFalse(isinstance(item, unicode),
+                'Command-line item %r is unicode!' % item)
+
+
 class TestXDGEmail(tests.TestCase):
 
     def test_commandline(self):

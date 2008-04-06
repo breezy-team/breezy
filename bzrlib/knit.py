@@ -101,18 +101,24 @@ from bzrlib.errors import (
     RevisionNotPresent,
     RevisionAlreadyPresent,
     )
-from bzrlib.tuned_gzip import GzipFile, bytes_to_gzip
+from bzrlib.graph import Graph
 from bzrlib.osutils import (
     contains_whitespace,
     contains_linebreaks,
     sha_string,
     sha_strings,
     )
-from bzrlib.symbol_versioning import DEPRECATED_PARAMETER, deprecated_passed
+from bzrlib.symbol_versioning import (
+    DEPRECATED_PARAMETER,
+    deprecated_method,
+    deprecated_passed,
+    one_four,
+    )
 from bzrlib.tsort import topo_sort
+from bzrlib.tuned_gzip import GzipFile, bytes_to_gzip
 import bzrlib.ui
-import bzrlib.weave
 from bzrlib.versionedfile import VersionedFile, InterVersionedFile
+import bzrlib.weave
 
 
 # TODO: Split out code specific to this format into an associated object.
@@ -626,10 +632,6 @@ class KnitVersionedFile(VersionedFile):
         # move the copied index into place
         transport.move(name + INDEX_SUFFIX + '.tmp', name + INDEX_SUFFIX)
 
-    def create_empty(self, name, transport, mode=None):
-        return KnitVersionedFile(name, transport, factory=self.factory,
-                                 delta=self.delta, create=True)
-    
     def get_data_stream(self, required_versions):
         """Get a data stream for the specified versions.
 
@@ -751,10 +753,10 @@ class KnitVersionedFile(VersionedFile):
             annotated_part = "plain"
         return "knit-%s" % (annotated_part,)
         
+    @deprecated_method(one_four)
     def get_graph_with_ghosts(self):
         """See VersionedFile.get_graph_with_ghosts()."""
-        graph_items = self._index.get_graph()
-        return dict(graph_items)
+        return self.get_parent_map(self.versions())
 
     def get_sha1(self, version_id):
         return self.get_sha1s([version_id])[0]
@@ -770,18 +772,18 @@ class KnitVersionedFile(VersionedFile):
         """See VersionedFile.get_suffixes()."""
         return [DATA_SUFFIX, INDEX_SUFFIX]
 
+    @deprecated_method(one_four)
     def has_ghost(self, version_id):
         """True if there is a ghost reference in the file to version_id."""
         # maybe we have it
         if self.has_version(version_id):
             return False
         # optimisable if needed by memoising the _ghosts set.
-        items = self._index.get_graph()
-        for node, parents in items:
+        items = self.get_parent_map(self.versions())
+        for parents in items.itervalues():
             for parent in parents:
-                if parent not in self._index._cache:
-                    if parent == version_id:
-                        return True
+                if parent == version_id and parent not in items:
+                    return True
         return False
 
     def insert_data_stream(self, (format, data_list, reader_callable)):
@@ -1427,10 +1429,6 @@ class _KnitIndex(_KnitComponentFile):
                 self._transport.put_bytes_non_atomic(
                     self._filename, self.HEADER, mode=self._file_mode)
 
-    def get_graph(self):
-        """Return a list of the node:parents lists from this knit index."""
-        return [(vid, idx[4]) for vid, idx in self._cache.iteritems()]
-
     def get_ancestry(self, versions, topo_sorted=True):
         """See VersionedFile.get_ancestry."""
         # get a graph of all the mentioned versions:
@@ -1847,15 +1845,6 @@ class KnitGraphIndex(object):
             return 'line-delta'
         else:
             return 'fulltext'
-
-    def get_graph(self):
-        """Return a list of the node:parents lists from this knit index."""
-        if not self._parents:
-            return [(key, ()) for key in self.get_versions()]
-        result = []
-        for index, key, value, refs in self._graph_index.iter_all_entries():
-            result.append((key[0], tuple([ref[0] for ref in refs[0]])))
-        return result
 
     def iter_parents(self, version_ids):
         """Iterate through the parents for many version ids.
@@ -2673,8 +2662,14 @@ class InterKnit(InterVersionedFile):
         see join() for the parameter definitions.
         """
         version_ids = self._get_source_version_ids(version_ids, ignore_missing)
-        graph = self.source.get_graph(version_ids)
-        order = topo_sort(graph.items())
+        # --- the below is factorable out with VersionedFile.join, but wait for
+        # VersionedFiles, it may all be simpler then.
+        graph = Graph(self.source)
+        search = graph._make_breadth_first_searcher(version_ids)
+        transitive_ids = set()
+        map(transitive_ids.update, list(search))
+        parent_map = self.source.get_parent_map(transitive_ids)
+        order = topo_sort(parent_map.items())
 
         def size_of_content(content):
             return sum(len(line) for line in content.text())
@@ -2741,7 +2736,8 @@ class InterKnit(InterVersionedFile):
     
             if not needed_versions:
                 return 0
-            full_list = topo_sort(self.source.get_graph())
+            full_list = topo_sort(
+                self.source.get_parent_map(self.source.versions()))
     
             version_list = [i for i in full_list if (not self.target.has_version(i)
                             and i in needed_versions)]
@@ -2843,7 +2839,8 @@ class WeaveToKnit(InterVersionedFile):
     
             if not needed_versions:
                 return 0
-            full_list = topo_sort(self.source.get_graph())
+            full_list = topo_sort(
+                self.source.get_parent_map(self.source.versions()))
     
             version_list = [i for i in full_list if (not self.target.has_version(i)
                             and i in needed_versions)]

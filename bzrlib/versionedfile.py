@@ -30,6 +30,7 @@ from bzrlib import (
     revision,
     ui,
     )
+from bzrlib.graph import Graph
 from bzrlib.transport.memory import MemoryTransport
 """)
 
@@ -70,6 +71,7 @@ class VersionedFile(object):
         """Return a unsorted list of versions."""
         raise NotImplementedError(self.versions)
 
+    @deprecated_method(one_four)
     def has_ghost(self, version_id):
         """Returns whether version is present as a ghost."""
         raise NotImplementedError(self.has_ghost)
@@ -194,15 +196,6 @@ class VersionedFile(object):
     def _clone_text(self, new_version_id, old_version_id, parents):
         """Helper function to do the _clone_text work."""
         raise NotImplementedError(self.clone_text)
-
-    def create_empty(self, name, transport, mode=None):
-        """Create a new versioned file of this exact type.
-
-        :param name: the file name
-        :param transport: the transport
-        :param mode: optional file mode.
-        """
-        raise NotImplementedError(self.create_empty)
 
     def get_format_signature(self):
         """Get a text description of the data encoding in this file.
@@ -383,6 +376,7 @@ class VersionedFile(object):
                     pending.add(parent)
         return result
 
+    @deprecated_method(one_four)
     def get_graph_with_ghosts(self):
         """Return a graph for the entire versioned file.
         
@@ -762,21 +756,14 @@ class InterVersionedFile(InterObject):
         are not present in the other file's history unless ignore_missing is 
         supplied in which case they are silently skipped.
         """
-        # the default join: 
-        # - if the target is empty, just add all the versions from 
-        #   source to target, otherwise:
-        # - make a temporary versioned file of type target
-        # - insert the source content into it one at a time
-        # - join them
-        if not self.target.versions():
-            target = self.target
-        else:
-            # Make a new target-format versioned file. 
-            temp_source = self.target.create_empty("temp", MemoryTransport())
-            target = temp_source
+        target = self.target
         version_ids = self._get_source_version_ids(version_ids, ignore_missing)
-        graph = self.source.get_graph(version_ids)
-        order = tsort.topo_sort(graph.items())
+        graph = Graph(self.source)
+        search = graph._make_breadth_first_searcher(version_ids)
+        transitive_ids = set()
+        map(transitive_ids.update, list(search))
+        parent_map = self.source.get_parent_map(transitive_ids)
+        order = tsort.topo_sort(parent_map.items())
         pb = ui.ui_factory.nested_progress_bar()
         parent_texts = {}
         try:
@@ -794,24 +781,16 @@ class InterVersionedFile(InterObject):
             # memory pressure reduction. RBC 20060313
             # pb.update('Converting versioned data', 0, len(order))
             total = len(order)
-            parent_map = self.source.get_parent_map(order)
             for index, version in enumerate(order):
                 pb.update('Converting versioned data', index, total)
+                if version in target:
+                    continue
                 _, _, parent_text = target.add_lines(version,
                                                parent_map[version],
                                                self.source.get_lines(version),
                                                parent_texts=parent_texts)
                 parent_texts[version] = parent_text
-            
-            # this should hit the native code path for target
-            if target is not self.target:
-                return self.target.join(temp_source,
-                                        pb,
-                                        msg,
-                                        version_ids,
-                                        ignore_missing)
-            else:
-                return total
+            return total
         finally:
             pb.finished()
 

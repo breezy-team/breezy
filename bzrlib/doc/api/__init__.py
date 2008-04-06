@@ -42,7 +42,7 @@ def test_suite():
     # want the module to appears there.
     for t in tests.iter_suite_tests(suite):
         def make_new_test_id():
-            new_id = '%s(%s)' % ( __name__, t)
+            new_id = '%s.DocFileTest(%s)' % ( __name__, t)
             return lambda: new_id
         t.id = make_new_test_id()
     return suite
