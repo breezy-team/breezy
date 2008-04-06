@@ -14,6 +14,9 @@ IN DEVELOPMENT
 
    * bzr main script cannot be imported (Benjamin Peterson)
 
+   * On Linux bzr additionally looks for plugins in arch-independent site
+     directory. (Toshio Kuratomi)
+ 
    * When a plugin cannot be loaded as the file path is not a valid
      python module name bzr will now strip a ``bzr_`` prefix from the
      front of the suggested name, as many plugins (e.g. bzr-svn)
@@ -216,7 +219,7 @@ bzr 1.3rc1 2008-03-16
       (Alexander Belchenko)
 
     * Restore auto-detection of plink.exe on Windows. (Dmitry Vasiliev)
-    
+
     * Version number is now shown as "1.2" or "1.2pr2", without zeroed or
       missing final fields.  (Martin Pool)
 
