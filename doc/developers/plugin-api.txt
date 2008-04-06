@@ -91,9 +91,11 @@ the full list.
 |                        |         | formats that drop into the             |
 |                        |         | ``.bzr/checkout`` metadir system.      |
 +------------------------+---------+----------------------------------------+
-| bzr_branch_formats     | {}  As bzr_checkout_formats but for branches.    |
+| bzr_branch_formats     | {}      | As bzr_checkout_formats but for        |
+|                        |         | branches.                              |
 +------------------------+---------+----------------------------------------+
-| bzr_repository_formats | {} As bzr_checkout_formats but for repositories. |
+| bzr_repository_formats | {}      | As bzr_checkout_formats but for        |
+|                        |         | repositories.                          |
 +------------------------+---------+----------------------------------------+
 
 Control Formats
