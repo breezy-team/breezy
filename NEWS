@@ -32,6 +32,9 @@ IN DEVELOPMENT
     * Added mail-mode GNU Emacs mail package as a mail_client.
       (Xavier Maillard, Bojan Nikolic)
 
+    * Reconfigure can covert a branch to be standalone or to use a shared
+      repository.  (Aaron Bentley)
+
   IMPROVEMENTS:
 
     * ``bzr commit --fixes`` now recognises "gnome" as a tag by default.

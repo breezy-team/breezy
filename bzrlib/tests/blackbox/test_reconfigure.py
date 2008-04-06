@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib import (
+    bzrdir,
     errors,
     tests,
     workingtree,
@@ -66,3 +67,22 @@ class TestReconfigure(tests.TestCaseWithTransport):
         branch = self.make_branch('branch')
         checkout = branch.create_checkout('checkout')
         self.run_bzr('reconfigure --lightweight-checkout checkout')
+
+    def test_standalone_to_sharing(self):
+        self.build_tree(['repo/'])
+        tree = self.make_branch_and_tree('repo/tree')
+        repo = self.make_repository('repo', shared=True)
+        self.run_bzr('reconfigure --sharing', working_dir='repo/tree')
+        tree = workingtree.WorkingTree.open('repo/tree')
+        self.assertNotEqual(tree.bzrdir.root_transport.base,
+            tree.branch.repository.bzrdir.root_transport.base)
+
+    def test_sharing_to_standalone(self):
+        repo = self.make_repository('repo', shared=True)
+        branch = bzrdir.BzrDir.create_branch_convenience('repo/tree')
+        self.assertNotEqual(branch.bzrdir.root_transport.base,
+            branch.repository.bzrdir.root_transport.base)
+        self.run_bzr('reconfigure --standalone', working_dir='repo/tree')
+        tree = workingtree.WorkingTree.open('repo/tree')
+        self.assertEqual(tree.bzrdir.root_transport.base,
+            tree.branch.repository.bzrdir.root_transport.base)
