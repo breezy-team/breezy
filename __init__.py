@@ -69,6 +69,7 @@ class cmd_upload(commands.Command):
     takes_options = [
         'revision',
         'remember',
+        'verbose',
         option.Option('full', 'Upload the full working tree.'),
         option.Option('directory',
                       help='Branch to upload from, '
@@ -79,7 +80,7 @@ class cmd_upload(commands.Command):
        ]
 
     def run(self, location=None, full=False, revision=None, remember=None,
-            directory=None,
+            directory=None, verbose=False,
             ):
         if directory is None:
             directory = u'.'
@@ -109,6 +110,7 @@ class cmd_upload(commands.Command):
         self.rev_id = rev_id
         self._pending_renames = []
         self._pending_deletions = []
+        self.verbose = verbose
 
         if full:
             self.upload_full_tree()
@@ -135,6 +137,8 @@ class cmd_upload(commands.Command):
         return self.to_transport.get_bytes(self.bzr_upload_revid_file_name)
 
     def upload_file(self, relpath, id):
+        if self.verbose:
+            print 'Uploading: ' + relpath
         self.to_transport.put_bytes(relpath, self.tree.get_file_text(id))
 
     def make_remote_dir(self, relpath):
@@ -142,9 +146,13 @@ class cmd_upload(commands.Command):
         self.to_transport.mkdir(relpath)
 
     def delete_remote_file(self, relpath):
+        if self.verbose:
+            print 'Deleting: ' + relpath
         self.to_transport.delete(relpath)
 
     def delete_remote_dir(self, relpath):
+        if self.verbose:
+            print 'Deleting: ' + relpath
         self.to_transport.rmdir(relpath)
 
     def delete_remote_dir_maybe(self, relpath):
@@ -183,6 +191,8 @@ class cmd_upload(commands.Command):
         stamp = '.tmp.%.9f.%d.%d' % (time.time(),
                                      os.getpid(),
                                      random.randint(0,0x7FFFFFFF))
+        if self.verbose:
+            print 'Renaming ' + old_relpath + ' to ' + new_relpath
         self.to_transport.rename(old_relpath, stamp)
         self._pending_renames.append((stamp, new_relpath))
 
