@@ -168,6 +168,11 @@ class Reconfigure(object):
             changes = self.tree.changes_from(self.tree.basis_tree())
             if changes.has_changed():
                 raise errors.UncommittedChanges(self.tree)
+        if self._create_reference and self.local_branch is not None:
+            reference_branch = branch.Branch.open(self._select_bind_location())
+            if (reference_branch.last_revision() !=
+                self.local_branch.last_revision()):
+                raise errors.UnsyncedBranches(self.bzrdir, reference_branch)
 
     def _select_bind_location(self):
         """Select a location to bind or create a reference to.
