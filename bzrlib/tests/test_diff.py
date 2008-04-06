@@ -1275,33 +1275,34 @@ class TestDiffFromTool(TestCaseWithTransport):
                          ' on this machine', str(e))
 
     def test_execute_windows_tool(self):
-        if (sys.platform == 'windows'
-            or sys.platform == 'cygwin'):
-            output = StringIO()
-            tree = self.make_branch_and_tree('tree')
-            self.build_tree_contents([('tree/file', 'content')])
-            tree.add('file', 'file-id')
-            tree.commit('old tree', timestamp=0)
-            tree.lock_read()
-            self.addCleanup(tree.unlock)
-            diff_obj = DiffFromTool(['python', '-c',
-                                     'print "%(old_path)s %(new_path)s"'],
-                                    tree, tree, output)
-            diff_obj._prepare_files('file-id', 'file', 'file')
-            proc = subprocess.Popen(['attrib', 'old/file'],
-                                    stdout=subprocess.PIPE,
-                                    cwd=diff_obj._root)
-            proc.wait()
-            result=proc.stdout.read()
-            self.assertContainsRe(result, r'old\\file')
-            self.assertNotContainsRe(result, 'Path not found')
-            proc = subprocess.Popen(['attrib', 'new/file'],
-                                    stdout=subprocess.PIPE,
-                                    cwd=diff_obj._root)
-            proc.wait()
-            result=proc.stdout.read()
-            self.assertContainsRe(result, r'new\\file')
-            self.assertNotContainsRe(result, 'Path not found')
+        if (sys.platform != 'windows'
+            and sys.platform != 'cygwin'):
+            raise tests.TestSkipped('Platform does not have Windows tools.')
+        output = StringIO()
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file', 'content')])
+        tree.add('file', 'file-id')
+        tree.commit('old tree', timestamp=0)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        diff_obj = DiffFromTool(['python', '-c',
+                                 'print "%(old_path)s %(new_path)s"'],
+                                tree, tree, output)
+        diff_obj._prepare_files('file-id', 'file', 'file')
+        proc = subprocess.Popen(['attrib', 'old/file'],
+                                stdout=subprocess.PIPE,
+                                cwd=diff_obj._root)
+        proc.wait()
+        result=proc.stdout.read()
+        self.assertContainsRe(result, r'old\\file')
+        self.assertNotContainsRe(result, 'Path not found')
+        proc = subprocess.Popen(['attrib', 'new/file'],
+                                stdout=subprocess.PIPE,
+                                cwd=diff_obj._root)
+        proc.wait()
+        result=proc.stdout.read()
+        self.assertContainsRe(result, r'new\\file')
+        self.assertNotContainsRe(result, 'Path not found')
 
     def test_prepare_files(self):
         output = StringIO()
