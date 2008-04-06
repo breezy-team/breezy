@@ -146,8 +146,7 @@ class cmd_upload(commands.Command):
         return self.to_transport.get_bytes(self.bzr_upload_revid_file_name)
 
     def upload_file(self, relpath, id):
-        if self.verbose:
-            print 'Uploading: ' + relpath
+        self.outf.write('Uploaded ' + relpath + "\n")
         self.to_transport.put_bytes(relpath, self.tree.get_file_text(id))
 
     def make_remote_dir(self, relpath):
@@ -155,13 +154,11 @@ class cmd_upload(commands.Command):
         self.to_transport.mkdir(relpath)
 
     def delete_remote_file(self, relpath):
-        if self.verbose:
-            print 'Deleting: ' + relpath
+        self.outf.write('Deleting: ' + relpath + "\n")
         self.to_transport.delete(relpath)
 
     def delete_remote_dir(self, relpath):
-        if self.verbose:
-            print 'Deleting: ' + relpath
+        self.outf.write('Deleting: ' + relpath + "\n")
         self.to_transport.rmdir(relpath)
 
     def delete_remote_dir_maybe(self, relpath):
@@ -200,8 +197,7 @@ class cmd_upload(commands.Command):
         stamp = '.tmp.%.9f.%d.%d' % (time.time(),
                                      os.getpid(),
                                      random.randint(0,0x7FFFFFFF))
-        if self.verbose:
-            print 'Renaming ' + old_relpath + ' to ' + new_relpath
+        self.outf.write('Renaming ' + old_relpath + ' to ' + new_relpath + "\n")
         self.to_transport.rename(old_relpath, stamp)
         self._pending_renames.append((stamp, new_relpath))
 
