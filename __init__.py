@@ -35,11 +35,6 @@ Known limitations:
 # chmod bits but don't provide an ftp server that support them, well, better
 # find another provider ;-)
 
-# TODO: can't upload with conflicts present (or even uncommited changes ? Or at
-# a least a warning ?) . Something along the lines:
-
-#            if len(self.tree.conflicts()) > 0:
-#                raise ConflictsInTree
 
 from bzrlib import (
     commands,
@@ -49,10 +44,12 @@ from bzrlib import (
 lazy_import.lazy_import(globals(), """
 from bzrlib import (
     branch,
+    delta,
     errors,
     revisionspec,
     transport,
     urlutils,
+    workingtree,
     )
 """)
 
@@ -84,6 +81,18 @@ class cmd_upload(commands.Command):
             ):
         if directory is None:
             directory = u'.'
+
+        wt = workingtree.WorkingTree.open(directory)
+        changes = wt.changes_from(wt.basis_tree())
+       
+        #TODO: Needs tests
+        if changes.has_changed():
+            raise errors.UncommittedChanges(wt)
+
+        #TODO: Needs tests
+        if len(wt.conflicts()) > 0:
+            raise errors.ConflictsInTree
+
         self.branch = branch.Branch.open_containing(directory)[0]
 
         if location is None:
