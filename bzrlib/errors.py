@@ -2563,6 +2563,11 @@ class AlreadySharing(BzrDirError):
     _fmt = "'%(display_url)s' is already sharing a repository."
 
 
+class AlreadyStandalone(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already standalone."
+
+
 class ReconfigurationNotSupported(BzrDirError):
 
     _fmt = "Requested reconfiguration of '%(display_url)s' is not supported."

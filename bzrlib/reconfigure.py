@@ -131,6 +131,15 @@ class Reconfigure(object):
             raise errors.AlreadySharing(bzrdir)
         return reconfiguration
 
+    @classmethod
+    def to_standalone(klass, bzrdir):
+        """Convert a standalone branch into a sharing branch"""
+        reconfiguration = klass(bzrdir)
+        reconfiguration._set_sharing(sharing=False)
+        if not reconfiguration.changes_planned():
+            raise errors.AlreadyStandalone(bzrdir)
+        return reconfiguration
+
     def _plan_changes(self, want_tree, want_branch, want_bound,
                       want_reference):
         """Determine which changes are needed to assume the configuration"""
@@ -177,6 +186,9 @@ class Reconfigure(object):
         if sharing:
             if self.local_repository is not None:
                 self._destroy_repository = True
+        else:
+            if self.local_repository is None:
+                self._create_repository = True
 
     def changes_planned(self):
         """Return True if changes are planned, False otherwise"""
@@ -236,6 +248,9 @@ class Reconfigure(object):
             self._check()
         if self._create_repository:
             repo = self.bzrdir.create_repository()
+            if self.local_branch and not self._destroy_branch:
+                repo.fetch(self.local_branch.repository,
+                           self.local_branch.last_revision())
         else:
             repo = self.repository
         if self._create_branch and self.referenced_branch is not None:

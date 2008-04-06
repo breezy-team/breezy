@@ -298,11 +298,29 @@ class TestReconfigure(tests.TestCaseWithTransport):
         self.assertTrue(repo.has_same_location(tree.branch.repository))
         self.assertEqual('Hello', repo.get_revision('hello-id').message)
 
-    def test_sharing_to_sharing(self):
+    def make_sharing_tree(self):
         self.build_tree(['root/'])
         repo = self.make_repository('root', shared=True)
         tree = self.make_branch_and_tree('root/tree')
         reconfigure.Reconfigure.to_sharing(tree.bzrdir).apply()
-        tree = workingtree.WorkingTree.open('root/tree')
+        return workingtree.WorkingTree.open('root/tree')
+
+    def test_sharing_to_sharing(self):
+        tree = self.make_sharing_tree()
         self.assertRaises(errors.AlreadySharing,
                           reconfigure.Reconfigure.to_sharing, tree.bzrdir)
+
+    def test_sharing_to_standalone(self):
+        tree = self.make_sharing_tree()
+        tree.commit('Hello', rev_id='hello-id')
+        reconfigure.Reconfigure.to_standalone(tree.bzrdir).apply()
+        tree = workingtree.WorkingTree.open('root/tree')
+        repo = tree.branch.repository
+        self.assertEqual(repo.bzrdir.root_transport.base,
+                         tree.bzrdir.root_transport.base)
+        self.assertEqual('Hello', repo.get_revision('hello-id').message)
+
+    def test_standalone_to_standalone(self):
+        tree = self.make_branch_and_tree('tree')
+        self.assertRaises(errors.AlreadyStandalone,
+                          reconfigure.Reconfigure.to_standalone, tree.bzrdir)
