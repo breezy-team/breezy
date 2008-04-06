@@ -56,6 +56,9 @@ from bzrlib import (
     )
 """)
 
+version_info = (0,1,0)
+plugin_name = 'upload'
+
 class cmd_upload(commands.Command):
     """Upload a working tree, as a whole or incrementally.
 
