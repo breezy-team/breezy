@@ -31,6 +31,12 @@ class Reconfigure(object):
             self.repository = self.bzrdir.find_repository()
         except errors.NoRepositoryPresent:
             self.repository = None
+        else:
+            if (self.repository.bzrdir.root_transport.base ==
+                self.bzrdir.root_transport.base):
+                self.local_repository = self.repository
+            else:
+                self.local_repository = None
         try:
             branch = self.bzrdir.open_branch()
             if branch.bzrdir.root_transport.base == bzrdir.root_transport.base:
@@ -121,6 +127,8 @@ class Reconfigure(object):
         """Convert a standalone branch into a sharing branch"""
         reconfiguration = klass(bzrdir)
         reconfiguration._set_sharing(sharing=True)
+        if not reconfiguration.changes_planned():
+            raise errors.AlreadySharing(bzrdir)
         return reconfiguration
 
     def _plan_changes(self, want_tree, want_branch, want_bound,
@@ -167,14 +175,15 @@ class Reconfigure(object):
         if sharing is None:
             return
         if sharing:
-            self._destroy_repository = True
+            if self.local_repository is not None:
+                self._destroy_repository = True
 
     def changes_planned(self):
         """Return True if changes are planned, False otherwise"""
         return (self._unbind or self._bind or self._destroy_tree
                 or self._create_tree or self._destroy_reference
                 or self._create_branch or self._create_repository
-                or self._create_reference)
+                or self._create_reference or self._destroy_repository)
 
     def _check(self):
         """Raise if reconfiguration would destroy local changes"""

@@ -297,3 +297,12 @@ class TestReconfigure(tests.TestCaseWithTransport):
         tree = workingtree.WorkingTree.open('root/tree')
         self.assertTrue(repo.has_same_location(tree.branch.repository))
         self.assertEqual('Hello', repo.get_revision('hello-id').message)
+
+    def test_sharing_to_sharing(self):
+        self.build_tree(['root/'])
+        repo = self.make_repository('root', shared=True)
+        tree = self.make_branch_and_tree('root/tree')
+        reconfigure.Reconfigure.to_sharing(tree.bzrdir).apply()
+        tree = workingtree.WorkingTree.open('root/tree')
+        self.assertRaises(errors.AlreadySharing,
+                          reconfigure.Reconfigure.to_sharing, tree.bzrdir)
