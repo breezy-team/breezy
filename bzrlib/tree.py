@@ -423,6 +423,7 @@ class Tree(object):
         """
         return find_ids_across_trees(paths, [self] + list(trees), require_versioned)
 
+    @symbol_versioning.deprecated_method(symbol_versioning.one_four)
     def print_file(self, file_id):
         """Print file with id `file_id` to stdout."""
         import sys

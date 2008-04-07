@@ -132,6 +132,11 @@ IN DEVELOPMENT
     * ``Transport.get_shared_medium`` is deprecated.  Use
       ``Transport.get_smart_medium`` instead.  (Andrew Bennetts)
 
+    * ``Tree.print_file`` and ``Repository.print_file`` are deprecated. 
+      These methods are bad API because they write directly to sys.stdout.
+      bzrlib internally does not use them, and have no one direct test
+      for them. (Alexander Belchenko)
+
     * ``VersionedFile.create_empty`` is removed. This method presupposed a
       sensible mapping to a transport for individual files, but pack backed
       versioned files have no such mapping. (Robert Collins)
