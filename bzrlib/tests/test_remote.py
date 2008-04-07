@@ -722,7 +722,11 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         repo, client = self.setup_fake_client_and_repository(
             responses, transport_path)
         rev_id = 'revision-id'
-        parents = repo.get_parent_map([rev_id])
+        expected_deprecations = [
+            'bzrlib.remote.RemoteRepository.get_revision_graph was deprecated '
+            'in version 1.4.']
+        parents = self.callDeprecated(
+            expected_deprecations, repo.get_parent_map, [rev_id])
         self.assertEqual(
             [('call_with_body_bytes_expecting_body',
               'Repository.get_parent_map', ('quack/', rev_id), '\n\n0'),
