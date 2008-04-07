@@ -2197,14 +2197,15 @@ class cmd_cat(Command):
                 raise errors.BzrCommandError("%r is not present in revision %s"
                                                 % (filename, revision_id))
             else:
-                rev_tree.print_file(old_file_id)
+                content = rev_tree.get_file_text(old_file_id)
         elif cur_file_id is not None:
-            rev_tree.print_file(cur_file_id)
+            content = rev_tree.get_file_text(cur_file_id)
         elif old_file_id is not None:
-            rev_tree.print_file(old_file_id)
+            content = rev_tree.get_file_text(old_file_id)
         else:
             raise errors.BzrCommandError("%r is not present in revision %s" %
                                          (filename, revision_id))
+        self.outf.write(content)
 
 
 class cmd_local_time_offset(Command):

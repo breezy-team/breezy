@@ -178,6 +178,9 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * ``cat`` command no more internally used ``Tree.print_file()``.
+      (Alexander Belchenko)
+
     * ``VersionedFile`` now has a new method ``get_parent_map`` which, like
       ``Graph.get_parent_map`` returns a dict of key:parents. (Robert Collins)
 
