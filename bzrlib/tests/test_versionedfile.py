@@ -39,6 +39,7 @@ from bzrlib.knit import (
     KnitAnnotateFactory,
     KnitPlainFactory,
     )
+from bzrlib.symbol_versioning import one_four
 from bzrlib.tests import TestCaseWithMemoryTransport, TestSkipped
 from bzrlib.tests.http_utils import TestCaseWithWebserver
 from bzrlib.trace import mutter
@@ -240,7 +241,7 @@ class VersionedFileTestMixIn(object):
         new_vf = self.get_file('bar')
         for version in multiparent.topo_iter(vf):
             mpdiff = vf.make_mpdiffs([version])[0]
-            new_vf.add_mpdiffs([(version, vf.get_parents(version),
+            new_vf.add_mpdiffs([(version, vf.get_parent_map([version])[version],
                                  vf.get_sha1(version), mpdiff)])
             self.assertEqualDiff(vf.get_text(version),
                                  new_vf.get_text(version))
@@ -370,23 +371,13 @@ class VersionedFileTestMixIn(object):
         def verify_file(f):
             self.assertEquals(f.get_lines('r1'), f.get_lines('r0'))
             self.assertEquals(f.get_lines('r1'), ['a\n', 'b\n'])
-            self.assertEquals(f.get_parents('r1'), ['r0'])
-    
+            self.assertEqual({'r1':('r0',)}, f.get_parent_map(['r1']))
             self.assertRaises(RevisionNotPresent,
                 f.clone_text, 'r2', 'rX', [])
             self.assertRaises(RevisionAlreadyPresent,
                 f.clone_text, 'r1', 'r0', [])
         verify_file(f)
         verify_file(self.reopen_file())
-
-    def test_create_empty(self):
-        f = self.get_file()
-        f.add_lines('0', [], ['a\n'])
-        new_f = f.create_empty('t', MemoryTransport())
-        # smoke test, specific types should check it is honoured correctly for
-        # non type attributes
-        self.assertEqual([], new_f.versions())
-        self.assertTrue(isinstance(new_f, f.__class__))
 
     def test_copy_to(self):
         f = self.get_file()
@@ -453,10 +444,33 @@ class VersionedFileTestMixIn(object):
         f.add_lines('r2', [], ['a\n', 'b\n'])
         f.add_lines('r3', [], ['a\n', 'b\n'])
         f.add_lines('m', ['r0', 'r1', 'r2', 'r3'], ['a\n', 'b\n'])
-        self.assertEquals(f.get_parents('m'), ['r0', 'r1', 'r2', 'r3'])
-
+        self.assertEqual(['r0', 'r1', 'r2', 'r3'],
+            self.applyDeprecated(one_four, f.get_parents, 'm'))
         self.assertRaises(RevisionNotPresent,
-            f.get_parents, 'y')
+            self.applyDeprecated, one_four, f.get_parents, 'y')
+
+    def test_get_parent_map(self):
+        f = self.get_file()
+        f.add_lines('r0', [], ['a\n', 'b\n'])
+        self.assertEqual(
+            {'r0':()}, f.get_parent_map(['r0']))
+        f.add_lines('r1', ['r0'], ['a\n', 'b\n'])
+        self.assertEqual(
+            {'r1':('r0',)}, f.get_parent_map(['r1']))
+        self.assertEqual(
+            {'r0':(),
+             'r1':('r0',)},
+            f.get_parent_map(['r0', 'r1']))
+        f.add_lines('r2', [], ['a\n', 'b\n'])
+        f.add_lines('r3', [], ['a\n', 'b\n'])
+        f.add_lines('m', ['r0', 'r1', 'r2', 'r3'], ['a\n', 'b\n'])
+        self.assertEqual(
+            {'m':('r0', 'r1', 'r2', 'r3')}, f.get_parent_map(['m']))
+        self.assertEqual({}, f.get_parent_map('y'))
+        self.assertEqual(
+            {'r0':(),
+             'r1':('r0',)},
+            f.get_parent_map(['r0', 'y', 'r1']))
 
     def test_annotate(self):
         f = self.get_file()
@@ -607,29 +621,31 @@ class VersionedFileTestMixIn(object):
             vf.add_lines_with_ghosts('notbxbfse', [parent_id_utf8], [])
         except NotImplementedError:
             # check the other ghost apis are also not implemented
-            self.assertRaises(NotImplementedError, vf.has_ghost, 'foo')
             self.assertRaises(NotImplementedError, vf.get_ancestry_with_ghosts, ['foo'])
             self.assertRaises(NotImplementedError, vf.get_parents_with_ghosts, 'foo')
-            self.assertRaises(NotImplementedError, vf.get_graph_with_ghosts)
             return
         vf = self.reopen_file()
         # test key graph related apis: getncestry, _graph, get_parents
         # has_version
         # - these are ghost unaware and must not be reflect ghosts
         self.assertEqual(['notbxbfse'], vf.get_ancestry('notbxbfse'))
-        self.assertEqual([], vf.get_parents('notbxbfse'))
+        self.assertEqual([],
+            self.applyDeprecated(one_four, vf.get_parents, 'notbxbfse'))
         self.assertEqual({'notbxbfse':()}, vf.get_graph())
         self.assertFalse(vf.has_version(parent_id_utf8))
         # we have _with_ghost apis to give us ghost information.
         self.assertEqual([parent_id_utf8, 'notbxbfse'], vf.get_ancestry_with_ghosts(['notbxbfse']))
         self.assertEqual([parent_id_utf8], vf.get_parents_with_ghosts('notbxbfse'))
-        self.assertEqual({'notbxbfse':[parent_id_utf8]}, vf.get_graph_with_ghosts())
-        self.assertTrue(vf.has_ghost(parent_id_utf8))
+        self.assertEqual({'notbxbfse':(parent_id_utf8,)},
+            self.applyDeprecated(one_four, vf.get_graph_with_ghosts))
+        self.assertTrue(self.applyDeprecated(one_four, vf.has_ghost,
+            parent_id_utf8))
         # if we add something that is a ghost of another, it should correct the
         # results of the prior apis
         vf.add_lines(parent_id_utf8, [], [])
         self.assertEqual([parent_id_utf8, 'notbxbfse'], vf.get_ancestry(['notbxbfse']))
-        self.assertEqual([parent_id_utf8], vf.get_parents('notbxbfse'))
+        self.assertEqual({'notbxbfse':(parent_id_utf8,)},
+            vf.get_parent_map(['notbxbfse']))
         self.assertEqual({parent_id_utf8:(),
                           'notbxbfse':(parent_id_utf8, ),
                           },
@@ -639,11 +655,12 @@ class VersionedFileTestMixIn(object):
         self.assertEqual([parent_id_utf8, 'notbxbfse'],
             vf.get_ancestry_with_ghosts(['notbxbfse']))
         self.assertEqual([parent_id_utf8], vf.get_parents_with_ghosts('notbxbfse'))
-        self.assertEqual({parent_id_utf8:[],
-                          'notbxbfse':[parent_id_utf8],
+        self.assertEqual({parent_id_utf8:(),
+                          'notbxbfse':(parent_id_utf8,),
                           },
-                         vf.get_graph_with_ghosts())
-        self.assertFalse(vf.has_ghost(parent_id_utf8))
+            self.applyDeprecated(one_four, vf.get_graph_with_ghosts))
+        self.assertFalse(self.applyDeprecated(one_four, vf.has_ghost,
+            parent_id_utf8))
 
     def test_add_lines_with_ghosts_after_normal_revs(self):
         # some versioned file formats allow lines to be added with parent
@@ -653,10 +670,9 @@ class VersionedFileTestMixIn(object):
         vf = self.get_file()
         # probe for ghost support
         try:
-            vf.has_ghost('hoo')
+            vf.add_lines_with_ghosts('base', [], ['line\n', 'line_b\n'])
         except NotImplementedError:
             return
-        vf.add_lines_with_ghosts('base', [], ['line\n', 'line_b\n'])
         vf.add_lines_with_ghosts('references_ghost',
                                  ['base', 'a_ghost'],
                                  ['line\n', 'line_b\n', 'line_c\n'])
@@ -842,12 +858,16 @@ class TestPlanMergeVersionedFile(TestCaseWithMemoryTransport):
 
     def test_get_parents(self):
         self.setup_abcde()
-        self.assertEqual(['A'], self.plan_merge_vf.get_parents('B'))
-        self.assertEqual(['C'], self.plan_merge_vf.get_parents('D'))
-        self.assertEqual(['B', 'D'], self.plan_merge_vf.get_parents('E:'))
-        error = self.assertRaises(errors.RevisionNotPresent,
-                                  self.plan_merge_vf.get_parents, 'F')
-        self.assertContainsRe(str(error), '{F} not present in "root"')
+        self.assertEqual({'B':('A',)}, self.plan_merge_vf.get_parent_map(['B']))
+        self.assertEqual({'D':('C',)}, self.plan_merge_vf.get_parent_map(['D']))
+        self.assertEqual({'E:':('B', 'D')},
+            self.plan_merge_vf.get_parent_map(['E:']))
+        self.assertEqual({}, self.plan_merge_vf.get_parent_map(['F']))
+        self.assertEqual({
+                'B':('A',),
+                'D':('C',),
+                'E:':('B', 'D'),
+                }, self.plan_merge_vf.get_parent_map(['B', 'D', 'E:', 'F']))
 
     def test_get_lines(self):
         self.setup_abcde()

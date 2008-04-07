@@ -1928,6 +1928,7 @@ class KnitPackRepository(KnitRepository):
             found_parents[key[0]] = parents
         return found_parents
 
+    @symbol_versioning.deprecated_method(symbol_versioning.one_four)
     @needs_read_lock
     def get_revision_graph(self, revision_id=None):
         """Return a dictionary containing the revision graph.

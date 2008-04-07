@@ -62,11 +62,10 @@ class RemoteBzrDir(BzrDir):
         self._real_bzrdir = None
 
         if _client is None:
-            self._shared_medium = transport.get_shared_medium()
-            self._client = client._SmartClient(self._shared_medium)
+            medium = transport.get_smart_medium()
+            self._client = client._SmartClient(medium, transport.base)
         else:
             self._client = _client
-            self._shared_medium = None
             return
 
         path = self._path_for_remote_call(self._client)
@@ -275,7 +274,7 @@ class RemoteRepository(object):
             self._real_repository = None
         self.bzrdir = remote_bzrdir
         if _client is None:
-            self._client = client._SmartClient(self.bzrdir._shared_medium)
+            self._client = remote_bzrdir._client
         else:
             self._client = _client
         self._format = format
@@ -359,8 +358,13 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository._generate_text_key_index()
 
+    @symbol_versioning.deprecated_method(symbol_versioning.one_four)
     def get_revision_graph(self, revision_id=None):
         """See Repository.get_revision_graph()."""
+        return self._get_revision_graph(revision_id)
+
+    def _get_revision_graph(self, revision_id):
+        """Private method for using with old (< 1.2) servers to fallback."""
         if revision_id is None:
             revision_id = ''
         elif revision.is_null(revision_id):
@@ -809,11 +813,15 @@ class RemoteRepository(object):
 
     def _get_parent_map(self, keys):
         """Helper for get_parent_map that performs the RPC."""
-        medium = self._client.get_smart_medium()
+        medium = self._client._medium
         if not medium._remote_is_at_least_1_2:
             # We already found out that the server can't understand
             # Repository.get_parent_map requests, so just fetch the whole
             # graph.
+            # XXX: Note that this will issue a deprecation warning. This is ok
+            # :- its because we're working with a deprecated server anyway, and
+            # the user will almost certainly have seen a warning about the
+            # server version already.
             return self.get_revision_graph()
 
         keys = set(keys)
@@ -868,7 +876,7 @@ class RemoteRepository(object):
             # To avoid having to disconnect repeatedly, we keep track of the
             # fact the server doesn't understand remote methods added in 1.2.
             medium._remote_is_at_least_1_2 = False
-            return self.get_revision_graph()
+            return self.get_revision_graph(None)
         if response[0][0] not in ['ok']:
             response[1].cancel_read_body()
             raise errors.UnexpectedSmartServerResponse(response[0])
@@ -1025,7 +1033,7 @@ class RemoteRepository(object):
         return self._real_repository.has_signature_for_revision_id(revision_id)
 
     def get_data_stream_for_search(self, search):
-        medium = self._client.get_smart_medium()
+        medium = self._client._medium
         if not medium._remote_is_at_least_1_2:
             self._ensure_real()
             return self._real_repository.get_data_stream_for_search(search)
@@ -1200,7 +1208,7 @@ class RemoteBranch(branch.Branch):
         if _client is not None:
             self._client = _client
         else:
-            self._client = client._SmartClient(self.bzrdir._shared_medium)
+            self._client = remote_bzrdir._client
         self.repository = remote_repository
         if real_branch is not None:
             self._real_branch = real_branch
