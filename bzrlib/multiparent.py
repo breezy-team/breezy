@@ -23,6 +23,7 @@ import os
 from StringIO import StringIO
 
 from bzrlib import (
+    errors,
     patiencediff,
     trace,
     ui,
@@ -37,11 +38,12 @@ def topo_iter(vf, versions=None):
     descendants = {}
     if versions is None:
         versions = vf.versions()
+    parents = vf.get_parent_map(versions)
     def pending_parents(version):
-        return [v for v in vf.get_parents(version) if v in versions and
+        return [v for v in parents[version] if v in versions and
                 v not in seen]
     for version_id in versions:
-        for parent_id in vf.get_parents(version_id):
+        for parent_id in parents[version_id]:
             descendants.setdefault(parent_id, []).append(version_id)
     cur = [v for v in versions if len(pending_parents(v)) == 0]
     while len(cur) > 0:
@@ -508,7 +510,10 @@ class MultiMemoryVersionedFile(BaseVersionedFile):
         self._parents[version_id] = parent_ids
 
     def get_diff(self, version_id):
-        return self._diffs[version_id]
+        try:
+            return self._diffs[version_id]
+        except KeyError:
+            raise errors.RevisionNotPresent(version_id, self)
 
     def destroy(self):
         self._diffs = {}
