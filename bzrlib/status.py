@@ -84,13 +84,13 @@ def show_tree_status(wt, show_unchanged=None,
             old = new.basis_tree()
         elif len(revision) > 0:
             try:
-                rev_id = revision[0].in_history(wt.branch).rev_id
+                rev_id = revision[0].as_revision_id(wt.branch)
                 old = wt.branch.repository.revision_tree(rev_id)
             except errors.NoSuchRevision, e:
                 raise errors.BzrCommandError(str(e))
             if (len(revision) > 1) and (revision[1].spec is not None):
                 try:
-                    rev_id = revision[1].in_history(wt.branch).rev_id
+                    rev_id = revision[1].as_revision_id(wt.branch)
                     new = wt.branch.repository.revision_tree(rev_id)
                     new_is_working_tree = False
                 except errors.NoSuchRevision, e:

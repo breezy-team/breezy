@@ -379,15 +379,6 @@ class VersionedFileTestMixIn(object):
         verify_file(f)
         verify_file(self.reopen_file())
 
-    def test_create_empty(self):
-        f = self.get_file()
-        f.add_lines('0', [], ['a\n'])
-        new_f = f.create_empty('t', MemoryTransport())
-        # smoke test, specific types should check it is honoured correctly for
-        # non type attributes
-        self.assertEqual([], new_f.versions())
-        self.assertTrue(isinstance(new_f, f.__class__))
-
     def test_copy_to(self):
         f = self.get_file()
         f.add_lines('0', [], ['a\n'])

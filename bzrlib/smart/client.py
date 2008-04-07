@@ -87,7 +87,8 @@ class _SmartClient(object):
         the medium from the matching transport.
         """
         base = self._base
-        if base.startswith('bzr+http://') or base.startswith('bzr+https://'):
+        if (base.startswith('bzr+http://') or base.startswith('bzr+https://')
+            or base.startswith('http://') or base.startswith('https://')):
             medium_base = self._base
         else:
             medium_base = urlutils.join(self._base, '/')

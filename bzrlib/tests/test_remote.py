@@ -46,6 +46,7 @@ from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import server, medium
 from bzrlib.smart.client import _SmartClient
 from bzrlib.symbol_versioning import one_four
+from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.transport.remote import RemoteTransport
 
@@ -181,6 +182,39 @@ class TestVfsHas(tests.TestCase):
             [('call', 'has', (filename,))],
             client._calls)
         self.assertTrue(result)
+
+
+class Test_SmartClient_remote_path_from_transport(tests.TestCase):
+    """Tests for the behaviour of _SmartClient.remote_path_from_transport."""
+
+    def assertRemotePath(self, expected, client_base, transport_base):
+        """Assert that the result of _SmartClient.remote_path_from_transport
+        is the expected value for a given client_base and transport_base.
+        """
+        dummy_medium = 'dummy medium'
+        client = _SmartClient(dummy_medium, client_base)
+        transport = get_transport(transport_base)
+        result = client.remote_path_from_transport(transport)
+        self.assertEqual(expected, result)
+        
+    def test_remote_path_from_transport(self):
+        """_SmartClient.remote_path_from_transport calculates a URL for the
+        given transport relative to the root of the client base URL.
+        """
+        self.assertRemotePath('xyz/', 'bzr://host/path', 'bzr://host/xyz')
+        self.assertRemotePath(
+            'path/xyz/', 'bzr://host/path', 'bzr://host/path/xyz')
+
+    def test_remote_path_from_transport_http(self):
+        """Remote paths for HTTP transports are calculated differently to other
+        transports.  They are just relative to the client base, not the root
+        directory of the host.
+        """
+        for scheme in ['http:', 'https:', 'bzr+http:', 'bzr+https:']:
+            self.assertRemotePath(
+                '../xyz/', scheme + '//host/path', scheme + '//host/xyz')
+            self.assertRemotePath(
+                'xyz/', scheme + '//host/path', scheme + '//host/path/xyz')
 
 
 class TestBzrDirOpenBranch(tests.TestCase):
