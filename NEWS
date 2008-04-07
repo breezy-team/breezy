@@ -167,6 +167,11 @@ IN DEVELOPMENT
       IDs and tests present in the list but not found in the actual test suite.
       (Vincent Ladeuil)
 
+    * Slightly more concise format for the selftest progress bar, so there's
+      more space to show the test name.  (Martin Pool) ::
+
+        [2500/10884, 1fail, 3miss in 1m29s] test_revisionnamespaces.TestRev
+
     * The test suite takes much less memory to run, and is a bit faster.  This
       is done by clearing most attributes of TestCases after running them, if
       they succeeded.  (Andrew Bennetts)
