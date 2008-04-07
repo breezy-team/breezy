@@ -186,6 +186,12 @@ class Weave(VersionedFile):
                  '_weave_name', '_matcher']
     
     def __init__(self, weave_name=None, access_mode='w', matcher=None, get_scope=None):
+        """Create a weave.
+
+        :param get_scope: A callable that returns an opaque object to be used
+            for detecting when this weave goes out of scope (should stop
+            answering requests or allowing mutation).
+        """
         super(Weave, self).__init__(access_mode)
         self._weave = []
         self._parents = []
@@ -199,8 +205,8 @@ class Weave(VersionedFile):
             self._matcher = matcher
         if get_scope is None:
             get_scope = lambda:None
-        self.get_scope = get_scope
-        self.scope = get_scope()
+        self._get_scope = get_scope
+        self._scope = get_scope()
         self._access_mode = access_mode
 
     def __repr__(self):
@@ -208,7 +214,7 @@ class Weave(VersionedFile):
 
     def _check_write_ok(self):
         """Is the versioned file marked as 'finished' ? Raise if it is."""
-        if self.get_scope() != self.scope:
+        if self._get_scope() != self._scope:
             raise errors.OutSideTransaction()
         if self._access_mode != 'w':
             raise errors.ReadOnlyObjectDirtiedError(self)

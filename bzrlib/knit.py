@@ -1415,7 +1415,7 @@ class _KnitIndex(_KnitComponentFile):
                                    index)
 
     def _check_write_ok(self):
-        if self.get_scope() != self.scope:
+        if self._get_scope() != self._scope:
             raise errors.OutSideTransaction()
         if self._mode != 'w':
             raise errors.ReadOnlyObjectDirtiedError(self)
@@ -1449,8 +1449,8 @@ class _KnitIndex(_KnitComponentFile):
             else:
                 self._transport.put_bytes_non_atomic(
                     self._filename, self.HEADER, mode=self._file_mode)
-        self.scope = get_scope()
-        self.get_scope = get_scope
+        self._scope = get_scope()
+        self._get_scope = get_scope
 
     def get_ancestry(self, versions, topo_sorted=True):
         """See VersionedFile.get_ancestry."""
