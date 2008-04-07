@@ -429,18 +429,18 @@ class TextTestResult(ExtendedTestResult):
         ##     a += '+%dX' % self.known_failure_count
         if self.num_tests is not None:
             a +='/%d' % self.num_tests
-        if self.error_count:
-            a += ', %derr' % self.error_count
-        if self.failure_count:
-            a += ', %dfail' % self.failure_count
-        if self.unsupported:
-            a += ', %dmiss' % len(self.unsupported)
         a += ' in '
         runtime = time.time() - self._overall_start_time
         if runtime >= 60:
             a += '%dm%ds' % (runtime / 60, runtime % 60)
         else:
             a += '%ds' % runtime
+        if self.error_count:
+            a += ', %d err' % self.error_count
+        if self.failure_count:
+            a += ', %d fail' % self.failure_count
+        if self.unsupported:
+            a += ', %d missing' % len(self.unsupported)
         a += ']'
         return a
 
