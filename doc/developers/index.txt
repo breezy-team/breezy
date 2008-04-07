@@ -35,6 +35,8 @@ Specifications
 
 * `Network protocol <network-protocol.html>`_ |--| Custom network protocol.
 
+* `Plugin APIs <plugin-api.html>`_ |--| APIs plugins should use.
+
 * `Repositories <repository.html>`_ |--| What repositories do and are used for.
 
 Data formats
