@@ -14,6 +14,9 @@ IN DEVELOPMENT
 
    * bzr main script cannot be imported (Benjamin Peterson)
 
+   * On Linux bzr additionally looks for plugins in arch-independent site
+     directory. (Toshio Kuratomi)
+ 
    * When a plugin cannot be loaded as the file path is not a valid
      python module name bzr will now strip a ``bzr_`` prefix from the
      front of the suggested name, as many plugins (e.g. bzr-svn)
@@ -32,10 +35,17 @@ IN DEVELOPMENT
     * Added mail-mode GNU Emacs mail package as a mail_client.
       (Xavier Maillard, Bojan Nikolic)
 
+    * Added start_commit hook for mutable trees. (Jelmer Vernooij, #186422)
+
   IMPROVEMENTS:
 
     * ``bzr commit --fixes`` now recognises "gnome" as a tag by default.
       (James Westby, Andrew Cowie)
+
+    * ``bzr switch`` will attempt to find branches to switch to relative to the
+      current branch. E.g. ``bzr switch branchname`` will look for
+      ``current_branch/../branchname``. (Robert Collins, Jelmer Vernooij,
+      Wouter van Heyst)
 
     * Diff is now more specific about execute-bit changes it describes
       (Chad Miller)
@@ -88,6 +98,9 @@ IN DEVELOPMENT
     * Implement handling of basename parameter for DefaultMail.  (James Westby)
 
     * Launchpad locations (lp: URLs) can be pulled.  (Aaron Bentley, #181945)
+
+    * Merges that add files to deleted root directories complete.  They
+      do create conflicts.  (Aaron Bentley, #210092)
 
     * vsftp's return ``550 RNFR command failed.`` supported.
       (Marcus Trautwig, #129786)
@@ -151,6 +164,13 @@ IN DEVELOPMENT
       failing test.  Be aware that using this feature is likely to cause
       spurious test failures if used with the full suite. (Andrew Bennetts)
 
+    * selftest --load-list now uses a new more agressive test loader that will
+      avoid loading unneeded modules and building their tests. Plugins can use
+      this new loader by defining a load_tests function instead of a test_suite
+      function. (a forthcoming patch will provide many examples on how to
+      implement this).
+      (Vincent Ladeuil)
+
     * selftest --load-list now does some sanity checks regarding duplicate test
       IDs and tests present in the list but not found in the actual test suite.
       (Vincent Ladeuil)
@@ -210,7 +230,7 @@ bzr 1.3rc1 2008-03-16
       (Alexander Belchenko)
 
     * Restore auto-detection of plink.exe on Windows. (Dmitry Vasiliev)
-    
+
     * Version number is now shown as "1.2" or "1.2pr2", without zeroed or
       missing final fields.  (Martin Pool)
 
