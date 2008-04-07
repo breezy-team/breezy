@@ -38,6 +38,8 @@ bzr-svn 0.4.10  UNRELEASED
 
 	* Deal with bzr:svn-revision-info property being removed. (#206728)
 
+	* Gracefully handle erroneous svk merge tickets created by old versions of svk
+
 bzr-svn 0.4.9	2008-03-23
 
   FEATURES
