@@ -1603,10 +1603,8 @@ class TestSmartProtocolOne(TestSmartProtocol, CommonSmartProtocolTestMixin):
         smart_protocol.call_with_body_readv_array(('foo', ), [(1,2),(5,6)])
         self.assertEqual(expected_bytes, output.getvalue())
 
-    def test_client_read_response_tuple_raises_UnknownSmartMethod(self):
-        """read_response_tuple raises UnknownSmartMethod if the response is
-        says the server did not recognise the request.
-        """
+    def _test_client_read_response_tuple_raises_UnknownSmartMethod(self,
+            server_bytes):
         server_bytes = (
             "error\x01Generic bzr smart protocol error: bad request 'foo'\n")
         input = StringIO(server_bytes)
@@ -1621,6 +1619,26 @@ class TestSmartProtocolOne(TestSmartProtocol, CommonSmartProtocolTestMixin):
         # attempts to read one will fail.
         self.assertRaises(
             errors.ReadingCompleted, smart_protocol.read_body_bytes)
+
+    def test_client_read_response_tuple_raises_UnknownSmartMethod(self):
+        """read_response_tuple raises UnknownSmartMethod if the response says
+        the server did not recognise the request.
+        """
+        server_bytes = (
+            "error\x01Generic bzr smart protocol error: bad request 'foo'\n")
+        self._test_client_read_response_tuple_raises_UnknownSmartMethod(
+            server_bytes)
+
+    def test_client_read_response_tuple_raises_UnknownSmartMethod_0_11(self):
+        """read_response_tuple also raises UnknownSmartMethod if the response
+        from a bzr 0.11 says the server did not recognise the request.
+
+        (bzr 0.11 sends a slightly different error message to later versions.)
+        """
+        server_bytes = (
+            "error\x01Generic bzr smart protocol error: bad request u'foo'\n")
+        self._test_client_read_response_tuple_raises_UnknownSmartMethod(
+            server_bytes)
 
     def test_client_read_body_bytes_all(self):
         # read_body_bytes should decode the body bytes from the wire into
