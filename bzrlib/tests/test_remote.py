@@ -723,6 +723,13 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
               ('quack/', ''))],
             client._calls)
 
+    def test_get_parent_map_unexpected_response(self):
+        responses = [
+            (('something unexpected!',), '')]
+        repo, client = self.setup_fake_client_and_repository(responses, 'path')
+        self.assertRaises(
+            errors.UnexpectedSmartServerResponse,
+            repo.get_parent_map, ['a-revision-id'])
 
 
 class TestRepositoryGetRevisionGraph(TestRemoteRepository):
