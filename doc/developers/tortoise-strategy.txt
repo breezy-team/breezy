@@ -224,18 +224,19 @@ Performance considerations
 ----------------------------
 
 The following discussions assume the "Hybrid Python and C++ implementation"
-strategy, discussed above, is chosen for implementation. To recap, TSVN
+strategy, discussed above, is chosen for implementation. To recap, TBZR
 becomes a C++ implemented DLL using RPC to talk to a Python implemented
 "server" which does all BZR work.
 
 As discussed above, the model used by Tortoise is that most "interesting"
-things are done by external applications. TSVN does show read-only columns in
-the "detail" view, and shows a few read only properties in the "Properties"
-dialog - but most of these properties are "state" related (eg, revision
-number), or editing of others is done by launching an external application.
-This means that the shell extension itself really has 2 basic requirements
-WRT RPC: 1) get the local state of a file and 2) get some named state-related
-"properties" for a file. Everything else can be built on that.
+things are done by external applications. Most Tortoise implementations
+show read-only columns in the "detail" view, and shows a few read only
+properties in the "Properties" dialog - but most of these properties are
+"state" related (eg, revision number), or editing of others is done by
+launching an external application. This means that the shell extension itself
+really has 2 basic requirements WRT RPC: 1) get the local state of a file and
+2) get some named state-related "properties" for a file. Everything else can
+be built on that.
 
 There are 2 aspects of the shell integration which are performance critical -
 the "icon overlays" and "column providers"
@@ -306,7 +307,7 @@ Vista model isn't going to work (see previous link). It's not clear how much
 effort we should expend on a column system that has already been abandoned by
 MS. I would argue we spend effort on other parts of the system (ie, the
 external GUI apps themselves, etc) and see if a path forward does emerge for
-Vista. Re can re-evaluate this based on user feedback and more information
+Vista. We can re-evaluate this based on user feedback and more information
 about features of the Vista property system.
  
 Implementation plan:
