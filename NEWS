@@ -95,6 +95,11 @@ IN DEVELOPMENT
     * Don't ask for a password if there is no real terminal.
       (Alexander Belchenko, #69851)
 
+    * Fix a bug causing a ValueError crash in ``parse_line_delta_iter`` when
+      fetching revisions from a knit to pack repository or vice versa using
+      bzr:// (including over http or ssh).
+      (#208418, Andrew Bennetts, Martin Pool, Robert Collins)
+
     * Implement handling of basename parameter for DefaultMail.  (James Westby)
 
     * Launchpad locations (lp: URLs) can be pulled.  (Aaron Bentley, #181945)

@@ -1924,6 +1924,37 @@ class BasicKnitTests(KnitTests):
             errors.KnitDataStreamUnknown,
             target.insert_data_stream, data_stream)
 
+    def test_insert_data_stream_bug_208418(self):
+        """You can insert a stream with an incompatible format, even when:
+          * the stream has a line-delta record,
+          * whose parent is in the target, also stored as a line-delta
+
+        See <https://launchpad.net/bugs/208418>.
+        """
+        base_lines = split_lines(TEXT_1)
+        # Make the target
+        target = self.make_test_knit(name='target', annotate=True)
+        target.add_lines('version-1', [], base_lines)
+        target.add_lines('version-2', ['version-1'], base_lines + ['a\n'])
+        # The second record should be a delta.
+        self.assertEqual('line-delta', target._index.get_method('version-2'))
+        
+        # Make a source, with a different format, but the same data
+        source = self.make_test_knit(name='source', annotate=False)
+        source.add_lines('version-1', [], base_lines)
+        source.add_lines('version-2', ['version-1'], base_lines + ['a\n'])
+        # Now add another record, which should be stored as a delta against
+        # version-2.
+        source.add_lines('version-3', ['version-2'], base_lines + ['b\n'])
+        self.assertEqual('line-delta', source._index.get_method('version-3'))
+
+        # Make a stream of the new version
+        data_stream = source.get_data_stream(['version-3'])
+        # And insert into the target
+        target.insert_data_stream(data_stream)
+        # No errors should have been raised.
+
+
     #  * test that a stream of "already present version, then new version"
     #    inserts correctly.
 
