@@ -2373,17 +2373,17 @@ class _StreamIndex(object):
         try:
             return self._by_version[version_id][0]
         except KeyError:
-            orig_options = list(self.backing_index.get_options(version_id))
-            if 'fulltext' in orig_options:
+            options = list(self.backing_index.get_options(version_id))
+            if 'fulltext' in options:
                 pass
-            elif 'line-delta' in orig_options:
+            elif 'line-delta' in options:
                 # Texts from the backing knit are always returned from the stream
                 # as full texts
-                orig_options.remove('line-delta')
-                orig_options.append('fulltext')
+                options.remove('line-delta')
+                options.append('fulltext')
             else:
                 raise errors.KnitIndexUnknownMethod(self, options)
-            return orig_options
+            return tuple(options)
 
     def get_parents_with_ghosts(self, version_id):
         """Return parents of specified version with ghosts."""
