@@ -35,7 +35,7 @@ This gives us a Delta object, which has several lists of files for each type of
 change, eg changes.added is a list of added files, changes.removed is list
 of removed files, changes.modified is a list of modified files. The contents
 of the lists aren't just filenames, but include other information as well.
- To grab just the filename we want the first value, eg::
+To grab just the filename we want the first value, eg::
 
   print("list of newly added files")
   for filename in changes.added:
