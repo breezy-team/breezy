@@ -271,12 +271,13 @@ class VersionedFile(object):
             if expected_sha1 != sha1:
                 raise errors.VersionedFileInvalidChecksum(version)
 
+    @deprecated_method(one_four)
     def get_sha1(self, version_id):
         """Get the stored sha1 sum for the given revision.
         
         :param version_id: The name of the version to lookup
         """
-        raise NotImplementedError(self.get_sha1)
+        return self.get_sha1s([version_id])[0]
 
     def get_sha1s(self, version_ids):
         """Get the stored sha1 sums for the given revisions.

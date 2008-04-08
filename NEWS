@@ -154,6 +154,9 @@ IN DEVELOPMENT
     * ``VersionedFile.get_parents`` is deprecated, please use
       ``VersionedFile.get_parent_map``. (Robert Collins)
 
+    * ``VersionedFile.get_sha1`` is deprecated, please use
+      ``VersionedFile.get_sha1s``. (Robert Collins)
+
     * ``VersionedFile.has_ghost`` is now deprecated, as it is both expensive
       and unused outside of a single test. (Robert Collins)
 

@@ -247,7 +247,7 @@ class VersionedFileTestMixIn(object):
         for version in multiparent.topo_iter(vf):
             mpdiff = vf.make_mpdiffs([version])[0]
             new_vf.add_mpdiffs([(version, vf.get_parent_map([version])[version],
-                                 vf.get_sha1(version), mpdiff)])
+                                 vf.get_sha1s([version])[0], mpdiff)])
             self.assertEqualDiff(vf.get_text(version),
                                  new_vf.get_text(version))
 
@@ -706,7 +706,7 @@ class VersionedFileTestMixIn(object):
         self.assertRaises(errors.ReadOnlyError, vf.join, 'base')
         self.assertRaises(errors.ReadOnlyError, vf.clone_text, 'base', 'bar', ['foo'])
     
-    def test_get_sha1(self):
+    def test_get_sha1s(self):
         # check the sha1 data is available
         vf = self.get_file()
         # a simple file
@@ -715,13 +715,16 @@ class VersionedFileTestMixIn(object):
         vf.add_lines('b', ['a'], ['a\n'])
         # a file differing only in last newline.
         vf.add_lines('c', [], ['a'])
+        # Deprecasted single-version API.
         self.assertEqual(
-            '3f786850e387550fdab836ed7e6dc881de23001b', vf.get_sha1('a'))
+            '3f786850e387550fdab836ed7e6dc881de23001b',
+            self.applyDeprecated(one_four, vf.get_sha1, 'a'))
         self.assertEqual(
-            '3f786850e387550fdab836ed7e6dc881de23001b', vf.get_sha1('b'))
+            '3f786850e387550fdab836ed7e6dc881de23001b',
+            self.applyDeprecated(one_four, vf.get_sha1, 'b'))
         self.assertEqual(
-            '86f7e437faa5a7fce15d1ddcb9eaeaea377667b8', vf.get_sha1('c'))
-
+            '86f7e437faa5a7fce15d1ddcb9eaeaea377667b8',
+            self.applyDeprecated(one_four, vf.get_sha1, 'c'))
         self.assertEqual(['3f786850e387550fdab836ed7e6dc881de23001b',
                           '86f7e437faa5a7fce15d1ddcb9eaeaea377667b8',
                           '3f786850e387550fdab836ed7e6dc881de23001b'],

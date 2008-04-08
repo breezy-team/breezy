@@ -777,11 +777,8 @@ class KnitVersionedFile(VersionedFile):
         """See VersionedFile.get_graph_with_ghosts()."""
         return self.get_parent_map(self.versions())
 
-    def get_sha1(self, version_id):
-        return self.get_sha1s([version_id])[0]
-
     def get_sha1s(self, version_ids):
-        """See VersionedFile.get_sha1()."""
+        """See VersionedFile.get_sha1s()."""
         record_map = self._get_record_map(version_ids)
         # record entry 2 is the 'digest'.
         return [record_map[v][2] for v in version_ids]
@@ -834,7 +831,7 @@ class KnitVersionedFile(VersionedFile):
                 # Also check the SHA-1 of the fulltext this content will
                 # produce.
                 raw_data = reader_callable(length)
-                my_fulltext_sha1 = self.get_sha1(version_id)
+                my_fulltext_sha1 = self.get_sha1s([version_id])[0]
                 df, rec = self._data._parse_record_header(version_id, raw_data)
                 stream_fulltext_sha1 = rec[3]
                 if my_fulltext_sha1 != stream_fulltext_sha1:

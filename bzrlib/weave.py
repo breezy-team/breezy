@@ -688,10 +688,6 @@ class Weave(VersionedFile):
                        expected_sha1, measured_sha1))
         return result
 
-    def get_sha1(self, version_id):
-        """See VersionedFile.get_sha1()."""
-        return self._sha1s[self._lookup(version_id)]
-
     def get_sha1s(self, version_ids):
         """See VersionedFile.get_sha1s()."""
         return [self._sha1s[self._lookup(v)] for v in version_ids]

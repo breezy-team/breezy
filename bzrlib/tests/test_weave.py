@@ -84,18 +84,6 @@ class AnnotateOne(TestBase):
                          [('text0', TEXT_0[0])])
 
 
-class GetSha1(TestBase):
-    def test_get_sha1(self):
-        k = Weave()
-        k.add_lines('text0', [], 'text0')
-        self.assertEqual('34dc0e430c642a26c3dd1c2beb7a8b4f4445eb79',
-                         k.get_sha1('text0'))
-        self.assertRaises(errors.RevisionNotPresent,
-                          k.get_sha1, 0)
-        self.assertRaises(errors.RevisionNotPresent,
-                          k.get_sha1, 'text1')
-                        
-
 class InvalidAdd(TestBase):
     """Try to use invalid version number during add."""
     def runTest(self):
