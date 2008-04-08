@@ -359,7 +359,6 @@ class VersionedFileTestMixIn(object):
         self.assertRaises(errors.OutSideTransaction, f.add_lines, '', [], [])
         self.assertRaises(errors.OutSideTransaction, f.add_lines_with_ghosts, '', [], [])
         self.assertRaises(errors.OutSideTransaction, f.join, '')
-        self.assertRaises(errors.OutSideTransaction, f.clone_text, 'base', 'bar', ['foo'])
         
     def test_clear_cache(self):
         f = self.get_file()
@@ -373,15 +372,15 @@ class VersionedFileTestMixIn(object):
     def test_clone_text(self):
         f = self.get_file()
         f.add_lines('r0', [], ['a\n', 'b\n'])
-        f.clone_text('r1', 'r0', ['r0'])
+        self.applyDeprecated(one_four, f.clone_text, 'r1', 'r0', ['r0'])
         def verify_file(f):
             self.assertEquals(f.get_lines('r1'), f.get_lines('r0'))
             self.assertEquals(f.get_lines('r1'), ['a\n', 'b\n'])
             self.assertEqual({'r1':('r0',)}, f.get_parent_map(['r1']))
             self.assertRaises(RevisionNotPresent,
-                f.clone_text, 'r2', 'rX', [])
+                self.applyDeprecated, one_four, f.clone_text, 'r2', 'rX', [])
             self.assertRaises(RevisionAlreadyPresent,
-                f.clone_text, 'r1', 'r0', [])
+                self.applyDeprecated, one_four, f.clone_text, 'r1', 'r0', [])
         verify_file(f)
         verify_file(self.reopen_file())
 
@@ -704,7 +703,6 @@ class VersionedFileTestMixIn(object):
                           [],
                           [])
         self.assertRaises(errors.ReadOnlyError, vf.join, 'base')
-        self.assertRaises(errors.ReadOnlyError, vf.clone_text, 'base', 'bar', ['foo'])
     
     def test_get_sha1s(self):
         # check the sha1 data is available

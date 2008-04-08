@@ -419,11 +419,6 @@ class Weave(VersionedFile):
                 offset += 2 + (j2 - j1)
         return new_version
 
-    def _clone_text(self, new_version_id, old_version_id, parents):
-        """See VersionedFile.clone_text."""
-        old_lines = self.get_text(old_version_id)
-        self.add_lines(new_version_id, parents, old_lines)
-
     def _inclusions(self, versions):
         """Return set of all ancestors of given version(s)."""
         if not len(versions):
@@ -904,11 +899,6 @@ class WeaveFile(Weave):
             check_content)
         self._save()
         return result
-
-    def _clone_text(self, new_version_id, old_version_id, parents):
-        """See VersionedFile.clone_text."""
-        super(WeaveFile, self)._clone_text(new_version_id, old_version_id, parents)
-        self._save
 
     def copy_to(self, name, transport):
         """See VersionedFile.copy_to()."""

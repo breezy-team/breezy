@@ -1101,12 +1101,6 @@ class KnitVersionedFile(VersionedFile):
     def check(self, progress_bar=None):
         """See VersionedFile.check()."""
 
-    def _clone_text(self, new_version_id, old_version_id, parents):
-        """See VersionedFile.clone_text()."""
-        # FIXME RBC 20060228 make fast by only inserting an index with null 
-        # delta.
-        self.add_lines(new_version_id, parents, self.get_lines(old_version_id))
-
     def get_lines(self, version_id):
         """See VersionedFile.get_lines()."""
         return self.get_line_list([version_id])[0]

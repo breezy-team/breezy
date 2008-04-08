@@ -171,6 +171,7 @@ class VersionedFile(object):
         """
         pass
 
+    @deprecated_method(one_four)
     def clone_text(self, new_version_id, old_version_id, parents):
         """Add an identical text to old_version_id as new_version_id.
 
@@ -180,11 +181,8 @@ class VersionedFile(object):
         Must raise RevisionAlreadyPresent if the new version is
         already present in file history."""
         self._check_write_ok()
-        return self._clone_text(new_version_id, old_version_id, parents)
-
-    def _clone_text(self, new_version_id, old_version_id, parents):
-        """Helper function to do the _clone_text work."""
-        raise NotImplementedError(self.clone_text)
+        return self.add_lines(new_version_id, parents,
+            self.get_lines(old_version_id))
 
     def get_format_signature(self):
         """Get a text description of the data encoding in this file.
