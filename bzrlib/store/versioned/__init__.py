@@ -57,21 +57,6 @@ class VersionedFileStore(TransportStore):
         # Used for passing get_scope to versioned file constructors;
         self.get_scope = None
 
-    def _clear_cache_id(self, file_id, transaction):
-        """WARNING may lead to inconsistent object references for file_id.
-
-        Remove file_id from the transaction map. 
-
-        NOT in the transaction api because theres no reliable way to clear
-        callers. So its here for very specialised use rather than having an
-        'api' that isn't.
-        """
-        weave = transaction.map.find_weave(file_id)
-        if weave is not None:
-            mutter("old data in transaction in %s for %s", self, file_id)
-            # FIXME abstraction violation - transaction now has stale data.
-            transaction.map.remove_object(weave)
-
     def filename(self, file_id):
         """Return the path relative to the transport root."""
         return self._relpath(file_id)
@@ -110,7 +95,6 @@ class VersionedFileStore(TransportStore):
         filename = self.filename(file_id)
         for suffix in suffixes:
             self._transport.delete(filename + suffix)
-        self._clear_cache_id(file_id, transaction)
 
     def _get(self, file_id):
         return self._transport.get(self.filename(file_id))
@@ -132,17 +116,11 @@ class VersionedFileStore(TransportStore):
         file_id. This is used to reduce duplicate filename calculations when
         using 'get_weave_or_empty'. FOR INTERNAL USE ONLY.
         """
-        weave = transaction.map.find_weave(file_id)
-        if weave is not None:
-            #mutter("cache hit in %s for %s", self, file_id)
-            return weave
         if _filename is None:
             _filename = self.filename(file_id)
         if transaction.writeable():
             w = self._versionedfile_class(_filename, self._transport, self._file_mode,
                 get_scope=self.get_scope, **self._versionedfile_kwargs)
-            transaction.map.add_weave(file_id, w)
-            transaction.register_dirty(w)
         else:
             w = self._versionedfile_class(_filename,
                                           self._transport,
@@ -151,8 +129,6 @@ class VersionedFileStore(TransportStore):
                                           access_mode='r',
                                           get_scope=self.get_scope,
                                           **self._versionedfile_kwargs)
-            transaction.map.add_weave(file_id, w)
-            transaction.register_clean(w, precious=self._precious)
         return w
 
     def _make_new_versionedfile(self, file_id, transaction,
@@ -197,9 +173,6 @@ class VersionedFileStore(TransportStore):
         except errors.NoSuchFile:
             weave = self._make_new_versionedfile(file_id, transaction,
                 known_missing=True, _filename=_filename)
-            transaction.map.add_weave(file_id, weave)
-            # has to be dirty - its able to mutate on its own.
-            transaction.register_dirty(weave)
             return weave
 
     def _put_weave(self, file_id, weave, transaction):
@@ -209,7 +182,6 @@ class VersionedFileStore(TransportStore):
 
     def copy(self, source, result_id, transaction):
         """Copy the source versioned file to result_id in this store."""
-        self._clear_cache_id(result_id, transaction)
         source.copy_to(self.filename(result_id), self._transport)
  
     def copy_all_ids(self, store_from, pb=None, from_transaction=None,

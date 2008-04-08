@@ -157,6 +157,13 @@ IN DEVELOPMENT
     * ``VersionedFile.has_ghost`` is now deprecated, as it is both expensive
       and unused outside of a single test. (Robert Collins)
 
+    * ``VersionedFileStore`` no longer uses the transaction parameter given
+      to most methods; amongst other things this means that the
+      get_weave_or_empty method no longer guarantees errors on a missing weave
+      in a readonly transaction, and no longer caches versioned file instances
+      which reduces memory pressure (but requires more careful management by
+      callers to preserve performance.  (Robert Collins)
+
   TESTING:
 
     * New -Dselftest_debug flag disables clearing of the debug flags during

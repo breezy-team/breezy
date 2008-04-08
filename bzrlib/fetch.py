@@ -168,13 +168,12 @@ class RepoFetcher(object):
                 if knit_kind == "file":
                     self._fetch_weave_text(file_id, revisions)
                 elif knit_kind == "inventory":
-                    # XXX:
-                    # Once we've processed all the files, then we generate the root
-                    # texts (if necessary), then we process the inventory.  It's a
-                    # bit distasteful to have knit_kind == "inventory" mean this,
-                    # perhaps it should happen on the first non-"file" knit, in case
-                    # it's not always inventory?
+                    # Before we process the inventory we generate the root
+                    # texts (if necessary) so that the inventories references
+                    # will be valid.
                     self._generate_root_texts(revs)
+                    # NB: This currently reopens the inventory weave in source;
+                    # using a full get_data_stream instead would avoid this.
                     self._fetch_inventory_weave(revs, pb)
                 elif knit_kind == "signatures":
                     # Nothing to do here; this will be taken care of when

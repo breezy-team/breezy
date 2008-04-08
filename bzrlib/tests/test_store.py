@@ -426,13 +426,6 @@ class TestVersionFileStore(TestCaseWithTransport):
         self._transaction = None
         self.assertRaises(errors.OutSideTransaction, vf.add_lines, 'b', [], [])
 
-    def test_get_weave_or_empty_readonly_fails(self):
-        self._transaction = transactions.ReadOnlyTransaction()
-        vf = self.assertRaises(errors.ReadOnlyError,
-                               self.vfstore.get_weave_or_empty,
-                               'id',
-                               self._transaction)
-
     def test_get_weave_readonly_cant_write(self):
         self._transaction = transactions.WriteTransaction()
         vf = self.vfstore.get_weave_or_empty('id', self._transaction)

@@ -1281,16 +1281,18 @@ class Repository(object):
                 setdefault(file_id, set()).add(revision_id)
         return result
 
-    def fileids_altered_by_revision_ids(self, revision_ids):
+    def fileids_altered_by_revision_ids(self, revision_ids, _inv_weave=None):
         """Find the file ids and versions affected by revisions.
 
         :param revisions: an iterable containing revision ids.
+        :param _inv_weave: The inventory weave from this repository or None.
+            If None, the inventory weave will be opened automatically.
         :return: a dictionary mapping altered file-ids to an iterable of
         revision_ids. Each altered file-ids has the exact revision_ids that
         altered it listed explicitly.
         """
         selected_revision_ids = set(revision_ids)
-        w = self.get_inventory_weave()
+        w = _inv_weave or self.get_inventory_weave()
         pb = ui.ui_factory.nested_progress_bar()
         try:
             return self._find_file_ids_from_xml_inventory_lines(
@@ -1453,7 +1455,7 @@ class Repository(object):
         inv_w.enable_cache()
 
         # file ids that changed
-        file_ids = self.fileids_altered_by_revision_ids(revision_ids)
+        file_ids = self.fileids_altered_by_revision_ids(revision_ids, inv_w)
         count = 0
         num_file_ids = len(file_ids)
         for file_id, altered_versions in file_ids.iteritems():
