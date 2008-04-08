@@ -338,7 +338,8 @@ class VersionedFile(object):
         but are not explicitly marked.
         """
         raise NotImplementedError(self.get_ancestry_with_ghosts)
-        
+    
+    @deprecated_method(one_four)
     def get_graph(self, version_ids=None):
         """Return a graph from the versioned file. 
         

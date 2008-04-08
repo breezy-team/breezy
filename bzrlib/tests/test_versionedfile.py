@@ -409,7 +409,7 @@ class VersionedFileTestMixIn(object):
             'v2': ('v1', ),
             'v3': ('v2', )}
         self.build_graph(f, graph)
-        self.assertEqual(graph, f.get_graph())
+        self.assertEqual(graph, self.applyDeprecated(one_four, f.get_graph))
     
     def test_get_graph_partial(self):
         f = self.get_file()
@@ -436,10 +436,14 @@ class VersionedFileTestMixIn(object):
         simple_b_gam.update(simple_gam)
         simple_b_gam.update(simple_b)
         self.build_graph(f, complex_graph)
-        self.assertEqual(simple_a, f.get_graph(['a']))
-        self.assertEqual(simple_b, f.get_graph(['b']))
-        self.assertEqual(simple_gam, f.get_graph(['gam']))
-        self.assertEqual(simple_b_gam, f.get_graph(['b', 'gam']))
+        self.assertEqual(simple_a, self.applyDeprecated(one_four, f.get_graph,
+            ['a']))
+        self.assertEqual(simple_b, self.applyDeprecated(one_four, f.get_graph,
+            ['b']))
+        self.assertEqual(simple_gam, self.applyDeprecated(one_four,
+            f.get_graph, ['gam']))
+        self.assertEqual(simple_b_gam, self.applyDeprecated(one_four,
+            f.get_graph, ['b', 'gam']))
 
     def test_get_parents(self):
         f = self.get_file()
@@ -635,7 +639,8 @@ class VersionedFileTestMixIn(object):
         self.assertEqual(['notbxbfse'], vf.get_ancestry('notbxbfse'))
         self.assertEqual([],
             self.applyDeprecated(one_four, vf.get_parents, 'notbxbfse'))
-        self.assertEqual({'notbxbfse':()}, vf.get_graph())
+        self.assertEqual({'notbxbfse':()}, self.applyDeprecated(one_four,
+            vf.get_graph))
         self.assertFalse(vf.has_version(parent_id_utf8))
         # we have _with_ghost apis to give us ghost information.
         self.assertEqual([parent_id_utf8, 'notbxbfse'], vf.get_ancestry_with_ghosts(['notbxbfse']))
@@ -653,7 +658,7 @@ class VersionedFileTestMixIn(object):
         self.assertEqual({parent_id_utf8:(),
                           'notbxbfse':(parent_id_utf8, ),
                           },
-                         vf.get_graph())
+                         self.applyDeprecated(one_four, vf.get_graph))
         self.assertTrue(vf.has_version(parent_id_utf8))
         # we have _with_ghost apis to give us ghost information.
         self.assertEqual([parent_id_utf8, 'notbxbfse'],
