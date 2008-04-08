@@ -123,6 +123,14 @@ class SmartServerBranchRequestSetLastRevision(SmartServerLockedBranchRequest):
         return SuccessfulSmartServerResponse(('ok',))
 
 
+class SmartServerBranchRequestSetLastRevisionInfo(
+    SmartServerLockedBranchRequest):
+    
+    def do_with_locked_branch(self, branch, new_revno, new_last_revision_id):
+        branch.set_last_revision_info(int(new_revno), new_last_revision_id)
+        return SuccessfulSmartServerResponse(('ok',))
+
+
 class SmartServerBranchRequestLockWrite(SmartServerBranchRequest):
     
     def do_with_branch(self, branch, branch_token='', repo_token=''):

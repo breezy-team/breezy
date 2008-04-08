@@ -494,6 +494,66 @@ class TestBranchSetLastRevision(tests.TestCase):
         branch.unlock()
 
 
+class TestBranchSetLastRevisionInfo(tests.TestCase):
+
+    def test_set_empty(self):
+        # set_last_revision_info(num, 'rev-id') is translated to calling
+        # Branch.set_last_revision_info(num, 'rev-id') on the wire.
+        transport = MemoryTransport()
+        transport.mkdir('branch')
+        transport = transport.clone('branch')
+        client = FakeClient([
+            # lock_write
+            (('ok', 'branch token', 'repo token'), ),
+            # set_last_revision_info
+            (('ok',), ),
+            # unlock
+            (('ok',), )], transport.base)
+
+        bzrdir = RemoteBzrDir(transport, _client=False)
+        branch = RemoteBranch(bzrdir, None, _client=client)
+        # This is a hack to work around the problem that RemoteBranch currently
+        # unnecessarily invokes _ensure_real upon a call to lock_write.
+        branch._ensure_real = lambda: None
+        # Lock the branch, reset the record of remote calls.
+        branch.lock_write()
+        client._calls = []
+        result = branch.set_last_revision_info(1234, 'a-revision-id')
+        self.assertEqual(
+            [('call', 'Branch.set_last_revision_info',
+                ('branch/', 'branch token', 'repo token',
+                 '1234', 'a-revision-id'))],
+            client._calls)
+        self.assertEqual(None, result)
+
+    def test_no_such_revision(self):
+        # A response of 'NoSuchRevision' is translated into an exception.
+        client = FakeClient([
+            # lock_write
+            (('ok', 'branch token', 'repo token'), ),
+            # set_last_revision_info
+            (('NoSuchRevision', 'revid'), ),
+            # unlock
+            (('ok',), ),
+            ])
+        transport = MemoryTransport()
+        transport.mkdir('branch')
+        transport = transport.clone('branch')
+
+        bzrdir = RemoteBzrDir(transport, _client=False)
+        branch = RemoteBranch(bzrdir, None, _client=client)
+        # This is a hack to work around the problem that RemoteBranch currently
+        # unnecessarily invokes _ensure_real upon a call to lock_write.
+        branch._ensure_real = lambda: None
+        # Lock the branch, reset the record of remote calls.
+        branch.lock_write()
+        client._calls = []
+
+        self.assertRaises(
+            errors.NoSuchRevision, branch.set_last_revision_info, 123, 'revid')
+        branch.unlock()
+
+
 class TestBranchControlGetBranchConf(tests.TestCaseWithMemoryTransport):
     """Test branch.control_files api munging...
 
