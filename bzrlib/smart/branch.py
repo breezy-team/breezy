@@ -125,6 +125,11 @@ class SmartServerBranchRequestSetLastRevision(SmartServerLockedBranchRequest):
 
 class SmartServerBranchRequestSetLastRevisionInfo(
     SmartServerLockedBranchRequest):
+    """Branch.set_last_revision_info.  Sets the revno and the revision ID of
+    the specified branch.
+
+    New in bzrlib 1.4.
+    """
     
     def do_with_locked_branch(self, branch, new_revno, new_last_revision_id):
         branch.set_last_revision_info(int(new_revno), new_last_revision_id)

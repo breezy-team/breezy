@@ -1494,8 +1494,13 @@ class RemoteBranch(branch.Branch):
         assert type(revno) is int
         revision_id = ensure_null(revision_id)
         path = self.bzrdir._path_for_remote_call(self._client)
-        response = self._client.call('Branch.set_last_revision_info',
-            path, self._lock_token, self._repo_lock_token, str(revno), revision_id)
+        try:
+            response = self._client.call('Branch.set_last_revision_info',
+                path, self._lock_token, self._repo_lock_token, str(revno), revision_id)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            self._clear_cached_state()
+            return self._real_branch.set_last_revision_info(revno, revision_id)
         if response == ('ok',):
             self._clear_cached_state()
         elif response[0] == 'NoSuchRevision':
