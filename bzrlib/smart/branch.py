@@ -132,7 +132,11 @@ class SmartServerBranchRequestSetLastRevisionInfo(
     """
     
     def do_with_locked_branch(self, branch, new_revno, new_last_revision_id):
-        branch.set_last_revision_info(int(new_revno), new_last_revision_id)
+        try:
+            branch.set_last_revision_info(int(new_revno), new_last_revision_id)
+        except errors.NoSuchRevision:
+            return FailedSmartServerResponse(
+                ('NoSuchRevision', new_last_revision_id))
         return SuccessfulSmartServerResponse(('ok',))
 
 
