@@ -348,18 +348,28 @@ class VersionedFile(object):
                             None means retrieve all versions.
         """
         if version_ids is None:
-            return dict(self.iter_parents(self.versions()))
-        result = {}
-        pending = set(version_ids)
-        while pending:
-            this_iteration = pending
-            pending = set()
-            for version, parents in self.iter_parents(this_iteration):
-                result[version] = parents
-                for parent in parents:
-                    if parent in result:
-                        continue
-                    pending.add(parent)
+            result = self.get_parent_map(self.versions())
+        else:
+            result = {}
+            pending = set(version_ids)
+            while pending:
+                this_iteration = pending
+                pending = set()
+                parents = self.get_parent_map(this_iteration)
+                for version, parents in parents.iteritems():
+                    result[version] = parents
+                    for parent in parents:
+                        if parent in result:
+                            continue
+                        pending.add(parent)
+        references = set()
+        for parents in result.itervalues():
+            references.update(parents)
+        existing_parents = self.get_parent_map(references)
+        for key, parents in result.iteritems():
+            present_parents = [parent for parent in parents if parent in
+                existing_parents]
+            result[key] = tuple(present_parents)
         return result
 
     @deprecated_method(one_four)
@@ -463,6 +473,7 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.iter_lines_added_or_present_in_versions)
 
+    @deprecated_method(one_four)
     def iter_parents(self, version_ids):
         """Iterate through the parents for many version ids.
 

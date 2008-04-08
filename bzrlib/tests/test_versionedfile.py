@@ -533,23 +533,25 @@ class VersionedFileTestMixIn(object):
         # XXX TODO a ghost
         # cases: each sample data individually:
         self.assertEqual(set([('r0', ())]),
-            set(f.iter_parents(['r0'])))
+            set(self.applyDeprecated(one_four, f.iter_parents, ['r0'])))
         self.assertEqual(set([('r1', ('r0', ))]),
-            set(f.iter_parents(['r1'])))
+            set(self.applyDeprecated(one_four, f.iter_parents, ['r1'])))
         self.assertEqual(set([('r2', ('r1', 'r0'))]),
-            set(f.iter_parents(['r2'])))
+            set(self.applyDeprecated(one_four, f.iter_parents, ['r2'])))
         # no nodes returned for a missing node
         self.assertEqual(set(),
-            set(f.iter_parents(['missing'])))
+            set(self.applyDeprecated(one_four, f.iter_parents, ['missing'])))
         # 1 node returned with missing nodes skipped
         self.assertEqual(set([('r1', ('r0', ))]),
-            set(f.iter_parents(['ghost1', 'r1', 'ghost'])))
+            set(self.applyDeprecated(one_four, f.iter_parents, ['ghost1', 'r1',
+                'ghost'])))
         # 2 nodes returned
         self.assertEqual(set([('r0', ()), ('r1', ('r0', ))]),
-            set(f.iter_parents(['r0', 'r1'])))
+            set(self.applyDeprecated(one_four, f.iter_parents, ['r0', 'r1'])))
         # 2 nodes returned, missing skipped
         self.assertEqual(set([('r0', ()), ('r1', ('r0', ))]),
-            set(f.iter_parents(['a', 'r0', 'b', 'r1', 'c'])))
+            set(self.applyDeprecated(one_four, f.iter_parents,
+                ['a', 'r0', 'b', 'r1', 'c'])))
 
     def test_iter_lines_added_or_present_in_versions(self):
         # test that we get at least an equalset of the lines added by

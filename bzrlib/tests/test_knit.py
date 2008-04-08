@@ -680,36 +680,6 @@ class LowLevelKnitIndexTests(TestCase):
         self.assertRaises(RevisionNotPresent,
             index.get_ancestry_with_ghosts, ["e"])
 
-    def test_iter_parents(self):
-        transport = MockTransport()
-        index = self.get_knit_index(transport, "filename", "w", create=True)
-        # no parents
-        index.add_version('r0', ['option'], (None, 0, 1), [])
-        # 1 parent
-        index.add_version('r1', ['option'], (None, 0, 1), ['r0'])
-        # 2 parents
-        index.add_version('r2', ['option'], (None, 0, 1), ['r1', 'r0'])
-        # XXX TODO a ghost
-        # cases: each sample data individually:
-        self.assertEqual(set([('r0', ())]),
-            set(index.iter_parents(['r0'])))
-        self.assertEqual(set([('r1', ('r0', ))]),
-            set(index.iter_parents(['r1'])))
-        self.assertEqual(set([('r2', ('r1', 'r0'))]),
-            set(index.iter_parents(['r2'])))
-        # no nodes returned for a missing node
-        self.assertEqual(set(),
-            set(index.iter_parents(['missing'])))
-        # 1 node returned with missing nodes skipped
-        self.assertEqual(set([('r1', ('r0', ))]),
-            set(index.iter_parents(['ghost1', 'r1', 'ghost'])))
-        # 2 nodes returned
-        self.assertEqual(set([('r0', ()), ('r1', ('r0', ))]),
-            set(index.iter_parents(['r0', 'r1'])))
-        # 2 nodes returned, missing skipped
-        self.assertEqual(set([('r0', ()), ('r1', ('r0', ))]),
-            set(index.iter_parents(['a', 'r0', 'b', 'r1', 'c'])))
-
     def test_num_versions(self):
         transport = MockTransport([
             _KnitIndex.HEADER
@@ -2482,40 +2452,6 @@ class TestGraphIndexKnit(KnitTests):
              ('tip', 'no-eol,line-delta', (None, 0, 100), ['parent'])])
         self.assertEqual([], self.caught_entries)
 
-    def test_iter_parents(self):
-        index1 = self.make_g_index('1', 1, [
-        # no parents
-            (('r0', ), 'N0 100', ([], )),
-        # 1 parent
-            (('r1', ), '', ([('r0', )], ))])
-        index2 = self.make_g_index('2', 1, [
-        # 2 parents
-            (('r2', ), 'N0 100', ([('r1', ), ('r0', )], )),
-            ])
-        combined_index = CombinedGraphIndex([index1, index2])
-        index = KnitGraphIndex(combined_index)
-        # XXX TODO a ghost
-        # cases: each sample data individually:
-        self.assertEqual(set([('r0', ())]),
-            set(index.iter_parents(['r0'])))
-        self.assertEqual(set([('r1', ('r0', ))]),
-            set(index.iter_parents(['r1'])))
-        self.assertEqual(set([('r2', ('r1', 'r0'))]),
-            set(index.iter_parents(['r2'])))
-        # no nodes returned for a missing node
-        self.assertEqual(set(),
-            set(index.iter_parents(['missing'])))
-        # 1 node returned with missing nodes skipped
-        self.assertEqual(set([('r1', ('r0', ))]),
-            set(index.iter_parents(['ghost1', 'r1', 'ghost'])))
-        # 2 nodes returned
-        self.assertEqual(set([('r0', ()), ('r1', ('r0', ))]),
-            set(index.iter_parents(['r0', 'r1'])))
-        # 2 nodes returned, missing skipped
-        self.assertEqual(set([('r0', ()), ('r1', ('r0', ))]),
-            set(index.iter_parents(['a', 'r0', 'b', 'r1', 'c'])))
-
-
 class TestNoParentsGraphIndexKnit(KnitTests):
     """Tests for knits using KnitGraphIndex with no parents."""
 
@@ -2733,18 +2669,6 @@ class TestNoParentsGraphIndexKnit(KnitTests):
              ('tip', 'no-eol,line-delta', (None, 0, 100), [])])
         self.assertEqual([], self.caught_entries)
 
-    def test_iter_parents(self):
-        index = self.two_graph_index()
-        self.assertEqual(set([
-            ('tip', ()), ('tail', ()), ('parent', ()), ('separate', ())
-            ]),
-            set(index.iter_parents(['tip', 'tail', 'ghost', 'parent', 'separate'])))
-        self.assertEqual(set([('tip', ())]),
-            set(index.iter_parents(['tip'])))
-        self.assertEqual(set(),
-            set(index.iter_parents([])))
-
-
 class TestPackKnits(KnitTests):
     """Tests that use a _PackAccess and KnitGraphIndex."""
 
@@ -2798,11 +2722,6 @@ class Test_StreamIndex(KnitTests):
         self.assertEqual(
             set(result),
             set(index.get_ancestry(ancestry_versions, False)))
-
-    def assertIterParents(self, knit, versions, parent_versions, result):
-        """Check the result of an iter_parents call on knit."""
-        index = self.get_index(knit, knit.get_data_stream(versions))
-        self.assertEqual(result, index.iter_parents(parent_versions))
 
     def assertGetMethod(self, knit, versions, version, result):
         index = self.get_index(knit, knit.get_data_stream(versions))
@@ -2873,19 +2792,6 @@ class Test_StreamIndex(KnitTests):
         # backing knit) returns 'fulltext', because thats what we'll create as
         # we thunk across.
         self.assertGetMethod(knit, ['c'], 'b', 'fulltext')
-
-    def test_iter_parents(self):
-        knit = self.make_knit_with_4_versions_2_dags()
-        self.assertIterParents(knit, ['a'], ['a'], [('a', ())])
-        self.assertIterParents(knit, ['a', 'b'], ['a', 'b'],
-            [('a', ()), ('b', ())])
-        self.assertIterParents(knit, ['a', 'b', 'c'], ['a', 'b', 'c'],
-            [('a', ()), ('b', ()), ('c', ('b', 'a'))])
-        self.assertIterParents(knit, ['a', 'b', 'c', 'd'],
-            ['a', 'b', 'c', 'd'],
-            [('a', ()), ('b', ()), ('c', ('b', 'a')), ('d', ('e', 'f'))])
-        self.assertIterParents(knit, ['c'], ['a', 'b', 'c'],
-            [('c', ('b', 'a'))])
 
     def test_get_options(self):
         knit = self.make_knit_with_4_versions_2_dags()

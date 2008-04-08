@@ -157,6 +157,10 @@ IN DEVELOPMENT
     * ``VersionedFile.has_ghost`` is now deprecated, as it is both expensive
       and unused outside of a single test. (Robert Collins)
 
+    * ``VersionedFile.iter_parents`` is now deprecated in favour of
+      ``get_parent_map`` which can be used to instantiate a Graph on a
+      VersionedFile. (Robert Collins)
+
     * ``VersionedFileStore`` no longer uses the transaction parameter given
       to most methods; amongst other things this means that the
       get_weave_or_empty method no longer guarantees errors on a missing weave

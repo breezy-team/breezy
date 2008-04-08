@@ -1253,17 +1253,6 @@ class KnitVersionedFile(VersionedFile):
 
         pb.update('Walking content.', total, total)
         
-    def iter_parents(self, version_ids):
-        """Iterate through the parents for many version ids.
-
-        :param version_ids: An iterable yielding version_ids.
-        :return: An iterator that yields (version_id, parents). Requested 
-            version_ids not present in the versioned file are simply skipped.
-            The order is undefined, allowing for different optimisations in
-            the underlying implementation.
-        """
-        return self._index.iter_parents(version_ids)
-
     def num_versions(self):
         """See VersionedFile.num_versions()."""
         return self._index.num_versions()
@@ -1527,28 +1516,6 @@ class _KnitIndex(_KnitComponentFile):
             result[version_id] = (index_memo, compression_parent,
                                   parents, (method, noeol))
         return result
-
-    def iter_parents(self, version_ids):
-        """Iterate through the parents for many version ids.
-
-        :param version_ids: An iterable yielding version_ids.
-        :return: An iterator that yields (version_id, parents). Requested 
-            version_ids not present in the versioned file are simply skipped.
-            The order is undefined, allowing for different optimisations in
-            the underlying implementation.
-        """
-        parent_map = self.get_parent_map(version_ids)
-        parent_map_set = set(parent_map)
-        unknown_existence = set()
-        for parents in parent_map.itervalues():
-            unknown_existence.update(parents)
-        unknown_existence.difference_update(parent_map_set)
-        present_parents = set(self.get_parent_map(unknown_existence))
-        present_parents.update(parent_map_set)
-        for version_id, parents in parent_map.iteritems():
-            parents = tuple(parent for parent in parents
-                if parent in present_parents)
-            yield version_id, parents
 
     def num_versions(self):
         return len(self._history)
@@ -1871,35 +1838,6 @@ class KnitGraphIndex(object):
             return 'line-delta'
         else:
             return 'fulltext'
-
-    def iter_parents(self, version_ids):
-        """Iterate through the parents for many version ids.
-
-        :param version_ids: An iterable yielding version_ids.
-        :return: An iterator that yields (version_id, parents). Requested 
-            version_ids not present in the versioned file are simply skipped.
-            The order is undefined, allowing for different optimisations in
-            the underlying implementation.
-        """
-        if self._parents:
-            all_nodes = set(self._get_entries(self._version_ids_to_keys(version_ids)))
-            all_parents = set()
-            present_parents = set()
-            for node in all_nodes:
-                all_parents.update(node[3][0])
-                # any node we are querying must be present
-                present_parents.add(node[1])
-            unknown_parents = all_parents.difference(present_parents)
-            present_parents.update(self._present_keys(unknown_parents))
-            for node in all_nodes:
-                parents = []
-                for parent in node[3][0]:
-                    if parent in present_parents:
-                        parents.append(parent[0])
-                yield node[1][0], tuple(parents)
-        else:
-            for node in self._get_entries(self._version_ids_to_keys(version_ids)):
-                yield node[1][0], ()
 
     def num_versions(self):
         return len(list(self._graph_index.iter_all_entries()))
@@ -2432,23 +2370,6 @@ class _StreamIndex(object):
     def get_versions(self):
         """Get all the versions in the stream."""
         return self._by_version.keys()
-
-    def iter_parents(self, version_ids):
-        """Iterate through the parents for many version ids.
-
-        :param version_ids: An iterable yielding version_ids.
-        :return: An iterator that yields (version_id, parents). Requested 
-            version_ids not present in the versioned file are simply skipped.
-            The order is undefined, allowing for different optimisations in
-            the underlying implementation.
-        """
-        result = []
-        for version in version_ids:
-            try:
-                result.append((version, self._by_version[version][2]))
-            except KeyError:
-                pass
-        return result
 
 
 class _KnitData(object):
