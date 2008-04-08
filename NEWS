@@ -39,6 +39,11 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * The smart protocol now has support for setting branches' revision info
+      directly.  This should make operations like push slightly faster, and is a
+      step towards server-side hooks.  The new request method name is
+      ``Branch.set_last_revision_info``.  (Andrew Bennetts)
+
     * ``bzr commit --fixes`` now recognises "gnome" as a tag by default.
       (James Westby, Andrew Cowie)
 
