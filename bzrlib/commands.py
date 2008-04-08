@@ -43,9 +43,9 @@ from bzrlib import (
     errors,
     option,
     osutils,
+    registry,
     trace,
     win32utils,
-    registry,
     )
 """)
 
@@ -178,7 +178,7 @@ def _get_cmd_object(cmd_name, plugins_override=True):
             pass
         else:
             raise errors.CommandAvailableInPlugin(cmd_name, 
-                                                plugin_metadata, provider)
+                                                  plugin_metadata, provider)
 
     raise KeyError
 
