@@ -921,7 +921,7 @@ class TestTestResult(TestCase):
         test.run(result)
         self.assertEqual(
             [
-            ('update', '[2 in 0s, 3 known failures] passing_test', None, None),
+            ('update', '[2 in 0s] passing_test', None, None),
             ],
             pb.calls[2:])
 
@@ -997,7 +997,7 @@ class TestTestResult(TestCase):
         test.run(result)
         self.assertEqual(
             [
-            ('update', '[2 in 0s, 2 missing features] passing_test', None, None),
+            ('update', '[2 in 0s, 2 missing] passing_test', None, None),
             ],
             pb.calls[1:])
     
@@ -1964,23 +1964,23 @@ class TestTestIdList(tests.TestCase):
              'mod1.submod1',
              'mod1.submod2.cl1.meth1', 'mod1.submod2.cl2.meth2',
              ])
-        self.assertTrue(id_list.is_module_name_used('mod1'))
-        self.assertTrue(id_list.is_module_name_used('mod1.submod1'))
-        self.assertTrue(id_list.is_module_name_used('mod1.submod2'))
-        self.assertTrue(id_list.test_in('mod1.cl1.meth1'))
-        self.assertTrue(id_list.test_in('mod1.submod1'))
-        self.assertTrue(id_list.test_in('mod1.func1'))
+        self.assertTrue(id_list.refers_to('mod1'))
+        self.assertTrue(id_list.refers_to('mod1.submod1'))
+        self.assertTrue(id_list.refers_to('mod1.submod2'))
+        self.assertTrue(id_list.includes('mod1.cl1.meth1'))
+        self.assertTrue(id_list.includes('mod1.submod1'))
+        self.assertTrue(id_list.includes('mod1.func1'))
 
     def test_bad_chars_in_params(self):
         id_list = self._create_id_list(['mod1.cl1.meth1(xx.yy)'])
-        self.assertTrue(id_list.is_module_name_used('mod1'))
-        self.assertTrue(id_list.test_in('mod1.cl1.meth1(xx.yy)'))
+        self.assertTrue(id_list.refers_to('mod1'))
+        self.assertTrue(id_list.includes('mod1.cl1.meth1(xx.yy)'))
 
     def test_module_used(self):
         id_list = self._create_id_list(['mod.class.meth'])
-        self.assertTrue(id_list.is_module_name_used('mod'))
-        self.assertTrue(id_list.is_module_name_used('mod.class'))
-        self.assertTrue(id_list.is_module_name_used('mod.class.meth'))
+        self.assertTrue(id_list.refers_to('mod'))
+        self.assertTrue(id_list.refers_to('mod.class'))
+        self.assertTrue(id_list.refers_to('mod.class.meth'))
 
     def test_test_suite(self):
         # This test is slow, so we do a single test with one test in each
@@ -2059,3 +2059,23 @@ class TestLoadTestIdList(tests.TestCaseInTempDir):
         self.assertEquals('bar baz', tlist[3])
 
 
+class TestFilteredByModuleTestLoader(tests.TestCase):
+
+    def _create_loader(self, test_list):
+        id_filter = tests.TestIdList(test_list)
+        loader = TestUtil.FilteredByModuleTestLoader(id_filter.refers_to)
+        return loader
+
+    def test_load_tests(self):
+        test_list = ['bzrlib.tests.test_sampler.DemoTest.test_nothing']
+        loader = self._create_loader(test_list)
+
+        suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
+        self.assertEquals(test_list, _test_ids(suite))
+
+    def test_exclude_tests(self):
+        test_list = ['bogus']
+        loader = self._create_loader(test_list)
+
+        suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
+        self.assertEquals([], _test_ids(suite))

@@ -899,7 +899,7 @@ class RemoteRepository(object):
             medium._remote_is_at_least_1_2 = False
             return self._get_revision_graph(None)
         elif response[0][0] not in ['ok']:
-            reponse[1].cancel_read_body()
+            response[1].cancel_read_body()
             raise errors.UnexpectedSmartServerResponse(response[0])
         if response[0][0] == 'ok':
             coded = bz2.decompress(response[1].read_body_bytes())

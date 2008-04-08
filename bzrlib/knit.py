@@ -632,10 +632,6 @@ class KnitVersionedFile(VersionedFile):
         # move the copied index into place
         transport.move(name + INDEX_SUFFIX + '.tmp', name + INDEX_SUFFIX)
 
-    def create_empty(self, name, transport, mode=None):
-        return KnitVersionedFile(name, transport, factory=self.factory,
-                                 delta=self.delta, create=True)
-    
     def get_data_stream(self, required_versions):
         """Get a data stream for the specified versions.
 
@@ -2229,13 +2225,17 @@ class _StreamAccess(object):
     def get_raw_records(self, memos_for_retrieval):
         """Get the raw bytes for a records.
 
-        :param memos_for_retrieval: An iterable containing the (thunk_flag,
-            index, start, end) memo for retrieving the bytes.
-        :return: An iterator over the bytes of the records.
+        :param memos_for_retrieval: An iterable of memos from the
+            _StreamIndex object identifying bytes to read; for these classes
+            they are (from_backing_knit, index, start, end) and can point to
+            either the backing knit or streamed data.
+        :return: An iterator yielding a byte string for each record in 
+            memos_for_retrieval.
         """
         # use a generator for memory friendliness
-        for thunk_flag, version_id, start, end in memos_for_retrieval:
-            if version_id is self.stream_index:
+        for from_backing_knit, version_id, start, end in memos_for_retrieval:
+            if not from_backing_knit:
+                assert version_id is self.stream_index
                 yield self.data[start:end]
                 continue
             # we have been asked to thunk. This thunking only occurs when
@@ -2246,21 +2246,19 @@ class _StreamAccess(object):
             # as desired. However, for now, this is sufficient.
             if self.orig_factory.__class__ != KnitPlainFactory:
                 raise errors.KnitCorrupt(
-                    self, 'Bad thunk request %r' % version_id)
+                    self, 'Bad thunk request %r cannot be backed by %r' %
+                        (version_id, self.orig_factory))
             lines = self.backing_knit.get_lines(version_id)
             line_bytes = ''.join(lines)
             digest = sha_string(line_bytes)
+            # the packed form of the fulltext always has a trailing newline,
+            # even if the actual text does not, unless the file is empty.  the
+            # record options including the noeol flag are passed through by
+            # _StreamIndex, so this is safe.
             if lines:
                 if lines[-1][-1] != '\n':
                     lines[-1] = lines[-1] + '\n'
                     line_bytes += '\n'
-            orig_options = list(self.backing_knit._index.get_options(version_id))
-            if 'fulltext' not in orig_options:
-                if 'line-delta' not in orig_options:
-                    raise errors.KnitCorrupt(self,
-                        'Unknown compression method %r' % orig_options)
-                orig_options.remove('line-delta')
-                orig_options.append('fulltext')
             # We want plain data, because we expect to thunk only to allow text
             # extraction.
             size, bytes = self.backing_knit._data._record_to_data(version_id,
@@ -2318,8 +2316,9 @@ class _StreamIndex(object):
         :return: A dict of version_id:(index_memo, compression_parent,
                                        parents, record_details).
             index_memo
-                opaque structure to pass to read_records to extract the raw
-                data
+                opaque memo that can be passed to _StreamAccess.read_records
+                to extract the raw data; for these classes it is
+                (from_backing_knit, index, start, end) 
             compression_parent
                 Content that this record is built upon, may be None
             parents
@@ -2337,23 +2336,22 @@ class _StreamIndex(object):
                 continue
             parent_ids = self.get_parents_with_ghosts(version_id)
             noeol = ('no-eol' in self.get_options(version_id))
+            index_memo = self.get_position(version_id)
+            from_backing_knit = index_memo[0]
+            if from_backing_knit:
+                # texts retrieved from the backing knit are always full texts
+                method = 'fulltext'
             if method == 'fulltext':
                 compression_parent = None
             else:
                 compression_parent = parent_ids[0]
-            index_memo = self.get_position(version_id)
             result[version_id] = (index_memo, compression_parent,
                                   parent_ids, (method, noeol))
         return result
 
     def get_method(self, version_id):
         """Return compression method of specified version."""
-        try:
-            options = self._by_version[version_id][0]
-        except KeyError:
-            # Strictly speaking this should check in the backing knit, but
-            # until we have a test to discriminate, this will do.
-            return self.backing_index.get_method(version_id)
+        options = self.get_options(version_id)
         if 'fulltext' in options:
             return 'fulltext'
         elif 'line-delta' in options:
@@ -2369,7 +2367,17 @@ class _StreamIndex(object):
         try:
             return self._by_version[version_id][0]
         except KeyError:
-            return self.backing_index.get_options(version_id)
+            options = list(self.backing_index.get_options(version_id))
+            if 'fulltext' in options:
+                pass
+            elif 'line-delta' in options:
+                # Texts from the backing knit are always returned from the stream
+                # as full texts
+                options.remove('line-delta')
+                options.append('fulltext')
+            else:
+                raise errors.KnitIndexUnknownMethod(self, options)
+            return tuple(options)
 
     def get_parent_map(self, version_ids):
         """Passed through to by KnitVersionedFile.get_parent_map."""
@@ -2397,8 +2405,10 @@ class _StreamIndex(object):
         coordinates into that (as index_memo's are opaque outside the
         index and matching access class).
 
-        :return: a tuple (thunk_flag, index, start, end).  If thunk_flag is
-            False, index will be self, otherwise it will be a version id.
+        :return: a tuple (from_backing_knit, index, start, end) that can 
+            be passed e.g. to get_raw_records.  
+            If from_backing_knit is False, index will be self, otherwise it
+            will be a version id.
         """
         try:
             start, end = self._by_version[version_id][1]
