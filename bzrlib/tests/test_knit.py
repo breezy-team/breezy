@@ -1204,7 +1204,6 @@ class BasicKnitTests(KnitTests):
         """Store in knit with parents"""
         k = self.make_test_knit(annotate=False)
         self.add_stock_one_and_one_a(k)
-        k.clear_cache()
         self.assertEqualDiff(''.join(k.get_lines('text-1a')), TEXT_1A)
 
     def test_add_delta_knit_graph_index(self):
@@ -1214,7 +1213,6 @@ class BasicKnitTests(KnitTests):
             deltas=True)
         k = self.make_test_knit(annotate=True, index=knit_index)
         self.add_stock_one_and_one_a(k)
-        k.clear_cache()
         self.assertEqualDiff(''.join(k.get_lines('text-1a')), TEXT_1A)
         # check the index had the right data added.
         self.assertEqual(set([
@@ -1397,7 +1395,6 @@ class BasicKnitTests(KnitTests):
         # add texts with no required ordering
         k1.add_lines('base', [], ['text\n'])
         k1.add_lines('base2', [], ['text2\n'])
-        k1.clear_cache()
         # clear the logged activity, but preserve the list instance in case of
         # clones pointing at it.
         del instrumented_t._activity[:]
@@ -2029,87 +2026,6 @@ class TestWeaveToKnit(KnitTests):
         self.failIf(WeaveToKnit.is_compatible(k, w))
         self.failIf(WeaveToKnit.is_compatible(w, w))
         self.failIf(WeaveToKnit.is_compatible(k, k))
-
-
-class TestKnitCaching(KnitTests):
-    
-    def create_knit(self):
-        k = self.make_test_knit(True)
-        k.add_lines('text-1', [], split_lines(TEXT_1))
-        k.add_lines('text-2', [], split_lines(TEXT_2))
-        return k
-
-    def test_no_caching(self):
-        k = self.create_knit()
-        # Nothing should be cached without setting 'enable_cache'
-        self.assertEqual({}, k._data._cache)
-
-    def test_cache_data_read_raw(self):
-        k = self.create_knit()
-
-        # Now cache and read
-        k.enable_cache()
-
-        def read_one_raw(version):
-            pos_map = k._get_components_positions([version])
-            method, index_memo, next = pos_map[version]
-            lst = list(k._data.read_records_iter_raw([(version, index_memo)]))
-            self.assertEqual(1, len(lst))
-            return lst[0]
-
-        val = read_one_raw('text-1')
-        self.assertEqual({'text-1':val[1]}, k._data._cache)
-
-        k.clear_cache()
-        # After clear, new reads are not cached
-        self.assertEqual({}, k._data._cache)
-
-        val2 = read_one_raw('text-1')
-        self.assertEqual(val, val2)
-        self.assertEqual({}, k._data._cache)
-
-    def test_cache_data_read(self):
-        k = self.create_knit()
-
-        def read_one(version):
-            pos_map = k._get_components_positions([version])
-            method, index_memo, next = pos_map[version]
-            lst = list(k._data.read_records_iter([(version, index_memo)]))
-            self.assertEqual(1, len(lst))
-            return lst[0]
-
-        # Now cache and read
-        k.enable_cache()
-
-        val = read_one('text-2')
-        self.assertEqual(['text-2'], k._data._cache.keys())
-        self.assertEqual('text-2', val[0])
-        content, digest = k._data._parse_record('text-2',
-                                                k._data._cache['text-2'])
-        self.assertEqual(content, val[1])
-        self.assertEqual(digest, val[2])
-
-        k.clear_cache()
-        self.assertEqual({}, k._data._cache)
-
-        val2 = read_one('text-2')
-        self.assertEqual(val, val2)
-        self.assertEqual({}, k._data._cache)
-
-    def test_cache_read(self):
-        k = self.create_knit()
-        k.enable_cache()
-
-        text = k.get_text('text-1')
-        self.assertEqual(TEXT_1, text)
-        self.assertEqual(['text-1'], k._data._cache.keys())
-
-        k.clear_cache()
-        self.assertEqual({}, k._data._cache)
-
-        text = k.get_text('text-1')
-        self.assertEqual(TEXT_1, text)
-        self.assertEqual({}, k._data._cache)
 
 
 class TestKnitIndex(KnitTests):

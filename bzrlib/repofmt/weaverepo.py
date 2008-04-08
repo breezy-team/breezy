@@ -632,7 +632,6 @@ class WeaveCommitBuilder(CommitBuilder):
         result = versionedfile.add_lines(
             self._new_revision_id, parents, new_lines,
             nostore_sha=nostore_sha)[0:2]
-        versionedfile.clear_cache()
         return result
 
 

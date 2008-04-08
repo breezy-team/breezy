@@ -360,15 +360,6 @@ class VersionedFileTestMixIn(object):
         self.assertRaises(errors.OutSideTransaction, f.add_lines_with_ghosts, '', [], [])
         self.assertRaises(errors.OutSideTransaction, f.join, '')
         
-    def test_clear_cache(self):
-        f = self.get_file()
-        # on a new file it should not error
-        f.clear_cache()
-        # and after adding content, doing a clear_cache and a get should work.
-        f.add_lines('0', [], ['a'])
-        f.clear_cache()
-        self.assertEqual(['a'], f.get_lines('0'))
-
     def test_clone_text(self):
         f = self.get_file()
         f.add_lines('r0', [], ['a\n', 'b\n'])

@@ -145,6 +145,13 @@ IN DEVELOPMENT
       file level merge to identical state on two branches is rare enough, and
       not expensive enough to special case. (Robert Collins)
 
+    * ``VersionedFile.clear_cache`` and ``enable_cache`` are deprecated.
+      These methods added significant complexity to the ``VersionedFile``
+      implementation, but were only used for optimising fetches from knits - 
+      which can be done from outside the knit layer, or via a caching
+      decorator. As knits are not the default format, the complexity is no
+      longer worth paying. (Robert Collins)
+
     * ``VersionedFile.create_empty`` is removed. This method presupposed a
       sensible mapping to a transport for individual files, but pack backed
       versioned files have no such mapping. (Robert Collins)

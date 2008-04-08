@@ -157,6 +157,7 @@ class VersionedFile(object):
             if '\n' in line[:-1]:
                 raise errors.BzrBadParameterContainsNewline("lines")
 
+    @deprecated_method(one_four)
     def enable_cache(self):
         """Tell this versioned file that it should cache any data it reads.
         
@@ -164,6 +165,7 @@ class VersionedFile(object):
         """
         pass
     
+    @deprecated_method(one_four)
     def clear_cache(self):
         """Remove any data cached in the versioned file object.
 

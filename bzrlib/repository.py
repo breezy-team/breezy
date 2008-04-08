@@ -1452,7 +1452,6 @@ class Repository(object):
         # processed?
         self.lock_read()
         inv_w = self.get_inventory_weave()
-        inv_w.enable_cache()
 
         # file ids that changed
         file_ids = self.fileids_altered_by_revision_ids(revision_ids, inv_w)

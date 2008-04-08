@@ -623,18 +623,8 @@ class KnitVersionedFile(VersionedFile):
         for (version_id, options, parents, size), access_memo in zip(
             records, positions):
             index_entries.append((version_id, options, access_memo, parents))
-            if self._data._do_cache:
-                self._data._cache[version_id] = data[offset:offset+size]
             offset += size
         self._index.add_versions(index_entries)
-
-    def enable_cache(self):
-        """Start caching data for this knit"""
-        self._data.enable_cache()
-
-    def clear_cache(self):
-        """Clear the data cache only."""
-        self._data.clear_cache()
 
     def copy_to(self, name, transport):
         """See VersionedFile.copy_to()."""
@@ -2379,21 +2369,6 @@ class _KnitData(object):
         """
         self._access = access
         self._checked = False
-        # TODO: jam 20060713 conceptually, this could spill to disk
-        #       if the cached size gets larger than a certain amount
-        #       but it complicates the model a bit, so for now just use
-        #       a simple dictionary
-        self._cache = {}
-        self._do_cache = False
-
-    def enable_cache(self):
-        """Enable caching of reads."""
-        self._do_cache = True
-
-    def clear_cache(self):
-        """Clear the record cache."""
-        self._do_cache = False
-        self._cache = {}
 
     def _open_file(self):
         return self._access.open_file()
@@ -2499,29 +2474,15 @@ class _KnitData(object):
         # uses readv so nice and fast we hope.
         if len(records):
             # grab the disk data needed.
-            if self._cache:
-                # Don't check _cache if it is empty
-                needed_offsets = [index_memo for version_id, index_memo
-                                              in records
-                                              if version_id not in self._cache]
-            else:
-                needed_offsets = [index_memo for version_id, index_memo
-                                               in records]
-
+            needed_offsets = [index_memo for version_id, index_memo
+                                           in records]
             raw_records = self._access.get_raw_records(needed_offsets)
 
         for version_id, index_memo in records:
-            if version_id in self._cache:
-                # This data has already been validated
-                data = self._cache[version_id]
-            else:
-                data = raw_records.next()
-                if self._do_cache:
-                    self._cache[version_id] = data
-
-                # validate the header
-                df, rec = self._parse_record_header(version_id, data)
-                df.close()
+            data = raw_records.next()
+            # validate the header
+            df, rec = self._parse_record_header(version_id, data)
+            df.close()
             yield version_id, data
 
     def read_records_iter(self, records):
@@ -2537,24 +2498,7 @@ class _KnitData(object):
         if not records:
             return
 
-        if self._cache:
-            # Skip records we have alread seen
-            yielded_records = set()
-            needed_records = set()
-            for record in records:
-                if record[0] in self._cache:
-                    if record[0] in yielded_records:
-                        continue
-                    yielded_records.add(record[0])
-                    data = self._cache[record[0]]
-                    content, digest = self._parse_record(record[0], data)
-                    yield (record[0], content, digest)
-                else:
-                    needed_records.add(record)
-            needed_records = sorted(needed_records, key=operator.itemgetter(1))
-        else:
-            needed_records = sorted(set(records), key=operator.itemgetter(1))
-
+        needed_records = sorted(set(records), key=operator.itemgetter(1))
         if not needed_records:
             return
 
@@ -2566,8 +2510,6 @@ class _KnitData(object):
         for (version_id, index_memo), data in \
                 izip(iter(needed_records), raw_data):
             content, digest = self._parse_record(version_id, data)
-            if self._do_cache:
-                self._cache[version_id] = data
             yield version_id, content, digest
 
     def read_records(self, records):
