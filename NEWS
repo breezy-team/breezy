@@ -118,6 +118,8 @@ IN DEVELOPMENT
 
     * Reduced the evangelism in the User Guide. (Ian Clatworthy)
 
+    * Added Integrating with Bazaar document for developers (Martin Albisetti)
+
   API BREAKS:
 
     * Attempting to pull data from a ghost aware repository (e.g. knits) into a
