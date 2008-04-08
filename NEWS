@@ -40,6 +40,8 @@ bzr-svn 0.4.10  UNRELEASED
 
 	* Gracefully handle erroneous svk merge tickets created by old versions of svk.
 
+	* Use standard infrastructure for caching revision numbers. (#213953)
+
 bzr-svn 0.4.9	2008-03-23
 
   FEATURES
