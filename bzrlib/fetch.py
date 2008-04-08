@@ -216,15 +216,6 @@ class RepoFetcher(object):
         # we fetch all the texts, because texts do
         # not reference anything, and its cheap enough
         to_weave.join(from_weave, version_ids=required_versions)
-        # we don't need *all* of this data anymore, but we dont know
-        # what we do. This cache clearing will result in a new read 
-        # of the knit data when we do the checkout, but probably we
-        # want to emit the needed data on the fly rather than at the
-        # end anyhow.
-        # the from weave should know not to cache data being joined,
-        # but its ok to ask it to clear.
-        from_weave.clear_cache()
-        to_weave.clear_cache()
 
     def _fetch_inventory_weave(self, revs, pb):
         pb.update("fetch inventory", 0, 2)
@@ -242,7 +233,6 @@ class RepoFetcher(object):
             # corrupt.
             to_weave.join(from_weave, pb=child_pb, msg='merge inventory',
                           version_ids=revs)
-            from_weave.clear_cache()
         finally:
             child_pb.finished()
 

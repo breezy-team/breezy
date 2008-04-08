@@ -420,13 +420,10 @@ class CommitBuilder(object):
         # implementation could give us bad output from readlines() so this is
         # not a guarantee of safety. What would be better is always checking
         # the content during test suite execution. RBC 20070912
-        try:
-            return versionedfile.add_lines_with_ghosts(
-                self._new_revision_id, parents, new_lines,
-                nostore_sha=nostore_sha, random_id=self.random_revid,
-                check_content=False)[0:2]
-        finally:
-            versionedfile.clear_cache()
+        return versionedfile.add_lines_with_ghosts(
+            self._new_revision_id, parents, new_lines,
+            nostore_sha=nostore_sha, random_id=self.random_revid,
+            check_content=False)[0:2]
 
 
 class RootCommitBuilder(CommitBuilder):
@@ -1468,7 +1465,6 @@ class Repository(object):
 
         # inventory
         yield ("inventory", None, revision_ids)
-        inv_w.clear_cache()
 
         # signatures
         revisions_with_signatures = set()
