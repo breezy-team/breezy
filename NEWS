@@ -38,7 +38,8 @@ IN DEVELOPMENT
 
     * New ``post_change_branch_tip`` hook that is called after the
       branch tip is moved but while the branch is still write-locked.
-      See the User Reference for signature details. (Ian Clatworthy)
+      See the User Reference for signature details.
+      (Ian Clatworthy, James Henstridge)
 
   IMPROVEMENTS:
 
