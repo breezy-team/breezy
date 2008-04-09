@@ -100,6 +100,9 @@ the members
   new_revid
     The revision id (eg joe@foo.com-5676566-boa234a) after the change.
 
+The old_revno and new_revno members are integers, as the head
+revision is never has a dotted revision number.
+
 set_rh
 ------
 
