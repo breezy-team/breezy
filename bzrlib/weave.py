@@ -466,13 +466,13 @@ class Weave(VersionedFile):
         """
         return len(other_parents.difference(my_parents)) == 0
 
-    def annotate_iter(self, version_id):
-        """Yield list of (version-id, line) pairs for the specified version.
+    def annotate(self, version_id):
+        """Return a list of (version-id, line) tuples for version_id.
 
         The index indicates when the line originated in the weave."""
         incls = [self._lookup(version_id)]
-        for origin, lineno, text in self._extract(incls):
-            yield self._idx_to_name(origin), text
+        return [(self._idx_to_name(origin), text) for origin, lineno, text in
+            self._extract(incls)]
 
     def iter_lines_added_or_present_in_versions(self, version_ids=None,
                                                 pb=None):

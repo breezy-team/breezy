@@ -144,10 +144,6 @@ class KnitContent(object):
     def __init__(self):
         self._should_strip_eol = False
 
-    def annotate(self):
-        """Return a list of (origin, text) tuples."""
-        return list(self.annotate_iter())
-
     def apply_delta(self, delta, new_version_id):
         """Apply delta to this object to become new_version_id."""
         raise NotImplementedError(self.apply_delta)
@@ -206,9 +202,9 @@ class AnnotatedKnitContent(KnitContent):
         KnitContent.__init__(self)
         self._lines = lines
 
-    def annotate_iter(self):
-        """Yield tuples of (origin, text) for each content line."""
-        return iter(self._lines)
+    def annotate(self):
+        """Return a list of (origin, text) for each content line."""
+        return list(self._lines)
 
     def apply_delta(self, delta, new_version_id):
         """Apply delta to this object to become new_version_id."""
@@ -256,10 +252,9 @@ class PlainKnitContent(KnitContent):
         self._lines = lines
         self._version_id = version_id
 
-    def annotate_iter(self):
-        """Yield tuples of (origin, text) for each content line."""
-        for line in self._lines:
-            yield self._version_id, line
+    def annotate(self):
+        """Return a list of (origin, text) for each content line."""
+        return [(self._version_id, line) for line in self._lines]
 
     def apply_delta(self, delta, new_version_id):
         """Apply delta to this object to become new_version_id."""
@@ -427,9 +422,9 @@ class KnitAnnotateFactory(_KnitFactory):
                        for origin, text in lines)
         return out
 
-    def annotate_iter(self, knit, version_id):
+    def annotate(self, knit, version_id):
         content = knit._get_content(version_id)
-        return content.annotate_iter()
+        return content.annotate()
 
 
 class KnitPlainFactory(_KnitFactory):
@@ -489,9 +484,9 @@ class KnitPlainFactory(_KnitFactory):
             out.extend(lines)
         return out
 
-    def annotate_iter(self, knit, version_id):
+    def annotate(self, knit, version_id):
         annotator = _KnitAnnotator(knit)
-        return iter(annotator.annotate(version_id))
+        return annotator.annotate(version_id)
 
 
 def make_empty_knit(transport, relpath):
@@ -1240,9 +1235,9 @@ class KnitVersionedFile(VersionedFile):
 
     __len__ = num_versions
 
-    def annotate_iter(self, version_id):
-        """See VersionedFile.annotate_iter."""
-        return self.factory.annotate_iter(self, version_id)
+    def annotate(self, version_id):
+        """See VersionedFile.annotate."""
+        return self.factory.annotate(self, version_id)
 
     def get_parent_map(self, version_ids):
         """See VersionedFile.get_parent_map."""

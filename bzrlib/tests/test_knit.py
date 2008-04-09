@@ -56,6 +56,7 @@ from bzrlib.knit import (
     KnitSequenceMatcher,
     )
 from bzrlib.osutils import split_lines
+from bzrlib.symbol_versioning import one_four
 from bzrlib.tests import (
     Feature,
     TestCase,
@@ -161,17 +162,6 @@ class TestPlainKnitContent(TestCase, KnitContentTestsMixin):
         self.assertEqual(content.annotate(),
             [("bogus", "text1"), ("bogus", "text2")])
 
-    def test_annotate_iter(self):
-        content = self._make_content([])
-        it = content.annotate_iter()
-        self.assertRaises(StopIteration, it.next)
-
-        content = self._make_content([("bogus", "text1"), ("bogus", "text2")])
-        it = content.annotate_iter()
-        self.assertEqual(it.next(), ("bogus", "text1"))
-        self.assertEqual(it.next(), ("bogus", "text2"))
-        self.assertRaises(StopIteration, it.next)
-
     def test_line_delta(self):
         content1 = self._make_content([("", "a"), ("", "b")])
         content2 = self._make_content([("", "a"), ("", "a"), ("", "c")])
@@ -198,17 +188,6 @@ class TestAnnotatedKnitContent(TestCase, KnitContentTestsMixin):
         content = self._make_content([("origin1", "text1"), ("origin2", "text2")])
         self.assertEqual(content.annotate(),
             [("origin1", "text1"), ("origin2", "text2")])
-
-    def test_annotate_iter(self):
-        content = self._make_content([])
-        it = content.annotate_iter()
-        self.assertRaises(StopIteration, it.next)
-
-        content = self._make_content([("origin1", "text1"), ("origin2", "text2")])
-        it = content.annotate_iter()
-        self.assertEqual(it.next(), ("origin1", "text1"))
-        self.assertEqual(it.next(), ("origin2", "text2"))
-        self.assertRaises(StopIteration, it.next)
 
     def test_line_delta(self):
         content1 = self._make_content([("", "a"), ("", "b")])

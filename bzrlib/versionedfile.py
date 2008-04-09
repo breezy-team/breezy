@@ -422,6 +422,7 @@ class VersionedFile(object):
         except KeyError:
             raise errors.RevisionNotPresent(version_id, self)
 
+    @deprecated_method(one_four)
     def annotate_iter(self, version_id):
         """Yield list of (version-id, line) pairs for the specified
         version.
@@ -429,10 +430,15 @@ class VersionedFile(object):
         Must raise RevisionNotPresent if the given version is
         not present in file history.
         """
-        raise NotImplementedError(self.annotate_iter)
+        return iter(self.annotate(version_id))
 
     def annotate(self, version_id):
-        return list(self.annotate_iter(version_id))
+        """Return a list of (version-id, line) tuples for version_id.
+
+        :raise RevisionNotPresent: If the given version is
+        not present in file history.
+        """
+        raise NotImplementedError(self.annotate)
 
     def join(self, other, pb=None, msg=None, version_ids=None,
              ignore_missing=False):
