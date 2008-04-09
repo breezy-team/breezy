@@ -595,7 +595,7 @@ class InventoryFile(InventoryEntry):
         # We can't check the length, because Weave doesn't store that
         # information, and the whole point of looking at the weave's
         # sha1sum is that we don't have to extract the text.
-        if self.text_sha1 != w.get_sha1(self.revision):
+        if self.text_sha1 != w.get_sha1s([self.revision])[0]:
             raise BzrCheckError('text {%s} version {%s} wrong sha1' 
                                 % (self.file_id, self.revision))
         checker.checked_texts[t] = self.text_sha1

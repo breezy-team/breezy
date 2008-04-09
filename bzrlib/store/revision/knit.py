@@ -26,7 +26,7 @@ from bzrlib import (
     osutils,
     revision as _mod_revision,
     )
-from bzrlib.knit import KnitVersionedFile, KnitPlainFactory
+from bzrlib.knit import make_file_knit, KnitPlainFactory
 from bzrlib.store.revision import RevisionStore
 from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.transport import get_transport
@@ -42,7 +42,7 @@ class KnitRevisionStoreFactory(object):
         versioned_file_store = VersionedFileStore(
             t.clone('revision-store'),
             precious=True,
-            versionedfile_class=KnitVersionedFile,
+            versionedfile_class=make_file_knit,
             versionedfile_kwargs={'delta':False, 'factory':KnitPlainFactory()})
         return KnitRevisionStore(versioned_file_store)
 
