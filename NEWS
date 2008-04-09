@@ -121,7 +121,8 @@ IN DEVELOPMENT
 
     * ``KnitVersionedFile`` no longer accepts an ``access_mode`` parameter, and
       now requires the ``index`` and ``access_method`` parameters to be
-      supplied. (Robert Collins)
+      supplied. A compatible shim has been kept in the new function
+      ``knit.make_file_knit``. (Robert Collins)
 
     * Log formatters must now provide log_revision instead of show and
       show_merge_revno methods. The latter had been deprecated since the 0.17
@@ -186,7 +187,7 @@ IN DEVELOPMENT
       get_weave_or_empty method no longer guarantees errors on a missing weave
       in a readonly transaction, and no longer caches versioned file instances
       which reduces memory pressure (but requires more careful management by
-      callers to preserve performance.  (Robert Collins)
+      callers to preserve performance). (Robert Collins)
 
   TESTING:
 

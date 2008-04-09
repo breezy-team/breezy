@@ -559,7 +559,7 @@ class KnitVersionedFile(VersionedFile):
         self._max_delta_chain = 200
 
         if None in (access_method, index):
-            raise NotImplementedError, "No default access_method or index any more"
+            raise ValueError("No default access_method or index any more")
         self._index = index
         _access = access_method
         if create and not len(self) and not delay_create:
