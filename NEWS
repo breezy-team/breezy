@@ -191,6 +191,11 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * The ``read_response_tuple`` method of ``SmartClientRequestProtocol*``
+      classes will now raise ``UnknownSmartMethod`` when appropriate, so that
+      callers don't need to try distinguish unknown request errors from other
+      errors.  (Andrew Bennetts)
+      
     * ``VersionedFile`` now has a new method ``get_parent_map`` which, like
       ``Graph.get_parent_map`` returns a dict of key:parents. (Robert Collins)
 

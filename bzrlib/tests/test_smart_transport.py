@@ -1603,6 +1603,43 @@ class TestSmartProtocolOne(TestSmartProtocol, CommonSmartProtocolTestMixin):
         smart_protocol.call_with_body_readv_array(('foo', ), [(1,2),(5,6)])
         self.assertEqual(expected_bytes, output.getvalue())
 
+    def _test_client_read_response_tuple_raises_UnknownSmartMethod(self,
+            server_bytes):
+        server_bytes = (
+            "error\x01Generic bzr smart protocol error: bad request 'foo'\n")
+        input = StringIO(server_bytes)
+        output = StringIO()
+        client_medium = medium.SmartSimplePipesClientMedium(input, output)
+        request = client_medium.get_request()
+        smart_protocol = protocol.SmartClientRequestProtocolOne(request)
+        smart_protocol.call('foo')
+        self.assertRaises(
+            errors.UnknownSmartMethod, smart_protocol.read_response_tuple)
+        # The request has been finished.  There is no body to read, and
+        # attempts to read one will fail.
+        self.assertRaises(
+            errors.ReadingCompleted, smart_protocol.read_body_bytes)
+
+    def test_client_read_response_tuple_raises_UnknownSmartMethod(self):
+        """read_response_tuple raises UnknownSmartMethod if the response says
+        the server did not recognise the request.
+        """
+        server_bytes = (
+            "error\x01Generic bzr smart protocol error: bad request 'foo'\n")
+        self._test_client_read_response_tuple_raises_UnknownSmartMethod(
+            server_bytes)
+
+    def test_client_read_response_tuple_raises_UnknownSmartMethod_0_11(self):
+        """read_response_tuple also raises UnknownSmartMethod if the response
+        from a bzr 0.11 says the server did not recognise the request.
+
+        (bzr 0.11 sends a slightly different error message to later versions.)
+        """
+        server_bytes = (
+            "error\x01Generic bzr smart protocol error: bad request u'foo'\n")
+        self._test_client_read_response_tuple_raises_UnknownSmartMethod(
+            server_bytes)
+
     def test_client_read_body_bytes_all(self):
         # read_body_bytes should decode the body bytes from the wire into
         # a response.
@@ -1931,6 +1968,28 @@ class TestSmartProtocolTwo(TestSmartProtocol, CommonSmartProtocolTestMixin):
         smart_protocol.call('foo')
         smart_protocol.read_response_tuple(False)
         self.assertEqual(True, smart_protocol.response_status)
+
+    def test_client_read_response_tuple_raises_UnknownSmartMethod(self):
+        """read_response_tuple raises UnknownSmartMethod if the response is
+        says the server did not recognise the request.
+        """
+        server_bytes = (
+            protocol.RESPONSE_VERSION_TWO +
+            "failed\n" +
+            "error\x01Generic bzr smart protocol error: bad request 'foo'\n")
+        input = StringIO(server_bytes)
+        output = StringIO()
+        client_medium = medium.SmartSimplePipesClientMedium(input, output)
+        request = client_medium.get_request()
+        smart_protocol = protocol.SmartClientRequestProtocolTwo(request)
+        smart_protocol.call('foo')
+        self.assertRaises(
+            errors.UnknownSmartMethod, smart_protocol.read_response_tuple)
+        self.assertEqual(False, smart_protocol.response_status)
+        # The request has been finished.  There is no body to read, and
+        # attempts to read one will fail.
+        self.assertRaises(
+            errors.ReadingCompleted, smart_protocol.read_body_bytes)
 
     def test_client_read_body_bytes_all(self):
         # read_body_bytes should decode the body bytes from the wire into

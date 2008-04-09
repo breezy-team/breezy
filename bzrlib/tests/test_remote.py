@@ -136,27 +136,36 @@ class FakeClient(_SmartClient):
         """Create a FakeClient.
 
         :param responses: A list of response-tuple, body-data pairs to be sent
-            back to callers.
+            back to callers.  A special case is if the response-tuple is
+            'unknown verb', then a UnknownSmartMethod will be raised for that
+            call, using the second element of the tuple as the verb in the
+            exception.
         """
         self.responses = responses
         self._calls = []
         self.expecting_body = False
         _SmartClient.__init__(self, FakeMedium(self._calls), fake_medium_base)
 
+    def _get_next_response(self):
+        response_tuple = self.responses.pop(0)
+        if response_tuple[0][0] == 'unknown verb':
+            raise errors.UnknownSmartMethod(response_tuple[0][1])
+        return response_tuple
+
     def call(self, method, *args):
         self._calls.append(('call', method, args))
-        return self.responses.pop(0)[0]
+        return self._get_next_response()[0]
 
     def call_expecting_body(self, method, *args):
         self._calls.append(('call_expecting_body', method, args))
-        result = self.responses.pop(0)
+        result = self._get_next_response()
         self.expecting_body = True
         return result[0], FakeProtocol(result[1], self)
 
     def call_with_body_bytes_expecting_body(self, method, args, body):
         self._calls.append(('call_with_body_bytes_expecting_body', method,
             args, body))
-        result = self.responses.pop(0)
+        result = self._get_next_response()
         self.expecting_body = True
         return result[0], FakeProtocol(result[1], self)
 
@@ -313,6 +322,24 @@ class TestBzrDirOpenBranch(tests.TestCase):
         """
         self.assertRaises(errors.NotBranchError,
             RemoteBzrDirFormat.probe_transport, OldServerTransport())
+
+
+class TestBzrDirOpenRepository(tests.TestCase):
+
+    def test_backwards_compat_1_2(self):
+        transport = MemoryTransport()
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        client = FakeClient([
+            (('unknown verb', 'RemoteRepository.find_repositoryV2'), ''),
+            (('ok', '', 'no', 'no'), ''),],
+            transport.base)
+        bzrdir = RemoteBzrDir(transport, _client=client)
+        repo = bzrdir.open_repository()
+        self.assertEqual(
+            [('call', 'BzrDir.find_repositoryV2', ('quack/',)),
+             ('call', 'BzrDir.find_repository', ('quack/',))],
+            client._calls)
 
 
 class OldSmartClient(object):
@@ -536,23 +563,7 @@ class TestTransportIsReadonly(tests.TestCase):
         advisory anyway (a transport could be read-write, but then the
         underlying filesystem could be readonly anyway).
         """
-        client = FakeClient([(
-            ('error', "Generic bzr smart protocol error: "
-                      "bad request 'Transport.is_readonly'"), '')])
-        transport = RemoteTransport('bzr://example.com/', medium=False,
-                                    _client=client)
-        self.assertEqual(False, transport.is_readonly())
-        self.assertEqual(
-            [('call', 'Transport.is_readonly', ())],
-            client._calls)
-
-    def test_error_from_old_0_11_server(self):
-        """Same as test_error_from_old_server, but with the slightly different
-        error message from bzr 0.11 servers.
-        """
-        client = FakeClient([(
-            ('error', "Generic bzr smart protocol error: "
-                      "bad request u'Transport.is_readonly'"), '')])
+        client = FakeClient([(('unknown verb', 'Transport.is_readonly'), '')])
         transport = RemoteTransport('bzr://example.com/', medium=False,
                                     _client=client)
         self.assertEqual(False, transport.is_readonly())
@@ -704,17 +715,18 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         repo.unlock()
 
     def test_get_parent_map_reconnects_if_unknown_method(self):
-        error_msg = (
-            "Generic bzr smart protocol error: "
-            "bad request 'Repository.get_parent_map'")
         responses = [
-            (('error', error_msg), ''),
+            (('unknown verb', 'Repository.get_parent_map'), ''),
             (('ok',), '')]
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(
             responses, transport_path)
         rev_id = 'revision-id'
-        parents = repo.get_parent_map([rev_id])
+        expected_deprecations = [
+            'bzrlib.remote.RemoteRepository.get_revision_graph was deprecated '
+            'in version 1.4.']
+        parents = self.callDeprecated(
+            expected_deprecations, repo.get_parent_map, [rev_id])
         self.assertEqual(
             [('call_with_body_bytes_expecting_body',
               'Repository.get_parent_map', ('quack/', rev_id), '\n\n0'),
@@ -996,11 +1008,8 @@ class TestRepositoryStreamKnitData(TestRemoteRepository):
     
     def test_backwards_compatibility(self):
         """If the server doesn't recognise this request, fallback to VFS."""
-        error_msg = (
-            "Generic bzr smart protocol error: "
-            "bad request 'Repository.stream_revisions_chunked'")
         responses = [
-            (('error', error_msg), '')]
+            (('unknown verb', 'Repository.stream_revisions_chunked'), '')]
         repo, client = self.setup_fake_client_and_repository(
             responses, 'path')
         self.mock_called = False
