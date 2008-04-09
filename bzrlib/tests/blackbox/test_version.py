@@ -44,6 +44,10 @@ class TestVersion(TestCase):
         self.assertContainsRe(out, r"(?m)^  Bazaar configuration:")
         self.assertContainsRe(out, r'(?m)^  Bazaar log file:.*\.bzr\.log')
 
+    def test_version_short(self):
+        out = self.run_bzr(["version", "--short"])[0]
+        self.assertEqualDiff(out, bzrlib.version_string)
+
 
 class TestVersionUnicodeOutput(TestCaseInTempDir):
 
