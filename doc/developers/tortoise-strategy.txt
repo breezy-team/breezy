@@ -6,14 +6,34 @@ Bazaar Windows Shell Extension Options
 Introduction
 ------------
 
-This document outlines the options available for Bazaar to integrate with the
-Windows Shell. It first describes the general architecture of Windows Shell
-Extensions, then looks at the C++ implemented TortoiseSvn and the Python
-implemented TortoiseBzr, and concludes with a number of concrete proposals
-for moving TortoiseBzr forward.
+This document details the imlpementation strategy chosen for the
+Bazaar Windows Shell Extensions, otherwise known as TortoiseBzr, or TBZR.
+As justification for the strategy, it also describes the general architecture
+of Windows Shell Extensions, then looks at the C++ implemented TortoiseSvn
+and the Python implemented TortoiseBzr, and discusses alternative
+implementation strategies, and the reasons they were not chosen.
+
+The following points summarize the  strategy.
+
+* Main shell extension code will be implemented in C++, and be as thin as
+  possible.  It will not directly do any VCS work, but instead will perform
+  all operations via either external applications or an RPC server.
+
+* Most VCS operations will be performed by external applications.  For
+  example, committing changes or viewing history will spawn a child
+  process that provides its own UI.
+
+* For operations where spawning a child process is not practical, an
+  external RPC server will be implemented in Python and will directly use
+  the VCS library. In the short term, there will be no attempt to create a
+  general purpose RPC mechanism, but instead will be focused on keeping the
+  C++ RPC client as thin, fast and dumb as possible.
+
+Background Information
+----------------------
 
 The facts about shell extensions
-----------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Well - the facts as I understand them :)
 
@@ -69,7 +89,7 @@ C runtime library if necessary. Obviously, this sucks from our POV :)
 [1]: http://blogs.msdn.com/oldnewthing/archive/2006/12/18/1317290.aspx
 
 Analysis of TortoiseSVN code
------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 TortoiseSVN is implemented in C++. It relies on an external process to
 perform most UI (such as diff, log, commit etc commands), but it appears to
@@ -102,7 +122,7 @@ what you expect from C++ based apps :( Most of the heavy lifting is done by
 the external application, which might offer better facilities.
  
 Analysis of existing TortoiseBzr code
---------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The existing code is actually quite cool given its history (SoC student,
 etc), so this should not be taken as criticism of the implementer nor of the
@@ -161,47 +181,22 @@ releases (ie, it assumes python.exe, etc) and integration into an existing
 Trivially, the code is not PEP8 compliant and was written by someone fairly
 inexperienced with the language.
 
-Conclusions
-------------
+Detailed Implementation Strategy
+---------------------------------
 
-A strategic decision needs to be made about the use of Python in the shell
-extension itself. The use of Python means that there is a larger chance of
-conflicting with existing applications, or even existing Python implemented
-shell extensions. It will also increase the memory usage of all applications
-which use the shell. While this may create problems for a small number of
-users, it may create a wider perception of instability or resource hogging.
-
-There are 2 credible options:
-
-Stick to Python
-~~~~~~~~~~~~~~~~~
-
-This is the simplest to implement but has all the limitations above. We just
-continue to develop the existing code and commit to this model for the
-foreseeable future.
-
-We probably need something similar to TSVNCache.exe - an external process
-used to share state between processes - and this too could be implemented in
-Python.
-
-Hybrid Python and C++ implementation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-In this model, we would still use something like TSVNCache.exe (this external
+We will create a hybrid Python and C++ implementation.  In this model, we
+would still use something like TSVNCache.exe (this external
 process doesn't have the same restrictions as the shell extension itself) but
 go one step further - use this remote process for *all* interactions with
 bzr, including status and other "must be fast" operations. This would allow
 the shell extension itself to be implemented in C++, but still take advantage
-of Python for much of the logic. If we resisted the temptation to abstract
-the Windows shell requirements into a more general purpose mechanism, the
-shell could remain thin and not too painful to implement in C++ - it becomes
-an RPC-stub to the Python implemented process.
+of Python for much of the logic.
 
-One possible implementation strategy could be to work towards the above
-infrastructure (ie, a single process doing all VCS work), while keeping the
-shell extension implemented in Python - but without using bzrlib. This would
-allow us to focus on this shared-cache/remote-process infrastructure without
-immediately re-implementing a shell extension in C++. Longer term, once the
+A pragmatic implementation strategy will be used to work towards the above
+infrastructure - we will keep the shell extension implemented in Python - but
+without using bzrlib. This would allow us to focus on this
+shared-cache/remote-process infrastructure without immediately
+re-implementing a shell extension in C++. Longer term, once the
 infrastructure is in place and as optimized as possible, we can move to C++
 code in the shell calling our remote Python process. This port should try and
 share as much code as possible from TortoiseSvn, including overlay handlers.
@@ -219,14 +214,8 @@ for bazaar than Windows specific ones, although native look-and-feel is
 important. Either way, this can change independently from the shell
 extension.
 
-
 Performance considerations
-----------------------------
-
-The following discussions assume the "Hybrid Python and C++ implementation"
-strategy, discussed above, is chosen for implementation. To recap, TBZR
-becomes a C++ implemented DLL using RPC to talk to a Python implemented
-"server" which does all BZR work.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 As discussed above, the model used by Tortoise is that most "interesting"
 things are done by external applications. Most Tortoise implementations
@@ -270,7 +259,7 @@ Thus, Icon Overlays could be disabled if it did cause a problem for some
 people, for example.
  
 RPC options
--------------
+~~~~~~~~~~~~
 
 Due to the high number of calls for icon overlays, the RPC overhead must be
 kept as low as possible. Due to the client side being implemented in C++,
@@ -293,7 +282,7 @@ side of the process will be the bottle-neck. However, this throughput would
 appear sufficient to implement a prototype.
 
 Vista versus XP
-------------------
+~~~~~~~~~~~~~~~~
 
 Let's try and avoid an OS advocacy debate :) But it is probably true that
 TBZR will, over its life, be used by more Vista computers than XP ones. In
@@ -312,6 +301,8 @@ about features of the Vista property system.
  
 Implementation plan:
 --------------------
+
+The following is a high-level set of milestones for the implementation:
 
 * Design the RPC mechanism used for icon overlays (ie, binary format used for
   communication)
@@ -338,3 +329,26 @@ Implementation plan:
   necessary.
 
 * Create binary for alpha releases, then go round-and-round until its baked.
+
+Alternative Implementation Strategies
+-------------------------------------
+
+Only one credible alternative strategy was identified, as discussed below. No
+languages other than Python and C++ were considered; Python as the bzr
+library and existing extensions are written in Python and otherwise only C++
+for reasons outlined in the background on shell extensions above.
+
+Implement Completely in Python
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This would keep the basic structure of the existing TBZR code, with the
+shell extension continuing to pull in Python and all libraries used by Bzr
+into various processes.
+
+Although implementation simplicity is a key benefit to this option, it was
+not chosen for various reasons; The use of Python means that there is a
+larger chance of conflicting with existing applications, or even existing
+Python implemented shell extensions. It will also increase the memory usage
+of all applications which use the shell. While this may create problems for a
+small number of users, it may create a wider perception of instability or
+resource hogging.
