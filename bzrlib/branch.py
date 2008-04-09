@@ -1912,9 +1912,9 @@ class BzrBranch6(BzrBranch5):
         if self._get_append_revisions_only():
             self._check_history_violation(revision_id)
         self._write_last_revision_info(revno, revision_id)
-        self._run_post_change_branch_tip_hooks(hook_params)
         self._clear_cached_state()
         self._last_revision_info_cache = revno, revision_id
+        self._run_post_change_branch_tip_hooks(hook_params)
 
     def _check_history_violation(self, revision_id):
         last_revision = _mod_revision.ensure_null(self.last_revision())
