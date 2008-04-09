@@ -17,6 +17,7 @@
 from cStringIO import StringIO
 import codecs
 #import traceback
+from warnings import warn
 
 import bzrlib
 from bzrlib.decorators import (needs_read_lock,
@@ -104,8 +105,9 @@ class LockableFiles(object):
 
     def __del__(self):
         if self.is_locked():
-            mutter("file group %r was gc'd while locked" % self)
-            self._lock.unlock()
+            # do not automatically unlock; there should have been a
+            # try/finally to unlock this.
+            warn("%r was gc'd while locked" % self)
 
     def break_lock(self):
         """Break the lock of this lockable files group if it is held.
