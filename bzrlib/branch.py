@@ -1028,7 +1028,7 @@ class BranchHooks(Hooks):
         # Introduced in 1.4
         # Invoked after the tip of a branch changes.
         # the api signature is
-        # (params) where params is a ChangeBranchTipParams object.
+        # (branch, params) where params is a ChangeBranchTipParams object.
         self['post_change_branch_tip'] = []
 
 
@@ -1418,9 +1418,9 @@ class BzrBranch(Branch):
     def _make_branch_tip_hook_params(self, new_revision_id, new_revno=None):
         """Construct a Params object for passing to *branch_tip hooks."""
         if Branch.hooks['post_change_branch_tip']:
-            old_revno, old_revison_id = self.last_revision_info()
-            params = ChangeBranchTipParams(old_revision_id, new_revision_id,
-                old_revno, new_revno)
+            old_revno, old_revision_id = self.last_revision_info()
+            return ChangeBranchTipParams(old_revision_id, new_revision_id,
+                                         old_revno, new_revno)
         else:
             return None
 

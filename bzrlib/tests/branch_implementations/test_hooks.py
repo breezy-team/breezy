@@ -75,30 +75,32 @@ class TestSetRevisionHistoryHook(TestCaseWithMemoryTransport):
             ])
 
 
-class TestSetLastRevisionInfoHook(TestCaseWithMemoryTransport):
+class TestPostChangeBranchTip(TestCaseWithMemoryTransport):
 
     def setUp(self):
         self.hook_calls = []
         TestCaseWithMemoryTransport.setUp(self)
 
-    def capture_set_last_revision_info_hook(self, branch, revno, revid):
-        """Capture set_last_revision_info hook calls to self.hook_calls.
+    def capture_post_change_branch_tip_hook(self, branch, result):
+        """Capture post_change_branch_tip hook calls to self.hook_calls.
 
         The call is logged, as is some state of the branch.
         """
-        self.hook_calls.append(
-            ('set_last_revision_info', branch, revno, revid,
-             branch.is_locked()))
+        self.hook_calls.append((branch, result, branch.is_locked()))
 
-    def test_set_last_revision_info_empty_history(self):
+    def test_post_change_branch_tip_empty_history(self):
         branch = self.make_branch('source')
-        Branch.hooks.install_hook('set_last_revision_info',
-                                  self.capture_set_last_revision_info_hook)
+        Branch.hooks.install_hook('post_change_branch_tip',
+                                  self.capture_post_change_branch_tip_hook)
         branch.set_last_revision_info(0, NULL_REVISION)
-        self.assertEqual(self.hook_calls,
-            [('set_last_revision_info', branch, 0, NULL_REVISION, True)])
+        self.assertEqual(len(self.hook_calls), 1)
+        self.assertEqual(self.hook_calls[0][0], branch)
+        self.assertEqual(self.hook_calls[0][1].old_revid, NULL_REVISION)
+        self.assertEqual(self.hook_calls[0][1].old_revno, 0)
+        self.assertEqual(self.hook_calls[0][1].new_revid, NULL_REVISION)
+        self.assertEqual(self.hook_calls[0][1].new_revno, 0)
 
-    def test_set_last_revision_info_nonempty_history(self):
+    def test_post_change_branch_tip_nonempty_history(self):
         tree = self.make_branch_and_memory_tree('source')
         tree.lock_write()
         tree.add('')
@@ -106,30 +108,34 @@ class TestSetLastRevisionInfoHook(TestCaseWithMemoryTransport):
         tree.commit('empty commit', rev_id='foo')
         tree.unlock()
         branch = tree.branch
-        Branch.hooks.install_hook('set_last_revision_info',
-                                  self.capture_set_last_revision_info_hook)
+        Branch.hooks.install_hook('post_change_branch_tip',
+                                  self.capture_post_change_branch_tip_hook)
         # some branches require that their history be set to a revision in the
         # repository
         branch.set_last_revision_info(1, 'f\xc2\xb5')
-        self.assertEqual(self.hook_calls,
-            [('set_last_revision_info', branch, 1, 'f\xc2\xb5', True)])
+        self.assertEqual(len(self.hook_calls), 1)
+        self.assertEqual(self.hook_calls[0][0], branch)
+        self.assertEqual(self.hook_calls[0][1].old_revid, 'foo')
+        self.assertEqual(self.hook_calls[0][1].old_revno, 2)
+        self.assertEqual(self.hook_calls[0][1].new_revid, 'f\xc2\xb5')
+        self.assertEqual(self.hook_calls[0][1].new_revno, 1)
 
-    def test_set_last_revision_info_branch_is_locked(self):
+    def test_post_change_branch_tip_branch_is_locked(self):
         branch = self.make_branch('source')
-        Branch.hooks.install_hook('set_last_revision_info',
-                                  self.capture_set_last_revision_info_hook)
+        Branch.hooks.install_hook('post_change_branch_tip',
+                                  self.capture_post_change_branch_tip_hook)
         branch.set_last_revision_info(0, NULL_REVISION)
-        self.assertEqual(self.hook_calls,
-            [('set_last_revision_info', branch, 0, NULL_REVISION, True)])
+        self.assertEqual(len(self.hook_calls), 1)
+        self.assertEqual(self.hook_calls[0][0], branch)
+        self.assertEqual(self.hook_calls[0][2], True)
 
-    def test_set_last_revision_info_calls_all_hooks_no_errors(self):
+    def test_post_change_branch_tip_calls_all_hooks_no_errors(self):
         branch = self.make_branch('source')
-        Branch.hooks.install_hook('set_last_revision_info',
-                                  self.capture_set_last_revision_info_hook)
-        Branch.hooks.install_hook('set_last_revision_info',
-                                  self.capture_set_last_revision_info_hook)
+        Branch.hooks.install_hook('post_change_branch_tip',
+                                  self.capture_post_change_branch_tip_hook)
+        Branch.hooks.install_hook('post_change_branch_tip',
+                                  self.capture_post_change_branch_tip_hook)
         branch.set_last_revision_info(0, NULL_REVISION)
-        self.assertEqual(self.hook_calls,
-            [('set_last_revision_info', branch, 0, NULL_REVISION, True),
-             ('set_last_revision_info', branch, 0, NULL_REVISION, True),
-            ])
+        self.assertEqual(len(self.hook_calls), 2)
+        self.assertEqual(self.hook_calls[0][0], branch)
+        self.assertEqual(self.hook_calls[1][0], branch)
