@@ -453,12 +453,18 @@ class TestBzrDirFormat(TestCaseWithTransport):
         branch.bzrdir.open_repository()
         branch.bzrdir.open_workingtree()
 
+
+class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
+
     def test_acquire_repository_standalone(self):
+        """The default acquisition policy should create a standalone branch."""
         my_bzrdir = self.make_bzrdir('.')
         repo_policy = my_bzrdir.determine_repository_policy()
         repo = repo_policy.acquire_repository()
         self.assertEqual(repo.bzrdir.root_transport.base,
                          my_bzrdir.root_transport.base)
+        self.assertFalse(repo.is_shared())
+
 
 class ChrootedTests(TestCaseWithTransport):
     """A support class that provides readonly urls outside the local namespace.
@@ -720,16 +726,6 @@ class TestMeta1DirFormat(TestCaseWithTransport):
             self.assertTrue(tree.bzrdir.needs_format_conversion())
         finally:
             bzrdir.BzrDirFormat._set_default_format(old_format)
-
-    def test_clone_on_transport_preserves_repo_format(self):
-        source_branch = self.make_branch('source', format='knit')
-        # Ensure no format data is cached
-        a_dir = bzrlib.branch.Branch.open_from_transport(
-            self.get_transport('source')).bzrdir
-        target_transport = a_dir.root_transport.clone('..').clone('target')
-        target_bzrdir = a_dir.clone_on_transport(target_transport)
-        target_repo = target_bzrdir.open_repository()
-        self.assertEqual(target_repo._format, source_branch.repository._format)
 
 
 class TestFormat5(TestCaseWithTransport):

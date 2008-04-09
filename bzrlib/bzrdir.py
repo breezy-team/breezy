@@ -179,6 +179,7 @@ class BzrDir(object):
         :param force_new_repo: Do not use a shared repository for the target 
                                even if one is available.
         """
+        from remote import RemoteBzrDir
         transport.ensure_base()
         result = self.cloning_metadir().initialize_on_transport(transport)
         repository_policy = None
@@ -190,9 +191,11 @@ class BzrDir(object):
             # may need to copy content in
             repository_policy = result.determine_repository_policy(
                 force_new_repo)
+            make_working_trees = local_repo.make_working_trees()
+            if isinstance(result, RemoteBzrDir):
+                make_working_trees = None
             result_repo = repository_policy.acquire_repository(
-                local_repo.make_working_trees(),
-                local_repo.is_shared())
+                make_working_trees, local_repo.is_shared())
             result_repo.fetch(local_repo, revision_id=revision_id)
         # 1 if there is a branch present
         #   make sure its content is available in the target repository
@@ -2651,11 +2654,13 @@ class BzrDirFormatRegistry(registry.Registry):
         return output
 
 
-class RepositoryPolicy(object):
-    """Base class for other policies to inherit from"""
+class RepositoryAcquisitionPolicy(object):
+    """Abstract base class for repository acquisition policies.
 
-    def __init__(self):
-        pass
+    A repository acquisition policy decides how a BzrDir acquires a repository
+    for a branch that is being created.  The most basic policy decision is
+    whether to create a new repository or use an existing one.
+    """
 
     def configure_branch(self, branch):
         """Apply any configuration data from this policy to the branch.
@@ -2665,21 +2670,29 @@ class RepositoryPolicy(object):
         pass
 
     def acquire_repository(self, make_working_trees=None, shared=False):
-        """Apply any configuration data from this policy to the branch"""
-        raise NotImplemented(RepositoryPolicy.acquire_repository)
+        """Acquire a repository for this bzrdir.
+
+        Implementations may create a new repository or use a pre-exising
+        repository.
+        :param make_working_trees: If creating a repository, set
+            make_working_trees to this value (if non-None)
+        :param shared: If creating a repository, make it shared if True
+        :return: A repository
+        """
+        raise NotImplemented(RepositoryAcquisitionPolicy.acquire_repository)
 
 
-class CreateRepository(RepositoryPolicy):
+class CreateRepository(RepositoryAcquisitionPolicy):
     """A policy of creating a new repository"""
 
     def __init__(self, bzrdir):
-        RepositoryPolicy.__init__(self)
+        RepositoryAcquisitionPolicy.__init__(self)
         self._bzrdir = bzrdir
 
     def acquire_repository(self, make_working_trees=None, shared=False):
-        """Implementation of RepositoryPolicy.acquire_repository
+        """Implementation of RepositoryAcquisitionPolicy.acquire_repository
 
-        Creates the desired repository
+        Creates the desired repository in the bzrdir we already have.
         """
         repository = self._bzrdir.create_repository(shared=shared)
         if make_working_trees is not None:
@@ -2687,15 +2700,15 @@ class CreateRepository(RepositoryPolicy):
         return repository
 
 
-class UseExistingRepository(RepositoryPolicy):
+class UseExistingRepository(RepositoryAcquisitionPolicy):
     """A policy of reusing an existing repository"""
 
     def __init__(self, repository):
-        RepositoryPolicy.__init__(self)
+        RepositoryAcquisitionPolicy.__init__(self)
         self._repository = repository
 
     def acquire_repository(self, make_working_trees=None, shared=False):
-        """Implementation of RepositoryPolicy.acquire_repository
+        """Implementation of RepositoryAcquisitionPolicy.acquire_repository
 
         Returns an existing repository to use
         """
