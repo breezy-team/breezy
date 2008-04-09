@@ -39,6 +39,9 @@ Specifications
 
 * `Repositories <repository.html>`_ |--| What repositories do and are used for.
 
+* `Integration Guide <integration.html>`_ |--| A guide to integrate bzrlib into
+  any python application.
+
 Data formats
 ============
 

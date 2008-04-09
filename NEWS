@@ -118,6 +118,8 @@ IN DEVELOPMENT
 
     * Reduced the evangelism in the User Guide. (Ian Clatworthy)
 
+    * Added Integrating with Bazaar document for developers (Martin Albisetti)
+
   API BREAKS:
 
     * Attempting to pull data from a ghost aware repository (e.g. knits) into a
@@ -127,6 +129,8 @@ IN DEVELOPMENT
     * Log formatters must now provide log_revision instead of show and
       show_merge_revno methods. The latter had been deprecated since the 0.17
       release. (James Westby)
+
+    * ``osutils.backup_file`` is removed. (Alexander Belchenko)
 
     * ``Repository.get_revision_graph`` is deprecated, with no replacement
       method. The method was size(history) and not desirable. (Robert Collins)
