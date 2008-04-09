@@ -1042,11 +1042,11 @@ class ChangeBranchTipParams(object):
 
     There are 5 fields that hooks may wish to access:
 
-        * branch - the branch being changed
-        * old_revno - revision number before the change
-        * new_revno - revision number after the change
-        * old_revid - revision id before the change
-        * new_revid - revision id after the change
+    :ivar branch: the branch being changed
+    :ivar old_revno: revision number before the change
+    :ivar new_revno: revision number after the change
+    :ivar old_revid: revision id before the change
+    :ivar new_revid: revision id after the change
 
     The revid fields are strings. The revno fields are integers.
     """
@@ -1419,20 +1419,15 @@ class BzrBranch(Branch):
         for hook in Branch.hooks['set_rh']:
             hook(self, rev_history)
 
-    def _make_branch_tip_hook_params(self, new_revno, new_revision_id):
-        """Construct a Params object for passing to *branch_tip hooks."""
-        if Branch.hooks['post_change_branch_tip']:
-            old_revno, old_revision_id = self.last_revision_info()
-            return ChangeBranchTipParams(
-                self, old_revno, new_revno, old_revision_id, new_revision_id)
-        else:
-            return None
-
-    def _run_post_change_branch_tip_hooks(self, params):
+    def _run_post_change_branch_tip_hooks(self, old_revno, old_revid):
         """Run the post_change_branch_tip hooks."""
-        if params is None:
+        hooks = Branch.hooks['post_change_branch_tip']
+        if not hooks:
             return
-        for hook in Branch.hooks['post_change_branch_tip']:
+        new_revno, new_revid = self.last_revision_info()
+        params = ChangeBranchTipParams(
+            self, old_revno, new_revno, old_revid, new_revid)
+        for hook in hooks:
             hook(params)
  
     @needs_write_lock
@@ -1448,11 +1443,11 @@ class BzrBranch(Branch):
         be permitted.
         """
         revision_id = _mod_revision.ensure_null(revision_id)
-        hook_params = self._make_branch_tip_hook_params(revno, revision_id)
+        old_revno, old_revid = self.last_revision_info()
         history = self._lefthand_history(revision_id)
         assert len(history) == revno, '%d != %d' % (len(history), revno)
         self.set_revision_history(history)
-        self._run_post_change_branch_tip_hooks(hook_params)
+        self._run_post_change_branch_tip_hooks(old_revno, old_revid)
 
     def _gen_revision_history(self):
         history = self.control_files.get('revision-history').read().split('\n')
@@ -1908,13 +1903,13 @@ class BzrBranch6(BzrBranch5):
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
         revision_id = _mod_revision.ensure_null(revision_id)
-        hook_params = self._make_branch_tip_hook_params(revno, revision_id)
+        old_revno, old_revid = self.last_revision_info()
         if self._get_append_revisions_only():
             self._check_history_violation(revision_id)
         self._write_last_revision_info(revno, revision_id)
         self._clear_cached_state()
         self._last_revision_info_cache = revno, revision_id
-        self._run_post_change_branch_tip_hooks(hook_params)
+        self._run_post_change_branch_tip_hooks(old_revno, old_revid)
 
     def _check_history_violation(self, revision_id):
         last_revision = _mod_revision.ensure_null(self.last_revision())
