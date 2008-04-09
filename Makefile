@@ -22,7 +22,7 @@
 
 PYTHON=python
 
-.PHONY: all clean extensions pyflakes api-docs dist
+.PHONY: all clean extensions pyflakes api-docs 
 
 all: extensions
 
@@ -199,12 +199,13 @@ clean-win32: clean-docs
 	$(PYTHON) tools/win32/ostools.py remove bzr-*win32.exe
 	$(PYTHON) tools/win32/ostools.py remove dist
 
+.PHONY: dist dist-upload-escudero
+
 # build a distribution tarball.
 #
 # this method of copying the pyrex generated files is a bit ugly; it would be
 # nicer to generate it from distutils.
 dist: 
-	./bzr version --short
 	version=`./bzr version --short` && \
 	echo Building distribution of bzr $$version && \
 	expbasedir=`mktemp -d` && \
@@ -217,3 +218,17 @@ dist:
 	tar cfz $$tarball -C $$expbasedir bzr-$$version && \
 	gpg --detach-sign $$tarball && \
 	echo $$tarball done.
+
+# upload previously built tarball to the download directory on bazaar-vcs.org,
+# and verify that it can be downloaded ok.
+dist-upload-escudero:
+	version=`./bzr version --short` && \
+	tarball=../bzr-$$version.tar.gz && \
+	scp $$tarball $$tarball.sig \
+	    escudero.ubuntu.com:/srv/bazaar.canonical.com/www/releases/src \
+		&& \
+	echo verifying over http... && \
+	curl http://bazaar-vcs.org/releases/src/bzr-$$version.tar.gz \
+		| diff -s - $$tarball && \
+	curl http://bazaar-vcs.org/releases/src/bzr-$$version.tar.gz.sig \
+		| diff -s - $$tarball.sig 
