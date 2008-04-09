@@ -76,14 +76,32 @@ The api signature is (local, master, old_revno, old_revid, new_revno,
 new_revid) where local is the local branch or None, master is the target
 branch, and an empty branch receives new_revno of 0, new_revid of None.
 
+post_change_branch_tip
+----------------------
+
+Run after a branch tip has been changed but while the branch is still
+write-locked. Note that push, pull, commit and uncommit all invoke this hook.
+
+The hook signature is (params), where params is an object containing
+the members
+
+  old_revno
+    The revision number (eg 10) of the branch before the push.
+
+  old_revid
+    The revision id (eg joe@foo.com-1234234-aoeua34) before the push.
+
+  new_revno
+    The revision number (eg 12) of the branch after the push.
+
+  new_revid
+    The revision id (eg joe@foo.com-5676566-boa234a) after the push.
+
 set_rh
 ------
 
-Run after the branch's revision history has been modified (push, pull, commit
-and uncommit can all modify the revision history).
-
-The hook signature is (branch, revision_history), and the branch will be
-write-locked.
+Note: This hook is now deprecated and will be removed in the near future.
+Please use the ``post_change_branch_tip`` hook instead.
 
 See also `Using hooks`_ in the User Guide.
 
