@@ -1028,7 +1028,8 @@ class BranchHooks(Hooks):
         # Introduced in 1.4
         # Invoked after the tip of a branch changes.
         # the api signature is
-        # (branch, params) where params is a ChangeBranchTipParams object.
+        # (params) where params is a ChangeBranchTipParams with the members
+        # (branch, old_revno, new_revno, old_revid, new_revid)
         self['post_change_branch_tip'] = []
 
 
@@ -1039,8 +1040,9 @@ Branch.hooks = BranchHooks()
 class ChangeBranchTipParams(object):
     """Object holding parameters passed to *_change_branch_tip hooks.
 
-    There are 4 fields that hooks may wish to access:
+    There are 5 fields that hooks may wish to access:
 
+        * branch - the branch being changed
         * old_revno - revision number before the change
         * new_revno - revision number after the change
         * old_revid - revision id before the change
@@ -1049,14 +1051,16 @@ class ChangeBranchTipParams(object):
     The revid fields are strings. The revno fields are integers.
     """
 
-    def __init__(self, old_revno, new_revno, old_revid, new_revid):
+    def __init__(self, branch, old_revno, new_revno, old_revid, new_revid):
         """Create a group of ChangeBranchTip parameters.
 
+        :param branch: The branch being changed.
         :param old_revno: Revision number before the change.
         :param new_revno: Revision number after the change.
         :param old_revid: Tip revision id before the change.
         :param new_revid: Tip revision id after the change.
         """
+        self.branch = branch
         self.old_revno = old_revno
         self.new_revno = new_revno
         self.old_revid = old_revid
@@ -1420,7 +1424,7 @@ class BzrBranch(Branch):
         if Branch.hooks['post_change_branch_tip']:
             old_revno, old_revision_id = self.last_revision_info()
             return ChangeBranchTipParams(
-                old_revno, new_revno, old_revision_id, new_revision_id)
+                self, old_revno, new_revno, old_revision_id, new_revision_id)
         else:
             return None
 
@@ -1429,7 +1433,7 @@ class BzrBranch(Branch):
         if params is None:
             return
         for hook in Branch.hooks['post_change_branch_tip']:
-            hook(self, params)
+            hook(params)
  
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
