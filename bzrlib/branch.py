@@ -1447,8 +1447,8 @@ class BzrBranch(Branch):
         configured to check constraints on history, in which case this may not
         be permitted.
         """
-        hook_params = self._make_branch_tip_hook_params(revno, revision_id)
         revision_id = _mod_revision.ensure_null(revision_id)
+        hook_params = self._make_branch_tip_hook_params(revno, revision_id)
         history = self._lefthand_history(revision_id)
         assert len(history) == revno, '%d != %d' % (len(history), revno)
         self.set_revision_history(history)
@@ -1907,8 +1907,8 @@ class BzrBranch6(BzrBranch5):
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
-        hook_params = self._make_branch_tip_hook_params(revno, revision_id)
         revision_id = _mod_revision.ensure_null(revision_id)
+        hook_params = self._make_branch_tip_hook_params(revno, revision_id)
         if self._get_append_revisions_only():
             self._check_history_violation(revision_id)
         self._write_last_revision_info(revno, revision_id)
