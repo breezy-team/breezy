@@ -2724,7 +2724,7 @@ class cmd_version(Command):
     def run(self, short=False):
         from bzrlib.version import show_version
         if short:
-            print(bzrlib.version_string)
+            self.outf.write(bzrlib.version_string + '\n')
         else:
             show_version(to_file=self.outf)
 
