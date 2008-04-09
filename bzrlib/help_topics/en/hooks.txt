@@ -85,17 +85,20 @@ write-locked. Note that push, pull, commit and uncommit all invoke this hook.
 The hook signature is (params), where params is an object containing
 the members
 
+  branch
+    The branch whose tip has been changed.
+
   old_revno
-    The revision number (eg 10) of the branch before the push.
+    The revision number (eg 10) of the branch before the change.
 
   old_revid
-    The revision id (eg joe@foo.com-1234234-aoeua34) before the push.
+    The revision id (eg joe@foo.com-1234234-aoeua34) before the change.
 
   new_revno
-    The revision number (eg 12) of the branch after the push.
+    The revision number (eg 12) of the branch after the change.
 
   new_revid
-    The revision id (eg joe@foo.com-5676566-boa234a) after the push.
+    The revision id (eg joe@foo.com-5676566-boa234a) after the change.
 
 set_rh
 ------
