@@ -27,8 +27,7 @@ add a revision to the store until everything it refers to is also
 stored, so that if a revision is present we can totally recreate it.
 However, we can't know what files are included in a revision until we
 read its inventory.  So we query the inventory store of the source for
-the ids we need, and then pull those ids and finally actually join
-the inventories.
+the ids we need, and then pull those ids and then return to the inventories.
 """
 
 import bzrlib

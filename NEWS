@@ -140,8 +140,8 @@ IN DEVELOPMENT
       than using a call to ``transaction_finished``, allowing the removal of
       the fixed list of versioned files per repository. (Robert Collins)
 
-    * ``VersionedFile.annotate_iter`` is deprecated. While in principal this
-      allows lower memory use, all users of annotations wanted full file 
+    * ``VersionedFile.annotate_iter`` is deprecated. While in principle this
+      allowed lower memory use, all users of annotations wanted full file 
       annotations, and there is no storage format suitable for incremental
       line-by-line annotation. (Robert Collins)
 
