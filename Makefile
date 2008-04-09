@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 
 PYTHON=python
 
-.PHONY: all clean extensions pyflakes api-docs
+.PHONY: all clean extensions pyflakes api-docs dist
 
 all: extensions
 
@@ -198,3 +198,22 @@ clean-win32: clean-docs
 	$(PYTHON) tools/win32/ostools.py remove bzr-setup*.exe
 	$(PYTHON) tools/win32/ostools.py remove bzr-*win32.exe
 	$(PYTHON) tools/win32/ostools.py remove dist
+
+# build a distribution tarball.
+#
+# this method of copying the pyrex generated files is a bit ugly; it would be
+# nicer to generate it from distutils.
+dist: 
+	./bzr version --short
+	version=`./bzr version --short` && \
+	echo Building distribution of bzr $$version && \
+	expbasedir=`mktemp -d` && \
+	expdir=$$expbasedir/bzr-$$version && \
+	tarball=$$PWD/../bzr-$$version.tar.gz && \
+	$(MAKE) clean && \
+	$(MAKE) && \
+	bzr export $$expdir && \
+	cp bzrlib/*.c $$expdir/bzrlib/. && \
+	tar cfz $$tarball -C $$expbasedir bzr-$$version && \
+	gpg --detach-sign $$tarball && \
+	echo $$tarball done.

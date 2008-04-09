@@ -190,6 +190,8 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * ``make dist`` target to build a release tarball.  (Martin Pool)
+
     * ``VersionedFile`` now has a new method ``get_parent_map`` which, like
       ``Graph.get_parent_map`` returns a dict of key:parents. (Robert Collins)
 
