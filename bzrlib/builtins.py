@@ -166,7 +166,9 @@ class cmd_status(Command):
                      Option('short', help='Use short status indicators.',
                             short_name='S'),
                      Option('versioned', help='Only show versioned files.',
-                            short_name='V')
+                            short_name='V'),
+                     Option('no-pending', help='Don\'t show pending merges.',
+                           ),
                      ]
     aliases = ['st', 'stat']
 
@@ -175,7 +177,7 @@ class cmd_status(Command):
     
     @display_command
     def run(self, show_ids=False, file_list=None, revision=None, short=False,
-            versioned=False):
+            versioned=False, no_pending=False):
         from bzrlib.status import show_tree_status
 
         if revision and len(revision) > 2:
@@ -186,7 +188,8 @@ class cmd_status(Command):
             
         show_tree_status(tree, show_ids=show_ids,
                          specific_files=file_list, revision=revision,
-                         to_file=self.outf, short=short, versioned=versioned)
+                         to_file=self.outf, short=short, versioned=versioned,
+                         show_pending=not no_pending)
 
 
 class cmd_cat_revision(Command):
@@ -4470,6 +4473,11 @@ class cmd_switch(Command):
     are merged. The user can commit or revert these as they desire.
 
     Pending merges need to be committed or reverted before using switch.
+
+    The path to the branch to switch to can be specified relative to the parent
+    directory of the current branch. For example, if you are currently in a
+    checkout of /path/to/branch, specifying 'newbranch' will find a branch at
+    /path/to/newbranch.
     """
 
     takes_args = ['to_location']
@@ -4479,9 +4487,13 @@ class cmd_switch(Command):
 
     def run(self, to_location, force=False):
         from bzrlib import switch
-        to_branch = Branch.open(to_location)
         tree_location = '.'
         control_dir = bzrdir.BzrDir.open_containing(tree_location)[0]
+        try:
+            to_branch = Branch.open(to_location)
+        except errors.NotBranchError:
+            to_branch = Branch.open(
+                control_dir.open_branch().base + '../' + to_location)
         switch.switch(control_dir, to_branch, force)
         note('Switched to branch: %s',
             urlutils.unescape_for_display(to_branch.base, 'utf-8'))

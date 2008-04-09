@@ -14,6 +14,9 @@ IN DEVELOPMENT
 
    * bzr main script cannot be imported (Benjamin Peterson)
 
+   * On Linux bzr additionally looks for plugins in arch-independent site
+     directory. (Toshio Kuratomi)
+
    * The ``set_rh`` branch hook is now deprecated. Please migrate
      any plugins using this hook to use an alternative, e.g.
      ``post_change_branch_tip``. (Ian Clatworthy)
@@ -36,6 +39,12 @@ IN DEVELOPMENT
     * Added mail-mode GNU Emacs mail package as a mail_client.
       (Xavier Maillard, Bojan Nikolic)
 
+    * Added start_commit hook for mutable trees. (Jelmer Vernooij, #186422)
+
+    * ``status`` now accepts ``--no-pending`` to show the status without
+      listing pending merges, which speeds up the command a lot on large
+      histories.  (James Westby, #202830)
+
     * New ``post_change_branch_tip`` hook that is called after the
       branch tip is moved but while the branch is still write-locked.
       See the User Reference for signature details.
@@ -45,6 +54,11 @@ IN DEVELOPMENT
 
     * ``bzr commit --fixes`` now recognises "gnome" as a tag by default.
       (James Westby, Andrew Cowie)
+
+    * ``bzr switch`` will attempt to find branches to switch to relative to the
+      current branch. E.g. ``bzr switch branchname`` will look for
+      ``current_branch/../branchname``. (Robert Collins, Jelmer Vernooij,
+      Wouter van Heyst)
 
     * Diff is now more specific about execute-bit changes it describes
       (Chad Miller)
@@ -94,9 +108,17 @@ IN DEVELOPMENT
     * Don't ask for a password if there is no real terminal.
       (Alexander Belchenko, #69851)
 
+    * Fix a bug causing a ValueError crash in ``parse_line_delta_iter`` when
+      fetching revisions from a knit to pack repository or vice versa using
+      bzr:// (including over http or ssh).
+      (#208418, Andrew Bennetts, Martin Pool, Robert Collins)
+
     * Implement handling of basename parameter for DefaultMail.  (James Westby)
 
     * Launchpad locations (lp: URLs) can be pulled.  (Aaron Bentley, #181945)
+
+    * Merges that add files to deleted root directories complete.  They
+      do create conflicts.  (Aaron Bentley, #210092)
 
     * vsftp's return ``550 RNFR command failed.`` supported.
       (Marcus Trautwig, #129786)
@@ -109,6 +131,8 @@ IN DEVELOPMENT
 
     * Reduced the evangelism in the User Guide. (Ian Clatworthy)
 
+    * Added Integrating with Bazaar document for developers (Martin Albisetti)
+
   API BREAKS:
 
     * Attempting to pull data from a ghost aware repository (e.g. knits) into a
@@ -119,6 +143,8 @@ IN DEVELOPMENT
       show_merge_revno methods. The latter had been deprecated since the 0.17
       release. (James Westby)
 
+    * ``osutils.backup_file`` is removed. (Alexander Belchenko)
+
     * ``Repository.get_revision_graph`` is deprecated, with no replacement
       method. The method was size(history) and not desirable. (Robert Collins)
 
@@ -127,6 +153,10 @@ IN DEVELOPMENT
 
     * ``Transport.get_shared_medium`` is deprecated.  Use
       ``Transport.get_smart_medium`` instead.  (Andrew Bennetts)
+
+    * ``VersionedFile.create_empty`` is removed. This method presupposed a
+      sensible mapping to a transport for individual files, but pack backed
+      versioned files have no such mapping. (Robert Collins)
 
     * ``VersionedFile.get_graph`` is deprecated, with no replacement method.
       The method was size(history) and not desirable. (Robert Collins)
@@ -148,9 +178,21 @@ IN DEVELOPMENT
       failing test.  Be aware that using this feature is likely to cause
       spurious test failures if used with the full suite. (Andrew Bennetts)
 
+    * selftest --load-list now uses a new more agressive test loader that will
+      avoid loading unneeded modules and building their tests. Plugins can use
+      this new loader by defining a load_tests function instead of a test_suite
+      function. (a forthcoming patch will provide many examples on how to
+      implement this).
+      (Vincent Ladeuil)
+
     * selftest --load-list now does some sanity checks regarding duplicate test
       IDs and tests present in the list but not found in the actual test suite.
       (Vincent Ladeuil)
+
+    * Slightly more concise format for the selftest progress bar, so there's
+      more space to show the test name.  (Martin Pool) ::
+
+        [2500/10884, 1fail, 3miss in 1m29s] test_revisionnamespaces.TestRev
 
     * The test suite takes much less memory to run, and is a bit faster.  This
       is done by clearing most attributes of TestCases after running them, if
@@ -207,7 +249,7 @@ bzr 1.3rc1 2008-03-16
       (Alexander Belchenko)
 
     * Restore auto-detection of plink.exe on Windows. (Dmitry Vasiliev)
-    
+
     * Version number is now shown as "1.2" or "1.2pr2", without zeroed or
       missing final fields.  (Martin Pool)
 
