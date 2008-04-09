@@ -87,6 +87,8 @@ class TestPostChangeBranchTip(TestCaseWithMemoryTransport):
         The call is logged, as is some state of the branch.
         """
         self.hook_calls.append((params, params.branch.is_locked()))
+        self.assertEquals(params.branch.last_revision_info(),
+                          (params.new_revno, params.new_revid))
 
     def test_post_change_branch_tip_empty_history(self):
         branch = self.make_branch('source')
