@@ -16,7 +16,7 @@ IN DEVELOPMENT
 
    * On Linux bzr additionally looks for plugins in arch-independent site
      directory. (Toshio Kuratomi)
- 
+
    * When a plugin cannot be loaded as the file path is not a valid
      python module name bzr will now strip a ``bzr_`` prefix from the
      front of the suggested name, as many plugins (e.g. bzr-svn)
@@ -36,6 +36,10 @@ IN DEVELOPMENT
       (Xavier Maillard, Bojan Nikolic)
 
     * Added start_commit hook for mutable trees. (Jelmer Vernooij, #186422)
+
+    * ``status`` now accepts ``--no-pending`` to show the status without
+      listing pending merges, which speeds up the command a lot on large
+      histories.  (James Westby, #202830)
 
   IMPROVEMENTS:
 
