@@ -1023,7 +1023,8 @@ class SFTPServerWithoutSSH(SFTPServer):
             FakeChannel(), 'sftp', StubServer(self), StubSFTPServer,
             root=self._root, home=self._server_homedir)
         try:
-            server.start_subsystem('sftp', None, ssh.LoopbackSFTP(sock))
+            server.start_subsystem(
+                'sftp', None, ssh.SocketAsChannelAdapter(sock))
         except socket.error, e:
             if (len(e.args) > 0) and (e.args[0] == errno.EPIPE):
                 # it's okay for the client to disconnect abruptly

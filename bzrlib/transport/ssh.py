@@ -172,22 +172,34 @@ def _ignore_sigint():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
-class LoopbackSFTP(object):
+class SocketAsChannelAdapter(object):
     """Simple wrapper for a socket that pretends to be a paramiko Channel."""
 
     def __init__(self, sock):
         self.__socket = sock
 
     def get_name(self):
-        return "bzr LoopbackSFTP"
+        return "bzr SocketAsChannelAdapter"
     
     def send(self, data):
         return self.__socket.send(data)
 
     def recv(self, n):
-        return self.__socket.recv(n)
+        try:
+            return self.__socket.recv(n)
+        except socket.error, e:
+            if e.args[0] in (errno.EPIPE, errno.ECONNRESET, errno.ECONNABORTED,
+                             errno.EBADF):
+                # Connection has closed.  Paramiko expects an empty string in
+                # this case, not an exception.
+                return ''
+            raise
 
     def recv_ready(self):
+        # TODO: jam 20051215 this function is necessary to support the
+        # pipelined() function. In reality, it probably should use
+        # poll() or select() to actually return if there is data
+        # available, otherwise we probably don't get any benefit
         return True
 
     def close(self):
@@ -240,7 +252,7 @@ class LoopbackVendor(SSHVendor):
             sock.connect((host, port))
         except socket.error, e:
             self._raise_connection_error(host, port=port, orig_error=e)
-        return SFTPClient(LoopbackSFTP(sock))
+        return SFTPClient(SocketAsChannelAdapter(sock))
 
 register_ssh_vendor('loopback', LoopbackVendor())
 
@@ -350,7 +362,7 @@ class SubprocessVendor(SSHVendor):
             argv = self._get_vendor_specific_argv(username, host, port,
                                                   subsystem='sftp')
             sock = self._connect(argv)
-            return SFTPClient(sock)
+            return SFTPClient(SocketAsChannelAdapter(sock))
         except _sftp_connection_errors, e:
             self._raise_connection_error(host, port=port, orig_error=e)
         except (OSError, IOError), e:
@@ -603,13 +615,6 @@ class SSHSubprocess(object):
 
     def send(self, data):
         return os.write(self.proc.stdin.fileno(), data)
-
-    def recv_ready(self):
-        # TODO: jam 20051215 this function is necessary to support the
-        # pipelined() function. In reality, it probably should use
-        # poll() or select() to actually return if there is data
-        # available, otherwise we probably don't get any benefit
-        return True
 
     def recv(self, count):
         return os.read(self.proc.stdout.fileno(), count)
