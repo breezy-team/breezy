@@ -205,8 +205,8 @@ class AllInOneRepository(Repository):
         :param new_value: True to restore the default, False to disable making
                           working trees.
         """
-        raise NotImplementedError(self.set_make_working_trees)
-    
+        raise errors.RepositoryUpgradeRequired(self.bzrdir.root_transport.base)
+
     def make_working_trees(self):
         """Returns the policy for making working trees on new branches."""
         return True

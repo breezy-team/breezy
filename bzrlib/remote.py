@@ -714,8 +714,9 @@ class RemoteRepository(object):
         return self._real_repository.clone(a_bzrdir, revision_id=revision_id)
 
     def make_working_trees(self):
-        """RemoteRepositories never create working trees by default."""
-        return False
+        """See Repository.make_working_trees"""
+        self._ensure_real()
+        return self._real_repository.make_working_trees()
 
     def revision_ids_to_search_result(self, result_set):
         """Convert a set of revision ids to a graph SearchResult."""
@@ -994,7 +995,8 @@ class RemoteRepository(object):
         return self._real_repository.pack()
 
     def set_make_working_trees(self, new_value):
-        raise NotImplementedError(self.set_make_working_trees)
+        self._ensure_real()
+        self._real_repository.set_make_working_trees(new_value)
 
     @needs_write_lock
     def sign_revision(self, revision_id, gpg_strategy):

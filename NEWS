@@ -258,7 +258,10 @@ IN DEVELOPMENT
       classes will now raise ``UnknownSmartMethod`` when appropriate, so that
       callers don't need to try distinguish unknown request errors from other
       errors.  (Andrew Bennetts)
-      
+
+    * ``set_make_working_trees`` is now implemented provided on all repository
+      implementations (Aaron Bentley)
+
     * ``VersionedFile`` now has a new method ``get_parent_map`` which, like
       ``Graph.get_parent_map`` returns a dict of key:parents. (Robert Collins)
 
