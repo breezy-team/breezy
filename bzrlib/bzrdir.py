@@ -179,7 +179,6 @@ class BzrDir(object):
         :param force_new_repo: Do not use a shared repository for the target 
                                even if one is available.
         """
-        from remote import RemoteBzrDir
         transport.ensure_base()
         result = self.cloning_metadir().initialize_on_transport(transport)
         repository_policy = None
@@ -192,8 +191,6 @@ class BzrDir(object):
             repository_policy = result.determine_repository_policy(
                 force_new_repo)
             make_working_trees = local_repo.make_working_trees()
-            if isinstance(result, RemoteBzrDir):
-                make_working_trees = None
             result_repo = repository_policy.acquire_repository(
                 make_working_trees, local_repo.is_shared())
             result_repo.fetch(local_repo, revision_id=revision_id)
