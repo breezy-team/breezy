@@ -231,6 +231,11 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * Added ``_build_client_protocol`` to ``_SmartClient``.  (Andrew Bennetts)
+
+    * Added basic infrastructure for automatic plugin suggestion.
+      (Martin Albisetti)
+
     * If a ``LockableFiles`` object is not explicitly unlocked (for example
       because of a missing ``try/finally`` block, it will give a warning but
       not automatically unlock itself.  (Previously they did.)  This
@@ -245,9 +250,6 @@ IN DEVELOPMENT
       
     * ``VersionedFile`` now has a new method ``get_parent_map`` which, like
       ``Graph.get_parent_map`` returns a dict of key:parents. (Robert Collins)
-
-    * Added basic infrastructure for automatic plugin suggestion.
-      (Martin Albisetti)
 
 
 bzr 1.3 2008-03-20
