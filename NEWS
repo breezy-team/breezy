@@ -239,6 +239,9 @@ IN DEVELOPMENT
     * ``VersionedFile`` now has a new method ``get_parent_map`` which, like
       ``Graph.get_parent_map`` returns a dict of key:parents. (Robert Collins)
 
+    * Added basic infrastructure for automatic plugin suggestion.
+      (Martin Albisetti)
+
 
 bzr 1.3 2008-03-20
 ------------------
