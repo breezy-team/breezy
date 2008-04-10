@@ -1103,7 +1103,7 @@ class AuthenticationConfig(object):
 
 
 class TransportConfig(object):
-    """A configuration representation that stores data on a Transport.
+    """A Config that reads/writes a config file on a Transport.
 
     It is a low-level object that considers config data to be name/value pairs
     that may be associated with a section.  Assigning meaning to the these
