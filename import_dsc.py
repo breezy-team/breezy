@@ -32,7 +32,7 @@ from subprocess import Popen, PIPE
 import tarfile
 
 from debian_bundle import deb822
-from debian_bundle.changelog import Version
+from debian_bundle.changelog import Version, Changelog
 
 from bzrlib import (bzrdir,
                     generate_ids,
@@ -491,8 +491,20 @@ class DscImporter(object):
       self._update_path_info(tree, touched_paths, current_tree, up_tree)
       if (not no_add_extra_parent and dangling_revid is not None):
         tree.add_parent_tree_id(dangling_revid)
-      tree.commit('merge packaging changes from %s' % \
-                  (os.path.basename(diffname)))
+      message = 'merge packaging changes from %s' % \
+                  (os.path.basename(diffname))
+      changelog_path = os.path.join(tree.basedir, 'debian', 'changelog')
+      if os.path.exists(changelog_path):
+        changelog_contents = open(changelog_path).read()
+        changelog = Changelog(file=changelog_contents, max_blocks=1)
+        if changelog._blocks:
+          changes = changelog._blocks[0].changes()
+          message = ''
+          sep = ''
+          for change in reversed(changes):
+            message = change + sep + message
+            sep = "\n"
+      tree.commit(message)
     finally:
       f.close()
 
