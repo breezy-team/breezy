@@ -19,6 +19,7 @@ import bzrlib
 from bzrlib import debug
 from bzrlib.config import config_dir, ensure_config_dir_exists
 from bzrlib.trace import mutter, warning
+from bzrlib.plugins.svn import version_info
 
 import os
 
@@ -28,7 +29,13 @@ def create_cache_dir():
     :return: Path to cache directory.
     """
     ensure_config_dir_exists()
-    cache_dir = os.path.join(config_dir(), 'svn-cache')
+    if version_info[3] == 'exp':
+        name = 'svn-cache-exp'
+        extra = "This is the directory used by the experimental version of bzr-svn.\n"
+    else:
+        name = 'svn-cache'
+        extra = ""
+    cache_dir = os.path.join(config_dir(), name)
 
     if not os.path.exists(cache_dir):
         os.mkdir(cache_dir)
@@ -40,7 +47,7 @@ It is used for performance reasons only and can be removed
 without losing data.
 
 See http://bazaar-vcs.org/BzrForeignBranches/Subversion for details.
-""")
+""" + extra)
     return cache_dir
 
 
