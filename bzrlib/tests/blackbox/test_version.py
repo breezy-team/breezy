@@ -46,7 +46,7 @@ class TestVersion(TestCase):
 
     def test_version_short(self):
         out = self.run_bzr(["version", "--short"])[0]
-        self.assertEqualDiff(out, bzrlib.version_string)
+        self.assertEqualDiff(out, bzrlib.version_string + '\n')
 
 
 class TestVersionUnicodeOutput(TestCaseInTempDir):
