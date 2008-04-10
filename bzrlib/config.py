@@ -892,31 +892,19 @@ class TreeConfig(IniBasedConfig):
     """Branch configuration data associated with its contents, not location"""
 
     def __init__(self, branch):
+        transport = branch.control_files._transport
+        self._config = TransportConfig(transport, 'branch.conf')
         self.branch = branch
 
     def _get_parser(self, file=None):
         if file is not None:
             return IniBasedConfig._get_parser(file)
-        return self._get_config()
-
-    def _get_config(self):
-        try:
-            obj = ConfigObj(self.branch.control_files.get('branch.conf'),
-                            encoding='utf-8')
-        except errors.NoSuchFile:
-            obj = ConfigObj(encoding='utf=8')
-        return obj
+        return self._config._get_configobj()
 
     def get_option(self, name, section=None, default=None):
         self.branch.lock_read()
         try:
-            obj = self._get_config()
-            try:
-                if section is not None:
-                    obj = obj[section]
-                result = obj[name]
-            except KeyError:
-                result = default
+            return self._config.get_option(name, section, default)
         finally:
             self.branch.unlock()
         return result
@@ -925,20 +913,7 @@ class TreeConfig(IniBasedConfig):
         """Set a per-branch configuration option"""
         self.branch.lock_write()
         try:
-            cfg_obj = self._get_config()
-            if section is None:
-                obj = cfg_obj
-            else:
-                try:
-                    obj = cfg_obj[section]
-                except KeyError:
-                    cfg_obj[section] = {}
-                    obj = cfg_obj[section]
-            obj[name] = value
-            out_file = StringIO()
-            cfg_obj.write(out_file)
-            out_file.seek(0)
-            self.branch.control_files.put('branch.conf', out_file)
+            self._config.set_option(value, name, section)
         finally:
             self.branch.unlock()
 
@@ -1126,3 +1101,61 @@ class AuthenticationConfig(object):
 
     def decode_password(self, credentials, encoding):
         return credentials
+
+
+class TransportConfig(object):
+    """A Config that reads/writes a config file on a Transport.
+
+    It is a low-level object that considers config data to be name/value pairs
+    that may be associated with a section.  Assigning meaning to the these
+    values is done at higher levels like TreeConfig.
+    """
+
+    def __init__(self, transport, filename):
+        self._transport = transport
+        self._filename = filename
+
+    def get_option(self, name, section=None, default=None):
+        """Return the value associated with a named option.
+
+        :param name: The name of the value
+        :param section: The section the option is in (if any)
+        :param default: The value to return if the value is not set
+        :return: The value or default value
+        """
+        configobj = self._get_configobj()
+        if section is None:
+            section_obj = configobj
+        else:
+            try:
+                section_obj = configobj[section]
+            except KeyError:
+                return default
+        return section_obj.get(name, default)
+
+    def set_option(self, value, name, section=None):
+        """Set the value associated with a named option.
+
+        :param value: The value to set
+        :param name: The name of the value to set
+        :param section: The section the option is in (if any)
+        """
+        configobj = self._get_configobj()
+        if section is None:
+            configobj[name] = value
+        else:
+            configobj.setdefault(section, {})[name] = value
+        self._set_configobj(configobj)
+
+    def _get_configobj(self):
+        try:
+            return ConfigObj(self._transport.get(self._filename),
+                             encoding='utf-8')
+        except errors.NoSuchFile:
+            return ConfigObj(encoding='utf-8')
+
+    def _set_configobj(self, configobj):
+        out_file = StringIO()
+        configobj.write(out_file)
+        out_file.seek(0)
+        self._transport.put_file(self._filename, out_file)
