@@ -84,6 +84,14 @@ class SmartServerStreamMedium(object):
             return
         self._push_back_buffer = bytes
 
+    def _get_push_back_buffer(self):
+        assert self._push_back_buffer != '', (
+            '%s._push_back_buffer should never be the empty string, '
+            'which can be confused with EOF' % (self,))
+        bytes = self._push_back_buffer
+        self._push_back_buffer = None
+        return bytes
+
     def serve(self):
         """Serve requests until the client disconnects."""
         # Keep a reference to stderr because the sys module's globals get set to
@@ -187,15 +195,10 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         self._push_back(protocol.excess_buffer)
 
     def _get_bytes(self, desired_count):
+        if self._push_back_buffer is not None:
+            return self._get_push_back_buffer()
         # We ignore the desired_count because on sockets it's more efficient to
         # read 4k at a time.
-        if self._push_back_buffer is not None:
-            assert self._push_back_buffer != '', (
-                'self._push_back_buffer should never be the empty string, '
-                'which can be confused with EOF')
-            bytes = self._push_back_buffer
-            self._push_back_buffer = None
-            return bytes
         return self.socket.recv(4096)
     
     def terminate_due_to_error(self):
@@ -246,12 +249,7 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
 
     def _get_bytes(self, desired_count):
         if self._push_back_buffer is not None:
-            assert self._push_back_buffer != '', (
-                'self._push_back_buffer should never be the empty string, '
-                'which can be confused with EOF')
-            bytes = self._push_back_buffer
-            self._push_back_buffer = None
-            return bytes
+            return self._get_push_back_buffer()
         return self._in.read(desired_count)
 
     def terminate_due_to_error(self):
