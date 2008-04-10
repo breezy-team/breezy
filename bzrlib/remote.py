@@ -149,11 +149,9 @@ class RemoteBzrDir(BzrDir):
     def open_repository(self):
         path = self._path_for_remote_call(self._client)
         verb = 'BzrDir.find_repositoryV2'
-        response = self._client.call(verb, path)
-        if (response == ('error', "Generic bzr smart protocol error: "
-                "bad request '%s'" % verb) or
-              response == ('error', "Generic bzr smart protocol error: "
-                "bad request u'%s'" % verb)):
+        try:
+            response = self._client.call(verb, path)
+        except errors.UnknownSmartMethod:
             verb = 'BzrDir.find_repository'
             response = self._client.call(verb, path)
         assert response[0] in ('ok', 'norepository'), \
@@ -634,8 +632,12 @@ class RemoteRepository(object):
         """
         import tempfile
         path = self.bzrdir._path_for_remote_call(self._client)
-        response, protocol = self._client.call_expecting_body(
-            'Repository.tarball', path, compression)
+        try:
+            response, protocol = self._client.call_expecting_body(
+                'Repository.tarball', path, compression)
+        except errors.UnknownSmartMethod:
+            protocol.cancel_read_body()
+            return None
         if response[0] == 'ok':
             # Extract the tarball and return it
             t = tempfile.NamedTemporaryFile()
@@ -643,12 +645,6 @@ class RemoteRepository(object):
             t.write(protocol.read_body_bytes())
             t.seek(0)
             return t
-        if (response == ('error', "Generic bzr smart protocol error: "
-                "bad request 'Repository.tarball'") or
-              response == ('error', "Generic bzr smart protocol error: "
-                "bad request u'Repository.tarball'")):
-            protocol.cancel_read_body()
-            return None
         raise errors.UnexpectedSmartServerResponse(response)
 
     def sprout(self, to_bzrdir, revision_id=None):
@@ -815,24 +811,6 @@ class RemoteRepository(object):
                 100.0 * len(self._requested_parents) / len(ancestry))
         return dict((k, ancestry[k]) for k in present_keys)
 
-    def _response_is_unknown_method(self, response, verb):
-        """Return True if response is an unknonwn method response to verb.
-        
-        :param response: The response from a smart client call_expecting_body
-            call.
-        :param verb: The verb used in that call.
-        :return: True if an unknown method was encountered.
-        """
-        # This might live better on
-        # bzrlib.smart.protocol.SmartClientRequestProtocolOne
-        if (response[0] == ('error', "Generic bzr smart protocol error: "
-                "bad request '%s'" % verb) or
-              response[0] == ('error', "Generic bzr smart protocol error: "
-                "bad request u'%s'" % verb)):
-           response[1].cancel_read_body()
-           return True
-        return False
-
     def _get_parent_map(self, keys):
         """Helper for get_parent_map that performs the RPC."""
         medium = self._client._medium
@@ -883,9 +861,10 @@ class RemoteRepository(object):
             assert type(key) is str
         verb = 'Repository.get_parent_map'
         args = (path,) + tuple(keys)
-        response = self._client.call_with_body_bytes_expecting_body(
-            verb, args, self._serialise_search_recipe(recipe))
-        if self._response_is_unknown_method(response, verb):
+        try:
+            response = self._client.call_with_body_bytes_expecting_body(
+                verb, args, self._serialise_search_recipe(recipe))
+        except errors.UnknownSmartMethod:
             # Server does not support this method, so get the whole graph.
             # Worse, we have to force a disconnection, because the server now
             # doesn't realise it has a body on the wire to consume, so the
@@ -897,8 +876,8 @@ class RemoteRepository(object):
             # To avoid having to disconnect repeatedly, we keep track of the
             # fact the server doesn't understand remote methods added in 1.2.
             medium._remote_is_at_least_1_2 = False
-            return self._get_revision_graph(None)
-        elif response[0][0] not in ['ok']:
+            return self.get_revision_graph(None)
+        if response[0][0] not in ['ok']:
             response[1].cancel_read_body()
             raise errors.UnexpectedSmartServerResponse(response[0])
         if response[0][0] == 'ok':
@@ -1061,10 +1040,11 @@ class RemoteRepository(object):
         REQUEST_NAME = 'Repository.stream_revisions_chunked'
         path = self.bzrdir._path_for_remote_call(self._client)
         body = self._serialise_search_recipe(search.get_recipe())
-        response, protocol = self._client.call_with_body_bytes_expecting_body(
-            REQUEST_NAME, (path,), body)
-
-        if self._response_is_unknown_method((response, protocol), REQUEST_NAME):
+        try:
+            result = self._client.call_with_body_bytes_expecting_body(
+                REQUEST_NAME, (path,), body)
+            response, protocol = result
+        except errors.UnknownSmartMethod:
             # Server does not support this method, so fall back to VFS.
             # Worse, we have to force a disconnection, because the server now
             # doesn't realise it has a body on the wire to consume, so the

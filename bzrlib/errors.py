@@ -1476,6 +1476,14 @@ class SmartProtocolError(TransportError):
         self.details = details
 
 
+class UnknownSmartMethod(InternalBzrError):
+
+    _fmt = "The server does not recognise the '%(verb)s' request."
+
+    def __init__(self, verb):
+        self.verb = verb
+
+
 # A set of semi-meaningful errors which can be thrown
 class TransportNotPossible(TransportError):
 
