@@ -826,6 +826,17 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             expected_kind = names[i]
             self.assertEqual(expected_kind, actual_kind)
 
+    def test_stored_kind_with_missing(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree(['tree/a', 'tree/b/'])
+        tree.add(['a', 'b'], ['a-id', 'b-id'])
+        os.unlink('tree/a')
+        os.rmdir('tree/b')
+        self.assertEqual('file', tree.stored_kind('a-id'))
+        self.assertEqual('directory', tree.stored_kind('b-id'))
+
     def test_missing_file_sha1(self):
         """If a file is missing, its sha1 should be reported as None."""
         tree = self.make_branch_and_tree('.')
@@ -864,6 +875,16 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         if tree.__class__ == WorkingTree2:
             raise TestSkipped('WorkingTree2 is not supported')
         self.assertEqual(case_sensitive, tree.case_sensitive)
+
+    def test_all_file_ids_with_missing(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree(['tree/a', 'tree/b'])
+        tree.add(['a', 'b'], ['a-id', 'b-id'])
+        os.unlink('tree/a')
+        self.assertEqual(set(['a-id', 'b-id', tree.get_root_id()]),
+                         tree.all_file_ids())
 
     def test_sprout_hardlink(self):
         source = self.make_branch_and_tree('source')

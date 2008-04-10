@@ -38,7 +38,6 @@ from bzrlib.errors import (ConnectionError,
                            FileExists,
                            InvalidURL,
                            LockError,
-                           NoSmartServer,
                            NoSuchFile,
                            NotLocalUrl,
                            PathError,
@@ -170,6 +169,11 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual(True, t.has_any(['b', 'b', 'b']))
 
     def test_has_root_works(self):
+        from bzrlib.smart import server
+        if self.transport_server is server.SmartTCPServer_for_testing:
+            raise TestNotApplicable(
+                "SmartTCPServer_for_testing intentionally does not allow "
+                "access to /.")
         current_transport = self.get_transport()
         self.assertTrue(current_transport.has('/'))
         root = current_transport.clone('/')

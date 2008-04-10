@@ -18,20 +18,22 @@ import urllib
 from urlparse import urlparse
 
 from bzrlib.smart import protocol
-from bzrlib import urlutils
+from bzrlib import (
+    errors,
+    urlutils,
+    )
 
 
 class _SmartClient(object):
 
-    def __init__(self, shared_connection):
+    def __init__(self, medium, base):
         """Constructor.
 
-        :param shared_connection: a bzrlib.transport._SharedConnection
+        :param medium: a SmartClientMedium
+        :param base: a URL
         """
-        self._shared_connection = shared_connection
-
-    def get_smart_medium(self):
-        return self._shared_connection.connection
+        self._medium = medium
+        self._base = base
 
     def call(self, method, *args):
         """Call a method on the remote server."""
@@ -47,7 +49,7 @@ class _SmartClient(object):
             result, smart_protocol = smart_client.call_expecting_body(...)
             body = smart_protocol.read_body_bytes()
         """
-        request = self.get_smart_medium().get_request()
+        request = self._medium.get_request()
         smart_protocol = protocol.SmartClientRequestProtocolTwo(request)
         smart_protocol.call(method, *args)
         return smart_protocol.read_response_tuple(expect_body=True), smart_protocol
@@ -61,7 +63,7 @@ class _SmartClient(object):
                 raise TypeError('args must be byte strings, not %r' % (args,))
         if type(body) is not str:
             raise TypeError('body must be byte string, not %r' % (body,))
-        request = self.get_smart_medium().get_request()
+        request = self._medium.get_request()
         smart_protocol = protocol.SmartClientRequestProtocolOne(request)
         smart_protocol.call_with_body_bytes((method, ) + args, body)
         return smart_protocol.read_response_tuple()
@@ -75,7 +77,7 @@ class _SmartClient(object):
                 raise TypeError('args must be byte strings, not %r' % (args,))
         if type(body) is not str:
             raise TypeError('body must be byte string, not %r' % (body,))
-        request = self.get_smart_medium().get_request()
+        request = self._medium.get_request()
         smart_protocol = protocol.SmartClientRequestProtocolTwo(request)
         smart_protocol.call_with_body_bytes((method, ) + args, body)
         return smart_protocol.read_response_tuple(expect_body=True), smart_protocol
@@ -87,10 +89,13 @@ class _SmartClient(object):
         anything but path, so it is only safe to use it in requests sent over
         the medium from the matching transport.
         """
-        if self._shared_connection.base.startswith('bzr+http://'):
-            medium_base = self._shared_connection.base
+        base = self._base
+        if (base.startswith('bzr+http://') or base.startswith('bzr+https://')
+            or base.startswith('http://') or base.startswith('https://')):
+            medium_base = self._base
         else:
-            medium_base = urlutils.join(self._shared_connection.base, '/')
+            medium_base = urlutils.join(self._base, '/')
             
         rel_url = urlutils.relative_url(medium_base, transport.base)
         return urllib.unquote(rel_url)
+

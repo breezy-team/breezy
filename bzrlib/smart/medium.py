@@ -35,6 +35,7 @@ from bzrlib import (
     )
 from bzrlib.smart.protocol import (
     REQUEST_VERSION_TWO,
+    SmartClientRequestProtocolOne,
     SmartServerRequestProtocolOne,
     SmartServerRequestProtocolTwo,
     )
@@ -54,13 +55,14 @@ class SmartServerStreamMedium(object):
     which will typically be a LocalTransport looking at the server's filesystem.
     """
 
-    def __init__(self, backing_transport):
+    def __init__(self, backing_transport, root_client_path='/'):
         """Construct new server.
 
         :param backing_transport: Transport for the directory served.
         """
         # backing_transport could be passed to serve instead of __init__
         self.backing_transport = backing_transport
+        self.root_client_path = root_client_path
         self.finished = False
         self.push_back = None
 
@@ -100,7 +102,8 @@ class SmartServerStreamMedium(object):
             bytes = bytes[len(REQUEST_VERSION_TWO):]
         else:
             protocol_class = SmartServerRequestProtocolOne
-        protocol = protocol_class(self.backing_transport, self._write_out)
+        protocol = protocol_class(
+            self.backing_transport, self._write_out, self.root_client_path)
         protocol.accept_bytes(bytes)
         return protocol
 
@@ -151,13 +154,14 @@ class SmartServerStreamMedium(object):
 
 class SmartServerSocketStreamMedium(SmartServerStreamMedium):
 
-    def __init__(self, sock, backing_transport):
+    def __init__(self, sock, backing_transport, root_client_path='/'):
         """Constructor.
 
         :param sock: the socket the server will read from.  It will be put
             into blocking mode.
         """
-        SmartServerStreamMedium.__init__(self, backing_transport)
+        SmartServerStreamMedium.__init__(
+            self, backing_transport, root_client_path=root_client_path)
         sock.setblocking(True)
         self.socket = sock
 
@@ -392,6 +396,29 @@ class SmartClientMediumRequest(object):
 class SmartClientMedium(object):
     """Smart client is a medium for sending smart protocol requests over."""
 
+    def __init__(self):
+        super(SmartClientMedium, self).__init__()
+        self._protocol_version_error = None
+        self._protocol_version = None
+
+    def protocol_version(self):
+        """Find out the best protocol version to use."""
+        if self._protocol_version_error is not None:
+            raise self._protocol_version_error
+        if self._protocol_version is None:
+            try:
+                medium_request = self.get_request()
+                # Send a 'hello' request in protocol version one, for maximum
+                # backwards compatibility.
+                client_protocol = SmartClientRequestProtocolOne(medium_request)
+                self._protocol_version = client_protocol.query_version()
+            except errors.SmartProtocolError, e:
+                # Cache the error, just like we would cache a successful
+                # result.
+                self._protocol_version_error = e
+                raise
+        return self._protocol_version
+
     def disconnect(self):
         """If this medium maintains a persistent connection, close it.
         
@@ -409,6 +436,7 @@ class SmartClientStreamMedium(SmartClientMedium):
     """
 
     def __init__(self):
+        SmartClientMedium.__init__(self)
         self._current_request = None
         # Be optimistic: we assume the remote end can accept new remote
         # requests until we get an error saying otherwise.  (1.2 adds some

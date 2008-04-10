@@ -113,7 +113,7 @@ def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
 def _annotations(repo, file_id, rev_id):
     """Return the list of (origin,text) for a revision of a file in a repository."""
     w = repo.weave_store.get_weave(file_id, repo.get_transaction())
-    return list(w.annotate_iter(rev_id))
+    return w.annotate(rev_id)
 
 
 def _annotate_file(branch, rev_id, file_id):
@@ -156,7 +156,8 @@ def _annotate_file(branch, rev_id, file_id):
 
 
 def reannotate(parents_lines, new_lines, new_revision_id,
-               _left_matching_blocks=None):
+               _left_matching_blocks=None,
+               heads_provider=None):
     """Create a new annotated version from new lines and parent annotations.
     
     :param parents_lines: List of annotated lines for all parents
@@ -165,7 +166,12 @@ def reannotate(parents_lines, new_lines, new_revision_id,
         (will often be CURRENT_REVISION)
     :param left_matching_blocks: a hint about which areas are common
         between the text and its left-hand-parent.  The format is
-        the SequenceMatcher.get_matching_blocks format.
+        the SequenceMatcher.get_matching_blocks format
+        (start_left, start_right, length_of_match).
+    :param heads_provider: An object which provids a .heads() call to resolve
+        if any revision ids are children of others.
+        If None, then any ancestry disputes will be resolved with
+        new_revision_id
     """
     if len(parents_lines) == 0:
         lines = [(new_revision_id, line) for line in new_lines]
@@ -175,21 +181,9 @@ def reannotate(parents_lines, new_lines, new_revision_id,
     elif len(parents_lines) == 2:
         left = _reannotate(parents_lines[0], new_lines, new_revision_id,
                            _left_matching_blocks)
-        right = _reannotate(parents_lines[1], new_lines, new_revision_id)
-        lines = []
-        for idx in xrange(len(new_lines)):
-            if left[idx][0] == right[idx][0]:
-                # The annotations match, just return the left one
-                lines.append(left[idx])
-            elif left[idx][0] == new_revision_id:
-                # The left parent claims a new value, return the right one
-                lines.append(right[idx])
-            elif right[idx][0] == new_revision_id:
-                # The right parent claims a new value, return the left one
-                lines.append(left[idx])
-            else:
-                # Both claim different origins
-                lines.append((new_revision_id, left[idx][1]))
+        lines = _reannotate_annotated(parents_lines[1], new_lines,
+                                      new_revision_id, left,
+                                      heads_provider)
     else:
         reannotations = [_reannotate(parents_lines[0], new_lines,
                                      new_revision_id, _left_matching_blocks)]
@@ -226,4 +220,127 @@ def _reannotate(parent_lines, new_lines, new_revision_id,
             lines.append((new_revision_id, line))
         lines.extend(parent_lines[i:i+n])
         new_cur = j + n
+    return lines
+
+
+def _get_matching_blocks(old, new):
+    matcher = patiencediff.PatienceSequenceMatcher(None,
+        old, new)
+    return matcher.get_matching_blocks()
+
+
+def _find_matching_unannotated_lines(output_lines, plain_child_lines,
+                                     child_lines, start_child, end_child,
+                                     right_lines, start_right, end_right,
+                                     heads_provider, revision_id):
+    """Find lines in plain_right_lines that match the existing lines.
+
+    :param output_lines: Append final annotated lines to this list
+    :param plain_child_lines: The unannotated new lines for the child text
+    :param child_lines: Lines for the child text which have been annotated
+        for the left parent
+    :param start_child: Position in plain_child_lines and child_lines to start the
+        match searching
+    :param end_child: Last position in plain_child_lines and child_lines to search
+        for a match
+    :param right_lines: The annotated lines for the whole text for the right
+        parent
+    :param start_right: Position in right_lines to start the match
+    :param end_right: Last position in right_lines to search for a match
+    :param heads_provider: When parents disagree on the lineage of a line, we
+        need to check if one side supersedes the other
+    :param revision_id: The label to give if a line should be labeled 'tip'
+    """
+    output_extend = output_lines.extend
+    output_append = output_lines.append
+    # We need to see if any of the unannotated lines match
+    plain_right_subset = [l for a,l in right_lines[start_right:end_right]]
+    plain_child_subset = plain_child_lines[start_child:end_child]
+    match_blocks = _get_matching_blocks(plain_right_subset, plain_child_subset)
+
+    last_child_idx = 0
+
+    for right_idx, child_idx, match_len in match_blocks:
+        # All the lines that don't match are just passed along
+        if child_idx > last_child_idx:
+            output_extend(child_lines[start_child + last_child_idx
+                                      :start_child + child_idx])
+        for offset in xrange(match_len):
+            left = child_lines[start_child+child_idx+offset]
+            right = right_lines[start_right+right_idx+offset]
+            if left[0] == right[0]:
+                # The annotations match, just return the left one
+                output_append(left)
+            elif left[0] == revision_id:
+                # The left parent marked this as unmatched, so let the
+                # right parent claim it
+                output_append(right)
+            else:
+                # Left and Right both claim this line
+                if heads_provider is None:
+                    output_append((revision_id, left[1]))
+                else:
+                    heads = heads_provider.heads((left[0], right[0]))
+                    if len(heads) == 1:
+                        output_append((iter(heads).next(), left[1]))
+                    else:
+                        # Both claim different origins
+                        output_append((revision_id, left[1]))
+                        # We know that revision_id is the head for
+                        # left and right, so cache it
+                        heads_provider.cache(
+                            (revision_id, left[0]),
+                            (revision_id,))
+                        heads_provider.cache(
+                            (revision_id, right[0]),
+                            (revision_id,))
+        last_child_idx = child_idx + match_len
+
+
+def _reannotate_annotated(right_parent_lines, new_lines, new_revision_id,
+                          annotated_lines, heads_provider):
+    """Update the annotations for a node based on another parent.
+
+    :param right_parent_lines: A list of annotated lines for the right-hand
+        parent.
+    :param new_lines: The unannotated new lines.
+    :param new_revision_id: The revision_id to attribute to lines which are not
+        present in either parent.
+    :param annotated_lines: A list of annotated lines. This should be the
+        annotation of new_lines based on parents seen so far.
+    :param heads_provider: When parents disagree on the lineage of a line, we
+        need to check if one side supersedes the other.
+    """
+    assert len(new_lines) == len(annotated_lines)
+    # First compare the newly annotated lines with the right annotated lines.
+    # Lines which were not changed in left or right should match. This tends to
+    # be the bulk of the lines, and they will need no further processing.
+    lines = []
+    lines_extend = lines.extend
+    last_right_idx = 0 # The line just after the last match from the right side
+    last_left_idx = 0
+    matching_left_and_right = _get_matching_blocks(right_parent_lines,
+                                                   annotated_lines)
+    for right_idx, left_idx, match_len in matching_left_and_right:
+        # annotated lines from last_left_idx to left_idx did not match the lines from
+        # last_right_idx
+        # to right_idx, the raw lines should be compared to determine what annotations
+        # need to be updated
+        if last_right_idx == right_idx or last_left_idx == left_idx:
+            # One of the sides is empty, so this is a pure insertion
+            lines_extend(annotated_lines[last_left_idx:left_idx])
+        else:
+            # We need to see if any of the unannotated lines match
+            _find_matching_unannotated_lines(lines,
+                                             new_lines, annotated_lines,
+                                             last_left_idx, left_idx,
+                                             right_parent_lines,
+                                             last_right_idx, right_idx,
+                                             heads_provider,
+                                             new_revision_id)
+        last_right_idx = right_idx + match_len
+        last_left_idx = left_idx + match_len
+        # If left and right agree on a range, just push that into the output
+        assert len(lines) == left_idx
+        lines_extend(annotated_lines[left_idx:left_idx + match_len])
     return lines

@@ -20,6 +20,7 @@ import warnings
 
 from bzrlib import (
     revision,
+    symbol_versioning,
     )
 from bzrlib.branch import Branch
 from bzrlib.errors import NoSuchRevision
@@ -28,7 +29,7 @@ from bzrlib.revision import (find_present_ancestors, combined_graph,
                              common_ancestor,
                              is_ancestor, MultipleRevisionSources,
                              NULL_REVISION)
-from bzrlib.symbol_versioning import one_zero
+from bzrlib.symbol_versioning import one_zero, one_three
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
@@ -177,8 +178,9 @@ class TestIntermediateRevisions(TestCaseWithTransport):
         wt2.commit("Commit fifteen", rev_id="b@u-0-10")
 
         from bzrlib.revision import MultipleRevisionSources
-        self.sources = MultipleRevisionSources(self.br1.repository,
-                                               self.br2.repository)
+        self.sources = self.applyDeprecated(one_three,
+                        MultipleRevisionSources, self.br1.repository,
+                                                 self.br2.repository)
 
 
 
@@ -200,12 +202,24 @@ class MockRevisionSource(object):
 class TestCommonAncestor(TestCaseWithTransport):
     """Test checking whether a revision is an ancestor of another revision"""
 
+    def assertCommonAncestorEqual(self, expected, sources, rev_a, rev_b):
+        self.assertEqual(expected,
+                         self.applyDeprecated(one_three, 
+                         common_ancestor, rev_a, rev_b, sources))
+
+    def assertCommonAncestorIn(self, possible, sources, rev_a, rev_b):
+        """assert that we pick one among multiple possible common ancestors"""
+        self.assertTrue(self.applyDeprecated(one_three, 
+                            common_ancestor, rev_a, rev_b, sources)
+                        in possible)
+
     def test_common_ancestor(self):
         """Pick a reasonable merge base"""
         br1, br2 = make_branches(self)
         revisions = br1.revision_history()
         revisions_2 = br2.revision_history()
-        sources = MultipleRevisionSources(br1.repository, br2.repository)
+        sources = self.applyDeprecated(one_three, 
+                    MultipleRevisionSources, br1.repository, br2.repository)
         expected_ancestors_list = {revisions[3]:(0, 0), 
                                    revisions[2]:(1, 1),
                                    revisions_2[4]:(2, 1), 
@@ -218,40 +232,44 @@ class TestCommonAncestor(TestCaseWithTransport):
             self.assertEqual(ancestors_list[key], value, 
                               "key %r, %r != %r" % (key, ancestors_list[key],
                                                     value))
-        self.assertEqual(common_ancestor(revisions[0], revisions[0], sources),
-                          revisions[0])
-        self.assertEqual(common_ancestor(revisions[1], revisions[2], sources),
-                          revisions[1])
-        self.assertEqual(common_ancestor(revisions[1], revisions[1], sources),
-                          revisions[1])
-        self.assertEqual(common_ancestor(revisions[2], revisions_2[4], sources),
-                          revisions[2])
-        self.assertEqual(common_ancestor(revisions[3], revisions_2[4], sources),
-                          revisions_2[4])
-        self.assertEqual(common_ancestor(revisions[4], revisions_2[5], sources),
-                          revisions_2[4])
-        self.assertTrue(common_ancestor(revisions[5], revisions_2[6], sources) in
-                        (revisions[4], revisions_2[5]))
-        self.assertTrue(common_ancestor(revisions_2[6], revisions[5], sources),
-                        (revisions[4], revisions_2[5]))
-        self.assertEqual(None, common_ancestor(None, revisions[5], sources))
-        self.assertEqual(NULL_REVISION,
-            common_ancestor(NULL_REVISION, NULL_REVISION, sources))
-        self.assertEqual(NULL_REVISION,
-            common_ancestor(revisions[0], NULL_REVISION, sources))
-        self.assertEqual(NULL_REVISION,
-            common_ancestor(NULL_REVISION, revisions[0], sources))
+        self.assertCommonAncestorEqual(revisions[0], sources,
+                                       revisions[0], revisions[0])
+        self.assertCommonAncestorEqual(revisions[1], sources,
+                                       revisions[1], revisions[2])
+        self.assertCommonAncestorEqual(revisions[1], sources,
+                                       revisions[1], revisions[1])
+        self.assertCommonAncestorEqual(revisions[2], sources,
+                                       revisions[2], revisions_2[4])
+        self.assertCommonAncestorEqual(revisions_2[4], sources,
+                                       revisions[3], revisions_2[4])
+        self.assertCommonAncestorEqual(revisions_2[4], sources,
+                                       revisions[4], revisions_2[5])
+        self.assertCommonAncestorIn((revisions[4], revisions_2[5]), sources,
+                                     revisions[5], revisions_2[6])
+        self.assertCommonAncestorIn((revisions[4], revisions_2[5]), sources,
+                                     revisions_2[6], revisions[5])
+        self.assertCommonAncestorEqual(None, sources,
+                                       None, revisions[5])
+        self.assertCommonAncestorEqual(NULL_REVISION, sources,
+                                       NULL_REVISION, NULL_REVISION)
+        self.assertCommonAncestorEqual(NULL_REVISION, sources,
+                                       revisions[0], NULL_REVISION)
+        self.assertCommonAncestorEqual(NULL_REVISION, sources,
+                                       NULL_REVISION, revisions[0])
 
     def test_combined(self):
         """combined_graph
         Ensure it's not order-sensitive
         """
         br1, br2 = make_branches(self)
-        source = MultipleRevisionSources(br1.repository, br2.repository)
-        combined_1 = combined_graph(br1.last_revision(),
-                                    br2.last_revision(), source)
-        combined_2 = combined_graph(br2.last_revision(),
-                                    br1.last_revision(), source)
+        source = self.applyDeprecated(one_three,
+                    MultipleRevisionSources, br1.repository, br2.repository)
+        combined_1 = self.applyDeprecated(one_three,
+                        combined_graph, br1.last_revision(),
+                                        br2.last_revision(), source)
+        combined_2 = self.applyDeprecated(one_three,
+                        combined_graph, br2.last_revision(),
+                                        br1.last_revision(), source)
         self.assertEquals(combined_1[1], combined_2[1])
         self.assertEquals(combined_1[2], combined_2[2])
         self.assertEquals(combined_1[3], combined_2[3])
@@ -289,7 +307,7 @@ class TestCommonAncestor(TestCaseWithTransport):
         # add a right-branch revision
         graph.add_node('right', ['rev1'])
         source = MockRevisionSource(graph)
-        self.assertEqual('rev1', common_ancestor('left', 'right', source))
+        self.assertCommonAncestorEqual('rev1', source, 'left', 'right')
 
 
 class TestMultipleRevisionSources(TestCaseWithTransport):
@@ -305,11 +323,18 @@ class TestMultipleRevisionSources(TestCaseWithTransport):
         tree_1.commit('foo', rev_id='B', allow_pointless=True)
         tree_2 = self.make_branch_and_tree('2')
         tree_2.commit('bar', rev_id='A', allow_pointless=True)
-        source = MultipleRevisionSources(tree_1.branch.repository,
-                                         tree_2.branch.repository)
+        source = self.applyDeprecated(one_three,
+                    MultipleRevisionSources, tree_1.branch.repository,
+                                             tree_2.branch.repository)
+        # get_revision_graph calls the deprecated
+        # get_revision_graph_with_ghosts once for each repository.
+        expected_warning = symbol_versioning.deprecation_string(
+            tree_1.branch.repository.get_revision_graph_with_ghosts,
+            one_three)
+        rev_graph = self.callDeprecated([expected_warning, expected_warning],
+                        source.get_revision_graph, 'B')
         self.assertEqual({'B':['A'],
-                          'A':[]},
-                         source.get_revision_graph('B'))
+                          'A':[]}, rev_graph)
 
 
 class TestReservedId(TestCase):

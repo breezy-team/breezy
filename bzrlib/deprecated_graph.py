@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,9 +13,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
-
-from bzrlib.tsort import topo_sort
 
 
 def max_distance(node, ancestors, distances, root_descendants):
@@ -145,6 +142,7 @@ class Graph(object):
     def get_ancestry(self, node_id, topo_sorted=True):
         """Return the inclusive ancestors of node_id in topological order."""
         # maybe optimise this ?
+        from bzrlib.tsort import topo_sort
         result = {}
         pending = set([node_id])
         while len(pending):

@@ -149,7 +149,7 @@ def file_kind(f, _lstat=os.lstat, _mapper=file_kind_from_stat_mode):
     try:
         return _mapper(_lstat(f).st_mode)
     except OSError, e:
-        if getattr(e, 'errno', None) == errno.ENOENT:
+        if getattr(e, 'errno', None) in (errno.ENOENT, errno.ENOTDIR):
             raise errors.NoSuchFile(f)
         raise
 
@@ -466,35 +466,6 @@ def normalizepath(f):
         return F(f)
     else:
         return pathjoin(F(p), e)
-
-
-@deprecated_function(one_zero)
-def backup_file(fn):
-    """Copy a file to a backup.
-
-    Backups are named in GNU-style, with a ~ suffix.
-
-    If the file is already a backup, it's not copied.
-    """
-    if fn[-1] == '~':
-        return
-    bfn = fn + '~'
-
-    if has_symlinks() and os.path.islink(fn):
-        target = os.readlink(fn)
-        os.symlink(target, bfn)
-        return
-    inf = file(fn, 'rb')
-    try:
-        content = inf.read()
-    finally:
-        inf.close()
-    
-    outf = file(bfn, 'wb')
-    try:
-        outf.write(content)
-    finally:
-        outf.close()
 
 
 def isdir(f):

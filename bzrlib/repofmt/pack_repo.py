@@ -642,9 +642,11 @@ class Packer(object):
         # at this point.
         self.pb.update("Copying inventory texts", 2)
         total_items, readv_group_iter = self._least_readv_node_readv(inv_nodes)
+        # Only grab the output lines if we will be processing them
+        output_lines = bool(self.revision_ids)
         inv_lines = self._copy_nodes_graph(inventory_index_map,
             self.new_pack._writer, self.new_pack.inventory_index,
-            readv_group_iter, total_items, output_lines=True)
+            readv_group_iter, total_items, output_lines=output_lines)
         if self.revision_ids:
             self._process_inventory_lines(inv_lines)
         else:
@@ -656,7 +658,7 @@ class Packer(object):
                 time.ctime(), self._pack_collection._upload_transport.base,
                 self.new_pack.random_name,
                 self.new_pack.inventory_index.key_count(),
-                time.time() - new_pack.start_time)
+                time.time() - self.new_pack.start_time)
 
     def _copy_text_texts(self):
         # select text keys
@@ -1059,7 +1061,6 @@ class ReconcilePacker(Packer):
             deltas=True, parents=True)
         output_knit = knit.KnitVersionedFile('reconcile-texts',
             self._pack_collection.transport,
-            None,
             index=knit_index,
             access_method=_PackAccess(
                 {self.new_pack.text_index:self.new_pack.access_tuple()},
@@ -1704,7 +1705,7 @@ class KnitPackRevisionStore(KnitRevisionStore):
         self.repo._revision_knit = knit.KnitVersionedFile(
             'revisions', self.transport.clone('..'),
             self.repo.control_files._file_mode,
-            create=False, access_mode=self.repo._access_mode(),
+            create=False,
             index=knit_index, delta=False, factory=knit.KnitPlainFactory(),
             access_method=self.repo._pack_collection.revision_index.knit_access)
         return self.repo._revision_knit
@@ -1722,7 +1723,7 @@ class KnitPackRevisionStore(KnitRevisionStore):
         self.repo._signature_knit = knit.KnitVersionedFile(
             'signatures', self.transport.clone('..'),
             self.repo.control_files._file_mode,
-            create=False, access_mode=self.repo._access_mode(),
+            create=False,
             index=knit_index, delta=False, factory=knit.KnitPlainFactory(),
             access_method=self.repo._pack_collection.signature_index.knit_access)
         return self.repo._signature_knit
@@ -1811,7 +1812,7 @@ class InventoryKnitThunk(object):
         return knit.KnitVersionedFile(
             'inventory', self.transport.clone('..'),
             self.repo.control_files._file_mode,
-            create=False, access_mode=self.repo._access_mode(),
+            create=False,
             index=knit_index, delta=True, factory=knit.KnitPlainFactory(),
             access_method=self.repo._pack_collection.inventory_index.knit_access)
 
@@ -1846,15 +1847,6 @@ class KnitPackRepository(KnitRepository):
 
     def _abort_write_group(self):
         self._pack_collection._abort_write_group()
-
-    def _access_mode(self):
-        """Return 'w' or 'r' for depending on whether a write lock is active.
-        
-        This method is a helper for the Knit-thunking support objects.
-        """
-        if self.is_write_locked():
-            return 'w'
-        return 'r'
 
     def _find_inconsistent_revision_parents(self):
         """Find revisions with incorrectly cached parents.
@@ -1925,6 +1917,61 @@ class KnitPackRepository(KnitRepository):
                 parents = tuple(parent[0] for parent in parents)
             found_parents[key[0]] = parents
         return found_parents
+
+    @symbol_versioning.deprecated_method(symbol_versioning.one_four)
+    @needs_read_lock
+    def get_revision_graph(self, revision_id=None):
+        """Return a dictionary containing the revision graph.
+
+        :param revision_id: The revision_id to get a graph from. If None, then
+        the entire revision graph is returned. This is a deprecated mode of
+        operation and will be removed in the future.
+        :return: a dictionary of revision_id->revision_parents_list.
+        """
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(3,
+                "get_revision_graph scales with size of history.")
+        # special case NULL_REVISION
+        if revision_id == _mod_revision.NULL_REVISION:
+            return {}
+        if revision_id is None:
+            revision_vf = self._get_revision_vf()
+            return revision_vf.get_graph()
+        g = self.get_graph()
+        first = g.get_parent_map([revision_id])
+        if revision_id not in first:
+            raise errors.NoSuchRevision(self, revision_id)
+        else:
+            ancestry = {}
+            children = {}
+            NULL_REVISION = _mod_revision.NULL_REVISION
+            ghosts = set([NULL_REVISION])
+            for rev_id, parent_ids in g.iter_ancestry([revision_id]):
+                if parent_ids is None: # This is a ghost
+                    ghosts.add(rev_id)
+                    continue
+                ancestry[rev_id] = parent_ids
+                for p in parent_ids:
+                    if p in children:
+                        children[p].append(rev_id)
+                    else:
+                        children[p] = [rev_id]
+
+            if NULL_REVISION in ancestry:
+                del ancestry[NULL_REVISION]
+
+            # Find all nodes that reference a ghost, and filter the ghosts out
+            # of their parent lists. To preserve the order of parents, and
+            # avoid double filtering nodes, we just find all children first,
+            # and then filter.
+            children_of_ghosts = set()
+            for ghost in ghosts:
+                children_of_ghosts.update(children[ghost])
+
+            for child in children_of_ghosts:
+                ancestry[child] = tuple(p for p in ancestry[child]
+                                           if p not in ghosts)
+            return ancestry
 
     def has_revisions(self, revision_ids):
         """See Repository.has_revisions()."""
@@ -2064,7 +2111,7 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
             repo_transport,
             prefixed=False,
             file_mode=control_files._file_mode,
-            versionedfile_class=knit.KnitVersionedFile,
+            versionedfile_class=knit.make_file_knit,
             versionedfile_kwargs={'factory': knit.KnitPlainFactory()},
             )
 
@@ -2075,7 +2122,7 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
             file_mode=control_files._file_mode,
             prefixed=False,
             precious=True,
-            versionedfile_class=knit.KnitVersionedFile,
+            versionedfile_class=knit.make_file_knit,
             versionedfile_kwargs={'delta': False,
                                   'factory': knit.KnitPlainFactory(),
                                  },
@@ -2088,7 +2135,7 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
         return self._get_versioned_file_store('knits',
                                   transport,
                                   control_files,
-                                  versionedfile_class=knit.KnitVersionedFile,
+                                  versionedfile_class=knit.make_file_knit,
                                   versionedfile_kwargs={
                                       'create_parent_dir': True,
                                       'delay_create': True,
