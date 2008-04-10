@@ -178,6 +178,9 @@ class LoopbackSFTP(object):
     def __init__(self, sock):
         self.__socket = sock
 
+    def get_name(self):
+        return "bzr LoopbackSFTP"
+    
     def send(self, data):
         return self.__socket.send(data)
 
