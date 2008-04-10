@@ -109,6 +109,12 @@ IN DEVELOPMENT
       bzr:// (including over http or ssh).
       (#208418, Andrew Bennetts, Martin Pool, Robert Collins)
 
+    * Fixed ``_get_line`` in ``bzrlib.smart.medium``, which was buggy.  Also
+      fixed ``_get_bytes`` in the same module to use the push back buffer.
+      These bugs had no known impact in normal use, but were problematic for
+      developers working on the code, and were likely to cause real bugs sooner
+      or later.  (Andrew Bennetts)
+
     * Implement handling of basename parameter for DefaultMail.  (James Westby)
 
     * Launchpad locations (lp: URLs) can be pulled.  (Aaron Bentley, #181945)
