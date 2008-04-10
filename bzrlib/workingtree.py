@@ -2161,7 +2161,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
           basis.
         - Do a 'normal' merge of the old branch basis if it is relevant.
         """
-        if self.branch.get_master_branch(possible_transports) is not None:
+        if self.branch.get_bound_location() is not None:
             self.lock_write()
             update_branch = True
         else:

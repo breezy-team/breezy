@@ -48,3 +48,20 @@ class TestStatus(TestCaseWithTransport):
                      revision=[RevisionSpec.from_string("revid:%s" % r1_id),
                                RevisionSpec.from_string("revid:%s" % r2_id)])
         # return does not matter as long as it did not raise.
+
+    def test_pending_specific_files(self):
+        """With a specific file list, pending merges are not shown."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/a', 'content of a\n')])
+        tree.add('a')
+        r1_id = tree.commit('one')
+        alt = tree.bzrdir.sprout('alt').open_workingtree()
+        self.build_tree_contents([('alt/a', 'content of a\nfrom alt\n')])
+        alt_id = alt.commit('alt')
+        tree.merge_from_branch(alt.branch)
+        output = StringIO()
+        show_tree_status(tree, to_file=output)
+        self.assertContainsRe(output.getvalue(), 'pending merges:')
+        output = StringIO()
+        show_tree_status(tree, to_file=output, specific_files=['a'])
+        self.assertNotContainsRe(output.getvalue(), 'pending merges:')

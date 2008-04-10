@@ -175,6 +175,11 @@ class TestErrors(TestCaseWithTransport):
                              " tree atree.", str(error))
         self.assertIsInstance(error, errors.NoSuchRevision)
 
+    def test_not_stacked(self):
+        error = errors.NotStacked('a branch')
+        self.assertEqualDiff("The branch 'a branch' is not stacked.",
+            str(error))
+
     def test_not_write_locked(self):
         error = errors.NotWriteLocked('a thing to repr')
         self.assertEqualDiff("'a thing to repr' is not write locked but needs "
@@ -208,6 +213,24 @@ class TestErrors(TestCaseWithTransport):
         error = errors.UnknownHook("tree", "bar")
         self.assertEqualDiff("The tree hook 'bar' is unknown in this version"
             " of bzrlib.",
+            str(error))
+
+    def test_unstackable_branch_format(self):
+        format = u'foo'
+        url = "/foo"
+        error = errors.UnstackableBranchFormat(format, url)
+        self.assertEqualDiff(
+            "The branch '/foo'(foo) is not a stackable format. "
+            "You will need to upgrade the branch to permit branch stacking.",
+            str(error))
+
+    def test_unstackable_repository_format(self):
+        format = u'foo'
+        url = "/foo"
+        error = errors.UnstackableRepositoryFormat(format, url)
+        self.assertEqualDiff(
+            "The repository '/foo'(foo) is not a stackable format. "
+            "You will need to upgrade the repository to permit branch stacking.",
             str(error))
 
     def test_up_to_date(self):
@@ -445,6 +468,13 @@ class TestErrors(TestCaseWithTransport):
         self.assertEquals(
             "Unable to create symlink u'\\xb5' on this platform",
             str(err))
+
+    def test_invalid_url_join(self):
+        """Test the formatting of InvalidURLJoin."""
+        e = errors.InvalidURLJoin('Reason', 'base path', ('args',))
+        self.assertEqual(
+            "Invalid URL join request: Reason: 'base path' + ('args',)",
+            str(e))
 
     def test_incorrect_url(self):
         err = errors.InvalidBugTrackerURL('foo', 'http://bug.com/')

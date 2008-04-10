@@ -37,12 +37,13 @@ from bzrlib import (
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repository import (
     CommitBuilder,
-    MetaDirRepository,
+    MetaDirVersionedFileRepository,
     MetaDirRepositoryFormat,
     Repository,
     RepositoryFormat,
     )
 from bzrlib.store.text import TextStore
+from bzrlib.symbol_versioning import deprecated_method, one_four
 from bzrlib.trace import mutter
 
 
@@ -76,6 +77,9 @@ class AllInOneRepository(Repository):
             self.inventory_store = get_store('inventory-store')
             text_store = get_store('text-store')
         super(AllInOneRepository, self).__init__(_format, a_bzrdir, a_bzrdir._control_files, _revision_store, control_store, text_store)
+        if control_store is not None:
+            control_store.get_scope = self.get_transaction
+        text_store.get_scope = self.get_transaction
 
     @needs_read_lock
     def _all_possible_ids(self):
@@ -107,10 +111,11 @@ class AllInOneRepository(Repository):
         consistency and is only applicable to inventory-weave-for-ancestry
         using repository formats & fetchers.
         """
-        weave_parents = inventory.get_parents(revision.revision_id)
-        weave_names = inventory.versions()
+        weave_parents = inventory.get_parent_map(
+            [revision.revision_id])[revision.revision_id]
+        parent_map = inventory.get_parent_map(revision.parent_ids)
         for parent_id in revision.parent_ids:
-            if parent_id in weave_names:
+            if parent_id in parent_map:
                 # this parent must not be a ghost.
                 if not parent_id in weave_parents:
                     # but it is a ghost
@@ -140,6 +145,7 @@ class AllInOneRepository(Repository):
             self._check_revision_parents(rev, inv)
         return revs
 
+    @deprecated_method(one_four)
     @needs_read_lock
     def get_revision_graph(self, revision_id=None):
         """Return a dictionary containing the revision graph.
@@ -158,8 +164,7 @@ class AllInOneRepository(Repository):
         a_weave = self.get_inventory_weave()
         all_revisions = self._eliminate_revisions_not_present(
                                 a_weave.versions())
-        entire_graph = dict([(node, tuple(a_weave.get_parents(node))) for 
-                             node in all_revisions])
+        entire_graph = a_weave.get_parent_map(all_revisions)
         if revision_id is None:
             return entire_graph
         elif revision_id not in entire_graph:
@@ -212,7 +217,7 @@ class AllInOneRepository(Repository):
         return False
 
 
-class WeaveMetaDirRepository(MetaDirRepository):
+class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
     """A subclass of MetaDirRepository to set weave specific policy."""
 
     _serializer = xml5.serializer_v5
@@ -247,10 +252,11 @@ class WeaveMetaDirRepository(MetaDirRepository):
         consistency and is only applicable to inventory-weave-for-ancestry
         using repository formats & fetchers.
         """
-        weave_parents = inventory.get_parents(revision.revision_id)
-        weave_names = inventory.versions()
+        weave_parents = inventory.get_parent_map(
+            [revision.revision_id])[revision.revision_id]
+        parent_map = inventory.get_parent_map(revision.parent_ids)
         for parent_id in revision.parent_ids:
-            if parent_id in weave_names:
+            if parent_id in parent_map:
                 # this parent must not be a ghost.
                 if not parent_id in weave_parents:
                     # but it is a ghost
@@ -281,6 +287,7 @@ class WeaveMetaDirRepository(MetaDirRepository):
         self._check_revision_parents(r, inv)
         return r
 
+    @deprecated_method(one_four)
     @needs_read_lock
     def get_revision_graph(self, revision_id=None):
         """Return a dictionary containing the revision graph.
@@ -299,8 +306,7 @@ class WeaveMetaDirRepository(MetaDirRepository):
         a_weave = self.get_inventory_weave()
         all_revisions = self._eliminate_revisions_not_present(
                                 a_weave.versions())
-        entire_graph = dict([(node, tuple(a_weave.get_parents(node))) for 
-                             node in all_revisions])
+        entire_graph = a_weave.get_parent_map(all_revisions)
         if revision_id is None:
             return entire_graph
         elif revision_id not in entire_graph:
@@ -626,7 +632,6 @@ class WeaveCommitBuilder(CommitBuilder):
         result = versionedfile.add_lines(
             self._new_revision_id, parents, new_lines,
             nostore_sha=nostore_sha)[0:2]
-        versionedfile.clear_cache()
         return result
 
 
