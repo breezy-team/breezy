@@ -420,13 +420,10 @@ class CommitBuilder(object):
         # implementation could give us bad output from readlines() so this is
         # not a guarantee of safety. What would be better is always checking
         # the content during test suite execution. RBC 20070912
-        try:
-            return versionedfile.add_lines_with_ghosts(
-                self._new_revision_id, parents, new_lines,
-                nostore_sha=nostore_sha, random_id=self.random_revid,
-                check_content=False)[0:2]
-        finally:
-            versionedfile.clear_cache()
+        return versionedfile.add_lines_with_ghosts(
+            self._new_revision_id, parents, new_lines,
+            nostore_sha=nostore_sha, random_id=self.random_revid,
+            check_content=False)[0:2]
 
 
 class RootCommitBuilder(CommitBuilder):
@@ -1281,16 +1278,18 @@ class Repository(object):
                 setdefault(file_id, set()).add(revision_id)
         return result
 
-    def fileids_altered_by_revision_ids(self, revision_ids):
+    def fileids_altered_by_revision_ids(self, revision_ids, _inv_weave=None):
         """Find the file ids and versions affected by revisions.
 
         :param revisions: an iterable containing revision ids.
+        :param _inv_weave: The inventory weave from this repository or None.
+            If None, the inventory weave will be opened automatically.
         :return: a dictionary mapping altered file-ids to an iterable of
         revision_ids. Each altered file-ids has the exact revision_ids that
         altered it listed explicitly.
         """
         selected_revision_ids = set(revision_ids)
-        w = self.get_inventory_weave()
+        w = _inv_weave or self.get_inventory_weave()
         pb = ui.ui_factory.nested_progress_bar()
         try:
             return self._find_file_ids_from_xml_inventory_lines(
@@ -1450,10 +1449,9 @@ class Repository(object):
         # processed?
         self.lock_read()
         inv_w = self.get_inventory_weave()
-        inv_w.enable_cache()
 
         # file ids that changed
-        file_ids = self.fileids_altered_by_revision_ids(revision_ids)
+        file_ids = self.fileids_altered_by_revision_ids(revision_ids, inv_w)
         count = 0
         num_file_ids = len(file_ids)
         for file_id, altered_versions in file_ids.iteritems():
@@ -1467,7 +1465,6 @@ class Repository(object):
 
         # inventory
         yield ("inventory", None, revision_ids)
-        inv_w.clear_cache()
 
         # signatures
         revisions_with_signatures = set()
@@ -2036,6 +2033,17 @@ class MetaDirRepository(Repository):
     def make_working_trees(self):
         """Returns the policy for making working trees on new branches."""
         return not self.control_files._transport.has('no-working-trees')
+
+
+class MetaDirVersionedFileRepository(MetaDirRepository):
+    """Repositories in a meta-dir, that work via versioned file objects."""
+
+    def __init__(self, _format, a_bzrdir, control_files, _revision_store, control_store, text_store):
+        super(MetaDirVersionedFileRepository, self).__init__(_format, a_bzrdir,
+            control_files, _revision_store, control_store, text_store)
+        _revision_store.get_scope = self.get_transaction
+        control_store.get_scope = self.get_transaction
+        text_store.get_scope = self.get_transaction
 
 
 class RepositoryFormatRegistry(registry.Registry):
