@@ -799,18 +799,19 @@ class TestRepository(TestCaseWithRepository):
 
     def test_set_get_make_working_trees_true(self):
         repo = self.make_repository('repo')
-        repo.set_make_working_trees(True)
+        try:
+            repo.set_make_working_trees(True)
+        except errors.RepositoryUpgradeRequired, e:
+            raise TestNotApplicable('Format does not support this flag.')
         self.assertTrue(repo.make_working_trees())
 
     def test_set_get_make_working_trees_false(self):
         repo = self.make_repository('repo')
         try:
             repo.set_make_working_trees(False)
-        except ValueError, e:
-            self.assertEqual('This format always enables working trees.',
-                             str(e))
-        else:
-            self.assertFalse(repo.make_working_trees())
+        except errors.RepositoryUpgradeRequired, e:
+            raise TestNotApplicable('Format does not support this flag.')
+        self.assertFalse(repo.make_working_trees())
 
 
 class TestRepositoryLocking(TestCaseWithRepository):

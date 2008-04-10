@@ -2550,7 +2550,7 @@ class InterWeaveRepo(InterSameDataRepository):
         # weave specific optimised path:
         try:
             self.target.set_make_working_trees(self.source.make_working_trees())
-        except NotImplementedError:
+        except (errors.RepositoryUpgradeRequired, NotImplemented):
             pass
         # FIXME do not peek!
         if self.source.control_files._transport.listable():
