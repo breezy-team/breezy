@@ -1668,8 +1668,6 @@ class TestSmartProtocolOne(TestSmartProtocol, CommonSmartProtocolTestMixin):
 
     def _test_client_read_response_tuple_raises_UnknownSmartMethod(self,
             server_bytes):
-        server_bytes = (
-            "error\x01Generic bzr smart protocol error: bad request 'foo'\n")
         input = StringIO(server_bytes)
         output = StringIO()
         client_medium = medium.SmartSimplePipesClientMedium(input, output)
