@@ -1596,12 +1596,7 @@ class TestBreakLock(TestCaseWithBzrDir):
                 # its still held by the explicit lock we took, and the break
                 # lock should not have touched it.
                 repo = thisdir.open_repository()
-                orig_default = lockdir._DEFAULT_TIMEOUT_SECONDS
-                try:
-                    lockdir._DEFAULT_TIMEOUT_SECONDS = 1
-                    self.assertRaises(errors.LockContention, repo.lock_write)
-                finally:
-                    lockdir._DEFAULT_TIMEOUT_SECONDS = orig_default
+                self.assertRaises(errors.LockContention, repo.lock_write)
         finally:
             unused_repo.unlock()
         self.assertRaises(errors.LockBroken, master.unlock)

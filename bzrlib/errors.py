@@ -185,6 +185,13 @@ class AlreadyBuilding(BzrError):
     _fmt = "The tree builder is already building a tree."
 
 
+class BranchError(BzrError):
+    """Base class for concrete 'errors about a branch'."""
+
+    def __init__(self, branch):
+        BzrError.__init__(self, branch=branch)
+
+
 class BzrCheckError(InternalBzrError):
     
     _fmt = "Internal check failed: %(message)s"
@@ -303,6 +310,11 @@ class NoSuchIdInRepository(NoSuchId):
 
     def __init__(self, repository, file_id):
         BzrError.__init__(self, repository=repository, file_id=file_id)
+
+
+class NotStacked(BranchError):
+
+    _fmt = "The branch '%(branch)s' is not stacked."
 
 
 class InventoryModified(InternalBzrError):
@@ -541,11 +553,13 @@ class InvalidURL(PathError):
 
 class InvalidURLJoin(PathError):
 
-    _fmt = 'Invalid URL join request: "%(args)s"%(extra)s'
+    _fmt = "Invalid URL join request: %(reason)s: %(base)r + %(join_args)r"
 
-    def __init__(self, msg, base, args):
-        PathError.__init__(self, base, msg)
-        self.args = [base] + list(args)
+    def __init__(self, reason, base, join_args):
+        self.reason = reason
+        self.base = base
+        self.join_args = join_args
+        PathError.__init__(self, base, reason)
 
 
 class UnknownHook(BzrError):
@@ -564,6 +578,28 @@ class UnsupportedProtocol(PathError):
 
     def __init__(self, url, extra):
         PathError.__init__(self, url, extra=extra)
+
+
+class UnstackableBranchFormat(BzrError):
+
+    _fmt = ("The branch '%(url)s'(%(format)s) is not a stackable format. "
+        "You will need to upgrade the branch to permit branch stacking.")
+
+    def __init__(self, format, url):
+        BzrError.__init__(self)
+        self.format = format
+        self.url = url
+
+
+class UnstackableRepositoryFormat(BzrError):
+
+    _fmt = ("The repository '%(url)s'(%(format)s) is not a stackable format. "
+        "You will need to upgrade the repository to permit branch stacking.")
+
+    def __init__(self, format, url):
+        BzrError.__init__(self)
+        self.format = format
+        self.url = url
 
 
 class ReadError(PathError):
@@ -684,7 +720,11 @@ class UnsupportedFormatError(BzrError):
 
 class UnknownFormatError(BzrError):
     
-    _fmt = "Unknown branch format: %(format)r"
+    _fmt = "Unknown %(kind)s format: %(format)r"
+
+    def __init__(self, format, kind='branch'):
+        self.kind = kind
+        self.format = format
 
 
 class IncompatibleFormat(BzrError):
@@ -1169,12 +1209,9 @@ class AmbiguousBase(BzrError):
         self.bases = bases
 
 
-class NoCommits(BzrError):
+class NoCommits(BranchError):
 
     _fmt = "Branch %(branch)s has no commits."
-
-    def __init__(self, branch):
-        BzrError.__init__(self, branch=branch)
 
 
 class UnlistableStore(BzrError):
@@ -1437,6 +1474,14 @@ class SmartProtocolError(TransportError):
 
     def __init__(self, details):
         self.details = details
+
+
+class UnknownSmartMethod(InternalBzrError):
+
+    _fmt = "The server does not recognise the '%(verb)s' request."
+
+    def __init__(self, verb):
+        self.verb = verb
 
 
 # A set of semi-meaningful errors which can be thrown
@@ -2029,6 +2074,11 @@ class UpgradeRequired(BzrError):
         self.path = path
 
 
+class RepositoryUpgradeRequired(UpgradeRequired):
+
+    _fmt = "To use this feature you must upgrade your repository at %(path)s."
+
+
 class LocalRequiresBoundBranch(BzrError):
 
     _fmt = "Cannot perform local-only commits on unbound branches."
@@ -2178,6 +2228,7 @@ class NoSmartServer(NotBranchError):
 
     _fmt = "No smart server available at %(url)s"
 
+    @symbol_versioning.deprecated_method(symbol_versioning.one_four)
     def __init__(self, url):
         self.url = url
 
@@ -2576,3 +2627,19 @@ class UnsupportedTimezoneFormat(BzrError):
 
     def __init__(self, timezone):
         self.timezone = timezone
+
+
+class NotATerminal(BzrError):
+
+    _fmt = 'Unable to ask for a password without real terminal.'
+
+
+class UnableEncodePath(BzrError):
+
+    _fmt = ('Unable to encode %(kind)s path %(path)r in '
+            'user encoding %(user_encoding)s')
+
+    def __init__(self, path, kind):
+        self.path = path
+        self.kind = kind
+        self.user_encoding = osutils.get_user_encoding()

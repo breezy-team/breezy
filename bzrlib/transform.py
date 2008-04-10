@@ -1002,8 +1002,8 @@ class TreeTransformBase(object):
             to_executable = False
         return to_name, to_parent, to_kind, to_executable
 
-    def _iter_changes(self):
-        """Produce output in the same format as Tree._iter_changes.
+    def iter_changes(self):
+        """Produce output in the same format as Tree.iter_changes.
 
         Will produce nonsensical results if invoked while inventory/filesystem
         conflicts (as reported by TreeTransform.find_conflicts()) are present.
@@ -1372,10 +1372,10 @@ class _PreviewTree(object):
     def unlock(self):
         pass
 
-    def _iter_changes(self, from_tree, include_unchanged=False,
+    def iter_changes(self, from_tree, include_unchanged=False,
                       specific_files=None, pb=None, extra_trees=None,
                       require_versioned=True, want_unversioned=False):
-        """See InterTree._iter_changes.
+        """See InterTree.iter_changes.
 
         This implementation does not support include_unchanged, specific_files,
         or want_unversioned.  extra_trees, require_versioned, and pb are
@@ -1389,7 +1389,7 @@ class _PreviewTree(object):
             raise ValueError('specific_files is not supported')
         if want_unversioned:
             raise ValueError('want_unversioned is not supported')
-        return self._transform._iter_changes()
+        return self._transform.iter_changes()
 
     def kind(self, file_id):
         trans_id = self._transform.trans_id_file_id(file_id)
@@ -1608,7 +1608,7 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
     if accelerator_tree is None:
         new_desired_files = desired_files
     else:
-        iter = accelerator_tree._iter_changes(tree, include_unchanged=True)
+        iter = accelerator_tree.iter_changes(tree, include_unchanged=True)
         unchanged = dict((f, p[1]) for (f, p, c, v, d, n, k, e)
                          in iter if not (c or e[0] != e[1]))
         new_desired_files = []
@@ -1644,6 +1644,7 @@ def _reparent_transform_children(tt, old_parent, new_parent):
     by_parent = tt.by_parent()
     for child in by_parent[old_parent]:
         tt.adjust_path(tt.final_name(child), new_parent, child)
+    return by_parent[old_parent]
 
 def _content_match(tree, entry, file_id, kind, target_path):
     if entry.kind != kind:
@@ -1856,7 +1857,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
         if change_reporter:
             change_reporter = delta._ChangeReporter(
                 unversioned_filter=working_tree.is_ignored)
-            delta.report_changes(tt._iter_changes(), change_reporter)
+            delta.report_changes(tt.iter_changes(), change_reporter)
         for conflict in conflicts:
             warning(conflict)
         pp.next_phase()
@@ -1872,7 +1873,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
 def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                  backups):
     merge_modified = working_tree.merge_modified()
-    change_list = target_tree._iter_changes(working_tree,
+    change_list = target_tree.iter_changes(working_tree,
         specific_files=specific_files, pb=pb)
     if target_tree.inventory.root is None:
         skip_root = True
@@ -2019,18 +2020,39 @@ def conflict_pass(tt, conflicts, path_tree=None):
                 new_conflicts.add(('deleting parent', 'Not deleting', 
                                    trans_id))
             except KeyError:
-                tt.create_directory(trans_id)
-                new_conflicts.add((c_type, 'Created directory', trans_id))
+                create = True
                 try:
                     tt.final_name(trans_id)
                 except NoFinalPath:
                     if path_tree is not None:
                         file_id = tt.final_file_id(trans_id)
+                        if file_id is None:
+                            file_id = tt.inactive_file_id(trans_id)
                         entry = path_tree.inventory[file_id]
-                        parent_trans_id = tt.trans_id_file_id(entry.parent_id)
-                        tt.adjust_path(entry.name, parent_trans_id, trans_id)
+                        # special-case the other tree root (move its
+                        # children to current root)
+                        if entry.parent_id is None:
+                            create=False
+                            moved = _reparent_transform_children(
+                                tt, trans_id, tt.root)
+                            for child in moved:
+                                new_conflicts.add((c_type, 'Moved to root',
+                                                   child))
+                        else:
+                            parent_trans_id = tt.trans_id_file_id(
+                                entry.parent_id)
+                            tt.adjust_path(entry.name, parent_trans_id,
+                                           trans_id)
+                if create:
+                    tt.create_directory(trans_id)
+                    new_conflicts.add((c_type, 'Created directory', trans_id))
         elif c_type == 'unversioned parent':
-            tt.version_file(tt.inactive_file_id(conflict[1]), conflict[1])
+            file_id = tt.inactive_file_id(conflict[1])
+            # special-case the other tree root (move its children instead)
+            if path_tree and file_id in path_tree:
+                if path_tree.inventory[file_id].parent_id is None:
+                    continue
+            tt.version_file(file_id, conflict[1])
             new_conflicts.add((c_type, 'Versioned directory', conflict[1]))
         elif c_type == 'non-directory parent':
             parent_id = conflict[1]

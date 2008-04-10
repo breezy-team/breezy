@@ -159,6 +159,7 @@ class Config(object):
                 'default': mail_client.DefaultMail,
                 'editor': mail_client.Editor,
                 'mapi': mail_client.MAPIClient,
+                'emacs-mailmode': mail_client.EmacsMailMode,
                 'xdg-email': mail_client.XDGEmail,
             }[selected_client]
         except KeyError:

@@ -90,6 +90,6 @@ def _load_data_py(kndx, fp):
                              options.split(','),
                              pos,
                              size,
-                             parents,
+                             tuple(parents),
                              index)
         # end kndx._cache_version

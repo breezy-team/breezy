@@ -2,11 +2,20 @@
 Bazaar Developer Guide
 ======================
 
-.. contents::
+This document describes the Bazaar internals and the development process.  
+It's meant for people interested in developing Bazaar, and some parts will
+also be useful to people developing Bazaar plugins.
 
-(The current version of this document is available in the file 
+If you have any questions or something seems to be incorrect, unclear or
+missing, please talk to us in ``irc://irc.freenode.net/#bzr``, or write to
+the Bazaar mailing list.  To propose a correction or addition to this
+document, send a merge request or new text to the mailing list.
+
+The current version of this document is available in the file 
 ``doc/developers/HACKING.txt`` in the source tree, or at
-http://doc.bazaar-vcs.org/bzr.dev/en/developer-guide/HACKING.html)
+http://doc.bazaar-vcs.org/bzr.dev/en/developer-guide/HACKING.html
+
+.. contents::
 
 
 Getting Started
@@ -1998,6 +2007,133 @@ They should all try to download a file with the correct version number.
 #. Update http://bazaar-vcs.org/Download to indicate the newly available versions.
 
 #. Update http://bazaar-vcs.org/WindowsDownloads to have the correct version number as well as the correct sha1sum displayed.
+
+
+The Bazaar PPA archive
+----------------------
+
+We build Ubuntu ``.deb`` packages for Bazaar as an important part of the release
+process.  These packages are hosted in a `Personal Package Archive (PPA)`__ on
+Launchpad, at <https://launchpad.net/~bzr/+archive>.
+
+  __ https://help.launchpad.net/PPAQuickStart
+
+We build packages for every supported Ubuntu release
+<https://wiki.ubuntu.com/Releases>.  Packages need no longer be updated
+when the release passes end-of-life because all users should have then
+update.
+
+The ``debian/`` directory containing the packaging information is kept in
+branches on Launchpad, named like 
+<https://code.launchpad.net/~bzr/bzrtools/packaging-dapper>
+
+Updating the PPA for a new release
+----------------------------------
+
+Preconditions for building these packages:
+  
+ * You must have a Launchpad account and be a member of the `~bzr`__ team
+   
+ __ https://edge.launchpad.net/~bzr/+members>
+
+ * You must have a GPG key registered to your Launchpad account.
+
+ * Configure ``dput`` to upload to our PPA with this section in your
+   ``~/.dput.cf``::
+
+        [bzr-ppa]
+        fqdn = ppa.launchpad.net
+        method = ftp
+        incoming = ~bzr/ubuntu
+        login = anonymous
+        allow_unsigned_uploads = 0
+
+ * You need a Ubuntu (or probably Debian) machine, and ::
+
+     sudo apt-get install build-essential devscripts dput
+
+Here is the process; there are some steps which should be automated in
+future:
+
+#. You will need a working directory for each supported release, such as
+   ``~/bzr/Packaging/dapper``
+
+#. Download the official tarball of the release to e.g. ``~/bzr/Releases``
+
+#. Copy the original tarball into your per-disto directory, then untar it 
+   and if necessary rename it::
+
+     cp -l ~/bzr/Releases/bzrtools-1.3.0.tar.gz bzrtools_1.3.0.orig.tar.gz
+     tar xfvz bzrtools_1.3.0.orig.tar.gz
+     mv bzrtools bzrtools-1.3.0
+
+#. Change into that directory and check out the packaging branch::
+
+     cd bzrtools
+     bzr checkout \
+       bzr+ssh://bazaar.launchpad.net/~bzr/bzrtools/packaging-dapper \
+       debian
+
+#. For Bazaar plugins, change the ``debian/control`` file to express a
+   dependency on the correct version of ``bzr``.
+
+   For bzrtools this is typically::
+
+      Build-Depends-Indep: bzr (>= 1.3~), rsync
+      Depends: ${python:Depends}, bzr (>= 1.3~), bzr (<< 1.4~), patch
+
+#. Make a new ``debian/changelog`` entry for the new release,
+   either by using ``dch`` or just editing the file::
+
+     dch -v '1.3.0-1~bazaar1~dapper1' -D dapper
+
+   dch will default to the distro you're working in and this isn't checked
+   against the version number (which is just our conversion).  So make
+   sure to specify it.
+
+   Make sure you have the correct email address for yourself, version
+   number, and distribution.  It should look something like this:
+
+     >  bzrtools (1.3.0-1~bazaar1~dapper1) dapper; urgency=low
+     >
+     >   * New upstream release.
+     >
+     >  -- Martin Pool <mbp@canonical.com>  Mon, 31 Mar 2008 12:36:27 +1100
+
+   If you need to upload the package again to fix a problem, normally you
+   should increment the last number in the version number, following the
+   distro name.  Make sure not to omit the initial ``-1``, and make sure
+   that the distro name in the version is consistent with the target name
+   outside the parenthesis.
+
+#. Commit these changes into the packaging branch::
+
+     bzr ci -m '1.3.0-1~bazaar1~dapper1: New upstream release.' debian
+
+#. Build a source package::
+
+     debuild -S -sa -i
+
+   This will create a ``.changes`` file in the per-distro directory,
+   and should invoke gpg to sign it with your key.
+   Check that file is reasonable: it should be uploading to the intended
+   distribution, have a .orig file included, and the right version number.
+
+#. Upload into the PPA::
+
+     dput bzr-ppa ../bzrtools__1.3.0-1\~bazaar1\~dapper1_source.changes
+
+   Don't forget the ``bzr-ppa`` component or dput will try to upload into
+   the main archive by default.  You can disable this by adding this
+   section to your ``.dput.cf``::
+
+     [ubuntu]
+     fqdn = SPECIFY.A.PPA.NAME
+
+#. You should soon get an "upload accepted" mail from Launchpad, which
+   means that your package is waiting to be built.  You can then track its
+   progress in <https://launchpad.net/~bzr/+archive> and
+   <https://launchpad.net/~bzr/+archive/+builds>.
 
 
 ..

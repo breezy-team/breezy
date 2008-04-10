@@ -249,7 +249,7 @@ class TestAddParent(TestParents):
         self.assertConsistentParents([first_revision, 'second'], tree)
 
 
-class UpdateToOneParentViaDeltaTests(TestParents):
+class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
     """Tests for the update_basis_by_delta call.
     
     This is intuitively defined as 'apply an inventory delta to the basis and
@@ -511,6 +511,36 @@ class UpdateToOneParentViaDeltaTests(TestParents):
         self.add_dir(new_shape, new_revid, 'dir-id-B', 'root-id', 'A')
         self.add_dir(new_shape, new_revid, 'dir-id-A', 'dir-id-B', 'B')
         self.add_link(new_shape, new_revid, 'link-id-C', 'dir-id-A', 'C', 'C')
+        self.assertTransitionFromBasisToShape(basis_shape, old_revid,
+            new_shape, new_revid)
+
+    def test_parent_deleted_child_renamed(self):
+        # test a A->None and A/B->A.
+        old_revid = 'old-parent'
+        basis_shape = Inventory(root_id=None)
+        self.add_dir(basis_shape, old_revid, 'root-id', None, '')
+        self.add_dir(basis_shape, old_revid, 'dir-id-A', 'root-id', 'A')
+        self.add_dir(basis_shape, old_revid, 'dir-id-B', 'dir-id-A', 'B')
+        self.add_link(basis_shape, old_revid, 'link-id-C', 'dir-id-B', 'C', 'C')
+        new_revid = 'new-parent'
+        new_shape = Inventory(root_id=None)
+        self.add_new_root(new_shape, old_revid, new_revid)
+        self.add_dir(new_shape, new_revid, 'dir-id-B', 'root-id', 'A')
+        self.add_link(new_shape, old_revid, 'link-id-C', 'dir-id-B', 'C', 'C')
+        self.assertTransitionFromBasisToShape(basis_shape, old_revid,
+            new_shape, new_revid)
+
+    def test_dir_to_root(self):
+        # test a A->''.
+        old_revid = 'old-parent'
+        basis_shape = Inventory(root_id=None)
+        self.add_dir(basis_shape, old_revid, 'root-id', None, '')
+        self.add_dir(basis_shape, old_revid, 'dir-id-A', 'root-id', 'A')
+        self.add_link(basis_shape, old_revid, 'link-id-B', 'dir-id-A', 'B', 'B')
+        new_revid = 'new-parent'
+        new_shape = Inventory(root_id=None)
+        self.add_dir(new_shape, new_revid, 'dir-id-A', None, '')
+        self.add_link(new_shape, old_revid, 'link-id-B', 'dir-id-A', 'B', 'B')
         self.assertTransitionFromBasisToShape(basis_shape, old_revid,
             new_shape, new_revid)
 
