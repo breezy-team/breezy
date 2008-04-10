@@ -231,6 +231,13 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * If a ``LockableFiles`` object is not explicitly unlocked (for example
+      because of a missing ``try/finally`` block, it will give a warning but
+      not automatically unlock itself.  (Previously they did.)  This
+      sometimes caused knock-on errors if for example the network connection
+      had already failed, and should not be relied upon by code. 
+      (Martin Pool, #109520)
+
     * The ``read_response_tuple`` method of ``SmartClientRequestProtocol*``
       classes will now raise ``UnknownSmartMethod`` when appropriate, so that
       callers don't need to try distinguish unknown request errors from other
