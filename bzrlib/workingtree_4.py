@@ -662,8 +662,8 @@ class WorkingTree4(WorkingTree3):
         if self._inventory is not None:
             update_inventory = True
             inv = self.inventory
-            to_dir_ie = inv[to_dir_id]
             to_dir_id = to_entry[0][2]
+            to_dir_ie = inv[to_dir_id]
         else:
             update_inventory = False
 
@@ -1402,7 +1402,7 @@ class DirStateRevisionTree(Tree):
                       default_revision=_mod_revision.CURRENT_REVISION):
         """See Tree.annotate_iter"""
         w = self._get_weave(file_id)
-        return w.annotate_iter(self.inventory[file_id].revision)
+        return w.annotate(self.inventory[file_id].revision)
 
     def _get_ancestors(self, default_revision):
         return set(self._repository.get_ancestry(self._revision_id,
@@ -1760,12 +1760,12 @@ class InterDirStateTree(InterTree):
     _matching_to_tree_format = WorkingTreeFormat4()
     _test_mutable_trees_to_test_trees = make_source_parent_tree
 
-    def _iter_changes(self, include_unchanged=False,
+    def iter_changes(self, include_unchanged=False,
                       specific_files=None, pb=None, extra_trees=[],
                       require_versioned=True, want_unversioned=False):
         """Return the changes from source to target.
 
-        :return: An iterator that yields tuples. See InterTree._iter_changes
+        :return: An iterator that yields tuples. See InterTree.iter_changes
             for details.
         :param specific_files: An optional list of file paths to restrict the
             comparison to. When mapping filenames to ids, all matches in all
@@ -1790,7 +1790,7 @@ class InterDirStateTree(InterTree):
         # TODO: handle extra trees in the dirstate.
         if (extra_trees or specific_files == []):
             # we can't fast-path these cases (yet)
-            for f in super(InterDirStateTree, self)._iter_changes(
+            for f in super(InterDirStateTree, self).iter_changes(
                 include_unchanged, specific_files, pb, extra_trees,
                 require_versioned, want_unversioned=want_unversioned):
                 yield f
@@ -1800,7 +1800,7 @@ class InterDirStateTree(InterTree):
                 or self.source._revision_id == NULL_REVISION), \
                 "revision {%s} is not stored in {%s}, but %s " \
                 "can only be used for trees stored in the dirstate" \
-                % (self.source._revision_id, self.target, self._iter_changes)
+                % (self.source._revision_id, self.target, self.iter_changes)
         target_index = 0
         if self.source._revision_id == NULL_REVISION:
             source_index = None

@@ -77,6 +77,11 @@ from bzrlib.transport.memory import MemoryServer, MemoryTransport
 from bzrlib.version import _get_bzr_source_tree
 
 
+def _test_ids(test_suite):
+    """Get the ids for the tests in a test suite."""
+    return [t.id() for t in iter_suite_tests(test_suite)]
+
+
 class SelftestTests(TestCase):
 
     def test_import_tests(self):
@@ -376,13 +381,13 @@ class TestInterRepositoryProviderAdapter(TestCase):
         formats = [(str, "C1", "C2"), (int, "D1", "D2")]
         adapter = InterRepositoryTestProviderAdapter(server1, server2, formats)
         self.assertEqual([
-            ('str',
+            ('str,str,str',
              {'interrepo_class': str,
               'repository_format': 'C1',
               'repository_format_to': 'C2',
               'transport_readonly_server': 'b',
               'transport_server': 'a'}),
-            ('int',
+            ('int,str,str',
              {'interrepo_class': int,
               'repository_format': 'D1',
               'repository_format_to': 'D2',
@@ -916,7 +921,7 @@ class TestTestResult(TestCase):
         test.run(result)
         self.assertEqual(
             [
-            ('update', '[2 in 0s, 3 known failures] passing_test', None, None),
+            ('update', '[2 in 0s] passing_test', None, None),
             ],
             pb.calls[2:])
 
@@ -992,7 +997,7 @@ class TestTestResult(TestCase):
         test.run(result)
         self.assertEqual(
             [
-            ('update', '[2 in 0s, 2 missing features] passing_test', None, None),
+            ('update', '[2 in 0s, 2 missing] passing_test', None, None),
             ],
             pb.calls[1:])
     
@@ -1120,10 +1125,11 @@ class TestRunner(TestCase):
         self.assertTrue(result.wasSuccessful())
 
     def test_skipped_from_setup(self):
+        calls = []
         class SkippedSetupTest(TestCase):
 
             def setUp(self):
-                self.counter = 1
+                calls.append('setUp')
                 self.addCleanup(self.cleanup)
                 raise TestSkipped('skipped setup')
 
@@ -1131,34 +1137,35 @@ class TestRunner(TestCase):
                 self.fail('test reached')
 
             def cleanup(self):
-                self.counter -= 1
+                calls.append('cleanup')
 
         runner = TextTestRunner(stream=self._log_file)
         test = SkippedSetupTest('test_skip')
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
         # Check if cleanup was called the right number of times.
-        self.assertEqual(0, test.counter)
+        self.assertEqual(['setUp', 'cleanup'], calls)
 
     def test_skipped_from_test(self):
+        calls = []
         class SkippedTest(TestCase):
 
             def setUp(self):
-                self.counter = 1
+                calls.append('setUp')
                 self.addCleanup(self.cleanup)
 
             def test_skip(self):
                 raise TestSkipped('skipped test')
 
             def cleanup(self):
-                self.counter -= 1
+                calls.append('cleanup')
 
         runner = TextTestRunner(stream=self._log_file)
         test = SkippedTest('test_skip')
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
         # Check if cleanup was called the right number of times.
-        self.assertEqual(0, test.counter)
+        self.assertEqual(['setUp', 'cleanup'], calls)
 
     def test_not_applicable(self):
         # run a test that is skipped because it's not applicable
@@ -1721,18 +1728,14 @@ class TestSelftestFiltering(TestCase):
         self.loader = TestUtil.TestLoader()
         self.suite.addTest(self.loader.loadTestsFromModuleNames([
             'bzrlib.tests.test_selftest']))
-        self.all_names = self._test_ids(self.suite)
-
-    def _test_ids(self, test_suite):
-        """Get the ids for the tests in a test suite."""
-        return [t.id() for t in iter_suite_tests(test_suite)]
+        self.all_names = _test_ids(self.suite)
 
     def test_condition_id_re(self):
         test_name = ('bzrlib.tests.test_selftest.TestSelftestFiltering.'
             'test_condition_id_re')
         filtered_suite = filter_suite_by_condition(self.suite,
             condition_id_re('test_condition_id_re'))
-        self.assertEqual([test_name], self._test_ids(filtered_suite))
+        self.assertEqual([test_name], _test_ids(filtered_suite))
 
     def test_condition_id_in_list(self):
         test_names = ['bzrlib.tests.test_selftest.TestSelftestFiltering.'
@@ -1742,16 +1745,14 @@ class TestSelftestFiltering(TestCase):
             self.suite, tests.condition_id_in_list(id_list))
         my_pattern = 'TestSelftestFiltering.*test_condition_id_in_list'
         re_filtered = filter_suite_by_re(self.suite, my_pattern)
-        self.assertEqual(self._test_ids(re_filtered),
-                         self._test_ids(filtered_suite))
+        self.assertEqual(_test_ids(re_filtered), _test_ids(filtered_suite))
 
     def test_condition_isinstance(self):
         filtered_suite = filter_suite_by_condition(self.suite,
             condition_isinstance(self.__class__))
         class_pattern = 'bzrlib.tests.test_selftest.TestSelftestFiltering.'
         re_filtered = filter_suite_by_re(self.suite, class_pattern)
-        self.assertEqual(self._test_ids(re_filtered),
-            self._test_ids(filtered_suite))
+        self.assertEqual(_test_ids(re_filtered), _test_ids(filtered_suite))
 
     def test_exclude_tests_by_condition(self):
         excluded_name = ('bzrlib.tests.test_selftest.TestSelftestFiltering.'
@@ -1760,33 +1761,33 @@ class TestSelftestFiltering(TestCase):
             lambda x:x.id() == excluded_name)
         self.assertEqual(len(self.all_names) - 1,
             filtered_suite.countTestCases())
-        self.assertFalse(excluded_name in self._test_ids(filtered_suite))
+        self.assertFalse(excluded_name in _test_ids(filtered_suite))
         remaining_names = list(self.all_names)
         remaining_names.remove(excluded_name)
-        self.assertEqual(remaining_names, self._test_ids(filtered_suite))
+        self.assertEqual(remaining_names, _test_ids(filtered_suite))
 
     def test_exclude_tests_by_re(self):
-        self.all_names = self._test_ids(self.suite)
+        self.all_names = _test_ids(self.suite)
         filtered_suite = exclude_tests_by_re(self.suite, 'exclude_tests_by_re')
         excluded_name = ('bzrlib.tests.test_selftest.TestSelftestFiltering.'
             'test_exclude_tests_by_re')
         self.assertEqual(len(self.all_names) - 1,
             filtered_suite.countTestCases())
-        self.assertFalse(excluded_name in self._test_ids(filtered_suite))
+        self.assertFalse(excluded_name in _test_ids(filtered_suite))
         remaining_names = list(self.all_names)
         remaining_names.remove(excluded_name)
-        self.assertEqual(remaining_names, self._test_ids(filtered_suite))
+        self.assertEqual(remaining_names, _test_ids(filtered_suite))
 
     def test_filter_suite_by_condition(self):
         test_name = ('bzrlib.tests.test_selftest.TestSelftestFiltering.'
             'test_filter_suite_by_condition')
         filtered_suite = filter_suite_by_condition(self.suite,
             lambda x:x.id() == test_name)
-        self.assertEqual([test_name], self._test_ids(filtered_suite))
+        self.assertEqual([test_name], _test_ids(filtered_suite))
 
     def test_filter_suite_by_re(self):
         filtered_suite = filter_suite_by_re(self.suite, 'test_filter_suite_by_r')
-        filtered_names = self._test_ids(filtered_suite)
+        filtered_names = _test_ids(filtered_suite)
         self.assertEqual(filtered_names, ['bzrlib.tests.test_selftest.'
             'TestSelftestFiltering.test_filter_suite_by_re'])
 
@@ -1795,7 +1796,7 @@ class TestSelftestFiltering(TestCase):
                      'TestSelftestFiltering.test_filter_suite_by_id_list']
         filtered_suite = tests.filter_suite_by_id_list(
             self.suite, tests.TestIdList(test_list))
-        filtered_names = self._test_ids(filtered_suite)
+        filtered_names = _test_ids(filtered_suite)
         self.assertEqual(
             filtered_names,
             ['bzrlib.tests.test_selftest.'
@@ -1809,37 +1810,36 @@ class TestSelftestFiltering(TestCase):
     def test_randomize_suite(self):
         randomized_suite = randomize_suite(self.suite)
         # randomizing should not add or remove test names.
-        self.assertEqual(set(self._test_ids(self.suite)),
-            set(self._test_ids(randomized_suite)))
+        self.assertEqual(set(_test_ids(self.suite)),
+                         set(_test_ids(randomized_suite)))
         # Technically, this *can* fail, because random.shuffle(list) can be
         # equal to list. Trying multiple times just pushes the frequency back.
         # As its len(self.all_names)!:1, the failure frequency should be low
         # enough to ignore. RBC 20071021.
         # It should change the order.
-        self.assertNotEqual(self.all_names, self._test_ids(randomized_suite))
+        self.assertNotEqual(self.all_names, _test_ids(randomized_suite))
         # But not the length. (Possibly redundant with the set test, but not
         # necessarily.)
-        self.assertEqual(len(self.all_names),
-            len(self._test_ids(randomized_suite)))
+        self.assertEqual(len(self.all_names), len(_test_ids(randomized_suite)))
 
     def test_sort_suite_by_re(self):
         sorted_suite = self.applyDeprecated(one_zero,
             sort_suite_by_re, self.suite, 'test_filter_suite_by_r')
-        sorted_names = self._test_ids(sorted_suite)
+        sorted_names = _test_ids(sorted_suite)
         self.assertEqual(sorted_names[0], 'bzrlib.tests.test_selftest.'
             'TestSelftestFiltering.test_filter_suite_by_re')
         self.assertEquals(sorted(self.all_names), sorted(sorted_names))
 
     def test_split_suit_by_re(self):
-        self.all_names = self._test_ids(self.suite)
+        self.all_names = _test_ids(self.suite)
         split_suite = split_suite_by_re(self.suite, 'test_filter_suite_by_r')
         filtered_name = ('bzrlib.tests.test_selftest.TestSelftestFiltering.'
             'test_filter_suite_by_re')
-        self.assertEqual([filtered_name], self._test_ids(split_suite[0]))
-        self.assertFalse(filtered_name in self._test_ids(split_suite[1]))
+        self.assertEqual([filtered_name], _test_ids(split_suite[0]))
+        self.assertFalse(filtered_name in _test_ids(split_suite[1]))
         remaining_names = list(self.all_names)
         remaining_names.remove(filtered_name)
-        self.assertEqual(remaining_names, self._test_ids(split_suite[1]))
+        self.assertEqual(remaining_names, _test_ids(split_suite[1]))
 
 
 class TestCheckInventoryShape(TestCaseWithTransport):
@@ -1916,6 +1916,16 @@ class TestTestLoader(TestCase):
         module.__class__.load_tests = load_tests
         self.assertEqual(2, loader.loadTestsFromModule(module).countTestCases())
 
+    def test_load_tests_from_module_name_smoke_test(self):
+        loader = TestUtil.TestLoader()
+        suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
+        self.assertEquals(['bzrlib.tests.test_sampler.DemoTest.test_nothing'],
+                          _test_ids(suite))
+
+    def test_load_tests_from_module_name_with_bogus_module_name(self):
+        loader = TestUtil.TestLoader()
+        self.assertRaises(ImportError, loader.loadTestsFromModuleName, 'bogus')
+
 
 class TestTestIdList(tests.TestCase):
 
@@ -1954,23 +1964,23 @@ class TestTestIdList(tests.TestCase):
              'mod1.submod1',
              'mod1.submod2.cl1.meth1', 'mod1.submod2.cl2.meth2',
              ])
-        self.assertTrue(id_list.is_module_name_used('mod1'))
-        self.assertTrue(id_list.is_module_name_used('mod1.submod1'))
-        self.assertTrue(id_list.is_module_name_used('mod1.submod2'))
-        self.assertTrue(id_list.test_in('mod1.cl1.meth1'))
-        self.assertTrue(id_list.test_in('mod1.submod1'))
-        self.assertTrue(id_list.test_in('mod1.func1'))
+        self.assertTrue(id_list.refers_to('mod1'))
+        self.assertTrue(id_list.refers_to('mod1.submod1'))
+        self.assertTrue(id_list.refers_to('mod1.submod2'))
+        self.assertTrue(id_list.includes('mod1.cl1.meth1'))
+        self.assertTrue(id_list.includes('mod1.submod1'))
+        self.assertTrue(id_list.includes('mod1.func1'))
 
     def test_bad_chars_in_params(self):
         id_list = self._create_id_list(['mod1.cl1.meth1(xx.yy)'])
-        self.assertTrue(id_list.is_module_name_used('mod1'))
-        self.assertTrue(id_list.test_in('mod1.cl1.meth1(xx.yy)'))
+        self.assertTrue(id_list.refers_to('mod1'))
+        self.assertTrue(id_list.includes('mod1.cl1.meth1(xx.yy)'))
 
     def test_module_used(self):
         id_list = self._create_id_list(['mod.class.meth'])
-        self.assertTrue(id_list.is_module_name_used('mod'))
-        self.assertTrue(id_list.is_module_name_used('mod.class'))
-        self.assertTrue(id_list.is_module_name_used('mod.class.meth'))
+        self.assertTrue(id_list.refers_to('mod'))
+        self.assertTrue(id_list.refers_to('mod.class'))
+        self.assertTrue(id_list.refers_to('mod.class.meth'))
 
     def test_test_suite(self):
         # This test is slow, so we do a single test with one test in each
@@ -1989,7 +1999,31 @@ class TestTestIdList(tests.TestCase):
             # --no-plugins
             ]
         suite = tests.test_suite(test_list)
-        self.assertEquals(test_list, self._test_ids(suite))
+        self.assertEquals(test_list, _test_ids(suite))
+
+    def test_test_suite_matches_id_list_with_unknown(self):
+        loader = TestUtil.TestLoader()
+        suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
+        test_list = ['bzrlib.tests.test_sampler.DemoTest.test_nothing',
+                     'bogus']
+        not_found, duplicates = tests.suite_matches_id_list(suite, test_list)
+        self.assertEquals(['bogus'], not_found)
+        self.assertEquals([], duplicates)
+
+    def test_suite_matches_id_list_with_duplicates(self):
+        loader = TestUtil.TestLoader()
+        suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
+        dupes = loader.suiteClass()
+        for test in iter_suite_tests(suite):
+            dupes.addTest(test)
+            dupes.addTest(test) # Add it again
+
+        test_list = ['bzrlib.tests.test_sampler.DemoTest.test_nothing',]
+        not_found, duplicates = tests.suite_matches_id_list(
+            dupes, test_list)
+        self.assertEquals([], not_found)
+        self.assertEquals(['bzrlib.tests.test_sampler.DemoTest.test_nothing'],
+                          duplicates)
 
 
 class TestLoadTestIdList(tests.TestCaseInTempDir):
@@ -2025,3 +2059,23 @@ class TestLoadTestIdList(tests.TestCaseInTempDir):
         self.assertEquals('bar baz', tlist[3])
 
 
+class TestFilteredByModuleTestLoader(tests.TestCase):
+
+    def _create_loader(self, test_list):
+        id_filter = tests.TestIdList(test_list)
+        loader = TestUtil.FilteredByModuleTestLoader(id_filter.refers_to)
+        return loader
+
+    def test_load_tests(self):
+        test_list = ['bzrlib.tests.test_sampler.DemoTest.test_nothing']
+        loader = self._create_loader(test_list)
+
+        suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
+        self.assertEquals(test_list, _test_ids(suite))
+
+    def test_exclude_tests(self):
+        test_list = ['bogus']
+        loader = self._create_loader(test_list)
+
+        suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
+        self.assertEquals([], _test_ids(suite))

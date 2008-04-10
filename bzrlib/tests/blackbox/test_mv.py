@@ -24,6 +24,7 @@ from bzrlib import (
     )
 
 from bzrlib.tests import (
+    CaseInsensitiveFilesystemFeature,
     SymlinkFeature,
     TestCaseWithTransport,
     )
@@ -124,7 +125,7 @@ class TestMove(TestCaseWithTransport):
         os.chdir('..')
         self.assertMoved('sub1/sub2/hello.txt','sub1/hello.txt')
 
-    def test_mv_change_case(self):
+    def test_mv_change_case_file(self):
         # test for bug #77740 (mv unable change filename case on Windows)
         tree = self.make_branch_and_tree('.')
         self.build_tree(['test.txt'])
@@ -136,6 +137,41 @@ class TestMove(TestCaseWithTransport):
         self.assertEqual(['.bzr', 'Test.txt'], shape)
         self.assertInWorkingTree('Test.txt')
         self.assertNotInWorkingTree('test.txt')
+
+    def test_mv_change_case_dir(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['foo/'])
+        tree.add(['foo'])
+        self.run_bzr('mv foo Foo')
+        # we can't use failUnlessExists on case-insensitive filesystem
+        # so try to check shape of the tree
+        shape = sorted(os.listdir(u'.'))
+        self.assertEqual(['.bzr', 'Foo'], shape)
+        self.assertInWorkingTree('Foo')
+        self.assertNotInWorkingTree('foo')
+
+    def test_mv_change_case_dir_w_files(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['foo/', 'foo/bar'])
+        tree.add(['foo'])
+        self.run_bzr('mv foo Foo')
+        # we can't use failUnlessExists on case-insensitive filesystem
+        # so try to check shape of the tree
+        shape = sorted(os.listdir(u'.'))
+        self.assertEqual(['.bzr', 'Foo'], shape)
+        self.assertInWorkingTree('Foo')
+        self.assertNotInWorkingTree('foo')
+
+    def test_mv_file_to_wrong_case_dir(self):
+        self.requireFeature(CaseInsensitiveFilesystemFeature)
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['foo/', 'bar'])
+        tree.add(['foo', 'bar'])
+        out, err = self.run_bzr('mv bar Foo', retcode=3)
+        self.assertEquals('', out)
+        self.assertEquals(
+            'bzr: ERROR: Could not move to Foo: Foo is not versioned.\n',
+            err)
 
     def test_mv_smoke_aliases(self):
         # just test that aliases for mv exist, if their behaviour is changed in
@@ -371,3 +407,26 @@ class TestMove(TestCaseWithTransport):
         self.failUnlessExists('sub/a2')
         self.assertInWorkingTree('sub/a1')
         self.assertInWorkingTree('sub/a2')
+
+    def test_mv_already_moved_directory(self):
+        """Use `bzr mv a b` to mark a directory as renamed.
+
+        https://bugs.launchpad.net/bzr/+bug/107967/
+        """
+        self.build_tree(['a/', 'c/'])
+        tree = self.make_branch_and_tree('.')
+        tree.add(['a', 'c'])
+        osutils.rename('a', 'b')
+        osutils.rename('c', 'd')
+        # mv a b should work just like it does for already renamed files
+        self.run_bzr('mv a b')
+        self.failIfExists('a')
+        self.assertNotInWorkingTree('a')
+        self.failUnlessExists('b')
+        self.assertInWorkingTree('b')
+        # and --after should work, too (technically it's ignored)
+        self.run_bzr('mv --after c d')
+        self.failIfExists('c')
+        self.assertNotInWorkingTree('c')
+        self.failUnlessExists('d')
+        self.assertInWorkingTree('d')

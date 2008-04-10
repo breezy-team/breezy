@@ -178,6 +178,7 @@ class FtpTransport(ConnectedTransport):
             or 'no such dir' in s
             or 'could not create file' in s # vsftpd
             or 'file doesn\'t exist' in s
+            or 'rnfr command failed.' in s # vsftpd RNFR reply if file not found
             or 'file/directory not found' in s # filezilla server
             ):
             raise errors.NoSuchFile(path, extra=extra)

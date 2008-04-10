@@ -8,7 +8,7 @@ Status
 :Date: 2007-07-08
 
 This document describes the services repositories offer and need to offer
-within brlib.
+within bzrlib.
 
 
 .. contents::

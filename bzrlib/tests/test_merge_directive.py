@@ -372,6 +372,20 @@ class TestMergeDirectiveBranch(object):
             tree_d.branch.base, patch_type='diff',
             public_branch=tree_a.branch.base)
 
+    def test_disk_name(self):
+        tree_a, tree_b, branch_c = self.make_trees()
+        tree_a.branch.nick = 'fancy-name'
+        md = self.from_objects(tree_a.branch.repository, 'rev2a', 500, 120,
+            tree_b.branch.base)
+        self.assertEqual('fancy-name-2', md.get_disk_name(tree_a.branch))
+
+    def test_disk_name_old_revno(self):
+        tree_a, tree_b, branch_c = self.make_trees()
+        tree_a.branch.nick = 'fancy-name'
+        md = self.from_objects(tree_a.branch.repository, 'rev1', 500, 120,
+            tree_b.branch.base)
+        self.assertEqual('fancy-name-1', md.get_disk_name(tree_a.branch))
+
     def test_generate_patch(self):
         tree_a, tree_b, branch_c = self.make_trees()
         md2 = self.from_objects(tree_a.branch.repository, 'rev2a', 500, 120,

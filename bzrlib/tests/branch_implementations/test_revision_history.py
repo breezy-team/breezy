@@ -19,6 +19,7 @@
 from bzrlib import (
     branch,
     errors,
+    revision as _mod_revision,
     )
 from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
 
@@ -139,13 +140,26 @@ class TestRevisionHistoryCaching(TestCaseWithBranch):
         # Lock the branch, set the last revision info, then call
         # last_revision_info.
         a_branch.lock_write()
-        a_branch.set_last_revision_info(0, None)
+        a_branch.set_last_revision_info(0, _mod_revision.NULL_REVISION)
         del calls[:]
         try:
             a_branch.last_revision_info()
             self.assertEqual([], calls)
         finally:
             a_branch.unlock()
+
+    def test_set_last_revision_info_none(self):
+        """Passing None to revision_info to None sets it to NULL_REVISION."""
+        a_branch = self.get_branch()
+        # Lock the branch, set the last revision info, then call
+        # last_revision_info.
+        a_branch.lock_write()
+        self.addCleanup(a_branch.unlock)
+        self.callDeprecated(['NULL_REVISION should be used for the null'
+            ' revision instead of None, as of bzr 0.91.'],
+            a_branch.set_last_revision_info, 0, None)
+        self.assertEqual((0, _mod_revision.NULL_REVISION),
+                         a_branch.last_revision_info())
 
     def test_set_last_revision_info_uncaches_revision_history_for_format6(self):
         """On format 6 branches, set_last_revision_info invalidates the revision
@@ -158,7 +172,7 @@ class TestRevisionHistoryCaching(TestCaseWithBranch):
         a_branch.lock_write()
         a_branch.revision_history()
         # Set the last revision info, clearing the cache.
-        a_branch.set_last_revision_info(0, None)
+        a_branch.set_last_revision_info(0, _mod_revision.NULL_REVISION)
         del calls[:]
         try:
             a_branch.revision_history()

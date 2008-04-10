@@ -1436,7 +1436,7 @@ class BzrDirFormat(object):
         try:
             return klass._formats[format_string]
         except KeyError:
-            raise errors.UnknownFormatError(format=format_string)
+            raise errors.UnknownFormatError(format=format_string, kind='bzrdir')
 
     @classmethod
     def get_default_format(klass):
@@ -1491,8 +1491,9 @@ class BzrDirFormat(object):
         mutter('created control directory in ' + transport.base)
         control = transport.clone('.bzr')
         utf8_files = [('README', 
-                       "This is a Bazaar-NG control directory.\n"
-                       "Do not change any files in this directory.\n"),
+                       "This is a Bazaar control directory.\n"
+                       "Do not change any files in this directory.\n"
+                       "See http://bazaar-vcs.org/ for more information about Bazaar.\n"),
                       ('branch-format', self.get_format_string()),
                       ]
         # NB: no need to escape relative paths that are url safe.
@@ -2393,15 +2394,20 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
     def probe_transport(klass, transport):
         """Return a RemoteBzrDirFormat object if it looks possible."""
         try:
-            medium = transport.get_smart_client()
+            medium = transport.get_smart_medium()
         except (NotImplementedError, AttributeError,
-                errors.TransportNotPossible):
+                errors.TransportNotPossible, errors.NoSmartMedium):
             # no smart server, so not a branch for this format type.
             raise errors.NotBranchError(path=transport.base)
         else:
             # Decline to open it if the server doesn't support our required
             # version (2) so that the VFS-based transport will do it.
-            server_version = medium.protocol_version()
+            try:
+                server_version = medium.protocol_version()
+            except errors.SmartProtocolError:
+                # Apparently there's no usable smart server there, even though
+                # the medium supports the smart protocol.
+                raise errors.NotBranchError(path=transport.base)
             if server_version != 2:
                 raise errors.NotBranchError(path=transport.base)
             return klass()
@@ -2409,15 +2415,14 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
     def initialize_on_transport(self, transport):
         try:
             # hand off the request to the smart server
-            shared_medium = transport.get_shared_medium()
+            client_medium = transport.get_smart_medium()
         except errors.NoSmartMedium:
             # TODO: lookup the local format from a server hint.
             local_dir_format = BzrDirMetaFormat1()
             return local_dir_format.initialize_on_transport(transport)
-        client = _SmartClient(shared_medium)
+        client = _SmartClient(client_medium, transport.base)
         path = client.remote_path_from_transport(transport)
-        response = _SmartClient(shared_medium).call('BzrDirFormat.initialize',
-                                                    path)
+        response = client.call('BzrDirFormat.initialize', path)
         assert response[0] in ('ok', ), 'unexpected response code %s' % (response,)
         return remote.RemoteBzrDir(transport)
 

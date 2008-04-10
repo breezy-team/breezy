@@ -49,3 +49,10 @@ Standard hooks
 
 For a complete list of hooks and their parameters, see `Hooks
 <../user-reference/bzr_man.html#hooks>`_ in the User Reference.
+
+Debugging hooks
+---------------
+
+To get a list of installed hooks, use the hidden ``hooks`` command::
+
+    bzr hooks
