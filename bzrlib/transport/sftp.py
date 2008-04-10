@@ -1019,10 +1019,21 @@ class SFTPServerWithoutSSH(SFTPServer):
             def close(self):
                 pass
 
-        server = paramiko.SFTPServer(FakeChannel(), 'sftp', StubServer(self), StubSFTPServer,
-                                     root=self._root, home=self._server_homedir)
+        class ChannelSocketWrapper(object):
+            """Wrap a socket object so that it looks like a paramiko Channel.
+            """
+            def __init__(self, sock):
+                self._sock = sock
+            def __getattr__(self, name):
+                return getattr(self._sock, name)
+            def get_name(self):
+                return 'SFTPServerWithoutSSH wrapper'
+            
+        server = paramiko.SFTPServer(
+            FakeChannel(), 'sftp', StubServer(self), StubSFTPServer,
+            root=self._root, home=self._server_homedir)
         try:
-            server.start_subsystem('sftp', None, sock)
+            server.start_subsystem('sftp', None, ChannelSocketWrapper(sock))
         except socket.error, e:
             if (len(e.args) > 0) and (e.args[0] == errno.EPIPE):
                 # it's okay for the client to disconnect abruptly
