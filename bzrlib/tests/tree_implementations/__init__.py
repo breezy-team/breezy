@@ -303,20 +303,22 @@ class TreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
             # for working tree adapted tests, preserve the tree
             scenario[1]["workingtree_to_test_tree"] = return_parameter
         # add RevisionTree scenario
-        # this is the 'default format' in that it's used to test the generic InterTree
-        # code.
-        default_format = WorkingTreeFormat3()
-        self.scenarios.append(self.formats_to_scenarios([
-            (default_format, default_format._matchingbzrdir)])[0])
-        self.scenarios[-1] = (RevisionTree.__name__, self.scenarios[-1][1])
-        self.scenarios[-1][1]["workingtree_to_test_tree"] = revision_tree_from_workingtree
+        self.scenarios.append(self.create_tree_scenario(RevisionTree.__name__,
+                              revision_tree_from_workingtree,))
 
-        # also test WorkingTree4's RevisionTree implementation which is specialised.
-        dirstate_format = WorkingTreeFormat4()
-        self.scenarios.append(self.formats_to_scenarios([
-            (dirstate_format, dirstate_format._matchingbzrdir)])[0])
-        self.scenarios[-1] = (DirStateRevisionTree.__name__, self.scenarios[-1][1])
-        self.scenarios[-1][1]["workingtree_to_test_tree"] = _dirstate_tree_from_workingtree
+        # also test WorkingTree4's RevisionTree implementation which is
+        # specialised.
+        self.scenarios.append(self.create_tree_scenario(
+            DirStateRevisionTree.__name__, _dirstate_tree_from_workingtree,
+            WorkingTreeFormat4()))
+
+    def create_tree_scenario(self, name, converter, workingtree_format=None):
+        if workingtree_format is None:
+            workingtree_format = WorkingTreeFormat3()
+        scenario_options = WorkingTreeTestProviderAdapter.create_scenario(self,
+            workingtree_format, workingtree_format._matchingbzrdir)[1]
+        scenario_options["workingtree_to_test_tree"] = converter
+        return name, scenario_options
 
 
 def test_suite():

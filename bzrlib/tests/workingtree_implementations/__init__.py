@@ -59,14 +59,18 @@ class WorkingTreeTestProviderAdapter(TestScenarioApplier):
     
         result = []
         for workingtree_format, bzrdir_format in formats:
-            scenario = (workingtree_format.__class__.__name__, {
-                "transport_server":self._transport_server,
-                "transport_readonly_server":self._transport_readonly_server,
-                "bzrdir_format":bzrdir_format,
-                "workingtree_format":workingtree_format,
-                })
-            result.append(scenario)
+            result.append(self.create_scenario(workingtree_format,
+                          bzrdir_format))
         return result
+
+    def create_scenario(self, workingtree_format, bzrdir_format):
+        scenario_options = {
+            "transport_server": self._transport_server,
+            "transport_readonly_server": self._transport_readonly_server,
+            "bzrdir_format": bzrdir_format,
+            "workingtree_format": workingtree_format,
+            }
+        return workingtree_format.__class__.__name__, scenario_options
 
 
 class TestCaseWithWorkingTree(TestCaseWithBzrDir):
