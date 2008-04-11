@@ -91,8 +91,11 @@ IN DEVELOPMENT
       one is present.  You can use the new ``nosmart+`` transport decorator
       to get the old behaviour.  (Andrew Bennetts)
 
-     * Various operations with revision specs and commands that calculate
-       revnos and revision ids are faster.  (John A. Meinel, Aaron Bentley)
+    * The ``version`` command takes a ``--short`` option to print just the
+      version number, for easier use in scripts.  (Martin Pool)
+
+    * Various operations with revision specs and commands that calculate
+      revnos and revision ids are faster.  (John A. Meinel, Aaron Bentley)
 
   BUGFIXES:
 
@@ -268,6 +271,9 @@ IN DEVELOPMENT
       sometimes caused knock-on errors if for example the network connection
       had already failed, and should not be relied upon by code. 
       (Martin Pool, #109520)
+
+    * ``make dist`` target to build a release tarball, and also 
+      ``check-dist-tarball`` and ``dist-upload-escudero``.  (Martin Pool)
 
     * The ``read_response_tuple`` method of ``SmartClientRequestProtocol*``
       classes will now raise ``UnknownSmartMethod`` when appropriate, so that

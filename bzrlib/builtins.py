@@ -2719,11 +2719,17 @@ class cmd_version(Command):
     """Show version of bzr."""
 
     encoding_type = 'replace'
+    takes_options = [
+        Option("short", help="Print just the version number."),
+        ]
 
     @display_command
-    def run(self):
+    def run(self, short=False):
         from bzrlib.version import show_version
-        show_version(to_file=self.outf)
+        if short:
+            self.outf.write(bzrlib.version_string + '\n')
+        else:
+            show_version(to_file=self.outf)
 
 
 class cmd_rocks(Command):
