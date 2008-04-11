@@ -17,6 +17,10 @@ IN DEVELOPMENT
    * On Linux bzr additionally looks for plugins in arch-independent site
      directory. (Toshio Kuratomi)
 
+   * The ``set_rh`` branch hook is now deprecated. Please migrate
+     any plugins using this hook to use an alternative, e.g.
+     ``post_change_branch_tip``. (Ian Clatworthy)
+
    * When a plugin cannot be loaded as the file path is not a valid
      python module name bzr will now strip a ``bzr_`` prefix from the
      front of the suggested name, as many plugins (e.g. bzr-svn)
@@ -40,6 +44,11 @@ IN DEVELOPMENT
     * ``status`` now accepts ``--no-pending`` to show the status without
       listing pending merges, which speeds up the command a lot on large
       histories.  (James Westby, #202830)
+
+    * New ``post_change_branch_tip`` hook that is called after the
+      branch tip is moved but while the branch is still write-locked.
+      See the User Reference for signature details.
+      (Ian Clatworthy, James Henstridge)
 
   IMPROVEMENTS:
 
