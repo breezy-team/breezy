@@ -76,7 +76,7 @@ class TestTreeImplementationSupport(TestCaseWithTransport):
 
     def test_revision_tree_from_workingtree(self):
         tree = self.make_branch_and_tree('.')
-        tree = revision_tree_from_workingtree(tree)
+        tree = revision_tree_from_workingtree(self, tree)
         self.assertIsInstance(tree, RevisionTree)
 
 
@@ -89,12 +89,15 @@ class TestCaseWithTree(TestCaseWithBzrDir):
         made_control.create_branch()
         return self.workingtree_format.initialize(made_control)
 
+    def workingtree_to_test_tree(self, tree):
+        return self._workingtree_to_test_tree(self, tree)
+
     def _convert_tree(self, tree, converter=None):
         """helper to convert using the converter or a supplied one."""
         # convert that to the final shape
         if converter is None:
             converter = self.workingtree_to_test_tree
-        return converter(self, tree)
+        return converter(tree)
 
     def get_tree_no_parents_no_content(self, empty_tree, converter=None):
         """Make a tree with no parents and no contents from empty_tree.
@@ -301,7 +304,7 @@ class TreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
         # now adjust the scenarios and add the non-working-tree tree scenarios.
         for scenario in self.scenarios:
             # for working tree adapted tests, preserve the tree
-            scenario[1]["workingtree_to_test_tree"] = return_parameter
+            scenario[1]["_workingtree_to_test_tree"] = return_parameter
         # add RevisionTree scenario
         self.scenarios.append(self.create_tree_scenario(RevisionTree.__name__,
                               revision_tree_from_workingtree,))
@@ -317,7 +320,7 @@ class TreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
             workingtree_format = WorkingTreeFormat3()
         scenario_options = WorkingTreeTestProviderAdapter.create_scenario(self,
             workingtree_format, workingtree_format._matchingbzrdir)[1]
-        scenario_options["workingtree_to_test_tree"] = converter
+        scenario_options["_workingtree_to_test_tree"] = converter
         return name, scenario_options
 
 
