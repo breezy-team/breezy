@@ -334,6 +334,8 @@ class TestHooks(TestCase):
         self.assertTrue("pre_commit" in hooks, "pre_commit not in %s" % hooks)
         self.assertTrue("post_pull" in hooks, "post_pull not in %s" % hooks)
         self.assertTrue("post_uncommit" in hooks, "post_uncommit not in %s" % hooks)
+        self.assertTrue("post_change_branch_tip" in hooks,
+                        "post_change_branch_tip not in %s" % hooks)
 
     def test_installed_hooks_are_BranchHooks(self):
         """The installed hooks object should be a BranchHooks."""
