@@ -27,6 +27,9 @@ Specifications
 * `Container format <container-format.html>`_ |--| Notes on a container format
   for streaming and storing Bazaar data.
 
+* `Repository stream <repository-stream.html>`_ |--| Notes on streaming data
+  for repositories (a layer above the container format).
+
 * `Indices <indices.html>`_ |--| The index facilities available within bzrlib.
 
 * `Inventories <inventory.html>`_ |--| Tree shape abstraction.
