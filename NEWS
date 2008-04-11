@@ -117,6 +117,9 @@ IN DEVELOPMENT
 
     * Implement handling of basename parameter for DefaultMail.  (James Westby)
 
+    * Incompatibility with Paramiko versions newer than 1.7.2 was fixed.
+      (Andrew Bennetts, #213425)
+
     * Launchpad locations (lp: URLs) can be pulled.  (Aaron Bentley, #181945)
 
     * Merges that add files to deleted root directories complete.  They
@@ -149,6 +152,9 @@ IN DEVELOPMENT
     * Log formatters must now provide log_revision instead of show and
       show_merge_revno methods. The latter had been deprecated since the 0.17
       release. (James Westby)
+
+    * ``LoopbackSFTP`` is now called ``SocketAsChannelAdapter``.
+      (Andrew Bennetts)
 
     * ``osutils.backup_file`` is removed. (Alexander Belchenko)
 
