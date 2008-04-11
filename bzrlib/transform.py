@@ -25,7 +25,8 @@ from bzrlib import (
     bzrdir,
     delta,
     errors,
-    inventory
+    inventory,
+    revision as _mod_revision,
     )
 """)
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
@@ -1359,11 +1360,25 @@ class TransformPreview(TreeTransformBase):
             yield self.trans_id_tree_path(childpath)
 
 
-class _PreviewTree(object):
+class _PreviewTree(tree.Tree):
     """Partial implementation of Tree to support show_diff_trees"""
 
     def __init__(self, transform):
         self._transform = transform
+        self._final_paths = FinalPaths(transform)
+
+    def _changes(self, file_id):
+        for changes in self._transform.iter_changes():
+            if result[0] == file_id:
+                return changes
+
+    def _content_change(self, file_id):
+        changes = self._changes(file_id)
+        return (changes is not None and changes[2])
+
+    def _get_file_revision(self, file_id, vf, tree_revision):
+        return self._transform._tree._get_file_revision(file_id, vf,
+                                                        tree_revision)
 
     def lock_read(self):
         # Perhaps in theory, this should lock the TreeTransform?
@@ -1371,6 +1386,62 @@ class _PreviewTree(object):
 
     def unlock(self):
         pass
+
+    def get_root_id(self):
+        return self._transform.final_file_id(self._transform.root)
+
+    def all_file_ids(self):
+        return self._transform._tree.all_file_ids()
+
+    def __iter__(self):
+        return iter(self.all_file_ids())
+
+    def paths2ids(self, specific_files, trees=None, require_versioned=False):
+        """See Tree.paths2ids"""
+        to_find = set(specific_files)
+        result = set()
+        for (file_id, paths, changed, versioned, parent, name, kind,
+             executable) in self._transform.iter_changes():
+            if paths[1] in to_find:
+                result.append(file_id)
+                to_find.remove(paths[1])
+        result.update(self._transform._tree.paths2ids(to_find,
+                      trees=[], require_versioned=require_versioned))
+        return result
+
+    def path2id(self, path):
+        return self.paths2ids([path])
+
+    def id2path(self, file_id):
+        trans_id = self._transform.trans_id_file_id(file_id)
+        try:
+            return self._final_paths._determine_path(trans_id)
+        except NoFinalPath:
+            raise errors.NoSuchId(self, file_id)
+
+    def iter_entries_by_dir(self, specific_file_ids=None):
+        return self._transform._tree.iter_entries_by_dir(specific_file_ids)
+
+    def kind(self, file_id):
+        trans_id = self._transform.trans_id_file_id(file_id)
+        return self._transform.final_kind(trans_id)
+
+    def stored_kind(self, file_id):
+        return self._transform._tree.stored_kind(file_id)
+
+    def get_file_mtime(self, file_id, path=None):
+        """See Tree.get_file_mtime"""
+        if not self._content_change(file_id):
+            return self._transform._tree.get_file_mtime(file_id, path)
+        trans_id = self._transform.trans_id_file_id(file_id)
+        name = self._transform._limbo_name(trans_id)
+        return os.stat(name).st_mtime
+
+    def is_executable(self, file_id):
+        return self._transform._tree.is_executable(file_id)
+
+    def path_content_summary(self, path):
+        return self._transform._tree.path_content_summary(path)
 
     def iter_changes(self, from_tree, include_unchanged=False,
                       specific_files=None, pb=None, extra_trees=None,
@@ -1391,31 +1462,45 @@ class _PreviewTree(object):
             raise ValueError('want_unversioned is not supported')
         return self._transform.iter_changes()
 
-    def kind(self, file_id):
-        trans_id = self._transform.trans_id_file_id(file_id)
-        return self._transform.final_kind(trans_id)
-
-    def get_file_mtime(self, file_id, path=None):
-        """See Tree.get_file_mtime"""
-        trans_id = self._transform.trans_id_file_id(file_id)
-        name = self._transform._limbo_name(trans_id)
-        return os.stat(name).st_mtime
-
-    def get_file(self, file_id):
+    def get_file(self, file_id, path=None):
         """See Tree.get_file"""
+        if not self._content_change(file_id):
+            return self._transform._tree.get_file(file_id, path)
         trans_id = self._transform.trans_id_file_id(file_id)
         name = self._transform._limbo_name(trans_id)
         return open(name, 'rb')
 
+    def get_file_text(self, file_id):
+        text_file = self.get_file(file_id)
+        try:
+            return text_file.read()
+        finally:
+            text_file.close()
+
+    def annotate_iter(self, file_id,
+                      default_revision=_mod_revision.CURRENT_REVISION):
+        return self._transform._tree.annotate_iter(file_id,
+            default_revision=default_revision)
+
     def get_symlink_target(self, file_id):
         """See Tree.get_symlink_target"""
+        if not self._content_change(file_id):
+            return self._transform._tree.get_symlink_target(file_id)
         trans_id = self._transform.trans_id_file_id(file_id)
         name = self._transform._limbo_name(trans_id)
         return os.readlink(name)
 
-    def paths2ids(self, specific_files, trees=None, require_versioned=False):
-        """See Tree.paths2ids"""
-        return 'not_empty'
+    def list_files(self, include_root=False):
+        return self._transform._tree.list_files(include_root)
+
+    def walkdirs(self, prefix=""):
+        return self._transform._tree.walkdirs(prefix)
+
+    def get_parent_ids(self):
+        return self._transform._tree.get_parent_ids()
+
+    def get_revision_tree(self, revision_id):
+        return self._transform._tree.get_revision_tree(revision_id)
 
 
 def joinpath(parent, child):
