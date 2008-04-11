@@ -56,18 +56,18 @@ from bzrlib.workingtree_4 import (
     )
 
 
-def return_parameter(something):
+def return_parameter(testcase, something):
     """A trivial thunk to return its input."""
     return something
 
 
-def revision_tree_from_workingtree(tree):
+def revision_tree_from_workingtree(testcase, tree):
     """Create a revision tree from a working tree."""
     revid = tree.commit('save tree', allow_pointless=True, recursive=None)
     return tree.branch.repository.revision_tree(revid)
 
 
-def _dirstate_tree_from_workingtree(tree):
+def _dirstate_tree_from_workingtree(testcase, tree):
     revid = tree.commit('save tree', allow_pointless=True)
     return tree.basis_tree()
 
@@ -94,7 +94,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
         # convert that to the final shape
         if converter is None:
             converter = self.workingtree_to_test_tree
-        return converter(tree)
+        return converter(self, tree)
 
     def get_tree_no_parents_no_content(self, empty_tree, converter=None):
         """Make a tree with no parents and no contents from empty_tree.
