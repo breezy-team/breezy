@@ -2092,13 +2092,13 @@ future:
    sure to specify it.
 
    Make sure you have the correct email address for yourself, version
-   number, and distribution.  It should look something like this:
+   number, and distribution.  It should look something like this::
 
      >  bzrtools (1.3.0-1~bazaar1~dapper1) dapper; urgency=low
      >
      >   * New upstream release.
      >
-     >  -- Martin Pool <mbp@canonical.com>  Mon, 31 Mar 2008 12:36:27 +1100
+     >  -- John Sample <sample@example.com>  Mon, 31 Mar 2008 12:36:27 +1100
 
    If you need to upload the package again to fix a problem, normally you
    should increment the last number in the version number, following the
