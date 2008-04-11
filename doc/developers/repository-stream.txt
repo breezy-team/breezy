@@ -45,7 +45,8 @@ Smart server operations
 With the smart server we support one streaming format, but this is only
 usable when both the client and server have the same model of data, and
 requires non-optimal IO ordering for pack to pack operations. Ideally we
-can 
+can both provide optimal IO ordering the pack to pack case, and correct
+ordering for pack to knits.
 
 Bundles
 -------
