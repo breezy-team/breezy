@@ -2200,7 +2200,7 @@ class Converter5to6(object):
         new_branch = format.open(branch.bzrdir, _found=True)
 
         # Copy source data into target
-        new_branch.set_last_revision_info(*branch.last_revision_info())
+        new_branch._write_last_revision_info(*branch.last_revision_info())
         new_branch.set_parent(branch.get_parent())
         new_branch.set_bound_location(branch.get_bound_location())
         new_branch.set_push_location(branch.get_push_location())
