@@ -1286,15 +1286,18 @@ class TestDiffFromTool(TestCaseWithTransport):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         diff_obj = DiffFromTool(['python', '-c',
-                                 'import subprocess\n'
-                                 'proc = subprocess.Popen(["attrib", "%(old_path)s"],\n'
-                                 '                        stdout=subprocess.PIPE)\n'
-                                 'proc.wait()\n'
-                                 'print proc.stdout.read()\n'
-                                 'proc = subprocess.Popen(["attrib", "%(new_path)s"],\n'
-                                 '                        stdout=subprocess.PIPE)\n'
-                                 'proc.wait()\n'
-                                 'print proc.stdout.read()'],
+                                 """
+import subprocess
+proc = subprocess.Popen(["attrib", "%(old_path)s"],
+                        stdout=subprocess.PIPE)
+proc.wait()
+print proc.stdout.read()
+proc = subprocess.Popen(["attrib", "%(new_path)s"],
+                        stdout=subprocess.PIPE)
+proc.wait()
+print proc.stdout.read()
+"""
+                                 ],
                                  tree, tree, output)
         diff_obj.diff('file-id', 'file', 'file', 'file', 'file')
         lines = output.getvalue()
