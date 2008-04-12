@@ -38,13 +38,16 @@ bzr-svn 0.4.10  UNRELEASED
 
   BUGS
 
-    * Avoid sometimes incorrect determination of Bazaar revision numbers. (#181773)
+   * Avoid sometimes incorrect determination of Bazaar revision numbers. (#181773)
 
-    * Deal with bzr:svn-revision-info property being removed. (#206728)
+   * Deal with bzr:svn-revision-info property being removed. (#206728)
 
-    * Gracefully handle erroneous svk merge tickets created by old versions of svk.
+   * Gracefully handle erroneous svk merge tickets created by old versions of svk.
 
-    * Use standard infrastructure for caching revision numbers. (#213953)
+   * Use standard infrastructure for caching revision numbers. (#213953)
+
+   * Work around bug in the Subversion libraries which don't accept 
+     http(s) URLs with urlencoded characters. (#190229)
 
 bzr-svn 0.4.9    2008-03-23
 

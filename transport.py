@@ -27,6 +27,8 @@ import svn.core
 import svn.client
 
 from errors import convert_svn_error, NoSvnRepositoryPresent
+import urlparse
+import urllib
 
 svn_config = svn.core.svn_config_get_config(None)
 
@@ -87,6 +89,12 @@ def get_svn_ra_transport(bzr_transport):
     return SvnRaTransport(bzr_transport.base)
 
 
+def _url_unescape_uri(url):
+    (scheme, netloc, path, query, fragment) = urlparse.urlsplit(url)
+    path = urllib.unquote(path)
+    return urlparse.urlunsplit((scheme, netloc, path, query, fragment))
+
+
 def bzr_to_svn_url(url):
     """Convert a Bazaar URL to a URL understood by Subversion.
 
@@ -97,8 +105,14 @@ def bzr_to_svn_url(url):
         url.startswith("svn+https://")):
         url = url[len("svn+"):] # Skip svn+
 
+    if url.startswith("http"):
+        # Without this, URLs with + in them break
+        url = _url_unescape_uri(url)
+
     # The SVN libraries don't like trailing slashes...
-    return url.rstrip('/')
+    url = url.rstrip('/')
+
+    return url
 
 
 def needs_busy(unbound):
