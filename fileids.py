@@ -17,7 +17,7 @@
 
 from bzrlib import ui
 from bzrlib.errors import NotBranchError, RevisionNotPresent
-from bzrlib.knit import KnitVersionedFile
+from bzrlib.knit import make_file_knit
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 
@@ -192,7 +192,7 @@ class FileIdMap(object):
 class CachingFileIdMap(object):
     """A file id map that uses a cache."""
     def __init__(self, cache_transport, actual):
-        self.idmap_knit = KnitVersionedFile("fileidmap-v%d" % FILEIDMAP_VERSION, cache_transport, create=True)
+        self.idmap_knit = make_file_knit("fileidmap-v%d" % FILEIDMAP_VERSION, cache_transport, 0644, create=True)
         self.actual = actual
         self.apply_changes = actual.apply_changes
         self.repos = actual.repos
