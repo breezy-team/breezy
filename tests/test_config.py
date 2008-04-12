@@ -16,8 +16,10 @@
 
 """Config tests."""
 
-from config import SvnRepositoryConfig
+from bzrlib.branch import Branch
+from config import SvnRepositoryConfig, BranchConfig
 from scheme import TrunkBranchingScheme
+from tests import TestCaseWithSubversionRepository
 
 from bzrlib.tests import TestCaseInTempDir
 
@@ -101,3 +103,16 @@ class ReposConfigTests(TestCaseInTempDir):
         self.assertEquals(True, c.get_supports_change_revprop())
         c.set_user_option("supports-change-revprop", "False")
         self.assertEquals(False, c.get_supports_change_revprop())
+
+
+class BranchConfigTests(TestCaseWithSubversionRepository):
+    def setUp(self):
+        super(BranchConfigTests, self).setUp()
+        self.repos_url = self.make_client("d", "dc")
+        self.config = BranchConfig(Branch.open(self.repos_url))
+
+    def test_set_option(self):
+        self.config.set_user_option("append_revisions_only", "True")
+        self.assertEquals("True", self.config.get_user_option("append_revisions_only"))
+
+

@@ -27,6 +27,8 @@ bzr-svn 0.4.10  UNRELEASED
 
    * Use different cache for experimental versions of bzr-svn.
 
+   * Support set_user_option() on Subversion branch BranchConfig. (#195962)
+
   INTERNALS
 
    * Branching from a Subversion repository will now fetch right-hand side 

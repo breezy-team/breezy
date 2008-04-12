@@ -15,8 +15,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Stores per-repository settings."""
 
-from bzrlib import osutils, urlutils
-from bzrlib.config import IniBasedConfig, config_dir, ensure_config_dir_exists, GlobalConfig, LocationConfig, Config
+from bzrlib import osutils, urlutils, trace
+from bzrlib.config import IniBasedConfig, config_dir, ensure_config_dir_exists, GlobalConfig, LocationConfig, Config, STORE_BRANCH, STORE_GLOBAL, STORE_LOCATION
 
 import os
 
@@ -212,3 +212,26 @@ class BranchConfig(Config):
             except svn.core.SubversionException:
                 return None
         return None
+
+    def set_user_option(self, name, value, store=STORE_LOCATION,
+        warn_masked=False):
+        if store == STORE_GLOBAL:
+            self._get_global_config().set_user_option(name, value)
+        elif store == STORE_BRANCH:
+            raise NotImplementedError("Saving in branch config not supported for Subversion branches")
+        else:
+            self._get_location_config().set_user_option(name, value, store)
+        if not warn_masked:
+            return
+        if store in (STORE_GLOBAL, STORE_BRANCH):
+            mask_value = self._get_location_config().get_user_option(name)
+            if mask_value is not None:
+                trace.warning('Value "%s" is masked by "%s" from'
+                              ' locations.conf', value, mask_value)
+            else:
+                if store == STORE_GLOBAL:
+                    branch_config = self._get_branch_data_config()
+                    mask_value = branch_config.get_user_option(name)
+                    if mask_value is not None:
+                        trace.warning('Value "%s" is masked by "%s" from'
+                                      ' branch.conf', value, mask_value)
