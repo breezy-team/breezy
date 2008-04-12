@@ -89,7 +89,7 @@ class InterTreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
                 "mutable_trees_to_test_trees":mutable_trees_to_test_trees,
                 # workingtree_to_test_tree is set to disable changing individual,
                 # trees: instead the mutable_trees_to_test_trees helper is used.,
-                "_workingtree_to_test_tree":return_parameter,
+                "_workingtree_to_test_tree": return_parameter,
                 })
             result.append(scenario)
         return result

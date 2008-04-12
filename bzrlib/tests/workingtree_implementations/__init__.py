@@ -64,6 +64,13 @@ class WorkingTreeTestProviderAdapter(TestScenarioApplier):
         return result
 
     def create_scenario(self, workingtree_format, bzrdir_format):
+        """Create a scenario for the specified converter
+
+        :param workingtree_format: The particular workingtree format to test.
+        :param bzrdir_format: The bzrdir format to test.
+        :return: a (name, options) tuple, where options is a dict of values
+            to be used as members of the TestCase.
+        """
         scenario_options = {
             "transport_server": self._transport_server,
             "transport_readonly_server": self._transport_readonly_server,
