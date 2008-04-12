@@ -1274,7 +1274,7 @@ class TestDiffFromTool(TestCaseWithTransport):
         self.assertEqual('a-tool-which-is-unlikely-to-exist could not be found'
                          ' on this machine', str(e))
 
-    def test_execute_windows_tool(self):
+    def test_windows_tool_reads_both_files(self):
         if (sys.platform != 'windows'
             and sys.platform != 'cygwin'):
             raise tests.TestSkipped('Platform does not have Windows tools.')
