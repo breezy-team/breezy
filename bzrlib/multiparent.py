@@ -382,7 +382,7 @@ class BaseVersionedFile(object):
                     if [p for p in parents if p not in self._parents] != []:
                         continue
                     lines = [a + ' ' + l for a, l in
-                             vf.annotate_iter(revision)]
+                             vf.annotate(revision)]
                     if snapshots is None:
                         force_snapshot = None
                     else:

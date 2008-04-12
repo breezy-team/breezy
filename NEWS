@@ -14,6 +14,13 @@ IN DEVELOPMENT
 
    * bzr main script cannot be imported (Benjamin Peterson)
 
+   * On Linux bzr additionally looks for plugins in arch-independent site
+     directory. (Toshio Kuratomi)
+
+   * The ``set_rh`` branch hook is now deprecated. Please migrate
+     any plugins using this hook to use an alternative, e.g.
+     ``post_change_branch_tip``. (Ian Clatworthy)
+
    * When a plugin cannot be loaded as the file path is not a valid
      python module name bzr will now strip a ``bzr_`` prefix from the
      front of the suggested name, as many plugins (e.g. bzr-svn)
@@ -32,10 +39,26 @@ IN DEVELOPMENT
     * Added mail-mode GNU Emacs mail package as a mail_client.
       (Xavier Maillard, Bojan Nikolic)
 
+    * Added start_commit hook for mutable trees. (Jelmer Vernooij, #186422)
+
+    * ``status`` now accepts ``--no-pending`` to show the status without
+      listing pending merges, which speeds up the command a lot on large
+      histories.  (James Westby, #202830)
+
+    * New ``post_change_branch_tip`` hook that is called after the
+      branch tip is moved but while the branch is still write-locked.
+      See the User Reference for signature details.
+      (Ian Clatworthy, James Henstridge)
+
     * Reconfigure can convert a branch to be standalone or to use a shared
       repository.  (Aaron Bentley)
 
   IMPROVEMENTS:
+
+    * The smart protocol now has support for setting branches' revision info
+      directly.  This should make operations like push slightly faster, and is a
+      step towards server-side hooks.  The new request method name is
+      ``Branch.set_last_revision_info``.  (Andrew Bennetts)
 
     * ``bzr commit --fixes`` now recognises "gnome" as a tag by default.
       (James Westby, Andrew Cowie)
@@ -93,9 +116,26 @@ IN DEVELOPMENT
     * Don't ask for a password if there is no real terminal.
       (Alexander Belchenko, #69851)
 
+    * Fix a bug causing a ValueError crash in ``parse_line_delta_iter`` when
+      fetching revisions from a knit to pack repository or vice versa using
+      bzr:// (including over http or ssh).
+      (#208418, Andrew Bennetts, Martin Pool, Robert Collins)
+
+    * Fixed ``_get_line`` in ``bzrlib.smart.medium``, which was buggy.  Also
+      fixed ``_get_bytes`` in the same module to use the push back buffer.
+      These bugs had no known impact in normal use, but were problematic for
+      developers working on the code, and were likely to cause real bugs sooner
+      or later.  (Andrew Bennetts)
+
     * Implement handling of basename parameter for DefaultMail.  (James Westby)
 
+    * Incompatibility with Paramiko versions newer than 1.7.2 was fixed.
+      (Andrew Bennetts, #213425)
+
     * Launchpad locations (lp: URLs) can be pulled.  (Aaron Bentley, #181945)
+
+    * Merges that add files to deleted root directories complete.  They
+      do create conflicts.  (Aaron Bentley, #210092)
 
     * vsftp's return ``550 RNFR command failed.`` supported.
       (Marcus Trautwig, #129786)
@@ -108,15 +148,27 @@ IN DEVELOPMENT
 
     * Reduced the evangelism in the User Guide. (Ian Clatworthy)
 
+    * Added Integrating with Bazaar document for developers (Martin Albisetti)
+
   API BREAKS:
 
     * Attempting to pull data from a ghost aware repository (e.g. knits) into a
       non-ghost aware repository such as weaves will now fail if there are
       ghosts.  (Robert Collins)
 
+    * ``KnitVersionedFile`` no longer accepts an ``access_mode`` parameter, and
+      now requires the ``index`` and ``access_method`` parameters to be
+      supplied. A compatible shim has been kept in the new function
+      ``knit.make_file_knit``. (Robert Collins)
+
     * Log formatters must now provide log_revision instead of show and
       show_merge_revno methods. The latter had been deprecated since the 0.17
       release. (James Westby)
+
+    * ``LoopbackSFTP`` is now called ``SocketAsChannelAdapter``.
+      (Andrew Bennetts)
+
+    * ``osutils.backup_file`` is removed. (Alexander Belchenko)
 
     * ``Repository.get_revision_graph`` is deprecated, with no replacement
       method. The method was size(history) and not desirable. (Robert Collins)
@@ -126,6 +178,27 @@ IN DEVELOPMENT
 
     * ``Transport.get_shared_medium`` is deprecated.  Use
       ``Transport.get_smart_medium`` instead.  (Andrew Bennetts)
+
+    * ``VersionedFile`` factories now accept a get_scope parameter rather
+      than using a call to ``transaction_finished``, allowing the removal of
+      the fixed list of versioned files per repository. (Robert Collins)
+
+    * ``VersionedFile.annotate_iter`` is deprecated. While in principle this
+      allowed lower memory use, all users of annotations wanted full file 
+      annotations, and there is no storage format suitable for incremental
+      line-by-line annotation. (Robert Collins)
+
+    * ``VersionedFile.clone_text`` is deprecated. This performance optimisation
+      is no longer used - reading the content of a file that is undergoing a
+      file level merge to identical state on two branches is rare enough, and
+      not expensive enough to special case. (Robert Collins)
+
+    * ``VersionedFile.clear_cache`` and ``enable_cache`` are deprecated.
+      These methods added significant complexity to the ``VersionedFile``
+      implementation, but were only used for optimising fetches from knits - 
+      which can be done from outside the knit layer, or via a caching
+      decorator. As knits are not the default format, the complexity is no
+      longer worth paying. (Robert Collins)
 
     * ``VersionedFile.create_empty`` is removed. This method presupposed a
       sensible mapping to a transport for individual files, but pack backed
@@ -141,8 +214,22 @@ IN DEVELOPMENT
     * ``VersionedFile.get_parents`` is deprecated, please use
       ``VersionedFile.get_parent_map``. (Robert Collins)
 
+    * ``VersionedFile.get_sha1`` is deprecated, please use
+      ``VersionedFile.get_sha1s``. (Robert Collins)
+
     * ``VersionedFile.has_ghost`` is now deprecated, as it is both expensive
       and unused outside of a single test. (Robert Collins)
+
+    * ``VersionedFile.iter_parents`` is now deprecated in favour of
+      ``get_parent_map`` which can be used to instantiate a Graph on a
+      VersionedFile. (Robert Collins)
+
+    * ``VersionedFileStore`` no longer uses the transaction parameter given
+      to most methods; amongst other things this means that the
+      get_weave_or_empty method no longer guarantees errors on a missing weave
+      in a readonly transaction, and no longer caches versioned file instances
+      which reduces memory pressure (but requires more careful management by
+      callers to preserve performance). (Robert Collins)
 
   TESTING:
 
@@ -162,11 +249,36 @@ IN DEVELOPMENT
       IDs and tests present in the list but not found in the actual test suite.
       (Vincent Ladeuil)
 
+    * Slightly more concise format for the selftest progress bar, so there's
+      more space to show the test name.  (Martin Pool) ::
+
+        [2500/10884, 1fail, 3miss in 1m29s] test_revisionnamespaces.TestRev
+
     * The test suite takes much less memory to run, and is a bit faster.  This
       is done by clearing most attributes of TestCases after running them, if
       they succeeded.  (Andrew Bennetts)
 
   INTERNALS:
+
+    * Added ``_build_client_protocol`` to ``_SmartClient``.  (Andrew Bennetts)
+
+    * Added basic infrastructure for automatic plugin suggestion.
+      (Martin Albisetti)
+
+    * If a ``LockableFiles`` object is not explicitly unlocked (for example
+      because of a missing ``try/finally`` block, it will give a warning but
+      not automatically unlock itself.  (Previously they did.)  This
+      sometimes caused knock-on errors if for example the network connection
+      had already failed, and should not be relied upon by code. 
+      (Martin Pool, #109520)
+
+    * The ``read_response_tuple`` method of ``SmartClientRequestProtocol*``
+      classes will now raise ``UnknownSmartMethod`` when appropriate, so that
+      callers don't need to try distinguish unknown request errors from other
+      errors.  (Andrew Bennetts)
+
+    * ``set_make_working_trees`` is now implemented provided on all repository
+      implementations (Aaron Bentley)
 
     * ``VersionedFile`` now has a new method ``get_parent_map`` which, like
       ``Graph.get_parent_map`` returns a dict of key:parents. (Robert Collins)
@@ -217,7 +329,7 @@ bzr 1.3rc1 2008-03-16
       (Alexander Belchenko)
 
     * Restore auto-detection of plink.exe on Windows. (Dmitry Vasiliev)
-    
+
     * Version number is now shown as "1.2" or "1.2pr2", without zeroed or
       missing final fields.  (Martin Pool)
 

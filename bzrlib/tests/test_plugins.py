@@ -447,13 +447,15 @@ class TestSetPluginsPath(TestCase):
             bzrlib.plugin.set_plugins_path()
             expected_path = ['first', 'second',
                 os.path.dirname(bzrlib.plugins.__file__)]
-            self.assertEqual(expected_path, bzrlib.plugins.__path__)
+            self.assertEqual(expected_path,
+                bzrlib.plugins.__path__[:len(expected_path)])
         finally:
             bzrlib.plugins.__path__ = old_path
             if old_env != None:
                 os.environ['BZR_PLUGIN_PATH'] = old_env
             else:
                 del os.environ['BZR_PLUGIN_PATH']
+
 
 class TestHelpIndex(tests.TestCase):
     """Tests for the PluginsHelpIndex class."""
