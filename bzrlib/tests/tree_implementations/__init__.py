@@ -325,6 +325,16 @@ class TreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
             preview_tree_pre))
 
     def create_tree_scenario(self, name, converter, workingtree_format=None):
+        """Create a scenario for the specified converter
+
+        :param name: The name to append to tests using this converter
+        :param converter: A function that converts a workingtree into the
+            desired format.
+        :param workingtree_format: The particular workingtree format to
+            convert from.
+        :return: a (name, options) tuple, where options is a dict of values
+            to be used as members of the TestCase.
+        """
         if workingtree_format is None:
             workingtree_format = WorkingTreeFormat3()
         scenario_options = WorkingTreeTestProviderAdapter.create_scenario(self,
