@@ -30,7 +30,8 @@ import changes
 LOG_CHUNK_LIMIT = 0
 
 class lazy_dict(object):
-    def __init__(self, create_fn, *args):
+    def __init__(self, initial, create_fn, *args):
+        self.initial = initial
         self.create_fn = create_fn
         self.args = args
         self.dict = None
@@ -44,6 +45,8 @@ class lazy_dict(object):
         return len(self.dict)
 
     def __getitem__(self, key):
+        if key in self.initial:
+            return self.initial.__getitem__(key)
         self._ensure_init()
         return self.dict.__getitem__(key)
 
@@ -52,14 +55,20 @@ class lazy_dict(object):
         return self.dict.__setitem__(key, value)
 
     def __contains__(self, key):
+        if key in self.initial:
+            return True
         self._ensure_init()
         return self.dict.__contains__(key)
 
     def get(self, key, default=None):
+        if key in self.initial:
+            return self.initial[key]
         self._ensure_init()
         return self.dict.get(key, default)
 
     def has_key(self, key):
+        if self.initial.has_key(key):
+            return True
         self._ensure_init()
         return self.dict.has_key(key)
 
@@ -82,9 +91,6 @@ class lazy_dict(object):
     def __eq__(self, other):
         self._ensure_init()
         return self.dict.__eq__(other)
-
-
-
 
 
 class CachingLogWalker(CacheTable):
@@ -165,7 +171,7 @@ class CachingLogWalker(CacheTable):
 
             next = changes.find_prev_location(revpaths, path, revnum)
 
-            revprops = lazy_dict(self._get_transport().revprop_list, revnum)
+            revprops = lazy_dict({}, self._get_transport().revprop_list, revnum)
 
             if changes.changes_path(revpaths, path, True):
                 yield (path, revpaths, revnum, revprops)
@@ -324,7 +330,7 @@ class LogWalker(object):
                 revpaths[k] = (v.action, v.copyfrom_path, v.copyfrom_rev)
             revnum = log_entry.revision
             next = changes.find_prev_location(revpaths, path, revnum)
-            revprops = lazy_dict(self._get_transport().revprop_list, revnum)
+            revprops = lazy_dict(log_entry.revprops, self._get_transport().revprop_list, revnum)
             yield (path, revpaths, revnum, revprops)
             path = next[0]
 

@@ -124,7 +124,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         # we need them for the renames.
         if self._branch_fileprops is None:
             if self.branch_path in self.changes:
-                self._branch_fileprops = lazy_dict(self.source.branchprop_list.get_changed_properties, self.branch_path, self.revnum)
+                self._branch_fileprops = lazy_dict({}, self.source.branchprop_list.get_changed_properties, self.branch_path, self.revnum)
             else:
                 self._branch_fileprops = {}
         renames = self.mapping.import_fileid_map(self.svn_revprops, self._branch_fileprops)

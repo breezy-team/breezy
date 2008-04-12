@@ -490,10 +490,10 @@ class SvnRepository(Repository):
         parent_ids = (mainline_parent,)
 
         if svn_fileprops is None:
-            svn_fileprops = logwalker.lazy_dict(self.branchprop_list.get_changed_properties, branch, revnum)
+            svn_fileprops = logwalker.lazy_dict({}, self.branchprop_list.get_changed_properties, branch, revnum)
 
         if svn_revprops is None:
-            svn_revprops = logwalker.lazy_dict(self.transport.revprop_list, revnum)
+            svn_revprops = logwalker.lazy_dict({}, self.transport.revprop_list, revnum)
 
         extra_rhs_parents = mapping.get_rhs_parents(branch, svn_revprops, svn_fileprops)
         parent_ids += extra_rhs_parents
@@ -503,7 +503,7 @@ class SvnRepository(Repository):
             if prev_path is None and prev_revnum == -1:
                 previous = {}
             else:
-                previous = logwalker.lazy_dict(self.branchprop_list.get_properties, prev_path.encode("utf-8"), prev_revnum)
+                previous = logwalker.lazy_dict({}, self.branchprop_list.get_properties, prev_path.encode("utf-8"), prev_revnum)
             parent_ids += tuple(self._svk_merged_revisions(branch, revnum, mapping, svn_fileprops, previous))
 
         return parent_ids
@@ -516,9 +516,9 @@ class SvnRepository(Repository):
         (path, revnum, mapping) = self.lookup_revision_id(revision_id)
         
         if svn_revprops is None:
-            svn_revprops = logwalker.lazy_dict(self.transport.revprop_list, revnum)
+            svn_revprops = logwalker.lazy_dict({}, self.transport.revprop_list, revnum)
         if svn_fileprops is None:
-            svn_fileprops = logwalker.lazy_dict(self.branchprop_list.get_changed_properties, path, revnum)
+            svn_fileprops = logwalker.lazy_dict({}, self.branchprop_list.get_changed_properties, path, revnum)
         parent_ids = self.revision_parents(revision_id, svn_fileprops=svn_fileprops, svn_revprops=svn_revprops)
 
         rev = Revision(revision_id=revision_id, parent_ids=parent_ids,
@@ -550,10 +550,10 @@ class SvnRepository(Repository):
         assert isinstance(mapping, BzrSvnMapping)
 
         if revprops is None:
-            revprops = logwalker.lazy_dict(self._log._get_transport().revprop_list, revnum)
+            revprops = logwalker.lazy_dict({}, self._log._get_transport().revprop_list, revnum)
 
         if changed_fileprops is None:
-            changed_fileprops = logwalker.lazy_dict(self.branchprop_list.get_changed_properties, path, revnum)
+            changed_fileprops = logwalker.lazy_dict({}, self.branchprop_list.get_changed_properties, path, revnum)
 
         return self.get_revmap().get_revision_id(revnum, path, mapping, revprops, changed_fileprops)
 
@@ -635,7 +635,7 @@ class SvnRepository(Repository):
             if not bp in paths:
                 svn_fileprops = {}
             else:
-                svn_fileprops = logwalker.lazy_dict(self.branchprop_list.get_changed_properties, bp, revnum)
+                svn_fileprops = logwalker.lazy_dict({}, self.branchprop_list.get_changed_properties, bp, revnum)
 
             yield (bp, paths, revnum, revprops, svn_fileprops)
 
