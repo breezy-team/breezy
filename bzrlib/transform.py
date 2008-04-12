@@ -1420,7 +1420,7 @@ class _PreviewTree(tree.Tree):
         return result
 
     def path2id(self, path):
-        return self.paths2ids([path]).pop()
+        return self._transform._tree.path2id(path)
 
     def id2path(self, file_id):
         trans_id = self._transform.trans_id_file_id(file_id)
