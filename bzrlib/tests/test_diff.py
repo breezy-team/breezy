@@ -1332,7 +1332,7 @@ print proc.stdout.read()
         self.assertContainsRe(new_path, 'new/newname$')
         self.assertFileEqual('oldcontent', old_path)
         self.assertFileEqual('newcontent', new_path)
-        if osutils.has_symlinks() and sys.platform != 'cygwin':
+        if osutils.host_os_dereferences_symlinks():
             self.assertTrue(os.path.samefile('tree/newname', new_path))
         # make sure we can create files with the same parent directories
         diff_obj._prepare_files('file-id', 'oldname2', 'newname2')

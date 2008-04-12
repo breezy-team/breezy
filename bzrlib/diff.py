@@ -789,8 +789,7 @@ class DiffFromTool(DiffPath):
 
     def _try_symlink_root(self, tree, prefix):
         if (getattr(tree, 'abspath', None) is None
-            or not osutils.has_symlinks()
-            or sys.platform == 'cygwin'):
+            or not osutils.host_os_dereferences_symlinks()):
             return False
         try:
             os.symlink(tree.abspath(''), osutils.pathjoin(self._root, prefix))
