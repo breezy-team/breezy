@@ -1286,23 +1286,21 @@ class TestDiffFromTool(TestCaseWithTransport):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         diff_obj = DiffFromTool(['python', '-c',
-                                 'print "%(old_path)s %(new_path)s"'],
-                                tree, tree, output)
-        diff_obj._prepare_files('file-id', 'file', 'file')
-        proc = subprocess.Popen(['attrib', 'old/file'],
-                                stdout=subprocess.PIPE,
-                                cwd=diff_obj._root)
-        proc.wait()
-        result=proc.stdout.read()
-        self.assertContainsRe(result, r'old\\file')
-        self.assertNotContainsRe(result, 'Path not found')
-        proc = subprocess.Popen(['attrib', 'new/file'],
-                                stdout=subprocess.PIPE,
-                                cwd=diff_obj._root)
-        proc.wait()
-        result=proc.stdout.read()
-        self.assertContainsRe(result, r'new\\file')
-        self.assertNotContainsRe(result, 'Path not found')
+                                 'import subprocess\n'
+                                 'proc = subprocess.Popen(["attrib", "%(old_path)s"],\n'
+                                 '                        stdout=subprocess.PIPE)\n'
+                                 'proc.wait()\n'
+                                 'print proc.stdout.read()\n'
+                                 'proc = subprocess.Popen(["attrib", "%(new_path)s"],\n'
+                                 '                        stdout=subprocess.PIPE)\n'
+                                 'proc.wait()\n'
+                                 'print proc.stdout.read()'],
+                                 tree, tree, output)
+        diff_obj.diff('file-id', 'file', 'file', 'file', 'file')
+        lines = output.getvalue()
+        self.assertContainsRe(lines, r'old\\file')
+        self.assertContainsRe(lines, r'new\\file')
+        self.assertNotContainsRe(lines, 'Path not found')
 
     def test_prepare_files(self):
         output = StringIO()
