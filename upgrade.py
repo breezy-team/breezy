@@ -20,6 +20,7 @@ from bzrlib.trace import info, mutter
 import bzrlib.ui as ui
 
 from errors import RebaseNotPresent
+import itertools
 from mapping import parse_revision_id
 
 class UpgradeChangesContent(BzrError):
@@ -96,6 +97,7 @@ def generate_upgrade_map(new_mapping, revs):
     rename_map = {}
     # Create a list of revisions that can be renamed during the upgade
     for revid in revs:
+        assert isinstance(revid, str)
         try:
             (uuid, bp, rev, mapping) = parse_revision_id(revid)
         except InvalidRevisionId:
@@ -144,8 +146,12 @@ def create_upgrade_plan(repository, svn_repository, new_mapping,
     check_rebase_version()
 
     graph = repository.get_graph()
-    upgrade_map = generate_upgrade_map(new_mapping, 
-                      graph.iter_ancestry(revision_id))
+    if revision_id is None:
+        potential = repository.all_revision_ids()
+    else:
+        potential = itertools.imap(lambda (rev, parents): rev, 
+                graph.iter_ancestry([revision_id]))
+    upgrade_map = generate_upgrade_map(new_mapping, potential)
    
     # Make sure all the required current version revisions are present
     for revid in upgrade_map.values():
@@ -158,7 +164,7 @@ def create_upgrade_plan(repository, svn_repository, new_mapping,
             newrev = repository.get_revision(newrevid)
             check_revision_changed(oldrev, newrev)
 
-    plan = generate_transpose_plan(graph, upgrade_map, 
+    plan = generate_transpose_plan(repository.get_revision_graph(revision_id), upgrade_map, 
       repository.revision_parents,
       lambda revid: create_upgraded_revid(revid, new_mapping.upgrade_suffix))
     def remove_parents((oldrevid, (newrevid, parents))):
