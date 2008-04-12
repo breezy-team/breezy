@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,16 +24,13 @@ from bzrlib.diff import internal_diff
 from bzrlib.mutabletree import MutableTree
 from bzrlib.osutils import has_symlinks
 from bzrlib.symbol_versioning import zero_ninetyone, one_zero
-from bzrlib.tests import SymlinkFeature, TestSkipped, TestNotApplicable
+from bzrlib.tests import SymlinkFeature, TestSkipped
 from bzrlib.tests.tree_implementations import TestCaseWithTree
 from bzrlib.uncommit import uncommit
 
 
-def get_inventory_if_applicable(tree):
-    try:
-        return tree.inventory
-    except NotImplementedError:
-        raise TestNotApplicable('Tree does not implement inventory')
+def get_entry(tree, file_id):
+    return tree.iter_entries_by_dir([file_id]).next()[1]
 
 
 class TestEntryDiffing(TestCaseWithTree):
@@ -62,12 +59,11 @@ class TestEntryDiffing(TestCaseWithTree):
         self.tree_2 = self.workingtree_to_test_tree(self.wt)
         self.tree_2.lock_read()
         self.addCleanup(self.tree_2.unlock)
-        self.inv_2 = get_inventory_if_applicable(self.tree_2)
-        self.file_2 = self.inv_2['fileid']
-        self.file_2b = self.inv_2['binfileid']
+        self.file_2 = get_entry(self.tree_2, 'fileid')
+        self.file_2b = get_entry(self.tree_2, 'binfileid')
         if has_symlinks():
             self.link_1 = self.inv_1['linkid']
-            self.link_2 = self.inv_2['linkid']
+            self.link_2 = get_entry(self.tree_2, 'linkid')
 
     def test_file_diff_deleted(self):
         output = StringIO()
@@ -111,7 +107,7 @@ class TestEntryDiffing(TestCaseWithTree):
                                             "-foo\n"
                                             "+bar\n"
                                             "\n")
-        
+
     def test_file_diff_binary(self):
         output = StringIO()
         self.applyDeprecated(one_zero,
@@ -120,7 +116,7 @@ class TestEntryDiffing(TestCaseWithTree):
                              "/dev/null", self.tree_1,
                              "new_label", self.file_2b, self.tree_2,
                              output)
-        self.assertEqual(output.getvalue(), 
+        self.assertEqual(output.getvalue(),
                          "Binary files /dev/null and new_label differ\n")
 
     def test_link_diff_deleted(self):
@@ -189,17 +185,17 @@ class TestPreviousHeads(TestCaseWithTree):
         self.tree = self.workingtree_to_test_tree(self.wt)
         self.tree.lock_read()
         self.addCleanup(self.tree.unlock)
-        self.file_active = get_inventory_if_applicable(self.tree)['fileid']
+        self.file_active = get_entry(self.tree, 'fileid')
         self.weave = self.branch.repository.weave_store.get_weave('fileid',
             self.branch.repository.get_transaction())
-        
+
     def get_previous_heads(self, inventories):
         return self.applyDeprecated(zero_ninetyone,
             self.file_active.find_previous_heads,
             inventories,
             self.branch.repository.weave_store,
             self.branch.repository.get_transaction())
-        
+
     def test_fileid_in_no_inventory(self):
         self.assertEqual({}, self.get_previous_heads([self.inv_A]))
 
@@ -225,7 +221,7 @@ class TestPreviousHeads(TestCaseWithTree):
         self.assertEqual({'D':self.inv_D['fileid']},
                          self.get_previous_heads([self.inv_D, self.inv_B]))
 
-    # TODO: test two inventories with the same file revision 
+    # TODO: test two inventories with the same file revision
 
 
 class TestInventory(TestCaseWithTree):
@@ -234,8 +230,6 @@ class TestInventory(TestCaseWithTree):
         self.tree = self.get_tree_with_subdirs_and_all_content_types()
         self.tree.lock_read()
         self.addCleanup(self.tree.unlock)
-        # Commenting out the following line still fails.
-        self.inv = get_inventory_if_applicable(self.tree)
 
     def test_symlink_target(self):
         self.requireFeature(SymlinkFeature)
@@ -243,12 +237,17 @@ class TestInventory(TestCaseWithTree):
         if isinstance(self.tree, MutableTree):
             raise TestSkipped(
                 'symlinks not accurately represented in working trees')
-        entry = self.inv[self.inv.path2id('symlink')]
+        entry = get_entry(self.tree, self.tree.path2id('symlink'))
         self.assertEqual(entry.symlink_target, 'link-target')
+
+    def test_symlink_target(self):
+        self.requireFeature(SymlinkFeature)
+        self._set_up()
+        self.assertEqual('link-target',
+                         self.tree.get_symlink_target('symlink'))
 
     def test_symlink(self):
         self.requireFeature(SymlinkFeature)
         self._set_up()
-        entry = self.inv[self.inv.path2id('symlink')]
-        self.assertEqual(entry.kind, 'symlink')
-        self.assertEqual(None, entry.text_size)
+        self.assertEqual('symlink', self.tree.kind('symlink'))
+        self.assertIs(None, self.tree.get_file_size('symlink'))

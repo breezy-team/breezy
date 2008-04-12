@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -351,6 +351,7 @@ def test_suite():
         'bzrlib.tests.tree_implementations.test_get_root_id',
         'bzrlib.tests.tree_implementations.test_get_symlink_target',
         'bzrlib.tests.tree_implementations.test_inv',
+        'bzrlib.tests.tree_implementations.test_inv_alternatives',
         'bzrlib.tests.tree_implementations.test_list_files',
         'bzrlib.tests.tree_implementations.test_path_content_summary',
         'bzrlib.tests.tree_implementations.test_revision_tree',

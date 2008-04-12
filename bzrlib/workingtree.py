@@ -618,7 +618,13 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     __contains__ = has_id
 
     def get_file_size(self, file_id):
-        return os.path.getsize(self.id2abspath(file_id))
+        try:
+            return os.path.getsize(self.id2abspath(file_id))
+        except OSError, e:
+            if e.errno != errno.ENOENT:
+                raise
+            else:
+                return None
 
     @needs_read_lock
     def get_file_sha1(self, file_id, path=None, stat_value=None):

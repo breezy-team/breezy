@@ -1380,12 +1380,22 @@ class _PreviewTree(tree.Tree):
         return self._transform._tree._get_file_revision(file_id, vf,
                                                         tree_revision)
 
+    def _stat_limbo_file(file_id):
+        trans_id = self._transform.trans_id_file_id(file_id)
+        name = self._transform._limbo_name(trans_id)
+        return os.lstat(name)
+
     def lock_read(self):
         # Perhaps in theory, this should lock the TreeTransform?
         pass
 
     def unlock(self):
         pass
+
+    @property
+    def inventory(self):
+        """This Tree does not use inventory as its backing data."""
+        raise NotImplementedError(_PreviewTree.inventory)
 
     def get_root_id(self):
         return self._transform.final_file_id(self._transform.root)
@@ -1410,7 +1420,7 @@ class _PreviewTree(tree.Tree):
         return result
 
     def path2id(self, path):
-        return self.paths2ids([path])
+        return self.paths2ids([path]).pop()
 
     def id2path(self, file_id):
         trans_id = self._transform.trans_id_file_id(file_id)
@@ -1433,12 +1443,17 @@ class _PreviewTree(tree.Tree):
         """See Tree.get_file_mtime"""
         if not self._content_change(file_id):
             return self._transform._tree.get_file_mtime(file_id, path)
-        trans_id = self._transform.trans_id_file_id(file_id)
-        name = self._transform._limbo_name(trans_id)
-        return os.stat(name).st_mtime
+        return stat_limbo_file(file_id).st_mtime
 
-    def is_executable(self, file_id):
-        return self._transform._tree.is_executable(file_id)
+    def get_file_size(self, file_id):
+        if self.kind(file_id) == 'file':
+            return self._transform._tree.get_file_size(file_id)
+
+    def get_file_sha1(self, file_id, path=None, stat_value=None):
+        return self._transform._tree.get_file_sha1(file_id)
+
+    def is_executable(self, file_id, path=None):
+        return self._transform._tree.is_executable(file_id, path)
 
     def path_content_summary(self, path):
         return self._transform._tree.path_content_summary(path)
