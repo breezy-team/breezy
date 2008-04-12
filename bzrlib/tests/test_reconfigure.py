@@ -287,31 +287,31 @@ class TestReconfigure(tests.TestCaseWithTransport):
         self.assertRaises(errors.NoRepositoryPresent,
                           repository.Repository.open, 'repo')
 
-    def test_standalone_to_sharing(self):
+    def test_standalone_to_use_shared(self):
         self.build_tree(['root/'])
         tree = self.make_branch_and_tree('root/tree')
         tree.commit('Hello', rev_id='hello-id')
         repo = self.make_repository('root', shared=True)
-        reconfiguration = reconfigure.Reconfigure.to_sharing(tree.bzrdir)
+        reconfiguration = reconfigure.Reconfigure.to_use_shared(tree.bzrdir)
         reconfiguration.apply()
         tree = workingtree.WorkingTree.open('root/tree')
         self.assertTrue(repo.has_same_location(tree.branch.repository))
         self.assertEqual('Hello', repo.get_revision('hello-id').message)
 
-    def make_sharing_tree(self):
+    def make_repository_tree(self):
         self.build_tree(['root/'])
         repo = self.make_repository('root', shared=True)
         tree = self.make_branch_and_tree('root/tree')
-        reconfigure.Reconfigure.to_sharing(tree.bzrdir).apply()
+        reconfigure.Reconfigure.to_use_shared(tree.bzrdir).apply()
         return workingtree.WorkingTree.open('root/tree')
 
-    def test_sharing_to_sharing(self):
-        tree = self.make_sharing_tree()
-        self.assertRaises(errors.AlreadySharing,
-                          reconfigure.Reconfigure.to_sharing, tree.bzrdir)
+    def test_use_shared_to_use_shared(self):
+        tree = self.make_repository_tree()
+        self.assertRaises(errors.AlreadyUsingShared,
+                          reconfigure.Reconfigure.to_use_shared, tree.bzrdir)
 
-    def test_sharing_to_standalone(self):
-        tree = self.make_sharing_tree()
+    def test_use_shared_to_standalone(self):
+        tree = self.make_repository_tree()
         tree.commit('Hello', rev_id='hello-id')
         reconfigure.Reconfigure.to_standalone(tree.bzrdir).apply()
         tree = workingtree.WorkingTree.open('root/tree')

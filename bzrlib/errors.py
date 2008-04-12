@@ -2558,9 +2558,9 @@ class AlreadyLightweightCheckout(BzrDirError):
     _fmt = "'%(display_url)s' is already a lightweight checkout."
 
 
-class AlreadySharing(BzrDirError):
+class AlreadyUsingShared(BzrDirError):
 
-    _fmt = "'%(display_url)s' is already sharing a repository."
+    _fmt = "'%(display_url)s' is already using a shared repository."
 
 
 class AlreadyStandalone(BzrDirError):

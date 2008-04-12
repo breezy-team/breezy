@@ -123,19 +123,19 @@ class Reconfigure(object):
         return reconfiguration
 
     @classmethod
-    def to_sharing(klass, bzrdir):
-        """Convert a standalone branch into a sharing branch"""
+    def to_use_shared(klass, bzrdir):
+        """Convert a standalone branch into a repository branch"""
         reconfiguration = klass(bzrdir)
-        reconfiguration._set_sharing(sharing=True)
+        reconfiguration._set_use_shared(use_shared=True)
         if not reconfiguration.changes_planned():
-            raise errors.AlreadySharing(bzrdir)
+            raise errors.AlreadyUsingShared(bzrdir)
         return reconfiguration
 
     @classmethod
     def to_standalone(klass, bzrdir):
-        """Convert a standalone branch into a sharing branch"""
+        """Convert a repository branch into a standalone branch"""
         reconfiguration = klass(bzrdir)
-        reconfiguration._set_sharing(sharing=False)
+        reconfiguration._set_use_shared(use_shared=False)
         if not reconfiguration.changes_planned():
             raise errors.AlreadyStandalone(bzrdir)
         return reconfiguration
@@ -180,10 +180,10 @@ class Reconfigure(object):
         if want_tree and self.tree is None:
             self._create_tree = True
 
-    def _set_sharing(self, sharing=None):
-        if sharing is None:
+    def _set_use_shared(self, use_shared=None):
+        if use_shared is None:
             return
-        if sharing:
+        if use_shared:
             if self.local_repository is not None:
                 self._destroy_repository = True
         else:

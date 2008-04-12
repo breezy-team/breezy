@@ -68,16 +68,16 @@ class TestReconfigure(tests.TestCaseWithTransport):
         checkout = branch.create_checkout('checkout')
         self.run_bzr('reconfigure --lightweight-checkout checkout')
 
-    def test_standalone_to_sharing(self):
+    def test_standalone_to_use_shared(self):
         self.build_tree(['repo/'])
         tree = self.make_branch_and_tree('repo/tree')
         repo = self.make_repository('repo', shared=True)
-        self.run_bzr('reconfigure --sharing', working_dir='repo/tree')
+        self.run_bzr('reconfigure --use-shared', working_dir='repo/tree')
         tree = workingtree.WorkingTree.open('repo/tree')
         self.assertNotEqual(tree.bzrdir.root_transport.base,
             tree.branch.repository.bzrdir.root_transport.base)
 
-    def test_sharing_to_standalone(self):
+    def test_use_shared_to_standalone(self):
         repo = self.make_repository('repo', shared=True)
         branch = bzrdir.BzrDir.create_branch_convenience('repo/tree')
         self.assertNotEqual(branch.bzrdir.root_transport.base,
