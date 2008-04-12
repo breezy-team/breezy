@@ -247,11 +247,10 @@ class CachingLogWalker(CacheTable):
         try:
             try:
                 while self.saved_revnum < to_revnum:
-                    for log_entry in self.actual._get_transport().iter_log("", self.saved_revnum, 
+                    for (orig_paths, revision, revprops) in self.actual._get_transport().iter_log("", self.saved_revnum, 
                                              to_revnum, self.actual._limit, True, 
                                              True, []):
-                        pb.update('fetching svn revision info', log_entry.revision, to_revnum)
-                        orig_paths = log_entry.changed_paths
+                        pb.update('fetching svn revision info', revision, to_revnum)
                         if orig_paths is None:
                             orig_paths = {}
                         for p in orig_paths:
@@ -261,11 +260,11 @@ class CachingLogWalker(CacheTable):
 
                             self.cachedb.execute(
                                  "replace into changed_path (rev, path, action, copyfrom_path, copyfrom_rev) values (?, ?, ?, ?, ?)", 
-                                 (log_entry.revision, p.strip("/"), orig_paths[p].action, copyfrom_path, orig_paths[p].copyfrom_rev))
+                                 (revision, p.strip("/"), orig_paths[p].action, copyfrom_path, orig_paths[p].copyfrom_rev))
                             # Work around nasty memory leak in Subversion
                             orig_paths[p]._parent_pool.destroy()
 
-                        self.saved_revnum = log_entry.revision
+                        self.saved_revnum = revision
                         if self.saved_revnum % 1000 == 0:
                             self.cachedb.commit()
             finally:
@@ -310,8 +309,7 @@ class LogWalker(object):
         """
         assert isinstance(path, str)
         assert isinstance(revnum, int) and revnum >= 0
-        log_entry = self.actual._get_transport().iter_log(path, revnum, revnum, 1, True, True, []).next()
-        return log_entry.revision
+        return self.actual._get_transport().iter_log(path, revnum, revnum, 1, True, True, []).next()[1]
 
     def iter_changes(self, path, revnum, limit=0):
         """Return iterator over all the revisions between revnum and 0 named path or inside path.
@@ -324,13 +322,12 @@ class LogWalker(object):
         """
         assert revnum >= 0
 
-        for log_entry in self._get_transport().iter_log(path, revnum, 0, limit, True, True, []):
+        for (changed_paths, revnum, known_revprops) in self._get_transport().iter_log(path, revnum, 0, limit, True, True, []):
             revpaths = {}
-            for k,v in log_entry.changed_paths.items():
+            for k,v in changed_paths.items():
                 revpaths[k] = (v.action, v.copyfrom_path, v.copyfrom_rev)
-            revnum = log_entry.revision
             next = changes.find_prev_location(revpaths, path, revnum)
-            revprops = lazy_dict(log_entry.revprops, self._get_transport().revprop_list, revnum)
+            revprops = lazy_dict(known_revprops, self._get_transport().revprop_list, revnum)
             yield (path, revpaths, revnum, revprops)
             path = next[0]
 
@@ -341,8 +338,7 @@ class LogWalker(object):
         :returns: dictionary with paths as keys and 
                   (action, copyfrom_path, copyfrom_rev) as values.
         """
-        log_entry = self.actual._get_transport().iter_log("", revnum, revnum, 1, True, True, []).next()
-        return log_entry.changed_paths
+        return self.actual._get_transport().iter_log("", revnum, revnum, 1, True, True, []).next()[0]
         
     def find_children(self, path, revnum):
         """Find all children of path in revnum.

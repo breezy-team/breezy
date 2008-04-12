@@ -379,7 +379,7 @@ class SvnRaTransport(Transport):
 
             def run(self):
                 def rcvr(log_entry, pool):
-                    self.pending.append(log_entry)
+                    self.pending.append((log_entry.changed_paths, log_entry.revision, log_entry.revprops))
                     self.semaphore.release()
                 try:
                     self.get_log(rcvr)
