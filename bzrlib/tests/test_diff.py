@@ -1282,7 +1282,7 @@ class TestDiffFromTool(TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/file', 'content')])
         tree.add('file', 'file-id')
-        tree.commit('old tree', timestamp=0)
+        tree.commit('old tree')
         tree.lock_read()
         self.addCleanup(tree.unlock)
         diff_obj = DiffFromTool(['python', '-c',
