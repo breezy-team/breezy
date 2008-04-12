@@ -50,6 +50,9 @@ IN DEVELOPMENT
       See the User Reference for signature details.
       (Ian Clatworthy, James Henstridge)
 
+    * Reconfigure can convert a branch to be standalone or to use a shared
+      repository.  (Aaron Bentley)
+
   IMPROVEMENTS:
 
     * The smart protocol now has support for setting branches' revision info

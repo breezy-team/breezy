@@ -4436,7 +4436,9 @@ class cmd_reconfigure(Command):
                      tree='Reconfigure to a tree.',
                      checkout='Reconfigure to a checkout.',
                      lightweight_checkout='Reconfigure to a lightweight'
-                     ' checkout.'),
+                     ' checkout.',
+                     standalone='Reconfigure to be standalone.',
+                     use_shared='Reconfigure to use a shared repository.'),
                      Option('bind-to', help='Branch to bind checkout to.',
                             type=str),
                      Option('force',
@@ -4458,6 +4460,10 @@ class cmd_reconfigure(Command):
         elif target_type == 'lightweight-checkout':
             reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
                 directory, bind_to)
+        elif target_type == 'use-shared':
+            reconfiguration = reconfigure.Reconfigure.to_use_shared(directory)
+        elif target_type == 'standalone':
+            reconfiguration = reconfigure.Reconfigure.to_standalone(directory)
         reconfiguration.apply(force)
 
 

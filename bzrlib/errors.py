@@ -2571,6 +2571,16 @@ class AlreadyLightweightCheckout(BzrDirError):
     _fmt = "'%(display_url)s' is already a lightweight checkout."
 
 
+class AlreadyUsingShared(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already using a shared repository."
+
+
+class AlreadyStandalone(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already standalone."
+
+
 class ReconfigurationNotSupported(BzrDirError):
 
     _fmt = "Requested reconfiguration of '%(display_url)s' is not supported."
