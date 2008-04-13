@@ -1369,7 +1369,7 @@ class _PreviewTree(tree.Tree):
 
     def _changes(self, file_id):
         for changes in self._transform.iter_changes():
-            if result[0] == file_id:
+            if changes[0] == file_id:
                 return changes
 
     def _content_change(self, file_id):
@@ -1380,7 +1380,7 @@ class _PreviewTree(tree.Tree):
         return self._transform._tree._get_file_revision(file_id, vf,
                                                         tree_revision)
 
-    def _stat_limbo_file(file_id):
+    def _stat_limbo_file(self, file_id):
         trans_id = self._transform.trans_id_file_id(file_id)
         name = self._transform._limbo_name(trans_id)
         return os.lstat(name)
@@ -1443,7 +1443,7 @@ class _PreviewTree(tree.Tree):
         """See Tree.get_file_mtime"""
         if not self._content_change(file_id):
             return self._transform._tree.get_file_mtime(file_id, path)
-        return stat_limbo_file(file_id).st_mtime
+        return self._stat_limbo_file(file_id).st_mtime
 
     def get_file_size(self, file_id):
         if self.kind(file_id) == 'file':
