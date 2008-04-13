@@ -36,10 +36,12 @@ class SubversionAuthenticationConfig(AuthenticationConfig):
     """Simple extended version of AuthenticationConfig that can provide 
     the information Subversion requires.
     """
-    def __init__(self, scheme, host, file=None):
+    def __init__(self, scheme, host, port, path, file=None):
         super(SubversionAuthenticationConfig, self).__init__(file)
         self.scheme = scheme
         self.host = host
+        self.port = port
+        self.path = path
        
     def get_svn_username(self, realm, may_save, pool=None):
         """Look up a Subversion user name in the Bazaar authentication cache.
@@ -47,10 +49,12 @@ class SubversionAuthenticationConfig(AuthenticationConfig):
         :param realm: Authentication realm (optional)
         :param may_save: Whether or not the username should be saved.
         :param pool: Allocation pool, is ignored.
+        :param default: Assumed username
         """
         username_cred = svn_auth_cred_username_t()
         username_cred.username = self.get_user(self.scheme, 
-                host=self.host, realm=realm)
+                host=self.host, path=self.path, 
+                realm=realm)
         username_cred.may_save = False
         return username_cred
 
@@ -64,11 +68,11 @@ class SubversionAuthenticationConfig(AuthenticationConfig):
         :param pool: Allocation pool, is ignored.
         """
         simple_cred = svn_auth_cred_simple_t()
-        simple_cred.username = username or self.get_username(realm, may_save, 
-                                             pool, prompt="%s user" % realm)
+        simple_cred.username = self.get_user(self.scheme, 
+                host=self.host, path=self.path, realm=realm) or username
         simple_cred.password = self.get_password(self.scheme, host=self.host, 
-                                    user=simple_cred.username, realm=realm,
-                                    prompt="%s password" % realm)
+            path=self.path, user=simple_cred.username, 
+            realm=realm, prompt="%s %s password" % (realm, simple_cred.username))
         simple_cred.may_save = False
         return simple_cred
 
@@ -166,10 +170,11 @@ def get_stock_svn_providers():
 
 def create_auth_baton(url):
     """Create an authentication baton for the specified URL."""
-    (scheme, netloc, _, _, _) = urlparse.urlsplit(url)
+    (scheme, netloc, path, _, _) = urlparse.urlsplit(url)
     (creds, host) = urllib.splituser(netloc)
+    (host, port) = urllib.splitport(host)
 
-    auth_config = SubversionAuthenticationConfig(host, scheme)
+    auth_config = SubversionAuthenticationConfig(scheme, host, port, path)
 
     # Specify Subversion providers first, because they use file data
     # rather than prompting the user.
