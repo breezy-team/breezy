@@ -57,6 +57,41 @@ import bzrlib.ui
 
 register_urlparse_netloc_protocol('aftp')
 
+import kerberos
+
+class SecureFtp(ftplib.FTP):
+    def mic_putcmd(self, line):
+        kerberos.authGSSClientWrap(
+                    self.vc, line.rstrip("\r\n"), 'jelmer')
+        wrapped = kerberos.authGSSClientResponse(self.vc)
+        print "> " + wrapped
+        ftplib.FTP.putcmd(self, "MIC " + wrapped)
+
+    def mic_getmultiline(self):
+        resp = ftplib.FTP.getmultiline(self)
+        assert resp[:3] == '631'
+        kerberos.authGSSClientUnwrap(self.vc, resp[4:])
+        response = kerberos.authGSSClientResponse(self.vc)
+        return response 
+
+    def gssapi_login(self):
+        # Try GSSAPI login first
+        resp = self.sendcmd('AUTH GSSAPI')
+        if resp[:3] == '334':
+            rc, self.vc = kerberos.authGSSClientInit("ftp@%s" % self.host)
+
+            kerberos.authGSSClientStep(self.vc, "")
+            while resp[:3] in ('334', '335'):
+                authdata = kerberos.authGSSClientResponse(self.vc)
+                resp = self.sendcmd('ADAT ' + authdata)
+                if resp[:3] in ('235', '335'):
+                    kerberos.authGSSClientStep(self.vc, resp[9:])
+            # Monkey patch ftplib
+            mutter("Now authenticated as %s" % kerberos.authGSSClientUserName(
+                    self.vc))
+            self.putcmd = self.mic_putcmd
+            self.getmultiline = self.mic_getmultiline
+
 
 class FtpPathError(errors.PathError):
     """FTP failed for path: %(path)s%(extra)s"""
@@ -135,44 +170,17 @@ class FtpTransport(ConnectedTransport):
                ((self._host, self._port, user, '********',
                 self.is_active),))
         try:
-            connection = ftplib.FTP()
+            #connection = ftplib.FTP()
+            connection = SecureFtp()
             connection.connect(host=self._host, port=self._port)
-            acct = ''
-            if user is None:
-                user = 'anonymous'
-            resp = connection.sendcmd('AUTH GSSAPI')
-            if resp[:3] == '334':
-                import kerberos
-                rc, vc = kerberos.authGSSClientInit("ftp@%s" % self._host)
-
-                kerberos.authGSSClientStep(vc, "")
-                while resp[:3] in ('334', '335'):
-                    authdata = kerberos.authGSSClientResponse(vc)
-                    resp = connection.sendcmd('ADAT ' + authdata)
-                    if resp[:3] in ('235', '335'):
-                        kerberos.authGSSClientStep(vc, resp[9:])
-                    elif resp[:3] == '535':
-                        raise errors.TransportError(
-                             msg="Error during GSSAPI authentication", 
-                             orig_error=resp)
-                    else:
-                        raise errors.TransportError(
-                              msg="Unexpected reply from FTP server",
-                              orig_error=resp)
-            else:
-                resp = connection.sendcmd('USER ' + user)
-                if resp[0] == '3': 
-                    if password is None:
-                        if user == 'anonymous':
-                            password = password + 'anonymous@'
-                        else:
-                            password = auth.get_password('ftp', self._host, 
-                                user, port=self._port)
-                    resp = connection.sendcmd('PASS ' + password)
-                if resp[0] == '3': 
-                    resp = connection.sendcmd('ACCT ' + acct)
-                if resp[0] != '2':
-                    raise ftplib.error_reply, resp
+            try:
+                connection.gssapi_login()
+            except ftplib.error_perm, e:
+                if user and user != 'anonymous' and \
+                        password is None: # '' is a valid password
+                    password = auth.get_password('ftp', self._host, user,
+                                                 port=self._port)
+                connection.login(user=user, passwd=password)
             connection.set_pasv(not self.is_active)
         except socket.error, e:
             raise errors.SocketConnectionError(self._host, self._port,
