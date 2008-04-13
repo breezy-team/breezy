@@ -170,6 +170,7 @@ def get_stock_svn_providers():
 
 def create_auth_baton(url):
     """Create an authentication baton for the specified URL."""
+    assert isinstance(url, str)
     (scheme, netloc, path, _, _) = urlparse.urlsplit(url)
     (creds, host) = urllib.splituser(netloc)
     (host, port) = urllib.splitport(host)

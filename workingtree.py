@@ -71,14 +71,6 @@ def generate_ignore_list(ignore_map):
     return ignores
 
 
-class WorkingTreeInconsistent(BzrError):
-    _fmt = """Working copy is in inconsistent state (%(min_revnum)d:%(max_revnum)d)"""
-
-    def __init__(self, min_revnum, max_revnum):
-        self.min_revnum = min_revnum
-        self.max_revnum = max_revnum
-
-
 class SvnWorkingTree(WorkingTree):
     """WorkingTree implementation that uses a Subversion Working Copy for storage."""
     def __init__(self, bzrdir, local_path, branch):
@@ -88,20 +80,12 @@ class SvnWorkingTree(WorkingTree):
         self._branch = branch
         self.base_revnum = 0
         self.pool = Pool()
-        self.client_ctx = create_svn_client(self.pool)
+        self.client_ctx = create_svn_client(bzrdir.svn_url)
         self.client_ctx.log_msg_func2 = \
                 svn.client.svn_swig_py_get_commit_log_func
 
         self._get_wc()
         status = svn.wc.revision_status(self.basedir, None, True, None, None)
-        if status.min_rev != status.max_rev:
-            #raise WorkingTreeInconsistent(status.min_rev, status.max_rev)
-            rev = svn.core.svn_opt_revision_t()
-            rev.kind = svn.core.svn_opt_revision_number
-            rev.value.number = status.max_rev
-            assert status.max_rev == svn.client.update(self.basedir, rev,
-                                     True, self.client_ctx, Pool())
-
         self.base_revnum = status.max_rev
         self.base_tree = SvnBasisTree(self)
         self.base_revid = branch.generate_revision_id(self.base_revnum)
@@ -743,11 +727,11 @@ class SvnCheckout(BzrDir):
         # Open related remote repository + branch
         wc = svn.wc.adm_open3(None, self.local_path, False, 0, None)
         try:
-            svn_url = svn.wc.entry(self.local_path, wc, True).url
+            self.svn_url = svn.wc.entry(self.local_path, wc, True).url
         finally:
             svn.wc.adm_close(wc)
 
-        self.remote_transport = SvnRaTransport(svn_url)
+        self.remote_transport = SvnRaTransport(self.svn_url)
         self.remote_bzrdir = SvnRemoteAccess(self.remote_transport)
         self.svn_root_transport = self.remote_transport.clone_root()
         self.root_transport = self.transport = transport

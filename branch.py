@@ -184,8 +184,9 @@ class SvnBranch(Branch):
             rev.kind = svn.core.svn_opt_revision_number
             rev.value.number = revnum
 
-        client_ctx = create_svn_client(Pool())
-        svn.client.checkout(bzr_to_svn_url(self.base), to_location, rev, 
+        svn_url = bzr_to_svn_url(self.base)
+        client_ctx = create_svn_client(svn_url)
+        svn.client.checkout(svn_url, to_location, rev, 
                             True, client_ctx)
 
         return WorkingTree.open(to_location)
