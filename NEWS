@@ -12,6 +12,29 @@ IN DEVELOPMENT
 
   CHANGES:
 
+    * Broader support of GNU Emacs mail clients. Set
+      ``mail_client=emacsclient`` in your bazaar.conf and ``send`` will pop the
+      bundle in a mail buffer according to the value of ``mail-user-agent``
+      variable. (Xavier Maillard)
+
+  FEATURES:
+
+  IMPROVEMENTS:
+
+  BUGFIXES:
+
+  DOCUMENTATION:
+
+  TESTING:
+
+  INTERNALS:
+
+  API BREAKS:
+
+
+bzr 1.4rc1 2008-04-11
+---------------------
+
    * bzr main script cannot be imported (Benjamin Peterson)
 
    * On Linux bzr additionally looks for plugins in arch-independent site
@@ -35,12 +58,6 @@ IN DEVELOPMENT
      (James Wesby, Andrew Cowie)
 
   FEATURES:
-
-    * GNU Emacs set of mail clients are now supported as a mail_client
-      target; set ``mail_client=emacsclient`` in your bazaar.conf and
-      ``send`` will pop the bundle in a mail buffer according to the
-      value of ``mail-user-agent`` variable. (Bojan Nikolic, Xavier
-      Maillard)
 
     * Added start_commit hook for mutable trees. (Jelmer Vernooij, #186422)
 
