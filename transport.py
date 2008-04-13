@@ -36,41 +36,11 @@ def get_client_string():
     """Return a string that can be send as part of the User Agent string."""
     return "bzr%s+bzr-svn%s" % (bzrlib.__version__, bzrlib.plugins.svn.__version__)
 
-
-def _create_auth_baton(pool):
-    """Create a Subversion authentication baton. """
-    # Give the client context baton a suite of authentication
-    # providers.h
-    providers = []
-
-    if svn.core.SVN_VER_MAJOR == 1 and svn.core.SVN_VER_MINOR >= 5:
-        import auth
-        providers += auth.SubversionAuthenticationConfig().get_svn_auth_providers()
-        providers += [auth.get_ssl_client_cert_pw_provider(1)]
-
-    providers += [
-        svn.client.get_simple_provider(pool),
-        svn.client.get_username_provider(pool),
-        svn.client.get_ssl_client_cert_file_provider(pool),
-        svn.client.get_ssl_client_cert_pw_file_provider(pool),
-        svn.client.get_ssl_server_trust_file_provider(pool),
-        ]
-
-    if hasattr(svn.client, 'get_windows_simple_provider'):
-        providers.append(svn.client.get_windows_simple_provider(pool))
-
-    if hasattr(svn.client, 'get_keychain_simple_provider'):
-        providers.append(svn.client.get_keychain_simple_provider(pool))
-
-    if hasattr(svn.client, 'get_windows_ssl_server_trust_provider'):
-        providers.append(svn.client.get_windows_ssl_server_trust_provider(pool))
-
-    return svn.core.svn_auth_open(providers, pool)
-
-
-def create_svn_client(pool):
-    client = svn.client.create_context(pool)
-    client.auth_baton = _create_auth_baton(pool)
+ 
+def create_svn_client(url):
+    from auth import create_auth_baton
+    client = svn.client.create_context()
+    client.auth_baton = create_auth_baton(url)
     client.config = svn_config
     return client
 
@@ -236,7 +206,7 @@ class SvnRaTransport(Transport):
         self._backing_url = _backing_url.rstrip("/")
         Transport.__init__(self, bzr_url)
 
-        self._client = create_svn_client(self.pool)
+        self._client = create_svn_client(self._backing_url)
         try:
             self.mutter('opening SVN RA connection to %r' % self._backing_url)
             self._ra = svn.client.open_ra_session(self._backing_url.encode('utf8'), 

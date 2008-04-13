@@ -29,6 +29,8 @@ bzr-svn 0.4.10  UNRELEASED
 
    * Support set_user_option() on Subversion branch BranchConfig. (#195962)
 
+   * Support credentials in URLs. (#181534)
+
   INTERNALS
 
    * Branching from a Subversion repository will now fetch right-hand side 

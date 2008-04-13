@@ -19,12 +19,19 @@ The Python bindings required for password prompting are only present in
 version 1.5 of Subversion so password prompting is only possible if 
 you have that version installed.
 
-If you have an older version installed, bzr-svn can 
-use passwords cached by Subversion. Subversion can be forced to cache 
-the password by accessing the repository using the Subversion command-line 
-client. For example, try running 'svn info <url>'. If you are using a 
-Subversion repository over http or https it may be necessary to prefix the
-repository URL with "svn+", e.g. 
+If you have an older version of Subversion installed, bzr-svn can 
+use passwords cached by Subversion or credentials specified in the URL. 
+
+Subversion can be forced to cache the password by accessing the repository 
+using the Subversion command-line client. 
+For example, try running 'svn info <url>'. 
+
+You can specify the username and password in the URL in the standard way, e.g.::
+
+  $ bzr co svn+http://guest:@tortoisesvn.tigris.org/svn/tortoisesvn/trunk
+
+If you are using a Subversion repository over http or https it may be 
+necessary to prefix the repository URL with "svn+", e.g. 
 svn+http://svn.python.org/projects/python/trunk/
 
 Trying to branch into repository gives an error about incompatibility.
