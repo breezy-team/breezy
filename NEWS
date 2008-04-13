@@ -24,8 +24,11 @@ IN DEVELOPMENT
 
   FEATURES:
 
-    * Added mail-mode GNU Emacs mail package as a mail_client.
-      (Xavier Maillard, Bojan Nikolic)
+    * GNU Emacs set of mail clients are now supported as a mail_client
+      target; set ``mail_client=emacsclient`` in your bazaar.conf and
+      ``send`` will pop the bundle in a mail buffer according to the
+      value of ``mail-user-agent`` variable. (Bojan Nikolic, Xavier
+      Maillard)
 
   IMPROVEMENTS:
 
