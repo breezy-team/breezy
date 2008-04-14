@@ -180,36 +180,31 @@ class BzrDir(object):
                                even if one is available.
         """
         transport.ensure_base()
-        result = self._format.initialize_on_transport(transport)
+        result = self.cloning_metadir().initialize_on_transport(transport)
+        repository_policy = None
         try:
             local_repo = self.find_repository()
         except errors.NoRepositoryPresent:
             local_repo = None
         if local_repo:
             # may need to copy content in
-            if force_new_repo:
-                result_repo = local_repo.clone(
-                    result,
-                    revision_id=revision_id)
-                result_repo.set_make_working_trees(local_repo.make_working_trees())
-            else:
-                try:
-                    result_repo = result.find_repository()
-                    # fetch content this dir needs.
-                    result_repo.fetch(local_repo, revision_id=revision_id)
-                except errors.NoRepositoryPresent:
-                    # needed to make one anyway.
-                    result_repo = local_repo.clone(
-                        result,
-                        revision_id=revision_id)
-                    result_repo.set_make_working_trees(local_repo.make_working_trees())
+            repository_policy = result.determine_repository_policy(
+                force_new_repo)
+            make_working_trees = local_repo.make_working_trees()
+            result_repo = repository_policy.acquire_repository(
+                make_working_trees, local_repo.is_shared())
+            result_repo.fetch(local_repo, revision_id=revision_id)
         # 1 if there is a branch present
         #   make sure its content is available in the target repository
         #   clone it.
         try:
-            self.open_branch().clone(result, revision_id=revision_id)
+            local_branch = self.open_branch()
         except errors.NotBranchError:
             pass
+        else:
+            result_branch = local_branch.clone(result, revision_id=revision_id)
+            if repository_policy is not None:
+                repository_policy.configure_branch(result_branch)
         try:
             result_repo = result.find_repository()
         except errors.NoRepositoryPresent:
@@ -356,15 +351,43 @@ class BzrDir(object):
         bzrdir._find_or_create_repository(force_new_repo)
         return bzrdir.create_branch()
 
+    def determine_repository_policy(self, force_new_repo=False):
+        """Return an object representing a policy to use.
+
+        This controls whether a new repository is created, or a shared
+        repository used instead.
+        """
+        def repository_policy(found_bzrdir):
+            stop = False
+            # does it have a repository ?
+            try:
+                repository = found_bzrdir.open_repository()
+            except errors.NoRepositoryPresent:
+                repository = None
+            else:
+                if ((found_bzrdir.root_transport.base !=
+                     self.root_transport.base) and not repository.is_shared()):
+                    repository = None
+                else:
+                    stop = True
+            if not stop:
+                return None, False
+            if repository:
+                return UseExistingRepository(repository), True
+            else:
+                return CreateRepository(self), True
+
+        if not force_new_repo:
+            policy = self._find_containing(repository_policy)
+            if policy is not None:
+                return policy
+        return CreateRepository(self)
+
     def _find_or_create_repository(self, force_new_repo):
         """Create a new repository if needed, returning the repository."""
-        if force_new_repo:
-            return self.create_repository()
-        try:
-            return self.find_repository()
-        except errors.NoRepositoryPresent:
-            return self.create_repository()
-        
+        policy = self.determine_repository_policy(force_new_repo)
+        return policy.acquire_repository()
+
     @staticmethod
     def create_branch_convenience(base, force_new_repo=False,
                                   force_new_tree=None, format=None,
@@ -508,6 +531,35 @@ class BzrDir(object):
         """
         raise NotImplementedError(self.destroy_workingtree_metadata)
 
+    def _find_containing(self, evaluate):
+        """Find something in a containing control directory.
+
+        This method will scan containing control dirs, until it finds what
+        it is looking for, decides that it will never find it, or runs out
+        of containing control directories to check.
+
+        It is used to implement find_repository and
+        determine_repository_policy.
+
+        :param evaluate: A function returning (value, stop).  If stop is True,
+            the value will be returned.
+        """
+        found_bzrdir = self
+        while True:
+            result, stop = evaluate(found_bzrdir)
+            if stop:
+                return result
+            next_transport = found_bzrdir.root_transport.clone('..')
+            if (found_bzrdir.root_transport.base == next_transport.base):
+                # top of the file system
+                return None
+            # find the next containing bzrdir
+            try:
+                found_bzrdir = BzrDir.open_containing_from_transport(
+                    next_transport)[0]
+            except errors.NotBranchError:
+                return None
+
     def find_repository(self):
         """Find the repository that should be used.
 
@@ -515,35 +567,23 @@ class BzrDir(object):
         new branches as well as to hook existing branches up to their
         repository.
         """
-        try:
-            return self.open_repository()
-        except errors.NoRepositoryPresent:
-            pass
-        next_transport = self.root_transport.clone('..')
-        while True:
-            # find the next containing bzrdir
-            try:
-                found_bzrdir = BzrDir.open_containing_from_transport(
-                    next_transport)[0]
-            except errors.NotBranchError:
-                # none found
-                raise errors.NoRepositoryPresent(self)
+        def usable_repository(found_bzrdir):
             # does it have a repository ?
             try:
                 repository = found_bzrdir.open_repository()
             except errors.NoRepositoryPresent:
-                next_transport = found_bzrdir.root_transport.clone('..')
-                if (found_bzrdir.root_transport.base == next_transport.base):
-                    # top of the file system
-                    break
-                else:
-                    continue
-            if ((found_bzrdir.root_transport.base ==
-                 self.root_transport.base) or repository.is_shared()):
-                return repository
+                return None, False
+            if found_bzrdir.root_transport.base == self.root_transport.base:
+                return repository, True
+            elif repository.is_shared():
+                return repository, True
             else:
-                raise errors.NoRepositoryPresent(self)
-        raise errors.NoRepositoryPresent(self)
+                return None, True
+
+        found_repo = self._find_containing(usable_repository)
+        if found_repo is None:
+            raise errors.NoRepositoryPresent(self)
+        return found_repo
 
     def get_branch_reference(self):
         """Return the referenced URL for the branch in this bzrdir.
@@ -1009,6 +1049,10 @@ class BzrDirPreSplitOut(BzrDir):
     def break_lock(self):
         """Pre-splitout bzrdirs do not suffer from stale locks."""
         raise NotImplementedError(self.break_lock)
+
+    def cloning_metadir(self):
+        """Produce a metadir suitable for cloning with."""
+        return self._format.__class__()
 
     def clone(self, url, revision_id=None, force_new_repo=False):
         """See BzrDir.clone()."""
@@ -2415,15 +2459,14 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
     def initialize_on_transport(self, transport):
         try:
             # hand off the request to the smart server
-            shared_medium = transport.get_shared_medium()
+            client_medium = transport.get_smart_medium()
         except errors.NoSmartMedium:
             # TODO: lookup the local format from a server hint.
             local_dir_format = BzrDirMetaFormat1()
             return local_dir_format.initialize_on_transport(transport)
-        client = _SmartClient(shared_medium)
+        client = _SmartClient(client_medium, transport.base)
         path = client.remote_path_from_transport(transport)
-        response = _SmartClient(shared_medium).call('BzrDirFormat.initialize',
-                                                    path)
+        response = client.call('BzrDirFormat.initialize', path)
         assert response[0] in ('ok', ), 'unexpected response code %s' % (response,)
         return remote.RemoteBzrDir(transport)
 
@@ -2608,6 +2651,67 @@ class BzrDirFormatRegistry(registry.Registry):
                 output += wrapped(key, help, info)
 
         return output
+
+
+class RepositoryAcquisitionPolicy(object):
+    """Abstract base class for repository acquisition policies.
+
+    A repository acquisition policy decides how a BzrDir acquires a repository
+    for a branch that is being created.  The most basic policy decision is
+    whether to create a new repository or use an existing one.
+    """
+
+    def configure_branch(self, branch):
+        """Apply any configuration data from this policy to the branch.
+
+        Default implementation does nothing.
+        """
+        pass
+
+    def acquire_repository(self, make_working_trees=None, shared=False):
+        """Acquire a repository for this bzrdir.
+
+        Implementations may create a new repository or use a pre-exising
+        repository.
+        :param make_working_trees: If creating a repository, set
+            make_working_trees to this value (if non-None)
+        :param shared: If creating a repository, make it shared if True
+        :return: A repository
+        """
+        raise NotImplemented(RepositoryAcquisitionPolicy.acquire_repository)
+
+
+class CreateRepository(RepositoryAcquisitionPolicy):
+    """A policy of creating a new repository"""
+
+    def __init__(self, bzrdir):
+        RepositoryAcquisitionPolicy.__init__(self)
+        self._bzrdir = bzrdir
+
+    def acquire_repository(self, make_working_trees=None, shared=False):
+        """Implementation of RepositoryAcquisitionPolicy.acquire_repository
+
+        Creates the desired repository in the bzrdir we already have.
+        """
+        repository = self._bzrdir.create_repository(shared=shared)
+        if make_working_trees is not None:
+            repository.set_make_working_trees(make_working_trees)
+        return repository
+
+
+class UseExistingRepository(RepositoryAcquisitionPolicy):
+    """A policy of reusing an existing repository"""
+
+    def __init__(self, repository):
+        RepositoryAcquisitionPolicy.__init__(self)
+        self._repository = repository
+
+    def acquire_repository(self, make_working_trees=None, shared=False):
+        """Implementation of RepositoryAcquisitionPolicy.acquire_repository
+
+        Returns an existing repository to use
+        """
+        return self._repository
 
 
 format_registry = BzrDirFormatRegistry()

@@ -350,10 +350,10 @@ don't have a local branch, then you cannot commit locally.
 Lightweight checkouts work best when you have fast reliable access to the
 master branch. This means that if the master branch is on the same disk or LAN
 a lightweight checkout will be faster than a heavyweight one for any commands
-that modify the revision history (as only one copy branch needs to be updated).
-Heavyweight checkouts will generally be faster for any command that uses the
-history but does not change it, but if the master branch is on the same disk
-then there wont be a noticeable difference.
+that modify the revision history (as only one copy of the branch needs to
+be updated). Heavyweight checkouts will generally be faster for any command
+that uses the history but does not change it, but if the master branch is on
+the same disk then there won't be a noticeable difference.
 
 Another possible use for a checkout is to use it with a treeless repository
 containing your branches, where you maintain only one working tree by
@@ -580,8 +580,9 @@ _criss_cross = \
 A criss-cross in the branch history can cause the default merge technique
 to emit more conflicts than would normally be expected.
 
-If you encounter criss-crosses, you can use merge --weave instead, which
-should provide a much better result.
+In complex merge cases, ``bzr merge --lca`` or ``bzr merge --weave`` may give
+better results.  You may wish to ``bzr revert`` the working tree and merge
+again.  Alternatively, use ``bzr remerge`` on particular conflicted files.
 
 Criss-crosses occur in a branch's history if two branches merge the same thing
 and then merge one another, or if two branches merge one another at the same
@@ -601,7 +602,8 @@ are emitted.
 
 The ``weave`` merge type is not affected by this problem because it uses
 line-origin detection instead of a basis revision to determine the cause of
-differences."""
+differences.
+"""
 
 
 # Register help topics

@@ -22,7 +22,7 @@ class TestWorkingTree(tests.TestCaseWithTransport):
     def make_branch_and_tree(self, relpath, format=None):
         if format is None:
             format = 'dirstate-with-subtree'
-        return tests.TestCaseWithTransport.make_branch_and_tree(self, relpath, 
+        return tests.TestCaseWithTransport.make_branch_and_tree(self, relpath,
                                                                 format)
 
     def make_trees(self, format=None, same_root=False):

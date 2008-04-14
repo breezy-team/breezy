@@ -333,10 +333,10 @@ class KnitReconciler(RepoReconciler):
 
         # we have topological order of revisions and non ghost parents ready.
         self._setup_steps(len(self.revisions))
-        graph = self.revisions.get_graph()
-        parent_map = self.revisions.get_parent_map(graph.keys())
+        revision_ids = self.revisions.versions()
+        graph = self.revisions.get_parent_map(revision_ids)
         for rev_id in TopoSorter(graph.items()).iter_topo_order():
-            parents = parent_map[rev_id]
+            parents = graph[rev_id]
             # double check this really is in topological order, ignoring existing ghosts.
             unavailable = [p for p in parents if p not in new_inventory_vf and
                 p in self.revisions]
