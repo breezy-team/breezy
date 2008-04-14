@@ -63,7 +63,10 @@ class InterRepositoryTestProviderAdapter(TestScenarioApplier):
         """
         result = []
         for interrepo_class, repository_format, repository_format_to in formats:
-            scenario = (interrepo_class.__name__,
+            id = '%s,%s,%s' % (interrepo_class.__name__,
+                                repository_format.__class__.__name__,
+                                repository_format_to.__class__.__name__)
+            scenario = (id,
                 {"transport_server":self._transport_server,
                  "transport_readonly_server":self._transport_readonly_server,
                  "repository_format":repository_format,

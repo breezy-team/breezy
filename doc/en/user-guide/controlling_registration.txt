@@ -73,10 +73,10 @@ use ``bzr ignored``::
     config.h                 ./config.h
     configure.in~            *~
 
-It is OK to have either an ignore pattern match a versioned file, or to
-add an ignored file.  Ignore patterns have no effect on versioned files;
-they only determine whether unversioned files are reported as unknown or
-ignored.
+Note that ignore patterns are only matched against non-versioned files,
+and control whether they are treated as "unknown" or "ignored".  If a file
+is explicitly added, it remains versioned regardless of whether it matches
+an ignore pattern.
 
 The ``.bzrignore`` file should normally be versioned, so that new copies
 of the branch see the same patterns::
