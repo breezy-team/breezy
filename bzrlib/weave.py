@@ -185,7 +185,13 @@ class Weave(VersionedFile):
     __slots__ = ['_weave', '_parents', '_sha1s', '_names', '_name_map',
                  '_weave_name', '_matcher']
     
-    def __init__(self, weave_name=None, access_mode='w', matcher=None):
+    def __init__(self, weave_name=None, access_mode='w', matcher=None, get_scope=None):
+        """Create a weave.
+
+        :param get_scope: A callable that returns an opaque object to be used
+            for detecting when this weave goes out of scope (should stop
+            answering requests or allowing mutation).
+        """
         super(Weave, self).__init__(access_mode)
         self._weave = []
         self._parents = []
@@ -197,9 +203,21 @@ class Weave(VersionedFile):
             self._matcher = bzrlib.patiencediff.PatienceSequenceMatcher
         else:
             self._matcher = matcher
+        if get_scope is None:
+            get_scope = lambda:None
+        self._get_scope = get_scope
+        self._scope = get_scope()
+        self._access_mode = access_mode
 
     def __repr__(self):
         return "Weave(%r)" % self._weave_name
+
+    def _check_write_ok(self):
+        """Is the versioned file marked as 'finished' ? Raise if it is."""
+        if self._get_scope() != self._scope:
+            raise errors.OutSideTransaction()
+        if self._access_mode != 'w':
+            raise errors.ReadOnlyObjectDirtiedError(self)
 
     def copy(self):
         """Return a deep copy of self.
@@ -401,11 +419,6 @@ class Weave(VersionedFile):
                 offset += 2 + (j2 - j1)
         return new_version
 
-    def _clone_text(self, new_version_id, old_version_id, parents):
-        """See VersionedFile.clone_text."""
-        old_lines = self.get_text(old_version_id)
-        self.add_lines(new_version_id, parents, old_lines)
-
     def _inclusions(self, versions):
         """Return set of all ancestors of given version(s)."""
         if not len(versions):
@@ -453,13 +466,13 @@ class Weave(VersionedFile):
         """
         return len(other_parents.difference(my_parents)) == 0
 
-    def annotate_iter(self, version_id):
-        """Yield list of (version-id, line) pairs for the specified version.
+    def annotate(self, version_id):
+        """Return a list of (version-id, line) tuples for version_id.
 
         The index indicates when the line originated in the weave."""
         incls = [self._lookup(version_id)]
-        for origin, lineno, text in self._extract(incls):
-            yield self._idx_to_name(origin), text
+        return [(self._idx_to_name(origin), text) for origin, lineno, text in
+            self._extract(incls)]
 
     def iter_lines_added_or_present_in_versions(self, version_ids=None,
                                                 pb=None):
@@ -670,10 +683,6 @@ class Weave(VersionedFile):
                        expected_sha1, measured_sha1))
         return result
 
-    def get_sha1(self, version_id):
-        """See VersionedFile.get_sha1()."""
-        return self._sha1s[self._lookup(version_id)]
-
     def get_sha1s(self, version_ids):
         """See VersionedFile.get_sha1s()."""
         return [self._sha1s[self._lookup(v)] for v in version_ids]
@@ -865,12 +874,12 @@ class WeaveFile(Weave):
 
     WEAVE_SUFFIX = '.weave'
     
-    def __init__(self, name, transport, filemode=None, create=False, access_mode='w'):
+    def __init__(self, name, transport, filemode=None, create=False, access_mode='w', get_scope=None):
         """Create a WeaveFile.
         
         :param create: If not True, only open an existing knit.
         """
-        super(WeaveFile, self).__init__(name, access_mode)
+        super(WeaveFile, self).__init__(name, access_mode, get_scope=get_scope)
         self._transport = transport
         self._filemode = filemode
         try:
@@ -891,11 +900,6 @@ class WeaveFile(Weave):
         self._save()
         return result
 
-    def _clone_text(self, new_version_id, old_version_id, parents):
-        """See VersionedFile.clone_text."""
-        super(WeaveFile, self)._clone_text(new_version_id, old_version_id, parents)
-        self._save
-
     def copy_to(self, name, transport):
         """See VersionedFile.copy_to()."""
         # as we are all in memory always, just serialise to the new place.
@@ -903,9 +907,6 @@ class WeaveFile(Weave):
         write_weave_v5(self, sio)
         sio.seek(0)
         transport.put_file(name + WeaveFile.WEAVE_SUFFIX, sio, self._filemode)
-
-    def create_empty(self, name, transport, filemode=None):
-        return WeaveFile(name, transport, filemode, create=True)
 
     def _save(self):
         """Save the weave."""

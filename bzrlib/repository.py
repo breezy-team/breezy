@@ -420,13 +420,10 @@ class CommitBuilder(object):
         # implementation could give us bad output from readlines() so this is
         # not a guarantee of safety. What would be better is always checking
         # the content during test suite execution. RBC 20070912
-        try:
-            return versionedfile.add_lines_with_ghosts(
-                self._new_revision_id, parents, new_lines,
-                nostore_sha=nostore_sha, random_id=self.random_revid,
-                check_content=False)[0:2]
-        finally:
-            versionedfile.clear_cache()
+        return versionedfile.add_lines_with_ghosts(
+            self._new_revision_id, parents, new_lines,
+            nostore_sha=nostore_sha, random_id=self.random_revid,
+            check_content=False)[0:2]
 
 
 class RootCommitBuilder(CommitBuilder):
@@ -551,7 +548,8 @@ class Repository(object):
                                                      self.get_inventory_weave())
             else:
                 # yes, this is not suitable for adding with ghosts.
-                self.add_inventory(revision_id, inv, rev.parent_ids)
+                rev.inventory_sha1 = self.add_inventory(revision_id, inv, 
+                                                        rev.parent_ids)
         self._revision_store.add_revision(rev, self.get_transaction())
 
     def _add_revision_text(self, revision_id, text):
@@ -1280,16 +1278,18 @@ class Repository(object):
                 setdefault(file_id, set()).add(revision_id)
         return result
 
-    def fileids_altered_by_revision_ids(self, revision_ids):
+    def fileids_altered_by_revision_ids(self, revision_ids, _inv_weave=None):
         """Find the file ids and versions affected by revisions.
 
         :param revisions: an iterable containing revision ids.
+        :param _inv_weave: The inventory weave from this repository or None.
+            If None, the inventory weave will be opened automatically.
         :return: a dictionary mapping altered file-ids to an iterable of
         revision_ids. Each altered file-ids has the exact revision_ids that
         altered it listed explicitly.
         """
         selected_revision_ids = set(revision_ids)
-        w = self.get_inventory_weave()
+        w = _inv_weave or self.get_inventory_weave()
         pb = ui.ui_factory.nested_progress_bar()
         try:
             return self._find_file_ids_from_xml_inventory_lines(
@@ -1338,9 +1338,8 @@ class Repository(object):
         """
         # All revisions, to find inventory parents.
         if ancestors is None:
-            # self.get_revision_graph_with_ghosts().get_ancestors() wasn't
-            # returning any ghosts anyway.
-            ancestors = self.get_revision_graph()
+            graph = self.get_graph()
+            ancestors = graph.get_parent_map(self.all_revision_ids())
         if text_key_references is None:
             text_key_references = self.find_text_key_references()
         pb = ui.ui_factory.nested_progress_bar()
@@ -1450,10 +1449,9 @@ class Repository(object):
         # processed?
         self.lock_read()
         inv_w = self.get_inventory_weave()
-        inv_w.enable_cache()
 
         # file ids that changed
-        file_ids = self.fileids_altered_by_revision_ids(revision_ids)
+        file_ids = self.fileids_altered_by_revision_ids(revision_ids, inv_w)
         count = 0
         num_file_ids = len(file_ids)
         for file_id, altered_versions in file_ids.iteritems():
@@ -1467,7 +1465,6 @@ class Repository(object):
 
         # inventory
         yield ("inventory", None, revision_ids)
-        inv_w.clear_cache()
 
         # signatures
         revisions_with_signatures = set()
@@ -1552,6 +1549,7 @@ class Repository(object):
         return self.get_revision(revision_id).inventory_sha1
 
     @needs_read_lock
+    @deprecated_method(symbol_versioning.one_four)
     def get_revision_graph(self, revision_id=None):
         """Return a dictionary containing the revision graph.
 
@@ -2035,6 +2033,17 @@ class MetaDirRepository(Repository):
     def make_working_trees(self):
         """Returns the policy for making working trees on new branches."""
         return not self.control_files._transport.has('no-working-trees')
+
+
+class MetaDirVersionedFileRepository(MetaDirRepository):
+    """Repositories in a meta-dir, that work via versioned file objects."""
+
+    def __init__(self, _format, a_bzrdir, control_files, _revision_store, control_store, text_store):
+        super(MetaDirVersionedFileRepository, self).__init__(_format, a_bzrdir,
+            control_files, _revision_store, control_store, text_store)
+        _revision_store.get_scope = self.get_transaction
+        control_store.get_scope = self.get_transaction
+        text_store.get_scope = self.get_transaction
 
 
 class RepositoryFormatRegistry(registry.Registry):
@@ -2549,7 +2558,7 @@ class InterWeaveRepo(InterSameDataRepository):
         # weave specific optimised path:
         try:
             self.target.set_make_working_trees(self.source.make_working_trees())
-        except NotImplementedError:
+        except (errors.RepositoryUpgradeRequired, NotImplemented):
             pass
         # FIXME do not peek!
         if self.source.control_files._transport.listable():
@@ -3139,3 +3148,22 @@ class _VersionedFileChecker(object):
                 if correct_parents != knit_parents:
                     wrong_parents[revision_id] = (knit_parents, correct_parents)
         return wrong_parents, unused_versions
+
+
+def _old_get_graph(repository, revision_id):
+    """DO NOT USE. That is all. I'm serious."""
+    graph = repository.get_graph()
+    revision_graph = dict(((key, value) for key, value in
+        graph.iter_ancestry([revision_id]) if value is not None))
+    return _strip_NULL_ghosts(revision_graph)
+
+
+def _strip_NULL_ghosts(revision_graph):
+    """Also don't use this. more compatibility code for unmigrated clients."""
+    # Filter ghosts, and null:
+    if _mod_revision.NULL_REVISION in revision_graph:
+        del revision_graph[_mod_revision.NULL_REVISION]
+    for key, parents in revision_graph.items():
+        revision_graph[key] = tuple(parent for parent in parents if parent
+            in revision_graph)
+    return revision_graph

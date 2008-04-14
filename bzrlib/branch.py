@@ -25,6 +25,7 @@ from bzrlib import (
         errors,
         lockdir,
         lockable_files,
+        repository,
         revision as _mod_revision,
         transport,
         tsort,
@@ -192,7 +193,8 @@ class Branch(object):
         :return: A dictionary mapping revision_id => dotted revno.
         """
         last_revision = self.last_revision()
-        revision_graph = self.repository.get_revision_graph(last_revision)
+        revision_graph = repository._old_get_graph(self.repository,
+            last_revision)
         merge_sorted_revisions = tsort.merge_sort(
             revision_graph,
             last_revision,
@@ -1023,10 +1025,46 @@ class BranchHooks(Hooks):
         # local is the local branch or None, master is the target branch,
         # and an empty branch recieves new_revno of 0, new_revid of None.
         self['post_uncommit'] = []
+        # Introduced in 1.4
+        # Invoked after the tip of a branch changes.
+        # the api signature is
+        # (params) where params is a ChangeBranchTipParams with the members
+        # (branch, old_revno, new_revno, old_revid, new_revid)
+        self['post_change_branch_tip'] = []
 
 
 # install the default hooks into the Branch class.
 Branch.hooks = BranchHooks()
+
+
+class ChangeBranchTipParams(object):
+    """Object holding parameters passed to *_change_branch_tip hooks.
+
+    There are 5 fields that hooks may wish to access:
+
+    :ivar branch: the branch being changed
+    :ivar old_revno: revision number before the change
+    :ivar new_revno: revision number after the change
+    :ivar old_revid: revision id before the change
+    :ivar new_revid: revision id after the change
+
+    The revid fields are strings. The revno fields are integers.
+    """
+
+    def __init__(self, branch, old_revno, new_revno, old_revid, new_revid):
+        """Create a group of ChangeBranchTip parameters.
+
+        :param branch: The branch being changed.
+        :param old_revno: Revision number before the change.
+        :param new_revno: Revision number after the change.
+        :param old_revid: Tip revision id before the change.
+        :param new_revid: Tip revision id after the change.
+        """
+        self.branch = branch
+        self.old_revno = old_revno
+        self.new_revno = new_revno
+        self.old_revid = old_revid
+        self.new_revid = new_revid
 
 
 class BzrBranchFormat4(BranchFormat):
@@ -1375,12 +1413,23 @@ class BzrBranch(Branch):
         """See Branch.set_revision_history."""
         if 'evil' in debug.debug_flags:
             mutter_callsite(3, "set_revision_history scales with history.")
-        self._clear_cached_state()
         self._write_revision_history(rev_history)
+        self._clear_cached_state()
         self._cache_revision_history(rev_history)
         for hook in Branch.hooks['set_rh']:
             hook(self, rev_history)
 
+    def _run_post_change_branch_tip_hooks(self, old_revno, old_revid):
+        """Run the post_change_branch_tip hooks."""
+        hooks = Branch.hooks['post_change_branch_tip']
+        if not hooks:
+            return
+        new_revno, new_revid = self.last_revision_info()
+        params = ChangeBranchTipParams(
+            self, old_revno, new_revno, old_revid, new_revid)
+        for hook in hooks:
+            hook(params)
+ 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
         """Set the last revision of this branch.
@@ -1394,9 +1443,11 @@ class BzrBranch(Branch):
         be permitted.
         """
         revision_id = _mod_revision.ensure_null(revision_id)
+        old_revno, old_revid = self.last_revision_info()
         history = self._lefthand_history(revision_id)
         assert len(history) == revno, '%d != %d' % (len(history), revno)
         self.set_revision_history(history)
+        self._run_post_change_branch_tip_hooks(old_revno, old_revid)
 
     def _gen_revision_history(self):
         history = self.control_files.get('revision-history').read().split('\n')
@@ -1809,8 +1860,27 @@ class BzrBranch5(BzrBranch):
 
 class BzrBranch6(BzrBranch5):
 
+    def __init__(self, *args, **kwargs):
+        super(BzrBranch6, self).__init__(*args, **kwargs)
+        self._last_revision_info_cache = None
+        self._partial_revision_history_cache = []
+
+    def _clear_cached_state(self):
+        super(BzrBranch6, self)._clear_cached_state()
+        self._last_revision_info_cache = None
+        self._partial_revision_history_cache = []
+
     @needs_read_lock
     def last_revision_info(self):
+        """Return information about the last revision.
+
+        :return: A tuple (revno, revision_id).
+        """
+        if self._last_revision_info_cache is None:
+            self._last_revision_info_cache = self._last_revision_info()
+        return self._last_revision_info_cache
+
+    def _last_revision_info(self):
         revision_string = self.control_files.get('last-revision').read()
         revno, revision_id = revision_string.rstrip('\n').split(' ', 1)
         revision_id = cache_utf8.get_cached_utf8(revision_id)
@@ -1833,10 +1903,13 @@ class BzrBranch6(BzrBranch5):
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
         revision_id = _mod_revision.ensure_null(revision_id)
+        old_revno, old_revid = self.last_revision_info()
         if self._get_append_revisions_only():
             self._check_history_violation(revision_id)
         self._write_last_revision_info(revno, revision_id)
         self._clear_cached_state()
+        self._last_revision_info_cache = revno, revision_id
+        self._run_post_change_branch_tip_hooks(old_revno, old_revid)
 
     def _check_history_violation(self, revision_id):
         last_revision = _mod_revision.ensure_null(self.last_revision())
@@ -1848,10 +1921,38 @@ class BzrBranch6(BzrBranch5):
     def _gen_revision_history(self):
         """Generate the revision history from last revision
         """
-        history = list(self.repository.iter_reverse_revision_history(
-            self.last_revision()))
-        history.reverse()
-        return history
+        self._extend_partial_history()
+        return list(reversed(self._partial_revision_history_cache))
+
+    def _extend_partial_history(self, stop_index=None, stop_revision=None):
+        """Extend the partial history to include a given index
+
+        If a stop_index is supplied, stop when that index has been reached.
+        If a stop_revision is supplied, stop when that revision is
+        encountered.  Otherwise, stop when the beginning of history is
+        reached.
+
+        :param stop_index: The index which should be present.  When it is
+            present, history extension will stop.
+        :param revision_id: The revision id which should be present.  When
+            it is encountered, history extension will stop.
+        """
+        repo = self.repository
+        if len(self._partial_revision_history_cache) == 0:
+            iterator = repo.iter_reverse_revision_history(self.last_revision())
+        else:
+            start_revision = self._partial_revision_history_cache[-1]
+            iterator = repo.iter_reverse_revision_history(start_revision)
+            #skip the last revision in the list
+            next_revision = iterator.next()
+            assert next_revision == start_revision
+        for revision_id in iterator:
+            self._partial_revision_history_cache.append(revision_id)
+            if (stop_index is not None and
+                len(self._partial_revision_history_cache) > stop_index):
+                break
+            if revision_id == stop_revision:
+                break
 
     def _write_revision_history(self, history):
         """Factored out of set_revision_history.
@@ -1969,6 +2070,42 @@ class BzrBranch6(BzrBranch5):
         revno = len(history)
         self.set_last_revision_info(revno, revision_id)
 
+    @needs_read_lock
+    def get_rev_id(self, revno, history=None):
+        """Find the revision id of the specified revno."""
+        if revno == 0:
+            return _mod_revision.NULL_REVISION
+
+        last_revno, last_revision_id = self.last_revision_info()
+        if revno <= 0 or revno > last_revno:
+            raise errors.NoSuchRevision(self, revno)
+
+        if history is not None:
+            assert len(history) == last_revno, 'revno/history mismatch'
+            return history[revno - 1]
+
+        index = last_revno - revno
+        if len(self._partial_revision_history_cache) <= index:
+            self._extend_partial_history(stop_index=index)
+        if len(self._partial_revision_history_cache) > index:
+            return self._partial_revision_history_cache[index]
+        else:
+            raise errors.NoSuchRevision(self, revno)
+
+    @needs_read_lock
+    def revision_id_to_revno(self, revision_id):
+        """Given a revision id, return its revno"""
+        if _mod_revision.is_null(revision_id):
+            return 0
+        try:
+            index = self._partial_revision_history_cache.index(revision_id)
+        except ValueError:
+            self._extend_partial_history(stop_revision=revision_id)
+            index = len(self._partial_revision_history_cache) - 1
+            if self._partial_revision_history_cache[index] != revision_id:
+                raise errors.NoSuchRevision(self, revision_id)
+        return self.revno() - index
+
 
 ######################################################################
 # results of operations
@@ -2063,7 +2200,7 @@ class Converter5to6(object):
         new_branch = format.open(branch.bzrdir, _found=True)
 
         # Copy source data into target
-        new_branch.set_last_revision_info(*branch.last_revision_info())
+        new_branch._write_last_revision_info(*branch.last_revision_info())
         new_branch.set_parent(branch.get_parent())
         new_branch.set_bound_location(branch.get_bound_location())
         new_branch.set_push_location(branch.get_push_location())
