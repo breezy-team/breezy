@@ -2385,6 +2385,7 @@ class InterRepository(InterObject):
         :return: A set of revision ids.
         """
         graph = self.source.get_graph()
+        target_graph = self.target.get_graph()
         missing_revs = set()
         # ensure we don't pay silly lookup costs.
         revision_ids = frozenset(revision_ids)
@@ -2399,14 +2400,14 @@ class InterRepository(InterObject):
                 absent_ids = set(revision_ids.intersection(ghosts))
                 # If all absent_ids are present in target, no error is needed.
                 absent_ids.difference_update(
-                    self.target.has_revisions(absent_ids))
+                    set(target_graph.get_parent_map(absent_ids)))
                 if absent_ids:
                     raise errors.NoSuchRevision(self.source, absent_ids.pop())
             # we don't care about other ghosts as we can't fetch them and
             # haven't been asked to.
             next_revs = set(next_revs)
             # we always have NULL_REVISION present.
-            have_revs = self.target.has_revisions(next_revs).union(null_set)
+            have_revs = set(target_graph.get_parent_map(next_revs)).union(null_set)
             missing_revs.update(next_revs - have_revs)
             searcher.stop_searching_any(have_revs)
         return searcher.get_result()
