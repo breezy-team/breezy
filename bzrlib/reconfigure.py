@@ -18,6 +18,7 @@
 
 from bzrlib import (
     branch,
+    bzrdir,
     errors,
     )
 
@@ -30,6 +31,12 @@ class Reconfigure(object):
             self.repository = self.bzrdir.find_repository()
         except errors.NoRepositoryPresent:
             self.repository = None
+        else:
+            if (self.repository.bzrdir.root_transport.base ==
+                self.bzrdir.root_transport.base):
+                self.local_repository = self.repository
+            else:
+                self.local_repository = None
         try:
             branch = self.bzrdir.open_branch()
             if branch.bzrdir.root_transport.base == bzrdir.root_transport.base:
@@ -115,6 +122,24 @@ class Reconfigure(object):
             raise errors.AlreadyLightweightCheckout(bzrdir)
         return reconfiguration
 
+    @classmethod
+    def to_use_shared(klass, bzrdir):
+        """Convert a standalone branch into a repository branch"""
+        reconfiguration = klass(bzrdir)
+        reconfiguration._set_use_shared(use_shared=True)
+        if not reconfiguration.changes_planned():
+            raise errors.AlreadyUsingShared(bzrdir)
+        return reconfiguration
+
+    @classmethod
+    def to_standalone(klass, bzrdir):
+        """Convert a repository branch into a standalone branch"""
+        reconfiguration = klass(bzrdir)
+        reconfiguration._set_use_shared(use_shared=False)
+        if not reconfiguration.changes_planned():
+            raise errors.AlreadyStandalone(bzrdir)
+        return reconfiguration
+
     def _plan_changes(self, want_tree, want_branch, want_bound,
                       want_reference):
         """Determine which changes are needed to assume the configuration"""
@@ -155,12 +180,22 @@ class Reconfigure(object):
         if want_tree and self.tree is None:
             self._create_tree = True
 
+    def _set_use_shared(self, use_shared=None):
+        if use_shared is None:
+            return
+        if use_shared:
+            if self.local_repository is not None:
+                self._destroy_repository = True
+        else:
+            if self.local_repository is None:
+                self._create_repository = True
+
     def changes_planned(self):
         """Return True if changes are planned, False otherwise"""
         return (self._unbind or self._bind or self._destroy_tree
                 or self._create_tree or self._destroy_reference
                 or self._create_branch or self._create_repository
-                or self._create_reference)
+                or self._create_reference or self._destroy_repository)
 
     def _check(self):
         """Raise if reconfiguration would destroy local changes"""
@@ -213,6 +248,9 @@ class Reconfigure(object):
             self._check()
         if self._create_repository:
             repo = self.bzrdir.create_repository()
+            if self.local_branch and not self._destroy_branch:
+                repo.fetch(self.local_branch.repository,
+                           self.local_branch.last_revision())
         else:
             repo = self.repository
         if self._create_branch and self.referenced_branch is not None:
@@ -223,6 +261,11 @@ class Reconfigure(object):
         if self._destroy_repository:
             if self._create_reference:
                 reference_branch.repository.fetch(self.repository)
+            elif self.local_branch is not None and not self._destroy_branch:
+                up = self.local_branch.bzrdir.root_transport.clone('..')
+                up_bzrdir = bzrdir.BzrDir.open_containing_from_transport(up)[0]
+                new_repo = up_bzrdir.find_repository()
+                new_repo.fetch(self.repository)
         last_revision_info = None
         if self._destroy_reference:
             last_revision_info = self.referenced_branch.last_revision_info()

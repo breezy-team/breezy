@@ -37,6 +37,8 @@ from bzrlib.errors import (
 from bzrlib.index import *
 from bzrlib.knit import (
     AnnotatedKnitContent,
+    DATA_SUFFIX,
+    INDEX_SUFFIX,
     KnitContent,
     KnitGraphIndex,
     KnitVersionedFile,
@@ -45,6 +47,7 @@ from bzrlib.knit import (
     _KnitAccess,
     _KnitData,
     _KnitIndex,
+    make_file_knit,
     _PackAccess,
     PlainKnitContent,
     _StreamAccess,
@@ -53,6 +56,7 @@ from bzrlib.knit import (
     KnitSequenceMatcher,
     )
 from bzrlib.osutils import split_lines
+from bzrlib.symbol_versioning import one_four
 from bzrlib.tests import (
     Feature,
     TestCase,
@@ -158,17 +162,6 @@ class TestPlainKnitContent(TestCase, KnitContentTestsMixin):
         self.assertEqual(content.annotate(),
             [("bogus", "text1"), ("bogus", "text2")])
 
-    def test_annotate_iter(self):
-        content = self._make_content([])
-        it = content.annotate_iter()
-        self.assertRaises(StopIteration, it.next)
-
-        content = self._make_content([("bogus", "text1"), ("bogus", "text2")])
-        it = content.annotate_iter()
-        self.assertEqual(it.next(), ("bogus", "text1"))
-        self.assertEqual(it.next(), ("bogus", "text2"))
-        self.assertRaises(StopIteration, it.next)
-
     def test_line_delta(self):
         content1 = self._make_content([("", "a"), ("", "b")])
         content2 = self._make_content([("", "a"), ("", "a"), ("", "c")])
@@ -195,17 +188,6 @@ class TestAnnotatedKnitContent(TestCase, KnitContentTestsMixin):
         content = self._make_content([("origin1", "text1"), ("origin2", "text2")])
         self.assertEqual(content.annotate(),
             [("origin1", "text1"), ("origin2", "text2")])
-
-    def test_annotate_iter(self):
-        content = self._make_content([])
-        it = content.annotate_iter()
-        self.assertRaises(StopIteration, it.next)
-
-        content = self._make_content([("origin1", "text1"), ("origin2", "text2")])
-        it = content.annotate_iter()
-        self.assertEqual(it.next(), ("origin1", "text1"))
-        self.assertEqual(it.next(), ("origin2", "text2"))
-        self.assertRaises(StopIteration, it.next)
 
     def test_line_delta(self):
         content1 = self._make_content([("", "a"), ("", "b")])
@@ -492,7 +474,7 @@ class LowLevelKnitIndexTests(TestCase):
         self.addCleanup(reset)
         from bzrlib._knit_load_data_py import _load_data_py
         knit._load_data = _load_data_py
-        return _KnitIndex(*args, **kwargs)
+        return _KnitIndex(get_scope=lambda:None, *args, **kwargs)
 
     def test_no_such_file(self):
         transport = MockTransport()
@@ -676,36 +658,6 @@ class LowLevelKnitIndexTests(TestCase):
 
         self.assertRaises(RevisionNotPresent,
             index.get_ancestry_with_ghosts, ["e"])
-
-    def test_iter_parents(self):
-        transport = MockTransport()
-        index = self.get_knit_index(transport, "filename", "w", create=True)
-        # no parents
-        index.add_version('r0', ['option'], (None, 0, 1), [])
-        # 1 parent
-        index.add_version('r1', ['option'], (None, 0, 1), ['r0'])
-        # 2 parents
-        index.add_version('r2', ['option'], (None, 0, 1), ['r1', 'r0'])
-        # XXX TODO a ghost
-        # cases: each sample data individually:
-        self.assertEqual(set([('r0', ())]),
-            set(index.iter_parents(['r0'])))
-        self.assertEqual(set([('r1', ('r0', ))]),
-            set(index.iter_parents(['r1'])))
-        self.assertEqual(set([('r2', ('r1', 'r0'))]),
-            set(index.iter_parents(['r2'])))
-        # no nodes returned for a missing node
-        self.assertEqual(set(),
-            set(index.iter_parents(['missing'])))
-        # 1 node returned with missing nodes skipped
-        self.assertEqual(set([('r1', ('r0', ))]),
-            set(index.iter_parents(['ghost1', 'r1', 'ghost'])))
-        # 2 nodes returned
-        self.assertEqual(set([('r0', ()), ('r1', ('r0', ))]),
-            set(index.iter_parents(['r0', 'r1'])))
-        # 2 nodes returned, missing skipped
-        self.assertEqual(set([('r0', ()), ('r1', ('r0', ))]),
-            set(index.iter_parents(['a', 'r0', 'b', 'r1', 'c'])))
 
     def test_num_versions(self):
         transport = MockTransport([
@@ -1075,22 +1027,28 @@ class LowLevelKnitIndexTests_c(LowLevelKnitIndexTests):
         self.addCleanup(reset)
         from bzrlib._knit_load_data_c import _load_data_c
         knit._load_data = _load_data_c
-        return _KnitIndex(*args, **kwargs)
-
+        return _KnitIndex(get_scope=lambda:None, *args, **kwargs)
 
 
 class KnitTests(TestCaseWithTransport):
     """Class containing knit test helper routines."""
 
     def make_test_knit(self, annotate=False, delay_create=False, index=None,
-                       name='test'):
+                       name='test', delta=True, access_mode='w'):
         if not annotate:
             factory = KnitPlainFactory()
         else:
             factory = None
-        return KnitVersionedFile(name, get_transport('.'), access_mode='w',
-                                 factory=factory, create=True,
-                                 delay_create=delay_create, index=index)
+        if index is None:
+            index = _KnitIndex(get_transport('.'), name + INDEX_SUFFIX,
+                access_mode, create=True, file_mode=None,
+                create_parent_dir=False, delay_create=delay_create,
+                dir_mode=None, get_scope=lambda:None)
+        access = _KnitAccess(get_transport('.'), name + DATA_SUFFIX, None,
+            None, delay_create, False)
+        return KnitVersionedFile(name, get_transport('.'), factory=factory,
+            create=True, delay_create=delay_create, index=index,
+            access_method=access, delta=delta)
 
     def assertRecordContentEqual(self, knit, version_id, candidate_content):
         """Assert that some raw record content matches the raw record content
@@ -1115,7 +1073,7 @@ class BasicKnitTests(KnitTests):
     def test_make_explicit_index(self):
         """We can supply an index to use."""
         knit = KnitVersionedFile('test', get_transport('.'),
-            index='strangelove')
+            index='strangelove', access_method="a")
         self.assertEqual(knit._index, 'strangelove')
 
     def test_knit_add(self):
@@ -1162,7 +1120,8 @@ class BasicKnitTests(KnitTests):
         k = self.make_test_knit()
         k.add_lines('text-1', [], split_lines(TEXT_1))
         del k
-        k2 = KnitVersionedFile('test', get_transport('.'), access_mode='r', factory=KnitPlainFactory(), create=True)
+        k2 = make_file_knit('test', get_transport('.'), access_mode='r',
+            factory=KnitPlainFactory(), create=True)
         self.assertTrue(k2.has_version('text-1'))
         self.assertEqualDiff(''.join(k2.get_lines('text-1')), TEXT_1)
 
@@ -1190,11 +1149,11 @@ class BasicKnitTests(KnitTests):
     def test_incomplete(self):
         """Test if texts without a ending line-end can be inserted and
         extracted."""
-        k = KnitVersionedFile('test', get_transport('.'), delta=False, create=True)
+        k = make_file_knit('test', get_transport('.'), delta=False, create=True)
         k.add_lines('text-1', [], ['a\n',    'b'  ])
         k.add_lines('text-2', ['text-1'], ['a\rb\n', 'b\n'])
         # reopening ensures maximum room for confusion
-        k = KnitVersionedFile('test', get_transport('.'), delta=False, create=True)
+        k = make_file_knit('test', get_transport('.'), delta=False, create=True)
         self.assertEquals(k.get_lines('text-1'), ['a\n',    'b'  ])
         self.assertEquals(k.get_lines('text-2'), ['a\rb\n', 'b\n'])
 
@@ -1222,10 +1181,8 @@ class BasicKnitTests(KnitTests):
 
     def test_add_delta(self):
         """Store in knit with parents"""
-        k = KnitVersionedFile('test', get_transport('.'), factory=KnitPlainFactory(),
-            delta=True, create=True)
+        k = self.make_test_knit(annotate=False)
         self.add_stock_one_and_one_a(k)
-        k.clear_cache()
         self.assertEqualDiff(''.join(k.get_lines('text-1a')), TEXT_1A)
 
     def test_add_delta_knit_graph_index(self):
@@ -1233,10 +1190,8 @@ class BasicKnitTests(KnitTests):
         index = InMemoryGraphIndex(2)
         knit_index = KnitGraphIndex(index, add_callback=index.add_nodes,
             deltas=True)
-        k = KnitVersionedFile('test', get_transport('.'),
-            delta=True, create=True, index=knit_index)
+        k = self.make_test_knit(annotate=True, index=knit_index)
         self.add_stock_one_and_one_a(k)
-        k.clear_cache()
         self.assertEqualDiff(''.join(k.get_lines('text-1a')), TEXT_1A)
         # check the index had the right data added.
         self.assertEqual(set([
@@ -1248,8 +1203,7 @@ class BasicKnitTests(KnitTests):
 
     def test_annotate(self):
         """Annotations"""
-        k = KnitVersionedFile('knit', get_transport('.'), factory=KnitAnnotateFactory(),
-            delta=True, create=True)
+        k = self.make_test_knit(annotate=True, name='knit')
         self.insert_and_test_small_annotate(k)
 
     def insert_and_test_small_annotate(self, k):
@@ -1263,8 +1217,7 @@ class BasicKnitTests(KnitTests):
 
     def test_annotate_fulltext(self):
         """Annotations"""
-        k = KnitVersionedFile('knit', get_transport('.'), factory=KnitAnnotateFactory(),
-            delta=False, create=True)
+        k = self.make_test_knit(annotate=True, name='knit', delta=False)
         self.insert_and_test_small_annotate(k)
 
     def test_annotate_merge_1(self):
@@ -1341,13 +1294,13 @@ class BasicKnitTests(KnitTests):
         self.assertEquals(origins[2], ('text-1', 'c\n'))
 
     def _test_join_with_factories(self, k1_factory, k2_factory):
-        k1 = KnitVersionedFile('test1', get_transport('.'), factory=k1_factory, create=True)
+        k1 = make_file_knit('test1', get_transport('.'), factory=k1_factory, create=True)
         k1.add_lines('text-a', [], ['a1\n', 'a2\n', 'a3\n'])
         k1.add_lines('text-b', ['text-a'], ['a1\n', 'b2\n', 'a3\n'])
         k1.add_lines('text-c', [], ['c1\n', 'c2\n', 'c3\n'])
         k1.add_lines('text-d', ['text-c'], ['c1\n', 'd2\n', 'd3\n'])
         k1.add_lines('text-m', ['text-b', 'text-d'], ['a1\n', 'b2\n', 'd3\n'])
-        k2 = KnitVersionedFile('test2', get_transport('.'), factory=k2_factory, create=True)
+        k2 = make_file_knit('test2', get_transport('.'), factory=k2_factory, create=True)
         count = k2.join(k1, version_ids=['text-m'])
         self.assertEquals(count, 5)
         self.assertTrue(k2.has_version('text-a'))
@@ -1374,14 +1327,14 @@ class BasicKnitTests(KnitTests):
         self._test_join_with_factories(KnitPlainFactory(), None)
 
     def test_reannotate(self):
-        k1 = KnitVersionedFile('knit1', get_transport('.'),
+        k1 = make_file_knit('knit1', get_transport('.'),
                                factory=KnitAnnotateFactory(), create=True)
         # 0
         k1.add_lines('text-a', [], ['a\n', 'b\n'])
         # 1
         k1.add_lines('text-b', ['text-a'], ['a\n', 'c\n'])
 
-        k2 = KnitVersionedFile('test2', get_transport('.'),
+        k2 = make_file_knit('test2', get_transport('.'),
                                factory=KnitAnnotateFactory(), create=True)
         k2.join(k1, version_ids=['text-b'])
 
@@ -1404,8 +1357,8 @@ class BasicKnitTests(KnitTests):
 
     def test_get_line_delta_texts(self):
         """Make sure we can call get_texts on text with reused line deltas"""
-        k1 = KnitVersionedFile('test1', get_transport('.'), 
-                               factory=KnitPlainFactory(), create=True)
+        k1 = make_file_knit('test1', get_transport('.'),
+            factory=KnitPlainFactory(), create=True)
         for t in range(3):
             if t == 0:
                 parents = []
@@ -1416,12 +1369,11 @@ class BasicKnitTests(KnitTests):
         
     def test_iter_lines_reads_in_order(self):
         instrumented_t = get_transport('trace+memory:///')
-        k1 = KnitVersionedFile('id', instrumented_t, create=True, delta=True)
+        k1 = make_file_knit('id', instrumented_t, create=True, delta=True)
         self.assertEqual([('get', 'id.kndx',)], instrumented_t._activity)
         # add texts with no required ordering
         k1.add_lines('base', [], ['text\n'])
         k1.add_lines('base2', [], ['text2\n'])
-        k1.clear_cache()
         # clear the logged activity, but preserve the list instance in case of
         # clones pointing at it.
         del instrumented_t._activity[:]
@@ -1452,19 +1404,19 @@ class BasicKnitTests(KnitTests):
             "\nrevid2 line-delta 84 82 0 :",
             'test.kndx')
         # we should be able to load this file again
-        knit = KnitVersionedFile('test', get_transport('.'), access_mode='r')
+        knit = make_file_knit('test', get_transport('.'), access_mode='r')
         self.assertEqual(['revid', 'revid2'], knit.versions())
         # write a short write to the file and ensure that its ignored
         indexfile = file('test.kndx', 'ab')
         indexfile.write('\nrevid3 line-delta 166 82 1 2 3 4 5 .phwoar:demo ')
         indexfile.close()
         # we should be able to load this file again
-        knit = KnitVersionedFile('test', get_transport('.'), access_mode='w')
+        knit = make_file_knit('test', get_transport('.'), access_mode='w')
         self.assertEqual(['revid', 'revid2'], knit.versions())
         # and add a revision with the same id the failed write had
         knit.add_lines('revid3', ['revid2'], ['a\n'])
         # and when reading it revid3 should now appear.
-        knit = KnitVersionedFile('test', get_transport('.'), access_mode='r')
+        knit = make_file_knit('test', get_transport('.'), access_mode='r')
         self.assertEqual(['revid', 'revid2', 'revid3'], knit.versions())
         self.assertEqual({'revid3':('revid2',)}, knit.get_parent_map(['revid3']))
 
@@ -1485,11 +1437,11 @@ class BasicKnitTests(KnitTests):
         """create_parent_dir can create knits in nonexistant dirs"""
         # Has no effect if we don't set 'delay_create'
         trans = get_transport('.')
-        self.assertRaises(NoSuchFile, KnitVersionedFile, 'dir/test',
+        self.assertRaises(NoSuchFile, make_file_knit, 'dir/test',
                           trans, access_mode='w', factory=None,
                           create=True, create_parent_dir=True)
         # Nothing should have changed yet
-        knit = KnitVersionedFile('dir/test', trans, access_mode='w',
+        knit = make_file_knit('dir/test', trans, access_mode='w',
                                  factory=None, create=True,
                                  create_parent_dir=True,
                                  delay_create=True)
@@ -1510,12 +1462,9 @@ class BasicKnitTests(KnitTests):
         if not trans._can_roundtrip_unix_modebits():
             # Can't roundtrip, so no need to run this test
             return
-        knit = KnitVersionedFile('dir/test', trans, access_mode='w',
-                                 factory=None, create=True,
-                                 create_parent_dir=True,
-                                 delay_create=True,
-                                 file_mode=0600,
-                                 dir_mode=0700)
+        knit = make_file_knit('dir/test', trans, access_mode='w', factory=None,
+            create=True, create_parent_dir=True, delay_create=True,
+            file_mode=0600, dir_mode=0700)
         knit.add_lines('revid', [], ['a\n'])
         self.assertTransportMode(trans, 'dir', 0700)
         self.assertTransportMode(trans, 'dir/test.knit', 0600)
@@ -1526,12 +1475,9 @@ class BasicKnitTests(KnitTests):
         if not trans._can_roundtrip_unix_modebits():
             # Can't roundtrip, so no need to run this test
             return
-        knit = KnitVersionedFile('dir/test', trans, access_mode='w',
-                                 factory=None, create=True,
-                                 create_parent_dir=True,
-                                 delay_create=True,
-                                 file_mode=0660,
-                                 dir_mode=0770)
+        knit = make_file_knit('dir/test', trans, access_mode='w', factory=None,
+            create=True, create_parent_dir=True, delay_create=True,
+            file_mode=0660, dir_mode=0770)
         knit.add_lines('revid', [], ['a\n'])
         self.assertTransportMode(trans, 'dir', 0770)
         self.assertTransportMode(trans, 'dir/test.knit', 0660)
@@ -1542,12 +1488,9 @@ class BasicKnitTests(KnitTests):
         if not trans._can_roundtrip_unix_modebits():
             # Can't roundtrip, so no need to run this test
             return
-        knit = KnitVersionedFile('dir/test', trans, access_mode='w',
-                                 factory=None, create=True,
-                                 create_parent_dir=True,
-                                 delay_create=True,
-                                 file_mode=0666,
-                                 dir_mode=0777)
+        knit = make_file_knit('dir/test', trans, access_mode='w', factory=None,
+            create=True, create_parent_dir=True, delay_create=True,
+            file_mode=0666, dir_mode=0777)
         knit.add_lines('revid', [], ['a\n'])
         self.assertTransportMode(trans, 'dir', 0777)
         self.assertTransportMode(trans, 'dir/test.knit', 0666)
@@ -1924,6 +1867,37 @@ class BasicKnitTests(KnitTests):
             errors.KnitDataStreamUnknown,
             target.insert_data_stream, data_stream)
 
+    def test_insert_data_stream_bug_208418(self):
+        """You can insert a stream with an incompatible format, even when:
+          * the stream has a line-delta record,
+          * whose parent is in the target, also stored as a line-delta
+
+        See <https://launchpad.net/bugs/208418>.
+        """
+        base_lines = split_lines(TEXT_1)
+        # Make the target
+        target = self.make_test_knit(name='target', annotate=True)
+        target.add_lines('version-1', [], base_lines)
+        target.add_lines('version-2', ['version-1'], base_lines + ['a\n'])
+        # The second record should be a delta.
+        self.assertEqual('line-delta', target._index.get_method('version-2'))
+        
+        # Make a source, with a different format, but the same data
+        source = self.make_test_knit(name='source', annotate=False)
+        source.add_lines('version-1', [], base_lines)
+        source.add_lines('version-2', ['version-1'], base_lines + ['a\n'])
+        # Now add another record, which should be stored as a delta against
+        # version-2.
+        source.add_lines('version-3', ['version-2'], base_lines + ['b\n'])
+        self.assertEqual('line-delta', source._index.get_method('version-3'))
+
+        # Make a stream of the new version
+        data_stream = source.get_data_stream(['version-3'])
+        # And insert into the target
+        target.insert_data_stream(data_stream)
+        # No errors should have been raised.
+
+
     #  * test that a stream of "already present version, then new version"
     #    inserts correctly.
 
@@ -2056,93 +2030,12 @@ class TestWeaveToKnit(KnitTests):
     def test_weave_to_knit_matches(self):
         # check that the WeaveToKnit is_compatible function
         # registers True for a Weave to a Knit.
-        w = Weave()
+        w = Weave(get_scope=lambda:None)
         k = self.make_test_knit()
         self.failUnless(WeaveToKnit.is_compatible(w, k))
         self.failIf(WeaveToKnit.is_compatible(k, w))
         self.failIf(WeaveToKnit.is_compatible(w, w))
         self.failIf(WeaveToKnit.is_compatible(k, k))
-
-
-class TestKnitCaching(KnitTests):
-    
-    def create_knit(self):
-        k = self.make_test_knit(True)
-        k.add_lines('text-1', [], split_lines(TEXT_1))
-        k.add_lines('text-2', [], split_lines(TEXT_2))
-        return k
-
-    def test_no_caching(self):
-        k = self.create_knit()
-        # Nothing should be cached without setting 'enable_cache'
-        self.assertEqual({}, k._data._cache)
-
-    def test_cache_data_read_raw(self):
-        k = self.create_knit()
-
-        # Now cache and read
-        k.enable_cache()
-
-        def read_one_raw(version):
-            pos_map = k._get_components_positions([version])
-            method, index_memo, next = pos_map[version]
-            lst = list(k._data.read_records_iter_raw([(version, index_memo)]))
-            self.assertEqual(1, len(lst))
-            return lst[0]
-
-        val = read_one_raw('text-1')
-        self.assertEqual({'text-1':val[1]}, k._data._cache)
-
-        k.clear_cache()
-        # After clear, new reads are not cached
-        self.assertEqual({}, k._data._cache)
-
-        val2 = read_one_raw('text-1')
-        self.assertEqual(val, val2)
-        self.assertEqual({}, k._data._cache)
-
-    def test_cache_data_read(self):
-        k = self.create_knit()
-
-        def read_one(version):
-            pos_map = k._get_components_positions([version])
-            method, index_memo, next = pos_map[version]
-            lst = list(k._data.read_records_iter([(version, index_memo)]))
-            self.assertEqual(1, len(lst))
-            return lst[0]
-
-        # Now cache and read
-        k.enable_cache()
-
-        val = read_one('text-2')
-        self.assertEqual(['text-2'], k._data._cache.keys())
-        self.assertEqual('text-2', val[0])
-        content, digest = k._data._parse_record('text-2',
-                                                k._data._cache['text-2'])
-        self.assertEqual(content, val[1])
-        self.assertEqual(digest, val[2])
-
-        k.clear_cache()
-        self.assertEqual({}, k._data._cache)
-
-        val2 = read_one('text-2')
-        self.assertEqual(val, val2)
-        self.assertEqual({}, k._data._cache)
-
-    def test_cache_read(self):
-        k = self.create_knit()
-        k.enable_cache()
-
-        text = k.get_text('text-1')
-        self.assertEqual(TEXT_1, text)
-        self.assertEqual(['text-1'], k._data._cache.keys())
-
-        k.clear_cache()
-        self.assertEqual({}, k._data._cache)
-
-        text = k.get_text('text-1')
-        self.assertEqual(TEXT_1, text)
-        self.assertEqual({}, k._data._cache)
 
 
 class TestKnitIndex(KnitTests):
@@ -2485,40 +2378,6 @@ class TestGraphIndexKnit(KnitTests):
              ('tip', 'no-eol,line-delta', (None, 0, 100), ['parent'])])
         self.assertEqual([], self.caught_entries)
 
-    def test_iter_parents(self):
-        index1 = self.make_g_index('1', 1, [
-        # no parents
-            (('r0', ), 'N0 100', ([], )),
-        # 1 parent
-            (('r1', ), '', ([('r0', )], ))])
-        index2 = self.make_g_index('2', 1, [
-        # 2 parents
-            (('r2', ), 'N0 100', ([('r1', ), ('r0', )], )),
-            ])
-        combined_index = CombinedGraphIndex([index1, index2])
-        index = KnitGraphIndex(combined_index)
-        # XXX TODO a ghost
-        # cases: each sample data individually:
-        self.assertEqual(set([('r0', ())]),
-            set(index.iter_parents(['r0'])))
-        self.assertEqual(set([('r1', ('r0', ))]),
-            set(index.iter_parents(['r1'])))
-        self.assertEqual(set([('r2', ('r1', 'r0'))]),
-            set(index.iter_parents(['r2'])))
-        # no nodes returned for a missing node
-        self.assertEqual(set(),
-            set(index.iter_parents(['missing'])))
-        # 1 node returned with missing nodes skipped
-        self.assertEqual(set([('r1', ('r0', ))]),
-            set(index.iter_parents(['ghost1', 'r1', 'ghost'])))
-        # 2 nodes returned
-        self.assertEqual(set([('r0', ()), ('r1', ('r0', ))]),
-            set(index.iter_parents(['r0', 'r1'])))
-        # 2 nodes returned, missing skipped
-        self.assertEqual(set([('r0', ()), ('r1', ('r0', ))]),
-            set(index.iter_parents(['a', 'r0', 'b', 'r1', 'c'])))
-
-
 class TestNoParentsGraphIndexKnit(KnitTests):
     """Tests for knits using KnitGraphIndex with no parents."""
 
@@ -2736,18 +2595,6 @@ class TestNoParentsGraphIndexKnit(KnitTests):
              ('tip', 'no-eol,line-delta', (None, 0, 100), [])])
         self.assertEqual([], self.caught_entries)
 
-    def test_iter_parents(self):
-        index = self.two_graph_index()
-        self.assertEqual(set([
-            ('tip', ()), ('tail', ()), ('parent', ()), ('separate', ())
-            ]),
-            set(index.iter_parents(['tip', 'tail', 'ghost', 'parent', 'separate'])))
-        self.assertEqual(set([('tip', ())]),
-            set(index.iter_parents(['tip'])))
-        self.assertEqual(set(),
-            set(index.iter_parents([])))
-
-
 class TestPackKnits(KnitTests):
     """Tests that use a _PackAccess and KnitGraphIndex."""
 
@@ -2801,11 +2648,6 @@ class Test_StreamIndex(KnitTests):
         self.assertEqual(
             set(result),
             set(index.get_ancestry(ancestry_versions, False)))
-
-    def assertIterParents(self, knit, versions, parent_versions, result):
-        """Check the result of an iter_parents call on knit."""
-        index = self.get_index(knit, knit.get_data_stream(versions))
-        self.assertEqual(result, index.iter_parents(parent_versions))
 
     def assertGetMethod(self, knit, versions, version, result):
         index = self.get_index(knit, knit.get_data_stream(versions))
@@ -2876,19 +2718,6 @@ class Test_StreamIndex(KnitTests):
         # backing knit) returns 'fulltext', because thats what we'll create as
         # we thunk across.
         self.assertGetMethod(knit, ['c'], 'b', 'fulltext')
-
-    def test_iter_parents(self):
-        knit = self.make_knit_with_4_versions_2_dags()
-        self.assertIterParents(knit, ['a'], ['a'], [('a', ())])
-        self.assertIterParents(knit, ['a', 'b'], ['a', 'b'],
-            [('a', ()), ('b', ())])
-        self.assertIterParents(knit, ['a', 'b', 'c'], ['a', 'b', 'c'],
-            [('a', ()), ('b', ()), ('c', ('b', 'a'))])
-        self.assertIterParents(knit, ['a', 'b', 'c', 'd'],
-            ['a', 'b', 'c', 'd'],
-            [('a', ()), ('b', ()), ('c', ('b', 'a')), ('d', ('e', 'f'))])
-        self.assertIterParents(knit, ['c'], ['a', 'b', 'c'],
-            [('c', ('b', 'a'))])
 
     def test_get_options(self):
         knit = self.make_knit_with_4_versions_2_dags()
@@ -2981,3 +2810,13 @@ class Test_StreamAccess(KnitTests):
             knit.get_data_stream([]))
         self.assertRaises(errors.KnitCorrupt,
             list, access.get_raw_records([(True, "A", None, None)]))
+
+
+class TestFormatSignatures(KnitTests):
+
+    def test_knit_format_signatures(self):
+        """Different formats of knit have different signature strings."""
+        knit = self.make_test_knit(name='a', annotate=True)
+        self.assertEqual('knit-annotated', knit.get_format_signature())
+        knit = self.make_test_knit(name='p', annotate=False)
+        self.assertEqual('knit-plain', knit.get_format_signature())
