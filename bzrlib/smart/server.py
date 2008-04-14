@@ -59,7 +59,10 @@ class SmartTCPServer(object):
         self._socket_error = socket_error
         self._socket_timeout = socket_timeout
         self._server_socket = socket.socket()
-        self._server_socket.bind((host, port))
+        try:
+            self._server_socket.bind((host, port))
+        except self._socket_error, message:
+            raise errors.CannotBindAddress(host, port, message)
         self._sockname = self._server_socket.getsockname()
         self.port = self._sockname[1]
         self._server_socket.listen(1)

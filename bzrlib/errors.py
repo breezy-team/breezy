@@ -2678,3 +2678,11 @@ class UnableEncodePath(BzrError):
         self.path = path
         self.kind = kind
         self.user_encoding = osutils.get_user_encoding()
+
+class CannotBindAddress(BzrError):
+
+    _fmt = 'Cannot bind address "%(host)s:%(port)i": %(orig_error)s.'
+
+    def __init__(self, host, port, orig_error):
+        BzrError.__init__(self, host=host, port=port,
+            orig_error=orig_error[1])
