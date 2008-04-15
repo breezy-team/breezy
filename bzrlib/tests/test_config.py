@@ -33,6 +33,7 @@ from bzrlib import (
     urlutils,
     tests,
     trace,
+    transport,
     )
 from bzrlib.util.configobj import configobj
 
@@ -160,6 +161,7 @@ class FakeControlFiles(object):
     def __init__(self, user_id=None):
         self.email = user_id
         self.files = {}
+        self._transport = self
 
     def get_utf8(self, filename):
         if filename != 'email':
@@ -176,6 +178,9 @@ class FakeControlFiles(object):
 
     def put(self, filename, fileobj):
         self.files[filename] = fileobj.read()
+
+    def put_file(self, filename, fileobj):
+        return self.put(filename, fileobj)
 
 
 class InstrumentedConfig(config.Config):
@@ -1133,6 +1138,35 @@ class TestTreeConfig(tests.TestCaseWithTransport):
         value = tree_config.get_option('key3')
         self.assertEqual(value, 'value3-top')
         value = tree_config.get_option('key3', 'SECTION')
+        self.assertEqual(value, 'value3-section')
+
+
+class TestTransportConfig(tests.TestCaseWithTransport):
+
+    def test_get_value(self):
+        """Test that retreiving a value from a section is possible"""
+        bzrdir_config = config.TransportConfig(transport.get_transport('.'),
+                                               'control.conf')
+        bzrdir_config.set_option('value', 'key', 'SECTION')
+        bzrdir_config.set_option('value2', 'key2')
+        bzrdir_config.set_option('value3-top', 'key3')
+        bzrdir_config.set_option('value3-section', 'key3', 'SECTION')
+        value = bzrdir_config.get_option('key', 'SECTION')
+        self.assertEqual(value, 'value')
+        value = bzrdir_config.get_option('key2')
+        self.assertEqual(value, 'value2')
+        self.assertEqual(bzrdir_config.get_option('non-existant'), None)
+        value = bzrdir_config.get_option('non-existant', 'SECTION')
+        self.assertEqual(value, None)
+        value = bzrdir_config.get_option('non-existant', default='default')
+        self.assertEqual(value, 'default')
+        self.assertEqual(bzrdir_config.get_option('key2', 'NOSECTION'), None)
+        value = bzrdir_config.get_option('key2', 'NOSECTION',
+                                         default='default')
+        self.assertEqual(value, 'default')
+        value = bzrdir_config.get_option('key3')
+        self.assertEqual(value, 'value3-top')
+        value = bzrdir_config.get_option('key3', 'SECTION')
         self.assertEqual(value, 'value3-section')
 
 

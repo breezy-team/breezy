@@ -286,3 +286,69 @@ class TestReconfigure(tests.TestCaseWithTransport):
         workingtree.WorkingTree.open('repo')
         self.assertRaises(errors.NoRepositoryPresent,
                           repository.Repository.open, 'repo')
+
+    def test_standalone_to_use_shared(self):
+        self.build_tree(['root/'])
+        tree = self.make_branch_and_tree('root/tree')
+        tree.commit('Hello', rev_id='hello-id')
+        repo = self.make_repository('root', shared=True)
+        reconfiguration = reconfigure.Reconfigure.to_use_shared(tree.bzrdir)
+        reconfiguration.apply()
+        tree = workingtree.WorkingTree.open('root/tree')
+        self.assertTrue(repo.has_same_location(tree.branch.repository))
+        self.assertEqual('Hello', repo.get_revision('hello-id').message)
+
+    def add_dead_head(self, tree):
+        revno, revision_id = tree.branch.last_revision_info()
+        tree.commit('Dead head', rev_id='dead-head-id')
+        tree.branch.set_last_revision_info(revno, revision_id)
+        tree.set_last_revision(revision_id)
+
+    def test_standalone_to_use_shared_preserves_dead_heads(self):
+        self.build_tree(['root/'])
+        tree = self.make_branch_and_tree('root/tree')
+        self.add_dead_head(tree)
+        tree.commit('Hello', rev_id='hello-id')
+        repo = self.make_repository('root', shared=True)
+        reconfiguration = reconfigure.Reconfigure.to_use_shared(tree.bzrdir)
+        reconfiguration.apply()
+        tree = workingtree.WorkingTree.open('root/tree')
+        message = repo.get_revision('dead-head-id').message
+        self.assertEqual('Dead head', message)
+
+    def make_repository_tree(self):
+        self.build_tree(['root/'])
+        repo = self.make_repository('root', shared=True)
+        tree = self.make_branch_and_tree('root/tree')
+        reconfigure.Reconfigure.to_use_shared(tree.bzrdir).apply()
+        return workingtree.WorkingTree.open('root/tree')
+
+    def test_use_shared_to_use_shared(self):
+        tree = self.make_repository_tree()
+        self.assertRaises(errors.AlreadyUsingShared,
+                          reconfigure.Reconfigure.to_use_shared, tree.bzrdir)
+
+    def test_use_shared_to_standalone(self):
+        tree = self.make_repository_tree()
+        tree.commit('Hello', rev_id='hello-id')
+        reconfigure.Reconfigure.to_standalone(tree.bzrdir).apply()
+        tree = workingtree.WorkingTree.open('root/tree')
+        repo = tree.branch.repository
+        self.assertEqual(repo.bzrdir.root_transport.base,
+                         tree.bzrdir.root_transport.base)
+        self.assertEqual('Hello', repo.get_revision('hello-id').message)
+
+    def test_use_shared_to_standalone_preserves_dead_heads(self):
+        tree = self.make_repository_tree()
+        self.add_dead_head(tree)
+        tree.commit('Hello', rev_id='hello-id')
+        reconfigure.Reconfigure.to_standalone(tree.bzrdir).apply()
+        tree = workingtree.WorkingTree.open('root/tree')
+        repo = tree.branch.repository
+        self.assertRaises(errors.NoSuchRevision, repo.get_revision,
+                          'dead-head-id')
+
+    def test_standalone_to_standalone(self):
+        tree = self.make_branch_and_tree('tree')
+        self.assertRaises(errors.AlreadyStandalone,
+                          reconfigure.Reconfigure.to_standalone, tree.bzrdir)

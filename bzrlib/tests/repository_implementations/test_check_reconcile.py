@@ -153,7 +153,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         :returns: A dict of `{version: hash}`.
         """
         vf = repo.weave_store.get_weave('a-file-id', repo.get_transaction())
-        return dict((v, vf.get_sha1(v)) for v in versions)
+        return dict(zip(versions, vf.get_sha1s(versions)))
 
     def test_reconcile_behaviour(self):
         """Populate a repository and reconcile it, verifying the state before

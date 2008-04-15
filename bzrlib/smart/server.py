@@ -38,14 +38,18 @@ class SmartTCPServer(object):
     hooks: An instance of SmartServerHooks.
     """
 
-    def __init__(self, backing_transport, host='127.0.0.1', port=0):
+    def __init__(self, backing_transport, host='127.0.0.1', port=0,
+                 root_client_path='/'):
         """Construct a new server.
 
         To actually start it running, call either start_background_thread or
         serve.
 
+        :param backing_transport: The transport to serve.
         :param host: Name of the interface to listen on.
         :param port: TCP port to listen on, or 0 to allocate a transient port.
+        :param root_client_path: The client path that will correspond to root
+            of backing_transport.
         """
         # let connections timeout so that we get a chance to terminate
         # Keep a reference to the exceptions we want to catch because the socket
@@ -63,6 +67,7 @@ class SmartTCPServer(object):
         self.backing_transport = backing_transport
         self._started = threading.Event()
         self._stopped = threading.Event()
+        self.root_client_path = root_client_path
 
     def serve(self):
         self._should_terminate = False
@@ -134,7 +139,8 @@ class SmartTCPServer(object):
         # propogates to the newly accepted socket.
         conn.setblocking(True)
         conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        handler = SmartServerSocketStreamMedium(conn, self.backing_transport)
+        handler = SmartServerSocketStreamMedium(
+            conn, self.backing_transport, self.root_client_path)
         connection_thread = threading.Thread(None, handler.serve, name='smart-server-child')
         connection_thread.setDaemon(True)
         connection_thread.start()
@@ -204,13 +210,27 @@ class SmartTCPServer_for_testing(SmartTCPServer):
 
     def __init__(self):
         SmartTCPServer.__init__(self, None)
+        self.client_path_extra = None
         
     def get_backing_transport(self, backing_transport_server):
         """Get a backing transport from a server we are decorating."""
         return transport.get_transport(backing_transport_server.get_url())
 
-    def setUp(self, backing_transport_server=None):
-        """Set up server for testing"""
+    def setUp(self, backing_transport_server=None,
+              client_path_extra='/extra/'):
+        """Set up server for testing.
+        
+        :param backing_transport_server: backing server to use.  If not
+            specified, a LocalURLServer at the current working directory will
+            be used.
+        :param client_path_extra: a path segment starting with '/' to append to
+            the root URL for this server.  For instance, a value of '/foo/bar/'
+            will mean the root of the backing transport will be published at a
+            URL like `bzr://127.0.0.1:nnnn/foo/bar/`, rather than
+            `bzr://127.0.0.1:nnnn/`.  Default value is `extra`, so that tests
+            by default will fail unless they do the necessary path translation.
+        """
+        assert client_path_extra.startswith('/')
         from bzrlib.transport.chroot import ChrootServer
         if backing_transport_server is None:
             from bzrlib.transport.local import LocalURLServer
@@ -220,11 +240,17 @@ class SmartTCPServer_for_testing(SmartTCPServer):
         self.chroot_server.setUp()
         self.backing_transport = transport.get_transport(
             self.chroot_server.get_url())
+        self.root_client_path = self.client_path_extra = client_path_extra
         self.start_background_thread()
 
     def tearDown(self):
         self.stop_background_thread()
         self.chroot_server.tearDown()
+
+    def get_url(self):
+        url = super(SmartTCPServer_for_testing, self).get_url()
+        assert url.endswith('/')
+        return url[:-1] + self.client_path_extra
 
     def get_bogus_url(self):
         """Return a URL which will fail to connect"""
