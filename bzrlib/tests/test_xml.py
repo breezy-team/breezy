@@ -448,7 +448,6 @@ class TestSerializer(TestCase):
         serialized = bzrlib.xml8.serializer_v8.write_revision_to_string(rev)
         self.assertEqualDiff(serialized, _expected_rev_v8)
 
-
     def test_revision_ids_are_utf8(self):
         """Parsed revision_ids should all be utf-8 strings, not unicode."""
         s_v5 = bzrlib.xml5.serializer_v5
