@@ -23,20 +23,18 @@ from bzrlib import urlutils
 
 class _SmartClient(object):
 
-    def __init__(self, shared_connection):
+    def __init__(self, medium, base):
         """Constructor.
 
-        :param shared_connection: a bzrlib.transport._SharedConnection
+        :param medium: a SmartClientMedium
+        :param base: a URL
         """
-        self._shared_connection = shared_connection
-
-    def get_smart_medium(self):
-        return self._shared_connection.connection
+        self._medium = medium
+        self._base = base
 
     def _build_client_protocol(self):
-        medium = self.get_smart_medium()
-        version = medium.protocol_version()
-        request = medium.get_request()
+        version = self._medium.protocol_version()
+        request = self._medium.get_request()
         if version == 3:
             request_encoder = protocol.ProtocolThreeRequester(request)
             response_handler = message.ConventionalResponseHandler()
@@ -103,11 +101,13 @@ class _SmartClient(object):
         anything but path, so it is only safe to use it in requests sent over
         the medium from the matching transport.
         """
-        base = self._shared_connection.base
-        if base.startswith('bzr+http://') or base.startswith('bzr+https://'):
-            medium_base = self._shared_connection.base
+        base = self._base
+        if (base.startswith('bzr+http://') or base.startswith('bzr+https://')
+            or base.startswith('http://') or base.startswith('https://')):
+            medium_base = self._base
         else:
-            medium_base = urlutils.join(self._shared_connection.base, '/')
+            medium_base = urlutils.join(self._base, '/')
             
         rel_url = urlutils.relative_url(medium_base, transport.base)
         return urllib.unquote(rel_url)
+
