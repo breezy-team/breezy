@@ -155,30 +155,34 @@ To consume a stream, obtain an iterator from the streams
 Each record has two attributes. One is ``key_prefix`` which is a tuple key
 prefix for the names of each of the bytestrings in the record. The other
 attribute is ``entries``, an iterator of the individual items in the
-record. Each item that the iterator yields is a two-tuple with a meta-data
-dict and the compressed bytestring data.
+record. Each item that the iterator yields is a factory which has metadata
+about the entry and the ability to return the compressed bytes. This
+factory can be decorated to allow obtaining different representations (for
+example from a compressed knit fulltext to a plain fulltext). 
 
 In pseudocode::
 
   stream = repository.get_repository_stream(search, UNORDERED, False)
   for record in stream.iter_contents():
-      for metadata, bytes in record.entries:
+      for factory in record.entries:
+          compression = factory.storage_kind
           print "Object %s, compression type %s, %d bytes long." % (
-              record.key_prefix + metadata['key'],
-              metadata['storage_kind'], len(bytes))
+              record.key_prefix + factory.key,
+              compression, len(factory.get_bytes_as(compression)))
 
 This structure should allow stream adapters to be written which can coerce
 all records to the type of compression that a particular client needs. For
-instance, inserting into weaves requires fulltexts, so an adapter that
-applies knit records and extracts them to fulltexts will avoid weaves
-needing to know about all potential storage kinds. Likewise, inserting
-into knits would use an adapter that gives everything as either matching
-knit records or full texts.
+instance, inserting into weaves requires fulltexts, so a stream would be
+adapted for weaves by an adapter that takes a stream, and the target
+weave, and then uses the target weave to reconstruct full texts (which is
+all that the weave inserter would ask for). In a similar approach, a
+stream could internally delta compress many fulltexts and be able to
+answer both fulltext and compressed record requests without extra IO.
 
-bytestring metadata
-~~~~~~~~~~~~~~~~~~~
+factory metadata
+~~~~~~~~~~~~~~~~
 
-Valid keys in the metadata dict are:
+Valid attributes on the factory are:
  * sha1: Optional ascii representation of the sha1 of the bytestring (after
    delta reconstruction).
  * storage_kind: Required kind of storage compression that has been used
@@ -190,6 +194,7 @@ Valid keys in the metadata dict are:
  * key: The key for this bytestring. Like each parent this is a tuple that
    should have the key_prefix prepended to it to give the unified
    repository key name.
+
 ..
    vim: ft=rst tw=74 ai
 

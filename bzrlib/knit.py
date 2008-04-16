@@ -117,7 +117,11 @@ from bzrlib.symbol_versioning import (
 from bzrlib.tsort import topo_sort
 from bzrlib.tuned_gzip import GzipFile, bytes_to_gzip
 import bzrlib.ui
-from bzrlib.versionedfile import VersionedFile, InterVersionedFile
+from bzrlib.versionedfile import (
+    ContentFactory,
+    InterVersionedFile,
+    VersionedFile,
+    )
 import bzrlib.weave
 
 
@@ -136,6 +140,51 @@ import bzrlib.weave
 
 DATA_SUFFIX = '.knit'
 INDEX_SUFFIX = '.kndx'
+
+
+class KnitContentFactory(ContentFactory):
+    """Content factory for streaming from knits.
+    
+    :seealso ContentFactory:
+    """
+
+    def __init__(self, version, parents, build_details, sha1, raw_record,
+        annotated, knit=None):
+        """Create a KnitContentFactory for version.
+        
+        :param version: The version.
+        :param parents: The parents.
+        :param build_details: The build details as returned from
+            get_build_details.
+        :param sha1: The sha1 expected from the full text of this object.
+        :param raw_record: The bytes of the knit data from disk.
+        :param annotated: True if the raw data is annotated.
+        """
+        ContentFactory.__init__(self)
+        self.sha1 = sha1
+        self.key = (version,)
+        self.parents = tuple((parent,) for parent in parents)
+        if build_details[0] == 'line-delta':
+            kind = 'delta'
+        else:
+            kind = 'ft'
+        if annotated:
+            annotated_kind = 'annotated-'
+        else:
+            annotated_kind = ''
+        self.storage_kind = 'knit-%s%s-gz' % (annotated_kind, kind)
+        self._raw_record = raw_record
+        self._build_details = build_details
+        self._knit = knit
+
+    def get_bytes_as(self, storage_kind):
+        if storage_kind == self.storage_kind:
+            return self._raw_record
+        if storage_kind == 'fulltext' and self._knit is not None:
+            return self._knit.get_text(self.key[0])
+        else:
+            raise errors.UnavailableRepresentation(self.key, storage_kind,
+                self.storage_kind)
 
 
 class KnitContent(object):
@@ -699,7 +748,7 @@ class KnitVersionedFile(VersionedFile):
         # know the length of all the data a-priori.
         raw_datum = []
         result_version_list = []
-        for (version_id, raw_data), \
+        for (version_id, raw_data, _), \
             (version_id2, options, _, parents) in \
             izip(self._data.read_records_iter_raw(copy_queue_records),
                  temp_version_list):
@@ -716,6 +765,43 @@ class KnitVersionedFile(VersionedFile):
             else:
                 return pseudo_file.read(length)
         return (self.get_format_signature(), result_version_list, read)
+
+    def get_record_stream(self, versions, ordering, include_delta_closure):
+        """Get a stream of records for versions.
+
+        :param versions: The versions to include. Each version is a tuple
+            (version,).
+        :param ordering: Either 'unordered' or 'topological'. A topologically
+            sorted stream has compression parents strictly before their
+            children.
+        :param include_delta_closure: If True then the closure across any
+            compression parents will be included (in the opaque data).
+        :return: An iterator of ContentFactory objects, each of which is only
+            valid until the iterator is advanced.
+        """
+        if include_delta_closure:
+            # Nb: what we should do is plan the data to stream to allow
+            # reconstruction of all the texts without excessive buffering,
+            # including re-sending common bases as needed. This makes the most
+            # sense when we start serialising these streams though, so for now
+            # we just fallback to individual text construction behind the
+            # abstraction barrier.
+            knit = self
+        else:
+            knit = None
+        # Double index lookups here : need a unified api ?
+        parent_map = self.get_parent_map(versions)
+        position_map = self._get_components_positions(versions)
+        if ordering == 'topological':
+            versions = topo_sort(parent_map)
+        # c = component_id, r = record_details, i_m = index_memo, n = next
+        records = [(version, position_map[version][1]) for version in versions]
+        record_map = {}
+        for version, raw_data, sha1 in \
+                self._data.read_records_iter_raw(records):
+            (record_details, index_memo, _) = position_map[version]
+            yield KnitContentFactory(version, parent_map[version],
+                record_details, sha1, raw_data, self.factory.annotated, knit)
 
     def _extract_blocks(self, version_id, source, target):
         if self._index.get_method(version_id) != 'line-delta':
@@ -2478,6 +2564,9 @@ class _KnitData(object):
 
         This unpacks enough of the text record to validate the id is
         as expected but thats all.
+
+        Each item the iterator yields is (version_id, bytes,
+        sha1_of_full_text).
         """
         # setup an iterator of the external records:
         # uses readv so nice and fast we hope.
@@ -2492,7 +2581,7 @@ class _KnitData(object):
             # validate the header
             df, rec = self._parse_record_header(version_id, data)
             df.close()
-            yield version_id, data
+            yield version_id, data, rec[3]
 
     def read_records_iter(self, records):
         """Read text records from data file and yield result.
@@ -2657,7 +2746,7 @@ class InterKnit(InterVersionedFile):
             total = len(version_list)
             raw_datum = []
             raw_records = []
-            for (version_id, raw_data), \
+            for (version_id, raw_data, _), \
                 (version_id2, options, parents) in \
                 izip(self.source._data.read_records_iter_raw(copy_queue_records),
                      copy_queue):

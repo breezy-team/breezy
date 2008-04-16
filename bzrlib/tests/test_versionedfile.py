@@ -87,6 +87,114 @@ class VersionedFileTestMixIn(object):
         f = self.reopen_file(create=True)
         verify_file(f)
 
+    def test_get_record_stream_empty(self):
+        """get_record_stream is a replacement for get_data_stream."""
+        f = self.get_file()
+        entries = f.get_record_stream([], 'unordered', False)
+        self.assertEqual([], list(entries))
+
+    def get_diamond_vf(self):
+        """Get a diamond graph to exercise deltas and merges."""
+        f = self.get_file()
+        parents = {
+            'origin': (),
+            'base': (('origin',),),
+            'left': (('base',),),
+            'right': (('base',),),
+            'merged': (('left',), ('right',)),
+            }
+        # insert a diamond graph to exercise deltas and merges.
+        f.add_lines('origin', [], [])
+        f.add_lines('base', ['origin'], ['base\n'])
+        f.add_lines('left', ['base'], ['base\n', 'left\n'])
+        f.add_lines('right', ['base'],
+            ['base\n', 'right\n'])
+        f.add_lines('merged', ['left', 'right'],
+            ['base\n', 'left\n', 'right\n', 'merged\n'])
+        return f, parents
+
+    def assertValidStorageKind(self, storage_kind):
+        """Assert that storage_kind is a valid storage_kind."""
+        self.assertSubset([storage_kind],
+            ['mpdiff', 'knit-annotated-ft', 'knit-annotated-delta',
+             'knit-ft', 'knit-delta', 'fulltext', 'knit-annotated-ft-gz',
+             'knit-annotated-delta-gz', 'knit-ft-gz', 'knit-delta-gz'])
+
+    def capture_stream(self, f, entries, on_seen, parents):
+        """Capture a stream for testing."""
+        for factory in entries:
+            on_seen(factory.key)
+            self.assertValidStorageKind(factory.storage_kind)
+            self.assertEqual(f.get_sha1s([factory.key[0]])[0], factory.sha1)
+            self.assertEqual(parents[factory.key[0]], factory.parents)
+            self.assertIsInstance(factory.get_bytes_as(factory.storage_kind),
+                str)
+
+    def test_get_record_stream_interface(self):
+        """each item in a stream has to provide a regular interface."""
+        f, parents = self.get_diamond_vf()
+        entries = f.get_record_stream(['merged', 'left', 'right', 'base'],
+            'unordered', False)
+        seen = set()
+        self.capture_stream(f, entries, seen.add, parents)
+        self.assertEqual(set([('base',), ('left',), ('right',), ('merged',)]),
+            seen)
+
+    def test_get_record_stream_interface_ordered(self):
+        """each item in a stream has to provide a regular interface."""
+        f, parents = self.get_diamond_vf()
+        entries = f.get_record_stream(['merged', 'left', 'right', 'base'],
+            'topological', False)
+        seen = []
+        self.capture_stream(f, entries, seen.append, parents)
+        self.assertSubset([tuple(seen)],
+            (
+             (('base',), ('left',), ('right',), ('merged',)),
+             (('base',), ('right',), ('left',), ('merged',)),
+            ))
+
+    def test_get_record_stream_interface_ordered_with_delta_closure(self):
+        """each item in a stream has to provide a regular interface."""
+        f, parents = self.get_diamond_vf()
+        entries = f.get_record_stream(['merged', 'left', 'right', 'base'],
+            'topological', True)
+        seen = []
+        for factory in entries:
+            seen.append(factory.key)
+            self.assertValidStorageKind(factory.storage_kind)
+            self.assertEqual(f.get_sha1s([factory.key[0]])[0], factory.sha1)
+            self.assertEqual(parents[factory.key[0]], factory.parents)
+            self.assertEqual(f.get_text(factory.key[0]),
+                factory.get_bytes_as('fulltext'))
+            self.assertIsInstance(factory.get_bytes_as(factory.storage_kind),
+                str)
+        self.assertSubset([tuple(seen)],
+            (
+             (('base',), ('left',), ('right',), ('merged',)),
+             (('base',), ('right',), ('left',), ('merged',)),
+            ))
+
+    def test_get_record_stream_unknown_storage_kind_raises(self):
+        """Asking for a storage kind that the stream cannot supply raises."""
+        f, parents = self.get_diamond_vf()
+        entries = f.get_record_stream(['merged', 'left', 'right', 'base'],
+            'unordered', False)
+        # We track the contents because we should be able to try, fail a
+        # particular kind and then ask for one that works and continue.
+        seen = set()
+        for factory in entries:
+            seen.add(factory.key)
+            self.assertValidStorageKind(factory.storage_kind)
+            self.assertEqual(f.get_sha1s([factory.key[0]])[0], factory.sha1)
+            self.assertEqual(parents[factory.key[0]], factory.parents)
+            # currently no stream emits mpdiff
+            self.assertRaises(errors.UnavailableRepresentation,
+                factory.get_bytes_as, 'mpdiff')
+            self.assertIsInstance(factory.get_bytes_as(factory.storage_kind),
+                str)
+        self.assertEqual(set([('base',), ('left',), ('right',), ('merged',)]),
+            seen)
+
     def test_adds_with_parent_texts(self):
         f = self.get_file()
         parent_texts = {}

@@ -370,7 +370,7 @@ class LowLevelKnitDataTests(TestCase):
         self.assertEqual({'rev-id-1':(['foo\n', 'bar\n'], sha1sum)}, contents)
 
         raw_contents = list(data.read_records_iter_raw(records))
-        self.assertEqual([('rev-id-1', gz_txt)], raw_contents)
+        self.assertEqual([('rev-id-1', gz_txt, sha1sum)], raw_contents)
 
     def test_not_enough_lines(self):
         sha1sum = sha.new('foo\n').hexdigest()
@@ -387,7 +387,7 @@ class LowLevelKnitDataTests(TestCase):
 
         # read_records_iter_raw won't detect that sort of mismatch/corruption
         raw_contents = list(data.read_records_iter_raw(records))
-        self.assertEqual([('rev-id-1', gz_txt)], raw_contents)
+        self.assertEqual([('rev-id-1', gz_txt, sha1sum)], raw_contents)
 
     def test_too_many_lines(self):
         sha1sum = sha.new('foo\nbar\n').hexdigest()
@@ -405,7 +405,7 @@ class LowLevelKnitDataTests(TestCase):
 
         # read_records_iter_raw won't detect that sort of mismatch/corruption
         raw_contents = list(data.read_records_iter_raw(records))
-        self.assertEqual([('rev-id-1', gz_txt)], raw_contents)
+        self.assertEqual([('rev-id-1', gz_txt, sha1sum)], raw_contents)
 
     def test_mismatched_version_id(self):
         sha1sum = sha.new('foo\nbar\n').hexdigest()
@@ -1056,7 +1056,7 @@ class KnitTests(TestCaseWithTransport):
         """
         index_memo = knit._index.get_position(version_id)
         record = (version_id, index_memo)
-        [(_, expected_content)] = list(knit._data.read_records_iter_raw([record]))
+        [(_, expected_content, _)] = list(knit._data.read_records_iter_raw([record]))
         self.assertEqual(expected_content, candidate_content)
 
 

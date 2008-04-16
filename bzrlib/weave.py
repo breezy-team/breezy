@@ -82,6 +82,7 @@ from bzrlib.trace import mutter
 from bzrlib.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
         RevisionAlreadyPresent,
         RevisionNotPresent,
+        UnavailableRepresentation,
         WeaveRevisionAlreadyPresent,
         WeaveRevisionNotPresent,
         )
@@ -89,8 +90,35 @@ import bzrlib.errors as errors
 from bzrlib.osutils import sha_strings
 import bzrlib.patiencediff
 from bzrlib.tsort import topo_sort
-from bzrlib.versionedfile import VersionedFile, InterVersionedFile
+from bzrlib.versionedfile import (
+    ContentFactory,
+    InterVersionedFile,
+    VersionedFile,
+    )
 from bzrlib.weavefile import _read_weave_v5, write_weave_v5
+
+
+class WeaveContentFactory(ContentFactory):
+    """Content factory for streaming from weaves.
+
+    :seealso ContentFactory:
+    """
+
+    def __init__(self, version, weave):
+        """Create a WeaveContentFactory for version from weave."""
+        ContentFactory.__init__(self)
+        self.sha1 = weave.get_sha1s([version])[0]
+        self.key = (version,)
+        parents = weave.get_parent_map([version])[version]
+        self.parents = tuple((parent,) for parent in parents)
+        self.storage_kind = 'fulltext'
+        self._weave = weave
+
+    def get_bytes_as(self, storage_kind):
+        if storage_kind == 'fulltext':
+            return self._weave.get_text(self.key[0])
+        else:
+            raise UnavailableRepresentation(self.key, storage_kind, 'fulltext')
 
 
 class Weave(VersionedFile):
@@ -262,6 +290,25 @@ class Weave(VersionedFile):
         return (version_id in self._name_map)
 
     __contains__ = has_version
+
+    def get_record_stream(self, versions, ordering, include_delta_closure):
+        """Get a stream of records for versions.
+
+        :param versions: The versions to include. Each version is a tuple
+            (version,).
+        :param ordering: Either 'unordered' or 'topological'. A topologically
+            sorted stream has compression parents strictly before their
+            children.
+        :param include_delta_closure: If True then the closure across any
+            compression parents will be included (in the opaque data).
+        :return: An iterator of ContentFactory objects, each of which is only
+            valid until the iterator is advanced.
+        """
+        if ordering == 'topological':
+            parents = self.get_parent_map(versions)
+            versions = topo_sort(parents)
+        for version in versions:
+            yield WeaveContentFactory(version, self)
 
     def get_parent_map(self, version_ids):
         """See VersionedFile.get_parent_map."""

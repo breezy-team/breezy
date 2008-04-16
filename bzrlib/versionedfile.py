@@ -41,6 +41,29 @@ from bzrlib.symbol_versioning import *
 from bzrlib.textmerge import TextMerge
 
 
+class ContentFactory(object):
+    """Abstract interface for insertion and retrieval from a VersionedFile.
+    
+    :ivar sha1: None, or the sha1 of the content fulltext.
+    :ivar storage_kind: The native storage kind of this factory. One of
+        'mpdiff', 'knit-annotated-ft', 'knit-annotated-delta', 'knit-ft',
+        'knit-delta', 'fulltext', 'knit-annotated-ft-gz',
+        'knit-annotated-delta-gz', 'knit-ft-gz', 'knit-delta-gz'.
+    :ivar key: The key of this content. Each key is a tuple with a single
+        string in it.
+    :ivar parents: A tuple of parent keys for self.key. If the object has
+        no parent information, None (as opposed to () for an empty list of
+        parents).
+        """
+
+    def __init__(self):
+        """Create a ContentFactory."""
+        self.sha1 = None
+        self.storage_kind = None
+        self.key = None
+        self.parents = None
+
+
 class VersionedFile(object):
     """Versioned text file storage.
     
@@ -63,9 +86,20 @@ class VersionedFile(object):
         """Copy this versioned file to name on transport."""
         raise NotImplementedError(self.copy_to)
 
-    def versions(self):
-        """Return a unsorted list of versions."""
-        raise NotImplementedError(self.versions)
+    def get_record_stream(self, versions, ordering, include_delta_closure):
+        """Get a stream of records for versions.
+
+        :param versions: The versions to include. Each version is a tuple
+            (version,).
+        :param ordering: Either 'unordered' or 'topological'. A topologically
+            sorted stream has compression parents strictly before their
+            children.
+        :param include_delta_closure: If True then the closure across any
+            compression parents will be included (in the opaque data).
+        :return: An iterator of ContentFactory objects, each of which is only
+            valid until the iterator is advanced.
+        """
+        raise NotImplementedError(self.get_record_stream)
 
     @deprecated_method(one_four)
     def has_ghost(self, version_id):

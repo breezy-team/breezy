@@ -205,6 +205,12 @@ class TestErrors(TestCaseWithTransport):
             "the currently open request.",
             str(error))
 
+    def test_unavailable_representation(self):
+        error = errors.UnavailableRepresentation(('key',), "mpdiff", "fulltext")
+        self.assertEqualDiff("The encoding 'mpdiff' is not available for key "
+            "('key',) which is encoded as 'fulltext'.",
+            str(error))
+
     def test_unknown_hook(self):
         error = errors.UnknownHook("branch", "foo")
         self.assertEqualDiff("The branch hook 'foo' is unknown in this version"
