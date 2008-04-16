@@ -24,8 +24,11 @@ IN DEVELOPMENT
   BUGFIXES:
 
     * Severe performance degradation in fetching from knit repositories to
-      packs due to parsing the entire revisions.kndx on every graph walk
-      iteration fixed by using the Repository.get_graph API. (Robert Collins)
+      knits and packs due to parsing the entire revisions.kndx on every graph
+      walk iteration fixed by using the Repository.get_graph API.  There was
+      another regression in knit => knit fetching which re-read the index for
+      every revision each side had in common.
+      (Robert Collins, John Arbash Meinel)
 
   DOCUMENTATION:
 
