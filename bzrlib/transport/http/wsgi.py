@@ -22,7 +22,7 @@ For more information about WSGI, see PEP 333:
 
 from cStringIO import StringIO
 
-from bzrlib.smart import protocol
+from bzrlib.smart import protocol, medium
 from bzrlib.transport import chroot, get_transport
 from bzrlib.urlutils import local_path_to_url
     
@@ -166,14 +166,8 @@ class SmartWSGIApp(object):
         return [response_data]
 
     def make_request(self, transport, write_func, request_bytes, rcp):
-        # XXX: This duplicates the logic in
-        # SmartServerStreamMedium._build_protocol.
-        if request_bytes.startswith(protocol.REQUEST_VERSION_TWO):
-            protocol_class = protocol.SmartServerRequestProtocolTwo
-            request_bytes = request_bytes[len(protocol.REQUEST_VERSION_TWO):]
-        else:
-            protocol_class = protocol.SmartServerRequestProtocolOne
-        server_protocol = protocol_class(
-            transport, write_func, rcp)
-        server_protocol.accept_bytes(request_bytes)
+        protocol_factory, unused_bytes = medium._get_protocol_factory_for_bytes(
+            request_bytes)
+        server_protocol = protocol_factory(transport, write_func, rcp)
+        server_protocol.accept_bytes(unused_bytes)
         return server_protocol

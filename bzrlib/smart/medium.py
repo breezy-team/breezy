@@ -44,6 +44,38 @@ from bzrlib.smart.protocol import (
 from bzrlib.transport import ssh
 
 
+def _get_protocol_factory_for_bytes(bytes):
+    """Determine the right protocol factory for 'bytes'.
+
+    This will return an appropriate protocol factory depending on the version
+    of the protocol being used, as determined by inspecting the given bytes.
+    The bytes should have at least one newline byte (i.e. be a whole line),
+    otherwise it's possible that a request will be incorrectly identified as
+    version 1.
+
+    Typical use would be::
+
+         factory, unused_bytes = _get_protocol_factory_for_bytes(bytes)
+         server_protocol = factory(transport, write_func, root_client_path)
+         server_protocol.accept_bytes(unused_bytes)
+
+    :param bytes: a str of bytes of the start of the request.
+    :returns: 2-tuple of (protocol_factory, unused_bytes).  protocol_factory is
+        a callable that takes three args: transport, write_func,
+        root_client_path.  unused_bytes are any bytes that were not part of a
+        protocol version marker.
+    """
+    if bytes.startswith(MESSAGE_VERSION_THREE):
+        protocol_factory = build_server_protocol_three
+        bytes = bytes[len(MESSAGE_VERSION_THREE):]
+    elif bytes.startswith(REQUEST_VERSION_TWO):
+        protocol_factory = SmartServerRequestProtocolTwo
+        bytes = bytes[len(REQUEST_VERSION_TWO):]
+    else:
+        protocol_factory = SmartServerRequestProtocolOne
+    return protocol_factory, bytes
+
+
 class SmartServerStreamMedium(object):
     """Handles smart commands coming over a stream.
 
@@ -116,19 +148,11 @@ class SmartServerStreamMedium(object):
 
         :returns: a SmartServerRequestProtocol.
         """
-        # Identify the protocol version.
         bytes = self._get_line()
-        if bytes.startswith(MESSAGE_VERSION_THREE):
-            protocol_factory = build_server_protocol_three
-            bytes = bytes[len(MESSAGE_VERSION_THREE):]
-        elif bytes.startswith(REQUEST_VERSION_TWO):
-            protocol_factory = SmartServerRequestProtocolTwo
-            bytes = bytes[len(REQUEST_VERSION_TWO):]
-        else:
-            protocol_factory = SmartServerRequestProtocolOne
+        protocol_factory, unused_bytes = _get_protocol_factory_for_bytes(bytes)
         protocol = protocol_factory(
             self.backing_transport, self._write_out, self.root_client_path)
-        protocol.accept_bytes(bytes)
+        protocol.accept_bytes(unused_bytes)
         return protocol
 
     def _serve_one_request(self, protocol):
