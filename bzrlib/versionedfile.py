@@ -55,10 +55,6 @@ class VersionedFile(object):
     Texts are identified by a version-id string.
     """
 
-    def __init__(self, access_mode):
-        self.finished = False
-        self._access_mode = access_mode
-
     @staticmethod
     def check_not_reserved_id(version_id):
         revision.check_not_reserved_id(version_id)
@@ -161,13 +157,7 @@ class VersionedFile(object):
             if '\n' in line[:-1]:
                 raise errors.BzrBadParameterContainsNewline("lines")
 
-    def _check_write_ok(self):
-        """Is the versioned file marked as 'finished' ? Raise if it is."""
-        if self.finished:
-            raise errors.OutSideTransaction()
-        if self._access_mode != 'w':
-            raise errors.ReadOnlyObjectDirtiedError(self)
-
+    @deprecated_method(one_four)
     def enable_cache(self):
         """Tell this versioned file that it should cache any data it reads.
         
@@ -175,6 +165,7 @@ class VersionedFile(object):
         """
         pass
     
+    @deprecated_method(one_four)
     def clear_cache(self):
         """Remove any data cached in the versioned file object.
 
@@ -182,6 +173,7 @@ class VersionedFile(object):
         """
         pass
 
+    @deprecated_method(one_four)
     def clone_text(self, new_version_id, old_version_id, parents):
         """Add an identical text to old_version_id as new_version_id.
 
@@ -191,20 +183,8 @@ class VersionedFile(object):
         Must raise RevisionAlreadyPresent if the new version is
         already present in file history."""
         self._check_write_ok()
-        return self._clone_text(new_version_id, old_version_id, parents)
-
-    def _clone_text(self, new_version_id, old_version_id, parents):
-        """Helper function to do the _clone_text work."""
-        raise NotImplementedError(self.clone_text)
-
-    def create_empty(self, name, transport, mode=None):
-        """Create a new versioned file of this exact type.
-
-        :param name: the file name
-        :param transport: the transport
-        :param mode: optional file mode.
-        """
-        raise NotImplementedError(self.create_empty)
+        return self.add_lines(new_version_id, parents,
+            self.get_lines(old_version_id))
 
     def get_format_signature(self):
         """Get a text description of the data encoding in this file.
@@ -291,12 +271,13 @@ class VersionedFile(object):
             if expected_sha1 != sha1:
                 raise errors.VersionedFileInvalidChecksum(version)
 
+    @deprecated_method(one_four)
     def get_sha1(self, version_id):
         """Get the stored sha1 sum for the given revision.
         
         :param version_id: The name of the version to lookup
         """
-        raise NotImplementedError(self.get_sha1)
+        return self.get_sha1s([version_id])[0]
 
     def get_sha1s(self, version_ids):
         """Get the stored sha1 sums for the given revisions.
@@ -306,10 +287,6 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.get_sha1s)
 
-    def get_suffixes(self):
-        """Return the file suffixes associated with this versioned file."""
-        raise NotImplementedError(self.get_suffixes)
-    
     def get_text(self, version_id):
         """Return version contents as a text string.
 
@@ -362,7 +339,8 @@ class VersionedFile(object):
         but are not explicitly marked.
         """
         raise NotImplementedError(self.get_ancestry_with_ghosts)
-        
+    
+    @deprecated_method(one_four)
     def get_graph(self, version_ids=None):
         """Return a graph from the versioned file. 
         
@@ -371,18 +349,28 @@ class VersionedFile(object):
                             None means retrieve all versions.
         """
         if version_ids is None:
-            return dict(self.iter_parents(self.versions()))
-        result = {}
-        pending = set(version_ids)
-        while pending:
-            this_iteration = pending
-            pending = set()
-            for version, parents in self.iter_parents(this_iteration):
-                result[version] = parents
-                for parent in parents:
-                    if parent in result:
-                        continue
-                    pending.add(parent)
+            result = self.get_parent_map(self.versions())
+        else:
+            result = {}
+            pending = set(version_ids)
+            while pending:
+                this_iteration = pending
+                pending = set()
+                parents = self.get_parent_map(this_iteration)
+                for version, parents in parents.iteritems():
+                    result[version] = parents
+                    for parent in parents:
+                        if parent in result:
+                            continue
+                        pending.add(parent)
+        references = set()
+        for parents in result.itervalues():
+            references.update(parents)
+        existing_parents = self.get_parent_map(references)
+        for key, parents in result.iteritems():
+            present_parents = [parent for parent in parents if parent in
+                existing_parents]
+            result[key] = tuple(present_parents)
         return result
 
     @deprecated_method(one_four)
@@ -434,6 +422,7 @@ class VersionedFile(object):
         except KeyError:
             raise errors.RevisionNotPresent(version_id, self)
 
+    @deprecated_method(one_four)
     def annotate_iter(self, version_id):
         """Yield list of (version-id, line) pairs for the specified
         version.
@@ -441,10 +430,15 @@ class VersionedFile(object):
         Must raise RevisionNotPresent if the given version is
         not present in file history.
         """
-        raise NotImplementedError(self.annotate_iter)
+        return iter(self.annotate(version_id))
 
     def annotate(self, version_id):
-        return list(self.annotate_iter(version_id))
+        """Return a list of (version-id, line) tuples for version_id.
+
+        :raise RevisionNotPresent: If the given version is
+        not present in file history.
+        """
+        raise NotImplementedError(self.annotate)
 
     def join(self, other, pb=None, msg=None, version_ids=None,
              ignore_missing=False):
@@ -486,6 +480,7 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.iter_lines_added_or_present_in_versions)
 
+    @deprecated_method(one_four)
     def iter_parents(self, version_ids):
         """Iterate through the parents for many version ids.
 
@@ -496,14 +491,6 @@ class VersionedFile(object):
             the underlying implementation.
         """
         return self.get_parent_map(version_ids).iteritems()
-
-    def transaction_finished(self):
-        """The transaction that this file was opened in has finished.
-
-        This records self.finished = True and should cause all mutating
-        operations to error.
-        """
-        self.finished = True
 
     def plan_merge(self, ver_a, ver_b):
         """Return pseudo-annotation indicating how the two versions merge.
@@ -765,18 +752,7 @@ class InterVersionedFile(InterObject):
         are not present in the other file's history unless ignore_missing is 
         supplied in which case they are silently skipped.
         """
-        # the default join: 
-        # - if the target is empty, just add all the versions from 
-        #   source to target, otherwise:
-        # - make a temporary versioned file of type target
-        # - insert the source content into it one at a time
-        # - join them
-        if not self.target.versions():
-            target = self.target
-        else:
-            # Make a new target-format versioned file. 
-            temp_source = self.target.create_empty("temp", MemoryTransport())
-            target = temp_source
+        target = self.target
         version_ids = self._get_source_version_ids(version_ids, ignore_missing)
         graph = Graph(self.source)
         search = graph._make_breadth_first_searcher(version_ids)
@@ -803,21 +779,14 @@ class InterVersionedFile(InterObject):
             total = len(order)
             for index, version in enumerate(order):
                 pb.update('Converting versioned data', index, total)
+                if version in target:
+                    continue
                 _, _, parent_text = target.add_lines(version,
                                                parent_map[version],
                                                self.source.get_lines(version),
                                                parent_texts=parent_texts)
                 parent_texts[version] = parent_text
-            
-            # this should hit the native code path for target
-            if target is not self.target:
-                return self.target.join(temp_source,
-                                        pb,
-                                        msg,
-                                        version_ids,
-                                        ignore_missing)
-            else:
-                return total
+            return total
         finally:
             pb.finished()
 

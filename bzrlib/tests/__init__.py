@@ -374,20 +374,29 @@ class TextTestResult(ExtendedTestResult):
         self.pb.update('[test 0/%d] starting...' % (self.num_tests))
 
     def _progress_prefix_text(self):
-        a = '[%d' % self.count
+        # the longer this text, the less space we have to show the test
+        # name...
+        a = '[%d' % self.count              # total that have been run
+        # tests skipped as known not to be relevant are not important enough
+        # to show here
+        ## if self.skip_count:
+        ##     a += ', %d skip' % self.skip_count
+        ## if self.known_failure_count:
+        ##     a += '+%dX' % self.known_failure_count
         if self.num_tests is not None:
             a +='/%d' % self.num_tests
-        a += ' in %ds' % (time.time() - self._overall_start_time)
+        a += ' in '
+        runtime = time.time() - self._overall_start_time
+        if runtime >= 60:
+            a += '%dm%ds' % (runtime / 60, runtime % 60)
+        else:
+            a += '%ds' % runtime
         if self.error_count:
-            a += ', %d errors' % self.error_count
+            a += ', %d err' % self.error_count
         if self.failure_count:
-            a += ', %d failed' % self.failure_count
-        if self.known_failure_count:
-            a += ', %d known failures' % self.known_failure_count
-        if self.skip_count:
-            a += ', %d skipped' % self.skip_count
+            a += ', %d fail' % self.failure_count
         if self.unsupported:
-            a += ', %d missing features' % len(self.unsupported)
+            a += ', %d missing' % len(self.unsupported)
         a += ']'
         return a
 
@@ -782,6 +791,7 @@ class TestCase(unittest.TestCase):
         import bzrlib.smart.server
         self._preserved_hooks = {
             bzrlib.branch.Branch: bzrlib.branch.Branch.hooks,
+            bzrlib.mutabletree.MutableTree: bzrlib.mutabletree.MutableTree.hooks,
             bzrlib.smart.server.SmartTCPServer: bzrlib.smart.server.SmartTCPServer.hooks,
             }
         self.addCleanup(self._restoreHooks)
@@ -2710,6 +2720,7 @@ def test_suite(keep_only=None):
                    'bzrlib.tests.test_missing',
                    'bzrlib.tests.test_msgeditor',
                    'bzrlib.tests.test_multiparent',
+                   'bzrlib.tests.test_mutabletree',
                    'bzrlib.tests.test_nonascii',
                    'bzrlib.tests.test_options',
                    'bzrlib.tests.test_osutils',
@@ -2728,7 +2739,7 @@ def test_suite(keep_only=None):
                    'bzrlib.tests.test_repository',
                    'bzrlib.tests.test_revert',
                    'bzrlib.tests.test_revision',
-                   'bzrlib.tests.test_revisionnamespaces',
+                   'bzrlib.tests.test_revisionspec',
                    'bzrlib.tests.test_revisiontree',
                    'bzrlib.tests.test_rio',
                    'bzrlib.tests.test_sampler',
@@ -2840,7 +2851,7 @@ def test_suite(keep_only=None):
         # but really if you don't have --no-plugins this should be a failure.
         # mbp 20080213 - see http://bugs.launchpad.net/bugs/189771
         if plugin_suite is None:
-            plugin_suite = plugin.load_tests(loader)
+            plugin_suite = plugin.load_plugin_tests(loader)
         if plugin_suite is not None:
             suite.addTest(plugin_suite)
         if default_encoding != sys.getdefaultencoding():

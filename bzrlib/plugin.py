@@ -100,6 +100,19 @@ def set_plugins_path():
     if not bzr_exe:     # don't look inside library.zip
         # search the plugin path before the bzrlib installed dir
         path.append(os.path.dirname(_mod_plugins.__file__))
+    # search the arch independent path if we can determine that and
+    # the plugin is found nowhere else
+    if sys.platform != 'win32':
+        try:
+            from distutils.sysconfig import get_python_lib
+        except ImportError:
+            # If distutuils is not available, we just won't add that path
+            pass
+        else:
+            archless_path = osutils.pathjoin(get_python_lib(), 'bzrlib',
+                    'plugins')
+            if archless_path not in path:
+                path.append(archless_path)
     _mod_plugins.__path__ = path
     return path
 
@@ -407,15 +420,12 @@ class PlugIn(object):
         else:
             return None
 
-    def load_tests(self, loader):
+    def load_plugin_tests(self, loader):
         """Return the adapted plugin's test suite.
 
         :param loader: The custom loader that should be used to load additional
             tests.
 
-        Note that TestUtil.TestLoader defines load_tests(self, standard_tests,
-        module, loader), but here we are handling the associated plugin module
-        ourselves.
         """
         if getattr(self.module, 'load_tests', None) is not None:
             return loader.loadTestsFromModule(self.module)

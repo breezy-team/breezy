@@ -185,6 +185,13 @@ class AlreadyBuilding(BzrError):
     _fmt = "The tree builder is already building a tree."
 
 
+class BranchError(BzrError):
+    """Base class for concrete 'errors about a branch'."""
+
+    def __init__(self, branch):
+        BzrError.__init__(self, branch=branch)
+
+
 class BzrCheckError(InternalBzrError):
     
     _fmt = "Internal check failed: %(message)s"
@@ -303,6 +310,11 @@ class NoSuchIdInRepository(NoSuchId):
 
     def __init__(self, repository, file_id):
         BzrError.__init__(self, repository=repository, file_id=file_id)
+
+
+class NotStacked(BranchError):
+
+    _fmt = "The branch '%(branch)s' is not stacked."
 
 
 class InventoryModified(InternalBzrError):
@@ -566,6 +578,28 @@ class UnsupportedProtocol(PathError):
 
     def __init__(self, url, extra):
         PathError.__init__(self, url, extra=extra)
+
+
+class UnstackableBranchFormat(BzrError):
+
+    _fmt = ("The branch '%(url)s'(%(format)s) is not a stackable format. "
+        "You will need to upgrade the branch to permit branch stacking.")
+
+    def __init__(self, format, url):
+        BzrError.__init__(self)
+        self.format = format
+        self.url = url
+
+
+class UnstackableRepositoryFormat(BzrError):
+
+    _fmt = ("The repository '%(url)s'(%(format)s) is not a stackable format. "
+        "You will need to upgrade the repository to permit branch stacking.")
+
+    def __init__(self, format, url):
+        BzrError.__init__(self)
+        self.format = format
+        self.url = url
 
 
 class ReadError(PathError):
@@ -1175,12 +1209,9 @@ class AmbiguousBase(BzrError):
         self.bases = bases
 
 
-class NoCommits(BzrError):
+class NoCommits(BranchError):
 
     _fmt = "Branch %(branch)s has no commits."
-
-    def __init__(self, branch):
-        BzrError.__init__(self, branch=branch)
 
 
 class UnlistableStore(BzrError):
@@ -1443,6 +1474,14 @@ class SmartProtocolError(TransportError):
 
     def __init__(self, details):
         self.details = details
+
+
+class UnknownSmartMethod(InternalBzrError):
+
+    _fmt = "The server does not recognise the '%(verb)s' request."
+
+    def __init__(self, verb):
+        self.verb = verb
 
 
 # A set of semi-meaningful errors which can be thrown
@@ -2035,6 +2074,11 @@ class UpgradeRequired(BzrError):
         self.path = path
 
 
+class RepositoryUpgradeRequired(UpgradeRequired):
+
+    _fmt = "To use this feature you must upgrade your repository at %(path)s."
+
+
 class LocalRequiresBoundBranch(BzrError):
 
     _fmt = "Cannot perform local-only commits on unbound branches."
@@ -2527,6 +2571,16 @@ class AlreadyLightweightCheckout(BzrDirError):
     _fmt = "'%(display_url)s' is already a lightweight checkout."
 
 
+class AlreadyUsingShared(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already using a shared repository."
+
+
+class AlreadyStandalone(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already standalone."
+
+
 class ReconfigurationNotSupported(BzrDirError):
 
     _fmt = "Requested reconfiguration of '%(display_url)s' is not supported."
@@ -2583,6 +2637,31 @@ class UnsupportedTimezoneFormat(BzrError):
 
     def __init__(self, timezone):
         self.timezone = timezone
+
+
+class CommandAvailableInPlugin(StandardError):
+    
+    internal_error = False
+
+    def __init__(self, cmd_name, plugin_metadata, provider):
+        
+        self.plugin_metadata = plugin_metadata
+        self.cmd_name = cmd_name
+        self.provider = provider
+
+    def __str__(self):
+
+        _fmt = ('"%s" is not a standard bzr command. \n' 
+                'However, the following official plugin provides this command: %s\n'
+                'You can install it by going to: %s'
+                % (self.cmd_name, self.plugin_metadata['name'], 
+                    self.plugin_metadata['url']))
+
+        return _fmt
+
+
+class NoPluginAvailable(BzrError):
+    pass    
 
 
 class NotATerminal(BzrError):

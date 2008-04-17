@@ -325,8 +325,6 @@ class TTYProgressBar(_BaseProgressBar):
                 pass
             elif self.last_cnt + child_fraction <= self.last_total:
                 self.child_fraction = child_fraction
-            else:
-                mutter('not updating child fraction')
         if self.last_msg is None:
             self.last_msg = ''
         self.tick()
