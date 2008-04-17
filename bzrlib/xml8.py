@@ -158,8 +158,6 @@ class Serializer_v8(Serializer):
     def _check_revisions(self, inv):
         """Extension point for subclasses to check during serialisation.
 
-        By default no checking is done.
-
         :param inv: An inventory about to be serialised, to be checked.
         :raises: AssertionError if an error has occured.
         """
