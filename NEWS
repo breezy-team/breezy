@@ -35,6 +35,9 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * Added plumbing for working tree content filtering.
+      (Alexander Belchenko, Ian Clatworthy)
+
   API BREAKS:
 
 
