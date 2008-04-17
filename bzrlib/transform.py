@@ -32,7 +32,7 @@ from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, NotVersionedError, CantMoveRoot,
                            ExistingLimbo, ImmortalLimbo, NoFinalPath,
                            UnableCreateSymlink)
-from bzrlib.filters import filtered_output_lines, filters_for_path
+from bzrlib.filters import filtered_output_lines
 from bzrlib.inventory import InventoryEntry
 from bzrlib.osutils import (file_kind, supports_executable, pathjoin, lexists,
                             delete_any, has_symlinks)
@@ -328,8 +328,11 @@ class TreeTransformBase(object):
                 os.unlink(name)
                 raise
 
-            f.writelines(filtered_output_lines(contents,
-                filters_for_path(name)))
+            # Is this the best way to get the relative path?
+            # (The +1 adjusts for the path separator.)
+            relpath = name[len(self._limbodir) + 1:]
+            filters = self._tree._content_filter_stack(relpath)
+            f.writelines(filtered_output_lines(contents, filters))
         finally:
             f.close()
         self._set_mode(trans_id, mode_id, S_ISREG)

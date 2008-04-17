@@ -69,27 +69,10 @@ def filtered_output_lines(lines, filters):
     return lines
 
 
-def sha_file_by_name(name):
+def sha_file_by_name(name, filters):
     """Get sha of internal content given external content."""
-    filters = filters_for_path(name)
     if filters:
         f = open(name, 'rb', 65000)
         return osutils.sha_strings(filtered_input_file(f, filters))
     else:
         return osutils.sha_file_by_name(name)
-
-
-def filters_for_path(path):
-    """Return the stack of content filters for a path.
-    
-    Readers should be applied in first-to-last order.
-    Writers should be applied in last-to-first order.
-    """
-    result = []
-    # TODO: decide which filters to apply by consulting
-    # the to-be-agreed sources, e.g.:
-    # * config settings
-    # * path pattern matching
-    # * version properties
-    # * filters registered by plugins.
-    return result

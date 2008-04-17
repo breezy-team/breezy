@@ -81,8 +81,15 @@ class HashCache(object):
     """
     needs_write = False
 
-    def __init__(self, root, cache_file_name, mode=None):
-        """Create a hash cache in base dir, and set the file mode to mode."""
+    def __init__(self, root, cache_file_name, mode=None,
+            content_filter_stack_provider=None):
+        """Create a hash cache in base dir, and set the file mode to mode.
+
+        :param content_filter_stack_provider: a function that expects a
+            path (relative to the top of the tree) as a parameter and
+            returns the stack of ContentFilter's for that path. If None,
+            no content filtering is performed.
+        """
         self.root = safe_unicode(root)
         self.root_utf8 = self.root.encode('utf8') # where is the filesystem encoding ?
         self.hit_count = 0
@@ -94,6 +101,7 @@ class HashCache(object):
         self._cache = {}
         self._mode = mode
         self._cache_file_name = safe_unicode(cache_file_name)
+        self._cfs_provider = content_filter_stack_provider
 
     def cache_file_name(self):
         return self._cache_file_name
@@ -163,7 +171,11 @@ class HashCache(object):
 
         mode = file_fp[FP_MODE_COLUMN]
         if stat.S_ISREG(mode):
-            digest = self._really_sha1_file(abspath)
+            if self._cfs_provider is None:
+                filters = None
+            else:
+                filters = self._cfs_provider(path)
+            digest = self._really_sha1_file(abspath, filters)
         elif stat.S_ISLNK(mode):
             digest = sha.new(os.readlink(abspath)).hexdigest()
         else:
@@ -200,9 +212,9 @@ class HashCache(object):
             self._cache[path] = (digest, file_fp)
         return digest
 
-    def _really_sha1_file(self, abspath):
+    def _really_sha1_file(self, abspath, filters):
         """Calculate the SHA1 of a file by reading the full text"""
-        return sha_file_by_name(abspath)
+        return sha_file_by_name(abspath, filters)
         
     def write(self):
         """Write contents of cache to file."""

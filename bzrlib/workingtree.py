@@ -102,7 +102,7 @@ from bzrlib.osutils import (
     splitpath,
     supports_executable,
     )
-from bzrlib.filters import filtered_input_file, filters_for_path
+from bzrlib.filters import filtered_input_file
 from bzrlib.trace import mutter, note
 from bzrlib.transport.local import LocalTransport
 from bzrlib.progress import DummyProgress, ProgressPhase
@@ -251,7 +251,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         wt_trans = self.bzrdir.get_workingtree_transport(None)
         cache_filename = wt_trans.local_abspath('stat-cache')
         self._hashcache = hashcache.HashCache(basedir, cache_filename,
-                                              self._control_files._file_mode)
+            self._control_files._file_mode,
+            lambda(p): self._content_filter_stack(p))
         hc = self._hashcache
         hc.read()
         # is this scan needed ? it makes things kinda slow.
@@ -494,7 +495,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     def get_file_byname(self, filename):
         path = self.abspath(filename)
-        filters = filters_for_path(path)
+        filters = self._content_filter_stack(filename)
         return filtered_input_file(file(path, 'rb'), filters)
 
     @needs_read_lock

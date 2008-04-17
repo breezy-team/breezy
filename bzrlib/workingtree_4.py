@@ -267,7 +267,8 @@ class WorkingTree4(WorkingTree3):
             return self._dirstate
         local_path = self.bzrdir.get_workingtree_transport(None
             ).local_abspath('dirstate')
-        self._dirstate = dirstate.DirState.on_file(local_path)
+        self._dirstate = dirstate.DirState.on_file(local_path,
+            lambda(p): self._content_filter_stack(p))
         return self._dirstate
 
     def filter_unversioned_files(self, paths):

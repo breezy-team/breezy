@@ -31,7 +31,7 @@ from bzrlib import (
     )
 from bzrlib.decorators import needs_read_lock
 from bzrlib.errors import BzrError, BzrCheckError
-from bzrlib.filters import filtered_output_lines, filters_for_path
+from bzrlib.filters import filtered_output_lines
 from bzrlib import errors
 from bzrlib.inventory import Inventory, InventoryFile
 from bzrlib.inter import InterObject
@@ -429,7 +429,7 @@ class Tree(object):
         import sys
         sys.stdout.writelines(filtered_output_lines(
             self.get_file_lines(file_id),
-            filters_for_path(self.id2path(file_id))))
+            self._content_filter_stack(self.id2path(file_id))))
 
     def lock_read(self):
         pass
@@ -502,6 +502,14 @@ class Tree(object):
         :return: an iterator over the directory data.
         """
         raise NotImplementedError(self.walkdirs)
+
+    def _content_filter_stack(self, path):
+        """The stack of content filters for a path.
+        
+        Readers will be applied in first-to-last order.
+        Writers will be applied in last-to-first order.
+        """
+        return None
 
 
 class EmptyTree(Tree):

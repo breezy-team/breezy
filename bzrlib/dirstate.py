@@ -304,10 +304,14 @@ class DirState(object):
     HEADER_FORMAT_2 = '#bazaar dirstate flat format 2\n'
     HEADER_FORMAT_3 = '#bazaar dirstate flat format 3\n'
 
-    def __init__(self, path):
+    def __init__(self, path, content_filter_stack_provider=None):
         """Create a  DirState object.
 
         :param path: The path at which the dirstate file on disk should live.
+        :param content_filter_stack_provider: a function that expects a
+            path (relative to the top of the tree) as a parameter and
+            returns the stack of ContentFilter's for that path. If None,
+            no content filtering is performed.
         """
         # _header_state and _dirblock_state represent the current state
         # of the dirstate metadata and the per-row data respectiely.
@@ -349,6 +353,8 @@ class DirState(object):
         # during commit.
         self._last_block_index = None
         self._last_entry_index = None
+        # Content filtering setup
+        self._cfs_provider = content_filter_stack_provider
 
     def __repr__(self):
         return "%s(%r)" % \
@@ -1490,7 +1496,12 @@ class DirState(object):
         # process this entry.
         link_or_sha1 = None
         if minikind == 'f':
-            link_or_sha1 = self._sha1_file(abspath)
+            if self._cfs_provider is None:
+                filters_ = None
+            else:
+                relpath = osutils.pathjoin(entry[0][0], entry[0][1])
+                filters_ = self._cfs_provider(relpath)
+            link_or_sha1 = self._sha1_file(abspath, filters_)
             executable = self._is_executable(stat_value.st_mode,
                                              saved_executable)
             if self._cutoff_time is None:
@@ -1544,11 +1555,11 @@ class DirState(object):
         """Return the os.lstat value for this path."""
         return os.lstat(abspath)
 
-    def _sha1_file_and_mutter(self, abspath):
+    def _sha1_file_and_mutter(self, abspath, filters_):
         # when -Dhashcache is turned on, this is monkey-patched in to log
         # file reads
         trace.mutter("dirstate sha1 " + abspath)
-        return filters.sha_file_by_name(abspath)
+        return filters.sha_file_by_name(abspath, filters_)
 
     def _is_executable(self, mode, old_executable):
         """Is this file executable?"""
@@ -1941,12 +1952,16 @@ class DirState(object):
         return len(self._parents) - len(self._ghosts)
 
     @staticmethod
-    def on_file(path):
+    def on_file(path, content_filter_stack_provider=None):
         """Construct a DirState on the file at path path.
 
+        :param content_filter_stack_provider: a function that expects a
+            path (relative to the top of the tree) as a parameter and
+            returns the stack of ContentFilter's for that path. If None,
+            no content filtering is performed.
         :return: An unlocked DirState object, associated with the given path.
         """
-        result = DirState(path)
+        result = DirState(path, content_filter_stack_provider)
         return result
 
     def _read_dirblocks_if_needed(self):
