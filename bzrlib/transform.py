@@ -32,7 +32,7 @@ from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, NotVersionedError, CantMoveRoot,
                            ExistingLimbo, ImmortalLimbo, NoFinalPath,
                            UnableCreateSymlink)
-from bzrlib.filters import filtered_writelines, filters_for_path
+from bzrlib.filters import filtered_output_lines, filters_for_path
 from bzrlib.inventory import InventoryEntry
 from bzrlib.osutils import (file_kind, supports_executable, pathjoin, lexists,
                             delete_any, has_symlinks)
@@ -328,7 +328,8 @@ class TreeTransformBase(object):
                 os.unlink(name)
                 raise
 
-            filtered_writelines(f, contents, filters_for_path(name))
+            f.writelines(filtered_output_lines(contents,
+                filters_for_path(name)))
         finally:
             f.close()
         self._set_mode(trans_id, mode_id, S_ISREG)

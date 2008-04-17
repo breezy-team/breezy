@@ -38,7 +38,7 @@ class ContentFilter(object):
         self.writer = writer
 
 
-def filtered_input(f, filters):
+def filtered_input_file(f, filters):
     """Get an input file that converts external to internal content.
     
     :param f: the original input file
@@ -49,31 +49,32 @@ def filtered_input(f, filters):
         lines = f.readlines()
         for filter in filters:
             lines = filter.reader(lines)
-        return cStringIO.cStringIO(''.join(lines))
+        return cStringIO.StringIO(''.join(lines))
     else:
         return f
 
 
-def filtered_writelines(f, lines, filters):
-    """Output lines to a file converting internal to external content.
+def filtered_output_lines(lines, filters):
+    """Convert output lines from internal to external format.
     
-    :param lines: an iterator containing the content to output
+    :param lines: an iterator containing the original content
     :param filters: the stack of filters to apply
+    :return: an iterator containing the content to output
     """
     if filters:
         strings = list(lines)
         for filter in reversed(filters):
             strings = filter.writer(strings)
         lines = iter(strings)
-    f.writelines(lines)
+    return lines
 
 
 def sha_file_by_name(name):
     """Get sha of internal content given external content."""
     filters = filters_for_path(name)
     if filters:
-        f = file(name, 'rb', buffering=65000)
-        return osutils.sha_strings(filtered_input(f, filters))
+        f = open(name, 'rb', 65000)
+        return osutils.sha_strings(filtered_input_file(f, filters))
     else:
         return osutils.sha_file_by_name(name)
 

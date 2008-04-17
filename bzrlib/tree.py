@@ -31,7 +31,7 @@ from bzrlib import (
     )
 from bzrlib.decorators import needs_read_lock
 from bzrlib.errors import BzrError, BzrCheckError
-from bzrlib.filters import filtered_writelines, filters_for_path
+from bzrlib.filters import filtered_output_lines, filters_for_path
 from bzrlib import errors
 from bzrlib.inventory import Inventory, InventoryFile
 from bzrlib.inter import InterObject
@@ -427,8 +427,9 @@ class Tree(object):
     def print_file(self, file_id):
         """Print file with id `file_id` to stdout."""
         import sys
-        filtered_writelines(sys.stdout, self.get_file_lines(file_id),
-            filters_for_path(self.id2path(file_id)))
+        sys.stdout.writelines(filtered_output_lines(
+            self.get_file_lines(file_id),
+            filters_for_path(self.id2path(file_id))))
 
     def lock_read(self):
         pass

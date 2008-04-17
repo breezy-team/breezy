@@ -102,7 +102,7 @@ from bzrlib.osutils import (
     splitpath,
     supports_executable,
     )
-from bzrlib.filters import filtered_input, filters_for_path
+from bzrlib.filters import filtered_input_file, filters_for_path
 from bzrlib.trace import mutter, note
 from bzrlib.transport.local import LocalTransport
 from bzrlib.progress import DummyProgress, ProgressPhase
@@ -495,7 +495,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def get_file_byname(self, filename):
         path = self.abspath(filename)
         filters = filters_for_path(path)
-        return filtered_input(file(path, 'rb'), filters)
+        return filtered_input_file(file(path, 'rb'), filters)
 
     @needs_read_lock
     def annotate_iter(self, file_id, default_revision=CURRENT_REVISION):
