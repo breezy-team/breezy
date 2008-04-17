@@ -510,18 +510,18 @@ class TestTreeProviderAdapter(TestCase):
         self.assertEqual(tests[0].bzrdir_format, formats[0][1])
         self.assertEqual(tests[0].transport_server, server1)
         self.assertEqual(tests[0].transport_readonly_server, server2)
-        self.assertEqual(tests[0].workingtree_to_test_tree, return_parameter)
+        self.assertEqual(tests[0]._workingtree_to_test_tree, return_parameter)
         self.assertEqual(tests[1].workingtree_format, formats[1][0])
         self.assertEqual(tests[1].bzrdir_format, formats[1][1])
         self.assertEqual(tests[1].transport_server, server1)
         self.assertEqual(tests[1].transport_readonly_server, server2)
-        self.assertEqual(tests[1].workingtree_to_test_tree, return_parameter)
+        self.assertEqual(tests[1]._workingtree_to_test_tree, return_parameter)
         self.assertIsInstance(tests[2].workingtree_format, default_format)
         #self.assertEqual(tests[2].bzrdir_format,
         #                 default_format._matchingbzrdir)
         self.assertEqual(tests[2].transport_server, server1)
         self.assertEqual(tests[2].transport_readonly_server, server2)
-        self.assertEqual(tests[2].workingtree_to_test_tree,
+        self.assertEqual(tests[2]._workingtree_to_test_tree,
             revision_tree_from_workingtree)
 
 
@@ -562,14 +562,14 @@ class TestInterTreeProviderAdapter(TestCase):
         self.assertEqual(tests[0].workingtree_format, formats[0][1])
         self.assertEqual(tests[0].workingtree_format_to, formats[0][2])
         self.assertEqual(tests[0].mutable_trees_to_test_trees, formats[0][3])
-        self.assertEqual(tests[0].workingtree_to_test_tree, return_parameter)
+        self.assertEqual(tests[0]._workingtree_to_test_tree, return_parameter)
         self.assertEqual(tests[0].transport_server, server1)
         self.assertEqual(tests[0].transport_readonly_server, server2)
         self.assertEqual(tests[1].intertree_class, formats[1][0])
         self.assertEqual(tests[1].workingtree_format, formats[1][1])
         self.assertEqual(tests[1].workingtree_format_to, formats[1][2])
         self.assertEqual(tests[1].mutable_trees_to_test_trees, formats[1][3])
-        self.assertEqual(tests[1].workingtree_to_test_tree, return_parameter)
+        self.assertEqual(tests[1]._workingtree_to_test_tree, return_parameter)
         self.assertEqual(tests[1].transport_server, server1)
         self.assertEqual(tests[1].transport_readonly_server, server2)
 
@@ -921,7 +921,7 @@ class TestTestResult(TestCase):
         test.run(result)
         self.assertEqual(
             [
-            ('update', '[2 in 0s, 3 known failures] passing_test', None, None),
+            ('update', '[2 in 0s] passing_test', None, None),
             ],
             pb.calls[2:])
 
@@ -997,7 +997,7 @@ class TestTestResult(TestCase):
         test.run(result)
         self.assertEqual(
             [
-            ('update', '[2 in 0s, 2 missing features] passing_test', None, None),
+            ('update', '[2 in 0s, 2 missing] passing_test', None, None),
             ],
             pb.calls[1:])
     

@@ -46,6 +46,7 @@ from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import server, medium
 from bzrlib.smart.client import _SmartClient
 from bzrlib.symbol_versioning import one_four
+from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.transport.remote import RemoteTransport
 
@@ -135,27 +136,36 @@ class FakeClient(_SmartClient):
         """Create a FakeClient.
 
         :param responses: A list of response-tuple, body-data pairs to be sent
-            back to callers.
+            back to callers.  A special case is if the response-tuple is
+            'unknown verb', then a UnknownSmartMethod will be raised for that
+            call, using the second element of the tuple as the verb in the
+            exception.
         """
         self.responses = responses
         self._calls = []
         self.expecting_body = False
         _SmartClient.__init__(self, FakeMedium(self._calls), fake_medium_base)
 
+    def _get_next_response(self):
+        response_tuple = self.responses.pop(0)
+        if response_tuple[0][0] == 'unknown verb':
+            raise errors.UnknownSmartMethod(response_tuple[0][1])
+        return response_tuple
+
     def call(self, method, *args):
         self._calls.append(('call', method, args))
-        return self.responses.pop(0)[0]
+        return self._get_next_response()[0]
 
     def call_expecting_body(self, method, *args):
         self._calls.append(('call_expecting_body', method, args))
-        result = self.responses.pop(0)
+        result = self._get_next_response()
         self.expecting_body = True
         return result[0], FakeProtocol(result[1], self)
 
     def call_with_body_bytes_expecting_body(self, method, args, body):
         self._calls.append(('call_with_body_bytes_expecting_body', method,
             args, body))
-        result = self.responses.pop(0)
+        result = self._get_next_response()
         self.expecting_body = True
         return result[0], FakeProtocol(result[1], self)
 
@@ -181,6 +191,39 @@ class TestVfsHas(tests.TestCase):
             [('call', 'has', (filename,))],
             client._calls)
         self.assertTrue(result)
+
+
+class Test_SmartClient_remote_path_from_transport(tests.TestCase):
+    """Tests for the behaviour of _SmartClient.remote_path_from_transport."""
+
+    def assertRemotePath(self, expected, client_base, transport_base):
+        """Assert that the result of _SmartClient.remote_path_from_transport
+        is the expected value for a given client_base and transport_base.
+        """
+        dummy_medium = 'dummy medium'
+        client = _SmartClient(dummy_medium, client_base)
+        transport = get_transport(transport_base)
+        result = client.remote_path_from_transport(transport)
+        self.assertEqual(expected, result)
+        
+    def test_remote_path_from_transport(self):
+        """_SmartClient.remote_path_from_transport calculates a URL for the
+        given transport relative to the root of the client base URL.
+        """
+        self.assertRemotePath('xyz/', 'bzr://host/path', 'bzr://host/xyz')
+        self.assertRemotePath(
+            'path/xyz/', 'bzr://host/path', 'bzr://host/path/xyz')
+
+    def test_remote_path_from_transport_http(self):
+        """Remote paths for HTTP transports are calculated differently to other
+        transports.  They are just relative to the client base, not the root
+        directory of the host.
+        """
+        for scheme in ['http:', 'https:', 'bzr+http:', 'bzr+https:']:
+            self.assertRemotePath(
+                '../xyz/', scheme + '//host/path', scheme + '//host/xyz')
+            self.assertRemotePath(
+                'xyz/', scheme + '//host/path', scheme + '//host/path/xyz')
 
 
 class TestBzrDirOpenBranch(tests.TestCase):
@@ -279,6 +322,24 @@ class TestBzrDirOpenBranch(tests.TestCase):
         """
         self.assertRaises(errors.NotBranchError,
             RemoteBzrDirFormat.probe_transport, OldServerTransport())
+
+
+class TestBzrDirOpenRepository(tests.TestCase):
+
+    def test_backwards_compat_1_2(self):
+        transport = MemoryTransport()
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        client = FakeClient([
+            (('unknown verb', 'RemoteRepository.find_repositoryV2'), ''),
+            (('ok', '', 'no', 'no'), ''),],
+            transport.base)
+        bzrdir = RemoteBzrDir(transport, _client=client)
+        repo = bzrdir.open_repository()
+        self.assertEqual(
+            [('call', 'BzrDir.find_repositoryV2', ('quack/',)),
+             ('call', 'BzrDir.find_repository', ('quack/',))],
+            client._calls)
 
 
 class OldSmartClient(object):
@@ -433,6 +494,114 @@ class TestBranchSetLastRevision(tests.TestCase):
         branch.unlock()
 
 
+class TestBranchSetLastRevisionInfo(tests.TestCase):
+
+    def test_set_last_revision_info(self):
+        # set_last_revision_info(num, 'rev-id') is translated to calling
+        # Branch.set_last_revision_info(num, 'rev-id') on the wire.
+        transport = MemoryTransport()
+        transport.mkdir('branch')
+        transport = transport.clone('branch')
+        client = FakeClient([
+            # lock_write
+            (('ok', 'branch token', 'repo token'), ),
+            # set_last_revision_info
+            (('ok',), ),
+            # unlock
+            (('ok',), )], transport.base)
+
+        bzrdir = RemoteBzrDir(transport, _client=False)
+        branch = RemoteBranch(bzrdir, None, _client=client)
+        # This is a hack to work around the problem that RemoteBranch currently
+        # unnecessarily invokes _ensure_real upon a call to lock_write.
+        branch._ensure_real = lambda: None
+        # Lock the branch, reset the record of remote calls.
+        branch.lock_write()
+        client._calls = []
+        result = branch.set_last_revision_info(1234, 'a-revision-id')
+        self.assertEqual(
+            [('call', 'Branch.set_last_revision_info',
+                ('branch/', 'branch token', 'repo token',
+                 '1234', 'a-revision-id'))],
+            client._calls)
+        self.assertEqual(None, result)
+
+    def test_no_such_revision(self):
+        # A response of 'NoSuchRevision' is translated into an exception.
+        client = FakeClient([
+            # lock_write
+            (('ok', 'branch token', 'repo token'), ),
+            # set_last_revision_info
+            (('NoSuchRevision', 'revid'), ),
+            # unlock
+            (('ok',), ),
+            ])
+        transport = MemoryTransport()
+        transport.mkdir('branch')
+        transport = transport.clone('branch')
+
+        bzrdir = RemoteBzrDir(transport, _client=False)
+        branch = RemoteBranch(bzrdir, None, _client=client)
+        # This is a hack to work around the problem that RemoteBranch currently
+        # unnecessarily invokes _ensure_real upon a call to lock_write.
+        branch._ensure_real = lambda: None
+        # Lock the branch, reset the record of remote calls.
+        branch.lock_write()
+        client._calls = []
+
+        self.assertRaises(
+            errors.NoSuchRevision, branch.set_last_revision_info, 123, 'revid')
+        branch.unlock()
+
+    def lock_remote_branch(self, branch):
+        """Trick a RemoteBranch into thinking it is locked."""
+        branch._lock_mode = 'w'
+        branch._lock_count = 2
+        branch._lock_token = 'branch token'
+        branch._repo_lock_token = 'repo token'
+
+    def test_backwards_compatibility(self):
+        """If the server does not support the Branch.set_last_revision_info
+        verb (which is new in 1.4), then the client falls back to VFS methods.
+        """
+        # This test is a little messy.  Unlike most tests in this file, it
+        # doesn't purely test what a Remote* object sends over the wire, and
+        # how it reacts to responses from the wire.  It instead relies partly
+        # on asserting that the RemoteBranch will call
+        # self._real_branch.set_last_revision_info(...).
+
+        # First, set up our RemoteBranch with a FakeClient that raises
+        # UnknownSmartMethod, and a StubRealBranch that logs how it is called.
+        transport = MemoryTransport()
+        transport.mkdir('branch')
+        transport = transport.clone('branch')
+        client = FakeClient(
+            [(('unknown verb', 'Branch.set_last_revision_info',), ),],
+            transport.base)
+        bzrdir = RemoteBzrDir(transport, _client=False)
+        branch = RemoteBranch(bzrdir, None, _client=client)
+        class StubRealBranch(object):
+            def __init__(self):
+                self.calls = []
+            def set_last_revision_info(self, revno, revision_id):
+                self.calls.append(
+                    ('set_last_revision_info', revno, revision_id))
+        real_branch = StubRealBranch()
+        branch._real_branch = real_branch
+        self.lock_remote_branch(branch)
+
+        # Call set_last_revision_info, and verify it behaved as expected.
+        result = branch.set_last_revision_info(1234, 'a-revision-id')
+        self.assertEqual(
+            [('call', 'Branch.set_last_revision_info',
+                ('branch/', 'branch token', 'repo token',
+                 '1234', 'a-revision-id')),],
+            client._calls)
+        self.assertEqual(
+            [('set_last_revision_info', 1234, 'a-revision-id')],
+            real_branch.calls)
+
+
 class TestBranchControlGetBranchConf(tests.TestCaseWithMemoryTransport):
     """Test branch.control_files api munging...
 
@@ -502,23 +671,7 @@ class TestTransportIsReadonly(tests.TestCase):
         advisory anyway (a transport could be read-write, but then the
         underlying filesystem could be readonly anyway).
         """
-        client = FakeClient([(
-            ('error', "Generic bzr smart protocol error: "
-                      "bad request 'Transport.is_readonly'"), '')])
-        transport = RemoteTransport('bzr://example.com/', medium=False,
-                                    _client=client)
-        self.assertEqual(False, transport.is_readonly())
-        self.assertEqual(
-            [('call', 'Transport.is_readonly', ())],
-            client._calls)
-
-    def test_error_from_old_0_11_server(self):
-        """Same as test_error_from_old_server, but with the slightly different
-        error message from bzr 0.11 servers.
-        """
-        client = FakeClient([(
-            ('error', "Generic bzr smart protocol error: "
-                      "bad request u'Transport.is_readonly'"), '')])
+        client = FakeClient([(('unknown verb', 'Transport.is_readonly'), '')])
         transport = RemoteTransport('bzr://example.com/', medium=False,
                                     _client=client)
         self.assertEqual(False, transport.is_readonly())
@@ -670,17 +823,18 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         repo.unlock()
 
     def test_get_parent_map_reconnects_if_unknown_method(self):
-        error_msg = (
-            "Generic bzr smart protocol error: "
-            "bad request 'Repository.get_parent_map'")
         responses = [
-            (('error', error_msg), ''),
+            (('unknown verb', 'Repository.get_parent_map'), ''),
             (('ok',), '')]
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(
             responses, transport_path)
         rev_id = 'revision-id'
-        parents = repo.get_parent_map([rev_id])
+        expected_deprecations = [
+            'bzrlib.remote.RemoteRepository.get_revision_graph was deprecated '
+            'in version 1.4.']
+        parents = self.callDeprecated(
+            expected_deprecations, repo.get_parent_map, [rev_id])
         self.assertEqual(
             [('call_with_body_bytes_expecting_body',
               'Repository.get_parent_map', ('quack/', rev_id), '\n\n0'),
@@ -689,6 +843,13 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
               ('quack/', ''))],
             client._calls)
 
+    def test_get_parent_map_unexpected_response(self):
+        responses = [
+            (('something unexpected!',), '')]
+        repo, client = self.setup_fake_client_and_repository(responses, 'path')
+        self.assertRaises(
+            errors.UnexpectedSmartServerResponse,
+            repo.get_parent_map, ['a-revision-id'])
 
 
 class TestRepositoryGetRevisionGraph(TestRemoteRepository):
@@ -955,11 +1116,8 @@ class TestRepositoryStreamKnitData(TestRemoteRepository):
     
     def test_backwards_compatibility(self):
         """If the server doesn't recognise this request, fallback to VFS."""
-        error_msg = (
-            "Generic bzr smart protocol error: "
-            "bad request 'Repository.stream_revisions_chunked'")
         responses = [
-            (('error', error_msg), '')]
+            (('unknown verb', 'Repository.stream_revisions_chunked'), '')]
         repo, client = self.setup_fake_client_and_repository(
             responses, 'path')
         self.mock_called = False

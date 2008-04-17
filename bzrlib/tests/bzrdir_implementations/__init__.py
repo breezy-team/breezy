@@ -84,8 +84,10 @@ class TestCaseWithBzrDir(TestCaseWithTransport):
         return self.bzrdir
 
     def make_bzrdir(self, relpath, format=None):
+        if format is None:
+            format = self.bzrdir_format
         return super(TestCaseWithBzrDir, self).make_bzrdir(
-            relpath, format=self.bzrdir_format)
+            relpath, format=format)
 
 
 def load_tests(basic_tests, module, loader):

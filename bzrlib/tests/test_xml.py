@@ -20,6 +20,7 @@ from bzrlib import (
     errors, 
     inventory, 
     xml7,
+    xml8,
     xml_serializer,
     )
 from bzrlib.tests import TestCase
@@ -144,6 +145,24 @@ _expected_inv_v7 = """<inventory format="7" revision_id="rev_outer">
 <file file_id="file-id" name="file" parent_id="tree-root-321" revision="rev_outer" text_sha1="A" text_size="1" />
 <symlink file_id="link-id" name="link" parent_id="tree-root-321" revision="rev_outer" symlink_target="a" />
 <tree-reference file_id="nested-id" name="nested" parent_id="tree-root-321" revision="rev_outer" reference_revision="rev_inner" />
+</inventory>
+"""
+
+_expected_rev_v8 = """<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;" format="8" inventory_sha1="e79c31c1deb64c163cf660fdedd476dd579ffd41" revision_id="mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9" timestamp="1125907235.212" timezone="36000">
+<message>- start splitting code for xml (de)serialization away from objects
+  preparatory to supporting multiple formats by a single library
+</message>
+<parents>
+<revision_ref revision_id="mbp@sourcefrog.net-20050905063503-43948f59fa127d92" />
+</parents>
+</revision>
+"""
+
+_expected_inv_v8 = """<inventory format="8" revision_id="rev_outer">
+<directory file_id="tree-root-321" name="" revision="rev_outer" />
+<directory file_id="dir-id" name="dir" parent_id="tree-root-321" revision="rev_outer" />
+<file file_id="file-id" name="file" parent_id="tree-root-321" revision="rev_outer" text_sha1="A" text_size="1" />
+<symlink file_id="link-id" name="link" parent_id="tree-root-321" revision="rev_outer" symlink_target="a" />
 </inventory>
 """
 
@@ -330,10 +349,8 @@ class TestSerializer(TestCase):
         new_rev = s_v5.read_revision_from_string(txt)
         self.assertEqual(props, new_rev.properties)
 
-    def test_roundtrip_inventory_v7(self):
+    def get_sample_inventory(self):
         inv = Inventory('tree-root-321', revision_id='rev_outer')
-        inv.add(inventory.TreeReference('nested-id', 'nested', 'tree-root-321',
-                                        'rev_outer', 'rev_inner'))
         inv.add(inventory.InventoryFile('file-id', 'file', 'tree-root-321'))
         inv.add(inventory.InventoryDirectory('dir-id', 'dir', 
                                              'tree-root-321'))
@@ -345,6 +362,12 @@ class TestSerializer(TestCase):
         inv['file-id'].text_size = 1
         inv['link-id'].revision = 'rev_outer'
         inv['link-id'].symlink_target = 'a'
+        return inv
+
+    def test_roundtrip_inventory_v7(self):
+        inv = self.get_sample_inventory()
+        inv.add(inventory.TreeReference('nested-id', 'nested', 'tree-root-321',
+                                        'rev_outer', 'rev_inner'))
         txt = xml7.serializer_v7.write_inventory_to_string(inv)
         lines = xml7.serializer_v7.write_inventory_to_lines(inv)
         self.assertEqual(bzrlib.osutils.split_lines(txt), lines)
@@ -388,6 +411,42 @@ class TestSerializer(TestCase):
         self.assertRaises(errors.UnsupportedInventoryKind, 
                           s_v5.read_inventory_from_string,
                           txt.replace('format="7"', 'format="5"'))
+
+    def test_roundtrip_inventory_v8(self):
+        inv = self.get_sample_inventory()
+        txt = xml8.serializer_v8.write_inventory_to_string(inv)
+        inv2 = xml8.serializer_v8.read_inventory_from_string(txt)
+        self.assertEqual(4, len(inv2))
+        for path, ie in inv.iter_entries():
+            self.assertEqual(ie, inv2[ie.file_id])
+
+    def test_inventory_text_v8(self):
+        inv = self.get_sample_inventory()
+        txt = xml8.serializer_v8.write_inventory_to_string(inv)
+        lines = xml8.serializer_v8.write_inventory_to_lines(inv)
+        self.assertEqual(bzrlib.osutils.split_lines(txt), lines)
+        self.assertEqualDiff(_expected_inv_v8, txt)
+
+    def test_revision_text_v6(self):
+        """Pack revision to XML v6"""
+        rev = bzrlib.xml6.serializer_v6.read_revision_from_string(
+            _expected_rev_v5)
+        serialized = bzrlib.xml6.serializer_v6.write_revision_to_string(rev)
+        self.assertEqualDiff(serialized, _expected_rev_v5)
+
+    def test_revision_text_v7(self):
+        """Pack revision to XML v7"""
+        rev = bzrlib.xml7.serializer_v7.read_revision_from_string(
+            _expected_rev_v5)
+        serialized = bzrlib.xml7.serializer_v7.write_revision_to_string(rev)
+        self.assertEqualDiff(serialized, _expected_rev_v5)
+
+    def test_revision_text_v8(self):
+        """Pack revision to XML v8"""
+        rev = bzrlib.xml8.serializer_v8.read_revision_from_string(
+            _expected_rev_v8)
+        serialized = bzrlib.xml8.serializer_v8.write_revision_to_string(rev)
+        self.assertEqualDiff(serialized, _expected_rev_v8)
 
     def test_revision_ids_are_utf8(self):
         """Parsed revision_ids should all be utf-8 strings, not unicode."""
@@ -442,6 +501,8 @@ class TestSerializer(TestCase):
                       xml_serializer.format_registry.get('6'))
         self.assertIs(bzrlib.xml7.serializer_v7,
                       xml_serializer.format_registry.get('7'))
+        self.assertIs(bzrlib.xml8.serializer_v8,
+                      xml_serializer.format_registry.get('8'))
 
 
 class TestEncodeAndEscape(TestCase):
@@ -449,31 +510,31 @@ class TestEncodeAndEscape(TestCase):
 
     def setUp(self):
         # Keep the cache clear before and after the test
-        bzrlib.xml5._ensure_utf8_re()
-        bzrlib.xml5._clear_cache()
-        self.addCleanup(bzrlib.xml5._clear_cache)
+        bzrlib.xml8._ensure_utf8_re()
+        bzrlib.xml8._clear_cache()
+        self.addCleanup(bzrlib.xml8._clear_cache)
 
     def test_simple_ascii(self):
         # _encode_and_escape always appends a final ", because these parameters
         # are being used in xml attributes, and by returning it now, we have to
         # do fewer string operations later.
-        val = bzrlib.xml5._encode_and_escape('foo bar')
+        val = bzrlib.xml8._encode_and_escape('foo bar')
         self.assertEqual('foo bar"', val)
         # The second time should be cached
-        val2 = bzrlib.xml5._encode_and_escape('foo bar')
+        val2 = bzrlib.xml8._encode_and_escape('foo bar')
         self.assertIs(val2, val)
 
     def test_ascii_with_xml(self):
         self.assertEqual('&amp;&apos;&quot;&lt;&gt;"',
-                         bzrlib.xml5._encode_and_escape('&\'"<>'))
+                         bzrlib.xml8._encode_and_escape('&\'"<>'))
 
     def test_utf8_with_xml(self):
         # u'\xb5\xe5&\u062c'
         utf8_str = '\xc2\xb5\xc3\xa5&\xd8\xac'
         self.assertEqual('&#181;&#229;&amp;&#1580;"',
-                         bzrlib.xml5._encode_and_escape(utf8_str))
+                         bzrlib.xml8._encode_and_escape(utf8_str))
 
     def test_unicode(self):
         uni_str = u'\xb5\xe5&\u062c'
         self.assertEqual('&#181;&#229;&amp;&#1580;"',
-                         bzrlib.xml5._encode_and_escape(uni_str))
+                         bzrlib.xml8._encode_and_escape(uni_str))
