@@ -38,6 +38,8 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * Implement xml8 serializer.  (Aaron Bentley)
+
   API BREAKS:
 
 
