@@ -32,7 +32,8 @@ CACHE_HEADER = "### bzr hashcache v5\n"
 import os, stat, time
 import sha
 
-from bzrlib.osutils import sha_file, pathjoin, safe_unicode
+from bzrlib.filters import sha_file_by_name
+from bzrlib.osutils import pathjoin, safe_unicode
 from bzrlib.trace import mutter, warning
 from bzrlib.atomicfile import AtomicFile
 from bzrlib.errors import BzrError
@@ -201,7 +202,7 @@ class HashCache(object):
 
     def _really_sha1_file(self, abspath):
         """Calculate the SHA1 of a file by reading the full text"""
-        return sha_file(file(abspath, 'rb', buffering=65000))
+        return sha_file_by_name(abspath)
         
     def write(self):
         """Write contents of cache to file."""

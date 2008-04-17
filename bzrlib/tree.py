@@ -31,6 +31,7 @@ from bzrlib import (
     )
 from bzrlib.decorators import needs_read_lock
 from bzrlib.errors import BzrError, BzrCheckError
+from bzrlib.filters import filtered_writelines, filters_for_path
 from bzrlib import errors
 from bzrlib.inventory import Inventory, InventoryFile
 from bzrlib.inter import InterObject
@@ -426,7 +427,8 @@ class Tree(object):
     def print_file(self, file_id):
         """Print file with id `file_id` to stdout."""
         import sys
-        sys.stdout.write(self.get_file_text(file_id))
+        filtered_writelines(sys.stdout, self.get_file_lines(file_id),
+            filters_for_path(self.id2path(file_id)))
 
     def lock_read(self):
         pass
@@ -821,11 +823,7 @@ class InterTree(InterObject):
             if kind[0] != kind[1]:
                 changed_content = True
             elif from_kind == 'file':
-                from_size = self.source._file_size(from_entry, from_stat)
-                to_size = self.target._file_size(to_entry, to_stat)
-                if from_size != to_size:
-                    changed_content = True
-                elif (self.source.get_file_sha1(file_id, from_path, from_stat) !=
+                if (self.source.get_file_sha1(file_id, from_path, from_stat) !=
                     self.target.get_file_sha1(file_id, to_path, to_stat)):
                     changed_content = True
             elif from_kind == 'symlink':

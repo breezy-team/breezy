@@ -215,6 +215,7 @@ from bzrlib import (
     cache_utf8,
     debug,
     errors,
+    filters,
     inventory,
     lock,
     osutils,
@@ -341,7 +342,7 @@ class DirState(object):
         if 'hashcache' in debug.debug_flags:
             self._sha1_file = self._sha1_file_and_mutter
         else:
-            self._sha1_file = osutils.sha_file_by_name
+            self._sha1_file = filters.sha_file_by_name
         # These two attributes provide a simple cache for lookups into the
         # dirstate in-memory vectors. By probing respectively for the last
         # block, and for the next entry, we save nearly 2 bisections per path
@@ -1547,7 +1548,7 @@ class DirState(object):
         # when -Dhashcache is turned on, this is monkey-patched in to log
         # file reads
         trace.mutter("dirstate sha1 " + abspath)
-        return osutils.sha_file_by_name(abspath)
+        return filters.sha_file_by_name(abspath)
 
     def _is_executable(self, mode, old_executable):
         """Is this file executable?"""
