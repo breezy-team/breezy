@@ -23,6 +23,9 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+    * Avoid muttering every time a child update does not cause a progress bar
+      update. (John Arbash Meinel, #213771)
+
     * Severe performance degradation in fetching from knit repositories to
       packs due to parsing the entire revisions.kndx on every graph walk
       iteration fixed by using the Repository.get_graph API. (Robert Collins)
