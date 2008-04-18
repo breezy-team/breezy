@@ -1302,7 +1302,6 @@ print proc.stdout.read()
         lines = output.getvalue()
         self.assertContainsRe(lines, r'old\\file')
         self.assertContainsRe(lines, r'new\\file')
-        self.assertNotContainsRe(lines, 'Path not found')
 
     def test_prepare_files(self):
         output = StringIO()
