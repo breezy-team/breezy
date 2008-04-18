@@ -1905,8 +1905,23 @@ class InsertDataStreamTests(KnitTests):
         target.insert_data_stream(data_stream)
         # No errors should have been raised.
 
-    #  * test that a stream of "already present version, then new version"
-    #    inserts correctly.
+    def test_line_delta_record_into_non_delta_knit(self):
+        # Make a data stream with a line-delta record
+        source = self.make_test_knit(name='source', delta=True)
+        base_lines = split_lines(TEXT_1)
+        source.add_lines('version-1', [], base_lines)
+        source.add_lines('version-2', ['version-1'], base_lines + ['a\n'])
+        # The second record should be a delta.
+        self.assertEqual('line-delta', source._index.get_method('version-2'))
+        data_stream = source.get_data_stream(['version-1', 'version-2'])
+
+        # Insert the stream into a non-delta knit.
+        target = self.make_test_knit(name='target', delta=False)
+        target.insert_data_stream(data_stream)
+        
+        # Both versions are fulltexts in the target
+        self.assertEqual('fulltext', target._index.get_method('version-1'))
+        self.assertEqual('fulltext', target._index.get_method('version-2'))
 
 
 class DataStreamTests(KnitTests):
