@@ -26,6 +26,9 @@ IN DEVELOPMENT
     * Avoid muttering every time a child update does not cause a progress bar
       update. (John Arbash Meinel, #213771)
 
+    * When logging the changes to a particular file, there was a bug if there
+      were ghosts in the revision ancestry. (John Arbash Meinel, #209948)
+
     * Severe performance degradation in fetching from knit repositories to
       knits and packs due to parsing the entire revisions.kndx on every graph
       walk iteration fixed by using the Repository.get_graph API.  There was
