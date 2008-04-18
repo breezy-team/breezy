@@ -553,6 +553,28 @@ class VersionedFile(object):
         return PlanWeaveMerge(plan, a_marker, b_marker).merge_lines()[0]
 
 
+class RecordingVersionedFileDecorator(object):
+    """A minimal versioned file that records calls made on it.
+    
+    Only enough methods have been added to support tests using it to date.
+
+    :ivar calls: A list of the calls made; can be reset at any time by
+        assigning [] to it.
+    """
+
+    def __init__(self, backing_vf):
+        """Create a RecordingVersionedFileDecorator decorating backing_vf.
+        
+        :param backing_vf: The versioned file to answer all methods.
+        """
+        self._backing_vf = backing_vf
+        self.calls = []
+
+    def get_lines(self, version_ids):
+        self.calls.append(("get_lines", version_ids))
+        return self._backing_vf.get_lines(version_ids)
+
+
 class _PlanMergeVersionedFile(object):
     """A VersionedFile for uncommitted and committed texts.
 

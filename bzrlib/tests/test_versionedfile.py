@@ -34,6 +34,7 @@ from bzrlib.errors import (
                            RevisionAlreadyPresent,
                            WeaveParentMismatch
                            )
+from bzrlib import knit as _mod_knit
 from bzrlib.knit import (
     make_file_knit,
     KnitAnnotateFactory,
@@ -46,9 +47,37 @@ from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.tsort import topo_sort
+from bzrlib.tuned_gzip import GzipFile
 import bzrlib.versionedfile as versionedfile
 from bzrlib.weave import WeaveFile
 from bzrlib.weavefile import read_weave, write_weave
+
+
+def get_diamond_vf(f, trailing_eol=True):
+    """Get a diamond graph to exercise deltas and merges.
+    
+    :param trailing_eol: If True end the last line with \n.
+    """
+    parents = {
+        'origin': (),
+        'base': (('origin',),),
+        'left': (('base',),),
+        'right': (('base',),),
+        'merged': (('left',), ('right',)),
+        }
+    # insert a diamond graph to exercise deltas and merges.
+    if trailing_eol:
+        last_char = '\n'
+    else:
+        last_char = ''
+    f.add_lines('origin', [], ['origin' + last_char])
+    f.add_lines('base', ['origin'], ['base' + last_char])
+    f.add_lines('left', ['base'], ['base\n', 'left' + last_char])
+    f.add_lines('right', ['base'],
+        ['base\n', 'right' + last_char])
+    f.add_lines('merged', ['left', 'right'],
+        ['base\n', 'left\n', 'right\n', 'merged' + last_char])
+    return f, parents
 
 
 class VersionedFileTestMixIn(object):
@@ -93,26 +122,6 @@ class VersionedFileTestMixIn(object):
         entries = f.get_record_stream([], 'unordered', False)
         self.assertEqual([], list(entries))
 
-    def get_diamond_vf(self):
-        """Get a diamond graph to exercise deltas and merges."""
-        f = self.get_file()
-        parents = {
-            'origin': (),
-            'base': (('origin',),),
-            'left': (('base',),),
-            'right': (('base',),),
-            'merged': (('left',), ('right',)),
-            }
-        # insert a diamond graph to exercise deltas and merges.
-        f.add_lines('origin', [], [])
-        f.add_lines('base', ['origin'], ['base\n'])
-        f.add_lines('left', ['base'], ['base\n', 'left\n'])
-        f.add_lines('right', ['base'],
-            ['base\n', 'right\n'])
-        f.add_lines('merged', ['left', 'right'],
-            ['base\n', 'left\n', 'right\n', 'merged\n'])
-        return f, parents
-
     def assertValidStorageKind(self, storage_kind):
         """Assert that storage_kind is a valid storage_kind."""
         self.assertSubset([storage_kind],
@@ -132,7 +141,7 @@ class VersionedFileTestMixIn(object):
 
     def test_get_record_stream_interface(self):
         """each item in a stream has to provide a regular interface."""
-        f, parents = self.get_diamond_vf()
+        f, parents = get_diamond_vf(self.get_file())
         entries = f.get_record_stream(['merged', 'left', 'right', 'base'],
             'unordered', False)
         seen = set()
@@ -142,7 +151,7 @@ class VersionedFileTestMixIn(object):
 
     def test_get_record_stream_interface_ordered(self):
         """each item in a stream has to provide a regular interface."""
-        f, parents = self.get_diamond_vf()
+        f, parents = get_diamond_vf(self.get_file())
         entries = f.get_record_stream(['merged', 'left', 'right', 'base'],
             'topological', False)
         seen = []
@@ -155,7 +164,7 @@ class VersionedFileTestMixIn(object):
 
     def test_get_record_stream_interface_ordered_with_delta_closure(self):
         """each item in a stream has to provide a regular interface."""
-        f, parents = self.get_diamond_vf()
+        f, parents = get_diamond_vf(self.get_file())
         entries = f.get_record_stream(['merged', 'left', 'right', 'base'],
             'topological', True)
         seen = []
@@ -176,7 +185,7 @@ class VersionedFileTestMixIn(object):
 
     def test_get_record_stream_unknown_storage_kind_raises(self):
         """Asking for a storage kind that the stream cannot supply raises."""
-        f, parents = self.get_diamond_vf()
+        f, parents = get_diamond_vf(self.get_file())
         entries = f.get_record_stream(['merged', 'left', 'right', 'base'],
             'unordered', False)
         # We track the contents because we should be able to try, fail a
@@ -1351,3 +1360,89 @@ class TestWeaveMerge(TestCaseWithMemoryTransport, MergeCasesMixin):
 
     overlappedInsertExpected = ['aaa', '<<<<<<< ', 'xxx', 'yyy', '=======', 
                                 'xxx', '>>>>>>> ', 'bbb']
+
+
+class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
+
+    def test_select_adaptor(self):
+        """Test that selecting an adaptor works."""
+        # self.assertEqual(versionedfile.
+
+    def get_knit(self):
+        return make_file_knit('knit', self.get_transport('.'), delta=True,
+            create=True)
+
+    def helpGetBytes(self, f, ft_adapter, delta_adapter):
+        """grab the interested adapted texts for tests."""
+        # origin is a fulltext
+        entries = f.get_record_stream(['origin'], 'unordered', False)
+        base = entries.next()
+        ft_data = ft_adapter.get_bytes(base, base.get_bytes_as(base.storage_kind))
+        # merged is both a delta and multiple parents.
+        entries = f.get_record_stream(['merged'], 'unordered', False)
+        merged = entries.next()
+        delta_data = delta_adapter.get_bytes(merged,
+            merged.get_bytes_as(merged.storage_kind))
+        return ft_data, delta_data
+
+    def test_deannotation_noeol(self):
+        """Test converting annotated knits to unannotated knits."""
+        # we need a full text, and a delta
+        f, parents = get_diamond_vf(self.get_knit(), trailing_eol=False)
+        ft_data, delta_data = self.helpGetBytes(f,
+            _mod_knit.FTAnnotatedToUnannotated(),
+            _mod_knit.DeltaAnnotatedToUnannotated())
+        self.assertEqual(
+            'version origin 1 b284f94827db1fa2970d9e2014f080413b547a7e\n'
+            'origin\n'
+            'end origin\n',
+            GzipFile(mode='rb', fileobj=StringIO(ft_data)).read())
+        self.assertEqual(
+            'version merged 4 32c2e79763b3f90e8ccde37f9710b6629c25a796\n'
+            '1,2,3\nleft\nright\nmerged\nend merged\n',
+            GzipFile(mode='rb', fileobj=StringIO(delta_data)).read())
+
+    def test_deannotation(self):
+        """Test converting annotated knits to unannotated knits."""
+        # we need a full text, and a delta
+        f, parents = get_diamond_vf(self.get_knit())
+        ft_data, delta_data = self.helpGetBytes(f,
+            _mod_knit.FTAnnotatedToUnannotated(),
+            _mod_knit.DeltaAnnotatedToUnannotated())
+        self.assertEqual(
+            'version origin 1 00e364d235126be43292ab09cb4686cf703ddc17\n'
+            'origin\n'
+            'end origin\n',
+            GzipFile(mode='rb', fileobj=StringIO(ft_data)).read())
+        self.assertEqual(
+            'version merged 3 ed8bce375198ea62444dc71952b22cfc2b09226d\n'
+            '2,2,2\nright\nmerged\nend merged\n',
+            GzipFile(mode='rb', fileobj=StringIO(delta_data)).read())
+
+    def test_annotated_to_fulltext_no_eol(self):
+        """Test adapting annotated knits to full texts (for -> weaves)."""
+        # we need a full text, and a delta
+        f, parents = get_diamond_vf(self.get_knit(), trailing_eol=False)
+        # Reconstructing a full text requires a backing versioned file, and it
+        # must have the base lines requested from it.
+        logged_vf = versionedfile.RecordingVersionedFileDecorator(f)
+        ft_data, delta_data = self.helpGetBytes(f,
+            _mod_knit.FTAnnotatedToFullText(),
+            _mod_knit.DeltaAnnotatedToFullText(logged_vf))
+        self.assertEqual('origin', ft_data)
+        self.assertEqual('base\nleft\nright\nmerged', delta_data)
+        self.assertEqual([('get_lines', 'left')], logged_vf.calls)
+
+    def test_annotated_to_fulltext(self):
+        """Test adapting annotated knits to full texts (for -> weaves)."""
+        # we need a full text, and a delta
+        f, parents = get_diamond_vf(self.get_knit())
+        # Reconstructing a full text requires a backing versioned file, and it
+        # must have the base lines requested from it.
+        logged_vf = versionedfile.RecordingVersionedFileDecorator(f)
+        ft_data, delta_data = self.helpGetBytes(f,
+            _mod_knit.FTAnnotatedToFullText(),
+            _mod_knit.DeltaAnnotatedToFullText(logged_vf))
+        self.assertEqual('origin\n', ft_data)
+        self.assertEqual('base\nleft\nright\nmerged\n', delta_data)
+        self.assertEqual([('get_lines', 'left')], logged_vf.calls)

@@ -142,6 +142,76 @@ DATA_SUFFIX = '.knit'
 INDEX_SUFFIX = '.kndx'
 
 
+class KnitAdapter(object):
+    """Base class for knit record adaption."""
+
+    def __init__(self):
+        self._data = _KnitData(None)
+        self._annotate_factory = KnitAnnotateFactory()
+        self._plain_factory = KnitPlainFactory()
+
+
+class FTAnnotatedToUnannotated(KnitAdapter):
+    """An adapter from FT annotated knits to unannotated ones."""
+
+    def get_bytes(self, factory, annotated_compressed_bytes):
+        rec, contents = \
+            self._data._parse_record_unchecked(annotated_compressed_bytes)
+        content = self._annotate_factory.parse_fulltext(contents, rec[1])
+        size, bytes = self._data._record_to_data(rec[1], rec[3], content.text())
+        return bytes
+
+
+class DeltaAnnotatedToUnannotated(KnitAdapter):
+    """An adapter for deltas from annotated to unannotated."""
+
+    def get_bytes(self, factory, annotated_compressed_bytes):
+        rec, contents = \
+            self._data._parse_record_unchecked(annotated_compressed_bytes)
+        delta = self._annotate_factory.parse_line_delta(contents, rec[1],
+            plain=True)
+        contents = self._plain_factory.lower_line_delta(delta)
+        size, bytes = self._data._record_to_data(rec[1], rec[3], contents)
+        return bytes
+
+
+class FTAnnotatedToFullText(KnitAdapter):
+    """An adapter from FT annotated knits to unannotated ones."""
+
+    def get_bytes(self, factory, annotated_compressed_bytes):
+        rec, contents = \
+            self._data._parse_record_unchecked(annotated_compressed_bytes)
+        content, delta = self._annotate_factory.parse_record(factory.key[0],
+            contents, factory._build_details, None)
+        return ''.join(content.text())
+
+
+class DeltaAnnotatedToFullText(KnitAdapter):
+    """An adapter for deltas from annotated to unannotated."""
+
+    def __init__(self, basis_vf):
+        """Create an adapter which accesses full texts from basis_vf.
+        
+        :param basis_vf: A versioned file to access basis texts of deltas from.
+        """
+        KnitAdapter.__init__(self)
+        self._basis_vf = basis_vf
+
+    def get_bytes(self, factory, annotated_compressed_bytes):
+        rec, contents = \
+            self._data._parse_record_unchecked(annotated_compressed_bytes)
+        delta = self._annotate_factory.parse_line_delta(contents, rec[1],
+            plain=True)
+        compression_parent = factory.parents[0][0]
+        basis_lines = self._basis_vf.get_lines(compression_parent)
+        # Manually apply the delta because we have one annotated content and
+        # one plain.
+        basis_content = PlainKnitContent(basis_lines, compression_parent)
+        basis_content.apply_delta(delta, rec[1])
+        basis_content._should_strip_eol = factory._build_details[1]
+        return ''.join(basis_content.text())
+
+
 class KnitContentFactory(ContentFactory):
     """Content factory for streaming from knits.
     
@@ -280,8 +350,7 @@ class AnnotatedKnitContent(KnitContent):
                 % (e,))
 
         if self._should_strip_eol:
-            anno, line = lines[-1]
-            lines[-1] = (anno, line.rstrip('\n'))
+            lines[-1] = lines[-1].rstrip('\n')
         return lines
 
     def copy(self):
@@ -2518,45 +2587,54 @@ class _KnitData(object):
                               % (version_id, e.__class__.__name__, str(e)))
         return df, rec
 
-    def _check_header(self, version_id, line):
+    def _split_header(self, line):
         rec = line.split()
         if len(rec) != 4:
             raise KnitCorrupt(self._access,
                               'unexpected number of elements in record header')
+        return rec
+
+    def _check_header_version(self, rec, version_id):
         if rec[1] != version_id:
             raise KnitCorrupt(self._access,
                               'unexpected version, wanted %r, got %r'
                               % (version_id, rec[1]))
+
+    def _check_header(self, version_id, line):
+        rec = self._split_header(line)
+        self._check_header_version(rec, version_id)
         return rec
 
-    def _parse_record(self, version_id, data):
+    def _parse_record_unchecked(self, data):
         # profiling notes:
         # 4168 calls in 2880 217 internal
         # 4168 calls to _parse_record_header in 2121
         # 4168 calls to readlines in 330
         df = GzipFile(mode='rb', fileobj=StringIO(data))
-
         try:
             record_contents = df.readlines()
         except Exception, e:
-            raise KnitCorrupt(self._access,
-                              "While reading {%s} got %s(%s)"
-                              % (version_id, e.__class__.__name__, str(e)))
+            raise KnitCorrupt(self._access, "Corrupt compressed record %r, got %s(%s)" %
+                (data, e.__class__.__name__, str(e)))
         header = record_contents.pop(0)
-        rec = self._check_header(version_id, header)
-
+        rec = self._split_header(header)
         last_line = record_contents.pop()
         if len(record_contents) != int(rec[2]):
             raise KnitCorrupt(self._access,
                               'incorrect number of lines %s != %s'
                               ' for version {%s}'
                               % (len(record_contents), int(rec[2]),
-                                 version_id))
+                                 rec[1]))
         if last_line != 'end %s\n' % rec[1]:
             raise KnitCorrupt(self._access,
                               'unexpected version end line %r, wanted %r' 
-                              % (last_line, version_id))
+                              % (last_line, rec[1]))
         df.close()
+        return rec, record_contents
+
+    def _parse_record(self, version_id, data):
+        rec, record_contents = self._parse_record_unchecked(data)
+        self._check_header_version(rec, version_id)
         return record_contents, rec[3]
 
     def read_records_iter_raw(self, records):
