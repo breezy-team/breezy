@@ -113,7 +113,9 @@ class KnitRevisionStore(RevisionStore):
 
     def get_revision_file(self, transaction):
         """Get the revision versioned file object."""
-        return self.versioned_file_store.get_weave_or_empty('revisions', transaction)
+        vf = self.versioned_file_store.get_weave_or_empty('revisions', transaction)
+        vf.delta = False
+        return vf
 
     def get_signature_file(self, transaction):
         """Get the signature text versioned file object."""

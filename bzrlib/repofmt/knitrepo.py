@@ -185,7 +185,6 @@ class KnitRepository(MetaDirRepository):
             elif knit_kind == 'revisions':
                 knit = self._revision_store.get_revision_file(
                     self.get_transaction())
-                knit.delta = False
             elif knit_kind == 'signatures':
                 knit = self._revision_store.get_signature_file(
                     self.get_transaction())
