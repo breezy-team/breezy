@@ -41,6 +41,23 @@ from bzrlib.tests import (Feature, TestCase, TestCaseWithTransport,
                           TestCaseInTempDir, TestSkipped)
 
 
+class _AttribFeature(Feature):
+
+    def _probe(self):
+        if (sys.platform not in ('cygwin', 'win32')):
+            return false
+        try:
+            proc = subprocess.Popen(['attrib', '.'], stdout=subprocess.PIPE)
+        except OSError, e:
+            return false
+        return (0 == proc.wait())
+                
+    def feature_name(self):
+        return 'attrib Windows command-line tool'
+
+AttribFeature = _AttribFeature()
+
+
 class _CompiledPatienceDiffFeature(Feature):
 
     def _probe(self):
@@ -1275,8 +1292,7 @@ class TestDiffFromTool(TestCaseWithTransport):
                          ' on this machine', str(e))
 
     def test_windows_tool_reads_both_files(self):
-        if (sys.platform not in ('cygwin', 'win32')):
-            raise tests.TestSkipped('Platform does not have Windows tools.')
+        self.requireFeature(AttribFeature)
         output = StringIO()
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/file', 'content')])
