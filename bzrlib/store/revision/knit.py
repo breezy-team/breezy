@@ -114,6 +114,8 @@ class KnitRevisionStore(RevisionStore):
     def get_revision_file(self, transaction):
         """Get the revision versioned file object."""
         vf = self.versioned_file_store.get_weave_or_empty('revisions', transaction)
+        # The revisions knit should always be non-delta, so force delta=False
+        # here.
         vf.delta = False
         return vf
 
