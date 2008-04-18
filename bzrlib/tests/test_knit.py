@@ -1728,7 +1728,7 @@ class InsertDataStreamTests(KnitTests):
             self.assertEqual(left.annotate(version),
                 right.annotate(version))
 
-    def test_insert_data_stream_empty(self):
+    def test_empty_stream(self):
         """Inserting a data stream with no records should not put any data into
         the knit.
         """
@@ -1741,7 +1741,7 @@ class InsertDataStreamTests(KnitTests):
                          k1.transport.get_bytes(k1._index._filename),
                          "The .kndx should have nothing apart from the header.")
 
-    def test_insert_data_stream_one_record(self):
+    def test_one_record(self):
         """Inserting a data stream with one record from a knit with one record
         results in byte-identical files.
         """
@@ -1752,7 +1752,7 @@ class InsertDataStreamTests(KnitTests):
         target.insert_data_stream(data_stream)
         self.assertKnitFilesEqual(source, target)
 
-    def test_insert_data_stream_annotated_unannotated(self):
+    def test_annotated_stream_into_unannotated_knit(self):
         """Inserting an annotated datastream to an unannotated knit works."""
         # case one - full texts.
         source = self.make_test_knit(name='source', annotate=True)
@@ -1765,7 +1765,7 @@ class InsertDataStreamTests(KnitTests):
         target.insert_data_stream(source.get_data_stream(['text-b']))
         self.assertKnitValuesEqual(source, target)
 
-    def test_insert_data_stream_unannotated_annotated(self):
+    def test_unannotated_stream_into_annotated_knit(self):
         """Inserting an unannotated datastream to an annotated knit works."""
         # case one - full texts.
         source = self.make_test_knit(name='source', annotate=False)
@@ -1778,7 +1778,7 @@ class InsertDataStreamTests(KnitTests):
         target.insert_data_stream(source.get_data_stream(['text-b']))
         self.assertKnitValuesEqual(source, target)
 
-    def test_insert_data_stream_records_already_present(self):
+    def test_records_already_present(self):
         """Insert a data stream where some records are alreday present in the
         target, and some not.  Only the new records are inserted.
         """
@@ -1796,7 +1796,7 @@ class InsertDataStreamTests(KnitTests):
         # record was not added a second time.
         self.assertKnitFilesEqual(source, target)
 
-    def test_insert_data_stream_multiple_records(self):
+    def test_multiple_records(self):
         """Inserting a data stream of all records from a knit with multiple
         records results in byte-identical files.
         """
@@ -1811,7 +1811,7 @@ class InsertDataStreamTests(KnitTests):
         
         self.assertKnitFilesEqual(source, target)
 
-    def test_insert_data_stream_ghost_parent(self):
+    def test_ghost_parent(self):
         """Insert a data stream with a record that has a ghost parent."""
         # Make a knit with a record, text-a, that has a ghost parent.
         source = self.make_test_knit(name='source')
@@ -1832,7 +1832,7 @@ class InsertDataStreamTests(KnitTests):
             target.get_parent_map(['text-a', 'text-ghost']))
         self.assertEqual(split_lines(TEXT_1), target.get_lines('text-a'))
 
-    def test_insert_data_stream_inconsistent_version_lines(self):
+    def test_inconsistent_version_lines(self):
         """Inserting a data stream which has different content for a version_id
         than already exists in the knit will raise KnitCorrupt.
         """
@@ -1846,7 +1846,7 @@ class InsertDataStreamTests(KnitTests):
         self.assertRaises(
             errors.KnitCorrupt, target.insert_data_stream, data_stream)
 
-    def test_insert_data_stream_inconsistent_version_parents(self):
+    def test_inconsistent_version_parents(self):
         """Inserting a data stream which has different parents for a version_id
         than already exists in the knit will raise KnitCorrupt.
         """
@@ -1861,7 +1861,7 @@ class InsertDataStreamTests(KnitTests):
         self.assertRaises(
             errors.KnitCorrupt, target.insert_data_stream, data_stream)
 
-    def test_insert_data_stream_unknown_format(self):
+    def test_unknown_stream_format(self):
         """A data stream in a different format to the target knit cannot be
         inserted.
 
@@ -1875,7 +1875,7 @@ class InsertDataStreamTests(KnitTests):
             errors.KnitDataStreamUnknown,
             target.insert_data_stream, data_stream)
 
-    def test_insert_data_stream_bug_208418(self):
+    def test_bug_208418(self):
         """You can insert a stream with an incompatible format, even when:
           * the stream has a line-delta record,
           * whose parent is in the target, also stored as a line-delta
