@@ -84,6 +84,11 @@ of the branch see the same patterns::
     % bzr add .bzrignore
     % bzr commit -m "Add ignore patterns"
 
+The command ``bzr ignore PATTERN`` can be used to easily add PATTERN to
+the ``.bzrignore file`` (creating it if necessary and registering it to
+be tracked by Bazaar).  Removing and modifying patterns are done by
+directly editing the ``.bzrignore`` file.
+
 Global ignores
 --------------
 
