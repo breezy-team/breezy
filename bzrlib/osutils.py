@@ -858,7 +858,7 @@ def has_hardlinks():
 
 def host_os_dereferences_symlinks():
     return (has_symlinks()
-            and sys.platform not in ('cygwin', 'windows'))
+            and sys.platform not in ('cygwin', 'win32'))
 
 
 def contains_whitespace(s):

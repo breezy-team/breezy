@@ -1275,7 +1275,7 @@ class TestDiffFromTool(TestCaseWithTransport):
                          ' on this machine', str(e))
 
     def test_windows_tool_reads_both_files(self):
-        if (sys.platform not in ('windows', 'cygwin')):
+        if (sys.platform not in ('cygwin', 'win32')):
             raise tests.TestSkipped('Platform does not have Windows tools.')
         output = StringIO()
         tree = self.make_branch_and_tree('tree')
