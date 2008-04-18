@@ -1505,6 +1505,10 @@ class BasicKnitTests(KnitTests):
         for plan_line, expected_line in zip(plan, AB_MERGE):
             self.assertEqual(plan_line, expected_line)
 
+
+class GetDataStreamTests(KnitTests):
+    """Tests for get_data_stream."""
+
     def test_get_stream_empty(self):
         """Get a data stream for an empty knit file."""
         k1 = self.make_test_knit()
@@ -1695,6 +1699,10 @@ class BasicKnitTests(KnitTests):
         for version_id, options, length, parents in expected_data_list:
             bytes = reader_callable(length)
             self.assertRecordContentEqual(k1, version_id, bytes)
+
+
+class InsertDataStreamTests(KnitTests):
+    """Tests for insert_data_stream."""
 
     def assertKnitFilesEqual(self, knit1, knit2):
         """Assert that the contents of the index and data files of two knits are
@@ -1897,10 +1905,11 @@ class BasicKnitTests(KnitTests):
         target.insert_data_stream(data_stream)
         # No errors should have been raised.
 
-
     #  * test that a stream of "already present version, then new version"
     #    inserts correctly.
 
+
+class DataStreamTests(KnitTests):
 
     def assertMadeStreamKnit(self, source_knit, versions, target_knit):
         """Assert that a knit made from a stream is as expected."""
