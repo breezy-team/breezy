@@ -45,11 +45,11 @@ class _AttribFeature(Feature):
 
     def _probe(self):
         if (sys.platform not in ('cygwin', 'win32')):
-            return false
+            return False
         try:
             proc = subprocess.Popen(['attrib', '.'], stdout=subprocess.PIPE)
         except OSError, e:
-            return false
+            return False
         return (0 == proc.wait())
                 
     def feature_name(self):
