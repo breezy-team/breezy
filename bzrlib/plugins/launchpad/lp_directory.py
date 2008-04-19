@@ -93,10 +93,9 @@ class LaunchpadDirectory(object):
                 if _lp_login is None:
                     if not _warned_login:
                         trace.warning('You have not informed bzr of your '
-                                'launchpad login. If you are attempting a '
-                                'write operation it may fail. If it does, '
-                                'run "bzr launchpad-login YOUR_ID" to '
-                                'set your login and try again.')
+                                'launchpad login. If you are attempting a\n'
+                                'write operation and it fails, run '
+                                '"bzr launchpad-login YOUR_ID" and try again.')
                         _warned_login = True
                     continue
                 url = urlunsplit((scheme, '%s@%s' % (_lp_login, netloc),
