@@ -420,13 +420,10 @@ class CommitBuilder(object):
         # implementation could give us bad output from readlines() so this is
         # not a guarantee of safety. What would be better is always checking
         # the content during test suite execution. RBC 20070912
-        try:
-            return versionedfile.add_lines_with_ghosts(
-                self._new_revision_id, parents, new_lines,
-                nostore_sha=nostore_sha, random_id=self.random_revid,
-                check_content=False)[0:2]
-        finally:
-            versionedfile.clear_cache()
+        return versionedfile.add_lines_with_ghosts(
+            self._new_revision_id, parents, new_lines,
+            nostore_sha=nostore_sha, random_id=self.random_revid,
+            check_content=False)[0:2]
 
 
 class RootCommitBuilder(CommitBuilder):
@@ -551,7 +548,8 @@ class Repository(object):
                                                      self.get_inventory_weave())
             else:
                 # yes, this is not suitable for adding with ghosts.
-                self.add_inventory(revision_id, inv, rev.parent_ids)
+                rev.inventory_sha1 = self.add_inventory(revision_id, inv, 
+                                                        rev.parent_ids)
         self._revision_store.add_revision(rev, self.get_transaction())
 
     def _add_revision_text(self, revision_id, text):
@@ -594,10 +592,10 @@ class Repository(object):
         Returns a set of the present revisions.
         """
         result = []
-        for id in revision_ids:
-            if self.has_revision(id):
-               result.append(id)
-        return result
+        graph = self.get_graph()
+        parent_map = graph.get_parent_map(revision_ids)
+        # The old API returned a list, should this actually be a set?
+        return parent_map.keys()
 
     @staticmethod
     def create(a_bzrdir):
@@ -1280,16 +1278,18 @@ class Repository(object):
                 setdefault(file_id, set()).add(revision_id)
         return result
 
-    def fileids_altered_by_revision_ids(self, revision_ids):
+    def fileids_altered_by_revision_ids(self, revision_ids, _inv_weave=None):
         """Find the file ids and versions affected by revisions.
 
         :param revisions: an iterable containing revision ids.
+        :param _inv_weave: The inventory weave from this repository or None.
+            If None, the inventory weave will be opened automatically.
         :return: a dictionary mapping altered file-ids to an iterable of
         revision_ids. Each altered file-ids has the exact revision_ids that
         altered it listed explicitly.
         """
         selected_revision_ids = set(revision_ids)
-        w = self.get_inventory_weave()
+        w = _inv_weave or self.get_inventory_weave()
         pb = ui.ui_factory.nested_progress_bar()
         try:
             return self._find_file_ids_from_xml_inventory_lines(
@@ -1338,9 +1338,8 @@ class Repository(object):
         """
         # All revisions, to find inventory parents.
         if ancestors is None:
-            # self.get_revision_graph_with_ghosts().get_ancestors() wasn't
-            # returning any ghosts anyway.
-            ancestors = self.get_revision_graph()
+            graph = self.get_graph()
+            ancestors = graph.get_parent_map(self.all_revision_ids())
         if text_key_references is None:
             text_key_references = self.find_text_key_references()
         pb = ui.ui_factory.nested_progress_bar()
@@ -1450,10 +1449,9 @@ class Repository(object):
         # processed?
         self.lock_read()
         inv_w = self.get_inventory_weave()
-        inv_w.enable_cache()
 
         # file ids that changed
-        file_ids = self.fileids_altered_by_revision_ids(revision_ids)
+        file_ids = self.fileids_altered_by_revision_ids(revision_ids, inv_w)
         count = 0
         num_file_ids = len(file_ids)
         for file_id, altered_versions in file_ids.iteritems():
@@ -1467,7 +1465,6 @@ class Repository(object):
 
         # inventory
         yield ("inventory", None, revision_ids)
-        inv_w.clear_cache()
 
         # signatures
         revisions_with_signatures = set()
@@ -1552,6 +1549,7 @@ class Repository(object):
         return self.get_revision(revision_id).inventory_sha1
 
     @needs_read_lock
+    @deprecated_method(symbol_versioning.one_four)
     def get_revision_graph(self, revision_id=None):
         """Return a dictionary containing the revision graph.
 
@@ -1607,26 +1605,24 @@ class Repository(object):
             done.add(revision_id)
         return result
 
-    def _get_history_vf(self):
-        """Get a versionedfile whose history graph reflects all revisions.
-
-        For weave repositories, this is the inventory weave.
-        """
-        return self.get_inventory_weave()
-
     def iter_reverse_revision_history(self, revision_id):
         """Iterate backwards through revision ids in the lefthand history
 
         :param revision_id: The revision id to start with.  All its lefthand
             ancestors will be traversed.
         """
-        if revision_id in (None, _mod_revision.NULL_REVISION):
-            return
+        graph = self.get_graph()
         next_id = revision_id
-        versionedfile = self._get_history_vf()
         while True:
+            if next_id in (None, _mod_revision.NULL_REVISION):
+                return
             yield next_id
-            parents = versionedfile.get_parents(next_id)
+            # Note: The following line may raise KeyError in the event of
+            # truncated history. We decided not to have a try:except:raise
+            # RevisionNotPresent here until we see a use for it, because of the
+            # cost in an inner loop that is by its very nature O(history).
+            # Robert Collins 20080326
+            parents = graph.get_parent_map([next_id])[next_id]
             if len(parents) == 0:
                 return
             else:
@@ -2039,6 +2035,17 @@ class MetaDirRepository(Repository):
         return not self.control_files._transport.has('no-working-trees')
 
 
+class MetaDirVersionedFileRepository(MetaDirRepository):
+    """Repositories in a meta-dir, that work via versioned file objects."""
+
+    def __init__(self, _format, a_bzrdir, control_files, _revision_store, control_store, text_store):
+        super(MetaDirVersionedFileRepository, self).__init__(_format, a_bzrdir,
+            control_files, _revision_store, control_store, text_store)
+        _revision_store.get_scope = self.get_transaction
+        control_store.get_scope = self.get_transaction
+        text_store.get_scope = self.get_transaction
+
+
 class RepositoryFormatRegistry(registry.Registry):
     """Registry of RepositoryFormats."""
 
@@ -2378,6 +2385,7 @@ class InterRepository(InterObject):
         :return: A set of revision ids.
         """
         graph = self.source.get_graph()
+        target_graph = self.target.get_graph()
         missing_revs = set()
         # ensure we don't pay silly lookup costs.
         revision_ids = frozenset(revision_ids)
@@ -2392,14 +2400,14 @@ class InterRepository(InterObject):
                 absent_ids = set(revision_ids.intersection(ghosts))
                 # If all absent_ids are present in target, no error is needed.
                 absent_ids.difference_update(
-                    self.target.has_revisions(absent_ids))
+                    set(target_graph.get_parent_map(absent_ids)))
                 if absent_ids:
                     raise errors.NoSuchRevision(self.source, absent_ids.pop())
             # we don't care about other ghosts as we can't fetch them and
             # haven't been asked to.
             next_revs = set(next_revs)
             # we always have NULL_REVISION present.
-            have_revs = self.target.has_revisions(next_revs).union(null_set)
+            have_revs = set(target_graph.get_parent_map(next_revs)).union(null_set)
             missing_revs.update(next_revs - have_revs)
             searcher.stop_searching_any(have_revs)
         return searcher.get_result()
@@ -2551,7 +2559,7 @@ class InterWeaveRepo(InterSameDataRepository):
         # weave specific optimised path:
         try:
             self.target.set_make_working_trees(self.source.make_working_trees())
-        except NotImplementedError:
+        except (errors.RepositoryUpgradeRequired, NotImplemented):
             pass
         # FIXME do not peek!
         if self.source.control_files._transport.listable():
@@ -3124,7 +3132,9 @@ class _VersionedFileChecker(object):
         """
         wrong_parents = {}
         unused_versions = set()
-        for num, revision_id in enumerate(weave.versions()):
+        versions = weave.versions()
+        parent_map = weave.get_parent_map(versions)
+        for num, revision_id in enumerate(versions):
             try:
                 correct_parents = self.calculate_file_version_parents(
                     revision_id, file_id)
@@ -3133,9 +3143,28 @@ class _VersionedFileChecker(object):
                 unused_versions.add(revision_id)
             else:
                 try:
-                    knit_parents = tuple(weave.get_parents(revision_id))
+                    knit_parents = tuple(parent_map[revision_id])
                 except errors.RevisionNotPresent:
                     knit_parents = None
                 if correct_parents != knit_parents:
                     wrong_parents[revision_id] = (knit_parents, correct_parents)
         return wrong_parents, unused_versions
+
+
+def _old_get_graph(repository, revision_id):
+    """DO NOT USE. That is all. I'm serious."""
+    graph = repository.get_graph()
+    revision_graph = dict(((key, value) for key, value in
+        graph.iter_ancestry([revision_id]) if value is not None))
+    return _strip_NULL_ghosts(revision_graph)
+
+
+def _strip_NULL_ghosts(revision_graph):
+    """Also don't use this. more compatibility code for unmigrated clients."""
+    # Filter ghosts, and null:
+    if _mod_revision.NULL_REVISION in revision_graph:
+        del revision_graph[_mod_revision.NULL_REVISION]
+    for key, parents in revision_graph.items():
+        revision_graph[key] = tuple(parent for parent in parents if parent
+            in revision_graph)
+    return revision_graph

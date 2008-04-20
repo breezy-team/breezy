@@ -100,6 +100,19 @@ def set_plugins_path():
     if not bzr_exe:     # don't look inside library.zip
         # search the plugin path before the bzrlib installed dir
         path.append(os.path.dirname(_mod_plugins.__file__))
+    # search the arch independent path if we can determine that and
+    # the plugin is found nowhere else
+    if sys.platform != 'win32':
+        try:
+            from distutils.sysconfig import get_python_lib
+        except ImportError:
+            # If distutuils is not available, we just won't add that path
+            pass
+        else:
+            archless_path = osutils.pathjoin(get_python_lib(), 'bzrlib',
+                    'plugins')
+            if archless_path not in path:
+                path.append(archless_path)
     _mod_plugins.__path__ = path
     return path
 
@@ -199,9 +212,11 @@ def load_from_dir(d):
             ## import pdb; pdb.set_trace()
             if re.search('\.|-| ', name):
                 sanitised_name = re.sub('[-. ]', '_', name)
-                warning("Unable to load %r in %r as a plugin because file path"
-                        " isn't a valid module name; try renaming it to %r."
-                        % (name, d, sanitised_name))
+                if sanitised_name.startswith('bzr_'):
+                    sanitised_name = sanitised_name[len('bzr_'):]
+                warning("Unable to load %r in %r as a plugin because the "
+                        "file path isn't a valid module name; try renaming "
+                        "it to %r." % (name, d, sanitised_name))
             else:
                 warning('Unable to load plugin %r from %r' % (name, d))
             log_exception_quietly()
@@ -405,13 +420,25 @@ class PlugIn(object):
         else:
             return None
 
+    def load_plugin_tests(self, loader):
+        """Return the adapted plugin's test suite.
+
+        :param loader: The custom loader that should be used to load additional
+            tests.
+
+        """
+        if getattr(self.module, 'load_tests', None) is not None:
+            return loader.loadTestsFromModule(self.module)
+        else:
+            return None
+
     def version_info(self):
         """Return the plugin's version_tuple or None if unknown."""
         version_info = getattr(self.module, 'version_info', None)
         if version_info is not None and len(version_info) == 3:
             version_info = tuple(version_info) + ('final', 0)
         return version_info
-    
+
     def _get__version__(self):
         version_info = self.version_info()
         if version_info is None:

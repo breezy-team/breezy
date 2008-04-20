@@ -114,8 +114,8 @@ class TestFileParentReconciliation(TestCaseWithRepository):
                     "Format does not support text parent reconciliation")
 
     def file_parents(self, repo, revision_id):
-        return tuple(repo.weave_store.get_weave('a-file-id',
-            repo.get_transaction()).get_parents(revision_id))
+        return repo.weave_store.get_weave('a-file-id',
+            repo.get_transaction()).get_parent_map([revision_id])[revision_id]
 
     def assertFileVersionAbsent(self, repo, revision_id):
         self.assertFalse(repo.weave_store.get_weave('a-file-id',
@@ -153,7 +153,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         :returns: A dict of `{version: hash}`.
         """
         vf = repo.weave_store.get_weave('a-file-id', repo.get_transaction())
-        return dict((v, vf.get_sha1(v)) for v in versions)
+        return dict(zip(versions, vf.get_sha1s(versions)))
 
     def test_reconcile_behaviour(self):
         """Populate a repository and reconcile it, verifying the state before
