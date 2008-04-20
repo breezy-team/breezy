@@ -74,8 +74,11 @@ class TestSuite(unittest.TestSuite):
 
 
 class TestLoader(unittest.TestLoader):
-    """Custom  TestLoader to address some quirks in the stock python one."""
+    """Custom TestLoader to extend the stock python one."""
+
     suiteClass = TestSuite
+    # Memoize test names by test class dict
+    test_func_names = {}
 
     def loadTestsFromModuleNames(self, names):
         """use a custom means to load tests from modules.
@@ -86,9 +89,76 @@ class TestLoader(unittest.TestLoader):
         """
         result = self.suiteClass()
         for name in names:
-            _load_module_by_name(name)
-            result.addTests(self.loadTestsFromName(name))
+            result.addTests(self.loadTestsFromModuleName(name))
         return result
+
+    def loadTestsFromModuleName(self, name):
+        result = self.suiteClass()
+        module = _load_module_by_name(name)
+
+        result.addTests(self.loadTestsFromModule(module))
+        return result
+
+    def loadTestsFromModule(self, module):
+        """Load tests from a module object.
+
+        This extension of the python test loader looks for an attribute
+        load_tests in the module object, and if not found falls back to the
+        regular python loadTestsFromModule.
+
+        If a load_tests attribute is found, it is called and the result is
+        returned. 
+
+        load_tests should be defined like so:
+        >>> def load_tests(standard_tests, module, loader):
+        >>>    pass
+
+        standard_tests is the tests found by the stock TestLoader in the
+        module, module and loader are the module and loader instances.
+
+        For instance, to run every test twice, you might do:
+        >>> def load_tests(standard_tests, module, loader):
+        >>>     result = loader.suiteClass()
+        >>>     for test in iter_suite_tests(standard_tests):
+        >>>         result.addTests([test, test])
+        >>>     return result
+        """
+        basic_tests = super(TestLoader, self).loadTestsFromModule(module)
+        load_tests = getattr(module, "load_tests", None)
+        if load_tests is not None:
+            return load_tests(basic_tests, module, self)
+        else:
+            return basic_tests
+
+    def getTestCaseNames(self, test_case_class):
+        test_fn_names = self.test_func_names.get(test_case_class, None)
+        if test_fn_names is not None:
+            # We already know them
+            return test_fn_names
+
+        test_fn_names = unittest.TestLoader.getTestCaseNames(self,
+                                                             test_case_class)
+        self.test_func_names[test_case_class] = test_fn_names
+        return test_fn_names
+
+
+class FilteredByModuleTestLoader(TestLoader):
+    """A test loader that import only the needed modules."""
+
+    def __init__(self, needs_module):
+        """Constructor.
+
+        :param needs_module: a callable taking a module name as a
+            parameter returing True if the module should be loaded.
+        """
+        TestLoader.__init__(self)
+        self.needs_module = needs_module
+
+    def loadTestsFromModuleName(self, name):
+        if self.needs_module(name):
+            return TestLoader.loadTestsFromModuleName(self, name)
+        else:
+            return self.suiteClass()
 
 
 def _load_module_by_name(mod_name):

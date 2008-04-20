@@ -57,7 +57,6 @@ from bzrlib.transport import (
     FileFileStream,
     _file_streams,
     local,
-    register_urlparse_netloc_protocol,
     Server,
     ssh,
     ConnectedTransport,
@@ -86,9 +85,6 @@ else:
                                CMD_HANDLE, CMD_OPEN)
     from paramiko.sftp_attr import SFTPAttributes
     from paramiko.sftp_file import SFTPFile
-
-
-register_urlparse_netloc_protocol('sftp')
 
 
 _paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
@@ -1023,10 +1019,12 @@ class SFTPServerWithoutSSH(SFTPServer):
             def close(self):
                 pass
 
-        server = paramiko.SFTPServer(FakeChannel(), 'sftp', StubServer(self), StubSFTPServer,
-                                     root=self._root, home=self._server_homedir)
+        server = paramiko.SFTPServer(
+            FakeChannel(), 'sftp', StubServer(self), StubSFTPServer,
+            root=self._root, home=self._server_homedir)
         try:
-            server.start_subsystem('sftp', None, sock)
+            server.start_subsystem(
+                'sftp', None, ssh.SocketAsChannelAdapter(sock))
         except socket.error, e:
             if (len(e.args) > 0) and (e.args[0] == errno.EPIPE):
                 # it's okay for the client to disconnect abruptly

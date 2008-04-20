@@ -27,6 +27,7 @@ import os
 from bzrlib import (
     add,
     bzrdir,
+    hooks,
     )
 from bzrlib.osutils import dirname
 from bzrlib.revisiontree import RevisionTree
@@ -183,6 +184,8 @@ class MutableTree(tree.Tree):
             revprops['author'] = author
         # args for wt.commit start at message from the Commit.commit method,
         args = (message, ) + args
+        for hook in MutableTree.hooks['start_commit']:
+            hook(self)
         committed_id = commit.Commit().commit(working_tree=self,
             revprops=revprops, *args, **kwargs)
         return committed_id
@@ -429,13 +432,20 @@ class MutableTree(tree.Tree):
                 self.read_working_inventory()
         return added, ignored
 
-    def update_to_one_parent_via_delta(self, new_revid, delta):
+    def update_basis_by_delta(self, new_revid, delta):
         """Update the parents of this tree after a commit.
 
         This gives the tree one parent, with revision id new_revid. The
-        inventory delta is applied ot the current basis tree to generate the
+        inventory delta is applied to the current basis tree to generate the
         inventory for the parent new_revid, and all other parent trees are
         discarded.
+
+        All the changes in the delta should be changes synchronising the basis
+        tree with some or all of the working tree, with a change to a directory
+        requiring that its contents have been recursively included. That is,
+        this is not a general purpose tree modification routine, but a helper
+        for commit which is not required to handle situations that do not arise
+        outside of commit.
 
         :param new_revid: The new revision id for the trees parent.
         :param delta: An inventory delta (see apply_inventory_delta) describing
@@ -457,6 +467,24 @@ class MutableTree(tree.Tree):
         inventory.apply_delta(delta)
         rev_tree = RevisionTree(self.branch.repository, inventory, new_revid)
         self.set_parent_trees([(new_revid, rev_tree)])
+
+
+class MutableTreeHooks(hooks.Hooks):
+    """A dictionary mapping a hook name to a list of callables for mutabletree 
+    hooks.
+    """
+
+    def __init__(self):
+        """Create the default hooks.
+
+        """
+        hooks.Hooks.__init__(self)
+        # Invoked before a commit is done in a tree. New in 1.4
+        self['start_commit'] = []
+
+
+# install the default hooks into the MutableTree class.
+MutableTree.hooks = MutableTreeHooks()
 
 
 class _FastPath(object):

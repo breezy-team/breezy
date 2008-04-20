@@ -344,11 +344,11 @@ class TestIterChanges(TestCaseWithTwoTrees):
     """Test the comparison iterator"""
 
     def do_iter_changes(self, tree1, tree2, **extra_args):
-        """Helper to run _iter_changes from tree1 to tree2.
+        """Helper to run iter_changes from tree1 to tree2.
         
         :param tree1, tree2:  The source and target trees. These will be locked
             automatically.
-        :param **extra_args: Extra args to pass to _iter_changes. This is not
+        :param **extra_args: Extra args to pass to iter_changes. This is not
             inspected by this test helper.
         """
         tree1.lock_read()
@@ -356,7 +356,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         try:
             # sort order of output is not strictly defined
             return sorted(self.intertree_class(tree1, tree2)
-                ._iter_changes(**extra_args))
+                .iter_changes(**extra_args))
         finally:
             tree1.unlock()
             tree2.unlock()
@@ -729,7 +729,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2.add_reference(subtree2)
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
 
-        self.assertEqual([], list(tree2._iter_changes(tree1)))
+        self.assertEqual([], list(tree2.iter_changes(tree1)))
         subtree1.commit('commit', rev_id='commit-a')
         self.assertEqual([
             ('root-id',
@@ -748,7 +748,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
              ('sub', 'sub'),
              ('tree-reference', 'tree-reference'),
              (False, False))],
-                         list(tree2._iter_changes(tree1,
+                         list(tree2.iter_changes(tree1,
                              include_unchanged=True)))
 
     def test_disk_in_subtrees_skipped(self):
@@ -953,7 +953,6 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2.set_root_id(tree1.get_root_id())
         self.build_tree(['tree1/fromfile', 'tree1/fromdir/'])
         self.build_tree(['tree2/tofile', 'tree2/todir/', 'tree2/unknown'])
-        # try:
         os.symlink('original', 'tree1/changed')
         os.symlink('original', 'tree1/removed')
         os.symlink('original', 'tree1/tofile')
@@ -986,14 +985,10 @@ class TestIterChanges(TestCaseWithTwoTrees):
             ]
         tree1.add(from_paths_and_ids, from_paths_and_ids)
         tree2.add(to_paths_and_ids, to_paths_and_ids)
-        # except ???:
-        #   raise TestSkipped('OS does not support symlinks')
-        #   links_supported = False
         return self.mutable_trees_to_locked_test_trees(tree1, tree2)
 
     def test_versioned_symlinks(self):
-        if not has_symlinks():
-            raise tests.TestSkipped("No symlink support")
+        self.requireFeature(tests.SymlinkFeature)
         tree1, tree2 = self.make_trees_with_symlinks()
         root_id = tree1.path2id('')
         expected = [
@@ -1014,8 +1009,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
                 want_unversioned=True))
 
     def test_versioned_symlinks_specific_files(self):
-        if not has_symlinks():
-            raise tests.TestSkipped("No symlink support")
+        self.requireFeature(tests.SymlinkFeature)
         tree1, tree2 = self.make_trees_with_symlinks()
         root_id = tree1.path2id('')
         expected = [

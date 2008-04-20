@@ -22,7 +22,7 @@ import time
 
 from bzrlib.errors import BzrError
 from bzrlib.hashcache import HashCache
-from bzrlib.tests import TestCaseInTempDir, TestSkipped, TestCase
+from bzrlib.tests import OsFifoFeature, TestCaseInTempDir, TestCase
 
 
 def sha1(t):
@@ -111,9 +111,8 @@ class TestHashCache(TestCaseInTempDir):
 
     def test_hashcache_raise(self):
         """check that hashcache can raise BzrError"""
+        self.requireFeature(OsFifoFeature)
         hc = self.make_hashcache()
-        if getattr(os, 'mkfifo', None) is None:
-            raise TestSkipped('filesystem fifos not supported on this system')
         os.mkfifo('a')
         # It's possible that the system supports fifos but the filesystem
         # can't.  In that case we should skip at this point.  But in fact

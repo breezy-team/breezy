@@ -27,8 +27,15 @@ from bzrlib.log import (show_log,
                         ShortLogFormatter,
                         LineLogFormatter)
 from bzrlib.branch import Branch
-from bzrlib.errors import InvalidRevisionNumber
+from bzrlib.errors import (
+    BzrCommandError,
+    InvalidRevisionNumber,
+    )
 from bzrlib.revision import Revision
+from bzrlib.revisionspec import (
+    RevisionInfo,
+    RevisionSpec,
+    )
 
 
 class LogCatcher(LogFormatter):
@@ -166,7 +173,7 @@ class TestShowLog(TestCaseWithTransport):
         wt.commit(message='add file1 and file2')
         self.run_bzr('branch parent child')
         os.unlink('child/file1')
-        print >> file('child/file2', 'wb'), 'hello'
+        file('child/file2', 'wb').write('hello\n')
         self.run_bzr(['commit', '-m', 'remove file1 and modify file2',
             'child'])
         os.chdir('parent')
@@ -194,6 +201,35 @@ class TestShowLog(TestCaseWithTransport):
         d = logentry.delta
         self.checkDelta(d, added=['file1', 'file2'])
 
+    def test_merges_nonsupporting_formatter(self):
+        """Tests that show_log will raise if the formatter doesn't
+        support merge revisions."""
+        wt = self.make_branch_and_memory_tree('.')
+        wt.lock_write()
+        try:
+            wt.add('')
+            wt.commit('rev-1', rev_id='rev-1',
+                      timestamp=1132586655, timezone=36000,
+                      committer='Joe Foo <joe@foo.com>')
+            wt.commit('rev-merged', rev_id='rev-2a',
+                      timestamp=1132586700, timezone=36000,
+                      committer='Joe Foo <joe@foo.com>')
+            wt.set_parent_ids(['rev-1', 'rev-2a'])
+            wt.branch.set_last_revision_info(1, 'rev-1')
+            wt.commit('rev-2', rev_id='rev-2b',
+                      timestamp=1132586800, timezone=36000,
+                      committer='Joe Foo <joe@foo.com>')
+            logfile = self.make_utf8_encoded_stringio()
+            formatter = ShortLogFormatter(to_file=logfile)
+            wtb = wt.branch
+            lf = LogCatcher()
+            revspec = RevisionSpec.from_string('1.1.1')
+            rev = revspec.in_history(wtb)
+            self.assertRaises(BzrCommandError, show_log, wtb, lf,
+                              start_revision=rev, end_revision=rev)
+        finally:
+            wt.unlock()
+
 
 def make_commits_with_trailing_newlines(wt):
     """Helper method for LogFormatter tests"""    
@@ -219,6 +255,23 @@ def make_commits_with_trailing_newlines(wt):
     return b
 
 
+def normalize_log(log):
+    """Replaces the variable lines of logs with fixed lines"""
+    author = 'author: Dolor Sit <test@example.com>'
+    committer = 'committer: Lorem Ipsum <test@example.com>'
+    lines = log.splitlines(True)
+    for idx,line in enumerate(lines):
+        stripped_line = line.lstrip()
+        indent = ' ' * (len(line) - len(stripped_line))
+        if stripped_line.startswith('author:'):
+            lines[idx] = indent + author + '\n'
+        elif stripped_line.startswith('committer:'):
+            lines[idx] = indent + committer + '\n'
+        elif stripped_line.startswith('timestamp:'):
+            lines[idx] = indent + 'timestamp: Just now\n'
+    return ''.join(lines)
+
+
 class TestShortLogFormatter(TestCaseWithTransport):
 
     def test_trailing_newlines(self):
@@ -227,7 +280,7 @@ class TestShortLogFormatter(TestCaseWithTransport):
         sio = self.make_utf8_encoded_stringio()
         lf = ShortLogFormatter(to_file=sio)
         show_log(b, lf)
-        self.assertEquals(sio.getvalue(), """\
+        self.assertEqualDiff(sio.getvalue(), """\
     3 Joe Foo\t2005-11-21
       single line with trailing newline
 
@@ -241,24 +294,68 @@ class TestShortLogFormatter(TestCaseWithTransport):
 
 """)
 
+    def test_short_log_with_merges(self):
+        wt = self.make_branch_and_memory_tree('.')
+        wt.lock_write()
+        try:
+            wt.add('')
+            wt.commit('rev-1', rev_id='rev-1',
+                      timestamp=1132586655, timezone=36000,
+                      committer='Joe Foo <joe@foo.com>')
+            wt.commit('rev-merged', rev_id='rev-2a',
+                      timestamp=1132586700, timezone=36000,
+                      committer='Joe Foo <joe@foo.com>')
+            wt.set_parent_ids(['rev-1', 'rev-2a'])
+            wt.branch.set_last_revision_info(1, 'rev-1')
+            wt.commit('rev-2', rev_id='rev-2b',
+                      timestamp=1132586800, timezone=36000,
+                      committer='Joe Foo <joe@foo.com>')
+            logfile = self.make_utf8_encoded_stringio()
+            formatter = ShortLogFormatter(to_file=logfile)
+            show_log(wt.branch, formatter)
+            self.assertEqualDiff(logfile.getvalue(), """\
+    2 Joe Foo\t2005-11-22 [merge]
+      rev-2
+
+    1 Joe Foo\t2005-11-22
+      rev-1
+
+""")
+        finally:
+            wt.unlock()
+
+    def test_short_log_single_merge_revision(self):
+        wt = self.make_branch_and_memory_tree('.')
+        wt.lock_write()
+        try:
+            wt.add('')
+            wt.commit('rev-1', rev_id='rev-1',
+                      timestamp=1132586655, timezone=36000,
+                      committer='Joe Foo <joe@foo.com>')
+            wt.commit('rev-merged', rev_id='rev-2a',
+                      timestamp=1132586700, timezone=36000,
+                      committer='Joe Foo <joe@foo.com>')
+            wt.set_parent_ids(['rev-1', 'rev-2a'])
+            wt.branch.set_last_revision_info(1, 'rev-1')
+            wt.commit('rev-2', rev_id='rev-2b',
+                      timestamp=1132586800, timezone=36000,
+                      committer='Joe Foo <joe@foo.com>')
+            logfile = self.make_utf8_encoded_stringio()
+            formatter = ShortLogFormatter(to_file=logfile)
+            revspec = RevisionSpec.from_string('1.1.1')
+            wtb = wt.branch
+            rev = revspec.in_history(wtb)
+            show_log(wtb, formatter, start_revision=rev, end_revision=rev)
+            self.assertEqualDiff(logfile.getvalue(), """\
+1.1.1 Joe Foo\t2005-11-22
+      rev-merged
+
+""")
+        finally:
+            wt.unlock()
+
 
 class TestLongLogFormatter(TestCaseWithTransport):
-
-    def normalize_log(self,log):
-        """Replaces the variable lines of logs with fixed lines"""
-        author = 'author: Dolor Sit <test@example.com>'
-        committer = 'committer: Lorem Ipsum <test@example.com>'
-        lines = log.splitlines(True)
-        for idx,line in enumerate(lines):
-            stripped_line = line.lstrip()
-            indent = ' ' * (len(line) - len(stripped_line))
-            if stripped_line.startswith('author:'):
-                lines[idx] = indent + author + '\n'
-            elif stripped_line.startswith('committer:'):
-                lines[idx] = indent + committer + '\n'
-            elif stripped_line.startswith('timestamp:'):
-                lines[idx] = indent + 'timestamp: Just now\n'
-        return ''.join(lines)
 
     def test_verbose_log(self):
         """Verbose log includes changed files
@@ -311,8 +408,8 @@ added:
         sio = self.make_utf8_encoded_stringio()
         lf = LongLogFormatter(to_file=sio)
         show_log(b, lf, verbose=True)
-        log = self.normalize_log(sio.getvalue())
-        self.assertEqualDiff("""\
+        log = normalize_log(sio.getvalue())
+        self.assertEqualDiff(log, """\
 ------------------------------------------------------------
 revno: 2
 committer: Lorem Ipsum <test@example.com>
@@ -328,7 +425,7 @@ message:
     message:
       merge branch 2
         ------------------------------------------------------------
-        revno: 1.1.1.1.1
+        revno: 1.2.1
         committer: Lorem Ipsum <test@example.com>
         branch nick: smallerchild
         timestamp: Just now
@@ -348,7 +445,7 @@ branch nick: parent
 timestamp: Just now
 message:
   first post
-""", log)
+""")
 
     def test_verbose_merge_revisions_contain_deltas(self):
         wt = self.make_branch_and_tree('parent')
@@ -357,7 +454,7 @@ message:
         wt.commit('first post')
         self.run_bzr('branch parent child')
         os.unlink('child/f1')
-        print >> file('child/f2', 'wb'), 'hello'
+        file('child/f2', 'wb').write('hello\n')
         self.run_bzr(['commit', '-m', 'removed f1 and modified f2',
             'child'])
         os.chdir('parent')
@@ -367,8 +464,8 @@ message:
         sio = self.make_utf8_encoded_stringio()
         lf = LongLogFormatter(to_file=sio)
         show_log(b, lf, verbose=True)
-        log = self.normalize_log(sio.getvalue())
-        self.assertEqualDiff("""\
+        log = normalize_log(sio.getvalue())
+        self.assertEqualDiff(log, """\
 ------------------------------------------------------------
 revno: 2
 committer: Lorem Ipsum <test@example.com>
@@ -401,7 +498,7 @@ message:
 added:
   f1
   f2
-""", log)
+""")
 
     def test_trailing_newlines(self):
         wt = self.make_branch_and_tree('.')
@@ -488,9 +585,22 @@ class TestLineLogFormatter(TestCaseWithTransport):
         logfile.flush()
         logfile.seek(0)
         log_contents = logfile.read()
-        self.assertEqualDiff(log_contents, '1: Line-Log-Formatte... 2005-11-23 add a\n')
+        self.assertEqualDiff(log_contents,
+            '1: Line-Log-Formatte... 2005-11-23 add a\n')
 
-    def test_short_log_with_merges(self):
+    def test_trailing_newlines(self):
+        wt = self.make_branch_and_tree('.')
+        b = make_commits_with_trailing_newlines(wt)
+        sio = self.make_utf8_encoded_stringio()
+        lf = LineLogFormatter(to_file=sio)
+        show_log(b, lf)
+        self.assertEqualDiff(sio.getvalue(), """\
+3: Joe Foo 2005-11-21 single line with trailing newline
+2: Joe Bar 2005-11-21 multiline
+1: Joe Foo 2005-11-21 simple log message
+""")
+
+    def test_line_log_single_merge_revision(self):
         wt = self.make_branch_and_memory_tree('.')
         wt.lock_write()
         try:
@@ -507,31 +617,17 @@ class TestLineLogFormatter(TestCaseWithTransport):
                       timestamp=1132586800, timezone=36000,
                       committer='Joe Foo <joe@foo.com>')
             logfile = self.make_utf8_encoded_stringio()
-            formatter = ShortLogFormatter(to_file=logfile)
-            show_log(wt.branch, formatter)
-            logfile.flush()
-            self.assertEqualDiff("""\
-    2 Joe Foo\t2005-11-22 [merge]
-      rev-2
-
-    1 Joe Foo\t2005-11-22
-      rev-1
-
-""", logfile.getvalue())
+            formatter = LineLogFormatter(to_file=logfile)
+            revspec = RevisionSpec.from_string('1.1.1')
+            wtb = wt.branch
+            rev = revspec.in_history(wtb)
+            show_log(wtb, formatter, start_revision=rev, end_revision=rev)
+            self.assertEqualDiff(logfile.getvalue(), """\
+1.1.1: Joe Foo 2005-11-22 rev-merged
+""")
         finally:
             wt.unlock()
 
-    def test_trailing_newlines(self):
-        wt = self.make_branch_and_tree('.')
-        b = make_commits_with_trailing_newlines(wt)
-        sio = self.make_utf8_encoded_stringio()
-        lf = LineLogFormatter(to_file=sio)
-        show_log(b, lf)
-        self.assertEqualDiff(sio.getvalue(), """\
-3: Joe Foo 2005-11-21 single line with trailing newline
-2: Joe Bar 2005-11-21 multiline
-1: Joe Foo 2005-11-21 simple log message
-""")
 
 
 class TestGetViewRevisions(TestCaseWithTransport):
@@ -578,10 +674,10 @@ class TestGetViewRevisions(TestCaseWithTransport):
         full_rev_nos_for_reference = {
             '1': '1',
             '2': '2',
-            '3a': '2.2.1', #first commit tree 3
-            '3b': '2.1.1', # first commit tree 2
+            '3a': '2.1.1', #first commit tree 3
+            '3b': '2.2.1', # first commit tree 2
             '3c': '3', #merges 3b to main
-            '4a': '2.1.2', # second commit tree 2
+            '4a': '2.2.2', # second commit tree 2
             '4b': '4', # merges 4a to main
             }
         return mainline_revs, rev_nos, wt
@@ -589,6 +685,8 @@ class TestGetViewRevisions(TestCaseWithTransport):
     def test_get_view_revisions_forward(self):
         """Test the get_view_revisions method"""
         mainline_revs, rev_nos, wt = self.make_tree_with_commits()
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                             'forward'))
         self.assertEqual([('1', '1', 0), ('2', '2', 0), ('3', '3', 0)],
@@ -600,6 +698,8 @@ class TestGetViewRevisions(TestCaseWithTransport):
     def test_get_view_revisions_reverse(self):
         """Test the get_view_revisions with reverse"""
         mainline_revs, rev_nos, wt = self.make_tree_with_commits()
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                             'reverse'))
         self.assertEqual([('3', '3', 0), ('2', '2', 0), ('1', '1', 0), ],
@@ -611,6 +711,8 @@ class TestGetViewRevisions(TestCaseWithTransport):
     def test_get_view_revisions_merge(self):
         """Test get_view_revisions when there are merges"""
         mainline_revs, rev_nos, wt = self.make_tree_with_merges()
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                             'forward'))
         self.assertEqual([('1', '1', 0), ('2', '2', 0), ('3', '3', 0),
@@ -625,6 +727,8 @@ class TestGetViewRevisions(TestCaseWithTransport):
     def test_get_view_revisions_merge_reverse(self):
         """Test get_view_revisions in reverse when there are merges"""
         mainline_revs, rev_nos, wt = self.make_tree_with_merges()
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                             'reverse'))
         self.assertEqual([('4b', '4', 0), ('4a', '3.1.1', 1),
@@ -639,11 +743,13 @@ class TestGetViewRevisions(TestCaseWithTransport):
     def test_get_view_revisions_merge2(self):
         """Test get_view_revisions when there are merges"""
         mainline_revs, rev_nos, wt = self.make_tree_with_many_merges()
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                             'forward'))
         expected = [('1', '1', 0), ('2', '2', 0), ('3c', '3', 0),
-            ('3a', '2.2.1', 1), ('3b', '2.1.1', 1), ('4b', '4', 0),
-            ('4a', '2.1.2', 1)]
+            ('3a', '2.1.1', 1), ('3b', '2.2.1', 1), ('4b', '4', 0),
+            ('4a', '2.2.2', 1)]
         self.assertEqual(expected, revisions)
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                              'forward', include_merges=False))
@@ -806,6 +912,16 @@ class TestLogFormatter(TestCase):
         rev.committer = 'John Doe <jdoe@example.com>'
         lf = LogFormatter(None)
         self.assertEqual('John Doe', lf.short_committer(rev))
+        rev.committer = 'John Smith <jsmith@example.com>'
+        self.assertEqual('John Smith', lf.short_committer(rev))
+        rev.committer = 'John Smith'
+        self.assertEqual('John Smith', lf.short_committer(rev))
+        rev.committer = 'jsmith@example.com'
+        self.assertEqual('jsmith@example.com', lf.short_committer(rev))
+        rev.committer = '<jsmith@example.com>'
+        self.assertEqual('jsmith@example.com', lf.short_committer(rev))
+        rev.committer = 'John Smith jsmith@example.com'
+        self.assertEqual('John Smith', lf.short_committer(rev))
 
     def test_short_author(self):
         rev = Revision('a-id')
@@ -813,4 +929,12 @@ class TestLogFormatter(TestCase):
         lf = LogFormatter(None)
         self.assertEqual('John Doe', lf.short_author(rev))
         rev.properties['author'] = 'John Smith <jsmith@example.com>'
+        self.assertEqual('John Smith', lf.short_author(rev))
+        rev.properties['author'] = 'John Smith'
+        self.assertEqual('John Smith', lf.short_author(rev))
+        rev.properties['author'] = 'jsmith@example.com'
+        self.assertEqual('jsmith@example.com', lf.short_author(rev))
+        rev.properties['author'] = '<jsmith@example.com>'
+        self.assertEqual('jsmith@example.com', lf.short_author(rev))
+        rev.properties['author'] = 'John Smith jsmith@example.com'
         self.assertEqual('John Smith', lf.short_author(rev))

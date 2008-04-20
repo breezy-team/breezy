@@ -29,7 +29,24 @@ Specifications
 
 * `Indices <indices.html>`_ |--| The index facilities available within bzrlib.
 
+* `Inventories <inventory.html>`_ |--| Tree shape abstraction.
+
+* `LCA merge <lca-merge.html>`_ |--| A nice new merge algorithm.
+
+* `Network protocol <network-protocol.html>`_ |--| Custom network protocol.
+
+* `Plugin APIs <plugin-api.html>`_ |--| APIs plugins should use.
+
 * `Repositories <repository.html>`_ |--| What repositories do and are used for.
+
+* `Integration Guide <integration.html>`_ |--| A guide to integrate bzrlib into
+  any python application.
+
+Data formats
+============
+
+* `Knit pack repositories <packrepo.html>`_ |--| KnitPack repositories 
+  (new in Bazaar 0.92).
 
 
 .. |--| unicode:: U+2014

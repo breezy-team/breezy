@@ -261,21 +261,22 @@ class MemoryTransport(Transport):
     def _abspath(self, relpath):
         """Generate an internal absolute path."""
         relpath = urlutils.unescape(relpath)
-        if relpath.find('..') != -1:
-            raise AssertionError('relpath contains ..')
-        if relpath == '':
-            return '/'
-        if relpath[0] == '/':
+        if relpath[:1] == '/':
             return relpath
-        if relpath == '.':
-            if (self._cwd == '/'):
-                return self._cwd
-            return self._cwd[:-1]
-        if relpath.endswith('/'):
-            relpath = relpath[:-1]
-        if relpath.startswith('./'):
-            relpath = relpath[2:]
-        return self._cwd + relpath
+        cwd_parts = self._cwd.split('/')
+        rel_parts = relpath.split('/')
+        r = []
+        for i in cwd_parts + rel_parts:
+            if i == '..':
+                if not r:
+                    raise ValueError("illegal relpath %r under %r"
+                        % (relpath, self._cwd))
+                r = r[:-1]
+            elif i == '.' or i == '':
+                pass
+            else:
+                r.append(i)
+        return '/' + '/'.join(r)
 
 
 class _MemoryLock(object):

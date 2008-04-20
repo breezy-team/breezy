@@ -37,12 +37,13 @@ from bzrlib import (
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repository import (
     CommitBuilder,
-    MetaDirRepository,
+    MetaDirVersionedFileRepository,
     MetaDirRepositoryFormat,
     Repository,
     RepositoryFormat,
     )
 from bzrlib.store.text import TextStore
+from bzrlib.symbol_versioning import deprecated_method, one_four
 from bzrlib.trace import mutter
 
 
@@ -76,6 +77,9 @@ class AllInOneRepository(Repository):
             self.inventory_store = get_store('inventory-store')
             text_store = get_store('text-store')
         super(AllInOneRepository, self).__init__(_format, a_bzrdir, a_bzrdir._control_files, _revision_store, control_store, text_store)
+        if control_store is not None:
+            control_store.get_scope = self.get_transaction
+        text_store.get_scope = self.get_transaction
 
     @needs_read_lock
     def _all_possible_ids(self):
@@ -107,10 +111,11 @@ class AllInOneRepository(Repository):
         consistency and is only applicable to inventory-weave-for-ancestry
         using repository formats & fetchers.
         """
-        weave_parents = inventory.get_parents(revision.revision_id)
-        weave_names = inventory.versions()
+        weave_parents = inventory.get_parent_map(
+            [revision.revision_id])[revision.revision_id]
+        parent_map = inventory.get_parent_map(revision.parent_ids)
         for parent_id in revision.parent_ids:
-            if parent_id in weave_names:
+            if parent_id in parent_map:
                 # this parent must not be a ghost.
                 if not parent_id in weave_parents:
                     # but it is a ghost
@@ -140,6 +145,7 @@ class AllInOneRepository(Repository):
             self._check_revision_parents(rev, inv)
         return revs
 
+    @deprecated_method(one_four)
     @needs_read_lock
     def get_revision_graph(self, revision_id=None):
         """Return a dictionary containing the revision graph.
@@ -158,8 +164,7 @@ class AllInOneRepository(Repository):
         a_weave = self.get_inventory_weave()
         all_revisions = self._eliminate_revisions_not_present(
                                 a_weave.versions())
-        entire_graph = dict([(node, tuple(a_weave.get_parents(node))) for 
-                             node in all_revisions])
+        entire_graph = a_weave.get_parent_map(all_revisions)
         if revision_id is None:
             return entire_graph
         elif revision_id not in entire_graph:
@@ -176,6 +181,15 @@ class AllInOneRepository(Repository):
                         pending.add(revision_id)
             return result
 
+    def has_revisions(self, revision_ids):
+        """See Repository.has_revisions()."""
+        result = set()
+        transaction = self.get_transaction()
+        for revision_id in revision_ids:
+            if self._revision_store.has_revision_id(revision_id, transaction):
+                result.add(revision_id)
+        return result
+
     @needs_read_lock
     def is_shared(self):
         """AllInOne repositories cannot be shared."""
@@ -191,14 +205,19 @@ class AllInOneRepository(Repository):
         :param new_value: True to restore the default, False to disable making
                           working trees.
         """
-        raise NotImplementedError(self.set_make_working_trees)
-    
+        raise errors.RepositoryUpgradeRequired(self.bzrdir.root_transport.base)
+
     def make_working_trees(self):
         """Returns the policy for making working trees on new branches."""
         return True
 
+    def revision_graph_can_have_wrong_parents(self):
+        # XXX: This is an old format that we don't support full checking on, so
+        # just claim that checking for this inconsistency is not required.
+        return False
 
-class WeaveMetaDirRepository(MetaDirRepository):
+
+class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
     """A subclass of MetaDirRepository to set weave specific policy."""
 
     _serializer = xml5.serializer_v5
@@ -233,10 +252,11 @@ class WeaveMetaDirRepository(MetaDirRepository):
         consistency and is only applicable to inventory-weave-for-ancestry
         using repository formats & fetchers.
         """
-        weave_parents = inventory.get_parents(revision.revision_id)
-        weave_names = inventory.versions()
+        weave_parents = inventory.get_parent_map(
+            [revision.revision_id])[revision.revision_id]
+        parent_map = inventory.get_parent_map(revision.parent_ids)
         for parent_id in revision.parent_ids:
-            if parent_id in weave_names:
+            if parent_id in parent_map:
                 # this parent must not be a ghost.
                 if not parent_id in weave_parents:
                     # but it is a ghost
@@ -267,6 +287,7 @@ class WeaveMetaDirRepository(MetaDirRepository):
         self._check_revision_parents(r, inv)
         return r
 
+    @deprecated_method(one_four)
     @needs_read_lock
     def get_revision_graph(self, revision_id=None):
         """Return a dictionary containing the revision graph.
@@ -285,8 +306,7 @@ class WeaveMetaDirRepository(MetaDirRepository):
         a_weave = self.get_inventory_weave()
         all_revisions = self._eliminate_revisions_not_present(
                                 a_weave.versions())
-        entire_graph = dict([(node, tuple(a_weave.get_parents(node))) for 
-                             node in all_revisions])
+        entire_graph = a_weave.get_parent_map(all_revisions)
         if revision_id is None:
             return entire_graph
         elif revision_id not in entire_graph:
@@ -303,19 +323,31 @@ class WeaveMetaDirRepository(MetaDirRepository):
                         pending.add(revision_id)
             return result
 
+    def has_revisions(self, revision_ids):
+        """See Repository.has_revisions()."""
+        result = set()
+        transaction = self.get_transaction()
+        for revision_id in revision_ids:
+            if self._revision_store.has_revision_id(revision_id, transaction):
+                result.add(revision_id)
+        return result
+
+    def revision_graph_can_have_wrong_parents(self):
+        # XXX: This is an old format that we don't support full checking on, so
+        # just claim that checking for this inconsistency is not required.
+        return False
+
 
 class PreSplitOutRepositoryFormat(RepositoryFormat):
     """Base class for the pre split out repository formats."""
 
     rich_root_data = False
     supports_tree_reference = False
+    supports_ghosts = False
+    supports_external_lookups = False
 
     def initialize(self, a_bzrdir, shared=False, _internal=False):
-        """Create a weave repository.
-        
-        TODO: when creating split out bzr branch formats, move this to a common
-        base for Format5, Format6. or something like that.
-        """
+        """Create a weave repository."""
         if shared:
             raise errors.IncompatibleFormat(self, a_bzrdir._format)
 
@@ -496,7 +528,6 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
         """See RepositoryFormat._get_text_store()."""
         return self._get_versioned_file_store('weaves', transport, control_files)
 
-
 class RepositoryFormat7(MetaDirRepositoryFormat):
     """Bzr repository 7.
 
@@ -510,6 +541,7 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
     """
 
     _versionedfile_class = weave.WeaveFile
+    supports_ghosts = False
 
     def _get_control_store(self, repo_transport, control_files):
         """Return the control store for this repository."""
@@ -600,7 +632,6 @@ class WeaveCommitBuilder(CommitBuilder):
         result = versionedfile.add_lines(
             self._new_revision_id, parents, new_lines,
             nostore_sha=nostore_sha)[0:2]
-        versionedfile.clear_cache()
         return result
 
 

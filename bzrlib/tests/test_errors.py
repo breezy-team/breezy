@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #            and others
 #
@@ -21,15 +21,21 @@
 from bzrlib import (
     bzrdir,
     errors,
+    osutils,
+    symbol_versioning,
+    urlutils,
     )
 from bzrlib.tests import TestCase, TestCaseWithTransport
 
 
-# TODO: Make sure builtin exception class formats are consistent - e.g. should
-# or shouldn't end with a full stop, etc.
-
-
 class TestErrors(TestCaseWithTransport):
+
+    def test_corrupt_dirstate(self):
+        error = errors.CorruptDirstate('path/to/dirstate', 'the reason why')
+        self.assertEqualDiff(
+            "Inconsistency in dirstate file path/to/dirstate.\n"
+            "Error: the reason why",
+            str(error))
 
     def test_disabled_method(self):
         error = errors.DisabledMethod("class name")
@@ -53,11 +59,32 @@ class TestErrors(TestCaseWithTransport):
             'It supports versions "(4, 5, 6)" to "(7, 8, 9)".',
             str(error))
 
+    def test_inconsistent_delta(self):
+        error = errors.InconsistentDelta('path', 'file-id', 'reason for foo')
+        self.assertEqualDiff(
+            "An inconsistent delta was supplied involving 'path', 'file-id'\n"
+            "reason: reason for foo",
+            str(error))
+
     def test_in_process_transport(self):
         error = errors.InProcessTransport('fpp')
         self.assertEqualDiff(
             "The transport 'fpp' is only accessible within this process.",
             str(error))
+
+    def test_invalid_http_range(self):
+        error = errors.InvalidHttpRange('path',
+                                        'Content-Range: potatoes 0-00/o0oo0',
+                                        'bad range')
+        self.assertEquals("Invalid http range"
+                          " 'Content-Range: potatoes 0-00/o0oo0'"
+                          " for path: bad range",
+                          str(error))
+
+    def test_invalid_range(self):
+        error = errors.InvalidRange('path', 12, 'bad range')
+        self.assertEquals("Invalid range access in path at 12: bad range",
+                          str(error))
 
     def test_inventory_modified(self):
         error = errors.InventoryModified("a tree to be repred")
@@ -88,6 +115,12 @@ class TestErrors(TestCaseWithTransport):
                          '"stream format" into knit of format '
                          '"target format".', str(error))
 
+    def test_knit_data_stream_unknown(self):
+        error = errors.KnitDataStreamUnknown(
+            'stream format')
+        self.assertEqual('Cannot parse knit data stream of format '
+                         '"stream format".', str(error))
+
     def test_knit_header_error(self):
         error = errors.KnitHeaderError('line foo\n', 'path/to/file')
         self.assertEqual("Knit header error: 'line foo\\n' unexpected"
@@ -104,7 +137,14 @@ class TestErrors(TestCaseWithTransport):
         error = errors.MediumNotConnected("a medium")
         self.assertEqualDiff(
             "The medium 'a medium' is not connected.", str(error))
-        
+ 
+    def test_no_public_branch(self):
+        b = self.make_branch('.')
+        error = errors.NoPublicBranch(b)
+        url = urlutils.unescape_for_display(b.base, 'ascii')
+        self.assertEqualDiff(
+            'There is no public branch set for "%s".' % url, str(error))
+
     def test_no_repo(self):
         dir = bzrdir.BzrDir.create(self.get_url())
         error = errors.NoRepositoryPresent(dir)
@@ -135,6 +175,11 @@ class TestErrors(TestCaseWithTransport):
                              " tree atree.", str(error))
         self.assertIsInstance(error, errors.NoSuchRevision)
 
+    def test_not_stacked(self):
+        error = errors.NotStacked('a branch')
+        self.assertEqualDiff("The branch 'a branch' is not stacked.",
+            str(error))
+
     def test_not_write_locked(self):
         error = errors.NotWriteLocked('a thing to repr')
         self.assertEqualDiff("'a thing to repr' is not write locked but needs "
@@ -142,9 +187,16 @@ class TestErrors(TestCaseWithTransport):
             str(error))
 
     def test_read_only_lock_error(self):
-        error = errors.ReadOnlyLockError('filename', 'error message')
+        error = self.applyDeprecated(symbol_versioning.zero_ninetytwo,
+            errors.ReadOnlyLockError, 'filename', 'error message')
         self.assertEqualDiff("Cannot acquire write lock on filename."
                              " error message", str(error))
+
+    def test_lock_failed(self):
+        error = errors.LockFailed('http://canonical.com/', 'readonly transport')
+        self.assertEqualDiff("Cannot lock http://canonical.com/: readonly transport",
+            str(error))
+        self.assertFalse(error.internal_error)
 
     def test_too_many_concurrent_requests(self):
         error = errors.TooManyConcurrentRequests("a medium")
@@ -161,6 +213,24 @@ class TestErrors(TestCaseWithTransport):
         error = errors.UnknownHook("tree", "bar")
         self.assertEqualDiff("The tree hook 'bar' is unknown in this version"
             " of bzrlib.",
+            str(error))
+
+    def test_unstackable_branch_format(self):
+        format = u'foo'
+        url = "/foo"
+        error = errors.UnstackableBranchFormat(format, url)
+        self.assertEqualDiff(
+            "The branch '/foo'(foo) is not a stackable format. "
+            "You will need to upgrade the branch to permit branch stacking.",
+            str(error))
+
+    def test_unstackable_repository_format(self):
+        format = u'foo'
+        url = "/foo"
+        error = errors.UnstackableRepositoryFormat(format, url)
+        self.assertEqualDiff(
+            "The repository '/foo'(foo) is not a stackable format. "
+            "You will need to upgrade the repository to permit branch stacking.",
             str(error))
 
     def test_up_to_date(self):
@@ -370,6 +440,58 @@ class TestErrors(TestCaseWithTransport):
             "Internal check failed: example check failure",
             str(e))
         self.assertTrue(e.internal_error)
+
+    def test_repository_data_stream_error(self):
+        """Test the formatting of RepositoryDataStreamError."""
+        e = errors.RepositoryDataStreamError(u"my reason")
+        self.assertEqual(
+            "Corrupt or incompatible data stream: my reason", str(e))
+
+    def test_immortal_pending_deletion_message(self):
+        err = errors.ImmortalPendingDeletion('foo')
+        self.assertEquals(
+            "Unable to delete transform temporary directory foo.  "
+            "Please examine foo to see if it contains any files "
+            "you wish to keep, and delete it when you are done.",
+            str(err))
+
+    def test_unable_create_symlink(self):
+        err = errors.UnableCreateSymlink()
+        self.assertEquals(
+            "Unable to create symlink on this platform",
+            str(err))
+        err = errors.UnableCreateSymlink(path=u'foo')
+        self.assertEquals(
+            "Unable to create symlink 'foo' on this platform",
+            str(err))
+        err = errors.UnableCreateSymlink(path=u'\xb5')
+        self.assertEquals(
+            "Unable to create symlink u'\\xb5' on this platform",
+            str(err))
+
+    def test_invalid_url_join(self):
+        """Test the formatting of InvalidURLJoin."""
+        e = errors.InvalidURLJoin('Reason', 'base path', ('args',))
+        self.assertEqual(
+            "Invalid URL join request: Reason: 'base path' + ('args',)",
+            str(e))
+
+    def test_incorrect_url(self):
+        err = errors.InvalidBugTrackerURL('foo', 'http://bug.com/')
+        self.assertEquals(
+            ("The URL for bug tracker \"foo\" doesn't contain {id}: "
+             "http://bug.com/"),
+            str(err))
+
+    def test_unable_encode_path(self):
+        err = errors.UnableEncodePath('foo', 'executable')
+        self.assertEquals("Unable to encode executable path 'foo' in "
+            "user encoding " + osutils.get_user_encoding(),
+            str(err))
+
+    def test_unknown_format(self):
+        err = errors.UnknownFormatError('bar', kind='foo')
+        self.assertEquals("Unknown foo format: 'bar'", str(err))
 
 
 class PassThroughError(errors.BzrError):

@@ -29,6 +29,7 @@ from bzrlib import (
     workingtree,
     )
 from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import HardlinkFeature
 
 
 class TestCheckout(ExternalBase):
@@ -137,3 +138,20 @@ class TestCheckout(ExternalBase):
         branch.bzrdir.destroy_workingtree()
         self.run_bzr('checkout -r 0')
         self.assertEqual('null:', tree.last_revision())
+
+    def test_checkout_files_from(self):
+        branch = _mod_branch.Branch.open('branch')
+        self.run_bzr(['checkout', 'branch', 'branch2', '--files-from',
+                      'branch'])
+
+    def test_checkout_hardlink(self):
+        self.requireFeature(HardlinkFeature)
+        source = self.make_branch_and_tree('source')
+        self.build_tree(['source/file1'])
+        source.add('file1')
+        source.commit('added file')
+        self.run_bzr(['checkout', 'source', 'target', '--files-from', 'source',
+                      '--hardlink'])
+        source_stat = os.stat('source/file1')
+        target_stat = os.stat('target/file1')
+        self.assertEqual(source_stat, target_stat)

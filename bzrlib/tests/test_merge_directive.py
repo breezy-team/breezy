@@ -372,6 +372,20 @@ class TestMergeDirectiveBranch(object):
             tree_d.branch.base, patch_type='diff',
             public_branch=tree_a.branch.base)
 
+    def test_disk_name(self):
+        tree_a, tree_b, branch_c = self.make_trees()
+        tree_a.branch.nick = 'fancy-name'
+        md = self.from_objects(tree_a.branch.repository, 'rev2a', 500, 120,
+            tree_b.branch.base)
+        self.assertEqual('fancy-name-2', md.get_disk_name(tree_a.branch))
+
+    def test_disk_name_old_revno(self):
+        tree_a, tree_b, branch_c = self.make_trees()
+        tree_a.branch.nick = 'fancy-name'
+        md = self.from_objects(tree_a.branch.repository, 'rev1', 500, 120,
+            tree_b.branch.base)
+        self.assertEqual('fancy-name-1', md.get_disk_name(tree_a.branch))
+
     def test_generate_patch(self):
         tree_a, tree_b, branch_c = self.make_trees()
         md2 = self.from_objects(tree_a.branch.repository, 'rev2a', 500, 120,
@@ -553,6 +567,15 @@ class TestMergeDirectiveBranch(object):
         revision = md.install_revisions(tree_b.branch.repository)
         self.assertEqual('rev2a', revision)
 
+    def test_use_submit_for_missing_dependency(self):
+        tree_a, tree_b, branch_c = self.make_trees()
+        branch_c.pull(tree_a.branch)
+        self.build_tree_contents([('tree_a/file', 'content_q\ncontent_r\n')])
+        tree_a.commit('rev3a', rev_id='rev3a')
+        md = self.from_objects(tree_a.branch.repository, 'rev3a', 500, 36,
+            branch_c.base, base_revision_id='rev2a')
+        revision = md.install_revisions(tree_b.branch.repository)
+
 
 class TestMergeDirective1Branch(tests.TestCaseWithTransport,
     TestMergeDirectiveBranch):
@@ -564,10 +587,17 @@ class TestMergeDirective1Branch(tests.TestCaseWithTransport,
 
     def from_objects(self, repository, revision_id, time, timezone,
         target_branch, patch_type='bundle', local_target_branch=None,
-        public_branch=None, message=None):
-        return merge_directive.MergeDirective.from_objects(
-            repository, revision_id, time, timezone, target_branch,
-            patch_type, local_target_branch, public_branch, message)
+        public_branch=None, message=None, base_revision_id=None):
+        if base_revision_id is not None:
+            raise tests.TestNotApplicable('This format does not support'
+                                          ' explicit bases.')
+        repository.lock_write()
+        try:
+            return merge_directive.MergeDirective.from_objects( repository,
+                revision_id, time, timezone, target_branch, patch_type,
+                local_target_branch, public_branch, message)
+        finally:
+            repository.unlock()
 
     def make_merge_directive(self, revision_id, testament_sha1, time, timezone,
                  target_branch, patch=None, patch_type=None,

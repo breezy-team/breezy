@@ -93,11 +93,15 @@ class Tree(object):
             want_unversioned=want_unversioned,
             )
 
-    def _iter_changes(self, from_tree, include_unchanged=False,
+    @symbol_versioning.deprecated_method(symbol_versioning.one_three)
+    def _iter_changes(self, *args, **kwargs):
+        return self.iter_changes(*args, **kwargs)
+
+    def iter_changes(self, from_tree, include_unchanged=False,
                      specific_files=None, pb=None, extra_trees=None,
                      require_versioned=True, want_unversioned=False):
         intertree = InterTree.get(from_tree, self)
-        return intertree._iter_changes(include_unchanged, specific_files, pb,
+        return intertree.iter_changes(include_unchanged, specific_files, pb,
             extra_trees, require_versioned, want_unversioned=want_unversioned)
     
     def conflicts(self):
@@ -145,6 +149,10 @@ class Tree(object):
     def __iter__(self):
         return iter(self.inventory)
 
+    def all_file_ids(self):
+        """Iterate through all file ids, including ids for missing files."""
+        return set(self.inventory)
+
     def id2path(self, file_id):
         """Return the path for a file id.
 
@@ -184,6 +192,14 @@ class Tree(object):
     def kind(self, file_id):
         raise NotImplementedError("Tree subclass %s must implement kind"
             % self.__class__.__name__)
+
+    def stored_kind(self, file_id):
+        """File kind stored for this file_id.
+
+        May not match kind on disk for working trees.  Always available
+        for versioned files, even when the file itself is missing.
+        """
+        return self.kind(file_id)
 
     def path_content_summary(self, path):
         """Get a summary of the information about path.
@@ -277,17 +293,36 @@ class Tree(object):
         """
         raise NotImplementedError(self.get_symlink_target)
 
-    def annotate_iter(self, file_id):
+    def get_root_id(self):
+        """Return the file_id for the root of this tree."""
+        raise NotImplementedError(self.get_root_id)
+
+    def annotate_iter(self, file_id,
+                      default_revision=_mod_revision.CURRENT_REVISION):
         """Return an iterator of revision_id, line tuples.
 
         For working trees (and mutable trees in general), the special
         revision_id 'current:' will be used for lines that are new in this
         tree, e.g. uncommitted changes.
         :param file_id: The file to produce an annotated version from
+        :param default_revision: For lines that don't match a basis, mark them
+            with this revision id. Not all implementations will make use of
+            this value.
         """
         raise NotImplementedError(self.annotate_iter)
 
-    def plan_file_merge(self, file_id, other):
+    def _get_plan_merge_data(self, file_id, other, base):
+        from bzrlib import merge, versionedfile
+        vf = versionedfile._PlanMergeVersionedFile(file_id)
+        last_revision_a = self._get_file_revision(file_id, vf, 'this:')
+        last_revision_b = other._get_file_revision(file_id, vf, 'other:')
+        if base is None:
+            last_revision_base = None
+        else:
+            last_revision_base = base._get_file_revision(file_id, vf, 'base:')
+        return vf, last_revision_a, last_revision_b, last_revision_base
+
+    def plan_file_merge(self, file_id, other, base=None):
         """Generate a merge plan based on annotations.
 
         If the file contains uncommitted changes in this tree, they will be
@@ -295,14 +330,52 @@ class Tree(object):
         uncommitted changes in the other tree, they will be assigned to the
         'other:' pseudo-revision.
         """
-        from bzrlib import merge
-        annotated_a = list(self.annotate_iter(file_id,
-                                              _mod_revision.CURRENT_REVISION))
-        annotated_b = list(other.annotate_iter(file_id, 'other:'))
-        ancestors_a = self._get_ancestors(_mod_revision.CURRENT_REVISION)
-        ancestors_b = other._get_ancestors('other:')
-        return merge._plan_annotate_merge(annotated_a, annotated_b,
-                                          ancestors_a, ancestors_b)
+        data = self._get_plan_merge_data(file_id, other, base)
+        vf, last_revision_a, last_revision_b, last_revision_base = data
+        return vf.plan_merge(last_revision_a, last_revision_b,
+                             last_revision_base)
+
+    def plan_file_lca_merge(self, file_id, other, base=None):
+        """Generate a merge plan based lca-newness.
+
+        If the file contains uncommitted changes in this tree, they will be
+        attributed to the 'current:' pseudo-revision.  If the file contains
+        uncommitted changes in the other tree, they will be assigned to the
+        'other:' pseudo-revision.
+        """
+        data = self._get_plan_merge_data(file_id, other, base)
+        vf, last_revision_a, last_revision_b, last_revision_base = data
+        return vf.plan_lca_merge(last_revision_a, last_revision_b,
+                                 last_revision_base)
+
+    def _get_file_revision(self, file_id, vf, tree_revision):
+        def file_revision(revision_tree):
+            revision_tree.lock_read()
+            try:
+                return revision_tree.inventory[file_id].revision
+            finally:
+                revision_tree.unlock()
+
+        def iter_parent_trees():
+            for revision_id in self.get_parent_ids():
+                try:
+                    yield self.revision_tree(revision_id)
+                except:
+                    yield self.repository.revision_tree(revision_id)
+
+        if getattr(self, '_get_weave', None) is None:
+            last_revision = tree_revision
+            parent_revisions = [file_revision(t) for t in iter_parent_trees()]
+            vf.add_lines(last_revision, parent_revisions,
+                         self.get_file(file_id).readlines())
+            repo = self.branch.repository
+            transaction = repo.get_transaction()
+            base_vf = repo.weave_store.get_weave(file_id, transaction)
+        else:
+            last_revision = file_revision(self)
+            base_vf = self._get_weave(file_id)
+        vf.fallback_versionedfiles.append(base_vf)
+        return last_revision
 
     inventory = property(_get_inventory,
                          doc="Inventory of this Tree")
@@ -653,7 +726,7 @@ class InterTree(InterObject):
             require_versioned=require_versioned,
             want_unversioned=want_unversioned)
 
-    def _iter_changes(self, include_unchanged=False,
+    def iter_changes(self, include_unchanged=False,
                       specific_files=None, pb=None, extra_trees=[],
                       require_versioned=True, want_unversioned=False):
         """Generate an iterator of changes between trees.

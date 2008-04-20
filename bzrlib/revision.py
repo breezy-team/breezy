@@ -20,7 +20,7 @@
 
 from bzrlib import (
     errors,
-    symbol_versioning
+    symbol_versioning,
     )
 from bzrlib.deprecated_graph import (
     all_descendants,
@@ -125,6 +125,7 @@ class Revision(object):
         return self.properties.get('author', self.committer)
 
 
+@deprecated_function(symbol_versioning.one_zero)
 def is_ancestor(revision_id, candidate_id, branch):
     """Return true if candidate_id is an ancestor of revision_id.
 
@@ -133,11 +134,11 @@ def is_ancestor(revision_id, candidate_id, branch):
     
     revisions_source is an object supporting a get_revision operation that
     behaves like Branch's.
+
+    This function is deprecated, it is better for callers to directly use
+    Graph.is_ancestor() (just watch out that the parameter order is switched)
     """
-    if is_null(candidate_id):
-        return True
-    return (candidate_id in branch.repository.get_ancestry(revision_id,
-            topo_sorted=False))
+    return branch.repository.get_graph().is_ancestor(candidate_id, revision_id)
 
 
 def iter_ancestors(revision_id, revision_source, only_present=False):
@@ -187,6 +188,7 @@ def __get_closest(intersection):
     return matches
 
 
+@deprecated_function(symbol_versioning.one_four)
 def revision_graph(revision, revision_source):
     """Produce a graph of the ancestry of the specified revision.
     
@@ -232,6 +234,7 @@ def _revision_graph(revision, revision_source):
     return root, ancestors, descendants
 
 
+@deprecated_function(symbol_versioning.one_three)
 def combined_graph(revision_a, revision_b, revision_source):
     """Produce a combined ancestry graph.
     Return graph root, ancestors map, descendants map, set of common nodes"""
@@ -255,6 +258,7 @@ def combined_graph(revision_a, revision_b, revision_source):
     return root, ancestors, descendants, common
 
 
+@deprecated_function(symbol_versioning.one_three)
 def common_ancestor(revision_a, revision_b, revision_source, 
                     pb=DummyProgress()):
     if None in (revision_a, revision_b):
@@ -319,6 +323,8 @@ def common_ancestor(revision_a, revision_b, revision_source,
 
 class MultipleRevisionSources(object):
     """Proxy that looks in multiple branches for revisions."""
+
+    @symbol_versioning.deprecated_method(symbol_versioning.one_three)
     def __init__(self, *args):
         object.__init__(self)
         assert len(args) != 0
@@ -452,7 +458,7 @@ def check_not_reserved_id(revision_id):
 
 
 def ensure_null(revision_id):
-    """Ensure only NULL_REVISION is used to represent the null revisionn"""
+    """Ensure only NULL_REVISION is used to represent the null revision"""
     if revision_id is None:
         symbol_versioning.warn('NULL_REVISION should be used for the null'
             ' revision instead of None, as of bzr 0.91.',

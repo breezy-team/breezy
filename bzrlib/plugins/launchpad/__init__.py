@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006 - 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,19 +14,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Launchpad.net integration plugin for Bazaar
-
-To install this file, put the 'bzr_lp' directory, or a symlink to it,
-in your ~/.bazaar/plugins/ directory.
-"""
+"""Launchpad.net integration plugin for Bazaar."""
 
 # The XMLRPC server address can be overridden by setting the environment
 # variable $BZR_LP_XMLRPL_URL
 
 # see http://bazaar-vcs.org/Specs/BranchRegistrationTool
 
+from bzrlib.branch import Branch
 from bzrlib.commands import Command, Option, register_command
-from bzrlib.transport import register_lazy_transport
+from bzrlib.directory_service import directories
+from bzrlib.errors import BzrCommandError, NoPublicBranch, NotBranchError
 from bzrlib.help_topics import topic_registry
 
 
@@ -41,15 +39,19 @@ class cmd_register_branch(Command):
     branch belongs, and create an account for yourself on launchpad.net.
 
     arguments:
-        branch_url: The publicly visible url for the branch.
-                    This must be an http or https url, not a local file
-                    path.
+        public_url: The publicly visible url for the branch to register.
+                    This must be an http or https url (which Launchpad can read
+                    from to access the branch). Local file urls, SFTP urls, and
+                    bzr+ssh urls will not work.
+                    If no public_url is provided, bzr will use the configured
+                    public_url if there is one for the current branch, and
+                    otherwise error.
 
     example:
         bzr register-branch http://foo.com/bzr/fooproduct.mine \\
                 --product fooproduct
     """
-    takes_args = ['branch_url']
+    takes_args = ['public_url?']
     takes_options = [
          Option('product',
                 'Launchpad product short name to associate with the branch.',
@@ -75,8 +77,8 @@ class cmd_register_branch(Command):
         ]
 
 
-    def run(self, 
-            branch_url, 
+    def run(self,
+            public_url=None,
             product='',
             branch_name='',
             branch_title='',
@@ -84,17 +86,27 @@ class cmd_register_branch(Command):
             author='',
             link_bug=None,
             dry_run=False):
-        from lp_registration import (
+        from bzrlib.plugins.launchpad.lp_registration import (
             LaunchpadService, BranchRegistrationRequest, BranchBugLinkRequest,
             DryRunLaunchpadService)
-        rego = BranchRegistrationRequest(branch_url=branch_url,
+        if public_url is None:
+            try:
+                b = Branch.open_containing('.')[0]
+            except NotBranchError:
+                raise BzrCommandError('register-branch requires a public '
+                    'branch url - see bzr help register-branch.')
+            public_url = b.get_public_branch()
+            if public_url is None:
+                raise NoPublicBranch(b)
+
+        rego = BranchRegistrationRequest(branch_url=public_url,
                                          branch_name=branch_name,
                                          branch_title=branch_title,
                                          branch_description=branch_description,
                                          product_name=product,
                                          author_email=author,
                                          )
-        linko = BranchBugLinkRequest(branch_url=branch_url,
+        linko = BranchBugLinkRequest(branch_url=public_url,
                                      bug_id=link_bug)
         if not dry_run:
             service = LaunchpadService()
@@ -114,26 +126,74 @@ class cmd_register_branch(Command):
 
 register_command(cmd_register_branch)
 
-register_lazy_transport(
-    'lp:',
-    'bzrlib.plugins.launchpad.lp_indirect',
-    'launchpad_transport_indirect')
 
-register_lazy_transport(
-    'lp://',
-    'bzrlib.plugins.launchpad.lp_indirect',
-    'launchpad_transport_indirect')
+class cmd_launchpad_login(Command):
+    """Show or set the Launchpad user ID.
+
+    When communicating with Launchpad, some commands need to know your
+    Launchpad user ID.  This command can be used to set or show the
+    user ID that Bazaar will use for such communication.
+
+    :Examples:
+      Show the Launchpad ID of the current user::
+
+          bzr launchpad-login
+
+      Set the Launchpad ID of the current user to 'bob'::
+
+          bzr launchpad-login bob
+    """
+    aliases = ['lp-login']
+    takes_args = ['name?']
+    takes_options = [
+        Option('no-check',
+               "Don't check that the user name is valid."),
+        ]
+
+    def run(self, name=None, no_check=False):
+        from bzrlib.plugins.launchpad import account
+        check_account = not no_check
+
+        if name is None:
+            username = account.get_lp_login()
+            if username:
+                if check_account:
+                    account.check_lp_login(username)
+                self.outf.write(username + '\n')
+            else:
+                self.outf.write('No Launchpad user ID configured.\n')
+                return 1
+        else:
+            if check_account:
+                account.check_lp_login(name)
+            account.set_lp_login(name)
+
+register_command(cmd_launchpad_login)
+
+
+def _register_directory():
+    directories.register_lazy('lp:', 'bzrlib.plugins.launchpad.lp_directory',
+                              'LaunchpadDirectory',
+                              'Launchpad-based directory service',)
+_register_directory()
+
 
 def test_suite():
     """Called by bzrlib to fetch tests for this plugin"""
     from unittest import TestSuite, TestLoader
-    import test_register
-    import test_lp_indirect
+    from bzrlib.plugins.launchpad import (
+         test_account, test_lp_directory, test_lp_service, test_register,
+         )
 
     loader = TestLoader()
     suite = TestSuite()
-    for m in [test_register, test_lp_indirect]:
-        suite.addTests(loader.loadTestsFromModule(m))
+    for module in [
+        test_account,
+        test_register,
+        test_lp_directory,
+        test_lp_service,
+        ]:
+        suite.addTests(loader.loadTestsFromModule(module))
     return suite
 
 _launchpad_help = """Integration with Launchpad.net
@@ -141,18 +201,22 @@ _launchpad_help = """Integration with Launchpad.net
 Launchpad.net provides free Bazaar branch hosting with integrated bug and
 specification tracking.
 
-The bzr client (through the plugin called 'launchpad') has two special
+The bzr client (through the plugin called 'launchpad') has special
 features to communicate with Launchpad:
 
-    * The register-branch command tells launchpad about the url of a 
+    * The launchpad-login command tells Bazaar your Launchpad user name. This
+      is then used by the 'lp:' transport to download your branches using
+      bzr+ssh://.
+
+    * The register-branch command tells Launchpad about the url of a
       public branch.  Launchpad will then mirror the branch, display
-      its contents and allow it to be attached to bugs and other 
+      its contents and allow it to be attached to bugs and other
       objects.
 
-    * The 'lp:' transport uses Launchpad as a directory service: 
-      for example 'lp:bzr' and 'lp:python' refer to the main branches of the
-      relevant projects and may be branched, logged, etc.  (Only read access
-      is supported at present.)
+    * The 'lp:' transport uses Launchpad as a directory service: for example
+      'lp:bzr' and 'lp:python' refer to the main branches of the relevant
+      projects and may be branched, logged, etc. You can also use the 'lp:'
+      transport to refer to specific branches, e.g. lp:///~bzr/bzr/trunk.
 
 For more information see http://help.launchpad.net/
 """

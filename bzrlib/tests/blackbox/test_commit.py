@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -83,7 +83,7 @@ class TestCommit(ExternalBase):
         tree.add("hello.txt")
         out,err = self.run_bzr('commit -m added')
         self.assertEqual('', out)
-        self.assertContainsRe(err, '^Committing revision 1 to ".*"\.\n'
+        self.assertContainsRe(err, '^Committing to: .*\n'
                               'added hello.txt\n'
                               'Committed revision 1.\n$',)
 
@@ -102,7 +102,7 @@ class TestCommit(ExternalBase):
         self.build_tree_contents([('hello.txt', 'new contents')])
         out, err = self.run_bzr('commit -m modified')
         self.assertEqual('', out)
-        self.assertContainsRe(err, '^Committing revision 2 to ".*"\.\n'
+        self.assertContainsRe(err, '^Committing to: .*\n'
                               'modified hello\.txt\n'
                               'Committed revision 2\.\n$')
 
@@ -112,7 +112,7 @@ class TestCommit(ExternalBase):
         wt.rename_one('hello.txt', 'gutentag.txt')
         out, err = self.run_bzr('commit -m renamed')
         self.assertEqual('', out)
-        self.assertContainsRe(err, '^Committing revision 2 to ".*"\.\n'
+        self.assertContainsRe(err, '^Committing to: .*\n'
                               'renamed hello\.txt => gutentag\.txt\n'
                               'Committed revision 2\.$\n')
 
@@ -124,7 +124,7 @@ class TestCommit(ExternalBase):
         wt.rename_one('hello.txt', 'subdir/hello.txt')
         out, err = self.run_bzr('commit -m renamed')
         self.assertEqual('', out)
-        self.assertContainsRe(err, '^Committing revision 2 to ".*"\.\n'
+        self.assertContainsRe(err, '^Committing to: .*\n'
                               'added subdir\n'
                               'renamed hello\.txt => subdir/hello\.txt\n'
                               'Committed revision 2\.\n$')
@@ -137,7 +137,7 @@ class TestCommit(ExternalBase):
         wt.add(['hello.txt'])
         out,err = self.run_bzr('commit -m added')
         self.assertEqual('', out)
-        self.assertContainsRe(err, '^Committing revision 1 to ".*"\.\n'
+        self.assertContainsRe(err, '^Committing to: .*\n'
                               'added hello\.txt\n'
                               'Committed revision 1\.\n$')
 
@@ -150,7 +150,7 @@ class TestCommit(ExternalBase):
         tree.add("hello.txt")
         out,err = self.run_bzr('commit -m added')
         self.assertEqual('', out)
-        self.assertContainsRe(err, '^Committing revision 2 to ".*"\.\n'
+        self.assertContainsRe(err, '^Committing to: .*\n'
                               'added hello\.txt\n'
                               'Committed revision 2\.$\n')
 
@@ -164,7 +164,7 @@ class TestCommit(ExternalBase):
         b_tree = a_tree.branch.create_checkout('b')
         expected = "%s/" % (osutils.abspath('a'), )
         out, err = self.run_bzr('commit -m blah --unchanged', working_dir='b')
-        self.assertEqual(err, 'Committing revision 2 to "%s".\n'
+        self.assertEqual(err, 'Committing to: %s\n'
                          'Committed revision 2.\n' % expected)
 
     def test_commit_merge_reports_all_modified_files(self):
@@ -222,7 +222,7 @@ class TestCommit(ExternalBase):
         self.assertEqual('', out)
         expected = '%s/' % (osutils.getcwd(), )
         self.assertEqualDiff(
-            'Committing revision 2 to "%s".\n'
+            'Committing to: %s\n'
             'modified filetomodify\n'
             'added newdir\n'
             'added newfile\n'
@@ -397,7 +397,7 @@ class TestCommit(ExternalBase):
         output, err = self.run_bzr(
             'commit -m hello --fixes=lp:23452 tree/hello.txt')
         self.assertEqual('', output)
-        self.assertContainsRe(err, 'Committing revision 1 to ".*"\.\n'
+        self.assertContainsRe(err, 'Committing to: .*\n'
                               'added hello\.txt\n'
                               'Committed revision 1\.\n')
 
@@ -520,11 +520,12 @@ class TestCommit(ExternalBase):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
-        self.run_bzr("commit -m hello --author='John Doe <jdoe@example.com>' "
-                     "tree/hello.txt")
+        self.run_bzr(["commit", '-m', 'hello',
+                      '--author', u'John D\xf6 <jdoe@example.com>',
+                     "tree/hello.txt"])
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         properties = last_rev.properties
-        self.assertEqual('John Doe <jdoe@example.com>', properties['author'])
+        self.assertEqual(u'John D\xf6 <jdoe@example.com>', properties['author'])
 
     def test_author_no_email(self):
         """Author's name without an email address is allowed, too."""
@@ -553,3 +554,16 @@ class TestCommit(ExternalBase):
         out, err = self.run_bzr('commit test -m "partial commit"')
         self.assertEquals('', out)
         self.assertContainsRe(err, r'modified test\nCommitted revision 2.')
+
+    def test_commit_readonly_checkout(self):
+        # https://bugs.edge.launchpad.net/bzr/+bug/129701
+        # "UnlockableTransport error trying to commit in checkout of readonly
+        # branch"
+        self.make_branch('master')
+        master = BzrDir.open_from_transport(
+            self.get_readonly_transport('master')).open_branch()
+        master.create_checkout('checkout')
+        out, err = self.run_bzr(['commit', '--unchanged', '-mfoo', 'checkout'],
+            retcode=3)
+        self.assertContainsRe(err,
+            r'^bzr: ERROR: Cannot lock.*readonly transport')

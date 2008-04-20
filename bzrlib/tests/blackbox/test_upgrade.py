@@ -109,7 +109,7 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
             ['upgrade', '--format=metaweave', url])
         self.assertEqualDiff("""starting upgrade of %s
 making backup of tree history
-%s.bzr has been backed up to %s.bzr.backup
+%s.bzr has been backed up to %sbackup.bzr
 if conversion fails, you can move this directory back to .bzr
 if it succeeds, you can remove this directory if you wish
 starting upgrade from format 5 to 6
@@ -133,7 +133,7 @@ finished
             ['upgrade', '--format=knit', url])
         self.assertEqualDiff("""starting upgrade of %s
 making backup of tree history
-%s.bzr has been backed up to %s.bzr.backup
+%s.bzr has been backed up to %sbackup.bzr
 if conversion fails, you can move this directory back to .bzr
 if it succeeds, you can remove this directory if you wish
 starting repository conversion
@@ -172,7 +172,7 @@ class SFTPTests(TestCaseWithSFTPServer):
         out, err = self.run_bzr(['upgrade', '--format=knit', url])
         self.assertEqualDiff("""starting upgrade of %s
 making backup of tree history
-%s.bzr has been backed up to %s.bzr.backup
+%s.bzr has been backed up to %sbackup.bzr
 if conversion fails, you can move this directory back to .bzr
 if it succeeds, you can remove this directory if you wish
 starting upgrade from format 6 to metadir
@@ -196,6 +196,6 @@ class UpgradeRecommendedTests(TestCaseInTempDir):
         # the actual workingtree, not when we only open a bzrdir that contains
         # an old workngtree
         self.run_bzr('init --knit a')
-        out, err = self.run_bzr('checkout a b')
+        out, err = self.run_bzr('revno a')
         if err.find('upgrade') > -1:
             self.fail("message shouldn't suggest upgrade:\n%s" % err)

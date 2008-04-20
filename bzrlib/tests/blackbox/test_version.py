@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,6 +16,9 @@
 
 """Black-box tests for bzr version."""
 
+import os
+import sys
+
 import bzrlib
 from bzrlib import osutils, trace
 from bzrlib.tests import (
@@ -31,12 +34,15 @@ class TestVersion(TestCase):
     def test_version(self):
         out = self.run_bzr("version")[0]
         self.assertTrue(len(out) > 0)
-        self.assertEquals(1, out.count(bzrlib.__version__))
+        # must occur once; could be more if it matches a file path
+        first = out.splitlines()[0]
+        self.assertEqualDiff(first,
+            "Bazaar (bzr) %s" % bzrlib.__version__)
         self.assertContainsRe(out, r"(?m)^  Python interpreter:")
         self.assertContainsRe(out, r"(?m)^  Python standard library:")
         self.assertContainsRe(out, r"(?m)^  bzrlib:")
         self.assertContainsRe(out, r"(?m)^  Bazaar configuration:")
-        self.assertContainsRe(out, r'(?m)^  Bazaar log file:.*bzr\.log')
+        self.assertContainsRe(out, r'(?m)^  Bazaar log file:.*\.bzr\.log')
 
 
 class TestVersionUnicodeOutput(TestCaseInTempDir):
@@ -74,3 +80,30 @@ class TestVersionUnicodeOutput(TestCaseInTempDir):
         out = self.run_bzr("version")[0]
         self.assertTrue(len(out) > 0)
         self.assertContainsRe(out, r"(?m)^  Bazaar configuration: " + str_val)
+
+
+class TestVersionBzrLogLocation(TestCaseInTempDir):
+
+    def test_simple(self):
+        bzr_log = 'my.bzr.log'
+        osutils.set_or_unset_env('BZR_LOG', bzr_log)
+        default_log = os.path.join(os.environ['BZR_HOME'], '.bzr.log')
+        self.failIfExists([default_log, bzr_log])
+        out = self.run_bzr_subprocess('version')[0]
+        self.assertTrue(len(out) > 0)
+        self.assertContainsRe(out, r"(?m)^  Bazaar log file: " + bzr_log)
+        self.failIfExists(default_log)
+        self.failUnlessExists(bzr_log)
+
+    def test_dev_null(self):
+        if sys.platform == 'win32':
+            bzr_log = 'NUL'
+        else:
+            bzr_log = '/dev/null'
+        osutils.set_or_unset_env('BZR_LOG', bzr_log)
+        default_log = os.path.join(os.environ['BZR_HOME'], '.bzr.log')
+        self.failIfExists(default_log)
+        out = self.run_bzr_subprocess('version')[0]
+        self.assertTrue(len(out) > 0)
+        self.assertContainsRe(out, r"(?m)^  Bazaar log file: " + bzr_log)
+        self.failIfExists(default_log)

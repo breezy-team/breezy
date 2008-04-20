@@ -17,6 +17,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from cStringIO import StringIO
+import errno
 import os
 import sys
 
@@ -30,9 +31,8 @@ from bzrlib.tests import TestSkipped
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.trace import mutter
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
-                                WorkingTree)
+                                WorkingTree, WorkingTree2)
 from bzrlib.conflicts import ConflictList, TextConflict, ContentsConflict
-
 
 
 class TestWorkingTree(TestCaseWithWorkingTree):
@@ -642,7 +642,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         try:
             tree.set_conflicts(ConflictList())
         except UnsupportedOperation:
-            raise TestSkipped
+            raise TestSkipped('unsupported operation')
         self.assertEqual(tree.conflicts(), ConflictList())
 
     def test_add_conflicts(self):
@@ -650,7 +650,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         try:
             tree.add_conflicts([TextConflict('path_a')])
         except UnsupportedOperation:
-            raise TestSkipped()
+            raise TestSkipped('unsupported operation')
         self.assertEqual(ConflictList([TextConflict('path_a')]),
                          tree.conflicts())
         tree.add_conflicts([TextConflict('path_a')])
@@ -745,7 +745,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # if we write write an inventory then do a walkdirs we should get back
         # missing entries, and actual, and unknowns as appropriate.
         self.build_tree(['present', 'unknown'])
-        inventory = Inventory(tree.path2id(''))
+        inventory = Inventory(tree.get_root_id())
         inventory.add_path('missing', 'file', 'missing-id')
         inventory.add_path('present', 'file', 'present-id')
         # there is no point in being able to write an inventory to an unlocked
@@ -758,7 +758,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             present_stat = os.lstat('present')
             unknown_stat = os.lstat('unknown')
             expected_results = [
-                (('', tree.inventory.root.file_id),
+                (('', tree.get_root_id()),
                  [('missing', 'missing', 'unknown', None, 'missing-id', 'file'),
                   ('present', 'present', 'file', present_stat, 'present-id', 'file'),
                   ('unknown', 'unknown', 'file', unknown_stat, None, None),
@@ -826,6 +826,17 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             expected_kind = names[i]
             self.assertEqual(expected_kind, actual_kind)
 
+    def test_stored_kind_with_missing(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree(['tree/a', 'tree/b/'])
+        tree.add(['a', 'b'], ['a-id', 'b-id'])
+        os.unlink('tree/a')
+        os.rmdir('tree/b')
+        self.assertEqual('file', tree.stored_kind('a-id'))
+        self.assertEqual('directory', tree.stored_kind('b-id'))
+
     def test_missing_file_sha1(self):
         """If a file is missing, its sha1 should be reported as None."""
         tree = self.make_branch_and_tree('.')
@@ -848,3 +859,50 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.commit('foo')
         tree.remove('file')
         self.assertRaises(errors.NoSuchId, tree.get_file_sha1, 'file-id')
+
+    def test_case_sensitive(self):
+        """If filesystem is case-sensitive, tree should report this.
+
+        We check case-sensitivity by creating a file with a lowercase name,
+        then testing whether it exists with an uppercase name.
+        """
+        self.build_tree(['filename'])
+        if os.path.exists('FILENAME'):
+            case_sensitive = False
+        else:
+            case_sensitive = True
+        tree = self.make_branch_and_tree('test')
+        if tree.__class__ == WorkingTree2:
+            raise TestSkipped('WorkingTree2 is not supported')
+        self.assertEqual(case_sensitive, tree.case_sensitive)
+
+    def test_all_file_ids_with_missing(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree(['tree/a', 'tree/b'])
+        tree.add(['a', 'b'], ['a-id', 'b-id'])
+        os.unlink('tree/a')
+        self.assertEqual(set(['a-id', 'b-id', tree.get_root_id()]),
+                         tree.all_file_ids())
+
+    def test_sprout_hardlink(self):
+        source = self.make_branch_and_tree('source')
+        self.build_tree(['source/file'])
+        source.add('file')
+        source.commit('added file')
+        def fake_link(source, target):
+            raise OSError(errno.EPERM, 'Operation not permitted')
+        real_os_link = os.link
+        os.link = fake_link
+        try:
+            # Hard-link support is optional, so supplying hardlink=True may
+            # or may not raise an exception.  But if it does, it must be
+            # HardLinkNotSupported
+            try:
+                source.bzrdir.sprout('target', accelerator_tree=source,
+                                     hardlink=True)
+            except errors.HardLinkNotSupported:
+                pass
+        finally:
+            os.link = real_os_link

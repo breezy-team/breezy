@@ -31,7 +31,7 @@ class RevisionTree(Tree):
 
     File text can be retrieved from the text store.
     """
-    
+
     def __init__(self, branch, inv, revision_id):
         # for compatability the 'branch' parameter has not been renamed to 
         # repository at this point. However, we should change RevisionTree's
@@ -93,7 +93,7 @@ class RevisionTree(Tree):
                       default_revision=revision.CURRENT_REVISION):
         """See Tree.annotate_iter"""
         w = self._get_weave(file_id)
-        return w.annotate_iter(self.inventory[file_id].revision)
+        return w.annotate(self.inventory[file_id].revision)
 
     def get_file_size(self, file_id):
         return self._inventory[file_id].text_size

@@ -14,19 +14,35 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import urllib
 from urlparse import urlparse
 
 from bzrlib.smart import protocol
-from bzrlib.urlutils import unescape
+from bzrlib import (
+    errors,
+    urlutils,
+    )
 
 
 class _SmartClient(object):
 
-    def __init__(self, shared_medium):
-        self._shared_medium = shared_medium
+    def __init__(self, medium, base):
+        """Constructor.
 
-    def get_smart_medium(self):
-        return self._shared_medium.connection
+        :param medium: a SmartClientMedium
+        :param base: a URL
+        """
+        self._medium = medium
+        self._base = base
+
+    def _build_client_protocol(self):
+        version = self._medium.protocol_version()
+        request = self._medium.get_request()
+        if version == 2:
+            smart_protocol = protocol.SmartClientRequestProtocolTwo(request)
+        else:
+            smart_protocol = protocol.SmartClientRequestProtocolOne(request)
+        return smart_protocol
 
     def call(self, method, *args):
         """Call a method on the remote server."""
@@ -42,8 +58,7 @@ class _SmartClient(object):
             result, smart_protocol = smart_client.call_expecting_body(...)
             body = smart_protocol.read_body_bytes()
         """
-        request = self.get_smart_medium().get_request()
-        smart_protocol = protocol.SmartClientRequestProtocolOne(request)
+        smart_protocol = self._build_client_protocol()
         smart_protocol.call(method, *args)
         return smart_protocol.read_response_tuple(expect_body=True), smart_protocol
 
@@ -56,10 +71,22 @@ class _SmartClient(object):
                 raise TypeError('args must be byte strings, not %r' % (args,))
         if type(body) is not str:
             raise TypeError('body must be byte string, not %r' % (body,))
-        request = self.get_smart_medium().get_request()
-        smart_protocol = protocol.SmartClientRequestProtocolOne(request)
+        smart_protocol = self._build_client_protocol()
         smart_protocol.call_with_body_bytes((method, ) + args, body)
         return smart_protocol.read_response_tuple()
+
+    def call_with_body_bytes_expecting_body(self, method, args, body):
+        """Call a method on the remote server with body bytes."""
+        if type(method) is not str:
+            raise TypeError('method must be a byte string, not %r' % (method,))
+        for arg in args:
+            if type(arg) is not str:
+                raise TypeError('args must be byte strings, not %r' % (args,))
+        if type(body) is not str:
+            raise TypeError('body must be byte string, not %r' % (body,))
+        smart_protocol = self._build_client_protocol()
+        smart_protocol.call_with_body_bytes((method, ) + args, body)
+        return smart_protocol.read_response_tuple(expect_body=True), smart_protocol
 
     def remote_path_from_transport(self, transport):
         """Convert transport into a path suitable for using in a request.
@@ -68,4 +95,13 @@ class _SmartClient(object):
         anything but path, so it is only safe to use it in requests sent over
         the medium from the matching transport.
         """
-        return unescape(urlparse(transport.base)[2]).encode('utf8')
+        base = self._base
+        if (base.startswith('bzr+http://') or base.startswith('bzr+https://')
+            or base.startswith('http://') or base.startswith('https://')):
+            medium_base = self._base
+        else:
+            medium_base = urlutils.join(self._base, '/')
+            
+        rel_url = urlutils.relative_url(medium_base, transport.base)
+        return urllib.unquote(rel_url)
+

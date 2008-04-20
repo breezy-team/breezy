@@ -84,13 +84,13 @@ def show_tree_status(wt, show_unchanged=None,
             old = new.basis_tree()
         elif len(revision) > 0:
             try:
-                rev_id = revision[0].in_history(wt.branch).rev_id
+                rev_id = revision[0].as_revision_id(wt.branch)
                 old = wt.branch.repository.revision_tree(rev_id)
             except errors.NoSuchRevision, e:
                 raise errors.BzrCommandError(str(e))
             if (len(revision) > 1) and (revision[1].spec is not None):
                 try:
-                    rev_id = revision[1].in_history(wt.branch).rev_id
+                    rev_id = revision[1].as_revision_id(wt.branch)
                     new = wt.branch.repository.revision_tree(rev_id)
                     new_is_working_tree = False
                 except errors.NoSuchRevision, e:
@@ -103,7 +103,7 @@ def show_tree_status(wt, show_unchanged=None,
             _raise_if_nonexistent(specific_files, old, new)
             want_unversioned = not versioned
             if short:
-                changes = new._iter_changes(old, show_unchanged, specific_files,
+                changes = new.iter_changes(old, show_unchanged, specific_files,
                     require_versioned=False, want_unversioned=want_unversioned)
                 reporter = _mod_delta._ChangeReporter(output_file=to_file,
                     unversioned_filter=new.is_ignored)
@@ -127,14 +127,15 @@ def show_tree_status(wt, show_unchanged=None,
                 conflicts = conflicts.select_conflicts(new, specific_files,
                     ignore_misses=True, recurse=True)[1]
             if len(conflicts) > 0 and not short:
-                print >> to_file, "conflicts:"
+                to_file.write("conflicts:\n")
             for conflict in conflicts:
                 if short:
                     prefix = 'C  '
                 else:
                     prefix = ' '
-                print >> to_file, "%s %s" % (prefix, conflict)
-            if new_is_working_tree and show_pending:
+                to_file.write("%s %s\n" % (prefix, conflict))
+            if (new_is_working_tree and show_pending
+                and specific_files is None):
                 show_pending_merges(new, to_file, short)
         finally:
             old.unlock()
@@ -151,7 +152,7 @@ def show_pending_merges(new, to_file, short=False):
     branch = new.branch
     last_revision = parents[0]
     if not short:
-        print >>to_file, 'pending merges:'
+        to_file.write('pending merges:\n')
     if last_revision is not None:
         try:
             ignore = set(branch.repository.get_ancestry(last_revision,
@@ -168,13 +169,16 @@ def show_pending_merges(new, to_file, short=False):
         ignore.add(merge)
         try:
             from bzrlib.osutils import terminal_width
-            width = terminal_width()
+            width = terminal_width() - 1    # we need one extra space to avoid
+                                            # extra blank lines
             m_revision = branch.repository.get_revision(merge)
             if short:
-                prefix = 'P  '
+                prefix = 'P   '
             else:
-                prefix = ' '
-            print >> to_file, prefix, line_log(m_revision, width - 4)
+                prefix = '  '
+            to_file.write(prefix)
+            to_file.write(line_log(m_revision, width - len(prefix)))
+            to_file.write('\n')
             inner_merges = branch.repository.get_ancestry(merge)
             assert inner_merges[0] is None
             inner_merges.pop(0)
@@ -184,14 +188,17 @@ def show_pending_merges(new, to_file, short=False):
                     continue
                 mm_revision = branch.repository.get_revision(mmerge)
                 if short:
-                    prefix = 'P.  '
+                    prefix = 'P.   '
                 else:
-                    prefix = '   '
-                print >> to_file, prefix, line_log(mm_revision, width - 5)
+                    prefix = '    '
+                to_file.write(prefix)
+                to_file.write(line_log(mm_revision, width - len(prefix)))
+                to_file.write('\n')
                 ignore.add(mmerge)
         except errors.NoSuchRevision:
             if short:
                 prefix = 'P  '
             else:
                 prefix = ' '
-            print >> to_file, prefix, merge
+            to_file.write(prefix + ' ' + merge)
+            to_file.write('\n')

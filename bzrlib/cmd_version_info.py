@@ -21,12 +21,14 @@ lazy_import(globals(), """
 from bzrlib import (
     branch,
     errors,
-    version_info_formats,
     workingtree,
     )
 """)
+from bzrlib import (
+    version_info_formats,
+    )
 from bzrlib.commands import Command
-from bzrlib.option import Option
+from bzrlib.option import Option, RegistryOption
 
 
 def _parse_version_info_format(format):
@@ -45,16 +47,40 @@ def _parse_version_info_format(format):
 
 
 class cmd_version_info(Command):
-    """Show version information about this tree."""
+    """Show version information about this tree.
 
-    takes_options = [Option('format', type=_parse_version_info_format,
-                            help='Select the output format.'),
+    You can use this command to add information about version into
+    source code of an application. The output can be in one of the
+    supported formats or in a custom format based on a template.
+
+    For example::
+
+      bzr version-info --custom \\
+        --template="#define VERSION_INFO \\"Project 1.2.3 (r{revno})\\"\\n"
+
+    will produce a C header file with formatted string containing the
+    current revision number. Other supported variables in templates are:
+
+      * {date} - date of the last revision
+      * {build_date} - current date
+      * {revno} - revision number
+      * {revision_id} - revision id
+      * {branch_nick} - branch nickname
+      * {clean} - 0 if the source tree contains uncommitted changes,
+                  otherwise 1
+    """
+
+    takes_options = [RegistryOption('format',
+                            'Select the output format.',
+                            version_info_formats.format_registry,
+                            value_switches=True),
                      Option('all', help='Include all possible information.'),
                      Option('check-clean', help='Check if tree is clean.'),
                      Option('include-history',
                             help='Include the revision-history.'),
                      Option('include-file-revisions',
-                            help='Include the last revision for each file.')
+                            help='Include the last revision for each file.'),
+                     Option('template', type=str, help='Template for the output.'),
                      ]
     takes_args = ['location?']
 
@@ -62,13 +88,13 @@ class cmd_version_info(Command):
 
     def run(self, location=None, format=None,
             all=False, check_clean=False, include_history=False,
-            include_file_revisions=False):
+            include_file_revisions=False, template=None):
 
         if location is None:
             location = '.'
 
         if format is None:
-            format = version_info_formats.get_builder(None)
+            format = version_info_formats.format_registry.get()
 
         wt = None
         try:
@@ -78,7 +104,7 @@ class cmd_version_info(Command):
         else:
             b = wt.branch
 
-        if all:
+        if all or template:
             include_history = True
             check_clean = True
             include_file_revisions=True
@@ -86,5 +112,6 @@ class cmd_version_info(Command):
         builder = format(b, working_tree=wt,
                 check_for_clean=check_clean,
                 include_revision_history=include_history,
-                include_file_revisions=include_file_revisions)
+                include_file_revisions=include_file_revisions,
+                template=template)
         builder.generate(self.outf)

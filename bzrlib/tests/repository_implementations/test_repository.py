@@ -23,13 +23,27 @@ import bzrlib
 from bzrlib import (
     bzrdir,
     errors,
+    graph,
+    osutils,
     remote,
     repository,
     )
 from bzrlib.delta import TreeDelta
 from bzrlib.inventory import Inventory, InventoryDirectory
-from bzrlib.revision import NULL_REVISION
-from bzrlib.tests import TestCaseWithTransport, TestSkipped
+from bzrlib.repofmt.weaverepo import (
+    RepositoryFormat5,
+    RepositoryFormat6,
+    RepositoryFormat7,
+    )
+from bzrlib.revision import NULL_REVISION, Revision
+from bzrlib.smart import server
+from bzrlib.symbol_versioning import one_two, one_three, one_four
+from bzrlib.tests import (
+    KnownFailure,
+    TestCaseWithTransport,
+    TestNotApplicable,
+    TestSkipped,
+    )
 from bzrlib.tests.repository_implementations import TestCaseWithRepository
 from bzrlib.transport import get_transport
 from bzrlib.upgrade import upgrade
@@ -61,8 +75,23 @@ class TestRepository(TestCaseWithRepository):
         bzrdirb = self.make_bzrdir('b')
         repo_b = tree_a.branch.repository.clone(bzrdirb)
         tree_b = repo_b.revision_tree('rev1')
+        tree_b.lock_read()
+        self.addCleanup(tree_b.unlock)
         tree_b.get_file_text('file1')
         rev1 = repo_b.get_revision('rev1')
+
+    def test_iter_inventories_is_ordered(self):
+        # just a smoke test
+        tree = self.make_branch_and_tree('a')
+        first_revision = tree.commit('')
+        second_revision = tree.commit('')
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        revs = (first_revision, second_revision)
+        invs = tree.branch.repository.iter_inventories(revs)
+        for rev_id, inv in zip(revs, invs):
+            self.assertEqual(rev_id, inv.revision_id)
+            self.assertIsInstance(inv, Inventory)
 
     def test_supports_rich_root(self):
         tree = self.make_branch_and_tree('a')
@@ -239,6 +268,11 @@ class TestRepository(TestCaseWithRepository):
         text = repo._format.get_format_description()
         self.failUnless(len(text))
 
+    def test_format_supports_external_lookups(self):
+        repo = self.make_repository('.')
+        self.assertSubset(
+            [repo._format.supports_external_lookups], (True, False))
+
     def assertMessageRoundtrips(self, message):
         """Assert that message roundtrips to a repository and back intact."""
         tree = self.make_branch_and_tree('.')
@@ -273,7 +307,7 @@ class TestRepository(TestCaseWithRepository):
         tree = self.make_branch_and_tree('.')
         tree.commit('initial empty commit', rev_id='a-rev',
                     allow_pointless=True)
-        result = tree.branch.repository.check(['a-rev'])
+        result = tree.branch.repository.check()
         # writes to log; should accept both verbose or non-verbose
         result.report_results(verbose=True)
         result.report_results(verbose=False)
@@ -358,10 +392,124 @@ class TestRepository(TestCaseWithRepository):
     def test_format_attributes(self):
         """All repository formats should have some basic attributes."""
         # create a repository to get a real format instance, not the 
-        # template from the test suite parameterisation.
+        # template from the test suite parameterization.
         repo = self.make_repository('.')
         repo._format.rich_root_data
         repo._format.supports_tree_reference
+
+    def test_get_data_stream_deprecated(self):
+        # If get_data_stream is present it must be deprecated
+        tree = self.make_branch_and_tree('t')
+        self.build_tree(['t/foo'])
+        tree.add('foo', 'file1')
+        tree.commit('message', rev_id='rev_id')
+        repo = tree.branch.repository
+        try:
+            stream = self.applyDeprecated(one_two, repo.get_data_stream,
+                ['rev_id'])
+        except NotImplementedError:
+            raise TestNotApplicable("%s doesn't support get_data_stream"
+                % repo._format)
+        except AttributeError:
+            pass
+
+    def test_get_data_stream_for_search(self):
+        # Make a repo with a revision
+        tree = self.make_branch_and_tree('t')
+        self.build_tree(['t/foo'])
+        tree.add('foo', 'file1')
+        tree.commit('message', rev_id='rev_id')
+        repo = tree.branch.repository
+
+        # Get a data stream (a file-like object) for that revision
+        search = graph.SearchResult(set(['rev_id']), set([NULL_REVISION]), 1,
+            set(['rev_id']))
+        try:
+            stream = repo.get_data_stream_for_search(search)
+        except NotImplementedError:
+            raise TestNotApplicable("%s doesn't support get_data_stream"
+                % repo._format)
+
+        # The data stream is a iterator that yields (name, versioned_file)
+        # pairs for:
+        #   * the file knit (or knits; if this repo has rich roots there will
+        #     be a file knit for that as well as for 'file1').
+        #   * the inventory knit
+        #   * the revisions knit
+        # in that order.
+        expected_record_names = [
+            ('file', 'file1'),
+            ('inventory',),
+            ('signatures',),
+            ('revisions',)]
+        streamed_names = []
+        for name, bytes in stream:
+            streamed_names.append(name)
+
+        if repo.supports_rich_root():
+            # Check for the root versioned file in the stream, then remove it
+            # from streamed_names so we can compare that with
+            # expected_record_names.
+            # Note that the file knits can be in any order, so this test is
+            # written to allow that.
+            inv = repo.get_inventory('rev_id')
+            expected_record_name = ('file', inv.root.file_id)
+            self.assertTrue(expected_record_name in streamed_names)
+            streamed_names.remove(expected_record_name)
+
+        self.assertEqual(expected_record_names, streamed_names)
+
+    def test_insert_data_stream(self):
+        tree = self.make_branch_and_tree('source')
+        self.build_tree(['source/foo'])
+        tree.add('foo', 'file1')
+        tree.commit('message', rev_id='rev_id')
+        source_repo = tree.branch.repository
+        dest_repo = self.make_repository('dest')
+        search = dest_repo.search_missing_revision_ids(source_repo,
+            revision_id='rev_id')
+        try:
+            stream = source_repo.get_data_stream_for_search(search)
+        except NotImplementedError, e:
+            # Not all repositories support streaming.
+            self.assertContainsRe(str(e), 'get_data_stream_for_search')
+            raise TestSkipped('This format does not support streaming.')
+
+        dest_repo.lock_write()
+        try:
+            dest_repo.start_write_group()
+            try:
+                dest_repo.insert_data_stream(stream)
+            except:
+                dest_repo.abort_write_group()
+                raise
+            else:
+                dest_repo.commit_write_group()
+        finally:
+            dest_repo.unlock()
+        # reopen to be sure it was added.
+        dest_repo = dest_repo.bzrdir.open_repository()
+        self.assertTrue(dest_repo.has_revision('rev_id'))
+
+        # insert the same data stream again, should be no-op
+        stream = source_repo.get_data_stream_for_search(search)
+        dest_repo.lock_write()
+        try:
+            dest_repo.start_write_group()
+            try:
+                dest_repo.insert_data_stream(stream)
+            except:
+                dest_repo.abort_write_group()
+                raise
+            else:
+                dest_repo.commit_write_group()
+        finally:
+            dest_repo.unlock()
+
+        # try to insert data stream with invalid key
+        stream = [[('bogus-key',), '']]
+        self.assertRaises(errors.RepositoryDataStreamError,
+                          dest_repo.insert_data_stream, stream)
 
     def test_get_serializer_format(self):
         repo = self.make_repository('.')
@@ -377,6 +525,8 @@ class TestRepository(TestCaseWithRepository):
         self.build_tree_contents([('tree/file1', 'baz')])
         tree.commit('rev2', rev_id='rev2')
         repository = tree.branch.repository
+        repository.lock_read()
+        self.addCleanup(repository.unlock)
         extracted = dict((i, ''.join(b)) for i, b in
                          repository.iter_files_bytes(
                          [('file1-id', 'rev1', 'file1-old'),
@@ -392,6 +542,276 @@ class TestRepository(TestCaseWithRepository):
         self.assertRaises((errors.RevisionNotPresent, errors.NoSuchId), list,
                           repository.iter_files_bytes(
                           [('file3-id', 'rev3', 'file1-notpresent')]))
+
+    def test_item_keys_introduced_by(self):
+        # Make a repo with one revision and one versioned file.
+        tree = self.make_branch_and_tree('t')
+        self.build_tree(['t/foo'])
+        tree.add('foo', 'file1')
+        tree.commit('message', rev_id='rev_id')
+        repo = tree.branch.repository
+
+        # Item keys will be in this order, for maximum convenience for
+        # generating data to insert into knit repository:
+        #   * files
+        #   * inventory
+        #   * signatures
+        #   * revisions
+        expected_item_keys = [
+            ('file', 'file1', ['rev_id']),
+            ('inventory', None, ['rev_id']),
+            ('signatures', None, []),
+            ('revisions', None, ['rev_id'])]
+        item_keys = list(repo.item_keys_introduced_by(['rev_id']))
+        item_keys = [
+            (kind, file_id, list(versions))
+            for (kind, file_id, versions) in item_keys]
+
+        if repo.supports_rich_root():
+            # Check for the root versioned file in the item_keys, then remove
+            # it from streamed_names so we can compare that with
+            # expected_record_names.
+            # Note that the file keys can be in any order, so this test is
+            # written to allow that.
+            inv = repo.get_inventory('rev_id')
+            root_item_key = ('file', inv.root.file_id, ['rev_id'])
+            self.assertTrue(root_item_key in item_keys)
+            item_keys.remove(root_item_key)
+
+        self.assertEqual(expected_item_keys, item_keys)
+
+    def test_get_graph(self):
+        """Bare-bones smoketest that all repositories implement get_graph."""
+        repo = self.make_repository('repo')
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        repo.get_graph()
+
+    def test_graph_ghost_handling(self):
+        tree = self.make_branch_and_tree('here')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.commit('initial commit', rev_id='rev1')
+        tree.add_parent_tree_id('ghost')
+        tree.commit('commit-with-ghost', rev_id='rev2')
+        graph = tree.branch.repository.get_graph()
+        parents = graph.get_parent_map(['ghost', 'rev2'])
+        self.assertTrue('ghost' not in parents)
+        self.assertEqual(parents['rev2'], ('rev1', 'ghost'))
+
+    def test_parent_map_type(self):
+        tree = self.make_branch_and_tree('here')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.commit('initial commit', rev_id='rev1')
+        tree.commit('next commit', rev_id='rev2')
+        graph = tree.branch.repository.get_graph()
+        parents = graph.get_parent_map([NULL_REVISION, 'rev1', 'rev2'])
+        for value in parents.values():
+            self.assertIsInstance(value, tuple)
+
+    def test_implements_revision_graph_can_have_wrong_parents(self):
+        """All repositories should implement
+        revision_graph_can_have_wrong_parents, so that check and reconcile can
+        work correctly.
+        """
+        repo = self.make_repository('.')
+        # This should work, not raise NotImplementedError:
+        if not repo.revision_graph_can_have_wrong_parents():
+            return
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        # This repo must also implement
+        # _find_inconsistent_revision_parents and
+        # _check_for_inconsistent_revision_parents.  So calling these
+        # should not raise NotImplementedError.
+        list(repo._find_inconsistent_revision_parents())
+        repo._check_for_inconsistent_revision_parents()
+
+    def test_add_signature_text(self):
+        repo = self.make_repository('repo')
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        self.addCleanup(repo.commit_write_group)
+        repo.start_write_group()
+        inv = Inventory(revision_id='A')
+        inv.root.revision = 'A'
+        repo.add_inventory('A', inv, [])
+        repo.add_revision('A', Revision('A', committer='A', timestamp=0,
+                          inventory_sha1='', timezone=0, message='A'))
+        repo.add_signature_text('A', 'This might be a signature')
+        self.assertEqual('This might be a signature',
+                         repo.get_signature_text('A'))
+
+    def test_add_revision_inventory_sha1(self):
+        repo = self.make_repository('repo')
+        inv = Inventory(revision_id='A')
+        inv.root.revision = 'A'
+        inv.root.file_id = 'fixed-root'
+        repo.lock_write()
+        repo.start_write_group()
+        repo.add_revision('A', Revision('A', committer='B', timestamp=0,
+                          timezone=0, message='C'), inv=inv)
+        repo.commit_write_group()
+        repo.unlock()
+        repo.lock_read()
+        self.assertEquals(osutils.sha_string(
+            repo._serializer.write_inventory_to_string(inv)),
+            repo.get_revision('A').inventory_sha1)
+        repo.unlock()
+
+    def test_install_revisions(self):
+        wt = self.make_branch_and_tree('source')
+        wt.commit('A', allow_pointless=True, rev_id='A')
+        repo = wt.branch.repository
+        repo.lock_write()
+        repo.start_write_group()
+        repo.sign_revision('A', bzrlib.gpg.LoopbackGPGStrategy(None))
+        repo.commit_write_group()
+        repo.unlock()
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        repo2 = self.make_repository('repo2')
+        revision = repo.get_revision('A')
+        tree = repo.revision_tree('A')
+        signature = repo.get_signature_text('A')
+        repo2.lock_write()
+        self.addCleanup(repo2.unlock)
+        repository.install_revisions(repo2, [(revision, tree, signature)])
+        self.assertEqual(revision, repo2.get_revision('A'))
+        self.assertEqual(signature, repo2.get_signature_text('A'))
+
+    # XXX: this helper duplicated from tests.test_repository
+    def make_remote_repository(self, path):
+        """Make a RemoteRepository object backed by a real repository that will
+        be created at the given path."""
+        repo = self.make_repository(path)
+        smart_server = server.SmartTCPServer_for_testing()
+        smart_server.setUp(self.get_server())
+        remote_transport = get_transport(smart_server.get_url()).clone(path)
+        self.addCleanup(smart_server.tearDown)
+        remote_bzrdir = bzrdir.BzrDir.open_from_transport(remote_transport)
+        remote_repo = remote_bzrdir.open_repository()
+        return remote_repo
+
+    def test_sprout_from_hpss_preserves_format(self):
+        """repo.sprout from a smart server preserves the repository format."""
+        if self.repository_format == RepositoryFormat7():
+            raise KnownFailure(
+                "Cannot fetch weaves over smart protocol.")
+        remote_repo = self.make_remote_repository('remote')
+        local_bzrdir = self.make_bzrdir('local')
+        try:
+            local_repo = remote_repo.sprout(local_bzrdir)
+        except errors.TransportNotPossible:
+            raise TestNotApplicable(
+                "Cannot lock_read old formats like AllInOne over HPSS.")
+        remote_backing_repo = bzrdir.BzrDir.open(
+            self.get_vfs_only_url('remote')).open_repository()
+        self.assertEqual(remote_backing_repo._format, local_repo._format)
+
+    def test_sprout_branch_from_hpss_preserves_repo_format(self):
+        """branch.sprout from a smart server preserves the repository format.
+        """
+        weave_formats = [RepositoryFormat5(), RepositoryFormat6(),
+                         RepositoryFormat7()]
+        if self.repository_format in weave_formats:
+            raise KnownFailure(
+                "Cannot fetch weaves over smart protocol.")
+        remote_repo = self.make_remote_repository('remote')
+        remote_branch = remote_repo.bzrdir.create_branch()
+        try:
+            local_bzrdir = remote_branch.bzrdir.sprout('local')
+        except errors.TransportNotPossible:
+            raise TestNotApplicable(
+                "Cannot lock_read old formats like AllInOne over HPSS.")
+        local_repo = local_bzrdir.open_repository()
+        remote_backing_repo = bzrdir.BzrDir.open(
+            self.get_vfs_only_url('remote')).open_repository()
+        self.assertEqual(remote_backing_repo._format, local_repo._format)
+
+    def test__make_parents_provider(self):
+        """Repositories must have a _make_parents_provider method that returns
+        an object with a get_parent_map method.
+        """
+        repo = self.make_repository('repo')
+        repo._make_parents_provider().get_parent_map
+
+    def make_repository_and_foo_bar(self, shared):
+        made_control = self.make_bzrdir('repository')
+        repo = made_control.create_repository(shared=shared)
+        bzrdir.BzrDir.create_branch_convenience(self.get_url('repository/foo'),
+                                                force_new_repo=False)
+        bzrdir.BzrDir.create_branch_convenience(self.get_url('repository/bar'),
+                                                force_new_repo=True)
+        baz = self.make_bzrdir('repository/baz')
+        qux = self.make_branch('repository/baz/qux')
+        quxx = self.make_branch('repository/baz/qux/quxx')
+        return repo
+
+    def test_find_branches(self):
+        repo = self.make_repository_and_foo_bar(shared=False)
+        branches = repo.find_branches()
+        self.assertContainsRe(branches[-1].base, 'repository/foo/$')
+        self.assertContainsRe(branches[-3].base, 'repository/baz/qux/$')
+        self.assertContainsRe(branches[-2].base, 'repository/baz/qux/quxx/$')
+        # in some formats, creating a repo creates a branch
+        if len(branches) == 6:
+            self.assertContainsRe(branches[-4].base, 'repository/baz/$')
+            self.assertContainsRe(branches[-5].base, 'repository/bar/$')
+            self.assertContainsRe(branches[-6].base, 'repository/$')
+        else:
+            self.assertEqual(4, len(branches))
+            self.assertContainsRe(branches[-4].base, 'repository/bar/$')
+
+    def test_find_branches_using(self):
+        try:
+            repo = self.make_repository_and_foo_bar(shared=True)
+        except errors.IncompatibleFormat:
+            raise TestNotApplicable
+        branches = repo.find_branches(using=True)
+        self.assertContainsRe(branches[-1].base, 'repository/foo/$')
+        # in some formats, creating a repo creates a branch
+        if len(branches) == 2:
+            self.assertContainsRe(branches[-2].base, 'repository/$')
+        else:
+            self.assertEqual(1, len(branches))
+
+    def test_find_branches_using_standalone(self):
+        branch = self.make_branch('branch')
+        contained = self.make_branch('branch/contained')
+        branches = branch.repository.find_branches(using=True)
+        self.assertEqual([branch.base], [b.base for b in branches])
+        branches = branch.repository.find_branches(using=False)
+        self.assertEqual([branch.base, contained.base],
+                         [b.base for b in branches])
+
+    def test_find_branches_using_empty_standalone_repo(self):
+        repo = self.make_repository('repo')
+        self.assertFalse(repo.is_shared())
+        try:
+            repo.bzrdir.open_branch()
+        except errors.NotBranchError:
+            self.assertEqual([], repo.find_branches(using=True))
+        else:
+            self.assertEqual([repo.bzrdir.root_transport.base],
+                             [b.base for b in repo.find_branches(using=True)])
+
+    def test_set_get_make_working_trees_true(self):
+        repo = self.make_repository('repo')
+        try:
+            repo.set_make_working_trees(True)
+        except errors.RepositoryUpgradeRequired, e:
+            raise TestNotApplicable('Format does not support this flag.')
+        self.assertTrue(repo.make_working_trees())
+
+    def test_set_get_make_working_trees_false(self):
+        repo = self.make_repository('repo')
+        try:
+            repo.set_make_working_trees(False)
+        except errors.RepositoryUpgradeRequired, e:
+            raise TestNotApplicable('Format does not support this flag.')
+        self.assertFalse(repo.make_working_trees())
 
 
 class TestRepositoryLocking(TestCaseWithRepository):
@@ -487,6 +907,8 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
     def test_revision_trees(self):
         revision_ids = ['rev1', 'rev2', 'rev3', 'rev4']
         repository = self.bzrdir.open_repository()
+        repository.lock_read()
+        self.addCleanup(repository.unlock)
         trees1 = list(repository.revision_trees(revision_ids))
         trees2 = [repository.revision_tree(t) for t in revision_ids]
         assert len(trees1) == len(trees2)
@@ -495,6 +917,8 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
 
     def test_get_deltas_for_revisions(self):
         repository = self.bzrdir.open_repository()
+        repository.lock_read()
+        self.addCleanup(repository.unlock)
         revisions = [repository.get_revision(r) for r in 
                      ['rev1', 'rev2', 'rev3', 'rev4']]
         deltas1 = list(repository.get_deltas_for_revisions(revisions))
@@ -525,30 +949,35 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
                           'rev3':('rev2', ),
                           'rev4':('rev3', ),
                           },
-                         self.bzrdir.open_repository().get_revision_graph(None))
+            self.applyDeprecated(one_four,
+                self.bzrdir.open_repository().get_revision_graph, None))
         self.assertEqual({'rev1':()},
-                         self.bzrdir.open_repository().get_revision_graph('rev1'))
+            self.applyDeprecated(one_four,
+                self.bzrdir.open_repository().get_revision_graph, 'rev1'))
         self.assertEqual({'rev1':(),
                           'rev2':('rev1', )},
-                         self.bzrdir.open_repository().get_revision_graph('rev2'))
-        self.assertRaises(errors.NoSuchRevision,
-                          self.bzrdir.open_repository().get_revision_graph,
-                          'orphan')
+            self.applyDeprecated(one_four,
+                self.bzrdir.open_repository().get_revision_graph, 'rev2'))
+        self.assertRaises(errors.NoSuchRevision, self.applyDeprecated, one_four,
+            self.bzrdir.open_repository().get_revision_graph, 'orphan')
         # and ghosts are not mentioned
         self.assertEqual({'rev1':(),
                           'rev2':('rev1', ),
                           'rev3':('rev2', ),
                           },
-                         self.bzrdir.open_repository().get_revision_graph('rev3'))
+            self.applyDeprecated(one_four,
+                self.bzrdir.open_repository().get_revision_graph, 'rev3'))
         # and we can ask for the NULLREVISION graph
         self.assertEqual({},
-            self.bzrdir.open_repository().get_revision_graph(NULL_REVISION))
+            self.applyDeprecated(one_four,
+                self.bzrdir.open_repository().get_revision_graph, NULL_REVISION))
 
     def test_get_revision_graph_with_ghosts(self):
         # we can get a graph object with roots, ghosts, ancestors and
         # descendants.
         repo = self.bzrdir.open_repository()
-        graph = repo.get_revision_graph_with_ghosts([])
+        graph = self.applyDeprecated(one_three,
+                                     repo.get_revision_graph_with_ghosts, [])
         self.assertEqual(set(['rev1']), graph.roots)
         self.assertEqual(set(['ghost1', 'ghost2']), graph.ghosts)
         self.assertEqual({'rev1':[],
@@ -566,7 +995,8 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
                           },
                           graph.get_descendants())
         # and we can ask for the NULLREVISION graph
-        graph = repo.get_revision_graph_with_ghosts([NULL_REVISION])
+        graph = self.applyDeprecated(one_three, 
+                    repo.get_revision_graph_with_ghosts, [NULL_REVISION])
         self.assertEqual({}, graph.get_ancestors())
         self.assertEqual({}, graph.get_descendants())
 
@@ -674,6 +1104,8 @@ class TestEscaping(TestCaseWithTransport):
         # now access over vfat; should be safe
         branch = bzrdir.BzrDir.open('vfat+' + self.get_url('repo')).open_branch()
         revtree = branch.repository.revision_tree(REV_ID)
+        revtree.lock_read()
+        self.addCleanup(revtree.unlock)
         contents = revtree.get_file_text(FOO_ID)
         self.assertEqual(contents, 'contents of repo/foo\n')
 

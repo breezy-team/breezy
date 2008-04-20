@@ -86,7 +86,7 @@ cdef class KnitIndexReader:
 
     cdef int history_len
 
-    def __new__(self, kndx, fp):
+    def __init__(self, kndx, fp):
         self.kndx = kndx
         self.fp = fp
 
@@ -171,7 +171,7 @@ cdef class KnitIndexReader:
                 Py_INCREF(parent)
             PyList_Append(parents, parent)
             parent_str = next + 1
-        return parents
+        return tuple(parents)
 
     cdef int process_one_record(self, char *start, char *end) except -1:
         """Take a simple string and split it into an index record."""

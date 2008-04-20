@@ -20,6 +20,7 @@ import subprocess
 import sys
 import tempfile
 
+import bzrlib
 from bzrlib import (
     email_message,
     errors,
@@ -36,7 +37,7 @@ class MailClient(object):
         self.config = config
 
     def compose(self, prompt, to, subject, attachment, mime_subtype,
-                extension):
+                extension, basename=None):
         """Compose (and possibly send) an email message
 
         Must be implemented by subclasses.
@@ -51,21 +52,25 @@ class MailClient(object):
             "plain", "x-patch", etc.
         :param extension: The file extension associated with the attachment
             type, e.g. ".patch"
+        :param basename: The name to use for the attachment, e.g.
+            "send-nick-3252"
         """
         raise NotImplementedError
 
-    def compose_merge_request(self, to, subject, directive):
+    def compose_merge_request(self, to, subject, directive, basename=None):
         """Compose (and possibly send) a merge request
 
         :param to: The address to send the request to
         :param subject: The subject line to use for the request
         :param directive: A merge directive representing the merge request, as
             a bytestring.
+        :param basename: The name to use for the attachment, e.g.
+            "send-nick-3252"
         """
         prompt = self._get_merge_prompt("Please describe these changes:", to,
                                         subject, directive)
         self.compose(prompt, to, subject, directive,
-            'x-patch', '.patch')
+            'x-patch', '.patch', basename)
 
     def _get_merge_prompt(self, prompt, to, subject, attachment):
         """Generate a prompt string.  Overridden by Editor.
@@ -90,8 +95,10 @@ class Editor(MailClient):
                          attachment.decode('utf-8', 'replace')))
 
     def compose(self, prompt, to, subject, attachment, mime_subtype,
-                extension):
+                extension, basename=None):
         """See MailClient.compose"""
+        if not to:
+            raise errors.NoMailAddressSpecified()
         body = msgeditor.edit_commit_message(prompt)
         if body == '':
             raise errors.NoMessageSupplied()
@@ -116,17 +123,22 @@ class ExternalMailClient(MailClient):
             return self._client_commands
 
     def compose(self, prompt, to, subject, attachment, mime_subtype,
-                extension):
+                extension, basename=None):
         """See MailClient.compose.
 
         Writes the attachment to a temporary file, invokes _compose.
         """
-        fd, pathname = tempfile.mkstemp(extension, 'bzr-mail-')
+        if basename is None:
+            basename = 'attachment'
+        pathname = tempfile.mkdtemp(prefix='bzr-mail-')
+        attach_path = osutils.pathjoin(pathname, basename + extension)
+        outfile = open(attach_path, 'wb')
         try:
-            os.write(fd, attachment)
+            outfile.write(attachment)
         finally:
-            os.close(fd)
-        self._compose(prompt, to, subject, pathname, mime_subtype, extension)
+            outfile.close()
+        self._compose(prompt, to, subject, attach_path, mime_subtype,
+                      extension)
 
     def _compose(self, prompt, to, subject, attach_path, mime_subtype,
                 extension):
@@ -142,7 +154,7 @@ class ExternalMailClient(MailClient):
             the attachment type.
         """
         for name in self._get_client_commands():
-            cmdline = [name]
+            cmdline = [self._encode_path(name, 'executable')]
             cmdline.extend(self._get_compose_commandline(to, subject,
                                                          attach_path))
             try:
@@ -165,6 +177,34 @@ class ExternalMailClient(MailClient):
         """
         raise NotImplementedError
 
+    def _encode_safe(self, u):
+        """Encode possible unicode string argument to 8-bit string
+        in user_encoding. Unencodable characters will be replaced
+        with '?'.
+
+        :param  u:  possible unicode string.
+        :return:    encoded string if u is unicode, u itself otherwise.
+        """
+        if isinstance(u, unicode):
+            return u.encode(bzrlib.user_encoding, 'replace')
+        return u
+
+    def _encode_path(self, path, kind):
+        """Encode unicode path in user encoding.
+
+        :param  path:   possible unicode path.
+        :param  kind:   path kind ('executable' or 'attachment').
+        :return:        encoded path if path is unicode,
+                        path itself otherwise.
+        :raise:         UnableEncodePath.
+        """
+        if isinstance(path, unicode):
+            try:
+                return path.encode(bzrlib.user_encoding)
+            except UnicodeEncodeError:
+                raise errors.UnableEncodePath(path, kind)
+        return path
+
 
 class Evolution(ExternalMailClient):
     """Evolution mail client."""
@@ -179,8 +219,9 @@ class Evolution(ExternalMailClient):
         if attach_path is not None:
             message_options['attach'] = attach_path
         options_list = ['%s=%s' % (k, urlutils.escape(v)) for (k, v) in
-                        message_options.iteritems()]
-        return ['mailto:%s?%s' % (to or '', '&'.join(options_list))]
+                        sorted(message_options.iteritems())]
+        return ['mailto:%s?%s' % (self._encode_safe(to or ''),
+            '&'.join(options_list))]
 
 
 class Mutt(ExternalMailClient):
@@ -192,11 +233,12 @@ class Mutt(ExternalMailClient):
         """See ExternalMailClient._get_compose_commandline"""
         message_options = []
         if subject is not None:
-            message_options.extend(['-s', subject ])
+            message_options.extend(['-s', self._encode_safe(subject)])
         if attach_path is not None:
-            message_options.extend(['-a', attach_path])
+            message_options.extend(['-a',
+                self._encode_path(attach_path, 'attachment')])
         if to is not None:
-            message_options.append(to)
+            message_options.append(self._encode_safe(to))
         return message_options
 
 
@@ -217,9 +259,9 @@ class Thunderbird(ExternalMailClient):
         """See ExternalMailClient._get_compose_commandline"""
         message_options = {}
         if to is not None:
-            message_options['to'] = to
+            message_options['to'] = self._encode_safe(to)
         if subject is not None:
-            message_options['subject'] = subject
+            message_options['subject'] = self._encode_safe(subject)
         if attach_path is not None:
             message_options['attachment'] = urlutils.local_path_to_url(
                 attach_path)
@@ -237,12 +279,12 @@ class KMail(ExternalMailClient):
         """See ExternalMailClient._get_compose_commandline"""
         message_options = []
         if subject is not None:
-            message_options.extend( ['-s', subject ] )
+            message_options.extend(['-s', self._encode_safe(subject)])
         if attach_path is not None:
-            message_options.extend( ['--attach', attach_path] )
+            message_options.extend(['--attach',
+                self._encode_path(attach_path, 'attachment')])
         if to is not None:
-            message_options.extend( [ to ] )
-
+            message_options.extend([self._encode_safe(to)])
         return message_options
 
 
@@ -253,11 +295,102 @@ class XDGEmail(ExternalMailClient):
 
     def _get_compose_commandline(self, to, subject, attach_path):
         """See ExternalMailClient._get_compose_commandline"""
-        commandline = [to]
+        if not to:
+            raise errors.NoMailAddressSpecified()
+        commandline = [self._encode_safe(to)]
         if subject is not None:
-            commandline.extend(['--subject', subject])
+            commandline.extend(['--subject', self._encode_safe(subject)])
         if attach_path is not None:
-            commandline.extend(['--attach', attach_path])
+            commandline.extend(['--attach',
+                self._encode_path(attach_path, 'attachment')])
+        return commandline
+
+
+class EmacsMail(ExternalMailClient):
+    """Call emacsclient to have a mail buffer.
+
+    This only work for emacs >= 22.1 due to recent -e/--eval support.
+
+    The good news is that this implementation will work with all mail
+    agents registered against ``mail-user-agent``. So there is no need
+    to instantiate ExternalMailClient for each and every GNU Emacs
+    MUA.
+
+    Users just have to ensure that ``mail-user-agent`` is set according
+    to their tastes.
+    """
+
+    _client_commands = ['emacsclient']
+
+    def _prepare_send_function(self):
+        """Write our wrapper function into a temporary file.
+
+        This temporary file will be loaded at runtime in
+        _get_compose_commandline function.
+
+        FIXME: this function does not remove the file. That's a wanted
+        behaviour since _get_compose_commandline won't run the send
+        mail function directly but return the eligible command line.
+        Removing our temporary file here would prevent our sendmail
+        function to work.
+
+        A possible workaround could be to load the function here with
+        emacsclient --eval '(load temp)' but this is not robust since
+        emacs could have been stopped between here and the call to
+        mail client.
+        """
+
+        _defun = r"""(defun bzr-add-mime-att (file)
+  "Attach FILe to a mail buffer as a MIME attachment."
+  (let ((agent mail-user-agent))
+    (mail-text)
+    (newline)
+    (if (and file (file-exists-p file))
+        (cond
+         ((eq agent 'sendmail-user-agent)
+          (etach-attach file))
+         ((or (eq agent 'message-user-agent)(eq agent 'gnus-user-agent))
+          (mml-attach-file file "text/x-patch" "BZR merge" "attachment"))
+         (t
+          (message "Unhandled MUA")))
+      (error "File %s does not exist." file))))
+"""
+
+        fd, temp_file = tempfile.mkstemp(prefix="emacs-bzr-send-",
+                                         suffix=".el")
+        try:
+            os.write(fd, _defun)
+        finally:
+            os.close(fd) # Just close the handle but do not remove the file.
+        return temp_file
+
+    def _get_compose_commandline(self, to, subject, attach_path):
+        commandline = ["--eval"]
+
+        _to = "nil"
+        _subject = "nil"
+
+        if to is not None:
+            _to = ("\"%s\"" % self._encode_safe(to))
+        if subject is not None:
+            _subject = ("\"%s\"" % self._encode_safe(subject))
+
+        # Funcall the default mail composition function
+        # This will work with any mail mode including default mail-mode
+        # User must tweak mail-user-agent variable to tell what function
+        # will be called inside compose-mail.
+        mail_cmd = "(compose-mail %s %s)" % (_to, _subject)
+        commandline.append(mail_cmd)
+
+        # Try to attach a MIME attachment using our wrapper function
+        if attach_path is not None:
+            # Do not create a file if there is no attachment
+            lmmform = '(load "%s")' % self._prepare_send_function()
+            mmform  = '(bzr-add-mime-att "%s")' % \
+                self._encode_path(attach_path, 'attachment')
+            commandline.append(lmmform)
+            commandline.append(mmform)
+
         return commandline
 
 
@@ -291,21 +424,21 @@ class DefaultMail(MailClient):
             return XDGEmail(self.config)
 
     def compose(self, prompt, to, subject, attachment, mime_subtype,
-                extension):
+                extension, basename=None):
         """See MailClient.compose"""
         try:
             return self._mail_client().compose(prompt, to, subject,
                                                attachment, mimie_subtype,
-                                               extension)
+                                               extension, basename)
         except errors.MailClientNotFound:
             return Editor(self.config).compose(prompt, to, subject,
                           attachment, mimie_subtype, extension)
 
-    def compose_merge_request(self, to, subject, directive):
+    def compose_merge_request(self, to, subject, directive, basename=None):
         """See MailClient.compose_merge_request"""
         try:
             return self._mail_client().compose_merge_request(to, subject,
-                                                             directive)
+                    directive, basename=basename)
         except errors.MailClientNotFound:
             return Editor(self.config).compose_merge_request(to, subject,
-                          directive)
+                          directive, basename=basename)

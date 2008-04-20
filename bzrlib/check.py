@@ -32,9 +32,12 @@
 # raising them.  If there's more than one exception it'd be good to see them
 # all.
 
+from bzrlib import errors
+from bzrlib import repository as _mod_repository
+from bzrlib import revision
 from bzrlib.errors import BzrCheckError
 import bzrlib.ui
-from bzrlib.trace import note
+from bzrlib.trace import log_error, note
 
 class Check(object):
     """Check a repository"""
@@ -53,47 +56,62 @@ class Check(object):
         # maps (file-id, version) -> sha1; used by InventoryFile._check
         self.checked_texts = {}
         self.checked_weaves = {}
+        self.unreferenced_versions = set()
+        self.inconsistent_parents = []
 
     def check(self):
         self.repository.lock_read()
         self.progress = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
-            self.progress.update('retrieving inventory', 0, 0)
+            self.progress.update('retrieving inventory', 0, 2)
             # do not put in init, as it should be done with progess,
             # and inside the lock.
             self.inventory_weave = self.repository.get_inventory_weave()
+            self.progress.update('checking revision graph', 1)
+            self.check_revision_graph()
             self.plan_revisions()
             revno = 0
-            self.check_weaves()
             while revno < len(self.planned_revisions):
                 rev_id = self.planned_revisions[revno]
                 self.progress.update('checking revision', revno,
                                      len(self.planned_revisions))
                 revno += 1
                 self.check_one_rev(rev_id)
+            # check_weaves is done after the revision scan so that
+            # revision index is known to be valid.
+            self.check_weaves()
         finally:
             self.progress.finished()
             self.repository.unlock()
 
+    def check_revision_graph(self):
+        if not self.repository.revision_graph_can_have_wrong_parents():
+            # This check is not necessary.
+            self.revs_with_bad_parents_in_index = None
+            return
+        bad_revisions = self.repository._find_inconsistent_revision_parents()
+        self.revs_with_bad_parents_in_index = list(bad_revisions)
+
     def plan_revisions(self):
         repository = self.repository
-        self.planned_revisions = set(repository.all_revision_ids())
+        self.planned_revisions = repository.all_revision_ids()
         self.progress.clear()
         inventoried = set(self.inventory_weave.versions())
-        awol = self.planned_revisions - inventoried
+        awol = set(self.planned_revisions) - inventoried
         if len(awol) > 0:
             raise BzrCheckError('Stored revisions missing from inventory'
                 '{%s}' % ','.join([f for f in awol]))
-        self.planned_revisions = list(self.planned_revisions)
 
     def report_results(self, verbose):
         note('checked repository %s format %s',
              self.repository.bzrdir.root_transport,
              self.repository._format)
         note('%6d revisions', self.checked_rev_cnt)
+        note('%6d file-ids', len(self.checked_weaves))
         note('%6d unique file texts', self.checked_text_cnt)
         note('%6d repeated file texts', self.repeated_text_cnt)
-        note('%6d weaves', len(self.checked_weaves))
+        note('%6d unreferenced text versions',
+             len(self.unreferenced_versions))
         if self.missing_inventory_sha_cnt:
             note('%6d revisions are missing inventory_sha1',
                  self.missing_inventory_sha_cnt)
@@ -113,6 +131,29 @@ class Check(object):
                     note('      %s should be in the ancestry for:', link)
                     for linker in linkers:
                         note('       * %s', linker)
+            if verbose:
+                for file_id, revision_id in self.unreferenced_versions:
+                    log_error('unreferenced version: {%s} in %s', revision_id,
+                        file_id)
+        if len(self.inconsistent_parents):
+            note('%6d inconsistent parents', len(self.inconsistent_parents))
+            if verbose:
+                for info in self.inconsistent_parents:
+                    revision_id, file_id, found_parents, correct_parents = info
+                    note('      * %s version %s has parents %r '
+                         'but should have %r'
+                         % (file_id, revision_id, found_parents,
+                             correct_parents))
+        if self.revs_with_bad_parents_in_index:
+            note('%6d revisions have incorrect parents in the revision index',
+                 len(self.revs_with_bad_parents_in_index))
+            if verbose:
+                for item in self.revs_with_bad_parents_in_index:
+                    revision_id, index_parents, actual_parents = item
+                    note(
+                        '       %s has wrong parents in index: '
+                        '%r should be %r',
+                        revision_id, index_parents, actual_parents)
 
     def check_one_rev(self, rev_id):
         """Check one revision.
@@ -157,14 +198,25 @@ class Check(object):
         if self.repository.weave_store.listable():
             weave_ids = list(self.repository.weave_store)
             n_weaves = len(weave_ids) + 1
-        self.progress.update('checking weave', 0, n_weaves)
+        self.progress.update('checking versionedfile', 0, n_weaves)
         self.inventory_weave.check(progress_bar=self.progress)
+        files_in_revisions = {}
+        revisions_of_files = {}
+        weave_checker = self.repository._get_versioned_file_checker()
         for i, weave_id in enumerate(weave_ids):
-            self.progress.update('checking weave', i, n_weaves)
+            self.progress.update('checking versionedfile', i, n_weaves)
             w = self.repository.weave_store.get_weave(weave_id,
                     self.repository.get_transaction())
             # No progress here, because it looks ugly.
             w.check()
+            result = weave_checker.check_file_version_parents(w, weave_id)
+            bad_parents, unused_versions = result
+            bad_parents = bad_parents.items()
+            for revision_id, (weave_parents, correct_parents) in bad_parents:
+                self.inconsistent_parents.append(
+                    (revision_id, weave_id, weave_parents, correct_parents))
+            for revision_id in unused_versions:
+                self.unreferenced_versions.add((weave_id, revision_id))
             self.checked_weaves[weave_id] = True
 
     def _check_revision_tree(self, rev_id):
@@ -204,3 +256,6 @@ def check(branch, verbose):
         branch.unlock()
     branch_result.report_results(verbose)
     repo_result.report_results(verbose)
+
+
+

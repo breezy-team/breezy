@@ -44,5 +44,8 @@ doc/en/release-notes/NEWS.txt
 doc/en/developer-guide/HACKING.txt
 doc/en/user-reference/bzr_man.txt
 # built extension modules
+bzrlib/_*_c.dll
 bzrlib/_*_c.so
 bzrlib/_*_c.pyd
+# generated help topics
+doc/en/user-reference/*.txt

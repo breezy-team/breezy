@@ -1,0 +1,86 @@
+Reusing a checkout
+==================
+
+Motivation
+----------
+
+At times, it can be useful to have a single checkout as your
+sandbox for working on multiple branches. Some possible reasons
+for this include:
+
+ * saving disk space when the working tree is large
+ * developing in a fixed location.
+
+In many cases, working tree disk usage swamps the size of the
+``.bzr`` directory. If you want to work on multiple branches
+but can't afford the overhead of a full working tree for each,
+reusing a checkout across multiples branches is the way to go.
+
+On other occasions, the location of your sandbox might be
+configured into numerous development and testing tools. Once
+again, reusing a checkout across multiple branches can help.
+
+
+Changing where a branch is bound to
+-----------------------------------
+
+To change where a checkout is bound to, follow these steps:
+
+ 1. Make sure that any local changes have been committed
+    centrally so that no work is lost.
+
+ 2. Use the ``bind`` command giving the URL of the new
+    remote branch you wish to work on.
+
+ 3. Make your checkout a copy of the desired branch by using
+    the ``update`` command followed by the ``revert`` command.
+
+Note that simply binding to a new branch and running ``update``
+merges in your local changes, both committed and uncommitted. You need
+to decide whether to keep them or not by running either ``revert``
+or ``commit``.
+
+An alternative to the bind+update recipe is using the ``switch``
+command. This is basically the same as removing the existing
+branch and running ``checkout`` again on the new location, except
+that any uncommitted changes in your tree are merged in.
+
+Note: As ``switch`` can potentially throw away committed changes in
+order to make a checkout an accurate cache of a different bound branch,
+it will fail by design if there are changes which have been committed
+locally but are not yet committed to the most recently bound branch.
+To truly abandon these changes, use the ``--force`` option.
+
+
+Switching a lightweight checkout
+--------------------------------
+
+With a lightweight checkout, there are no local commits and ``switch``
+effectively changes which branch the working tree is associated with.
+One possible setup is to use a lightweight checkout in combination
+with a local tree-less repository. This lets you switch what you
+are working on with ease. For example::
+
+  bzr init-repo --no-trees X-repo
+  cd X-repo
+  bzr branch sftp://centralhost/srv/bzr/X-repo/X-trunk
+  bzr checkout --lightweight X-trunk my-sandbox
+  cd my-sandbox
+  (hack away)
+
+Note that X-trunk in this example will have a ``.bzr`` directory within it
+but there will be no working tree there as the branch was created in
+a tree-less repository. You can grab or create as many branches as you
+need there and switch between them as required. For example::
+
+  (assuming in my-sandbox)
+  bzr branch sftp://centralhost/srv/bzr/X-repo/X-1.0 ../X-1.0
+  bzr switch ../X-1.0
+  (fix bug in 1.0)
+  bzr commit -m "blah, blah blah"
+  bzr switch ../X-trunk
+  (go back to working on the trunk)
+
+Note: The branches may be local only or they may be bound to
+remote ones (by creating them with ``checkout`` or by using ``bind``
+after creating them with ``branch``).

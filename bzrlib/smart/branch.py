@@ -27,14 +27,21 @@ from bzrlib.smart.request import (
 
 
 class SmartServerBranchRequest(SmartServerRequest):
-    """Base class for handling common branch request logic."""
+    """Base class for handling common branch request logic.
+    """
 
     def do(self, path, *args):
         """Execute a request for a branch at path.
+    
+        All Branch requests take a path to the branch as their first argument.
 
         If the branch is a branch reference, NotBranchError is raised.
+
+        :param path: The path for the repository as received from the
+            client.
+        :return: A SmartServerResponse from self.do_with_branch().
         """
-        transport = self._backing_transport.clone(path)
+        transport = self.transport_from_client_path(path)
         bzrdir = BzrDir.open_from_transport(transport)
         if bzrdir.get_branch_reference() is not None:
             raise errors.NotBranchError(transport.base)
@@ -116,6 +123,23 @@ class SmartServerBranchRequestSetLastRevision(SmartServerLockedBranchRequest):
         return SuccessfulSmartServerResponse(('ok',))
 
 
+class SmartServerBranchRequestSetLastRevisionInfo(
+    SmartServerLockedBranchRequest):
+    """Branch.set_last_revision_info.  Sets the revno and the revision ID of
+    the specified branch.
+
+    New in bzrlib 1.4.
+    """
+    
+    def do_with_locked_branch(self, branch, new_revno, new_last_revision_id):
+        try:
+            branch.set_last_revision_info(int(new_revno), new_last_revision_id)
+        except errors.NoSuchRevision:
+            return FailedSmartServerResponse(
+                ('NoSuchRevision', new_last_revision_id))
+        return SuccessfulSmartServerResponse(('ok',))
+
+
 class SmartServerBranchRequestLockWrite(SmartServerBranchRequest):
     
     def do_with_branch(self, branch, branch_token='', repo_token=''):
@@ -128,6 +152,7 @@ class SmartServerBranchRequestLockWrite(SmartServerBranchRequest):
             try:
                 branch_token = branch.lock_write(token=branch_token)
             finally:
+                # this leaves the repository with 1 lock
                 branch.repository.unlock()
         except errors.LockContention:
             return FailedSmartServerResponse(('LockContention',))
@@ -135,7 +160,12 @@ class SmartServerBranchRequestLockWrite(SmartServerBranchRequest):
             return FailedSmartServerResponse(('TokenMismatch',))
         except errors.UnlockableTransport:
             return FailedSmartServerResponse(('UnlockableTransport',))
-        branch.repository.leave_lock_in_place()
+        except errors.LockFailed, e:
+            return FailedSmartServerResponse(('LockFailed', str(e.lock), str(e.why)))
+        if repo_token is None:
+            repo_token = ''
+        else:
+            branch.repository.leave_lock_in_place()
         branch.leave_lock_in_place()
         branch.unlock()
         return SuccessfulSmartServerResponse(('ok', branch_token, repo_token))
@@ -152,7 +182,8 @@ class SmartServerBranchRequestUnlock(SmartServerBranchRequest):
                 branch.repository.unlock()
         except errors.TokenMismatch:
             return FailedSmartServerResponse(('TokenMismatch',))
-        branch.repository.dont_leave_lock_in_place()
+        if repo_token:
+            branch.repository.dont_leave_lock_in_place()
         branch.dont_leave_lock_in_place()
         branch.unlock()
         return SuccessfulSmartServerResponse(('ok',))

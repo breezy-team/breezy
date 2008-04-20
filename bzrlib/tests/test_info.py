@@ -126,27 +126,36 @@ class TestInfo(tests.TestCaseWithTransport):
 
     def test_describe_tree_format(self):
         for key in bzrdir.format_registry.keys():
-            if key == 'default':
+            if key in bzrdir.format_registry.aliases():
                 continue
             self.assertTreeDescription(key)
 
     def test_describe_checkout_format(self):
         for key in bzrdir.format_registry.keys():
-            if key in ('default', 'weave', 'experimental'):
+            if key in bzrdir.format_registry.aliases():
+                # Aliases will not describe correctly in the UI because the
+                # real format is found.
                 continue
-            if key.startswith('experimental-'):
-                # these are typically hidden or aliases for other formats
+            # legacy: weave does not support checkouts
+            if key == 'weave':
+                continue
+            if bzrdir.format_registry.get_info(key).experimental:
+                # We don't require that experimental formats support checkouts
+                # or describe correctly in the UI.
                 continue
             expected = None
-            if key in ('dirstate', 'dirstate-tags', 'dirstate-with-subtree'):
-                expected = 'dirstate or dirstate-tags'
+            if key in ('dirstate', 'dirstate-tags', 'dirstate-with-subtree',
+                'pack-0.92', 'pack-0.92-subtree', 'rich-root',
+                'rich-root-pack'):
+                expected = 'dirstate or dirstate-tags or pack-0.92 or'\
+                    ' rich-root or rich-root-pack'
             if key in ('knit', 'metaweave'):
                 expected = 'knit or metaweave'
             self.assertCheckoutDescription(key, expected)
 
     def test_describe_branch_format(self):
         for key in bzrdir.format_registry.keys():
-            if key == 'default':
+            if key in bzrdir.format_registry.aliases():
                 continue
             expected = None
             if key in ('dirstate', 'knit'):
@@ -155,7 +164,7 @@ class TestInfo(tests.TestCaseWithTransport):
 
     def test_describe_repo_format(self):
         for key in bzrdir.format_registry.keys():
-            if key == 'default':
+            if key in bzrdir.format_registry.aliases():
                 continue
             expected = None
             if key in ('dirstate', 'knit', 'dirstate-tags'):

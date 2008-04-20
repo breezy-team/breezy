@@ -18,6 +18,7 @@
 """Black-box tests for bzr push."""
 
 import os
+import re
 
 from bzrlib import (
     errors,
@@ -28,6 +29,8 @@ from bzrlib.bzrdir import BzrDirMetaFormat1
 from bzrlib.osutils import abspath
 from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
 from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.transport import register_transport, unregister_transport
+from bzrlib.transport.memory import MemoryServer, MemoryTransport
 from bzrlib.uncommit import uncommit
 from bzrlib.urlutils import local_path_from_url
 from bzrlib.workingtree import WorkingTree
@@ -244,3 +247,100 @@ class TestPush(ExternalBase):
         self.run_bzr_error(['At ../dir you have a valid .bzr control'],
                 'push ../dir',
                 working_dir='tree')
+
+    def test_push_with_revisionspec(self):
+        """We should be able to push a revision older than the tip."""
+        tree_from = self.make_branch_and_tree('from')
+        tree_from.commit("One.", rev_id="from-1")
+        tree_from.commit("Two.", rev_id="from-2")
+
+        self.run_bzr('push -r1 ../to', working_dir='from')
+
+        tree_to = WorkingTree.open('to')
+        repo_to = tree_to.branch.repository
+        self.assertTrue(repo_to.has_revision('from-1'))
+        self.assertFalse(repo_to.has_revision('from-2'))
+        self.assertEqual(tree_to.branch.last_revision_info()[1], 'from-1')
+
+        self.run_bzr_error(
+            "bzr: ERROR: bzr push --revision takes one value.\n",
+            'push -r0..2 ../to', working_dir='from')
+
+
+class RedirectingMemoryTransport(MemoryTransport):
+
+    def mkdir(self, path, mode=None):
+        path = self.abspath(path)[len(self._scheme):]
+        if path == '/source':
+            raise errors.RedirectRequested(
+                path, self._scheme + '/target', is_permanent=True)
+        elif path == '/infinite-loop':
+            raise errors.RedirectRequested(
+                path, self._scheme + '/infinite-loop', is_permanent=True)
+        else:
+            return super(RedirectingMemoryTransport, self).mkdir(
+                path, mode)
+
+
+class RedirectingMemoryServer(MemoryServer):
+
+    def setUp(self):
+        self._dirs = {'/': None}
+        self._files = {}
+        self._locks = {}
+        self._scheme = 'redirecting-memory+%s:///' % id(self)
+        register_transport(self._scheme, self._memory_factory)
+
+    def _memory_factory(self, url):
+        result = RedirectingMemoryTransport(url)
+        result._dirs = self._dirs
+        result._files = self._files
+        result._locks = self._locks
+        return result
+
+    def tearDown(self):
+        unregister_transport(self._scheme, self._memory_factory)
+
+
+class TestPushRedirect(ExternalBase):
+
+    def setUp(self):
+        ExternalBase.setUp(self)
+        self.memory_server = RedirectingMemoryServer()
+        self.memory_server.setUp()
+        self.addCleanup(self.memory_server.tearDown)
+
+        # Make the branch and tree that we'll be pushing.
+        t = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file'])
+        t.add('file')
+        t.commit('commit 1')
+
+    def test_push_redirects_on_mkdir(self):
+        """If the push requires a mkdir, push respects redirect requests.
+
+        This is added primarily to handle lp:/ URI support, so that users can
+        push to new branches by specifying lp:/ URIs.
+        """
+        os.chdir('tree')
+        destination_url = self.memory_server.get_url() + 'source'
+        self.run_bzr('push %s' % destination_url)
+        os.chdir('..')
+
+        local_revision = Branch.open('tree').last_revision()
+        remote_revision = Branch.open(
+            self.memory_server.get_url() + 'target').last_revision()
+        self.assertEqual(remote_revision, local_revision)
+
+    def test_push_gracefully_handles_too_many_redirects(self):
+        """Push fails gracefully if the mkdir generates a large number of
+        redirects.
+        """
+        os.chdir('tree')
+        destination_url = self.memory_server.get_url() + 'infinite-loop'
+        out, err = self.run_bzr_error(
+            ['Too many redirections trying to make %s\\.\n'
+             % re.escape(destination_url)],
+            'push %s' % destination_url, retcode=3)
+        os.chdir('..')
+        self.assertEqual('', out)

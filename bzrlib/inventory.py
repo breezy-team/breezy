@@ -50,7 +50,7 @@ from bzrlib.errors import (
     BzrCheckError,
     BzrError,
     )
-from bzrlib.symbol_versioning import deprecated_method, zero_ninetyone
+from bzrlib.symbol_versioning import deprecated_method
 from bzrlib.trace import mutter
 
 
@@ -142,6 +142,7 @@ class InventoryEntry(object):
         """
         return False, False
 
+    @deprecated_method(symbol_versioning.one_zero)
     def diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
              output_to, reverse=False):
         """Perform a diff from this to to_entry.
@@ -197,7 +198,7 @@ class InventoryEntry(object):
                     candidates[ie.revision] = ie
         return candidates
 
-    @deprecated_method(zero_ninetyone)
+    @deprecated_method(symbol_versioning.zero_ninetyone)
     def find_previous_heads(self, previous_inventories,
                             versioned_file_store,
                             transaction,
@@ -570,8 +571,10 @@ class InventoryFile(InventoryEntry):
         if t in checker.checked_texts:
             prev_sha = checker.checked_texts[t]
             if prev_sha != self.text_sha1:
-                raise BzrCheckError('mismatched sha1 on {%s} in {%s}' %
-                                    (self.file_id, tree_revision_id))
+                raise BzrCheckError(
+                    'mismatched sha1 on {%s} in {%s} (%s != %s) %r' %
+                    (self.file_id, tree_revision_id, prev_sha, self.text_sha1,
+                     t))
             else:
                 checker.repeated_text_cnt += 1
                 return
@@ -592,7 +595,7 @@ class InventoryFile(InventoryEntry):
         # We can't check the length, because Weave doesn't store that
         # information, and the whole point of looking at the weave's
         # sha1sum is that we don't have to extract the text.
-        if self.text_sha1 != w.get_sha1(self.revision):
+        if self.text_sha1 != w.get_sha1s([self.revision])[0]:
             raise BzrCheckError('text {%s} version {%s} wrong sha1' 
                                 % (self.file_id, self.revision))
         checker.checked_texts[t] = self.text_sha1
@@ -617,25 +620,19 @@ class InventoryFile(InventoryEntry):
     def _diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
              output_to, reverse=False):
         """See InventoryEntry._diff."""
-        try:
-            from_text = tree.get_file(self.file_id).readlines()
-            if to_entry:
-                to_text = to_tree.get_file(to_entry.file_id).readlines()
-            else:
-                to_text = []
-            if not reverse:
-                text_diff(from_label, from_text,
-                          to_label, to_text, output_to)
-            else:
-                text_diff(to_label, to_text,
-                          from_label, from_text, output_to)
-        except errors.BinaryFile:
-            if reverse:
-                label_pair = (to_label, from_label)
-            else:
-                label_pair = (from_label, to_label)
-            print >> output_to, \
-                  ("Binary files %s and %s differ" % label_pair).encode('utf8')
+        from bzrlib.diff import DiffText
+        from_file_id = self.file_id
+        if to_entry:
+            to_file_id = to_entry.file_id
+        else:
+            to_file_id = None
+        if reverse:
+            to_file_id, from_file_id = from_file_id, to_file_id
+            tree, to_tree = to_tree, tree
+            from_label, to_label = to_label, from_label
+        differ = DiffText(tree, to_tree, output_to, 'utf-8', '', '',
+                          text_diff)
+        return differ.diff_text(from_file_id, to_file_id, from_label, to_label)
 
     def has_text(self):
         """See InventoryEntry.has_text."""
@@ -733,19 +730,21 @@ class InventoryLink(InventoryEntry):
     def _diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
              output_to, reverse=False):
         """See InventoryEntry._diff."""
-        from_text = self.symlink_target
+        from bzrlib.diff import DiffSymlink
+        old_target = self.symlink_target
         if to_entry is not None:
-            to_text = to_entry.symlink_target
-            if reverse:
-                temp = from_text
-                from_text = to_text
-                to_text = temp
-            print >>output_to, '=== target changed %r => %r' % (from_text, to_text)
+            new_target = to_entry.symlink_target
         else:
-            if not reverse:
-                print >>output_to, '=== target was %r' % self.symlink_target
-            else:
-                print >>output_to, '=== target is %r' % self.symlink_target
+            new_target = None
+        if not reverse:
+            old_tree = tree
+            new_tree = to_tree
+        else:
+            old_tree = to_tree
+            new_tree = tree
+            new_target, old_target = old_target, new_target
+        differ = DiffSymlink(old_tree, new_tree, output_to)
+        return differ.diff_symlink(old_target, new_target)
 
     def __init__(self, file_id, name, parent_id):
         super(InventoryLink, self).__init__(file_id, name, parent_id)
@@ -946,10 +945,12 @@ class Inventory(object):
     def copy(self):
         # TODO: jam 20051218 Should copy also copy the revision_id?
         entries = self.iter_entries()
+        if self.root is None:
+            return Inventory(root_id=None)
         other = Inventory(entries.next()[1].file_id)
         # copy recursively so we know directories will be added before
         # their children.  There are more efficient ways than this...
-        for path, entry in entries():
+        for path, entry in entries:
             other.add(entry.copy())
         return other
 
@@ -1421,7 +1422,7 @@ def ensure_normalized_name(name):
 
     :raises InvalidNormalization: When name is not normalized, and cannot be
         accessed on this platform by the normalized path.
-    :return: The NFC/NFKC normalised version of name.
+    :return: The NFC normalised version of name.
     """
     #------- This has been copied to bzrlib.dirstate.DirState.add, please
     # keep them synchronised.

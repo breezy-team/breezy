@@ -23,6 +23,9 @@ import os
 import bzrlib
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests import TestCaseInTempDir, TestCaseWithTransport
+from bzrlib.tests.test_log import (
+    normalize_log,
+    )
 
 
 class TestLog(ExternalBase):
@@ -60,8 +63,28 @@ class TestLog(ExternalBase):
     def test_log_null_both_revspecs(self):
         self._prepare()
         log = self.run_bzr("log -r ..")[0]
-        self.assertEquals(self.full_log, log)
         self.assertEqualDiff(self.full_log, log)
+
+    def test_log_zero_revspec(self):
+        self._prepare()
+        self.run_bzr_error('bzr: ERROR: Logging revision 0 is invalid.',
+                           ['log', '-r0'])
+
+    def test_log_zero_begin_revspec(self):
+        self._prepare()
+        self.run_bzr_error('bzr: ERROR: Logging revision 0 is invalid.',
+                           ['log', '-r0..2'])
+
+    def test_log_zero_end_revspec(self):
+        self._prepare()
+        self.run_bzr_error('bzr: ERROR: Logging revision 0 is invalid.',
+                           ['log', '-r-2..0'])
+
+    def test_log_unsupported_timezone(self):
+        self._prepare()
+        self.run_bzr_error('bzr: ERROR: Unsupported timezone format "foo", '
+                           'options are "utc", "original", "local".',
+                           ['log', '--timezone', 'foo'])
 
     def test_log_negative_begin_revspec_full_log(self):
         self._prepare()
@@ -87,7 +110,7 @@ class TestLog(ExternalBase):
         self.assertTrue('revno: 2\n' in log)
         self.assertTrue('revno: 3\n' in log)
 
-    def test_log_postive_revspecs(self):
+    def test_log_positive_revspecs(self):
         self._prepare()
         log = self.run_bzr("log -r 1..3")[0]
         self.assertEqualDiff(self.full_log, log)
@@ -151,9 +174,16 @@ class TestLog(ExternalBase):
     def test_log_limit(self):
         self._prepare()
         log = self.run_bzr("log --limit 2")[0]
-        self.assertTrue('revno: 1\n' not in log)
-        self.assertTrue('revno: 2\n' in log)
-        self.assertTrue('revno: 3\n' in log)
+        self.assertNotContainsRe(log, r'revno: 1\n')
+        self.assertContainsRe(log, r'revno: 2\n')
+        self.assertContainsRe(log, r'revno: 3\n')
+
+    def test_log_limit_short(self):
+        self._prepare()
+        log = self.run_bzr("log -l 2")[0]
+        self.assertNotContainsRe(log, r'revno: 1\n')
+        self.assertContainsRe(log, r'revno: 2\n')
+        self.assertContainsRe(log, r'revno: 3\n')
 
 class TestLogMerges(ExternalBase):
 
@@ -174,135 +204,106 @@ class TestLogMerges(ExternalBase):
     def test_merges_are_indented_by_level(self):
         self._prepare()
         out,err = self.run_bzr('log')
-        # the log will look something like:
-#        self.assertEqual("""\
-#------------------------------------------------------------
-#revno: 2
-#committer: Robert Collins <foo@example.com>
-#branch nick: parent
-#timestamp: Tue 2006-03-28 22:31:40 +1100
-#message:
-#  merge branch 1
-#    ------------------------------------------------------------
-#    revno: 1.1.2  
-#    committer: Robert Collins <foo@example.com>
-#    branch nick: child
-#    timestamp: Tue 2006-03-28 22:31:40 +1100
-#    message:
-#      merge branch 2
-#        ------------------------------------------------------------
-#        revno: 1.1.1.1
-#        committer: Robert Collins <foo@example.com>
-#        branch nick: smallerchild
-#        timestamp: Tue 2006-03-28 22:31:40 +1100
-#        message:
-#          branch 2
-#    ------------------------------------------------------------
-#    revno: 1.1.1
-#    committer: Robert Collins <foo@example.com>
-#    branch nick: child
-#    timestamp: Tue 2006-03-28 22:31:40 +1100
-#    message:
-#      branch 1
-#------------------------------------------------------------
-#revno: 1
-#committer: Robert Collins <foo@example.com>
-#branch nick: parent
-#timestamp: Tue 2006-03-28 22:31:39 +1100
-#message:
-#  first post
-#""", out)
-        # but we dont have a nice pattern matcher hooked up yet, so:
-        # we check for the indenting of the commit message and the 
-        # revision numbers 
-        self.assertTrue('revno: 2' in out)
-        self.assertTrue('  merge branch 1' in out)
-        self.assertTrue('    revno: 1.1.2' in out)
-        self.assertTrue('      merge branch 2' in out)
-        self.assertTrue('        revno: 1.1.1.1' in out)
-        self.assertTrue('          branch 2' in out)
-        self.assertTrue('    revno: 1.1.1' in out)
-        self.assertTrue('      branch 1' in out)
-        self.assertTrue('revno: 1\n' in out)
-        self.assertTrue('  first post' in out)
         self.assertEqual('', err)
+        log = normalize_log(out)
+        self.assertEqualDiff(log, """\
+------------------------------------------------------------
+revno: 2
+committer: Lorem Ipsum <test@example.com>
+branch nick: parent
+timestamp: Just now
+message:
+  merge branch 1
+    ------------------------------------------------------------
+    revno: 1.1.2
+    committer: Lorem Ipsum <test@example.com>
+    branch nick: child
+    timestamp: Just now
+    message:
+      merge branch 2
+        ------------------------------------------------------------
+        revno: 1.2.1
+        committer: Lorem Ipsum <test@example.com>
+        branch nick: smallerchild
+        timestamp: Just now
+        message:
+          branch 2
+    ------------------------------------------------------------
+    revno: 1.1.1
+    committer: Lorem Ipsum <test@example.com>
+    branch nick: child
+    timestamp: Just now
+    message:
+      branch 1
+------------------------------------------------------------
+revno: 1
+committer: Lorem Ipsum <test@example.com>
+branch nick: parent
+timestamp: Just now
+message:
+  first post
+""")
 
     def test_merges_single_merge_rev(self):
         self._prepare()
         out,err = self.run_bzr('log -r1.1.2')
-        # the log will look something like:
-#        self.assertEqual("""\
-#------------------------------------------------------------
-#revno: 1.1.2  
-#committer: Robert Collins <foo@example.com>
-#branch nick: child
-#timestamp: Tue 2006-03-28 22:31:40 +1100
-#message:
-#  merge branch 2
-#    ------------------------------------------------------------
-#    revno: 1.1.1.1
-#    committer: Robert Collins <foo@example.com>
-#    branch nick: smallerchild
-#    timestamp: Tue 2006-03-28 22:31:40 +1100
-#    message:
-#      branch 2
-#""", out)
-        # but we dont have a nice pattern matcher hooked up yet, so:
-        # we check for the indenting of the commit message and the 
-        # revision numbers 
-        self.assertTrue('revno: 2' not in out)
-        self.assertTrue('  merge branch 1' not in out)
-        self.assertTrue('revno: 1.1.2' in out)
-        self.assertTrue('  merge branch 2' in out)
-        self.assertTrue('    revno: 1.1.1.1' in out)
-        self.assertTrue('      branch 2' in out)
-        self.assertTrue('revno: 1.1.1\n' not in out)
-        self.assertTrue('  branch 1' not in out)
-        self.assertTrue('revno: 1\n' not in out)
-        self.assertTrue('  first post' not in out)
         self.assertEqual('', err)
+        log = normalize_log(out)
+        self.assertEqualDiff(log, """\
+------------------------------------------------------------
+revno: 1.1.2
+committer: Lorem Ipsum <test@example.com>
+branch nick: child
+timestamp: Just now
+message:
+  merge branch 2
+    ------------------------------------------------------------
+    revno: 1.2.1
+    committer: Lorem Ipsum <test@example.com>
+    branch nick: smallerchild
+    timestamp: Just now
+    message:
+      branch 2
+""")
 
     def test_merges_partial_range(self):
         self._prepare()
         out,err = self.run_bzr('log -r1.1.1..1.1.2')
-        # the log will look something like:
-#        self.assertEqual("""\
-#------------------------------------------------------------
-#revno: 1.1.2  
-#committer: Robert Collins <foo@example.com>
-#branch nick: child
-#timestamp: Tue 2006-03-28 22:31:40 +1100
-#message:
-#  merge branch 2
-#    ------------------------------------------------------------
-#    revno: 1.1.1.1
-#    committer: Robert Collins <foo@example.com>
-#    branch nick: smallerchild
-#    timestamp: Tue 2006-03-28 22:31:40 +1100
-#    message:
-#      branch 2
-#------------------------------------------------------------
-#revno: 1.1.1
-#committer: Robert Collins <foo@example.com>
-#branch nick: child
-#timestamp: Tue 2006-03-28 22:31:40 +1100
-#message:
-#  branch 1
-#""", out)
-        # but we dont have a nice pattern matcher hooked up yet, so:
-        # we check for the indenting of the commit message and the 
-        # revision numbers 
-        self.assertTrue('revno: 2' not in out)
-        self.assertTrue('  merge branch 1' not in out)
-        self.assertTrue('revno: 1.1.2' in out)
-        self.assertTrue('  merge branch 2' in out)
-        self.assertTrue('    revno: 1.1.1.1' in out)
-        self.assertTrue('      branch 2' in out)
-        self.assertTrue('revno: 1.1.1' in out)
-        self.assertTrue('  branch 1' in out)
-        self.assertTrue('revno: 1\n' not in out)
-        self.assertTrue('  first post' not in out)
         self.assertEqual('', err)
+        log = normalize_log(out)
+        self.assertEqualDiff(log, """\
+------------------------------------------------------------
+revno: 1.1.2
+committer: Lorem Ipsum <test@example.com>
+branch nick: child
+timestamp: Just now
+message:
+  merge branch 2
+    ------------------------------------------------------------
+    revno: 1.2.1
+    committer: Lorem Ipsum <test@example.com>
+    branch nick: smallerchild
+    timestamp: Just now
+    message:
+      branch 2
+------------------------------------------------------------
+revno: 1.1.1
+committer: Lorem Ipsum <test@example.com>
+branch nick: child
+timestamp: Just now
+message:
+  branch 1
+""")
+
+    def test_merges_nonsupporting_formatter(self):
+        self._prepare()
+        err_msg = 'Selected log formatter only supports mainline revisions.'
+        # The single revision case is tested in the core tests
+        # since all standard formatters support single merge revisions.
+        out,err = self.run_bzr('log --short -r1..1.1.2', retcode=3)
+        self.assertContainsRe(err, err_msg)
+        out,err = self.run_bzr('log --short -r1.1.1..1.1.2', retcode=3)
+        self.assertContainsRe(err, err_msg)
 
  
 class TestLogEncodings(TestCaseInTempDir):

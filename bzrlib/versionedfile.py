@@ -30,12 +30,14 @@ from bzrlib import (
     revision,
     ui,
     )
+from bzrlib.graph import Graph
 from bzrlib.transport.memory import MemoryTransport
 """)
 
 from cStringIO import StringIO
 
 from bzrlib.inter import InterObject
+from bzrlib.symbol_versioning import *
 from bzrlib.textmerge import TextMerge
 
 
@@ -53,10 +55,6 @@ class VersionedFile(object):
     Texts are identified by a version-id string.
     """
 
-    def __init__(self, access_mode):
-        self.finished = False
-        self._access_mode = access_mode
-
     @staticmethod
     def check_not_reserved_id(version_id):
         revision.check_not_reserved_id(version_id)
@@ -69,6 +67,7 @@ class VersionedFile(object):
         """Return a unsorted list of versions."""
         raise NotImplementedError(self.versions)
 
+    @deprecated_method(one_four)
     def has_ghost(self, version_id):
         """Returns whether version is present as a ghost."""
         raise NotImplementedError(self.has_ghost)
@@ -128,17 +127,17 @@ class VersionedFile(object):
 
     def add_lines_with_ghosts(self, version_id, parents, lines,
         parent_texts=None, nostore_sha=None, random_id=False,
-        check_content=True):
+        check_content=True, left_matching_blocks=None):
         """Add lines to the versioned file, allowing ghosts to be present.
         
         This takes the same parameters as add_lines and returns the same.
         """
         self._check_write_ok()
         return self._add_lines_with_ghosts(version_id, parents, lines,
-            parent_texts, nostore_sha, random_id, check_content)
+            parent_texts, nostore_sha, random_id, check_content, left_matching_blocks)
 
     def _add_lines_with_ghosts(self, version_id, parents, lines, parent_texts,
-        nostore_sha, random_id, check_content):
+        nostore_sha, random_id, check_content, left_matching_blocks):
         """Helper to do class specific add_lines_with_ghosts."""
         raise NotImplementedError(self.add_lines_with_ghosts)
 
@@ -158,13 +157,7 @@ class VersionedFile(object):
             if '\n' in line[:-1]:
                 raise errors.BzrBadParameterContainsNewline("lines")
 
-    def _check_write_ok(self):
-        """Is the versioned file marked as 'finished' ? Raise if it is."""
-        if self.finished:
-            raise errors.OutSideTransaction()
-        if self._access_mode != 'w':
-            raise errors.ReadOnlyObjectDirtiedError(self)
-
+    @deprecated_method(one_four)
     def enable_cache(self):
         """Tell this versioned file that it should cache any data it reads.
         
@@ -172,6 +165,7 @@ class VersionedFile(object):
         """
         pass
     
+    @deprecated_method(one_four)
     def clear_cache(self):
         """Remove any data cached in the versioned file object.
 
@@ -179,6 +173,7 @@ class VersionedFile(object):
         """
         pass
 
+    @deprecated_method(one_four)
     def clone_text(self, new_version_id, old_version_id, parents):
         """Add an identical text to old_version_id as new_version_id.
 
@@ -188,20 +183,8 @@ class VersionedFile(object):
         Must raise RevisionAlreadyPresent if the new version is
         already present in file history."""
         self._check_write_ok()
-        return self._clone_text(new_version_id, old_version_id, parents)
-
-    def _clone_text(self, new_version_id, old_version_id, parents):
-        """Helper function to do the _clone_text work."""
-        raise NotImplementedError(self.clone_text)
-
-    def create_empty(self, name, transport, mode=None):
-        """Create a new versioned file of this exact type.
-
-        :param name: the file name
-        :param transport: the transport
-        :param mode: optional file mode.
-        """
-        raise NotImplementedError(self.create_empty)
+        return self.add_lines(new_version_id, parents,
+            self.get_lines(old_version_id))
 
     def get_format_signature(self):
         """Get a text description of the data encoding in this file.
@@ -213,15 +196,25 @@ class VersionedFile(object):
     def make_mpdiffs(self, version_ids):
         """Create multiparent diffs for specified versions."""
         knit_versions = set()
+        knit_versions.update(version_ids)
+        parent_map = self.get_parent_map(version_ids)
         for version_id in version_ids:
-            knit_versions.add(version_id)
-            knit_versions.update(self.get_parents(version_id))
+            try:
+                knit_versions.update(parent_map[version_id])
+            except KeyError:
+                raise RevisionNotPresent(version_id, self)
+        # We need to filter out ghosts, because we can't diff against them.
+        knit_versions = set(self.get_parent_map(knit_versions).keys())
         lines = dict(zip(knit_versions,
             self._get_lf_split_line_list(knit_versions)))
         diffs = []
         for version_id in version_ids:
             target = lines[version_id]
-            parents = [lines[p] for p in self.get_parents(version_id)]
+            try:
+                parents = [lines[p] for p in parent_map[version_id] if p in
+                    knit_versions]
+            except KeyError:
+                raise RevisionNotPresent(version_id, self)
             if len(parents) > 0:
                 left_parent_blocks = self._extract_blocks(version_id,
                                                           parents[0], target)
@@ -251,8 +244,9 @@ class VersionedFile(object):
         for version, parent_ids, expected_sha1, mpdiff in records:
             needed_parents.update(p for p in parent_ids
                                   if not mpvf.has_version(p))
-        for parent_id, lines in zip(needed_parents,
-                                 self._get_lf_split_line_list(needed_parents)):
+        present_parents = set(self.get_parent_map(needed_parents).keys())
+        for parent_id, lines in zip(present_parents,
+                                 self._get_lf_split_line_list(present_parents)):
             mpvf.add_version(lines, parent_id, [])
         for (version, parent_ids, expected_sha1, mpdiff), lines in\
             zip(records, mpvf.get_line_list(versions)):
@@ -261,20 +255,29 @@ class VersionedFile(object):
                     mpvf.get_diff(parent_ids[0]).num_lines()))
             else:
                 left_matching_blocks = None
-            _, _, version_text = self.add_lines(version, parent_ids, lines,
-                vf_parents, left_matching_blocks=left_matching_blocks)
+            try:
+                _, _, version_text = self.add_lines_with_ghosts(version,
+                    parent_ids, lines, vf_parents,
+                    left_matching_blocks=left_matching_blocks)
+            except NotImplementedError:
+                # The vf can't handle ghosts, so add lines normally, which will
+                # (reasonably) fail if there are ghosts in the data.
+                _, _, version_text = self.add_lines(version,
+                    parent_ids, lines, vf_parents,
+                    left_matching_blocks=left_matching_blocks)
             vf_parents[version] = version_text
         for (version, parent_ids, expected_sha1, mpdiff), sha1 in\
              zip(records, self.get_sha1s(versions)):
             if expected_sha1 != sha1:
                 raise errors.VersionedFileInvalidChecksum(version)
 
+    @deprecated_method(one_four)
     def get_sha1(self, version_id):
         """Get the stored sha1 sum for the given revision.
         
         :param version_id: The name of the version to lookup
         """
-        raise NotImplementedError(self.get_sha1)
+        return self.get_sha1s([version_id])[0]
 
     def get_sha1s(self, version_ids):
         """Get the stored sha1 sums for the given revisions.
@@ -284,10 +287,6 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.get_sha1s)
 
-    def get_suffixes(self):
-        """Return the file suffixes associated with this versioned file."""
-        raise NotImplementedError(self.get_suffixes)
-    
     def get_text(self, version_id):
         """Return version contents as a text string.
 
@@ -340,7 +339,8 @@ class VersionedFile(object):
         but are not explicitly marked.
         """
         raise NotImplementedError(self.get_ancestry_with_ghosts)
-        
+    
+    @deprecated_method(one_four)
     def get_graph(self, version_ids=None):
         """Return a graph from the versioned file. 
         
@@ -349,20 +349,31 @@ class VersionedFile(object):
                             None means retrieve all versions.
         """
         if version_ids is None:
-            return dict(self.iter_parents(self.versions()))
-        result = {}
-        pending = set(version_ids)
-        while pending:
-            this_iteration = pending
-            pending = set()
-            for version, parents in self.iter_parents(this_iteration):
-                result[version] = parents
-                for parent in parents:
-                    if parent in result:
-                        continue
-                    pending.add(parent)
+            result = self.get_parent_map(self.versions())
+        else:
+            result = {}
+            pending = set(version_ids)
+            while pending:
+                this_iteration = pending
+                pending = set()
+                parents = self.get_parent_map(this_iteration)
+                for version, parents in parents.iteritems():
+                    result[version] = parents
+                    for parent in parents:
+                        if parent in result:
+                            continue
+                        pending.add(parent)
+        references = set()
+        for parents in result.itervalues():
+            references.update(parents)
+        existing_parents = self.get_parent_map(references)
+        for key, parents in result.iteritems():
+            present_parents = [parent for parent in parents if parent in
+                existing_parents]
+            result[key] = tuple(present_parents)
         return result
 
+    @deprecated_method(one_four)
     def get_graph_with_ghosts(self):
         """Return a graph for the entire versioned file.
         
@@ -371,13 +382,31 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.get_graph_with_ghosts)
 
+    def get_parent_map(self, version_ids):
+        """Get a map of the parents of version_ids.
+
+        :param version_ids: The version ids to look up parents for.
+        :return: A mapping from version id to parents.
+        """
+        raise NotImplementedError(self.get_parent_map)
+
+    @deprecated_method(one_four)
     def get_parents(self, version_id):
         """Return version names for parents of a version.
 
         Must raise RevisionNotPresent if version is not present in
         file history.
         """
-        raise NotImplementedError(self.get_parents)
+        try:
+            all = self.get_parent_map([version_id])[version_id]
+        except KeyError:
+            raise errors.RevisionNotPresent(version_id, self)
+        result = []
+        parent_parents = self.get_parent_map(all)
+        for version_id in all:
+            if version_id in parent_parents:
+                result.append(version_id)
+        return result
 
     def get_parents_with_ghosts(self, version_id):
         """Return version names for parents of version_id.
@@ -388,8 +417,12 @@ class VersionedFile(object):
         Ghosts that are known about will be included in the parent list,
         but are not explicitly marked.
         """
-        raise NotImplementedError(self.get_parents_with_ghosts)
+        try:
+            return list(self.get_parent_map([version_id])[version_id])
+        except KeyError:
+            raise errors.RevisionNotPresent(version_id, self)
 
+    @deprecated_method(one_four)
     def annotate_iter(self, version_id):
         """Yield list of (version-id, line) pairs for the specified
         version.
@@ -397,10 +430,15 @@ class VersionedFile(object):
         Must raise RevisionNotPresent if the given version is
         not present in file history.
         """
-        raise NotImplementedError(self.annotate_iter)
+        return iter(self.annotate(version_id))
 
     def annotate(self, version_id):
-        return list(self.annotate_iter(version_id))
+        """Return a list of (version-id, line) tuples for version_id.
+
+        :raise RevisionNotPresent: If the given version is
+        not present in file history.
+        """
+        raise NotImplementedError(self.annotate)
 
     def join(self, other, pb=None, msg=None, version_ids=None,
              ignore_missing=False):
@@ -420,15 +458,16 @@ class VersionedFile(object):
             version_ids,
             ignore_missing)
 
-    def iter_lines_added_or_present_in_versions(self, version_ids=None, 
+    def iter_lines_added_or_present_in_versions(self, version_ids=None,
                                                 pb=None):
         """Iterate over the lines in the versioned file from version_ids.
 
-        This may return lines from other versions, and does not return the
-        specific version marker at this point. The api may be changed
-        during development to include the version that the versioned file
-        thinks is relevant, but given that such hints are just guesses,
-        its better not to have it if we don't need it.
+        This may return lines from other versions. Each item the returned
+        iterator yields is a tuple of a line and a text version that that line
+        is present in (not introduced in).
+
+        Ordering of results is in whatever order is most suitable for the
+        underlying storage format.
 
         If a progress bar is supplied, it may be used to indicate progress.
         The caller is responsible for cleaning up progress bars (because this
@@ -436,9 +475,12 @@ class VersionedFile(object):
 
         NOTES: Lines are normalised: they will all have \n terminators.
                Lines are returned in arbitrary order.
+
+        :return: An iterator over (line, version_id).
         """
         raise NotImplementedError(self.iter_lines_added_or_present_in_versions)
 
+    @deprecated_method(one_four)
     def iter_parents(self, version_ids):
         """Iterate through the parents for many version ids.
 
@@ -448,19 +490,7 @@ class VersionedFile(object):
             The order is undefined, allowing for different optimisations in
             the underlying implementation.
         """
-        for version_id in version_ids:
-            try:
-                yield version_id, tuple(self.get_parents(version_id))
-            except errors.RevisionNotPresent:
-                pass
-
-    def transaction_finished(self):
-        """The transaction that this file was opened in has finished.
-
-        This records self.finished = True and should cause all mutating
-        operations to error.
-        """
-        self.finished = True
+        return self.get_parent_map(version_ids).iteritems()
 
     def plan_merge(self, ver_a, ver_b):
         """Return pseudo-annotation indicating how the two versions merge.
@@ -487,6 +517,135 @@ class VersionedFile(object):
     def weave_merge(self, plan, a_marker=TextMerge.A_MARKER,
                     b_marker=TextMerge.B_MARKER):
         return PlanWeaveMerge(plan, a_marker, b_marker).merge_lines()[0]
+
+
+class _PlanMergeVersionedFile(object):
+    """A VersionedFile for uncommitted and committed texts.
+
+    It is intended to allow merges to be planned with working tree texts.
+    It implements only the small part of the VersionedFile interface used by
+    PlanMerge.  It falls back to multiple versionedfiles for data not stored in
+    _PlanMergeVersionedFile itself.
+    """
+
+    def __init__(self, file_id, fallback_versionedfiles=None):
+        """Constuctor
+
+        :param file_id: Used when raising exceptions.
+        :param fallback_versionedfiles: If supplied, the set of fallbacks to
+            use.  Otherwise, _PlanMergeVersionedFile.fallback_versionedfiles
+            can be appended to later.
+        """
+        self._file_id = file_id
+        if fallback_versionedfiles is None:
+            self.fallback_versionedfiles = []
+        else:
+            self.fallback_versionedfiles = fallback_versionedfiles
+        self._parents = {}
+        self._lines = {}
+
+    def plan_merge(self, ver_a, ver_b, base=None):
+        """See VersionedFile.plan_merge"""
+        from bzrlib.merge import _PlanMerge
+        if base is None:
+            return _PlanMerge(ver_a, ver_b, self).plan_merge()
+        old_plan = list(_PlanMerge(ver_a, base, self).plan_merge())
+        new_plan = list(_PlanMerge(ver_a, ver_b, self).plan_merge())
+        return _PlanMerge._subtract_plans(old_plan, new_plan)
+
+    def plan_lca_merge(self, ver_a, ver_b, base=None):
+        from bzrlib.merge import _PlanLCAMerge
+        graph = self._get_graph()
+        new_plan = _PlanLCAMerge(ver_a, ver_b, self, graph).plan_merge()
+        if base is None:
+            return new_plan
+        old_plan = _PlanLCAMerge(ver_a, base, self, graph).plan_merge()
+        return _PlanLCAMerge._subtract_plans(list(old_plan), list(new_plan))
+
+    def add_lines(self, version_id, parents, lines):
+        """See VersionedFile.add_lines
+
+        Lines are added locally, not fallback versionedfiles.  Also, ghosts are
+        permitted.  Only reserved ids are permitted.
+        """
+        if not revision.is_reserved_id(version_id):
+            raise ValueError('Only reserved ids may be used')
+        if parents is None:
+            raise ValueError('Parents may not be None')
+        if lines is None:
+            raise ValueError('Lines may not be None')
+        self._parents[version_id] = tuple(parents)
+        self._lines[version_id] = lines
+
+    def get_lines(self, version_id):
+        """See VersionedFile.get_ancestry"""
+        lines = self._lines.get(version_id)
+        if lines is not None:
+            return lines
+        for versionedfile in self.fallback_versionedfiles:
+            try:
+                return versionedfile.get_lines(version_id)
+            except errors.RevisionNotPresent:
+                continue
+        else:
+            raise errors.RevisionNotPresent(version_id, self._file_id)
+
+    def get_ancestry(self, version_id, topo_sorted=False):
+        """See VersionedFile.get_ancestry.
+
+        Note that this implementation assumes that if a VersionedFile can
+        answer get_ancestry at all, it can give an authoritative answer.  In
+        fact, ghosts can invalidate this assumption.  But it's good enough
+        99% of the time, and far cheaper/simpler.
+
+        Also note that the results of this version are never topologically
+        sorted, and are a set.
+        """
+        if topo_sorted:
+            raise ValueError('This implementation does not provide sorting')
+        parents = self._parents.get(version_id)
+        if parents is None:
+            for vf in self.fallback_versionedfiles:
+                try:
+                    return vf.get_ancestry(version_id, topo_sorted=False)
+                except errors.RevisionNotPresent:
+                    continue
+            else:
+                raise errors.RevisionNotPresent(version_id, self._file_id)
+        ancestry = set([version_id])
+        for parent in parents:
+            ancestry.update(self.get_ancestry(parent, topo_sorted=False))
+        return ancestry
+
+    def get_parent_map(self, version_ids):
+        """See VersionedFile.get_parent_map"""
+        result = {}
+        pending = set(version_ids)
+        for key in version_ids:
+            try:
+                result[key] = self._parents[key]
+            except KeyError:
+                pass
+        pending = pending - set(result.keys())
+        for versionedfile in self.fallback_versionedfiles:
+            parents = versionedfile.get_parent_map(pending)
+            result.update(parents)
+            pending = pending - set(parents.keys())
+            if not pending:
+                return result
+        return result
+
+    def _get_graph(self):
+        from bzrlib.graph import (
+            DictParentsProvider,
+            Graph,
+            _StackedParentsProvider,
+            )
+        from bzrlib.repofmt.knitrepo import _KnitParentsProvider
+        parent_providers = [DictParentsProvider(self._parents)]
+        for vf in self.fallback_versionedfiles:
+            parent_providers.append(_KnitParentsProvider(vf))
+        return Graph(_StackedParentsProvider(parent_providers))
 
 
 class PlanWeaveMerge(TextMerge):
@@ -546,6 +705,12 @@ class PlanWeaveMerge(TextMerge):
             elif state == 'new-b':
                 ch_b = True
                 lines_b.append(line)
+            elif state == 'conflicted-a':
+                ch_b = ch_a = True
+                lines_a.append(line)
+            elif state == 'conflicted-b':
+                ch_b = ch_a = True
+                lines_b.append(line)
             else:
                 assert state in ('irrelevant', 'ghost-a', 'ghost-b', 
                                  'killed-base', 'killed-both'), state
@@ -587,21 +752,14 @@ class InterVersionedFile(InterObject):
         are not present in the other file's history unless ignore_missing is 
         supplied in which case they are silently skipped.
         """
-        # the default join: 
-        # - if the target is empty, just add all the versions from 
-        #   source to target, otherwise:
-        # - make a temporary versioned file of type target
-        # - insert the source content into it one at a time
-        # - join them
-        if not self.target.versions():
-            target = self.target
-        else:
-            # Make a new target-format versioned file. 
-            temp_source = self.target.create_empty("temp", MemoryTransport())
-            target = temp_source
+        target = self.target
         version_ids = self._get_source_version_ids(version_ids, ignore_missing)
-        graph = self.source.get_graph(version_ids)
-        order = tsort.topo_sort(graph.items())
+        graph = Graph(self.source)
+        search = graph._make_breadth_first_searcher(version_ids)
+        transitive_ids = set()
+        map(transitive_ids.update, list(search))
+        parent_map = self.source.get_parent_map(transitive_ids)
+        order = tsort.topo_sort(parent_map.items())
         pb = ui.ui_factory.nested_progress_bar()
         parent_texts = {}
         try:
@@ -621,21 +779,14 @@ class InterVersionedFile(InterObject):
             total = len(order)
             for index, version in enumerate(order):
                 pb.update('Converting versioned data', index, total)
+                if version in target:
+                    continue
                 _, _, parent_text = target.add_lines(version,
-                                               self.source.get_parents(version),
+                                               parent_map[version],
                                                self.source.get_lines(version),
                                                parent_texts=parent_texts)
                 parent_texts[version] = parent_text
-            
-            # this should hit the native code path for target
-            if target is not self.target:
-                return self.target.join(temp_source,
-                                        pb,
-                                        msg,
-                                        version_ids,
-                                        ignore_missing)
-            else:
-                return total
+            return total
         finally:
             pb.finished()
 

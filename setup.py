@@ -7,21 +7,55 @@ Run it with
 """
 
 import os
+import os.path
 import sys
 
+if sys.version_info < (2, 4):
+    sys.stderr.write("[ERROR] Not a supported Python version. Need 2.4+\n")
+    sys.exit(1)
+
+# NOTE: The directory containing setup.py, whether run by 'python setup.py' or
+# './setup.py' or the equivalent with another path, should always be at the
+# start of the path, so this should find the right one...
 import bzrlib
+
+def get_long_description():
+    dirname = os.path.dirname(__file__)
+    readme = os.path.join(dirname, 'README')
+    f = open(readme, 'rb')
+    try:
+        return f.read()
+    finally:
+        f.close()
+
 
 ##
 # META INFORMATION FOR SETUP
-
-META_INFO = {'name':         'bzr',
-             'version':      bzrlib.__version__,
-             'author':       'Canonical Ltd',
-             'author_email': 'bazaar@lists.canonical.com',
-             'url':          'http://www.bazaar-vcs.org/',
-             'description':  'Friendly distributed version control system',
-             'license':      'GNU GPL v2',
-            }
+# see http://docs.python.org/dist/meta-data.html
+META_INFO = {
+    'name':         'bzr',
+    'version':      bzrlib.__version__,
+    'author':       'Canonical Ltd',
+    'author_email': 'bazaar@lists.canonical.com',
+    'url':          'http://www.bazaar-vcs.org/',
+    'description':  'Friendly distributed version control system',
+    'license':      'GNU GPL v2',
+    'download_url': 'http://bazaar-vcs.org/Download',
+    'long_description': get_long_description(),
+    'classifiers': [
+        'Development Status :: 6 - Mature',
+        'Environment :: Console',
+        'Intended Audience :: Developers',
+        'Intended Audience :: System Administrators',
+        'License :: OSI Approved :: GNU General Public License (GPL)',
+        'Operating System :: Microsoft :: Windows',
+        'Operating System :: OS Independent',
+        'Operating System :: POSIX',
+        'Programming Language :: Python',
+        'Programming Language :: C',
+        'Topic :: Software Development :: Version Control',
+        ],
+    }
 
 # The list of packages is automatically generated later. Add other things
 # that are part of BZRLIB here.
@@ -30,36 +64,9 @@ BZRLIB = {}
 PKG_DATA = {# install files from selftest suite
             'package_data': {'bzrlib': ['doc/api/*.txt',
                                         'tests/test_patches_data/*',
+                                        'help_topics/en/*.txt',
                                        ]},
            }
-
-######################################################################
-# Reinvocation stolen from bzr, we need python2.4 by virtue of bzr_man
-# including bzrlib.help
-
-try:
-    version_info = sys.version_info
-except AttributeError:
-    version_info = 1, 5 # 1.5 or older
-
-REINVOKE = "__BZR_REINVOKE"
-NEED_VERS = (2, 4)
-KNOWN_PYTHONS = ('python2.4',)
-
-if version_info < NEED_VERS:
-    if not os.environ.has_key(REINVOKE):
-        # mutating os.environ doesn't work in old Pythons
-        os.putenv(REINVOKE, "1")
-        for python in KNOWN_PYTHONS:
-            try:
-                os.execvp(python, [python] + sys.argv)
-            except OSError:
-                pass
-    print >>sys.stderr, "bzr: error: cannot find a suitable python interpreter"
-    print >>sys.stderr, "  (need %d.%d or later)" % NEED_VERS
-    sys.exit(1)
-if getattr(os, "unsetenv", None) is not None:
-    os.unsetenv(REINVOKE)
 
 
 def get_bzrlib_packages():
@@ -235,7 +242,8 @@ if 'bdist_wininst' in sys.argv:
         for root, dirs, files in os.walk('doc'):
             r = []
             for f in files:
-                if os.path.splitext(f)[1] in ('.html', '.css'):
+                if (os.path.splitext(f)[1] in ('.html','.css','.png','.pdf')
+                    or f == 'quick-start-summary.svg'):
                     r.append(os.path.join(root, f))
             if r:
                 relative = root[4:]
@@ -262,6 +270,7 @@ if 'bdist_wininst' in sys.argv:
     setup(**ARGS)
 
 elif 'py2exe' in sys.argv:
+    import glob
     # py2exe setup
     import py2exe
 
@@ -289,22 +298,56 @@ elif 'py2exe' in sys.argv:
                                      comments = META_INFO['description'],
                                     )
 
-    additional_packages =  []
+    packages = BZRLIB['packages']
+    packages.remove('bzrlib')
+    packages = [i for i in packages if not i.startswith('bzrlib.plugins')]
+    includes = []
+    for i in glob.glob('bzrlib\\*.py'):
+        module = i[:-3].replace('\\', '.')
+        if module.endswith('__init__'):
+            module = module[:-len('__init__')]
+        includes.append(module)
+
+    additional_packages = set()
     if sys.version.startswith('2.4'):
         # adding elementtree package
-        additional_packages.append('elementtree')
+        additional_packages.add('elementtree')
     elif sys.version.startswith('2.5'):
-        additional_packages.append('xml.etree')
+        additional_packages.add('xml.etree')
     else:
         import warnings
         warnings.warn('Unknown Python version.\n'
                       'Please check setup.py script for compatibility.')
     # email package from std python library use lazy import,
     # so we need to explicitly add all package
-    additional_packages.append('email')
+    additional_packages.add('email')
 
-    options_list = {"py2exe": {"packages": BZRLIB['packages'] +
-                                           additional_packages,
+    # text files for help topis
+    text_topics = glob.glob('bzrlib/help_topics/en/*.txt')
+    topics_files = [('lib/help_topics/en', text_topics)]
+
+    # built-in plugins
+    plugins_files = []
+    for root, dirs, files in os.walk('bzrlib/plugins'):
+        x = []
+        for i in files:
+            if not i.endswith('.py'):
+                continue
+            if i == '__init__.py' and root == 'bzrlib/plugins':
+                continue
+            x.append(os.path.join(root, i))
+        if x:
+            target_dir = root[len('bzrlib/'):]  # install to 'plugins/...'
+            plugins_files.append((target_dir, x))
+    # find modules for built-in plugins
+    import tools.package_mf
+    mf = tools.package_mf.CustomModuleFinder()
+    mf.run_package('bzrlib/plugins')
+    packs, mods = mf.get_result()
+    additional_packages.update(packs)
+
+    options_list = {"py2exe": {"packages": packages + list(additional_packages),
+                               "includes": includes + mods,
                                "excludes": ["Tkinter", "medusa", "tools"],
                                "dist_dir": "win32_bzr.exe",
                               },
@@ -313,7 +356,9 @@ elif 'py2exe' in sys.argv:
           console=[target,
                    'tools/win32/bzr_postinstall.py',
                   ],
-          zipfile='lib/library.zip')
+          zipfile='lib/library.zip',
+          data_files=topics_files + plugins_files,
+          )
 
 else:
     # ad-hoc for easy_install

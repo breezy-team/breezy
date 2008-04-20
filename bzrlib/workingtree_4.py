@@ -151,6 +151,8 @@ class WorkingTree4(WorkingTree3):
         self._dirstate = None
         self._inventory = None
         #-------------
+        self._setup_directory_is_tree_reference()
+        self._detect_case_handling()
 
     @needs_tree_write_lock
     def _add(self, files, ids, kinds):
@@ -158,8 +160,6 @@ class WorkingTree4(WorkingTree3):
         state = self.current_dirstate()
         for f, file_id, kind in zip(files, ids, kinds):
             f = f.strip('/')
-            assert '//' not in f
-            assert '..' not in f
             if self.path2id(f):
                 # special case tree root handling.
                 if f == '' and self.path2id(f) == ROOT_ID:
@@ -469,6 +469,12 @@ class WorkingTree4(WorkingTree3):
         path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
         return path_utf8.decode('utf8')
 
+    def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
+        entry = self._get_entry(path=path)
+        if entry == (None, None):
+            return False # Missing entries are not executable
+        return entry[1][0][3] # Executable?
+
     if not osutils.supports_executable():
         def is_executable(self, file_id, path=None):
             """Test if a file is executable or not.
@@ -479,16 +485,30 @@ class WorkingTree4(WorkingTree3):
             if entry == (None, None):
                 return False
             return entry[1][0][3]
+
+        _is_executable_from_path_and_stat = \
+            _is_executable_from_path_and_stat_from_basis
     else:
         def is_executable(self, file_id, path=None):
             """Test if a file is executable or not.
 
             Note: The caller is expected to take a read-lock before calling this.
             """
+            self._must_be_locked()
             if not path:
                 path = self.id2path(file_id)
             mode = os.lstat(self.abspath(path)).st_mode
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
+
+    def all_file_ids(self):
+        """See Tree.iter_all_file_ids"""
+        self._must_be_locked()
+        result = set()
+        for key, tree_details in self.current_dirstate()._iter_entries():
+            if tree_details[0][0] in ('a', 'r'): # relocated
+                continue
+            result.add(key[2])
+        return result
 
     @needs_read_lock
     def __iter__(self):
@@ -642,8 +662,8 @@ class WorkingTree4(WorkingTree3):
         if self._inventory is not None:
             update_inventory = True
             inv = self.inventory
-            to_dir_ie = inv[to_dir_id]
             to_dir_id = to_entry[0][2]
+            to_dir_ie = inv[to_dir_id]
         else:
             update_inventory = False
 
@@ -713,8 +733,7 @@ class WorkingTree4(WorkingTree3):
                 if from_missing: # implicitly just update our path mapping
                     move_file = False
                 elif not after:
-                    raise errors.RenameFailedFilesExist(from_rel, to_rel,
-                        extra="(Use --after to update the Bazaar id)")
+                    raise errors.RenameFailedFilesExist(from_rel, to_rel)
 
             rollbacks = []
             def rollback_rename():
@@ -1091,15 +1110,7 @@ class WorkingTree4(WorkingTree3):
         :param path: The path.
         :param stat_result: The stat result being looked up.
         """
-        state = self.current_dirstate()
-        # XXX: should we make the path be passed in as utf8 ?
-        entry = state._get_entry(0, path_utf8=cache_utf8.encode(path))
-        tree_details = entry[1][0]
-        packed_stat = dirstate.pack_stat(stat_result)
-        if tree_details[4] == packed_stat:
-            return tree_details[1]
-        else:
-            return None
+        return self.current_dirstate().sha1_from_stat(path, stat_result)
 
     @needs_read_lock
     def supports_tree_reference(self):
@@ -1182,7 +1193,8 @@ class WorkingTree4(WorkingTree3):
                     # Mark this file id as having been removed
                     entry = block[1][entry_index]
                     ids_to_unversion.discard(entry[0][2])
-                    if (entry[1][0][0] == 'a'
+                    if (entry[1][0][0] in 'ar' # don't remove absent or renamed
+                                               # entries
                         or not state._make_absent(entry)):
                         entry_index += 1
                 # go to the next block. (At the moment we dont delete empty
@@ -1213,6 +1225,24 @@ class WorkingTree4(WorkingTree3):
             for file_id in file_ids:
                 self._inventory.remove_recursive_id(file_id)
 
+    @needs_tree_write_lock
+    def rename_one(self, from_rel, to_rel, after=False):
+        """See WorkingTree.rename_one"""
+        self.flush()
+        WorkingTree.rename_one(self, from_rel, to_rel, after)
+
+    @needs_tree_write_lock
+    def apply_inventory_delta(self, changes):
+        """See MutableTree.apply_inventory_delta"""
+        state = self.current_dirstate()
+        state.update_by_delta(changes)
+        self._make_dirty(reset_inventory=True)
+
+    def update_basis_by_delta(self, new_revid, delta):
+        """See MutableTree.update_basis_by_delta."""
+        assert self.last_revision() != new_revid
+        self.current_dirstate().update_basis_by_delta(delta, new_revid)
+
     @needs_read_lock
     def _validate(self):
         self._dirstate._validate()
@@ -1220,7 +1250,8 @@ class WorkingTree4(WorkingTree3):
     @needs_tree_write_lock
     def _write_inventory(self, inv):
         """Write inventory as the current inventory."""
-        assert not self._dirty, "attempting to write an inventory when the dirstate is dirty will cause data loss"
+        assert not self._dirty, ("attempting to write an inventory when the "
+            "dirstate is dirty will cause data loss")
         self.current_dirstate().set_state_from_inventory(inv)
         self._make_dirty(reset_inventory=False)
         if self._inventory is not None:
@@ -1250,11 +1281,18 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         """See WorkingTreeFormat.get_format_description()."""
         return "Working tree format 4"
 
-    def initialize(self, a_bzrdir, revision_id=None):
+    def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
+                   accelerator_tree=None, hardlink=False):
         """See WorkingTreeFormat.initialize().
 
         :param revision_id: allows creating a working tree at a different
         revision than the branch is at.
+        :param accelerator_tree: A tree which can be used for retrieving file
+            contents more quickly than the revision tree, i.e. a workingtree.
+            The revision tree will be used for cases where accelerator_tree's
+            content is different.
+        :param hardlink: If true, hard-link files from accelerator_tree,
+            where possible.
 
         These trees get an initial random root id, if their repository supports
         rich root data, TREE_ROOT otherwise.
@@ -1266,7 +1304,10 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         control_files.create_lock()
         control_files.lock_write()
         control_files.put_utf8('format', self.get_format_string())
-        branch = a_bzrdir.open_branch()
+        if from_branch is not None:
+            branch = from_branch
+        else:
+            branch = a_bzrdir.open_branch()
         if revision_id is None:
             revision_id = branch.last_revision()
         local_path = transport.local_abspath('dirstate')
@@ -1288,18 +1329,35 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
                 else:
                     wt._set_root_id(ROOT_ID)
                 wt.flush()
-            wt.set_last_revision(revision_id)
-            wt.flush()
-            basis = wt.basis_tree()
+            basis = None
+            # frequently, we will get here due to branching.  The accelerator
+            # tree will be the tree from the branch, so the desired basis
+            # tree will often be a parent of the accelerator tree.
+            if accelerator_tree is not None:
+                try:
+                    basis = accelerator_tree.revision_tree(revision_id)
+                except errors.NoSuchRevision:
+                    pass
+            if basis is None:
+                basis = branch.repository.revision_tree(revision_id)
+            if revision_id == NULL_REVISION:
+                parents_list = []
+            else:
+                parents_list = [(revision_id, basis)]
             basis.lock_read()
-            # if the basis has a root id we have to use that; otherwise we use
-            # a new random one
-            basis_root_id = basis.get_root_id()
-            if basis_root_id is not None:
-                wt._set_root_id(basis_root_id)
+            try:
+                wt.set_parent_trees(parents_list, allow_leftmost_as_ghost=True)
                 wt.flush()
-            transform.build_tree(basis, wt)
-            basis.unlock()
+                # if the basis has a root id we have to use that; otherwise we
+                # use a new random one
+                basis_root_id = basis.get_root_id()
+                if basis_root_id is not None:
+                    wt._set_root_id(basis_root_id)
+                    wt.flush()
+                transform.build_tree(basis, wt, accelerator_tree,
+                                     hardlink=hardlink)
+            finally:
+                basis.unlock()
         finally:
             control_files.unlock()
             wt.unlock()
@@ -1344,7 +1402,7 @@ class DirStateRevisionTree(Tree):
                       default_revision=_mod_revision.CURRENT_REVISION):
         """See Tree.annotate_iter"""
         w = self._get_weave(file_id)
-        return w.annotate_iter(self.inventory[file_id].revision)
+        return w.annotate(self.inventory[file_id].revision)
 
     def _get_ancestors(self, default_revision):
         return set(self._repository.get_ancestry(self._revision_id,
@@ -1370,6 +1428,14 @@ class DirStateRevisionTree(Tree):
 
     def get_root_id(self):
         return self.path2id('')
+
+    def id2path(self, file_id):
+        "Convert a file-id to a path."
+        entry = self._get_entry(file_id=file_id)
+        if entry == (None, None):
+            raise errors.NoSuchId(tree=self, file_id=file_id)
+        path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
+        return path_utf8.decode('utf8')
 
     def _get_parent_index(self):
         """Return the index in the dirstate referenced by this tree."""
@@ -1498,8 +1564,10 @@ class DirStateRevisionTree(Tree):
         return StringIO(self.get_file_text(file_id))
 
     def get_file_lines(self, file_id):
-        ie = self.inventory[file_id]
-        return self._get_weave(file_id).get_lines(ie.revision)
+        entry = self._get_entry(file_id=file_id)[1]
+        if entry == None:
+            raise errors.NoSuchId(tree=self, file_id=file_id)
+        return self._get_weave(file_id).get_lines(entry[1][4])
 
     def get_file_size(self, file_id):
         return self.inventory[file_id].text_size
@@ -1557,7 +1625,14 @@ class DirStateRevisionTree(Tree):
         return bool(self.path2id(filename))
 
     def kind(self, file_id):
-        return self.inventory[file_id].kind
+        entry = self._get_entry(file_id=file_id)[1]
+        if entry == None:
+            raise errors.NoSuchId(tree=self, file_id=file_id)
+        return dirstate.DirState._minikind_to_kind[entry[1][0]]
+
+    def stored_kind(self, file_id):
+        """See Tree.stored_kind"""
+        return self.kind(file_id)
 
     def path_content_summary(self, path):
         """See Tree.path_content_summary."""
@@ -1685,12 +1760,12 @@ class InterDirStateTree(InterTree):
     _matching_to_tree_format = WorkingTreeFormat4()
     _test_mutable_trees_to_test_trees = make_source_parent_tree
 
-    def _iter_changes(self, include_unchanged=False,
+    def iter_changes(self, include_unchanged=False,
                       specific_files=None, pb=None, extra_trees=[],
                       require_versioned=True, want_unversioned=False):
         """Return the changes from source to target.
 
-        :return: An iterator that yields tuples. See InterTree._iter_changes
+        :return: An iterator that yields tuples. See InterTree.iter_changes
             for details.
         :param specific_files: An optional list of file paths to restrict the
             comparison to. When mapping filenames to ids, all matches in all
@@ -1713,21 +1788,19 @@ class InterDirStateTree(InterTree):
         # NB: show_status depends on being able to pass in non-versioned files
         # and report them as unknown
         # TODO: handle extra trees in the dirstate.
-        # TODO: handle comparisons as an empty tree as a different special
-        # case? mbp 20070226
-        if (extra_trees or (self.source._revision_id == NULL_REVISION)
-            or specific_files == []):
+        if (extra_trees or specific_files == []):
             # we can't fast-path these cases (yet)
-            for f in super(InterDirStateTree, self)._iter_changes(
+            for f in super(InterDirStateTree, self).iter_changes(
                 include_unchanged, specific_files, pb, extra_trees,
                 require_versioned, want_unversioned=want_unversioned):
                 yield f
             return
         parent_ids = self.target.get_parent_ids()
-        assert (self.source._revision_id in parent_ids), \
+        assert (self.source._revision_id in parent_ids
+                or self.source._revision_id == NULL_REVISION), \
                 "revision {%s} is not stored in {%s}, but %s " \
                 "can only be used for trees stored in the dirstate" \
-                % (self.source._revision_id, self.target, self._iter_changes)
+                % (self.source._revision_id, self.target, self.iter_changes)
         target_index = 0
         if self.source._revision_id == NULL_REVISION:
             source_index = None
@@ -1737,7 +1810,7 @@ class InterDirStateTree(InterTree):
                 "Failure: source._revision_id: %s not in target.parent_ids(%s)" % (
                 self.source._revision_id, parent_ids)
             source_index = 1 + parent_ids.index(self.source._revision_id)
-            indices = (source_index,target_index)
+            indices = (source_index, target_index)
         # -- make all specific_files utf8 --
         if specific_files:
             specific_files_utf8 = set()
@@ -1910,6 +1983,11 @@ class InterDirStateTree(InterTree):
                                                  path_utf8=old_path)
                     # update the source details variable to be the real
                     # location.
+                    if old_entry == (None, None):
+                        raise errors.CorruptDirstate(state._filename,
+                            "entry '%s/%s' is considered renamed from %r"
+                            " but source does not exist\n"
+                            "entry: %s" % (entry[0][0], entry[0][1], old_path, entry))
                     source_details = old_entry[1][source_index]
                     source_minikind = source_details[0]
                 else:

@@ -136,6 +136,20 @@ class _BaseMergeDirective(object):
         return klass(revision_id, t.as_sha1(), time, timezone, target_branch,
             patch, patch_type, public_branch, message)
 
+    def get_disk_name(self, branch):
+        """Generate a suitable basename for storing this directive on disk
+
+        :param branch: The Branch this merge directive was generated fro
+        :return: A string
+        """
+        revno, revision_id = branch.last_revision_info()
+        if self.revision_id == revision_id:
+            revno = [revno]
+        else:
+            revno = branch.get_revision_id_to_revno_map().get(self.revision_id,
+                ['merge'])
+        return '%s-%s' % (branch.nick, '.'.join(str(n) for n in revno))
+
     @staticmethod
     def _generate_diff(repository, revision_id, ancestor_id):
         tree_1 = repository.revision_tree(ancestor_id)
@@ -190,7 +204,32 @@ class _BaseMergeDirective(object):
                     StringIO(self.get_raw_bundle()))
                 # We don't use the bundle's target revision, because
                 # MergeDirective.revision_id is authoritative.
-                info.install_revisions(target_repo, stream_input=False)
+                try:
+                    info.install_revisions(target_repo, stream_input=False)
+                except errors.RevisionNotPresent:
+                    # At least one dependency isn't present.  Try installing
+                    # missing revisions from the submit branch
+                    submit_branch = _mod_branch.Branch.open(self.target_branch)
+                    missing_revisions = []
+                    bundle_revisions = set(r.revision_id for r in
+                                           info.real_revisions)
+                    for revision in info.real_revisions:
+                        for parent_id in revision.parent_ids:
+                            if (parent_id not in bundle_revisions and
+                                not target_repo.has_revision(parent_id)):
+                                missing_revisions.append(parent_id)
+                    # reverse missing revisions to try to get heads first
+                    unique_missing = []
+                    unique_missing_set = set()
+                    for revision in reversed(missing_revisions):
+                        if revision in unique_missing_set:
+                            continue
+                        unique_missing.append(revision)
+                        unique_missing_set.add(revision)
+                    for missing_revision in unique_missing:
+                        target_repo.fetch(submit_branch.repository,
+                                          missing_revision)
+                    info.install_revisions(target_repo, stream_input=False)
             else:
                 source_branch = _mod_branch.Branch.open(self.source_branch)
                 target_repo.fetch(source_branch.repository, self.revision_id)

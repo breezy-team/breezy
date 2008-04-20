@@ -44,7 +44,7 @@ class TestExceptionReporting(TestCase):
         self.assertContainsRe(err,
             r'bzr: ERROR: exceptions\.AssertionError: failed\n')
         self.assertContainsRe(err,
-            r'Please send this report to')
+            r'Please report a bug at https://bugs\.launchpad\.net/bzr/\+filebug')
         self.assertContainsRe(err,
             '(?m)^encoding: .*, fsenc: .*, lang: .*')
         self.assertContainsRe(err,
@@ -54,11 +54,12 @@ class TestExceptionReporting(TestCase):
         # we must use a subprocess, because the normal in-memory mechanism
         # allows errors to propagate up through the test suite
         out, err = self.run_bzr_subprocess(['assert-fail'],
+            universal_newlines=True,
             retcode=errors.EXIT_INTERNAL_ERROR)
         self.assertEqual(4, errors.EXIT_INTERNAL_ERROR)
         self.assertContainsRe(err,
                 r'bzr: ERROR: exceptions\.AssertionError: always fails\n')
-        self.assertContainsRe(err, r'Please send this report to')
+        self.assertContainsRe(err, r'Please report a bug at')
     
 
 class TestDeprecationWarning(TestCaseInTempDir):

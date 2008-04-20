@@ -30,17 +30,18 @@ from bzrlib import (
     progress,
     )
 from bzrlib.errors import (
-                           RevisionNotPresent, 
+                           RevisionNotPresent,
                            RevisionAlreadyPresent,
                            WeaveParentMismatch
                            )
 from bzrlib.knit import (
-    KnitVersionedFile,
+    make_file_knit,
     KnitAnnotateFactory,
     KnitPlainFactory,
     )
+from bzrlib.symbol_versioning import one_four
 from bzrlib.tests import TestCaseWithMemoryTransport, TestSkipped
-from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
+from bzrlib.tests.http_utils import TestCaseWithWebserver
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryTransport
@@ -57,6 +58,11 @@ class VersionedFileTestMixIn(object):
     theres no dynamic substitution of versioned file implementations,
     they are strictly controlled by their owning repositories.
     """
+
+    def get_transaction(self):
+        if not hasattr(self, '_transaction'):
+            self._transaction = None
+        return self._transaction
 
     def test_add(self):
         f = self.get_file()
@@ -240,8 +246,8 @@ class VersionedFileTestMixIn(object):
         new_vf = self.get_file('bar')
         for version in multiparent.topo_iter(vf):
             mpdiff = vf.make_mpdiffs([version])[0]
-            new_vf.add_mpdiffs([(version, vf.get_parents(version),
-                                 vf.get_sha1(version), mpdiff)])
+            new_vf.add_mpdiffs([(version, vf.get_parent_map([version])[version],
+                                 vf.get_sha1s([version])[0], mpdiff)])
             self.assertEqualDiff(vf.get_text(version),
                                  new_vf.get_text(version))
 
@@ -347,61 +353,40 @@ class VersionedFileTestMixIn(object):
             set(f.get_ancestry('rM', topo_sorted=False)))
 
     def test_mutate_after_finish(self):
+        self._transaction = 'before'
         f = self.get_file()
-        f.transaction_finished()
+        self._transaction = 'after'
         self.assertRaises(errors.OutSideTransaction, f.add_lines, '', [], [])
         self.assertRaises(errors.OutSideTransaction, f.add_lines_with_ghosts, '', [], [])
         self.assertRaises(errors.OutSideTransaction, f.join, '')
-        self.assertRaises(errors.OutSideTransaction, f.clone_text, 'base', 'bar', ['foo'])
         
-    def test_clear_cache(self):
-        f = self.get_file()
-        # on a new file it should not error
-        f.clear_cache()
-        # and after adding content, doing a clear_cache and a get should work.
-        f.add_lines('0', [], ['a'])
-        f.clear_cache()
-        self.assertEqual(['a'], f.get_lines('0'))
-
     def test_clone_text(self):
         f = self.get_file()
         f.add_lines('r0', [], ['a\n', 'b\n'])
-        f.clone_text('r1', 'r0', ['r0'])
+        self.applyDeprecated(one_four, f.clone_text, 'r1', 'r0', ['r0'])
         def verify_file(f):
             self.assertEquals(f.get_lines('r1'), f.get_lines('r0'))
             self.assertEquals(f.get_lines('r1'), ['a\n', 'b\n'])
-            self.assertEquals(f.get_parents('r1'), ['r0'])
-    
+            self.assertEqual({'r1':('r0',)}, f.get_parent_map(['r1']))
             self.assertRaises(RevisionNotPresent,
-                f.clone_text, 'r2', 'rX', [])
+                self.applyDeprecated, one_four, f.clone_text, 'r2', 'rX', [])
             self.assertRaises(RevisionAlreadyPresent,
-                f.clone_text, 'r1', 'r0', [])
+                self.applyDeprecated, one_four, f.clone_text, 'r1', 'r0', [])
         verify_file(f)
         verify_file(self.reopen_file())
-
-    def test_create_empty(self):
-        f = self.get_file()
-        f.add_lines('0', [], ['a\n'])
-        new_f = f.create_empty('t', MemoryTransport())
-        # smoke test, specific types should check it is honoured correctly for
-        # non type attributes
-        self.assertEqual([], new_f.versions())
-        self.assertTrue(isinstance(new_f, f.__class__))
 
     def test_copy_to(self):
         f = self.get_file()
         f.add_lines('0', [], ['a\n'])
         t = MemoryTransport()
         f.copy_to('foo', t)
-        for suffix in f.__class__.get_suffixes():
+        for suffix in self.get_factory().get_suffixes():
             self.assertTrue(t.has('foo' + suffix))
 
     def test_get_suffixes(self):
         f = self.get_file()
-        # should be the same
-        self.assertEqual(f.__class__.get_suffixes(), f.__class__.get_suffixes())
         # and should be a list
-        self.assertTrue(isinstance(f.__class__.get_suffixes(), list))
+        self.assertTrue(isinstance(self.get_factory().get_suffixes(), list))
 
     def build_graph(self, file, graph):
         for node in topo_sort(graph.items()):
@@ -414,7 +399,7 @@ class VersionedFileTestMixIn(object):
             'v2': ('v1', ),
             'v3': ('v2', )}
         self.build_graph(f, graph)
-        self.assertEqual(graph, f.get_graph())
+        self.assertEqual(graph, self.applyDeprecated(one_four, f.get_graph))
     
     def test_get_graph_partial(self):
         f = self.get_file()
@@ -441,10 +426,14 @@ class VersionedFileTestMixIn(object):
         simple_b_gam.update(simple_gam)
         simple_b_gam.update(simple_b)
         self.build_graph(f, complex_graph)
-        self.assertEqual(simple_a, f.get_graph(['a']))
-        self.assertEqual(simple_b, f.get_graph(['b']))
-        self.assertEqual(simple_gam, f.get_graph(['gam']))
-        self.assertEqual(simple_b_gam, f.get_graph(['b', 'gam']))
+        self.assertEqual(simple_a, self.applyDeprecated(one_four, f.get_graph,
+            ['a']))
+        self.assertEqual(simple_b, self.applyDeprecated(one_four, f.get_graph,
+            ['b']))
+        self.assertEqual(simple_gam, self.applyDeprecated(one_four,
+            f.get_graph, ['gam']))
+        self.assertEqual(simple_b_gam, self.applyDeprecated(one_four,
+            f.get_graph, ['b', 'gam']))
 
     def test_get_parents(self):
         f = self.get_file()
@@ -453,10 +442,33 @@ class VersionedFileTestMixIn(object):
         f.add_lines('r2', [], ['a\n', 'b\n'])
         f.add_lines('r3', [], ['a\n', 'b\n'])
         f.add_lines('m', ['r0', 'r1', 'r2', 'r3'], ['a\n', 'b\n'])
-        self.assertEquals(f.get_parents('m'), ['r0', 'r1', 'r2', 'r3'])
-
+        self.assertEqual(['r0', 'r1', 'r2', 'r3'],
+            self.applyDeprecated(one_four, f.get_parents, 'm'))
         self.assertRaises(RevisionNotPresent,
-            f.get_parents, 'y')
+            self.applyDeprecated, one_four, f.get_parents, 'y')
+
+    def test_get_parent_map(self):
+        f = self.get_file()
+        f.add_lines('r0', [], ['a\n', 'b\n'])
+        self.assertEqual(
+            {'r0':()}, f.get_parent_map(['r0']))
+        f.add_lines('r1', ['r0'], ['a\n', 'b\n'])
+        self.assertEqual(
+            {'r1':('r0',)}, f.get_parent_map(['r1']))
+        self.assertEqual(
+            {'r0':(),
+             'r1':('r0',)},
+            f.get_parent_map(['r0', 'r1']))
+        f.add_lines('r2', [], ['a\n', 'b\n'])
+        f.add_lines('r3', [], ['a\n', 'b\n'])
+        f.add_lines('m', ['r0', 'r1', 'r2', 'r3'], ['a\n', 'b\n'])
+        self.assertEqual(
+            {'m':('r0', 'r1', 'r2', 'r3')}, f.get_parent_map(['m']))
+        self.assertEqual({}, f.get_parent_map('y'))
+        self.assertEqual(
+            {'r0':(),
+             'r1':('r0',)},
+            f.get_parent_map(['r0', 'y', 'r1']))
 
     def test_annotate(self):
         f = self.get_file()
@@ -511,23 +523,25 @@ class VersionedFileTestMixIn(object):
         # XXX TODO a ghost
         # cases: each sample data individually:
         self.assertEqual(set([('r0', ())]),
-            set(f.iter_parents(['r0'])))
+            set(self.applyDeprecated(one_four, f.iter_parents, ['r0'])))
         self.assertEqual(set([('r1', ('r0', ))]),
-            set(f.iter_parents(['r1'])))
+            set(self.applyDeprecated(one_four, f.iter_parents, ['r1'])))
         self.assertEqual(set([('r2', ('r1', 'r0'))]),
-            set(f.iter_parents(['r2'])))
+            set(self.applyDeprecated(one_four, f.iter_parents, ['r2'])))
         # no nodes returned for a missing node
         self.assertEqual(set(),
-            set(f.iter_parents(['missing'])))
+            set(self.applyDeprecated(one_four, f.iter_parents, ['missing'])))
         # 1 node returned with missing nodes skipped
         self.assertEqual(set([('r1', ('r0', ))]),
-            set(f.iter_parents(['ghost1', 'r1', 'ghost'])))
+            set(self.applyDeprecated(one_four, f.iter_parents, ['ghost1', 'r1',
+                'ghost'])))
         # 2 nodes returned
         self.assertEqual(set([('r0', ()), ('r1', ('r0', ))]),
-            set(f.iter_parents(['r0', 'r1'])))
+            set(self.applyDeprecated(one_four, f.iter_parents, ['r0', 'r1'])))
         # 2 nodes returned, missing skipped
         self.assertEqual(set([('r0', ()), ('r1', ('r0', ))]),
-            set(f.iter_parents(['a', 'r0', 'b', 'r1', 'c'])))
+            set(self.applyDeprecated(one_four, f.iter_parents,
+                ['a', 'r0', 'b', 'r1', 'c'])))
 
     def test_iter_lines_added_or_present_in_versions(self):
         # test that we get at least an equalset of the lines added by
@@ -560,18 +574,14 @@ class VersionedFileTestMixIn(object):
                      ['base\n', 'lancestor\n', 'otherchild\n'])
         def iter_with_versions(versions, expected):
             # now we need to see what lines are returned, and how often.
-            lines = {'base\n':0,
-                     'lancestor\n':0,
-                     'rancestor\n':0,
-                     'child\n':0,
-                     'otherchild\n':0,
-                     }
+            lines = {}
             progress = InstrumentedProgress()
             # iterate over the lines
-            for line in vf.iter_lines_added_or_present_in_versions(versions, 
+            for line in vf.iter_lines_added_or_present_in_versions(versions,
                 pb=progress):
+                lines.setdefault(line, 0)
                 lines[line] += 1
-            if []!= progress.updates: 
+            if []!= progress.updates:
                 self.assertEqual(expected, progress.updates)
             return lines
         lines = iter_with_versions(['child', 'otherchild'],
@@ -579,8 +589,8 @@ class VersionedFileTestMixIn(object):
                                     ('Walking content.', 1, 2),
                                     ('Walking content.', 2, 2)])
         # we must see child and otherchild
-        self.assertTrue(lines['child\n'] > 0)
-        self.assertTrue(lines['otherchild\n'] > 0)
+        self.assertTrue(lines[('child\n', 'child')] > 0)
+        self.assertTrue(lines[('otherchild\n', 'otherchild')] > 0)
         # we dont care if we got more than that.
         
         # test all lines
@@ -591,11 +601,11 @@ class VersionedFileTestMixIn(object):
                                           ('Walking content.', 4, 5),
                                           ('Walking content.', 5, 5)])
         # all lines must be seen at least once
-        self.assertTrue(lines['base\n'] > 0)
-        self.assertTrue(lines['lancestor\n'] > 0)
-        self.assertTrue(lines['rancestor\n'] > 0)
-        self.assertTrue(lines['child\n'] > 0)
-        self.assertTrue(lines['otherchild\n'] > 0)
+        self.assertTrue(lines[('base\n', 'base')] > 0)
+        self.assertTrue(lines[('lancestor\n', 'lancestor')] > 0)
+        self.assertTrue(lines[('rancestor\n', 'rancestor')] > 0)
+        self.assertTrue(lines[('child\n', 'child')] > 0)
+        self.assertTrue(lines[('otherchild\n', 'otherchild')] > 0)
 
     def test_add_lines_with_ghosts(self):
         # some versioned file formats allow lines to be added with parent
@@ -611,43 +621,47 @@ class VersionedFileTestMixIn(object):
             vf.add_lines_with_ghosts('notbxbfse', [parent_id_utf8], [])
         except NotImplementedError:
             # check the other ghost apis are also not implemented
-            self.assertRaises(NotImplementedError, vf.has_ghost, 'foo')
             self.assertRaises(NotImplementedError, vf.get_ancestry_with_ghosts, ['foo'])
             self.assertRaises(NotImplementedError, vf.get_parents_with_ghosts, 'foo')
-            self.assertRaises(NotImplementedError, vf.get_graph_with_ghosts)
             return
         vf = self.reopen_file()
         # test key graph related apis: getncestry, _graph, get_parents
         # has_version
         # - these are ghost unaware and must not be reflect ghosts
         self.assertEqual(['notbxbfse'], vf.get_ancestry('notbxbfse'))
-        self.assertEqual([], vf.get_parents('notbxbfse'))
-        self.assertEqual({'notbxbfse':()}, vf.get_graph())
+        self.assertEqual([],
+            self.applyDeprecated(one_four, vf.get_parents, 'notbxbfse'))
+        self.assertEqual({'notbxbfse':()}, self.applyDeprecated(one_four,
+            vf.get_graph))
         self.assertFalse(vf.has_version(parent_id_utf8))
         # we have _with_ghost apis to give us ghost information.
         self.assertEqual([parent_id_utf8, 'notbxbfse'], vf.get_ancestry_with_ghosts(['notbxbfse']))
         self.assertEqual([parent_id_utf8], vf.get_parents_with_ghosts('notbxbfse'))
-        self.assertEqual({'notbxbfse':[parent_id_utf8]}, vf.get_graph_with_ghosts())
-        self.assertTrue(vf.has_ghost(parent_id_utf8))
+        self.assertEqual({'notbxbfse':(parent_id_utf8,)},
+            self.applyDeprecated(one_four, vf.get_graph_with_ghosts))
+        self.assertTrue(self.applyDeprecated(one_four, vf.has_ghost,
+            parent_id_utf8))
         # if we add something that is a ghost of another, it should correct the
         # results of the prior apis
         vf.add_lines(parent_id_utf8, [], [])
         self.assertEqual([parent_id_utf8, 'notbxbfse'], vf.get_ancestry(['notbxbfse']))
-        self.assertEqual([parent_id_utf8], vf.get_parents('notbxbfse'))
+        self.assertEqual({'notbxbfse':(parent_id_utf8,)},
+            vf.get_parent_map(['notbxbfse']))
         self.assertEqual({parent_id_utf8:(),
                           'notbxbfse':(parent_id_utf8, ),
                           },
-                         vf.get_graph())
+                         self.applyDeprecated(one_four, vf.get_graph))
         self.assertTrue(vf.has_version(parent_id_utf8))
         # we have _with_ghost apis to give us ghost information.
         self.assertEqual([parent_id_utf8, 'notbxbfse'],
             vf.get_ancestry_with_ghosts(['notbxbfse']))
         self.assertEqual([parent_id_utf8], vf.get_parents_with_ghosts('notbxbfse'))
-        self.assertEqual({parent_id_utf8:[],
-                          'notbxbfse':[parent_id_utf8],
+        self.assertEqual({parent_id_utf8:(),
+                          'notbxbfse':(parent_id_utf8,),
                           },
-                         vf.get_graph_with_ghosts())
-        self.assertFalse(vf.has_ghost(parent_id_utf8))
+            self.applyDeprecated(one_four, vf.get_graph_with_ghosts))
+        self.assertFalse(self.applyDeprecated(one_four, vf.has_ghost,
+            parent_id_utf8))
 
     def test_add_lines_with_ghosts_after_normal_revs(self):
         # some versioned file formats allow lines to be added with parent
@@ -657,10 +671,9 @@ class VersionedFileTestMixIn(object):
         vf = self.get_file()
         # probe for ghost support
         try:
-            vf.has_ghost('hoo')
+            vf.add_lines_with_ghosts('base', [], ['line\n', 'line_b\n'])
         except NotImplementedError:
             return
-        vf.add_lines_with_ghosts('base', [], ['line\n', 'line_b\n'])
         vf.add_lines_with_ghosts('references_ghost',
                                  ['base', 'a_ghost'],
                                  ['line\n', 'line_b\n', 'line_c\n'])
@@ -681,9 +694,8 @@ class VersionedFileTestMixIn(object):
                           [],
                           [])
         self.assertRaises(errors.ReadOnlyError, vf.join, 'base')
-        self.assertRaises(errors.ReadOnlyError, vf.clone_text, 'base', 'bar', ['foo'])
     
-    def test_get_sha1(self):
+    def test_get_sha1s(self):
         # check the sha1 data is available
         vf = self.get_file()
         # a simple file
@@ -692,13 +704,16 @@ class VersionedFileTestMixIn(object):
         vf.add_lines('b', ['a'], ['a\n'])
         # a file differing only in last newline.
         vf.add_lines('c', [], ['a'])
+        # Deprecasted single-version API.
         self.assertEqual(
-            '3f786850e387550fdab836ed7e6dc881de23001b', vf.get_sha1('a'))
+            '3f786850e387550fdab836ed7e6dc881de23001b',
+            self.applyDeprecated(one_four, vf.get_sha1, 'a'))
         self.assertEqual(
-            '3f786850e387550fdab836ed7e6dc881de23001b', vf.get_sha1('b'))
+            '3f786850e387550fdab836ed7e6dc881de23001b',
+            self.applyDeprecated(one_four, vf.get_sha1, 'b'))
         self.assertEqual(
-            '86f7e437faa5a7fce15d1ddcb9eaeaea377667b8', vf.get_sha1('c'))
-
+            '86f7e437faa5a7fce15d1ddcb9eaeaea377667b8',
+            self.applyDeprecated(one_four, vf.get_sha1, 'c'))
         self.assertEqual(['3f786850e387550fdab836ed7e6dc881de23001b',
                           '86f7e437faa5a7fce15d1ddcb9eaeaea377667b8',
                           '3f786850e387550fdab836ed7e6dc881de23001b'],
@@ -708,10 +723,12 @@ class VersionedFileTestMixIn(object):
 class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
 
     def get_file(self, name='foo'):
-        return WeaveFile(name, get_transport(self.get_url('.')), create=True)
+        return WeaveFile(name, get_transport(self.get_url('.')), create=True,
+            get_scope=self.get_transaction)
 
     def get_file_corrupted_text(self):
-        w = WeaveFile('foo', get_transport(self.get_url('.')), create=True)
+        w = WeaveFile('foo', get_transport(self.get_url('.')), create=True,
+            get_scope=self.get_transaction)
         w.add_lines('v1', [], ['hello\n'])
         w.add_lines('v2', ['v1'], ['hello\n', 'there\n'])
         
@@ -745,13 +762,15 @@ class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
         return w
 
     def reopen_file(self, name='foo', create=False):
-        return WeaveFile(name, get_transport(self.get_url('.')), create=create)
+        return WeaveFile(name, get_transport(self.get_url('.')), create=create,
+            get_scope=self.get_transaction)
 
     def test_no_implicit_create(self):
         self.assertRaises(errors.NoSuchFile,
                           WeaveFile,
                           'foo',
-                          get_transport(self.get_url('.')))
+                          get_transport(self.get_url('.')),
+                          get_scope=self.get_transaction)
 
     def get_factory(self):
         return WeaveFile
@@ -761,10 +780,10 @@ class TestKnit(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
 
     def get_file(self, name='foo'):
         return self.get_factory()(name, get_transport(self.get_url('.')),
-                                  delta=True, create=True)
+            delta=True, create=True, get_scope=self.get_transaction)
 
     def get_factory(self):
-        return KnitVersionedFile
+        return make_file_knit
 
     def get_file_corrupted_text(self):
         knit = self.get_file()
@@ -782,23 +801,81 @@ class TestKnit(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
         knit.check()
 
     def test_no_implicit_create(self):
-        self.assertRaises(errors.NoSuchFile,
-                          KnitVersionedFile,
-                          'foo',
-                          get_transport(self.get_url('.')))
+        self.assertRaises(errors.NoSuchFile, self.get_factory(), 'foo',
+            get_transport(self.get_url('.')))
 
 
 class TestPlaintextKnit(TestKnit):
     """Test a knit with no cached annotations"""
 
-    def _factory(self, name, transport, file_mode=None, access_mode=None,
-                 delta=True, create=False):
-        return KnitVersionedFile(name, transport, file_mode, access_mode,
-                                 KnitPlainFactory(), delta=delta,
-                                 create=create)
-
     def get_factory(self):
-        return self._factory
+        return make_file_knit
+
+
+class TestPlanMergeVersionedFile(TestCaseWithMemoryTransport):
+
+    def setUp(self):
+        TestCaseWithMemoryTransport.setUp(self)
+        self.vf1 = make_file_knit('root', self.get_transport(), create=True)
+        self.vf2 = make_file_knit('root', self.get_transport(), create=True)
+        self.plan_merge_vf = versionedfile._PlanMergeVersionedFile('root',
+            [self.vf1, self.vf2])
+
+    def test_add_lines(self):
+        self.plan_merge_vf.add_lines('a:', [], [])
+        self.assertRaises(ValueError, self.plan_merge_vf.add_lines, 'a', [],
+                          [])
+        self.assertRaises(ValueError, self.plan_merge_vf.add_lines, 'a:', None,
+                          [])
+        self.assertRaises(ValueError, self.plan_merge_vf.add_lines, 'a:', [],
+                          None)
+
+    def test_ancestry(self):
+        self.vf1.add_lines('A', [], [])
+        self.vf1.add_lines('B', ['A'], [])
+        self.plan_merge_vf.add_lines('C:', ['B'], [])
+        self.plan_merge_vf.add_lines('D:', ['C:'], [])
+        self.assertEqual(set(['A', 'B', 'C:', 'D:']),
+            self.plan_merge_vf.get_ancestry('D:', topo_sorted=False))
+
+    def setup_abcde(self):
+        self.vf1.add_lines('A', [], ['a'])
+        self.vf1.add_lines('B', ['A'], ['b'])
+        self.vf2.add_lines('C', [], ['c'])
+        self.vf2.add_lines('D', ['C'], ['d'])
+        self.plan_merge_vf.add_lines('E:', ['B', 'D'], ['e'])
+
+    def test_ancestry_uses_all_versionedfiles(self):
+        self.setup_abcde()
+        self.assertEqual(set(['A', 'B', 'C', 'D', 'E:']),
+            self.plan_merge_vf.get_ancestry('E:', topo_sorted=False))
+
+    def test_ancestry_raises_revision_not_present(self):
+        error = self.assertRaises(errors.RevisionNotPresent,
+                                  self.plan_merge_vf.get_ancestry, 'E:', False)
+        self.assertContainsRe(str(error), '{E:} not present in "root"')
+
+    def test_get_parents(self):
+        self.setup_abcde()
+        self.assertEqual({'B':('A',)}, self.plan_merge_vf.get_parent_map(['B']))
+        self.assertEqual({'D':('C',)}, self.plan_merge_vf.get_parent_map(['D']))
+        self.assertEqual({'E:':('B', 'D')},
+            self.plan_merge_vf.get_parent_map(['E:']))
+        self.assertEqual({}, self.plan_merge_vf.get_parent_map(['F']))
+        self.assertEqual({
+                'B':('A',),
+                'D':('C',),
+                'E:':('B', 'D'),
+                }, self.plan_merge_vf.get_parent_map(['B', 'D', 'E:', 'F']))
+
+    def test_get_lines(self):
+        self.setup_abcde()
+        self.assertEqual(['a'], self.plan_merge_vf.get_lines('A'))
+        self.assertEqual(['c'], self.plan_merge_vf.get_lines('C'))
+        self.assertEqual(['e'], self.plan_merge_vf.get_lines('E:'))
+        error = self.assertRaises(errors.RevisionNotPresent,
+                                  self.plan_merge_vf.get_lines, 'F')
+        self.assertContainsRe(str(error), '{F} not present in "root"')
 
 
 class InterString(versionedfile.InterVersionedFile):
@@ -868,6 +945,9 @@ class TestInterVersionedFile(TestCaseWithMemoryTransport):
 
 class TestReadonlyHttpMixin(object):
 
+    def get_transaction(self):
+        return 1
+
     def test_readonly_http_works(self):
         # we should be able to read from http with a versioned file.
         vf = self.get_file()
@@ -886,7 +966,8 @@ class TestReadonlyHttpMixin(object):
 class TestWeaveHTTP(TestCaseWithWebserver, TestReadonlyHttpMixin):
 
     def get_file(self):
-        return WeaveFile('foo', get_transport(self.get_url('.')), create=True)
+        return WeaveFile('foo', get_transport(self.get_url('.')), create=True,
+            get_scope=self.get_transaction)
 
     def get_factory(self):
         return WeaveFile
@@ -895,11 +976,11 @@ class TestWeaveHTTP(TestCaseWithWebserver, TestReadonlyHttpMixin):
 class TestKnitHTTP(TestCaseWithWebserver, TestReadonlyHttpMixin):
 
     def get_file(self):
-        return KnitVersionedFile('foo', get_transport(self.get_url('.')),
-                                 delta=True, create=True)
+        return make_file_knit('foo', get_transport(self.get_url('.')),
+            delta=True, create=True, get_scope=self.get_transaction)
 
     def get_factory(self):
-        return KnitVersionedFile
+        return make_file_knit
 
 
 class MergeCasesMixin(object):
@@ -1142,7 +1223,7 @@ class MergeCasesMixin(object):
 class TestKnitMerge(TestCaseWithMemoryTransport, MergeCasesMixin):
 
     def get_file(self, name='foo'):
-        return KnitVersionedFile(name, get_transport(self.get_url('.')),
+        return make_file_knit(name, get_transport(self.get_url('.')),
                                  delta=True, create=True)
 
     def log_contents(self, w):
@@ -1162,23 +1243,3 @@ class TestWeaveMerge(TestCaseWithMemoryTransport, MergeCasesMixin):
 
     overlappedInsertExpected = ['aaa', '<<<<<<< ', 'xxx', 'yyy', '=======', 
                                 'xxx', '>>>>>>> ', 'bbb']
-
-
-class TestFormatSignatures(TestCaseWithMemoryTransport):
-
-    def get_knit_file(self, name, annotated):
-        if annotated:
-            factory = KnitAnnotateFactory()
-        else:
-            factory = KnitPlainFactory()
-        return KnitVersionedFile(
-            name, get_transport(self.get_url('.')), create=True,
-            factory=factory)
-
-    def test_knit_format_signatures(self):
-        """Different formats of knit have different signature strings."""
-        knit = self.get_knit_file('a', True)
-        self.assertEqual('knit-annotated', knit.get_format_signature())
-        knit = self.get_knit_file('p', False)
-        self.assertEqual('knit-plain', knit.get_format_signature())
-

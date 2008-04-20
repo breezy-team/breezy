@@ -16,7 +16,7 @@
 
 
 # The newly committed revision is going to have a shape corresponding
-# to that of the working inventory.  Files that are not in the
+# to that of the working tree.  Files that are not in the
 # working tree and that were in the predecessor are reported as
 # removed --- this can include files that were either removed from the
 # inventory or deleted in the working tree.  If they were only
@@ -25,7 +25,7 @@
 # We then consider the remaining entries, which will be in the new
 # version.  Directory entries are simply copied across.  File entries
 # must be checked to see if a new version of the file should be
-# recorded.  For each parent revision inventory, we check to see what
+# recorded.  For each parent revision tree, we check to see what
 # version of the file was present.  If the file was present in at
 # least one tree, and if it was the same version in all the trees,
 # then we can just refer to that version.  Otherwise, a new version
@@ -59,7 +59,7 @@ from cStringIO import StringIO
 from bzrlib import (
     debug,
     errors,
-    inventory,
+    revision,
     tree,
     )
 from bzrlib.branch import Branch
@@ -71,11 +71,13 @@ from bzrlib.errors import (BzrError, PointlessCommit,
 from bzrlib.osutils import (kind_marker, isdir,isfile, is_inside_any,
                             is_inside_or_parent_of_any,
                             minimum_path_selection,
-                            quotefn, sha_file, split_lines)
+                            quotefn, sha_file, split_lines,
+                            splitpath,
+                            )
 from bzrlib.testament import Testament
 from bzrlib.trace import mutter, note, warning, is_quiet
 from bzrlib.xml5 import serializer_v5
-from bzrlib.inventory import Inventory, InventoryEntry
+from bzrlib.inventory import InventoryEntry, make_entry
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (deprecated_passed,
         deprecated_function,
@@ -89,6 +91,10 @@ class NullCommitReporter(object):
     """I report on progress of a commit."""
 
     def started(self, revno, revid, location=None):
+        if location is None:
+            symbol_versioning.warn("As of bzr 1.0 you must pass a location "
+                                   "to started.", DeprecationWarning,
+                                   stacklevel=2)
         pass
 
     def snapshot_change(self, change, path):
@@ -131,10 +137,15 @@ class ReportCommitToLog(NullCommitReporter):
 
     def started(self, revno, rev_id, location=None):
         if location is not None:
-            location = ' to "' + unescape_for_display(location, 'utf-8') + '"'
+            location = ' to: ' + unescape_for_display(location, 'utf-8')
         else:
+            # When started was added, location was only made optional by
+            # accident.  Matt Nordhoff 20071129
+            symbol_versioning.warn("As of bzr 1.0 you must pass a location "
+                                   "to started.", DeprecationWarning,
+                                   stacklevel=2)
             location = ''
-        self._note('Committing revision %d%s.', revno, location)
+        self._note('Committing%s', location)
 
     def completed(self, revno, rev_id):
         self._note('Committed revision %d.', revno)
@@ -263,9 +274,13 @@ class Commit(object):
         self.committer = committer
         self.strict = strict
         self.verbose = verbose
+        # accumulates an inventory delta to the basis entry, so we can make
+        # just the necessary updates to the workingtree's cached basis.
+        self._basis_delta = []
 
         self.work_tree.lock_write()
         self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        self.basis_revid = self.work_tree.last_revision()
         self.basis_tree = self.work_tree.basis_tree()
         self.basis_tree.lock_read()
         try:
@@ -338,6 +353,7 @@ class Commit(object):
                 self.reporter.started(new_revno, self.rev_id, master_location)
 
                 self._update_builder_with_changes()
+                self._report_and_accumulate_deletes()
                 self._check_pointless()
 
                 # TODO: Now the new inventory is known, check for conflicts.
@@ -365,9 +381,11 @@ class Commit(object):
             # Upload revision data to the master.
             # this will propagate merged revisions too if needed.
             if self.bound_branch:
-                self._set_progress_stage("Uploading data to master branch")
-                self.master_branch.repository.fetch(self.branch.repository,
-                                                    revision_id=self.rev_id)
+                if not self.master_branch.repository.has_same_location(
+                        self.branch.repository):
+                    self._set_progress_stage("Uploading data to master branch")
+                    self.master_branch.repository.fetch(self.branch.repository,
+                        revision_id=self.rev_id)
                 # now the master has the revision data
                 # 'commit' to the master first so a timeout here causes the
                 # local branch to be out of date
@@ -379,8 +397,8 @@ class Commit(object):
 
             # Make the working tree up to date with the branch
             self._set_progress_stage("Updating the working tree")
-            rev_tree = self.builder.revision_tree()
-            self.work_tree.set_parent_trees([(self.rev_id, rev_tree)])
+            self.work_tree.update_basis_by_delta(self.rev_id,
+                 self._basis_delta)
             self.reporter.completed(new_revno, self.rev_id)
             self._process_post_hooks(old_revno, new_revno)
         finally:
@@ -399,18 +417,19 @@ class Commit(object):
         # A merge with no effect on files
         if len(self.parents) > 1:
             return
-        # work around the fact that a newly-initted tree does differ from its
-        # basis
-        if len(self.basis_inv) == 0 and len(self.builder.new_inventory) == 1:
+        # TODO: we could simplify this by using self._basis_delta.
+
+        # The initial commit adds a root directory, but this in itself is not
+        # a worthwhile commit.
+        if (self.basis_revid == revision.NULL_REVISION and
+            len(self.builder.new_inventory) == 1):
             raise PointlessCommit()
-        # Shortcut, if the number of entries changes, then we obviously have
-        # a change
-        if len(self.builder.new_inventory) != len(self.basis_inv):
-            return
         # If length == 1, then we only have the root entry. Which means
         # that there is no real difference (only the root could be different)
-        if len(self.builder.new_inventory) != 1 and (self.any_entries_changed
-            or self.any_entries_deleted):
+        # unless deletes occured, in which case the length is irrelevant.
+        if (self.any_entries_deleted or 
+            (len(self.builder.new_inventory) != 1 and
+             self.any_entries_changed)):
             return
         raise PointlessCommit()
 
@@ -633,13 +652,6 @@ class Commit(object):
         specific_files = self.specific_files
         mutter("Selecting files for commit with filter %s", specific_files)
 
-        # Check and warn about old CommitBuilders
-        if not self.builder.record_root_entry:
-            symbol_versioning.warn('CommitBuilders should support recording'
-                ' the root entry as of bzr 0.10.', DeprecationWarning, 
-                stacklevel=1)
-            self.builder.new_inventory.add(self.basis_inv.root.copy())
-
         # Build the new inventory
         self._populate_from_inventory(specific_files)
 
@@ -669,15 +681,22 @@ class Commit(object):
                     ie, self.parent_invs, path, self.basis_tree, None)
                 if version_recorded:
                     self.any_entries_changed = True
+                if delta: self._basis_delta.append(delta)
 
-        # note that deletes have occurred
-        if set(self.basis_inv._byid.keys()) - set(self.builder.new_inventory._byid.keys()):
+    def _report_and_accumulate_deletes(self):
+        # XXX: Could the list of deleted paths and ids be instead taken from
+        # _populate_from_inventory?
+        deleted_ids = set(self.basis_inv._byid.keys()) - \
+            set(self.builder.new_inventory._byid.keys())
+        if deleted_ids:
             self.any_entries_deleted = True
-        # Report what was deleted.
-        if self.any_entries_deleted and self.reporter.is_verbose():
-            for path, ie in self.basis_inv.iter_entries():
-                if ie.file_id not in self.builder.new_inventory:
-                    self.reporter.deleted(path)
+            deleted = [(self.basis_tree.id2path(file_id), file_id)
+                for file_id in deleted_ids]
+            deleted.sort()
+            # XXX: this is not quite directory-order sorting
+            for path, file_id in deleted:
+                self._basis_delta.append((path, None, file_id, None))
+                self.reporter.deleted(path)
 
     def _populate_from_inventory(self, specific_files):
         """Populate the CommitBuilder by walking the working tree inventory."""
@@ -688,14 +707,14 @@ class Commit(object):
                
         report_changes = self.reporter.is_verbose()
         deleted_ids = []
-        deleted_paths = set()
+        # A tree of paths that have been deleted. E.g. if foo/bar has been
+        # deleted, then we have {'foo':{'bar':{}}}
+        deleted_paths = {}
+        # XXX: Note that entries may have the wrong kind because the entry does
+        # not reflect the status on disk.
         work_inv = self.work_tree.inventory
-        assert work_inv.root is not None
-        # XXX: Note that entries may have the wrong kind.
         entries = work_inv.iter_entries_by_dir(
             specific_file_ids=self.specific_file_ids, yield_parents=True)
-        if not self.builder.record_root_entry:
-            entries.next()
         for path, existing_ie in entries:
             file_id = existing_ie.file_id
             name = existing_ie.name
@@ -704,16 +723,34 @@ class Commit(object):
             if kind == 'directory':
                 self._next_progress_entry()
             # Skip files that have been deleted from the working tree.
-            # The deleted files/directories are also recorded so they
-            # can be explicitly unversioned later. Note that when a
-            # filter of specific files is given, we must only skip/record
-            # deleted files matching that filter.
-            if is_inside_any(deleted_paths, path):
-                continue
+            # The deleted path ids are also recorded so they can be explicitly
+            # unversioned later.
+            if deleted_paths:
+                path_segments = splitpath(path)
+                deleted_dict = deleted_paths
+                for segment in path_segments:
+                    deleted_dict = deleted_dict.get(segment, None)
+                    if not deleted_dict:
+                        # We either took a path not present in the dict
+                        # (deleted_dict was None), or we've reached an empty
+                        # child dir in the dict, so are now a sub-path.
+                        break
+                else:
+                    deleted_dict = None
+                if deleted_dict is not None:
+                    # the path has a deleted parent, do not add it.
+                    continue
             content_summary = self.work_tree.path_content_summary(path)
+            # Note that when a filter of specific files is given, we must only
+            # skip/record deleted files matching that filter.
             if not specific_files or is_inside_any(specific_files, path):
                 if content_summary[0] == 'missing':
-                    deleted_paths.add(path)
+                    if not deleted_paths:
+                        # path won't have been split yet.
+                        path_segments = splitpath(path)
+                    deleted_dict = deleted_paths
+                    for segment in path_segments:
+                        deleted_dict = deleted_dict.setdefault(segment, {})
                     self.reporter.missing(path)
                     deleted_ids.append(file_id)
                     continue
@@ -781,12 +818,14 @@ class Commit(object):
         # mutter('check %s {%s}', path, file_id)
         # mutter('%s selected for commit', path)
         if definitely_changed or existing_ie is None:
-            ie = inventory.make_entry(kind, name, parent_id, file_id)
+            ie = make_entry(kind, name, parent_id, file_id)
         else:
             ie = existing_ie.copy()
             ie.revision = None
         delta, version_recorded = self.builder.record_entry_contents(ie,
             self.parent_invs, path, self.work_tree, content_summary)
+        if delta:
+            self._basis_delta.append(delta)
         if version_recorded:
             self.any_entries_changed = True
         if report_changes:

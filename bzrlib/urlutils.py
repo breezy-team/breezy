@@ -274,7 +274,8 @@ def _win32_local_path_to_url(path):
     # check for UNC path \\HOST\path
     if win32_path.startswith('//'):
         return 'file:' + escape(win32_path)
-    return 'file:///' + win32_path[0].upper() + ':' + escape(win32_path[2:])
+    return ('file:///' + str(win32_path[0].upper()) + ':' +
+        escape(win32_path[2:]))
 
 
 local_path_to_url = _posix_local_path_to_url
@@ -370,6 +371,11 @@ def relative_url(base, other):
     other_scheme = other[:other_first_slash]
     if base_scheme != other_scheme:
         return other
+    elif sys.platform == 'win32' and base_scheme == 'file://':
+        base_drive = base[base_first_slash+1:base_first_slash+3]
+        other_drive = other[other_first_slash+1:other_first_slash+3]
+        if base_drive != other_drive:
+            return other
 
     base_path = base[base_first_slash+1:]
     other_path = other[other_first_slash+1:]

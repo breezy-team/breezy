@@ -52,10 +52,11 @@ class TestBreakLock(TestCaseWithRepository):
     def test_locked(self):
         # break_lock when locked should
         self.repo.lock_write()
-        try:
-            self.unused_repo.break_lock()
-        except NotImplementedError:
-            # repository does not support break_lock
+        self.assertEqual(self.repo.get_physical_lock_status(),
+            self.unused_repo.get_physical_lock_status())
+        if not self.unused_repo.get_physical_lock_status():
+            # 'lock_write' has not taken a physical mutex out.
             self.repo.unlock()
             return
+        self.unused_repo.break_lock()
         self.assertRaises(errors.LockBroken, self.repo.unlock)

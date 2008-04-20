@@ -496,7 +496,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
             (None, u'dir'),
             (None, 'directory'),
             (None, False))]
-        self.assertEqual(expected, list(tree._iter_changes(tree.basis_tree(),
+        self.assertEqual(expected, list(tree.iter_changes(tree.basis_tree(),
             specific_files=['dir'])))
         tree.unlock()
         # do a commit, we want to trigger the dirstate fast-path too
@@ -514,7 +514,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
             ('dir', 'dir'),
             ('directory', None),
             (False, False))]
-        self.assertEqual(expected, list(tree._iter_changes(tree.basis_tree())))
+        self.assertEqual(expected, list(tree.iter_changes(tree.basis_tree())))
         tree.unlock()
 
     def test_with_subtree_supports_tree_references(self):
@@ -526,7 +526,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # workingtree_4.
 
     def test_iter_changes_ignores_unversioned_dirs(self):
-        """_iter_changes should not descend into unversioned directories."""
+        """iter_changes should not descend into unversioned directories."""
         tree = self.make_branch_and_tree('.', format='dirstate')
         # We have an unversioned directory at the root, a versioned one with
         # other versioned files and an unversioned directory, and another
@@ -564,13 +564,109 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         basis.lock_read()
         self.addCleanup(basis.unlock)
         changes = [c[1] for c in
-                   tree._iter_changes(basis, want_unversioned=True)]
+                   tree.iter_changes(basis, want_unversioned=True)]
         self.assertEqual([(None, 'unversioned'),
                           (None, 'versioned/unversioned'),
                           (None, 'versioned2/unversioned'),
                          ], changes)
         self.assertEqual(['', 'versioned', 'versioned2'], returned)
         del returned[:] # reset
-        changes = [c[1] for c in tree._iter_changes(basis)]
+        changes = [c[1] for c in tree.iter_changes(basis)]
         self.assertEqual([], changes)
         self.assertEqual(['', 'versioned', 'versioned2'], returned)
+
+
+class TestCorruptDirstate(TestCaseWithTransport):
+    """Tests for how we handle when the dirstate has been corrupted."""
+
+    def create_wt4(self):
+        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
+        control.create_repository()
+        control.create_branch()
+        tree = workingtree_4.WorkingTreeFormat4().initialize(control)
+        return tree
+
+    def test_invalid_rename(self):
+        tree = self.create_wt4()
+        # Create a corrupted dirstate
+        tree.lock_write()
+        try:
+            tree.commit('init') # We need a parent, or we always compare with NULL
+            state = tree.current_dirstate()
+            state._read_dirblocks_if_needed()
+            # Now add in an invalid entry, a rename with a dangling pointer
+            state._dirblocks[1][1].append((('', 'foo', 'foo-id'),
+                                            [('f', '', 0, False, ''),
+                                             ('r', 'bar', 0 , False, '')]))
+            self.assertListRaises(errors.CorruptDirstate,
+                                  tree.iter_changes, tree.basis_tree())
+        finally:
+            tree.unlock()
+
+    def get_simple_dirblocks(self, state):
+        """Extract the simple information from the DirState.
+
+        This returns the dirblocks, only with the sha1sum and stat details
+        filtered out.
+        """
+        simple_blocks = []
+        for block in state._dirblocks:
+            simple_block = (block[0], [])
+            for entry in block[1]:
+                # Include the key for each entry, and for each parent include
+                # just the minikind, so we know if it was
+                # present/absent/renamed/etc
+                simple_block[1].append((entry[0], [i[0] for i in entry[1]]))
+            simple_blocks.append(simple_block)
+        return simple_blocks
+
+    def test_update_basis_with_invalid_delta(self):
+        """When given an invalid delta, it should abort, and not be saved."""
+        self.build_tree(['dir/', 'dir/file'])
+        tree = self.create_wt4()
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.add(['dir', 'dir/file'], ['dir-id', 'file-id'])
+        first_revision_id = tree.commit('init')
+
+        root_id = tree.path2id('')
+        state = tree.current_dirstate()
+        state._read_dirblocks_if_needed()
+        self.assertEqual([
+            ('', [(('', '', root_id), ['d', 'd'])]),
+            ('', [(('', 'dir', 'dir-id'), ['d', 'd'])]),
+            ('dir', [(('dir', 'file', 'file-id'), ['f', 'f'])]),
+        ],  self.get_simple_dirblocks(state))
+
+        tree.remove(['dir/file'])
+        self.assertEqual([
+            ('', [(('', '', root_id), ['d', 'd'])]),
+            ('', [(('', 'dir', 'dir-id'), ['d', 'd'])]),
+            ('dir', [(('dir', 'file', 'file-id'), ['a', 'f'])]),
+        ],  self.get_simple_dirblocks(state))
+        # Make sure the removal is written to disk
+        tree.flush()
+
+        # self.assertRaises(Exception, tree.update_basis_by_delta,
+        new_dir = inventory.InventoryDirectory('dir-id', 'new-dir', root_id)
+        new_dir.revision = 'new-revision-id'
+        new_file = inventory.InventoryFile('file-id', 'new-file', root_id)
+        new_file.revision = 'new-revision-id'
+        self.assertRaises(errors.InconsistentDelta,
+            tree.update_basis_by_delta, 'new-revision-id',
+            [('dir', 'new-dir', 'dir-id', new_dir),
+             ('dir/file', 'new-dir/new-file', 'file-id', new_file),
+            ])
+        del state
+
+        # Now when we re-read the file it should not have been modified
+        tree.unlock()
+        tree.lock_read()
+        self.assertEqual(first_revision_id, tree.last_revision())
+        state = tree.current_dirstate()
+        state._read_dirblocks_if_needed()
+        self.assertEqual([
+            ('', [(('', '', root_id), ['d', 'd'])]),
+            ('', [(('', 'dir', 'dir-id'), ['d', 'd'])]),
+            ('dir', [(('dir', 'file', 'file-id'), ['a', 'f'])]),
+        ],  self.get_simple_dirblocks(state))

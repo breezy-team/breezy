@@ -26,9 +26,10 @@ rather than in tests/interrepository_implementations/*.py.
 """
 
 from bzrlib.repository import (
-                               InterRepository,
-                               InterModel1and2,
+                               InterKnitRepo,
                                InterKnit1and2,
+                               InterModel1and2,
+                               InterRepository,
                                )
 from bzrlib.tests import (
                           adapt_modules,
@@ -62,7 +63,10 @@ class InterRepositoryTestProviderAdapter(TestScenarioApplier):
         """
         result = []
         for interrepo_class, repository_format, repository_format_to in formats:
-            scenario = (interrepo_class.__name__,
+            id = '%s,%s,%s' % (interrepo_class.__name__,
+                                repository_format.__class__.__name__,
+                                repository_format_to.__class__.__name__)
+            scenario = (id,
                 {"transport_server":self._transport_server,
                  "transport_readonly_server":self._transport_readonly_server,
                  "repository_format":repository_format,
@@ -75,7 +79,7 @@ class InterRepositoryTestProviderAdapter(TestScenarioApplier):
     @staticmethod
     def default_test_list():
         """Generate the default list of interrepo permutations to test."""
-        from bzrlib.repofmt import knitrepo, weaverepo
+        from bzrlib.repofmt import knitrepo, pack_repo, weaverepo
         result = []
         # test the default InterRepository between format 6 and the current 
         # default format.
@@ -94,8 +98,23 @@ class InterRepositoryTestProviderAdapter(TestScenarioApplier):
         result.append((InterModel1and2,
                        weaverepo.RepositoryFormat5(),
                        knitrepo.RepositoryFormatKnit3()))
+        result.append((InterModel1and2,
+                       knitrepo.RepositoryFormatKnit1(),
+                       knitrepo.RepositoryFormatKnit3()))
         result.append((InterKnit1and2,
                        knitrepo.RepositoryFormatKnit1(),
+                       knitrepo.RepositoryFormatKnit3()))
+        result.append((InterKnitRepo,
+                       knitrepo.RepositoryFormatKnit1(),
+                       pack_repo.RepositoryFormatKnitPack1()))
+        result.append((InterKnitRepo,
+                       pack_repo.RepositoryFormatKnitPack1(),
+                       knitrepo.RepositoryFormatKnit1()))
+        result.append((InterKnitRepo,
+                       knitrepo.RepositoryFormatKnit3(),
+                       pack_repo.RepositoryFormatKnitPack3()))
+        result.append((InterKnitRepo,
+                       pack_repo.RepositoryFormatKnitPack3(),
                        knitrepo.RepositoryFormatKnit3()))
         return result
 

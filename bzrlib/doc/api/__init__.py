@@ -26,7 +26,9 @@ For details on specific apis, see pydoc on the api, or read the source.
 
 import doctest
 import os
-    
+
+from bzrlib import tests
+
 def test_suite():
     dir_ = os.path.dirname(__file__)
     if os.path.isdir(dir_):
@@ -35,4 +37,12 @@ def test_suite():
         candidates = []
     scripts = [candidate for candidate in candidates
                if candidate.endswith('.txt')]
-    return doctest.DocFileSuite(*scripts)
+    suite = doctest.DocFileSuite(*scripts)
+    # DocFileCase reduces the test id to the base name of the tested file, we
+    # want the module to appears there.
+    for t in tests.iter_suite_tests(suite):
+        def make_new_test_id():
+            new_id = '%s.DocFileTest(%s)' % ( __name__, t)
+            return lambda: new_id
+        t.id = make_new_test_id()
+    return suite

@@ -52,6 +52,16 @@ class TestMemoryTree(TestCaseWithTransport):
             tree.get_file(tree.path2id('foo')).read())
         tree.unlock()
 
+    def test_get_root_id(self):
+        branch = self.make_branch('branch')
+        tree = MemoryTree.create_on_branch(branch)
+        tree.lock_write()
+        try:
+            tree.add([''])
+            self.assertIsNot(None, tree.get_root_id())
+        finally:
+            tree.unlock()
+
     def test_lock_tree_write(self):
         """Check we can lock_tree_write and unlock MemoryTrees."""
         branch = self.make_branch('branch')
@@ -133,6 +143,8 @@ class TestMemoryTree(TestCaseWithTransport):
         tree.unlock()
         # and we should have a revision that is accessible outside the tree lock
         revtree = tree.branch.repository.revision_tree(revision_id)
+        revtree.lock_read()
+        self.addCleanup(revtree.unlock)
         self.assertEqual('barshoom', revtree.get_file('foo-id').read())
 
     def test_unversion(self):

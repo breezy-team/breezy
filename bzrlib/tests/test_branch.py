@@ -122,7 +122,7 @@ class TestBranchFormat5(TestCaseWithTransport):
         self.assertFileEqual("# comment\n"
                              "[%s]\n"
                              "push_location = foo\n"
-                             "push_location:policy = norecurse" % local_path,
+                             "push_location:policy = norecurse\n" % local_path,
                              fn)
 
     # TODO RBC 20051029 test getting a push location from a branch in a
@@ -334,6 +334,8 @@ class TestHooks(TestCase):
         self.assertTrue("pre_commit" in hooks, "pre_commit not in %s" % hooks)
         self.assertTrue("post_pull" in hooks, "post_pull not in %s" % hooks)
         self.assertTrue("post_uncommit" in hooks, "post_uncommit not in %s" % hooks)
+        self.assertTrue("post_change_branch_tip" in hooks,
+                        "post_change_branch_tip not in %s" % hooks)
 
     def test_installed_hooks_are_BranchHooks(self):
         """The installed hooks object should be a BranchHooks."""

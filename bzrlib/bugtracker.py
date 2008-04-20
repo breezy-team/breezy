@@ -39,6 +39,73 @@ of converting bug IDs into URLs.
 """
 
 
+_bugs_help = \
+"""When making a commit, metadata about bugs fixed by that change can be
+recorded by using the --fixes option. For each bug marked as fixed, an
+entry is included in the 'bugs' revision property stating '<url> <status>'.
+(The only ``status`` value currently supported is ``fixed.``)
+Support for Launchpad's central bug tracker is built in. For other bug
+trackers, configuration is required in advance so that the correct URL
+can be recorded.
+
+In addition to Launchpad, Bazaar directly supports the generation of
+URLs appropriate for Bugzilla and Trac. If your project uses a different
+bug tracker, it is easy to add support for it.
+If you use Bugzilla or Trac, then you only need to set a configuration
+variable which contains the base URL of the bug tracker. These options
+can go into ``bazaar.conf``, ``branch.conf`` or into a branch-specific
+configuration section in ``locations.conf``.  You can set up these values
+for each of the projects you work on.
+
+Note: As you provide a short name for each tracker, you can specify one or
+more bugs in one or more trackers at commit time if you wish.
+
+bugzilla_<tracker_abbreviation>_url
+-----------------------------------
+
+If present, the location of the Bugzilla bug tracker referred to by
+<tracker_abbreviation>. This option can then be used together with ``bzr commit
+--fixes`` to mark bugs in that tracker as being fixed by that commit. For
+example::
+
+    bugzilla_squid_url = http://www.squid-cache.org/bugs
+
+would allow ``bzr commit --fixes squid:1234`` to mark Squid's bug 1234 as
+fixed.
+
+trac_<tracker_abbrevation>_url
+------------------------------
+
+If present, the location of the Trac instance referred to by
+<tracker_abbreviation>. This option can then be used together with ``bzr commit
+--fixes`` to mark bugs in that tracker as being fixed by that commit. For
+example::
+
+    trac_twisted_url = http://www.twistedmatrix.com/trac
+
+would allow ``bzr commit --fixes twisted:1234`` to mark Twisted's bug 1234 as
+fixed.
+
+bugtracker_<tracker_abbrevation>_url
+------------------------------------
+
+If present, the location of a generic bug tracker instance referred to by
+<tracker_abbreviation>. The location must contain an ``{id}`` placeholder,
+which will be replaced by a specific bug ID. This option can then be used
+together with ``bzr commit --fixes`` to mark bugs in that tracker as being
+fixed by that commit. For example::
+
+    bugtracker_python_url = http://bugs.python.org/issue{id}
+
+would allow ``bzr commit --fixes python:1234`` to mark bug 1234 in Python's
+Roundup bug tracker as fixed, or::
+
+    bugtracker_cpan_url = http://rt.cpan.org/Public/Bug/Display.html?id={id}
+
+for CPAN's RT bug tracker.
+"""
+
+
 def get_bug_url(abbreviated_bugtracker_name, branch, bug_id):
     """Return a URL pointing to the canonical web page of the bug identified by
     'bug_id'.
@@ -65,13 +132,7 @@ class TrackerRegistry(registry.Registry):
                                                    branch)
 
     def help_topic(self, topic):
-        return textwrap.dedent("""\
-        Bazaar provides the ability to store information about bugs being fixed
-        as metadata on a revision.
-
-        For each bug marked as fixed, an entry is included in the 'bugs'
-        revision property stating '<url> <status>'.
-        """)
+        return _bugs_help
 
 
 tracker_registry = TrackerRegistry()
@@ -110,7 +171,8 @@ class UniqueIntegerBugTracker(IntegerBugTracker):
     """A style of bug tracker that exists in one place only, such as Launchpad.
 
     If you have one of these trackers then register an instance passing in an
-    abbreviated name for the bug tracker and a base URL.
+    abbreviated name for the bug tracker and a base URL. The bug ids are
+    appended directly to the URL.
     """
 
     def __init__(self, abbreviated_bugtracker_name, base_url):
@@ -126,7 +188,7 @@ class UniqueIntegerBugTracker(IntegerBugTracker):
 
     def _get_bug_url(self, bug_id):
         """Return the URL for bug_id."""
-        return urlutils.join(self.base_url, bug_id)
+        return self.base_url + bug_id
 
 
 tracker_registry.register(
@@ -135,6 +197,10 @@ tracker_registry.register(
 
 tracker_registry.register(
     'debian', UniqueIntegerBugTracker('deb', 'http://bugs.debian.org/'))
+
+
+tracker_registry.register('gnome',
+    UniqueIntegerBugTracker('gnome', 'http://bugzilla.gnome.org/show_bug.cgi?id='))
 
 
 class URLParametrizedIntegerBugTracker(IntegerBugTracker):
@@ -171,3 +237,24 @@ tracker_registry.register(
 tracker_registry.register(
     'bugzilla',
     URLParametrizedIntegerBugTracker('bugzilla', 'show_bug.cgi?id='))
+
+
+class GenericBugTracker(URLParametrizedIntegerBugTracker):
+    """Generic bug tracker specified by an URL template."""
+
+    def __init__(self):
+        super(GenericBugTracker, self).__init__('bugtracker', None)
+
+    def get(self, abbreviation, branch):
+        self._abbreviation = abbreviation
+        return super(GenericBugTracker, self).get(abbreviation, branch)
+
+    def _get_bug_url(self, bug_id):
+        """Given a validated bug_id, return the bug's web page's URL."""
+        if '{id}' not in self._base_url:
+            raise errors.InvalidBugTrackerURL(self._abbreviation,
+                                              self._base_url)
+        return self._base_url.replace('{id}', str(bug_id))
+
+
+tracker_registry.register('generic', GenericBugTracker())

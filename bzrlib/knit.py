@@ -74,6 +74,8 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     annotate,
+    graph as _mod_graph,
+    lru_cache,
     pack,
     trace,
     )
@@ -95,23 +97,28 @@ from bzrlib.errors import (
     KnitError,
     InvalidRevisionId,
     KnitCorrupt,
-    KnitDataStreamIncompatible,
     KnitHeaderError,
     RevisionNotPresent,
     RevisionAlreadyPresent,
     )
-from bzrlib.tuned_gzip import GzipFile, bytes_to_gzip
+from bzrlib.graph import Graph
 from bzrlib.osutils import (
     contains_whitespace,
     contains_linebreaks,
     sha_string,
     sha_strings,
     )
-from bzrlib.symbol_versioning import DEPRECATED_PARAMETER, deprecated_passed
+from bzrlib.symbol_versioning import (
+    DEPRECATED_PARAMETER,
+    deprecated_method,
+    deprecated_passed,
+    one_four,
+    )
 from bzrlib.tsort import topo_sort
+from bzrlib.tuned_gzip import GzipFile, bytes_to_gzip
 import bzrlib.ui
-import bzrlib.weave
 from bzrlib.versionedfile import VersionedFile, InterVersionedFile
+import bzrlib.weave
 
 
 # TODO: Split out code specific to this format into an associated object.
@@ -134,9 +141,18 @@ INDEX_SUFFIX = '.kndx'
 class KnitContent(object):
     """Content of a knit version to which deltas can be applied."""
 
-    def annotate(self):
-        """Return a list of (origin, text) tuples."""
-        return list(self.annotate_iter())
+    def __init__(self):
+        self._should_strip_eol = False
+
+    def apply_delta(self, delta, new_version_id):
+        """Apply delta to this object to become new_version_id."""
+        raise NotImplementedError(self.apply_delta)
+
+    def cleanup_eol(self, copy_on_mutate=True):
+        if self._should_strip_eol:
+            if copy_on_mutate:
+                self._lines = self._lines[:]
+            self.strip_last_line_newline()
 
     def line_delta_iter(self, new_lines):
         """Generate line-based delta from this content to new_lines."""
@@ -183,18 +199,41 @@ class AnnotatedKnitContent(KnitContent):
     """Annotated content."""
 
     def __init__(self, lines):
+        KnitContent.__init__(self)
         self._lines = lines
 
-    def annotate_iter(self):
-        """Yield tuples of (origin, text) for each content line."""
-        return iter(self._lines)
+    def annotate(self):
+        """Return a list of (origin, text) for each content line."""
+        return list(self._lines)
+
+    def apply_delta(self, delta, new_version_id):
+        """Apply delta to this object to become new_version_id."""
+        offset = 0
+        lines = self._lines
+        for start, end, count, delta_lines in delta:
+            lines[offset+start:offset+end] = delta_lines
+            offset = offset + (start - end) + count
 
     def strip_last_line_newline(self):
         line = self._lines[-1][1].rstrip('\n')
         self._lines[-1] = (self._lines[-1][0], line)
+        self._should_strip_eol = False
 
     def text(self):
-        return [text for origin, text in self._lines]
+        try:
+            lines = [text for origin, text in self._lines]
+        except ValueError, e:
+            # most commonly (only?) caused by the internal form of the knit
+            # missing annotation information because of a bug - see thread
+            # around 20071015
+            raise KnitCorrupt(self,
+                "line in annotated knit missing annotation information: %s"
+                % (e,))
+
+        if self._should_strip_eol:
+            anno, line = lines[-1]
+            lines[-1] = (anno, line.rstrip('\n'))
+        return lines
 
     def copy(self):
         return AnnotatedKnitContent(self._lines[:])
@@ -209,25 +248,74 @@ class PlainKnitContent(KnitContent):
     """
 
     def __init__(self, lines, version_id):
+        KnitContent.__init__(self)
         self._lines = lines
         self._version_id = version_id
 
-    def annotate_iter(self):
-        """Yield tuples of (origin, text) for each content line."""
-        for line in self._lines:
-            yield self._version_id, line
+    def annotate(self):
+        """Return a list of (origin, text) for each content line."""
+        return [(self._version_id, line) for line in self._lines]
+
+    def apply_delta(self, delta, new_version_id):
+        """Apply delta to this object to become new_version_id."""
+        offset = 0
+        lines = self._lines
+        for start, end, count, delta_lines in delta:
+            lines[offset+start:offset+end] = delta_lines
+            offset = offset + (start - end) + count
+        self._version_id = new_version_id
 
     def copy(self):
         return PlainKnitContent(self._lines[:], self._version_id)
 
     def strip_last_line_newline(self):
         self._lines[-1] = self._lines[-1].rstrip('\n')
+        self._should_strip_eol = False
 
     def text(self):
-        return self._lines
+        lines = self._lines
+        if self._should_strip_eol:
+            lines = lines[:]
+            lines[-1] = lines[-1].rstrip('\n')
+        return lines
 
 
-class KnitAnnotateFactory(object):
+class _KnitFactory(object):
+    """Base class for common Factory functions."""
+
+    def parse_record(self, version_id, record, record_details,
+                     base_content, copy_base_content=True):
+        """Parse a record into a full content object.
+
+        :param version_id: The official version id for this content
+        :param record: The data returned by read_records_iter()
+        :param record_details: Details about the record returned by
+            get_build_details
+        :param base_content: If get_build_details returns a compression_parent,
+            you must return a base_content here, else use None
+        :param copy_base_content: When building from the base_content, decide
+            you can either copy it and return a new object, or modify it in
+            place.
+        :return: (content, delta) A Content object and possibly a line-delta,
+            delta may be None
+        """
+        method, noeol = record_details
+        if method == 'line-delta':
+            assert base_content is not None
+            if copy_base_content:
+                content = base_content.copy()
+            else:
+                content = base_content
+            delta = self.parse_line_delta(record, version_id)
+            content.apply_delta(delta, version_id)
+        else:
+            content = self.parse_fulltext(record, version_id)
+            delta = None
+        content._should_strip_eol = noeol
+        return (content, delta)
+
+
+class KnitAnnotateFactory(_KnitFactory):
     """Factory for creating annotated Content objects."""
 
     annotated = True
@@ -265,7 +353,7 @@ class KnitAnnotateFactory(object):
         (start, end, count, [1..count tuples (revid, newline)])
 
         :param plain: If True, the lines are returned as a plain
-            list, not as a list of tuples, i.e.
+            list without annotations, not as a list of (origin, content) tuples, i.e.
             (start, end, count, [1..count newline])
         """
         result = []
@@ -334,12 +422,12 @@ class KnitAnnotateFactory(object):
                        for origin, text in lines)
         return out
 
-    def annotate_iter(self, knit, version_id):
+    def annotate(self, knit, version_id):
         content = knit._get_content(version_id)
-        return content.annotate_iter()
+        return content.annotate()
 
 
-class KnitPlainFactory(object):
+class KnitPlainFactory(_KnitFactory):
     """Factory for creating plain Content objects."""
 
     annotated = False
@@ -396,13 +484,42 @@ class KnitPlainFactory(object):
             out.extend(lines)
         return out
 
-    def annotate_iter(self, knit, version_id):
-        return annotate_knit(knit, version_id)
+    def annotate(self, knit, version_id):
+        annotator = _KnitAnnotator(knit)
+        return annotator.annotate(version_id)
 
 
 def make_empty_knit(transport, relpath):
     """Construct a empty knit at the specified location."""
-    k = KnitVersionedFile(transport, relpath, 'w', KnitPlainFactory)
+    k = make_file_knit(transport, relpath, 'w', KnitPlainFactory)
+
+
+def make_file_knit(name, transport, file_mode=None, access_mode='w',
+    factory=None, delta=True, create=False, create_parent_dir=False,
+    delay_create=False, dir_mode=None, get_scope=None):
+    """Factory to create a KnitVersionedFile for a .knit/.kndx file pair."""
+    if factory is None:
+        factory = KnitAnnotateFactory()
+    else:
+        factory = KnitPlainFactory()
+    if get_scope is None:
+        get_scope = lambda:None
+    index = _KnitIndex(transport, name + INDEX_SUFFIX,
+        access_mode, create=create, file_mode=file_mode,
+        create_parent_dir=create_parent_dir, delay_create=delay_create,
+        dir_mode=dir_mode, get_scope=get_scope)
+    access = _KnitAccess(transport, name + DATA_SUFFIX, file_mode,
+        dir_mode, ((create and not len(index)) and delay_create),
+        create_parent_dir)
+    return KnitVersionedFile(name, transport, factory=factory,
+        create=create, delay_create=delay_create, index=index,
+        access_method=access)
+
+
+def get_suffixes():
+    """Return the suffixes used by file based knits."""
+    return [DATA_SUFFIX, INDEX_SUFFIX]
+make_file_knit.get_suffixes = get_suffixes
 
 
 class KnitVersionedFile(VersionedFile):
@@ -420,7 +537,7 @@ class KnitVersionedFile(VersionedFile):
     stored and retrieved.
     """
 
-    def __init__(self, relpath, transport, file_mode=None, access_mode=None,
+    def __init__(self, relpath, transport, file_mode=None,
         factory=None, delta=True, create=False, create_parent_dir=False,
         delay_create=False, dir_mode=None, index=None, access_method=None):
         """Construct a knit at location specified by relpath.
@@ -433,30 +550,18 @@ class KnitVersionedFile(VersionedFile):
             actually be created until the first data is stored.
         :param index: An index to use for the knit.
         """
-        if access_mode is None:
-            access_mode = 'w'
-        super(KnitVersionedFile, self).__init__(access_mode)
-        assert access_mode in ('r', 'w'), "invalid mode specified %r" % access_mode
+        super(KnitVersionedFile, self).__init__()
         self.transport = transport
         self.filename = relpath
         self.factory = factory or KnitAnnotateFactory()
-        self.writable = (access_mode == 'w')
         self.delta = delta
 
         self._max_delta_chain = 200
 
-        if index is None:
-            self._index = _KnitIndex(transport, relpath + INDEX_SUFFIX,
-                access_mode, create=create, file_mode=file_mode,
-                create_parent_dir=create_parent_dir, delay_create=delay_create,
-                dir_mode=dir_mode)
-        else:
-            self._index = index
-        if access_method is None:
-            _access = _KnitAccess(transport, relpath + DATA_SUFFIX, file_mode, dir_mode,
-                ((create and not len(self)) and delay_create), create_parent_dir)
-        else:
-            _access = access_method
+        if None in (access_method, index):
+            raise ValueError("No default access_method or index any more")
+        self._index = index
+        _access = access_method
         if create and not len(self) and not delay_create:
             _access.create()
         self._data = _KnitData(_access)
@@ -487,12 +592,15 @@ class KnitVersionedFile(VersionedFile):
                 fulltext_size = size
                 break
             delta_size += size
-            delta_parents = self._index.get_parents(parent)
+            delta_parents = self._index.get_parent_map([parent])[parent]
         else:
             # We couldn't find a fulltext, so we must create a new one
             return False
 
         return fulltext_size > delta_size
+
+    def _check_write_ok(self):
+        return self._index._check_write_ok()
 
     def _add_raw_records(self, records, data):
         """Add all the records 'records' with data pre-joined in 'data'.
@@ -510,18 +618,8 @@ class KnitVersionedFile(VersionedFile):
         for (version_id, options, parents, size), access_memo in zip(
             records, positions):
             index_entries.append((version_id, options, access_memo, parents))
-            if self._data._do_cache:
-                self._data._cache[version_id] = data[offset:offset+size]
             offset += size
         self._index.add_versions(index_entries)
-
-    def enable_cache(self):
-        """Start caching data for this knit"""
-        self._data.enable_cache()
-
-    def clear_cache(self):
-        """Clear the data cache only."""
-        self._data.clear_cache()
 
     def copy_to(self, name, transport):
         """See VersionedFile.copy_to()."""
@@ -538,15 +636,15 @@ class KnitVersionedFile(VersionedFile):
         # move the copied index into place
         transport.move(name + INDEX_SUFFIX + '.tmp', name + INDEX_SUFFIX)
 
-    def create_empty(self, name, transport, mode=None):
-        return KnitVersionedFile(name, transport, factory=self.factory,
-                                 delta=self.delta, create=True)
-    
     def get_data_stream(self, required_versions):
         """Get a data stream for the specified versions.
 
         Versions may be returned in any order, not necessarily the order
-        specified.
+        specified.  They are returned in a partial order by compression
+        parent, so that the deltas can be applied as the data stream is
+        inserted; however note that compression parents will not be sent
+        unless they were specifically requested, as the client may already
+        have them.
 
         :param required_versions: The exact set of versions to be extracted.
             Unlike some other knit methods, this is not used to generate a
@@ -555,46 +653,62 @@ class KnitVersionedFile(VersionedFile):
         :returns: format_signature, list of (version, options, length, parents),
             reader_callable.
         """
-        if not isinstance(required_versions, set):
-            required_versions = set(required_versions)
-        # we don't care about inclusions, the caller cares.
-        # but we need to setup a list of records to visit.
+        required_version_set = frozenset(required_versions)
+        version_index = {}
+        # list of revisions that can just be sent without waiting for their
+        # compression parent
+        ready_to_send = []
+        # map from revision to the children based on it
+        deferred = {}
+        # first, read all relevant index data, enough to sort into the right
+        # order to return
         for version_id in required_versions:
-            if not self.has_version(version_id):
-                raise RevisionNotPresent(version_id, self.filename)
-        # Pick the desired versions out of the index in oldest-to-newest order
-        version_list = []
-        for version_id in self.versions():
-            if version_id in required_versions:
-                version_list.append(version_id)
-
-        # create the list of version information for the result
-        copy_queue_records = []
-        copy_set = set()
-        result_version_list = []
-        for version_id in version_list:
             options = self._index.get_options(version_id)
             parents = self._index.get_parents_with_ghosts(version_id)
             index_memo = self._index.get_position(version_id)
+            version_index[version_id] = (index_memo, options, parents)
+            if ('line-delta' in options
+                and parents[0] in required_version_set):
+                # must wait until the parent has been sent
+                deferred.setdefault(parents[0], []). \
+                    append(version_id)
+            else:
+                # either a fulltext, or a delta whose parent the client did
+                # not ask for and presumably already has
+                ready_to_send.append(version_id)
+        # build a list of results to return, plus instructions for data to
+        # read from the file
+        copy_queue_records = []
+        temp_version_list = []
+        while ready_to_send:
+            # XXX: pushing and popping lists may be a bit inefficient
+            version_id = ready_to_send.pop(0)
+            (index_memo, options, parents) = version_index[version_id]
             copy_queue_records.append((version_id, index_memo))
             none, data_pos, data_size = index_memo
-            copy_set.add(version_id)
-            # version, options, length, parents
-            result_version_list.append((version_id, options, data_size,
+            temp_version_list.append((version_id, options, data_size,
                 parents))
-
-        # Read the compressed record data.
-        # XXX:
-        # From here down to the return should really be logic in the returned
-        # callable -- in a class that adapts read_records_iter_raw to read
-        # requests.
+            if version_id in deferred:
+                # now we can send all the children of this revision - we could
+                # put them in anywhere, but we hope that sending them soon
+                # after the fulltext will give good locality in the receiver
+                ready_to_send[:0] = deferred.pop(version_id)
+        assert len(deferred) == 0, \
+            "Still have compressed child versions waiting to be sent"
+        # XXX: The stream format is such that we cannot stream it - we have to
+        # know the length of all the data a-priori.
         raw_datum = []
+        result_version_list = []
         for (version_id, raw_data), \
             (version_id2, options, _, parents) in \
             izip(self._data.read_records_iter_raw(copy_queue_records),
-                 result_version_list):
-            assert version_id == version_id2, 'logic error, inconsistent results'
+                 temp_version_list):
+            assert version_id == version_id2, \
+                'logic error, inconsistent results'
             raw_datum.append(raw_data)
+            result_version_list.append(
+                (version_id, options, len(raw_data), parents))
+        # provide a callback to get data incrementally.
         pseudo_file = StringIO(''.join(raw_datum))
         def read(length):
             if length is None:
@@ -612,7 +726,7 @@ class KnitVersionedFile(VersionedFile):
     def get_delta(self, version_id):
         """Get a delta for constructing version from some other version."""
         self.check_not_reserved_id(version_id)
-        parents = self.get_parents(version_id)
+        parents = self.get_parent_map([version_id])[version_id]
         if len(parents):
             parent = parents[0]
         else:
@@ -643,37 +757,29 @@ class KnitVersionedFile(VersionedFile):
             annotated_part = "plain"
         return "knit-%s" % (annotated_part,)
         
+    @deprecated_method(one_four)
     def get_graph_with_ghosts(self):
         """See VersionedFile.get_graph_with_ghosts()."""
-        graph_items = self._index.get_graph()
-        return dict(graph_items)
-
-    def get_sha1(self, version_id):
-        return self.get_sha1s([version_id])[0]
+        return self.get_parent_map(self.versions())
 
     def get_sha1s(self, version_ids):
-        """See VersionedFile.get_sha1()."""
+        """See VersionedFile.get_sha1s()."""
         record_map = self._get_record_map(version_ids)
         # record entry 2 is the 'digest'.
         return [record_map[v][2] for v in version_ids]
 
-    @staticmethod
-    def get_suffixes():
-        """See VersionedFile.get_suffixes()."""
-        return [DATA_SUFFIX, INDEX_SUFFIX]
-
+    @deprecated_method(one_four)
     def has_ghost(self, version_id):
         """True if there is a ghost reference in the file to version_id."""
         # maybe we have it
         if self.has_version(version_id):
             return False
         # optimisable if needed by memoising the _ghosts set.
-        items = self._index.get_graph()
-        for node, parents in items:
+        items = self.get_parent_map(self.versions())
+        for parents in items.itervalues():
             for parent in parents:
-                if parent not in self._index._cache:
-                    if parent == version_id:
-                        return True
+                if parent == version_id and parent not in items:
+                    return True
         return False
 
     def insert_data_stream(self, (format, data_list, reader_callable)):
@@ -687,15 +793,19 @@ class KnitVersionedFile(VersionedFile):
         :seealso: get_data_stream
         """
         if format != self.get_format_signature():
-            trace.mutter('incompatible format signature inserting to %r', self)
-            raise KnitDataStreamIncompatible(
-                format, self.get_format_signature())
+            if 'knit' in debug.debug_flags:
+                trace.mutter(
+                    'incompatible format signature inserting to %r', self)
+            source = self._knit_from_datastream(
+                (format, data_list, reader_callable))
+            self.join(source)
+            return
 
         for version_id, options, length, parents in data_list:
             if self.has_version(version_id):
                 # First check: the list of parents.
                 my_parents = self.get_parents_with_ghosts(version_id)
-                if my_parents != parents:
+                if tuple(my_parents) != tuple(parents):
                     # XXX: KnitCorrupt is not quite the right exception here.
                     raise KnitCorrupt(
                         self.filename,
@@ -706,7 +816,7 @@ class KnitVersionedFile(VersionedFile):
                 # Also check the SHA-1 of the fulltext this content will
                 # produce.
                 raw_data = reader_callable(length)
-                my_fulltext_sha1 = self.get_sha1(version_id)
+                my_fulltext_sha1 = self.get_sha1s([version_id])[0]
                 df, rec = self._data._parse_record_header(version_id, raw_data)
                 stream_fulltext_sha1 = rec[3]
                 if my_fulltext_sha1 != stream_fulltext_sha1:
@@ -715,9 +825,49 @@ class KnitVersionedFile(VersionedFile):
                     raise KnitCorrupt(
                         self.filename, 'sha-1 does not match %s' % version_id)
             else:
+                if 'line-delta' in options:
+                    # Make sure that this knit record is actually useful: a
+                    # line-delta is no use unless we have its parent.
+                    # Fetching from a broken repository with this problem
+                    # shouldn't break the target repository.
+                    #
+                    # See https://bugs.launchpad.net/bzr/+bug/164443
+                    if not self._index.has_version(parents[0]):
+                        raise KnitCorrupt(
+                            self.filename,
+                            'line-delta from stream '
+                            'for version %s '
+                            'references '
+                            'missing parent %s\n'
+                            'Try running "bzr check" '
+                            'on the source repository, and "bzr reconcile" '
+                            'if necessary.' %
+                            (version_id, parents[0]))
                 self._add_raw_records(
                     [(version_id, options, parents, length)],
                     reader_callable(length))
+
+    def _knit_from_datastream(self, (format, data_list, reader_callable)):
+        """Create a knit object from a data stream.
+
+        This method exists to allow conversion of data streams that do not
+        match the signature of this knit. Generally it will be slower and use
+        more memory to use this method to insert data, but it will work.
+
+        :seealso: get_data_stream for details on datastreams.
+        :return: A knit versioned file which can be used to join the datastream
+            into self.
+        """
+        if format == "knit-plain":
+            factory = KnitPlainFactory()
+        elif format == "knit-annotated":
+            factory = KnitAnnotateFactory()
+        else:
+            raise errors.KnitDataStreamUnknown(format)
+        index = _StreamIndex(data_list, self._index)
+        access = _StreamAccess(reader_callable, index, self, factory)
+        return KnitVersionedFile(self.filename, self.transport,
+            factory=factory, index=index, access_method=access)
 
     def versions(self):
         """See VersionedFile.versions."""
@@ -781,26 +931,31 @@ class KnitVersionedFile(VersionedFile):
 
         This data is intended to be used for retrieving the knit records.
 
-        A dict of version_id to (method, data_pos, data_size, next) is
+        A dict of version_id to (record_details, index_memo, next, parents) is
         returned.
         method is the way referenced data should be applied.
-        data_pos is the position of the data in the knit.
-        data_size is the size of the data in the knit.
+        index_memo is the handle to pass to the data access to actually get the
+            data
         next is the build-parent of the version, or None for fulltexts.
+        parents is the version_ids of the parents of this version
         """
         component_data = {}
-        for version_id in version_ids:
-            cursor = version_id
-
-            while cursor is not None and cursor not in component_data:
-                method = self._index.get_method(cursor)
-                if method == 'fulltext':
-                    next = None
-                else:
-                    next = self.get_parents(cursor)[0]
-                index_memo = self._index.get_position(cursor)
-                component_data[cursor] = (method, index_memo, next)
-                cursor = next
+        pending_components = version_ids
+        while pending_components:
+            build_details = self._index.get_build_details(pending_components)
+            current_components = set(pending_components)
+            pending_components = set()
+            for version_id, details in build_details.iteritems():
+                (index_memo, compression_parent, parents,
+                 record_details) = details
+                method = record_details[0]
+                if compression_parent is not None:
+                    pending_components.add(compression_parent)
+                component_data[version_id] = (record_details, index_memo,
+                                              compression_parent)
+            missing = current_components.difference(build_details)
+            if missing:
+                raise errors.RevisionNotPresent(missing.pop(), self.filename)
         return component_data
        
     def _get_content(self, version_id, parent_texts={}):
@@ -820,11 +975,11 @@ class KnitVersionedFile(VersionedFile):
         self._index.check_versions_present(version_ids)
 
     def _add_lines_with_ghosts(self, version_id, parents, lines, parent_texts,
-        nostore_sha, random_id, check_content):
+        nostore_sha, random_id, check_content, left_matching_blocks):
         """See VersionedFile.add_lines_with_ghosts()."""
         self._check_add(version_id, lines, random_id, check_content)
         return self._add(version_id, lines, parents, self.delta,
-            parent_texts, None, nostore_sha, random_id)
+            parent_texts, left_matching_blocks, nostore_sha, random_id)
 
     def _add_lines(self, version_id, parents, lines, parent_texts,
         left_matching_blocks, nostore_sha, random_id, check_content):
@@ -931,12 +1086,6 @@ class KnitVersionedFile(VersionedFile):
     def check(self, progress_bar=None):
         """See VersionedFile.check()."""
 
-    def _clone_text(self, new_version_id, old_version_id, parents):
-        """See VersionedFile.clone_text()."""
-        # FIXME RBC 20060228 make fast by only inserting an index with null 
-        # delta.
-        self.add_lines(new_version_id, parents, self.get_lines(old_version_id))
-
     def get_lines(self, version_id):
         """See VersionedFile.get_lines()."""
         return self.get_line_list([version_id])[0]
@@ -944,23 +1093,27 @@ class KnitVersionedFile(VersionedFile):
     def _get_record_map(self, version_ids):
         """Produce a dictionary of knit records.
         
-        The keys are version_ids, the values are tuples of (method, content,
-        digest, next).
-        method is the way the content should be applied.  
-        content is a KnitContent object.
-        digest is the SHA1 digest of this version id after all steps are done
-        next is the build-parent of the version, i.e. the leftmost ancestor.
-        If the method is fulltext, next will be None.
+        :return: {version_id:(record, record_details, digest, next)}
+            record
+                data returned from read_records
+            record_details
+                opaque information to pass to parse_record
+            digest
+                SHA1 digest of the full text after all steps are done
+            next
+                build-parent of the version, i.e. the leftmost ancestor.
+                Will be None if the record is not a delta.
         """
         position_map = self._get_components_positions(version_ids)
-        # c = component_id, m = method, i_m = index_memo, n = next
-        records = [(c, i_m) for c, (m, i_m, n) in position_map.iteritems()]
+        # c = component_id, r = record_details, i_m = index_memo, n = next
+        records = [(c, i_m) for c, (r, i_m, n)
+                             in position_map.iteritems()]
         record_map = {}
-        for component_id, content, digest in \
+        for component_id, record, digest in \
                 self._data.read_records_iter(records):
-            method, index_memo, next = position_map[component_id]
-            record_map[component_id] = method, content, digest, next
-                          
+            (record_details, index_memo, next) = position_map[component_id]
+            record_map[component_id] = record, record_details, digest, next
+
         return record_map
 
     def get_text(self, version_id):
@@ -986,6 +1139,12 @@ class KnitVersionedFile(VersionedFile):
         the requested versions and content_map contains the KnitContents.
         Both dicts take version_ids as their keys.
         """
+        # FUTURE: This function could be improved for the 'extract many' case
+        # by tracking each component and only doing the copy when the number of
+        # children than need to apply delta's to it is > 1 or it is part of the
+        # final output.
+        version_ids = list(version_ids)
+        multiple_versions = len(version_ids) != 1
         record_map = self._get_record_map(version_ids)
 
         text_map = {}
@@ -995,50 +1154,39 @@ class KnitVersionedFile(VersionedFile):
             components = []
             cursor = version_id
             while cursor is not None:
-                method, data, digest, next = record_map[cursor]
-                components.append((cursor, method, data, digest))
+                record, record_details, digest, next = record_map[cursor]
+                components.append((cursor, record, record_details, digest))
                 if cursor in content_map:
                     break
                 cursor = next
 
             content = None
-            for component_id, method, data, digest in reversed(components):
+            for (component_id, record, record_details,
+                 digest) in reversed(components):
                 if component_id in content_map:
                     content = content_map[component_id]
                 else:
-                    if method == 'fulltext':
-                        assert content is None
-                        content = self.factory.parse_fulltext(data, version_id)
-                    elif method == 'line-delta':
-                        delta = self.factory.parse_line_delta(data, version_id)
-                        content = content.copy()
-                        content._lines = self._apply_delta(content._lines,
-                                                           delta)
-                    content_map[component_id] = content
+                    content, delta = self.factory.parse_record(version_id,
+                        record, record_details, content,
+                        copy_base_content=multiple_versions)
+                    if multiple_versions:
+                        content_map[component_id] = content
 
-            if 'no-eol' in self._index.get_options(version_id):
-                content = content.copy()
-                content.strip_last_line_newline()
+            content.cleanup_eol(copy_on_mutate=multiple_versions)
             final_content[version_id] = content
 
             # digest here is the digest from the last applied component.
             text = content.text()
-            if sha_strings(text) != digest:
+            actual_sha = sha_strings(text)
+            if actual_sha != digest:
                 raise KnitCorrupt(self.filename,
-                                  'sha-1 does not match %s' % version_id)
-
+                    '\n  sha-1 %s'
+                    '\n  of reconstructed text does not match'
+                    '\n  expected %s'
+                    '\n  for version %s' %
+                    (actual_sha, digest, version_id))
             text_map[version_id] = text
         return text_map, final_content
-
-    @staticmethod
-    def _apply_delta(lines, delta):
-        """Apply delta to lines."""
-        lines = list(lines)
-        offset = 0
-        for start, end, count, delta_lines in delta:
-            lines[offset+start:offset+end] = delta_lines
-            offset = offset + (start - end) + count
-        return lines
 
     def iter_lines_added_or_present_in_versions(self, version_ids=None, 
                                                 pb=None):
@@ -1073,48 +1221,27 @@ class KnitVersionedFile(VersionedFile):
                 line_iterator = self.factory.get_fulltext_content(data)
             else:
                 line_iterator = self.factory.get_linedelta_content(data)
+            # XXX: It might be more efficient to yield (version_id,
+            # line_iterator) in the future. However for now, this is a simpler
+            # change to integrate into the rest of the codebase. RBC 20071110
             for line in line_iterator:
-                yield line
+                yield line, version_id
 
         pb.update('Walking content.', total, total)
         
-    def iter_parents(self, version_ids):
-        """Iterate through the parents for many version ids.
-
-        :param version_ids: An iterable yielding version_ids.
-        :return: An iterator that yields (version_id, parents). Requested 
-            version_ids not present in the versioned file are simply skipped.
-            The order is undefined, allowing for different optimisations in
-            the underlying implementation.
-        """
-        return self._index.iter_parents(version_ids)
-
     def num_versions(self):
         """See VersionedFile.num_versions()."""
         return self._index.num_versions()
 
     __len__ = num_versions
 
-    def annotate_iter(self, version_id):
-        """See VersionedFile.annotate_iter."""
-        return self.factory.annotate_iter(self, version_id)
+    def annotate(self, version_id):
+        """See VersionedFile.annotate."""
+        return self.factory.annotate(self, version_id)
 
-    def get_parents(self, version_id):
-        """See VersionedFile.get_parents."""
-        # perf notes:
-        # optimism counts!
-        # 52554 calls in 1264 872 internal down from 3674
-        try:
-            return self._index.get_parents(version_id)
-        except KeyError:
-            raise RevisionNotPresent(version_id, self.filename)
-
-    def get_parents_with_ghosts(self, version_id):
-        """See VersionedFile.get_parents."""
-        try:
-            return self._index.get_parents_with_ghosts(version_id)
-        except KeyError:
-            raise RevisionNotPresent(version_id, self.filename)
+    def get_parent_map(self, version_ids):
+        """See VersionedFile.get_parent_map."""
+        return self._index.get_parent_map(version_ids)
 
     def get_ancestry(self, versions, topo_sorted=True):
         """See VersionedFile.get_ancestry."""
@@ -1252,8 +1379,15 @@ class _KnitIndex(_KnitComponentFile):
                                    parents,
                                    index)
 
+    def _check_write_ok(self):
+        if self._get_scope() != self._scope:
+            raise errors.OutSideTransaction()
+        if self._mode != 'w':
+            raise errors.ReadOnlyObjectDirtiedError(self)
+
     def __init__(self, transport, filename, mode, create=False, file_mode=None,
-                 create_parent_dir=False, delay_create=False, dir_mode=None):
+        create_parent_dir=False, delay_create=False, dir_mode=None,
+        get_scope=None):
         _KnitComponentFile.__init__(self, transport, filename, mode,
                                     file_mode=file_mode,
                                     create_parent_dir=create_parent_dir,
@@ -1280,10 +1414,8 @@ class _KnitIndex(_KnitComponentFile):
             else:
                 self._transport.put_bytes_non_atomic(
                     self._filename, self.HEADER, mode=self._file_mode)
-
-    def get_graph(self):
-        """Return a list of the node:parents lists from this knit index."""
-        return [(vid, idx[4]) for vid, idx in self._cache.iteritems()]
+        self._scope = get_scope()
+        self._get_scope = get_scope
 
     def get_ancestry(self, versions, topo_sorted=True):
         """See VersionedFile.get_ancestry."""
@@ -1325,20 +1457,41 @@ class _KnitIndex(_KnitComponentFile):
                 graph[version] = parents
         return topo_sort(graph.items())
 
-    def iter_parents(self, version_ids):
-        """Iterate through the parents for many version ids.
+    def get_build_details(self, version_ids):
+        """Get the method, index_memo and compression parent for version_ids.
 
-        :param version_ids: An iterable yielding version_ids.
-        :return: An iterator that yields (version_id, parents). Requested 
-            version_ids not present in the versioned file are simply skipped.
-            The order is undefined, allowing for different optimisations in
-            the underlying implementation.
+        Ghosts are omitted from the result.
+
+        :param version_ids: An iterable of version_ids.
+        :return: A dict of version_id:(index_memo, compression_parent,
+                                       parents, record_details).
+            index_memo
+                opaque structure to pass to read_records to extract the raw
+                data
+            compression_parent
+                Content that this record is built upon, may be None
+            parents
+                Logical parents of this node
+            record_details
+                extra information about the content which needs to be passed to
+                Factory.parse_record
         """
+        result = {}
         for version_id in version_ids:
-            try:
-                yield version_id, tuple(self.get_parents(version_id))
-            except KeyError:
-                pass
+            if version_id not in self._cache:
+                # ghosts are omitted
+                continue
+            method = self.get_method(version_id)
+            parents = self.get_parents_with_ghosts(version_id)
+            if method == 'fulltext':
+                compression_parent = None
+            else:
+                compression_parent = parents[0]
+            noeol = 'no-eol' in self.get_options(version_id)
+            index_memo = self.get_position(version_id)
+            result[version_id] = (index_memo, compression_parent,
+                                  parents, (method, noeol))
+        return result
 
     def num_versions(self):
         return len(self._history)
@@ -1387,7 +1540,7 @@ class _KnitIndex(_KnitComponentFile):
                 assert isinstance(line, str), \
                     'content must be utf-8 encoded: %r' % (line,)
                 lines.append(line)
-                self._cache_version(version_id, options, pos, size, parents)
+                self._cache_version(version_id, options, pos, size, tuple(parents))
             if not self._need_to_create:
                 self._transport.append_bytes(self._filename, ''.join(lines))
             else:
@@ -1436,20 +1589,28 @@ class _KnitIndex(_KnitComponentFile):
             return 'line-delta'
 
     def get_options(self, version_id):
-        """Return a string represention options.
+        """Return a list representing options.
 
-        e.g. foo,bar
+        e.g. ['foo', 'bar']
         """
         return self._cache[version_id][1]
 
-    def get_parents(self, version_id):
-        """Return parents of specified version ignoring ghosts."""
-        return [parent for parent in self._cache[version_id][4] 
-                if parent in self._cache]
+    def get_parent_map(self, version_ids):
+        """Passed through to by KnitVersionedFile.get_parent_map."""
+        result = {}
+        for version_id in version_ids:
+            try:
+                result[version_id] = tuple(self._cache[version_id][4])
+            except KeyError:
+                pass
+        return result
 
     def get_parents_with_ghosts(self, version_id):
         """Return parents of specified version with ghosts."""
-        return self._cache[version_id][4] 
+        try:
+            return self.get_parent_map([version_id])[version_id]
+        except KeyError:
+            raise RevisionNotPresent(version_id, self)
 
     def check_versions_present(self, version_ids):
         """Check that all specified versions are present."""
@@ -1480,6 +1641,9 @@ class KnitGraphIndex(object):
         if deltas and not parents:
             raise KnitCorrupt(self, "Cannot do delta compression without "
                 "parent tracking.")
+
+    def _check_write_ok(self):
+        pass
 
     def _get_entries(self, keys, check_present=False):
         """Get the entries for keys.
@@ -1588,43 +1752,68 @@ class KnitGraphIndex(object):
         result_keys = topo_sort(graph.items())
         return [key[0] for key in result_keys]
 
-    def get_graph(self):
-        """Return a list of the node:parents lists from this knit index."""
-        if not self._parents:
-            return [(key, ()) for key in self.get_versions()]
-        result = []
-        for index, key, value, refs in self._graph_index.iter_all_entries():
-            result.append((key[0], tuple([ref[0] for ref in refs[0]])))
+    def get_build_details(self, version_ids):
+        """Get the method, index_memo and compression parent for version_ids.
+
+        Ghosts are omitted from the result.
+
+        :param version_ids: An iterable of version_ids.
+        :return: A dict of version_id:(index_memo, compression_parent,
+                                       parents, record_details).
+            index_memo
+                opaque structure to pass to read_records to extract the raw
+                data
+            compression_parent
+                Content that this record is built upon, may be None
+            parents
+                Logical parents of this node
+            record_details
+                extra information about the content which needs to be passed to
+                Factory.parse_record
+        """
+        result = {}
+        entries = self._get_entries(self._version_ids_to_keys(version_ids), True)
+        for entry in entries:
+            version_id = self._keys_to_version_ids((entry[1],))[0]
+            if not self._parents:
+                parents = ()
+            else:
+                parents = self._keys_to_version_ids(entry[3][0])
+            if not self._deltas:
+                compression_parent = None
+            else:
+                compression_parent_key = self._compression_parent(entry)
+                if compression_parent_key:
+                    compression_parent = self._keys_to_version_ids(
+                    (compression_parent_key,))[0]
+                else:
+                    compression_parent = None
+            noeol = (entry[2][0] == 'N')
+            if compression_parent:
+                method = 'line-delta'
+            else:
+                method = 'fulltext'
+            result[version_id] = (self._node_to_position(entry),
+                                  compression_parent, parents,
+                                  (method, noeol))
         return result
 
-    def iter_parents(self, version_ids):
-        """Iterate through the parents for many version ids.
+    def _compression_parent(self, an_entry):
+        # return the key that an_entry is compressed against, or None
+        # Grab the second parent list (as deltas implies parents currently)
+        compression_parents = an_entry[3][1]
+        if not compression_parents:
+            return None
+        assert len(compression_parents) == 1
+        return compression_parents[0]
 
-        :param version_ids: An iterable yielding version_ids.
-        :return: An iterator that yields (version_id, parents). Requested 
-            version_ids not present in the versioned file are simply skipped.
-            The order is undefined, allowing for different optimisations in
-            the underlying implementation.
-        """
-        if self._parents:
-            all_nodes = set(self._get_entries(self._version_ids_to_keys(version_ids)))
-            all_parents = set()
-            present_parents = set()
-            for node in all_nodes:
-                all_parents.update(node[3][0])
-                # any node we are querying must be present
-                present_parents.add(node[1])
-            unknown_parents = all_parents.difference(present_parents)
-            present_parents.update(self._present_keys(unknown_parents))
-            for node in all_nodes:
-                parents = []
-                for parent in node[3][0]:
-                    if parent in present_parents:
-                        parents.append(parent[0])
-                yield node[1][0], tuple(parents)
+    def _get_method(self, node):
+        if not self._deltas:
+            return 'fulltext'
+        if self._compression_parent(node):
+            return 'line-delta'
         else:
-            for node in self._get_entries(self._version_ids_to_keys(version_ids)):
-                yield node[1][0], ()
+            return 'fulltext'
 
     def num_versions(self):
         return len(list(self._graph_index.iter_all_entries()))
@@ -1649,21 +1838,16 @@ class KnitGraphIndex(object):
             logic to get the record.
         """
         node = self._get_node(version_id)
+        return self._node_to_position(node)
+
+    def _node_to_position(self, node):
+        """Convert an index value to position details."""
         bits = node[2][1:].split(' ')
         return node[0], int(bits[0]), int(bits[1])
 
     def get_method(self, version_id):
         """Return compression method of specified version."""
-        if not self._deltas:
-            return 'fulltext'
-        return self._parent_compression(self._get_node(version_id)[3][1])
-
-    def _parent_compression(self, reference_list):
-        # use the second reference list to decide if this is delta'd or not.
-        if len(reference_list):
-            return 'line-delta'
-        else:
-            return 'fulltext'
+        return self._get_method(self._get_node(version_id))
 
     def _get_node(self, version_id):
         try:
@@ -1672,34 +1856,34 @@ class KnitGraphIndex(object):
             raise RevisionNotPresent(version_id, self)
 
     def get_options(self, version_id):
-        """Return a string represention options.
+        """Return a list representing options.
 
-        e.g. foo,bar
+        e.g. ['foo', 'bar']
         """
         node = self._get_node(version_id)
-        if not self._deltas:
-            options = ['fulltext']
-        else:
-            options = [self._parent_compression(node[3][1])]
+        options = [self._get_method(node)]
         if node[2][0] == 'N':
             options.append('no-eol')
         return options
 
-    def get_parents(self, version_id):
-        """Return parents of specified version ignoring ghosts."""
-        parents = list(self.iter_parents([version_id]))
-        if not parents:
-            # missing key
-            raise errors.RevisionNotPresent(version_id, self)
-        return parents[0][1]
+    def get_parent_map(self, version_ids):
+        """Passed through to by KnitVersionedFile.get_parent_map."""
+        nodes = self._get_entries(self._version_ids_to_keys(version_ids))
+        result = {}
+        if self._parents:
+            for node in nodes:
+                result[node[1][0]] = self._keys_to_version_ids(node[3][0])
+        else:
+            for node in nodes:
+                result[node[1][0]] = ()
+        return result
 
     def get_parents_with_ghosts(self, version_id):
         """Return parents of specified version with ghosts."""
-        nodes = list(self._get_entries(self._version_ids_to_keys([version_id]),
-            check_present=True))
-        if not self._parents:
-            return ()
-        return self._keys_to_version_ids(nodes[0][3][0])
+        try:
+            return self.get_parent_map([version_id])[version_id]
+        except KeyError:
+            raise RevisionNotPresent(version_id, self)
 
     def check_versions_present(self, version_ids):
         """Check that all specified versions are present."""
@@ -1940,9 +2124,242 @@ class _PackAccess(object):
 
     def set_writer(self, writer, index, (transport, packname)):
         """Set a writer to use for adding data."""
-        self.indices[index] = (transport, packname)
+        if index is not None:
+            self.indices[index] = (transport, packname)
         self.container_writer = writer
         self.write_index = index
+
+
+class _StreamAccess(object):
+    """A Knit Access object that provides data from a datastream.
+    
+    It also provides a fallback to present as unannotated data, annotated data
+    from a *backing* access object.
+
+    This is triggered by a index_memo which is pointing to a different index
+    than this was constructed with, and is used to allow extracting full
+    unannotated texts for insertion into annotated knits.
+    """
+
+    def __init__(self, reader_callable, stream_index, backing_knit,
+        orig_factory):
+        """Create a _StreamAccess object.
+
+        :param reader_callable: The reader_callable from the datastream.
+            This is called to buffer all the data immediately, for 
+            random access.
+        :param stream_index: The index the data stream this provides access to
+            which will be present in native index_memo's.
+        :param backing_knit: The knit object that will provide access to 
+            annotated texts which are not available in the stream, so as to
+            create unannotated texts.
+        :param orig_factory: The original content factory used to generate the
+            stream. This is used for checking whether the thunk code for
+            supporting _copy_texts will generate the correct form of data.
+        """
+        self.data = reader_callable(None)
+        self.stream_index = stream_index
+        self.backing_knit = backing_knit
+        self.orig_factory = orig_factory
+
+    def get_raw_records(self, memos_for_retrieval):
+        """Get the raw bytes for a records.
+
+        :param memos_for_retrieval: An iterable of memos from the
+            _StreamIndex object identifying bytes to read; for these classes
+            they are (from_backing_knit, index, start, end) and can point to
+            either the backing knit or streamed data.
+        :return: An iterator yielding a byte string for each record in 
+            memos_for_retrieval.
+        """
+        # use a generator for memory friendliness
+        for from_backing_knit, version_id, start, end in memos_for_retrieval:
+            if not from_backing_knit:
+                assert version_id is self.stream_index
+                yield self.data[start:end]
+                continue
+            # we have been asked to thunk. This thunking only occurs when
+            # we are obtaining plain texts from an annotated backing knit
+            # so that _copy_texts will work.
+            # We could improve performance here by scanning for where we need
+            # to do this and using get_line_list, then interleaving the output
+            # as desired. However, for now, this is sufficient.
+            if self.orig_factory.__class__ != KnitPlainFactory:
+                raise errors.KnitCorrupt(
+                    self, 'Bad thunk request %r cannot be backed by %r' %
+                        (version_id, self.orig_factory))
+            lines = self.backing_knit.get_lines(version_id)
+            line_bytes = ''.join(lines)
+            digest = sha_string(line_bytes)
+            # the packed form of the fulltext always has a trailing newline,
+            # even if the actual text does not, unless the file is empty.  the
+            # record options including the noeol flag are passed through by
+            # _StreamIndex, so this is safe.
+            if lines:
+                if lines[-1][-1] != '\n':
+                    lines[-1] = lines[-1] + '\n'
+                    line_bytes += '\n'
+            # We want plain data, because we expect to thunk only to allow text
+            # extraction.
+            size, bytes = self.backing_knit._data._record_to_data(version_id,
+                digest, lines, line_bytes)
+            yield bytes
+
+
+class _StreamIndex(object):
+    """A Knit Index object that uses the data map from a datastream."""
+
+    def __init__(self, data_list, backing_index):
+        """Create a _StreamIndex object.
+
+        :param data_list: The data_list from the datastream.
+        :param backing_index: The index which will supply values for nodes
+            referenced outside of this stream.
+        """
+        self.data_list = data_list
+        self.backing_index = backing_index
+        self._by_version = {}
+        pos = 0
+        for key, options, length, parents in data_list:
+            self._by_version[key] = options, (pos, pos + length), parents
+            pos += length
+
+    def get_ancestry(self, versions, topo_sorted):
+        """Get an ancestry list for versions."""
+        if topo_sorted:
+            # Not needed for basic joins
+            raise NotImplementedError(self.get_ancestry)
+        # get a graph of all the mentioned versions:
+        # Little ugly - basically copied from KnitIndex, but don't want to
+        # accidentally incorporate too much of that index's code.
+        ancestry = set()
+        pending = set(versions)
+        cache = self._by_version
+        while pending:
+            version = pending.pop()
+            # trim ghosts
+            try:
+                parents = [p for p in cache[version][2] if p in cache]
+            except KeyError:
+                raise RevisionNotPresent(version, self)
+            # if not completed and not a ghost
+            pending.update([p for p in parents if p not in ancestry])
+            ancestry.add(version)
+        return list(ancestry)
+
+    def get_build_details(self, version_ids):
+        """Get the method, index_memo and compression parent for version_ids.
+
+        Ghosts are omitted from the result.
+
+        :param version_ids: An iterable of version_ids.
+        :return: A dict of version_id:(index_memo, compression_parent,
+                                       parents, record_details).
+            index_memo
+                opaque memo that can be passed to _StreamAccess.read_records
+                to extract the raw data; for these classes it is
+                (from_backing_knit, index, start, end) 
+            compression_parent
+                Content that this record is built upon, may be None
+            parents
+                Logical parents of this node
+            record_details
+                extra information about the content which needs to be passed to
+                Factory.parse_record
+        """
+        result = {}
+        for version_id in version_ids:
+            try:
+                method = self.get_method(version_id)
+            except errors.RevisionNotPresent:
+                # ghosts are omitted
+                continue
+            parent_ids = self.get_parents_with_ghosts(version_id)
+            noeol = ('no-eol' in self.get_options(version_id))
+            index_memo = self.get_position(version_id)
+            from_backing_knit = index_memo[0]
+            if from_backing_knit:
+                # texts retrieved from the backing knit are always full texts
+                method = 'fulltext'
+            if method == 'fulltext':
+                compression_parent = None
+            else:
+                compression_parent = parent_ids[0]
+            result[version_id] = (index_memo, compression_parent,
+                                  parent_ids, (method, noeol))
+        return result
+
+    def get_method(self, version_id):
+        """Return compression method of specified version."""
+        options = self.get_options(version_id)
+        if 'fulltext' in options:
+            return 'fulltext'
+        elif 'line-delta' in options:
+            return 'line-delta'
+        else:
+            raise errors.KnitIndexUnknownMethod(self, options)
+
+    def get_options(self, version_id):
+        """Return a list representing options.
+
+        e.g. ['foo', 'bar']
+        """
+        try:
+            return self._by_version[version_id][0]
+        except KeyError:
+            options = list(self.backing_index.get_options(version_id))
+            if 'fulltext' in options:
+                pass
+            elif 'line-delta' in options:
+                # Texts from the backing knit are always returned from the stream
+                # as full texts
+                options.remove('line-delta')
+                options.append('fulltext')
+            else:
+                raise errors.KnitIndexUnknownMethod(self, options)
+            return tuple(options)
+
+    def get_parent_map(self, version_ids):
+        """Passed through to by KnitVersionedFile.get_parent_map."""
+        result = {}
+        pending_ids = set()
+        for version_id in version_ids:
+            try:
+                result[version_id] = self._by_version[version_id][2]
+            except KeyError:
+                pending_ids.add(version_id)
+        result.update(self.backing_index.get_parent_map(pending_ids))
+        return result
+
+    def get_parents_with_ghosts(self, version_id):
+        """Return parents of specified version with ghosts."""
+        try:
+            return self.get_parent_map([version_id])[version_id]
+        except KeyError:
+            raise RevisionNotPresent(version_id, self)
+
+    def get_position(self, version_id):
+        """Return details needed to access the version.
+        
+        _StreamAccess has the data as a big array, so we return slice
+        coordinates into that (as index_memo's are opaque outside the
+        index and matching access class).
+
+        :return: a tuple (from_backing_knit, index, start, end) that can 
+            be passed e.g. to get_raw_records.  
+            If from_backing_knit is False, index will be self, otherwise it
+            will be a version id.
+        """
+        try:
+            start, end = self._by_version[version_id][1]
+            return False, self, start, end
+        except KeyError:
+            # Signal to the access object to handle this from the backing knit.
+            return (True, version_id, None, None)
+
+    def get_versions(self):
+        """Get all the versions in the stream."""
+        return self._by_version.keys()
 
 
 class _KnitData(object):
@@ -1961,21 +2378,6 @@ class _KnitData(object):
         """
         self._access = access
         self._checked = False
-        # TODO: jam 20060713 conceptually, this could spill to disk
-        #       if the cached size gets larger than a certain amount
-        #       but it complicates the model a bit, so for now just use
-        #       a simple dictionary
-        self._cache = {}
-        self._do_cache = False
-
-    def enable_cache(self):
-        """Enable caching of reads."""
-        self._do_cache = True
-
-    def clear_cache(self):
-        """Clear the record cache."""
-        self._do_cache = False
-        self._cache = {}
 
     def _open_file(self):
         return self._access.open_file()
@@ -2081,29 +2483,15 @@ class _KnitData(object):
         # uses readv so nice and fast we hope.
         if len(records):
             # grab the disk data needed.
-            if self._cache:
-                # Don't check _cache if it is empty
-                needed_offsets = [index_memo for version_id, index_memo
-                                              in records
-                                              if version_id not in self._cache]
-            else:
-                needed_offsets = [index_memo for version_id, index_memo
-                                               in records]
-
+            needed_offsets = [index_memo for version_id, index_memo
+                                           in records]
             raw_records = self._access.get_raw_records(needed_offsets)
 
         for version_id, index_memo in records:
-            if version_id in self._cache:
-                # This data has already been validated
-                data = self._cache[version_id]
-            else:
-                data = raw_records.next()
-                if self._do_cache:
-                    self._cache[version_id] = data
-
-                # validate the header
-                df, rec = self._parse_record_header(version_id, data)
-                df.close()
+            data = raw_records.next()
+            # validate the header
+            df, rec = self._parse_record_header(version_id, data)
+            df.close()
             yield version_id, data
 
     def read_records_iter(self, records):
@@ -2119,24 +2507,7 @@ class _KnitData(object):
         if not records:
             return
 
-        if self._cache:
-            # Skip records we have alread seen
-            yielded_records = set()
-            needed_records = set()
-            for record in records:
-                if record[0] in self._cache:
-                    if record[0] in yielded_records:
-                        continue
-                    yielded_records.add(record[0])
-                    data = self._cache[record[0]]
-                    content, digest = self._parse_record(record[0], data)
-                    yield (record[0], content, digest)
-                else:
-                    needed_records.add(record)
-            needed_records = sorted(needed_records, key=operator.itemgetter(1))
-        else:
-            needed_records = sorted(set(records), key=operator.itemgetter(1))
-
+        needed_records = sorted(set(records), key=operator.itemgetter(1))
         if not needed_records:
             return
 
@@ -2148,8 +2519,6 @@ class _KnitData(object):
         for (version_id, index_memo), data in \
                 izip(iter(needed_records), raw_data):
             content, digest = self._parse_record(version_id, data)
-            if self._do_cache:
-                self._cache[version_id] = data
             yield version_id, content, digest
 
     def read_records(self, records):
@@ -2164,8 +2533,8 @@ class _KnitData(object):
 class InterKnit(InterVersionedFile):
     """Optimised code paths for knit to knit operations."""
     
-    _matching_file_from_factory = KnitVersionedFile
-    _matching_file_to_factory = KnitVersionedFile
+    _matching_file_from_factory = staticmethod(make_file_knit)
+    _matching_file_to_factory = staticmethod(make_file_knit)
     
     @staticmethod
     def is_compatible(source, target):
@@ -2175,6 +2544,49 @@ class InterKnit(InterVersionedFile):
                     isinstance(target, KnitVersionedFile))
         except AttributeError:
             return False
+
+    def _copy_texts(self, pb, msg, version_ids, ignore_missing=False):
+        """Copy texts to the target by extracting and adding them one by one.
+
+        see join() for the parameter definitions.
+        """
+        version_ids = self._get_source_version_ids(version_ids, ignore_missing)
+        # --- the below is factorable out with VersionedFile.join, but wait for
+        # VersionedFiles, it may all be simpler then.
+        graph = Graph(self.source)
+        search = graph._make_breadth_first_searcher(version_ids)
+        transitive_ids = set()
+        map(transitive_ids.update, list(search))
+        parent_map = self.source.get_parent_map(transitive_ids)
+        order = topo_sort(parent_map.items())
+
+        def size_of_content(content):
+            return sum(len(line) for line in content.text())
+        # Cache at most 10MB of parent texts
+        parent_cache = lru_cache.LRUSizeCache(max_size=10*1024*1024,
+                                              compute_size=size_of_content)
+        # TODO: jam 20071116 It would be nice to have a streaming interface to
+        #       get multiple texts from a source. The source could be smarter
+        #       about how it handled intermediate stages.
+        #       get_line_list() or make_mpdiffs() seem like a possibility, but
+        #       at the moment they extract all full texts into memory, which
+        #       causes us to store more than our 3x fulltext goal.
+        #       Repository.iter_files_bytes() may be another possibility
+        to_process = [version for version in order
+                               if version not in self.target]
+        total = len(to_process)
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            for index, version in enumerate(to_process):
+                pb.update('Converting versioned data', index, total)
+                sha1, num_bytes, parent_text = self.target.add_lines(version,
+                    self.source.get_parents_with_ghosts(version),
+                    self.source.get_lines(version),
+                    parent_texts=parent_cache)
+                parent_cache[version] = parent_text
+        finally:
+            pb.finished()
+        return total
 
     def join(self, pb=None, msg=None, version_ids=None, ignore_missing=False):
         """See InterVersionedFile.join."""
@@ -2188,11 +2600,9 @@ class InterKnit(InterVersionedFile):
         elif self.source.factory.annotated:
             converter = self._anno_to_plain_converter
         else:
-            # We're converting from a plain to an annotated knit. This requires
-            # building the annotations from scratch. The generic join code
-            # handles this implicitly so we delegate to it.
-            return super(InterKnit, self).join(pb, msg, version_ids,
-                ignore_missing)
+            # We're converting from a plain to an annotated knit. Copy them
+            # across by full texts.
+            return self._copy_texts(pb, msg, version_ids, ignore_missing)
 
         version_ids = self._get_source_version_ids(version_ids, ignore_missing)
         if not version_ids:
@@ -2204,7 +2614,8 @@ class InterKnit(InterVersionedFile):
             if None in version_ids:
                 version_ids.remove(None)
     
-            self.source_ancestry = set(self.source.get_ancestry(version_ids))
+            self.source_ancestry = set(self.source.get_ancestry(version_ids,
+                topo_sorted=False))
             this_versions = set(self.target._index.get_versions())
             # XXX: For efficiency we should not look at the whole index,
             #      we only need to consider the referenced revisions - they
@@ -2214,7 +2625,8 @@ class InterKnit(InterVersionedFile):
     
             if not needed_versions:
                 return 0
-            full_list = topo_sort(self.source.get_graph())
+            full_list = topo_sort(
+                self.source.get_parent_map(self.source.versions()))
     
             version_list = [i for i in full_list if (not self.target.has_version(i)
                             and i in needed_versions)]
@@ -2285,7 +2697,7 @@ class WeaveToKnit(InterVersionedFile):
     """Optimised code paths for weave to knit operations."""
     
     _matching_file_from_factory = bzrlib.weave.WeaveFile
-    _matching_file_to_factory = KnitVersionedFile
+    _matching_file_to_factory = staticmethod(make_file_knit)
     
     @staticmethod
     def is_compatible(source, target):
@@ -2316,7 +2728,8 @@ class WeaveToKnit(InterVersionedFile):
     
             if not needed_versions:
                 return 0
-            full_list = topo_sort(self.source.get_graph())
+            full_list = topo_sort(
+                self.source.get_parent_map(self.source.versions()))
     
             version_list = [i for i in full_list if (not self.target.has_version(i)
                             and i in needed_versions)]
@@ -2324,9 +2737,10 @@ class WeaveToKnit(InterVersionedFile):
             # do the join:
             count = 0
             total = len(version_list)
+            parent_map = self.source.get_parent_map(version_list)
             for version_id in version_list:
                 pb.update("Converting to knit", count, total)
-                parents = self.source.get_parents(version_id)
+                parents = parent_map[version_id]
                 # check that its will be a consistent copy:
                 for parent in parents:
                     # if source has the parent, we must already have it
@@ -2353,24 +2767,268 @@ def annotate_knit(knit, revision_id):
     It will work for knits with cached annotations, but this is not
     recommended.
     """
-    ancestry = knit.get_ancestry(revision_id)
-    fulltext = dict(zip(ancestry, knit.get_line_list(ancestry)))
-    annotations = {}
-    for candidate in ancestry:
-        if candidate in annotations:
-            continue
-        parents = knit.get_parents(candidate)
-        if len(parents) == 0:
-            blocks = None
-        elif knit._index.get_method(candidate) != 'line-delta':
-            blocks = None
+    annotator = _KnitAnnotator(knit)
+    return iter(annotator.annotate(revision_id))
+
+
+class _KnitAnnotator(object):
+    """Build up the annotations for a text."""
+
+    def __init__(self, knit):
+        self._knit = knit
+
+        # Content objects, differs from fulltexts because of how final newlines
+        # are treated by knits. the content objects here will always have a
+        # final newline
+        self._fulltext_contents = {}
+
+        # Annotated lines of specific revisions
+        self._annotated_lines = {}
+
+        # Track the raw data for nodes that we could not process yet.
+        # This maps the revision_id of the base to a list of children that will
+        # annotated from it.
+        self._pending_children = {}
+
+        # Nodes which cannot be extracted
+        self._ghosts = set()
+
+        # Track how many children this node has, so we know if we need to keep
+        # it
+        self._annotate_children = {}
+        self._compression_children = {}
+
+        self._all_build_details = {}
+        # The children => parent revision_id graph
+        self._revision_id_graph = {}
+
+        self._heads_provider = None
+
+        self._nodes_to_keep_annotations = set()
+        self._generations_until_keep = 100
+
+    def set_generations_until_keep(self, value):
+        """Set the number of generations before caching a node.
+
+        Setting this to -1 will cache every merge node, setting this higher
+        will cache fewer nodes.
+        """
+        self._generations_until_keep = value
+
+    def _add_fulltext_content(self, revision_id, content_obj):
+        self._fulltext_contents[revision_id] = content_obj
+        # TODO: jam 20080305 It might be good to check the sha1digest here
+        return content_obj.text()
+
+    def _check_parents(self, child, nodes_to_annotate):
+        """Check if all parents have been processed.
+
+        :param child: A tuple of (rev_id, parents, raw_content)
+        :param nodes_to_annotate: If child is ready, add it to
+            nodes_to_annotate, otherwise put it back in self._pending_children
+        """
+        for parent_id in child[1]:
+            if (parent_id not in self._annotated_lines):
+                # This parent is present, but another parent is missing
+                self._pending_children.setdefault(parent_id,
+                                                  []).append(child)
+                break
         else:
-            parent, sha1, noeol, delta = knit.get_delta(candidate)
-            blocks = KnitContent.get_line_delta_blocks(delta,
-                fulltext[parents[0]], fulltext[candidate])
-        annotations[candidate] = list(annotate.reannotate([annotations[p]
-            for p in parents], fulltext[candidate], candidate, blocks))
-    return iter(annotations[revision_id])
+            # This one is ready to be processed
+            nodes_to_annotate.append(child)
+
+    def _add_annotation(self, revision_id, fulltext, parent_ids,
+                        left_matching_blocks=None):
+        """Add an annotation entry.
+
+        All parents should already have been annotated.
+        :return: A list of children that now have their parents satisfied.
+        """
+        a = self._annotated_lines
+        annotated_parent_lines = [a[p] for p in parent_ids]
+        annotated_lines = list(annotate.reannotate(annotated_parent_lines,
+            fulltext, revision_id, left_matching_blocks,
+            heads_provider=self._get_heads_provider()))
+        self._annotated_lines[revision_id] = annotated_lines
+        for p in parent_ids:
+            ann_children = self._annotate_children[p]
+            ann_children.remove(revision_id)
+            if (not ann_children
+                and p not in self._nodes_to_keep_annotations):
+                del self._annotated_lines[p]
+                del self._all_build_details[p]
+                if p in self._fulltext_contents:
+                    del self._fulltext_contents[p]
+        # Now that we've added this one, see if there are any pending
+        # deltas to be done, certainly this parent is finished
+        nodes_to_annotate = []
+        for child in self._pending_children.pop(revision_id, []):
+            self._check_parents(child, nodes_to_annotate)
+        return nodes_to_annotate
+
+    def _get_build_graph(self, revision_id):
+        """Get the graphs for building texts and annotations.
+
+        The data you need for creating a full text may be different than the
+        data you need to annotate that text. (At a minimum, you need both
+        parents to create an annotation, but only need 1 parent to generate the
+        fulltext.)
+
+        :return: A list of (revision_id, index_memo) records, suitable for
+            passing to read_records_iter to start reading in the raw data fro/
+            the pack file.
+        """
+        if revision_id in self._annotated_lines:
+            # Nothing to do
+            return []
+        pending = set([revision_id])
+        records = []
+        generation = 0
+        kept_generation = 0
+        while pending:
+            # get all pending nodes
+            generation += 1
+            this_iteration = pending
+            build_details = self._knit._index.get_build_details(this_iteration)
+            self._all_build_details.update(build_details)
+            # new_nodes = self._knit._index._get_entries(this_iteration)
+            pending = set()
+            for rev_id, details in build_details.iteritems():
+                (index_memo, compression_parent, parents,
+                 record_details) = details
+                self._revision_id_graph[rev_id] = parents
+                records.append((rev_id, index_memo))
+                # Do we actually need to check _annotated_lines?
+                pending.update(p for p in parents
+                                 if p not in self._all_build_details)
+                if compression_parent:
+                    self._compression_children.setdefault(compression_parent,
+                        []).append(rev_id)
+                if parents:
+                    for parent in parents:
+                        self._annotate_children.setdefault(parent,
+                            []).append(rev_id)
+                    num_gens = generation - kept_generation
+                    if ((num_gens >= self._generations_until_keep)
+                        and len(parents) > 1):
+                        kept_generation = generation
+                        self._nodes_to_keep_annotations.add(rev_id)
+
+            missing_versions = this_iteration.difference(build_details.keys())
+            self._ghosts.update(missing_versions)
+            for missing_version in missing_versions:
+                # add a key, no parents
+                self._revision_id_graph[missing_version] = ()
+                pending.discard(missing_version) # don't look for it
+        # XXX: This should probably be a real exception, as it is a data
+        #      inconsistency
+        assert not self._ghosts.intersection(self._compression_children), \
+            "We cannot have nodes which have a compression parent of a ghost."
+        # Cleanout anything that depends on a ghost so that we don't wait for
+        # the ghost to show up
+        for node in self._ghosts:
+            if node in self._annotate_children:
+                # We won't be building this node
+                del self._annotate_children[node]
+        # Generally we will want to read the records in reverse order, because
+        # we find the parent nodes after the children
+        records.reverse()
+        return records
+
+    def _annotate_records(self, records):
+        """Build the annotations for the listed records."""
+        # We iterate in the order read, rather than a strict order requested
+        # However, process what we can, and put off to the side things that
+        # still need parents, cleaning them up when those parents are
+        # processed.
+        for (rev_id, record,
+             digest) in self._knit._data.read_records_iter(records):
+            if rev_id in self._annotated_lines:
+                continue
+            parent_ids = self._revision_id_graph[rev_id]
+            parent_ids = [p for p in parent_ids if p not in self._ghosts]
+            details = self._all_build_details[rev_id]
+            (index_memo, compression_parent, parents,
+             record_details) = details
+            nodes_to_annotate = []
+            # TODO: Remove the punning between compression parents, and
+            #       parent_ids, we should be able to do this without assuming
+            #       the build order
+            if len(parent_ids) == 0:
+                # There are no parents for this node, so just add it
+                # TODO: This probably needs to be decoupled
+                assert compression_parent is None
+                fulltext_content, delta = self._knit.factory.parse_record(
+                    rev_id, record, record_details, None)
+                fulltext = self._add_fulltext_content(rev_id, fulltext_content)
+                nodes_to_annotate.extend(self._add_annotation(rev_id, fulltext,
+                    parent_ids, left_matching_blocks=None))
+            else:
+                child = (rev_id, parent_ids, record)
+                # Check if all the parents are present
+                self._check_parents(child, nodes_to_annotate)
+            while nodes_to_annotate:
+                # Should we use a queue here instead of a stack?
+                (rev_id, parent_ids, record) = nodes_to_annotate.pop()
+                (index_memo, compression_parent, parents,
+                 record_details) = self._all_build_details[rev_id]
+                if compression_parent is not None:
+                    comp_children = self._compression_children[compression_parent]
+                    assert rev_id in comp_children
+                    # If there is only 1 child, it is safe to reuse this
+                    # content
+                    reuse_content = (len(comp_children) == 1
+                        and compression_parent not in
+                            self._nodes_to_keep_annotations)
+                    if reuse_content:
+                        # Remove it from the cache since it will be changing
+                        parent_fulltext_content = self._fulltext_contents.pop(compression_parent)
+                        # Make sure to copy the fulltext since it might be
+                        # modified
+                        parent_fulltext = list(parent_fulltext_content.text())
+                    else:
+                        parent_fulltext_content = self._fulltext_contents[compression_parent]
+                        parent_fulltext = parent_fulltext_content.text()
+                    comp_children.remove(rev_id)
+                    fulltext_content, delta = self._knit.factory.parse_record(
+                        rev_id, record, record_details,
+                        parent_fulltext_content,
+                        copy_base_content=(not reuse_content))
+                    fulltext = self._add_fulltext_content(rev_id,
+                                                          fulltext_content)
+                    blocks = KnitContent.get_line_delta_blocks(delta,
+                            parent_fulltext, fulltext)
+                else:
+                    fulltext_content = self._knit.factory.parse_fulltext(
+                        record, rev_id)
+                    fulltext = self._add_fulltext_content(rev_id,
+                        fulltext_content)
+                    blocks = None
+                nodes_to_annotate.extend(
+                    self._add_annotation(rev_id, fulltext, parent_ids,
+                                     left_matching_blocks=blocks))
+
+    def _get_heads_provider(self):
+        """Create a heads provider for resolving ancestry issues."""
+        if self._heads_provider is not None:
+            return self._heads_provider
+        parent_provider = _mod_graph.DictParentsProvider(
+            self._revision_id_graph)
+        graph_obj = _mod_graph.Graph(parent_provider)
+        head_cache = _mod_graph.FrozenHeadsCache(graph_obj)
+        self._heads_provider = head_cache
+        return head_cache
+
+    def annotate(self, revision_id):
+        """Return the annotated fulltext at the given revision.
+
+        :param revision_id: The revision id for this file
+        """
+        records = self._get_build_graph(revision_id)
+        if revision_id in self._ghosts:
+            raise errors.RevisionNotPresent(revision_id, self._knit)
+        self._annotate_records(records)
+        return self._annotated_lines[revision_id]
 
 
 try:

@@ -139,7 +139,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
     
     def test_commit_unchanged_root(self):
         tree = self.make_branch_and_tree(".")
-        tree.commit('')
+        old_revision_id = tree.commit('')
         tree.lock_write()
         parent_tree = tree.basis_tree()
         parent_tree.lock_read()
@@ -147,12 +147,20 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         builder = tree.branch.get_commit_builder([parent_tree.inventory])
         try:
             ie = inventory.make_entry('directory', '', None,
-                    tree.inventory.root.file_id)
+                    tree.get_root_id())
             delta, version_recorded = builder.record_entry_contents(
                 ie, [parent_tree.inventory], '', tree,
                 tree.path_content_summary(''))
             self.assertFalse(version_recorded)
-            self.assertEqual(None, delta)
+            # if the repository format recorded a new root revision, that
+            # should be in the delta
+            got_new_revision = ie.revision != old_revision_id
+            if got_new_revision:
+                self.assertEqual(
+                    ('', '', ie.file_id, ie),
+                    delta)
+            else:
+                self.assertEqual(None, delta)
             builder.abort()
         except:
             builder.abort()
@@ -205,11 +213,15 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         self.assertEqual(rev_id, basis_tree.inventory.root.revision)
 
     def _get_revtrees(self, tree, revision_ids):
-        trees = list(tree.branch.repository.revision_trees(revision_ids))
-        for tree in trees:
-            tree.lock_read()
-            self.addCleanup(tree.unlock)
-        return trees
+        tree.lock_read()
+        try:
+            trees = list(tree.branch.repository.revision_trees(revision_ids))
+            for _tree in trees:
+                _tree.lock_read()
+                self.addCleanup(_tree.unlock)
+            return trees
+        finally:
+            tree.unlock()
 
     def test_last_modified_revision_after_commit_root_unchanged(self):
         # commiting without changing the root does not change the 
@@ -355,7 +367,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             # root
             builder.record_entry_contents(
                 inventory.make_entry('directory', '', None,
-                    tree.inventory.root.file_id), parent_invs, '', tree,
+                    tree.get_root_id()), parent_invs, '', tree,
                     tree.path_content_summary(''))
             def commit_id(file_id):
                 old_ie = tree.inventory[file_id]
@@ -367,7 +379,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
 
             file_id = tree.path2id(new_name)
             parent_id = tree.inventory[file_id].parent_id
-            if parent_id != tree.inventory.root.file_id:
+            if parent_id != tree.get_root_id():
                 commit_id(parent_id)
             # because a change of some sort is meant to have occurred,
             # recording the entry must return True.

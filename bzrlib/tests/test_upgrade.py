@@ -67,31 +67,39 @@ class TestUpgrade(TestCaseWithTransport):
             'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
         rt = b.repository.revision_tree(rh[0])
         foo_id = 'foo-20051004035605-91e788d1875603ae'
-        eq(rt.get_file_text(foo_id), 'initial contents\n')
+        rt.lock_read()
+        try:
+            eq(rt.get_file_text(foo_id), 'initial contents\n')
+        finally:
+            rt.unlock()
         rt = b.repository.revision_tree(rh[1])
-        eq(rt.get_file_text(foo_id), 'new contents\n')
+        rt.lock_read()
+        try:
+            eq(rt.get_file_text(foo_id), 'new contents\n')
+        finally:
+            rt.unlock()
         # check a backup was made:
         transport = get_transport(b.base)
-        transport.stat('.bzr.backup')
-        transport.stat('.bzr.backup/README')
-        transport.stat('.bzr.backup/branch-format')
-        transport.stat('.bzr.backup/revision-history')
-        transport.stat('.bzr.backup/merged-patches')
-        transport.stat('.bzr.backup/pending-merged-patches')
-        transport.stat('.bzr.backup/pending-merges')
-        transport.stat('.bzr.backup/branch-name')
-        transport.stat('.bzr.backup/branch-lock')
-        transport.stat('.bzr.backup/inventory')
-        transport.stat('.bzr.backup/stat-cache')
-        transport.stat('.bzr.backup/text-store')
-        transport.stat('.bzr.backup/text-store/foo-20051004035611-1591048e9dc7c2d4.gz')
-        transport.stat('.bzr.backup/text-store/foo-20051004035756-4081373d897c3453.gz')
-        transport.stat('.bzr.backup/inventory-store/')
-        transport.stat('.bzr.backup/inventory-store/mbp@sourcefrog.net-20051004035611-176b16534b086b3c.gz')
-        transport.stat('.bzr.backup/inventory-store/mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd.gz')
-        transport.stat('.bzr.backup/revision-store/')
-        transport.stat('.bzr.backup/revision-store/mbp@sourcefrog.net-20051004035611-176b16534b086b3c.gz')
-        transport.stat('.bzr.backup/revision-store/mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd.gz')
+        transport.stat('backup.bzr')
+        transport.stat('backup.bzr/README')
+        transport.stat('backup.bzr/branch-format')
+        transport.stat('backup.bzr/revision-history')
+        transport.stat('backup.bzr/merged-patches')
+        transport.stat('backup.bzr/pending-merged-patches')
+        transport.stat('backup.bzr/pending-merges')
+        transport.stat('backup.bzr/branch-name')
+        transport.stat('backup.bzr/branch-lock')
+        transport.stat('backup.bzr/inventory')
+        transport.stat('backup.bzr/stat-cache')
+        transport.stat('backup.bzr/text-store')
+        transport.stat('backup.bzr/text-store/foo-20051004035611-1591048e9dc7c2d4.gz')
+        transport.stat('backup.bzr/text-store/foo-20051004035756-4081373d897c3453.gz')
+        transport.stat('backup.bzr/inventory-store/')
+        transport.stat('backup.bzr/inventory-store/mbp@sourcefrog.net-20051004035611-176b16534b086b3c.gz')
+        transport.stat('backup.bzr/inventory-store/mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd.gz')
+        transport.stat('backup.bzr/revision-store/')
+        transport.stat('backup.bzr/revision-store/mbp@sourcefrog.net-20051004035611-176b16534b086b3c.gz')
+        transport.stat('backup.bzr/revision-store/mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd.gz')
 
     def test_upgrade_with_ghosts(self):
         """Upgrade v0.0.4 tree containing ghost references.
@@ -125,11 +133,13 @@ class TestUpgrade(TestCaseWithTransport):
         self.assertNotEqual(old_repo_format.__class__, repo._format.__class__)
         # and we should be able to read the names for the file id 
         # 'dir-20051005095101-da1441ea3fa6917a'
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
         self.assertNotEqual(
             [],
             repo.weave_store.get_weave(
                 'dir-20051005095101-da1441ea3fa6917a',
-                repo.get_transaction()))
+                repo.get_transaction()).versions())
 
     def test_upgrade_to_meta_sets_workingtree_last_revision(self):
         self.build_tree_contents(_upgrade_dir_template)
@@ -146,9 +156,9 @@ class TestUpgrade(TestCaseWithTransport):
         transport = get_transport('.')
         transport.delete_multi(['.bzr/pending-merges', '.bzr/inventory'])
         assert not transport.has('.bzr/stat-cache')
-        # XXX: upgrade fails if a .bzr.backup is already present
+        # XXX: upgrade fails if a backup.bzr is already present
         # -- David Allouche 2006-08-11
-        transport.delete_tree('.bzr.backup')
+        transport.delete_tree('backup.bzr')
         # At this point, we have a format6 branch without checkout files.
         upgrade('.', bzrdir.BzrDirMetaFormat1())
         # The upgrade should not have set up a working tree.
@@ -248,7 +258,9 @@ _upgrade1_template = \
      ('foo', 'new contents\n'),
      ('.bzr/',),
      ('.bzr/README',
-      'This is a Bazaar-NG control directory.\nDo not change any files in this directory.\n'),
+      'This is a Bazaar control directory.\n'
+      'Do not change any files in this directory.\n'
+      'See http://bazaar-vcs.org/ for more information about Bazaar.\n'),
      ('.bzr/branch-format', 'Bazaar-NG branch, format 0.0.4\n'),
      ('.bzr/revision-history',
       'mbp@sourcefrog.net-20051004035611-176b16534b086b3c\n'
@@ -288,8 +300,9 @@ _ghost_template = [
     ),
     ( './.bzr/', ),
     ( './.bzr/README',
-        'This is a Bazaar-NG control directory.\n'
-        'Do not change any files in this directory.\n'
+      'This is a Bazaar control directory.\n'
+      'Do not change any files in this directory.\n'
+      'See http://bazaar-vcs.org/ for more information about Bazaar.\n'
     ),
     ( './.bzr/branch-format',
         'Bazaar-NG branch, format 0.0.4\n'
@@ -353,8 +366,9 @@ _ghost_template = [
 _upgrade_dir_template = [
     ( './.bzr/', ),
     ( './.bzr/README',
-        'This is a Bazaar-NG control directory.\n'
-        'Do not change any files in this directory.\n'
+      'This is a Bazaar control directory.\n'
+      'Do not change any files in this directory.\n'
+      'See http://bazaar-vcs.org/ for more information about Bazaar.\n'
     ),
     ( './.bzr/branch-format',
         'Bazaar-NG branch, format 0.0.4\n'

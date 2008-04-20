@@ -2,11 +2,20 @@
 Bazaar Developer Guide
 ======================
 
-.. contents::
+This document describes the Bazaar internals and the development process.  
+It's meant for people interested in developing Bazaar, and some parts will
+also be useful to people developing Bazaar plugins.
 
-(The current version of this document is available in the file 
+If you have any questions or something seems to be incorrect, unclear or
+missing, please talk to us in ``irc://irc.freenode.net/#bzr``, or write to
+the Bazaar mailing list.  To propose a correction or addition to this
+document, send a merge request or new text to the mailing list.
+
+The current version of this document is available in the file 
 ``doc/developers/HACKING.txt`` in the source tree, or at
-http://doc.bazaar-vcs.org/bzr.dev/en/developer-guide/HACKING.html)
+http://doc.bazaar-vcs.org/bzr.dev/en/developer-guide/HACKING.html
+
+.. contents::
 
 
 Getting Started
@@ -470,6 +479,23 @@ should only test errors if there is something particular to the cli in how
 they're displayed or handled.
 
 
+Testing warnings
+----------------
+
+The Python ``warnings`` module is used to indicate a non-fatal code
+problem.  Code that's expected to raise a warning can be tested through
+callCatchWarnings.
+
+The test suite can be run with ``-Werror`` to check no unexpected errors
+occur.
+
+However, warnings should be used with discretion.  It's not an appropriate
+way to give messages to the user, because the warning is normally shown
+only once per source line that causes the problem.  You should also think
+about whether the warning is serious enought that it should be visible to
+users who may not be able to fix it.
+
+
 Interface implementation testing and test scenarios
 ---------------------------------------------------
 
@@ -644,6 +670,15 @@ the method, so that tests can keep running.
 
 Coding Style Guidelines
 =======================
+
+General Python rules
+--------------------
+
+``hasattr`` should not be used because it swallows exceptions including
+``KeyboardInterrupt``.  Instead, say something like ::
+
+  if getattr(thing, 'name', None) is None
+
 
 Code layout
 -----------
@@ -1729,13 +1764,15 @@ Managing a Release
 Starting a Release
 ------------------
 
-TODO: Things to cover:
+To start a new release cycle:
 
-* RFI on release objectives
-* RFI on higher risk things that are best done early, e.g. changes to file
-  format defaults
-* Communication of proposed dates
+#. Send mail to the list with the key dates, who will be the release
+   manager, and the main themes or targetted bugs.  Ask people to nominate
+   objectives, or point out an high-risk things that are best done early,
+   or that interact with other changes.
 
+#. Add a new "series" in Launchpad at <https://launchpad.net/bzr/+addseries>.  There is one 
+   series for every *x.y* release.
 
 Weekly Status Updates
 ---------------------
@@ -1755,18 +1792,349 @@ Feature Freeze
 TODO: Get material from http://bazaar-vcs.org/FeatureFreeze.
 
 
-Release Candidates
-------------------
 
-TODO: Get material from http://bazaar-vcs.org/ReleaseChecklist and clean
-it up to make it clearer what the RC vs final vs both tasks are.
+Making a Release or Release Candidate
+-------------------------------------
+
+.. Was previously at http://bazaar-vcs.org/ReleaseChecklist
+
+.. TODO: Still needs more clarity on what's in a RC versus a final
+.. release?
+
+.. TODO: Too much of this is manual but could be automated...
+
+This is the procedure for making a new bzr release:
+
+#. If the release is the first candidate, make a new branch in PQM. (Contact RobertCollins for this step).
+
+   Register the branch at https://launchpad.net/products/bzr/+addbranch
+
+#. Run the automatic test suite and any non-automated tests.  (For example, try a download over http; these should eventually be scripted though not automatically run.). Try to have all optional dependencies installed so that there are no tests skipped. Also make sure that you have the c extensions compiled (``make`` or ``python setup.py build_ext -i``).
+
+#. In the release branch, update  ``version_info`` in ``./bzrlib/__init__.py``
+
+#. Add the date and release number to ``./NEWS``.
+
+#. Update the release number in the README. (It's not there as of 0.15, but please check).
+
+#. Commit these changes to the release branch, using a command like::
+    
+     bzr commit -m "(jam) Release 0.12rc1." 
+   
+   The diff before you commit will be something like::
+
+       === modified file 'NEWS'
+       --- NEWS        2006-10-23 13:11:17 +0000
+       +++ NEWS        2006-10-23 22:50:50 +0000
+       @@ -1,4 +1,4 @@
+       -IN DEVELOPMENT
+       +bzr 0.12rc1  2006-10-23
+
+          IMPROVEMENTS:
 
 
-The Final Release
------------------
+       === modified file 'bzrlib/__init__.py'
+       --- bzrlib/__init__.py  2006-10-16 01:47:43 +0000
+       +++ bzrlib/__init__.py  2006-10-23 22:49:46 +0000
+       @@ -35,7 +35,7 @@
+        # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
+        # releaselevel of 'dev' for unreleased under-development code.
 
-TODO: Get material from http://bazaar-vcs.org/ReleaseChecklist and clean
-it up to make it clearer what the RC vs final vs both tasks are.
+       -version_info = (0, 12, 0, 'dev', 0)
+       +version_info = (0, 12, 0, 'candidate', 1)
+
+        if version_info[3] == 'final':
+            version_string = '%d.%d.%d' % version_info[:3]
+
+#. Send the changes to PQM, to update the official master branch.
+
+#. When PQM succeeds, pull down the master release branch.
+
+#. Merge the release branch back into the trunk.  Check that changes in NEWS were merged into the right sections.  If it's not already done, advance the version number in bzr and bzrlib/__init__.py Submit this back into pqm for bzr.dev.
+
+#. Make a distribution directory by running e.g. ``bzr export /tmp/bzr-<version>/`` in the working directory.
+
+#. Run make in /tmp/bzr-<version>. This creates the extensions from the pyrex source.
+
+#. Run the test suite in the distribution directory
+
+#. Run ``setup.py install`` --root=prefix to do a test install into your system directory, home directory, or some other prefix.  Check the install worked and that the installed version is usable. (run the bzr script from the installed path with PYTHONPATH set to the site-packages directory it created). i.e. ::
+
+    python setup.py install --root=installed
+    PYTHONPATH=installed/usr/lib/python2.4/site-packages installed/usr/bin/bzr
+
+#. Clean the tree to get rid of .pyc files etc: make clean && rm -rf build && rm bzrlib/_*.c bzrlib/_*.so
+
+#. Generate the reference documentation in text format: make doc/en/user-reference/bzr_man.txt.
+
+#. Change back to your original branch and then run: make clean && make to create the compiled pyrex extensions.  You then need to copy the .c files over to the exported directory. 
+   
+   ``find . -name "*.c"`` will tell you which files you need.
+
+#. Create the release tarball::
+   
+     cd /tmp && tar czf bzr-<version>.tar.gz bzr-<version>
+
+#. Sign the tarball with e.g. ``gpg --detach-sign -a bzr-0.10rc1.tar.gz``
+
+
+Publishing the release
+----------------------
+
+Now you have the releasable product.  The next step is making it
+available to the world.
+
+#. In <https://launchpad.net/bzr/> click the "Release series" for this
+   series, to take you to e.g. <https://launchpad.net/bzr/1.1>.  Then
+   click "Register a release", and add information about this release.
+
+#. Within that release, upload the source tarball and the GPG signature.
+
+   (These used to also be uploaded to 
+   <sftp://escudero.ubuntu.com/srv/bazaar.canonical.com/www/releases/src>
+   but that's not accessible to all developers, and gets some mime types
+   wrong...)
+
+#. Link from http://bazaar-vcs.org/Download to the tarball and signature.
+
+#. Update http://doc.bazaar-vcs.org/ to have a directory of documentation
+   for this release.  (Controlled by the ``update-bzr-docs`` script on
+   escudero, and also update the ``latest`` symlink in
+   ``/srv/bazaar.canonical.com/doc/``.)
+
+#. Announce on the `Bazaar home page`__
+   
+ __ http://bazaar-vcs.org/
+
+
+Announcing the release
+----------------------
+
+Now that the release is publicly available, tell people about it.
+
+#. Announce to ``bazaar-announce`` and ``bazaar`` mailing lists. 
+   The announce mail will look something like this:
+   
+    | Subject: bzr 0.11 release candidate 1
+    | 
+    | INTRO HERE. Mention the release number and date, and why the release. (i.e. release candidate for testing, final release of a version, backport/bugfix etc).
+    | 
+    | Tarballs:
+    | http://bazaar-vcs.org/releases/src/bzr-VERSION.tar.gz
+    | and GPG signature:
+    | http://bazaar-vcs.org/releases/src/bzr-VERSION.tar.gz.sig
+    | 
+    | DESCRIBE-CHANGES-IN-OVERVIEW-HERE
+    | 
+    | DESCRIBE-when the next release will be (if there is another - i.e. this is a release candidate)
+    | 
+    | Many thanks to all the contributors to this release! I've included the
+    | contents of NEWS for VERSION below:
+
+   To generate the data from NEWS, just copy and paste the relevant news section and clean it up as appropriate. The main clean-up task is to confirm that all major changes are indeed covered. This can be done by running ``bzr log`` back to the point when the branch was opened and cross checking the changes against the NEWS entries.
+
+   (RC announcements should remind plugin maintainers to update their plugins.)
+
+     * For point releases (i.e. a release candidate, or an incremental fix to a released version) take everything in the relevant NEWS secion : for 0.11rc2 take everything in NEWS from the bzr 0.11rc2 line to the bzr 0.11rc1 line further down.
+
+     * For major releases (i.e. 0.11, 0.12 etc), take all the combined NEWS sections from within that version: for 0.11 take all of the 0.11 specific section, plus 0.11rc2, plus 0.11rc1 etc.
+
+#. Update the `news side menu`__ -- this currently requires downloading the file, editing it, deleting it, and uploading a replacement.
+
+   __ http://bazaar-vcs.org/site/menu?action=AttachFile&do=view&target=news.html
+
+#. Update the IRC channel topic. Use the ``/topic`` command to do this, ensuring the new topic text keeps the project name, web site link, etc.
+
+#. Announce on http://freshmeat.net/projects/bzr/
+   
+   This should be done for both release candidates and final releases. If you do not have a Freshmeat account yet, ask one of the existing admins.
+
+#. Update http://en.wikipedia.org/wiki/Bzr -- this should be done for final releases but not Release Candidates.
+
+#. Package maintainers should update packages when they see the
+   announcement.
+
+#. Blog about it.
+
+#. Post to http://mail.python.org/mailman/listinfo/python-announce-list for major releases
+
+#. Update the python package index: <http://pypi.python.org/pypi/bzr> - best
+   done by running ::
+
+       python setup.py register
+
+   Remember to check the results afterwards.
+
+
+Making Win32 installers
+-----------------------
+
+**XXX:** This information is now probably obsolete, as Alexander uploads
+direct to Launchpad.  --mbp 20080116
+
+Alexander Belchenko has been very good about getting packaged installers compiled (see Win32ReleaseChecklist for details). He generally e-mails John Arbash Meinel when they are ready. This is just a brief checklist of what needs to be done.
+
+#. Download and verify the sha1 sums and gpg signatures. Frequently the sha1 files are in dos mode, and need to be converted to unix mode (strip off the trailing ``\r``) before they veryify correctly.
+
+#. Upload to the Launchpad page for this release.
+
+#. Upload to escudero (to the b.c.c/www/releases/win32 directory) using sftp, lftp or rsync
+
+#. Cat the contents of the .sha1 files into the SHA1SUM.
+
+#. Update the SHA1SUM and MD5SUM files using something like ``md5sum bzr-0.14.0.win32.exe >> MD5SUM``. Make sure you use append (>>) rather than overwrite (>).
+
+#. Verify once again that everything is correct with ``sha1sum -c SHA1SUM`` and ``md5sum -c MD5SUM``.
+
+#. Update ``.htaccess`` so that the 'bzr-latest.win32.exe' links point to the latest release. This is not done for candidate releases, only for final releases. (example: bzr-0.14.0, but not bzr-0.14.0rc1).
+
+#. Make sure these urls work as expected:
+
+   http://bazaar-vcs.org/releases/win32/bzr-latest.win32-py2.5.exe
+
+   http://bazaar-vcs.org/releases/win32/bzr-latest.win32-py2.5.exe.asc
+
+   http://bazaar-vcs.org/releases/win32/bzr-latest.win32-py2.4.exe
+
+   http://bazaar-vcs.org/releases/win32/bzr-latest.win32-py2.4.exe.asc
+
+   http://bazaar-vcs.org/releases/win32/bzr-setup-latest.exe
+
+   http://bazaar-vcs.org/releases/win32/bzr-setup-latest.exe.asc
+   
+They should all try to download a file with the correct version number.
+
+#. Update http://bazaar-vcs.org/Download to indicate the newly available versions.
+
+#. Update http://bazaar-vcs.org/WindowsDownloads to have the correct version number as well as the correct sha1sum displayed.
+
+
+The Bazaar PPA archive
+----------------------
+
+We build Ubuntu ``.deb`` packages for Bazaar as an important part of the release
+process.  These packages are hosted in a `Personal Package Archive (PPA)`__ on
+Launchpad, at <https://launchpad.net/~bzr/+archive>.
+
+  __ https://help.launchpad.net/PPAQuickStart
+
+We build packages for every supported Ubuntu release
+<https://wiki.ubuntu.com/Releases>.  Packages need no longer be updated
+when the release passes end-of-life because all users should have then
+update.
+
+The ``debian/`` directory containing the packaging information is kept in
+branches on Launchpad, named like 
+<https://code.launchpad.net/~bzr/bzrtools/packaging-dapper>
+
+Updating the PPA for a new release
+----------------------------------
+
+Preconditions for building these packages:
+  
+ * You must have a Launchpad account and be a member of the `~bzr`__ team
+   
+ __ https://edge.launchpad.net/~bzr/+members>
+
+ * You must have a GPG key registered to your Launchpad account.
+
+ * Configure ``dput`` to upload to our PPA with this section in your
+   ``~/.dput.cf``::
+
+        [bzr-ppa]
+        fqdn = ppa.launchpad.net
+        method = ftp
+        incoming = ~bzr/ubuntu
+        login = anonymous
+        allow_unsigned_uploads = 0
+
+ * You need a Ubuntu (or probably Debian) machine, and ::
+
+     sudo apt-get install build-essential devscripts dput
+
+Here is the process; there are some steps which should be automated in
+future:
+
+#. You will need a working directory for each supported release, such as
+   ``~/bzr/Packaging/dapper``
+
+#. Download the official tarball of the release to e.g. ``~/bzr/Releases``
+
+#. Copy the original tarball into your per-disto directory, then untar it 
+   and if necessary rename it::
+
+     cp -l ~/bzr/Releases/bzrtools-1.3.0.tar.gz bzrtools_1.3.0.orig.tar.gz
+     tar xfvz bzrtools_1.3.0.orig.tar.gz
+     mv bzrtools bzrtools-1.3.0
+
+#. Change into that directory and check out the packaging branch::
+
+     cd bzrtools
+     bzr checkout \
+       bzr+ssh://bazaar.launchpad.net/~bzr/bzrtools/packaging-dapper \
+       debian
+
+#. For Bazaar plugins, change the ``debian/control`` file to express a
+   dependency on the correct version of ``bzr``.
+
+   For bzrtools this is typically::
+
+      Build-Depends-Indep: bzr (>= 1.3~), rsync
+      Depends: ${python:Depends}, bzr (>= 1.3~), bzr (<< 1.4~), patch
+
+#. Make a new ``debian/changelog`` entry for the new release,
+   either by using ``dch`` or just editing the file::
+
+     dch -v '1.3.0-1~bazaar1~dapper1' -D dapper
+
+   dch will default to the distro you're working in and this isn't checked
+   against the version number (which is just our conversion).  So make
+   sure to specify it.
+
+   Make sure you have the correct email address for yourself, version
+   number, and distribution.  It should look something like this::
+
+     >  bzrtools (1.3.0-1~bazaar1~dapper1) dapper; urgency=low
+     >
+     >   * New upstream release.
+     >
+     >  -- John Sample <sample@example.com>  Mon, 31 Mar 2008 12:36:27 +1100
+
+   If you need to upload the package again to fix a problem, normally you
+   should increment the last number in the version number, following the
+   distro name.  Make sure not to omit the initial ``-1``, and make sure
+   that the distro name in the version is consistent with the target name
+   outside the parenthesis.
+
+#. Commit these changes into the packaging branch::
+
+     bzr ci -m '1.3.0-1~bazaar1~dapper1: New upstream release.' debian
+
+#. Build a source package::
+
+     debuild -S -sa -i
+
+   This will create a ``.changes`` file in the per-distro directory,
+   and should invoke gpg to sign it with your key.
+   Check that file is reasonable: it should be uploading to the intended
+   distribution, have a .orig file included, and the right version number.
+
+#. Upload into the PPA::
+
+     dput bzr-ppa ../bzrtools__1.3.0-1\~bazaar1\~dapper1_source.changes
+
+   Don't forget the ``bzr-ppa`` component or dput will try to upload into
+   the main archive by default.  You can disable this by adding this
+   section to your ``.dput.cf``::
+
+     [ubuntu]
+     fqdn = SPECIFY.A.PPA.NAME
+
+#. You should soon get an "upload accepted" mail from Launchpad, which
+   means that your package is waiting to be built.  You can then track its
+   progress in <https://launchpad.net/~bzr/+archive> and
+   <https://launchpad.net/~bzr/+archive/+builds>.
+
 
 ..
    vim: ft=rst tw=74 ai

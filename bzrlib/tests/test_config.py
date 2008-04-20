@@ -17,23 +17,25 @@
 
 """Tests for finding and reading the bzr config file[s]."""
 # import system imports here
-from bzrlib.util.configobj.configobj import ConfigObj, ConfigObjError
 from cStringIO import StringIO
 import os
 import sys
 
 #import bzrlib specific imports here
 from bzrlib import (
+    branch,
+    bzrdir,
     config,
     errors,
     osutils,
     mail_client,
+    ui,
     urlutils,
+    tests,
     trace,
+    transport,
     )
-from bzrlib.branch import Branch
-from bzrlib.bzrdir import BzrDir
-from bzrlib.tests import TestCase, TestCaseInTempDir, TestCaseWithTransport
+from bzrlib.util.configobj import configobj
 
 
 sample_long_alias="log -r-15..-1 --line"
@@ -159,6 +161,7 @@ class FakeControlFiles(object):
     def __init__(self, user_id=None):
         self.email = user_id
         self.files = {}
+        self._transport = self
 
     def get_utf8(self, filename):
         if filename != 'email':
@@ -176,10 +179,13 @@ class FakeControlFiles(object):
     def put(self, filename, fileobj):
         self.files[filename] = fileobj.read()
 
+    def put_file(self, filename, fileobj):
+        return self.put(filename, fileobj)
+
 
 class InstrumentedConfig(config.Config):
     """An instrumented config that supplies stubs for template methods."""
-    
+
     def __init__(self):
         super(InstrumentedConfig, self).__init__()
         self._calls = []
@@ -201,21 +207,54 @@ inactive = false
 active = True
 nonactive = False
 """
-class TestConfigObj(TestCase):
+
+
+class TestConfigObj(tests.TestCase):
+
     def test_get_bool(self):
-        from bzrlib.config import ConfigObj
-        co = ConfigObj(StringIO(bool_config))
+        co = config.ConfigObj(StringIO(bool_config))
         self.assertIs(co.get_bool('DEFAULT', 'active'), True)
         self.assertIs(co.get_bool('DEFAULT', 'inactive'), False)
         self.assertIs(co.get_bool('UPPERCASE', 'active'), True)
         self.assertIs(co.get_bool('UPPERCASE', 'nonactive'), False)
 
+    def test_hash_sign_in_value(self):
+        """
+        Before 4.5.0, ConfigObj did not quote # signs in values, so they'd be
+        treated as comments when read in again. (#86838)
+        """
+        co = config.ConfigObj()
+        co['test'] = 'foo#bar'
+        lines = co.write()
+        self.assertEqual(lines, ['test = "foo#bar"'])
+        co2 = config.ConfigObj(lines)
+        self.assertEqual(co2['test'], 'foo#bar')
 
-class TestConfig(TestCase):
+
+erroneous_config = """[section] # line 1
+good=good # line 2
+[section] # line 3
+whocares=notme # line 4
+"""
+
+
+class TestConfigObjErrors(tests.TestCase):
+
+    def test_duplicate_section_name_error_line(self):
+        try:
+            co = configobj.ConfigObj(StringIO(erroneous_config),
+                                     raise_errors=True)
+        except config.configobj.DuplicateError, e:
+            self.assertEqual(3, e.line_number)
+        else:
+            self.fail('Error in config file not detected')
+
+
+class TestConfig(tests.TestCase):
 
     def test_constructs(self):
         config.Config()
- 
+
     def test_no_default_editor(self):
         self.assertRaises(NotImplementedError, config.Config().get_editor)
 
@@ -267,7 +306,7 @@ class TestConfig(TestCase):
         self.assertEqual('long', my_config.log_format())
 
 
-class TestConfigPath(TestCase):
+class TestConfigPath(tests.TestCase):
 
     def setUp(self):
         super(TestConfigPath, self).setUp()
@@ -275,39 +314,32 @@ class TestConfigPath(TestCase):
         if sys.platform == 'win32':
             os.environ['BZR_HOME'] = \
                 r'C:\Documents and Settings\bogus\Application Data'
+            self.bzr_home = \
+                'C:/Documents and Settings/bogus/Application Data/bazaar/2.0'
+        else:
+            self.bzr_home = '/home/bogus/.bazaar'
 
     def test_config_dir(self):
-        if sys.platform == 'win32':
-            self.assertEqual(config.config_dir(), 
-                'C:/Documents and Settings/bogus/Application Data/bazaar/2.0')
-        else:
-            self.assertEqual(config.config_dir(), '/home/bogus/.bazaar')
+        self.assertEqual(config.config_dir(), self.bzr_home)
 
     def test_config_filename(self):
-        if sys.platform == 'win32':
-            self.assertEqual(config.config_filename(), 
-                'C:/Documents and Settings/bogus/Application Data/bazaar/2.0/bazaar.conf')
-        else:
-            self.assertEqual(config.config_filename(),
-                             '/home/bogus/.bazaar/bazaar.conf')
+        self.assertEqual(config.config_filename(),
+                         self.bzr_home + '/bazaar.conf')
 
     def test_branches_config_filename(self):
-        if sys.platform == 'win32':
-            self.assertEqual(config.branches_config_filename(), 
-                'C:/Documents and Settings/bogus/Application Data/bazaar/2.0/branches.conf')
-        else:
-            self.assertEqual(config.branches_config_filename(),
-                             '/home/bogus/.bazaar/branches.conf')
+        self.assertEqual(config.branches_config_filename(),
+                         self.bzr_home + '/branches.conf')
 
     def test_locations_config_filename(self):
-        if sys.platform == 'win32':
-            self.assertEqual(config.locations_config_filename(), 
-                'C:/Documents and Settings/bogus/Application Data/bazaar/2.0/locations.conf')
-        else:
-            self.assertEqual(config.locations_config_filename(),
-                             '/home/bogus/.bazaar/locations.conf')
+        self.assertEqual(config.locations_config_filename(),
+                         self.bzr_home + '/locations.conf')
 
-class TestIniConfig(TestCase):
+    def test_authentication_config_filename(self):
+        self.assertEqual(config.authentication_config_filename(),
+                         self.bzr_home + '/authentication.conf')
+
+
+class TestIniConfig(tests.TestCase):
 
     def test_contructs(self):
         my_config = config.IniBasedConfig("nothing")
@@ -317,7 +349,7 @@ class TestIniConfig(TestCase):
         my_config = config.IniBasedConfig(None)
         self.failUnless(
             isinstance(my_config._get_parser(file=config_file),
-                        ConfigObj))
+                        configobj.ConfigObj))
 
     def test_cached(self):
         config_file = StringIO(sample_config_text.encode('utf-8'))
@@ -326,13 +358,13 @@ class TestIniConfig(TestCase):
         self.failUnless(my_config._get_parser() is parser)
 
 
-class TestGetConfig(TestCase):
+class TestGetConfig(tests.TestCase):
 
     def test_constructs(self):
         my_config = config.GlobalConfig()
 
     def test_calls_read_filenames(self):
-        # replace the class that is constructured, to check its parameters
+        # replace the class that is constructed, to check its parameters
         oldparserclass = config.ConfigObj
         config.ConfigObj = InstrumentedConfigObj
         my_config = config.GlobalConfig()
@@ -345,7 +377,7 @@ class TestGetConfig(TestCase):
                                           'utf-8')])
 
 
-class TestBranchConfig(TestCaseWithTransport):
+class TestBranchConfig(tests.TestCaseWithTransport):
 
     def test_constructs(self):
         branch = FakeBranch()
@@ -361,14 +393,14 @@ class TestBranchConfig(TestCaseWithTransport):
 
     def test_get_config(self):
         """The Branch.get_config method works properly"""
-        b = BzrDir.create_standalone_workingtree('.').branch
+        b = bzrdir.BzrDir.create_standalone_workingtree('.').branch
         my_config = b.get_config()
         self.assertIs(my_config.get_user_option('wacky'), None)
         my_config.set_user_option('wacky', 'unlikely')
         self.assertEqual(my_config.get_user_option('wacky'), 'unlikely')
 
         # Ensure we get the same thing if we start again
-        b2 = Branch.open('.')
+        b2 = branch.Branch.open('.')
         my_config2 = b2.get_config()
         self.assertEqual(my_config2.get_user_option('wacky'), 'unlikely')
 
@@ -409,7 +441,10 @@ class TestBranchConfig(TestCaseWithTransport):
         local_path = osutils.getcwd().encode('utf8')
         # Surprisingly ConfigObj doesn't create a trailing newline
         self.check_file_contents(locations,
-            '[%s/branch]\npush_location = http://foobar\npush_location:policy = norecurse' % (local_path,))
+                                 '[%s/branch]\n'
+                                 'push_location = http://foobar\n'
+                                 'push_location:policy = norecurse\n'
+                                 % (local_path,))
 
     def test_autonick_urlencoded(self):
         b = self.make_branch('!repo')
@@ -453,7 +488,7 @@ class TestBranchConfig(TestCaseWithTransport):
             trace.warning = _warning
 
 
-class TestGlobalConfigItems(TestCase):
+class TestGlobalConfigItems(tests.TestCase):
 
     def test_user_id(self):
         config_file = StringIO(sample_config_text.encode('utf-8'))
@@ -533,7 +568,7 @@ class TestGlobalConfigItems(TestCase):
         my_config = self._get_sample_config()
         self.assertEqual("something",
                          my_config.get_user_option('user_global_option'))
-        
+
     def test_post_commit_default(self):
         my_config = self._get_sample_config()
         self.assertEqual(None, my_config.post_commit())
@@ -555,7 +590,7 @@ class TestGlobalConfigItems(TestCase):
         self.assertEqual(sample_long_alias, my_config.get_alias('ll'))
 
 
-class TestLocationConfig(TestCaseInTempDir):
+class TestLocationConfig(tests.TestCaseInTempDir):
 
     def test_constructs(self):
         my_config = config.LocationConfig('http://example.com')
@@ -565,7 +600,7 @@ class TestLocationConfig(TestCaseInTempDir):
         # This is testing the correct file names are provided.
         # TODO: consolidate with the test for GlobalConfigs filename checks.
         #
-        # replace the class that is constructured, to check its parameters
+        # replace the class that is constructed, to check its parameters
         oldparserclass = config.ConfigObj
         config.ConfigObj = InstrumentedConfigObj
         try:
@@ -599,12 +634,12 @@ class TestLocationConfig(TestCaseInTempDir):
     def test__get_matching_sections_no_match(self):
         self.get_branch_config('/')
         self.assertEqual([], self.my_location_config._get_matching_sections())
-        
+
     def test__get_matching_sections_exact(self):
         self.get_branch_config('http://www.example.com')
         self.assertEqual([('http://www.example.com', '')],
                          self.my_location_config._get_matching_sections())
-   
+
     def test__get_matching_sections_suffix_does_not(self):
         self.get_branch_config('http://www.example.com-com')
         self.assertEqual([], self.my_location_config._get_matching_sections())
@@ -622,7 +657,8 @@ class TestLocationConfig(TestCaseInTempDir):
     def test__get_matching_sections_ignoreparent_subdir(self):
         self.get_branch_config(
             'http://www.example.com/ignoreparent/childbranch')
-        self.assertEqual([('http://www.example.com/ignoreparent', 'childbranch')],
+        self.assertEqual([('http://www.example.com/ignoreparent',
+                           'childbranch')],
                          self.my_location_config._get_matching_sections())
 
     def test__get_matching_sections_subdir_trailing_slash(self):
@@ -708,17 +744,17 @@ class TestLocationConfig(TestCaseInTempDir):
         self.get_branch_config('/a/c')
         self.assertEqual(config.CHECK_NEVER,
                          self.my_config.signature_checking())
-        
+
     def test_signatures_when_available(self):
         self.get_branch_config('/a/', global_config=sample_ignore_signatures)
         self.assertEqual(config.CHECK_IF_POSSIBLE,
                          self.my_config.signature_checking())
-        
+
     def test_signatures_always(self):
         self.get_branch_config('/b')
         self.assertEqual(config.CHECK_ALWAYS,
                          self.my_config.signature_checking())
-        
+
     def test_gpg_signing_command(self):
         self.get_branch_config('/b')
         self.assertEqual("gnome-gpg", self.my_config.gpg_signing_command())
@@ -878,15 +914,15 @@ class TestLocationConfig(TestCaseInTempDir):
         self.assertIs(self.my_config.get_user_option('foo'), None)
         self.my_config.set_user_option('foo', 'bar')
         self.assertEqual(
-            self.my_config.branch.control_files.files['branch.conf'], 
-            'foo = bar')
+            self.my_config.branch.control_files.files['branch.conf'],
+            'foo = bar\n')
         self.assertEqual(self.my_config.get_user_option('foo'), 'bar')
         self.my_config.set_user_option('foo', 'baz',
                                        store=config.STORE_LOCATION)
         self.assertEqual(self.my_config.get_user_option('foo'), 'baz')
         self.my_config.set_user_option('foo', 'qux')
         self.assertEqual(self.my_config.get_user_option('foo'), 'baz')
-        
+
     def test_get_bzr_remote_path(self):
         my_config = config.LocationConfig('/a/c')
         self.assertEqual('bzr', my_config.get_bzr_remote_path())
@@ -907,9 +943,9 @@ option = exact
 """
 
 
-class TestBranchConfigItems(TestCaseInTempDir):
+class TestBranchConfigItems(tests.TestCaseInTempDir):
 
-    def get_branch_config(self, global_config=None, location=None, 
+    def get_branch_config(self, global_config=None, location=None,
                           location_config=None, branch_data_config=None):
         my_config = config.BranchConfig(FakeBranch(location))
         if global_config is not None:
@@ -930,7 +966,7 @@ class TestBranchConfigItems(TestCaseInTempDir):
         self.assertEqual("Robert Collins <robertc@example.net>",
                          my_config.username())
         branch.control_files.email = "John"
-        my_config.set_user_option('email', 
+        my_config.set_user_option('email',
                                   "Robert Collins <robertc@example.org>")
         self.assertEqual("John", my_config.username())
         branch.control_files.email = None
@@ -951,7 +987,7 @@ class TestBranchConfigItems(TestCaseInTempDir):
         my_config = config.BranchConfig(branch)
         self.assertEqual("Robert Collins <robertc@example.org>",
                          my_config.username())
-    
+
     def test_signatures_forced(self):
         my_config = self.get_branch_config(
             global_config=sample_always_signatures)
@@ -1001,14 +1037,14 @@ class TestBranchConfigItems(TestCaseInTempDir):
     def test_config_precedence(self):
         my_config = self.get_branch_config(global_config=precedence_global)
         self.assertEqual(my_config.get_user_option('option'), 'global')
-        my_config = self.get_branch_config(global_config=precedence_global, 
+        my_config = self.get_branch_config(global_config=precedence_global,
                                       branch_data_config=precedence_branch)
         self.assertEqual(my_config.get_user_option('option'), 'branch')
-        my_config = self.get_branch_config(global_config=precedence_global, 
+        my_config = self.get_branch_config(global_config=precedence_global,
                                       branch_data_config=precedence_branch,
                                       location_config=precedence_location)
         self.assertEqual(my_config.get_user_option('option'), 'recurse')
-        my_config = self.get_branch_config(global_config=precedence_global, 
+        my_config = self.get_branch_config(global_config=precedence_global,
                                       branch_data_config=precedence_branch,
                                       location_config=precedence_location,
                                       location='http://example.com/specific')
@@ -1057,7 +1093,7 @@ class TestBranchConfigItems(TestCaseInTempDir):
         self.assertRaises(errors.UnknownMailClient, config.get_mail_client)
 
 
-class TestMailAddressExtraction(TestCase):
+class TestMailAddressExtraction(tests.TestCase):
 
     def test_extract_email_address(self):
         self.assertEqual('jane@test.com',
@@ -1065,8 +1101,19 @@ class TestMailAddressExtraction(TestCase):
         self.assertRaises(errors.NoEmailInUsername,
                           config.extract_email_address, 'Jane Tester')
 
+    def test_parse_username(self):
+        self.assertEqual(('', 'jdoe@example.com'),
+                         config.parse_username('jdoe@example.com'))
+        self.assertEqual(('', 'jdoe@example.com'),
+                         config.parse_username('<jdoe@example.com>'))
+        self.assertEqual(('John Doe', 'jdoe@example.com'),
+                         config.parse_username('John Doe <jdoe@example.com>'))
+        self.assertEqual(('John Doe', ''),
+                         config.parse_username('John Doe'))
+        self.assertEqual(('John Doe', 'jdoe@example.com'),
+                         config.parse_username('John Doe jdoe@example.com'))
 
-class TestTreeConfig(TestCaseWithTransport):
+class TestTreeConfig(tests.TestCaseWithTransport):
 
     def test_get_value(self):
         """Test that retreiving a value from a section is possible"""
@@ -1092,3 +1139,263 @@ class TestTreeConfig(TestCaseWithTransport):
         self.assertEqual(value, 'value3-top')
         value = tree_config.get_option('key3', 'SECTION')
         self.assertEqual(value, 'value3-section')
+
+
+class TestTransportConfig(tests.TestCaseWithTransport):
+
+    def test_get_value(self):
+        """Test that retreiving a value from a section is possible"""
+        bzrdir_config = config.TransportConfig(transport.get_transport('.'),
+                                               'control.conf')
+        bzrdir_config.set_option('value', 'key', 'SECTION')
+        bzrdir_config.set_option('value2', 'key2')
+        bzrdir_config.set_option('value3-top', 'key3')
+        bzrdir_config.set_option('value3-section', 'key3', 'SECTION')
+        value = bzrdir_config.get_option('key', 'SECTION')
+        self.assertEqual(value, 'value')
+        value = bzrdir_config.get_option('key2')
+        self.assertEqual(value, 'value2')
+        self.assertEqual(bzrdir_config.get_option('non-existant'), None)
+        value = bzrdir_config.get_option('non-existant', 'SECTION')
+        self.assertEqual(value, None)
+        value = bzrdir_config.get_option('non-existant', default='default')
+        self.assertEqual(value, 'default')
+        self.assertEqual(bzrdir_config.get_option('key2', 'NOSECTION'), None)
+        value = bzrdir_config.get_option('key2', 'NOSECTION',
+                                         default='default')
+        self.assertEqual(value, 'default')
+        value = bzrdir_config.get_option('key3')
+        self.assertEqual(value, 'value3-top')
+        value = bzrdir_config.get_option('key3', 'SECTION')
+        self.assertEqual(value, 'value3-section')
+
+
+class TestAuthenticationConfigFile(tests.TestCase):
+    """Test the authentication.conf file matching"""
+
+    def _got_user_passwd(self, expected_user, expected_password,
+                         config, *args, **kwargs):
+        credentials = config.get_credentials(*args, **kwargs)
+        if credentials is None:
+            user = None
+            password = None
+        else:
+            user = credentials['user']
+            password = credentials['password']
+        self.assertEquals(expected_user, user)
+        self.assertEquals(expected_password, password)
+
+    def test_empty_config(self):
+        conf = config.AuthenticationConfig(_file=StringIO())
+        self.assertEquals({}, conf._get_config())
+        self._got_user_passwd(None, None, conf, 'http', 'foo.net')
+
+    def test_broken_config(self):
+        conf = config.AuthenticationConfig(_file=StringIO('[DEF'))
+        self.assertRaises(errors.ParseConfigError, conf._get_config)
+
+        conf = config.AuthenticationConfig(_file=StringIO(
+                """[broken]
+scheme=ftp
+user=joe
+verify_certificates=askme # Error: Not a boolean
+"""))
+        self.assertRaises(ValueError, conf.get_credentials, 'ftp', 'foo.net')
+        conf = config.AuthenticationConfig(_file=StringIO(
+                """[broken]
+scheme=ftp
+user=joe
+port=port # Error: Not an int
+"""))
+        self.assertRaises(ValueError, conf.get_credentials, 'ftp', 'foo.net')
+
+    def test_credentials_for_scheme_host(self):
+        conf = config.AuthenticationConfig(_file=StringIO(
+                """# Identity on foo.net
+[ftp definition]
+scheme=ftp
+host=foo.net
+user=joe
+password=secret-pass
+"""))
+        # Basic matching
+        self._got_user_passwd('joe', 'secret-pass', conf, 'ftp', 'foo.net')
+        # different scheme
+        self._got_user_passwd(None, None, conf, 'http', 'foo.net')
+        # different host
+        self._got_user_passwd(None, None, conf, 'ftp', 'bar.net')
+
+    def test_credentials_for_host_port(self):
+        conf = config.AuthenticationConfig(_file=StringIO(
+                """# Identity on foo.net
+[ftp definition]
+scheme=ftp
+port=10021
+host=foo.net
+user=joe
+password=secret-pass
+"""))
+        # No port
+        self._got_user_passwd('joe', 'secret-pass',
+                              conf, 'ftp', 'foo.net', port=10021)
+        # different port
+        self._got_user_passwd(None, None, conf, 'ftp', 'foo.net')
+
+    def test_for_matching_host(self):
+        conf = config.AuthenticationConfig(_file=StringIO(
+                """# Identity on foo.net
+[sourceforge]
+scheme=bzr
+host=bzr.sf.net
+user=joe
+password=joepass
+[sourceforge domain]
+scheme=bzr
+host=.bzr.sf.net
+user=georges
+password=bendover
+"""))
+        # matching domain
+        self._got_user_passwd('georges', 'bendover',
+                              conf, 'bzr', 'foo.bzr.sf.net')
+        # phishing attempt
+        self._got_user_passwd(None, None,
+                              conf, 'bzr', 'bbzr.sf.net')
+
+    def test_for_matching_host_None(self):
+        conf = config.AuthenticationConfig(_file=StringIO(
+                """# Identity on foo.net
+[catchup bzr]
+scheme=bzr
+user=joe
+password=joepass
+[DEFAULT]
+user=georges
+password=bendover
+"""))
+        # match no host
+        self._got_user_passwd('joe', 'joepass',
+                              conf, 'bzr', 'quux.net')
+        # no host but different scheme
+        self._got_user_passwd('georges', 'bendover',
+                              conf, 'ftp', 'quux.net')
+
+    def test_credentials_for_path(self):
+        conf = config.AuthenticationConfig(_file=StringIO(
+                """
+[http dir1]
+scheme=http
+host=bar.org
+path=/dir1
+user=jim
+password=jimpass
+[http dir2]
+scheme=http
+host=bar.org
+path=/dir2
+user=georges
+password=bendover
+"""))
+        # no path no dice
+        self._got_user_passwd(None, None,
+                              conf, 'http', host='bar.org', path='/dir3')
+        # matching path
+        self._got_user_passwd('georges', 'bendover',
+                              conf, 'http', host='bar.org', path='/dir2')
+        # matching subdir
+        self._got_user_passwd('jim', 'jimpass',
+                              conf, 'http', host='bar.org',path='/dir1/subdir')
+
+    def test_credentials_for_user(self):
+        conf = config.AuthenticationConfig(_file=StringIO(
+                """
+[with user]
+scheme=http
+host=bar.org
+user=jim
+password=jimpass
+"""))
+        # Get user
+        self._got_user_passwd('jim', 'jimpass',
+                              conf, 'http', 'bar.org')
+        # Get same user
+        self._got_user_passwd('jim', 'jimpass',
+                              conf, 'http', 'bar.org', user='jim')
+        # Don't get a different user if one is specified
+        self._got_user_passwd(None, None,
+                              conf, 'http', 'bar.org', user='georges')
+
+    def test_verify_certificates(self):
+        conf = config.AuthenticationConfig(_file=StringIO(
+                """
+[self-signed]
+scheme=https
+host=bar.org
+user=jim
+password=jimpass
+verify_certificates=False
+[normal]
+scheme=https
+host=foo.net
+user=georges
+password=bendover
+"""))
+        credentials = conf.get_credentials('https', 'bar.org')
+        self.assertEquals(False, credentials.get('verify_certificates'))
+        credentials = conf.get_credentials('https', 'foo.net')
+        self.assertEquals(True, credentials.get('verify_certificates'))
+
+
+class TestAuthenticationConfig(tests.TestCase):
+    """Test AuthenticationConfig behaviour"""
+
+    def _check_default_prompt(self, expected_prompt_format, scheme,
+                              host=None, port=None, realm=None, path=None):
+        if host is None:
+            host = 'bar.org'
+        user, password = 'jim', 'precious'
+        expected_prompt = expected_prompt_format % {
+            'scheme': scheme, 'host': host, 'port': port,
+            'user': user, 'realm': realm}
+
+        stdout = tests.StringIOWrapper()
+        ui.ui_factory = tests.TestUIFactory(stdin=password + '\n',
+                                            stdout=stdout)
+        # We use an empty conf so that the user is always prompted
+        conf = config.AuthenticationConfig()
+        self.assertEquals(password,
+                          conf.get_password(scheme, host, user, port=port,
+                                            realm=realm, path=path))
+        self.assertEquals(stdout.getvalue(), expected_prompt)
+
+    def test_default_prompts(self):
+        # HTTP prompts can't be tested here, see test_http.py
+        self._check_default_prompt('FTP %(user)s@%(host)s password: ', 'ftp')
+        self._check_default_prompt('FTP %(user)s@%(host)s:%(port)d password: ',
+                                   'ftp', port=10020)
+
+        self._check_default_prompt('SSH %(user)s@%(host)s:%(port)d password: ',
+                                   'ssh', port=12345)
+        # SMTP port handling is a bit special (it's handled if embedded in the
+        # host too)
+        # FIXME: should we: forbid that, extend it to other schemes, leave
+        # things as they are that's fine thank you ?
+        self._check_default_prompt('SMTP %(user)s@%(host)s password: ',
+                                   'smtp')
+        self._check_default_prompt('SMTP %(user)s@%(host)s password: ',
+                                   'smtp', host='bar.org:10025')
+        self._check_default_prompt(
+            'SMTP %(user)s@%(host)s:%(port)d password: ',
+            'smtp', port=10025)
+
+
+# FIXME: Once we have a way to declare authentication to all test servers, we
+# can implement generic tests.
+# test_user_password_in_url
+# test_user_in_url_password_from_config
+# test_user_in_url_password_prompted
+# test_user_in_config
+# test_user_getpass.getuser
+# test_user_prompted ?
+class TestAuthenticationRing(tests.TestCaseWithTransport):
+    pass

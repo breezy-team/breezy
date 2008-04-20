@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -60,6 +60,12 @@ class TestUncommit(TestCaseWithTransport):
         out, err = self.run_bzr('status')
         self.assertEquals(out, 'modified:\n  a\n')
 
+    def test_uncommit_no_history(self):
+        wt = self.make_branch_and_tree('tree')
+        out, err = self.run_bzr('uncommit --force', retcode=1)
+        self.assertEqual('', err)
+        self.assertEqual('No revisions to uncommit.\n', out)
+
     def test_uncommit_checkout(self):
         wt = self.create_simple_tree()
         checkout_tree = wt.branch.create_checkout('checkout')
@@ -103,6 +109,18 @@ class TestUncommit(TestCaseWithTransport):
         self.assertRaises(BoundBranchOutOfDate, uncommit.uncommit, b)
         b.pull(t_a.branch)
         uncommit.uncommit(b)
+
+    def test_uncommit_bound_local(self):
+        t_a = self.make_branch_and_tree('a')
+        rev_id1 = t_a.commit('commit 1')
+        rev_id2 = t_a.commit('commit 2')
+        rev_id3 = t_a.commit('commit 3')
+        b = t_a.branch.create_checkout('b').branch
+
+        out, err = self.run_bzr(['uncommit', '--local', 'b', '--force'])
+        self.assertEqual(rev_id3, t_a.last_revision())
+        self.assertEqual((3, rev_id3), t_a.branch.last_revision_info())
+        self.assertEqual((2, rev_id2), b.last_revision_info())
 
     def test_uncommit_revision(self):
         wt = self.create_simple_tree()
@@ -221,3 +239,9 @@ class TestUncommit(TestCaseWithTransport):
         out, err = self.run_bzr('uncommit --force -r 2')
 
         self.assertEqual(['a2', 'b3', 'c3', 'c4', 'b4'], wt.get_parent_ids())
+
+    def test_uncommit_nonascii(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.commit(u'\u1234 message')
+        out, err = self.run_bzr('uncommit --force tree', encoding='ascii')
+        self.assertContainsRe(out, r'\? message')

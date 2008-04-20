@@ -1,10 +1,10 @@
-#!/usr/bin/env python
+#! /usr/bin/env python
 
-# Author: David Goodger
-# Contact: goodger@python.org
-# Revision: $Revision: 3901 $
-# Date: $Date: 2005-09-25 17:49:54 +0200 (Sun, 25 Sep 2005) $
-# Copyright: This module has been placed in the public domain.
+# Originally by Dave Goodger, from the docutils, distribution.
+#
+# Modified for Bazaar to accommodate options containing dots
+#
+# This file is in the public domain.
 
 """
 A minimal front end to the Docutils Publisher, producing HTML.
@@ -16,7 +16,20 @@ try:
 except:
     pass
 
+import docutils
 from docutils.core import publish_cmdline, default_description
+
+
+if docutils.__version__ <= '0.4.1':
+    from docutils.parsers.rst.states import Body
+    # we have some option names that contain dot; which is not allowed by
+    # python-docutils 0.4-4 -- so monkeypatch in a better pattern
+    #
+    # This is a bit gross to patch because all this is built up at load time.
+    Body.pats['optname'] = r'[a-zA-Z0-9][a-zA-Z0-9._-]*'    
+    Body.pats['longopt'] = r'(--|/)%(optname)s([ =]%(optarg)s)?' % Body.pats
+    Body.pats['option'] = r'(%(shortopt)s|%(longopt)s)' % Body.pats
+    Body.patterns['option_marker'] = r'%(option)s(, %(option)s)*(  +| ?$)' % Body.pats
 
 
 description = ('Generates (X)HTML documents from standalone reStructuredText '

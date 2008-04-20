@@ -8,17 +8,29 @@ documentation site, http://doc.bazaar-vcs.org.
 Core Documentation
 ==================
 
-* `Mini Tutorial <en/mini-tutorial/index.html>`_ 
-
-* `Quick Start Summary <en/quick-reference/quick-start-summary.svg>`_
-
 * `User Guide <en/user-guide/index.html>`_ 
 
 * `User Reference <en/user-reference/bzr_man.html>`_ 
 
+* `Quick Start Card <en/quick-reference/quick-start-summary.svg>`_
+  (`PDF <en/quick-reference/quick-start-summary.pdf>`_,
+  `PNG <en/quick-reference/quick-start-summary.png>`_)
+
 * `Release Notes <en/release-notes/NEWS.html>`_
 
 * `Developer Guide <en/developer-guide/HACKING.html>`_
+
+
+Tutorials
+=========
+
+* `Bazaar in five minutes <en/mini-tutorial/index.html>`_ 
+
+* `A longer tutorial <en/tutorials/tutorial.html>`_ 
+
+* `Using Bazaar with Launchpad <en/tutorials/using_bazaar_with_launchpad.html>`_ 
+
+* `Centralized workflow <en/tutorials/centralized_workflow.html>`_ 
 
 
 Other Documentation

@@ -43,6 +43,7 @@ from bzrlib import (
     errors,
     option,
     osutils,
+    registry,
     trace,
     win32utils,
     )
@@ -168,6 +169,17 @@ def _get_cmd_object(cmd_name, plugins_override=True):
     cmd_obj = ExternalCommand.find_command(cmd_name)
     if cmd_obj:
         return cmd_obj
+
+    # look for plugins that provide this command but aren't installed
+    for provider in command_providers_registry:
+        try:
+            plugin_metadata = provider.plugin_for_command(cmd_name)
+        except errors.NoPluginAvailable:
+            pass
+        else:
+            raise errors.CommandAvailableInPlugin(cmd_name, 
+                                                  plugin_metadata, provider)
+
     raise KeyError
 
 
@@ -590,6 +602,20 @@ def _match_argform(cmd, takes_args, args):
 
     return argdict
 
+def apply_coveraged(dirname, the_callable, *args, **kwargs):
+    # Cannot use "import trace", as that would import bzrlib.trace instead of
+    # the standard library's trace.
+    trace = __import__('trace')
+
+    tracer = trace.Trace(count=1, trace=0)
+    sys.settrace(tracer.globaltrace)
+
+    ret = the_callable(*args, **kwargs)
+
+    sys.settrace(None)
+    results = tracer.results()
+    results.write_results(show_missing=1, summary=False,
+                          coverdir=dirname)
 
 
 def apply_profiled(the_callable, *args, **kwargs):
@@ -627,6 +653,11 @@ def apply_lsprofiled(filename, the_callable, *args, **kwargs):
     return ret
 
 
+def shlex_split_unicode(unsplit):
+    import shlex
+    return [u.decode('utf-8') for u in shlex.split(unsplit.encode('utf-8'))]
+
+
 def get_alias(cmd, config=None):
     """Return an expanded alias, or None if no alias exists.
 
@@ -642,8 +673,7 @@ def get_alias(cmd, config=None):
         config = bzrlib.config.GlobalConfig()
     alias = config.get_alias(cmd)
     if (alias):
-        import shlex
-        return [a.decode('utf-8') for a in shlex.split(alias.encode('utf-8'))]
+        return shlex_split_unicode(alias)
     return None
 
 
@@ -678,13 +708,16 @@ def run_bzr(argv):
 
     --lsprof
         Run under the Python lsprof profiler.
+
+    --coverage
+        Generate line coverage report in the specified directory.
     """
     argv = list(argv)
     trace.mutter("bzr arguments: %r", argv)
 
     opt_lsprof = opt_profile = opt_no_plugins = opt_builtin =  \
                 opt_no_aliases = False
-    opt_lsprof_file = None
+    opt_lsprof_file = opt_coverage_dir = None
 
     # --no-plugins is handled specially at a very early stage. We need
     # to load plugins before doing other command parsing so that they
@@ -708,6 +741,9 @@ def run_bzr(argv):
             opt_no_aliases = True
         elif a == '--builtin':
             opt_builtin = True
+        elif a == '--coverage':
+            opt_coverage_dir = argv[i + 1]
+            i += 1
         elif a.startswith('-D'):
             debug.debug_flags.add(a[2:])
         else:
@@ -751,9 +787,17 @@ def run_bzr(argv):
 
     try:
         if opt_lsprof:
+            if opt_coverage_dir:
+                trace.warning(
+                    '--coverage ignored, because --lsprof is in use.')
             ret = apply_lsprofiled(opt_lsprof_file, run, *run_argv)
         elif opt_profile:
+            if opt_coverage_dir:
+                trace.warning(
+                    '--coverage ignored, because --profile is in use.')
             ret = apply_profiled(run, *run_argv)
+        elif opt_coverage_dir:
+            ret = apply_coveraged(opt_coverage_dir, run, *run_argv)
         else:
             ret = run(*run_argv)
         return ret or 0
@@ -849,6 +893,28 @@ class HelpCommandIndex(object):
             return []
         else:
             return [cmd]
+
+
+class Provider(object):
+    '''Generic class to be overriden by plugins'''
+
+    def plugin_for_command(self, cmd_name):
+        '''Takes a command and returns the information for that plugin
+        
+        :return: A dictionary with all the available information 
+        for the requested plugin
+        '''
+        raise NotImplementedError
+
+
+class ProvidersRegistry(registry.Registry):
+    '''This registry exists to allow other providers to exist'''
+
+    def __iter__(self):
+        for key, provider in self.iteritems():
+            yield provider
+
+command_providers_registry = ProvidersRegistry()
 
 
 if __name__ == '__main__':

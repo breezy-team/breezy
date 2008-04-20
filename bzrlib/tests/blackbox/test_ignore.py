@@ -31,11 +31,9 @@ from bzrlib.branch import Branch
 import bzrlib.bzrdir as bzrdir
 from bzrlib.errors import BzrCommandError
 from bzrlib.osutils import (
-    has_symlinks,
     pathjoin,
     terminal_width,
     )
-from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.workingtree import WorkingTree

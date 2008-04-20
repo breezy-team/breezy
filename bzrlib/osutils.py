@@ -57,6 +57,7 @@ import bzrlib
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
     deprecated_function,
+    one_zero,
     )
 from bzrlib.trace import mutter
 
@@ -68,20 +69,17 @@ from bzrlib.trace import mutter
 # OR with 0 on those platforms
 O_BINARY = getattr(os, 'O_BINARY', 0)
 
-# On posix, use lstat instead of stat so that we can
-# operate on broken symlinks. On Windows revert to stat.
-lstat = getattr(os, 'lstat', os.stat)
 
 def make_readonly(filename):
     """Make a filename read-only."""
-    mod = lstat(filename).st_mode
+    mod = os.lstat(filename).st_mode
     if not stat.S_ISLNK(mod):
         mod = mod & 0777555
         os.chmod(filename, mod)
 
 
 def make_writable(filename):
-    mod = lstat(filename).st_mode
+    mod = os.lstat(filename).st_mode
     if not stat.S_ISLNK(mod):
         mod = mod | 0200
         os.chmod(filename, mod)
@@ -151,7 +149,7 @@ def file_kind(f, _lstat=os.lstat, _mapper=file_kind_from_stat_mode):
     try:
         return _mapper(_lstat(f).st_mode)
     except OSError, e:
-        if getattr(e, 'errno', None) == errno.ENOENT:
+        if getattr(e, 'errno', None) in (errno.ENOENT, errno.ENOTDIR):
             raise errors.NoSuchFile(f)
         raise
 
@@ -236,10 +234,17 @@ def fancy_rename(old, new, rename_func, unlink_func):
 
     success = False
     try:
-        # This may throw an exception, in which case success will
-        # not be set.
-        rename_func(old, new)
-        success = True
+        try:
+            # This may throw an exception, in which case success will
+            # not be set.
+            rename_func(old, new)
+            success = True
+        except (IOError, OSError), e:
+            # source and target may be aliases of each other (e.g. on a
+            # case-insensitive filesystem), so we may have accidentally renamed
+            # source by when we tried to rename target
+            if not (file_existed and e.errno in (None, errno.ENOENT)):
+                raise
     finally:
         if file_existed:
             # If the file used to exist, rename it back into place
@@ -355,7 +360,7 @@ def _win32_rename(old, new):
 
 
 def _mac_getcwd():
-    return unicodedata.normalize('NFKC', os.getcwdu())
+    return unicodedata.normalize('NFC', os.getcwdu())
 
 
 # Default is to just use the python builtins, but these can be rebound on
@@ -463,34 +468,6 @@ def normalizepath(f):
         return pathjoin(F(p), e)
 
 
-def backup_file(fn):
-    """Copy a file to a backup.
-
-    Backups are named in GNU-style, with a ~ suffix.
-
-    If the file is already a backup, it's not copied.
-    """
-    if fn[-1] == '~':
-        return
-    bfn = fn + '~'
-
-    if has_symlinks() and os.path.islink(fn):
-        target = os.readlink(fn)
-        os.symlink(target, bfn)
-        return
-    inf = file(fn, 'rb')
-    try:
-        content = inf.read()
-    finally:
-        inf.close()
-    
-    outf = file(bfn, 'wb')
-    try:
-        outf.write(content)
-    finally:
-        outf.close()
-
-
 def isdir(f):
     """True if f is an accessible directory."""
     try:
@@ -593,7 +570,7 @@ def sha_file(f):
 def sha_file_by_name(fname):
     """Calculate the SHA1 of a file by reading the full text"""
     s = sha.new()
-    f = os.open(fname, os.O_RDONLY)
+    f = os.open(fname, os.O_RDONLY | O_BINARY)
     try:
         while True:
             b = os.read(f, 1<<16)
@@ -664,8 +641,7 @@ def format_date(t, offset=0, timezone='original', date_fmt=None,
         tt = time.localtime(t)
         offset = local_time_offset(t)
     else:
-        raise errors.BzrError("unsupported timezone format %r" % timezone,
-                              ['options are "utc", "original", "local"'])
+        raise errors.UnsupportedTimezoneFormat(timezone)
     if date_fmt is None:
         date_fmt = "%a %Y-%m-%d %H:%M:%S"
     if show_offset:
@@ -844,6 +820,13 @@ def has_symlinks():
         return False
 
 
+def has_hardlinks():
+    if getattr(os, 'link', None) is not None:
+        return True
+    else:
+        return False
+
+
 def contains_whitespace(s):
     """True if there are any whitespace characters in s."""
     # string.whitespace can include '\xa0' in certain locales, because it is
@@ -1009,20 +992,20 @@ def _accessible_normalized_filename(path):
     On platforms where the system does not normalize filenames 
     (Windows, Linux), you have to access a file by its exact path.
 
-    Internally, bzr only supports NFC/NFKC normalization, since that is 
+    Internally, bzr only supports NFC normalization, since that is 
     the standard for XML documents.
 
     So return the normalized path, and a flag indicating if the file
     can be accessed by that path.
     """
 
-    return unicodedata.normalize('NFKC', unicode(path)), True
+    return unicodedata.normalize('NFC', unicode(path)), True
 
 
 def _inaccessible_normalized_filename(path):
     __doc__ = _accessible_normalized_filename.__doc__
 
-    normalized = unicodedata.normalize('NFKC', unicode(path))
+    normalized = unicodedata.normalize('NFC', unicode(path))
     return normalized, normalized == path
 
 
@@ -1400,6 +1383,18 @@ def recv_all(socket, bytes):
         b += new
     return b
 
+
+def send_all(socket, bytes):
+    """Send all bytes on a socket.
+
+    Regular socket.sendall() can give socket error 10053 on Windows.  This
+    implementation sends no more than 64k at a time, which avoids this problem.
+    """
+    chunk_size = 2**16
+    for pos in xrange(0, len(bytes), chunk_size):
+        socket.sendall(bytes[pos:pos+chunk_size])
+
+
 def dereference_path(path):
     """Determine the real path to a file.
 
@@ -1417,3 +1412,32 @@ def dereference_path(path):
 def supports_mapi():
     """Return True if we can use MAPI to launch a mail client."""
     return sys.platform == "win32"
+
+
+def resource_string(package, resource_name):
+    """Load a resource from a package and return it as a string.
+
+    Note: Only packages that start with bzrlib are currently supported.
+
+    This is designed to be a lightweight implementation of resource
+    loading in a way which is API compatible with the same API from
+    pkg_resources. See
+    http://peak.telecommunity.com/DevCenter/PkgResources#basic-resource-access.
+    If and when pkg_resources becomes a standard library, this routine
+    can delegate to it.
+    """
+    # Check package name is within bzrlib
+    if package == "bzrlib":
+        resource_relpath = resource_name
+    elif package.startswith("bzrlib."):
+        package = package[len("bzrlib."):].replace('.', os.sep)
+        resource_relpath = pathjoin(package, resource_name)
+    else:
+        raise errors.BzrError('resource package %s not in bzrlib' % package)
+
+    # Map the resource to a file and read its contents
+    base = dirname(bzrlib.__file__)
+    if getattr(sys, 'frozen', None):    # bzr.exe
+        base = abspath(pathjoin(base, '..', '..'))
+    filename = pathjoin(base, resource_relpath)
+    return open(filename, 'rU').read()

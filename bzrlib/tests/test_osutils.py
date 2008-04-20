@@ -37,6 +37,7 @@ from bzrlib.osutils import (
 from bzrlib.tests import (
         probe_unicode_in_user_encoding,
         StringIOWrapper,
+        SymlinkFeature,
         TestCase,
         TestCaseInTempDir,
         TestSkipped,
@@ -91,6 +92,16 @@ class TestOSUtils(TestCaseInTempDir):
         self.check_file_contents('a', 'something in a\n')
 
     # TODO: test fancy_rename using a MemoryTransport
+
+    def test_rename_change_case(self):
+        # on Windows we should be able to change filename case by rename
+        self.build_tree(['a', 'b/'])
+        osutils.rename('a', 'A')
+        osutils.rename('b', 'B')
+        # we can't use failUnlessExists on case-insensitive filesystem
+        # so try to check shape of the tree
+        shape = sorted(os.listdir('.'))
+        self.assertEquals(['A', 'B'], shape)
 
     def test_01_rand_chars_empty(self):
         result = osutils.rand_chars(0)
@@ -249,9 +260,12 @@ class TestOSUtils(TestCaseInTempDir):
         self.assertFormatedDelta('1 second in the future', -1)
         self.assertFormatedDelta('2 seconds in the future', -2)
 
+    def test_format_date(self):
+        self.assertRaises(errors.UnsupportedTimezoneFormat,
+            osutils.format_date, 0, timezone='foo')
+
     def test_dereference_path(self):
-        if not osutils.has_symlinks():
-            raise TestSkipped('Symlinks are not supported on this platform')
+        self.requireFeature(SymlinkFeature)
         cwd = osutils.realpath('.')
         os.mkdir('bar')
         bar_path = osutils.pathjoin(cwd, 'bar')
@@ -277,7 +291,6 @@ class TestOSUtils(TestCaseInTempDir):
         foo_baz_path = osutils.pathjoin(foo_path, 'baz')
         self.assertEqual(baz_path, osutils.dereference_path(foo_baz_path))
 
-
     def test_changing_access(self):
         f = file('file', 'w')
         f.write('monkey')
@@ -285,12 +298,12 @@ class TestOSUtils(TestCaseInTempDir):
 
         # Make a file readonly
         osutils.make_readonly('file')
-        mode = osutils.lstat('file').st_mode
+        mode = os.lstat('file').st_mode
         self.assertEqual(mode, mode & 0777555)
 
         # Make a file writable
         osutils.make_writable('file')
-        mode = osutils.lstat('file').st_mode
+        mode = os.lstat('file').st_mode
         self.assertEqual(mode, mode | 0200)
 
         if osutils.has_symlinks():
@@ -298,7 +311,6 @@ class TestOSUtils(TestCaseInTempDir):
             os.symlink('nonexistent', 'dangling')
             osutils.make_readonly('dangling')
             osutils.make_writable('dangling')
-
 
     def test_kind_marker(self):
         self.assertEqual("", osutils.kind_marker("file"))
@@ -939,8 +951,7 @@ class TestCopyTree(TestCaseInTempDir):
         self.assertEqual(['c'], os.listdir('target/b'))
 
     def test_copy_tree_symlinks(self):
-        if not osutils.has_symlinks():
-            return
+        self.requireFeature(SymlinkFeature)
         self.build_tree(['source/'])
         os.symlink('a/generic/path', 'source/lnk')
         osutils.copy_tree('source', 'target')
@@ -1050,3 +1061,80 @@ class TestLocalTimeOffset(TestCase):
         self.assertTrue(isinstance(offset, int))
         eighteen_hours = 18 * 3600
         self.assertTrue(-eighteen_hours < offset < eighteen_hours)
+
+
+class TestShaFileByName(TestCaseInTempDir):
+
+    def test_sha_empty(self):
+        self.build_tree_contents([('foo', '')])
+        expected_sha = osutils.sha_string('')
+        self.assertEqual(expected_sha, osutils.sha_file_by_name('foo'))
+
+    def test_sha_mixed_endings(self):
+        text = 'test\r\nwith\nall\rpossible line endings\r\n'
+        self.build_tree_contents([('foo', text)])
+        expected_sha = osutils.sha_string(text)
+        self.assertEqual(expected_sha, osutils.sha_file_by_name('foo'))
+
+
+_debug_text = \
+r'''# Copyright (C) 2005, 2006 Canonical Ltd
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+
+# NOTE: If update these, please also update the help for global-options in
+#       bzrlib/help_topics/__init__.py
+
+debug_flags = set()
+"""Set of flags that enable different debug behaviour.
+
+These are set with eg ``-Dlock`` on the bzr command line.
+
+Options include:
+ 
+ * auth - show authentication sections used
+ * error - show stack traces for all top level exceptions
+ * evil - capture call sites that do expensive or badly-scaling operations.
+ * fetch - trace history copying between repositories
+ * hashcache - log every time a working file is read to determine its hash
+ * hooks - trace hook execution
+ * hpss - trace smart protocol requests and responses
+ * http - trace http connections, requests and responses
+ * index - trace major index operations
+ * knit - trace knit operations
+ * lock - trace when lockdir locks are taken or released
+ * merge - emit information for debugging merges
+ * pack - emit information about pack operations
+ * selftest_debug - do not disable all debug flags when running selftest
+
+"""
+'''
+
+
+class TestResourceLoading(TestCaseInTempDir):
+
+    def test_resource_string(self):
+        # test resource in bzrlib
+        text = osutils.resource_string('bzrlib', 'debug.py')
+        self.assertEquals(_debug_text, text)
+        # test resource under bzrlib
+        text = osutils.resource_string('bzrlib.ui', 'text.py')
+        self.assertContainsRe(text, "class TextUIFactory")
+        # test unsupported package
+        self.assertRaises(errors.BzrError, osutils.resource_string, 'zzzz',
+            'yyy.xx')
+        # test unknown resource
+        self.assertRaises(IOError, osutils.resource_string, 'bzrlib', 'yyy.xx')

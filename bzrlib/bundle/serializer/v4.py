@@ -160,14 +160,17 @@ class BundleReader(object):
             source_file = iterablefile.IterableFile(self.iter_decode(fileobj))
         else:
             source_file = StringIO(bz2.decompress(fileobj.read()))
-        self._container = pack.ContainerReader(source_file)
+        self._container_file = source_file
 
     @staticmethod
     def iter_decode(fileobj):
         """Iterate through decoded fragments of the file"""
         decompressor = bz2.BZ2Decompressor()
         for line in fileobj:
-            yield decompressor.decompress(line)
+            try:
+                yield decompressor.decompress(line)
+            except EOFError:
+                return
 
     @staticmethod
     def decode_name(name):
@@ -199,17 +202,16 @@ class BundleReader(object):
         :return: a generator of (bytes, metadata, content_kind, revision_id,
             file_id)
         """
-        iterator = self._container.iter_records()
-        for names, meta_bytes in iterator:
+        iterator = pack.iter_records_from_file(self._container_file)
+        for names, bytes in iterator:
             if len(names) != 1:
                 raise errors.BadBundle('Record has %d names instead of 1'
                                        % len(names))
-            metadata = bencode.bdecode(meta_bytes(None))
+            metadata = bencode.bdecode(bytes)
             if metadata['storage_kind'] == 'header':
                 bytes = None
             else:
                 _unused, bytes = iterator.next()
-                bytes = bytes(None)
             yield (bytes, metadata) + self.decode_name(names[0][0])
 
 
@@ -325,12 +327,12 @@ class BundleWriteOperation(object):
                 if revision_id in self.base_ancestry:
                     continue
                 new_revision_ids.add(revision_id)
-                pending.extend(vf.get_parents(revision_id))
+                pending.extend(vf.get_parent_map([revision_id])[revision_id])
             yield vf, file_id, new_revision_ids
 
     def write_files(self):
         """Write bundle records for all revisions of all files"""
-        for vf, file_id, revision_ids in self.iter_file_revisions_aggressive():
+        for vf, file_id, revision_ids in self.iter_file_revisions():
             self.add_mp_records('file', file_id, vf, revision_ids)
 
     def write_revisions(self):
@@ -341,8 +343,9 @@ class BundleWriteOperation(object):
             revision_order.remove(self.target)
             revision_order.append(self.target)
         self.add_mp_records('inventory', None, inv_vf, revision_order)
-        parents_list = self.repository.get_parents(revision_order)
-        for parents, revision_id in zip(parents_list, revision_order):
+        parent_map = self.repository.get_parent_map(revision_order)
+        for revision_id in revision_order:
+            parents = parent_map.get(revision_id, None)
             revision_text = self.repository.get_revision_xml(revision_id)
             self.bundle.add_fulltext_record(revision_text, parents,
                                        'revision', revision_id)
@@ -373,8 +376,9 @@ class BundleWriteOperation(object):
         revision_ids = list(multiparent.topo_iter(vf, revision_ids))
         mpdiffs = vf.make_mpdiffs(revision_ids)
         sha1s = vf.get_sha1s(revision_ids)
+        parent_map = vf.get_parent_map(revision_ids)
         for mpdiff, revision_id, sha1, in zip(mpdiffs, revision_ids, sha1s):
-            parents = vf.get_parents(revision_id)
+            parents = parent_map[revision_id]
             text = ''.join(mpdiff.to_patch())
             self.bundle.add_multiparent_record(text, sha1, parents, repo_kind,
                                                revision_id, file_id)
