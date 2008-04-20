@@ -41,6 +41,10 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * ``Hooks.install_hook`` is now deprecated in favour of
+      ``Hooks.install_named_hook`` which adds a required ``name`` parameter, to
+      avoid having to call ``Hooks.name_hook``. (Daniel Watkins)
+
     * Implement xml8 serializer.  (Aaron Bentley)
 
   API BREAKS:
@@ -480,10 +484,6 @@ bzr 1.3rc1 2008-03-16
     * ``Graph.iter_ancestry`` returns the ancestry of revision ids. Similar to
       ``Repository.get_revision_graph()`` except it includes ghosts and you can
       stop part-way through. (John Arbash Meinel)
-
-    * ``Hooks.install_hook`` is now deprecated in favour of
-      ``Hooks.install_named_hook`` which adds a required ``name`` parameter, to
-      avoid having to call ``Hooks.name_hook``. (Daniel Watkins)
 
     * New module ``tools/package_mf.py`` provide custom module finder for
       python packages (improves standard python library's modulefinder.py)
