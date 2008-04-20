@@ -116,7 +116,9 @@ class Merger(object):
 
     def _get_base_is_other_ancestor(self):
         if self._base_is_other_ancestor is None:
-            self.base_is_other_ancestor = self.revision_graph.is_ancestor(
+            if self.other_basis is None:
+                return True
+            self._base_is_other_ancestor = self.revision_graph.is_ancestor(
                 self.base_rev_id, self.other_basis)
         return self._base_is_other_ancestor
 
@@ -162,7 +164,7 @@ class Merger(object):
         return merger, verified
 
     @staticmethod
-    def from_revision_ids(pb, this, other, base=None, other_branch=None,
+    def from_revision_ids(pb, tree, other, base=None, other_branch=None,
                           base_branch=None, revision_graph=None):
         """Return a Merger for revision-ids.
 
@@ -171,15 +173,17 @@ class Merger(object):
         :param base: The revision-id to use as BASE.  If not specified, will
             be auto-selected.
         :param other_branch: A branch containing the other revision-id.  If
-            not supplied, this.branch is used.
+            not supplied, tree.branch is used.
         :param base_branch: A branch containing the base revision-id.  If
-            not supplied, other_branch or this.branch will be used.
+            not supplied, other_branch or tree.branch will be used.
+        :param revision_graph: If you have a revision_graph precomputed, pass
+            it in, otherwise it will be created for you.
         :param pb: A progress indicator
         """
-        merger = Merger(this.branch, this_tree=this, pb=pb,
+        merger = Merger(tree.branch, this_tree=tree, pb=pb,
                         revision_graph=revision_graph)
         if other_branch is None:
-            other_branch = this.branch
+            other_branch = tree.branch
         merger.set_other_revision(other, other_branch)
         if base is None:
             merger.find_base()
@@ -399,7 +403,7 @@ class Merger(object):
         if (not getattr(self.merge_type, 'supports_reverse_cherrypick', True)
             and not self.base_is_other_ancestor):
             raise errors.CannotReverseCherrypick()
-        if self.merge_type.history_based:
+        if self.merge_type.supports_cherrypick:
             kwargs['cherrypick'] = (not self.base_is_ancestor or
                                     not self.base_is_other_ancestor)
         return self.merge_type(pb=self._pb,
@@ -407,13 +411,13 @@ class Merger(object):
                                **kwargs)
 
     def do_merge(self):
-        merge = self.make_merger()
         self.this_tree.lock_tree_write()
         if self.base_tree is not None:
             self.base_tree.lock_read()
         if self.other_tree is not None:
             self.other_tree.lock_read()
         try:
+            merge = self.make_merger()
             merge.do_merge()
             if self.recurse == 'down':
                 for path, file_id in self.this_tree.iter_references():
@@ -430,6 +434,7 @@ class Merger(object):
                     base_revision = self.base_tree.get_reference_revision(file_id)
                     sub_merge.base_tree = \
                         sub_tree.branch.repository.revision_tree(base_revision)
+                    sub_merge.base_rev_id = base_revision
                     sub_merge.do_merge()
 
         finally:
@@ -453,13 +458,15 @@ class Merge3Merger(object):
     supports_reprocess = True
     supports_show_base = True
     history_based = False
+    supports_cherrypick = True
     supports_reverse_cherrypick = True
     winner_idx = {"this": 2, "other": 1, "conflict": 1}
 
     def __init__(self, working_tree, this_tree, base_tree, other_tree, 
                  interesting_ids=None, reprocess=False, show_base=False,
                  pb=DummyProgress(), pp=None, change_reporter=None,
-                 interesting_files=None, do_merge=True):
+                 interesting_files=None, do_merge=True,
+                 cherrypick=False):
         """Initialize the merger object and perform the merge.
 
         :param working_tree: The working tree to apply the merge to
@@ -497,6 +504,7 @@ class Merge3Merger(object):
         self.pb = pb
         self.pp = pp
         self.change_reporter = change_reporter
+        self.cherrypick = cherrypick
         if self.pp is None:
             self.pp = ProgressPhase("Merge phase", 3, self.pb)
         if do_merge:
@@ -865,7 +873,8 @@ class Merge3Merger(object):
             base_lines = []
         other_lines = self.get_lines(self.other_tree, file_id)
         this_lines = self.get_lines(self.this_tree, file_id)
-        m3 = Merge3(base_lines, this_lines, other_lines)
+        m3 = Merge3(base_lines, this_lines, other_lines,
+                    is_cherrypick=self.cherrypick)
         start_marker = "!START OF MERGE CONFLICT!" + "I HOPE THIS IS UNIQUE"
         if self.show_base is True:
             base_marker = '|' * 7
@@ -941,12 +950,6 @@ class Merge3Merger(object):
         base_executable, other_executable, this_executable = executable
         if file_status == "deleted":
             return
-        trans_id = self.tt.trans_id_file_id(file_id)
-        try:
-            if self.tt.final_kind(trans_id) != "file":
-                return
-        except NoSuchFile:
-            return
         winner = self._three_way(*executable)
         if winner == "conflict":
         # There must be a None in here, if we have a conflict, but we
@@ -955,12 +958,16 @@ class Merge3Merger(object):
                 winner = "this"
             else:
                 winner = "other"
+        if winner == 'this' and file_status != "modified":
+            return
+        trans_id = self.tt.trans_id_file_id(file_id)
+        try:
+            if self.tt.final_kind(trans_id) != "file":
+                return
+        except NoSuchFile:
+            return
         if winner == "this":
-            if file_status == "modified":
-                executability = this_executable
-                if executability is not None:
-                    trans_id = self.tt.trans_id_file_id(file_id)
-                    self.tt.set_executability(executability, trans_id)
+            executability = this_executable
         else:
             assert winner == "other"
             if file_id in self.other_tree:
@@ -969,9 +976,9 @@ class Merge3Merger(object):
                 executability = this_executable
             elif file_id in self.base_tree:
                 executability = base_executable
-            if executability is not None:
-                trans_id = self.tt.trans_id_file_id(file_id)
-                self.tt.set_executability(executability, trans_id)
+        if executability is not None:
+            trans_id = self.tt.trans_id_file_id(file_id)
+            self.tt.set_executability(executability, trans_id)
 
     def cook_conflicts(self, fs_conflicts):
         """Convert all conflicts into a form that doesn't depend on trans_id"""
@@ -1039,19 +1046,6 @@ class WeaveMerger(Merge3Merger):
     supports_show_base = False
     supports_reverse_cherrypick = False
     history_based = True
-
-    def __init__(self, working_tree, this_tree, base_tree, other_tree, 
-                 interesting_ids=None, pb=DummyProgress(), pp=None,
-                 reprocess=False, change_reporter=None,
-                 interesting_files=None, cherrypick=False, do_merge=True):
-        self.cherrypick = cherrypick
-        super(WeaveMerger, self).__init__(working_tree, this_tree, 
-                                          base_tree, other_tree, 
-                                          interesting_files=interesting_files,
-                                          interesting_ids=interesting_ids, 
-                                          pb=pb, pp=pp, reprocess=reprocess,
-                                          change_reporter=change_reporter,
-                                          do_merge=do_merge)
 
     def _merged_lines(self, file_id):
         """Generate the merged lines.
@@ -1195,6 +1189,10 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
     merger.reprocess = reprocess
     merger.other_rev_id = other_rev_id
     merger.other_basis = other_rev_id
+    get_revision_id = getattr(base_tree, 'get_revision_id', None)
+    if get_revision_id is None:
+        get_revision_id = base_tree.last_revision
+    merger.set_base_revision(get_revision_id(), this_branch)
     return merger.do_merge()
 
 def get_merge_type_registry():
@@ -1403,7 +1401,7 @@ class _PlanMerge(_PlanMergeBase):
         """
         if version_id not in self.uncommon:
             return set()
-        parents = self.vf.get_parents(version_id)
+        parents = self.vf.get_parent_map([version_id])[version_id]
         if len(parents) == 0:
             return set(range(len(self.vf.get_lines(version_id))))
         new = None

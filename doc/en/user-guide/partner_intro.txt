@@ -14,7 +14,7 @@ guidelines and a toolset in order to work together effectively.
 Imagine if you were not allowed to call someone on the phone directly
 and the only way to talk to them was by registering a conference call first?
 Companies and communities that only share code via a central VCS
-repository are living with a similar straight-jacket to that every day.
+repository are living with a similar strait-jacket to that every day.
 There are times when central control makes a lot of sense and times
 when peer-to-peer rocks. Either way, Bazaar is designed to help.
 

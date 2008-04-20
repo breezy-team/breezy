@@ -32,7 +32,11 @@ import bzrlib.plugins
 import bzrlib.commands
 import bzrlib.help
 from bzrlib.symbol_versioning import one_three
-from bzrlib.tests import TestCase, TestCaseInTempDir
+from bzrlib.tests import (
+    TestCase,
+    TestCaseInTempDir,
+    TestUtil,
+    )
 from bzrlib.osutils import pathjoin, abspath, normpath
 
 
@@ -191,7 +195,7 @@ class TestLoadingPlugins(TestCaseInTempDir):
 
     def test_plugin_with_bad_name_does_not_load(self):
         # Create badly-named plugin
-        file('bad plugin-name..py', 'w').close()
+        file('bzr-bad plugin-name..py', 'w').close()
 
         # Capture output
         stream = StringIO()
@@ -207,9 +211,9 @@ class TestLoadingPlugins(TestCaseInTempDir):
         log.removeHandler(handler)
 
         self.assertContainsRe(stream.getvalue(),
-            r"Unable to load 'bad plugin-name\.' in '\.' as a plugin because"
-            " file path isn't a valid module name; try renaming it to"
-            " 'bad_plugin_name_'\.")
+            r"Unable to load 'bzr-bad plugin-name\.' in '\.' as a plugin "
+            "because the file path isn't a valid module name; try renaming "
+            "it to 'bad_plugin_name_'\.")
 
         stream.close()
 
@@ -281,6 +285,21 @@ class TestPlugins(TestCaseInTempDir):
         self.setup_plugin(source)
         plugin = bzrlib.plugin.plugins()['plugin']
         self.assertEqual('foo', plugin.test_suite())
+
+    def test_no_load_plugin_tests_gives_None_for_load_plugin_tests(self):
+        self.setup_plugin()
+        loader = TestUtil.TestLoader()
+        plugin = bzrlib.plugin.plugins()['plugin']
+        self.assertEqual(None, plugin.load_plugin_tests(loader))
+
+    def test_load_plugin_tests_gives_load_plugin_tests_result(self):
+        source = """
+def load_tests(standard_tests, module, loader):
+    return 'foo'"""
+        self.setup_plugin(source)
+        loader = TestUtil.TestLoader()
+        plugin = bzrlib.plugin.plugins()['plugin']
+        self.assertEqual('foo', plugin.load_plugin_tests(loader))
 
     def test_no_version_info(self):
         self.setup_plugin()
@@ -428,13 +447,15 @@ class TestSetPluginsPath(TestCase):
             bzrlib.plugin.set_plugins_path()
             expected_path = ['first', 'second',
                 os.path.dirname(bzrlib.plugins.__file__)]
-            self.assertEqual(expected_path, bzrlib.plugins.__path__)
+            self.assertEqual(expected_path,
+                bzrlib.plugins.__path__[:len(expected_path)])
         finally:
             bzrlib.plugins.__path__ = old_path
             if old_env != None:
                 os.environ['BZR_PLUGIN_PATH'] = old_env
             else:
                 del os.environ['BZR_PLUGIN_PATH']
+
 
 class TestHelpIndex(tests.TestCase):
     """Tests for the PluginsHelpIndex class."""

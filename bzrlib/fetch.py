@@ -27,8 +27,7 @@ add a revision to the store until everything it refers to is also
 stored, so that if a revision is present we can totally recreate it.
 However, we can't know what files are included in a revision until we
 read its inventory.  So we query the inventory store of the source for
-the ids we need, and then pull those ids and finally actually join
-the inventories.
+the ids we need, and then pull those ids and then return to the inventories.
 """
 
 import bzrlib
@@ -168,13 +167,12 @@ class RepoFetcher(object):
                 if knit_kind == "file":
                     self._fetch_weave_text(file_id, revisions)
                 elif knit_kind == "inventory":
-                    # XXX:
-                    # Once we've processed all the files, then we generate the root
-                    # texts (if necessary), then we process the inventory.  It's a
-                    # bit distasteful to have knit_kind == "inventory" mean this,
-                    # perhaps it should happen on the first non-"file" knit, in case
-                    # it's not always inventory?
+                    # Before we process the inventory we generate the root
+                    # texts (if necessary) so that the inventories references
+                    # will be valid.
                     self._generate_root_texts(revs)
+                    # NB: This currently reopens the inventory weave in source;
+                    # using a full get_data_stream instead would avoid this.
                     self._fetch_inventory_weave(revs, pb)
                 elif knit_kind == "signatures":
                     # Nothing to do here; this will be taken care of when
@@ -217,15 +215,6 @@ class RepoFetcher(object):
         # we fetch all the texts, because texts do
         # not reference anything, and its cheap enough
         to_weave.join(from_weave, version_ids=required_versions)
-        # we don't need *all* of this data anymore, but we dont know
-        # what we do. This cache clearing will result in a new read 
-        # of the knit data when we do the checkout, but probably we
-        # want to emit the needed data on the fly rather than at the
-        # end anyhow.
-        # the from weave should know not to cache data being joined,
-        # but its ok to ask it to clear.
-        from_weave.clear_cache()
-        to_weave.clear_cache()
 
     def _fetch_inventory_weave(self, revs, pb):
         pb.update("fetch inventory", 0, 2)
@@ -243,7 +232,6 @@ class RepoFetcher(object):
             # corrupt.
             to_weave.join(from_weave, pb=child_pb, msg='merge inventory',
                           version_ids=revs)
-            from_weave.clear_cache()
         finally:
             child_pb.finished()
 
@@ -356,12 +344,15 @@ class Inter1and2Helper(object):
         parent_texts = {}
         versionedfile = {}
         to_store = self.target.weave_store
+        parent_map = self.source.get_graph().get_parent_map(revs)
         for tree in self.iter_rev_trees(revs):
             revision_id = tree.inventory.root.revision
             root_id = tree.get_root_id()
-            parents = inventory_weave.get_parents(revision_id)
+            parents = parent_map[revision_id]
+            if parents[0] == NULL_REVISION:
+                parents = ()
             if root_id not in versionedfile:
-                versionedfile[root_id] = to_store.get_weave_or_empty(root_id, 
+                versionedfile[root_id] = to_store.get_weave_or_empty(root_id,
                     self.target.get_transaction())
             _, _, parent_texts[root_id] = versionedfile[root_id].add_lines(
                 revision_id, parents, [], parent_texts)

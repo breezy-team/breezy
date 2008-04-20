@@ -56,18 +56,18 @@ from bzrlib.workingtree_4 import (
     )
 
 
-def return_parameter(something):
+def return_parameter(testcase, something):
     """A trivial thunk to return its input."""
     return something
 
 
-def revision_tree_from_workingtree(tree):
+def revision_tree_from_workingtree(testcase, tree):
     """Create a revision tree from a working tree."""
     revid = tree.commit('save tree', allow_pointless=True, recursive=None)
     return tree.branch.repository.revision_tree(revid)
 
 
-def _dirstate_tree_from_workingtree(tree):
+def _dirstate_tree_from_workingtree(testcase, tree):
     revid = tree.commit('save tree', allow_pointless=True)
     return tree.basis_tree()
 
@@ -76,7 +76,7 @@ class TestTreeImplementationSupport(TestCaseWithTransport):
 
     def test_revision_tree_from_workingtree(self):
         tree = self.make_branch_and_tree('.')
-        tree = revision_tree_from_workingtree(tree)
+        tree = revision_tree_from_workingtree(self, tree)
         self.assertIsInstance(tree, RevisionTree)
 
 
@@ -88,6 +88,9 @@ class TestCaseWithTree(TestCaseWithBzrDir):
         made_control.create_repository()
         made_control.create_branch()
         return self.workingtree_format.initialize(made_control)
+
+    def workingtree_to_test_tree(self, tree):
+        return self._workingtree_to_test_tree(self, tree)
 
     def _convert_tree(self, tree, converter=None):
         """helper to convert using the converter or a supplied one."""
@@ -301,27 +304,40 @@ class TreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
         # now adjust the scenarios and add the non-working-tree tree scenarios.
         for scenario in self.scenarios:
             # for working tree adapted tests, preserve the tree
-            scenario[1]["workingtree_to_test_tree"] = return_parameter
+            scenario[1]["_workingtree_to_test_tree"] = return_parameter
         # add RevisionTree scenario
-        # this is the 'default format' in that it's used to test the generic InterTree
-        # code.
-        default_format = WorkingTreeFormat3()
-        self.scenarios.append(self.formats_to_scenarios([
-            (default_format, default_format._matchingbzrdir)])[0])
-        self.scenarios[-1] = (RevisionTree.__name__, self.scenarios[-1][1])
-        self.scenarios[-1][1]["workingtree_to_test_tree"] = revision_tree_from_workingtree
+        self.scenarios.append(self.create_tree_scenario(RevisionTree.__name__,
+                              revision_tree_from_workingtree,))
 
-        # also test WorkingTree4's RevisionTree implementation which is specialised.
-        dirstate_format = WorkingTreeFormat4()
-        self.scenarios.append(self.formats_to_scenarios([
-            (dirstate_format, dirstate_format._matchingbzrdir)])[0])
-        self.scenarios[-1] = (DirStateRevisionTree.__name__, self.scenarios[-1][1])
-        self.scenarios[-1][1]["workingtree_to_test_tree"] = _dirstate_tree_from_workingtree
+        # also test WorkingTree4's RevisionTree implementation which is
+        # specialised.
+        self.scenarios.append(self.create_tree_scenario(
+            DirStateRevisionTree.__name__, _dirstate_tree_from_workingtree,
+            WorkingTreeFormat4()))
+
+    def create_tree_scenario(self, name, converter, workingtree_format=None):
+        """Create a scenario for the specified converter
+
+        :param name: The name to append to tests using this converter
+        :param converter: A function that converts a workingtree into the
+            desired format.
+        :param workingtree_format: The particular workingtree format to
+            convert from.
+        :return: a (name, options) tuple, where options is a dict of values
+            to be used as members of the TestCase.
+        """
+        if workingtree_format is None:
+            workingtree_format = WorkingTreeFormat3()
+        scenario_options = WorkingTreeTestProviderAdapter.create_scenario(self,
+            workingtree_format, workingtree_format._matchingbzrdir)[1]
+        scenario_options["_workingtree_to_test_tree"] = converter
+        return name, scenario_options
 
 
 def test_suite():
     result = TestSuite()
     test_tree_implementations = [
+        'bzrlib.tests.tree_implementations.test_annotate_iter',
         'bzrlib.tests.tree_implementations.test_get_file_mtime',
         'bzrlib.tests.tree_implementations.test_get_root_id',
         'bzrlib.tests.tree_implementations.test_get_symlink_target',

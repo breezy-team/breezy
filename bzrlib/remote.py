@@ -28,6 +28,7 @@ from bzrlib import (
     lockdir,
     repository,
     revision,
+    symbol_versioning,
 )
 from bzrlib.branch import BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, RemoteBzrDirFormat
@@ -41,7 +42,7 @@ from bzrlib.symbol_versioning import (
     deprecated_method,
     zero_ninetyone,
     )
-from bzrlib.revision import NULL_REVISION
+from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.trace import mutter, note, warning
 
 # Note: RemoteBzrDirFormat is in bzrdir.py
@@ -61,11 +62,10 @@ class RemoteBzrDir(BzrDir):
         self._real_bzrdir = None
 
         if _client is None:
-            self._shared_medium = transport.get_shared_medium()
-            self._client = client._SmartClient(self._shared_medium)
+            medium = transport.get_smart_medium()
+            self._client = client._SmartClient(medium, transport.base)
         else:
             self._client = _client
-            self._shared_medium = None
             return
 
         path = self._path_for_remote_call(self._client)
@@ -149,11 +149,9 @@ class RemoteBzrDir(BzrDir):
     def open_repository(self):
         path = self._path_for_remote_call(self._client)
         verb = 'BzrDir.find_repositoryV2'
-        response = self._client.call(verb, path)
-        if (response == ('error', "Generic bzr smart protocol error: "
-                "bad request '%s'" % verb) or
-              response == ('error', "Generic bzr smart protocol error: "
-                "bad request u'%s'" % verb)):
+        try:
+            response = self._client.call(verb, path)
+        except errors.UnknownSmartMethod:
             verb = 'BzrDir.find_repository'
             response = self._client.call(verb, path)
         assert response[0] in ('ok', 'norepository'), \
@@ -276,7 +274,7 @@ class RemoteRepository(object):
             self._real_repository = None
         self.bzrdir = remote_bzrdir
         if _client is None:
-            self._client = client._SmartClient(self.bzrdir._shared_medium)
+            self._client = remote_bzrdir._client
         else:
             self._client = _client
         self._format = format
@@ -360,8 +358,13 @@ class RemoteRepository(object):
         self._ensure_real()
         return self._real_repository._generate_text_key_index()
 
+    @symbol_versioning.deprecated_method(symbol_versioning.one_four)
     def get_revision_graph(self, revision_id=None):
         """See Repository.get_revision_graph()."""
+        return self._get_revision_graph(revision_id)
+
+    def _get_revision_graph(self, revision_id):
+        """Private method for using with old (< 1.2) servers to fallback."""
         if revision_id is None:
             revision_id = ''
         elif revision.is_null(revision_id):
@@ -629,8 +632,12 @@ class RemoteRepository(object):
         """
         import tempfile
         path = self.bzrdir._path_for_remote_call(self._client)
-        response, protocol = self._client.call_expecting_body(
-            'Repository.tarball', path, compression)
+        try:
+            response, protocol = self._client.call_expecting_body(
+                'Repository.tarball', path, compression)
+        except errors.UnknownSmartMethod:
+            protocol.cancel_read_body()
+            return None
         if response[0] == 'ok':
             # Extract the tarball and return it
             t = tempfile.NamedTemporaryFile()
@@ -638,12 +645,6 @@ class RemoteRepository(object):
             t.write(protocol.read_body_bytes())
             t.seek(0)
             return t
-        if (response == ('error', "Generic bzr smart protocol error: "
-                "bad request 'Repository.tarball'") or
-              response == ('error', "Generic bzr smart protocol error: "
-                "bad request u'Repository.tarball'")):
-            protocol.cancel_read_body()
-            return None
         raise errors.UnexpectedSmartServerResponse(response)
 
     def sprout(self, to_bzrdir, revision_id=None):
@@ -713,8 +714,9 @@ class RemoteRepository(object):
         return self._real_repository.clone(a_bzrdir, revision_id=revision_id)
 
     def make_working_trees(self):
-        """RemoteRepositories never create working trees by default."""
-        return False
+        """See Repository.make_working_trees"""
+        self._ensure_real()
+        return self._real_repository.make_working_trees()
 
     def revision_ids_to_search_result(self, result_set):
         """Convert a set of revision ids to a graph SearchResult."""
@@ -810,31 +812,17 @@ class RemoteRepository(object):
                 100.0 * len(self._requested_parents) / len(ancestry))
         return dict((k, ancestry[k]) for k in present_keys)
 
-    def _response_is_unknown_method(self, response, verb):
-        """Return True if response is an unknonwn method response to verb.
-        
-        :param response: The response from a smart client call_expecting_body
-            call.
-        :param verb: The verb used in that call.
-        :return: True if an unknown method was encountered.
-        """
-        # This might live better on
-        # bzrlib.smart.protocol.SmartClientRequestProtocolOne
-        if (response[0] == ('error', "Generic bzr smart protocol error: "
-                "bad request '%s'" % verb) or
-              response[0] == ('error', "Generic bzr smart protocol error: "
-                "bad request u'%s'" % verb)):
-           response[1].cancel_read_body()
-           return True
-        return False
-
     def _get_parent_map(self, keys):
         """Helper for get_parent_map that performs the RPC."""
-        medium = self._client.get_smart_medium()
+        medium = self._client._medium
         if not medium._remote_is_at_least_1_2:
             # We already found out that the server can't understand
             # Repository.get_parent_map requests, so just fetch the whole
             # graph.
+            # XXX: Note that this will issue a deprecation warning. This is ok
+            # :- its because we're working with a deprecated server anyway, and
+            # the user will almost certainly have seen a warning about the
+            # server version already.
             return self.get_revision_graph()
 
         keys = set(keys)
@@ -874,9 +862,10 @@ class RemoteRepository(object):
             assert type(key) is str
         verb = 'Repository.get_parent_map'
         args = (path,) + tuple(keys)
-        response = self._client.call_with_body_bytes_expecting_body(
-            verb, args, self._serialise_search_recipe(recipe))
-        if self._response_is_unknown_method(response, verb):
+        try:
+            response = self._client.call_with_body_bytes_expecting_body(
+                verb, args, self._serialise_search_recipe(recipe))
+        except errors.UnknownSmartMethod:
             # Server does not support this method, so get the whole graph.
             # Worse, we have to force a disconnection, because the server now
             # doesn't realise it has a body on the wire to consume, so the
@@ -888,9 +877,9 @@ class RemoteRepository(object):
             # To avoid having to disconnect repeatedly, we keep track of the
             # fact the server doesn't understand remote methods added in 1.2.
             medium._remote_is_at_least_1_2 = False
-            return self.get_revision_graph()
-        elif response[0][0] not in ['ok']:
-            reponse[1].cancel_read_body()
+            return self.get_revision_graph(None)
+        if response[0][0] not in ['ok']:
+            response[1].cancel_read_body()
             raise errors.UnexpectedSmartServerResponse(response[0])
         if response[0][0] == 'ok':
             coded = bz2.decompress(response[1].read_body_bytes())
@@ -914,6 +903,7 @@ class RemoteRepository(object):
         return self._real_repository.get_signature_text(revision_id)
 
     @needs_read_lock
+    @symbol_versioning.deprecated_method(symbol_versioning.one_three)
     def get_revision_graph_with_ghosts(self, revision_ids=None):
         self._ensure_real()
         return self._real_repository.get_revision_graph_with_ghosts(
@@ -1005,7 +995,8 @@ class RemoteRepository(object):
         return self._real_repository.pack()
 
     def set_make_working_trees(self, new_value):
-        raise NotImplementedError(self.set_make_working_trees)
+        self._ensure_real()
+        self._real_repository.set_make_working_trees(new_value)
 
     @needs_write_lock
     def sign_revision(self, revision_id, gpg_strategy):
@@ -1044,17 +1035,18 @@ class RemoteRepository(object):
         return self._real_repository.has_signature_for_revision_id(revision_id)
 
     def get_data_stream_for_search(self, search):
-        medium = self._client.get_smart_medium()
+        medium = self._client._medium
         if not medium._remote_is_at_least_1_2:
             self._ensure_real()
             return self._real_repository.get_data_stream_for_search(search)
         REQUEST_NAME = 'Repository.stream_revisions_chunked'
         path = self.bzrdir._path_for_remote_call(self._client)
         body = self._serialise_search_recipe(search.get_recipe())
-        response, protocol = self._client.call_with_body_bytes_expecting_body(
-            REQUEST_NAME, (path,), body)
-
-        if self._response_is_unknown_method((response, protocol), REQUEST_NAME):
+        try:
+            result = self._client.call_with_body_bytes_expecting_body(
+                REQUEST_NAME, (path,), body)
+            response, protocol = result
+        except errors.UnknownSmartMethod:
             # Server does not support this method, so fall back to VFS.
             # Worse, we have to force a disconnection, because the server now
             # doesn't realise it has a body on the wire to consume, so the
@@ -1218,7 +1210,7 @@ class RemoteBranch(branch.Branch):
         if _client is not None:
             self._client = _client
         else:
-            self._client = client._SmartClient(self.bzrdir._shared_medium)
+            self._client = remote_bzrdir._client
         self.repository = remote_repository
         if real_branch is not None:
             self._real_branch = real_branch
@@ -1238,6 +1230,7 @@ class RemoteBranch(branch.Branch):
         self._control_files = None
         self._lock_mode = None
         self._lock_token = None
+        self._repo_lock_token = None
         self._lock_count = 0
         self._leave_lock = False
 
@@ -1498,10 +1491,24 @@ class RemoteBranch(branch.Branch):
     def is_locked(self):
         return self._lock_count >= 1
 
+    @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
-        self._ensure_real()
-        self._clear_cached_state()
-        return self._real_branch.set_last_revision_info(revno, revision_id)
+        assert type(revno) is int
+        revision_id = ensure_null(revision_id)
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response = self._client.call('Branch.set_last_revision_info',
+                path, self._lock_token, self._repo_lock_token, str(revno), revision_id)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            self._clear_cached_state()
+            return self._real_branch.set_last_revision_info(revno, revision_id)
+        if response == ('ok',):
+            self._clear_cached_state()
+        elif response[0] == 'NoSuchRevision':
+            raise NoSuchRevision(self, response[1])
+        else:
+            raise errors.UnexpectedSmartServerResponse(response)
 
     def generate_revision_history(self, revision_id, last_rev=None,
                                   other_branch=None):

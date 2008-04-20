@@ -662,8 +662,8 @@ class WorkingTree4(WorkingTree3):
         if self._inventory is not None:
             update_inventory = True
             inv = self.inventory
-            to_dir_ie = inv[to_dir_id]
             to_dir_id = to_entry[0][2]
+            to_dir_ie = inv[to_dir_id]
         else:
             update_inventory = False
 
@@ -1402,7 +1402,7 @@ class DirStateRevisionTree(Tree):
                       default_revision=_mod_revision.CURRENT_REVISION):
         """See Tree.annotate_iter"""
         w = self._get_weave(file_id)
-        return w.annotate_iter(self.inventory[file_id].revision)
+        return w.annotate(self.inventory[file_id].revision)
 
     def _get_ancestors(self, default_revision):
         return set(self._repository.get_ancestry(self._revision_id,

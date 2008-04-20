@@ -73,8 +73,9 @@ class SmartProtocolBase(object):
 class SmartServerRequestProtocolOne(SmartProtocolBase):
     """Server-side encoding and decoding logic for smart version 1."""
     
-    def __init__(self, backing_transport, write_func):
+    def __init__(self, backing_transport, write_func, root_client_path='/'):
         self._backing_transport = backing_transport
+        self._root_client_path = root_client_path
         self.excess_buffer = ''
         self._finished = False
         self.in_buffer = ''
@@ -100,7 +101,8 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                 first_line += '\n'
                 req_args = _decode_tuple(first_line)
                 self.request = request.SmartServerRequestHandler(
-                    self._backing_transport, commands=request.request_handlers)
+                    self._backing_transport, commands=request.request_handlers,
+                    root_client_path=self._root_client_path)
                 self.request.dispatch_command(req_args[0], req_args[1:])
                 if self.request.finished_reading:
                     # trivial request
@@ -467,6 +469,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         self._request = request
         self._body_buffer = None
         self._request_start_time = None
+        self._last_verb = None
 
     def call(self, *args):
         if 'hpss' in debug.debug_flags:
@@ -476,6 +479,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
             self._request_start_time = time.time()
         self._write_args(args)
         self._request.finished_writing()
+        self._last_verb = args[0]
 
     def call_with_body_bytes(self, args, body):
         """Make a remote call of args with body bytes 'body'.
@@ -494,6 +498,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         bytes = self._encode_bulk_data(body)
         self._request.accept_bytes(bytes)
         self._request.finished_writing()
+        self._last_verb = args[0]
 
     def call_with_body_readv_array(self, args, body):
         """Make a remote call with a readv array.
@@ -513,6 +518,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         self._request.finished_writing()
         if 'hpss' in debug.debug_flags:
             mutter('              %d bytes in readv request', len(readv_bytes))
+        self._last_verb = args[0]
 
     def cancel_read_body(self):
         """After expecting a body, a response code may indicate one otherwise.
@@ -537,10 +543,28 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
                 self._request_start_time = None
             else:
                 mutter('   result:   %s', repr(result)[1:-1])
+        self._response_is_unknown_method(result)
         if not expect_body:
             self._request.finished_reading()
         return result
 
+    def _response_is_unknown_method(self, result_tuple):
+        """Raise UnexpectedSmartServerResponse if the response is an 'unknonwn
+        method' response to the request.
+        
+        :param response: The response from a smart client call_expecting_body
+            call.
+        :param verb: The verb used in that call.
+        :raises: UnexpectedSmartServerResponse
+        """
+        if (result_tuple == ('error', "Generic bzr smart protocol error: "
+                "bad request '%s'" % self._last_verb) or
+              result_tuple == ('error', "Generic bzr smart protocol error: "
+                "bad request u'%s'" % self._last_verb)):
+            # The response will have no body, so we've finished reading.
+            self._request.finished_reading()
+            raise errors.UnknownSmartMethod(self._last_verb)
+        
     def read_body_bytes(self, count=-1):
         """Read bytes from the body, decoding into a byte stream.
         

@@ -109,22 +109,6 @@ __unittest = 1
 
 default_transport = LocalURLServer
 
-MODULES_TO_TEST = []
-MODULES_TO_DOCTEST = [
-        bzrlib.timestamp,
-        bzrlib.errors,
-        bzrlib.export,
-        bzrlib.inventory,
-        bzrlib.iterablefile,
-        bzrlib.lockdir,
-        bzrlib.merge3,
-        bzrlib.option,
-        bzrlib.store,
-        bzrlib.version_info_formats.format_custom,
-        # quoted to avoid module-loading circularity
-        'bzrlib.tests',
-        ]
-
 
 def packages_to_test():
     """Return a list of packages to test.
@@ -314,6 +298,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.report_success(test)
         self._cleanupLogFile(test)
         unittest.TestResult.addSuccess(self, test)
+        test._log_contents = ''
 
     def _testConcluded(self, test):
         """Common code when a test has finished.
@@ -356,6 +341,7 @@ class ExtendedTestResult(unittest._TextTestResult):
             # seems best to treat this as success from point-of-view of unittest
             # -- it actually does nothing so it barely matters :)
             unittest.TestResult.addSuccess(self, test)
+            test._log_contents = ''
 
     def printErrorList(self, flavour, errors):
         for test, err in errors:
@@ -416,20 +402,29 @@ class TextTestResult(ExtendedTestResult):
         self.pb.update('[test 0/%d] starting...' % (self.num_tests))
 
     def _progress_prefix_text(self):
-        a = '[%d' % self.count
+        # the longer this text, the less space we have to show the test
+        # name...
+        a = '[%d' % self.count              # total that have been run
+        # tests skipped as known not to be relevant are not important enough
+        # to show here
+        ## if self.skip_count:
+        ##     a += ', %d skip' % self.skip_count
+        ## if self.known_failure_count:
+        ##     a += '+%dX' % self.known_failure_count
         if self.num_tests is not None:
             a +='/%d' % self.num_tests
-        a += ' in %ds' % (time.time() - self._overall_start_time)
+        a += ' in '
+        runtime = time.time() - self._overall_start_time
+        if runtime >= 60:
+            a += '%dm%ds' % (runtime / 60, runtime % 60)
+        else:
+            a += '%ds' % runtime
         if self.error_count:
-            a += ', %d errors' % self.error_count
+            a += ', %d err' % self.error_count
         if self.failure_count:
-            a += ', %d failed' % self.failure_count
-        if self.known_failure_count:
-            a += ', %d known failures' % self.known_failure_count
-        if self.skip_count:
-            a += ', %d skipped' % self.skip_count
+            a += ', %d fail' % self.failure_count
         if self.unsupported:
-            a += ', %d missing features' % len(self.unsupported)
+            a += ', %d missing' % len(self.unsupported)
         a += ']'
         return a
 
@@ -789,6 +784,9 @@ class TestCase(unittest.TestCase):
     _keep_log_file = False
     # record lsprof data when performing benchmark calls.
     _gather_lsprof_in_benchmarks = False
+    attrs_to_keep = ('_testMethodName', '_testMethodDoc',
+                     '_log_contents', '_log_file_name', '_benchtime',
+                     '_TestCase__testMethodName')
 
     def __init__(self, methodName='testMethod'):
         super(TestCase, self).__init__(methodName)
@@ -810,9 +808,10 @@ class TestCase(unittest.TestCase):
         Tests that want to use debug flags can just set them in the
         debug_flags set during setup/teardown.
         """
-        self._preserved_debug_flags = set(debug.debug_flags)
-        debug.debug_flags.clear()
-        self.addCleanup(self._restore_debug_flags)
+        if 'selftest_debug' not in debug.debug_flags:
+            self._preserved_debug_flags = set(debug.debug_flags)
+            debug.debug_flags.clear()
+            self.addCleanup(self._restore_debug_flags)
 
     def _clear_hooks(self):
         # prevent hooks affecting tests
@@ -820,6 +819,7 @@ class TestCase(unittest.TestCase):
         import bzrlib.smart.server
         self._preserved_hooks = {
             bzrlib.branch.Branch: bzrlib.branch.Branch.hooks,
+            bzrlib.mutabletree.MutableTree: bzrlib.mutabletree.MutableTree.hooks,
             bzrlib.smart.server.SmartTCPServer: bzrlib.smart.server.SmartTCPServer.hooks,
             }
         self.addCleanup(self._restoreHooks)
@@ -1282,7 +1282,16 @@ class TestCase(unittest.TestCase):
                     result.addSuccess(self)
                 result.stopTest(self)
                 return
-        return unittest.TestCase.run(self, result)
+        try:
+            return unittest.TestCase.run(self, result)
+        finally:
+            saved_attrs = {}
+            absent_attr = object()
+            for attr_name in self.attrs_to_keep:
+                attr = getattr(self, attr_name, absent_attr)
+                if attr is not absent_attr:
+                    saved_attrs[attr_name] = attr
+            self.__dict__ = saved_attrs
 
     def tearDown(self):
         self._runCleanups()
@@ -2268,11 +2277,11 @@ def condition_isinstance(klass_or_klass_list):
 def condition_id_in_list(id_list):
     """Create a condition filter which verify that test's id in a list.
     
-    :param name: A TestIdList object.
+    :param id_list: A TestIdList object.
     :return: A callable that returns True if the test's id appears in the list.
     """
     def condition(test):
-        return id_list.test_in(test.id())
+        return id_list.includes(test.id())
     return condition
 
 
@@ -2573,6 +2582,41 @@ def load_test_id_list(file_name):
     return test_list
 
 
+def suite_matches_id_list(test_suite, id_list):
+    """Warns about tests not appearing or appearing more than once.
+
+    :param test_suite: A TestSuite object.
+    :param test_id_list: The list of test ids that should be found in 
+         test_suite.
+
+    :return: (absents, duplicates) absents is a list containing the test found
+        in id_list but not in test_suite, duplicates is a list containing the
+        test found multiple times in test_suite.
+
+    When using a prefined test id list, it may occurs that some tests do not
+    exist anymore or that some tests use the same id. This function warns the
+    tester about potential problems in his workflow (test lists are volatile)
+    or in the test suite itself (using the same id for several tests does not
+    help to localize defects).
+    """
+    # Build a dict counting id occurrences
+    tests = dict()
+    for test in iter_suite_tests(test_suite):
+        id = test.id()
+        tests[id] = tests.get(id, 0) + 1
+
+    not_found = []
+    duplicates = []
+    for id in id_list:
+        occurs = tests.get(id, 0)
+        if not occurs:
+            not_found.append(id)
+        elif occurs > 1:
+            duplicates.append(id)
+
+    return not_found, duplicates
+
+
 class TestIdList(object):
     """Test id list to filter a test suite.
 
@@ -2609,11 +2653,11 @@ class TestIdList(object):
                 modules[mod_name] = True
         self.modules = modules
 
-    def is_module_name_used(self, module_name):
+    def refers_to(self, module_name):
         """Is there tests for the module or one of its sub modules."""
         return self.modules.has_key(module_name)
 
-    def test_in(self, test_id):
+    def includes(self, test_id):
         return self.tests.has_key(test_id)
 
 
@@ -2692,6 +2736,7 @@ def test_suite(keep_only=None):
                    'bzrlib.tests.test_missing',
                    'bzrlib.tests.test_msgeditor',
                    'bzrlib.tests.test_multiparent',
+                   'bzrlib.tests.test_mutabletree',
                    'bzrlib.tests.test_nonascii',
                    'bzrlib.tests.test_options',
                    'bzrlib.tests.test_osutils',
@@ -2709,7 +2754,7 @@ def test_suite(keep_only=None):
                    'bzrlib.tests.test_repository',
                    'bzrlib.tests.test_revert',
                    'bzrlib.tests.test_revision',
-                   'bzrlib.tests.test_revisionnamespaces',
+                   'bzrlib.tests.test_revisionspec',
                    'bzrlib.tests.test_revisiontree',
                    'bzrlib.tests.test_rio',
                    'bzrlib.tests.test_sampler',
@@ -2742,6 +2787,7 @@ def test_suite(keep_only=None):
                    'bzrlib.tests.test_tsort',
                    'bzrlib.tests.test_tuned_gzip',
                    'bzrlib.tests.test_ui',
+                   'bzrlib.tests.test_uncommit',
                    'bzrlib.tests.test_upgrade',
                    'bzrlib.tests.test_urlutils',
                    'bzrlib.tests.test_versionedfile',
@@ -2759,76 +2805,68 @@ def test_suite(keep_only=None):
         'bzrlib.tests.test_transport_implementations',
         'bzrlib.tests.test_read_bundle',
         ]
-    suite = TestUtil.TestSuite()
     loader = TestUtil.TestLoader()
 
-    if keep_only is not None:
+    if keep_only is None:
+        loader = TestUtil.TestLoader()
+    else:
         id_filter = TestIdList(keep_only)
+        loader = TestUtil.FilteredByModuleTestLoader(id_filter.refers_to)
+    suite = loader.suiteClass()
 
     # modules building their suite with loadTestsFromModuleNames
-    if keep_only is None:
-        suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
-    else:
-        for mod in [m for m in testmod_names
-                    if id_filter.is_module_name_used(m)]:
-            mod_suite = loader.loadTestsFromModuleNames([mod])
-            mod_suite = filter_suite_by_id_list(mod_suite, id_filter)
-            suite.addTest(mod_suite)
+    suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
 
     # modules adapted for transport implementations
     from bzrlib.tests.test_transport_implementations import TransportTestProviderAdapter
     adapter = TransportTestProviderAdapter()
-    if keep_only is None:
-        adapt_modules(test_transport_implementations, adapter, loader, suite)
-    else:
-        for mod in [m for m in test_transport_implementations
-                    if id_filter.is_module_name_used(m)]:
-            mod_suite = TestUtil.TestSuite()
-            adapt_modules([mod], adapter, loader, mod_suite)
-            mod_suite = filter_suite_by_id_list(mod_suite, id_filter)
-            suite.addTest(mod_suite)
+    adapt_modules(test_transport_implementations, adapter, loader, suite)
 
     # modules defining their own test_suite()
     for package in [p for p in packages_to_test()
                     if (keep_only is None
-                        or id_filter.is_module_name_used(p.__name__))]:
+                        or id_filter.refers_to(p.__name__))]:
         pack_suite = package.test_suite()
-        if keep_only is not None:
-            pack_suite = filter_suite_by_id_list(pack_suite, id_filter)
         suite.addTest(pack_suite)
 
-    # XXX: MODULES_TO_TEST should be obsoleted ?
-    for mod in [m for m in MODULES_TO_TEST
-                if keep_only is None or id_filter.is_module_name_used(m)]:
-        mod_suite = loader.loadTestsFromModule(mod)
-        if keep_only is not None:
-            mod_suite = filter_suite_by_id_list(mod_suite, id_filter)
-        suite.addTest(mod_suite)
+    modules_to_doctest = [
+        'bzrlib',
+        'bzrlib.errors',
+        'bzrlib.export',
+        'bzrlib.inventory',
+        'bzrlib.iterablefile',
+        'bzrlib.lockdir',
+        'bzrlib.merge3',
+        'bzrlib.option',
+        'bzrlib.store',
+        'bzrlib.tests',
+        'bzrlib.timestamp',
+        'bzrlib.version_info_formats.format_custom',
+        ]
 
-    for mod in MODULES_TO_DOCTEST:
+    for mod in modules_to_doctest:
+        if not (keep_only is None or id_filter.refers_to(mod)):
+            # No tests to keep here, move along
+            continue
         try:
             doc_suite = doctest.DocTestSuite(mod)
         except ValueError, e:
             print '**failed to get doctest for: %s\n%s' % (mod, e)
             raise
-        if keep_only is not None:
-            # DocTests may use ids which doesn't contain the module name
-            doc_suite = filter_suite_by_id_list(doc_suite, id_filter)
         suite.addTest(doc_suite)
 
     default_encoding = sys.getdefaultencoding()
     for name, plugin in bzrlib.plugin.plugins().items():
         if keep_only is not None:
-            if not id_filter.is_module_name_used(plugin.module.__name__):
+            if not id_filter.refers_to(plugin.module.__name__):
                 continue
         plugin_suite = plugin.test_suite()
         # We used to catch ImportError here and turn it into just a warning,
         # but really if you don't have --no-plugins this should be a failure.
         # mbp 20080213 - see http://bugs.launchpad.net/bugs/189771
+        if plugin_suite is None:
+            plugin_suite = plugin.load_plugin_tests(loader)
         if plugin_suite is not None:
-            if keep_only is not None:
-                plugin_suite = filter_suite_by_id_list(plugin_suite,
-                                                       id_filter)
             suite.addTest(plugin_suite)
         if default_encoding != sys.getdefaultencoding():
             bzrlib.trace.warning(
@@ -2836,10 +2874,22 @@ def test_suite(keep_only=None):
                 sys.getdefaultencoding())
             reload(sys)
             sys.setdefaultencoding(default_encoding)
+
+    if keep_only is not None:
+        # Now that the referred modules have loaded their tests, keep only the
+        # requested ones.
+        suite = filter_suite_by_id_list(suite, id_filter)
+        # Do some sanity checks on the id_list filtering
+        not_found, duplicates = suite_matches_id_list(suite, keep_only)
+        for id in not_found:
+            bzrlib.trace.warning('"%s" not found in the test suite', id)
+        for id in duplicates:
+            bzrlib.trace.warning('"%s" is used as an id by several tests', id)
+
     return suite
 
 
-def multiply_tests_from_modules(module_name_list, scenario_iter):
+def multiply_tests_from_modules(module_name_list, scenario_iter, loader=None):
     """Adapt all tests in some given modules to given scenarios.
 
     This is the recommended public interface for test parameterization.
@@ -2851,6 +2901,8 @@ def multiply_tests_from_modules(module_name_list, scenario_iter):
         modules.
     :param scenario_iter: Iterable of pairs of (scenario_name, 
         scenario_param_dict).
+    :param loader: If provided, will be used instead of a new 
+        bzrlib.tests.TestLoader() instance.
 
     This returns a new TestSuite containing the cross product of
     all the tests in all the modules, each repeated for each scenario.
@@ -2872,8 +2924,13 @@ def multiply_tests_from_modules(module_name_list, scenario_iter):
     >>> tests[1].param
     2
     """
-    loader = TestLoader()
-    suite = TestSuite()
+    # XXX: Isn't load_tests() a better way to provide the same functionality
+    # without forcing a predefined TestScenarioApplier ? --vila 080215
+    if loader is None:
+        loader = TestUtil.TestLoader()
+
+    suite = loader.suiteClass()
+
     adapter = TestScenarioApplier()
     adapter.scenarios = list(scenario_iter)
     adapt_modules(module_name_list, adapter, loader, suite)
