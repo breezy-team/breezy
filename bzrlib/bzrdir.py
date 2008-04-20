@@ -842,8 +842,8 @@ class BzrDir(object):
         raised.
         """
         try:
-            tree, branch, relpath = \
-                klass.open_containing_tree_or_branch(location)
+            bzrdir = klass.open_containing(location)[0]
+            tree, branch = bzrdir._get_tree_branch()
         except errors.NotBranchError:
             try:
                 repo = klass.open_containing(location)[0].find_repository()
