@@ -37,7 +37,7 @@ class TestHooks(TestCaseWithTransport):
     def test_hooks_with_unnamed_hook(self):
         self.make_branch('.')
         def foo(): return
-        Branch.hooks.install_hook('set_rh', foo)
+        Branch.hooks.install_named_hook('set_rh', foo, None)
         out, err = self.run_bzr('hooks')
         self._check_hooks_output(out, {'set_rh': ["No hook name"]})
 
@@ -45,8 +45,7 @@ class TestHooks(TestCaseWithTransport):
         self.make_branch('.')
         def foo(): return
         name = "Foo Bar Hook"
-        Branch.hooks.install_hook('set_rh', foo)
-        Branch.hooks.name_hook(foo, name)
+        Branch.hooks.install_named_hook('set_rh', foo, None)
         out, err = self.run_bzr('hooks')
         self._check_hooks_output(out, {'set_rh': [name]})
 

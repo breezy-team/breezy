@@ -548,8 +548,10 @@ class TestCommitProgress(TestCaseWithWorkingTree):
             mutabletree.MutableTree.hooks['start_commit'] = []
         self.addCleanup(restoreDefaults)
         tree = self.make_branch_and_tree('.')
-        mutabletree.MutableTree.hooks.install_hook('start_commit', 
-            start_commit_hook_adds_file)
+        mutabletree.MutableTree.hooks.install_named_hook(
+            'start_commit',
+            start_commit_hook_adds_file,
+            None)
         revid = tree.commit('first post')
         committed_tree = tree.basis_tree()
         self.assertTrue(committed_tree.has_filename("newfile"))

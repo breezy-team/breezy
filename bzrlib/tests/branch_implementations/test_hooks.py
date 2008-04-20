@@ -97,8 +97,10 @@ class TestPostChangeBranchTip(TestCaseWithMemoryTransport):
 
     def test_post_change_branch_tip_empty_history(self):
         branch = self.make_branch('source')
-        Branch.hooks.install_hook('post_change_branch_tip',
-                                  self.capture_post_change_branch_tip_hook)
+        Branch.hooks.install_named_hook(
+            'post_change_branch_tip',
+            self.capture_post_change_branch_tip_hook,
+            None)
         branch.set_last_revision_info(0, NULL_REVISION)
         self.assertEqual(len(self.hook_calls), 1)
         self.assertEqual(self.hook_calls[0][0].branch, branch)
@@ -115,8 +117,10 @@ class TestPostChangeBranchTip(TestCaseWithMemoryTransport):
         tree.commit('empty commit', rev_id='foo')
         tree.unlock()
         branch = tree.branch
-        Branch.hooks.install_hook('post_change_branch_tip',
-                                  self.capture_post_change_branch_tip_hook)
+        Branch.hooks.install_named_hook(
+            'post_change_branch_tip',
+            self.capture_post_change_branch_tip_hook,
+            None)
         # some branches require that their history be set to a revision in the
         # repository
         branch.set_last_revision_info(1, 'f\xc2\xb5')
@@ -129,8 +133,10 @@ class TestPostChangeBranchTip(TestCaseWithMemoryTransport):
 
     def test_post_change_branch_tip_branch_is_locked(self):
         branch = self.make_branch('source')
-        Branch.hooks.install_hook('post_change_branch_tip',
-                                  self.capture_post_change_branch_tip_hook)
+        Branch.hooks.install_named_hook(
+            'post_change_branch_tip',
+            self.capture_post_change_branch_tip_hook,
+            None)
         branch.set_last_revision_info(0, NULL_REVISION)
         self.assertEqual(len(self.hook_calls), 1)
         self.assertEqual(self.hook_calls[0][0].branch, branch)
@@ -138,10 +144,14 @@ class TestPostChangeBranchTip(TestCaseWithMemoryTransport):
 
     def test_post_change_branch_tip_calls_all_hooks_no_errors(self):
         branch = self.make_branch('source')
-        Branch.hooks.install_hook('post_change_branch_tip',
-                                  self.capture_post_change_branch_tip_hook)
-        Branch.hooks.install_hook('post_change_branch_tip',
-                                  self.capture_post_change_branch_tip_hook)
+        Branch.hooks.install_named_hook(
+            'post_change_branch_tip',
+            self.capture_post_change_branch_tip_hook,
+            None)
+        Branch.hooks.install_named_hook(
+            'post_change_branch_tip',
+            self.capture_post_change_branch_tip_hook,
+            None)
         branch.set_last_revision_info(0, NULL_REVISION)
         self.assertEqual(len(self.hook_calls), 2)
         self.assertEqual(self.hook_calls[0][0].branch, branch)
