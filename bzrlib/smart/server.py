@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 
 import errno
 import socket
+import sys
 import threading
 
 from bzrlib.hooks import Hooks
@@ -59,6 +60,10 @@ class SmartTCPServer(object):
         self._socket_error = socket_error
         self._socket_timeout = socket_timeout
         self._server_socket = socket.socket()
+        # SO_REUSERADDR has a different meaning on Windows
+        if sys.platform != 'win32':
+            self._server_socket.setsockopt(socket.SOL_SOCKET,
+                socket.SO_REUSEADDR, 1)
         self._server_socket.bind((host, port))
         self._sockname = self._server_socket.getsockname()
         self.port = self._sockname[1]
