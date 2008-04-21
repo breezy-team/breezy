@@ -891,6 +891,20 @@ class TestGetRevisionsTouchingFileID(TestCaseWithTransport):
         # f3 should be marked as modified by revisions A, B, C, and D
         self.assertAllRevisionsForFileID(tree, 'f2-id', ['D', 'C', 'A'])
 
+    def test_file_id_with_ghosts(self):
+        # This is testing bug #209948, where having a ghost would cause
+        # _filter_revisions_touching_file_id() to fail.
+        tree = self.create_tree_with_single_merge()
+        # We need to add a revision, so switch back to a write-locked tree
+        tree.unlock()
+        tree.lock_write()
+        first_parent = tree.last_revision()
+        tree.set_parent_ids([first_parent, 'ghost-revision-id'])
+        self.build_tree_contents([('tree/f1', 'A\nB\nXX\n')])
+        tree.commit('commit with a ghost', rev_id='XX')
+        self.assertAllRevisionsForFileID(tree, 'f1-id', ['XX', 'B', 'A'])
+        self.assertAllRevisionsForFileID(tree, 'f2-id', ['D', 'C', 'A'])
+
 
 class TestShowChangedRevisions(TestCaseWithTransport):
 

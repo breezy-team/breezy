@@ -5,6 +5,15 @@ Bazaar Release Notes
 .. contents::
 
 
+bzr 1.4rc2 NOT RELEASED YET
+---------------------------
+
+  BUG FIXES:
+
+    * Fixed a bug in handling ghost revisions when logging changes in a 
+      particular file.  (John Arbash Meinel, #209948)
+
+
 bzr 1.4rc1 2008-04-11
 ---------------------
 
