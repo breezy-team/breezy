@@ -10,6 +10,10 @@ bzr 1.4rc2 NOT RELEASED YET
 
   BUG FIXES:
 
+    * ``bzr log -r ..X bzr://`` was failing, because it was getting a request
+      for ``revision_id=None`` which was not a string.
+      (John Arbash Meinel, #211661)
+
     * Fixed a bug in handling ghost revisions when logging changes in a 
       particular file.  (John Arbash Meinel, #209948)
 
