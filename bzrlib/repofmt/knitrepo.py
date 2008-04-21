@@ -69,6 +69,8 @@ class _KnitParentsProvider(object):
         """See graph._StackedParentsProvider.get_parent_map"""
         parent_map = {}
         for revision_id in keys:
+            if revision_id is None:
+                raise ValueError('get_parent_map(None) is not valid')
             if revision_id == _mod_revision.NULL_REVISION:
                 parent_map[revision_id] = ()
             else:

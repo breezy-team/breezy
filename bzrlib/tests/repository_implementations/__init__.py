@@ -867,6 +867,7 @@ def test_suite():
         'test_fileid_involved',
         'test_find_text_key_references',
         'test__generate_text_key_index',
+        'test_get_parent_map',
         'test_has_same_location',
         'test_has_revisions',
         'test_is_write_locked',

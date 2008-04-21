@@ -826,6 +826,8 @@ class RemoteRepository(object):
             return self.get_revision_graph()
 
         keys = set(keys)
+        if None in keys:
+            raise ValueError('get_parent_map(None) is not valid')
         if NULL_REVISION in keys:
             keys.discard(NULL_REVISION)
             found_parents = {NULL_REVISION:()}
@@ -859,8 +861,7 @@ class RemoteRepository(object):
         body = self._serialise_search_recipe(recipe)
         path = self.bzrdir._path_for_remote_call(self._client)
         for key in keys:
-            assert type(key) is str, \
-                "Key type is %s not a plain string" % (type(key),)
+            assert type(key) is str, "Key %r is not a plain string" % (key,)
         verb = 'Repository.get_parent_map'
         args = (path,) + tuple(keys)
         try:
