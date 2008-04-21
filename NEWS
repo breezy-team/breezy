@@ -5,13 +5,27 @@ Bazaar Release Notes
 .. contents::
 
 
-bzr 1.4rc2 NOT RELEASED YET
----------------------------
+bzr 1.4rc2 2008-04-21
+---------------------
 
   BUG FIXES:
 
+    * ``bzr log -r ..X bzr://`` was failing, because it was getting a request
+      for ``revision_id=None`` which was not a string.
+      (John Arbash Meinel, #211661)
+
     * Fixed a bug in handling ghost revisions when logging changes in a 
       particular file.  (John Arbash Meinel, #209948)
+
+    * Fix error about "attempt to add line-delta in non-delta knit".
+      (Andrew Bennetts, #205156)
+
+    * Fixed performance degradation in fetching from knit repositories to
+      knits and packs due to parsing the entire revisions.kndx on every graph
+      walk iteration fixed by using the Repository.get_graph API.  There was
+      another regression in knit => knit fetching which re-read the index for
+      every revision each side had in common.
+      (Robert Collins, John Arbash Meinel)
 
 
 bzr 1.4rc1 2008-04-11
@@ -232,13 +246,6 @@ bzr 1.4rc1 2008-04-11
     * ``VersionedFile.iter_parents`` is now deprecated in favour of
       ``get_parent_map`` which can be used to instantiate a Graph on a
       VersionedFile. (Robert Collins)
-
-    * ``VersionedFileStore`` no longer uses the transaction parameter given
-      to most methods; amongst other things this means that the
-      get_weave_or_empty method no longer guarantees errors on a missing weave
-      in a readonly transaction, and no longer caches versioned file instances
-      which reduces memory pressure (but requires more careful management by
-      callers to preserve performance). (Robert Collins)
 
   TESTING:
 
