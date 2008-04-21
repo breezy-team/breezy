@@ -859,8 +859,9 @@ class RemoteRepository(object):
         body = self._serialise_search_recipe(recipe)
         path = self.bzrdir._path_for_remote_call(self._client)
         for key in keys:
-            assert type(key) is str, \
-                "Key type is %s not a plain string" % (type(key),)
+            if type(key) is not str:
+                raise ValueError(
+                    "key %r not a plain string" % (key,))
         verb = 'Repository.get_parent_map'
         args = (path,) + tuple(keys)
         try:
