@@ -285,13 +285,9 @@ class TestHttpFetch(TestCaseWithWebserver):
         # unfortunately this log entry is branch format specific. We could 
         # factor out the 'what files does this format use' to a method on the 
         # repository, which would let us to this generically. RBC 20060419
-        # RBC 20080408: Or perhaps we can assert that no files are fully read
-        # twice?
         self.assertEqual(1, self._count_log_matches('/ce/id.kndx', http_logs))
         self.assertEqual(1, self._count_log_matches('/ce/id.knit', http_logs))
-        # XXX: This *should* be '1', but more intrusive fetch changes are
-        # needed to drop this back to 1.
-        self.assertEqual(2, self._count_log_matches('inventory.kndx', http_logs))
+        self.assertEqual(1, self._count_log_matches('inventory.kndx', http_logs))
         # this r-h check test will prevent regressions, but it currently already 
         # passes, before the patch to cache-rh is applied :[
         self.assertTrue(1 >= self._count_log_matches('revision-history',
@@ -315,8 +311,7 @@ class TestHttpFetch(TestCaseWithWebserver):
         self.log('\n'.join(http_logs))
         self.assertEqual(1, self._count_log_matches('branch-format', http_logs))
         self.assertEqual(1, self._count_log_matches('branch/format', http_logs))
-        self.assertEqual(1, self._count_log_matches('repository/format',
-            http_logs))
+        self.assertEqual(1, self._count_log_matches('repository/format', http_logs))
         self.assertTrue(1 >= self._count_log_matches('revision-history',
                                                      http_logs))
         self.assertTrue(1 >= self._count_log_matches('last-revision',
