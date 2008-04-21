@@ -513,6 +513,13 @@ class FtpTransport(ConnectedTransport):
             paths = f.nlst(basepath)
         except ftplib.error_perm, e:
             self._translate_perm_error(e, relpath, extra='error with list_dir')
+        except ftplib.error_temp, e:
+            # xs4all's ftp server raises a 450 temp error when listing an empty
+            # directory. Check for that and just return an empty list in that
+            # case. See bug #215522
+            if str(e).lower().startswith('450 no files found'):
+                return []
+            raise
         # If FTP.nlst returns paths prefixed by relpath, strip 'em
         if paths and paths[0].startswith(basepath):
             entries = [path[len(basepath)+1:] for path in paths]
