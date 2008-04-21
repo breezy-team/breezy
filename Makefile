@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 
 PYTHON=python
 
-.PHONY: all clean extensions pyflakes api-docs
+.PHONY: all clean extensions pyflakes api-docs 
 
 all: extensions
 
@@ -198,3 +198,48 @@ clean-win32: clean-docs
 	$(PYTHON) tools/win32/ostools.py remove bzr-setup*.exe
 	$(PYTHON) tools/win32/ostools.py remove bzr-*win32.exe
 	$(PYTHON) tools/win32/ostools.py remove dist
+
+.PHONY: dist dist-upload-escudero check-dist-tarball
+
+# build a distribution tarball.
+#
+# this method of copying the pyrex generated files is a bit ugly; it would be
+# nicer to generate it from distutils.
+#
+# these are a bit ubuntu-specific.
+dist: 
+	version=`./bzr version --short` && \
+	echo Building distribution of bzr $$version && \
+	expbasedir=`mktemp -d` && \
+	expdir=$$expbasedir/bzr-$$version && \
+	tarball=$$PWD/../bzr-$$version.tar.gz && \
+	$(MAKE) clean && \
+	$(MAKE) && \
+	bzr export $$expdir && \
+	cp bzrlib/*.c $$expdir/bzrlib/. && \
+	tar cfz $$tarball -C $$expbasedir bzr-$$version && \
+	gpg --detach-sign $$tarball && \
+	echo $$tarball done.
+
+# run all tests in a previously built tarball
+check-dist-tarball:
+	tmpdir=`mktemp -d` && \
+	version=`./bzr version --short` && \
+	tarball=$$PWD/../bzr-$$version.tar.gz && \
+	tar Cxz $$tmpdir -f $$tarball && \
+	$(MAKE) -C $$tmpdir/bzr-$$version check 
+
+
+# upload previously built tarball to the download directory on bazaar-vcs.org,
+# and verify that it can be downloaded ok.
+dist-upload-escudero:
+	version=`./bzr version --short` && \
+	tarball=../bzr-$$version.tar.gz && \
+	scp $$tarball $$tarball.sig \
+	    escudero.ubuntu.com:/srv/bazaar.canonical.com/www/releases/src \
+		&& \
+	echo verifying over http... && \
+	curl http://bazaar-vcs.org/releases/src/bzr-$$version.tar.gz \
+		| diff -s - $$tarball && \
+	curl http://bazaar-vcs.org/releases/src/bzr-$$version.tar.gz.sig \
+		| diff -s - $$tarball.sig 

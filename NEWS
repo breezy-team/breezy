@@ -5,8 +5,8 @@ Bazaar Release Notes
 .. contents::
 
 
-IN DEVELOPMENT
---------------
+bzr 1.4rc1 2008-04-11
+---------------------
 
   NOTES WHEN UPGRADING:
 
@@ -16,6 +16,10 @@ IN DEVELOPMENT
 
    * On Linux bzr additionally looks for plugins in arch-independent site
      directory. (Toshio Kuratomi)
+
+   * The ``set_rh`` branch hook is now deprecated. Please migrate
+     any plugins using this hook to use an alternative, e.g.
+     ``post_change_branch_tip``. (Ian Clatworthy)
 
    * When a plugin cannot be loaded as the file path is not a valid
      python module name bzr will now strip a ``bzr_`` prefix from the
@@ -40,6 +44,11 @@ IN DEVELOPMENT
     * ``status`` now accepts ``--no-pending`` to show the status without
       listing pending merges, which speeds up the command a lot on large
       histories.  (James Westby, #202830)
+
+    * New ``post_change_branch_tip`` hook that is called after the
+      branch tip is moved but while the branch is still write-locked.
+      See the User Reference for signature details.
+      (Ian Clatworthy, James Henstridge)
 
   IMPROVEMENTS:
 
@@ -82,8 +91,11 @@ IN DEVELOPMENT
       one is present.  You can use the new ``nosmart+`` transport decorator
       to get the old behaviour.  (Andrew Bennetts)
 
-     * Various operations with revision specs and commands that calculate
-       revnos and revision ids are faster.  (John A. Meinel, Aaron Bentley)
+    * The ``version`` command takes a ``--short`` option to print just the
+      version number, for easier use in scripts.  (Martin Pool)
+
+    * Various operations with revision specs and commands that calculate
+      revnos and revision ids are faster.  (John A. Meinel, Aaron Bentley)
 
   BUGFIXES:
 
@@ -117,6 +129,9 @@ IN DEVELOPMENT
 
     * Implement handling of basename parameter for DefaultMail.  (James Westby)
 
+    * Incompatibility with Paramiko versions newer than 1.7.2 was fixed.
+      (Andrew Bennetts, #213425)
+
     * Launchpad locations (lp: URLs) can be pulled.  (Aaron Bentley, #181945)
 
     * Merges that add files to deleted root directories complete.  They
@@ -149,6 +164,9 @@ IN DEVELOPMENT
     * Log formatters must now provide log_revision instead of show and
       show_merge_revno methods. The latter had been deprecated since the 0.17
       release. (James Westby)
+
+    * ``LoopbackSFTP`` is now called ``SocketAsChannelAdapter``.
+      (Andrew Bennetts)
 
     * ``osutils.backup_file`` is removed. (Alexander Belchenko)
 
@@ -253,6 +271,9 @@ IN DEVELOPMENT
       sometimes caused knock-on errors if for example the network connection
       had already failed, and should not be relied upon by code. 
       (Martin Pool, #109520)
+
+    * ``make dist`` target to build a release tarball, and also 
+      ``check-dist-tarball`` and ``dist-upload-escudero``.  (Martin Pool)
 
     * The ``read_response_tuple`` method of ``SmartClientRequestProtocol*``
       classes will now raise ``UnknownSmartMethod`` when appropriate, so that
