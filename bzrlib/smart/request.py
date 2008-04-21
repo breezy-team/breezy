@@ -36,8 +36,6 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.bundle.serializer import write_bundle
-from bzrlib.transport import get_transport
-from bzrlib.transport.chroot import ChrootServer
 
 
 class SmartServerRequest(object):
