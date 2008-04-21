@@ -518,6 +518,9 @@ class FtpTransport(ConnectedTransport):
             # directory. Check for that and just return an empty list in that
             # case. See bug #215522
             if str(e).lower().startswith('450 no files found'):
+                mutter('FTP Server returned "%s" for nlst.'
+                       ' Assuming it means empty directory',
+                       str(e))
                 return []
             raise
         # If FTP.nlst returns paths prefixed by relpath, strip 'em
