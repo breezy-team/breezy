@@ -37,6 +37,9 @@ IN DEVELOPMENT
       every revision each side had in common.
       (Robert Collins, John Arbash Meinel)
 
+    * When logging the changes to a particular file, there was a bug if there
+      were ghosts in the revision ancestry. (John Arbash Meinel, #209948)
+
   DOCUMENTATION:
 
     * Document outlining strategies for TortoiseBzr. (Mark Hammond)
