@@ -17,6 +17,9 @@ bzr 1.4rc2 NOT RELEASED YET
     * Fixed a bug in handling ghost revisions when logging changes in a 
       particular file.  (John Arbash Meinel, #209948)
 
+    * Fix error about "attempt to add line-delta in non-delta knit".
+      (Andrew Bennetts, #205156)
+
 
 bzr 1.4rc1 2008-04-11
 ---------------------
