@@ -927,22 +927,6 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder):
         _ProtocolThreeEncoder.__init__(self, medium_request.accept_bytes)
         self._medium_request = medium_request
 
-#    def _wait_for_request_end(self):
-#        XXX # XXX
-#        while True:
-#            next_read_size = self.next_read_size() 
-#            if next_read_size == 0:
-#                # a complete request has been read.
-#                break
-#            bytes = self._request.read_bytes(next_read_size)
-#            if bytes == '':
-#                # end of file encountered reading from server
-#                raise errors.ConnectionReset(
-#                    "please check connectivity and permissions",
-#                    "(and try -Dhpss if further diagnosis is required)")
-#            self.accept_bytes(bytes)
-
-    # these methods from SmartClientRequestProtocolOne/Two
     def call(self, *args, **kw):
         # XXX: ideally, signature would be call(self, *args, headers=None), but
         # python doesn't allow that.  So, we fake it.
@@ -1003,26 +987,3 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder):
         if 'hpss' in debug.debug_flags:
             mutter('              %d bytes in readv request', len(readv_bytes))
 
-#    def cancel_read_body(self):
-#        """Ignored.  Not relevant to version 3 of the protocol."""
-#
-#    def read_response_tuple(self, expect_body=False):
-#        """Read a response tuple from the wire.
-#
-#        The expect_body flag is ignored.
-#        """
-#        # XXX: warn if expect_body doesn't match the response?
-#        self._wait_for_request_end()
-#        if self.response_handler.error_args is not None:
-#            xxx_translate_error()
-#        return self.response_handler.args
-#
-#    def read_body_bytes(self, count=-1):
-#        """Read bytes from the body, decoding into a byte stream.
-#        
-#        We read all bytes at once to ensure we've checked the trailer for 
-#        errors, and then feed the buffer back as read_body_bytes is called.
-#        """
-#        # XXX: don't buffer the full request
-#        self._wait_for_request_end()
-#        return self.response_handler.prefixed_body.read(count)
