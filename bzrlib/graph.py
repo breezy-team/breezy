@@ -18,6 +18,7 @@ from bzrlib import (
     errors,
     revision,
     symbol_versioning,
+    trace,
     tsort,
     )
 from bzrlib.deprecated_graph import (node_distances, select_farthest)
@@ -481,9 +482,9 @@ class Graph(object):
     def _search_for_extra_common(self, common, searchers):
         """Make sure that unique nodes are genuinely unique.
 
-        After a simple search, we end up with genuine common nodes, but some
-        uncommon nodes might actually be descended from common nodes, and we
-        just didn't search far enough.
+        After _find_border_ancestors, all nodes marked "common" are indeed
+        common. Some of the nodes considered unique are not, due to history
+        shortcuts stopping the searches early.
 
         We know that we have searched enough when all common search tips are
         descended from all unique (uncommon) nodes because we know that a node
@@ -500,19 +501,26 @@ class Graph(object):
         #      "unique" nodes for each side.
         #   C) We do a quick culling so that we only start searching from the
         #      more interesting unique nodes. (A unique ancestor is more
-        #      interesting that any of its children.)
+        #      interesting than any of its children.)
         #   D) We start searching for ancestors common to all unique nodes.
         #   E) We have the common searchers stop searching any ancestors of
         #      nodes found by (D)
         #   F) When there are no more common search tips, we stop
+
+        # TODO: We need a way to remove unique_searchers when they overlap with
+        #       other unique searchers.
         assert len(searchers) == 2, (
             "Algorithm not yet implemented for > 2 searchers")
         common_searchers = searchers
         left_searcher = searchers[0]
         right_searcher = searchers[1]
         unique = left_searcher.seen.symmetric_difference(right_searcher.seen)
+        total_unique = len(unique)
         unique = self._remove_simple_descendants(unique,
                     self.get_parent_map(unique))
+        simple_unique = len(unique)
+        trace.mutter('Starting %s unique searchers for %s unique revisions',
+                     simple_unique, total_unique)
         # TODO: jam 20071214 Would it be possible to seed these searchers with
         #       the revisions that we have already seen on each side?
         #       Maybe something like:
@@ -568,12 +576,8 @@ class Graph(object):
             if new_common_unique:
                 # We found some ancestors that are common, jump all the way to
                 # their most ancestral node that we have already seen.
-                try:
-                    for searcher in unique_searchers:
-                        new_common_unique.update(searcher.find_seen_ancestors(new_common_unique))
-                except TypeError:
-                    import pdb; pdb.set_trace()
-                    raise
+                for searcher in unique_searchers:
+                    new_common_unique.update(searcher.find_seen_ancestors(new_common_unique))
                 # Since these are common, we can grab another set of ancestors
                 # that we have seen
                 for searcher in common_searchers:
@@ -854,16 +858,30 @@ class _BreadthFirstSearcher(object):
 
     def find_seen_ancestors(self, revisions):
         """Find ancestors of these revisions that have already been seen."""
-        searcher = _BreadthFirstSearcher(revisions, self._parents_provider)
-        seen_ancestors = set()
-        for ancestors in searcher:
-            stop_nodes = set()
-            for ancestor in ancestors:
-                if ancestor not in self.seen:
-                    stop_nodes.add(ancestor)
-                else:
-                    seen_ancestors.add(ancestor)
-            searcher.stop_searching_any(stop_nodes)
+        all_seen = self.seen
+        pending = set(revisions).intersection(all_seen)
+        seen_ancestors = set(pending)
+
+        if self._returning == 'next':
+            # self.seen contains what nodes have been returned, not what nodes
+            # have been queried. We don't want to probe for nodes that haven't
+            # been searched yet.
+            not_searched_yet = self._next_query
+        else:
+            not_searched_yet = ()
+        get_parent_map = self._parents_provider.get_parent_map
+        while pending:
+            parent_map = get_parent_map(pending)
+            all_parents = []
+            # We don't care if it is a ghost, since it can't be seen if it is
+            # a ghost
+            for parent_ids in parent_map.itervalues():
+                all_parents.extend(parent_ids)
+            next_pending = all_seen.intersection(all_parents).difference(seen_ancestors)
+            seen_ancestors.update(next_pending)
+            next_pending.difference_update(not_searched_yet)
+            pending = next_pending
+
         return seen_ancestors
 
     def stop_searching_any(self, revisions):
