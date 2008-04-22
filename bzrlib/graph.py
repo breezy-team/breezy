@@ -853,13 +853,13 @@ class _BreadthFirstSearcher(object):
         searcher = _BreadthFirstSearcher(revisions, self._parents_provider)
         seen_ancestors = set()
         for ancestors in searcher:
+            stop_nodes = set()
             for ancestor in ancestors:
-                stop_nodes = set()
                 if ancestor not in self.seen:
                     stop_nodes.add(ancestor)
                 else:
                     seen_ancestors.add(ancestor)
-                searcher.stop_searching_any(stop_nodes)
+            searcher.stop_searching_any(stop_nodes)
         return seen_ancestors
 
     def stop_searching_any(self, revisions):
