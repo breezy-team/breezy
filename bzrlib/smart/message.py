@@ -52,10 +52,6 @@ class ConventionalRequestHandler(MessageHandler):
         self.request_handler = request_handler
         self.responder = responder
         self.args_received = False
-#        self.args = None
-#        self.error = None
-#        self.prefixed_body = None
-#        self.body_stream = None
 
     def protocol_error(self, exception):
         self.responder.send_error(exception)
