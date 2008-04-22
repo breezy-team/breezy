@@ -172,10 +172,11 @@ def show_pending_merges(new, to_file, short=False):
         merged_graph = {}
         parent_map = graph.get_parent_map(merge_extra)
         for merge in merge_extra:
-            if merge not in parent_map: # The revision does not exist in the repository
+            if merge not in parent_map: # ghost
                 merged_graph[merge] = []
             else:
-                merged_graph[merge] = [p for p in parent_map[merge] if p in merge_extra]
+                merged_graph[merge] = [p for p in parent_map[merge]
+                                          if p in merge_extra]
         sorter = tsort.MergeSorter(merged_graph, merge)
         # Get a handle to all of the revisions we will need
         width = osutils.terminal_width()
