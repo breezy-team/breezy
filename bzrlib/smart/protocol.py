@@ -282,7 +282,6 @@ class _StatefulDecoder(object):
                 current_state = self.state_accept
                 self.state_accept('')
         except _NeedMoreBytes, e:
-            #print '(need more bytes: %r)' % e.count
             self._number_needed_bytes = e.count
 
 
@@ -724,25 +723,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
 
         self.request_handler = self.message_handler = message_handler
 
-#        self.excess_buffer = ''
-#        self._finished = False
-#        self.has_dispatched = False
-#        self._body_decoder = None
-
     def accept_bytes(self, bytes):
-        def summarise_buf():
-            if self._in_buffer is None:
-                buf_summary = 'None'
-            elif len(self._in_buffer) <= 6:
-                buf_summary = repr(self._in_buffer)
-            else:
-                buf_summary = repr(self._in_buffer[:3] + '...')
-            return buf_summary
-        handler_name = self.message_handler.__class__.__name__
-        handler_name = handler_name[len('Conventional'):-len('Handler')]
-        state_now = self.state_accept.im_func.__name__[len('_state_accept_'):]
-        buf_now = summarise_buf()
-        #from pprint import pprint; pprint([bytes, self.__dict__])
         self._number_needed_bytes = None
         try:
             _StatefulDecoder.accept_bytes(self, bytes)
@@ -798,7 +779,6 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         self.state_accept = self._state_accept_expecting_message_part
     
     def _state_accept_expecting_message_part(self, bytes):
-        #import sys; print >> sys.stderr, 'msg part bytes:', repr(bytes)
         self._in_buffer += bytes
         message_part_kind = self._extract_single_byte()
         if message_part_kind == 'o':
@@ -812,7 +792,6 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         else:
             raise errors.SmartProtocolError(
                 'Bad message kind byte: %r' % (message_part_kind,))
-        #import sys; print >> sys.stderr, 'state:', self.state_accept, '_in_buffer:', repr(self._in_buffer)
 
     def _state_accept_expecting_one_byte(self, bytes):
         self._in_buffer += bytes
@@ -835,7 +814,6 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         self.state_accept = self._state_accept_expecting_message_part
 
     def done(self):
-        #import sys; print >> sys.stderr, 'Done!', repr(self._in_buffer)
         self.unused_data = self._in_buffer
         self._in_buffer = None
         self.state_accept = self._state_accept_reading_unused
@@ -919,7 +897,6 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
         self.response_sent = False
 
     def send_error(self, exception):
-        #import sys; print >> sys.stderr, 'exc:', str(exception); return #XXX
         assert not self.response_sent
         self.response_sent = True
         self._write_headers()
@@ -928,7 +905,6 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
         self._write_end()
 
     def send_response(self, response):
-        #import sys; print >> sys.stderr, 'rsp:', str(response)
         assert not self.response_sent
         self.response_sent = True
         self._write_headers()
