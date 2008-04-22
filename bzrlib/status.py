@@ -171,11 +171,11 @@ def show_pending_merges(new, to_file, short=False):
         merge_extra.discard(_mod_revision.NULL_REVISION)
         merged_graph = {}
         parent_map = graph.get_parent_map(merge_extra)
-        for merge in merge_extra:
-            if merge not in parent_map: # ghost
-                merged_graph[merge] = []
+        for next_merge in merge_extra:
+            if next_merge not in parent_map: # ghost
+                merged_graph[next_merge] = []
             else:
-                merged_graph[merge] = [p for p in parent_map[merge]
+                merged_graph[next_merge] = [p for p in parent_map[next_merge]
                                           if p in merge_extra]
         sorter = tsort.MergeSorter(merged_graph, merge)
         # Get a handle to all of the revisions we will need
