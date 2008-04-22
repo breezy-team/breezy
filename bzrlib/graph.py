@@ -833,17 +833,21 @@ class _BreadthFirstSearcher(object):
         :return: A tuple: (set(found_revisions), set(ghost_revisions),
            set(parents_of_found_revisions), dict(found_revisions:parents)).
         """
-        found_parents = set()
+        found_revisions = set()
         parents_of_found = set()
         # revisions may contain nodes that point to other nodes in revisions:
         # we want to filter them out.
         self.seen.update(revisions)
         parent_map = self._parents_provider.get_parent_map(revisions)
+        found_revisions.update(parent_map)
         for rev_id, parents in parent_map.iteritems():
-            found_parents.add(rev_id)
-            parents_of_found.update(p for p in parents if p not in self.seen)
-        ghost_parents = revisions - found_parents
-        return found_parents, ghost_parents, parents_of_found, parent_map
+            new_found_parents = [p for p in parents if p not in self.seen]
+            if new_found_parents:
+                # Calling set.update() with an empty generator is actually
+                # rather expensive.
+                parents_of_found.update(new_found_parents)
+        ghost_revisions = revisions - found_revisions
+        return found_revisions, ghost_revisions, parents_of_found, parent_map
 
     def __iter__(self):
         return self
