@@ -221,7 +221,7 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
                 return
             protocol.accept_bytes(bytes)
         
-        self._push_back(protocol.excess_buffer)
+        self._push_back(protocol.unused_data)
 
     def _get_bytes(self, desired_count):
         if self._push_back_buffer is not None:

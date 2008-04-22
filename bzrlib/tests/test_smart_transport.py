@@ -607,13 +607,13 @@ class SampleRequest(object):
         self.accepted_bytes = ''
         self._finished_reading = False
         self.expected_bytes = expected_bytes
-        self.excess_buffer = ''
+        self.unused_data = ''
 
     def accept_bytes(self, bytes):
         self.accepted_bytes += bytes
         if self.accepted_bytes.startswith(self.expected_bytes):
             self._finished_reading = True
-            self.excess_buffer = self.accepted_bytes[len(self.expected_bytes):]
+            self.unused_data = self.accepted_bytes[len(self.expected_bytes):]
 
     def next_read_size(self):
         if self._finished_reading:
@@ -1530,7 +1530,7 @@ class TestVersionOneFeaturesInProtocolOne(
 
     def test_construct_version_one_server_protocol(self):
         smart_protocol = protocol.SmartServerRequestProtocolOne(None, None)
-        self.assertEqual('', smart_protocol.excess_buffer)
+        self.assertEqual('', smart_protocol.unused_data)
         self.assertEqual('', smart_protocol.in_buffer)
         self.assertFalse(smart_protocol.has_dispatched)
         self.assertEqual(1, smart_protocol.next_read_size())
@@ -1575,7 +1575,7 @@ class TestVersionOneFeaturesInProtocolOne(
         smart_protocol.accept_bytes('readv\x01foo\n3\n3,3done\n')
         self.assertEqual(0, smart_protocol.next_read_size())
         self.assertEqual('readv\n3\ndefdone\n', out_stream.getvalue())
-        self.assertEqual('', smart_protocol.excess_buffer)
+        self.assertEqual('', smart_protocol.unused_data)
         self.assertEqual('', smart_protocol.in_buffer)
 
     def test_accept_excess_bytes_are_preserved(self):
@@ -1584,17 +1584,17 @@ class TestVersionOneFeaturesInProtocolOne(
             None, out_stream.write)
         smart_protocol.accept_bytes('hello\nhello\n')
         self.assertEqual("ok\x013\n", out_stream.getvalue())
-        self.assertEqual("hello\n", smart_protocol.excess_buffer)
+        self.assertEqual("hello\n", smart_protocol.unused_data)
         self.assertEqual("", smart_protocol.in_buffer)
 
     def test_accept_excess_bytes_after_body(self):
         protocol = self.build_protocol_waiting_for_body()
         protocol.accept_bytes('7\nabcdefgdone\nX')
         self.assertTrue(self.end_received)
-        self.assertEqual("X", protocol.excess_buffer)
+        self.assertEqual("X", protocol.unused_data)
         self.assertEqual("", protocol.in_buffer)
         protocol.accept_bytes('Y')
-        self.assertEqual("XY", protocol.excess_buffer)
+        self.assertEqual("XY", protocol.unused_data)
         self.assertEqual("", protocol.in_buffer)
 
     def test_accept_excess_bytes_after_dispatch(self):
@@ -1604,9 +1604,9 @@ class TestVersionOneFeaturesInProtocolOne(
         smart_protocol.accept_bytes('hello\n')
         self.assertEqual("ok\x013\n", out_stream.getvalue())
         smart_protocol.accept_bytes('hel')
-        self.assertEqual("hel", smart_protocol.excess_buffer)
+        self.assertEqual("hel", smart_protocol.unused_data)
         smart_protocol.accept_bytes('lo\n')
-        self.assertEqual("hello\n", smart_protocol.excess_buffer)
+        self.assertEqual("hello\n", smart_protocol.unused_data)
         self.assertEqual("", smart_protocol.in_buffer)
 
     def test__send_response_sets_finished_reading(self):
@@ -1775,7 +1775,7 @@ class TestVersionOneFeaturesInProtocolTwo(
 
     def test_construct_version_two_server_protocol(self):
         smart_protocol = protocol.SmartServerRequestProtocolTwo(None, None)
-        self.assertEqual('', smart_protocol.excess_buffer)
+        self.assertEqual('', smart_protocol.unused_data)
         self.assertEqual('', smart_protocol.in_buffer)
         self.assertFalse(smart_protocol.has_dispatched)
         self.assertEqual(1, smart_protocol.next_read_size())
@@ -1822,7 +1822,7 @@ class TestVersionOneFeaturesInProtocolTwo(
         self.assertEqual(self.response_marker +
                          'success\nreadv\n3\ndefdone\n',
                          out_stream.getvalue())
-        self.assertEqual('', smart_protocol.excess_buffer)
+        self.assertEqual('', smart_protocol.unused_data)
         self.assertEqual('', smart_protocol.in_buffer)
 
     def test_accept_excess_bytes_are_preserved(self):
@@ -1831,7 +1831,7 @@ class TestVersionOneFeaturesInProtocolTwo(
         smart_protocol.accept_bytes('hello\nhello\n')
         self.assertEqual(self.response_marker + "success\nok\x013\n",
                          out_stream.getvalue())
-        self.assertEqual("hello\n", smart_protocol.excess_buffer)
+        self.assertEqual("hello\n", smart_protocol.unused_data)
         self.assertEqual("", smart_protocol.in_buffer)
 
     def test_accept_excess_bytes_after_body(self):
@@ -1840,11 +1840,11 @@ class TestVersionOneFeaturesInProtocolTwo(
         server_protocol.accept_bytes('7\nabcdefgdone\n' + self.response_marker)
         self.assertTrue(self.end_received)
         self.assertEqual(self.response_marker,
-                         server_protocol.excess_buffer)
+                         server_protocol.unused_data)
         self.assertEqual("", server_protocol.in_buffer)
         server_protocol.accept_bytes('Y')
         self.assertEqual(self.response_marker + "Y",
-                         server_protocol.excess_buffer)
+                         server_protocol.unused_data)
         self.assertEqual("", server_protocol.in_buffer)
 
     def test_accept_excess_bytes_after_dispatch(self):
@@ -1855,10 +1855,10 @@ class TestVersionOneFeaturesInProtocolTwo(
                          out_stream.getvalue())
         smart_protocol.accept_bytes(self.request_marker + 'hel')
         self.assertEqual(self.request_marker + "hel",
-                         smart_protocol.excess_buffer)
+                         smart_protocol.unused_data)
         smart_protocol.accept_bytes('lo\n')
         self.assertEqual(self.request_marker + "hello\n",
-                         smart_protocol.excess_buffer)
+                         smart_protocol.unused_data)
         self.assertEqual("", smart_protocol.in_buffer)
 
     def test__send_response_sets_finished_reading(self):
@@ -2151,7 +2151,7 @@ class TestVersionOneFeaturesInProtocolThree(
 
     def test_construct_version_three_server_protocol(self):
         smart_protocol = protocol.ProtocolThreeDecoder(None)
-        self.assertEqual('', smart_protocol.excess_buffer)
+        self.assertEqual('', smart_protocol.unused_data)
         self.assertEqual('', smart_protocol._in_buffer)
         self.assertFalse(smart_protocol.has_dispatched)
         # The protocol starts by expecting four bytes, a length prefix for the
@@ -2212,7 +2212,7 @@ class TestProtocolThree(TestSmartProtocol):
         smart_protocol = self.server_protocol_class(LoggingMessageHandler())
         smart_protocol.accept_bytes(request_bytes)
         self.assertEqual(0, smart_protocol.next_read_size())
-        self.assertEqual('', smart_protocol.excess_buffer)
+        self.assertEqual('', smart_protocol.unused_data)
 
     # XXX: TestMessagePartDecoding vvv XXX
     def make_protocol_expecting_message_part(self):
@@ -2428,7 +2428,6 @@ class InstrumentedRequestHandler(object):
 #        smart_protocol = self.client_protocol_class(None)
 #        smart_protocol.accept_bytes(request_bytes)
 #        self.assertEqual(0, smart_protocol.next_read_size())
-#        self.assertEqual('', smart_protocol.excess_buffer)
 #        self.assertEqual('', smart_protocol.unused_data)
 
 

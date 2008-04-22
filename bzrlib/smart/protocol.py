@@ -82,7 +82,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
     def __init__(self, backing_transport, write_func, root_client_path='/'):
         self._backing_transport = backing_transport
         self._root_client_path = root_client_path
-        self.excess_buffer = ''
+        self.unused_data = ''
         self._finished = False
         self.in_buffer = ''
         self.has_dispatched = False
@@ -112,7 +112,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                 self.request.dispatch_command(req_args[0], req_args[1:])
                 if self.request.finished_reading:
                     # trivial request
-                    self.excess_buffer = self.in_buffer
+                    self.unused_data = self.in_buffer
                     self.in_buffer = ''
                     self._send_response(self.request.response)
             except KeyboardInterrupt:
@@ -128,7 +128,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
             if self._finished:
                 # nothing to do.XXX: this routine should be a single state 
                 # machine too.
-                self.excess_buffer += self.in_buffer
+                self.unused_data += self.in_buffer
                 self.in_buffer = ''
                 return
             if self._body_decoder is None:
@@ -143,7 +143,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                     "no more body, request not finished"
             if self.request.response is not None:
                 self._send_response(self.request.response)
-                self.excess_buffer = self.in_buffer
+                self.unused_data = self.in_buffer
                 self.in_buffer = ''
             else:
                 assert not self.request.finished_reading, \
@@ -731,10 +731,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
             raise
         except Exception, exception:
             log_exception_quietly()
-            # XXX
             self.message_handler.protocol_error(exception)
-            #self._send_response(request.FailedSmartServerResponse(
-            #    ('error', str(exception))))
 
     def _extract_length_prefixed_bytes(self):
         if len(self._in_buffer) < 4:
@@ -822,12 +819,6 @@ class ProtocolThreeDecoder(_StatefulDecoder):
     def _state_accept_reading_unused(self, bytes):
         self.unused_data += bytes
 
-    @property
-    def excess_buffer(self):
-        # XXX: this property is a compatibility hack.  Really there should not
-        # be both unused_data and excess_buffer.
-        return self.unused_data
-    
     def next_read_size(self):
         if self.state_accept == self._state_accept_reading_unused:
             return 0
