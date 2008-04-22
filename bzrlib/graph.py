@@ -222,7 +222,7 @@ class Graph(object):
         Deprecated in bzr 1.2 - please see get_parent_map.
         """
         parents = self.get_parent_map(revisions)
-        return [parent.get(r, None) for r in revisions]
+        return [parents.get(r, None) for r in revisions]
 
     def get_parent_map(self, revisions):
         """Get a map of key:parent_list for revisions.
