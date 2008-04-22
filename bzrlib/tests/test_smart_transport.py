@@ -2411,22 +2411,32 @@ class InstrumentedRequestHandler(object):
 class TestClientDecodingProtocolThree(TestSmartProtocol):
     """Tests for v3 of the client-side protocol decoding."""
 
+    def make_response_decoder(self):
+        """Make v3 response decoder using a conventional response handler."""
+        response_handler = LoggingMessageHandler()
+        decoder = protocol.ProtocolThreeDecoder(response_handler)
+        return decoder, response_handler
+
     def test_trivial_response_decoding(self):
         """Smoke test for the simplest possible v3 response: empty headers,
-        empty args, no body.
+        status byte, empty args, no body.
         """
         output = StringIO()
         headers = '\0\0\0\x02de'  # length-prefixed, bencoded empty dict
         response_status = 'oS' # success
         args = 's\0\0\0\x02le' # length-prefixed, bencoded empty list
         end = 'e' # end marker
-        request_bytes = headers + response_status + args + end
-        response_handler = message.ConventionalResponseHandler()
-        decoder = protocol.ProtocolThreeDecoder(response_handler)
-        response_handler.setProtoAndMedium(decoder, None)
-        decoder.accept_bytes(request_bytes)
+        message_bytes = headers + response_status + args + end
+        decoder, response_handler = self.make_response_decoder()
+        decoder.accept_bytes(message_bytes)
+        # The protocol decoder has finished, and consumed all bytes
         self.assertEqual(0, decoder.next_read_size())
         self.assertEqual('', decoder.unused_data)
+        # The message handler has been invoked with all the parts of the
+        # trivial response: empty headers, status byte, no args, end.
+        self.assertEqual(
+            [('headers', {}), ('byte', 'S'), ('structure', []), ('end',)],
+            response_handler.event_log)
 
 
 class TestClientEncodingProtocolThree(TestSmartProtocol):
