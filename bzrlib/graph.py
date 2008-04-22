@@ -255,54 +255,62 @@ class Graph(object):
         """
         if None in revisions:
             raise errors.InvalidRevisionId(None, self)
-        common_searcher = self._make_breadth_first_searcher([])
         common_ancestors = set()
         searchers = [self._make_breadth_first_searcher([r])
                      for r in revisions]
         active_searchers = searchers[:]
         border_ancestors = set()
-        def update_common(searcher, revisions):
-            w_seen_ancestors = searcher.find_seen_ancestors(
-                [revision])
-            stopped = searcher.stop_searching_any(w_seen_ancestors)
-            common_ancestors.update(w_seen_ancestors)
-            common_searcher.start_searching(stopped)
 
         while True:
-            if len(active_searchers) == 0:
-                return border_ancestors, common_ancestors, searchers
-            try:
-                new_common = common_searcher.next()
-                common_ancestors.update(new_common)
-            except StopIteration:
-                pass
-            else:
-                for searcher in active_searchers:
-                    for revision in new_common.intersection(searcher.seen):
-                        update_common(searcher, revision)
-
             newly_seen = set()
-            new_active_searchers = []
-            for searcher in active_searchers:
-                try:
-                    newly_seen.update(searcher.next())
-                except StopIteration:
-                    pass
-                else:
-                    new_active_searchers.append(searcher)
-            active_searchers = new_active_searchers
+            for searcher in searchers:
+                new_ancestors = searcher.step()
+                if new_ancestors:
+                    newly_seen.update(new_ancestors)
+            new_common = set()
             for revision in newly_seen:
                 if revision in common_ancestors:
-                    for searcher in searchers:
-                        update_common(searcher, revision)
+                    # Not a border ancestor because it was seen as common
+                    # already
+                    new_common.add(revision)
                     continue
                 for searcher in searchers:
                     if revision not in searcher.seen:
                         break
                 else:
+                    # This is a border because it is a first common that we see
+                    # after walking for a while.
                     border_ancestors.add(revision)
-                    for searcher in searchers:
-                        update_common(searcher, revision)
+                    new_common.add(revision)
+            if new_common:
+                for searcher in searchers:
+                    new_common.update(searcher.find_seen_ancestors(new_common))
+                for searcher in searchers:
+                    searcher.start_searching(new_common)
+                common_ancestors.update(new_common)
+
+            # Figure out what the searchers will be searching next, and if
+            # there is only 1 set being searched, then we are done searching,
+            # since all searchers would have to be searching the same data,
+            # thus it *must* be in common.
+            unique_search_sets = set()
+            for searcher in searchers:
+                will_search_set = frozenset(searcher._next_query)
+                if will_search_set not in unique_search_sets:
+                    # This searcher is searching a unique set of nodes, let it
+                    unique_search_sets.add(will_search_set)
+
+            if len(unique_search_sets) == 1:
+                nodes = unique_search_sets.pop()
+                uncommon_nodes = nodes.difference(common_ancestors)
+                assert not uncommon_nodes, ("Somehow we ended up converging"
+                                            " without actually marking them as"
+                                            " in common."
+                                            "\nStart_nodes: %s"
+                                            "\nuncommon_nodes: %s"
+                                            % (revisions, uncommon_nodes))
+                break
+        return border_ancestors, common_ancestors, searchers
 
     def heads(self, keys):
         """Return the heads from amongst keys.
@@ -581,9 +589,18 @@ class Graph(object):
                 for searcher in common_searchers:
                     searcher.stop_searching_any(new_common_unique)
                 common_ancestors_unique.update(new_common_unique)
-            if not newly_seen_common: # No new common nodes, we are done
+            for searcher in unique_searchers:
+                if searcher._next_query:
+                    # We have something to look for
+                    break
+            else:
+                # All unique_searchers have stopped searching
                 break
-            if not newly_seen_unique: # No new unique nodes, we are done
+            for searcher in common_searchers:
+                if searcher._next_query:
+                    break
+            else:
+                # All common searcher have stopped searching
                 break
 
 
