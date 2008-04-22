@@ -194,7 +194,6 @@ class ConventionalResponseHandler(MessageHandler):
         return self._body.read(count)
 
     def read_streamed_body(self):
-        # XXX: this doesn't implement error handling for interrupted streams.
         while not self.finished_reading:
             while self._bytes_parts:
                 yield self._bytes_parts.popleft()
@@ -207,7 +206,9 @@ class ConventionalResponseHandler(MessageHandler):
 
 
 def _translate_error(error_tuple):
-    # XXX: Hmm!  Need state from the request.  Hmm.
+    # Many exceptions need some state from the requestor to be properly
+    # translated (e.g. they need a branch object).  So this only translates a
+    # few errors, and the rest are turned into a generic ErrorFromSmartServer.
     error_name = error_tuple[0]
     error_args = error_tuple[1:]
     if error_name == 'LockContention':
@@ -216,4 +217,3 @@ def _translate_error(error_tuple):
         raise errors.LockContention(*error_args[:2])
     else:
         raise errors.ErrorFromSmartServer(error_tuple)
-

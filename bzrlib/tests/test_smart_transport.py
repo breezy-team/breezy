@@ -33,6 +33,7 @@ from bzrlib import (
 from bzrlib.smart import (
         client,
         medium,
+        message,
         protocol,
         request as _mod_request,
         server,
@@ -1381,13 +1382,37 @@ class TestSmartProtocol(tests.TestCase):
     Subclasses can override client_protocol_class and server_protocol_class.
     """
 
-    client_protocol_class = None
+    request_encoder = None
+    response_decoder = None
     server_protocol_class = None
+    client_protocol_class = None
 
-    def make_client_protocol(self):
-        client_medium = medium.SmartSimplePipesClientMedium(
-            StringIO(), StringIO())
-        return self.client_protocol_class(client_medium.get_request())
+    def make_client_protocol_and_output(self, input_bytes=None):
+        # This is very similar to
+        # bzrlib.smart.client._SmartClient._build_client_protocol
+        if input_bytes is None:
+            input = StringIO()
+        else:
+            input = StringIO(input_bytes)
+        output = StringIO()
+        client_medium = medium.SmartSimplePipesClientMedium(input, output)
+        request = client_medium.get_request()
+        if self.client_protocol_class is not None:
+            client_protocol = self.client_protocol_class(request)
+            return client_protocol, client_protocol, output
+        else:
+            assert self.request_encoder is not None
+            assert self.response_decoder is not None
+            requester = self.request_encoder(request)
+            response_handler = message.ConventionalResponseHandler()
+            response_protocol = self.response_decoder(response_handler)
+            response_handler.setProtoAndMedium(response_protocol, request)
+            return requester, response_handler, output
+
+    def make_client_protocol(self, input_bytes=None):
+        result = self.make_client_protocol_and_output(input_bytes=input_bytes)
+        requester, response_handler, output = result
+        return requester, response_handler
 
     def make_server_protocol(self):
         out_stream = StringIO()
@@ -1403,7 +1428,7 @@ class TestSmartProtocol(tests.TestCase):
             self.client_protocol_class, 'request_marker', None)
 
     def assertOffsetSerialisation(self, expected_offsets, expected_serialised,
-        client):
+        requester):
         """Check that smart (de)serialises offsets as expected.
         
         We check both serialisation and deserialisation at the same time
@@ -1418,7 +1443,7 @@ class TestSmartProtocol(tests.TestCase):
         readv_cmd = vfs.ReadvRequest(None, '/')
         offsets = readv_cmd._deserialise_offsets(expected_serialised)
         self.assertEqual(expected_offsets, offsets)
-        serialised = client._serialise_offsets(offsets)
+        serialised = requester._serialise_offsets(offsets)
         self.assertEqual(expected_serialised, serialised)
 
     def build_protocol_waiting_for_body(self):
@@ -1452,13 +1477,9 @@ class TestSmartProtocol(tests.TestCase):
                 _mod_request.SuccessfulSmartServerResponse(input_tuple))
             self.assertEqual(expected_bytes, server_output.getvalue())
         # check the decoding of the client smart_protocol from expected_bytes:
-        input = StringIO(expected_bytes)
-        output = StringIO()
-        client_medium = medium.SmartSimplePipesClientMedium(input, output)
-        request = client_medium.get_request()
-        smart_protocol = self.client_protocol_class(request)
-        smart_protocol.call('foo')
-        self.assertEqual(expected_tuple, smart_protocol.read_response_tuple())
+        requester, response_handler = self.make_client_protocol(expected_bytes)
+        requester.call('foo')
+        self.assertEqual(expected_tuple, response_handler.read_response_tuple())
 
 
 class CommonSmartProtocolTestMixin(object):
@@ -1475,10 +1496,10 @@ class CommonSmartProtocolTestMixin(object):
         self.assertContainsRe(test_log, 'SmartProtocolError')
 
     def test_connection_closed_reporting(self):
-        smart_protocol = self.make_client_protocol()
-        smart_protocol.call('hello')
+        requester, response_handler = self.make_client_protocol()
+        requester.call('hello')
         ex = self.assertRaises(errors.ConnectionReset,
-            smart_protocol.read_response_tuple)
+            response_handler.read_response_tuple)
         self.assertEqual("Connection closed: "
             "please check connectivity and permissions "
             "(and try -Dhpss if further diagnosis is required)", str(ex))
@@ -1490,13 +1511,13 @@ class CommonSmartProtocolTestMixin(object):
         one with the order of reads not increasing (an out of order read), and
         one that should coalesce.
         """
-        client_protocol = self.make_client_protocol()
-        self.assertOffsetSerialisation([], '', client_protocol)
-        self.assertOffsetSerialisation([(1,2)], '1,2', client_protocol)
+        requester, response_handler = self.make_client_protocol()
+        self.assertOffsetSerialisation([], '', requester)
+        self.assertOffsetSerialisation([(1,2)], '1,2', requester)
         self.assertOffsetSerialisation([(10,40), (0,5)], '10,40\n0,5',
-            client_protocol)
+            requester)
         self.assertOffsetSerialisation([(1,2), (3,4), (100, 200)],
-            '1,2\n3,4\n100,200', client_protocol)
+            '1,2\n3,4\n100,200', requester)
 
 
 class TestVersionOneFeaturesInProtocolOne(
@@ -2114,13 +2135,19 @@ class TestVersionOneFeaturesInProtocolThree(
     three.
     """
 
-    client_protocol_class = protocol.SmartClientRequestProtocolThree
+    request_encoder = protocol.ProtocolThreeRequester
+    response_decoder = protocol.ProtocolThreeDecoder
     # build_server_protocol_three is a function, so we can't set it as a class
     # attribute directly, because then Python will assume it is actually a
     # method.  So we make server_protocol_class be a static method, rather than
     # simply doing:
     # "server_protocol_class = protocol.build_server_protocol_three".
     server_protocol_class = staticmethod(protocol.build_server_protocol_three)
+
+    def setUp(self):
+        super(TestVersionOneFeaturesInProtocolThree, self).setUp()
+        self.response_marker = protocol.MESSAGE_VERSION_THREE
+        self.request_marker = protocol.MESSAGE_VERSION_THREE
 
     def test_construct_version_three_server_protocol(self):
         smart_protocol = protocol.ProtocolThreeDecoder(None)
@@ -2170,7 +2197,8 @@ class LoggingMessageHandler(object):
 class TestProtocolThree(TestSmartProtocol):
     """Tests for v3 of the server-side protocol."""
 
-    client_protocol_class = protocol.SmartClientRequestProtocolThree
+    request_encoder = protocol.ProtocolThreeRequester
+    response_decoder = protocol.ProtocolThreeDecoder
     server_protocol_class = protocol.ProtocolThreeDecoder
 
     def test_trivial_request(self):
@@ -2383,7 +2411,8 @@ class InstrumentedRequestHandler(object):
 #class TestClientDecodingProtocolThree(TestSmartProtocol):
 #    """Tests for v3 of the client-side protocol decoding."""
 #
-#    client_protocol_class = protocol.SmartClientRequestProtocolThree
+#    request_encoder = protocol.ProtocolThreeRequester
+#    response_decoder = protocol.ProtocolThreeDecoder
 #    server_protocol_class = protocol.SmartServerRequestProtocolThree
 #
 #    def test_trivial_response_decoding(self):
@@ -2405,25 +2434,23 @@ class InstrumentedRequestHandler(object):
 
 class TestClientEncodingProtocolThree(TestSmartProtocol):
 
-    client_protocol_class = protocol.SmartClientRequestProtocolThree
+    request_encoder = protocol.ProtocolThreeRequester
+    response_decoder = protocol.ProtocolThreeDecoder
     server_protocol_class = protocol.ProtocolThreeDecoder
 
     def make_client_encoder_and_output(self):
-        input = None
-        output = StringIO()
-        client_medium = medium.SmartSimplePipesClientMedium(input, output)
-        request = client_medium.get_request()
-        smart_protocol = self.client_protocol_class(request)
-        return smart_protocol, output
+        result = self.make_client_protocol_and_output()
+        requester, response_handler, output = result
+        return requester, output
 
     def test_call_smoke_test(self):
-        """A smoke test SmartClientRequestProtocolThree.call.
+        """A smoke test for ProtocolThreeRequester.call.
 
         This test checks that a particular simple invocation of call emits the
         correct bytes for that invocation.
         """
-        smart_protocol, output = self.make_client_encoder_and_output()
-        smart_protocol.call('one arg', headers={'header name': 'header value'})
+        requester, output = self.make_client_encoder_and_output()
+        requester.call('one arg', headers={'header name': 'header value'})
         self.assertEquals(
             'bzr message 3 (bzr 1.3)\n' # protocol version
             '\x00\x00\x00\x1fd11:header name12:header valuee' # headers
@@ -2432,22 +2459,22 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
             output.getvalue())
 
     def test_call_default_headers(self):
-        """SmartClientRequestProtocolThree.call by default sends a 'Software
+        """ProtocolThreeRequester.call by default sends a 'Software
         version' header.
         """
-        smart_protocol, output = self.make_client_encoder_and_output()
-        smart_protocol.call('foo')
+        requester, output = self.make_client_encoder_and_output()
+        requester.call('foo')
         # XXX: using assertContainsRe is a pretty poor way to assert this.
         self.assertContainsRe(output.getvalue(), 'Software version')
         
     def test_call_with_body_bytes_smoke_test(self):
-        """A smoke test SmartClientRequestProtocolThree.call_with_body_bytes.
+        """A smoke test for ProtocolThreeRequester.call_with_body_bytes.
 
         This test checks that a particular simple invocation of
         call_with_body_bytes emits the correct bytes for that invocation.
         """
-        smart_protocol, output = self.make_client_encoder_and_output()
-        smart_protocol.call_with_body_bytes(
+        requester, output = self.make_client_encoder_and_output()
+        requester.call_with_body_bytes(
             ('one arg',), 'body bytes',
             headers={'header name': 'header value'})
         self.assertEquals(
