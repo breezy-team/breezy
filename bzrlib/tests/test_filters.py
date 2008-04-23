@@ -24,9 +24,9 @@ from bzrlib.tests import TestCase
 
 
 # test filter stacks
-_swapcase = lambda(lines): [s.swapcase() for s in lines]
-_addjunk = lambda(lines): ['q'+s for s in lines]
-_deljunk = lambda(lines): [s[1:] for s in lines]
+_swapcase = lambda chunks, context: [s.swapcase() for s in chunks]
+_addjunk = lambda chunks, context: ['junk\n'] + [s for s in chunks]
+_deljunk = lambda chunks, context: [s for s in chunks[1:]]
 _stack_1 = [
     ContentFilter(_swapcase, _swapcase),
     ]
@@ -38,7 +38,7 @@ _stack_2 = [
 # test data
 _sample_external = ['Hello\n', 'World\n']
 _internal_1 = ['hELLO\n', 'wORLD\n']
-_internal_2 = ['qhELLO\n', 'qwORLD\n']
+_internal_2 = ['junk\n', 'hELLO\n', 'wORLD\n']
 
 
 class TestFilteredInput(TestCase):
