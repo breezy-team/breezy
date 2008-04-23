@@ -204,6 +204,86 @@ class VersionedFileTestMixIn(object):
         self.assertEqual(set([('base',), ('left',), ('right',), ('merged',)]),
             seen)
 
+    def test_insert_record_stream_empty(self):
+        """Inserting an empty record stream should work."""
+        f = self.get_file()
+        stream = []
+        f.insert_record_stream([])
+
+    def assertIdenticalVersionedFile(self, left, right):
+        """Assert that left and right have the same contents."""
+        self.assertEqual(set(left.versions()), set(right.versions()))
+        self.assertEqual(left.get_parent_map(left.versions()),
+            right.get_parent_map(right.versions()))
+        for v in left.versions():
+            self.assertEqual(left.get_text(v), right.get_text(v))
+
+    def test_insert_record_stream_fulltexts(self):
+        """Any file should accept a stream of fulltexts."""
+        f = self.get_file()
+        weave_vf = WeaveFile('source', get_transport(self.get_url('.')),
+            create=True, get_scope=self.get_transaction)
+        source, _ = get_diamond_vf(weave_vf)
+        stream = source.get_record_stream(source.versions(), 'topological',
+            False)
+        f.insert_record_stream(stream)
+        self.assertIdenticalVersionedFile(f, source)
+
+    def test_insert_record_stream_fulltexts_noeol(self):
+        """Any file should accept a stream of fulltexts."""
+        f = self.get_file()
+        weave_vf = WeaveFile('source', get_transport(self.get_url('.')),
+            create=True, get_scope=self.get_transaction)
+        source, _ = get_diamond_vf(weave_vf, trailing_eol=False)
+        stream = source.get_record_stream(source.versions(), 'topological',
+            False)
+        f.insert_record_stream(stream)
+        self.assertIdenticalVersionedFile(f, source)
+
+    def test_insert_record_stream_annotated_knits(self):
+        """Any file should accept a stream from plain knits."""
+        f = self.get_file()
+        source = make_file_knit('source', get_transport(self.get_url('.')),
+            create=True)
+        get_diamond_vf(source)
+        stream = source.get_record_stream(source.versions(), 'topological',
+            False)
+        f.insert_record_stream(stream)
+        self.assertIdenticalVersionedFile(f, source)
+
+    def test_insert_record_stream_annotated_knits_noeol(self):
+        """Any file should accept a stream from plain knits."""
+        f = self.get_file()
+        source = make_file_knit('source', get_transport(self.get_url('.')),
+            create=True)
+        get_diamond_vf(source, trailing_eol=False)
+        stream = source.get_record_stream(source.versions(), 'topological',
+            False)
+        f.insert_record_stream(stream)
+        self.assertIdenticalVersionedFile(f, source)
+
+    def test_insert_record_stream_plain_knits(self):
+        """Any file should accept a stream from plain knits."""
+        f = self.get_file()
+        source = make_file_knit('source', get_transport(self.get_url('.')),
+            create=True, factory=KnitPlainFactory())
+        get_diamond_vf(source)
+        stream = source.get_record_stream(source.versions(), 'topological',
+            False)
+        f.insert_record_stream(stream)
+        self.assertIdenticalVersionedFile(f, source)
+
+    def test_insert_record_stream_plain_knits_noeol(self):
+        """Any file should accept a stream from plain knits."""
+        f = self.get_file()
+        source = make_file_knit('source', get_transport(self.get_url('.')),
+            create=True, factory=KnitPlainFactory())
+        get_diamond_vf(source, trailing_eol=False)
+        stream = source.get_record_stream(source.versions(), 'topological',
+            False)
+        f.insert_record_stream(stream)
+        self.assertIdenticalVersionedFile(f, source)
+
     def test_adds_with_parent_texts(self):
         f = self.get_file()
         parent_texts = {}

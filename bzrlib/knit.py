@@ -107,6 +107,7 @@ from bzrlib.osutils import (
     contains_linebreaks,
     sha_string,
     sha_strings,
+    split_lines,
     )
 from bzrlib.symbol_versioning import (
     DEPRECATED_PARAMETER,
@@ -118,6 +119,7 @@ from bzrlib.tsort import topo_sort
 from bzrlib.tuned_gzip import GzipFile, bytes_to_gzip
 import bzrlib.ui
 from bzrlib.versionedfile import (
+    adapter_registry,
     ContentFactory,
     InterVersionedFile,
     VersionedFile,
@@ -1047,6 +1049,32 @@ class KnitVersionedFile(VersionedFile):
         access = _StreamAccess(reader_callable, index, self, factory)
         return KnitVersionedFile(self.filename, self.transport,
             factory=factory, index=index, access_method=access)
+
+    def insert_record_stream(self, stream):
+        """Insert a record stream into this versioned file.
+
+        :param stream: A stream of records to insert. 
+        :return: None
+        :seealso VersionedFile.get_record_stream:
+        """
+        adapters = {}
+        for record in stream:
+            # adapt to non-tuple interface
+            parents = [parent[0] for parent in record.parents]
+            if record.storage_kind == 'fulltext':
+                self.add_lines(record.key[0], parents,
+                    split_lines(record.get_bytes_as('fulltext')))
+            else:
+                adapter_key = record.storage_kind, 'fulltext'
+                try:
+                    adapter = adapters[adapter_key]
+                except KeyError:
+                    adapter_factory = adapter_registry.get(adapter_key)
+                    adapter = adapter_factory(self)
+                    adapters[adapter_key] = adapter
+                lines = split_lines(adapter.get_bytes(
+                    record, record.get_bytes_as(record.storage_kind)))
+                self.add_lines(record.key[0], parents, lines)
 
     def versions(self):
         """See VersionedFile.versions."""

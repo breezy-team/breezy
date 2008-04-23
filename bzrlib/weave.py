@@ -78,7 +78,6 @@ import warnings
 from bzrlib import (
     progress,
     )
-from bzrlib.trace import mutter
 from bzrlib.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
         RevisionAlreadyPresent,
         RevisionNotPresent,
@@ -87,10 +86,12 @@ from bzrlib.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
         WeaveRevisionNotPresent,
         )
 import bzrlib.errors as errors
-from bzrlib.osutils import sha_strings
+from bzrlib.osutils import sha_strings, split_lines
 import bzrlib.patiencediff
+from bzrlib.trace import mutter
 from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import (
+    adapter_registry,
     ContentFactory,
     InterVersionedFile,
     VersionedFile,
@@ -323,6 +324,32 @@ class Weave(VersionedFile):
 
     def get_parents_with_ghosts(self, version_id):
         raise NotImplementedError(self.get_parents_with_ghosts)
+
+    def insert_record_stream(self, stream):
+        """Insert a record stream into this versioned file.
+
+        :param stream: A stream of records to insert. 
+        :return: None
+        :seealso VersionedFile.get_record_stream:
+        """
+        adapters = {}
+        for record in stream:
+            # adapt to non-tuple interface
+            parents = [parent[0] for parent in record.parents]
+            if record.storage_kind == 'fulltext':
+                self.add_lines(record.key[0], parents,
+                    split_lines(record.get_bytes_as('fulltext')))
+            else:
+                adapter_key = record.storage_kind, 'fulltext'
+                try:
+                    adapter = adapters[adapter_key]
+                except KeyError:
+                    adapter_factory = adapter_registry.get(adapter_key)
+                    adapter = adapter_factory(self)
+                    adapters[adapter_key] = adapter
+                lines = split_lines(adapter.get_bytes(
+                    record, record.get_bytes_as(record.storage_kind)))
+                self.add_lines(record.key[0], parents, lines)
 
     def _check_repeated_add(self, name, parents, text, sha1):
         """Check that a duplicated add is OK.

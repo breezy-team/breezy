@@ -126,6 +126,15 @@ class VersionedFile(object):
         """Returns whether version is present."""
         raise NotImplementedError(self.has_version)
 
+    def insert_record_stream(self, stream):
+        """Insert a record stream into this versioned file.
+
+        :param stream: A stream of records to insert. 
+        :return: None
+        :seealso VersionedFile.get_record_stream:
+        """
+        raise NotImplementedError
+
     def add_lines(self, version_id, parents, lines, parent_texts=None,
         left_matching_blocks=None, nostore_sha=None, random_id=False,
         check_content=True):
