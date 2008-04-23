@@ -514,25 +514,27 @@ class Graph(object):
         common_searchers = searchers
         left_searcher = searchers[0]
         right_searcher = searchers[1]
-        unique = left_searcher.seen.symmetric_difference(right_searcher.seen)
+        left_unique = left_searcher.seen.difference(right_searcher.seen)
+        right_unique = right_searcher.seen.difference(left_searcher.seen)
+        unique = left_unique.union(right_unique)
         total_unique = len(unique)
         unique = self._remove_simple_descendants(unique,
                     self.get_parent_map(unique))
         simple_unique = len(unique)
         trace.mutter('Starting %s unique searchers for %s unique revisions',
                      simple_unique, total_unique)
-        # TODO: jam 20071214 Would it be possible to seed these searchers with
-        #       the revisions that we have already seen on each side?
-        #       Maybe something like:
-        #       unique_searchers = []
-        #       for left_unique in left.difference(right):
-        #          l_searcher = self._make_breadth_first_searcher(left_unique)
-        #          l_searcher.seen.update(left.seen)
-        #       ... (same for right.difference(left))
-        #       This might also be easier to set up for the case of >2
-        #       searchers.
-        unique_searchers = [self._make_breadth_first_searcher([r])
-                            for r in unique]
+
+        unique_searchers = []
+        for revision_id in unique:
+            if revision_id in left_unique:
+                parent_searcher = left_searcher
+            else:
+                parent_searcher = right_searcher
+            revs_to_search = parent_searcher.find_seen_ancestors([revision_id])
+            if not revs_to_search: # XXX: This shouldn't be possible
+                revs_to_search = [revision_id]
+            unique_searchers.append(self._make_breadth_first_searcher(revs_to_search))
+
         # Aggregate all of the searchers into a single common searcher, would
         # it be okay to do this?
         # okay to do this?
@@ -555,9 +557,8 @@ class Graph(object):
             new_common_unique = set()
             for revision in newly_seen_unique:
                 if revision in common_ancestors_unique:
-                    # TODO: Do we need to add it to new_common_unique, since it
-                    #       seems to have already been found... ?
-                    new_common_unique.add(revision)
+                    # It is already in common_ancestors_unique, so we don't
+                    # need to search it again.
                     continue
                 for searcher in unique_searchers:
                     if revision not in searcher.seen:
@@ -571,6 +572,11 @@ class Graph(object):
                 # Make sure all searchers are on the same page
                 for searcher in common_searchers:
                     newly_seen_common.update(searcher.find_seen_ancestors(newly_seen_common))
+                # We start searching the whole ancestry. It is a bit wasteful,
+                # though. We really just want to mark all of these nodes as
+                # 'seen' and then start just the tips. However, it requires a
+                # get_parent_map() call to figure out the tips anyway, and all
+                # redundant requests should be fairly fast.
                 for searcher in common_searchers:
                     searcher.start_searching(newly_seen_common)
 
@@ -605,13 +611,6 @@ class Graph(object):
                 for searcher in common_searchers:
                     searcher.stop_searching_any(new_common_unique)
                 common_ancestors_unique.update(new_common_unique)
-            # for searcher in unique_searchers:
-            #     if searcher._next_query:
-            #         # We have something to look for
-            #         break
-            # else:
-            #     # All unique_searchers have stopped searching
-            #     break
             for searcher in common_searchers:
                 if searcher._next_query:
                     break
