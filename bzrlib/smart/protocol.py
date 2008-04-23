@@ -544,11 +544,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         """
         self._request.finished_reading()
 
-    def read_response_tuple(self, expect_body=False):
-        """Read a response tuple from the wire.
-
-        This should only be called once.
-        """
+    def _read_response_tuple(self):
         result = self._recv_tuple()
         if 'hpss' in debug.debug_flags:
             if self._request_start_time is not None:
@@ -558,10 +554,43 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
                 self._request_start_time = None
             else:
                 mutter('   result:   %s', repr(result)[1:-1])
+        return result
+
+    def read_response_tuple(self, expect_body=False):
+        """Read a response tuple from the wire.
+
+        This should only be called once.
+        """
+        result = self._read_response_tuple()
         self._response_is_unknown_method(result)
+        self._raise_args_if_error(result)
         if not expect_body:
             self._request.finished_reading()
         return result
+
+    def _raise_args_if_error(self, result_tuple):
+        v1_error_codes = [
+            'norepository',
+            'NoSuchFile',
+            'FileExists',
+            'DirectoryNotEmpty',
+            'ShortReadvError',
+            'UnicodeEncodeError',
+            'UnicodeDecodeError',
+            'ReadOnlyError',
+            'nobranch',
+            'NoSuchRevision',
+            'nosuchrevision',
+            'LockContention',
+            'UnlockableTransport',
+            'LockFailed',
+            'TokenMismatch',
+            'ReadError',
+            'PermissionDenied',
+            ]
+        if result_tuple[0] in v1_error_codes:
+            self._request.finished_reading()
+            raise errors.ErrorFromSmartServer(result_tuple)
 
     def _response_is_unknown_method(self, result_tuple):
         """Raise UnexpectedSmartServerResponse if the response is an 'unknonwn
@@ -666,11 +695,19 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
         if version != self.response_marker:
             raise errors.SmartProtocolError('bad protocol marker %r' % version)
         response_status = self._recv_line()
-        if response_status not in ('success\n', 'failed\n'):
+        result = SmartClientRequestProtocolOne._read_response_tuple(self)
+        if response_status == 'success\n':
+            self.response_status = True
+            if not expect_body:
+                self._request.finished_reading()
+            return result
+        elif response_status == 'failed\n':
+            self.response_status = False
+            self._request.finished_reading()
+            raise errors.ErrorFromSmartServer(result)
+        else:
             raise errors.SmartProtocolError(
                 'bad protocol status %r' % response_status)
-        self.response_status = response_status == 'success\n'
-        return SmartClientRequestProtocolOne.read_response_tuple(self, expect_body)
 
     def _write_protocol_version(self):
         """Write any prefixes this protocol requires.
@@ -973,8 +1010,9 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder):
         self._write_headers(headers)
         self._write_structure(args)
         readv_bytes = self._serialise_offsets(body)
-        self._write_prefixed_body(readv_bytes)
-        self._request.finished_writing()
         if 'hpss' in debug.debug_flags:
             mutter('              %d bytes in readv request', len(readv_bytes))
+        self._write_prefixed_body(readv_bytes)
+        self._write_end()
+        self._medium_request.finished_writing()
 

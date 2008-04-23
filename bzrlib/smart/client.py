@@ -94,6 +94,12 @@ class _SmartClient(object):
         return (response_handler.read_response_tuple(expect_body=True),
                 response_handler)
 
+    def call_with_body_readv_array(self, args, body):
+        request_encoder, response_handler = self._build_client_protocol()
+        request_encoder.call_with_body_readv_array(args, body)
+        return (response_handler.read_response_tuple(expect_body=True),
+                response_handler)
+
     def remote_path_from_transport(self, transport):
         """Convert transport into a path suitable for using in a request.
         

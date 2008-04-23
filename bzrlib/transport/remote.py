@@ -157,16 +157,25 @@ class RemoteTransport(transport.ConnectedTransport):
         return self._combine_paths(self._path, relpath)
 
     def _call(self, method, *args):
-        resp = self._call2(method, *args)
+        try:
+            resp = self._call2(method, *args)
+        except errors.ErrorFromSmartServer, err:
+            self._translate_error(err.error_tuple)
         self._translate_error(resp)
 
     def _call2(self, method, *args):
         """Call a method on the remote server."""
-        return self._client.call(method, *args)
+        try:
+            return self._client.call(method, *args)
+        except errors.ErrorFromSmartServer, err:
+            self._translate_error(err.error_tuple)
 
     def _call_with_body_bytes(self, method, args, body):
         """Call a method on the remote server with body bytes."""
-        return self._client.call_with_body_bytes(method, args, body)
+        try:
+            return self._client.call_with_body_bytes(method, args, body)
+        except errors.ErrorFromSmartServer, err:
+            self._translate_error(err.error_tuple)
 
     def has(self, relpath):
         """Indicate whether a remote file of the given name exists or not.
@@ -190,14 +199,14 @@ class RemoteTransport(transport.ConnectedTransport):
 
     def get_bytes(self, relpath):
         remote = self._remote_path(relpath)
-        request = self.get_smart_medium().get_request()
-        smart_protocol = protocol.SmartClientRequestProtocolOne(request)
-        smart_protocol.call('get', remote)
-        resp = smart_protocol.read_response_tuple(True)
+        try:
+            resp, response_handler = self._client.call_expecting_body('get', remote)
+        except errors.ErrorFromSmartServer, err:
+            self._translate_error(err.error_tuple, relpath)
         if resp != ('ok', ):
             smart_protocol.cancel_read_body()
-            self._translate_error(resp, relpath)
-        return smart_protocol.read_body_bytes()
+            raise errors.UnexpectedSmartServerResponse(resp)
+        return response_handler.read_body_bytes()
 
     def _serialise_optional_mode(self, mode):
         if mode is None:
@@ -306,21 +315,21 @@ class RemoteTransport(transport.ConnectedTransport):
                                limit=self._max_readv_combine,
                                fudge_factor=self._bytes_to_read_before_seek))
 
-        request = self.get_smart_medium().get_request()
-        smart_protocol = protocol.SmartClientRequestProtocolOne(request)
-        smart_protocol.call_with_body_readv_array(
-            ('readv', self._remote_path(relpath)),
-            [(c.start, c.length) for c in coalesced])
-        resp = smart_protocol.read_response_tuple(True)
+        try:
+            result = self._client.call_with_body_readv_array(
+                ('readv', self._remote_path(relpath),),
+                [(c.start, c.length) for c in coalesced])
+            resp, response_handler = result
+        except errors.ErrorFromSmartServer, err:
+            self._translate_error(err.error_tuple)
 
         if resp[0] != 'readv':
             # This should raise an exception
             smart_protocol.cancel_read_body()
-            self._translate_error(resp)
-            return
+            raise errors.UnexpectedSmartServerResponse(resp)
 
         # FIXME: this should know how many bytes are needed, for clarity.
-        data = smart_protocol.read_body_bytes()
+        data = response_handler.read_body_bytes()
         # Cache the results, but only until they have been fulfilled
         data_map = {}
         for c_offset in coalesced:

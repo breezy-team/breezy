@@ -17,7 +17,11 @@
 import collections
 from cStringIO import StringIO
 
-from bzrlib import errors
+from bzrlib import (
+    debug,
+    errors,
+    )
+from bzrlib.trace import mutter
 
 class MessageHandler(object):
 
@@ -165,15 +169,15 @@ class ConventionalResponseHandler(MessageHandler):
         self._protocol_decoder.accept_bytes(bytes)
 
     def read_response_tuple(self, expect_body=False):
-        """Read a response tuple from the wire.
-
-        The expect_body flag is ignored.
-        """
+        """Read a response tuple from the wire."""
         self._wait_for_response_args()
         if not expect_body:
             self._wait_for_response_end()
-        #if self.status == 'E':
-        #    xxx_translate_error() # XXX
+        if 'hpss' in debug.debug_flags:
+            mutter('   result:   %r', self.args)
+        if self.status == 'E':
+            self._wait_for_response_end()
+            _translate_error(self.args)
         return tuple(self.args)
 
     def read_body_bytes(self, count=-1):
@@ -210,6 +214,6 @@ def _translate_error(error_tuple):
     if error_name == 'LockContention':
         raise errors.LockContention('(remote lock)')
     elif error_name == 'LockFailed':
-        raise errors.LockContention(*error_args[:2])
+        raise errors.LockFailed(*error_args[:2])
     else:
         raise errors.ErrorFromSmartServer(error_tuple)

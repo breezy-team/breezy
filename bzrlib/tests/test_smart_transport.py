@@ -1338,7 +1338,7 @@ class TestRemoteTransport(tests.TestCase):
         
     def test_use_connection_factory(self):
         # We want to be able to pass a client as a parameter to RemoteTransport.
-        input = StringIO("ok\n3\nbardone\n")
+        input = StringIO('ok\x011\n' + 'ok\n3\nbardone\n')
         output = StringIO()
         client_medium = medium.SmartSimplePipesClientMedium(input, output)
         transport = remote.RemoteTransport(
@@ -1349,13 +1349,19 @@ class TestRemoteTransport(tests.TestCase):
         self.assertEqual(0, input.tell())
         self.assertEqual('', output.getvalue())
 
-        # Now call a method that should result in a single request : as the
+        # Explicitly probe for the server version now, so that it doesn't
+        # happen implicitly when we call our first remote method.
+        client_medium.protocol_version()
+        output.seek(0)
+        output.truncate()
+
+        # Now call a method that should result in one request: as the
         # transport makes its own protocol instances, we check on the wire.
         # XXX: TODO: give the transport a protocol factory, which can make
         # an instrumented protocol for us.
         self.assertEqual('bar', transport.get_bytes('foo'))
         # only the needed data should have been sent/received.
-        self.assertEqual(13, input.tell())
+        self.assertEqual(5 + 13, input.tell())
         self.assertEqual('get\x01/foo\n', output.getvalue())
 
     def test__translate_error_readonly(self):
@@ -2408,20 +2414,32 @@ class InstrumentedRequestHandler(object):
         self.calls.append(('end_received',))
 
 
+class StubRequest(object):
+
+    def finished_reading(self):
+        pass
+
+
 class TestClientDecodingProtocolThree(TestSmartProtocol):
     """Tests for v3 of the client-side protocol decoding."""
 
     def make_response_decoder(self):
-        """Make v3 response decoder using a conventional response handler."""
+        """Make v3 response decoder using a test response handler."""
         response_handler = LoggingMessageHandler()
         decoder = protocol.ProtocolThreeDecoder(response_handler)
+        return decoder, response_handler
+
+    def make_conventional_response_decoder(self):
+        """Make v3 response decoder using a conventional response handler."""
+        response_handler = message.ConventionalResponseHandler()
+        decoder = protocol.ProtocolThreeDecoder(response_handler)
+        response_handler.setProtoAndMedium(decoder, StubRequest())
         return decoder, response_handler
 
     def test_trivial_response_decoding(self):
         """Smoke test for the simplest possible v3 response: empty headers,
         status byte, empty args, no body.
         """
-        output = StringIO()
         headers = '\0\0\0\x02de'  # length-prefixed, bencoded empty dict
         response_status = 'oS' # success
         args = 's\0\0\0\x02le' # length-prefixed, bencoded empty list
@@ -2437,6 +2455,20 @@ class TestClientDecodingProtocolThree(TestSmartProtocol):
         self.assertEqual(
             [('headers', {}), ('byte', 'S'), ('structure', []), ('end',)],
             response_handler.event_log)
+
+    #def test_read_response_tuple_unknown_request(self):
+    def test_read_response_tuple_error(self):
+        """If the response has an error, it is raised as an exception."""
+        headers = '\0\0\0\x02de'  # length-prefixed, bencoded empty dict
+        response_status = 'oE' # error
+        args = 's\0\0\0\x1al9:first arg10:second arge' # two args
+        end = 'e' # end marker
+        message_bytes = headers + response_status + args + end
+        decoder, response_handler = self.make_conventional_response_decoder()
+        decoder.accept_bytes(message_bytes)
+        error = self.assertRaises(
+            errors.ErrorFromSmartServer, response_handler.read_response_tuple)
+        self.assertEqual(('first arg', 'second arg'), error.error_tuple)
 
 
 class TestClientEncodingProtocolThree(TestSmartProtocol):
