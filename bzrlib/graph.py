@@ -515,6 +515,8 @@ class Graph(object):
         left_searcher = searchers[0]
         right_searcher = searchers[1]
         unique = left_searcher.seen.symmetric_difference(right_searcher.seen)
+        if not unique: # No unique nodes, nothing to do
+            return
         total_unique = len(unique)
         unique = self._remove_simple_descendants(unique,
                     self.get_parent_map(unique))
@@ -540,6 +542,14 @@ class Graph(object):
         #   searcher, just make sure that we include the nodes into the .seen
         #   properties of the original searchers
         common_ancestors_unique = set()
+
+        ancestor_all_unique = None
+        for searcher in unique_searchers:
+            if ancestor_all_unique is None:
+                ancestor_all_unique = set(searcher.seen)
+            else:
+                ancestor_all_unique = ancestor_all_unique.intersection(
+                                            searcher.seen)
 
         while True: # If we have no more nodes we have nothing to do
             newly_seen_common = set()
@@ -575,15 +585,10 @@ class Graph(object):
                 for searcher in common_searchers:
                     searcher.start_searching(newly_seen_common)
 
-                # If a 'common' node has been found by a unique searcher, we
+                # If a 'common' node is an ancestor of all unique searchers, we
                 # can stop searching it.
-                stop_searching_common = None
-                for searcher in unique_searchers:
-                    if stop_searching_common is None:
-                        stop_searching_common = searcher.find_seen_ancestors(newly_seen_common)
-                    else:
-                        stop_searching_common = stop_searching_common.intersection(
-                            searcher.find_seen_ancestors(newly_seen_common))
+                stop_searching_common = ancestor_all_unique.intersection(
+                                            newly_seen_common)
                 if stop_searching_common:
                     for searcher in common_searchers:
                         searcher.stop_searching_any(stop_searching_common)
@@ -609,6 +614,7 @@ class Graph(object):
                 for searcher in common_searchers:
                     searcher.stop_searching_any(new_common_unique)
                 common_ancestors_unique.update(new_common_unique)
+                ancestor_all_unique.update(new_common_unique)
             for searcher in common_searchers:
                 if searcher._next_query:
                     break
