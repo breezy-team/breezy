@@ -2437,59 +2437,6 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
             output.getvalue())
 
 
-#class TestProtocolTestCoverage(tests.TestCase):
-#
-#    def assertSetEqual(self, set_a, set_b):
-#        if set_a != set_b:
-#            missing_from_a = sorted(set_b - set_a)
-#            missing_from_b = sorted(set_a - set_b)
-#            raise self.failureException(
-#                'Sets not equal.\na is missing: %r\nb is missing: %r'
-#                % (missing_from_a, missing_from_b))
-#
-#    def get_tests_from_classes(self, test_case_classes):
-#        loader = unittest.TestLoader()
-#        test_names = []
-#        for test_case_class in test_case_classes:
-#            names = loader.getTestCaseNames(test_case_class)
-#            test_names.extend(names)
-#        return set(self.remove_version_specific_tests(test_names))
-#
-#    def remove_version_specific_tests(self, test_names):
-#        return [name for name in test_names
-#                if not name.startswith('test_construct_version_')]
-#    
-#    def test_ensure_consistent_coverage(self):
-#        """We should be testing the same set of conditions for all protocol
-#        implementations.
-#
-#        The implementations of those tests may differ (so we can't use simple
-#        test parameterisation to keep the tests synchronised), so this test is
-#        to ensure that all tests for v1 are done for v2 and v3, and that all v2
-#        tests are done for v3.
-#        """
-#        v1_classes = [TestVersionOneFeaturesInProtocolOne]
-#        v2_classes = [
-#            TestVersionOneFeaturesInProtocolTwo,
-#            TestVersionTwoFeaturesInProtocolTwo]
-##        v3_classes = [
-##            TestVersionOneFeaturesInProtocolThree,
-##            TestVersionTwoFeaturesInProtocolThree,
-##            TestVersionThreeFeaturesInProtocolThree]
-#
-#        # v2 implements all of v1
-#        protocol1_tests = self.get_tests_from_classes(v1_classes)
-#        protocol2_basic_tests = self.get_tests_from_class(
-#            TestVersionOneFeaturesInProtocolTwo)
-#        self.assertSetEqual(protocol1_tests, protocol2_basic_tests)
-#
-#        # v3 implements all of v1 and v2.
-#        protocol2_tests = self.get_tests_from_classes(v2_classes)
-#        protocol3_basic_tests = self.get_tests_from_class(
-#            TestVersionOneFeaturesInProtocolThree)
-#        self.assertSetEqual(protocol2_tests, protocol3_basic_tests)
-
-
 class TestSmartClientUnicode(tests.TestCase):
     """_SmartClient tests for unicode arguments.
 
