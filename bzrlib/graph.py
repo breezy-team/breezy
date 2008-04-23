@@ -541,7 +541,6 @@ class Graph(object):
         # possible todo: aggregate the common searchers into a single common
         #   searcher, just make sure that we include the nodes into the .seen
         #   properties of the original searchers
-        common_ancestors_unique = set()
 
         ancestor_all_unique = None
         for searcher in unique_searchers:
@@ -560,10 +559,6 @@ class Graph(object):
                 newly_seen_unique.update(searcher.step())
             new_common_unique = set()
             for revision in newly_seen_unique:
-                if revision in common_ancestors_unique:
-                    # It is already in common_ancestors_unique, so we don't
-                    # need to search it again.
-                    continue
                 for searcher in unique_searchers:
                     if revision not in searcher.seen:
                         break
@@ -613,7 +608,6 @@ class Graph(object):
                     searcher.start_searching(new_common_unique)
                 for searcher in common_searchers:
                     searcher.stop_searching_any(new_common_unique)
-                common_ancestors_unique.update(new_common_unique)
                 ancestor_all_unique.update(new_common_unique)
             for searcher in common_searchers:
                 if searcher._next_query:
