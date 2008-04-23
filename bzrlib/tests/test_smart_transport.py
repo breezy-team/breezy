@@ -1394,6 +1394,9 @@ class TestSmartProtocol(tests.TestCase):
     client_protocol_class = None
 
     def make_client_protocol_and_output(self, input_bytes=None):
+        """
+        :returns: a Request
+        """
         # This is very similar to
         # bzrlib.smart.client._SmartClient._build_client_protocol
         if input_bytes is None:
@@ -1412,7 +1415,8 @@ class TestSmartProtocol(tests.TestCase):
             requester = self.request_encoder(request)
             response_handler = message.ConventionalResponseHandler()
             response_protocol = self.response_decoder(response_handler)
-            response_handler.setProtoAndMedium(response_protocol, request)
+            response_handler.setProtoAndMediumRequest(
+                response_protocol, request)
             return requester, response_handler, output
 
     def make_client_protocol(self, input_bytes=None):
@@ -2387,7 +2391,8 @@ class TestConventionalResponseHandler(tests.TestCase):
             StringIO(interrupted_body_stream), output)
         medium_request = client_medium.get_request()
         medium_request.finished_writing()
-        response_handler.setProtoAndMedium(protocol_decoder, medium_request)
+        response_handler.setProtoAndMediumRequest(
+            protocol_decoder, medium_request)
         stream = response_handler.read_streamed_body()
         self.assertEqual('chunk one', stream.next())
         self.assertEqual('chunk two', stream.next())
@@ -2433,7 +2438,7 @@ class TestClientDecodingProtocolThree(TestSmartProtocol):
         """Make v3 response decoder using a conventional response handler."""
         response_handler = message.ConventionalResponseHandler()
         decoder = protocol.ProtocolThreeDecoder(response_handler)
-        response_handler.setProtoAndMedium(decoder, StubRequest())
+        response_handler.setProtoAndMediumRequest(decoder, StubRequest())
         return decoder, response_handler
 
     def test_trivial_response_decoding(self):

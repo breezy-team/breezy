@@ -91,7 +91,46 @@ class ConventionalRequestHandler(MessageHandler):
         pass
 
 
-class ConventionalResponseHandler(MessageHandler):
+class ResponseHandler(object):
+    """Abstract base class for an object that handles a smart response."""
+
+    def read_response_tuple(self, expect_body=False):
+        """Reads and returns the response tuple for the current request.
+        
+        :keyword expect_body: a boolean indicating if a body is expected in the
+            response.  Some protocol versions needs this information to know
+            when a response is finished.  If False, read_body_bytes should
+            *not* be called afterwards.  Defaults to False.
+        :returns: tuple of response arguments.
+        """
+        raise NotImplementedError(self.read_response_tuple)
+
+    def read_body_bytes(self, count=-1):
+        """Read and return some bytes from the body.
+
+        :param count: if specified, read up to this many bytes.  By default,
+            reads the entire body.
+        :returns: str of bytes from the response body.
+        """
+        raise NotImplementedError(self.read_body_bytes)
+
+    def read_streamed_body(self):
+        """Returns an iterable that reads and returns a series of body chunks.
+        """
+        raise NotImplementedError(self.read_streamed_body)
+
+    def cancel_read_body(self):
+        """Stop expecting a body for this response.
+
+        If expect_body was passed to read_response_tuple, this cancels that
+        expectation (and thus finishes reading the response, allowing a new
+        request to be issued).  This is useful if a response turns out to be an
+        error rather than a normal result with a body.
+        """
+        raise NotImplementedError(self.cancel_read_body)
+
+
+class ConventionalResponseHandler(MessageHandler, ResponseHandler):
 
     def __init__(self):
         MessageHandler.__init__(self)
@@ -104,9 +143,9 @@ class ConventionalResponseHandler(MessageHandler):
         self._body_error_args = None
         self.finished_reading = False
 
-    def setProtoAndMedium(self, protocol_decoder, medium):
+    def setProtoAndMediumRequest(self, protocol_decoder, medium_request):
         self._protocol_decoder = protocol_decoder
-        self._medium = medium
+        self._medium_request = medium_request
 
     def byte_part_received(self, byte):
         if byte not in ['E', 'S']:
@@ -158,9 +197,9 @@ class ConventionalResponseHandler(MessageHandler):
         if next_read_size == 0:
             # a complete request has been read.
             self.finished_reading = True
-            self._medium.finished_reading()
+            self._medium_request.finished_reading()
             return
-        bytes = self._medium.read_bytes(next_read_size)
+        bytes = self._medium_request.read_bytes(next_read_size)
         if bytes == '':
             # end of file encountered reading from server
             raise errors.ConnectionReset(

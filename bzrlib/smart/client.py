@@ -39,7 +39,7 @@ class _SmartClient(object):
             request_encoder = protocol.ProtocolThreeRequester(request)
             response_handler = message.ConventionalResponseHandler()
             response_proto = protocol.ProtocolThreeDecoder(response_handler)
-            response_handler.setProtoAndMedium(response_proto, request)
+            response_handler.setProtoAndMediumRequest(response_proto, request)
         elif version == 2:
             request_encoder = protocol.SmartClientRequestProtocolTwo(request)
             response_handler = request_encoder
