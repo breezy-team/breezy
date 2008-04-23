@@ -551,7 +551,7 @@ class ChrootedTests(TestCaseWithTransport):
 
     def test_open_containing_tree_branch_or_repository_branch_subdir(self):
         self.make_branch_and_tree('foo')
-        os.mkdir('foo/bar') #XXX
+        self.build_tree(['foo/bar/'])
         tree, branch, repo = \
             bzrdir.BzrDir.open_containing_tree_branch_or_repository(
                 'foo/bar')
@@ -565,7 +565,7 @@ class ChrootedTests(TestCaseWithTransport):
 
     def test_open_containing_tree_branch_or_repository_repo_subdir(self):
         self.make_repository('bar')
-        os.mkdir('bar/baz') #XXX
+        self.build_tree(['bar/baz/'])
         tree, branch, repo = \
             bzrdir.BzrDir.open_containing_tree_branch_or_repository(
                 'bar/baz')
