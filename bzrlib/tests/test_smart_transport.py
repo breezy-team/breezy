@@ -955,7 +955,7 @@ class TestSmartTCPServer(tests.TestCase):
             def get_bytes(self, path):
                 raise Exception("some random exception from inside server")
         smart_server = server.SmartTCPServer(backing_transport=FlakyTransport())
-        smart_server.start_background_thread()
+        smart_server.start_background_thread('-' + self.id())
         try:
             transport = remote.RemoteTCPTransport(smart_server.get_url())
             try:
@@ -991,7 +991,7 @@ class SmartTCPTests(tests.TestCase):
             self.real_backing_transport = self.backing_transport
             self.backing_transport = get_transport("readonly+" + self.backing_transport.abspath('.'))
         self.server = server.SmartTCPServer(self.backing_transport)
-        self.server.start_background_thread()
+        self.server.start_background_thread('-' + self.id())
         self.transport = remote.RemoteTCPTransport(self.server.get_url())
         self.addCleanup(self.tearDownServer)
 

@@ -789,6 +789,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         self._in_buffer = ''
         self._number_needed_bytes = 4
         self.state_accept = self._state_accept_expecting_headers
+        self.errored = False
 
         self.request_handler = self.message_handler = message_handler
 
@@ -801,6 +802,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         except Exception, exception:
             log_exception_quietly()
             self.message_handler.protocol_error(exception)
+            self.errored = True
 
     def _extract_length_prefixed_bytes(self):
         if len(self._in_buffer) < 4:
@@ -830,7 +832,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
     def _extract_single_byte(self):
         if self._in_buffer == '':
             # The buffer is empty
-            raise _NeedMoreBytes()
+            raise _NeedMoreBytes(1)
         one_byte = self._in_buffer[0]
         self._in_buffer = self._in_buffer[1:]
         return one_byte
@@ -891,11 +893,13 @@ class ProtocolThreeDecoder(_StatefulDecoder):
     def next_read_size(self):
         if self.state_accept == self._state_accept_reading_unused:
             return 0
+        elif self.errored:
+            return 0
         else:
             if self._number_needed_bytes is not None:
                 return self._number_needed_bytes - len(self._in_buffer)
             else:
-                return 1 # XXX !!!
+                raise AssertionError("don't know how many bytes are expected!")
 
 
 class _ProtocolThreeEncoder(object):
