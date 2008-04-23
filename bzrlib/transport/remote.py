@@ -23,8 +23,6 @@ imported from bzrlib.smart.
 __all__ = ['RemoteTransport', 'RemoteTCPTransport', 'RemoteSSHTransport']
 
 from cStringIO import StringIO
-import urllib
-import urlparse
 
 from bzrlib import (
     config,
@@ -34,7 +32,7 @@ from bzrlib import (
     transport,
     urlutils,
     )
-from bzrlib.smart import client, medium, protocol
+from bzrlib.smart import client, medium
 from bzrlib.symbol_versioning import (deprecated_method, one_four)
 
 
@@ -204,7 +202,7 @@ class RemoteTransport(transport.ConnectedTransport):
         except errors.ErrorFromSmartServer, err:
             self._translate_error(err.error_tuple, relpath)
         if resp != ('ok', ):
-            smart_protocol.cancel_read_body()
+            response_handler.cancel_read_body()
             raise errors.UnexpectedSmartServerResponse(resp)
         return response_handler.read_body_bytes()
 
@@ -325,7 +323,7 @@ class RemoteTransport(transport.ConnectedTransport):
 
         if resp[0] != 'readv':
             # This should raise an exception
-            smart_protocol.cancel_read_body()
+            response_handler.cancel_read_body()
             raise errors.UnexpectedSmartServerResponse(resp)
 
         # FIXME: this should know how many bytes are needed, for clarity.

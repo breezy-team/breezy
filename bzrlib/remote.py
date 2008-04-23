@@ -38,10 +38,6 @@ from bzrlib.errors import NoSuchRevision
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.pack import ContainerPushParser
 from bzrlib.smart import client, vfs
-from bzrlib.symbol_versioning import (
-    deprecated_method,
-    zero_ninetyone,
-    )
 from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.trace import mutter, note, warning
 

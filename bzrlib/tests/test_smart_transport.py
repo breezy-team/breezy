@@ -2437,6 +2437,28 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
             output.getvalue())
 
 
+class TestResponseEncodingProtocolThree(tests.TestCase):
+
+    def make_response_encoder(self):
+        out_stream = StringIO()
+        response_encoder = protocol.ProtocolThreeResponder(out_stream.write)
+        return response_encoder, out_stream
+
+    def test_send_error_unknown_method(self):
+        encoder, out_stream = self.make_response_encoder()
+        encoder.send_error(errors.UnknownSmartMethod('method name'))
+        # Use assertEndsWith so that we don't compare the header, which varies
+        # by bzrlib.__version__.
+        self.assertEndsWith(
+            out_stream.getvalue(),
+            # error status
+            'oE' +
+            # tuple: 'UnknownMethod', 'method name'
+            's\x00\x00\x00\x20l13:UnknownMethod11:method namee'
+            # end of message
+            'e')
+
+
 class TestSmartClientUnicode(tests.TestCase):
     """_SmartClient tests for unicode arguments.
 

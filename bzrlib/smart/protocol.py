@@ -973,7 +973,8 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
     def send_error(self, exception):
         assert not self.response_sent
         if isinstance(exception, errors.UnknownSmartMethod):
-            failure = FailedSmartServerResponse('UnknownMethod', exception.verb)
+            failure = request.FailedSmartServerResponse(
+                ('UnknownMethod', exception.verb))
             self.send_response(failure)
             return
         self.response_sent = True
