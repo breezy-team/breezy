@@ -2509,6 +2509,7 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              exclude_pattern=None,
              strict=False,
              load_list=None,
+             starting_with=None,
              ):
     """Run the whole test suite under the enhanced runner"""
     # XXX: Very ugly way to do this...
@@ -2528,7 +2529,7 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
         else:
             keep_only = load_test_id_list(load_list)
         if test_suite_factory is None:
-            suite = test_suite(keep_only)
+            suite = test_suite(keep_only, starting_with)
         else:
             suite = test_suite_factory()
         return run_suite(suite, 'testbzr', verbose=verbose, pattern=pattern,
@@ -2647,10 +2648,13 @@ class TestIdList(object):
         return self.tests.has_key(test_id)
 
 
-def test_suite(keep_only=None):
+def test_suite(keep_only=None, starting_with=None):
     """Build and return TestSuite for the whole of bzrlib.
 
     :param keep_only: A list of test ids limiting the suite returned.
+
+    :param starting_with: An id limiting the suite returned to the tests
+         starting with it.
 
     This function can be replaced if you need to change the default test
     suite on a global basis, but it is not encouraged.
@@ -2806,11 +2810,15 @@ def test_suite(keep_only=None):
 
     loader = TestUtil.TestLoader()
 
-    if keep_only is None:
-        loader = TestUtil.TestLoader()
-    else:
+    if starting_with is not None:
+        # We take precedence over keep_only because *at loading time* using
+        # both options means we will load less tests for the same final result.
+        loader = TestUtil.FilteredByModuleTestLoader(starting_with.startswith)
+    elif keep_only is not None:
         id_filter = TestIdList(keep_only)
         loader = TestUtil.FilteredByModuleTestLoader(id_filter.refers_to)
+    else:
+        loader = TestUtil.TestLoader()
     suite = loader.suiteClass()
 
     # modules building their suite with loadTestsFromModuleNames
@@ -2831,8 +2839,16 @@ def test_suite(keep_only=None):
         'bzrlib.version_info_formats.format_custom',
         ]
 
+    def interesting_module(name):
+        if starting_with is not None:
+            return name.startswith(starting_with)
+        elif keep_only is not None:
+            return id_filter.refers_to(name)
+        else:
+            return True
+
     for mod in modules_to_doctest:
-        if not (keep_only is None or id_filter.refers_to(mod)):
+        if not interesting_module(mod):
             # No tests to keep here, move along
             continue
         try:
@@ -2844,9 +2860,8 @@ def test_suite(keep_only=None):
 
     default_encoding = sys.getdefaultencoding()
     for name, plugin in bzrlib.plugin.plugins().items():
-        if keep_only is not None:
-            if not id_filter.refers_to(plugin.module.__name__):
-                continue
+        if not interesting_module(plugin.module.__name__):
+            continue
         plugin_suite = plugin.test_suite()
         # We used to catch ImportError here and turn it into just a warning,
         # but really if you don't have --no-plugins this should be a failure.
@@ -2862,14 +2877,22 @@ def test_suite(keep_only=None):
             reload(sys)
             sys.setdefaultencoding(default_encoding)
 
+    if starting_with is not None:
+        suite = filter_suite_by_id_startswith(suite, starting_with)
+
     if keep_only is not None:
         # Now that the referred modules have loaded their tests, keep only the
         # requested ones.
         suite = filter_suite_by_id_list(suite, id_filter)
         # Do some sanity checks on the id_list filtering
         not_found, duplicates = suite_matches_id_list(suite, keep_only)
-        for id in not_found:
-            bzrlib.trace.warning('"%s" not found in the test suite', id)
+        if starting_with is not None:
+            # No need to annoy the tester with tests not found since when both
+            # options are used *there will be* tests excluded from the list.
+            pass
+        else:
+            for id in not_found:
+                bzrlib.trace.warning('"%s" not found in the test suite', id)
         for id in duplicates:
             bzrlib.trace.warning('"%s" is used as an id by several tests', id)
 

@@ -575,3 +575,12 @@ class TestSelftestWithIdList(TestCaseInTempDir):
     def test_load_unknown(self):
         out, err = self.run_bzr('selftest --load-list I_do_not_exist ',
                                 retcode=3)
+
+
+class TestSelftestStartingWith(TestCase):
+
+    def test_starting_with(self):
+        out, err = self.run_bzr(
+            ['selftest', '--starting-with', self.id(), '--list'])
+        self.assertContainsRe(out, "Listed 1 test in")
+

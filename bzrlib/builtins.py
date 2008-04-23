@@ -2653,6 +2653,8 @@ class cmd_selftest(Command):
                             'known failures.'),
                      Option('load-list', type=str, argname='TESTLISTFILE',
                             help='Load a test id list from a text file.'),
+                     Option('starting-with', type=str, argname='TESTID',
+                            help='Load only the tests starting with TESTID.'),
                      ]
     encoding_type = 'replace'
 
@@ -2661,7 +2663,7 @@ class cmd_selftest(Command):
             lsprof_timed=None, cache_dir=None,
             first=False, list_only=False,
             randomize=None, exclude=None, strict=False,
-            load_list=None):
+            load_list=None, starting_with=None):
         import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
@@ -2704,6 +2706,7 @@ class cmd_selftest(Command):
                               exclude_pattern=exclude,
                               strict=strict,
                               load_list=load_list,
+                              starting_with=starting_with,
                               )
         finally:
             if benchfile is not None:
