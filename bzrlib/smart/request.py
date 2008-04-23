@@ -307,7 +307,7 @@ class SmartServerRequestHandler(object):
                 raise
 
     def headers_received(self, headers):
-        # XXX
+        # Just a no-op at the moment.
         pass
 
     def args_received(self, args):
@@ -319,10 +319,6 @@ class SmartServerRequestHandler(object):
             raise errors.SmartProtocolError("bad request %r" % (cmd,))
         self._command = command(self._backing_transport)
         self._run_handler_code(self._command.execute, args, {})
-
-    def no_body_received(self):
-        # XXX
-        pass
 
     def prefixed_body_received(self, body_bytes):
         """No more body data will be received."""

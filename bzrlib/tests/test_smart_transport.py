@@ -2291,15 +2291,6 @@ class TestProtocolThree(TestSmartProtocol):
 #        self.assertEqual(calls, smart_protocol.request_handler.calls,
 #            "%r was not parsed as expected" % (protocol_bytes,))
 #
-#    def test_request_no_body(self):
-#        """Parsing a request with no body calls no_body_received on the request
-#        handler.
-#        """
-#        body = (
-#            'n' # body kind
-#            )
-#        self.assertBodyParsingBehaviour([('no_body_received',)], body)
-#
 #    def test_request_prefixed_body(self):
 #        """Parsing a request with a length-prefixed body calls
 #        prefixed_body_received on the request handler.
