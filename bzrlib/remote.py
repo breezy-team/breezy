@@ -383,8 +383,6 @@ class RemoteRepository(object):
                 'Repository.get_revision_graph', path, revision_id)
         except errors.ErrorFromSmartServer, err:
             if err.error_tuple[0] == 'nosuchrevision':
-                # XXX: response_body = response[1].read_body_bytes()
-                #assert response_body == ''
                 raise NoSuchRevision(self, revision_id)
         if response[0][0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response[0])
