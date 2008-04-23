@@ -189,14 +189,20 @@ class ConventionalResponseHandler(MessageHandler):
         # XXX: don't buffer the full request
         if self._body is None:
             self._wait_for_response_end()
-            self._body = StringIO(''.join(self._bytes_parts))
+            body_bytes = ''.join(self._bytes_parts)
+            if 'hpss' in debug.debug_flags:
+                mutter('              %d body bytes read', len(body_bytes))
+            self._body = StringIO(body_bytes)
             self._bytes_parts = None
         return self._body.read(count)
 
     def read_streamed_body(self):
         while not self.finished_reading:
             while self._bytes_parts:
-                yield self._bytes_parts.popleft()
+                bytes_part = self._bytes_parts.popleft()
+                if 'hpss' in debug.debug_flags:
+                    mutter('              %d byte part read', len(bytes_part))
+                yield bytes_part
             self._read_more()
         if self._body_stream_status == 'E':
             _translate_error(self._body_error_args)
