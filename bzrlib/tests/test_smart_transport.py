@@ -1426,8 +1426,7 @@ class TestSmartProtocol(tests.TestCase):
 
     def make_server_protocol(self):
         out_stream = StringIO()
-        smart_protocol = self.server_protocol_class(
-            None, out_stream.write, '/')
+        smart_protocol = self.server_protocol_class(None, out_stream.write)
         return smart_protocol, out_stream
 
     def setUp(self):
