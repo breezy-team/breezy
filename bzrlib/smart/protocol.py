@@ -148,6 +148,13 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                     self._send_response(self.request.response)
             except KeyboardInterrupt:
                 raise
+            except errors.UnknownSmartMethod, err:
+                protocol_error = errors.SmartProtocolError(
+                    "bad request %r" % (err.verb,))
+                failure = request.FailedSmartServerResponse(
+                    ('error', str(protocol_error)))
+                self._send_response(failure)
+                return
             except Exception, exception:
                 # everything else: pass to client, flush, and quit
                 log_exception_quietly()
@@ -364,9 +371,8 @@ class ChunkedBodyDecoder(_StatefulDecoder):
     def _extract_line(self):
         pos = self._in_buffer.find('\n')
         if pos == -1:
-            # We haven't read a complete length prefix yet, so there's nothing
-            # to do.
-            raise _NeedMoreBytes()
+            # We haven't read a complete line yet, so there's nothing to do.
+            raise _NeedMoreBytes(1)
         line = self._in_buffer[:pos]
         # Trim the prefix (including '\n' delimiter) from the _in_buffer.
         self._in_buffer = self._in_buffer[pos+1:]
@@ -894,6 +900,10 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         if self.state_accept == self._state_accept_reading_unused:
             return 0
         elif self.errored:
+            # An exception occured while processing this message, probably from
+            # self.message_handler.  We're not sure that this state machine is
+            # in a consistent state, so just signal that we're done (i.e. give
+            # up).
             return 0
         else:
             if self._number_needed_bytes is not None:
@@ -962,6 +972,10 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
 
     def send_error(self, exception):
         assert not self.response_sent
+        if isinstance(exception, errors.UnknownSmartMethod):
+            failure = FailedSmartServerResponse('UnknownMethod', exception.verb)
+            self.send_response(failure)
+            return
         self.response_sent = True
         self._write_headers()
         self._write_error_status()

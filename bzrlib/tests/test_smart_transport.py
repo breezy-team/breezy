@@ -1494,17 +1494,6 @@ class TestSmartProtocol(tests.TestCase):
 
 class CommonSmartProtocolTestMixin(object):
 
-    def test_errors_are_logged(self):
-        """If an error occurs during testing, it is logged to the test log."""
-        # XXX: should also test than an error inside a SmartServerRequest would
-        # get logged.
-        smart_protocol, out_stream = self.make_server_protocol()
-        # This triggers a "bad request" error in all protocol versions.
-        smart_protocol.accept_bytes('\0\0\0\0malformed request\n')
-        test_log = self._get_log(keep_log_file=True)
-        self.assertContainsRe(test_log, 'Traceback')
-        self.assertContainsRe(test_log, 'SmartProtocolError')
-
     def test_connection_closed_reporting(self):
         requester, response_handler = self.make_client_protocol()
         requester.call('hello')
