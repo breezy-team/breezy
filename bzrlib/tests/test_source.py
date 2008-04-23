@@ -1,5 +1,6 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
+#            and others
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,15 +23,22 @@ They are useful for testing code quality, checking coverage metric etc.
 
 # import system imports here
 import os
+import parser
 import re
+import symbol
 import sys
+import token
 
 #import bzrlib specific imports here
 from bzrlib import (
     osutils,
     )
 import bzrlib.branch
-from bzrlib.tests import TestCase, TestSkipped
+from bzrlib.tests import (
+    KnownFailure,
+    TestCase,
+    TestSkipped,
+    )
 
 
 # Files which are listed here will be skipped when testing for Copyright (or
@@ -101,7 +109,11 @@ class TestSource(TestSourceHelper):
         return source_dir
 
     def get_source_files(self):
-        """yield all source files for bzr and bzrlib"""
+        """Yield all source files for bzr and bzrlib
+        
+        :param our_files_only: If true, exclude files from included libraries
+            or plugins.
+        """
         bzrlib_dir = self.get_bzrlib_dir()
 
         # This is the front-end 'bzr' script
@@ -126,30 +138,31 @@ class TestSource(TestSourceHelper):
                 f.close()
             yield fname, text
 
+    def is_our_code(self, fname):
+        """Return true if it's a "real" part of bzrlib rather than external code"""
+        if '/util/' in fname or '/plugins/' in fname:
+            return False
+        else:
+            return True
+
     def is_copyright_exception(self, fname):
         """Certain files are allowed to be different"""
-        if '/util/' in fname or '/plugins/' in fname:
+        if not self.is_our_code(fname):
             # We don't ask that external utilities or plugins be
             # (C) Canonical Ltd
             return True
-
         for exc in COPYRIGHT_EXCEPTIONS:
             if fname.endswith(exc):
                 return True
-
         return False
 
     def is_license_exception(self, fname):
         """Certain files are allowed to be different"""
-        if '/util/' in fname or '/plugins/' in fname:
-            # We don't ask that external utilities or plugins be
-            # (C) Canonical Ltd
+        if not self.is_our_code(self, fname):
             return True
-
         for exc in LICENSE_EXCEPTIONS:
             if fname.endswith(exc):
                 return True
-
         return False
 
     def test_tmpdir_not_in_source_files(self):
@@ -253,7 +266,7 @@ class TestSource(TestSourceHelper):
         incorrect = []
 
         for fname, text in self.get_source_file_contents():
-            if '/util/' in fname or '/plugins/' in fname:
+            if not self.is_our_code(fname):
                 continue
             if '\t' in text:
                 incorrect.append(fname)
@@ -263,3 +276,31 @@ class TestSource(TestSourceHelper):
               '\nThey should either be replaced by "\\t" or by spaces:'
               '\n\n    %s'
               % ('\n    '.join(incorrect)))
+
+    def test_no_asserts(self):
+        """bzr shouldn't use the 'assert' statement."""
+        # assert causes too much variation between -O and not, and tends to
+        # give bad errors to the user
+        def search(x):
+            # scan down through x for assert statements, report any problems
+            # this is a bit cheesy; it may get some false positives?
+            if x[0] == symbol.assert_stmt:
+                return True
+            elif x[0] == token.NAME:
+                # can't search further down
+                return False
+            for sub in x[1:]:
+                if sub and search(sub):
+                    return True
+            return False
+        badfiles = []
+        for fname, text in self.get_source_file_contents():
+            if not self.is_our_code(fname):
+                continue
+            ast = parser.ast2tuple(parser.suite(''.join(text)))
+            if search(ast):
+                badfiles.append(fname)
+        if badfiles:
+            raise KnownFailure(
+                "these files contain an assert statement and should not:\n%s"
+                % '\n'.join(badfiles))
