@@ -48,6 +48,9 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * The Python ``assert`` statement is no longer used in Bazaar source, and 
+      a test checks this.  (Martin Pool)
+
     * Implement xml8 serializer.  (Aaron Bentley)
 
   API BREAKS:

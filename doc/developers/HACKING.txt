@@ -671,13 +671,40 @@ the method, so that tests can keep running.
 Coding Style Guidelines
 =======================
 
-General Python rules
---------------------
+hasattr and getattr
+-------------------
 
 ``hasattr`` should not be used because it swallows exceptions including
 ``KeyboardInterrupt``.  Instead, say something like ::
 
   if getattr(thing, 'name', None) is None
+
+
+Assertions
+----------
+
+Do not use the Python ``assert`` statement, either in tests or elsewhere.
+A source test checks that it is not used.
+
+ * It makes the behaviour vary depending on whether bzr is run with -O
+   or not, therefore giving a chance for bugs that occur in one case or
+   the other, several of which have already occurred: assertions with
+   side effects, code which can't continue unless the assertion passes,
+   cases where we should give the user a proper message rather than an
+   assertion failure.
+ * It's not that much shorter than an explicit if/raise.
+ * It tends to lead to fuzzy thinking about whether the check is
+   actually needed or not, and whether it's an internal error or not
+ * It tends to cause look-before-you-leap patterns.
+ * It's unsafe if the check is needed to protect the integrity of the
+   user's data.
+ * It tends to give poor messages since the developer can get by with
+   no explanatory text at all.
+ * We can't rely on people always running with -O in normal use, so we
+   can't use it for tests that are actually expensive.
+ * Expensive checks that help developers are better turned on from the
+   test suite or a -D flag.
+ * If used instead of ``self.assert*()`` in tests it makes them falsely pass with -O.
 
 
 Code layout
