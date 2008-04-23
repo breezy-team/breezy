@@ -869,18 +869,29 @@ class _BreadthFirstSearcher(object):
             not_searched_yet = self._next_query
         else:
             not_searched_yet = ()
+        pending.difference_update(not_searched_yet)
+        #import pdb; pdb.set_trace()
         get_parent_map = self._parents_provider.get_parent_map
-        while pending:
-            parent_map = get_parent_map(pending)
-            all_parents = []
-            # We don't care if it is a ghost, since it can't be seen if it is
-            # a ghost
-            for parent_ids in parent_map.itervalues():
-                all_parents.extend(parent_ids)
-            next_pending = all_seen.intersection(all_parents).difference(seen_ancestors)
-            seen_ancestors.update(next_pending)
-            next_pending.difference_update(not_searched_yet)
-            pending = next_pending
+        orig_gpm = self._parents_provider._parents_provider._real_provider.get_parent_map
+        def get_parent_map_debug_thunk(*args, **kwargs):
+            import pdb; pdb.set_trace()
+            return orig_gpm(*args, **kwargs)
+        # break self._parents_provider._parents_provider._real_provider.get_parent_map
+        try:
+            self._parents_provider._parents_provider._real_provider.get_parent_map = get_parent_map_debug_thunk
+            while pending:
+                parent_map = get_parent_map(pending)
+                all_parents = []
+                # We don't care if it is a ghost, since it can't be seen if it is
+                # a ghost
+                for parent_ids in parent_map.itervalues():
+                    all_parents.extend(parent_ids)
+                next_pending = all_seen.intersection(all_parents).difference(seen_ancestors)
+                seen_ancestors.update(next_pending)
+                next_pending.difference_update(not_searched_yet)
+                pending = next_pending
+        finally:
+            self._parents_provider._parents_provider._real_provider.get_parent_map = orig_gpm
 
         return seen_ancestors
 
