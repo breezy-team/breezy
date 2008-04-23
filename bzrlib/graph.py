@@ -573,6 +573,18 @@ class Graph(object):
                     newly_seen_common.update(searcher.find_seen_ancestors(newly_seen_common))
                 for searcher in common_searchers:
                     searcher.start_searching(newly_seen_common)
+
+                # If a 'common' node has been found by a unique searcher, we
+                # can stop searching it.
+                stop_searching_common = None
+                for searcher in unique_searchers:
+                    if stop_searching_common is None:
+                        stop_searching_common = searcher.find_seen_ancestors(newly_seen_common)
+                    else:
+                        stop_searching_common = stop_searching_common.intersection(searcher.find_seen_ancestors(newly_seen_common))
+                if stop_searching_common:
+                    for searcher in common_searchers:
+                        searcher.stop_searching_any(stop_searching_common)
             if new_common_unique:
                 # We found some ancestors that are common, jump all the way to
                 # their most ancestral node that we have already seen.
@@ -593,13 +605,13 @@ class Graph(object):
                 for searcher in common_searchers:
                     searcher.stop_searching_any(new_common_unique)
                 common_ancestors_unique.update(new_common_unique)
-            for searcher in unique_searchers:
-                if searcher._next_query:
-                    # We have something to look for
-                    break
-            else:
-                # All unique_searchers have stopped searching
-                break
+            # for searcher in unique_searchers:
+            #     if searcher._next_query:
+            #         # We have something to look for
+            #         break
+            # else:
+            #     # All unique_searchers have stopped searching
+            #     break
             for searcher in common_searchers:
                 if searcher._next_query:
                     break

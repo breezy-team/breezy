@@ -205,25 +205,40 @@ complex_shortcut = {'a':[NULL_REVISION], 'b':['a'], 'c':['b'], 'd':['c'],
 #     |
 #     d
 #     |\
-#     e f
+#     e |
+#     | |
+#     f |
+#     | |
+#     g h
 #     | |\
-#     i | h
+#     i | j
 #     |\| |
-#     | g |
-#     | | |
-#     | j |
-#     | | |
 #     | k |
 #     | | |
 #     | l |
+#     | | |
+#     | m |
+#     | | |
+#     | n |
+#     | | |
+#     | o |
+#     | | |
+#     | p |
+#     | | |
+#     | q |
+#     | | |
+#     | r |
+#     | | |
+#     | s |
+#     | | |
 #     |/|/
-#     m n
-complex_shortcut2 = {'d':[NULL_REVISION],
-                    'x':['d'], 'y':['x'],
-                    'e':['y'], 'f':['d'], 'g':['f', 'i'], 'h':['f'],
-                    'i':['e'], 'j':['g'], 'k':['j'],
-                    'l':['k'], 'm':['i', 's'], 'n':['s', 'h'],
-                    'o':['l'], 'p':['o'], 'q':['p'],
+#     t u
+complex_shortcut2 = {'a':[NULL_REVISION], 'b':['a'], 'c':['b'], 'd':['c'],
+                    'e':['d'], 'f':['e'],
+                    'g':['f'], 'h':['d'], 'k':['h', 'i'], 'j':['h'],
+                    'i':['g'], 'l':['k'], 'm':['l'],
+                    'n':['m'], 't':['i', 's'], 'u':['s', 'j'],
+                    'o':['n'], 'p':['o'], 'q':['p'],
                     'r':['q'], 's':['r'],
                     }
 
@@ -505,8 +520,8 @@ class TestGraph(TestCaseWithMemoryTransport):
 
     def test_graph_difference_complex_shortcut2(self):
         graph = self.make_graph(complex_shortcut2)
-        self.assertEqual((set(['m']), set(['h', 'n'])),
-                         graph.find_difference('m', 'n'))
+        self.assertEqual((set(['t']), set(['j', 'u'])),
+                         graph.find_difference('t', 'u'))
 
     def test_graph_difference_shortcut_extra_root(self):
         graph = self.make_graph(shortcut_extra_root)
