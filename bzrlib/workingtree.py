@@ -252,7 +252,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         cache_filename = wt_trans.local_abspath('stat-cache')
         self._hashcache = hashcache.HashCache(basedir, cache_filename,
             self._control_files._file_mode,
-            lambda(p): self._content_filter_stack(p))
+            lambda path, file_id: self._content_filter_stack(path, file_id))
         hc = self._hashcache
         hc.read()
         # is this scan needed ? it makes things kinda slow.

@@ -308,10 +308,10 @@ class DirState(object):
         """Create a  DirState object.
 
         :param path: The path at which the dirstate file on disk should live.
-        :param content_filter_stack_provider: a function that expects a
-            path (relative to the top of the tree) as a parameter and
-            returns the stack of ContentFilter's for that path. If None,
-            no content filtering is performed.
+        :param content_filter_stack_provider: a function that takes a
+            path (relative to the top of the tree) and a file-id as
+            parameters and returns a stack of ContentFilter's.
+            If None, no content filtering is performed.
         """
         # _header_state and _dirblock_state represent the current state
         # of the dirstate metadata and the per-row data respectiely.
@@ -1497,11 +1497,12 @@ class DirState(object):
         link_or_sha1 = None
         if minikind == 'f':
             if self._cfs_provider is None:
-                filters_ = None
+                filter_list = []
             else:
                 relpath = osutils.pathjoin(entry[0][0], entry[0][1])
-                filters_ = self._cfs_provider(relpath)
-            link_or_sha1 = self._sha1_file(abspath, filters_)
+                file_id=entry[0][2]
+                filter_list = self._cfs_provider(relpath, file_id)
+            link_or_sha1 = self._sha1_file(abspath, filter_list)
             executable = self._is_executable(stat_value.st_mode,
                                              saved_executable)
             if self._cutoff_time is None:
@@ -1555,11 +1556,11 @@ class DirState(object):
         """Return the os.lstat value for this path."""
         return os.lstat(abspath)
 
-    def _sha1_file_and_mutter(self, abspath, filters_):
+    def _sha1_file_and_mutter(self, abspath, filter_list):
         # when -Dhashcache is turned on, this is monkey-patched in to log
         # file reads
         trace.mutter("dirstate sha1 " + abspath)
-        return filters.sha_file_by_name(abspath, filters_)
+        return filters.sha_file_by_name(abspath, filter_list)
 
     def _is_executable(self, mode, old_executable):
         """Is this file executable?"""
@@ -1955,10 +1956,10 @@ class DirState(object):
     def on_file(path, content_filter_stack_provider=None):
         """Construct a DirState on the file at path path.
 
-        :param content_filter_stack_provider: a function that expects a
-            path (relative to the top of the tree) as a parameter and
-            returns the stack of ContentFilter's for that path. If None,
-            no content filtering is performed.
+        :param content_filter_stack_provider: a function that takes a
+            path (relative to the top of the tree) and a file-id as
+            parameters and returns a stack of ContentFilter's.
+            If None, no content filtering is performed.
         :return: An unlocked DirState object, associated with the given path.
         """
         result = DirState(path, content_filter_stack_provider)

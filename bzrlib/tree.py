@@ -429,7 +429,7 @@ class Tree(object):
         import sys
         sys.stdout.writelines(filtered_output_lines(
             self.get_file_lines(file_id),
-            self._content_filter_stack(self.id2path(file_id))))
+            self._content_filter_stack(file_id=file_id)))
 
     def lock_read(self):
         pass
@@ -503,13 +503,19 @@ class Tree(object):
         """
         raise NotImplementedError(self.walkdirs)
 
-    def _content_filter_stack(self, path):
+    def _content_filter_stack(self, path=None, file_id=None):
         """The stack of content filters for a path.
         
         Readers will be applied in first-to-last order.
         Writers will be applied in last-to-first order.
+        Either the path or the file-id needs to be provided.
+
+        :param path: path relative to the root of the tree
+            or None if unknown
+        :param file_id: file_id or None if unknown
+        :return: the list of filters - [] if there are none
         """
-        return None
+        return []
 
 
 class EmptyTree(Tree):

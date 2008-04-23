@@ -85,10 +85,10 @@ class HashCache(object):
             content_filter_stack_provider=None):
         """Create a hash cache in base dir, and set the file mode to mode.
 
-        :param content_filter_stack_provider: a function that expects a
-            path (relative to the top of the tree) as a parameter and
-            returns the stack of ContentFilter's for that path. If None,
-            no content filtering is performed.
+        :param content_filter_stack_provider: a function that takes a
+            path (relative to the top of the tree) and a file-id as
+            parameters and returns a stack of ContentFilter's.
+            If None, no content filtering is performed.
         """
         self.root = safe_unicode(root)
         self.root_utf8 = self.root.encode('utf8') # where is the filesystem encoding ?
@@ -172,9 +172,9 @@ class HashCache(object):
         mode = file_fp[FP_MODE_COLUMN]
         if stat.S_ISREG(mode):
             if self._cfs_provider is None:
-                filters = None
+                filters = []
             else:
-                filters = self._cfs_provider(path)
+                filters = self._cfs_provider(path=path, file_id=None)
             digest = self._really_sha1_file(abspath, filters)
         elif stat.S_ISLNK(mode):
             digest = sha.new(os.readlink(abspath)).hexdigest()
