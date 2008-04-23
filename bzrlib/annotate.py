@@ -311,7 +311,8 @@ def _reannotate_annotated(right_parent_lines, new_lines, new_revision_id,
     :param heads_provider: When parents disagree on the lineage of a line, we
         need to check if one side supersedes the other.
     """
-    assert len(new_lines) == len(annotated_lines)
+    if len(new_lines) != len(annotated_lines):
+        raise AssertionError("mismatched new_lines and annotated_lines")
     # First compare the newly annotated lines with the right annotated lines.
     # Lines which were not changed in left or right should match. This tends to
     # be the bulk of the lines, and they will need no further processing.
