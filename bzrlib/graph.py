@@ -521,8 +521,6 @@ class Graph(object):
         unique = self._remove_simple_descendants(unique,
                     self.get_parent_map(unique))
         simple_unique = len(unique)
-        trace.mutter('Starting %s unique searchers for %s unique revisions',
-                     simple_unique, total_unique)
 
         unique_searchers = []
         for revision_id in unique:
@@ -549,6 +547,21 @@ class Graph(object):
             else:
                 ancestor_all_unique = ancestor_all_unique.intersection(
                                             searcher.seen)
+
+        # Filter out searchers that don't actually search different nodes. We
+        # already have the ancestry intersection for them
+        next_unique_searchers = []
+        unique_search_sets = set()
+        for searcher in unique_searchers:
+            will_search_set = frozenset(searcher._next_query)
+            if will_search_set not in unique_search_sets:
+                # This searcher is searching a unique set of nodes, let it
+                unique_search_sets.add(will_search_set)
+                next_unique_searchers.append(searcher)
+        trace.mutter('Started %s unique searchers for %s unique revisions,'
+                     ' %s with unique tips',
+                     simple_unique, total_unique, len(next_unique_searchers))
+        unique_searchers = next_unique_searchers
 
         while True: # If we have no more nodes we have nothing to do
             newly_seen_common = set()
@@ -609,6 +622,18 @@ class Graph(object):
                 for searcher in common_searchers:
                     searcher.stop_searching_any(new_common_unique)
                 ancestor_all_unique.update(new_common_unique)
+
+                # Filter out searchers that don't actually search different nodes. We
+                # already have the ancestry intersection for them
+                next_unique_searchers = []
+                unique_search_sets = set()
+                for searcher in unique_searchers:
+                    will_search_set = frozenset(searcher._next_query)
+                    if will_search_set not in unique_search_sets:
+                        # This searcher is searching a unique set of nodes, let it
+                        unique_search_sets.add(will_search_set)
+                        next_unique_searchers.append(searcher)
+                unique_searchers = next_unique_searchers
             for searcher in common_searchers:
                 if searcher._next_query:
                     break
