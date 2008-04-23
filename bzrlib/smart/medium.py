@@ -706,3 +706,4 @@ class SmartClientStreamMediumRequest(SmartClientMediumRequest):
         on the mediums stream.
         """
         return self._medium._read_bytes(count)
+
