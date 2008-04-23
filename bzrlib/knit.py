@@ -212,6 +212,42 @@ class DeltaAnnotatedToFullText(KnitAdapter):
         return ''.join(basis_content.text())
 
 
+class FTPlainToFullText(KnitAdapter):
+    """An adapter from FT plain knits to unannotated ones."""
+
+    def get_bytes(self, factory, compressed_bytes):
+        rec, contents = \
+            self._data._parse_record_unchecked(compressed_bytes)
+        content, delta = self._plain_factory.parse_record(factory.key[0],
+            contents, factory._build_details, None)
+        return ''.join(content.text())
+
+
+class DeltaPlainToFullText(KnitAdapter):
+    """An adapter for deltas from annotated to unannotated."""
+
+    def __init__(self, basis_vf):
+        """Create an adapter which accesses full texts from basis_vf.
+        
+        :param basis_vf: A versioned file to access basis texts of deltas from.
+        """
+        KnitAdapter.__init__(self)
+        self._basis_vf = basis_vf
+
+    def get_bytes(self, factory, compressed_bytes):
+        rec, contents = \
+            self._data._parse_record_unchecked(compressed_bytes)
+        delta = self._plain_factory.parse_line_delta(contents, rec[1])
+        compression_parent = factory.parents[0][0]
+        basis_lines = self._basis_vf.get_lines(compression_parent)
+        basis_content = PlainKnitContent(basis_lines, compression_parent)
+        # Manually apply the delta because we have one annotated content and
+        # one plain.
+        content, _ = self._plain_factory.parse_record(rec[1], contents,
+            factory._build_details, basis_content)
+        return ''.join(content.text())
+
+
 class KnitContentFactory(ContentFactory):
     """Content factory for streaming from knits.
     
@@ -618,8 +654,6 @@ def make_file_knit(name, transport, file_mode=None, access_mode='w',
     """Factory to create a KnitVersionedFile for a .knit/.kndx file pair."""
     if factory is None:
         factory = KnitAnnotateFactory()
-    else:
-        factory = KnitPlainFactory()
     if get_scope is None:
         get_scope = lambda:None
     index = _KnitIndex(transport, name + INDEX_SUFFIX,

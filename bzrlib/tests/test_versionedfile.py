@@ -1368,9 +1368,13 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
         """Test that selecting an adaptor works."""
         # self.assertEqual(versionedfile.
 
-    def get_knit(self):
+    def get_knit(self, annotated=True):
+        if annotated:
+            factory = KnitAnnotateFactory()
+        else:
+            factory = KnitPlainFactory()
         return make_file_knit('knit', self.get_transport('.'), delta=True,
-            create=True)
+            create=True, factory=factory)
 
     def helpGetBytes(self, f, ft_adapter, delta_adapter):
         """grab the interested adapted texts for tests."""
@@ -1446,3 +1450,21 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
         self.assertEqual('origin\n', ft_data)
         self.assertEqual('base\nleft\nright\nmerged\n', delta_data)
         self.assertEqual([('get_lines', 'left')], logged_vf.calls)
+
+    def test_unannotated_to_fulltext(self):
+        """Test adapting unannotated knits to full texts.
+        
+        This is used for -> weaves, and for -> annotated knits.
+        """
+        # we need a full text, and a delta
+        f, parents = get_diamond_vf(self.get_knit(annotated=False))
+        # Reconstructing a full text requires a backing versioned file, and it
+        # must have the base lines requested from it.
+        logged_vf = versionedfile.RecordingVersionedFileDecorator(f)
+        ft_data, delta_data = self.helpGetBytes(f,
+            _mod_knit.FTPlainToFullText(),
+            _mod_knit.DeltaPlainToFullText(logged_vf))
+        self.assertEqual('origin\n', ft_data)
+        self.assertEqual('base\nleft\nright\nmerged\n', delta_data)
+        self.assertEqual([('get_lines', 'left')], logged_vf.calls)
+
