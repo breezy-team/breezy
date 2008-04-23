@@ -592,10 +592,10 @@ class Repository(object):
         Returns a set of the present revisions.
         """
         result = []
-        for id in revision_ids:
-            if self.has_revision(id):
-               result.append(id)
-        return result
+        graph = self.get_graph()
+        parent_map = graph.get_parent_map(revision_ids)
+        # The old API returned a list, should this actually be a set?
+        return parent_map.keys()
 
     @staticmethod
     def create(a_bzrdir):
