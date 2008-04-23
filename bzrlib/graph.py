@@ -536,19 +536,12 @@ class Graph(object):
             searcher.step()
             unique_searchers.append(searcher)
 
-        # Aggregate all of the searchers into a single common searcher, would
-        # it be okay to do this?
-        # okay to do this?
-        # common_searcher = self._make_breadth_first_searcher([])
-        # for searcher in searchers:
-        #     common_searcher.start_searching(searcher.will_search())
-        #     common_searcher.seen.update(searcher.seen)
+        # possible todo: aggregate the common searchers into a single common
+        #   searcher, just make sure that we include the nodes into the .seen
+        #   properties of the original searchers
         common_ancestors_unique = set()
 
         while True: # If we have no more nodes we have nothing to do
-            # XXX: Any nodes here which don't match between searchers indicate
-            #      that we have found a genuinely unique node, which would not
-            #      have been found by the other searching techniques
             newly_seen_common = set()
             for searcher in common_searchers:
                 newly_seen_common.update(searcher.step())
@@ -572,7 +565,8 @@ class Graph(object):
                 # These are nodes descended from one of the 'common' searchers.
                 # Make sure all searchers are on the same page
                 for searcher in common_searchers:
-                    newly_seen_common.update(searcher.find_seen_ancestors(newly_seen_common))
+                    newly_seen_common.update(
+                        searcher.find_seen_ancestors(newly_seen_common))
                 # We start searching the whole ancestry. It is a bit wasteful,
                 # though. We really just want to mark all of these nodes as
                 # 'seen' and then start just the tips. However, it requires a
@@ -588,7 +582,8 @@ class Graph(object):
                     if stop_searching_common is None:
                         stop_searching_common = searcher.find_seen_ancestors(newly_seen_common)
                     else:
-                        stop_searching_common = stop_searching_common.intersection(searcher.find_seen_ancestors(newly_seen_common))
+                        stop_searching_common = stop_searching_common.intersection(
+                            searcher.find_seen_ancestors(newly_seen_common))
                 if stop_searching_common:
                     for searcher in common_searchers:
                         searcher.stop_searching_any(stop_searching_common)
@@ -596,11 +591,13 @@ class Graph(object):
                 # We found some ancestors that are common, jump all the way to
                 # their most ancestral node that we have already seen.
                 for searcher in unique_searchers:
-                    new_common_unique.update(searcher.find_seen_ancestors(new_common_unique))
+                    new_common_unique.update(
+                        searcher.find_seen_ancestors(new_common_unique))
                 # Since these are common, we can grab another set of ancestors
                 # that we have seen
                 for searcher in common_searchers:
-                    new_common_unique.update(searcher.find_seen_ancestors(new_common_unique))
+                    new_common_unique.update(
+                        searcher.find_seen_ancestors(new_common_unique))
 
                 # Now we have a complete set of common nodes which are
                 # ancestors of the unique nodes.
@@ -617,8 +614,7 @@ class Graph(object):
                     break
             else:
                 # All common searcher have stopped searching
-                break
-
+                return
 
     def _remove_simple_descendants(self, revisions, parent_map):
         """remove revisions which are children of other ones in the set
