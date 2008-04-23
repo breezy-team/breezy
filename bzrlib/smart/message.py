@@ -45,7 +45,7 @@ class MessageHandler(object):
         raise
     
     def end_received(self):
-        # XXX
+        # No-op by default.
         pass
 
 
@@ -85,10 +85,6 @@ class ConventionalRequestHandler(MessageHandler):
         self.request_handler.end_of_body()
         assert self.request_handler.finished_reading
         self.responder.send_response(self.request_handler.response)
-
-    def end_received(self):
-        # XXX
-        pass
 
 
 class ResponseHandler(object):
