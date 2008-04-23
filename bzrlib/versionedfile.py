@@ -37,8 +37,24 @@ from bzrlib.transport.memory import MemoryTransport
 from cStringIO import StringIO
 
 from bzrlib.inter import InterObject
+from bzrlib.registry import Registry
 from bzrlib.symbol_versioning import *
 from bzrlib.textmerge import TextMerge
+
+
+adapter_registry = Registry()
+adapter_registry.register_lazy(('knit-delta-gz', 'fulltext'), 'bzrlib.knit',
+    'DeltaPlainToFullText')
+adapter_registry.register_lazy(('knit-ft-gz', 'fulltext'), 'bzrlib.knit',
+    'FTPlainToFullText')
+adapter_registry.register_lazy(('knit-annotated-delta-gz', 'knit-delta-gz'),
+    'bzrlib.knit', 'DeltaAnnotatedToUnannotated')
+adapter_registry.register_lazy(('knit-annotated-delta-gz', 'fulltext'),
+    'bzrlib.knit', 'DeltaAnnotatedToFullText')
+adapter_registry.register_lazy(('knit-annotated-ft-gz', 'knit-ft-gz'),
+    'bzrlib.knit', 'FTAnnotatedToUnannotated')
+adapter_registry.register_lazy(('knit-annotated-ft-gz', 'fulltext'),
+    'bzrlib.knit', 'FTAnnotatedToFullText')
 
 
 class ContentFactory(object):

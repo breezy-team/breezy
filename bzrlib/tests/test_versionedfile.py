@@ -1365,8 +1365,26 @@ class TestWeaveMerge(TestCaseWithMemoryTransport, MergeCasesMixin):
 class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
 
     def test_select_adaptor(self):
-        """Test that selecting an adaptor works."""
-        # self.assertEqual(versionedfile.
+        """Test expected adapters exist."""
+        # One scenario for each lookup combination we expect to use.
+        # Each is source_kind, requested_kind, adapter class
+        scenarios = [
+            ('knit-delta-gz', 'fulltext', _mod_knit.DeltaPlainToFullText),
+            ('knit-ft-gz', 'fulltext', _mod_knit.FTPlainToFullText),
+            ('knit-annotated-delta-gz', 'knit-delta-gz',
+                _mod_knit.DeltaAnnotatedToUnannotated),
+            ('knit-annotated-delta-gz', 'fulltext',
+                _mod_knit.DeltaAnnotatedToFullText),
+            ('knit-annotated-ft-gz', 'knit-ft-gz',
+                _mod_knit.FTAnnotatedToUnannotated),
+            ('knit-annotated-ft-gz', 'fulltext',
+                _mod_knit.FTAnnotatedToFullText),
+            ]
+        for source, requested, klass in scenarios:
+            adapter_factory = versionedfile.adapter_registry.get(
+                (source, requested))
+            adapter = adapter_factory(None)
+            self.assertIsInstance(adapter, klass)
 
     def get_knit(self, annotated=True):
         if annotated:
@@ -1394,8 +1412,8 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
         # we need a full text, and a delta
         f, parents = get_diamond_vf(self.get_knit(), trailing_eol=False)
         ft_data, delta_data = self.helpGetBytes(f,
-            _mod_knit.FTAnnotatedToUnannotated(),
-            _mod_knit.DeltaAnnotatedToUnannotated())
+            _mod_knit.FTAnnotatedToUnannotated(None),
+            _mod_knit.DeltaAnnotatedToUnannotated(None))
         self.assertEqual(
             'version origin 1 b284f94827db1fa2970d9e2014f080413b547a7e\n'
             'origin\n'
@@ -1411,8 +1429,8 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
         # we need a full text, and a delta
         f, parents = get_diamond_vf(self.get_knit())
         ft_data, delta_data = self.helpGetBytes(f,
-            _mod_knit.FTAnnotatedToUnannotated(),
-            _mod_knit.DeltaAnnotatedToUnannotated())
+            _mod_knit.FTAnnotatedToUnannotated(None),
+            _mod_knit.DeltaAnnotatedToUnannotated(None))
         self.assertEqual(
             'version origin 1 00e364d235126be43292ab09cb4686cf703ddc17\n'
             'origin\n'
@@ -1431,7 +1449,7 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
         # must have the base lines requested from it.
         logged_vf = versionedfile.RecordingVersionedFileDecorator(f)
         ft_data, delta_data = self.helpGetBytes(f,
-            _mod_knit.FTAnnotatedToFullText(),
+            _mod_knit.FTAnnotatedToFullText(None),
             _mod_knit.DeltaAnnotatedToFullText(logged_vf))
         self.assertEqual('origin', ft_data)
         self.assertEqual('base\nleft\nright\nmerged', delta_data)
@@ -1445,7 +1463,7 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
         # must have the base lines requested from it.
         logged_vf = versionedfile.RecordingVersionedFileDecorator(f)
         ft_data, delta_data = self.helpGetBytes(f,
-            _mod_knit.FTAnnotatedToFullText(),
+            _mod_knit.FTAnnotatedToFullText(None),
             _mod_knit.DeltaAnnotatedToFullText(logged_vf))
         self.assertEqual('origin\n', ft_data)
         self.assertEqual('base\nleft\nright\nmerged\n', delta_data)
@@ -1462,7 +1480,7 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
         # must have the base lines requested from it.
         logged_vf = versionedfile.RecordingVersionedFileDecorator(f)
         ft_data, delta_data = self.helpGetBytes(f,
-            _mod_knit.FTPlainToFullText(),
+            _mod_knit.FTPlainToFullText(None),
             _mod_knit.DeltaPlainToFullText(logged_vf))
         self.assertEqual('origin\n', ft_data)
         self.assertEqual('base\nleft\nright\nmerged\n', delta_data)
@@ -1480,7 +1498,7 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
         # must have the base lines requested from it.
         logged_vf = versionedfile.RecordingVersionedFileDecorator(f)
         ft_data, delta_data = self.helpGetBytes(f,
-            _mod_knit.FTPlainToFullText(),
+            _mod_knit.FTPlainToFullText(None),
             _mod_knit.DeltaPlainToFullText(logged_vf))
         self.assertEqual('origin', ft_data)
         self.assertEqual('base\nleft\nright\nmerged', delta_data)

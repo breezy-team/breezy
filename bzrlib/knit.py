@@ -145,10 +145,16 @@ INDEX_SUFFIX = '.kndx'
 class KnitAdapter(object):
     """Base class for knit record adaption."""
 
-    def __init__(self):
+    def __init__(self, basis_vf):
+        """Create an adapter which accesses full texts from basis_vf.
+        
+        :param basis_vf: A versioned file to access basis texts of deltas from.
+            May be None for adapters that do not need to access basis texts.
+        """
         self._data = _KnitData(None)
         self._annotate_factory = KnitAnnotateFactory()
         self._plain_factory = KnitPlainFactory()
+        self._basis_vf = basis_vf
 
 
 class FTAnnotatedToUnannotated(KnitAdapter):
@@ -189,14 +195,6 @@ class FTAnnotatedToFullText(KnitAdapter):
 class DeltaAnnotatedToFullText(KnitAdapter):
     """An adapter for deltas from annotated to unannotated."""
 
-    def __init__(self, basis_vf):
-        """Create an adapter which accesses full texts from basis_vf.
-        
-        :param basis_vf: A versioned file to access basis texts of deltas from.
-        """
-        KnitAdapter.__init__(self)
-        self._basis_vf = basis_vf
-
     def get_bytes(self, factory, annotated_compressed_bytes):
         rec, contents = \
             self._data._parse_record_unchecked(annotated_compressed_bytes)
@@ -225,14 +223,6 @@ class FTPlainToFullText(KnitAdapter):
 
 class DeltaPlainToFullText(KnitAdapter):
     """An adapter for deltas from annotated to unannotated."""
-
-    def __init__(self, basis_vf):
-        """Create an adapter which accesses full texts from basis_vf.
-        
-        :param basis_vf: A versioned file to access basis texts of deltas from.
-        """
-        KnitAdapter.__init__(self)
-        self._basis_vf = basis_vf
 
     def get_bytes(self, factory, compressed_bytes):
         rec, contents = \
