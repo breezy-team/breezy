@@ -514,9 +514,7 @@ class Graph(object):
         common_searchers = searchers
         left_searcher = searchers[0]
         right_searcher = searchers[1]
-        left_unique = left_searcher.seen.difference(right_searcher.seen)
-        right_unique = right_searcher.seen.difference(left_searcher.seen)
-        unique = left_unique.union(right_unique)
+        unique = left_searcher.seen.symmetric_difference(right_searcher.seen)
         total_unique = len(unique)
         unique = self._remove_simple_descendants(unique,
                     self.get_parent_map(unique))
@@ -526,14 +524,17 @@ class Graph(object):
 
         unique_searchers = []
         for revision_id in unique:
-            if revision_id in left_unique:
+            if revision_id in left_searcher.seen:
                 parent_searcher = left_searcher
             else:
                 parent_searcher = right_searcher
             revs_to_search = parent_searcher.find_seen_ancestors([revision_id])
             if not revs_to_search: # XXX: This shouldn't be possible
                 revs_to_search = [revision_id]
-            unique_searchers.append(self._make_breadth_first_searcher(revs_to_search))
+            searcher = self._make_breadth_first_searcher(revs_to_search)
+            # We don't care about the starting nodes.
+            searcher.step()
+            unique_searchers.append(searcher)
 
         # Aggregate all of the searchers into a single common searcher, would
         # it be okay to do this?
