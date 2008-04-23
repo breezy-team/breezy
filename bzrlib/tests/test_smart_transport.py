@@ -2212,7 +2212,6 @@ class TestProtocolThree(TestSmartProtocol):
         self.assertEqual(0, smart_protocol.next_read_size())
         self.assertEqual('', smart_protocol.unused_data)
 
-    # XXX: TestMessagePartDecoding vvv XXX
     def make_protocol_expecting_message_part(self):
         headers = '\0\0\0\x02de'  # length-prefixed, bencoded empty dict
         message_handler = LoggingMessageHandler()
@@ -2261,91 +2260,6 @@ class TestProtocolThree(TestSmartProtocol):
             )
         self.assertEqual(
             [('bytes', 'first'), ('bytes', 'second')], event_log)
-
-    # XXX: TestMessagePartDecoding ^^^ XXX
-
-#    def make_protocol_expecting_body(self):
-#        """Returns a SmartServerRequestProtocolThree instance in the
-#        'expecting_body_kind' state.
-#
-#        That is, return a protocol object that is waiting to receive a body.
-#        """
-#        output = StringIO()
-#        headers = '\0\0\0\x02de'  # length-prefixed, bencoded empty dict
-#        args = '\0\0\0\x07l3:ARGe' # length-prefixed, bencoded list: ['ARG']
-#        request_bytes = headers + args
-#        smart_protocol = self.server_protocol_class(None, output.write,
-#            dummy_registry)
-#        smart_protocol.accept_bytes(request_bytes)
-#        return smart_protocol
-#
-#    def assertBodyParsingBehaviour(self, calls, protocol_bytes):
-#        """Assert that the given bytes cause an exact sequence of calls to the
-#        request handler, followed by an end_received call.
-#        """
-#        calls = calls + [('end_received',)]
-#        smart_protocol = self.make_protocol_expecting_body()
-#        smart_protocol.request_handler = InstrumentedRequestHandler()
-#        smart_protocol.accept_bytes(protocol_bytes)
-#        self.assertEqual(calls, smart_protocol.request_handler.calls,
-#            "%r was not parsed as expected" % (protocol_bytes,))
-#
-#    def test_request_prefixed_body(self):
-#        """Parsing a request with a length-prefixed body calls
-#        prefixed_body_received on the request handler.
-#        """
-#        body = (
-#            'p' # body kind
-#            '\0\0\0\x07' # length prefix
-#            'content' # the payload
-#            )
-#        self.assertBodyParsingBehaviour(
-#            [('prefixed_body_received', 'content')], body)
-#
-#    def test_request_chunked_body_zero_chunks(self):
-#        """Parsing a request with a streamed body with no chunks does not call
-#        the request handler!
-#        """
-#        body = (
-#            's' # body kind
-#            't' # stream terminator
-#            )
-#        self.assertBodyParsingBehaviour([], body)
-#
-#    def test_request_chunked_body_one_chunks(self):
-#        """Parsing a request with a streamed body with one chunk calls
-#        body_chunk_received once.
-#        """
-#        body = (
-#            's' # body kind
-#            'c' # chunk indicator
-#            '\0\0\0\x03' # chunk length
-#            'one' # chunk content
-#            # Done
-#            't' # stream terminator
-#            )
-#        self.assertBodyParsingBehaviour([('body_chunk_received', 'one')], body)
-#
-#    def test_request_chunked_body_two_chunks(self):
-#        """Parsing a request with a streamed body with multiple chunks calls
-#        body_chunk_received for each chunk.
-#        """
-#        body = (
-#            's' # body kind
-#            # First chunk
-#            'c' # chunk indicator
-#            '\0\0\0\x03' # chunk length
-#            'one' # chunk content
-#            # Second chunk
-#            'c'
-#            '\0\0\0\x03'
-#            'two'
-#            # Done
-#            't' # stream terminator
-#            )
-#        self.assertBodyParsingBehaviour(
-#            [('body_chunk_received', 'one'), ('body_chunk_received', 'two')],
-#            body)
 
 
 class TestConventionalResponseHandler(tests.TestCase):
@@ -2440,7 +2354,20 @@ class TestClientDecodingProtocolThree(TestSmartProtocol):
             [('headers', {}), ('byte', 'S'), ('structure', []), ('end',)],
             response_handler.event_log)
 
-    #def test_read_response_tuple_unknown_request(self):
+    def test_read_response_tuple_unknown_request(self):
+        """If the response has an error, it is raised as an exception."""
+        headers = '\0\0\0\x02de'  # length-prefixed, bencoded empty dict
+        response_status = 'oE' # error flag
+        # args: ('UnknownMethod', 'method-name')
+        args = 's\0\0\0\x20l13:UnknownMethod11:method-namee'
+        end = 'e' # end marker
+        message_bytes = headers + response_status + args + end
+        decoder, response_handler = self.make_conventional_response_decoder()
+        decoder.accept_bytes(message_bytes)
+        error = self.assertRaises(
+            errors.UnknownSmartMethod, response_handler.read_response_tuple)
+        self.assertEqual('method-name', error.verb)
+
     def test_read_response_tuple_error(self):
         """If the response has an error, it is raised as an exception."""
         headers = '\0\0\0\x02de'  # length-prefixed, bencoded empty dict

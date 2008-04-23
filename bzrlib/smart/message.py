@@ -252,8 +252,8 @@ def _translate_error(error_tuple):
     # few errors, and the rest are turned into a generic ErrorFromSmartServer.
     error_name = error_tuple[0]
     error_args = error_tuple[1:]
-    if error_name == 'UnknownSmartMethod':
-        raise errors.UnknownSmartMethod(error_args[1])
+    if error_name == 'UnknownMethod':
+        raise errors.UnknownSmartMethod(error_args[0])
     if error_name == 'LockContention':
         raise errors.LockContention('(remote lock)')
     elif error_name == 'LockFailed':
