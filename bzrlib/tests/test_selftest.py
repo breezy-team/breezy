@@ -1747,6 +1747,16 @@ class TestSelftestFiltering(TestCase):
         re_filtered = filter_suite_by_re(self.suite, my_pattern)
         self.assertEqual(_test_ids(re_filtered), _test_ids(filtered_suite))
 
+    def test_condition_id_startswith(self):
+        klass = 'bzrlib.tests.test_selftest.TestSelftestFiltering.'
+        start = klass + 'test_condition_id_starts'
+        test_names = [klass + 'test_condition_id_startswith']
+        filtered_suite = filter_suite_by_condition(
+            self.suite, tests.condition_id_startswith(start))
+        my_pattern = 'TestSelftestFiltering.*test_condition_id_startswith'
+        re_filtered = filter_suite_by_re(self.suite, my_pattern)
+        self.assertEqual(_test_ids(re_filtered), _test_ids(filtered_suite))
+
     def test_condition_isinstance(self):
         filtered_suite = filter_suite_by_condition(self.suite,
             condition_isinstance(self.__class__))
@@ -1801,6 +1811,19 @@ class TestSelftestFiltering(TestCase):
             filtered_names,
             ['bzrlib.tests.test_selftest.'
              'TestSelftestFiltering.test_filter_suite_by_id_list'])
+
+    def test_filter_suite_by_id_startswith(self):
+        # By design this test may fail if another test is added whose a name
+        # also begins with the start value used.
+        klass = 'bzrlib.tests.test_selftest.TestSelftestFiltering.'
+        start = klass + 'test_filter_suite_by_id_starts'
+        test_list = [klass + 'test_filter_suite_by_id_startswith']
+        filtered_suite = tests.filter_suite_by_id_startswith(self.suite, start)
+        filtered_names = _test_ids(filtered_suite)
+        self.assertEqual(
+            filtered_names,
+            ['bzrlib.tests.test_selftest.'
+             'TestSelftestFiltering.test_filter_suite_by_id_startswith'])
 
     def test_preserve_input(self):
         # NB: Surely this is something in the stdlib to do this?
@@ -2075,6 +2098,27 @@ class TestFilteredByModuleTestLoader(tests.TestCase):
     def test_exclude_tests(self):
         test_list = ['bogus']
         loader = self._create_loader(test_list)
+
+        suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
+        self.assertEquals([], _test_ids(suite))
+
+
+class TestFilteredByNameStartTestLoader(tests.TestCase):
+
+    def _create_loader(self, name_start):
+        loader = TestUtil.FilteredByModuleTestLoader(name_start.startswith)
+        return loader
+
+    def test_load_tests(self):
+        test_list = ['bzrlib.tests.test_sampler.DemoTest.test_nothing']
+        loader = self._create_loader('bzrlib.tests.test_sampler.DemoTest')
+
+        suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
+        self.assertEquals(test_list, _test_ids(suite))
+
+    def test_exclude_tests(self):
+        test_list = ['bogus']
+        loader = self._create_loader('bogus')
 
         suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
         self.assertEquals([], _test_ids(suite))

@@ -2247,6 +2247,18 @@ def condition_id_in_list(id_list):
     return condition
 
 
+def condition_id_startswith(start):
+    """Create a condition filter verifying that test's id starts with a string.
+    
+    :param start: A string.
+    :return: A callable that returns True if the test's id starts with the
+        given string.
+    """
+    def condition(test):
+        return test.id().startswith(start)
+    return condition
+
+
 def exclude_tests_by_condition(suite, condition):
     """Create a test suite which excludes some tests from suite.
 
@@ -2318,6 +2330,18 @@ def filter_suite_by_id_list(suite, test_id_list):
     :returns: the newly created suite
     """
     condition = condition_id_in_list(test_id_list)
+    result_suite = filter_suite_by_condition(suite, condition)
+    return result_suite
+
+
+def filter_suite_by_id_startswith(suite, start):
+    """Create a test suite by filtering another one.
+
+    :param suite: The source suite.
+    :param start: A string the test id must start with.
+    :returns: the newly created suite
+    """
+    condition = condition_id_startswith(start)
     result_suite = filter_suite_by_condition(suite, condition)
     return result_suite
 
