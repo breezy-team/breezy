@@ -40,16 +40,20 @@ IN DEVELOPMENT
 
     * Document outlining strategies for TortoiseBzr. (Mark Hammond)
 
-    * ``bzrlib.check.check()`` has been deprecated in favour of the more
-      aptly-named ``bzrlib.check.check_branch()``.  (Daniel Watkins)
-
   TESTING:
 
   INTERNALS:
 
+    * Implement xml8 serializer.  (Aaron Bentley)
+
     * New class method ``BzrDir.open_containing_tree_branch_or_repository``
       which eases the discovery of the tree, the branch and the repository
       containing a given location.  (Daniel Watkins)
+
+  API BREAKS:
+
+  * ``bzrlib.check.check()`` has been deprecated in favour of the more
+      aptly-named ``bzrlib.check.check_branch()``.  (Daniel Watkins)
 
 
 bzr 1.4rc1 2008-04-11
