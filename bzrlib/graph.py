@@ -207,6 +207,27 @@ class Graph(object):
         right = searchers[1].seen
         return (left.difference(right), right.difference(left))
 
+    def find_unique_ancestors(self, unique_revision, common_revisions):
+        """Find the unique ancestors for a revision versus others.
+
+        This returns the ancestry of unique_revision, excluding all revisions
+        in the ancestry of common_revisions. If unique_revision is in the
+        ancestry, then the empty set will be returned.
+
+        :param unique_revision: The revision_id whose ancestry we are
+            interested in.
+        :param common_revisions: Revision_ids of ancestries to exclude.
+        :return: A set of revisions in the ancestry of unique_revision
+        """
+        common_revisions = set(common_revisions)
+        # Simple brute force implementation. Ugly, but gets the tests working
+        # first.
+        if unique_revision in common_revisions:
+            return set()
+        unique_ancestors = set(x[0] for x in self.iter_ancestry([unique_revision]))
+        common_ancestors = set(x[0] for x in self.iter_ancestry(common_revisions))
+        return unique_ancestors - common_ancestors
+
     @symbol_versioning.deprecated_method(symbol_versioning.one_one)
     def get_parents(self, revisions):
         """Find revision ids of the parents of a list of revisions

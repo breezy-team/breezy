@@ -1055,6 +1055,40 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual(set(['head', NULL_REVISION]), result.get_keys())
 
 
+class TestFindUniqueAncestors(tests.TestCase):
+
+    def make_graph(self, ancestors):
+        return _mod_graph.Graph(_mod_graph.DictParentsProvider(ancestors))
+
+    def assertFindUniqueAncestors(self, graph, expected, node, common):
+        actual = graph.find_unique_ancestors(node, common)
+        self.assertEqual(expected, sorted(actual))
+
+    def test_empty_set(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertFindUniqueAncestors(graph, [], 'rev1', ['rev1'])
+        self.assertFindUniqueAncestors(graph, [], 'rev2b', ['rev2b'])
+        self.assertFindUniqueAncestors(graph, [], 'rev3', ['rev1', 'rev3'])
+
+    def test_single_node(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertFindUniqueAncestors(graph, ['rev2a'], 'rev2a', ['rev1'])
+        self.assertFindUniqueAncestors(graph, ['rev2b'], 'rev2b', ['rev1'])
+        self.assertFindUniqueAncestors(graph, ['rev3'], 'rev3', ['rev2a'])
+
+    def test_in_ancestry(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertFindUniqueAncestors(graph, [], 'rev1', ['rev3'])
+        self.assertFindUniqueAncestors(graph, [], 'rev2b', ['rev4'])
+
+    def test_multiple_revisions(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertFindUniqueAncestors(graph,
+            ['rev4'], 'rev4', ['rev3', 'rev2b'])
+        self.assertFindUniqueAncestors(graph,
+            ['rev2a', 'rev3', 'rev4'], 'rev4', ['rev2b'])
+
+
 class TestCachingParentsProvider(tests.TestCase):
 
     def setUp(self):
