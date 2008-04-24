@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 from cStringIO import StringIO
 import codecs
 #import traceback
+from warnings import warn
 
 import bzrlib
 from bzrlib.decorators import (needs_read_lock,
@@ -104,11 +105,9 @@ class LockableFiles(object):
 
     def __del__(self):
         if self.is_locked():
-            # XXX: This should show something every time, and be suitable for
-            # headless operation and embedding
-            from warnings import warn
-            warn("file group %r was not explicitly unlocked" % self)
-            self._lock.unlock()
+            # do not automatically unlock; there should have been a
+            # try/finally to unlock this.
+            warn("%r was gc'd while locked" % self)
 
     def break_lock(self):
         """Break the lock of this lockable files group if it is held.

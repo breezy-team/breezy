@@ -1061,7 +1061,6 @@ class ReconcilePacker(Packer):
             deltas=True, parents=True)
         output_knit = knit.KnitVersionedFile('reconcile-texts',
             self._pack_collection.transport,
-            None,
             index=knit_index,
             access_method=_PackAccess(
                 {self.new_pack.text_index:self.new_pack.access_tuple()},
@@ -1706,7 +1705,7 @@ class KnitPackRevisionStore(KnitRevisionStore):
         self.repo._revision_knit = knit.KnitVersionedFile(
             'revisions', self.transport.clone('..'),
             self.repo.control_files._file_mode,
-            create=False, access_mode=self.repo._access_mode(),
+            create=False,
             index=knit_index, delta=False, factory=knit.KnitPlainFactory(),
             access_method=self.repo._pack_collection.revision_index.knit_access)
         return self.repo._revision_knit
@@ -1724,7 +1723,7 @@ class KnitPackRevisionStore(KnitRevisionStore):
         self.repo._signature_knit = knit.KnitVersionedFile(
             'signatures', self.transport.clone('..'),
             self.repo.control_files._file_mode,
-            create=False, access_mode=self.repo._access_mode(),
+            create=False,
             index=knit_index, delta=False, factory=knit.KnitPlainFactory(),
             access_method=self.repo._pack_collection.signature_index.knit_access)
         return self.repo._signature_knit
@@ -1813,7 +1812,7 @@ class InventoryKnitThunk(object):
         return knit.KnitVersionedFile(
             'inventory', self.transport.clone('..'),
             self.repo.control_files._file_mode,
-            create=False, access_mode=self.repo._access_mode(),
+            create=False,
             index=knit_index, delta=True, factory=knit.KnitPlainFactory(),
             access_method=self.repo._pack_collection.inventory_index.knit_access)
 
@@ -1848,15 +1847,6 @@ class KnitPackRepository(KnitRepository):
 
     def _abort_write_group(self):
         self._pack_collection._abort_write_group()
-
-    def _access_mode(self):
-        """Return 'w' or 'r' for depending on whether a write lock is active.
-        
-        This method is a helper for the Knit-thunking support objects.
-        """
-        if self.is_write_locked():
-            return 'w'
-        return 'r'
 
     def _find_inconsistent_revision_parents(self):
         """Find revisions with incorrectly cached parents.
@@ -2121,7 +2111,7 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
             repo_transport,
             prefixed=False,
             file_mode=control_files._file_mode,
-            versionedfile_class=knit.KnitVersionedFile,
+            versionedfile_class=knit.make_file_knit,
             versionedfile_kwargs={'factory': knit.KnitPlainFactory()},
             )
 
@@ -2132,7 +2122,7 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
             file_mode=control_files._file_mode,
             prefixed=False,
             precious=True,
-            versionedfile_class=knit.KnitVersionedFile,
+            versionedfile_class=knit.make_file_knit,
             versionedfile_kwargs={'delta': False,
                                   'factory': knit.KnitPlainFactory(),
                                  },
@@ -2145,7 +2135,7 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
         return self._get_versioned_file_store('knits',
                                   transport,
                                   control_files,
-                                  versionedfile_class=knit.KnitVersionedFile,
+                                  versionedfile_class=knit.make_file_knit,
                                   versionedfile_kwargs={
                                       'create_parent_dir': True,
                                       'delay_create': True,

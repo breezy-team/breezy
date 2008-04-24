@@ -27,6 +27,7 @@ import os
 from bzrlib import (
     add,
     bzrdir,
+    hooks,
     )
 from bzrlib.osutils import dirname
 from bzrlib.revisiontree import RevisionTree
@@ -183,6 +184,8 @@ class MutableTree(tree.Tree):
             revprops['author'] = author
         # args for wt.commit start at message from the Commit.commit method,
         args = (message, ) + args
+        for hook in MutableTree.hooks['start_commit']:
+            hook(self)
         committed_id = commit.Commit().commit(working_tree=self,
             revprops=revprops, *args, **kwargs)
         return committed_id
@@ -464,6 +467,24 @@ class MutableTree(tree.Tree):
         inventory.apply_delta(delta)
         rev_tree = RevisionTree(self.branch.repository, inventory, new_revid)
         self.set_parent_trees([(new_revid, rev_tree)])
+
+
+class MutableTreeHooks(hooks.Hooks):
+    """A dictionary mapping a hook name to a list of callables for mutabletree 
+    hooks.
+    """
+
+    def __init__(self):
+        """Create the default hooks.
+
+        """
+        hooks.Hooks.__init__(self)
+        # Invoked before a commit is done in a tree. New in 1.4
+        self['start_commit'] = []
+
+
+# install the default hooks into the MutableTree class.
+MutableTree.hooks = MutableTreeHooks()
 
 
 class _FastPath(object):

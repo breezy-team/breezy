@@ -469,8 +469,8 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
 
     def setUp(self):
         TestCaseWithMemoryTransport.setUp(self)
-        self.vf = knit.KnitVersionedFile('root', self.get_transport(),
-                                         create=True)
+        self.vf = knit.make_file_knit('root', self.get_transport(),
+            create=True)
         self.plan_merge_vf = versionedfile._PlanMergeVersionedFile('root',
                                                                    [self.vf])
 

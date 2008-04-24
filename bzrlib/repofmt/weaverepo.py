@@ -37,7 +37,7 @@ from bzrlib import (
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repository import (
     CommitBuilder,
-    MetaDirRepository,
+    MetaDirVersionedFileRepository,
     MetaDirRepositoryFormat,
     Repository,
     RepositoryFormat,
@@ -77,6 +77,9 @@ class AllInOneRepository(Repository):
             self.inventory_store = get_store('inventory-store')
             text_store = get_store('text-store')
         super(AllInOneRepository, self).__init__(_format, a_bzrdir, a_bzrdir._control_files, _revision_store, control_store, text_store)
+        if control_store is not None:
+            control_store.get_scope = self.get_transaction
+        text_store.get_scope = self.get_transaction
 
     @needs_read_lock
     def _all_possible_ids(self):
@@ -202,8 +205,8 @@ class AllInOneRepository(Repository):
         :param new_value: True to restore the default, False to disable making
                           working trees.
         """
-        raise NotImplementedError(self.set_make_working_trees)
-    
+        raise errors.RepositoryUpgradeRequired(self.bzrdir.root_transport.base)
+
     def make_working_trees(self):
         """Returns the policy for making working trees on new branches."""
         return True
@@ -214,7 +217,7 @@ class AllInOneRepository(Repository):
         return False
 
 
-class WeaveMetaDirRepository(MetaDirRepository):
+class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
     """A subclass of MetaDirRepository to set weave specific policy."""
 
     _serializer = xml5.serializer_v5
@@ -629,7 +632,6 @@ class WeaveCommitBuilder(CommitBuilder):
         result = versionedfile.add_lines(
             self._new_revision_id, parents, new_lines,
             nostore_sha=nostore_sha)[0:2]
-        versionedfile.clear_cache()
         return result
 
 
