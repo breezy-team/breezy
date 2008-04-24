@@ -1093,6 +1093,15 @@ class TestFindUniqueAncestors(tests.TestCase):
                                          [NULL_REVISION, 'a', 'b'])
         self.assertFindUniqueAncestors(graph, ['e'], 'e', ['d'])
 
+        graph = self.make_breaking_graph(extended_history_shortcut,
+                                         ['b'])
+        self.assertFindUniqueAncestors(graph, ['f'], 'f', ['a', 'd'])
+
+        graph = self.make_breaking_graph(complex_shortcut,
+                                         ['a', 'b', 'c'])
+        self.assertFindUniqueAncestors(graph, ['h'], 'h', ['i'])
+        self.assertFindUniqueAncestors(graph, ['e', 'g', 'i'], 'i', ['h'])
+
     def test_in_ancestry(self):
         graph = self.make_graph(ancestry_1)
         self.assertFindUniqueAncestors(graph, [], 'rev1', ['rev3'])
