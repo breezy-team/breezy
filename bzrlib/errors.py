@@ -2553,7 +2553,8 @@ class BzrDirError(BzrError):
 
 class UnsyncedBranches(BzrDirError):
 
-    _fmt = "'%(display_url)s' is not in sync with %(target_url)s"
+    _fmt = ("'%(display_url)s' is not in sync with %(target_url)s.  See"
+            " sync-for-reconfigure")
 
     def __init__(self, bzrdir, target_branch):
         BzrDirError.__init__(self, bzrdir)
