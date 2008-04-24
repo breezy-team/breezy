@@ -979,7 +979,8 @@ class KnitVersionedFile(VersionedFile):
                     'incompatible format signature inserting to %r', self)
             source = self._knit_from_datastream(
                 (format, data_list, reader_callable))
-            self.join(source)
+            stream = source.get_record_stream(source.versions(), 'unordered', False)
+            self.insert_record_stream(stream)
             return
 
         for version_id, options, length, parents in data_list:
