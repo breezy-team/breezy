@@ -197,12 +197,25 @@ class TestReconfigure(tests.TestCaseWithTransport):
         self.assertRaises(errors.AlreadyCheckout,
                           reconfigure.Reconfigure.to_checkout, checkout.bzrdir)
 
-    def test_checkout_to_lightweight(self):
+    def make_unsynced_checkout(self):
         parent = self.make_branch('parent')
         checkout = parent.create_checkout('checkout')
         checkout.commit('test', rev_id='new-commit', local=True)
+
+        # work around fetch bug 212908
+        checkout.commit('test2', local=True)
+        checkout.branch.set_last_revision_info(1, 'new-commit')
         reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
             checkout.bzrdir)
+        return checkout, parent, reconfiguration
+
+    def test_unsynced_checkout_to_lightweight(self):
+        checkout, parent, reconfiguration = self.make_unsynced_checkout()
+        self.assertRaises(errors.UnsyncedBranches, reconfiguration.apply)
+
+    def test_synced_checkout_to_lightweight(self):
+        checkout, parent, reconfiguration = self.make_unsynced_checkout()
+        parent.pull(checkout.branch)
         reconfiguration.apply()
         wt = checkout.bzrdir.open_workingtree()
         self.assertTrue(parent.repository.has_same_location(
@@ -215,6 +228,10 @@ class TestReconfigure(tests.TestCaseWithTransport):
         parent = self.make_branch('parent')
         child = parent.bzrdir.sprout('child').open_workingtree()
         child.commit('test', rev_id='new-commit')
+        parent.pull(child.branch)
+        # work around fetch bug 212908
+        child.commit('test', rev_id='new-commit2')
+        child.branch.set_last_revision_info(1, 'new-commit')
         child.bzrdir.destroy_workingtree()
         reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
             child.bzrdir)
@@ -352,3 +369,18 @@ class TestReconfigure(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.assertRaises(errors.AlreadyStandalone,
                           reconfigure.Reconfigure.to_standalone, tree.bzrdir)
+
+    def make_unsynced_branch_reconfiguration(self):
+        parent = self.make_branch_and_tree('parent')
+        parent.commit('commit 1')
+        child = parent.bzrdir.sprout('child').open_workingtree()
+        child.commit('commit 2')
+        return reconfigure.Reconfigure.to_lightweight_checkout(child.bzrdir)
+
+    def test_unsynced_branch_to_lightweight_checkout_unforced(self):
+        reconfiguration = self.make_unsynced_branch_reconfiguration()
+        self.assertRaises(errors.UnsyncedBranches, reconfiguration.apply)
+
+    def test_unsynced_branch_to_lightweight_checkout_forced(self):
+        reconfiguration = self.make_unsynced_branch_reconfiguration()
+        reconfiguration.apply(force=True)
