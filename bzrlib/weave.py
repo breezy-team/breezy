@@ -349,7 +349,10 @@ class Weave(VersionedFile):
                     adapters[adapter_key] = adapter
                 lines = split_lines(adapter.get_bytes(
                     record, record.get_bytes_as(record.storage_kind)))
-                self.add_lines(record.key[0], parents, lines)
+                try:
+                    self.add_lines(record.key[0], parents, lines)
+                except RevisionAlreadyPresent:
+                    pass
 
     def _check_repeated_add(self, name, parents, text, sha1):
         """Check that a duplicated add is OK.

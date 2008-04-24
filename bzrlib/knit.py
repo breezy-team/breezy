@@ -1067,16 +1067,18 @@ class KnitVersionedFile(VersionedFile):
                 adapters[adapter_key] = adapter
                 return adapter
         if self.factory.annotated:
+            # self is annotated, we need annotated knits to use directly.
             annotated = "annotated-"
-            fallback_conversions = []
+            convertibles = []
         else:
+            # self is not annotated, but we can strip annotations cheaply.
             annotated = ""
-            # We can strip annotations cheaply (but we can't add them cheaply)
-            fallback_conversions = set(["knit-delta-gz", "knit-ft-gz"])
+            convertibles = set(["knit-annotated-delta-gz",
+                "knit-annotated-ft-gz"])
         native_types = set()
         native_types.add("knit-%sdelta-gz" % annotated)
         native_types.add("knit-%sft-gz" % annotated)
-        knit_types = native_types.union(fallback_conversions)
+        knit_types = native_types.union(convertibles)
         adapters = {}
         for record in stream:
             # adapt to non-tuple interface
@@ -1096,7 +1098,14 @@ class KnitVersionedFile(VersionedFile):
                 options = [record._build_details[0]]
                 if record._build_details[1]:
                     options.append('no-eol')
-                # Just blat it across
+                # Just blat it across.
+                # Note: This does end up adding data on duplicate keys. As
+                # modern repositories use atomic insertions this should not
+                # lead to excessive growth in the event of interrupted fetches.
+                # 'knit' repositories may suffer excessive growth, but as a
+                # deprecated format this is tolerable. It can be fixed if
+                # needed by in the kndx index support raising on a duplicate
+                # add with identical parents and options.
                 self._add_raw_records(
                     [(record.key[0], options, parents, len(bytes))],
                     bytes)
@@ -1108,7 +1117,10 @@ class KnitVersionedFile(VersionedFile):
                 adapter = get_adapter(adapter_key)
                 lines = split_lines(adapter.get_bytes(
                     record, record.get_bytes_as(record.storage_kind)))
-                self.add_lines(record.key[0], parents, lines)
+                try:
+                    self.add_lines(record.key[0], parents, lines)
+                except errors.RevisionAlreadyPresent:
+                    pass
 
     def versions(self):
         """See VersionedFile.versions."""

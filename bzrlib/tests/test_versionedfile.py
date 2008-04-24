@@ -53,7 +53,7 @@ from bzrlib.weave import WeaveFile
 from bzrlib.weavefile import read_weave, write_weave
 
 
-def get_diamond_vf(f, trailing_eol=True):
+def get_diamond_vf(f, trailing_eol=True, left_only=False):
     """Get a diamond graph to exercise deltas and merges.
     
     :param trailing_eol: If True end the last line with \n.
@@ -73,10 +73,11 @@ def get_diamond_vf(f, trailing_eol=True):
     f.add_lines('origin', [], ['origin' + last_char])
     f.add_lines('base', ['origin'], ['base' + last_char])
     f.add_lines('left', ['base'], ['base\n', 'left' + last_char])
-    f.add_lines('right', ['base'],
-        ['base\n', 'right' + last_char])
-    f.add_lines('merged', ['left', 'right'],
-        ['base\n', 'left\n', 'right\n', 'merged' + last_char])
+    if not left_only:
+        f.add_lines('right', ['base'],
+            ['base\n', 'right' + last_char])
+        f.add_lines('merged', ['left', 'right'],
+            ['base\n', 'left\n', 'right\n', 'merged' + last_char])
     return f, parents
 
 
@@ -279,6 +280,19 @@ class VersionedFileTestMixIn(object):
         source = make_file_knit('source', get_transport(self.get_url('.')),
             create=True, factory=KnitPlainFactory())
         get_diamond_vf(source, trailing_eol=False)
+        stream = source.get_record_stream(source.versions(), 'topological',
+            False)
+        f.insert_record_stream(stream)
+        self.assertIdenticalVersionedFile(f, source)
+
+    def test_insert_record_stream_existing_keys(self):
+        """Inserting keys already in a file should not error."""
+        f = self.get_file()
+        source = make_file_knit('source', get_transport(self.get_url('.')),
+            create=True, factory=KnitPlainFactory())
+        get_diamond_vf(source)
+        # insert some keys into f.
+        get_diamond_vf(f, left_only=True)
         stream = source.get_record_stream(source.versions(), 'topological',
             False)
         f.insert_record_stream(stream)
@@ -975,8 +989,8 @@ class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
 
 class TestKnit(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
 
-    def get_file(self, name='foo'):
-        return self.get_factory()(name, get_transport(self.get_url('.')),
+    def get_file(self, name='foo', create=True):
+        return make_file_knit(name, get_transport(self.get_url('.')),
             delta=True, create=True, get_scope=self.get_transaction)
 
     def get_factory(self):
@@ -989,9 +1003,7 @@ class TestKnit(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
         return knit
 
     def reopen_file(self, name='foo', create=False):
-        return self.get_factory()(name, get_transport(self.get_url('.')),
-            delta=True,
-            create=create)
+        return self.get_file(name, create)
 
     def test_detection(self):
         knit = self.get_file()
@@ -1005,8 +1017,10 @@ class TestKnit(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
 class TestPlaintextKnit(TestKnit):
     """Test a knit with no cached annotations"""
 
-    def get_factory(self):
-        return make_file_knit
+    def get_file(self, name='foo', create=True):
+        return make_file_knit(name, get_transport(self.get_url('.')),
+            delta=True, create=create, get_scope=self.get_transaction,
+            factory=_mod_knit.KnitPlainFactory())
 
 
 class TestPlanMergeVersionedFile(TestCaseWithMemoryTransport):
