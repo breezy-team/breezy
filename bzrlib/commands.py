@@ -95,7 +95,6 @@ def _squish_command_name(cmd):
 
 
 def _unsquish_command_name(cmd):
-    assert cmd.startswith("cmd_")
     return cmd[4:].replace('_','-')
 
 
@@ -283,9 +282,7 @@ class Command(object):
             elif aname[-1] == '*':
                 aname = '[' + aname[:-1] + '...]'
             s += aname + ' '
-                
-        assert s[-1] == ' '
-        s = s[:-1]
+        s = s[:-1]      # remove last space
         return s
 
     def get_help_text(self, additional_see_also=None, plain=True,
@@ -445,8 +442,6 @@ class Command(object):
 
     def _setup_outf(self):
         """Return a file linked to stdout, which has proper encoding."""
-        assert self.encoding_type in ['strict', 'exact', 'replace']
-
         # Originally I was using self.stdout, but that looks
         # *way* too much like sys.stdout
         if self.encoding_type == 'exact':

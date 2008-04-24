@@ -112,7 +112,6 @@ class InventoryEntry(object):
     InventoryFile('2326', 'wibble.c', parent_id='2325', sha1=None, len=None)
     >>> for path, entry in i.iter_entries():
     ...     print path
-    ...     assert i.path2id(path)
     ... 
     <BLANKLINE>
     src
@@ -142,24 +141,6 @@ class InventoryEntry(object):
         """
         return False, False
 
-    @deprecated_method(symbol_versioning.one_zero)
-    def diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
-             output_to, reverse=False):
-        """Perform a diff from this to to_entry.
-
-        text_diff will be used for textual difference calculation.
-        This is a template method, override _diff in child classes.
-        """
-        self._read_tree_state(tree.id2path(self.file_id), tree)
-        if to_entry:
-            # cannot diff from one kind to another - you must do a removal
-            # and an addif they do not match.
-            assert self.kind == to_entry.kind
-            to_entry._read_tree_state(to_tree.id2path(to_entry.file_id),
-                                      to_tree)
-        self._diff(text_diff, from_label, tree, to_label, to_entry, to_tree,
-                   output_to, reverse)
-
     def _diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
              output_to, reverse=False):
         """Perform a diff between two entries of the same kind."""
@@ -179,7 +160,6 @@ class InventoryEntry(object):
         for inv in previous_inventories:
             if self.file_id in inv:
                 ie = inv[self.file_id]
-                assert ie.file_id == self.file_id
                 if ie.revision in candidates:
                     # same revision value in two different inventories:
                     # correct possible inconsistencies:
@@ -191,8 +171,6 @@ class InventoryEntry(object):
                             ie.executable = False
                     except AttributeError:
                         pass
-                    # must now be the same.
-                    assert candidates[ie.revision] == ie
                 else:
                     # add this revision as a candidate.
                     candidates[ie.revision] = ie
@@ -303,7 +281,6 @@ class InventoryEntry(object):
         Traceback (most recent call last):
         InvalidEntryName: Invalid entry name: src/hello.c
         """
-        assert isinstance(name, basestring), name
         if '/' in name or '\\' in name:
             raise errors.InvalidEntryName(name=name)
         self.executable = False
@@ -311,8 +288,6 @@ class InventoryEntry(object):
         self.text_sha1 = None
         self.text_size = None
         self.file_id = file_id
-        assert isinstance(file_id, (str, None.__class__)), \
-            'bad type %r for %r' % (type(file_id), file_id)
         self.name = name
         self.text_id = text_id
         self.parent_id = parent_id
@@ -611,8 +586,6 @@ class InventoryFile(InventoryEntry):
 
     def detect_changes(self, old_entry):
         """See InventoryEntry.detect_changes."""
-        assert self.text_sha1 is not None
-        assert old_entry.text_sha1 is not None
         text_modified = (self.text_sha1 != old_entry.text_sha1)
         meta_modified = (self.executable != old_entry.executable)
         return text_modified, meta_modified
@@ -868,7 +841,6 @@ class Inventory(object):
         an id of None.
         """
         if root_id is not None:
-            assert root_id.__class__ == str
             self._set_root(InventoryDirectory(root_id, u'', None))
         else:
             self.root = None
@@ -1173,7 +1145,6 @@ class Inventory(object):
                                          self._byid[entry.file_id])
 
         if entry.parent_id is None:
-            assert self.root is None and len(self._byid) == 0
             self.root = entry
         else:
             try:
@@ -1225,10 +1196,6 @@ class Inventory(object):
         False
         """
         ie = self[file_id]
-
-        assert ie.parent_id is None or \
-            self[ie.parent_id].children[ie.name] == ie
-        
         del self._byid[file_id]
         if ie.parent_id is not None:
             del self[ie.parent_id].children[ie.name]
@@ -1322,8 +1289,6 @@ class Inventory(object):
                 if children is None:
                     return None
                 cie = children[f]
-                assert cie.name == f
-                assert cie.parent_id == parent.file_id
                 parent = cie
             except KeyError:
                 # or raise an error?

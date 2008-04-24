@@ -92,13 +92,16 @@ class InstrumentedXMLRPCTransport(xmlrpclib.Transport):
         self.connected_host = host
         if self.expect_auth:
             auth_hdrs = [v for k,v in http_headers if k == 'Authorization']
-            assert len(auth_hdrs) == 1
+            if len(auth_hdrs):
+                raise AssertionError("multiple auth headers: %r"
+                    % (auth_hdrs,))
             authinfo = auth_hdrs[0]
             expected_auth = 'testuser@launchpad.net:testpassword'
             test.assertEquals(authinfo,
                     'Basic ' + base64.encodestring(expected_auth).strip())
         else:
-            assert not http_headers
+            if http_headers:
+                raise AssertionError()
         return InstrumentedXMLRPCConnection(test)
 
     def send_request(self, connection, handler_path, request_body):
@@ -115,8 +118,6 @@ class InstrumentedXMLRPCTransport(xmlrpclib.Transport):
 
     def send_content(self, conn, request_body):
         unpacked, method = xmlrpclib.loads(request_body)
-        assert None not in unpacked, \
-                "xmlrpc result %r shouldn't contain None" % (unpacked,)
         self.sent_params = unpacked
 
 

@@ -158,7 +158,7 @@ class TestSource(TestSourceHelper):
 
     def is_license_exception(self, fname):
         """Certain files are allowed to be different"""
-        if not self.is_our_code(self, fname):
+        if not self.is_our_code(fname):
             return True
         for exc in LICENSE_EXCEPTIONS:
             if fname.endswith(exc):

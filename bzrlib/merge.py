@@ -68,7 +68,6 @@ class Merger(object):
                  this_tree=None, pb=DummyProgress(), change_reporter=None,
                  recurse='down', revision_graph=None):
         object.__init__(self)
-        assert this_tree is not None, "this_tree is required"
         self.this_branch = this_branch
         self.this_basis = _mod_revision.ensure_null(
             this_branch.last_revision())
@@ -236,7 +235,6 @@ class Merger(object):
         self.ensure_revision_trees()
         def get_id(tree, file_id):
             revision_id = tree.inventory[file_id].revision
-            assert revision_id is not None
             return revision_id
         if self.this_rev_id is None:
             if self.this_basis_tree.get_file_sha1(file_id) != \
@@ -490,8 +488,9 @@ class Merge3Merger(object):
             merge.
         """
         object.__init__(self)
-        if interesting_files is not None:
-            assert interesting_ids is None
+        if interesting_files is not None and interesting_ids is not None:
+            raise ValueError(
+                'specify either interesting_ids or interesting_files')
         self.interesting_ids = interesting_ids
         self.interesting_files = interesting_files
         self.this_tree = working_tree
@@ -712,14 +711,13 @@ class Merge3Merger(object):
         if key_base == key_other:
             return "this"
         key_this = key(this_tree, file_id)
-        if key_this not in (key_base, key_other):
-            return "conflict"
         # "Ambiguous clean merge"
-        elif key_this == key_other:
+        if key_this == key_other:
             return "this"
-        else:
-            assert key_this == key_base
+        elif key_this == key_base:
             return "other"
+        else:
+            return "conflict"
 
     def merge_names(self, file_id):
         def get_entry(tree):
@@ -969,7 +967,6 @@ class Merge3Merger(object):
         if winner == "this":
             executability = this_executable
         else:
-            assert winner == "other"
             if file_id in self.other_tree:
                 executability = other_executable
             elif file_id in self.this_tree:
@@ -1017,13 +1014,15 @@ class Merge3Merger(object):
         for trans_id, conflicts in name_conflicts.iteritems():
             try:
                 this_parent, other_parent = conflicts['parent conflict']
-                assert this_parent != other_parent
+                if this_parent == other_parent:
+                    raise AssertionError()
             except KeyError:
                 this_parent = other_parent = \
                     self.tt.final_file_id(self.tt.final_parent(trans_id))
             try:
                 this_name, other_name = conflicts['name conflict']
-                assert this_name != other_name
+                if this_name == other_name:
+                    raise AssertionError()
             except KeyError:
                 this_name = other_name = self.tt.final_name(trans_id)
             other_path = fp.get_path(trans_id)
@@ -1182,8 +1181,9 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
     merger.interesting_ids = interesting_ids
     merger.ignore_zero = ignore_zero
     if interesting_files:
-        assert not interesting_ids, ('Only supply interesting_ids'
-                                     ' or interesting_files')
+        if interesting_ids:
+            raise ValueError('Only supply interesting_ids'
+                             ' or interesting_files')
         merger.interesting_files = interesting_files
     merger.show_base = show_base
     merger.reprocess = reprocess
@@ -1236,7 +1236,6 @@ def _plan_annotate_merge(annotated_a, annotated_b, ancestors_a, ancestors_b):
         a_cur = ai + l
         b_cur = bi + l
         for text_a, text_b in zip(plain_a[ai:a_cur], plain_b[bi:b_cur]):
-            assert text_a == text_b
             yield "unchanged", text_a
 
 

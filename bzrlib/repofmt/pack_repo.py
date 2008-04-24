@@ -198,8 +198,9 @@ class ExistingPack(Pack):
             signature_index)
         self.name = name
         self.pack_transport = pack_transport
-        assert None not in (revision_index, inventory_index, text_index,
-            signature_index, name, pack_transport)
+        if None in (revision_index, inventory_index, text_index,
+                signature_index, name, pack_transport):
+            raise AssertionError()
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
@@ -322,11 +323,12 @@ class NewPack(Pack):
 
     def access_tuple(self):
         """Return a tuple (transport, name) for the pack content."""
-        assert self._state in ('open', 'finished')
         if self._state == 'finished':
             return Pack.access_tuple(self)
-        else:
+        elif self._state == 'open':
             return self.upload_transport, self.random_name
+        else:
+            raise AssertionError(self._state)
 
     def data_inserted(self):
         """True if data has been added to this pack."""
@@ -495,9 +497,10 @@ class AggregateIndex(object):
         :param index: An index from the pack parameter.
         :param pack: A Pack instance.
         """
-        assert self.add_callback is None, \
-            "%s already has a writable index through %s" % \
-            (self, self.add_callback)
+        if self.add_callback is not None:
+            raise AssertionError(
+                "%s already has a writable index through %s" % \
+                (self, self.add_callback))
         # allow writing: queue writes to a new index
         self.add_index(index, pack)
         # Updates the index to packs mapping as a side effect,
@@ -1149,7 +1152,8 @@ class RepositoryPackCollection(object):
         
         :param pack: A Pack object.
         """
-        assert pack.name not in self._packs_by_name
+        if pack.name in self._packs_by_name:
+            raise AssertionError()
         self.packs.append(pack)
         self._packs_by_name[pack.name] = pack
         self.revision_index.add_index(pack.revision_index, pack)
@@ -2169,7 +2173,6 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
         """
         if not _found:
             format = RepositoryFormat.find_format(a_bzrdir)
-            assert format.__class__ ==  self.__class__
         if _override_transport is not None:
             repo_transport = _override_transport
         else:

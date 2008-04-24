@@ -1298,7 +1298,6 @@ class cmd_ancestry(Command):
             last_revision = wt.last_revision()
 
         revision_ids = b.repository.get_ancestry(last_revision)
-        assert revision_ids[0] is None
         revision_ids.pop(0)
         for revision_id in revision_ids:
             self.outf.write(revision_id + '\n')
@@ -1723,8 +1722,6 @@ class cmd_log(Command):
             message=None,
             limit=None):
         from bzrlib.log import show_log
-        assert message is None or isinstance(message, basestring), \
-            "invalid message argument %r" % message
         direction = (forward and 'forward') or 'reverse'
         
         # log everything
@@ -2972,7 +2969,6 @@ class cmd_merge(Command):
                                 possible_transports, pb):
         """Produce a merger from a location, assuming it refers to a branch."""
         from bzrlib.tag import _merge_tags_if_possible
-        assert revision is None or len(revision) < 3
         # find the branch locations
         other_loc, user_location = self._select_branch_location(tree, location,
             revision, -1)

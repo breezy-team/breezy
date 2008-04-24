@@ -90,7 +90,6 @@ class KnitRevisionStore(RevisionStore):
         try:
             for text, revision_id in zip(texts, revision_ids):
                 r = self._serializer.read_revision_from_string(text)
-                assert r.revision_id == revision_id
                 revisions.append(r)
         except SyntaxError, e:
             raise errors.BzrError('failed to unpack revision_xml for %s: %s' %

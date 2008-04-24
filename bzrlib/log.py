@@ -552,7 +552,6 @@ def reverse_by_depth(merge_sorted_revisions, _depth=0):
         if val[2] == _depth:
             zd_revisions.append([val])
         else:
-            assert val[2] > _depth
             zd_revisions[-1].append(val)
     for revisions in zd_revisions:
         if len(revisions) > 1:

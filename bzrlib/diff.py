@@ -323,8 +323,6 @@ def diff_cmd_helper(tree, specific_files, external_diff_options,
         return branch.repository.revision_tree(revision_id)
 
     if revision_specs is not None:
-        assert (old_revision_spec is None
-                and new_revision_spec is None)
         if len(revision_specs) > 0:
             old_revision_spec = revision_specs[0]
         if len(revision_specs) > 1:
@@ -516,9 +514,6 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
 def _patch_header_date(tree, file_id, path):
     """Returns a timestamp suitable for use in a patch header."""
     mtime = tree.get_file_mtime(file_id, path)
-    assert mtime is not None, \
-        "got an mtime of None for file-id %s, path %s in tree %s" % (
-                file_id, path, tree)
     return timestamp.format_patch_date(mtime)
 
 
@@ -913,7 +908,6 @@ class DiffTree(object):
         else:
             extra_factories = []
         if external_diff_options:
-            assert isinstance(external_diff_options, basestring)
             opts = external_diff_options.split()
             def diff_file(olab, olines, nlab, nlines, to_file):
                 external_diff(olab, olines, nlab, nlines, to_file, opts)

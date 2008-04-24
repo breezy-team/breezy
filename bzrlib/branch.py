@@ -317,7 +317,6 @@ class Branch(object):
         The delta is relative to its mainline predecessor, or the
         empty tree for revision 1.
         """
-        assert isinstance(revno, int)
         rh = self.revision_history()
         if not (1 <= revno <= len(rh)):
             raise errors.InvalidRevisionNumber(revno)
@@ -451,7 +450,6 @@ class Branch(object):
         if stop_revision is None:
             stop_revision = other_len
         else:
-            assert isinstance(stop_revision, int)
             if stop_revision > other_len:
                 raise errors.NoSuchRevision(self, stop_revision)
         return other_history[self_len:stop_revision]
@@ -939,7 +937,6 @@ class BranchFormat(object):
 
     @classmethod
     def unregister_format(klass, format):
-        assert klass._formats[format.get_format_string()] is format
         del klass._formats[format.get_format_string()]
 
     def __str__(self):
@@ -1149,7 +1146,9 @@ class BzrBranchFormat5(BranchFormat):
         """
         if not _found:
             format = BranchFormat.find_format(a_bzrdir)
-            assert format.__class__ == self.__class__
+            if format.__class__ != self.__class__:
+                raise AssertionError("wrong format %r found for %r" %
+                    (format, self))
         try:
             transport = a_bzrdir.get_branch_transport(None)
             control_files = lockable_files.LockableFiles(transport, 'lock',
@@ -1197,7 +1196,9 @@ class BzrBranchFormat6(BzrBranchFormat5):
         """
         if not _found:
             format = BranchFormat.find_format(a_bzrdir)
-            assert format.__class__ == self.__class__
+            if format.__class__ != self.__class__:
+                raise AssertionError("wrong format %r found for %r" %
+                    (format, self))
         transport = a_bzrdir.get_branch_transport(None)
         control_files = lockable_files.LockableFiles(transport, 'lock',
                                                      lockdir.LockDir)
@@ -1277,7 +1278,9 @@ class BranchReferenceFormat(BranchFormat):
         """
         if not _found:
             format = BranchFormat.find_format(a_bzrdir)
-            assert format.__class__ == self.__class__
+            if format.__class__ != self.__class__:
+                raise AssertionError("wrong format %r found for %r" %
+                    (format, self))
         if location is None:
             location = self.get_reference(a_bzrdir)
         real_bzrdir = bzrdir.BzrDir.open(
@@ -1444,8 +1447,12 @@ class BzrBranch(Branch):
         """
         revision_id = _mod_revision.ensure_null(revision_id)
         old_revno, old_revid = self.last_revision_info()
+        # this old format stores the full history, but this api doesn't
+        # provide it, so we must generate, and might as well check it's
+        # correct
         history = self._lefthand_history(revision_id)
-        assert len(history) == revno, '%d != %d' % (len(history), revno)
+        if len(history) != revno:
+            raise AssertionError('%d != %d' % (len(history), revno))
         self.set_revision_history(history)
         self._run_post_change_branch_tip_hooks(old_revno, old_revid)
 
@@ -1525,7 +1532,8 @@ class BzrBranch(Branch):
                 elif heads == set([stop_revision, last_rev]):
                     # These branches have diverged
                     raise errors.DivergedBranches(self, other)
-                assert heads == set([stop_revision])
+                elif heads != set([stop_revision]):
+                    raise AssertionError("invalid heads: %r" % heads)
             if other_last_revision == stop_revision:
                 self.set_last_revision_info(other_last_revno,
                                             other_last_revision)
@@ -1677,8 +1685,6 @@ class BzrBranch(Branch):
 
     def get_parent(self):
         """See Branch.get_parent."""
-
-        assert self.base[-1] == '/'
         parent = self._get_parent_location()
         if parent is None:
             return parent
@@ -1720,7 +1726,6 @@ class BzrBranch(Branch):
         if url is None:
             self.control_files._transport.delete('parent')
         else:
-            assert isinstance(url, str)
             self.control_files.put_bytes('parent', url + '\n')
 
 
@@ -1896,7 +1901,7 @@ class BzrBranch6(BzrBranch5):
         Intended to be called by set_last_revision_info and
         _write_revision_history.
         """
-        assert revision_id is not None, "Use NULL_REVISION, not None"
+        revision_id = _mod_revision.ensure_null(revision_id)
         out_string = '%d %s\n' % (revno, revision_id)
         self.control_files.put_bytes('last-revision', out_string)
 
@@ -1945,7 +1950,6 @@ class BzrBranch6(BzrBranch5):
             iterator = repo.iter_reverse_revision_history(start_revision)
             #skip the last revision in the list
             next_revision = iterator.next()
-            assert next_revision == start_revision
         for revision_id in iterator:
             self._partial_revision_history_cache.append(revision_id)
             if (stop_index is not None and
@@ -2081,7 +2085,6 @@ class BzrBranch6(BzrBranch5):
             raise errors.NoSuchRevision(self, revno)
 
         if history is not None:
-            assert len(history) == last_revno, 'revno/history mismatch'
             return history[revno - 1]
 
         index = last_revno - revno

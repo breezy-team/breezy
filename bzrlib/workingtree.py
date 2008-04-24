@@ -222,8 +222,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         if not _internal:
             raise errors.BzrError("Please use bzrdir.open_workingtree or "
                 "WorkingTree.open() to obtain a WorkingTree.")
-        assert isinstance(basedir, basestring), \
-            "base directory %r is not a string" % basedir
         basedir = safe_unicode(basedir)
         mutter("opening working tree %r", basedir)
         if deprecated_passed(branch):
@@ -237,9 +235,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             self._control_files = self.branch.control_files
         else:
             # assume all other formats have their own control files.
-            assert isinstance(_control_files, LockableFiles), \
-                    "_control_files must be a LockableFiles, not %r" \
-                    % _control_files
             self._control_files = _control_files
         # update the whole cache up front and write to disk if anything changed;
         # in the future we might want to do this more selectively
@@ -318,7 +313,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             False then the inventory is the same as that on disk and any
             serialisation would be unneeded overhead.
         """
-        assert inv.root is not None
         self._inventory = inv
         self._inventory_is_modified = dirty
 
@@ -664,7 +658,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         # function - they should be part of lock_write and unlock.
         inv = self.inventory
         for f, file_id, kind in zip(files, ids, kinds):
-            assert kind is not None
             if file_id is None:
                 inv.add_path(f, kind=kind)
             else:
@@ -1269,7 +1262,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                                        DeprecationWarning)
 
         # check destination directory
-        assert not isinstance(from_paths, basestring)
+        if isinstance(from_paths, basestring):
+            raise ValueError()
         inv = self.inventory
         to_abs = self.abspath(to_dir)
         if not isdir(to_abs):
@@ -1820,7 +1814,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     def _write_basis_inventory(self, xml):
         """Write the basis inventory XML to the basis-inventory file"""
-        assert isinstance(xml, str), 'serialised xml must be bytestring.'
         path = self._basis_inventory_name()
         sio = StringIO(xml)
         self._control_files.put(path, sio)
@@ -2739,7 +2732,6 @@ class WorkingTreeFormat(object):
 
     @classmethod
     def unregister_format(klass, format):
-        assert klass._formats[format.get_format_string()] is format
         del klass._formats[format.get_format_string()]
 
 

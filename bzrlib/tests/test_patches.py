@@ -35,6 +35,9 @@ from bzrlib.patches import (MalformedLine,
                             parse_patches)
 
 
+# XXX: Is there a good reason this uses unittest's test case rather than the
+# bzrlib one?
+
 class PatchesTester(unittest.TestCase):
     def datafile(self, filename):
         data_path = os.path.join(os.path.dirname(__file__), 
@@ -45,8 +48,8 @@ class PatchesTester(unittest.TestCase):
         """Parse a valid patch header"""
         lines = "--- orig/commands.py\n+++ mod/dommands.py\n".split('\n')
         (orig, mod) = get_patch_names(lines.__iter__())
-        assert(orig == "orig/commands.py")
-        assert(mod == "mod/dommands.py")
+        self.assertEqual(orig, "orig/commands.py")
+        self.assertEqual(mod, "mod/dommands.py")
 
     def testInvalidPatchHeader(self):
         """Parse an invalid patch header"""
@@ -58,21 +61,21 @@ class PatchesTester(unittest.TestCase):
         """Parse a valid hunk header"""
         header = "@@ -34,11 +50,6 @@\n"
         hunk = hunk_from_header(header);
-        assert (hunk.orig_pos == 34)
-        assert (hunk.orig_range == 11)
-        assert (hunk.mod_pos == 50)
-        assert (hunk.mod_range == 6)
-        assert (str(hunk) == header)
+        self.assertEqual(hunk.orig_pos, 34)
+        self.assertEqual(hunk.orig_range, 11)
+        self.assertEqual(hunk.mod_pos, 50)
+        self.assertEqual(hunk.mod_range, 6)
+        self.assertEqual(str(hunk), header)
 
     def testValidHunkHeader2(self):
         """Parse a tricky, valid hunk header"""
         header = "@@ -1 +0,0 @@\n"
         hunk = hunk_from_header(header);
-        assert (hunk.orig_pos == 1)
-        assert (hunk.orig_range == 1)
-        assert (hunk.mod_pos == 0)
-        assert (hunk.mod_range == 0)
-        assert (str(hunk) == header)
+        self.assertEqual(hunk.orig_pos, 1)
+        self.assertEqual(hunk.orig_range, 1)
+        self.assertEqual(hunk.mod_pos, 0)
+        self.assertEqual(hunk.mod_range, 0)
+        self.assertEqual(str(hunk), header)
 
     def testPDiff(self):
         """Parse a hunk header produced by diff -p"""
@@ -160,7 +163,7 @@ class PatchesTester(unittest.TestCase):
                     if line.contents != next:
                         sys.stdout.write(" orig:%spatch:%s" % (next,
                                          line.contents))
-                    assert(line.contents == next)
+                    self.assertEqual(line.contents, next)
         self.assertRaises(StopIteration, rem_iter.next)
 
     def testPatching(self):
@@ -188,7 +191,7 @@ class PatchesTester(unittest.TestCase):
     def testFirstLineRenumber(self):
         """Make sure we handle lines at the beginning of the hunk"""
         patch = parse_patch(self.datafile("insert_top.patch"))
-        assert (patch.pos_in_mod(0)==1)
+        self.assertEqual(patch.pos_in_mod(0), 1)
 
     def testParsePatches(self):
         """Make sure file names can be extracted from tricky unified diffs"""
@@ -224,7 +227,7 @@ class PatchesTester(unittest.TestCase):
         patch_files = []
         for patch in patches:
             patch_files.append((patch.oldname, patch.newname))
-        assert (patch_files == filenames)
+        self.assertEqual(patch_files, filenames)
             
 def test():
     patchesTestSuite = unittest.makeSuite(PatchesTester,'test')

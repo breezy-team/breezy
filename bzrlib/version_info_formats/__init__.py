@@ -141,8 +141,9 @@ class VersionInfoBuilder(object):
         rev_hist = self._branch.revision_history()
         if self._working_tree is not None:
             last_rev = self._working_tree.last_revision()
-            assert last_rev in rev_hist, \
-                "Working Tree's last revision not in branch.revision_history"
+            if last_rev not in rev_hist:
+                raise AssertionError(
+                    "Working Tree's last revision not in branch.revision_history")
             rev_hist = rev_hist[:rev_hist.index(last_rev)+1]
 
         repository =  self._branch.repository

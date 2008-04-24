@@ -160,10 +160,6 @@ class RevisionSpec(object):
 
         if spec is None:
             return RevisionSpec(None, _internal=True)
-
-        assert isinstance(spec, basestring), \
-            "You should only supply strings not %s" % (type(spec),)
-
         for spectype in SPEC_TYPES:
             if spec.startswith(spectype.prefix):
                 trace.mutter('Returning RevisionSpec %s for %s',

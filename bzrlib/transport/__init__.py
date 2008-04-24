@@ -135,7 +135,8 @@ def register_transport_proto(prefix, help=None, info=None,
                              register_netloc=False):
     transport_list_registry.register_transport(prefix, help)
     if register_netloc:
-        assert prefix.endswith('://')
+        if not prefix.endswith('://'):
+            raise ValueError(prefix)
         register_urlparse_netloc_protocol(prefix[:-3])
 
 
@@ -404,8 +405,6 @@ class Transport(object):
         object or string to another one.
         This just gives them something easy to call.
         """
-        assert not isinstance(from_file, basestring), \
-            '_pump should only be called on files not %s' % (type(from_file,))
         return osutils.pumpfile(from_file, to_file)
 
     def _get_total(self, multi):
@@ -1000,8 +999,9 @@ class Transport(object):
 
         :returns: the length of relpath before the content was written to it.
         """
-        assert isinstance(bytes, str), \
-            'bytes must be a plain string, not %s' % type(bytes)
+        if not isinstance(bytes, str):
+            raise TypeError(
+                'bytes must be a plain string, not %s' % type(bytes))
         return self.append_file(relpath, StringIO(bytes), mode=mode)
 
     def append_multi(self, files, pb=None):
@@ -1604,7 +1604,8 @@ def get_transport(base, possible_transports=None):
             transport, last_err = _try_transport_factories(base, factory_list)
             if transport:
                 if possible_transports is not None:
-                    assert transport not in possible_transports
+                    if transport in possible_transports:
+                        raise AssertionError()
                     possible_transports.append(transport)
                 return transport
 

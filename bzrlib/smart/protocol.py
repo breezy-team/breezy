@@ -89,7 +89,8 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
         
         :param bytes: must be a byte string
         """
-        assert isinstance(bytes, str)
+        if not isinstance(bytes, str):
+            raise ValueError(bytes)
         self.in_buffer += bytes
         if not self.has_dispatched:
             if '\n' not in self.in_buffer:
@@ -133,19 +134,21 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
             self.request.accept_body(body_data)
             if self._body_decoder.finished_reading:
                 self.request.end_of_body()
-                assert self.request.finished_reading, \
-                    "no more body, request not finished"
+                if not self.request.finished_reading:
+                    raise AssertionError("no more body, request not finished")
             if self.request.response is not None:
                 self._send_response(self.request.response)
                 self.excess_buffer = self.in_buffer
                 self.in_buffer = ''
             else:
-                assert not self.request.finished_reading, \
-                    "no response and we have finished reading."
+                if self.request.finished_reading:
+                    raise AssertionError(
+                        "no response and we have finished reading.")
 
     def _send_response(self, response):
         """Send a smart server response down the output stream."""
-        assert not self._finished, 'response already sent'
+        if self._finished:
+            raise AssertionError('response already sent')
         args = response.args
         body = response.body
         self._finished = True
@@ -153,7 +156,8 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
         self._write_success_or_failure_prefix(response)
         self._write_func(_encode_tuple(args))
         if body is not None:
-            assert isinstance(body, str), 'body must be a str'
+            if not isinstance(body, str):
+                raise ValueError(body)
             bytes = self._encode_bulk_data(body)
             self._write_func(bytes)
 
@@ -202,15 +206,18 @@ class SmartServerRequestProtocolTwo(SmartServerRequestProtocolOne):
 
     def _send_response(self, response):
         """Send a smart server response down the output stream."""
-        assert not self._finished, 'response already sent'
+        if (self._finished):
+            raise AssertionError('response already sent')
         self._finished = True
         self._write_protocol_version()
         self._write_success_or_failure_prefix(response)
         self._write_func(_encode_tuple(response.args))
         if response.body is not None:
-            assert isinstance(response.body, str), 'body must be a str'
-            assert response.body_stream is None, (
-                'body_stream and body cannot both be set')
+            if not isinstance(response.body, str):
+                raise AssertionError('body must be a str')
+            if not (response.body_stream is None):
+                raise AssertionError(
+                    'body_stream and body cannot both be set')
             bytes = self._encode_bulk_data(response.body)
             self._write_func(bytes)
         elif response.body_stream is not None:

@@ -228,9 +228,6 @@ def _revision_graph(revision, revision_source):
         for parent in parents:
             descendants[parent][node] = 1
         ancestors[node] = set(parents)
-
-    assert root not in descendants[root]
-    assert root not in ancestors[root]
     return root, ancestors, descendants
 
 
@@ -327,7 +324,6 @@ class MultipleRevisionSources(object):
     @symbol_versioning.deprecated_method(symbol_versioning.one_three)
     def __init__(self, *args):
         object.__init__(self)
-        assert len(args) != 0
         self._revision_sources = args
 
     def revision_parents(self, revision_id):

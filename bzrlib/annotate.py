@@ -342,6 +342,5 @@ def _reannotate_annotated(right_parent_lines, new_lines, new_revision_id,
         last_right_idx = right_idx + match_len
         last_left_idx = left_idx + match_len
         # If left and right agree on a range, just push that into the output
-        assert len(lines) == left_idx
         lines_extend(annotated_lines[left_idx:left_idx + match_len])
     return lines

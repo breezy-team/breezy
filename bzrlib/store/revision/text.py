@@ -78,7 +78,6 @@ class TextRevisionStore(RevisionStore):
         """See RevisionStore.all_revision_ids()."""
         # for TextRevisionStores, this is only functional
         # on listable transports.
-        assert self.text_store.listable()
         result_graph = {}
         for rev_id in self.text_store:
             rev = self.get_revision(rev_id, transaction)
@@ -102,7 +101,6 @@ class TextRevisionStore(RevisionStore):
                                    [revision_id,
                                    str(e)])
             xml_file.close()
-            assert r.revision_id == revision_id
             revisions.append(r)
         return revisions
 

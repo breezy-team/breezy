@@ -519,7 +519,6 @@ class EmptyTree(Tree):
         return False
 
     def kind(self, file_id):
-        assert self._inventory[file_id].kind == "directory"
         return "directory"
 
     def list_files(self, include_root=False):
@@ -568,7 +567,6 @@ def file_status(filename, old_tree, new_tree):
         # what happened to the file that used to have
         # this name.  There are two possibilities: either it was
         # deleted entirely, or renamed.
-        assert old_id
         if new_inv.has_id(old_id):
             return 'X', old_inv.id2path(old_id), new_inv.id2path(old_id)
         else:
