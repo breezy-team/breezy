@@ -119,6 +119,7 @@ from bzrlib.tsort import topo_sort
 from bzrlib.tuned_gzip import GzipFile, bytes_to_gzip
 import bzrlib.ui
 from bzrlib.versionedfile import (
+    AbsentContentFactory,
     adapter_registry,
     ContentFactory,
     InterVersionedFile,
@@ -886,12 +887,22 @@ class KnitVersionedFile(VersionedFile):
             knit = None
         # Double index lookups here : need a unified api ?
         parent_map = self.get_parent_map(versions)
-        position_map = self._get_components_positions(versions)
+        absent_versions = set(versions) - set(parent_map)
         if ordering == 'topological':
-            versions = topo_sort(parent_map)
+            present_versions = topo_sort(parent_map)
+        else:
+            # List comprehension to keep the requested order (as that seems
+            # marginally useful, at least until we start doing IO optimising
+            # here.
+            present_versions = [version for version in versions if version in
+                parent_map]
+        position_map = self._get_components_positions(present_versions)
         # c = component_id, r = record_details, i_m = index_memo, n = next
-        records = [(version, position_map[version][1]) for version in versions]
+        records = [(version, position_map[version][1]) for version in
+            present_versions]
         record_map = {}
+        for version in absent_versions:
+            yield AbsentContentFactory((version,))
         for version, raw_data, sha1 in \
                 self._data.read_records_iter_raw(records):
             (record_details, index_memo, _) = position_map[version]

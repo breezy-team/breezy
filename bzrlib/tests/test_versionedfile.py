@@ -205,6 +205,28 @@ class VersionedFileTestMixIn(object):
         self.assertEqual(set([('base',), ('left',), ('right',), ('merged',)]),
             seen)
 
+    def test_get_record_stream_missing_records_are_absent(self):
+        f, parents = get_diamond_vf(self.get_file())
+        entries = f.get_record_stream(['merged', 'left', 'right', 'or', 'base'],
+            'unordered', False)
+        seen = set()
+        for factory in entries:
+            seen.add(factory.key)
+            if factory.key == ('or',):
+                self.assertEqual('absent', factory.storage_kind)
+                self.assertEqual(None, factory.sha1)
+                self.assertEqual(None, factory.parents)
+            else:
+                self.assertValidStorageKind(factory.storage_kind)
+                self.assertEqual(f.get_sha1s([factory.key[0]])[0], factory.sha1)
+                self.assertEqual(parents[factory.key[0]], factory.parents)
+                self.assertIsInstance(factory.get_bytes_as(factory.storage_kind),
+                    str)
+        self.assertEqual(
+            set([('base',), ('left',), ('right',), ('merged',), ('or',)]),
+            seen)
+
+
     def test_insert_record_stream_empty(self):
         """Inserting an empty record stream should work."""
         f = self.get_file()

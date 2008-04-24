@@ -80,6 +80,24 @@ class ContentFactory(object):
         self.parents = None
 
 
+class AbsentContentFactory(object):
+    """A placeholder content factory for unavailable texts.
+    
+    :ivar sha1: None.
+    :ivar storage_kind: 'absent'.
+    :ivar key: The key of this content. Each key is a tuple with a single
+        string in it.
+    :ivar parents: None.
+    """
+
+    def __init__(self, key):
+        """Create a ContentFactory."""
+        self.sha1 = None
+        self.storage_kind = 'absent'
+        self.key = key
+        self.parents = None
+
+
 class VersionedFile(object):
     """Versioned text file storage.
     

@@ -91,6 +91,7 @@ import bzrlib.patiencediff
 from bzrlib.trace import mutter
 from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import (
+    AbsentContentFactory,
     adapter_registry,
     ContentFactory,
     InterVersionedFile,
@@ -309,7 +310,10 @@ class Weave(VersionedFile):
             parents = self.get_parent_map(versions)
             versions = topo_sort(parents)
         for version in versions:
-            yield WeaveContentFactory(version, self)
+            if version in self:
+                yield WeaveContentFactory(version, self)
+            else:
+                yield AbsentContentFactory((version,))
 
     def get_parent_map(self, version_ids):
         """See VersionedFile.get_parent_map."""
