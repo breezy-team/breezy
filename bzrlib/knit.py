@@ -1057,21 +1057,54 @@ class KnitVersionedFile(VersionedFile):
         :return: None
         :seealso VersionedFile.get_record_stream:
         """
+        def get_adapter(adapter_key):
+            try:
+                return adapters[adapter_key]
+            except KeyError:
+                adapter_factory = adapter_registry.get(adapter_key)
+                adapter = adapter_factory(self)
+                adapters[adapter_key] = adapter
+                return adapter
+        if self.factory.annotated:
+            annotated = "annotated-"
+            fallback_conversions = []
+        else:
+            annotated = ""
+            # We can strip annotations cheaply (but we can't add them cheaply)
+            fallback_conversions = set(["knit-delta-gz", "knit-ft-gz"])
+        native_types = set()
+        native_types.add("knit-%sdelta-gz" % annotated)
+        native_types.add("knit-%sft-gz" % annotated)
+        knit_types = native_types.union(fallback_conversions)
         adapters = {}
         for record in stream:
             # adapt to non-tuple interface
             parents = [parent[0] for parent in record.parents]
-            if record.storage_kind == 'fulltext':
+            if record.storage_kind in knit_types:
+                if record.storage_kind not in native_types:
+                    try:
+                        adapter_key = (record.storage_kind, "knit-delta-gz")
+                        adapter = get_adapter(adapter_key)
+                    except KeyError:
+                        adapter_key = (record.storage_kind, "knit-ft-gz")
+                        adapter = get_adapter(adapter_key)
+                    bytes = adapter.get_bytes(
+                        record, record.get_bytes_as(record.storage_kind))
+                else:
+                    bytes = record.get_bytes_as(record.storage_kind)
+                options = [record._build_details[0]]
+                if record._build_details[1]:
+                    options.append('no-eol')
+                # Just blat it across
+                self._add_raw_records(
+                    [(record.key[0], options, parents, len(bytes))],
+                    bytes)
+            elif record.storage_kind == 'fulltext':
                 self.add_lines(record.key[0], parents,
                     split_lines(record.get_bytes_as('fulltext')))
             else:
                 adapter_key = record.storage_kind, 'fulltext'
-                try:
-                    adapter = adapters[adapter_key]
-                except KeyError:
-                    adapter_factory = adapter_registry.get(adapter_key)
-                    adapter = adapter_factory(self)
-                    adapters[adapter_key] = adapter
+                adapter = get_adapter(adapter_key)
                 lines = split_lines(adapter.get_bytes(
                     record, record.get_bytes_as(record.storage_kind)))
                 self.add_lines(record.key[0], parents, lines)
