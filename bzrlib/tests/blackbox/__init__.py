@@ -78,6 +78,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_merge',
                      'bzrlib.tests.blackbox.test_merge_directive',
                      'bzrlib.tests.blackbox.test_missing',
+                     'bzrlib.tests.blackbox.test_modified',
                      'bzrlib.tests.blackbox.test_mv',
                      'bzrlib.tests.blackbox.test_nick',
                      'bzrlib.tests.blackbox.test_outside_wt',

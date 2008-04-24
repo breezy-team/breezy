@@ -1569,7 +1569,7 @@ class cmd_modified(Command):
         tree = WorkingTree.open_containing(u'.')[0]
         td = tree.changes_from(tree.basis_tree())
         for path, id, kind, text_modified, meta_modified in td.modified:
-            self.outf.write(path + '\n')
+            self.outf.write(osutils.quotefn(path) + '\n')
 
 
 class cmd_added(Command):
@@ -1597,7 +1597,7 @@ class cmd_added(Command):
                     path = inv.id2path(file_id)
                     if not os.access(osutils.abspath(path), os.F_OK):
                         continue
-                    self.outf.write(path + '\n')
+                    self.outf.write(osutils.quotefn(path) + '\n')
             finally:
                 basis.unlock()
         finally:
