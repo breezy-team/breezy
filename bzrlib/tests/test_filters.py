@@ -20,8 +20,10 @@ from bzrlib.filters import (
     ContentFilterContext,
     filtered_input_file,
     filtered_output_lines,
+    sha_file_by_name,
     )
-from bzrlib.tests import TestCase
+from bzrlib.osutils import sha_string
+from bzrlib.tests import TestCase, TestCaseInTempDir
 
 
 # test filter stacks
@@ -80,3 +82,16 @@ class TestFilteredOutput(TestCase):
         # test a multi item filter stack
         self.assertEqual(_sample_external, list(filtered_output_lines(
             _internal_2, _stack_2)))
+
+
+class TestFilteredSha(TestCaseInTempDir):
+
+    def test_filtered_sha_byname(self):
+        # check that the sha matches what's expected
+        text = 'Foo Bar Baz\n'
+        a = open('a', 'wb')
+        a.write(text)
+        a.close()
+        expected_sha = sha_string(''.join(_swapcase([text], None)))
+        self.assertEqual(expected_sha, sha_file_by_name('a',
+            [ContentFilter(_swapcase, _swapcase)]))
