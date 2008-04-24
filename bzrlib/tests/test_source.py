@@ -301,6 +301,6 @@ class TestSource(TestSourceHelper):
             if search(ast):
                 badfiles.append(fname)
         if badfiles:
-            raise KnownFailure(
+            self.fail(
                 "these files contain an assert statement and should not:\n%s"
                 % '\n'.join(badfiles))
