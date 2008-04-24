@@ -46,10 +46,13 @@ _internal_2 = ['junk\n', 'hELLO\n', 'wORLD\n']
 
 class TestContentFilterContext(TestCase):
 
-    def test_context_filter_context(self):
+    def test_empty_filter_context(self):
         ctx = ContentFilterContext()
         self.assertRaises(NotImplementedError, ctx.relpath)
-        self.assertRaises(NotImplementedError, ctx.last_revision)
+
+    def test_filter_context_with_path(self):
+        ctx = ContentFilterContext('foo/bar')
+        self.assertEquals('foo/bar', ctx.relpath())
 
 
 class TestFilteredInput(TestCase):

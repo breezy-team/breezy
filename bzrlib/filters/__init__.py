@@ -53,15 +53,26 @@ class ContentFilter(object):
 
 
 class ContentFilterContext(object):
-    """Object providing information that filters can use."""
+    """Object providing information that filters can use.
+    
+    In the future, this is likely to be expanded to include
+    details like the Revision when this file was last updated.
+    """
 
-    def last_revision(self):
-        """Revision when this file was last updated."""
-        raise NotImplementedError(self.last_revision)
+    def __init__(self, relpath=None):
+        """Create a context.
+
+        :param relpath: the relative path or None if this context doesn't
+           support that information.
+        """
+        self._relpath = relpath
 
     def relpath(self):
         """Relative path of file to tree-root."""
-        raise NotImplementedError(self.relpath)
+        if self._relpath is None:
+            raise NotImplementedError(self.relpath)
+        else:
+            return self._relpath
 
 
 def filtered_input_file(f, filters, context=None):
