@@ -4107,7 +4107,9 @@ class cmd_send(Command):
                'rather than the one containing the working directory.',
                short_name='f',
                type=unicode),
-        Option('output', short_name='o', help='Write directive to this file.',
+        Option('output', short_name='o',
+               help='Write merge directive to this file; '
+                    'use - for stdout.',
                type=unicode),
         Option('mail-to', help='Mail the request to this address.',
                type=unicode),
