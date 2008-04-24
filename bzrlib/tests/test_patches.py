@@ -1,4 +1,4 @@
-# Copyright (C) 2004 - 2006 Aaron Bentley, Canonical Ltd
+# Copyright (C) 2004 - 2008 Aaron Bentley, Canonical Ltd
 # <aaron.bentley@utoronto.ca>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -16,8 +16,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-import unittest
 import os.path
+
+from bzrlib.tests import TestCase
 
 from bzrlib.iterablefile import IterableFile
 from bzrlib.patches import (MalformedLine, 
@@ -35,10 +36,8 @@ from bzrlib.patches import (MalformedLine,
                             parse_patches)
 
 
-# XXX: Is there a good reason this uses unittest's test case rather than the
-# bzrlib one?
+class PatchesTester(TestCase):
 
-class PatchesTester(unittest.TestCase):
     def datafile(self, filename):
         data_path = os.path.join(os.path.dirname(__file__), 
                                  "test_patches_data", filename)
