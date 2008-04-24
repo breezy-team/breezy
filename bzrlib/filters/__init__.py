@@ -35,7 +35,6 @@ import cStringIO
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
-        errors,
         osutils,
         )
 """)
@@ -58,11 +57,11 @@ class ContentFilterContext(object):
 
     def last_revision(self):
         """Revision when this file was last updated."""
-        return errors.NotImplementedError(self.last_revision)
+        raise NotImplementedError(self.last_revision)
 
     def relpath(self):
         """Relative path of file to tree-root."""
-        return errors.NotImplementedError(self.relpath)
+        raise NotImplementedError(self.relpath)
 
 
 def filtered_input_file(f, filters, context=None):

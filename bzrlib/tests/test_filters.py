@@ -17,6 +17,7 @@
 import StringIO
 from bzrlib.filters import (
     ContentFilter,
+    ContentFilterContext,
     filtered_input_file,
     filtered_output_lines,
     )
@@ -41,21 +42,30 @@ _internal_1 = ['hELLO\n', 'wORLD\n']
 _internal_2 = ['junk\n', 'hELLO\n', 'wORLD\n']
 
 
+class TestContentFilterContext(TestCase):
+
+    def test_context_filter_context(self):
+        ctx = ContentFilterContext()
+        self.assertRaises(NotImplementedError, ctx.relpath)
+        self.assertRaises(NotImplementedError, ctx.last_revision)
+
+
 class TestFilteredInput(TestCase):
 
     def test_filtered_input_file(self):
+        ctx = ContentFilterContext()
         # test an empty stack returns the same result
         external = ''.join(_sample_external)
         f = StringIO.StringIO(external)
-        self.assertEqual(external, filtered_input_file(f, None).read())
+        self.assertEqual(external, filtered_input_file(f, None, ctx).read())
         # test a single item filter stack
         f = StringIO.StringIO(external)
         expected = ''.join(_internal_1)
-        self.assertEqual(expected, filtered_input_file(f, _stack_1).read())
+        self.assertEqual(expected, filtered_input_file(f, _stack_1, ctx).read())
         # test a multi item filter stack
         f = StringIO.StringIO(external)
         expected = ''.join(_internal_2)
-        self.assertEqual(expected, filtered_input_file(f, _stack_2).read())
+        self.assertEqual(expected, filtered_input_file(f, _stack_2, ctx).read())
 
 
 class TestFilteredOutput(TestCase):
