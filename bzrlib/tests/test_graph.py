@@ -1060,6 +1060,18 @@ class TestFindUniqueAncestors(tests.TestCase):
     def make_graph(self, ancestors):
         return _mod_graph.Graph(_mod_graph.DictParentsProvider(ancestors))
 
+    def make_breaking_graph(self, ancestors, break_on):
+        """Make a Graph that raises an exception if we hit a node."""
+        g = self.make_graph(ancestors)
+        orig_parent_map = g.get_parent_map
+        def get_parent_map(keys):
+            bad_keys = set(keys).intersection(break_on)
+            if bad_keys:
+                self.fail('key(s) %s was accessed' % (sorted(bad_keys),))
+            return orig_parent_map(keys)
+        g.get_parent_map = get_parent_map
+        return g
+
     def assertFindUniqueAncestors(self, graph, expected, node, common):
         actual = graph.find_unique_ancestors(node, common)
         self.assertEqual(expected, sorted(actual))
@@ -1075,6 +1087,11 @@ class TestFindUniqueAncestors(tests.TestCase):
         self.assertFindUniqueAncestors(graph, ['rev2a'], 'rev2a', ['rev1'])
         self.assertFindUniqueAncestors(graph, ['rev2b'], 'rev2b', ['rev1'])
         self.assertFindUniqueAncestors(graph, ['rev3'], 'rev3', ['rev2a'])
+
+    def test_minimal_ancestry(self):
+        graph = self.make_breaking_graph(extended_history_shortcut,
+                                         [NULL_REVISION, 'a', 'b'])
+        self.assertFindUniqueAncestors(graph, ['e'], 'e', ['d'])
 
     def test_in_ancestry(self):
         graph = self.make_graph(ancestry_1)
