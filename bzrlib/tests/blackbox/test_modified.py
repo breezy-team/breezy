@@ -36,8 +36,11 @@ class TestModified(ExternalBase):
 
     def _test_modified(self, name):
 
-        def check_modified(expected):
-            out, err = self.run_bzr('modified')
+        def check_modified(expected, null=False):
+            command = 'modified'
+            if null:
+                command += ' --null'
+            out, err = self.run_bzr(command)
             self.assertEquals(out, expected)
             self.assertEquals(err, '')
 
@@ -60,6 +63,9 @@ class TestModified(ExternalBase):
         # modify the file
         self.build_tree_contents([(name, 'changed\n')]) 
         check_modified(osutils.quotefn(name) + '\n')
+        
+        # check null seps
+        check_modified(name + '\0', null=True)
 
         # now commit the file and it's no longer modified
         tree.commit(message='modified %s' %(name))
