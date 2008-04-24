@@ -1088,6 +1088,20 @@ class TestFindUniqueAncestors(tests.TestCase):
         self.assertFindUniqueAncestors(graph,
             ['rev2a', 'rev3', 'rev4'], 'rev4', ['rev2b'])
 
+    def test_complex_shortcut(self):
+        graph = self.make_graph(complex_shortcut)
+        self.assertFindUniqueAncestors(graph,
+            ['h', 'n'], 'n', ['m'])
+        self.assertFindUniqueAncestors(graph,
+            ['e', 'i', 'm'], 'm', ['n'])
+
+    def test_complex_shortcut2(self):
+        graph = self.make_graph(complex_shortcut2)
+        self.assertFindUniqueAncestors(graph,
+            ['j', 'u'], 'u', ['t'])
+        self.assertFindUniqueAncestors(graph,
+            ['t'], 't', ['u'])
+
 
 class TestCachingParentsProvider(tests.TestCase):
 
