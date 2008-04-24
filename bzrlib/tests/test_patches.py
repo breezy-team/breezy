@@ -101,8 +101,8 @@ class PatchesTester(unittest.TestCase):
 
     def lineThing(self,text, type):
         line = parse_line(text)
-        assert(isinstance(line, type))
-        assert(str(line)==text)
+        self.assertIsInstance(line, type)
+        self.assertEqual(str(line), text)
 
     def makeMalformedLine(self, text):
         self.assertRaises(MalformedLine, parse_line, text)
@@ -154,7 +154,7 @@ class PatchesTester(unittest.TestCase):
             if mod_pos is None:
                 removals.append(orig[i])
                 continue
-            assert(mod[mod_pos]==orig[i])
+            self.assertEqual(mod[mod_pos], orig[i])
         rem_iter = removals.__iter__()
         for hunk in patch.hunks:
             for line in hunk.lines:
