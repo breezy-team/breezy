@@ -1025,10 +1025,46 @@ class BranchHooks(Hooks):
         # local is the local branch or None, master is the target branch,
         # and an empty branch recieves new_revno of 0, new_revid of None.
         self['post_uncommit'] = []
+        # Introduced in 1.4
+        # Invoked after the tip of a branch changes.
+        # the api signature is
+        # (params) where params is a ChangeBranchTipParams with the members
+        # (branch, old_revno, new_revno, old_revid, new_revid)
+        self['post_change_branch_tip'] = []
 
 
 # install the default hooks into the Branch class.
 Branch.hooks = BranchHooks()
+
+
+class ChangeBranchTipParams(object):
+    """Object holding parameters passed to *_change_branch_tip hooks.
+
+    There are 5 fields that hooks may wish to access:
+
+    :ivar branch: the branch being changed
+    :ivar old_revno: revision number before the change
+    :ivar new_revno: revision number after the change
+    :ivar old_revid: revision id before the change
+    :ivar new_revid: revision id after the change
+
+    The revid fields are strings. The revno fields are integers.
+    """
+
+    def __init__(self, branch, old_revno, new_revno, old_revid, new_revid):
+        """Create a group of ChangeBranchTip parameters.
+
+        :param branch: The branch being changed.
+        :param old_revno: Revision number before the change.
+        :param new_revno: Revision number after the change.
+        :param old_revid: Tip revision id before the change.
+        :param new_revid: Tip revision id after the change.
+        """
+        self.branch = branch
+        self.old_revno = old_revno
+        self.new_revno = new_revno
+        self.old_revid = old_revid
+        self.new_revid = new_revid
 
 
 class BzrBranchFormat4(BranchFormat):
@@ -1383,6 +1419,17 @@ class BzrBranch(Branch):
         for hook in Branch.hooks['set_rh']:
             hook(self, rev_history)
 
+    def _run_post_change_branch_tip_hooks(self, old_revno, old_revid):
+        """Run the post_change_branch_tip hooks."""
+        hooks = Branch.hooks['post_change_branch_tip']
+        if not hooks:
+            return
+        new_revno, new_revid = self.last_revision_info()
+        params = ChangeBranchTipParams(
+            self, old_revno, new_revno, old_revid, new_revid)
+        for hook in hooks:
+            hook(params)
+ 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
         """Set the last revision of this branch.
@@ -1396,9 +1443,11 @@ class BzrBranch(Branch):
         be permitted.
         """
         revision_id = _mod_revision.ensure_null(revision_id)
+        old_revno, old_revid = self.last_revision_info()
         history = self._lefthand_history(revision_id)
         assert len(history) == revno, '%d != %d' % (len(history), revno)
         self.set_revision_history(history)
+        self._run_post_change_branch_tip_hooks(old_revno, old_revid)
 
     def _gen_revision_history(self):
         history = self.control_files.get('revision-history').read().split('\n')
@@ -1854,11 +1903,13 @@ class BzrBranch6(BzrBranch5):
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
         revision_id = _mod_revision.ensure_null(revision_id)
+        old_revno, old_revid = self.last_revision_info()
         if self._get_append_revisions_only():
             self._check_history_violation(revision_id)
         self._write_last_revision_info(revno, revision_id)
         self._clear_cached_state()
         self._last_revision_info_cache = revno, revision_id
+        self._run_post_change_branch_tip_hooks(old_revno, old_revid)
 
     def _check_history_violation(self, revision_id):
         last_revision = _mod_revision.ensure_null(self.last_revision())
@@ -2149,7 +2200,7 @@ class Converter5to6(object):
         new_branch = format.open(branch.bzrdir, _found=True)
 
         # Copy source data into target
-        new_branch.set_last_revision_info(*branch.last_revision_info())
+        new_branch._write_last_revision_info(*branch.last_revision_info())
         new_branch.set_parent(branch.get_parent())
         new_branch.set_bound_location(branch.get_bound_location())
         new_branch.set_push_location(branch.get_push_location())

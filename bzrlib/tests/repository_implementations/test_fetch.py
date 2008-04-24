@@ -48,7 +48,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
 
     def test_fetch_knit3(self):
         # create a repository of the sort we are testing.
-        tree_a = self.make_branch_and_tree('a', '')
+        tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo'])
         tree_a.add('foo', 'file1')
         tree_a.commit('rev1', rev_id='rev1')
@@ -127,7 +127,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
             target_repo.get_signature_text('rev1'))
 
     def make_repository_with_one_revision(self):
-        wt = self.make_branch_and_tree('source', '')
+        wt = self.make_branch_and_tree('source')
         wt.commit('rev1', allow_pointless=True, rev_id='rev1')
         return wt.branch.repository
 

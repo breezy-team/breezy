@@ -127,18 +127,16 @@ class RemoteTransport(transport.ConnectedTransport):
 
     def is_readonly(self):
         """Smart server transport can do read/write file operations."""
-        resp = self._call2('Transport.is_readonly')
-        if resp == ('yes', ):
-            return True
-        elif resp == ('no', ):
-            return False
-        elif (resp == ('error', "Generic bzr smart protocol error: "
-                                "bad request 'Transport.is_readonly'") or
-              resp == ('error', "Generic bzr smart protocol error: "
-                                "bad request u'Transport.is_readonly'")):
+        try:
+            resp = self._call2('Transport.is_readonly')
+        except errors.UnknownSmartMethod:
             # XXX: nasty hack: servers before 0.16 don't have a
             # 'Transport.is_readonly' verb, so we do what clients before 0.16
             # did: assume False.
+            return False
+        if resp == ('yes', ):
+            return True
+        elif resp == ('no', ):
             return False
         else:
             self._translate_error(resp)

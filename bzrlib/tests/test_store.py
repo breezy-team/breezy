@@ -405,32 +405,32 @@ class TestTransportStore(TestCase):
 
 class TestVersionFileStore(TestCaseWithTransport):
 
+    def get_scope(self):
+        return self._transaction
+
     def setUp(self):
         super(TestVersionFileStore, self).setUp()
         self.vfstore = store.versioned.VersionedFileStore(MemoryTransport())
+        self.vfstore.get_scope = self.get_scope
+        self._transaction = None
 
     def test_get_weave_registers_dirty_in_write(self):
-        transaction = transactions.WriteTransaction()
-        vf = self.vfstore.get_weave_or_empty('id', transaction)
-        transaction.finish()
+        self._transaction = transactions.WriteTransaction()
+        vf = self.vfstore.get_weave_or_empty('id', self._transaction)
+        self._transaction.finish()
+        self._transaction = None
         self.assertRaises(errors.OutSideTransaction, vf.add_lines, 'b', [], [])
-        transaction = transactions.WriteTransaction()
-        vf = self.vfstore.get_weave('id', transaction)
-        transaction.finish()
+        self._transaction = transactions.WriteTransaction()
+        vf = self.vfstore.get_weave('id', self._transaction)
+        self._transaction.finish()
+        self._transaction = None
         self.assertRaises(errors.OutSideTransaction, vf.add_lines, 'b', [], [])
-
-    def test_get_weave_or_empty_readonly_fails(self):
-        transaction = transactions.ReadOnlyTransaction()
-        vf = self.assertRaises(errors.ReadOnlyError,
-                               self.vfstore.get_weave_or_empty,
-                               'id',
-                               transaction)
 
     def test_get_weave_readonly_cant_write(self):
-        transaction = transactions.WriteTransaction()
-        vf = self.vfstore.get_weave_or_empty('id', transaction)
-        transaction.finish()
-        transaction = transactions.ReadOnlyTransaction()
-        vf = self.vfstore.get_weave_or_empty('id', transaction)
+        self._transaction = transactions.WriteTransaction()
+        vf = self.vfstore.get_weave_or_empty('id', self._transaction)
+        self._transaction.finish()
+        self._transaction = transactions.ReadOnlyTransaction()
+        vf = self.vfstore.get_weave_or_empty('id', self._transaction)
         self.assertRaises(errors.ReadOnlyError, vf.add_lines, 'b', [], [])
 

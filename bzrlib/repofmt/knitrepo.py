@@ -101,6 +101,9 @@ class KnitRepository(MetaDirRepository):
         self._commit_builder_class = _commit_builder_class
         self._serializer = _serializer
         self._reconcile_fixes_text_parents = True
+        control_store.get_scope = self.get_transaction
+        text_store.get_scope = self.get_transaction
+        _revision_store.get_scope = self.get_transaction
 
     def _warn_if_deprecated(self):
         # This class isn't deprecated
@@ -358,7 +361,7 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
             repo_transport,
             prefixed=False,
             file_mode=control_files._file_mode,
-            versionedfile_class=knit.KnitVersionedFile,
+            versionedfile_class=knit.make_file_knit,
             versionedfile_kwargs={'factory':knit.KnitPlainFactory()},
             )
 
@@ -369,7 +372,7 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
             file_mode=control_files._file_mode,
             prefixed=False,
             precious=True,
-            versionedfile_class=knit.KnitVersionedFile,
+            versionedfile_class=knit.make_file_knit,
             versionedfile_kwargs={'delta':False,
                                   'factory':knit.KnitPlainFactory(),
                                  },
@@ -382,7 +385,7 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
         return self._get_versioned_file_store('knits',
                                   transport,
                                   control_files,
-                                  versionedfile_class=knit.KnitVersionedFile,
+                                  versionedfile_class=knit.make_file_knit,
                                   versionedfile_kwargs={
                                       'create_parent_dir':True,
                                       'delay_create':True,

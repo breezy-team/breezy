@@ -1644,6 +1644,7 @@ def _reparent_transform_children(tt, old_parent, new_parent):
     by_parent = tt.by_parent()
     for child in by_parent[old_parent]:
         tt.adjust_path(tt.final_name(child), new_parent, child)
+    return by_parent[old_parent]
 
 def _content_match(tree, entry, file_id, kind, target_path):
     if entry.kind != kind:
@@ -2019,18 +2020,39 @@ def conflict_pass(tt, conflicts, path_tree=None):
                 new_conflicts.add(('deleting parent', 'Not deleting', 
                                    trans_id))
             except KeyError:
-                tt.create_directory(trans_id)
-                new_conflicts.add((c_type, 'Created directory', trans_id))
+                create = True
                 try:
                     tt.final_name(trans_id)
                 except NoFinalPath:
                     if path_tree is not None:
                         file_id = tt.final_file_id(trans_id)
+                        if file_id is None:
+                            file_id = tt.inactive_file_id(trans_id)
                         entry = path_tree.inventory[file_id]
-                        parent_trans_id = tt.trans_id_file_id(entry.parent_id)
-                        tt.adjust_path(entry.name, parent_trans_id, trans_id)
+                        # special-case the other tree root (move its
+                        # children to current root)
+                        if entry.parent_id is None:
+                            create=False
+                            moved = _reparent_transform_children(
+                                tt, trans_id, tt.root)
+                            for child in moved:
+                                new_conflicts.add((c_type, 'Moved to root',
+                                                   child))
+                        else:
+                            parent_trans_id = tt.trans_id_file_id(
+                                entry.parent_id)
+                            tt.adjust_path(entry.name, parent_trans_id,
+                                           trans_id)
+                if create:
+                    tt.create_directory(trans_id)
+                    new_conflicts.add((c_type, 'Created directory', trans_id))
         elif c_type == 'unversioned parent':
-            tt.version_file(tt.inactive_file_id(conflict[1]), conflict[1])
+            file_id = tt.inactive_file_id(conflict[1])
+            # special-case the other tree root (move its children instead)
+            if path_tree and file_id in path_tree:
+                if path_tree.inventory[file_id].parent_id is None:
+                    continue
+            tt.version_file(file_id, conflict[1])
             new_conflicts.add((c_type, 'Versioned directory', conflict[1]))
         elif c_type == 'non-directory parent':
             parent_id = conflict[1]
