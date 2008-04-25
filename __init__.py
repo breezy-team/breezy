@@ -95,7 +95,7 @@ class cmd_upload(commands.Command):
         if len(wt.conflicts()) > 0:
             raise errors.ConflictsInTree
 
-        self.branch = branch.Branch.open_containing(directory)[0]
+        self.branch = wt.branch
 
         if location is None:
             stored_loc = self.get_upload_location()
@@ -148,7 +148,8 @@ class cmd_upload(commands.Command):
         return self.to_transport.get_bytes(self.bzr_upload_revid_file_name)
 
     def upload_file(self, relpath, id):
-        self.outf.write('Uploaded ' + relpath + "\n")
+        if self.verbose:
+            self.outf.write('Uploadind %s\n' % relpath)
         self.to_transport.put_bytes(relpath, self.tree.get_file_text(id))
 
     def make_remote_dir(self, relpath):
@@ -156,11 +157,13 @@ class cmd_upload(commands.Command):
         self.to_transport.mkdir(relpath)
 
     def delete_remote_file(self, relpath):
-        self.outf.write('Deleting: ' + relpath + "\n")
+        if self.verbose:
+            self.outf.write('Deleting %s\n' % relpath)
         self.to_transport.delete(relpath)
 
     def delete_remote_dir(self, relpath):
-        self.outf.write('Deleting: ' + relpath + "\n")
+        if self.verbose:
+            self.outf.write('Deleting %s\n' % relpath)
         self.to_transport.rmdir(relpath)
 
     def delete_remote_dir_maybe(self, relpath):
@@ -199,7 +202,8 @@ class cmd_upload(commands.Command):
         stamp = '.tmp.%.9f.%d.%d' % (time.time(),
                                      os.getpid(),
                                      random.randint(0,0x7FFFFFFF))
-        self.outf.write('Renaming ' + old_relpath + ' to ' + new_relpath + "\n")
+        if self.verbose:
+            self.outf.write('Renaming %s to %s\n' % (old_relpath, new_relpath))
         self.to_transport.rename(old_relpath, stamp)
         self._pending_renames.append((stamp, new_relpath))
 
