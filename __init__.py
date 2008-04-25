@@ -75,11 +75,8 @@ class cmd_upload(commands.Command):
        ]
 
     def run(self, location=None, full=False, revision=None, remember=None,
-            directory=None, verbose=False,
+            directory=None, verbose=True,
             ):
-        # XXX: Ugly hack to make tests pass
-        if not self.__dict__.has_key('outf'):
-            self._setup_outf()
         if directory is None:
             directory = u'.'
 

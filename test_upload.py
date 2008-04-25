@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
+import sys
 
 
 from bzrlib import (
@@ -186,19 +187,29 @@ class TestUploadMixin(object):
         os.mkdir(base + name)
         self.tree.commit('change %s from file to dir' % name)
 
-    def do_full_upload(self, *args, **kwargs):
+    def _get_cmd_upload(self):
         upload = cmd_upload()
+        # We don't want to use run_bzr here because redirected output are a
+        # pain to debug. But we need to provides a valid outf.
+        # XXX: Should a bug against bzr be filled about that ?
+        upload._setup_outf()
+        return upload
+
+    def do_full_upload(self, *args, **kwargs):
+        upload = self._get_cmd_upload()
         up_url = self.get_transport(self.upload_dir).external_url()
         if kwargs.get('directory', None) is None:
             kwargs['directory'] = 'branch'
         kwargs['full'] = True
+        kwargs['verbose'] = False
         upload.run(up_url, *args, **kwargs)
 
     def do_incremental_upload(self, *args, **kwargs):
-        upload = cmd_upload()
+        upload = self._get_cmd_upload()
         up_url = self.get_transport(self.upload_dir).external_url()
         if kwargs.get('directory', None) is None:
             kwargs['directory'] = 'branch'
+        kwargs['verbose'] = False
         upload.run(up_url, *args, **kwargs)
 
     def test_create_file(self):
