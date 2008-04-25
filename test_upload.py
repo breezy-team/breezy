@@ -276,8 +276,7 @@ class TestFullUpload(tests.TestCaseWithTransport, TestUploadMixin):
 
         self.do_full_upload()
 
-        upload = cmd_upload()
-        self.failUnlessUpFileExists(upload.bzr_upload_revid_file_name)
+        self.failUnlessUpFileExists(cmd_upload.bzr_upload_revid_file_name)
 
     def test_invalid_revspec(self):
         self.make_local_branch()
@@ -374,9 +373,11 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
         self.do_upload()
         self.assertUpFileEqual('bar', 'hello')
 
-    def test_upload_for_the_first_time(self):
+    def test_upload_for_the_first_time_do_a_full_upload(self):
         self.make_local_branch()
         self.add_file('hello', 'bar')
+
+        self.failIfUpFileExists(cmd_upload.bzr_upload_revid_file_name)
         self.do_upload()
         self.assertUpFileEqual('bar', 'hello')
 
