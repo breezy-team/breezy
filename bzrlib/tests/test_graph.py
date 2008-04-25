@@ -1098,10 +1098,10 @@ class TestFindUniqueAncestors(tests.TestCase):
         self.assertFindUniqueAncestors(graph, ['f'], 'f', ['a', 'd'])
 
         graph = self.make_breaking_graph(complex_shortcut,
-                                         ['a', 'b', 'c'])
+                                         ['a', 'b'])
         self.assertFindUniqueAncestors(graph, ['h'], 'h', ['i'])
         self.assertFindUniqueAncestors(graph, ['e', 'g', 'i'], 'i', ['h'])
-
+        self.assertFindUniqueAncestors(graph, ['h'], 'h', ['g'])
         self.assertFindUniqueAncestors(graph, ['h'], 'h', ['j'])
 
     def test_in_ancestry(self):

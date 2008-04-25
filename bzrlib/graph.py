@@ -238,9 +238,11 @@ class Graph(object):
         # 6) Search is done when all common searchers have completed.
 
         unique_searcher = self._make_breadth_first_searcher([unique_revision])
+        # we know that unique_revision isn't in common_revisions
+        unique_searcher.next()
         common_searcher = self._make_breadth_first_searcher(common_revisions)
 
-        while True:
+        while unique_searcher._next_query:
             next_unique_nodes = set(unique_searcher.step())
             next_common_nodes = set(common_searcher.step())
 
@@ -256,10 +258,6 @@ class Graph(object):
                 ancestors.update(common_searcher.find_seen_ancestors(ancestors))
                 unique_searcher.stop_searching_any(ancestors)
                 common_searcher.start_searching(ancestors)
-
-            # Are there any more nodes to search?
-            if not unique_searcher._next_query:
-                break
 
         unique_nodes = unique_searcher.seen.difference(common_searcher.seen)
         if not unique_nodes:
