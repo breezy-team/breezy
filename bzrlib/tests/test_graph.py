@@ -242,6 +242,54 @@ complex_shortcut2 = {'a':[NULL_REVISION], 'b':['a'], 'c':['b'], 'd':['c'],
                     'r':['q'], 's':['r'],
                     }
 
+
+# A graph with multiple nodes unique to one side.
+#
+# NULL_REVISION
+#     |
+#     a
+#     |
+#     b
+#     |
+#     c
+#     |
+#     d
+#     |\
+#     e f
+#     |\ \
+#     g h i
+#     |\ \ \
+#     j k l m
+#     | |/ x|
+#     | n o p
+#     | |/  |
+#     | q   |
+#     | |   |
+#     | r   |
+#     | |   |
+#     | s   |
+#     | |   |
+#     | t   |
+#     | |   |
+#     | u   |
+#     | |   |
+#     | v   |
+#     | |   |
+#     | w   |
+#     | |   |
+#     | x   |
+#     |/ \ /
+#     y   z
+#
+
+multiple_interesting_unique = {'a':[NULL_REVISION], 'b':['a'], 'c':['b'],
+    'd':['c'], 'e':['d'], 'f':['d'], 'g':['e'], 'h':['e'], 'i':['f'],
+    'j':['g'], 'k':['g'], 'l':['h'], 'm':['i'], 'n':['k', 'l'],
+    'o':['m'], 'p':['m', 'l'], 'q':['n', 'o'], 'r':['q'], 's':['r'],
+    't':['s'], 'u':['t'], 'v':['u'], 'w':['v'], 'x':['w'],
+    'y':['j', 'x'], 'z':['x', 'p']}
+
+
 # Shortcut with extra root
 # We have a long history shortcut, and an extra root, which is why we can't
 # stop searchers based on seeing NULL_REVISION
@@ -1129,6 +1177,13 @@ class TestFindUniqueAncestors(tests.TestCase):
             ['j', 'u'], 'u', ['t'])
         self.assertFindUniqueAncestors(graph,
             ['t'], 't', ['u'])
+
+    def test_multiple_interesting_unique(self):
+        graph = self.make_graph(multiple_interesting_unique)
+        self.assertFindUniqueAncestors(graph,
+            ['j', 'y'], 'y', ['z'])
+        self.assertFindUniqueAncestors(graph,
+            ['p', 'z'], 'z', ['y'])
 
 
 class TestCachingParentsProvider(tests.TestCase):

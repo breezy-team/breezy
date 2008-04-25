@@ -322,9 +322,9 @@ class Graph(object):
             for searcher in unique_searchers:
                 unique_are_common_nodes = unique_are_common_nodes.intersection(
                                             searcher.seen)
-            # XXX: This needs a test
-            #      It is triggered when you have lots of unique nodes, and
-            #      some of them converge before the others.
+            # TODO: This needs a test case
+            #       It is triggered when you have lots of unique nodes, and
+            #       some of them converge before the others.
             unique_are_common_nodes = unique_are_common_nodes.intersection(
                                         all_unique_searcher.seen)
             unique_are_common_nodes.update(all_unique_searcher.step())
