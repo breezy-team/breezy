@@ -159,52 +159,6 @@ class Graph(object):
     def __repr__(self):
         return 'Graph(%r)' % self._parents_provider
 
-    def _find_any_seen_ancestors(self, revisions, searchers):
-        """Find any revisions that are seen by any of the searchers."""
-        # This will actually return more nodes than just aggregating
-        # find_seen_ancestors() across the searchers, because it can bridge
-        # 1-node gaps inline.
-
-        # seen contains what nodes have been returned, not what nodes
-        # have been queried. We don't want to probe for nodes that haven't
-        # been searched yet.
-        all_seen = set()
-        not_searched_yet = set()
-        for searcher in searchers:
-            all_seen.update(searcher.seen)
-
-            not_searched = set(searcher._next_query)
-            # Have these nodes been searched in any other searcher?
-            for other_searcher in searchers:
-                if other_searcher is searcher:
-                    continue
-                # This other searcher claims to have seen these nodes
-                maybe_searched = not_searched.intersection(other_searcher.seen)
-                searched = maybe_searched.difference(other_searcher._next_query)
-                not_searched.difference_update(searched)
-
-            # Now we know the real ones that haven't been searched
-            not_searched_yet.update(not_searched)
-
-        pending = set(revisions).intersection(all_seen)
-        seen_ancestors = set(pending)
-
-        pending.difference_update(not_searched_yet)
-        get_parent_map = self._parents_provider.get_parent_map
-        while pending:
-            parent_map = get_parent_map(pending)
-            all_parents = []
-            # We don't care if it is a ghost, since it can't be seen if it is
-            # a ghost
-            for parent_ids in parent_map.itervalues():
-                all_parents.extend(parent_ids)
-            next_pending = all_seen.intersection(all_parents).difference(seen_ancestors)
-            seen_ancestors.update(next_pending)
-            next_pending.difference_update(not_searched_yet)
-            pending = next_pending
-
-        return seen_ancestors
-
     def find_lca(self, *revisions):
         """Determine the lowest common ancestors of the provided revisions
 
@@ -299,8 +253,9 @@ class Graph(object):
             unique_are_common_nodes.update(
                 next_common_nodes.intersection(unique_searcher.seen))
             if unique_are_common_nodes:
-                ancestors = self._find_any_seen_ancestors(unique_are_common_nodes,
-                    [unique_searcher, common_searcher])
+                ancestors = unique_searcher.find_seen_ancestors(
+                                unique_are_common_nodes)
+                ancestors.update(common_searcher.find_seen_ancestors(ancestors))
                 unique_searcher.stop_searching_any(ancestors)
                 common_searcher.start_searching(ancestors)
 
@@ -350,10 +305,13 @@ class Graph(object):
                     ancestor_all_unique.intersection(newly_seen_common))
             if unique_are_common_nodes:
                 # We have new common-to-all-unique-searchers nodes
-                # Which also means we can check in the common_searcher
+                for searcher in unique_searchers:
+                    unique_are_common_nodes.update(
+                        searcher.find_seen_ancestors(unique_are_common_nodes))
+                # Since these are common, we can grab another set of ancestors
+                # that we have seen
                 unique_are_common_nodes.update(
-                    self._find_any_seen_ancestors(unique_are_common_nodes,
-                        [common_searcher] + unique_searchers))
+                    common_searcher.find_seen_ancestors(unique_are_common_nodes))
 
                 # We can tell all of the unique searchers to start at these
                 # nodes, and tell all of the common searchers to *stop*
