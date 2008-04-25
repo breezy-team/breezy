@@ -2622,7 +2622,7 @@ class cmd_alias(Command):
         from bzrlib.commands import get_alias
         alias = get_alias(alias_name)
         if alias is None:
-            print "bzr alias %s: not found" % alias_name
+            print "bzr alias: %s: not found" % alias_name
         else:
             print "bzr alias %s='%s'" % (alias_name, ' '.join(alias))
 

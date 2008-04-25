@@ -43,6 +43,7 @@ def test_suite():
     testmod_names = [
                      'bzrlib.tests.blackbox.test_add',
                      'bzrlib.tests.blackbox.test_added',
+                     'bzrlib.tests.blackbox.test_alias',
                      'bzrlib.tests.blackbox.test_aliases',
                      'bzrlib.tests.blackbox.test_ancestry',
                      'bzrlib.tests.blackbox.test_annotate',

@@ -581,6 +581,14 @@ class TestGlobalConfigItems(tests.TestCase):
         my_config = self._get_sample_config()
         self.assertEqual('help', my_config.get_alias('h'))
 
+    def test_get_aliases(self):
+        my_config = self._get_sample_config()
+        aliases = my_config.get_aliases()
+        self.assertEqual(2, len(aliases))
+        sorted_keys = sorted(aliases)
+        self.assertEqual('help', aliases[sorted_keys[0]])
+        self.assertEqual(sample_long_alias, aliases[sorted_keys[1]])
+
     def test_get_no_alias(self):
         my_config = self._get_sample_config()
         self.assertEqual(None, my_config.get_alias('foo'))
@@ -588,6 +596,28 @@ class TestGlobalConfigItems(tests.TestCase):
     def test_get_long_alias(self):
         my_config = self._get_sample_config()
         self.assertEqual(sample_long_alias, my_config.get_alias('ll'))
+
+
+class TestGlobalConfigSavingOptions(tests.TestCaseInTempDir):
+
+    def test_empty(self):
+        my_config = config.GlobalConfig()
+        self.assertEqual(0, len(my_config.get_aliases()))
+
+    def test_set_alias(self):
+        my_config = config.GlobalConfig()
+        alias_value = 'commit --strict'
+        my_config.set_alias('commit', alias_value)
+        new_config = config.GlobalConfig()
+        self.assertEqual(alias_value, new_config.get_alias('commit'))
+
+    def test_remove_alias(self):
+        my_config = config.GlobalConfig()
+        my_config.set_alias('commit', 'commit --strict')
+        # Now remove the alias again.
+        my_config.unset_alias('commit')
+        new_config = config.GlobalConfig()
+        self.assertIs(None, new_config.get_alias('commit'))
 
 
 class TestLocationConfig(tests.TestCaseInTempDir):
