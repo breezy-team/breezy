@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib import (
+    debug,
     errors,
     revision,
     symbol_versioning,
@@ -237,6 +238,12 @@ class Graph(object):
         #    tip is an ancestor of all unique nodes.
         # 6) Search is done when all common searchers have completed.
 
+        if 'graph' in debug.debug_flags:
+            _mutter = trace.mutter
+        else:
+            def _mutter(*args, **kwargs):
+                pass
+
         unique_searcher = self._make_breadth_first_searcher([unique_revision])
         # we know that unique_revision isn't in common_revisions
         unique_searcher.next()
@@ -265,38 +272,42 @@ class Graph(object):
         unique_tips = self._remove_simple_descendants(unique_nodes,
                         self.get_parent_map(unique_nodes))
 
-        unique_searchers = []
-        for tip in unique_tips:
-            revs_to_search = unique_searcher.find_seen_ancestors([tip])
-            searcher = self._make_breadth_first_searcher(revs_to_search)
-            # We don't care about the starting nodes.
-            searcher.step()
-            unique_searchers.append(searcher)
+        if len(unique_tips) == 1:
+            unique_searchers = []
+            ancestor_all_unique = unique_searcher.find_seen_ancestors(unique_tips)
+        else:
+            unique_searchers = []
+            for tip in unique_tips:
+                revs_to_search = unique_searcher.find_seen_ancestors([tip])
+                searcher = self._make_breadth_first_searcher(revs_to_search)
+                # We don't care about the starting nodes.
+                searcher.step()
+                unique_searchers.append(searcher)
 
-        ancestor_all_unique = None
-        for searcher in unique_searchers:
-            if ancestor_all_unique is None:
-                ancestor_all_unique = set(searcher.seen)
-            else:
-                ancestor_all_unique = ancestor_all_unique.intersection(
-                                            searcher.seen)
+            ancestor_all_unique = None
+            for searcher in unique_searchers:
+                if ancestor_all_unique is None:
+                    ancestor_all_unique = set(searcher.seen)
+                else:
+                    ancestor_all_unique = ancestor_all_unique.intersection(
+                                                searcher.seen)
+        # Collapse all the common nodes into a single searcher
+        all_unique_searcher = self._make_breadth_first_searcher(ancestor_all_unique)
+        all_unique_searcher.step()
 
         # Stop any search tips that are already known as ancestors of the
         # unique nodes
         common_searcher.stop_searching_any(
             common_searcher.find_seen_ancestors(ancestor_all_unique))
 
-        # Collapse all the common nodes into a single searcher
-        all_unique_searcher = self._make_breadth_first_searcher(ancestor_all_unique)
-        next_unique_searchers = []
+        total_stopped = 0
         for searcher in unique_searchers:
-            searcher.stop_searching_any(
-                searcher.find_seen_ancestors(ancestor_all_unique))
-            if searcher._next_query:
-                next_unique_searchers.append(searcher)
-        trace.mutter('Collapsed %s unique searchers into 1 + %s',
-                     len(unique_searchers), len(next_unique_searchers))
-        unique_searchers = next_unique_searchers
+            total_stopped += len(searcher.stop_searching_any(
+                searcher.find_seen_ancestors(ancestor_all_unique)))
+        _mutter('For %s unique nodes, created %s + 1 unique searchers'
+                ' (%s stopped search tips, %s common ancestors)',
+                len(unique_nodes), len(unique_searchers), total_stopped,
+                len(ancestor_all_unique))
 
         # While we still have common nodes to search
         while common_searcher._next_query:
@@ -343,11 +354,21 @@ class Graph(object):
                 unique_search_sets = set()
                 for searcher in unique_searchers:
                     will_search_set = frozenset(searcher._next_query)
-                    if (will_search_set
-                        and will_search_set not in unique_search_sets):
+                    if not will_search_set:
+                        _mutter('Unique searcher was stopped. (%s iterations)',
+                                searcher._iterations)
+                    elif will_search_set not in unique_search_sets:
                         # This searcher is searching a unique set of nodes, let it
                         unique_search_sets.add(will_search_set)
                         next_unique_searchers.append(searcher)
+                    else:
+                        _mutter('Unique searcher stopped for repeated'
+                                ' search of %s nodes', len(will_search_set))
+                if len(unique_searchers) != len(next_unique_searchers):
+                    _mutter('Collapsed %s unique searchers => %s'
+                            ' at %s iterations',
+                            len(unique_searchers), len(next_unique_searchers),
+                            all_unique_searcher._iterations)
                 unique_searchers = next_unique_searchers
         return unique_nodes.difference(common_searcher.seen)
 
