@@ -346,14 +346,26 @@ class Inter1and2Helper(object):
         inventory_weave = self.source.get_inventory_weave()
         versionedfile = {}
         to_store = self.target.weave_store
-        parent_map = self.source.get_graph().get_parent_map(revs)
+        graph = self.source.get_graph()
+        parent_map = graph.get_parent_map(revs)
         planned_versions = {}
+        revision_root = {}
         for tree in self.iter_rev_trees(revs):
             revision_id = tree.inventory.root.revision
             root_id = tree.get_root_id()
             planned_versions.setdefault(root_id, []).append(revision_id)
+            revision_root[revision_id] = root_id
+        # Find out which parents we don't already know root ids for
+        parents = set()
+        for revision_parents in parent_map.itervalues():
+            parents.update(revision_parents)
+        parents.difference_update(revision_root.keys() + [NULL_REVISION])
+        # Limit to revision present in the versionedfile
+        parents = graph.get_parent_map(parents).keys()
+        for tree in self.iter_rev_trees(parents):
+            root_id = tree.get_root_id()
+            revision_root[tree.get_revision_id()] = root_id
         for root_id, versions in planned_versions.iteritems():
-            versions_set = set(versions)
             versionedfile = to_store.get_weave_or_empty(root_id,
                 self.target.get_transaction())
             parent_texts = {}
@@ -361,10 +373,13 @@ class Inter1and2Helper(object):
                 if revision_id in versionedfile:
                     continue
                 parents = parent_map[revision_id]
-                # This implicitly handles NULL_REVISION
-                parents = tuple(p for p in parents if p in versions_set)
-                _, _, parent_texts[revision_id] = versionedfile.add_lines(
+                # When a parent revision is a ghost, we guess that its root id
+                # was unchanged.
+                parents = tuple(p for p in parents if p != NULL_REVISION
+                    and revision_root.get(p, root_id) == root_id)
+                result = versionedfile.add_lines_with_ghosts(
                     revision_id, parents, [], parent_texts)
+                parent_texts[revision_id] = result[2]
 
     def regenerate_inventory(self, revs):
         """Generate a new inventory versionedfile in target, convertin data.
