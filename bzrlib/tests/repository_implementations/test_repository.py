@@ -404,6 +404,8 @@ class TestRepository(TestCaseWithRepository):
         tree.add('foo', 'file1')
         tree.commit('message', rev_id='rev_id')
         repo = tree.branch.repository
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
         try:
             stream = self.applyDeprecated(one_two, repo.get_data_stream,
                 ['rev_id'])
