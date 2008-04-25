@@ -322,3 +322,31 @@ class TestHttpFetch(TestCaseWithWebserver):
         self.assertTrue(1 >= self._count_log_matches('last-revision',
                                                      http_logs))
         self.assertEqual(4, len(http_logs))
+
+
+class Test1To2Fetch(TestCaseWithTransport):
+
+    def do_test(self, first, second):
+        """Test that fetch works.
+
+        This test depends on the order of items in a set, which is
+        implementation-dependant, so we test A, B and then B, A.
+        """
+        tree = self.make_branch_and_tree('tree', format='pack-0.92')
+        tree.set_root_id('unique-root')
+        tree.commit('Commit with unique root', rev_id=first)
+        tree.commit('Commit with unique root', rev_id=second)
+        rich_tree = self.make_branch_and_tree('rich-tree',
+        format='rich-root-pack')
+        repo = rich_tree.branch.repository
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.fetch(tree.branch.repository, second)
+
+    def test_fetch_old_unique_root_A_B(self):
+        """See do_test"""
+        self.do_test('A', 'B')
+
+    def test_fetch_old_unique_root_B_A(self):
+        """See do_test"""
+        self.do_test('B', 'A')
