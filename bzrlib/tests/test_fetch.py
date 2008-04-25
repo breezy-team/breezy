@@ -350,3 +350,30 @@ class Test1To2Fetch(TestCaseWithTransport):
     def test_fetch_old_unique_root_B_A(self):
         """See do_test"""
         self.do_test('B', 'A')
+
+    def test_fetch_ghosts(self):
+        tree = self.make_branch_and_tree('tree', format='pack-0.92')
+        tree.commit('first commit', rev_id='left-parent')
+        tree.add_parent_tree_id('ghost-parent')
+        fork = tree.bzrdir.sprout('fork', 'null:').open_workingtree()
+        fork.commit('not a ghost', rev_id='not-ghost-parent')
+        tree.branch.repository.fetch(fork.branch.repository,
+                                     'not-ghost-parent')
+        tree.add_parent_tree_id('not-ghost-parent')
+        tree.commit('second commit', rev_id='second-id')
+        repo = self.make_repository('rich-repo', format='rich-root-pack')
+        repo.fetch(tree.branch.repository, 'second-id')
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        vf = repo.weave_store.get_weave(tree.get_root_id(),
+                                        repo.get_transaction())
+        self.assertEqual(['left-parent', 'not-ghost-parent'],
+                         vf.get_parents_with_ghosts('second-id'))
+
+    def test_fetch_changed_root(self):
+        tree = self.make_branch_and_tree('tree', format='pack-0.92')
+        tree.commit('first commit')
+        tree.set_root_id('unique-id')
+        tree.commit('second commit', rev_id='second-id')
+        repo = self.make_repository('rich-repo', format='rich-root-pack')
+        repo.fetch(tree.branch.repository, 'second-id')

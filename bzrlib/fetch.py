@@ -344,21 +344,27 @@ class Inter1and2Helper(object):
         :param revs: the revisions to include
         """
         inventory_weave = self.source.get_inventory_weave()
-        parent_texts = {}
         versionedfile = {}
         to_store = self.target.weave_store
         parent_map = self.source.get_graph().get_parent_map(revs)
+        planned_versions = {}
         for tree in self.iter_rev_trees(revs):
             revision_id = tree.inventory.root.revision
             root_id = tree.get_root_id()
-            parents = parent_map[revision_id]
-            if parents[0] == NULL_REVISION:
-                parents = ()
-            if root_id not in versionedfile:
-                versionedfile[root_id] = to_store.get_weave_or_empty(root_id,
-                    self.target.get_transaction())
-            _, _, parent_texts[root_id] = versionedfile[root_id].add_lines(
-                revision_id, parents, [], parent_texts)
+            planned_versions.setdefault(root_id, []).append(revision_id)
+        for root_id, versions in planned_versions.iteritems():
+            versions_set = set(versions)
+            versionedfile = to_store.get_weave_or_empty(root_id,
+                self.target.get_transaction())
+            parent_texts = {}
+            for revision_id in versions:
+                if revision_id in versionedfile:
+                    continue
+                parents = parent_map[revision_id]
+                # This implicitly handles NULL_REVISION
+                parents = tuple(p for p in parents if p in versions_set)
+                _, _, parent_texts[revision_id] = versionedfile.add_lines(
+                    revision_id, parents, [], parent_texts)
 
     def regenerate_inventory(self, revs):
         """Generate a new inventory versionedfile in target, convertin data.
