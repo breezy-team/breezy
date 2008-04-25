@@ -158,11 +158,12 @@ def show_pending_merges(new, to_file, short=False):
         to_file.write('pending merges:\n')
     ignore = set([None, last_revision, _mod_revision.NULL_REVISION])
     graph = branch.repository.get_graph()
+    other_revisions = [last_revision]
     for merge in pending:
         # Find all of the revisions in the merge source, which are not in the
         # last committed revision.
-        # We don't care about last_extra
-        last_extra, merge_extra = graph.find_difference(last_revision, merge)
+        merge_extra = graph.find_unique_ancestors(merge, other_revisions)
+        other_revisions.append(merge)
         # Now that we have the revisions, we need to sort them to get a proper
         # listing. We want to sort in reverse topological order (which
         # MergeSorter gives us). MergeSorter requires that there are no
@@ -176,7 +177,7 @@ def show_pending_merges(new, to_file, short=False):
                 merged_graph[next_merge] = []
             else:
                 merged_graph[next_merge] = [p for p in parent_map[next_merge]
-                                          if p in merge_extra]
+                                               if p in merge_extra]
         sorter = tsort.MergeSorter(merged_graph, merge)
         # Get a handle to all of the revisions we will need
         width = osutils.terminal_width()
@@ -218,4 +219,3 @@ def show_pending_merges(new, to_file, short=False):
                 to_file.write(prefix)
                 to_file.write(line_log(mm_revision, width - len(prefix)))
                 to_file.write('\n')
-        ignore.update(merge_extra)
