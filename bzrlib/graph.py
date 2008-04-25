@@ -281,6 +281,7 @@ class Graph(object):
                 revs_to_search = unique_searcher.find_seen_ancestors([tip])
                 searcher = self._make_breadth_first_searcher(revs_to_search)
                 # We don't care about the starting nodes.
+                searcher._label = tip
                 searcher.step()
                 unique_searchers.append(searcher)
 
@@ -308,6 +309,7 @@ class Graph(object):
                 ' (%s stopped search tips, %s common ancestors)',
                 len(unique_nodes), len(unique_searchers), total_stopped,
                 len(ancestor_all_unique))
+        del ancestor_all_unique
 
         # While we still have common nodes to search
         while common_searcher._next_query:
@@ -320,22 +322,24 @@ class Graph(object):
             for searcher in unique_searchers:
                 unique_are_common_nodes = unique_are_common_nodes.intersection(
                                             searcher.seen)
+            # XXX: This needs a test
+            #      It is triggered when you have lots of unique nodes, and
+            #      some of them converge before the others.
+            unique_are_common_nodes = unique_are_common_nodes.intersection(
+                                        all_unique_searcher.seen)
             unique_are_common_nodes.update(all_unique_searcher.step())
-            # TODO: I think we can just use ancestor_all_unique.seen, instead of
-            #       ancestor_all_unique
-            ancestor_all_unique.update(unique_are_common_nodes)
             if newly_seen_common:
                 # If a 'common' node is an ancestor of all unique searchers, we
                 # can stop searching it.
                 common_searcher.stop_searching_any(
-                    ancestor_all_unique.intersection(newly_seen_common))
+                    all_unique_searcher.seen.intersection(newly_seen_common))
             if unique_are_common_nodes:
                 # We have new common-to-all-unique-searchers nodes
-                unique_are_common_nodes.update(
-                    all_unique_searcher.find_seen_ancestors(unique_are_common_nodes))
                 for searcher in unique_searchers:
                     unique_are_common_nodes.update(
                         searcher.find_seen_ancestors(unique_are_common_nodes))
+                unique_are_common_nodes.update(
+                    all_unique_searcher.find_seen_ancestors(unique_are_common_nodes))
                 # Since these are common, we can grab another set of ancestors
                 # that we have seen
                 unique_are_common_nodes.update(
@@ -344,8 +348,6 @@ class Graph(object):
                 # The all_unique searcher can start searching the common nodes
                 # but everyone else can stop.
                 all_unique_searcher.start_searching(unique_are_common_nodes)
-                for searcher in unique_searchers:
-                    searcher.stop_searching_any(unique_are_common_nodes)
                 common_searcher.stop_searching_any(unique_are_common_nodes)
 
                 # Filter out searchers that don't actually search different
@@ -353,17 +355,22 @@ class Graph(object):
                 next_unique_searchers = []
                 unique_search_sets = set()
                 for searcher in unique_searchers:
+                    stopped = searcher.stop_searching_any(unique_are_common_nodes)
                     will_search_set = frozenset(searcher._next_query)
                     if not will_search_set:
-                        _mutter('Unique searcher was stopped. (%s iterations)',
-                                searcher._iterations)
+                        _mutter('Unique searcher %s was stopped.'
+                                ' (%s iterations) %d nodes stopped',
+                                searcher._label,
+                                searcher._iterations,
+                                len(stopped))
                     elif will_search_set not in unique_search_sets:
                         # This searcher is searching a unique set of nodes, let it
                         unique_search_sets.add(will_search_set)
                         next_unique_searchers.append(searcher)
                     else:
-                        _mutter('Unique searcher stopped for repeated'
-                                ' search of %s nodes', len(will_search_set))
+                        _mutter('Unique searcher %s stopped for repeated'
+                                ' search of %s nodes', 
+                                searcher._label, len(will_search_set))
                 if len(unique_searchers) != len(next_unique_searchers):
                     _mutter('Collapsed %s unique searchers => %s'
                             ' at %s iterations',
