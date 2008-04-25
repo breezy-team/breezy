@@ -1102,6 +1102,8 @@ class TestFindUniqueAncestors(tests.TestCase):
         self.assertFindUniqueAncestors(graph, ['h'], 'h', ['i'])
         self.assertFindUniqueAncestors(graph, ['e', 'g', 'i'], 'i', ['h'])
 
+        self.assertFindUniqueAncestors(graph, ['h'], 'h', ['j'])
+
     def test_in_ancestry(self):
         graph = self.make_graph(ancestry_1)
         self.assertFindUniqueAncestors(graph, [], 'rev1', ['rev3'])

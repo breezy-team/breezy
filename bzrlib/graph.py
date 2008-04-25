@@ -253,7 +253,7 @@ class Graph(object):
             if unique_are_common_nodes:
                 ancestors = unique_searcher.find_seen_ancestors(
                                 unique_are_common_nodes)
-                ancestors = common_searcher.find_seen_ancestors(ancestors)
+                ancestors.update(common_searcher.find_seen_ancestors(ancestors))
                 unique_searcher.stop_searching_any(ancestors)
                 common_searcher.start_searching(ancestors)
 
