@@ -44,7 +44,6 @@ from bzrlib import (
 lazy_import.lazy_import(globals(), """
 from bzrlib import (
     branch,
-    delta,
     errors,
     revisionspec,
     transport,
@@ -79,6 +78,9 @@ class cmd_upload(commands.Command):
     def run(self, location=None, full=False, revision=None, remember=None,
             directory=None, verbose=False,
             ):
+        # XXX: Ugly hack to make tests pass
+        if not self.__dict__.has_key('outf'):
+            self._setup_outf()
         if directory is None:
             directory = u'.'
 
@@ -242,7 +244,12 @@ class cmd_upload(commands.Command):
         try:
             rev_id = self.get_uploaded_revid()
         except errors.NoSuchFile:
+            if self.verbose:
+                self.outf.write('No uploaded revision id found,'
+                                ' switching to full upload')
             self.upload_full_tree()
+            # We're done
+            return
 
         # XXX: errors out if rev_id not in branch history (probably someone
         # uploaded from a different branch).
@@ -305,15 +312,16 @@ class cmd_upload(commands.Command):
 commands.register_command(cmd_upload)
 
 
-def test_suite():
-    from bzrlib.tests import TestUtil
+def load_tests(basic_tests, module, loader):
+    result = loader.suiteClass()
+    # add the tests for this module
+    # XXX: this module should define no tests !
+    result.addTests(basic_tests)
 
-    suite = TestUtil.TestSuite()
-    loader = TestUtil.TestLoader()
     testmod_names = [
         'test_upload',
         ]
 
-    suite.addTest(loader.loadTestsFromModuleNames(
+    result.addTest(loader.loadTestsFromModuleNames(
             ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
-    return suite
+    return result
