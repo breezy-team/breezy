@@ -286,6 +286,18 @@ class Graph(object):
         common_searcher.stop_searching_any(
             common_searcher.find_seen_ancestors(ancestor_all_unique))
 
+        # Collapse all the common nodes into a single searcher
+        all_unique_searcher = self._make_breadth_first_searcher(ancestor_all_unique)
+        next_unique_searchers = []
+        for searcher in unique_searchers:
+            searcher.stop_searching_any(
+                searcher.find_seen_ancestors(ancestor_all_unique))
+            if searcher._next_query:
+                next_unique_searchers.append(searcher)
+        trace.mutter('Collapsed %s unique searchers into 1 + %s',
+                     len(unique_searchers), len(next_unique_searchers))
+        unique_searchers = next_unique_searchers
+
         # While we still have common nodes to search
         while common_searcher._next_query:
             newly_seen_common = set(common_searcher.step())
@@ -297,6 +309,9 @@ class Graph(object):
             for searcher in unique_searchers:
                 unique_are_common_nodes = unique_are_common_nodes.intersection(
                                             searcher.seen)
+            unique_are_common_nodes.update(all_unique_searcher.step())
+            # TODO: I think we can just use ancestor_all_unique.seen, instead of
+            #       ancestor_all_unique
             ancestor_all_unique.update(unique_are_common_nodes)
             if newly_seen_common:
                 # If a 'common' node is an ancestor of all unique searchers, we
@@ -305,6 +320,8 @@ class Graph(object):
                     ancestor_all_unique.intersection(newly_seen_common))
             if unique_are_common_nodes:
                 # We have new common-to-all-unique-searchers nodes
+                unique_are_common_nodes.update(
+                    all_unique_searcher.find_seen_ancestors(unique_are_common_nodes))
                 for searcher in unique_searchers:
                     unique_are_common_nodes.update(
                         searcher.find_seen_ancestors(unique_are_common_nodes))
@@ -313,11 +330,11 @@ class Graph(object):
                 unique_are_common_nodes.update(
                     common_searcher.find_seen_ancestors(unique_are_common_nodes))
 
-                # We can tell all of the unique searchers to start at these
-                # nodes, and tell all of the common searchers to *stop*
-                # searching these nodes
+                # The all_unique searcher can start searching the common nodes
+                # but everyone else can stop.
+                all_unique_searcher.start_searching(unique_are_common_nodes)
                 for searcher in unique_searchers:
-                    searcher.start_searching(unique_are_common_nodes)
+                    searcher.stop_searching_any(unique_are_common_nodes)
                 common_searcher.stop_searching_any(unique_are_common_nodes)
 
                 # Filter out searchers that don't actually search different
@@ -326,7 +343,8 @@ class Graph(object):
                 unique_search_sets = set()
                 for searcher in unique_searchers:
                     will_search_set = frozenset(searcher._next_query)
-                    if will_search_set not in unique_search_sets:
+                    if (will_search_set
+                        and will_search_set not in unique_search_sets):
                         # This searcher is searching a unique set of nodes, let it
                         unique_search_sets.add(will_search_set)
                         next_unique_searchers.append(searcher)
