@@ -1446,7 +1446,6 @@ class Repository(object):
         # maybe this generator should explicitly have the contract that it
         # should not be iterated until the previously yielded item has been
         # processed?
-        self.lock_read()
         inv_w = self.get_inventory_weave()
 
         # file ids that changed
@@ -1475,7 +1474,6 @@ class Repository(object):
                 pass
             else:
                 revisions_with_signatures.add(rev_id)
-        self.unlock()
         yield ("signatures", None, revisions_with_signatures)
 
         # revisions
