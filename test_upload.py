@@ -27,6 +27,7 @@ from bzrlib import (
     revisionspec,
     tests,
     transport,
+    workingtree,
     )
 from bzrlib.smart import server as smart_server
 
@@ -276,6 +277,23 @@ class TestUploadMixin(object):
         revspec = revisionspec.RevisionSpec.from_string('2')
         self.do_upload(revision=[revspec])
         self.assertUpFileEqual('foo', 'hello')
+
+    def test_upload_when_changes(self):
+        self.make_local_branch()
+        self.add_file('a', 'foo')
+        self.set_file_content('a', 'bar')
+        self.assertRaises(errors.UncommittedChanges, self.do_upload)
+
+    def test_upload_when_conflicts(self):
+        self.make_local_branch()
+        self.add_file('a', 'foo')
+        self.run_bzr('branch branch other')
+        self.modify_file('a', 'bar')
+        other_tree = workingtree.WorkingTree.open('other')
+        self.set_file_content('a', 'baz', 'other/')
+        other_tree.commit('modify file a')
+        self.run_bzr('merge -d branch other', retcode=1)
+        self.assertRaises(errors.UncommittedChanges, self.do_upload)
 
 
 class TestFullUpload(tests.TestCaseWithTransport, TestUploadMixin):

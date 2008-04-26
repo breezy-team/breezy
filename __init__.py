@@ -82,14 +82,9 @@ class cmd_upload(commands.Command):
 
         wt = workingtree.WorkingTree.open(directory)
         changes = wt.changes_from(wt.basis_tree())
-       
-        #TODO: Needs tests
+
         if changes.has_changed():
             raise errors.UncommittedChanges(wt)
-
-        #TODO: Needs tests
-        if len(wt.conflicts()) > 0:
-            raise errors.ConflictsInTree
 
         self.branch = wt.branch
 
