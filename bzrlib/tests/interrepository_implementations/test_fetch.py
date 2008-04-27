@@ -21,6 +21,7 @@ import bzrlib
 from bzrlib import (
     errors,
     repository,
+    osutils,
     )
 from bzrlib.errors import (
     NoSuchRevision,
@@ -174,6 +175,17 @@ class TestInterRepository(TestCaseWithInterRepository):
         to_repo = self.make_to_repository('to')
         to_repo.fetch(from_tree.branch.repository,
                       from_tree.get_parent_ids()[0])
+
+    def test_fetch_revision_hash(self):
+        """Ensure that inventory hashes are updated by fetch"""
+        from_tree = self.make_branch_and_tree('tree')
+        from_tree.commit('foo', rev_id='foo-id')
+        to_repo = self.make_to_repository('to')
+        to_repo.fetch(from_tree.branch.repository)
+        recorded_inv_sha1 = to_repo.get_inventory_sha1('foo-id')
+        xml = to_repo.get_inventory_xml('foo-id')
+        computed_inv_sha1 = osutils.sha_string(xml)
+        self.assertEqual(computed_inv_sha1, recorded_inv_sha1)
 
 
 class TestFetchDependentData(TestCaseWithInterRepository):

@@ -271,8 +271,7 @@ class GenericRepoFetcher(RepoFetcher):
             except errors.NoSuchRevision:
                 # not signed.
                 pass
-            to_store.add_revision(self.from_repository.get_revision(rev),
-                                  to_txn)
+            self._copy_revision(rev, to_txn)
             count += 1
         # fixup inventory if needed: 
         # this is expensive because we have no inverse index to current ghosts.
@@ -280,7 +279,11 @@ class GenericRepoFetcher(RepoFetcher):
         # so we just-do-it.
         # FIXME: repository should inform if this is needed.
         self.to_repository.reconcile()
-    
+
+    def _copy_revision(self, rev, to_txn):
+        to_store = self.to_repository._revision_store
+        to_store.add_revision(self.from_repository.get_revision(rev), to_txn)
+
 
 class KnitRepoFetcher(RepoFetcher):
     """This is a knit format repository specific fetcher.
@@ -299,11 +302,15 @@ class KnitRepoFetcher(RepoFetcher):
         from_sf = self.from_repository._revision_store.get_signature_file(
             from_transaction)
         to_sf.join(from_sf, version_ids=revs, ignore_missing=True)
+        self._fetch_just_revision_texts(revs, from_transaction, to_transaction)
+
+    def _fetch_just_revision_texts(self, version_ids, from_transaction,
+                                   to_transaction):
         to_rf = self.to_repository._revision_store.get_revision_file(
             to_transaction)
         from_rf = self.from_repository._revision_store.get_revision_file(
             from_transaction)
-        to_rf.join(from_rf, version_ids=revs)
+        to_rf.join(from_rf, version_ids=version_ids)
 
 
 class Inter1and2Helper(object):
@@ -395,6 +402,10 @@ class Inter1and2Helper(object):
             self.target.add_inventory(tree.get_revision_id(), tree.inventory,
                                       parents)
 
+    def fetch_revisions(self, revision_ids):
+        for revision in self.source.get_revisions(revision_ids):
+            self.target.add_revision(revision.revision_id, revision)
+
 
 class Model1toKnit2Fetcher(GenericRepoFetcher):
     """Fetch from a Model1 repository into a Knit2 repository
@@ -410,7 +421,10 @@ class Model1toKnit2Fetcher(GenericRepoFetcher):
 
     def _fetch_inventory_weave(self, revs, pb):
         self.helper.regenerate_inventory(revs)
- 
+
+    def _copy_revision(self, rev, to_txn):
+        self.helper.fetch_revisions([rev])
+
 
 class Knit1to2Fetcher(KnitRepoFetcher):
     """Fetch from a Knit1 repository into a Knit2 repository"""
@@ -426,6 +440,10 @@ class Knit1to2Fetcher(KnitRepoFetcher):
 
     def _fetch_inventory_weave(self, revs, pb):
         self.helper.regenerate_inventory(revs)
+
+    def _fetch_just_revision_texts(self, version_ids, from_transaction,
+                                   to_transaction):
+        self.helper.fetch_revisions(version_ids)
 
 
 class RemoteToOtherFetcher(GenericRepoFetcher):
