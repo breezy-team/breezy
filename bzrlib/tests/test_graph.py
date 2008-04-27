@@ -242,6 +242,63 @@ complex_shortcut2 = {'a':[NULL_REVISION], 'b':['a'], 'c':['b'], 'd':['c'],
                     'r':['q'], 's':['r'],
                     }
 
+# Graph where different walkers will race to find the common and uncommon
+# nodes.
+#
+# NULL_REVISION
+#     |
+#     a
+#     |
+#     b
+#     |
+#     c
+#     |
+#     d
+#     |\
+#     e k
+#     | |
+#     f-+-p
+#     | | |
+#     | l |
+#     | | |
+#     | m |
+#     | |\|
+#     g n q
+#     |\| |
+#     h o |
+#     |/| |
+#     i r |
+#     | | |
+#     | s |
+#     | | |
+#     | t |
+#     | | |
+#     | u |
+#     | | |
+#     | v |
+#     | | |
+#     | w |
+#     | | |
+#     | x |
+#     | |\|
+#     | y z
+#     |/
+#     j
+#
+# y is found to be common right away, but is the start of a long series of
+# common commits.
+# o is actually common, but the i-j shortcut makes it look like it is actually
+# unique to j at first, you have to traverse all of y->o to find it.
+# q,n give the walker from j a common point to stop searching, as does p,f.
+# k-n exists so that the second pass still has nodes that are worth searching,
+# rather than instantly cancelling the extra walker.
+
+racing_shortcuts = {'a':[NULL_REVISION], 'b':['a'], 'c':['b'], 'd':['c'],
+    'e':['d'], 'f':['e'], 'g':['f'], 'h':['g'], 'i':['h', 'o'], 'j':['i', 'y'],
+    'k':['d'], 'l':['k'], 'm':['l'], 'n':['m'], 'o':['n', 'g'], 'p':['f'],
+    'q':['p', 'm'], 'r':['o'], 's':['r'], 't':['s'], 'u':['t'], 'v':['u'],
+    'w':['v'], 'x':['w'], 'y':['x'], 'z':['x', 'q']}
+
 
 # A graph with multiple nodes unique to one side.
 #
@@ -1184,6 +1241,14 @@ class TestFindUniqueAncestors(tests.TestCase):
             ['j', 'y'], 'y', ['z'])
         self.assertFindUniqueAncestors(graph,
             ['p', 'z'], 'z', ['y'])
+
+    def test_racing_shortcuts(self):
+        graph = self.make_graph(racing_shortcuts)
+        self.assertFindUniqueAncestors(graph,
+            ['p', 'q', 'z'], 'z', ['y'])
+        import pdb; pdb.set_trace()
+        self.assertFindUniqueAncestors(graph,
+            ['h', 'i', 'j', 'y'], 'j', ['z'])
 
 
 class TestCachingParentsProvider(tests.TestCase):

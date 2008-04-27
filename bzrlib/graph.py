@@ -294,22 +294,23 @@ class Graph(object):
                                                 searcher.seen)
         # Collapse all the common nodes into a single searcher
         all_unique_searcher = self._make_breadth_first_searcher(ancestor_all_unique)
-        all_unique_searcher.step()
+        if ancestor_all_unique:
+            all_unique_searcher.step()
 
-        # Stop any search tips that are already known as ancestors of the
-        # unique nodes
-        common_searcher.stop_searching_any(
-            common_searcher.find_seen_ancestors(ancestor_all_unique))
+            # Stop any search tips that are already known as ancestors of the
+            # unique nodes
+            common_searcher.stop_searching_any(
+                common_searcher.find_seen_ancestors(ancestor_all_unique))
 
-        total_stopped = 0
-        for searcher in unique_searchers:
-            total_stopped += len(searcher.stop_searching_any(
-                searcher.find_seen_ancestors(ancestor_all_unique)))
-        _mutter('For %s unique nodes, created %s + 1 unique searchers'
-                ' (%s stopped search tips, %s common ancestors)',
-                len(unique_nodes), len(unique_searchers), total_stopped,
-                len(ancestor_all_unique))
-        del ancestor_all_unique
+            total_stopped = 0
+            for searcher in unique_searchers:
+                total_stopped += len(searcher.stop_searching_any(
+                    searcher.find_seen_ancestors(ancestor_all_unique)))
+            _mutter('For %s unique nodes, created %s + 1 unique searchers'
+                    ' (%s stopped search tips, %s common ancestors)',
+                    len(unique_nodes), len(unique_searchers), total_stopped,
+                    len(ancestor_all_unique))
+            del ancestor_all_unique
 
         # While we still have common nodes to search
         while common_searcher._next_query:
@@ -322,9 +323,6 @@ class Graph(object):
             for searcher in unique_searchers:
                 unique_are_common_nodes = unique_are_common_nodes.intersection(
                                             searcher.seen)
-            # TODO: This needs a test case
-            #       It is triggered when you have lots of unique nodes, and
-            #       some of them converge before the others.
             unique_are_common_nodes = unique_are_common_nodes.intersection(
                                         all_unique_searcher.seen)
             unique_are_common_nodes.update(all_unique_searcher.step())
