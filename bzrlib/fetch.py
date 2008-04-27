@@ -112,9 +112,11 @@ class RepoFetcher(object):
                 else:
                     self.to_repository.commit_write_group()
             finally:
-                if self.nested_pb is not None:
-                    self.nested_pb.finished()
-                self.to_repository.unlock()
+                try:
+                    if self.nested_pb is not None:
+                        self.nested_pb.finished()
+                finally:
+                    self.to_repository.unlock()
         finally:
             self.from_repository.unlock()
 

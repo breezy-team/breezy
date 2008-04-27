@@ -21,6 +21,9 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * Diff now handles revision specs like "branch:" and "submit:" more
+      efficiently.  (Aaron Bentley)
+
   BUGFIXES:
 
     * Avoid muttering every time a child update does not cause a progress bar
@@ -57,6 +60,11 @@ IN DEVELOPMENT
     * Implement xml8 serializer.  (Aaron Bentley)
 
   API BREAKS:
+
+    * Repository.get_data_stream, Repository.get_data_stream_for_search(),
+      Repository.get_deltas_for_revsions(), Repository.revision_trees(),
+      Repository.item_keys_introduced_by() no longer take read locks.
+      (Aaron Bentley)
 
 
 bzr 1.4rc1 2008-04-11
