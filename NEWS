@@ -55,6 +55,11 @@ IN DEVELOPMENT
 
   API BREAKS:
 
+    * Repository.get_data_stream, Repository.get_data_stream_for_search(),
+      Repository.get_deltas_for_revsions(), Repository.revision_trees(),
+      Repository.item_keys_introduced_by() no longer take read locks.
+      (Aaron Bentley)
+
 
 bzr 1.4rc1 2008-04-11
 ---------------------
