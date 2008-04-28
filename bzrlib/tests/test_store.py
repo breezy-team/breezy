@@ -433,4 +433,3 @@ class TestVersionFileStore(TestCaseWithTransport):
         self._transaction = transactions.ReadOnlyTransaction()
         vf = self.vfstore.get_weave_or_empty('id', self._transaction)
         self.assertRaises(errors.ReadOnlyError, vf.add_lines, 'b', [], [])
-
