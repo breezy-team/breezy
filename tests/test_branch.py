@@ -20,6 +20,7 @@ from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoSuchFile, NoSuchRevision, NotBranchError
 from bzrlib.repository import Repository
+from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 
 import os
@@ -192,7 +193,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         """The None revid should map to revno 0."""
         repos_url = self.make_client('a', 'dc')
         branch = Branch.open(repos_url)
-        self.assertEquals(0, branch.revision_id_to_revno(None))
+        self.assertEquals(0, branch.revision_id_to_revno(NULL_REVISION))
 
     def test_revision_id_to_revno_nonexistant(self):
         """revision_id_to_revno() should raise NoSuchRevision if
