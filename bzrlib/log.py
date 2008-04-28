@@ -479,6 +479,11 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
             if rev in weave_modifed_revisions:
                 rev_ancestry.add(rev)
             for parent in parents:
+                if parent not in ancestry:
+                    # parent is a Ghost, which won't be present in
+                    # sorted_rev_list, but we may access it later, so create an
+                    # empty node for it
+                    ancestry[parent] = set()
                 rev_ancestry = rev_ancestry.union(ancestry[parent])
         ancestry[rev] = rev_ancestry
 

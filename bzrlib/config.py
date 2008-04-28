@@ -151,6 +151,7 @@ class Config(object):
             mail_client_class = {
                 None: mail_client.DefaultMail,
                 # Specific clients
+                'emacsclient': mail_client.EmacsMail,
                 'evolution': mail_client.Evolution,
                 'kmail': mail_client.KMail,
                 'mutt': mail_client.Mutt,
@@ -159,7 +160,6 @@ class Config(object):
                 'default': mail_client.DefaultMail,
                 'editor': mail_client.Editor,
                 'mapi': mail_client.MAPIClient,
-                'emacs-mailmode': mail_client.EmacsMailMode,
                 'xdg-email': mail_client.XDGEmail,
             }[selected_client]
         except KeyError:
