@@ -883,6 +883,8 @@ def load_tests(basic_tests, module, loader):
     module_name_list = [prefix + module_name
                         for module_name in test_repository_modules]
 
+    # add the tests for the sub modules
+
     # Parameterize repository_implementations test modules by format.
     result.addTests(multiply_tests_from_modules(module_name_list,
                                                 format_scenarios,

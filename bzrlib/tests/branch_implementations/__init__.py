@@ -173,6 +173,7 @@ def load_tests(basic_tests, module, loader):
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
         combinations)
+    # add the tests for the sub modules
     tests.adapt_modules(test_branch_implementations, adapter, loader, result)
 
     adapt_to_smart_server = BranchTestProviderAdapter(

@@ -48,13 +48,13 @@ class WorkingTreeTestProviderAdapter(TestScenarioApplier):
         self._transport_server = transport_server
         self._transport_readonly_server = transport_readonly_server
         self.scenarios = self.formats_to_scenarios(formats)
-    
+
     def formats_to_scenarios(self, formats):
         """Transform the input formats to a list of scenarios.
 
         :param formats: A list of (workingtree_format, bzrdir_format).
         """
-    
+
         result = []
         for workingtree_format, bzrdir_format in formats:
             result.append(self.create_scenario(workingtree_format,
@@ -134,8 +134,9 @@ def load_tests(basic_tests, module, loader):
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
-        [(format, format._matchingbzrdir) for format in 
+        [(format, format._matchingbzrdir) for format in
          WorkingTreeFormat._formats.values() + _legacy_formats])
 
+    # add the tests for the sub modules
     adapt_modules(test_workingtree_implementations, adapter, loader, result)
     return result

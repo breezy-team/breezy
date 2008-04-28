@@ -106,6 +106,7 @@ def load_tests(basic_tests, module, loader):
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
         formats)
+    # add the tests for the sub modules
     adapt_modules(test_bzrdir_implementations, adapter, loader, result)
 
     # This will always add the tests for smart server transport, regardless of

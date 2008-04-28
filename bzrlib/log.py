@@ -464,8 +464,10 @@ def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
     # This asks for all mainline revisions, which means we only have to spider
     # sideways, rather than depth history. That said, its still size-of-history
     # and should be addressed.
+    # mainline_revisions always includes an extra revision at the beginning, so
+    # don't request it.
     parent_map = dict(((key, value) for key, value in
-        graph.iter_ancestry(mainline_revisions) if value is not None))
+        graph.iter_ancestry(mainline_revisions[1:]) if value is not None))
     sorted_rev_list = topo_sort(parent_map.items())
     ancestry = {}
     for rev in sorted_rev_list:

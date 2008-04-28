@@ -73,5 +73,6 @@ def load_tests(basic_tests, module, loader):
         'bzrlib.tests.per_lock.test_temporary_write_lock',
         ]
     adapter = LockTestProviderAdapter(lock._lock_classes)
+    # add the tests for the sub modules
     tests.adapt_modules(test_lock_implementations, adapter, loader, result)
     return result

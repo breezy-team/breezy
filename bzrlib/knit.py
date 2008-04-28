@@ -843,6 +843,23 @@ class KnitVersionedFile(VersionedFile):
                             'on the source repository, and "bzr reconcile" '
                             'if necessary.' %
                             (version_id, parents[0]))
+                    if not self.delta:
+                        # We received a line-delta record for a non-delta knit.
+                        # Convert it to a fulltext.
+                        gzip_bytes = reader_callable(length)
+                        lines, sha1 = self._data._parse_record(
+                            version_id, gzip_bytes)
+                        delta = self.factory.parse_line_delta(lines,
+                                version_id)
+                        content = self.factory.make(
+                            self.get_lines(parents[0]), parents[0])
+                        content.apply_delta(delta, version_id)
+                        digest, len, content = self.add_lines(
+                            version_id, parents, content.text())
+                        if digest != sha1:
+                            raise errors.VersionedFileInvalidChecksum(version)
+                        continue
+
                 self._add_raw_records(
                     [(version_id, options, parents, length)],
                     reader_callable(length))

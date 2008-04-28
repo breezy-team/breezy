@@ -30,6 +30,7 @@ def load_tests(basic_tests, module, loader):
         'bzrlib.doc.api',
         ]
 
+    # add the tests for the sub modules
     suite.addTests(loader.loadTestsFromModuleNames(testmod_names))
 
     return suite
