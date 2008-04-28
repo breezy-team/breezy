@@ -590,8 +590,9 @@ class RevisionInstaller(object):
             return
         if self._info['serializer'] == self._repository._serializer.format_num:
             self._repository._add_revision_text(revision_id, text)
-        revision = self._source_serializer.read_revision_from_string(text)
-        self._repository.add_revision(revision.revision_id, revision)
+        else:
+            revision = self._source_serializer.read_revision_from_string(text)
+            self._repository.add_revision(revision.revision_id, revision)
 
     def _install_signature(self, revision_id, metadata, text):
         transaction = self._repository.get_transaction()
