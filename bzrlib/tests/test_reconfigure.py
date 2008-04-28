@@ -201,10 +201,6 @@ class TestReconfigure(tests.TestCaseWithTransport):
         parent = self.make_branch('parent')
         checkout = parent.create_checkout('checkout')
         checkout.commit('test', rev_id='new-commit', local=True)
-
-        # work around fetch bug 212908
-        checkout.commit('test2', local=True)
-        checkout.branch.set_last_revision_info(1, 'new-commit')
         reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
             checkout.bzrdir)
         return checkout, parent, reconfiguration
@@ -229,9 +225,6 @@ class TestReconfigure(tests.TestCaseWithTransport):
         child = parent.bzrdir.sprout('child').open_workingtree()
         child.commit('test', rev_id='new-commit')
         parent.pull(child.branch)
-        # work around fetch bug 212908
-        child.commit('test', rev_id='new-commit2')
-        child.branch.set_last_revision_info(1, 'new-commit')
         child.bzrdir.destroy_workingtree()
         reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
             child.bzrdir)
