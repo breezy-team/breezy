@@ -1291,7 +1291,7 @@ class TestDiffFromTool(TestCaseWithTransport):
         self.assertEqual('a-tool-which-is-unlikely-to-exist could not be found'
                          ' on this machine', str(e))
 
-    def test_windows_tool_reads_both_files(self):
+    def test_prepare_files_creates_paths_readable_by_windows_tool(self):
         self.requireFeature(AttribFeature)
         output = StringIO()
         tree = self.make_branch_and_tree('tree')
@@ -1301,23 +1301,19 @@ class TestDiffFromTool(TestCaseWithTransport):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         diff_obj = DiffFromTool(['python', '-c',
-                                 """
-import subprocess
-proc = subprocess.Popen(["attrib", "%(old_path)s"],
-                        stdout=subprocess.PIPE)
-proc.wait()
-print proc.stdout.read()
-proc = subprocess.Popen(["attrib", "%(new_path)s"],
-                        stdout=subprocess.PIPE)
-proc.wait()
-print proc.stdout.read()
-"""
-                                 ],
-                                 tree, tree, output)
-        diff_obj.diff('file-id', 'file', 'file', 'file', 'file')
-        lines = output.getvalue()
-        self.assertContainsRe(lines, r'old\\file')
-        self.assertContainsRe(lines, r'new\\file')
+                                 'print "%(old_path)s %(new_path)s"'],
+                                tree, tree, output)
+        diff_obj._prepare_files('file-id', 'file', 'file')
+        self.assertReadableByAttrib(diff_obj._root, 'old\\file', r'old\\file')
+        self.assertReadableByAttrib(diff_obj._root, 'new\\file', r'new\\file')
+
+    def assertReadableByAttrib(self, cwd, relpath, regex):
+        proc = subprocess.Popen(['attrib', relpath],
+                                stdout=subprocess.PIPE,
+                                cwd=cwd)
+        proc.wait()
+        result=proc.stdout.read()
+        self.assertContainsRe(result, regex)
 
     def test_prepare_files(self):
         output = StringIO()
