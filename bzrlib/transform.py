@@ -1373,7 +1373,10 @@ class _PreviewTree(tree.Tree):
                 return changes
 
     def _content_change(self, file_id):
+        """Return True if the content of this file changed"""
         changes = self._changes(file_id)
+        # changes[2] is true if the file content changed.  See
+        # InterTree.iter_changes.
         return (changes is not None and changes[2])
 
     def _get_file_revision(self, file_id, vf, tree_revision):
@@ -1446,8 +1449,11 @@ class _PreviewTree(tree.Tree):
         return self._stat_limbo_file(file_id).st_mtime
 
     def get_file_size(self, file_id):
+        """See Tree.get_file_size"""
         if self.kind(file_id) == 'file':
             return self._transform._tree.get_file_size(file_id)
+        else:
+            return None
 
     def get_file_sha1(self, file_id, path=None, stat_value=None):
         return self._transform._tree.get_file_sha1(file_id)
@@ -1939,8 +1945,21 @@ def revert(working_tree, target_tree, filenames, backups=False,
     tt = TreeTransform(working_tree, pb)
     try:
         pp = ProgressPhase("Revert phase", 3, pb)
-        conflicts, merge_modified = _prepare_revert_transform(
-            working_tree, target_tree, tt, filenames, backups, pp)
+        pp.next_phase()
+        child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        try:
+            merge_modified = _alter_files(working_tree, target_tree, tt,
+                                          child_pb, filenames, backups)
+        finally:
+            child_pb.finished()
+        pp.next_phase()
+        child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        try:
+            raw_conflicts = resolve_conflicts(tt, child_pb,
+                lambda t, c: conflict_pass(t, c, target_tree))
+        finally:
+            child_pb.finished()
+        conflicts = cook_conflicts(raw_conflicts, tt)
         if change_reporter:
             change_reporter = delta._ChangeReporter(
                 unversioned_filter=working_tree.is_ignored)
@@ -1955,26 +1974,6 @@ def revert(working_tree, target_tree, filenames, backups=False,
         tt.finalize()
         pb.clear()
     return conflicts
-
-
-def _prepare_revert_transform(working_tree, target_tree, tt, filenames,
-                              backups, pp):
-    pp.next_phase()
-    child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
-    try:
-        merge_modified = _alter_files(working_tree, target_tree, tt,
-                                      child_pb, filenames, backups)
-    finally:
-        child_pb.finished()
-    pp.next_phase()
-    child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
-    try:
-        raw_conflicts = resolve_conflicts(tt, child_pb,
-            lambda t, c: conflict_pass(t, c, target_tree))
-    finally:
-        child_pb.finished()
-    conflicts = cook_conflicts(raw_conflicts, tt)
-    return conflicts, merge_modified
 
 
 def _alter_files(working_tree, target_tree, tt, pb, specific_files,

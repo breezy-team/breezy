@@ -618,6 +618,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     __contains__ = has_id
 
     def get_file_size(self, file_id):
+        """See Tree.get_file_size"""
         try:
             return os.path.getsize(self.id2abspath(file_id))
         except OSError, e:
