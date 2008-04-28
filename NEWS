@@ -29,6 +29,9 @@ IN DEVELOPMENT
     * Avoid muttering every time a child update does not cause a progress bar
       update. (John Arbash Meinel, #213771)
 
+    * ``bzr commit`` now works with Microsoft's FTP service.
+      (Andreas Deininger)
+
     * Conversion from non-rich-root to rich-root(-pack) works correctly even
       though search keys are not topologically sorted.  (Aaron Bentley)
 
