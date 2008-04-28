@@ -2,8 +2,14 @@
 Bazaar Developer Document Catalog
 =================================
 
-See the `Main Document Catalog <../index.html>`_ for additional documents
-including the Bazaar Developer Guide and bzrlib API reference.
+Bazaar user documentation is in the 
+`Main Document Catalog <../index.html>`_.
+
+Overall developer documentation
+===============================
+
+* `Developer Guide <en/developer-guide/HACKING.html>`_
+* `bzrlib API reference <http://bazaar-vcs.org/BzrLib>`_
 
 Process
 =======
