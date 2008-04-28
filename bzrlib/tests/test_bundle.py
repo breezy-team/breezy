@@ -1022,11 +1022,11 @@ class BundleTester(object):
         bundle = read_bundle(self.create_bundle_text('null:', 'rev2')[0])
         repo = self.make_repository('repo', format='dirstate-with-subtree')
         bundle.install_revisions(repo)
-        inv = repo.get_inventory('rev2')
         return repo
 
     def test_across_models(self):
         repo = self.make_repo_with_installed_revisions()
+        inv = repo.get_inventory('rev2')
         self.assertEqual('rev2', inv.root.revision)
         root_vf = repo.weave_store.get_weave(inv.root.file_id,
                                              repo.get_transaction())
