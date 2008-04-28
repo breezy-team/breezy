@@ -32,6 +32,9 @@ IN DEVELOPMENT
     * ``bzr commit`` now works with Microsoft's FTP service.
       (Andreas Deininger)
 
+    * Fetching all revisions from a repository does not cause pack collisions.
+      (Robert Collins, Aaron Bentley, #212908)
+
     * Set SO_REUSEADDR on server sockets of ``bzr serve`` to avoid problems
       rebinding the socket when starting the server a second time.
       (John Arbash Meinel, Martin Pool, #164288)
