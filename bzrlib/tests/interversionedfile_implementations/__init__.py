@@ -102,6 +102,7 @@ def load_tests(basic_tests, module, loader):
         None,
         InterVersionedFileTestProviderAdapter.default_test_list()
         )
+    # add the tests for the sub modules
     adapt_modules(test_interversionedfile_implementations,
                   adapter, loader, result)
     return result

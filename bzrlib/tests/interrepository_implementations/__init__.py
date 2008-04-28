@@ -132,5 +132,6 @@ def load_tests(basic_tests, module, loader):
         None,
         InterRepositoryTestProviderAdapter.default_test_list()
         )
+    # add the tests for the sub modules
     adapt_modules(test_interrepository_implementations, adapter, loader, result)
     return result

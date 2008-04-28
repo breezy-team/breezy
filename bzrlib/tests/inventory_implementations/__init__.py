@@ -42,6 +42,7 @@ def load_tests(basic_tests, module, loader):
     modules_to_test = [
         'bzrlib.tests.inventory_implementations.basics',
         ]
+    # add the tests for the sub modules
     suite.addTests(multiply_tests_from_modules(modules_to_test,
                                                _inventory_test_scenarios(),
                                                loader))

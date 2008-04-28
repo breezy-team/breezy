@@ -87,5 +87,6 @@ def load_tests(basic_tests, module, loader):
         None,
         RevisionStoreTestProviderAdapter.default_test_list()
         )
+    # add the tests for the sub modules
     adapt_modules(test_revisionstore_implementations, adapter, loader, result)
     return result

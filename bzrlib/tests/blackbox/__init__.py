@@ -117,6 +117,7 @@ def load_tests(basic_tests, module, loader):
                      'bzrlib.tests.blackbox.test_versioning',
                      'bzrlib.tests.blackbox.test_whoami',
                      ]
+    # add the tests for the sub modules
     suite.addTests(loader.loadTestsFromModuleNames(testmod_names))
 
     test_encodings = [

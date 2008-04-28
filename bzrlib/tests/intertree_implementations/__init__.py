@@ -118,5 +118,6 @@ def load_tests(basic_tests, module, loader):
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
         test_intertree_permutations)
+    # add the tests for the sub modules
     adapt_modules(test_intertree_implementations, adapter, loader, result)
     return result

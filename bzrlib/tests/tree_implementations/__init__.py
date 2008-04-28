@@ -359,5 +359,6 @@ def load_tests(basic_tests, module, loader):
         [(format, format._matchingbzrdir) for format in
          WorkingTreeFormat._formats.values() + _legacy_formats])
 
+    # add the tests for the sub modules
     adapt_modules(test_tree_implementations, adapter, loader, result)
     return result
