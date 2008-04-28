@@ -32,6 +32,9 @@ IN DEVELOPMENT
     * ``bzr commit`` now works with Microsoft's FTP service.
       (Andreas Deininger)
 
+    * Conversion from non-rich-root to rich-root(-pack) updates inventory
+      sha1s, even when bundles are used.  (Aaron Bentley, #181391)
+
     * Conversion from non-rich-root to rich-root(-pack) works correctly even
       though search keys are not topologically sorted.  (Aaron Bentley)
 
