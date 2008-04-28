@@ -1373,7 +1373,10 @@ class _PreviewTree(tree.Tree):
                 return changes
 
     def _content_change(self, file_id):
+        """Return True if the content of this file changed"""
         changes = self._changes(file_id)
+        # changes[2] is true if the file content changed.  See
+        # InterTree.iter_changes.
         return (changes is not None and changes[2])
 
     def _get_file_revision(self, file_id, vf, tree_revision):
@@ -1446,8 +1449,11 @@ class _PreviewTree(tree.Tree):
         return self._stat_limbo_file(file_id).st_mtime
 
     def get_file_size(self, file_id):
+        """See Tree.get_file_size"""
         if self.kind(file_id) == 'file':
             return self._transform._tree.get_file_size(file_id)
+        else:
+            return None
 
     def get_file_sha1(self, file_id, path=None, stat_value=None):
         return self._transform._tree.get_file_sha1(file_id)
