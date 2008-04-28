@@ -132,8 +132,8 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         self.assertEqual("some-ghost-revision\n", 
                 self.client_get_prop(repos_url, "bzr:ancestry:v3-none", 1))
         self.assertEqual((wt.branch.generate_revision_id(0), "some-ghost-revision"),
-                         wt.branch.repository.revision_parents(
-                             wt.branch.last_revision()))
+                         wt.branch.repository.get_revision(
+                             wt.branch.last_revision()).parent_ids)
 
     def test_commit_rename_file(self):
         repos_url = self.make_client('d', 'dc')

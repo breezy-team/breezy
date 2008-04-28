@@ -556,15 +556,15 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repository = Repository.open("svn+%s" % repos_url)
         mapping = repository.get_mapping()
         self.assertEqual((),
-                repository.revision_parents(
-                    repository.generate_revision_id(0, "", mapping)))
+                repository.get_revision(
+                    repository.generate_revision_id(0, "", mapping)).parent_ids)
         self.assertEqual((repository.generate_revision_id(0, "", mapping),),
-                repository.revision_parents(
-                    repository.generate_revision_id(1, "", mapping)))
+                repository.get_revision(
+                    repository.generate_revision_id(1, "", mapping)).parent_ids)
         self.assertEqual((repository.generate_revision_id(1, "", mapping),
             "ghostparent"), 
-                repository.revision_parents(
-                    repository.generate_revision_id(2, "", mapping)))
+                repository.get_revision(
+                    repository.generate_revision_id(2, "", mapping)).parent_ids)
  
     def test_revision_svk_parent(self):
         repos_url = self.make_client('d', 'dc')
@@ -582,8 +582,8 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         mapping = repository.get_mapping()
         self.assertEqual((repository.generate_revision_id(1, "trunk", mapping),
             repository.generate_revision_id(1, "branches/foo", mapping)), 
-                repository.revision_parents(
-                    repository.generate_revision_id(2, "trunk", mapping)))
+                repository.get_revision(
+                    repository.generate_revision_id(2, "trunk", mapping)).parent_ids)
     
     def test_get_revision(self):
         repos_url = self.make_client('d', 'dc')
