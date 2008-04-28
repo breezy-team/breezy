@@ -41,6 +41,9 @@ IN DEVELOPMENT
     * Conversion from non-rich-root to rich-root(-pack) works even when a
       parent revision has a different root id.  (Aaron Bentley, #177874)
 
+    * Fetching all revisions from a repository does not cause pack collisions.
+      (Robert Collins, Aaron Bentley, #212908)
+
     * Set SO_REUSEADDR on server sockets of ``bzr serve`` to avoid problems
       rebinding the socket when starting the server a second time.
       (John Arbash Meinel, Martin Pool, #164288)

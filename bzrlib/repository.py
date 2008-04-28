@@ -2745,6 +2745,11 @@ class InterPackRepo(InterSameDataRepository):
             # inventory parsing etc, IFF nothing to be copied is in the target.
             # till then:
             revision_ids = self.source.all_revision_ids()
+            revision_keys = [(revid,) for revid in revision_ids]
+            index = self.target._pack_collection.revision_index.combined_index
+            present_revision_ids = set(item[1][0] for item in
+                index.iter_entries(revision_keys))
+            revision_ids = set(revision_ids) - present_revision_ids
             # implementing the TODO will involve:
             # - detecting when all of a pack is selected
             # - avoiding as much as possible pre-selection, so the
