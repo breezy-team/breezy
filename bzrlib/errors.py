@@ -2551,6 +2551,18 @@ class BzrDirError(BzrError):
         BzrError.__init__(self, bzrdir=bzrdir, display_url=display_url)
 
 
+class UnsyncedBranches(BzrDirError):
+
+    _fmt = ("'%(display_url)s' is not in sync with %(target_url)s.  See"
+            " bzr help sync-for-reconfigure.")
+
+    def __init__(self, bzrdir, target_branch):
+        BzrDirError.__init__(self, bzrdir)
+        import bzrlib.urlutils as urlutils
+        self.target_url = urlutils.unescape_for_display(target_branch.base,
+                                                        'ascii')
+
+
 class AlreadyBranch(BzrDirError):
 
     _fmt = "'%(display_url)s' is already a branch."
@@ -2569,6 +2581,16 @@ class AlreadyCheckout(BzrDirError):
 class AlreadyLightweightCheckout(BzrDirError):
 
     _fmt = "'%(display_url)s' is already a lightweight checkout."
+
+
+class AlreadyUsingShared(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already using a shared repository."
+
+
+class AlreadyStandalone(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already standalone."
 
 
 class ReconfigurationNotSupported(BzrDirError):

@@ -180,6 +180,8 @@ class FtpTransport(ConnectedTransport):
             or 'file doesn\'t exist' in s
             or 'rnfr command failed.' in s # vsftpd RNFR reply if file not found
             or 'file/directory not found' in s # filezilla server
+            # Microsoft FTP-Service RNFR reply if file not found
+            or (s.startswith('550 ') and 'unable to rename to' in extra)
             ):
             raise errors.NoSuchFile(path, extra=extra)
         if ('file exists' in s):
