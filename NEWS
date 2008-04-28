@@ -21,14 +21,33 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * Diff now handles revision specs like "branch:" and "submit:" more
+      efficiently.  (Aaron Bentley)
+
   BUGFIXES:
 
     * Avoid muttering every time a child update does not cause a progress bar
       update. (John Arbash Meinel, #213771)
 
+    * ``bzr commit`` now works with Microsoft's FTP service.
+      (Andreas Deininger)
+
+    * Fetching all revisions from a repository does not cause pack collisions.
+      (Robert Collins, Aaron Bentley, #212908)
+
+    * Set SO_REUSEADDR on server sockets of ``bzr serve`` to avoid problems
+      rebinding the socket when starting the server a second time.
+      (John Arbash Meinel, Martin Pool, #164288)
+
     * Severe performance degradation in fetching from knit repositories to
-      packs due to parsing the entire revisions.kndx on every graph walk
-      iteration fixed by using the Repository.get_graph API. (Robert Collins)
+      knits and packs due to parsing the entire revisions.kndx on every graph
+      walk iteration fixed by using the Repository.get_graph API.  There was
+      another regression in knit => knit fetching which re-read the index for
+      every revision each side had in common.
+      (Robert Collins, John Arbash Meinel)
+
+    * When logging the changes to a particular file, there was a bug if there
+      were ghosts in the revision ancestry. (John Arbash Meinel, #209948)
 
   DOCUMENTATION:
 
@@ -38,7 +57,14 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * Implement xml8 serializer.  (Aaron Bentley)
+
   API BREAKS:
+
+    * Repository.get_data_stream, Repository.get_data_stream_for_search(),
+      Repository.get_deltas_for_revsions(), Repository.revision_trees(),
+      Repository.item_keys_introduced_by() no longer take read locks.
+      (Aaron Bentley)
 
 
 bzr 1.4rc1 2008-04-11

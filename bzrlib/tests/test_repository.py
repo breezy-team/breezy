@@ -781,6 +781,8 @@ class TestWithBrokenRepo(TestCaseWithTransport):
         empty_repo = self.make_repository('empty-repo')
         search = graph.SearchResult(set(['rev1a', 'rev2', 'rev3']),
             set(), 3, ['rev1a', 'rev2', 'rev3'])
+        broken_repo.lock_read()
+        self.addCleanup(broken_repo.unlock)
         stream = broken_repo.get_data_stream_for_search(search)
         empty_repo.lock_write()
         self.addCleanup(empty_repo.unlock)
