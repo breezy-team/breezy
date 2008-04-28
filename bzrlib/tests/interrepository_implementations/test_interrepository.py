@@ -236,6 +236,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         # for during pull operations
         inv = source.get_inventory('a')
         source.lock_write()
+        self.addCleanup(source.unlock)
         source.start_write_group()
         inv['id'].revision = 'b'
         inv.revision_id = 'b'
@@ -249,7 +250,6 @@ class TestInterRepository(TestCaseWithInterRepository):
         rev.parent_ids = ['a']
         source.add_revision('b', rev)
         source.commit_write_group()
-        source.unlock()
         self.assertRaises(errors.RevisionNotPresent, target.fetch, source)
         self.assertFalse(target.has_revision('b'))
 

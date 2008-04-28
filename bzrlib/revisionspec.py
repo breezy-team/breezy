@@ -771,6 +771,7 @@ class RevisionSpec_branch(RevisionSpec):
         other_branch = Branch.open(self.spec)
         last_revision = other_branch.last_revision()
         last_revision = revision.ensure_null(last_revision)
+        context_branch.fetch(other_branch, last_revision)
         if last_revision == revision.NULL_REVISION:
             raise errors.NoCommits(other_branch)
         return last_revision
