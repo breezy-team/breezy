@@ -3659,8 +3659,9 @@ class cmd_uncommit(Command):
     specified revision.  For example, "bzr uncommit -r 15" will leave the
     branch at revision 15.
 
-    In the future, uncommit will create a revision bundle, which can then
-    be re-applied.
+    Uncommit leaves the working tree ready for a new commit.  The only change
+    it may make is to restore any pending merges that were present before
+    the commit.
     """
 
     # TODO: jam 20060108 Add an option to allow uncommit to remove
