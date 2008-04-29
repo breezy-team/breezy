@@ -44,6 +44,9 @@ IN DEVELOPMENT
     * Fetching all revisions from a repository does not cause pack collisions.
       (Robert Collins, Aaron Bentley, #212908)
 
+    * Fix error about "attempt to add line-delta in non-delta knit".
+      (Andrew Bennetts, #217701)
+
     * Set SO_REUSEADDR on server sockets of ``bzr serve`` to avoid problems
       rebinding the socket when starting the server a second time.
       (John Arbash Meinel, Martin Pool, #164288)
@@ -74,6 +77,34 @@ IN DEVELOPMENT
       Repository.get_deltas_for_revsions(), Repository.revision_trees(),
       Repository.item_keys_introduced_by() no longer take read locks.
       (Aaron Bentley)
+
+
+bzr 1.4rc2 2008-04-21
+---------------------
+
+  BUG FIXES:
+
+    * ``bzr log -r ..X bzr://`` was failing, because it was getting a request
+      for ``revision_id=None`` which was not a string.
+      (John Arbash Meinel, #211661)
+
+    * Fixed a bug in handling ghost revisions when logging changes in a 
+      particular file.  (John Arbash Meinel, #209948)
+
+    * Fix error about "attempt to add line-delta in non-delta knit".
+      (Andrew Bennetts, #205156)
+
+    * Fixed performance degradation in fetching from knit repositories to
+      knits and packs due to parsing the entire revisions.kndx on every graph
+      walk iteration fixed by using the Repository.get_graph API.  There was
+      another regression in knit => knit fetching which re-read the index for
+      every revision each side had in common.
+      (Robert Collins, John Arbash Meinel)
+
+
+bzr 1.4rc1 2008-04-11
+---------------------
+
 
 
 bzr 1.4rc1 2008-04-11
@@ -158,8 +189,11 @@ bzr 1.4rc1 2008-04-11
       one is present.  You can use the new ``nosmart+`` transport decorator
       to get the old behaviour.  (Andrew Bennetts)
 
-     * Various operations with revision specs and commands that calculate
-       revnos and revision ids are faster.  (John A. Meinel, Aaron Bentley)
+    * The ``version`` command takes a ``--short`` option to print just the
+      version number, for easier use in scripts.  (Martin Pool)
+
+    * Various operations with revision specs and commands that calculate
+      revnos and revision ids are faster.  (John A. Meinel, Aaron Bentley)
 
   BUGFIXES:
 
@@ -335,6 +369,9 @@ bzr 1.4rc1 2008-04-11
       sometimes caused knock-on errors if for example the network connection
       had already failed, and should not be relied upon by code. 
       (Martin Pool, #109520)
+
+    * ``make dist`` target to build a release tarball, and also 
+      ``check-dist-tarball`` and ``dist-upload-escudero``.  (Martin Pool)
 
     * The ``read_response_tuple`` method of ``SmartClientRequestProtocol*``
       classes will now raise ``UnknownSmartMethod`` when appropriate, so that

@@ -347,18 +347,9 @@ class Inter1and2Helper(object):
                 yield tree
             revs = revs[100:]
 
-    def generate_root_texts(self, revs):
-        """Generate VersionedFiles for all root ids.
-        
-        :param revs: the revisions to include
-        """
-        inventory_weave = self.source.get_inventory_weave()
-        versionedfile = {}
-        to_store = self.target.weave_store
-        graph = self.source.get_graph()
-        parent_map = graph.get_parent_map(revs)
-        planned_versions = {}
+    def _find_root_ids(self, revs, parent_map, graph):
         revision_root = {}
+        planned_versions = {}
         for tree in self.iter_rev_trees(revs):
             revision_id = tree.inventory.root.revision
             root_id = tree.get_root_id()
@@ -374,6 +365,19 @@ class Inter1and2Helper(object):
         for tree in self.iter_rev_trees(parents):
             root_id = tree.get_root_id()
             revision_root[tree.get_revision_id()] = root_id
+        return revision_root, planned_versions
+
+    def generate_root_texts(self, revs):
+        """Generate VersionedFiles for all root ids.
+
+        :param revs: the revisions to include
+        """
+        versionedfile = {}
+        to_store = self.target.weave_store
+        graph = self.source.get_graph()
+        parent_map = graph.get_parent_map(revs)
+        revision_root, planned_versions = self._find_root_ids(
+            revs, parent_map, graph)
         for root_id, versions in planned_versions.iteritems():
             versionedfile = to_store.get_weave_or_empty(root_id,
                 self.target.get_transaction())
@@ -382,6 +386,9 @@ class Inter1and2Helper(object):
                 if revision_id in versionedfile:
                     continue
                 parents = parent_map[revision_id]
+                # We drop revision parents with different file-ids, because
+                # a version cannot have a version with another file-id as its
+                # parent.
                 # When a parent revision is a ghost, we guess that its root id
                 # was unchanged.
                 parents = tuple(p for p in parents if p != NULL_REVISION

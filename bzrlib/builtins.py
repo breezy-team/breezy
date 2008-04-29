@@ -2719,11 +2719,17 @@ class cmd_version(Command):
     """Show version of bzr."""
 
     encoding_type = 'replace'
+    takes_options = [
+        Option("short", help="Print just the version number."),
+        ]
 
     @display_command
-    def run(self):
+    def run(self, short=False):
         from bzrlib.version import show_version
-        show_version(to_file=self.outf)
+        if short:
+            self.outf.write(bzrlib.version_string + '\n')
+        else:
+            show_version(to_file=self.outf)
 
 
 class cmd_rocks(Command):
@@ -3659,8 +3665,9 @@ class cmd_uncommit(Command):
     specified revision.  For example, "bzr uncommit -r 15" will leave the
     branch at revision 15.
 
-    In the future, uncommit will create a revision bundle, which can then
-    be re-applied.
+    Uncommit leaves the working tree ready for a new commit.  The only change
+    it may make is to restore any pending merges that were present before
+    the commit.
     """
 
     # TODO: jam 20060108 Add an option to allow uncommit to remove
