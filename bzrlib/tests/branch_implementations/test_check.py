@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests for branch implementations - tests a branch format."""
+"""Tests for branch implementations - test check() functionality"""
 
 from bzrlib import errors
 from bzrlib.tests.branch_implementations import TestCaseWithBranch
