@@ -2719,11 +2719,17 @@ class cmd_version(Command):
     """Show version of bzr."""
 
     encoding_type = 'replace'
+    takes_options = [
+        Option("short", help="Print just the version number."),
+        ]
 
     @display_command
-    def run(self):
+    def run(self, short=False):
         from bzrlib.version import show_version
-        show_version(to_file=self.outf)
+        if short:
+            self.outf.write(bzrlib.version_string + '\n')
+        else:
+            show_version(to_file=self.outf)
 
 
 class cmd_rocks(Command):
@@ -4107,7 +4113,9 @@ class cmd_send(Command):
                'rather than the one containing the working directory.',
                short_name='f',
                type=unicode),
-        Option('output', short_name='o', help='Write directive to this file.',
+        Option('output', short_name='o',
+               help='Write merge directive to this file; '
+                    'use - for stdout.',
                type=unicode),
         Option('mail-to', help='Mail the request to this address.',
                type=unicode),
@@ -4436,7 +4444,9 @@ class cmd_reconfigure(Command):
                      tree='Reconfigure to a tree.',
                      checkout='Reconfigure to a checkout.',
                      lightweight_checkout='Reconfigure to a lightweight'
-                     ' checkout.'),
+                     ' checkout.',
+                     standalone='Reconfigure to be standalone.',
+                     use_shared='Reconfigure to use a shared repository.'),
                      Option('bind-to', help='Branch to bind checkout to.',
                             type=str),
                      Option('force',
@@ -4458,6 +4468,10 @@ class cmd_reconfigure(Command):
         elif target_type == 'lightweight-checkout':
             reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
                 directory, bind_to)
+        elif target_type == 'use-shared':
+            reconfiguration = reconfigure.Reconfigure.to_use_shared(directory)
+        elif target_type == 'standalone':
+            reconfiguration = reconfigure.Reconfigure.to_standalone(directory)
         reconfiguration.apply(force)
 
 

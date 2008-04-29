@@ -404,6 +404,8 @@ class TestRepository(TestCaseWithRepository):
         tree.add('foo', 'file1')
         tree.commit('message', rev_id='rev_id')
         repo = tree.branch.repository
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
         try:
             stream = self.applyDeprecated(one_two, repo.get_data_stream,
                 ['rev_id'])
@@ -424,6 +426,8 @@ class TestRepository(TestCaseWithRepository):
         # Get a data stream (a file-like object) for that revision
         search = graph.SearchResult(set(['rev_id']), set([NULL_REVISION]), 1,
             set(['rev_id']))
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
         try:
             stream = repo.get_data_stream_for_search(search)
         except NotImplementedError:
@@ -468,6 +472,8 @@ class TestRepository(TestCaseWithRepository):
         dest_repo = self.make_repository('dest')
         search = dest_repo.search_missing_revision_ids(source_repo,
             revision_id='rev_id')
+        source_repo.lock_read()
+        self.addCleanup(source_repo.unlock)
         try:
             stream = source_repo.get_data_stream_for_search(search)
         except NotImplementedError, e:
@@ -550,6 +556,8 @@ class TestRepository(TestCaseWithRepository):
         tree.add('foo', 'file1')
         tree.commit('message', rev_id='rev_id')
         repo = tree.branch.repository
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
 
         # Item keys will be in this order, for maximum convenience for
         # generating data to insert into knit repository:
@@ -796,6 +804,22 @@ class TestRepository(TestCaseWithRepository):
         else:
             self.assertEqual([repo.bzrdir.root_transport.base],
                              [b.base for b in repo.find_branches(using=True)])
+
+    def test_set_get_make_working_trees_true(self):
+        repo = self.make_repository('repo')
+        try:
+            repo.set_make_working_trees(True)
+        except errors.RepositoryUpgradeRequired, e:
+            raise TestNotApplicable('Format does not support this flag.')
+        self.assertTrue(repo.make_working_trees())
+
+    def test_set_get_make_working_trees_false(self):
+        repo = self.make_repository('repo')
+        try:
+            repo.set_make_working_trees(False)
+        except errors.RepositoryUpgradeRequired, e:
+            raise TestNotApplicable('Format does not support this flag.')
+        self.assertFalse(repo.make_working_trees())
 
 
 class TestRepositoryLocking(TestCaseWithRepository):

@@ -42,7 +42,7 @@ from bzrlib.symbol_versioning import (
     deprecated_method,
     zero_ninetyone,
     )
-from bzrlib.revision import NULL_REVISION
+from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.trace import mutter, note, warning
 
 # Note: RemoteBzrDirFormat is in bzrdir.py
@@ -714,8 +714,9 @@ class RemoteRepository(object):
         return self._real_repository.clone(a_bzrdir, revision_id=revision_id)
 
     def make_working_trees(self):
-        """RemoteRepositories never create working trees by default."""
-        return False
+        """See Repository.make_working_trees"""
+        self._ensure_real()
+        return self._real_repository.make_working_trees()
 
     def revision_ids_to_search_result(self, result_set):
         """Convert a set of revision ids to a graph SearchResult."""
@@ -858,7 +859,9 @@ class RemoteRepository(object):
         body = self._serialise_search_recipe(recipe)
         path = self.bzrdir._path_for_remote_call(self._client)
         for key in keys:
-            assert type(key) is str
+            if type(key) is not str:
+                raise ValueError(
+                    "key %r not a plain string" % (key,))
         verb = 'Repository.get_parent_map'
         args = (path,) + tuple(keys)
         try:
@@ -994,7 +997,8 @@ class RemoteRepository(object):
         return self._real_repository.pack()
 
     def set_make_working_trees(self, new_value):
-        raise NotImplementedError(self.set_make_working_trees)
+        self._ensure_real()
+        self._real_repository.set_make_working_trees(new_value)
 
     @needs_write_lock
     def sign_revision(self, revision_id, gpg_strategy):
@@ -1228,6 +1232,7 @@ class RemoteBranch(branch.Branch):
         self._control_files = None
         self._lock_mode = None
         self._lock_token = None
+        self._repo_lock_token = None
         self._lock_count = 0
         self._leave_lock = False
 
@@ -1488,10 +1493,24 @@ class RemoteBranch(branch.Branch):
     def is_locked(self):
         return self._lock_count >= 1
 
+    @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
-        self._ensure_real()
-        self._clear_cached_state()
-        return self._real_branch.set_last_revision_info(revno, revision_id)
+        assert type(revno) is int
+        revision_id = ensure_null(revision_id)
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response = self._client.call('Branch.set_last_revision_info',
+                path, self._lock_token, self._repo_lock_token, str(revno), revision_id)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            self._clear_cached_state()
+            return self._real_branch.set_last_revision_info(revno, revision_id)
+        if response == ('ok',):
+            self._clear_cached_state()
+        elif response[0] == 'NoSuchRevision':
+            raise NoSuchRevision(self, response[1])
+        else:
+            raise errors.UnexpectedSmartServerResponse(response)
 
     def generate_revision_history(self, revision_id, last_rev=None,
                                   other_branch=None):

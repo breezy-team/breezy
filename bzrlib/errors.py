@@ -2086,6 +2086,11 @@ class UpgradeRequired(BzrError):
         self.path = path
 
 
+class RepositoryUpgradeRequired(UpgradeRequired):
+
+    _fmt = "To use this feature you must upgrade your repository at %(path)s."
+
+
 class LocalRequiresBoundBranch(BzrError):
 
     _fmt = "Cannot perform local-only commits on unbound branches."
@@ -2558,6 +2563,18 @@ class BzrDirError(BzrError):
         BzrError.__init__(self, bzrdir=bzrdir, display_url=display_url)
 
 
+class UnsyncedBranches(BzrDirError):
+
+    _fmt = ("'%(display_url)s' is not in sync with %(target_url)s.  See"
+            " bzr help sync-for-reconfigure.")
+
+    def __init__(self, bzrdir, target_branch):
+        BzrDirError.__init__(self, bzrdir)
+        import bzrlib.urlutils as urlutils
+        self.target_url = urlutils.unescape_for_display(target_branch.base,
+                                                        'ascii')
+
+
 class AlreadyBranch(BzrDirError):
 
     _fmt = "'%(display_url)s' is already a branch."
@@ -2576,6 +2593,16 @@ class AlreadyCheckout(BzrDirError):
 class AlreadyLightweightCheckout(BzrDirError):
 
     _fmt = "'%(display_url)s' is already a lightweight checkout."
+
+
+class AlreadyUsingShared(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already using a shared repository."
+
+
+class AlreadyStandalone(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already standalone."
 
 
 class ReconfigurationNotSupported(BzrDirError):
@@ -2634,6 +2661,31 @@ class UnsupportedTimezoneFormat(BzrError):
 
     def __init__(self, timezone):
         self.timezone = timezone
+
+
+class CommandAvailableInPlugin(StandardError):
+    
+    internal_error = False
+
+    def __init__(self, cmd_name, plugin_metadata, provider):
+        
+        self.plugin_metadata = plugin_metadata
+        self.cmd_name = cmd_name
+        self.provider = provider
+
+    def __str__(self):
+
+        _fmt = ('"%s" is not a standard bzr command. \n' 
+                'However, the following official plugin provides this command: %s\n'
+                'You can install it by going to: %s'
+                % (self.cmd_name, self.plugin_metadata['name'], 
+                    self.plugin_metadata['url']))
+
+        return _fmt
+
+
+class NoPluginAvailable(BzrError):
+    pass    
 
 
 class NotATerminal(BzrError):

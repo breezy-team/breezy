@@ -592,10 +592,10 @@ class Repository(object):
         Returns a set of the present revisions.
         """
         result = []
-        for id in revision_ids:
-            if self.has_revision(id):
-               result.append(id)
-        return result
+        graph = self.get_graph()
+        parent_map = graph.get_parent_map(revision_ids)
+        # The old API returned a list, should this actually be a set?
+        return parent_map.keys()
 
     @staticmethod
     def create(a_bzrdir):
@@ -1110,7 +1110,6 @@ class Repository(object):
         rev_tmp.seek(0)
         return rev_tmp.getvalue()
 
-    @needs_read_lock
     def get_deltas_for_revisions(self, revisions):
         """Produce a generator of revision deltas.
         
@@ -1447,7 +1446,6 @@ class Repository(object):
         # maybe this generator should explicitly have the contract that it
         # should not be iterated until the previously yielded item has been
         # processed?
-        self.lock_read()
         inv_w = self.get_inventory_weave()
 
         # file ids that changed
@@ -1476,7 +1474,6 @@ class Repository(object):
                 pass
             else:
                 revisions_with_signatures.add(rev_id)
-        self.unlock()
         yield ("signatures", None, revisions_with_signatures)
 
         # revisions
@@ -1682,7 +1679,6 @@ class Repository(object):
             inv = self.get_revision_inventory(revision_id)
             return RevisionTree(self, inv, revision_id)
 
-    @needs_read_lock
     def revision_trees(self, revision_ids):
         """Return Tree for a revision on this branch.
 
@@ -2385,6 +2381,7 @@ class InterRepository(InterObject):
         :return: A set of revision ids.
         """
         graph = self.source.get_graph()
+        target_graph = self.target.get_graph()
         missing_revs = set()
         # ensure we don't pay silly lookup costs.
         revision_ids = frozenset(revision_ids)
@@ -2399,14 +2396,14 @@ class InterRepository(InterObject):
                 absent_ids = set(revision_ids.intersection(ghosts))
                 # If all absent_ids are present in target, no error is needed.
                 absent_ids.difference_update(
-                    self.target.has_revisions(absent_ids))
+                    set(target_graph.get_parent_map(absent_ids)))
                 if absent_ids:
                     raise errors.NoSuchRevision(self.source, absent_ids.pop())
             # we don't care about other ghosts as we can't fetch them and
             # haven't been asked to.
             next_revs = set(next_revs)
             # we always have NULL_REVISION present.
-            have_revs = self.target.has_revisions(next_revs).union(null_set)
+            have_revs = set(target_graph.get_parent_map(next_revs)).union(null_set)
             missing_revs.update(next_revs - have_revs)
             searcher.stop_searching_any(have_revs)
         return searcher.get_result()
@@ -2558,7 +2555,7 @@ class InterWeaveRepo(InterSameDataRepository):
         # weave specific optimised path:
         try:
             self.target.set_make_working_trees(self.source.make_working_trees())
-        except NotImplementedError:
+        except (errors.RepositoryUpgradeRequired, NotImplemented):
             pass
         # FIXME do not peek!
         if self.source.control_files._transport.listable():
@@ -2745,6 +2742,11 @@ class InterPackRepo(InterSameDataRepository):
             # inventory parsing etc, IFF nothing to be copied is in the target.
             # till then:
             revision_ids = self.source.all_revision_ids()
+            revision_keys = [(revid,) for revid in revision_ids]
+            index = self.target._pack_collection.revision_index.combined_index
+            present_revision_ids = set(item[1][0] for item in
+                index.iter_entries(revision_keys))
+            revision_ids = set(revision_ids) - present_revision_ids
             # implementing the TODO will involve:
             # - detecting when all of a pack is selected
             # - avoiding as much as possible pre-selection, so the

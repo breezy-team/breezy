@@ -494,6 +494,114 @@ class TestBranchSetLastRevision(tests.TestCase):
         branch.unlock()
 
 
+class TestBranchSetLastRevisionInfo(tests.TestCase):
+
+    def test_set_last_revision_info(self):
+        # set_last_revision_info(num, 'rev-id') is translated to calling
+        # Branch.set_last_revision_info(num, 'rev-id') on the wire.
+        transport = MemoryTransport()
+        transport.mkdir('branch')
+        transport = transport.clone('branch')
+        client = FakeClient([
+            # lock_write
+            (('ok', 'branch token', 'repo token'), ),
+            # set_last_revision_info
+            (('ok',), ),
+            # unlock
+            (('ok',), )], transport.base)
+
+        bzrdir = RemoteBzrDir(transport, _client=False)
+        branch = RemoteBranch(bzrdir, None, _client=client)
+        # This is a hack to work around the problem that RemoteBranch currently
+        # unnecessarily invokes _ensure_real upon a call to lock_write.
+        branch._ensure_real = lambda: None
+        # Lock the branch, reset the record of remote calls.
+        branch.lock_write()
+        client._calls = []
+        result = branch.set_last_revision_info(1234, 'a-revision-id')
+        self.assertEqual(
+            [('call', 'Branch.set_last_revision_info',
+                ('branch/', 'branch token', 'repo token',
+                 '1234', 'a-revision-id'))],
+            client._calls)
+        self.assertEqual(None, result)
+
+    def test_no_such_revision(self):
+        # A response of 'NoSuchRevision' is translated into an exception.
+        client = FakeClient([
+            # lock_write
+            (('ok', 'branch token', 'repo token'), ),
+            # set_last_revision_info
+            (('NoSuchRevision', 'revid'), ),
+            # unlock
+            (('ok',), ),
+            ])
+        transport = MemoryTransport()
+        transport.mkdir('branch')
+        transport = transport.clone('branch')
+
+        bzrdir = RemoteBzrDir(transport, _client=False)
+        branch = RemoteBranch(bzrdir, None, _client=client)
+        # This is a hack to work around the problem that RemoteBranch currently
+        # unnecessarily invokes _ensure_real upon a call to lock_write.
+        branch._ensure_real = lambda: None
+        # Lock the branch, reset the record of remote calls.
+        branch.lock_write()
+        client._calls = []
+
+        self.assertRaises(
+            errors.NoSuchRevision, branch.set_last_revision_info, 123, 'revid')
+        branch.unlock()
+
+    def lock_remote_branch(self, branch):
+        """Trick a RemoteBranch into thinking it is locked."""
+        branch._lock_mode = 'w'
+        branch._lock_count = 2
+        branch._lock_token = 'branch token'
+        branch._repo_lock_token = 'repo token'
+
+    def test_backwards_compatibility(self):
+        """If the server does not support the Branch.set_last_revision_info
+        verb (which is new in 1.4), then the client falls back to VFS methods.
+        """
+        # This test is a little messy.  Unlike most tests in this file, it
+        # doesn't purely test what a Remote* object sends over the wire, and
+        # how it reacts to responses from the wire.  It instead relies partly
+        # on asserting that the RemoteBranch will call
+        # self._real_branch.set_last_revision_info(...).
+
+        # First, set up our RemoteBranch with a FakeClient that raises
+        # UnknownSmartMethod, and a StubRealBranch that logs how it is called.
+        transport = MemoryTransport()
+        transport.mkdir('branch')
+        transport = transport.clone('branch')
+        client = FakeClient(
+            [(('unknown verb', 'Branch.set_last_revision_info',), ),],
+            transport.base)
+        bzrdir = RemoteBzrDir(transport, _client=False)
+        branch = RemoteBranch(bzrdir, None, _client=client)
+        class StubRealBranch(object):
+            def __init__(self):
+                self.calls = []
+            def set_last_revision_info(self, revno, revision_id):
+                self.calls.append(
+                    ('set_last_revision_info', revno, revision_id))
+        real_branch = StubRealBranch()
+        branch._real_branch = real_branch
+        self.lock_remote_branch(branch)
+
+        # Call set_last_revision_info, and verify it behaved as expected.
+        result = branch.set_last_revision_info(1234, 'a-revision-id')
+        self.assertEqual(
+            [('call', 'Branch.set_last_revision_info',
+                ('branch/', 'branch token', 'repo token',
+                 '1234', 'a-revision-id')),],
+            client._calls)
+        self.assertEqual(
+            [('set_last_revision_info', 1234, 'a-revision-id')],
+            real_branch.calls)
+
+
 class TestBranchControlGetBranchConf(tests.TestCaseWithMemoryTransport):
     """Test branch.control_files api munging...
 
