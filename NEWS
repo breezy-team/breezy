@@ -66,6 +66,12 @@ IN DEVELOPMENT
       Repository.item_keys_introduced_by() no longer take read locks.
       (Aaron Bentley)
 
+    * ``VersionedFile.join`` is deprecated. This method required local
+      instances of both versioned file objects and was thus hostile to being
+      used for streaming from a smart server. The new get_record_stream and
+      insert_record_stream are meant to efficiently replace this method.
+      (Robert Collins)
+
 
 bzr 1.4rc2 2008-04-21
 ---------------------

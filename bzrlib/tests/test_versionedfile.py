@@ -40,7 +40,7 @@ from bzrlib.knit import (
     KnitAnnotateFactory,
     KnitPlainFactory,
     )
-from bzrlib.symbol_versioning import one_four
+from bzrlib.symbol_versioning import one_four, one_five
 from bzrlib.tests import TestCaseWithMemoryTransport, TestSkipped
 from bzrlib.tests.http_utils import TestCaseWithWebserver
 from bzrlib.trace import mutter
@@ -226,6 +226,16 @@ class VersionedFileTestMixIn(object):
             set([('base',), ('left',), ('right',), ('merged',), ('or',)]),
             seen)
 
+    def test_filter_absent_records(self):
+        """Requested missing records can be filter trivially."""
+        f, parents = get_diamond_vf(self.get_file())
+        entries = f.get_record_stream(['merged', 'left', 'right', 'extra', 'base'],
+            'unordered', False)
+        seen = set()
+        self.capture_stream(f, versionedfile.filter_absent(entries), seen.add,
+            parents)
+        self.assertEqual(set([('base',), ('left',), ('right',), ('merged',)]),
+            seen)
 
     def test_insert_record_stream_empty(self):
         """Inserting an empty record stream should work."""
@@ -591,7 +601,8 @@ class VersionedFileTestMixIn(object):
         self._transaction = 'after'
         self.assertRaises(errors.OutSideTransaction, f.add_lines, '', [], [])
         self.assertRaises(errors.OutSideTransaction, f.add_lines_with_ghosts, '', [], [])
-        self.assertRaises(errors.OutSideTransaction, f.join, '')
+        self.assertRaises(errors.OutSideTransaction, self.applyDeprecated,
+            one_five, f.join, '')
         
     def test_clone_text(self):
         f = self.get_file()
@@ -926,7 +937,8 @@ class VersionedFileTestMixIn(object):
                           'base',
                           [],
                           [])
-        self.assertRaises(errors.ReadOnlyError, vf.join, 'base')
+        self.assertRaises(errors.ReadOnlyError, self.applyDeprecated, one_five,
+            vf.join, 'base')
     
     def test_get_sha1s(self):
         # check the sha1 data is available

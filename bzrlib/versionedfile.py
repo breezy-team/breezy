@@ -98,6 +98,13 @@ class AbsentContentFactory(object):
         self.parents = None
 
 
+def filter_absent(record_stream):
+    """Adapt a record stream to remove absent records."""
+    for record in record_stream:
+        if record.storage_kind != 'absent':
+            yield record
+
+
 class VersionedFile(object):
     """Versioned text file storage.
     
@@ -517,6 +524,7 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.annotate)
 
+    @deprecated_method(one_five)
     def join(self, other, pb=None, msg=None, version_ids=None,
              ignore_missing=False):
         """Integrate versions from other into this versioned file.

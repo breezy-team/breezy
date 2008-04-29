@@ -46,6 +46,7 @@ __all__ = ['deprecated_function',
            'one_two',
            'one_three',
            'one_four',
+           'one_five',
            ]
 
 from warnings import warn
@@ -73,6 +74,7 @@ one_one = "%s was deprecated in version 1.1."
 one_two = "%s was deprecated in version 1.2."
 one_three = "%s was deprecated in version 1.3."
 one_four = "%s was deprecated in version 1.4."
+one_five = "%s was deprecated in version 1.5."
 
 def set_warning_method(method):
     """Set the warning method to be used by this module.
