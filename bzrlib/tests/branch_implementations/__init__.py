@@ -153,6 +153,7 @@ def test_suite():
         'bzrlib.tests.branch_implementations.test_permissions',
         'bzrlib.tests.branch_implementations.test_pull',
         'bzrlib.tests.branch_implementations.test_push',
+        'bzrlib.tests.branch_implementations.test_reconcile',
         'bzrlib.tests.branch_implementations.test_revision_history',
         'bzrlib.tests.branch_implementations.test_revision_id_to_revno',
         'bzrlib.tests.branch_implementations.test_sprout',

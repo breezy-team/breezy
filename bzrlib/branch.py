@@ -792,6 +792,15 @@ class Branch(object):
             basis_tree.unlock()
         return tree
 
+    @needs_write_lock
+    def reconcile(self, thorough=True):
+        """Make sure the data stored in this branch is consistent."""
+        """Reconcile this repository."""
+        from bzrlib.reconcile import BranchReconciler
+        reconciler = BranchReconciler(self, thorough=thorough)
+        reconciler.reconcile()
+        return reconciler
+
     def reference_parent(self, file_id, path):
         """Return the parent branch for a tree-reference file_id
         :param file_id: The file_id of the tree reference
