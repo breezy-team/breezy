@@ -51,7 +51,8 @@ class TestBranchCheck(TestCaseWithBranch):
 
         e = self.assertRaises(errors.BzrCheckError,
                               tree.branch.check)
-
+        self.assertEqual('Internal check failed:'
+                         ' revno does not match len(mainline) 3 != 5', str(e))
 
     def test_check_branch_report_results(self):
         """Checking a branch produces results which can be printed"""
