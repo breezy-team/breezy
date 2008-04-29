@@ -141,6 +141,7 @@ def test_suite():
         'bzrlib.tests.branch_implementations.test_bound_sftp',
         'bzrlib.tests.branch_implementations.test_branch',
         'bzrlib.tests.branch_implementations.test_break_lock',
+        'bzrlib.tests.branch_implementations.test_check',
         'bzrlib.tests.branch_implementations.test_create_checkout',
         'bzrlib.tests.branch_implementations.test_commit',
         'bzrlib.tests.branch_implementations.test_get_revision_id_to_revno_map',
