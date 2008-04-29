@@ -58,6 +58,10 @@ IN DEVELOPMENT
 
   TESTING:
 
+    * Add ``thread_name_suffix`` parameter to SmartTCPServer_for_testing, to
+      make it easy to identify which test spawned a thread with an unhandled
+      exception. (Andrew Bennetts)
+
   INTERNALS:
 
     * Implement xml8 serializer.  (Aaron Bentley)
