@@ -28,9 +28,11 @@ except ImportError:
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
     from email.utils import parseaddr
+import socket
 import smtplib
 
 from bzrlib import (
+    errors,
     ui,
     __version__ as _bzrlib_version,
     )
@@ -67,7 +69,13 @@ class SMTPConnection(object):
     def _create_connection(self):
         """Create an SMTP connection."""
         self._connection = smtplib.SMTP()
-        self._connection.connect(self._smtp_server)
+        try:
+            self._connection.connect(self._smtp_server)
+        except socket.error, e:
+            raise errors.SocketConnectionError(
+                host=self._smtp_server,
+                msg="Unable to connect to smtp server to send email to",
+                orig_error=e)
 
         # If this fails, it just returns an error, but it shouldn't raise an
         # exception unless something goes really wrong (in which case we want
@@ -87,13 +95,13 @@ class SMTPConnection(object):
         try:
             self._connection.login(self._smtp_username, self._smtp_password)
         except smtplib.SMTPHeloError, e:
-            raise BzrCommandError('SMTP server refused HELO: %d %s'
-                                  % (e.smtp_code, e.smtp_error))
+            raise errors.BzrCommandError('SMTP server refused HELO: %d %s'
+                                         % (e.smtp_code, e.smtp_error))
         except smtplib.SMTPAuthenticationError, e:
-            raise BzrCommandError('SMTP server refused authentication: %d %s'
-                                  % (e.smtp_code, e.smtp_error))
+            raise errors.BzrCommandError('SMTP server refused authentication: %d %s'
+                                         % (e.smtp_code, e.smtp_error))
         except smtplib.SMTPException, e:
-            raise BzrCommandError(str(e))
+            raise errors.BzrCommandError(str(e))
 
     @staticmethod
     def _split_address(address):
