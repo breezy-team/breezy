@@ -338,6 +338,9 @@ class Weave(VersionedFile):
         """
         adapters = {}
         for record in stream:
+            # Raise an error when a record is missing.
+            if record.storage_kind == 'absent':
+                raise RevisionNotPresent([record.key[0]], self)
             # adapt to non-tuple interface
             parents = [parent[0] for parent in record.parents]
             if record.storage_kind == 'fulltext':

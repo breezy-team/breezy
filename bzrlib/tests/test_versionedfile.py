@@ -330,6 +330,16 @@ class VersionedFileTestMixIn(object):
         f.insert_record_stream(stream)
         self.assertIdenticalVersionedFile(f, source)
 
+    def test_insert_record_stream_missing_keys(self):
+        """Inserting a stream with absent keys should raise an error."""
+        f = self.get_file()
+        source = make_file_knit('source', get_transport(self.get_url('.')),
+            create=True, factory=KnitPlainFactory())
+        stream = source.get_record_stream(['missing'], 'topological',
+            False)
+        self.assertRaises(errors.RevisionNotPresent, f.insert_record_stream,
+            stream)
+
     def test_adds_with_parent_texts(self):
         f = self.get_file()
         parent_texts = {}
