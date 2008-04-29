@@ -372,7 +372,6 @@ class Inter1and2Helper(object):
 
         :param revs: the revisions to include
         """
-        versionedfile = {}
         to_store = self.target.weave_store
         graph = self.source.get_graph()
         parent_map = graph.get_parent_map(revs)
