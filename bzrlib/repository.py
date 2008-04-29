@@ -2380,12 +2380,14 @@ class InterRepository(InterObject):
         :param revision_ids: The start point for the search.
         :return: A set of revision ids.
         """
-        graph = self.source.get_graph()
         target_graph = self.target.get_graph()
-        missing_revs = set()
-        # ensure we don't pay silly lookup costs.
         revision_ids = frozenset(revision_ids)
-        searcher = graph._make_breadth_first_searcher(revision_ids)
+        if set(target_graph.get_parent_map(revision_ids)) == revision_ids:
+            return graph.SearchResult(revision_ids, set(), 0, set())
+        missing_revs = set()
+        source_graph = self.source.get_graph()
+        # ensure we don't pay silly lookup costs.
+        searcher = source_graph._make_breadth_first_searcher(revision_ids)
         null_set = frozenset([_mod_revision.NULL_REVISION])
         while True:
             try:
@@ -2763,6 +2765,8 @@ class InterPackRepo(InterSameDataRepository):
                     find_ghosts=find_ghosts).get_keys()
             except errors.NoSuchRevision:
                 raise errors.InstallFailed([revision_id])
+            if len(revision_ids) == 0:
+                return (0, [])
         packs = self.source._pack_collection.all_packs()
         pack = Packer(self.target._pack_collection, packs, '.fetch',
             revision_ids).pack()

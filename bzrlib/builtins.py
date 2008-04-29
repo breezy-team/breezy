@@ -669,8 +669,6 @@ class cmd_pull(Command):
                 raise errors.BzrCommandError(
                     'bzr pull --revision takes one value.')
 
-        if verbose:
-            old_rh = branch_to.revision_history()
         if tree_to is not None:
             change_reporter = delta._ChangeReporter(
                 unversioned_filter=tree_to.is_ignored)
@@ -681,7 +679,10 @@ class cmd_pull(Command):
             result = branch_to.pull(branch_from, overwrite, revision_id)
 
         result.report(self.outf)
-        if verbose:
+        if verbose and result.old_revid != result.new_revid:
+            old_rh = list(branch_to.repository.iter_reverse_revision_history(
+                          result.old_revid))
+            old_rh.reverse()
             new_rh = branch_to.revision_history()
             log.show_changed_revisions(branch_to, old_rh, new_rh,
                                        to_file=self.outf)

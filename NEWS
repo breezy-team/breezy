@@ -24,6 +24,9 @@ IN DEVELOPMENT
     * Diff now handles revision specs like "branch:" and "submit:" more
       efficiently.  (Aaron Bentley)
 
+    * Pull completes much faster when there is nothing to pull.
+      (Aaron Bentley)
+
   BUGFIXES:
 
     * Avoid muttering every time a child update does not cause a progress bar
