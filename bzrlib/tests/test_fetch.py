@@ -327,7 +327,13 @@ class TestHttpFetch(TestCaseWithWebserver):
 class Test1To2Fetch(TestCaseWithTransport):
     """Tests for Model1To2 failure modes"""
 
-    def do_test(self, first, second):
+    def make_tree_and_repo(self):
+        self.tree = self.make_branch_and_tree('tree', format='pack-0.92')
+        self.repo = self.make_repository('rich-repo', format='rich-root-pack')
+        self.repo.lock_write()
+        self.addCleanup(self.repo.unlock)
+
+    def do_fetch_order_test(self, first, second):
         """Test that fetch works no matter what the set order of revision is.
 
         This test depends on the order of items in a set, which is
@@ -338,18 +344,18 @@ class Test1To2Fetch(TestCaseWithTransport):
         self.tree.commit('Commit 2', rev_id=second)
         self.repo.fetch(self.tree.branch.repository, second)
 
+    def test_fetch_order_AB(self):
+        """See do_test"""
+        self.do_fetch_order_test('A', 'B')
+
+    def test_fetch_order_BA(self):
+        """See do_test"""
+        self.do_fetch_order_test('B', 'A')
+
     def get_parents(self, file_id, revision_id):
         transaction = self.repo.get_transaction()
         vf = self.repo.weave_store.get_weave(file_id, transaction)
         return vf.get_parents_with_ghosts(revision_id)
-
-    def test_fetch_order_AB(self):
-        """See do_test"""
-        self.do_test('A', 'B')
-
-    def test_fetch_order_BA(self):
-        """See do_test"""
-        self.do_test('B', 'A')
 
     def test_fetch_ghosts(self):
         self.make_tree_and_repo()
@@ -365,12 +371,6 @@ class Test1To2Fetch(TestCaseWithTransport):
         root_id = self.tree.get_root_id()
         self.assertEqual(['left-parent', 'ghost-parent', 'not-ghost-parent'],
                          self.get_parents(root_id, 'second-id'))
-
-    def make_tree_and_repo(self):
-        self.tree = self.make_branch_and_tree('tree', format='pack-0.92')
-        self.repo = self.make_repository('rich-repo', format='rich-root-pack')
-        self.repo.lock_write()
-        self.addCleanup(self.repo.unlock)
 
     def make_two_commits(self, change_root, fetch_twice):
         self.make_tree_and_repo()
