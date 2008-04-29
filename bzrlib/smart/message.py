@@ -23,33 +23,68 @@ from bzrlib import (
     )
 from bzrlib.trace import mutter
 
+
 class MessageHandler(object):
+    """Base class for handling messages received via the smart protocol.
+
+    As parts of a message are received, the corresponding PART_received method
+    will be called.
+    """
 
     def __init__(self):
         self.headers = None
 
     def headers_received(self, headers):
+        """Called when message headers are received.
+        
+        This default implementation just stores them in self.headers.
+        """
         self.headers = headers
 
     def byte_part_received(self, byte):
+        """Called when a 'byte' part is received.
+
+        Note that a 'byte' part is a message part consisting of exactly one
+        byte.
+        """
         raise NotImplementedError(self.byte_received)
 
     def bytes_part_received(self, bytes):
+        """Called when a 'bytes' part is received.
+
+        A 'bytes' message part can contain any number of bytes.  It should not
+        be confused with a 'byte' part, which is always a single byte.
+        """
         raise NotImplementedError(self.bytes_received)
 
     def structure_part_received(self, structure):
+        """Called when a 'structure' part is received.
+
+        :param structure: some structured data, which will be some combination
+            of list, dict, int, and str objects.
+        """
         raise NotImplementedError(self.bytes_received)
 
     def protocol_error(self, exception):
-        """Called when there is a protocol decoding error."""
+        """Called when there is a protocol decoding error.
+        
+        The default implementation just re-raises the exception.
+        """
         raise
     
     def end_received(self):
+        """Called when the end of the message is received."""
         # No-op by default.
         pass
 
 
 class ConventionalRequestHandler(MessageHandler):
+    """A message handler for "conventional" requests.
+
+    "Conventional" is used in the sense described in
+    doc/developers/network-protocol.txt: a simple message with arguments and an
+    optional body.
+    """
 
     def __init__(self, request_handler, responder):
         MessageHandler.__init__(self)
@@ -74,16 +109,16 @@ class ConventionalRequestHandler(MessageHandler):
             self.responder.send_response(self.request_handler.response)
 
     def bytes_part_received(self, bytes):
-        # XXX: this API requires monolithic bodies to be buffered
-        # XXX: how to distinguish between a monolithic body and a chunk stream?
-        #      Hmm, I guess the request handler knows which it is expecting
-        #      (once the args have been received), so it should just deal?  We
-        #      don't yet have requests that expect a stream anyway.
-        #      *Maybe* a one-byte 'c' or 'm' (chunk or monolithic) flag before
-        #      first bytes part?
+        # Note that there's no intrinsic way to distinguish a monolithic body
+        # from a chunk stream.  A request handler knows which it is expecting
+        # (once the args have been received), so it should be able to do the
+        # right thing.
         self.request_handler.accept_body(bytes)
         self.request_handler.end_of_body()
-        assert self.request_handler.finished_reading
+        if not self.request_handler.finished_reading:
+            raise SmartProtocolError(
+                "Conventional request body was received, but request handler "
+                "has not finished reading.")
         self.responder.send_response(self.request_handler.response)
 
 
@@ -220,8 +255,12 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
         
         We read all bytes at once to ensure we've checked the trailer for 
         errors, and then feed the buffer back as read_body_bytes is called.
+
+        Like the builtin file.read in Python, a count of -1 (the default) means
+        read the entire body.
         """
-        # XXX: don't buffer the full request
+        # TODO: we don't necessarily need to buffer the full request if count
+        # != -1.  (2008/04/30, Andrew Bennetts)
         if self._body is None:
             self._wait_for_response_end()
             body_bytes = ''.join(self._bytes_parts)
