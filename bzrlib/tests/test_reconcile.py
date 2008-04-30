@@ -50,17 +50,18 @@ class TestReconciler(tests.TestCaseWithTransport):
     def test_reconciler_with_no_branch(self):
         repo = self.make_repository('repo')
         reconciler = Reconciler(repo.bzrdir)
-        reconcile(reconciler)
+        reconciler.reconcile()
         # no inconsistent parents should have been found
         # but the values should have been set.
         self.assertEqual(0, reconciler.inconsistent_parents)
         # and no garbage inventories
         self.assertEqual(0, reconciler.garbage_inventories)
+        self.assertIs(None, reconciler.fixed_branch_history)
 
     def test_reconciler_finds_branch(self):
         a_branch = self.make_branch('a_branch')
         reconciler = Reconciler(a_branch.bzrdir)
-        reconcile(reconciler)
+        reconciler.reconcile()
 
         # It should have checked the repository, and the branch
         self.assertEqual(0, reconciler.inconsistent_parents)
