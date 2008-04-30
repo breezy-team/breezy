@@ -32,6 +32,10 @@ IN DEVELOPMENT
     * Avoid muttering every time a child update does not cause a progress bar
       update. (John Arbash Meinel, #213771)
 
+    * ``Branch.reconcile()`` is now implemented. This allows ``bzr reconcile``
+      to fix when a Branch has a non-canonical mainline history. ``bzr check``
+      also detects this condition. (John Arbash Meinel, #177855)
+
     * ``bzr commit`` now works with Microsoft's FTP service.
       (Andreas Deininger)
 
