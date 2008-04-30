@@ -21,6 +21,7 @@
 # TODO: might be nice to create a versionedfile with some type of corruption
 # considered typical and check that it can be detected/corrected.
 
+from itertools import chain
 from StringIO import StringIO
 
 import bzrlib
@@ -339,6 +340,24 @@ class VersionedFileTestMixIn(object):
             False)
         self.assertRaises(errors.RevisionNotPresent, f.insert_record_stream,
             stream)
+
+    def test_insert_record_stream_out_of_order(self):
+        """An out of order stream can either error or work."""
+        f, parents = get_diamond_vf(self.get_file())
+        origin_entries = f.get_record_stream(['origin'], 'unordered', False)
+        end_entries = f.get_record_stream(['merged', 'left'],
+            'topological', False)
+        start_entries = f.get_record_stream(['right', 'base'],
+            'topological', False)
+        entries = chain(origin_entries, end_entries, start_entries)
+        target = self.get_file('target')
+        try:
+            target.insert_record_stream(entries)
+        except RevisionNotPresent:
+            # Must not have corrupted the file.
+            target.check()
+        else:
+            self.assertIdenticalVersionedFile(f, target)
 
     def test_adds_with_parent_texts(self):
         f = self.get_file()

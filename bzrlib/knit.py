@@ -1369,6 +1369,19 @@ class KnitVersionedFile(VersionedFile):
 
     def check(self, progress_bar=None):
         """See VersionedFile.check()."""
+        # This doesn't actually test extraction of everything, but that will
+        # impact 'bzr check' substantially, and needs to be integrated with
+        # care. However, it does check for the obvious problem of a delta with
+        # no basis.
+        versions = self.versions()
+        parent_map = self.get_parent_map(versions)
+        for version in versions:
+            if self.get_method(version) != 'fulltext':
+                compression_parent = parent_map[version][0]
+                if compression_parent not in parent_map:
+                    raise errors.KnitCorrupt(self,
+                        "Missing basis parent %s for %s" % (
+                        compression_parent, version))
 
     def get_lines(self, version_id):
         """See VersionedFile.get_lines()."""
