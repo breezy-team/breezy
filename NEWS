@@ -24,16 +24,40 @@ IN DEVELOPMENT
     * Diff now handles revision specs like "branch:" and "submit:" more
       efficiently.  (Aaron Bentley)
 
+    * Pull completes much faster when there is nothing to pull.
+      (Aaron Bentley)
+
   BUGFIXES:
 
     * Avoid muttering every time a child update does not cause a progress bar
       update. (John Arbash Meinel, #213771)
 
+    * ``Branch.reconcile()`` is now implemented. This allows ``bzr reconcile``
+      to fix when a Branch has a non-canonical mainline history. ``bzr check``
+      also detects this condition. (John Arbash Meinel, #177855)
+
     * ``bzr commit`` now works with Microsoft's FTP service.
       (Andreas Deininger)
 
+    * Conversion from non-rich-root to rich-root(-pack) updates inventory
+      sha1s, even when bundles are used.  (Aaron Bentley, #181391)
+
+    * Conversion from non-rich-root to rich-root(-pack) works correctly even
+      though search keys are not topologically sorted.  (Aaron Bentley)
+
+    * Conversion from non-rich-root to rich-root(-pack) works even when a
+      parent revision has a different root id.  (Aaron Bentley, #177874)
+
     * Fetching all revisions from a repository does not cause pack collisions.
       (Robert Collins, Aaron Bentley, #212908)
+
+    * Fix error about "attempt to add line-delta in non-delta knit".
+      (Andrew Bennetts, #217701)
+
+    * Pushing a branch in "dirstate" format (Branch5) over bzr+ssh would break
+      if the remote server was < version 1.2. This was due to a bug in the
+      RemoteRepository.get_parent_map() fallback code.
+      (John Arbash Meinel, #214894)
 
     * Set SO_REUSEADDR on server sockets of ``bzr serve`` to avoid problems
       rebinding the socket when starting the server a second time.
@@ -54,6 +78,10 @@ IN DEVELOPMENT
     * Document outlining strategies for TortoiseBzr. (Mark Hammond)
 
   TESTING:
+
+    * Add ``thread_name_suffix`` parameter to SmartTCPServer_for_testing, to
+      make it easy to identify which test spawned a thread with an unhandled
+      exception. (Andrew Bennetts)
 
     * The test suite modules have been modified to define load_tests() instead
       of test_suite(). That speeds up selective loading (via --load-list)

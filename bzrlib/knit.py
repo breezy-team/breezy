@@ -847,22 +847,23 @@ class KnitVersionedFile(VersionedFile):
                         # We received a line-delta record for a non-delta knit.
                         # Convert it to a fulltext.
                         gzip_bytes = reader_callable(length)
-                        lines, sha1 = self._data._parse_record(
-                            version_id, gzip_bytes)
-                        delta = self.factory.parse_line_delta(lines,
-                                version_id)
-                        content = self.factory.make(
-                            self.get_lines(parents[0]), parents[0])
-                        content.apply_delta(delta, version_id)
-                        digest, len, content = self.add_lines(
-                            version_id, parents, content.text())
-                        if digest != sha1:
-                            raise errors.VersionedFileInvalidChecksum(version)
+                        self._convert_line_delta_to_fulltext(
+                            gzip_bytes, version_id, parents)
                         continue
 
                 self._add_raw_records(
                     [(version_id, options, parents, length)],
                     reader_callable(length))
+
+    def _convert_line_delta_to_fulltext(self, gzip_bytes, version_id, parents):
+        lines, sha1 = self._data._parse_record(version_id, gzip_bytes)
+        delta = self.factory.parse_line_delta(lines, version_id)
+        content = self.factory.make(self.get_lines(parents[0]), parents[0])
+        content.apply_delta(delta, version_id)
+        digest, len, content = self.add_lines(
+            version_id, parents, content.text())
+        if digest != sha1:
+            raise errors.VersionedFileInvalidChecksum(version_id)
 
     def _knit_from_datastream(self, (format, data_list, reader_callable)):
         """Create a knit object from a data stream.

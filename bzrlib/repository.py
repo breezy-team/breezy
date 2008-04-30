@@ -542,14 +542,17 @@ class Repository(object):
             plaintext = Testament(rev, inv).as_short_text()
             self.store_revision_signature(
                 gpg.GPGStrategy(config), plaintext, revision_id)
-        if not revision_id in self.get_inventory_weave():
+        inventory_vf = self.get_inventory_weave()
+        if not revision_id in inventory_vf:
             if inv is None:
                 raise errors.WeaveRevisionNotPresent(revision_id,
-                                                     self.get_inventory_weave())
+                                                     inventory_vf)
             else:
                 # yes, this is not suitable for adding with ghosts.
-                rev.inventory_sha1 = self.add_inventory(revision_id, inv, 
+                rev.inventory_sha1 = self.add_inventory(revision_id, inv,
                                                         rev.parent_ids)
+        else:
+            rev.inventory_sha1 = inventory_vf.get_sha1s([revision_id])[0]
         self._revision_store.add_revision(rev, self.get_transaction())
 
     def _add_revision_text(self, revision_id, text):
@@ -2380,12 +2383,14 @@ class InterRepository(InterObject):
         :param revision_ids: The start point for the search.
         :return: A set of revision ids.
         """
-        graph = self.source.get_graph()
         target_graph = self.target.get_graph()
-        missing_revs = set()
-        # ensure we don't pay silly lookup costs.
         revision_ids = frozenset(revision_ids)
-        searcher = graph._make_breadth_first_searcher(revision_ids)
+        if set(target_graph.get_parent_map(revision_ids)) == revision_ids:
+            return graph.SearchResult(revision_ids, set(), 0, set())
+        missing_revs = set()
+        source_graph = self.source.get_graph()
+        # ensure we don't pay silly lookup costs.
+        searcher = source_graph._make_breadth_first_searcher(revision_ids)
         null_set = frozenset([_mod_revision.NULL_REVISION])
         while True:
             try:
@@ -2763,6 +2768,8 @@ class InterPackRepo(InterSameDataRepository):
                     find_ghosts=find_ghosts).get_keys()
             except errors.NoSuchRevision:
                 raise errors.InstallFailed([revision_id])
+            if len(revision_ids) == 0:
+                return (0, [])
         packs = self.source._pack_collection.all_packs()
         pack = Packer(self.target._pack_collection, packs, '.fetch',
             revision_ids).pack()
