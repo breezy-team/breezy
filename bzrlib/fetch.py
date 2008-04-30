@@ -353,7 +353,7 @@ class Inter1and2Helper(object):
         for revision_parents in parent_map.itervalues():
             parents.update(revision_parents)
         parents.difference_update(revision_root.keys() + [NULL_REVISION])
-        # Limit to revision present in the versionedfile
+        # Limit to revisions present in the versionedfile
         parents = graph.get_parent_map(parents).keys()
         for tree in self.iter_rev_trees(parents):
             root_id = tree.get_root_id()
