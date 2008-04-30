@@ -164,7 +164,7 @@ double_shortcut = {'a':[NULL_REVISION], 'b':['a'], 'c':['b'],
 
 # Complex shortcut
 # This has a failure mode in that a shortcut will find some nodes in common,
-# but the common searcher won't have time to find that one branche is actually
+# but the common searcher won't have time to find that one branch is actually
 # in common. The extra nodes at the beginning are because we want to avoid
 # walking off the graph. Specifically, node G should be considered common, but
 # is likely to be seen by M long before the common searcher finds it.
@@ -602,9 +602,6 @@ class TestGraph(TestCaseWithMemoryTransport):
 
     def test_graph_difference_extended_history(self):
         graph = self.make_graph(extended_history_shortcut)
-        # self.expectFailure('find_difference cannot handle shortcuts',
-        #     self.assertEqual, (set(['e']), set(['f'])),
-        #         graph.find_difference('e', 'f'))
         self.assertEqual((set(['e']), set(['f'])),
                          graph.find_difference('e', 'f'))
         self.assertEqual((set(['f']), set(['e'])),
@@ -617,9 +614,6 @@ class TestGraph(TestCaseWithMemoryTransport):
 
     def test_graph_difference_complex_shortcut(self):
         graph = self.make_graph(complex_shortcut)
-        # self.expectFailure('find_difference cannot handle shortcuts',
-        #     self.assertEqual, (set(['m']), set(['h', 'n'])),
-        #         graph.find_difference('m', 'n'))
         self.assertEqual((set(['m', 'i', 'e']), set(['n', 'h'])),
                          graph.find_difference('m', 'n'))
 
@@ -630,9 +624,6 @@ class TestGraph(TestCaseWithMemoryTransport):
 
     def test_graph_difference_shortcut_extra_root(self):
         graph = self.make_graph(shortcut_extra_root)
-        # self.expectFailure('find_difference cannot handle shortcuts',
-        #     self.assertEqual, (set(['e']), set(['f', 'g'])),
-        #         graph.find_difference('e', 'f'))
         self.assertEqual((set(['e']), set(['f', 'g'])),
                          graph.find_difference('e', 'f'))
 
@@ -814,13 +805,6 @@ class TestGraph(TestCaseWithMemoryTransport):
         """
         class stub(object):
             pass
-        def get_parent_map(keys):
-            result = {}
-            for key in keys:
-                if key == 'deeper':
-                    self.fail('key deeper was accessed')
-                result[key] = graph_dict[key]
-            return result
         def get_parent_map(keys):
             result = {}
             for key in keys:

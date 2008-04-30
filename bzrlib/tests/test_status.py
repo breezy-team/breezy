@@ -49,7 +49,7 @@ class TestStatus(TestCaseWithTransport):
         tree2 = tree.bzrdir.clone('b').open_workingtree()
         tree.commit('commit 2', timestamp=1196796819, timezone=0)
         tree2.commit('commit 2b', timestamp=1196796819, timezone=0)
-        tree3 = tree.bzrdir.clone('c').open_workingtree()
+        tree3 = tree2.bzrdir.clone('c').open_workingtree()
         tree2.commit('commit 3b', timestamp=1196796819, timezone=0)
         tree3.commit('commit 3c', timestamp=1196796819, timezone=0)
         tree.merge_from_branch(tree2.branch)
@@ -60,8 +60,8 @@ class TestStatus(TestCaseWithTransport):
             show_pending_merges(tree, output)
         finally:
             tree.unlock()
-        # Even though 2b is merged by 3c also, it should only be displayed
-        # the first time it shows u.
+        # Even though 2b is in the ancestry of 3c, it should only be displayed
+        # under the first merge parent.
         self.assertEqual('pending merges:\n'
                          '  Joe Foo 2007-12-04 commit 3b\n'
                          '    Joe Foo 2007-12-04 commit 2b\n'

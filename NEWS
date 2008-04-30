@@ -52,6 +52,10 @@ IN DEVELOPMENT
 
   API BREAKS:
 
+    * ``bzrlib.status.show_pending_merges`` requires the repository to be
+      locked by the caller. Callers should have been doing it anyway, but it
+      will now raise an exception if they do not. (John Arbash Meinel)
+
 
 bzr 1.4rc1 2008-04-11
 ---------------------
