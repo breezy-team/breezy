@@ -110,44 +110,6 @@ __unittest = 1
 default_transport = LocalURLServer
 
 
-def packages_to_test():
-    """Return a list of packages to test.
-
-    The packages are not globally imported so that import failures are
-    triggered when running selftest, not when importing the command.
-    """
-    import bzrlib.doc
-    import bzrlib.tests.blackbox
-    import bzrlib.tests.branch_implementations
-    import bzrlib.tests.bzrdir_implementations
-    import bzrlib.tests.commands
-    import bzrlib.tests.interrepository_implementations
-    import bzrlib.tests.interversionedfile_implementations
-    import bzrlib.tests.intertree_implementations
-    import bzrlib.tests.inventory_implementations
-    import bzrlib.tests.per_lock
-    import bzrlib.tests.repository_implementations
-    import bzrlib.tests.revisionstore_implementations
-    import bzrlib.tests.tree_implementations
-    import bzrlib.tests.workingtree_implementations
-    return [
-            bzrlib.doc,
-            bzrlib.tests.blackbox,
-            bzrlib.tests.branch_implementations,
-            bzrlib.tests.bzrdir_implementations,
-            bzrlib.tests.commands,
-            bzrlib.tests.interrepository_implementations,
-            bzrlib.tests.interversionedfile_implementations,
-            bzrlib.tests.intertree_implementations,
-            bzrlib.tests.inventory_implementations,
-            bzrlib.tests.per_lock,
-            bzrlib.tests.repository_implementations,
-            bzrlib.tests.revisionstore_implementations,
-            bzrlib.tests.tree_implementations,
-            bzrlib.tests.workingtree_implementations,
-            ]
-
-
 class ExtendedTestResult(unittest._TextTestResult):
     """Accepts, reports and accumulates the results of running tests.
 
@@ -2670,7 +2632,19 @@ def test_suite(keep_only=None):
     suite on a global basis, but it is not encouraged.
     """
     testmod_names = [
+                   'bzrlib.doc',
                    'bzrlib.util.tests.test_bencode',
+                   'bzrlib.tests.blackbox',
+                   'bzrlib.tests.branch_implementations',
+                   'bzrlib.tests.bzrdir_implementations',
+                   'bzrlib.tests.commands',
+                   'bzrlib.tests.inventory_implementations',
+                   'bzrlib.tests.interrepository_implementations',
+                   'bzrlib.tests.intertree_implementations',
+                   'bzrlib.tests.interversionedfile_implementations',
+                   'bzrlib.tests.per_lock',
+                   'bzrlib.tests.repository_implementations',
+                   'bzrlib.tests.revisionstore_implementations',
                    'bzrlib.tests.test__dirstate_helpers',
                    'bzrlib.tests.test_ancestry',
                    'bzrlib.tests.test_annotate',
@@ -2747,6 +2721,7 @@ def test_suite(keep_only=None):
                    'bzrlib.tests.test_permissions',
                    'bzrlib.tests.test_plugins',
                    'bzrlib.tests.test_progress',
+                   'bzrlib.tests.test_read_bundle',
                    'bzrlib.tests.test_reconfigure',
                    'bzrlib.tests.test_reconcile',
                    'bzrlib.tests.test_registry',
@@ -2782,6 +2757,7 @@ def test_suite(keep_only=None):
                    'bzrlib.tests.test_transactions',
                    'bzrlib.tests.test_transform',
                    'bzrlib.tests.test_transport',
+                   'bzrlib.tests.test_transport_implementations',
                    'bzrlib.tests.test_tree',
                    'bzrlib.tests.test_treebuilder',
                    'bzrlib.tests.test_tsort',
@@ -2800,11 +2776,10 @@ def test_suite(keep_only=None):
                    'bzrlib.tests.test_workingtree_4',
                    'bzrlib.tests.test_wsgi',
                    'bzrlib.tests.test_xml',
+                   'bzrlib.tests.tree_implementations',
+                   'bzrlib.tests.workingtree_implementations',
                    ]
-    test_transport_implementations = [
-        'bzrlib.tests.test_transport_implementations',
-        'bzrlib.tests.test_read_bundle',
-        ]
+
     loader = TestUtil.TestLoader()
 
     if keep_only is None:
@@ -2816,18 +2791,6 @@ def test_suite(keep_only=None):
 
     # modules building their suite with loadTestsFromModuleNames
     suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
-
-    # modules adapted for transport implementations
-    from bzrlib.tests.test_transport_implementations import TransportTestProviderAdapter
-    adapter = TransportTestProviderAdapter()
-    adapt_modules(test_transport_implementations, adapter, loader, suite)
-
-    # modules defining their own test_suite()
-    for package in [p for p in packages_to_test()
-                    if (keep_only is None
-                        or id_filter.refers_to(p.__name__))]:
-        pack_suite = package.test_suite()
-        suite.addTest(pack_suite)
 
     modules_to_doctest = [
         'bzrlib',

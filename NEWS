@@ -83,6 +83,11 @@ IN DEVELOPMENT
       make it easy to identify which test spawned a thread with an unhandled
       exception. (Andrew Bennetts)
 
+    * The test suite modules have been modified to define load_tests() instead
+      of test_suite(). That speeds up selective loading (via --load-list)
+      significantly and provides many examples on how to migrate (grep for
+      load_tests).  (Vincent Ladeuil)
+
   INTERNALS:
 
     * Implement xml8 serializer.  (Aaron Bentley)
