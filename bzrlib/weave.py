@@ -308,7 +308,9 @@ class Weave(VersionedFile):
         """
         if ordering == 'topological':
             parents = self.get_parent_map(versions)
-            versions = topo_sort(parents)
+            new_versions = topo_sort(parents)
+            new_versions.extend(set(versions).difference(set(parents)))
+            versions = new_versions
         for version in versions:
             if version in self:
                 yield WeaveContentFactory(version, self)

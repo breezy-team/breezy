@@ -210,6 +210,13 @@ class VersionedFileTestMixIn(object):
         f, parents = get_diamond_vf(self.get_file())
         entries = f.get_record_stream(['merged', 'left', 'right', 'or', 'base'],
             'unordered', False)
+        self.assertAbsentRecord(f, parents, entries)
+        entries = f.get_record_stream(['merged', 'left', 'right', 'or', 'base'],
+            'topological', False)
+        self.assertAbsentRecord(f, parents, entries)
+
+    def assertAbsentRecord(self, f, parents, entries):
+        """Helper for test_get_record_stream_missing_records_are_absent."""
         seen = set()
         for factory in entries:
             seen.add(factory.key)
