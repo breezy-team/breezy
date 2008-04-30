@@ -166,7 +166,7 @@ class CachingLogWalker(CacheTable):
         i = 0
 
         while revnum >= 0:
-            assert revnum > 0 or path == ""
+            assert revnum > 0 or path == "", "Inconsistent path,revnum: %r,%r" % (revnum, path)
             revpaths = self._get_revision_paths(revnum)
 
             next = changes.find_prev_location(revpaths, path, revnum)
@@ -229,7 +229,6 @@ class CachingLogWalker(CacheTable):
         self.mutter("revision paths: %r" % revnum)
 
         return self._get_revision_paths(revnum)
-                
 
     def fetch_revisions(self, to_revnum=None):
         """Fetch information about all revisions in the remote repository
@@ -309,7 +308,7 @@ class LogWalker(object):
         """
         assert isinstance(path, str)
         assert isinstance(revnum, int) and revnum >= 0
-        return self.actual._get_transport().iter_log(path, revnum, revnum, 1, True, True, []).next()[1]
+        return self._get_transport().iter_log(path, revnum, revnum, 1, True, True, []).next()[1]
 
     def iter_changes(self, path, revnum, limit=0):
         """Return iterator over all the revisions between revnum and 0 named path or inside path.
@@ -322,10 +321,18 @@ class LogWalker(object):
         """
         assert revnum >= 0
 
-        for (changed_paths, revnum, known_revprops) in self._get_transport().iter_log(path, revnum, 0, limit, True, True, []):
+        try:
+            revs = self._get_transport().iter_log(path, revnum, 0, limit, True, True, [])
+        except SubversionException, (_, num):
+            if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
+                raise NoSuchRevision(branch=self, 
+                    revision="Revision number %d" % revnum)
+            raise
+ 
+        for (changed_paths, revnum, known_revprops) in revs:
             revpaths = {}
             for k,v in changed_paths.items():
-                revpaths[k] = (v.action, v.copyfrom_path, v.copyfrom_rev)
+                revpaths[k.strip("/")] = (v.action, v.copyfrom_path, v.copyfrom_rev)
             next = changes.find_prev_location(revpaths, path, revnum)
             revprops = lazy_dict(known_revprops, self._get_transport().revprop_list, revnum)
             yield (path, revpaths, revnum, revprops)
@@ -338,7 +345,10 @@ class LogWalker(object):
         :returns: dictionary with paths as keys and 
                   (action, copyfrom_path, copyfrom_rev) as values.
         """
-        return self.actual._get_transport().iter_log("", revnum, revnum, 1, True, True, []).next()[0]
+        # To make the existing code happy:
+        if revnum == 0:
+            return {'': ('A', None, -1)}
+        return self._get_transport().iter_log("", revnum, revnum, 1, True, True, []).next()[0]
         
     def find_children(self, path, revnum):
         """Find all children of path in revnum.
