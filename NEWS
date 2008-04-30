@@ -62,6 +62,9 @@ IN DEVELOPMENT
 
     * Implement xml8 serializer.  (Aaron Bentley)
 
+    * New form ``@deprecated_method(deprecated_in(1, 5, 0))`` for making 
+      deprecation wrappers.  (Martin Pool)
+
   API BREAKS:
 
     * Repository.get_data_stream, Repository.get_data_stream_for_search(),
