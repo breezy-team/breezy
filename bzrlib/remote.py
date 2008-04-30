@@ -823,7 +823,21 @@ class RemoteRepository(object):
             # :- its because we're working with a deprecated server anyway, and
             # the user will almost certainly have seen a warning about the
             # server version already.
-            return self.get_revision_graph()
+            rg = self.get_revision_graph()
+            # There is an api discrepency between get_parent_map and
+            # get_revision_graph. Specifically, a "key:()" pair in
+            # get_revision_graph just means a node has no parents. For
+            # "get_parent_map" it means the node is a ghost. So fix up the
+            # graph to correct this.
+            #   https://bugs.launchpad.net/bzr/+bug/214894
+            # There is one other "bug" which is that ghosts in
+            # get_revision_graph() are not returned at all. But we won't worry
+            # about that for now.
+            for node_id, parent_ids in rg.iteritems():
+                if parent_ids == ():
+                    rg[node_id] = (NULL_REVISION,)
+            rg[NULL_REVISION] = ()
+            return rg
 
         keys = set(keys)
         if NULL_REVISION in keys:
