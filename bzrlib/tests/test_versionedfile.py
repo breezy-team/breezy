@@ -652,21 +652,6 @@ class VersionedFileTestMixIn(object):
         self.assertRaises(errors.OutSideTransaction, self.applyDeprecated,
             one_five, f.join, '')
         
-    def test_clone_text(self):
-        f = self.get_file()
-        f.add_lines('r0', [], ['a\n', 'b\n'])
-        self.applyDeprecated(one_four, f.clone_text, 'r1', 'r0', ['r0'])
-        def verify_file(f):
-            self.assertEquals(f.get_lines('r1'), f.get_lines('r0'))
-            self.assertEquals(f.get_lines('r1'), ['a\n', 'b\n'])
-            self.assertEqual({'r1':('r0',)}, f.get_parent_map(['r1']))
-            self.assertRaises(RevisionNotPresent,
-                self.applyDeprecated, one_four, f.clone_text, 'r2', 'rX', [])
-            self.assertRaises(RevisionAlreadyPresent,
-                self.applyDeprecated, one_four, f.clone_text, 'r1', 'r0', [])
-        verify_file(f)
-        verify_file(self.reopen_file())
-
     def test_copy_to(self):
         f = self.get_file()
         f.add_lines('0', [], ['a\n'])
@@ -679,65 +664,6 @@ class VersionedFileTestMixIn(object):
         f = self.get_file()
         # and should be a list
         self.assertTrue(isinstance(self.get_factory().get_suffixes(), list))
-
-    def build_graph(self, file, graph):
-        for node in topo_sort(graph.items()):
-            file.add_lines(node, graph[node], [])
-
-    def test_get_graph(self):
-        f = self.get_file()
-        graph = {
-            'v1': (),
-            'v2': ('v1', ),
-            'v3': ('v2', )}
-        self.build_graph(f, graph)
-        self.assertEqual(graph, self.applyDeprecated(one_four, f.get_graph))
-    
-    def test_get_graph_partial(self):
-        f = self.get_file()
-        complex_graph = {}
-        simple_a = {
-            'c': (),
-            'b': ('c', ),
-            'a': ('b', ),
-            }
-        complex_graph.update(simple_a)
-        simple_b = {
-            'c': (),
-            'b': ('c', ),
-            }
-        complex_graph.update(simple_b)
-        simple_gam = {
-            'c': (),
-            'oo': (),
-            'bar': ('oo', 'c'),
-            'gam': ('bar', ),
-            }
-        complex_graph.update(simple_gam)
-        simple_b_gam = {}
-        simple_b_gam.update(simple_gam)
-        simple_b_gam.update(simple_b)
-        self.build_graph(f, complex_graph)
-        self.assertEqual(simple_a, self.applyDeprecated(one_four, f.get_graph,
-            ['a']))
-        self.assertEqual(simple_b, self.applyDeprecated(one_four, f.get_graph,
-            ['b']))
-        self.assertEqual(simple_gam, self.applyDeprecated(one_four,
-            f.get_graph, ['gam']))
-        self.assertEqual(simple_b_gam, self.applyDeprecated(one_four,
-            f.get_graph, ['b', 'gam']))
-
-    def test_get_parents(self):
-        f = self.get_file()
-        f.add_lines('r0', [], ['a\n', 'b\n'])
-        f.add_lines('r1', [], ['a\n', 'b\n'])
-        f.add_lines('r2', [], ['a\n', 'b\n'])
-        f.add_lines('r3', [], ['a\n', 'b\n'])
-        f.add_lines('m', ['r0', 'r1', 'r2', 'r3'], ['a\n', 'b\n'])
-        self.assertEqual(['r0', 'r1', 'r2', 'r3'],
-            self.applyDeprecated(one_four, f.get_parents, 'm'))
-        self.assertRaises(RevisionNotPresent,
-            self.applyDeprecated, one_four, f.get_parents, 'y')
 
     def test_get_parent_map(self):
         f = self.get_file()
@@ -801,39 +727,6 @@ class VersionedFileTestMixIn(object):
     def reopen_file(self, name='foo'):
         """Open the versioned file from disk again."""
         raise NotImplementedError(self.reopen_file)
-
-    def test_iter_parents(self):
-        """iter_parents returns the parents for many nodes."""
-        f = self.get_file()
-        # sample data:
-        # no parents
-        f.add_lines('r0', [], ['a\n', 'b\n'])
-        # 1 parents
-        f.add_lines('r1', ['r0'], ['a\n', 'b\n'])
-        # 2 parents
-        f.add_lines('r2', ['r1', 'r0'], ['a\n', 'b\n'])
-        # XXX TODO a ghost
-        # cases: each sample data individually:
-        self.assertEqual(set([('r0', ())]),
-            set(self.applyDeprecated(one_four, f.iter_parents, ['r0'])))
-        self.assertEqual(set([('r1', ('r0', ))]),
-            set(self.applyDeprecated(one_four, f.iter_parents, ['r1'])))
-        self.assertEqual(set([('r2', ('r1', 'r0'))]),
-            set(self.applyDeprecated(one_four, f.iter_parents, ['r2'])))
-        # no nodes returned for a missing node
-        self.assertEqual(set(),
-            set(self.applyDeprecated(one_four, f.iter_parents, ['missing'])))
-        # 1 node returned with missing nodes skipped
-        self.assertEqual(set([('r1', ('r0', ))]),
-            set(self.applyDeprecated(one_four, f.iter_parents, ['ghost1', 'r1',
-                'ghost'])))
-        # 2 nodes returned
-        self.assertEqual(set([('r0', ()), ('r1', ('r0', ))]),
-            set(self.applyDeprecated(one_four, f.iter_parents, ['r0', 'r1'])))
-        # 2 nodes returned, missing skipped
-        self.assertEqual(set([('r0', ()), ('r1', ('r0', ))]),
-            set(self.applyDeprecated(one_four, f.iter_parents,
-                ['a', 'r0', 'b', 'r1', 'c'])))
 
     def test_iter_lines_added_or_present_in_versions(self):
         # test that we get at least an equalset of the lines added by
@@ -921,39 +814,21 @@ class VersionedFileTestMixIn(object):
         # has_version
         # - these are ghost unaware and must not be reflect ghosts
         self.assertEqual(['notbxbfse'], vf.get_ancestry('notbxbfse'))
-        self.assertEqual([],
-            self.applyDeprecated(one_four, vf.get_parents, 'notbxbfse'))
-        self.assertEqual({'notbxbfse':()}, self.applyDeprecated(one_four,
-            vf.get_graph))
         self.assertFalse(vf.has_version(parent_id_utf8))
         # we have _with_ghost apis to give us ghost information.
         self.assertEqual([parent_id_utf8, 'notbxbfse'], vf.get_ancestry_with_ghosts(['notbxbfse']))
         self.assertEqual([parent_id_utf8], vf.get_parents_with_ghosts('notbxbfse'))
-        self.assertEqual({'notbxbfse':(parent_id_utf8,)},
-            self.applyDeprecated(one_four, vf.get_graph_with_ghosts))
-        self.assertTrue(self.applyDeprecated(one_four, vf.has_ghost,
-            parent_id_utf8))
         # if we add something that is a ghost of another, it should correct the
         # results of the prior apis
         vf.add_lines(parent_id_utf8, [], [])
         self.assertEqual([parent_id_utf8, 'notbxbfse'], vf.get_ancestry(['notbxbfse']))
         self.assertEqual({'notbxbfse':(parent_id_utf8,)},
             vf.get_parent_map(['notbxbfse']))
-        self.assertEqual({parent_id_utf8:(),
-                          'notbxbfse':(parent_id_utf8, ),
-                          },
-                         self.applyDeprecated(one_four, vf.get_graph))
         self.assertTrue(vf.has_version(parent_id_utf8))
         # we have _with_ghost apis to give us ghost information.
         self.assertEqual([parent_id_utf8, 'notbxbfse'],
             vf.get_ancestry_with_ghosts(['notbxbfse']))
         self.assertEqual([parent_id_utf8], vf.get_parents_with_ghosts('notbxbfse'))
-        self.assertEqual({parent_id_utf8:(),
-                          'notbxbfse':(parent_id_utf8,),
-                          },
-            self.applyDeprecated(one_four, vf.get_graph_with_ghosts))
-        self.assertFalse(self.applyDeprecated(one_four, vf.has_ghost,
-            parent_id_utf8))
 
     def test_add_lines_with_ghosts_after_normal_revs(self):
         # some versioned file formats allow lines to be added with parent
@@ -997,16 +872,6 @@ class VersionedFileTestMixIn(object):
         vf.add_lines('b', ['a'], ['a\n'])
         # a file differing only in last newline.
         vf.add_lines('c', [], ['a'])
-        # Deprecasted single-version API.
-        self.assertEqual(
-            '3f786850e387550fdab836ed7e6dc881de23001b',
-            self.applyDeprecated(one_four, vf.get_sha1, 'a'))
-        self.assertEqual(
-            '3f786850e387550fdab836ed7e6dc881de23001b',
-            self.applyDeprecated(one_four, vf.get_sha1, 'b'))
-        self.assertEqual(
-            '86f7e437faa5a7fce15d1ddcb9eaeaea377667b8',
-            self.applyDeprecated(one_four, vf.get_sha1, 'c'))
         self.assertEqual(['3f786850e387550fdab836ed7e6dc881de23001b',
                           '86f7e437faa5a7fce15d1ddcb9eaeaea377667b8',
                           '3f786850e387550fdab836ed7e6dc881de23001b'],
