@@ -69,6 +69,10 @@ IN DEVELOPMENT
       Repository.item_keys_introduced_by() no longer take read locks.
       (Aaron Bentley)
 
+    * ``LockableFiles.get_utf8`` is deprecated, as a start towards 
+      removing LockableFiles and ``.control_files`` entirely.
+      (Martin Pool)
+
 
 bzr 1.4rc2 2008-04-21
 ---------------------

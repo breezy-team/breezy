@@ -1769,7 +1769,7 @@ class BzrBranch5(BzrBranch):
 
     def get_bound_location(self):
         try:
-            return self.control_files.get_utf8('bound').read()[:-1]
+            return self._transport.get_bytes('bound')[:-1]
         except errors.NoSuchFile:
             return None
 
