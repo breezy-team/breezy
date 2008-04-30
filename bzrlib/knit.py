@@ -758,12 +758,10 @@ class KnitVersionedFile(VersionedFile):
         # write all the data
         raw_record_sizes = [record[3] for record in records]
         positions = self._data.add_raw_records(raw_record_sizes, data)
-        offset = 0
         index_entries = []
-        for (version_id, options, parents, size), access_memo in zip(
+        for (version_id, options, parents, _), access_memo in zip(
             records, positions):
             index_entries.append((version_id, options, access_memo, parents))
-            offset += size
         self._index.add_versions(index_entries)
 
     def copy_to(self, name, transport):
@@ -1108,6 +1106,14 @@ class KnitVersionedFile(VersionedFile):
         native_types.add("knit-%sft-gz" % annotated)
         knit_types = native_types.union(convertibles)
         adapters = {}
+        # Buffered index entries that we can't add immediately because their
+        # basis parent is missing. We don't buffer all because generating
+        # annotations may require access to some of the new records. However we
+        # can't generate annotations from new deltas until their basis parent
+        # is present anyway, so we get away with not needing an index that
+        # reports on the new keys.
+        # key = basis_parent, value = index entry to add
+        buffered_index_entries = {}
         for record in stream:
             # Raise an error when a record is missing.
             if record.storage_kind == 'absent':
@@ -1137,9 +1143,18 @@ class KnitVersionedFile(VersionedFile):
                 # deprecated format this is tolerable. It can be fixed if
                 # needed by in the kndx index support raising on a duplicate
                 # add with identical parents and options.
-                self._add_raw_records(
-                    [(record.key[0], options, parents, len(bytes))],
-                    bytes)
+                access_memo = self._data.add_raw_records([len(bytes)], bytes)[0]
+                index_entry = (record.key[0], options, access_memo, parents)
+                buffered = False
+                if 'fulltext' not in options:
+                    basis_parent = parents[0]
+                    if not self.has_version(basis_parent):
+                        pending = buffered_index_entries.setdefault(
+                            basis_parent, [])
+                        pending.append(index_entry)
+                        buffered = True
+                if not buffered:
+                    self._index.add_versions([index_entry])
             elif record.storage_kind == 'fulltext':
                 self.add_lines(record.key[0], parents,
                     split_lines(record.get_bytes_as('fulltext')))
@@ -1152,6 +1167,20 @@ class KnitVersionedFile(VersionedFile):
                     self.add_lines(record.key[0], parents, lines)
                 except errors.RevisionAlreadyPresent:
                     pass
+            # Add any records whose basis parent is now available.
+            added_keys = [record.key[0]]
+            while added_keys:
+                key = added_keys.pop(0)
+                if key in buffered_index_entries:
+                    index_entries = buffered_index_entries[key]
+                    self._index.add_versions(index_entries)
+                    added_keys.extend(
+                        [index_entry[0] for index_entry in index_entries])
+                    del buffered_index_entries[key]
+        # If there were any deltas which had a missing basis parent, error.
+        if buffered_index_entries:
+            raise errors.RevisionNotPresent(buffered_index_entries.keys()[0],
+                self)
 
     def versions(self):
         """See VersionedFile.versions."""
@@ -1376,7 +1405,7 @@ class KnitVersionedFile(VersionedFile):
         versions = self.versions()
         parent_map = self.get_parent_map(versions)
         for version in versions:
-            if self.get_method(version) != 'fulltext':
+            if self._index.get_method(version) != 'fulltext':
                 compression_parent = parent_map[version][0]
                 if compression_parent not in parent_map:
                     raise errors.KnitCorrupt(self,

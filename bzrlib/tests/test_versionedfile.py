@@ -359,6 +359,18 @@ class VersionedFileTestMixIn(object):
         else:
             self.assertIdenticalVersionedFile(f, target)
 
+    def test_insert_record_stream_delta_missing_basis_no_corruption(self):
+        """Insertion where a needed basis is not included aborts safely."""
+        # Annotated source - deltas can be used in any knit.
+        source = make_file_knit('source', get_transport(self.get_url('.')),
+            create=True)
+        get_diamond_vf(source)
+        entries = source.get_record_stream(['origin', 'merged'], 'unordered', False)
+        f = self.get_file()
+        self.assertRaises(RevisionNotPresent, f.insert_record_stream, entries)
+        f.check()
+        self.assertFalse(f.has_version('merged'))
+
     def test_adds_with_parent_texts(self):
         f = self.get_file()
         parent_texts = {}
