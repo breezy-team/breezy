@@ -345,11 +345,11 @@ class Test1To2Fetch(TestCaseWithTransport):
         self.repo.fetch(self.tree.branch.repository, second)
 
     def test_fetch_order_AB(self):
-        """See do_test"""
+        """See do_fetch_order_test"""
         self.do_fetch_order_test('A', 'B')
 
     def test_fetch_order_BA(self):
-        """See do_test"""
+        """See do_fetch_order_test"""
         self.do_fetch_order_test('B', 'A')
 
     def get_parents(self, file_id, revision_id):
