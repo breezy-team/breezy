@@ -50,6 +50,11 @@ IN DEVELOPMENT
     * Fix error about "attempt to add line-delta in non-delta knit".
       (Andrew Bennetts, #217701)
 
+    * Pushing a branch in "dirstate" format (Branch5) over bzr+ssh would break
+      if the remote server was < version 1.2. This was due to a bug in the
+      RemoteRepository.get_parent_map() fallback code.
+      (John Arbash Meinel, #214894)
+
     * Set SO_REUSEADDR on server sockets of ``bzr serve`` to avoid problems
       rebinding the socket when starting the server a second time.
       (John Arbash Meinel, Martin Pool, #164288)
