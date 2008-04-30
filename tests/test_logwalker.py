@@ -27,10 +27,8 @@ class TestLogWalker(TestCaseWithSubversionRepository):
     def setUp(self):
         super(TestLogWalker, self).setUp()
 
-        logwalker.cache_dir = os.path.join(self.test_dir, "cache-dir")
-
     def get_log_walker(self, transport):
-        return logwalker.CachingLogWalker(logwalker.LogWalker(transport))
+        return logwalker.LogWalker(transport)
 
     def test_create(self):
         repos_url = self.make_client("a", "ac")
@@ -524,5 +522,31 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My 4")
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
         self.assertEquals({'trunk': ('M', None, -1)}, walker.get_revision_paths(3))
+
+    def test_iter_changes_property_change(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/trunk/bla': "data"})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "My Message")
+        self.client_set_prop("dc/trunk", "some:property", "some data\n")
+        self.client_commit("dc", "My 3")
+        self.client_set_prop("dc/trunk", "some2:property", "some data\n")
+        self.client_commit("dc", "My 2")
+        self.client_set_prop("dc/trunk", "some:property", "some other data\n")
+        self.client_commit("dc", "My 4")
+        walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
+        self.assertEquals([('trunk', {'trunk': (u'M', None, -1)}, 3), 
+                           ('trunk', {'trunk': (u'M', None, -1)}, 2), 
+                           ('trunk', {'trunk/bla': (u'A', None, -1), 'trunk': (u'A', None, -1)}, 1)], [l[:3] for l in walker.iter_changes("trunk", 3)])
+
+
+class TestCachingLogWalker(TestLogWalker):
+    def setUp(self):
+        super(TestCachingLogWalker, self).setUp()
+
+        logwalker.cache_dir = os.path.join(self.test_dir, "cache-dir")
+
+    def get_log_walker(self, transport):
+        return logwalker.CachingLogWalker(super(TestCachingLogWalker, self).get_log_walker(transport))
 
 
