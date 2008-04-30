@@ -1319,9 +1319,12 @@ class TestDiffFromTool(TestCaseWithTransport):
         output = StringIO()
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/oldname', 'oldcontent')])
+        self.build_tree_contents([('tree/oldname2', 'oldcontent2')])
         tree.add('oldname', 'file-id')
+        tree.add('oldname2', 'file2-id')
         tree.commit('old tree', timestamp=0)
         tree.rename_one('oldname', 'newname')
+        tree.rename_one('oldname2', 'newname2')
         self.build_tree_contents([('tree/newname', 'newcontent')])
         self.build_tree_contents([('tree/newname2', 'newcontent2')])
         old_tree = tree.basis_tree()
@@ -1343,5 +1346,16 @@ class TestDiffFromTool(TestCaseWithTransport):
         self.assertFileEqual('newcontent', new_path)
         if osutils.host_os_dereferences_symlinks():
             self.assertTrue(os.path.samefile('tree/newname', new_path))
+
+        # The following doesn't work on systems where (not
+        # osutils.host_os_dereferences_symlinks()) unless newname2 actually
+        # exists in the working tree.
+
+        # It seems to me that participants should never only call
+        # _prepare_files with arguments where both the old path and the new
+        # path exist in their respective trees at the given file id.  I
+        # think those are the conditions under which all implementations of
+        # Tree.get_file will work.
+
         # make sure we can create files with the same parent directories
         diff_obj._prepare_files('file-id', 'oldname2', 'newname2')
