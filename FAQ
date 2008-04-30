@@ -124,5 +124,32 @@ If you would like to forbid Bazaar from ever doing these operations, set the
 ``append-revisions-only`` setting to True for the repository you're 
 pushing to.
 
+bzr-svn sets all kinds of file properties when pushing revisions into Subversion. Is this really necessary?
+-----------------------------------------------------------------------------------------------------------
+Yes, this is because bzr-svn actually supports pushing to Subversion
+retaining the exact same history that is in the Bazaar branch 
+you're pushing. These properties are used for storing Bazaar metadata that 
+can not be losslessly mapped to existing Subversion metadata. 
+
+It would be possible to support pushing changes to Subversion without
+setting that metadata but then the revision created in Subversion
+would actually be a different one than in your local branch. 
+You would get a DivergedBranches error when pulling from a svn branch you have 
+just pushed to. 
+
+We have considered setting revision properties with this metadata
+rather than file properties so they don't show up in "svn diff" but
+that requires more work in bzr-svn. Being able to set custom revision
+properties also depends on Subversion 1.5 on the server or modification of the 
+default repository hooks.
+
+If you are using trac, you can get it to ignore these file properties by 
+setting	the "hide_properties" setting in the browser section of your 
+configuration to a list of properties that should not be displayed by trac, 
+e.g.::
+
+  [browser]
+  hide_properties = svk:merge, bzr:file-ids, bzr:merge, bzr:revision-info
+
 ..
 	vim: ft=rest
