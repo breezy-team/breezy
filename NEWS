@@ -55,6 +55,9 @@ IN DEVELOPMENT
 
   TESTING:
 
+    * New helper function for splitting test suites
+      ``split_suite_by_condition``. (Robert Collins)
+
   INTERNALS:
 
     * Implement xml8 serializer.  (Aaron Bentley)

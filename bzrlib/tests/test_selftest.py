@@ -66,6 +66,7 @@ from bzrlib.tests import (
                           preserve_input,
                           randomize_suite,
                           sort_suite_by_re,
+                          split_suite_by_condition,
                           split_suite_by_re,
                           test_lsprof,
                           test_suite,
@@ -1829,6 +1830,18 @@ class TestSelftestFiltering(TestCase):
         self.assertEqual(sorted_names[0], 'bzrlib.tests.test_selftest.'
             'TestSelftestFiltering.test_filter_suite_by_re')
         self.assertEquals(sorted(self.all_names), sorted(sorted_names))
+
+    def test_split_suit_by_condition(self):
+        self.all_names = _test_ids(self.suite)
+        condition = condition_id_re('test_filter_suite_by_r')
+        split_suite = split_suite_by_condition(self.suite, condition)
+        filtered_name = ('bzrlib.tests.test_selftest.TestSelftestFiltering.'
+            'test_filter_suite_by_re')
+        self.assertEqual([filtered_name], _test_ids(split_suite[0]))
+        self.assertFalse(filtered_name in _test_ids(split_suite[1]))
+        remaining_names = list(self.all_names)
+        remaining_names.remove(filtered_name)
+        self.assertEqual(remaining_names, _test_ids(split_suite[1]))
 
     def test_split_suit_by_re(self):
         self.all_names = _test_ids(self.suite)

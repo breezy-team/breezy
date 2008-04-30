@@ -2430,6 +2430,28 @@ def sort_suite_by_re(suite, pattern, exclude_pattern=None,
         return order_changer(filter_suite_by_re(suite, pattern))
 
 
+def split_suite_by_condition(suite, condition):
+    """Split a test suite into two by a condition.
+    
+    :param suite: The suite to split.
+    :param condition: The condition to match on. Tests that match this
+        condition are returned in the first test suite, ones that do not match
+        are in the second suite.
+    :return: A tuple of two test suites, where the first contains tests from
+        suite matching the condition, and the second contains the remainder
+        from suite. The order within each output suite is the same as it was in
+        suite.
+    """ 
+    matched = []
+    did_not_match = []
+    for test in iter_suite_tests(suite):
+        if condition(test):
+            matched.append(test)
+        else:
+            did_not_match.append(test)
+    return TestUtil.TestSuite(matched), TestUtil.TestSuite(did_not_match)
+
+
 def split_suite_by_re(suite, pattern):
     """Split a test suite into two by a regular expression.
     
@@ -2442,16 +2464,7 @@ def split_suite_by_re(suite, pattern):
         suite. The order within each output suite is the same as it was in
         suite.
     """ 
-    matched = []
-    did_not_match = []
-    filter_re = re.compile(pattern)
-    for test in iter_suite_tests(suite):
-        test_id = test.id()
-        if filter_re.search(test_id):
-            matched.append(test)
-        else:
-            did_not_match.append(test)
-    return TestUtil.TestSuite(matched), TestUtil.TestSuite(did_not_match)
+    return split_suite_by_condition(suite, condition_id_re(pattern))
 
 
 def run_suite(suite, name='test', verbose=False, pattern=".*",
