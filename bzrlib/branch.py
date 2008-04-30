@@ -795,7 +795,6 @@ class Branch(object):
     @needs_write_lock
     def reconcile(self, thorough=True):
         """Make sure the data stored in this branch is consistent."""
-        """Reconcile this repository."""
         from bzrlib.reconcile import BranchReconciler
         reconciler = BranchReconciler(self, thorough=thorough)
         reconciler.reconcile()

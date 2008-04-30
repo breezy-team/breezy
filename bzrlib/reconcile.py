@@ -67,6 +67,9 @@ class Reconciler(object):
                               ancestry was being reported incorrectly.
         garbage_inventories: The number of inventory objects without revisions
                              that were garbage collected.
+        fixed_branch_history: None if there was no branch, False if the branch
+                              history was correct, True if the branch history
+                              needed to be re-normalized.
         """
         self.pb = ui.ui_factory.nested_progress_bar()
         try:
@@ -84,6 +87,7 @@ class Reconciler(object):
             self.branch = self.bzrdir.open_branch()
         except errors.NotBranchError:
             # Nothing to check here
+            self.fixed_branch_history = None
             return
         self.pb.note('Reconciling branch %s',
                      self.branch.base)
