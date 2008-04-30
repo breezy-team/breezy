@@ -583,4 +583,5 @@ class TestSelftestStartingWith(TestCase):
         out, err = self.run_bzr(
             ['selftest', '--starting-with', self.id(), '--list'])
         self.assertContainsRe(out, "Listed 1 test in")
+        self.assertContainsRe(out, self.id())
 

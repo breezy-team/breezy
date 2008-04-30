@@ -83,6 +83,11 @@ IN DEVELOPMENT
       make it easy to identify which test spawned a thread with an unhandled
       exception. (Andrew Bennetts)
 
+    * selftest now accepts --starting-with <id> to load only the tests whose id
+      starts with the one specified. This greatly speeds up running the test
+      suite on a limited set of tests and can be used to run the tests for a
+      single module, a single class or even a single test.  (Vincent Ladeuil)
+
     * The test suite modules have been modified to define load_tests() instead
       of test_suite(). That speeds up selective loading (via --load-list)
       significantly and provides many examples on how to migrate (grep for

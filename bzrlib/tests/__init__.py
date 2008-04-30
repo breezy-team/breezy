@@ -2814,11 +2814,21 @@ def test_suite(keep_only=None, starting_with=None):
         # We take precedence over keep_only because *at loading time* using
         # both options means we will load less tests for the same final result.
         loader = TestUtil.FilteredByModuleTestLoader(starting_with.startswith)
+        def interesting_module(name):
+            return name.startswith(starting_with)
+
     elif keep_only is not None:
         id_filter = TestIdList(keep_only)
         loader = TestUtil.FilteredByModuleTestLoader(id_filter.refers_to)
+        def interesting_module(name):
+            return id_filter.refers_to(name)
+
     else:
         loader = TestUtil.TestLoader()
+        def interesting_module(name):
+            # No filtering, all modules are interesting
+            return True
+
     suite = loader.suiteClass()
 
     # modules building their suite with loadTestsFromModuleNames
@@ -2838,14 +2848,6 @@ def test_suite(keep_only=None, starting_with=None):
         'bzrlib.timestamp',
         'bzrlib.version_info_formats.format_custom',
         ]
-
-    def interesting_module(name):
-        if starting_with is not None:
-            return name.startswith(starting_with)
-        elif keep_only is not None:
-            return id_filter.refers_to(name)
-        else:
-            return True
 
     for mod in modules_to_doctest:
         if not interesting_module(mod):
@@ -2887,10 +2889,13 @@ def test_suite(keep_only=None, starting_with=None):
         # Do some sanity checks on the id_list filtering
         not_found, duplicates = suite_matches_id_list(suite, keep_only)
         if starting_with is not None:
-            # No need to annoy the tester with tests not found since when both
-            # options are used *there will be* tests excluded from the list.
+            # The tester has used both keep_only and starting_with, so he is
+            # already aware that some tests are excluded from the list, there
+            # is no need to tell him which.
             pass
         else:
+            # Some tests mentioned in the list are not in the test suite. The
+            # list may be out of date, report to the tester.
             for id in not_found:
                 bzrlib.trace.warning('"%s" not found in the test suite', id)
         for id in duplicates:
