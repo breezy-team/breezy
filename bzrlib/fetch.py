@@ -40,8 +40,7 @@ from bzrlib.symbol_versioning import (deprecated_function,
         )
 from bzrlib.trace import mutter
 import bzrlib.ui
-
-from bzrlib.lazy_import import lazy_import
+from bzrlib.versionedfile import filter_absent
 
 # TODO: Avoid repeatedly opening weaves so many times.
 
@@ -214,9 +213,9 @@ class RepoFetcher(object):
             self.to_repository.get_transaction())
         from_weave = self.from_weaves.get_weave(file_id,
             self.from_repository.get_transaction())
-        # we fetch all the texts, because texts do
-        # not reference anything, and its cheap enough
-        to_weave.join(from_weave, version_ids=required_versions)
+        # Fetch all the texts.
+        to_weave.insert_record_stream(from_weave.get_record_stream(required_versions,
+            'topological', False))
 
     def _fetch_inventory_weave(self, revs, pb):
         pb.update("fetch inventory", 0, 2)
@@ -232,8 +231,8 @@ class RepoFetcher(object):
             # know for unselected inventories whether all their required
             # texts are present in the other repository - it could be
             # corrupt.
-            to_weave.join(from_weave, pb=child_pb, msg='merge inventory',
-                          version_ids=revs)
+            to_weave.insert_record_stream(from_weave.get_record_stream(revs,
+                'topological', False))
         finally:
             child_pb.finished()
 
@@ -295,12 +294,15 @@ class KnitRepoFetcher(RepoFetcher):
             to_transaction)
         from_sf = self.from_repository._revision_store.get_signature_file(
             from_transaction)
-        to_sf.join(from_sf, version_ids=revs, ignore_missing=True)
+        # A missing signature is just skipped.
+        to_sf.insert_record_stream(filter_absent(from_sf.get_record_stream(revs,
+            'unordered', False)))
         to_rf = self.to_repository._revision_store.get_revision_file(
             to_transaction)
         from_rf = self.from_repository._revision_store.get_revision_file(
             from_transaction)
-        to_rf.join(from_rf, version_ids=revs)
+        to_rf.insert_record_stream(from_rf.get_record_stream(revs,
+            'topological', False))
 
 
 class Inter1and2Helper(object):

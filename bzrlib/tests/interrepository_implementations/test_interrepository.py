@@ -184,8 +184,9 @@ class TestInterRepository(TestCaseWithInterRepository):
         finally:
             to_repo.unlock()
 
-        # Implementations can either copy the missing basis text, or raise an
-        # exception
+        # Implementations can either ensure that the target of the delta is
+        # reconstructable, or raise an exception (which stream based copies
+        # generally do).
         try:
             to_repo.fetch(tree.branch.repository, 'rev-two')
         except errors.RevisionNotPresent, e:
@@ -194,12 +195,12 @@ class TestInterRepository(TestCaseWithInterRepository):
             self.assertRaises((errors.NoSuchRevision, errors.RevisionNotPresent),
                               to_repo.revision_tree, 'rev-two')
         else:
-            # If not exception is raised, then the basis text should be
+            # If not exception is raised, then the text should be
             # available.
             to_repo.lock_read()
             try:
-                rt = to_repo.revision_tree('rev-one')
-                self.assertEqual('contents of tree/a\n',
+                rt = to_repo.revision_tree('rev-two')
+                self.assertEqual('new contents\n',
                                  rt.get_file_text('a-id'))
             finally:
                 to_repo.unlock()
