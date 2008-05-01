@@ -85,6 +85,10 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * ``Hooks.install_hook`` is now deprecated in favour of
+      ``Hooks.install_named_hook`` which adds a required ``name`` parameter, to
+      avoid having to call ``Hooks.name_hook``. (Daniel Watkins)
+
     * Implement xml8 serializer.  (Aaron Bentley)
 
   API BREAKS:
