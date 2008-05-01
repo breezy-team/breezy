@@ -2839,6 +2839,7 @@ def test_suite(keep_only=None):
         'bzrlib.merge3',
         'bzrlib.option',
         'bzrlib.store',
+        'bzrlib.symbol_versioning',
         'bzrlib.tests',
         'bzrlib.timestamp',
         'bzrlib.version_info_formats.format_custom',
