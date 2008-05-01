@@ -72,6 +72,7 @@ class TestStatus(TestCaseWithTransport):
         """Test when a pending merge is itself a ghost"""
         tree = self.make_branch_and_tree('a')
         tree.commit('first')
+        tree2 = tree.bzrdir.clone('b').open_workingtree()
         tree2.add_parent_tree_id('a-ghost-revision')
         tree.lock_read()
         self.addCleanup(tree.unlock)
