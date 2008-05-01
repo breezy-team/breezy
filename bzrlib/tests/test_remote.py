@@ -851,9 +851,9 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         results from get_revision_graph are tweaked to match the get_parent_map
         API.
 
-        Specifically, a "key:()" pair from get_revision_graph means "no
+        Specifically, a {key: ()} result from get_revision_graph means "no
         parents" for that key, which in get_parent_map results should be
-        represented as XXX.
+        represented as {key: ('null:',)}.
 
         This is the test for https://bugs.launchpad.net/bzr/+bug/214894
         """
