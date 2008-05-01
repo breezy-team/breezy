@@ -240,6 +240,19 @@ class MutableTree(tree.Tree):
         """
         raise NotImplementedError(self.mkdir)
 
+    @needs_write_lock
+    def put_file_bytes_non_atomic(self, file_id, bytes):
+        """Update the content of a file in the tree.
+        
+        Note that the file is written in-place rather than being
+        written to a temporary location and renamed. As a consequence,
+        readers can potentially see the file half-written.
+
+        :param file_id: file-id of the file
+        :param bytes: the new file contents
+        """
+        raise NotImplementedError(self.put_file_bytes_non_atomic)
+
     def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
         """Set the parents ids of the working tree.
 
