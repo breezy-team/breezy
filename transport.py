@@ -331,6 +331,7 @@ class SvnRaTransport(Transport):
     def iter_log(self, path, from_revnum, to_revnum, limit, discover_changed_paths, 
                  strict_node_history, revprops):
 
+        assert not self._busy
         assert isinstance(path, str)
         assert isinstance(from_revnum, int) and isinstance(to_revnum, int)
         assert isinstance(limit, int)
