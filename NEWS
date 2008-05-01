@@ -31,6 +31,8 @@ bzr-svn 0.4.10  UNRELEASED
 
    * Support credentials in URLs. (#181534)
 
+   * Allow usage without on-disk cache. (#131008)
+
   INTERNALS
 
    * Branching from a Subversion repository will now fetch right-hand side 

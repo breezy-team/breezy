@@ -151,5 +151,12 @@ e.g.::
   [browser]
   hide_properties = svk:merge, bzr:file-ids, bzr:merge, bzr:revision-info
 
+Is it possible to not use the on-disk cache?
+--------------------------------------------
+
+Yes, simply set "cache = False" for the repository in question in ~/.bazaar/subversion.conf. 
+This will of course have some consequences for the performance of bzr-svn since it 
+will have to re-fetch data.
+
 ..
 	vim: ft=rest
