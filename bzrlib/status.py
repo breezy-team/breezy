@@ -159,6 +159,8 @@ def _get_sorted_revisions(tip_revision, revision_ids, parent_map):
         are considered ghosts should not be present in the map.
     :return: An the iterator from MergeSorter.iter_topo_order()
     """
+    # MergeSorter requires that all nodes be present in the graph, so get rid
+    # of any references pointing outside of this graph.
     parent_graph = {}
     for revision_id in revision_ids:
         if revision_id not in parent_map: # ghost
@@ -199,7 +201,7 @@ def show_pending_merges(new, to_file, short=False):
             rev = branch.repository.get_revisions([merge])[0]
         except errors.NoSuchRevision:
             # If we are missing a revision, just print out the revision id
-            to_file.write(first_prefix + merge + '\n')
+            to_file.write(first_prefix + '(ghost) ' + merge + '\n')
             other_revisions.append(merge)
             continue
 
@@ -211,11 +213,6 @@ def show_pending_merges(new, to_file, short=False):
         # last committed revision.
         merge_extra = graph.find_unique_ancestors(merge, other_revisions)
         other_revisions.append(merge)
-        # Now that we have the revisions, we need to sort them to get a proper
-        # listing. We want to sort in reverse topological order (which
-        # MergeSorter gives us). MergeSorter requires that there are no
-        # dangling references, though, so clean up the graph to point to only
-        # present nodes.
         merge_extra.discard(_mod_revision.NULL_REVISION)
 
         # Get a handle to all of the revisions we will need
@@ -223,21 +220,32 @@ def show_pending_merges(new, to_file, short=False):
             revisions = dict((rev.revision_id, rev) for rev in
                              branch.repository.get_revisions(merge_extra))
         except errors.NoSuchRevision:
-            # If we are missing a revision, just print out the revision id
-            to_file.write(first_prefix + merge + '\n')
-        else:
-            # Display the revisions brought in by this merge.
-            rev_id_iterator = _get_sorted_revisions(merge, merge_extra,
-                                branch.repository.get_parent_map(merge_extra))
-            # Skip the first node
-            num, first, depth, eom = rev_id_iterator.next()
-            if first != merge:
-                raise AssertionError('Somehow we misunderstood how'
-                    ' iter_topo_order works %s != %s' % (first, merge))
-            for num, sub_merge, depth, eom in rev_id_iterator:
-                if sub_merge in ignore:
-                    continue
-                log_message = log_formatter.log_string(None,
-                                revisions[sub_merge],
-                                term_width - len(sub_prefix))
-                to_file.write(sub_prefix + log_message + '\n')
+            # One of the sub nodes is a ghost, check each one
+            revisions = {}
+            for revision_id in merge_extra:
+                try:
+                    rev = branch.repository.get_revisions(merge_extra)[0]
+                except errors.NoSuchRevision:
+                    revisions[revision_id] = None
+                else:
+                    revisions[revision_id] = rev
+
+        # Display the revisions brought in by this merge.
+        rev_id_iterator = _get_sorted_revisions(merge, merge_extra,
+                            branch.repository.get_parent_map(merge_extra))
+        # Skip the first node
+        num, first, depth, eom = rev_id_iterator.next()
+        if first != merge:
+            raise AssertionError('Somehow we misunderstood how'
+                ' iter_topo_order works %s != %s' % (first, merge))
+        for num, sub_merge, depth, eom in rev_id_iterator:
+            if sub_merge in ignore:
+                continue
+            rev = revisions[sub_merge]
+            if rev is None:
+                to_file.write(sub_prefix + '(ghost) ' + sub_merge + '\n')
+                continue
+            log_message = log_formatter.log_string(None,
+                            revisions[sub_merge],
+                            term_width - len(sub_prefix))
+            to_file.write(sub_prefix + log_message + '\n')

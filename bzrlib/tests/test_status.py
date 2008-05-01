@@ -68,6 +68,36 @@ class TestStatus(TestCaseWithTransport):
                          '  Joe Foo 2007-12-04 commit 3c\n',
                          output.getvalue())
 
+    def test_with_pending_ghost(self):
+        """Test when a pending merge is itself a ghost"""
+        tree = self.make_branch_and_tree('a')
+        tree.commit('first')
+        tree2.add_parent_tree_id('a-ghost-revision')
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        output = StringIO()
+        show_pending_merges(tree, output)
+        self.assertEqual('pending merges:\n'
+                         '  (ghost) a-ghost-revision\n',
+                         output.get_value())
+
+    def test_pending_with_ghosts(self):
+        """Test when a pending merge's ancestry includes ghosts."""
+        config.GlobalConfig().set_user_option('email', 'Joe Foo <joe@foo.com>')
+        tree = self.make_branch_and_tree('a')
+        tree.commit('empty commit')
+        tree2 = tree.bzrdir.clone('b').open_workingtree()
+        tree2.add_parent_tree_id('a-ghost-revision')
+        tree2.commit('commit with ghost', timestamp=1196796819, timezone=0)
+        tree.merge_from_branch(tree2.branch)
+        self.addCleanup(tree.unlock)
+        output = StringIO()
+        show_pending_merges(tree, output)
+        self.assertEqual('pending merges:\n'
+                         '  Joe Foo 2007-12-04 commit with ghost\n',
+                         '    (ghost) a-ghost-revision\n',
+                         output.get_value())
+
     def tests_revision_to_revision(self):
         """doing a status between two revision trees should work."""
         tree = self.make_branch_and_tree('.')
