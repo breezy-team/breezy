@@ -27,8 +27,8 @@ from bzrlib.tests import TestCase, TestCaseInTempDir
 
 
 # test filter stacks
-_swapcase = lambda chunks, context: [s.swapcase() for s in chunks]
-_addjunk = lambda chunks, context: ['junk\n'] + [s for s in chunks]
+_swapcase = lambda chunks, context=None: [s.swapcase() for s in chunks]
+_addjunk = lambda chunks: ['junk\n'] + [s for s in chunks]
 _deljunk = lambda chunks, context: [s for s in chunks[1:]]
 _stack_1 = [
     ContentFilter(_swapcase, _swapcase),
@@ -58,19 +58,18 @@ class TestContentFilterContext(TestCase):
 class TestFilteredInput(TestCase):
 
     def test_filtered_input_file(self):
-        ctx = ContentFilterContext()
         # test an empty stack returns the same result
         external = ''.join(_sample_external)
         f = StringIO.StringIO(external)
-        self.assertEqual(external, filtered_input_file(f, None, ctx).read())
+        self.assertEqual(external, filtered_input_file(f, None).read())
         # test a single item filter stack
         f = StringIO.StringIO(external)
         expected = ''.join(_internal_1)
-        self.assertEqual(expected, filtered_input_file(f, _stack_1, ctx).read())
+        self.assertEqual(expected, filtered_input_file(f, _stack_1).read())
         # test a multi item filter stack
         f = StringIO.StringIO(external)
         expected = ''.join(_internal_2)
-        self.assertEqual(expected, filtered_input_file(f, _stack_2, ctx).read())
+        self.assertEqual(expected, filtered_input_file(f, _stack_2).read())
 
 
 class TestFilteredOutput(TestCase):
