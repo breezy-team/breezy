@@ -16,6 +16,12 @@ different releases of Bazaar over there network.  There's been substantial
 internal work in both the repository and network code to enable new features
 and faster performance.
 
+  BUG FIXES:
+
+    * Pushing a branch in "dirstate" format (Branch5) over bzr+ssh would break
+      if the remote server was < version 1.2.  This was due to a bug in the
+      RemoteRepository.get_parent_map() fallback code.
+      (John Arbash Meinel, Andrew Bennetts, #214894)
 
 
 bzr 1.4rc2 2008-04-21
