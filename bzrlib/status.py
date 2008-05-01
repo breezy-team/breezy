@@ -178,7 +178,7 @@ def show_pending_merges(new, to_file, short=False):
     # we need one extra space for terminals that wrap on last char
     term_width = osutils.terminal_width() - 1
     if short:
-        first_prefix = 'P  '
+        first_prefix = 'P   '
         sub_prefix = 'P.   '
     else:
         first_prefix = '  '
@@ -224,7 +224,7 @@ def show_pending_merges(new, to_file, short=False):
             revisions = {}
             for revision_id in merge_extra:
                 try:
-                    rev = branch.repository.get_revisions(merge_extra)[0]
+                    rev = branch.repository.get_revisions([revision_id])[0]
                 except errors.NoSuchRevision:
                     revisions[revision_id] = None
                 else:

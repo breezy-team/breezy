@@ -56,31 +56,28 @@ class TestStatus(TestCaseWithTransport):
         tree.merge_from_branch(tree3.branch)
         output = StringIO()
         tree.lock_read()
-        try:
-            show_pending_merges(tree, output)
-        finally:
-            tree.unlock()
+        self.addCleanup(tree.unlock)
+        show_pending_merges(tree, output)
         # Even though 2b is in the ancestry of 3c, it should only be displayed
         # under the first merge parent.
-        self.assertEqual('pending merges:\n'
-                         '  Joe Foo 2007-12-04 commit 3b\n'
-                         '    Joe Foo 2007-12-04 commit 2b\n'
-                         '  Joe Foo 2007-12-04 commit 3c\n',
-                         output.getvalue())
+        self.assertEqualDiff('pending merges:\n'
+                             '  Joe Foo 2007-12-04 commit 3b\n'
+                             '    Joe Foo 2007-12-04 commit 2b\n'
+                             '  Joe Foo 2007-12-04 commit 3c\n',
+                             output.getvalue())
 
     def test_with_pending_ghost(self):
         """Test when a pending merge is itself a ghost"""
         tree = self.make_branch_and_tree('a')
         tree.commit('first')
-        tree2 = tree.bzrdir.clone('b').open_workingtree()
-        tree2.add_parent_tree_id('a-ghost-revision')
+        tree.add_parent_tree_id('a-ghost-revision')
         tree.lock_read()
         self.addCleanup(tree.unlock)
         output = StringIO()
         show_pending_merges(tree, output)
-        self.assertEqual('pending merges:\n'
-                         '  (ghost) a-ghost-revision\n',
-                         output.get_value())
+        self.assertEqualDiff('pending merges:\n'
+                             '  (ghost) a-ghost-revision\n',
+                             output.getvalue())
 
     def test_pending_with_ghosts(self):
         """Test when a pending merge's ancestry includes ghosts."""
@@ -88,16 +85,21 @@ class TestStatus(TestCaseWithTransport):
         tree = self.make_branch_and_tree('a')
         tree.commit('empty commit')
         tree2 = tree.bzrdir.clone('b').open_workingtree()
+        tree2.commit('a non-ghost', timestamp=1196796819, timezone=0)
         tree2.add_parent_tree_id('a-ghost-revision')
         tree2.commit('commit with ghost', timestamp=1196796819, timezone=0)
+        tree2.commit('another non-ghost', timestamp=1196796819, timezone=0)
         tree.merge_from_branch(tree2.branch)
+        tree.lock_read()
         self.addCleanup(tree.unlock)
         output = StringIO()
         show_pending_merges(tree, output)
-        self.assertEqual('pending merges:\n'
-                         '  Joe Foo 2007-12-04 commit with ghost\n',
-                         '    (ghost) a-ghost-revision\n',
-                         output.get_value())
+        self.assertEqualDiff('pending merges:\n'
+                             '  Joe Foo 2007-12-04 another non-ghost\n'
+                             '    Joe Foo 2007-12-04 commit with ghost\n'
+                             '    (ghost) a-ghost-revision\n'
+                             '    Joe Foo 2007-12-04 a non-ghost\n',
+                             output.getvalue())
 
     def tests_revision_to_revision(self):
         """doing a status between two revision trees should work."""
