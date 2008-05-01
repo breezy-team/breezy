@@ -1229,8 +1229,7 @@ class TestFindUniqueAncestors(tests.TestCase):
     def test_racing_shortcuts(self):
         graph = self.make_graph(racing_shortcuts)
         self.assertFindUniqueAncestors(graph,
-            ['p', 'q', 'z'], 'z', ['y'])
-        import pdb; pdb.set_trace()
+            ['p', 'q', 'z'], 'z', ['j'])
         self.assertFindUniqueAncestors(graph,
             ['h', 'i', 'j', 'y'], 'j', ['z'])
 
