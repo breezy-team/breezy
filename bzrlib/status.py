@@ -18,6 +18,7 @@ import sys
 
 from bzrlib import (
     delta as _mod_delta,
+    log,
     osutils,
     tree,
     tsort,
@@ -25,7 +26,6 @@ from bzrlib import (
     )
 from bzrlib.diff import _raise_if_nonexistent
 import bzrlib.errors as errors
-from bzrlib.log import line_log
 from bzrlib.osutils import is_inside_any
 from bzrlib.symbol_versioning import (deprecated_function,
         )
@@ -146,10 +146,41 @@ def show_tree_status(wt, show_unchanged=None,
     finally:
         wt.unlock()
 
+
+def _get_sorted_revisions(tip_revision, revision_ids, parent_map):
+    """Get an iterator which will return the revisions in merge sorted order.
+
+    This will build up a list of all nodes, such that only nodes in the list
+    are referenced. It then uses MergeSorter to return them in 'merge-sorted'
+    order.
+
+    :param revision_ids: A set of revision_ids
+    :param parent_map: The parent information for each node. Revisions which
+        are considered ghosts should not be present in the map.
+    :return: An the iterator from MergeSorter.iter_topo_order()
+    """
+    parent_graph = {}
+    for revision_id in revision_ids:
+        if revision_id not in parent_map: # ghost
+            parent_graph[revision_id] = []
+        else:
+            # Only include parents which are in this sub-graph
+            parent_graph[revision_id] = [p for p in parent_map[revision_id]
+                                            if p in revision_ids]
+    sorter = tsort.MergeSorter(parent_graph, tip_revision)
+    return sorter.iter_topo_order()
+
+
 def show_pending_merges(new, to_file, short=False):
     """Write out a display of pending merges in a working tree."""
     # we need one extra space for terminals that wrap on last char
     term_width = osutils.terminal_width() - 1
+    if short:
+        first_prefix = 'P  '
+        sub_prefix = 'P.   '
+    else:
+        first_prefix = '  '
+        sub_prefix = '    '
 
     parents = new.get_parent_ids()
     if len(parents) < 2:
@@ -162,7 +193,20 @@ def show_pending_merges(new, to_file, short=False):
     ignore = set([None, last_revision, _mod_revision.NULL_REVISION])
     graph = branch.repository.get_graph()
     other_revisions = [last_revision]
+    log_formatter = log.LineLogFormatter(to_file)
     for merge in pending:
+        try:
+            rev = branch.repository.get_revisions([merge])[0]
+        except errors.NoSuchRevision:
+            # If we are missing a revision, just print out the revision id
+            to_file.write(first_prefix + merge + '\n')
+            other_revisions.append(merge)
+            continue
+
+        # Log the merge, as it gets a slightly different formatting
+        log_message = log_formatter.log_string(None, rev,
+                        term_width - len(first_prefix))
+        to_file.write(first_prefix + log_message + '\n')
         # Find all of the revisions in the merge source, which are not in the
         # last committed revision.
         merge_extra = graph.find_unique_ancestors(merge, other_revisions)
@@ -173,15 +217,6 @@ def show_pending_merges(new, to_file, short=False):
         # dangling references, though, so clean up the graph to point to only
         # present nodes.
         merge_extra.discard(_mod_revision.NULL_REVISION)
-        merged_graph = {}
-        parent_map = graph.get_parent_map(merge_extra)
-        for next_merge in merge_extra:
-            if next_merge not in parent_map: # ghost
-                merged_graph[next_merge] = []
-            else:
-                merged_graph[next_merge] = [p for p in parent_map[next_merge]
-                                               if p in merge_extra]
-        sorter = tsort.MergeSorter(merged_graph, merge)
 
         # Get a handle to all of the revisions we will need
         try:
@@ -189,32 +224,20 @@ def show_pending_merges(new, to_file, short=False):
                              branch.repository.get_revisions(merge_extra))
         except errors.NoSuchRevision:
             # If we are missing a revision, just print out the revision id
-            if short:
-                prefix = 'P  '
-            else:
-                prefix = ' '
-            to_file.write(prefix + ' ' + merge)
-            to_file.write('\n')
+            to_file.write(first_prefix + merge + '\n')
         else:
-            rev_id_iterator = sorter.iter_topo_order()
+            # Display the revisions brought in by this merge.
+            rev_id_iterator = _get_sorted_revisions(merge, merge_extra,
+                                branch.repository.get_parent_map(merge_extra))
+            # Skip the first node
             num, first, depth, eom = rev_id_iterator.next()
-            assert first == merge
-            m_revision = revisions[merge]
-            if short:
-                prefix = 'P   '
-            else:
-                prefix = '  '
-            to_file.write(prefix)
-            to_file.write(line_log(m_revision, term_width - len(prefix)))
-            to_file.write('\n')
-            for num, mmerge, depth, eom in rev_id_iterator:
-                if mmerge in ignore:
+            if first != merge:
+                raise AssertionError('Somehow we misunderstood how'
+                    ' iter_topo_order works %s != %s' % (first, merge))
+            for num, sub_merge, depth, eom in rev_id_iterator:
+                if sub_merge in ignore:
                     continue
-                mm_revision = revisions[mmerge]
-                if short:
-                    prefix = 'P.   '
-                else:
-                    prefix = '    '
-                to_file.write(prefix)
-                to_file.write(line_log(mm_revision, term_width - len(prefix)))
-                to_file.write('\n')
+                log_message = log_formatter.log_string(None,
+                                revisions[sub_merge],
+                                term_width - len(sub_prefix))
+                to_file.write(sub_prefix + log_message + '\n')
