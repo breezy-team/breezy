@@ -148,6 +148,9 @@ def show_tree_status(wt, show_unchanged=None,
 
 def show_pending_merges(new, to_file, short=False):
     """Write out a display of pending merges in a working tree."""
+    # we need one extra space for terminals that wrap on last char
+    term_width = osutils.terminal_width() - 1
+
     parents = new.get_parent_ids()
     if len(parents) < 2:
         return
@@ -179,13 +182,9 @@ def show_pending_merges(new, to_file, short=False):
                 merged_graph[next_merge] = [p for p in parent_map[next_merge]
                                                if p in merge_extra]
         sorter = tsort.MergeSorter(merged_graph, merge)
+
         # Get a handle to all of the revisions we will need
-        width = osutils.terminal_width()
         try:
-            from bzrlib.osutils import terminal_width
-            width = terminal_width() - 1    # we need one extra space to avoid
-                                            # extra blank lines
-            m_revision = branch.repository.get_revision(merge)
             revisions = dict((rev.revision_id, rev) for rev in
                              branch.repository.get_revisions(merge_extra))
         except errors.NoSuchRevision:
@@ -206,7 +205,7 @@ def show_pending_merges(new, to_file, short=False):
             else:
                 prefix = '  '
             to_file.write(prefix)
-            to_file.write(line_log(m_revision, width - len(prefix)))
+            to_file.write(line_log(m_revision, term_width - len(prefix)))
             to_file.write('\n')
             for num, mmerge, depth, eom in rev_id_iterator:
                 if mmerge in ignore:
@@ -217,5 +216,5 @@ def show_pending_merges(new, to_file, short=False):
                 else:
                     prefix = '    '
                 to_file.write(prefix)
-                to_file.write(line_log(mm_revision, width - len(prefix)))
+                to_file.write(line_log(mm_revision, term_width - len(prefix)))
                 to_file.write('\n')
