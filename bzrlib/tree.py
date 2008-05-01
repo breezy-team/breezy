@@ -255,6 +255,15 @@ class Tree(object):
         """
         raise NotImplementedError(self.get_file_mtime)
 
+    def get_file_size(self, file_id):
+        """Return the size of a file in bytes.
+
+        This applies only to regular files.  If invoked on directories or
+        symlinks, it will return None.
+        :param file_id: The file-id of the file
+        """
+        raise NotImplementedError(self.get_file_size)
+
     def get_file_by_path(self, path):
         return self.get_file(self._inventory.path2id(path), path)
 

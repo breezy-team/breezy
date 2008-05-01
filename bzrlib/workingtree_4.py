@@ -1571,6 +1571,7 @@ class DirStateRevisionTree(Tree):
         return self._get_weave(file_id).get_lines(entry[1][4])
 
     def get_file_size(self, file_id):
+        """See Tree.get_file_size"""
         return self.inventory[file_id].text_size
 
     def get_file_text(self, file_id):
