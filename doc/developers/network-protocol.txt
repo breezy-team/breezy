@@ -243,7 +243,7 @@ The keys must be strings, not any other type of value.
 
 Currently, the only defined header is “Software version”.  Both the client and
 the server should include a “Software version” header, with a value of a
-free-form string such as “bzrlib 1.3”, to aid debugging and logging.  Clients
+free-form string such as “bzrlib 1.5”, to aid debugging and logging.  Clients
 and servers **should not** vary behaviour based on this string.
 
 Conventional requests and responses
@@ -337,7 +337,7 @@ Recognised errors
 
 The first argument of an error response specifies the error type.
 
-One possible error name is ``UnknownRequestVerb``, which means the server does
+One possible error name is ``UnknownMethod``, which means the server does
 not recognise the verb used by the client's request.  This error was
 introduced in version three.
 
