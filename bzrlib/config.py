@@ -643,7 +643,7 @@ class BranchConfig(Config):
         This is looked up in the email controlfile for the branch.
         """
         try:
-            return (self.branch._transport.get_bytes("email")
+            return (self.branch.control_files._transport.get_bytes("email")
                     .decode(bzrlib.user_encoding)
                     .rstrip("\r\n"))
         except errors.NoSuchFile, e:
