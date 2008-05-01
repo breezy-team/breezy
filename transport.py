@@ -330,6 +330,10 @@ class SvnRaTransport(Transport):
 
     def iter_log(self, path, from_revnum, to_revnum, limit, discover_changed_paths, 
                  strict_node_history, revprops):
+
+        assert isinstance(path, str)
+        assert isinstance(from_revnum, int) and isinstance(to_revnum, int)
+        assert isinstance(limit, int)
         from threading import Thread, Semaphore
 
         class logfetcher(Thread):
@@ -342,7 +346,7 @@ class SvnRaTransport(Transport):
 
             def next(self):
                 self.semaphore.acquire()
-                ret = self.pending.pop()
+                ret = self.pending.pop(0)
                 if isinstance(ret, Exception):
                     raise ret
                 return ret

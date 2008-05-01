@@ -482,6 +482,7 @@ class SvnRepository(Repository):
 
     def revision_parents(self, revision_id, svn_fileprops=None, svn_revprops=None):
         """See Repository.revision_parents()."""
+        assert isinstance(revision_id, str)
         (branch, revnum, mapping) = self.lookup_revision_id(revision_id)
         mainline_parent = self.lhs_revision_parent(branch, revnum, mapping)
         if mainline_parent is None:
@@ -751,8 +752,7 @@ class SvnRepository(Repository):
                             else:
                                 prev_path = p
                                 prev_rev = self._log.find_latest_change(p, 
-                                    i-1, include_parents=True, 
-                                    include_children=True)
+                                    i-1, include_children=True)
                             assert isinstance(prev_rev, int)
                             ret.append((prev_path, prev_rev, False))
 
@@ -766,7 +766,6 @@ class SvnRepository(Repository):
                                 if c.startswith(p+"/") and c in created_branches:
                                     del created_branches[c] 
                                     j = self._log.find_latest_change(c, i-1, 
-                                            include_parents=True, 
                                             include_children=True)
                                     assert isinstance(j, int)
                                     ret.append((c, j, False))
@@ -793,7 +792,6 @@ class SvnRepository(Repository):
             pb.update("determining branch last changes", 
                       i, len(created_branches))
             j = self._log.find_latest_change(p, to_revnum, 
-                                             include_parents=True,
                                              include_children=True)
             if j is None:
                 j = created_branches[p]

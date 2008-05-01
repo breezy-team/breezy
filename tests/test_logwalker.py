@@ -20,12 +20,14 @@ from bzrlib.errors import NoSuchRevision
 
 import os
 import logwalker
+from bzrlib import debug
 from tests import TestCaseWithSubversionRepository
 from transport import SvnRaTransport
 
 class TestLogWalker(TestCaseWithSubversionRepository):
     def setUp(self):
         super(TestLogWalker, self).setUp()
+        debug.debug_flags.add("transport")
 
     def get_log_walker(self, transport):
         return logwalker.LogWalker(transport)
@@ -167,7 +169,7 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
-        self.assertEqual(0, walker.find_latest_change("", 1, include_parents=True))
+        self.assertEqual(0, walker.find_latest_change("", 1))
     
     def test_find_latest_children_root(self):
         repos_url = self.make_client("a", "dc")
@@ -191,8 +193,7 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
-        self.assertEqual(2, walker.find_latest_change("tags/tmp/foo", 2, 
-                                                      include_parents=True))
+        self.assertEqual(2, walker.find_latest_change("tags/tmp/foo", 2))
 
     def test_find_latest_parent_just_modify(self):
         repos_url = self.make_client("a", "dc")
@@ -207,8 +208,7 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My Message3")
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
-        self.assertEqual(2, walker.find_latest_change("tags/tmp/foo", 3,
-                                                      include_parents=True))
+        self.assertEqual(2, walker.find_latest_change("tags/tmp/foo", 3))
 
     def test_find_latest_parentmoved(self):
         repos_url = self.make_client("a", "dc")
@@ -221,8 +221,7 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
-        self.assertIs(2, walker.find_latest_change("bla/tmp", 2, 
-                                                   include_parents=True))
+        self.assertIs(2, walker.find_latest_change("bla/tmp", 2))
 
     def test_find_latest_nonexistant(self):
         repos_url = self.make_client("a", "dc")
@@ -235,8 +234,8 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
-        self.assertIs(None, walker.find_latest_change("bloe", 2, include_parents=True))
-        self.assertIs(None, walker.find_latest_change("bloe/bla", 2, include_parents=True))
+        self.assertIs(None, walker.find_latest_change("bloe", 2))
+        self.assertIs(None, walker.find_latest_change("bloe/bla", 2))
 
     def test_find_latest_change(self):
         repos_url = self.make_client("a", "dc")
@@ -246,7 +245,7 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
-        self.assertEqual(1, walker.find_latest_change("branches", 1, include_parents=True))
+        self.assertEqual(1, walker.find_latest_change("branches", 1))
 
     def test_find_latest_change_children(self):
         repos_url = self.make_client("a", "dc")
@@ -259,7 +258,7 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
-        self.assertEqual(1, walker.find_latest_change("branches", 2, include_parents=True))
+        self.assertEqual(1, walker.find_latest_change("branches", 2))
 
     def test_find_latest_change_prop(self):
         repos_url = self.make_client("a", "dc")
@@ -274,7 +273,7 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
-        self.assertEqual(2, walker.find_latest_change("branches", 3, include_parents=True))
+        self.assertEqual(2, walker.find_latest_change("branches", 3))
 
     def test_find_latest_change_file(self):
         repos_url = self.make_client("a", "dc")
@@ -289,7 +288,7 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
-        self.assertEqual(3, walker.find_latest_change("branches/foo", 3, include_parents=True))
+        self.assertEqual(3, walker.find_latest_change("branches/foo", 3))
 
     def test_find_latest_change_newer(self):
         repos_url = self.make_client("a", "dc")
@@ -304,7 +303,7 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
-        self.assertEqual(2, walker.find_latest_change("branches/foo", 2, include_parents=True))
+        self.assertEqual(2, walker.find_latest_change("branches/foo", 2))
 
     def test_follow_history_branch_replace(self):
         repos_url = self.make_client("a", "dc")
