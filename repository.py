@@ -123,7 +123,6 @@ class SvnRepository(Repository):
         self.base = transport.base
         assert self.base is not None
         self._serializer = xml5.serializer_v5
-        self.dir_cache = {}
         self.pool = Pool()
         self.get_config().add_location(self.base)
         self._log = logwalker.LogWalker(transport=transport)
@@ -134,14 +133,13 @@ class SvnRepository(Repository):
 
         cache = self.get_config().get_use_cache()
 
-        # Unfortunately, logwalker still requires a cache at the moment
-        cache_dir = self.create_cache_dir()
-        cache_file = os.path.join(cache_dir, 'cache-v%d' % CACHE_DB_VERSION)
-        if not cachedbs.has_key(cache_file):
-            cachedbs[cache_file] = sqlite3.connect(cache_file)
-        self.cachedb = cachedbs[cache_file]
-        self._log = logwalker.CachingLogWalker(self._log, cache_db=self.cachedb)
         if cache:
+            cache_dir = self.create_cache_dir()
+            cache_file = os.path.join(cache_dir, 'cache-v%d' % CACHE_DB_VERSION)
+            if not cachedbs.has_key(cache_file):
+                cachedbs[cache_file] = sqlite3.connect(cache_file)
+            self.cachedb = cachedbs[cache_file]
+            self._log = logwalker.CachingLogWalker(self._log, cache_db=self.cachedb)
             cachedir_transport = get_transport(cache_dir)
             self.fileid_map = CachingFileIdMap(cachedir_transport, self.fileid_map)
             self.revmap = CachingRevidMap(self.revmap, self.cachedb)
@@ -268,9 +266,13 @@ class SvnRepository(Repository):
         editor.close()
 
     def _guess_scheme(self, last_revnum, branch_path=None):
-        scheme = guess_scheme_from_history(
-            self._log.iter_changes("", last_revnum), last_revnum, 
-            branch_path)
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            scheme = guess_scheme_from_history(
+                self._log.iter_changes("", last_revnum, pb=pb), last_revnum, 
+                branch_path)
+        finally:
+            pb.finished()
         mutter("Guessed branching scheme: %r" % scheme)
         return scheme
 
@@ -317,7 +319,7 @@ class SvnRepository(Repository):
     
         latest_revnum = self.get_latest_revnum()
 
-        for (_, paths, revnum, revprops) in self._log.iter_changes("", latest_revnum):
+        for (_, paths, revnum, revprops) in self._log.iter_changes("", latest_revnum, pb=pb):
             if pb:
                 pb.update("discovering revisions", revnum, latest_revnum)
             yielded_paths = set()
@@ -352,7 +354,7 @@ class SvnRepository(Repository):
         """
         return False
 
-    def iter_reverse_revision_history(self, revision_id):
+    def iter_reverse_revision_history(self, revision_id, pb=None):
         """Iterate backwards through revision ids in the lefthand history
 
         :param revision_id: The revision id to start with.  All its lefthand
@@ -361,7 +363,7 @@ class SvnRepository(Repository):
         if revision_id in (None, NULL_REVISION):
             return
         (branch_path, revnum, mapping) = self.lookup_revision_id(revision_id)
-        for (bp, changes, rev, svn_revprops, svn_fileprops) in self.iter_reverse_branch_changes(branch_path, revnum, mapping):
+        for (bp, changes, rev, svn_revprops, svn_fileprops) in self.iter_reverse_branch_changes(branch_path, revnum, mapping, pb=pb):
             yield self.generate_revision_id(rev, bp, mapping, svn_revprops, svn_fileprops)
 
     def get_ancestry(self, revision_id, topo_sorted=True):
@@ -595,7 +597,7 @@ class SvnRepository(Repository):
         return self._serializer.write_revision_to_string(
             self.get_revision(revision_id))
 
-    def iter_changes(self, branch_path, revnum, mapping):
+    def iter_changes(self, branch_path, revnum, mapping, pb=None):
         """Iterate over all revisions backwards.
         
         :return: iterator that returns tuples with branch path, 
@@ -605,7 +607,7 @@ class SvnRepository(Repository):
         assert mapping.is_branch(branch_path) or mapping.is_tag(branch_path), \
                 "Mapping %r doesn't accept %s as branch or tag" % (mapping, branch_path)
 
-        for (bp, paths, revnum, revprops) in self._log.iter_changes(branch_path, revnum):
+        for (bp, paths, revnum, revprops) in self._log.iter_changes(branch_path, revnum, pb=pb):
             assert revnum > 0 or bp == ""
             assert mapping.is_branch(bp) or mapping.is_tag(bp), "%r is not a valid path" % bp
 
@@ -623,7 +625,7 @@ class SvnRepository(Repository):
                      
             yield (bp, paths, revnum, revprops)
 
-    def iter_reverse_branch_changes(self, branch_path, revnum, mapping):
+    def iter_reverse_branch_changes(self, branch_path, revnum, mapping, pb=None):
         """Return all the changes that happened in a branch 
         until branch_path,revnum. 
 
@@ -631,7 +633,7 @@ class SvnRepository(Repository):
             changed paths, revision number, changed file properties and 
             revision properties.
         """
-        history_iter = self.iter_changes(branch_path, revnum, mapping)
+        history_iter = self.iter_changes(branch_path, revnum, mapping, pb=pb)
         for (bp, paths, revnum, revprops) in history_iter:
             if not bp in paths:
                 svn_fileprops = {}

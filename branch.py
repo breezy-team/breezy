@@ -251,8 +251,12 @@ class SvnBranch(Branch):
     def _gen_revision_history(self):
         """Generate the revision history from last revision
         """
-        history = list(self.repository.iter_reverse_revision_history(
-            self.last_revision()))
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            history = list(self.repository.iter_reverse_revision_history(
+                self.last_revision(), pb=pb))
+        finally:
+            pb.finished()
         history.reverse()
         return history
 
