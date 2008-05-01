@@ -829,6 +829,7 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(
             responses, transport_path)
+        self.assertTrue(client._medium._remote_is_at_least_1_2)
         rev_id = 'revision-id'
         expected_deprecations = [
             'bzrlib.remote.RemoteRepository.get_revision_graph was deprecated '
@@ -842,6 +843,36 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
              ('call_expecting_body', 'Repository.get_revision_graph',
               ('quack/', ''))],
             client._calls)
+        # The medium is now marked as being connected to an older server
+        self.assertFalse(client._medium._remote_is_at_least_1_2)
+
+    def test_get_parent_map_fallback_parentless_node(self):
+        """get_parent_map falls back to get_revision_graph on old servers.  The
+        results from get_revision_graph are tweaked to match the get_parent_map
+        API.
+
+        Specifically, a "key:()" pair from get_revision_graph means "no
+        parents" for that key, which in get_parent_map results should be
+        represented as XXX.
+
+        This is the test for https://bugs.launchpad.net/bzr/+bug/214894
+        """
+        rev_id = 'revision-id'
+        responses = [(('ok',), rev_id)]
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(
+            responses, transport_path)
+        client._medium._remote_is_at_least_1_2 = False
+        expected_deprecations = [
+            'bzrlib.remote.RemoteRepository.get_revision_graph was deprecated '
+            'in version 1.4.']
+        parents = self.callDeprecated(
+            expected_deprecations, repo.get_parent_map, [rev_id])
+        self.assertEqual(
+            [('call_expecting_body', 'Repository.get_revision_graph',
+             ('quack/', ''))],
+            client._calls)
+        self.assertEqual({rev_id: ('null:',)}, parents)
 
     def test_get_parent_map_unexpected_response(self):
         responses = [
