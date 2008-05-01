@@ -485,18 +485,22 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def has_filename(self, filename):
         return osutils.lexists(self.abspath(filename))
 
-    def get_file(self, file_id, path=None):
+    def get_file(self, file_id, path=None, filtered=True):
         if path is None:
             path = self.id2path(file_id)
-        return self.get_file_byname(path)
+        return self.get_file_byname(path, filtered=filtered)
 
     def get_file_text(self, file_id):
         return self.get_file(file_id).read()
 
-    def get_file_byname(self, filename):
+    def get_file_byname(self, filename, filtered=True):
         path = self.abspath(filename)
-        filters = self._content_filter_stack(filename)
-        return filtered_input_file(file(path, 'rb'), filters)
+        f = file(path, 'rb')
+        if filtered:
+            filters = self._content_filter_stack(filename)
+            return filtered_input_file(f, filters)
+        else:
+            return f
 
     @needs_read_lock
     def annotate_iter(self, file_id, default_revision=CURRENT_REVISION):

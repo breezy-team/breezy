@@ -87,6 +87,7 @@ def test_suite():
         'bzrlib.tests.workingtree_implementations.test_basis_tree',
         'bzrlib.tests.workingtree_implementations.test_break_lock',
         'bzrlib.tests.workingtree_implementations.test_changes_from',
+        'bzrlib.tests.workingtree_implementations.test_content_filters',
         'bzrlib.tests.workingtree_implementations.test_commit',
         'bzrlib.tests.workingtree_implementations.test_executable',
         'bzrlib.tests.workingtree_implementations.test_flush',
