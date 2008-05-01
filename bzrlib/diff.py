@@ -808,7 +808,6 @@ class DiffFromTool(DiffPath):
         except OSError, e:
             if e.errno != errno.EEXIST:
                 raise
-        # Throws an exception when a working tree file doesn't exist.
         source = tree.get_file(file_id, relpath)
         try:
             target = open(full_path, 'wb')

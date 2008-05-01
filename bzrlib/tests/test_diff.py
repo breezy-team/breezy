@@ -51,7 +51,7 @@ class _AttribFeature(Feature):
         except OSError, e:
             return False
         return (0 == proc.wait())
-                
+
     def feature_name(self):
         return 'attrib Windows command-line tool'
 
@@ -1346,16 +1346,5 @@ class TestDiffFromTool(TestCaseWithTransport):
         self.assertFileEqual('newcontent', new_path)
         if osutils.host_os_dereferences_symlinks():
             self.assertTrue(os.path.samefile('tree/newname', new_path))
-
-        # The following doesn't work on systems where (not
-        # osutils.host_os_dereferences_symlinks()) unless newname2 actually
-        # exists in the working tree.
-
-        # It seems to me that participants should never only call
-        # _prepare_files with arguments where both the old path and the new
-        # path exist in their respective trees at the given file id.  I
-        # think those are the conditions under which all implementations of
-        # Tree.get_file will work.
-
         # make sure we can create files with the same parent directories
         diff_obj._prepare_files('file-id', 'oldname2', 'newname2')
