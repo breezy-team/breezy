@@ -99,7 +99,7 @@ class CachingLogWalker(CacheTable):
         CacheTable.__init__(self, cache_db)
 
         self.actual = actual
-        self._get_transport = actual._get_transport
+        self._transport = actual._transport
         self.find_children = actual.find_children
 
         self.saved_revnum = self.cachedb.execute("SELECT MAX(rev) FROM changed_path").fetchone()[0]
@@ -175,7 +175,7 @@ class CachingLogWalker(CacheTable):
 
             next = changes.find_prev_location(revpaths, path, revnum)
 
-            revprops = lazy_dict({}, self._get_transport().revprop_list, revnum)
+            revprops = lazy_dict({}, self._transport.revprop_list, revnum)
 
             if changes.changes_path(revpaths, path, True):
                 yield (path, revpaths, revnum, revprops)
@@ -242,7 +242,7 @@ class CachingLogWalker(CacheTable):
         """
         if to_revnum <= self.saved_revnum:
             return
-        latest_revnum = self.actual._get_transport().get_latest_revnum()
+        latest_revnum = self.actual._transport.get_latest_revnum()
         to_revnum = max(latest_revnum, to_revnum)
 
         pb = ui.ui_factory.nested_progress_bar()
@@ -250,7 +250,7 @@ class CachingLogWalker(CacheTable):
         try:
             try:
                 while self.saved_revnum < to_revnum:
-                    for (orig_paths, revision, revprops) in self.actual._get_transport().iter_log("", self.saved_revnum, 
+                    for (orig_paths, revision, revprops) in self.actual._transport.iter_log("", self.saved_revnum, 
                                              to_revnum, self.actual._limit, True, 
                                              True, []):
                         pb.update('fetching svn revision info', revision, to_revnum)
@@ -301,19 +301,12 @@ class LogWalker(object):
         """
         assert isinstance(transport, SvnRaTransport)
 
-        self.url = transport.base
-        self._transport = None
+        self._transport = transport
 
         if limit is not None:
             self._limit = limit
         else:
             self._limit = LOG_CHUNK_LIMIT
-
-    def _get_transport(self):
-        if self._transport is not None:
-            return self._transport
-        self._transport = SvnRaTransport(self.url)
-        return self._transport
 
     def find_latest_change(self, path, revnum, include_children=True):
         """Find latest revision that touched path.
@@ -325,7 +318,7 @@ class LogWalker(object):
         assert isinstance(revnum, int) and revnum >= 0
         
         try:
-            return self._get_transport().iter_log(path, revnum, 0, 2, True, False, []).next()[1]
+            return self._transport.iter_log(path, revnum, 0, 2, True, False, []).next()[1]
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
                 raise NoSuchRevision(branch=self, 
@@ -347,7 +340,7 @@ class LogWalker(object):
         assert from_revnum >= 0 and to_revnum >= 0 and from_revnum >= to_revnum
 
         try:
-            for (changed_paths, revnum, known_revprops) in self._get_transport().iter_log(path, from_revnum, to_revnum, limit, True, False, []):
+            for (changed_paths, revnum, known_revprops) in self._transport.iter_log(path, from_revnum, to_revnum, limit, True, False, []):
                 if pb is not None:
                     pb.update("determining changes", from_revnum-revnum, from_revnum)
                 if revnum == 0 and changed_paths is None:
@@ -356,7 +349,7 @@ class LogWalker(object):
                     assert isinstance(changed_paths, dict), "invalid paths in %r:%r" % (revnum, path)
                     revpaths = struct_revpaths_to_tuples(changed_paths)
                 next = changes.find_prev_location(revpaths, path, revnum)
-                revprops = lazy_dict(known_revprops, self._get_transport().revprop_list, revnum)
+                revprops = lazy_dict(known_revprops, self._transport.revprop_list, revnum)
                 yield (path, revpaths, revnum, revprops)
                 if next is None:
                     break
@@ -380,7 +373,7 @@ class LogWalker(object):
 
         try:
             return struct_revpaths_to_tuples(
-                self._get_transport().iter_log("", revnum, revnum, 1, True, True, []).next()[0])
+                self._transport.iter_log("", revnum, revnum, 1, True, True, []).next()[0])
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
                 raise NoSuchRevision(branch=self, 
@@ -394,8 +387,7 @@ class LogWalker(object):
         :param revnum:  Revision to check
         """
         path = path.strip("/")
-        transport = self._get_transport()
-        ft = transport.check_path(path, revnum)
+        ft = self._transport.check_path(path, revnum)
         if ft == svn.core.svn_node_file:
             return []
         assert ft == svn.core.svn_node_dir
@@ -444,15 +436,13 @@ class LogWalker(object):
                 pass
         pool = Pool()
         editor = TreeLister(path)
-        old_base = transport.base
+        conn = self._transport.connections.get(urlutils.join(transport.get_svn_repos_root(), path))
         try:
-            root_repos = transport.get_svn_repos_root()
-            transport.reparent(urlutils.join(root_repos, path))
-            reporter = transport.do_update(revnum, True, editor, pool)
+            reporter = conn.do_update(revnum, True, editor, pool)
             reporter.set_path("", revnum, True, None, pool)
             reporter.finish_report(pool)
         finally:
-            transport.reparent(old_base)
+            self._transport.connections.add(conn)
         return editor.files
 
     def get_previous(self, path, revnum):
@@ -466,7 +456,7 @@ class LogWalker(object):
             return (None, -1)
 
         try:
-            paths = struct_revpaths_to_tuples(self._get_transport().iter_log(path, revnum, revnum, 1, True, False, []).next()[0])
+            paths = struct_revpaths_to_tuples(self._transport.iter_log(path, revnum, revnum, 1, True, False, []).next()[0])
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
                 raise NoSuchRevision(branch=self, 

@@ -41,13 +41,6 @@ class SvnRaTest(TestCaseWithSubversionRepository):
         self.assertIsInstance(t, SvnRaTransport)
         self.assertEqual(t.base, repos_url)
 
-    def test_reparent(self):
-        repos_url = self.make_client('d', 'dc')
-        t = SvnRaTransport(repos_url)
-        t.mkdir("foo")
-        t.reparent("%s/foo" % repos_url)
-        self.assertEqual("%s/foo" % repos_url, t.base)
-
     def test_lock_read(self):
         repos_url = self.make_client('d', 'dc')
         t = SvnRaTransport(repos_url)
@@ -116,8 +109,6 @@ class SvnRaTest(TestCaseWithSubversionRepository):
         t = SvnRaTransport(repos_url)
         tt = t.clone()
         self.assertEqual(tt.base, t.base)
-        tt.reparent(urlutils.join(t.base, "dir"))
-        self.assertNotEqual(tt.base, t.base)
 
     def test_mkdir(self):
         repos_url = self.make_client('d', 'dc')
