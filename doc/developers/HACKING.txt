@@ -1758,6 +1758,5 @@ active role with particular attention to the following tasks:
   fixing them. Nice.
 
 
-
 ..
    vim: ft=rst tw=74 ai

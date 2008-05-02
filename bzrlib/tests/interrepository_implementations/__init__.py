@@ -25,6 +25,12 @@ Specific tests for individual formats are in the tests/test_repository.py file
 rather than in tests/interrepository_implementations/*.py.
 """
 
+
+from bzrlib.errors import (
+    FileExists,
+    UninitializableFormat,
+    )
+
 from bzrlib.repository import (
                                InterKnitRepo,
                                InterKnit1and2,
@@ -38,6 +44,8 @@ from bzrlib.tests import (
                           TestScenarioApplier,
                           TestSuite,
                           )
+from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
+from bzrlib.transport import get_transport
 
 
 class InterRepositoryTestProviderAdapter(TestScenarioApplier):
@@ -119,9 +127,46 @@ class InterRepositoryTestProviderAdapter(TestScenarioApplier):
         return result
 
 
+class TestCaseWithInterRepository(TestCaseWithBzrDir):
+
+    def setUp(self):
+        super(TestCaseWithInterRepository, self).setUp()
+
+    def make_branch(self, relpath, format=None):
+        repo = self.make_repository(relpath, format=format)
+        return repo.bzrdir.create_branch()
+
+    def make_bzrdir(self, relpath, format=None):
+        try:
+            url = self.get_url(relpath)
+            segments = url.split('/')
+            if segments and segments[-1] not in ('', '.'):
+                parent = '/'.join(segments[:-1])
+                t = get_transport(parent)
+                try:
+                    t.mkdir(segments[-1])
+                except FileExists:
+                    pass
+            if format is None:
+                format = self.repository_format._matchingbzrdir
+            return format.initialize(url)
+        except UninitializableFormat:
+            raise TestSkipped("Format %s is not initializable." % format)
+
+    def make_repository(self, relpath, format=None):
+        made_control = self.make_bzrdir(relpath, format=format)
+        return self.repository_format.initialize(made_control)
+
+    def make_to_repository(self, relpath):
+        made_control = self.make_bzrdir(relpath,
+            self.repository_format_to._matchingbzrdir)
+        return self.repository_format_to.initialize(made_control)
+
+
 def test_suite():
     result = TestSuite()
     test_interrepository_implementations = [
+        'bzrlib.tests.interrepository_implementations.test_fetch',
         'bzrlib.tests.interrepository_implementations.test_interrepository',
         ]
     adapter = InterRepositoryTestProviderAdapter(

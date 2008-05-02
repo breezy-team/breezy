@@ -141,3 +141,11 @@ class TestFetchSameRepository(TestCaseWithRepository):
         # without causing any errors.
         target_repo.fetch(source_repo, revision_id='rev1')
 
+    def test_fetch_all_same_revisions_twice(self):
+        # Blind-fetching all the same revisions twice should succeed and be a
+        # no-op the second time.
+        repo = self.make_repository('repo')
+        tree = self.make_branch_and_tree('tree')
+        revision_id = tree.commit('test')
+        repo.fetch(tree.branch.repository)
+        repo.fetch(tree.branch.repository)

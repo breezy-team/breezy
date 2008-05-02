@@ -93,14 +93,10 @@ This is the procedure for making a new bzr release:
         if version_info[3] == 'final':
             version_string = '%d.%d.%d' % version_info[:3]
 
-#. Send the changes to PQM, to update the official master branch.
+#. Submit those changes to PQM for merge into the appropriate release
+   branch.
 
 #. When PQM succeeds, pull down the master release branch.
-
-#. Merge the release branch back into the trunk.  Check that changes in NEWS were merged into the right sections.  
-   If it's not already done, advance the version number in ``bzr`` and
-   ``bzrlib/__init__.py``.
-   Submit this back into pqm for bzr.dev.
 
 Making the source tarball
 -------------------------
@@ -108,6 +104,9 @@ Making the source tarball
 #. Change into the source directory and run
   
      make dist
+
+#. Unpack the tarball into a temporary directory and run ``make check`` in
+   that directory, to check for packaging problems.
 
 
 Publishing the release
@@ -189,8 +188,17 @@ Now that the release is publicly available, tell people about it.
    Remember to check the results afterwards.
 
 
-The Bazaar PPA archive
-----------------------
+Merging the released code back to trunk
+---------------------------------------
+
+Merge the release branch back into the trunk.  Check that changes in NEWS
+were merged into the right sections.  If it's not already done, advance
+the version number in ``bzr`` and ``bzrlib/__init__.py``.  Submit this
+back into pqm for bzr.dev.
+
+
+Updating the PPA for a new release
+----------------------------------
 
 We build Ubuntu ``.deb`` packages for Bazaar as an important part of the release
 process.  These packages are hosted in a `Personal Package Archive (PPA)`__ on
@@ -206,10 +214,6 @@ update.
 The ``debian/`` directory containing the packaging information is kept in
 branches on Launchpad, named like 
 <https://code.launchpad.net/~bzr/bzrtools/packaging-dapper>
-
-Updating the PPA for a new release
-----------------------------------
-
 Preconditions for building these packages:
   
 * You must have a Launchpad account and be a member of the `~bzr`__ team

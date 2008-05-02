@@ -158,7 +158,10 @@ class RepoFetcher(object):
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             revs = search.get_keys()
-            data_to_fetch = self.from_repository.item_keys_introduced_by(revs, pb)
+            graph = self.from_repository.get_graph()
+            revs = list(graph.iter_topo_order(revs))
+            data_to_fetch = self.from_repository.item_keys_introduced_by(revs,
+                                                                         pb)
             for knit_kind, file_id, revisions in data_to_fetch:
                 if knit_kind != phase:
                     phase = knit_kind
@@ -268,8 +271,7 @@ class GenericRepoFetcher(RepoFetcher):
             except errors.NoSuchRevision:
                 # not signed.
                 pass
-            to_store.add_revision(self.from_repository.get_revision(rev),
-                                  to_txn)
+            self._copy_revision(rev, to_txn)
             count += 1
         # fixup inventory if needed: 
         # this is expensive because we have no inverse index to current ghosts.
@@ -277,7 +279,11 @@ class GenericRepoFetcher(RepoFetcher):
         # so we just-do-it.
         # FIXME: repository should inform if this is needed.
         self.to_repository.reconcile()
-    
+
+    def _copy_revision(self, rev, to_txn):
+        to_store = self.to_repository._revision_store
+        to_store.add_revision(self.from_repository.get_revision(rev), to_txn)
+
 
 class KnitRepoFetcher(RepoFetcher):
     """This is a knit format repository specific fetcher.
@@ -296,11 +302,15 @@ class KnitRepoFetcher(RepoFetcher):
         from_sf = self.from_repository._revision_store.get_signature_file(
             from_transaction)
         to_sf.join(from_sf, version_ids=revs, ignore_missing=True)
+        self._fetch_just_revision_texts(revs, from_transaction, to_transaction)
+
+    def _fetch_just_revision_texts(self, version_ids, from_transaction,
+                                   to_transaction):
         to_rf = self.to_repository._revision_store.get_revision_file(
             to_transaction)
         from_rf = self.from_repository._revision_store.get_revision_file(
             from_transaction)
-        to_rf.join(from_rf, version_ids=revs)
+        to_rf.join(from_rf, version_ids=version_ids)
 
 
 class Inter1and2Helper(object):
@@ -337,27 +347,54 @@ class Inter1and2Helper(object):
                 yield tree
             revs = revs[100:]
 
-    def generate_root_texts(self, revs):
-        """Generate VersionedFiles for all root ids.
-        
-        :param revs: the revisions to include
-        """
-        inventory_weave = self.source.get_inventory_weave()
-        parent_texts = {}
-        versionedfile = {}
-        to_store = self.target.weave_store
-        parent_map = self.source.get_graph().get_parent_map(revs)
+    def _find_root_ids(self, revs, parent_map, graph):
+        revision_root = {}
+        planned_versions = {}
         for tree in self.iter_rev_trees(revs):
             revision_id = tree.inventory.root.revision
             root_id = tree.get_root_id()
-            parents = parent_map[revision_id]
-            if parents[0] == NULL_REVISION:
-                parents = ()
-            if root_id not in versionedfile:
-                versionedfile[root_id] = to_store.get_weave_or_empty(root_id,
-                    self.target.get_transaction())
-            _, _, parent_texts[root_id] = versionedfile[root_id].add_lines(
-                revision_id, parents, [], parent_texts)
+            planned_versions.setdefault(root_id, []).append(revision_id)
+            revision_root[revision_id] = root_id
+        # Find out which parents we don't already know root ids for
+        parents = set()
+        for revision_parents in parent_map.itervalues():
+            parents.update(revision_parents)
+        parents.difference_update(revision_root.keys() + [NULL_REVISION])
+        # Limit to revisions present in the versionedfile
+        parents = graph.get_parent_map(parents).keys()
+        for tree in self.iter_rev_trees(parents):
+            root_id = tree.get_root_id()
+            revision_root[tree.get_revision_id()] = root_id
+        return revision_root, planned_versions
+
+    def generate_root_texts(self, revs):
+        """Generate VersionedFiles for all root ids.
+
+        :param revs: the revisions to include
+        """
+        to_store = self.target.weave_store
+        graph = self.source.get_graph()
+        parent_map = graph.get_parent_map(revs)
+        revision_root, planned_versions = self._find_root_ids(
+            revs, parent_map, graph)
+        for root_id, versions in planned_versions.iteritems():
+            versionedfile = to_store.get_weave_or_empty(root_id,
+                self.target.get_transaction())
+            parent_texts = {}
+            for revision_id in versions:
+                if revision_id in versionedfile:
+                    continue
+                parents = parent_map[revision_id]
+                # We drop revision parents with different file-ids, because
+                # a version cannot have a version with another file-id as its
+                # parent.
+                # When a parent revision is a ghost, we guess that its root id
+                # was unchanged.
+                parents = tuple(p for p in parents if p != NULL_REVISION
+                    and revision_root.get(p, root_id) == root_id)
+                result = versionedfile.add_lines_with_ghosts(
+                    revision_id, parents, [], parent_texts)
+                parent_texts[revision_id] = result[2]
 
     def regenerate_inventory(self, revs):
         """Generate a new inventory versionedfile in target, convertin data.
@@ -370,6 +407,10 @@ class Inter1and2Helper(object):
             parents = tree.get_parent_ids()
             self.target.add_inventory(tree.get_revision_id(), tree.inventory,
                                       parents)
+
+    def fetch_revisions(self, revision_ids):
+        for revision in self.source.get_revisions(revision_ids):
+            self.target.add_revision(revision.revision_id, revision)
 
 
 class Model1toKnit2Fetcher(GenericRepoFetcher):
@@ -386,7 +427,10 @@ class Model1toKnit2Fetcher(GenericRepoFetcher):
 
     def _fetch_inventory_weave(self, revs, pb):
         self.helper.regenerate_inventory(revs)
- 
+
+    def _copy_revision(self, rev, to_txn):
+        self.helper.fetch_revisions([rev])
+
 
 class Knit1to2Fetcher(KnitRepoFetcher):
     """Fetch from a Knit1 repository into a Knit2 repository"""
@@ -402,6 +446,10 @@ class Knit1to2Fetcher(KnitRepoFetcher):
 
     def _fetch_inventory_weave(self, revs, pb):
         self.helper.regenerate_inventory(revs)
+
+    def _fetch_just_revision_texts(self, version_ids, from_transaction,
+                                   to_transaction):
+        self.helper.fetch_revisions(version_ids)
 
 
 class RemoteToOtherFetcher(GenericRepoFetcher):
