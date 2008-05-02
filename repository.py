@@ -42,7 +42,6 @@ from config import SvnRepositoryConfig
 import errors
 import logwalker
 from bzrlib.plugins.svn.mapping import (SVN_PROP_BZR_REVISION_ID, SVN_REVPROP_BZR_SIGNATURE,
-                     SVN_PROP_BZR_BRANCHING_SCHEME, 
                      parse_revision_metadata, parse_revid_property, 
                      parse_merge_property, BzrSvnMapping,
                      get_default_mapping, parse_revision_id)
@@ -54,9 +53,6 @@ from svk import (SVN_PROP_SVK_MERGE, svk_features_merged_since,
                  parse_svk_feature)
 from tree import SvnRevisionTree
 import urllib
-
-# Number of revisions to evaluate when guessing the branching scheme
-SCHEME_GUESS_SAMPLE_SIZE = 2000
 
 def svk_feature_to_revision_id(feature, mapping):
     """Convert a SVK feature to a revision id for this repository.
@@ -131,7 +127,7 @@ class SvnRepository(Repository):
         self._log = logwalker.LogWalker(transport=transport)
         self.fileid_map = FileIdMap(simple_apply_changes, self)
         self.revmap = RevidMap(self)
-        self._scheme = None
+        self._default_mapping = None
         self._hinted_branch_path = branch_path
 
         cache = self.get_config().get_use_cache()
@@ -199,93 +195,16 @@ class SvnRepository(Repository):
         self._cached_revnum = self.transport.get_latest_revnum()
         return self._cached_revnum
 
-    def get_stored_scheme(self):
-        """Retrieve the stored branching scheme, either in the repository 
-        or in the configuration file.
-        """
-        scheme = self.get_config().get_branching_scheme()
-        if scheme is not None:
-            return (scheme, self.get_config().branching_scheme_is_mandatory())
-
-        last_revnum = self.get_latest_revnum()
-        scheme = self._get_property_scheme(last_revnum)
-        if scheme is not None:
-            return (scheme, True)
-
-        return (None, False)
-
     def get_mapping(self):
-        return get_default_mapping()(self.get_scheme())
+        if self._default_mapping is not None:
+            return self._default_mapping
+        return get_default_mapping().from_repository(self, self._hinted_branch_path)
 
     def _make_parents_provider(self):
         return CachingParentsProvider(self)
 
     def get_layout(self):
-        return self.get_scheme()
-
-    def get_scheme(self):
-        """Determine the branching scheme to use for this repository.
-
-        :return: Branching scheme.
-        """
-        # First, try to use the branching scheme we already know
-        if self._scheme is not None:
-            return self._scheme
-
-        (scheme, mandatory) = self.get_stored_scheme()
-        if mandatory:
-            self._scheme = scheme
-            return scheme
-
-        if scheme is not None:
-            if (self._hinted_branch_path is None or 
-                scheme.is_branch(self._hinted_branch_path)):
-                self._scheme = scheme
-                return scheme
-
-        last_revnum = self.get_latest_revnum()
-        self.set_branching_scheme(
-            self._guess_scheme(last_revnum, self._hinted_branch_path),
-            store=(last_revnum > 20),
-            mandatory=False)
-
-        return self._scheme
-
-    def _get_property_scheme(self, revnum=None):
-        if revnum is None:
-            revnum = self.get_latest_revnum()
-        text = self.branchprop_list.get_properties("", revnum).get(SVN_PROP_BZR_BRANCHING_SCHEME, None)
-        if text is None:
-            return None
-        return ListBranchingScheme(parse_list_scheme_text(text))
-
-    def set_property_scheme(self, scheme):
-        def done(revmetadata, pool):
-            pass
-        editor = self.transport.get_commit_editor(
-                {svn.core.SVN_PROP_REVISION_LOG: "Updating branching scheme for Bazaar."},
-                done, None, False)
-        root = editor.open_root(-1)
-        editor.change_dir_prop(root, SVN_PROP_BZR_BRANCHING_SCHEME, 
-                "".join(map(lambda x: x+"\n", scheme.branch_list)).encode("utf-8"))
-        editor.close_directory(root)
-        editor.close()
-
-    def _guess_scheme(self, last_revnum, branch_path=None):
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
-            scheme = guess_scheme_from_history(
-                self._log.iter_changes("", last_revnum, max(0, last_revnum-SCHEME_GUESS_SAMPLE_SIZE), pb=pb), last_revnum, branch_path)
-        finally:
-            pb.finished()
-        mutter("Guessed branching scheme: %r" % scheme)
-        return scheme
-
-    def set_branching_scheme(self, scheme, store=True, mandatory=False):
-        self._scheme = scheme
-        if store:
-            self.get_config().set_branching_scheme(str(scheme), 
-                                                   mandatory=mandatory)
+        return self.get_mapping().scheme
 
     def _warn_if_deprecated(self):
         # This class isn't deprecated
@@ -565,19 +484,19 @@ class SvnRepository(Repository):
 
         return self.get_revmap().get_revision_id(revnum, path, mapping, revprops, changed_fileprops)
 
-    def lookup_revision_id(self, revid, scheme=None):
+    def lookup_revision_id(self, revid, layout=None):
         """Parse an existing Subversion-based revision id.
 
         :param revid: The revision id.
-        :param scheme: Optional repository layout to use when searching for 
+        :param layout: Optional repository layout to use when searching for 
                        revisions
         :raises: NoSuchRevision
         :return: Tuple with branch path, revision number and mapping.
         """
         # If there is no entry in the map, walk over all branches:
-        if scheme is None:
-            scheme = self.get_scheme()
-        return self.get_revmap().get_branch_revnum(revid, scheme)
+        if layout is None:
+            layout = self.get_layout()
+        return self.get_revmap().get_branch_revnum(revid, layout)
 
     def get_inventory_xml(self, revision_id):
         """See Repository.get_inventory_xml()."""

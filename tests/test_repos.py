@@ -35,7 +35,8 @@ import svn.fs
 
 import format
 from mapping import (escape_svn_path, unescape_svn_path, 
-                     SVN_PROP_BZR_REVISION_ID, SVN_PROP_BZR_BRANCHING_SCHEME)
+                     SVN_PROP_BZR_REVISION_ID)
+from mapping3 import SVN_PROP_BZR_BRANCHING_SCHEME
 from mapping3.scheme import (TrunkBranchingScheme, NoBranchingScheme, 
                     ListBranchingScheme, SingleBranchingScheme)
 from transport import SvnRaTransport

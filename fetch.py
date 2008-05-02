@@ -32,10 +32,11 @@ from bzrlib.plugins.svn.errors import InvalidFileName
 from logwalker import lazy_dict
 from bzrlib.plugins.svn.mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_MERGE, 
                      SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVISION_INFO, 
-                     SVN_PROP_BZR_BRANCHING_SCHEME, SVN_PROP_BZR_REVISION_ID,
+                     SVN_PROP_BZR_REVISION_ID,
                      SVN_PROP_BZR_FILEIDS, SVN_REVPROP_BZR_SIGNATURE,
                      parse_merge_property,
                      parse_revision_metadata)
+from bzrlib.plugins.svn.mapping3 import SVN_PROP_BZR_BRANCHING_SCHEME
 from repository import SvnRepository, SvnRepositoryFormat
 from svk import SVN_PROP_SVK_MERGE
 from tree import (apply_txdelta_handler, parse_externals_description, 

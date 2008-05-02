@@ -13,9 +13,65 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from bzrlib import osutils
+from bzrlib import osutils, ui
+from bzrlib.trace import mutter
 from bzrlib.plugins.svn import mapping
-from mapping3.scheme import BranchingScheme, guess_scheme_from_branch_path
+from mapping3.scheme import BranchingScheme, guess_scheme_from_branch_path, guess_scheme_from_history
+
+SVN_PROP_BZR_BRANCHING_SCHEME = 'bzr:branching-scheme'
+
+# Number of revisions to evaluate when guessing the branching scheme
+SCHEME_GUESS_SAMPLE_SIZE = 2000
+
+def get_stored_scheme(repository):
+    """Retrieve the stored branching scheme, either in the repository 
+    or in the configuration file.
+    """
+    scheme = repository.get_config().get_branching_scheme()
+    if scheme is not None:
+        return (scheme, repository.get_config().branching_scheme_is_mandatory())
+
+    last_revnum = repository.get_latest_revnum()
+    scheme = get_property_scheme(repository, last_revnum)
+    if scheme is not None:
+        return (scheme, True)
+
+    return (None, False)
+
+def get_property_scheme(repository, revnum=None):
+    if revnum is None:
+        revnum = repository.get_latest_revnum()
+    text = repository.branchprop_list.get_properties("", revnum).get(SVN_PROP_BZR_BRANCHING_SCHEME, None)
+    if text is None:
+        return None
+    return ListBranchingScheme(parse_list_scheme_text(text))
+
+def set_property_scheme(repository, scheme):
+    def done(revmetadata, pool):
+        pass
+    editor = repository.transport.get_commit_editor(
+            {svn.core.SVN_PROP_REVISION_LOG: "Updating branching scheme for Bazaar."},
+            done, None, False)
+    root = editor.open_root(-1)
+    editor.change_dir_prop(root, SVN_PROP_BZR_BRANCHING_SCHEME, 
+            "".join(map(lambda x: x+"\n", scheme.branch_list)).encode("utf-8"))
+    editor.close_directory(root)
+    editor.close()
+
+def repository_guess_scheme(repository, last_revnum, branch_path=None):
+    pb = ui.ui_factory.nested_progress_bar()
+    try:
+        scheme = guess_scheme_from_history(
+            repository._log.iter_changes("", last_revnum, max(0, last_revnum-SCHEME_GUESS_SAMPLE_SIZE), pb=pb), last_revnum, branch_path)
+    finally:
+        pb.finished()
+    mutter("Guessed branching scheme: %r" % scheme)
+    return scheme
+
+def set_branching_scheme(repository, scheme, mandatory=False):
+    repository.get_config().set_branching_scheme(str(scheme), mandatory=mandatory)
+
+
 
 class BzrSvnMappingv3(mapping.BzrSvnMapping):
     """The third version of the mappings as used in the 0.4.x series.
@@ -29,6 +85,24 @@ class BzrSvnMappingv3(mapping.BzrSvnMapping):
         mapping.BzrSvnMapping.__init__(self)
         self.scheme = scheme
         assert not isinstance(scheme, str)
+
+    @classmethod
+    def from_repository(cls, repository, _hinted_branch_path=None):
+        (scheme, mandatory) = get_stored_scheme(repository)
+        if mandatory:
+            return cls(scheme) 
+
+        if scheme is not None:
+            if (_hinted_branch_path is None or 
+                scheme.is_branch(_hinted_branch_path)):
+                return cls(scheme)
+
+        last_revnum = repository.get_latest_revnum()
+        scheme = repository_guess_scheme(repository, last_revnum, _hinted_branch_path)
+        if last_revnum > 20:
+            set_branching_scheme(repository, scheme, mandatory=False)
+
+        return cls(scheme)
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self.scheme)
@@ -109,7 +183,6 @@ class BzrSvnMappingv3(mapping.BzrSvnMapping):
 
     def __eq__(self, other):
         return type(self) == type(other) and self.scheme == other.scheme
-
 
 class BzrSvnMappingv3FileProps(mapping.BzrSvnMappingFileProps, BzrSvnMappingv3):
     pass

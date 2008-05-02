@@ -35,7 +35,6 @@ SVN_PROP_BZR_FILEIDS = 'bzr:file-ids'
 SVN_PROP_BZR_MERGE = 'bzr:merge'
 SVN_PROP_BZR_REVISION_INFO = 'bzr:revision-info'
 SVN_PROP_BZR_REVISION_ID = 'bzr:revision-id:v%d-' % MAPPING_VERSION
-SVN_PROP_BZR_BRANCHING_SCHEME = 'bzr:branching-scheme'
 
 SVN_REVPROP_BZR_COMMITTER = 'bzr:committer'
 SVN_REVPROP_BZR_FILEIDS = 'bzr:file-ids'
@@ -260,6 +259,10 @@ class BzrSvnMapping(object):
             from bzrlib.trace import warning
             warning("using experimental bzr-svn mappings; output may change between revisions")
             BzrSvnMapping._warned_experimental = True
+
+    @classmethod
+    def from_repository(cls, repository, _hinted_branch_path=None):
+        return cls()
 
     @classmethod
     def supports_roundtripping(cls):
