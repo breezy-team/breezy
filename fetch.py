@@ -627,17 +627,16 @@ class InterFromSvnRepository(InterRepository):
         """
         raise NotImplementedError(self._copy_revisions_replay)
 
-    def _fetch_switch(self, revids, pb=None):
+    def _fetch_switch(self, conn, revids, pb=None):
         """Copy a set of related revisions using svn.ra.switch.
 
         :param revids: List of revision ids of revisions to copy, 
                        newest first.
         :param pb: Optional progress bar.
         """
-        repos_root = self.source.transport.get_svn_repos_root()
+        repos_root = conn.get_repos_root()
 
         prev_revid = None
-        transport = self.source.transport
         if pb is None:
             pb = ui.ui_factory.nested_progress_bar()
             nested_pb = pb
@@ -673,10 +672,10 @@ class InterFromSvnRepository(InterRepository):
                     if parent_revid == NULL_REVISION:
                         branch_url = urlutils.join(repos_root, 
                                                    editor.branch_path)
-                        transport.reparent(branch_url)
-                        assert transport.svn_url == branch_url.rstrip("/"), \
-                            "Expected %r, got %r" % (transport.svn_url, branch_url)
-                        reporter = transport.do_update(editor.revnum, True, 
+                        conn.reparent(branch_url)
+                        assert conn.url == branch_url.rstrip("/"), \
+                            "Expected %r, got %r" % (conn.url, branch_url)
+                        reporter = conn.do_update(editor.revnum, True, 
                                                        editor, pool)
 
                         # Report status of existing paths
@@ -684,19 +683,19 @@ class InterFromSvnRepository(InterRepository):
                     else:
                         (parent_branch, parent_revnum, mapping) = \
                                 self.source.lookup_revision_id(parent_revid)
-                        transport.reparent(urlutils.join(repos_root, parent_branch))
+                        conn.reparent(urlutils.join(repos_root, parent_branch))
 
                         if parent_branch != editor.branch_path:
-                            reporter = transport.do_switch(editor.revnum, True, 
+                            reporter = conn.do_switch(editor.revnum, True, 
                                 urlutils.join(repos_root, editor.branch_path), 
                                 editor, pool)
                         else:
-                            reporter = transport.do_update(editor.revnum, True, editor)
+                            reporter = conn.do_update(editor.revnum, True, editor)
 
                         # Report status of existing paths
                         reporter.set_path("", parent_revnum, False, None, pool)
 
-                    lock = transport.lock_read(".")
+                    lock = conn.lock_read(".")
                     reporter.finish_report(pool)
                     lock.unlock()
                 except:
@@ -711,7 +710,6 @@ class InterFromSvnRepository(InterRepository):
             self.target.unlock()
             if nested_pb is not None:
                 nested_pb.finished()
-        self.source.transport.reparent_root()
 
     def fetch(self, revision_id=None, pb=None, find_ghosts=False, 
               branches=None, fetch_rhs_ancestry=False):
@@ -738,7 +736,11 @@ class InterFromSvnRepository(InterRepository):
             # Nothing to fetch
             return
 
-        self._fetch_switch(needed, pb)
+        conn = self.source.transport.get_connection()
+        try:
+            self._fetch_switch(conn, needed, pb)
+        finally:
+            self.source.transport.add_connection(conn)
 
     @staticmethod
     def is_compatible(source, target):
