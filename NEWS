@@ -95,7 +95,7 @@ IN DEVELOPMENT
       deprecation wrappers.  (Martin Pool)
 
     * ``Repository.revision_parents`` is now deprecated in favour of 
-      ``Repository.get_revision_id(revid).parent_ids``. (Jelmer Vernooij)
+      ``Repository.get_parent_map(revid)[revid]``. (Jelmer Vernooij)
 
   API BREAKS:
 
