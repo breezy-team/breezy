@@ -445,10 +445,27 @@ class Connection:
         if hasattr(svn.ra, 'reparent'):
             self.mutter('svn reparent %r' % url)
             svn.ra.reparent(self._ra, url)
+            self.url = url
         else:
             raise NotImplementedError(self.reparent)
 
 
+class ConnectionPool:
+    """Collection of connections to a Subversion repository."""
+    def __init__(self):
+        self.connections = set()
+
+    def get(self, url):
+        # Check if there is an existing connection we can use
+        for c in self.connections:
+            if c.url == url:
+                self.connections.remove(c)
+                return c
+        return Connection(url)
+
+    def add(self, connection):
+        self.connections.add(connection)
+    
 
 class SvnRaTransport(Transport):
     """Fake transport for Subversion-related namespaces.
@@ -467,13 +484,19 @@ class SvnRaTransport(Transport):
         self._backing_url = _backing_url.rstrip("/")
         Transport.__init__(self, bzr_url)
 
-        self._connection = Connection(self._backing_url)
+        self.connections = ConnectionPool()
+
+        connection = Connection(self._backing_url)
+
+        self.connections.add(connection)
 
         from bzrlib.plugins.svn import lazy_check_versions
         lazy_check_versions()
 
-    def _get_connection(self):
-        return self._connection
+    def get_connection(self):
+        conn = self.connections.get(self._backing_url)
+        self.connections.add(conn)
+        return conn
 
     def has(self, relpath):
         """See Transport.has()."""
@@ -492,7 +515,7 @@ class SvnRaTransport(Transport):
         raise TransportNotPossible('stat not supported on Subversion')
 
     def get_uuid(self):
-        return self._get_connection().get_uuid()
+        return self.get_connection().get_uuid()
 
     def get_repos_root(self):
         root = self.get_svn_repos_root()
@@ -502,14 +525,14 @@ class SvnRaTransport(Transport):
         return root
 
     def get_svn_repos_root(self):
-        return self._get_connection().get_repos_root()
+        return self.get_connection().get_repos_root()
 
     def get_latest_revnum(self):
-        return self._get_connection().get_latest_revnum()
+        return self.get_connection().get_latest_revnum()
 
     def do_switch(self, switch_rev, recurse, switch_url, editor, pool=None):
         self._open_real_transport()
-        return self._get_connection().do_switch(switch_rev, recurse, switch_url, editor, pool)
+        return self.get_connection().do_switch(switch_rev, recurse, switch_url, editor, pool)
 
     def iter_log(self, path, from_revnum, to_revnum, limit, discover_changed_paths, 
                  strict_node_history, revprops):
@@ -551,7 +574,7 @@ class SvnRaTransport(Transport):
 
     def get_log(self, path, from_revnum, to_revnum, limit, discover_changed_paths, 
                 strict_node_history, revprops, rcvr, pool=None):
-        return self._get_connection().get_log(self._request_path(path), 
+        return self.get_connection().get_log(self._request_path(path), 
                     from_revnum, to_revnum,
                     limit, discover_changed_paths, strict_node_history, 
                     revprops, rcvr, pool)
@@ -569,7 +592,7 @@ class SvnRaTransport(Transport):
             self.reparent(self.get_repos_root())
 
     def change_rev_prop(self, revnum, name, value, pool=None):
-        return self._get_connection().change_rev_prop(revnum, name, value, pool)
+        return self.get_connection().change_rev_prop(revnum, name, value, pool)
 
     @convert_svn_error
     def reparent(self, url):
@@ -579,16 +602,16 @@ class SvnRaTransport(Transport):
         if self.svn_url == self._backing_url:
             return
         try:
-            self._connection.reparent(url)     
+            self.get_connection().reparent(url)     
         except NotImplementedError:
             self.mutter('svn reparent (reconnect) %r' % url)
-            self._ra = svn.client.open_ra_session(self.svn_url.encode('utf8'), 
-                    self._client, self.pool)
+            connection = self.connections.get(self.svn_url.encode('utf8'))
+            self.connections.add(connection)
         self._backing_url = self.svn_url
 
     def get_dir(self, path, revnum, pool=None, kind=False):
         path = self._request_path(path)
-        return self._get_connection().get_dir(path, revnum, pool, kind)
+        return self.get_connection().get_dir(path, revnum, pool, kind)
 
     def _request_path(self, relpath):
         if self._backing_url == self.svn_url:
@@ -613,29 +636,29 @@ class SvnRaTransport(Transport):
 
     def check_path(self, path, revnum):
         path = self._request_path(path)
-        return self._get_connection().check_path(path, revnum)
+        return self.get_connection().check_path(path, revnum)
 
     def mkdir(self, relpath, mode=None):
-        return self._get_connection().mkdir(relpath, mode)
+        return self.get_connection().mkdir(relpath, mode)
 
     def replay(self, revision, low_water_mark, send_deltas, editor, pool=None):
         self._open_real_transport()
-        return self._get_connection().replay(revision, low_water_mark, 
+        return self.get_connection().replay(revision, low_water_mark, 
                                              send_deltas, editor, pool)
 
     def do_update(self, revnum, recurse, editor, pool=None):
         self._open_real_transport()
-        return self._get_connection().do_update(revnum, recurse, editor, pool)
+        return self.get_connection().do_update(revnum, recurse, editor, pool)
 
     def has_capability(self, cap):
-        return self._get_connection().has_capability(cap)
+        return self.get_connection().has_capability(cap)
 
     def revprop_list(self, revnum, pool=None):
-        return self._get_connection().revprop_list(revnum, pool)
+        return self.get_connection().revprop_list(revnum, pool)
 
     def get_commit_editor(self, revprops, done_cb, lock_token, keep_locks):
         self._open_real_transport()
-        return self._get_connection().get_commit_editor(revprops, done_cb,
+        return self.get_connection().get_commit_editor(revprops, done_cb,
                                          lock_token, keep_locks)
 
     def listable(self):
