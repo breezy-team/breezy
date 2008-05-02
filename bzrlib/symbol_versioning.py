@@ -28,6 +28,9 @@ __all__ = ['deprecated_function',
            'deprecated_passed',
            'set_warning_method',
            'warn',
+           'zero_seven',
+           'zero_eight',
+           'zero_nine',
            'zero_ten',
            'zero_eleven',
            'zero_twelve',
@@ -55,6 +58,9 @@ import bzrlib
 
 
 DEPRECATED_PARAMETER = "A deprecated parameter marker."
+zero_seven = "%s was deprecated in version 0.7."
+zero_eight = "%s was deprecated in version 0.8."
+zero_nine = "%s was deprecated in version 0.9."
 zero_ten = "%s was deprecated in version 0.10."
 zero_eleven = "%s was deprecated in version 0.11."
 zero_twelve = "%s was deprecated in version 0.12."

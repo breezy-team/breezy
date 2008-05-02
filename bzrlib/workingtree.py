@@ -111,8 +111,6 @@ from bzrlib.symbol_versioning import (deprecated_passed,
         deprecated_method,
         deprecated_function,
         DEPRECATED_PARAMETER,
-        zero_eleven,
-        zero_thirteen,
         )
 
 
@@ -120,24 +118,6 @@ MERGE_MODIFIED_HEADER_1 = "BZR merge-modified list format 1"
 CONFLICT_HEADER_1 = "BZR conflict list format 1"
 
 ERROR_PATH_NOT_FOUND = 3    # WindowsError errno code, equivalent to ENOENT
-
-
-@deprecated_function(zero_thirteen)
-def gen_file_id(name):
-    """Return new file id for the basename 'name'.
-
-    Use bzrlib.generate_ids.gen_file_id() instead
-    """
-    return generate_ids.gen_file_id(name)
-
-
-@deprecated_function(zero_thirteen)
-def gen_root_id():
-    """Return a new tree-root file id.
-
-    This has been deprecated in favor of bzrlib.generate_ids.gen_root_id()
-    """
-    return generate_ids.gen_root_id()
 
 
 class TreeEntry(object):
@@ -732,19 +712,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             return ('symlink', None, None, os.readlink(abspath))
         else:
             return (kind, None, None, None)
-
-    @deprecated_method(zero_eleven)
-    @needs_read_lock
-    def pending_merges(self):
-        """Return a list of pending merges.
-
-        These are revisions that have been merged into the working
-        directory but not yet committed.
-
-        As of 0.11 this is deprecated. Please see WorkingTree.get_parent_ids()
-        instead - which is available on all tree objects.
-        """
-        return self.get_parent_ids()[1:]
 
     def _check_parents_for_ghosts(self, revision_ids, allow_leftmost_as_ghost):
         """Common ghost checking functionality from set_parent_*.
@@ -2052,13 +2019,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         """Set the root id for this tree."""
         # for compatability 
         if file_id is None:
-            symbol_versioning.warn(symbol_versioning.zero_twelve
-                % 'WorkingTree.set_root_id with fileid=None',
-                DeprecationWarning,
-                stacklevel=3)
-            file_id = ROOT_ID
-        else:
-            file_id = osutils.safe_file_id(file_id)
+            raise ValueError(
+                'WorkingTree.set_root_id with fileid=None')
+        file_id = osutils.safe_file_id(file_id)
         self._set_root_id(file_id)
 
     def _set_root_id(self, file_id):
