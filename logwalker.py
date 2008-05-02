@@ -357,7 +357,7 @@ class LogWalker(object):
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
                 raise NoSuchRevision(branch=self, 
-                    revision="Revision number %d" % revnum)
+                    revision="Revision number %d" % from_revnum)
             raise
 
     def get_revision_paths(self, revnum):
@@ -436,7 +436,7 @@ class LogWalker(object):
                 pass
         pool = Pool()
         editor = TreeLister(path)
-        conn = self._transport.connections.get(urlutils.join(transport.get_svn_repos_root(), path))
+        conn = self._transport.connections.get(urlutils.join(self._transport.get_svn_repos_root(), path))
         try:
             reporter = conn.do_update(revnum, True, editor, pool)
             reporter.set_path("", revnum, True, None, pool)
