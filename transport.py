@@ -27,6 +27,8 @@ import svn.core
 import svn.client
 
 from errors import convert_svn_error, NoSvnRepositoryPresent
+import urlparse
+import urllib
 
 svn_config = svn.core.svn_config_get_config(None)
 
@@ -34,41 +36,11 @@ def get_client_string():
     """Return a string that can be send as part of the User Agent string."""
     return "bzr%s+bzr-svn%s" % (bzrlib.__version__, bzrlib.plugins.svn.__version__)
 
-
-def _create_auth_baton(pool):
-    """Create a Subversion authentication baton. """
-    # Give the client context baton a suite of authentication
-    # providers.h
-    providers = []
-
-    if svn.core.SVN_VER_MAJOR == 1 and svn.core.SVN_VER_MINOR >= 5:
-        import auth
-        providers += auth.SubversionAuthenticationConfig().get_svn_auth_providers()
-        providers += [auth.get_ssl_client_cert_pw_provider(1)]
-
-    providers += [
-        svn.client.get_simple_provider(pool),
-        svn.client.get_username_provider(pool),
-        svn.client.get_ssl_client_cert_file_provider(pool),
-        svn.client.get_ssl_client_cert_pw_file_provider(pool),
-        svn.client.get_ssl_server_trust_file_provider(pool),
-        ]
-
-    if hasattr(svn.client, 'get_windows_simple_provider'):
-        providers.append(svn.client.get_windows_simple_provider(pool))
-
-    if hasattr(svn.client, 'get_keychain_simple_provider'):
-        providers.append(svn.client.get_keychain_simple_provider(pool))
-
-    if hasattr(svn.client, 'get_windows_ssl_server_trust_provider'):
-        providers.append(svn.client.get_windows_ssl_server_trust_provider(pool))
-
-    return svn.core.svn_auth_open(providers, pool)
-
-
-def create_svn_client(pool):
-    client = svn.client.create_context(pool)
-    client.auth_baton = _create_auth_baton(pool)
+ 
+def create_svn_client(url):
+    from auth import create_auth_baton
+    client = svn.client.create_context()
+    client.auth_baton = create_auth_baton(url)
     client.config = svn_config
     return client
 
@@ -87,6 +59,12 @@ def get_svn_ra_transport(bzr_transport):
     return SvnRaTransport(bzr_transport.base)
 
 
+def _url_unescape_uri(url):
+    (scheme, netloc, path, query, fragment) = urlparse.urlsplit(url)
+    path = urllib.unquote(path)
+    return urlparse.urlunsplit((scheme, netloc, path, query, fragment))
+
+
 def bzr_to_svn_url(url):
     """Convert a Bazaar URL to a URL understood by Subversion.
 
@@ -97,8 +75,14 @@ def bzr_to_svn_url(url):
         url.startswith("svn+https://")):
         url = url[len("svn+"):] # Skip svn+
 
+    if url.startswith("http"):
+        # Without this, URLs with + in them break
+        url = _url_unescape_uri(url)
+
     # The SVN libraries don't like trailing slashes...
-    return url.rstrip('/')
+    url = url.rstrip('/')
+
+    return url
 
 
 def needs_busy(unbound):
@@ -204,52 +188,24 @@ class Editor(object):
         return baton
 
 
-class SvnRaTransport(Transport):
-    """Fake transport for Subversion-related namespaces.
-    
-    This implements just as much of Transport as is necessary 
-    to fool Bazaar. """
-    @convert_svn_error
-    def __init__(self, url="", _backing_url=None):
-        self.pool = Pool()
-        bzr_url = url
-        self.svn_url = bzr_to_svn_url(url)
+class Connection:
+    """An single connection to a Subversion repository. This usually can 
+    only do one operation at a time."""
+    def __init__(self, url):
+        self._busy = False
         self._root = None
-        # _backing_url is an evil hack so the root directory of a repository 
-        # can be accessed on some HTTP repositories. 
-        if _backing_url is None:
-            _backing_url = self.svn_url
-        self._backing_url = _backing_url.rstrip("/")
-        Transport.__init__(self, bzr_url)
-
-        self._client = create_svn_client(self.pool)
+        self._client = create_svn_client(url)
         try:
-            self.mutter('opening SVN RA connection to %r' % self._backing_url)
-            self._ra = svn.client.open_ra_session(self._backing_url.encode('utf8'), 
-                    self._client, self.pool)
+            self.mutter('opening SVN RA connection to %r' % url)
+            self._ra = svn.client.open_ra_session(url.encode('utf8'), 
+                    self._client)
         except SubversionException, (_, num):
             if num in (svn.core.SVN_ERR_RA_SVN_REPOS_NOT_FOUND,):
                 raise NoSvnRepositoryPresent(url=url)
             if num == svn.core.SVN_ERR_BAD_URL:
                 raise InvalidURL(url)
             raise
-
-        from bzrlib.plugins.svn import lazy_check_versions
-        lazy_check_versions()
-
-        self._busy = False
-
-    def _mark_busy(self):
-        assert not self._busy
-        self._busy = True
-
-    def _unmark_busy(self):
-        assert self._busy
-        self._busy = False
-
-    def mutter(self, text):
-        if 'transport' in debug.debug_flags:
-            mutter(text)
+        self.url = url
 
     class Reporter(object):
         def __init__(self, transport, (reporter, report_baton)):
@@ -286,21 +242,20 @@ class SvnRaTransport(Transport):
                     self._baton, pool)
             self._transport._unmark_busy()
 
-    def has(self, relpath):
-        """See Transport.has()."""
-        # TODO: Raise TransportNotPossible here instead and 
-        # catch it in bzrdir.py
-        return False
+    def is_busy(self):
+        return self._busy
 
-    def get(self, relpath):
-        """See Transport.get()."""
-        # TODO: Raise TransportNotPossible here instead and 
-        # catch it in bzrdir.py
-        raise NoSuchFile(path=relpath)
+    def _mark_busy(self):
+        assert not self._busy
+        self._busy = True
 
-    def stat(self, relpath):
-        """See Transport.stat()."""
-        raise TransportNotPossible('stat not supported on Subversion')
+    def _unmark_busy(self):
+        assert self._busy
+        self._busy = False
+
+    def mutter(self, text):
+        if 'transport' in debug.debug_flags:
+            mutter(text)
 
     @convert_svn_error
     @needs_busy
@@ -308,16 +263,9 @@ class SvnRaTransport(Transport):
         self.mutter('svn get-uuid')
         return svn.ra.get_uuid(self._ra)
 
-    def get_repos_root(self):
-        root = self.get_svn_repos_root()
-        if (self.base.startswith("svn+http:") or 
-            self.base.startswith("svn+https:")):
-            return "svn+%s" % root
-        return root
-
     @convert_svn_error
     @needs_busy
-    def get_svn_repos_root(self):
+    def get_repos_root(self):
         if self._root is None:
             self.mutter("svn get-repos-root")
             self._root = svn.ra.get_repos_root(self._ra)
@@ -337,7 +285,6 @@ class SvnRaTransport(Transport):
 
     @convert_svn_error
     def do_switch(self, switch_rev, recurse, switch_url, editor, pool=None):
-        self._open_real_transport()
         self.mutter('svn switch -r %d -> %r' % (switch_rev, switch_url))
         self._mark_busy()
         edit, edit_baton = self._make_editor(editor, pool)
@@ -345,14 +292,129 @@ class SvnRaTransport(Transport):
                              recurse, switch_url, edit, edit_baton, pool))
 
     @convert_svn_error
+    def change_rev_prop(self, revnum, name, value, pool=None):
+        self.mutter('svn revprop -r%d --set %s=%s' % (revnum, name, value))
+        svn.ra.change_rev_prop(self._ra, revnum, name, value)
+
+    @convert_svn_error
     @needs_busy
-    def get_log(self, path, from_revnum, to_revnum, limit, discover_changed_paths, 
-                strict_node_history, revprops, rcvr, pool=None):
+    def get_lock(self, path):
+        return svn.ra.get_lock(self._ra, path)
+
+    @convert_svn_error
+    @needs_busy
+    def unlock(self, locks, break_lock=False):
+        def lock_cb(baton, path, do_lock, lock, ra_err, pool):
+            pass
+        return svn.ra.unlock(self._ra, locks, break_lock, lock_cb)
+ 
+    @convert_svn_error
+    @needs_busy
+    def get_dir(self, path, revnum, pool=None, kind=False):
+        self.mutter("svn ls -r %d '%r'" % (revnum, path))
+        assert len(path) == 0 or path[0] != "/"
+        # ra_dav backends fail with strange errors if the path starts with a 
+        # slash while other backends don't.
+        if hasattr(svn.ra, 'get_dir2'):
+            fields = 0
+            if kind:
+                fields += svn.core.SVN_DIRENT_KIND
+            return svn.ra.get_dir2(self._ra, path, revnum, fields)
+        else:
+            return svn.ra.get_dir(self._ra, path, revnum)
+
+    @convert_svn_error
+    @needs_busy
+    def check_path(self, path, revnum):
+        assert len(path) == 0 or path[0] != "/"
+        self.mutter("svn check_path -r%d %s" % (revnum, path))
+        return svn.ra.check_path(self._ra, path.encode('utf-8'), revnum)
+
+    @convert_svn_error
+    @needs_busy
+    def mkdir(self, relpath, mode=None):
+        assert len(relpath) == 0 or relpath[0] != "/"
+        path = urlutils.join(self.url, relpath)
+        try:
+            svn.client.mkdir([path.encode("utf-8")], self._client)
+        except SubversionException, (msg, num):
+            if num == svn.core.SVN_ERR_FS_NOT_FOUND:
+                raise NoSuchFile(path)
+            if num == svn.core.SVN_ERR_FS_ALREADY_EXISTS:
+                raise FileExists(path)
+            raise
+
+    @convert_svn_error
+    def replay(self, revision, low_water_mark, send_deltas, editor, pool=None):
+        self.mutter('svn replay -r%r:%r' % (low_water_mark, revision))
+        self._mark_busy()
+        edit, edit_baton = self._make_editor(editor, pool)
+        svn.ra.replay(self._ra, revision, low_water_mark, send_deltas,
+                      edit, edit_baton, pool)
+
+    @convert_svn_error
+    def do_update(self, revnum, recurse, editor, pool=None):
+        self.mutter('svn update -r %r' % revnum)
+        self._mark_busy()
+        edit, edit_baton = self._make_editor(editor, pool)
+        return self.Reporter(self, svn.ra.do_update(self._ra, revnum, "", 
+                             recurse, edit, edit_baton, pool))
+
+    @convert_svn_error
+    def has_capability(self, cap):
+        return svn.ra.has_capability(self._ra, cap)
+
+    @convert_svn_error
+    def revprop_list(self, revnum, pool=None):
+        self.mutter('svn revprop-list -r %r' % revnum)
+        return svn.ra.rev_proplist(self._ra, revnum, pool)
+
+    @convert_svn_error
+    def get_commit_editor(self, revprops, done_cb, lock_token, keep_locks):
+        self._mark_busy()
+        try:
+            if hasattr(svn.ra, 'get_commit_editor3'):
+                editor = svn.ra.get_commit_editor3(self._ra, revprops, done_cb, 
+                                                  lock_token, keep_locks)
+            elif revprops.keys() != [svn.core.SVN_PROP_REVISION_LOG]:
+                raise NotImplementedError()
+            else:
+                editor = svn.ra.get_commit_editor2(self._ra, 
+                            revprops[svn.core.SVN_PROP_REVISION_LOG],
+                            done_cb, lock_token, keep_locks)
+
+            return Editor(self, editor)
+        except:
+            self._unmark_busy()
+            raise
+
+    class SvnLock(object):
+        def __init__(self, transport, tokens):
+            self._tokens = tokens
+            self._transport = transport
+
+        def unlock(self):
+            self.transport.unlock(self.locks)
+
+    @convert_svn_error
+    @needs_busy
+    def lock_write(self, path_revs, comment=None, steal_lock=False):
+        tokens = {}
+        def lock_cb(baton, path, do_lock, lock, ra_err, pool):
+            tokens[path] = lock
+        svn.ra.lock(self._ra, path_revs, comment, steal_lock, lock_cb)
+        return SvnLock(self, tokens)
+
+    @convert_svn_error
+    @needs_busy
+    def get_log(self, path, from_revnum, to_revnum, limit, 
+                discover_changed_paths, strict_node_history, revprops, rcvr, 
+                pool=None):
         self.mutter('svn log %r:%r %r' % (from_revnum, to_revnum, path))
         if hasattr(svn.ra, 'get_log2'):
-            return svn.ra.get_log2(self._ra, [self._request_path(path)], 
-                           from_revnum, to_revnum, limit, discover_changed_paths,
-                           strict_node_history, False, 
+            return svn.ra.get_log2(self._ra, [path], 
+                           from_revnum, to_revnum, limit, 
+                           discover_changed_paths, strict_node_history, False, 
                            revprops, rcvr, pool)
 
         class LogEntry(object):
@@ -373,14 +435,174 @@ class SvnRaTransport(Transport):
         def rcvr_convert(orig_paths, rev, author, date, message, pool):
             rcvr(LogEntry(orig_paths, rev, author, date, message), pool)
 
-        return svn.ra.get_log(self._ra, [self._request_path(path)], 
+        return svn.ra.get_log(self._ra, [path], 
                               from_revnum, to_revnum, limit, discover_changed_paths, 
                               strict_node_history, rcvr_convert, pool)
 
+    @convert_svn_error
+    @needs_busy
+    def reparent(self, url):
+        if hasattr(svn.ra, 'reparent'):
+            self.mutter('svn reparent %r' % url)
+            svn.ra.reparent(self._ra, url)
+            self.url = url
+        else:
+            raise NotImplementedError(self.reparent)
+
+
+class ConnectionPool:
+    """Collection of connections to a Subversion repository."""
+    def __init__(self):
+        self.connections = set()
+
+    def get(self, url):
+        # Check if there is an existing connection we can use
+        for c in self.connections:
+            if c.url == url:
+                self.connections.remove(c)
+                return c
+        return Connection(url)
+
+    def add(self, connection):
+        self.connections.add(connection)
+    
+
+class SvnRaTransport(Transport):
+    """Fake transport for Subversion-related namespaces.
+    
+    This implements just as much of Transport as is necessary 
+    to fool Bazaar. """
+    @convert_svn_error
+    def __init__(self, url="", _backing_url=None):
+        self.pool = Pool()
+        bzr_url = url
+        self.svn_url = bzr_to_svn_url(url)
+        # _backing_url is an evil hack so the root directory of a repository 
+        # can be accessed on some HTTP repositories. 
+        if _backing_url is None:
+            _backing_url = self.svn_url
+        self._backing_url = _backing_url.rstrip("/")
+        Transport.__init__(self, bzr_url)
+
+        self.connections = ConnectionPool()
+
+        connection = Connection(self._backing_url)
+
+        self.connections.add(connection)
+
+        from bzrlib.plugins.svn import lazy_check_versions
+        lazy_check_versions()
+
+    def get_connection(self):
+        return self.connections.get(self._backing_url)
+
+    def add_connection(self, conn):
+        self.connections.add(conn)
+
+    def has(self, relpath):
+        """See Transport.has()."""
+        # TODO: Raise TransportNotPossible here instead and 
+        # catch it in bzrdir.py
+        return False
+
+    def get(self, relpath):
+        """See Transport.get()."""
+        # TODO: Raise TransportNotPossible here instead and 
+        # catch it in bzrdir.py
+        raise NoSuchFile(path=relpath)
+
+    def stat(self, relpath):
+        """See Transport.stat()."""
+        raise TransportNotPossible('stat not supported on Subversion')
+
+    def get_uuid(self):
+        conn = self.get_connection()
+        try:
+            return conn.get_uuid()
+        finally:
+            self.add_connection(conn)
+
+    def get_repos_root(self):
+        root = self.get_svn_repos_root()
+        if (self.base.startswith("svn+http:") or 
+            self.base.startswith("svn+https:")):
+            return "svn+%s" % root
+        return root
+
+    def get_svn_repos_root(self):
+        conn = self.get_connection()
+        try:
+            return conn.get_repos_root()
+        finally:
+            self.add_connection(conn)
+
+    def get_latest_revnum(self):
+        conn = self.get_connection()
+        try:
+            return conn.get_latest_revnum()
+        finally:
+            self.add_connection(conn)
+
+    def do_switch(self, switch_rev, recurse, switch_url, editor, pool=None):
+        conn = self._open_real_transport()
+        try:
+            return conn.do_switch(switch_rev, recurse, switch_url, editor, pool)
+        finally:
+            self.add_connection(conn)
+
+    def iter_log(self, path, from_revnum, to_revnum, limit, discover_changed_paths, 
+                 strict_node_history, revprops):
+
+        assert isinstance(path, str)
+        assert isinstance(from_revnum, int) and isinstance(to_revnum, int)
+        assert isinstance(limit, int)
+        from threading import Thread, Semaphore
+
+        class logfetcher(Thread):
+            def __init__(self, get_log):
+                Thread.__init__(self)
+                self.setDaemon(True)
+                self.get_log = get_log
+                self.pending = []
+                self.semaphore = Semaphore(0)
+
+            def next(self):
+                self.semaphore.acquire()
+                ret = self.pending.pop(0)
+                if isinstance(ret, Exception):
+                    raise ret
+                return ret
+
+            def run(self):
+                def rcvr(log_entry, pool):
+                    self.pending.append((log_entry.changed_paths, log_entry.revision, log_entry.revprops))
+                    self.semaphore.release()
+                try:
+                    self.get_log(rcvr)
+                    self.pending.append(None)
+                except Exception, e:
+                    self.pending.append(e)
+                self.semaphore.release()
+        
+        fetcher = logfetcher(lambda rcvr: self.get_log(path, from_revnum, to_revnum, limit, discover_changed_paths, strict_node_history, revprops, rcvr))
+        fetcher.start()
+        return iter(fetcher.next, None)
+
+    def get_log(self, path, from_revnum, to_revnum, limit, discover_changed_paths, 
+                strict_node_history, revprops, rcvr, pool=None):
+        conn = self.get_connection()
+        try:
+            return conn.get_log(self._request_path(path), 
+                    from_revnum, to_revnum,
+                    limit, discover_changed_paths, strict_node_history, 
+                    revprops, rcvr, pool)
+        finally:
+            self.add_connection(conn)
+
     def _open_real_transport(self):
         if self._backing_url != self.svn_url:
-            self.reparent(self.base)
-        assert self._backing_url == self.svn_url
+            return self.connections.get(self.svn_url)
+        return self.get_connection()
 
     def reparent_root(self):
         if self._is_http_transport():
@@ -389,43 +611,37 @@ class SvnRaTransport(Transport):
         else:
             self.reparent(self.get_repos_root())
 
-    @convert_svn_error
     def change_rev_prop(self, revnum, name, value, pool=None):
-        self.mutter('svn revprop -r%d --set %s=%s' % (revnum, name, value))
-        svn.ra.change_rev_prop(self._ra, revnum, name, value)
+        conn = self.get_connection()
+        try:
+            return conn.change_rev_prop(revnum, name, value, pool)
+        finally:
+            self.add_connection(conn)
 
     @convert_svn_error
-    @needs_busy
     def reparent(self, url):
         url = url.rstrip("/")
         self.base = url
         self.svn_url = bzr_to_svn_url(url)
         if self.svn_url == self._backing_url:
             return
-        if hasattr(svn.ra, 'reparent'):
-            self.mutter('svn reparent %r' % url)
-            svn.ra.reparent(self._ra, self.svn_url, self.pool)
-        else:
+        conn = self.get_connection()
+        try:
+            conn.reparent(url)     
+        except NotImplementedError:
+            self.add_connection(conn)
             self.mutter('svn reparent (reconnect) %r' % url)
-            self._ra = svn.client.open_ra_session(self.svn_url.encode('utf8'), 
-                    self._client, self.pool)
+            conn = self.connections.get(self.svn_url.encode('utf8'))
+        self.add_connection(conn)
         self._backing_url = self.svn_url
 
-    @convert_svn_error
-    @needs_busy
     def get_dir(self, path, revnum, pool=None, kind=False):
-        self.mutter("svn ls -r %d '%r'" % (revnum, path))
-        assert len(path) == 0 or path[0] != "/"
         path = self._request_path(path)
-        # ra_dav backends fail with strange errors if the path starts with a 
-        # slash while other backends don't.
-        if hasattr(svn.ra, 'get_dir2'):
-            fields = 0
-            if kind:
-                fields += svn.core.SVN_DIRENT_KIND
-            return svn.ra.get_dir2(self._ra, path, revnum, fields)
-        else:
-            return svn.ra.get_dir(self._ra, path, revnum)
+        conn = self.get_connection()
+        try:
+            return conn.get_dir(path, revnum, pool, kind)
+        finally:
+            self.add_connection(conn)
 
     def _request_path(self, relpath):
         if self._backing_url == self.svn_url:
@@ -436,118 +652,69 @@ class SvnRaTransport(Transport):
         self.mutter('request path %r -> %r' % (relpath, newrelpath))
         return newrelpath
 
-    @convert_svn_error
     def list_dir(self, relpath):
         assert len(relpath) == 0 or relpath[0] != "/"
         if relpath == ".":
             relpath = ""
         try:
-            (dirents, _, _) = self.get_dir(self._request_path(relpath),
-                                           self.get_latest_revnum())
+            (dirents, _, _) = self.get_dir(relpath, self.get_latest_revnum())
         except SubversionException, (msg, num):
             if num == svn.core.SVN_ERR_FS_NOT_DIRECTORY:
                 raise NoSuchFile(relpath)
             raise
         return dirents.keys()
 
-    @convert_svn_error
-    @needs_busy
-    def get_lock(self, path):
-        return svn.ra.get_lock(self._ra, path)
-
-    class SvnLock(object):
-        def __init__(self, transport, tokens):
-            self._tokens = tokens
-            self._transport = transport
-
-        def unlock(self):
-            self.transport.unlock(self.locks)
-
-    @convert_svn_error
-    @needs_busy
-    def unlock(self, locks, break_lock=False):
-        def lock_cb(baton, path, do_lock, lock, ra_err, pool):
-            pass
-        return svn.ra.unlock(self._ra, locks, break_lock, lock_cb)
-
-    @convert_svn_error
-    @needs_busy
-    def lock_write(self, path_revs, comment=None, steal_lock=False):
-        return self.PhonyLock() # FIXME
-        tokens = {}
-        def lock_cb(baton, path, do_lock, lock, ra_err, pool):
-            tokens[path] = lock
-        svn.ra.lock(self._ra, path_revs, comment, steal_lock, lock_cb)
-        return SvnLock(self, tokens)
-
-    @convert_svn_error
-    @needs_busy
-    def check_path(self, path, revnum, *args, **kwargs):
-        assert len(path) == 0 or path[0] != "/"
+    def check_path(self, path, revnum):
         path = self._request_path(path)
-        self.mutter("svn check_path -r%d %s" % (revnum, path))
-        return svn.ra.check_path(self._ra, path.encode('utf-8'), revnum, *args, **kwargs)
+        conn = self.get_connection()
+        try:
+            return conn.check_path(path, revnum)
+        finally:
+            self.add_connection(conn)
 
-    @convert_svn_error
-    @needs_busy
     def mkdir(self, relpath, mode=None):
-        assert len(relpath) == 0 or relpath[0] != "/"
-        path = urlutils.join(self.svn_url, relpath)
+        conn = self.get_connection()
         try:
-            svn.client.mkdir([path.encode("utf-8")], self._client)
-        except SubversionException, (msg, num):
-            if num == svn.core.SVN_ERR_FS_NOT_FOUND:
-                raise NoSuchFile(path)
-            if num == svn.core.SVN_ERR_FS_ALREADY_EXISTS:
-                raise FileExists(path)
-            raise
+            return conn.mkdir(relpath, mode)
+        finally:
+            self.add_connection(conn)
 
-    @convert_svn_error
     def replay(self, revision, low_water_mark, send_deltas, editor, pool=None):
-        self._open_real_transport()
-        self.mutter('svn replay -r%r:%r' % (low_water_mark, revision))
-        self._mark_busy()
-        edit, edit_baton = self._make_editor(editor, pool)
-        svn.ra.replay(self._ra, revision, low_water_mark, send_deltas,
-                      edit, edit_baton, pool)
-
-    @convert_svn_error
-    def do_update(self, revnum, recurse, editor, pool=None):
-        self._open_real_transport()
-        self.mutter('svn update -r %r' % revnum)
-        self._mark_busy()
-        edit, edit_baton = self._make_editor(editor, pool)
-        return self.Reporter(self, svn.ra.do_update(self._ra, revnum, "", 
-                             recurse, edit, edit_baton, pool))
-
-    @convert_svn_error
-    def has_capability(self, cap):
-        return svn.ra.has_capability(self._ra, cap)
-
-    @convert_svn_error
-    def revprop_list(self, revnum, pool=None):
-        self.mutter('svn revprop-list -r %r' % revnum)
-        return svn.ra.rev_proplist(self._ra, revnum, pool)
-
-    @convert_svn_error
-    def get_commit_editor(self, revprops, done_cb, lock_token, keep_locks):
-        self._open_real_transport()
-        self._mark_busy()
+        conn = self._open_real_transport()
         try:
-            if hasattr(svn.ra, 'get_commit_editor3'):
-                editor = svn.ra.get_commit_editor3(self._ra, revprops, done_cb, 
-                                                  lock_token, keep_locks)
-            elif revprops.keys() != [svn.core.SVN_PROP_REVISION_LOG]:
-                raise NotImplementedError()
-            else:
-                editor = svn.ra.get_commit_editor2(self._ra, 
-                            revprops[svn.core.SVN_PROP_REVISION_LOG],
-                            done_cb, lock_token, keep_locks)
+            return conn.replay(revision, low_water_mark, 
+                                             send_deltas, editor, pool)
+        finally:
+            self.add_connection(conn)
 
-            return Editor(self, editor)
-        except:
-            self._unmark_busy()
-            raise
+    def do_update(self, revnum, recurse, editor, pool=None):
+        conn = self._open_real_transport()
+        try:
+            return conn.do_update(revnum, recurse, editor, pool)
+        finally:
+            self.add_connection(conn)
+
+    def has_capability(self, cap):
+        conn = self.get_connection()
+        try:
+            return conn.has_capability(cap)
+        finally:
+            self.add_connection(conn)
+
+    def revprop_list(self, revnum, pool=None):
+        conn = self.get_connection()
+        try:
+            return conn.revprop_list(revnum, pool)
+        finally:
+            self.add_connection(conn)
+
+    def get_commit_editor(self, revprops, done_cb, lock_token, keep_locks):
+        conn = self._open_real_transport()
+        try:
+            return conn.get_commit_editor(revprops, done_cb,
+                                         lock_token, keep_locks)
+        finally:
+            self.add_connection(conn)
 
     def listable(self):
         """See Transport.listable().
@@ -564,6 +731,9 @@ class SvnRaTransport(Transport):
     def lock_read(self, relpath):
         """See Transport.lock_read()."""
         return self.PhonyLock()
+
+    def lock_write(self, path_revs, comment=None, steal_lock=False):
+        return self.PhonyLock() # FIXME
 
     def _is_http_transport(self):
         return (self.svn_url.startswith("http://") or 

@@ -19,7 +19,11 @@ import errors
 
 SVN_PROP_SVK_MERGE = 'svk:merge'
 
-parse_svk_features = lambda text: set(text.splitlines())
+# Some previous versions of svk occasionally recorded a merge ticket which
+# contained a line containing only two colons. This is used to filter them out
+filter_svk_merge_ticket = lambda line: line != '::'
+
+parse_svk_features = lambda text: set(filter(filter_svk_merge_ticket, text.splitlines()))
 
 serialize_svk_features = lambda features: "".join([x+"\n" for x in sorted(features)])
 

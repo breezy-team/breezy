@@ -19,7 +19,7 @@
 from tests import TestCaseWithSubversionRepository
 from bzrlib.errors import NotBranchError, NoSuchFile, FileExists, InvalidURL
 from bzrlib import urlutils
-from transport import SvnRaTransport, bzr_to_svn_url
+from transport import SvnRaTransport, bzr_to_svn_url, _url_unescape_uri
 from unittest import TestCase
 
 import os
@@ -187,3 +187,9 @@ class UrlConversionTest(TestCase):
                          bzr_to_svn_url("http://host/location"))
         self.assertEqual("http://host/location", 
                          bzr_to_svn_url("svn+http://host/location"))
+        self.assertEqual("http://host/gtk+/location", 
+                         bzr_to_svn_url("svn+http://host/gtk%2B/location"))
+
+    def test_url_unescape_uri(self):
+        self.assertEquals("http://svn.gnome.org/svn/gtk+/trunk",
+                _url_unescape_uri("http://svn.gnome.org/svn/gtk%2B/trunk"))

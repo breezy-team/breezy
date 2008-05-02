@@ -592,22 +592,22 @@ class TestGuessBranchingSchemeFromPath(TestCase):
 class TestGuessBranchingSchemeFromHistory(TestCase):
     def test_simple(self):
         scheme = guess_scheme_from_history([
-            ("", {"trunk": ('M', None, None)}, 0)], 1)
+            ("", {"trunk": ('M', None, None)}, 0, None)], 1)
         self.assertIsInstance(scheme, TrunkBranchingScheme)
         self.assertEqual(0, scheme.level)
 
     def test_simple_with_relpath(self):
         scheme = guess_scheme_from_history([
-            ("", {"trunk": ('M', None, None)}, 0)], 1, 
+            ("", {"trunk": ('M', None, None)}, 0, None)], 1, 
             relpath="trunk")
         self.assertIsInstance(scheme, TrunkBranchingScheme)
         self.assertEqual(0, scheme.level)
 
     def test_simple_prefer_relpath(self):
         scheme = guess_scheme_from_history([
-            ("", {"trunk": ('M', None, None)}, 1),
-            ("", {"trunk": ('M', None, None)}, 2),
-            ("", {"trunk/bar": ('M', None, None)}, 3),
+            ("", {"trunk": ('M', None, None)}, 1, None),
+            ("", {"trunk": ('M', None, None)}, 2, None),
+            ("", {"trunk/bar": ('M', None, None)}, 3, None),
             ], 3, 
             relpath="trunk/bar")
         self.assertIsInstance(scheme, SingleBranchingScheme)
@@ -615,17 +615,17 @@ class TestGuessBranchingSchemeFromHistory(TestCase):
 
     def test_simple_notwant_single(self):
         scheme = guess_scheme_from_history([
-            ("", {"foo": ('M', None, None)}, 1),
-            ("", {"foo": ('M', None, None)}, 2),
-            ("", {"foo/bar": ('M', None, None)}, 3),
+            ("", {"foo": ('M', None, None)}, 1, None),
+            ("", {"foo": ('M', None, None)}, 2, None),
+            ("", {"foo/bar": ('M', None, None)}, 3, None),
             ], 3)
         self.assertIsInstance(scheme, NoBranchingScheme)
 
     def test_simple_no_bp_common(self):
         scheme = guess_scheme_from_history([
-            ("", {"foo": ('M', None, None)}, 1),
-            ("", {"trunk": ('M', None, None)}, 2),
-            ("", {"trunk": ('M', None, None)}, 3),
+            ("", {"foo": ('M', None, None)}, 1, None),
+            ("", {"trunk": ('M', None, None)}, 2, None),
+            ("", {"trunk": ('M', None, None)}, 3, None),
             ], 3)
         self.assertIsInstance(scheme, TrunkBranchingScheme)
 

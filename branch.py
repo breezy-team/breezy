@@ -25,7 +25,7 @@ from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.workingtree import WorkingTree
 
 import svn.client, svn.core
-from svn.core import SubversionException, Pool
+from svn.core import SubversionException
 
 from commit import push
 from config import BranchConfig
@@ -69,7 +69,6 @@ class SvnBranch(Branch):
         self._format = SvnBranchFormat()
         self._lock_mode = None
         self._lock_count = 0
-        self._cached_revnum = None
         self.mapping = self.repository.get_mapping()
         self._branch_path = branch_path.strip("/")
         assert isinstance(self._branch_path, str)
@@ -125,7 +124,7 @@ class SvnBranch(Branch):
         """
         if self._lock_mode == 'r' and self._cached_revnum:
             return self._cached_revnum
-        latest_revnum = self.repository.transport.get_latest_revnum()
+        latest_revnum = self.repository.get_latest_revnum()
         self._cached_revnum = self.repository._log.find_latest_change(self.get_branch_path(), latest_revnum, include_children=True)
         return self._cached_revnum
 
@@ -185,8 +184,9 @@ class SvnBranch(Branch):
             rev.kind = svn.core.svn_opt_revision_number
             rev.value.number = revnum
 
-        client_ctx = create_svn_client(Pool())
-        svn.client.checkout(bzr_to_svn_url(self.base), to_location, rev, 
+        svn_url = bzr_to_svn_url(self.base)
+        client_ctx = create_svn_client(svn_url)
+        svn.client.checkout(svn_url, to_location, rev, 
                             True, client_ctx)
 
         return WorkingTree.open(to_location)
@@ -251,8 +251,12 @@ class SvnBranch(Branch):
     def _gen_revision_history(self):
         """Generate the revision history from last revision
         """
-        history = list(self.repository.iter_reverse_revision_history(
-            self.last_revision()))
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            history = list(self.repository.iter_reverse_revision_history(
+                self.last_revision(), pb=pb))
+        finally:
+            pb.finished()
         history.reverse()
         return history
 
@@ -260,8 +264,7 @@ class SvnBranch(Branch):
         """See Branch.last_revision()."""
         # Shortcut for finding the tip. This avoids expensive generation time
         # on large branches.
-        last_revnum = self.get_revnum()
-        return self.repository.generate_revision_id(last_revnum, self.get_branch_path(last_revnum), self.mapping)
+        return self.generate_revision_id(self.get_revnum())
 
     def pull(self, source, overwrite=False, stop_revision=None, 
              _hook_master=None, run_hooks=True):
@@ -350,6 +353,7 @@ class SvnBranch(Branch):
         else:
             self._lock_mode = 'w'
             self._lock_count = 1
+        self.repository.lock_write()
         
     def lock_read(self):
         """See Branch.lock_read()."""
@@ -359,14 +363,19 @@ class SvnBranch(Branch):
         else:
             self._lock_mode = 'r'
             self._lock_count = 1
+        self.repository.lock_read()
 
     def unlock(self):
         """See Branch.unlock()."""
         self._lock_count -= 1
         if self._lock_count == 0:
             self._lock_mode = None
-            self._cached_revnum = None
             self._clear_cached_state()
+        self.repository.unlock()
+
+    def _clear_cached_state(self):
+        super(SvnBranch,self)._clear_cached_state()
+        self._cached_revnum = None
 
     def get_parent(self):
         """See Branch.get_parent()."""

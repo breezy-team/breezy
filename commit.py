@@ -32,8 +32,9 @@ from cStringIO import StringIO
 from errors import ChangesRootLHSHistory, MissingPrefix, RevpropChangeFailed
 from svk import (generate_svk_feature, serialize_svk_features, 
                  parse_svk_features, SVN_PROP_SVK_MERGE)
+from logwalker import lazy_dict
 from mapping import parse_revision_id
-from repository import (SvnRepositoryFormat, SvnRepository, lazy_dict)
+from repository import SvnRepositoryFormat, SvnRepository
 from scheme import is_valid_property_name
 import urllib
 
@@ -142,7 +143,7 @@ class SvnCommitBuilder(RootCommitBuilder):
         if self.base_revid is None:
             base_branch_props = {}
         else:
-            base_branch_props = lazy_dict(lambda: self.repository.branchprop_list.get_properties(self.base_path, self.base_revnum))
+            base_branch_props = lazy_dict({}, self.repository.branchprop_list.get_properties, self.base_path, self.base_revnum)
         (self._svn_revprops, self._svnprops) = self.base_mapping.export_revision(self.branch.get_branch_path(), timestamp, timezone, committer, revprops, revision_id, self.base_revno+1, merges, base_branch_props)
 
         if len(merges) > 0:
@@ -408,7 +409,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             self.revision_metadata = revision_data
         
         bp_parts = self.branch.get_branch_path().split("/")
-        repository_latest_revnum = self.repository.transport.get_latest_revnum()
+        repository_latest_revnum = self.repository.get_latest_revnum()
         lock = self.repository.transport.lock_write(".")
         set_revprops = self.repository.get_config().get_set_revprops()
         remaining_revprops = self._svn_revprops # Keep track of the revprops that haven't been set yet
@@ -509,6 +510,7 @@ class SvnCommitBuilder(RootCommitBuilder):
 
         # Make sure the logwalker doesn't try to use ra 
         # during checkouts...
+        self.repository._clear_cached_state()
         self.repository._log.fetch_revisions(self.revision_metadata.revision)
 
         revid = self.branch.generate_revision_id(self.revision_metadata.revision)

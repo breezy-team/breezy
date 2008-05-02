@@ -13,23 +13,29 @@ proposed for inclusion in Subversion 1.4.7.
 One way to work around this problem is to Ctrl+C the branch operation 
 and restart it.
 
-I am unable to access a repository that requires user/password authentication.
-------------------------------------------------------------------------------
+I am unable to access a repository that requires user/password authentication or uses self-signed SSL certificates
+------------------------------------------------------------------------------------------------------------------
 The Python bindings required for password prompting are only present in 
 version 1.5 of Subversion so password prompting is only possible if 
 you have that version installed.
 
-If you have an older version installed, bzr-svn can 
-use passwords cached by Subversion. Subversion can be forced to cache 
-the password by accessing the repository using the Subversion command-line 
-client. For example, try running 'svn info <url>'. If you are using a 
-Subversion repository over http or https it may be necessary to prefix the
-repository URL with "svn+", e.g. 
+If you have an older version of Subversion installed, bzr-svn can 
+use passwords cached by Subversion or credentials specified in the URL. 
+
+Subversion can be forced to cache the password by accessing the repository 
+using the Subversion command-line client. 
+For example, try running 'svn info <url>'. 
+
+You can specify the username and password in the URL in the standard way, e.g.::
+
+  $ bzr co svn+http://guest:@tortoisesvn.tigris.org/svn/tortoisesvn/trunk
+
+If you are using a Subversion repository over http or https it may be 
+necessary to prefix the repository URL with "svn+", e.g. 
 svn+http://svn.python.org/projects/python/trunk/
 
 Trying to branch into repository gives an error about incompatibility.
 ----------------------------------------------------------------------
-
 Creating a repository and then trying to clone a Subversion branch into 
 that repository may cause the following error:
 
@@ -70,8 +76,8 @@ would like to use Subversion revision numbers, use the "svn:" revision specifier
 
   $ bzr ls -rsvn:34 svn://example.com/bar
 
-Bazaar reports branches have diverged while pulling, when they haven't
-----------------------------------------------------------------------
+After upgrading bzr-svn, Bazaar reports branches have diverged while pulling, when they haven't
+-----------------------------------------------------------------------------------------------
 As of version 0.4, bzr-svn creates revisions with different revision ids than 
 previous versions. In other words, existing bzr-svn branches created with 
 0.3.x can not be used directly with 0.4.0 but will have to be upgraded to 
@@ -86,7 +92,7 @@ See hooks/pre-revprop-change in the Subversion repository for
 more information about how to do this.
 
 You also need to enable support for this in bzr-svn by setting 
-override-svn-revprops to True in ~/.bazaar/bazaar.conf.
+``override-svn-revprops`` to True in ~/.bazaar/bazaar.conf.
 
 I converted my Subversion repository using svn-import, but now all branches are empty!
 --------------------------------------------------------------------------------------
@@ -95,13 +101,62 @@ bzr-svn does not create working trees by default. If you need
 the working trees, run "bzr checkout" in the branch or 
 specify --trees to svn-import.
 
-bzr-svn did a replace operation when I tried to push a merge commit to Subversion
----------------------------------------------------------------------------------
-Yes, this is because bzr-svn has to preserve the left-hand side history of your 
+bzr-svn did a replace operation on the branch I pushed to when I tried to push a merge commit to Subversion
+-----------------------------------------------------------------------------------------------------------
+Yes, this is because bzr-svn has to preserve the mainline history of your 
 branch. 
 
 If you would like to avoid this, use a checkout and merge into that ("bzr co") 
-or rebase on trunk rather than merge it.
+or rebase on trunk rather than merge it. 
+
+For example::
+
+ $ bzr push ../trunk
+ bzr: ERROR: These branches have diverged.  Try using "merge" and then "push".
+ $ bzr rebase ../trunk
+ All changes applied successfully.
+ ...
+ $ bzr push ../trunk
+ All changes applied successfully.
+ Pushed up to revision 1075.
+
+If you would like to forbid Bazaar from ever doing these operations, set the 
+``append-revisions-only`` setting to True for the repository you're 
+pushing to.
+
+bzr-svn sets all kinds of file properties when pushing revisions into Subversion. Is this really necessary?
+-----------------------------------------------------------------------------------------------------------
+Yes, this is because bzr-svn actually supports pushing to Subversion
+retaining the exact same history that is in the Bazaar branch 
+you're pushing. These properties are used for storing Bazaar metadata that 
+can not be losslessly mapped to existing Subversion metadata. 
+
+It would be possible to support pushing changes to Subversion without
+setting that metadata but then the revision created in Subversion
+would actually be a different one than in your local branch. 
+You would get a DivergedBranches error when pulling from a svn branch you have 
+just pushed to. 
+
+We have considered setting revision properties with this metadata
+rather than file properties so they don't show up in "svn diff" but
+that requires more work in bzr-svn. Being able to set custom revision
+properties also depends on Subversion 1.5 on the server or modification of the 
+default repository hooks.
+
+If you are using trac, you can get it to ignore these file properties by 
+setting	the "hide_properties" setting in the browser section of your 
+configuration to a list of properties that should not be displayed by trac, 
+e.g.::
+
+  [browser]
+  hide_properties = svk:merge, bzr:file-ids, bzr:merge, bzr:revision-info
+
+Is it possible to not use the on-disk cache?
+--------------------------------------------
+
+Yes, simply set "cache = False" for the repository in question in ~/.bazaar/subversion.conf. 
+This will of course have some consequences for the performance of bzr-svn since it 
+will have to re-fetch data.
 
 ..
 	vim: ft=rest

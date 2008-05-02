@@ -22,7 +22,7 @@ from bzrlib.bzrdir import BzrDirFormat, format_registry
 from bzrlib.commands import Command, register_command, display_command, Option
 from bzrlib.help_topics import topic_registry
 from bzrlib.revisionspec import SPEC_TYPES
-from bzrlib.trace import warning
+from bzrlib.trace import warning, mutter
 from bzrlib.transport import register_lazy_transport, register_transport_proto
 
 import format
@@ -31,7 +31,7 @@ import revspec
 # versions ending in 'exp' mean experimental mappings
 # versions ending in 'dev' mean development version
 # versions ending in 'final' mean release (well tested, etc)
-version_info = (0, 4, 10, 'dev', 0)
+version_info = (0, 4, 10, 'exp', 0)
 
 if version_info[3] == 'final':
     version_string = '%d.%d.%d' % version_info[:3]
@@ -79,6 +79,8 @@ def check_subversion_version():
         warning('Installed Subversion version does not have updated Python '
                 'bindings. See the bzr-svn README for details.')
         raise bzrlib.errors.BzrError("incompatible python subversion bindings")
+    import svn.core
+    mutter("bzr-svn: using Subversion %d.%d.%d (%s)" % (svn.core.SVN_VER_MAJOR, svn.core.SVN_VER_MINOR, svn.core.SVN_VER_MICRO, svn.core.__file__))
 
 check_subversion_version()
 

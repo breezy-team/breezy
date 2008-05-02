@@ -8,8 +8,8 @@ bzr-svn 0.4.10  UNRELEASED
 
    * Add new ``log-strip-trailing-newline'' option which removes 
      the last trailing newline from the log message when pushing 
-	 to Subversion. This feature is only available for the 
-	 experimental mappings. (#189227)
+     to Subversion. This feature is only available for the 
+     experimental mappings. (#189227)
 
    * Allow more granularity over what properties are overridden using 
      ``override-svn-revprops''. (#159143)
@@ -22,6 +22,20 @@ bzr-svn 0.4.10  UNRELEASED
 
    * Parse mergeWithUpstream set by svn-buildpackage.
 
+   * Cache last revision number during read locks, significantly speeds
+     up push.
+
+   * Use different cache for experimental versions of bzr-svn.
+
+   * Support set_user_option() on Subversion branch BranchConfig. (#195962)
+
+   * Support credentials in URLs. (#181534)
+
+   * Allow usage without on-disk cache. (#131008)
+
+   * Restrict history sample size used for guessing branching scheme to avoid
+     looking at the full history for very large repositories.
+
   INTERNALS
 
    * Branching from a Subversion repository will now fetch right-hand side 
@@ -31,11 +45,18 @@ bzr-svn 0.4.10  UNRELEASED
 
   BUGS
 
-    * Avoid sometimes incorrect determination of Bazaar revision numbers. (#181773)
+   * Avoid sometimes incorrect determination of Bazaar revision numbers. (#181773)
 
-	* Deal with bzr:svn-revision-info property being removed. (#206728)
+   * Deal with bzr:svn-revision-info property being removed. (#206728)
 
-bzr-svn 0.4.9	2008-03-23
+   * Gracefully handle erroneous svk merge tickets created by old versions of svk.
+
+   * Use standard infrastructure for caching revision numbers. (#213953)
+
+   * Work around bug in the Subversion libraries which don't accept 
+     http(s) URLs with urlencoded characters. (#190229)
+
+bzr-svn 0.4.9    2008-03-23
 
   FEATURES
 
@@ -75,7 +96,7 @@ bzr-svn 0.4.9	2008-03-23
 
    * Add note about svn+ prefix to authentication question.
 
-bzr-svn 0.4.8	2008-03-21
+bzr-svn 0.4.8    2008-03-21
 
   BUG FIXES
 
@@ -99,7 +120,7 @@ bzr-svn 0.4.8	2008-03-21
 
    * Add -d option to the svn-push command. 
 
-bzr-svn 0.4.7	2008-02-01
+bzr-svn 0.4.7    2008-02-01
  
   FEATURES
 
@@ -130,7 +151,7 @@ bzr-svn 0.4.7	2008-02-01
    * Fix handling of weird file change after replacing from other branch.
      (#186876)
 
-bzr-svn 0.4.6	2008-01-08
+bzr-svn 0.4.6    2008-01-08
 
   PERFORMANCE
   
@@ -160,7 +181,7 @@ bzr-svn 0.4.6	2008-01-08
 
    * Deal with kind changes that don't change file contents. (#178149)
 
-bzr-svn 0.4.5	2007-12-01
+bzr-svn 0.4.5    2007-12-01
 
   IMPROVEMENTS
 
@@ -187,7 +208,7 @@ bzr-svn 0.4.5	2007-12-01
    * Fix compatibility with Bazaar 1.0rc1.
 
 
-bzr-svn 0.4.4	2007-11-02
+bzr-svn 0.4.4    2007-11-02
 
   PERFORMANCE
 
@@ -268,7 +289,7 @@ bzr-svn 0.4.4	2007-11-02
 
    * Add simple FAQ file. (#144388)
 
-bzr-svn 0.4.3	2007-09-15
+bzr-svn 0.4.3    2007-09-15
  
   PERFORMANCE
 
@@ -292,7 +313,7 @@ bzr-svn 0.4.3	2007-09-15
 
    * Implement SvnWorkingTreeDir.needs_format_conversion().
 
-bzr-svn 0.4.2	2007-09-09
+bzr-svn 0.4.2    2007-09-09
 
   BUG FIXES
 
@@ -317,7 +338,7 @@ bzr-svn 0.4.2	2007-09-09
    * Fix sqlite index that was causing indexing errors when a repository 
      contains multiple copies of a single revision. 
 
-bzr-svn 0.4.1	2007-08-26
+bzr-svn 0.4.1    2007-08-26
 
   BUG FIXES
 
@@ -360,7 +381,7 @@ bzr-svn 0.4.1	2007-08-26
 
    * Support reading gzip and bzip2 compressed dump files in svn-import.
 
-bzr-svn 0.4.0	2007-08-04	
+bzr-svn 0.4.0    2007-08-04    
   
   BUG FIXES
 
@@ -417,7 +438,7 @@ bzr-svn 0.4.0	2007-08-04
 
    * do_update() is now used to find the contents of a directory recursively. 
      This should reduce the number of roundtrips significantly when 
-	 finding file id mappings.
+     finding file id mappings.
 
    * Support read locking for Branch.
 
@@ -456,7 +477,7 @@ bzr-svn 0.4.0	2007-08-04
 
    * Implement SvnWorkingTree.smart_add() (#79336)
 
-bzr-svn 0.3.4	2007-06-15
+bzr-svn 0.3.4    2007-06-15
 
   BUG FIXES
 
@@ -465,7 +486,7 @@ bzr-svn 0.3.4	2007-06-15
 
   * Fix compatibility with Bazaar 0.17.
 
-bzr-svn 0.3.3	2007-04-29
+bzr-svn 0.3.3    2007-04-29
 
   IMPROVEMENTS
 
@@ -477,7 +498,7 @@ bzr-svn 0.3.3	2007-04-29
 
   * Don't show "not updating working tree" warnings when pushing.
 
-bzr-svn 0.3.2	2007-03-13
+bzr-svn 0.3.2    2007-03-13
 
   BUG FIXES
 
@@ -490,7 +511,7 @@ bzr-svn 0.3.2	2007-03-13
 
   * Handle unicode characters in filenames (#54736)
 
-bzr-svn 0.3.1	2007-01-31
+bzr-svn 0.3.1    2007-01-31
 
   BUG FIXES
  
@@ -505,7 +526,7 @@ bzr-svn 0.3.1	2007-01-31
    * Working tree copies will be disabled if the version of python-subversion 
      is too old.
 
-bzr-svn 0.3.0	2007-01-16
+bzr-svn 0.3.0    2007-01-16
 
   BUG FIXES
 

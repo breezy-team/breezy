@@ -15,6 +15,7 @@
 
 from bzrlib.tests import TestCase
 from svk import parse_svk_feature
+from svk import parse_svk_features
 
 class SvkTests(TestCase):
     def test_parse_svk_feature_root(self):
@@ -25,4 +26,7 @@ class SvkTests(TestCase):
         self.assertEqual(("auuid", "bp", 6),
                          parse_svk_feature("auuid:/bp:6"))
 
+    def test_parse_erroneous_svk_feature_root(self):
+        self.assertEqual(set(["auuid:/bp:6"]),
+                 parse_svk_features("auuid:/bp:6\n::"))
 

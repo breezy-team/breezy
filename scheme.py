@@ -435,7 +435,7 @@ def guess_scheme_from_history(changed_paths, last_revnum,
                               relpath=None):
     """Try to determine the best fitting branching scheme.
 
-    :param changed_paths: Iterator over (branch_path, changes, revnum)
+    :param changed_paths: Iterator over (branch_path, changes, revnum, revprops)
         as returned from LogWalker.iter_changes().
     :param last_revnum: Number of entries in changed_paths.
     :param relpath: Branch path that should be accepted by the branching 
@@ -446,7 +446,7 @@ def guess_scheme_from_history(changed_paths, last_revnum,
     pb = ui.ui_factory.nested_progress_bar()
     scheme_cache = {}
     try:
-        for (bp, revpaths, revnum) in changed_paths:
+        for (bp, revpaths, revnum, revprops) in changed_paths:
             assert isinstance(revpaths, dict)
             pb.update("analyzing repository layout", last_revnum-revnum, 
                       last_revnum)

@@ -25,51 +25,72 @@ from transport import SvnRaTransport
 import svn.core
 
 from cache import CacheTable
+import changes
 
 LOG_CHUNK_LIMIT = 0
 
-def changes_find_prev_location(paths, branch_path, revnum):
-    assert isinstance(paths, dict)
-    assert isinstance(branch_path, str)
-    assert isinstance(revnum, int)
-    if revnum == 0:
-        assert branch_path == ""
-        return None
-    # If there are no special cases, just go try the 
-    # next revnum in history
-    revnum -= 1
+class lazy_dict(object):
+    def __init__(self, initial, create_fn, *args):
+        self.initial = initial
+        self.create_fn = create_fn
+        self.args = args
+        self.dict = None
 
-    if branch_path == "":
-        return (branch_path, revnum)
+    def _ensure_init(self):
+        if self.dict is None:
+            self.dict = self.create_fn(*self.args)
 
-    # Make sure we get the right location for next time, if 
-    # the branch itself was copied
-    if (paths.has_key(branch_path) and 
-        paths[branch_path][0] in ('R', 'A')):
-        if paths[branch_path][1] is None: 
-            return None # Was added here
-        revnum = paths[branch_path][2]
-        branch_path = paths[branch_path][1].encode("utf-8")
-        return (branch_path, revnum)
-    
-    # Make sure we get the right location for the next time if 
-    # one of the parents changed
+    def __len__(self):
+        self._ensure_init()
+        return len(self.dict)
 
-    # Path names need to be sorted so the longer paths 
-    # override the shorter ones
-    for p in sorted(paths.keys(), reverse=True):
-        if paths[p][0] == 'M':
-            continue
-        if branch_path.startswith(p+"/"):
-            assert paths[p][0] in ('A', 'R'), "Parent %r wasn't added" % p
-            assert paths[p][1] is not None, \
-                "Empty parent %r added, but child %r wasn't added !?" % (p, branch_path)
+    def __getitem__(self, key):
+        if key in self.initial:
+            return self.initial.__getitem__(key)
+        self._ensure_init()
+        return self.dict.__getitem__(key)
 
-            revnum = paths[p][2]
-            branch_path = paths[p][1].encode("utf-8") + branch_path[len(p):]
-            return (branch_path, revnum)
+    def __setitem__(self, key, value):
+        self._ensure_init()
+        return self.dict.__setitem__(key, value)
 
-    return (branch_path, revnum)
+    def __contains__(self, key):
+        if key in self.initial:
+            return True
+        self._ensure_init()
+        return self.dict.__contains__(key)
+
+    def get(self, key, default=None):
+        if key in self.initial:
+            return self.initial[key]
+        self._ensure_init()
+        return self.dict.get(key, default)
+
+    def has_key(self, key):
+        if self.initial.has_key(key):
+            return True
+        self._ensure_init()
+        return self.dict.has_key(key)
+
+    def keys(self):
+        self._ensure_init()
+        return self.dict.keys()
+
+    def values(self):
+        self._ensure_init()
+        return self.dict.values()
+
+    def items(self):
+        self._ensure_init()
+        return self.dict.items()
+
+    def __repr__(self):
+        self._ensure_init()
+        return repr(self.dict)
+
+    def __eq__(self, other):
+        self._ensure_init()
+        return self.dict.__eq__(other)
 
 
 class CachingLogWalker(CacheTable):
@@ -93,8 +114,7 @@ class CachingLogWalker(CacheTable):
           create unique index if not exists path_rev_path_action on changed_path(rev, path, action);
         """)
 
-    def find_latest_change(self, path, revnum, include_parents=False,
-                           include_children=False):
+    def find_latest_change(self, path, revnum, include_children=False):
         """Find latest revision that touched path.
 
         :param path: Path to check for changes
@@ -112,8 +132,8 @@ class CachingLogWalker(CacheTable):
                 extra += " OR path LIKE '%'"
             else:
                 extra += " OR path LIKE '%s/%%'" % path.strip("/")
-        if include_parents:
-            extra += " OR ('%s' LIKE (path || '/%%') AND (action = 'R' OR action = 'A'))" % path.strip("/")
+        extra += " OR ('%s' LIKE (path || '/%%') AND (action = 'R' OR action = 'A'))" % path.strip("/")
+ 
         query = "SELECT rev FROM changed_path WHERE (path='%s'%s) AND rev <= %d ORDER BY rev DESC LIMIT 1" % (path.strip("/"), extra, revnum)
 
         row = self.cachedb.execute(query).fetchone()
@@ -125,16 +145,19 @@ class CachingLogWalker(CacheTable):
 
         return row[0]
 
-    def iter_changes(self, path, revnum):
+    def iter_changes(self, path, from_revnum, to_revnum=0, limit=0, pb=None):
         """Return iterator over all the revisions between revnum and 0 named path or inside path.
 
         :param path:    Branch path to start reporting (in revnum)
-        :param revnum:  Start revision.
-        :return: An iterator that yields tuples with (path, paths, revnum)
+        :param from_revnum:  Start revision.
+        :param to_revnum: End revision
+        :return: An iterator that yields tuples with (path, paths, revnum, revprops)
             where paths is a dictionary with all changes that happened in path 
             in revnum.
         """
-        assert revnum >= 0
+        assert from_revnum >= 0 and to_revnum >= 0 and from_revnum >= to_revnum
+
+        revnum = from_revnum
 
         self.mutter("iter changes %r:%r" % (path, revnum))
 
@@ -142,14 +165,23 @@ class CachingLogWalker(CacheTable):
 
         path = path.strip("/")
 
-        while revnum >= 0:
-            assert revnum > 0 or path == ""
-            revpaths = self.get_revision_paths(revnum, path, recurse=recurse)
+        i = 0
 
-            next = changes_find_prev_location(revpaths, path, revnum)
+        while revnum >= to_revnum:
+            if pb is not None:
+                pb.update("determining changes", from_revnum-revnum, from_revnum)
+            assert revnum > 0 or path == "", "Inconsistent path,revnum: %r,%r" % (revnum, path)
+            revpaths = self._get_revision_paths(revnum)
 
-            if revpaths != {}:
-                yield (path, revpaths, revnum)
+            next = changes.find_prev_location(revpaths, path, revnum)
+
+            revprops = lazy_dict({}, self._get_transport().revprop_list, revnum)
+
+            if changes.changes_path(revpaths, path, True):
+                yield (path, revpaths, revnum, revprops)
+                i += 1
+                if limit != 0 and i == limit:
+                    break
 
             if next is None:
                 break
@@ -168,36 +200,21 @@ class CachingLogWalker(CacheTable):
         if revnum == 0:
             return (None, -1)
         row = self.cachedb.execute("select action, copyfrom_path, copyfrom_rev from changed_path where path='%s' and rev=%d" % (path, revnum)).fetchone()
+        if row is None:
+            return (None, -1)
         if row[2] == -1:
             if row[0] == 'A':
                 return (None, -1)
             return (path, revnum-1)
         return (row[1], row[2])
 
-    def get_revision_paths(self, revnum, path=None, recurse=False):
-        """Obtain dictionary with all the changes in a particular revision.
-
-        :param revnum: Subversion revision number
-        :param path: optional path under which to return all entries
-        :param recurse: Report changes to parents as well
-        :returns: dictionary with paths as keys and 
-                  (action, copyfrom_path, copyfrom_rev) as values.
-        """
-
+    def _get_revision_paths(self, revnum):
         if revnum == 0:
-            assert path is None or path == ""
             return {'': ('A', None, -1)}
 
-        self.mutter("revision paths: %r" % revnum)
-                
         self.fetch_revisions(revnum)
 
         query = "select path, action, copyfrom_path, copyfrom_rev from changed_path where rev="+str(revnum)
-        if path is not None and path != "":
-            query += " and (path='%s' or path like '%s/%%'" % (path, path)
-            if recurse:
-                query += " or ('%s' LIKE path || '/%%')" % path
-            query += ")"
 
         paths = {}
         for p, act, cf, cr in self.cachedb.execute(query):
@@ -205,6 +222,17 @@ class CachingLogWalker(CacheTable):
                 cf = cf.encode("utf-8")
             paths[p.encode("utf-8")] = (act, cf, cr)
         return paths
+
+    def get_revision_paths(self, revnum):
+        """Obtain dictionary with all the changes in a particular revision.
+
+        :param revnum: Subversion revision number
+        :returns: dictionary with paths as keys and 
+                  (action, copyfrom_path, copyfrom_rev) as values.
+        """
+        self.mutter("revision paths: %r" % revnum)
+
+        return self._get_revision_paths(revnum)
 
     def fetch_revisions(self, to_revnum=None):
         """Fetch information about all revisions in the remote repository
@@ -219,34 +247,29 @@ class CachingLogWalker(CacheTable):
 
         pb = ui.ui_factory.nested_progress_bar()
 
-        def rcvr(log_entry, pool):
-            pb.update('fetching svn revision info', log_entry.revision, to_revnum)
-            orig_paths = log_entry.changed_paths
-            if orig_paths is None:
-                orig_paths = {}
-            for p in orig_paths:
-                copyfrom_path = orig_paths[p].copyfrom_path
-                if copyfrom_path is not None:
-                    copyfrom_path = copyfrom_path.strip("/")
-
-                self.cachedb.execute(
-                     "replace into changed_path (rev, path, action, copyfrom_path, copyfrom_rev) values (?, ?, ?, ?, ?)", 
-                     (log_entry.revision, p.strip("/"), orig_paths[p].action, copyfrom_path, orig_paths[p].copyfrom_rev))
-                # Work around nasty memory leak in Subversion
-                orig_paths[p]._parent_pool.destroy()
-
-            self.saved_revnum = log_entry.revision
-            if self.saved_revnum % 1000 == 0:
-                self.cachedb.commit()
-
         try:
             try:
                 while self.saved_revnum < to_revnum:
-                    pool = Pool()
-                    self.actual._get_transport().get_log("", self.saved_revnum, 
+                    for (orig_paths, revision, revprops) in self.actual._get_transport().iter_log("", self.saved_revnum, 
                                              to_revnum, self.actual._limit, True, 
-                                             True, [], rcvr, pool)
-                    pool.destroy()
+                                             True, []):
+                        pb.update('fetching svn revision info', revision, to_revnum)
+                        if orig_paths is None:
+                            orig_paths = {}
+                        for p in orig_paths:
+                            copyfrom_path = orig_paths[p].copyfrom_path
+                            if copyfrom_path is not None:
+                                copyfrom_path = copyfrom_path.strip("/")
+
+                            self.cachedb.execute(
+                                 "replace into changed_path (rev, path, action, copyfrom_path, copyfrom_rev) values (?, ?, ?, ?, ?)", 
+                                 (revision, p.strip("/"), orig_paths[p].action, copyfrom_path, orig_paths[p].copyfrom_rev))
+                            # Work around nasty memory leak in Subversion
+                            orig_paths[p]._parent_pool.destroy()
+
+                        self.saved_revnum = revision
+                        if self.saved_revnum % 1000 == 0:
+                            self.cachedb.commit()
             finally:
                 pb.finished()
         except SubversionException, (_, num):
@@ -257,6 +280,16 @@ class CachingLogWalker(CacheTable):
         self.cachedb.commit()
 
 
+def struct_revpaths_to_tuples(changed_paths):
+    assert isinstance(changed_paths, dict)
+    revpaths = {}
+    for k,v in changed_paths.items():
+        if v.copyfrom_path is None:
+            copyfrom_path = None
+        else:
+            copyfrom_path = v.copyfrom_path.strip("/")
+        revpaths[k.strip("/")] = (v.action, copyfrom_path, v.copyfrom_rev)
+    return revpaths
 
 
 class LogWalker(object):
@@ -282,8 +315,7 @@ class LogWalker(object):
         self._transport = SvnRaTransport(self.url)
         return self._transport
 
-    def find_latest_change(self, path, revnum, include_parents=False,
-                           include_children=False):
+    def find_latest_change(self, path, revnum, include_children=True):
         """Find latest revision that touched path.
 
         :param path: Path to check for changes
@@ -291,31 +323,69 @@ class LogWalker(object):
         """
         assert isinstance(path, str)
         assert isinstance(revnum, int) and revnum >= 0
-        raise NotImplementedError
+        
+        try:
+            return self._get_transport().iter_log(path, revnum, 0, 2, True, False, []).next()[1]
+        except SubversionException, (_, num):
+            if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
+                raise NoSuchRevision(branch=self, 
+                    revision="Revision number %d" % revnum)
+            if num == svn.core.SVN_ERR_FS_NOT_FOUND:
+                return None
+            raise
 
-    def iter_changes(self, path, revnum):
+    def iter_changes(self, path, from_revnum, to_revnum=0, limit=0, pb=None):
         """Return iterator over all the revisions between revnum and 0 named path or inside path.
 
         :param path:    Branch path to start reporting (in revnum)
-        :param revnum:  Start revision.
-        :return: An iterator that yields tuples with (path, paths, revnum)
+        :param from_revnum:  Start revision.
+        :param to_revnum:  End revision.
+        :return: An iterator that yields tuples with (path, paths, revnum, revprops)
             where paths is a dictionary with all changes that happened in path 
             in revnum.
         """
-        assert revnum >= 0
+        assert from_revnum >= 0 and to_revnum >= 0 and from_revnum >= to_revnum
 
-        raise NotImplementedError
+        try:
+            for (changed_paths, revnum, known_revprops) in self._get_transport().iter_log(path, from_revnum, to_revnum, limit, True, False, []):
+                if pb is not None:
+                    pb.update("determining changes", from_revnum-revnum, from_revnum)
+                if revnum == 0 and changed_paths is None:
+                    revpaths = {"": ('A', None, -1)}
+                else:
+                    assert isinstance(changed_paths, dict), "invalid paths in %r:%r" % (revnum, path)
+                    revpaths = struct_revpaths_to_tuples(changed_paths)
+                next = changes.find_prev_location(revpaths, path, revnum)
+                revprops = lazy_dict(known_revprops, self._get_transport().revprop_list, revnum)
+                yield (path, revpaths, revnum, revprops)
+                if next is None:
+                    break
+                path = next[0]
+        except SubversionException, (_, num):
+            if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
+                raise NoSuchRevision(branch=self, 
+                    revision="Revision number %d" % revnum)
+            raise
 
-    def get_revision_paths(self, revnum, path=None, recurse=False):
+    def get_revision_paths(self, revnum):
         """Obtain dictionary with all the changes in a particular revision.
 
         :param revnum: Subversion revision number
-        :param path: optional path under which to return all entries
-        :param recurse: Report changes to parents as well
         :returns: dictionary with paths as keys and 
                   (action, copyfrom_path, copyfrom_rev) as values.
         """
-        raise NotImplementedError
+        # To make the existing code happy:
+        if revnum == 0:
+            return {'': ('A', None, -1)}
+
+        try:
+            return struct_revpaths_to_tuples(
+                self._get_transport().iter_log("", revnum, revnum, 1, True, True, []).next()[0])
+        except SubversionException, (_, num):
+            if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
+                raise NoSuchRevision(branch=self, 
+                    revision="Revision number %d" % revnum)
+            raise
         
     def find_children(self, path, revnum):
         """Find all children of path in revnum.
@@ -392,4 +462,24 @@ class LogWalker(object):
         :param revnum:  Revision to check
         """
         assert revnum >= 0
-        raise NotImplementedError
+        if revnum == 0:
+            return (None, -1)
+
+        try:
+            paths = struct_revpaths_to_tuples(self._get_transport().iter_log(path, revnum, revnum, 1, True, False, []).next()[0])
+        except SubversionException, (_, num):
+            if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
+                raise NoSuchRevision(branch=self, 
+                    revision="Revision number %d" % revnum)
+            raise
+
+        if not path in paths:
+            return (None, -1)
+
+        if paths[path][2] == -1:
+            if paths[path][0] == 'A':
+                return (None, -1)
+            return (path, revnum-1)
+
+        return (paths[path][1], paths[path][2])
+

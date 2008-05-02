@@ -109,7 +109,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         self.assertTrue(newrepos.has_revision("customrev%s-upgrade" % mapping.upgrade_suffix))
         newrepos.lock_read()
         self.assertTrue((oldrepos.generate_revision_id(1, "", mapping),),
-                        tuple(newrepos.revision_parents("customrev%s-upgrade" % mapping.upgrade_suffix)))
+                        tuple(newrepos.get_revision("customrev%s-upgrade" % mapping.upgrade_suffix).parent_ids))
         newrepos.unlock()
 
     @skip_no_rebase
@@ -182,7 +182,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         self.assertTrue(newrepos.has_revision("customrev%s-upgrade" % mapping.upgrade_suffix))
         newrepos.lock_read()
         self.assertTrue((oldrepos.generate_revision_id(1, "", mapping),),
-                        tuple(newrepos.revision_parents("customrev%s-upgrade" % mapping.upgrade_suffix)))
+                        tuple(newrepos.get_revision("customrev%s-upgrade" % mapping.upgrade_suffix).parent_ids))
         newrepos.unlock()
 
     @skip_no_rebase
@@ -218,9 +218,9 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         self.assertTrue(newrepos.has_revision("anotherrev%s-upgrade" % mapping.upgrade_suffix))
         newrepos.lock_read()
         self.assertTrue((oldrepos.generate_revision_id(1, "", mapping),),
-                        tuple(newrepos.revision_parents("customrev%s-upgrade" % mapping.upgrade_suffix)))
+                        tuple(newrepos.get_revision("customrev%s-upgrade" % mapping.upgrade_suffix).parent_ids))
         self.assertTrue(("customrev-%s-upgrade" % mapping.upgrade_suffix,),
-                        tuple(newrepos.revision_parents("anotherrev%s-upgrade" % mapping.upgrade_suffix)))
+                        tuple(newrepos.get_revision("anotherrev%s-upgrade" % mapping.upgrade_suffix).parent_ids))
         newrepos.unlock()
 
     @skip_no_rebase

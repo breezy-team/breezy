@@ -19,6 +19,7 @@ from bzrlib import osutils, registry
 from bzrlib.errors import InvalidRevisionId
 from bzrlib.trace import mutter
 
+from bzrlib.plugins.svn import version_info
 import calendar
 import errors
 from scheme import BranchingScheme, guess_scheme_from_branch_path
@@ -256,7 +257,7 @@ class BzrSvnMapping(object):
     _warned_experimental = False
 
     def __init__(self):
-        if self.experimental and not BzrSvnMapping._warned_experimental:
+        if (version_info[3] == 'exp' or self.experimental) and not BzrSvnMapping._warned_experimental:
             from bzrlib.trace import warning
             warning("using experimental bzr-svn mappings; output may change between revisions")
             BzrSvnMapping._warned_experimental = True

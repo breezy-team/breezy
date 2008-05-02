@@ -140,14 +140,18 @@ class SvnRemoteAccess(BzrDir):
             stop_revision = source.last_revision()
         target_branch_path = self.branch_path.strip("/")
         repos = self.find_repository()
-        full_branch_url = urlutils.join(repos.transport.base, 
-                                        target_branch_path)
-        if repos.transport.check_path(target_branch_path,
-            repos.transport.get_latest_revnum()) != svn.core.svn_node_none:
-            raise AlreadyBranchError(full_branch_url)
-        push_new(repos, target_branch_path, source, stop_revision)
-        branch = self.open_branch()
-        branch.pull(source, stop_revision=stop_revision)
+        repos.lock_write()
+        try:
+            full_branch_url = urlutils.join(repos.transport.base, 
+                                            target_branch_path)
+            if repos.transport.check_path(target_branch_path,
+                repos.get_latest_revnum()) != svn.core.svn_node_none:
+                raise AlreadyBranchError(full_branch_url)
+            push_new(repos, target_branch_path, source, stop_revision)
+            branch = self.open_branch()
+            branch.pull(source, stop_revision=stop_revision)
+        finally:
+            repos.unlock()
         return branch
 
     def create_branch(self):
@@ -158,7 +162,7 @@ class SvnRemoteAccess(BzrDir):
         if self.branch_path != "":
             # TODO: Set NULL_REVISION in SVN_PROP_BZR_BRANCHING_SCHEME
             repos.transport.mkdir(self.branch_path.strip("/"))
-        elif repos.transport.get_latest_revnum() > 0:
+        elif repos.get_latest_revnum() > 0:
             # Bail out if there are already revisions in this repository
             raise AlreadyBranchError(self.root_transport.base)
         branch = SvnBranch(self.root_transport.base, repos, self.branch_path)
