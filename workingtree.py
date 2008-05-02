@@ -52,7 +52,7 @@ import os
 import urllib
 
 import svn.core, svn.wc
-from svn.core import SubversionException, Pool
+from svn.core import SubversionException
 
 from errors import NoCheckoutSupport
 from format import get_rich_root_format
@@ -79,7 +79,6 @@ class SvnWorkingTree(WorkingTree):
         self.bzrdir = bzrdir
         self._branch = branch
         self.base_revnum = 0
-        self.pool = Pool()
         self.client_ctx = create_svn_client(bzrdir.svn_url)
         self.client_ctx.log_msg_func2 = \
                 svn.client.svn_swig_py_get_commit_log_func

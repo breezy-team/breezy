@@ -25,7 +25,7 @@ from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.workingtree import WorkingTree
 
 import svn.client, svn.core
-from svn.core import SubversionException, Pool
+from svn.core import SubversionException
 
 from commit import push
 from config import BranchConfig

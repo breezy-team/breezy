@@ -29,7 +29,7 @@ from bzrlib.revision import Revision, NULL_REVISION
 from bzrlib.transport import Transport, get_transport
 from bzrlib.trace import info, mutter
 
-from svn.core import SubversionException, Pool
+from svn.core import SubversionException
 import svn.core
 
 import os
@@ -123,7 +123,6 @@ class SvnRepository(Repository):
         self.base = transport.base
         assert self.base is not None
         self._serializer = xml5.serializer_v5
-        self.pool = Pool()
         self.get_config().add_location(self.base)
         self._log = logwalker.LogWalker(transport=transport)
         self.fileid_map = FileIdMap(simple_apply_changes, self)

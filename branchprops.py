@@ -19,7 +19,7 @@
 from bzrlib.errors import NoSuchRevision
 from bzrlib.trace import mutter
 
-from svn.core import SubversionException, Pool
+from svn.core import SubversionException
 import svn.core
 
 
