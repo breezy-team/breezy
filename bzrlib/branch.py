@@ -704,7 +704,16 @@ class Branch(object):
         :return: A BranchCheckResult.
         """
         mainline_parent_id = None
-        for revision_id in self.revision_history():
+        last_revno, last_revision_id = self.last_revision_info()
+        real_rev_history = list(self.repository.iter_reverse_revision_history(
+                                last_revision_id))
+        real_rev_history.reverse()
+        if len(real_rev_history) != last_revno:
+            raise errors.BzrCheckError('revno does not match len(mainline)'
+                ' %s != %s' % (last_revno, len(real_rev_history)))
+        # TODO: We should probably also check that real_rev_history actually
+        #       matches self.revision_history()
+        for revision_id in real_rev_history:
             try:
                 revision = self.repository.get_revision(revision_id)
             except errors.NoSuchRevision, e:
@@ -782,6 +791,14 @@ class Branch(object):
         finally:
             basis_tree.unlock()
         return tree
+
+    @needs_write_lock
+    def reconcile(self, thorough=True):
+        """Make sure the data stored in this branch is consistent."""
+        from bzrlib.reconcile import BranchReconciler
+        reconciler = BranchReconciler(self, thorough=thorough)
+        reconciler.reconcile()
+        return reconciler
 
     def reference_parent(self, file_id, path):
         """Return the parent branch for a tree-reference file_id

@@ -115,8 +115,8 @@ class TestCaseWithConnectionHookedTransport(_backing_test_class):
         return url
 
     def start_logging_connections(self):
-        ConnectionHookedTransport.hooks.install_hook('_set_connection',
-                                                     self._collect_connection)
+        ConnectionHookedTransport.hooks.install_named_hook(
+            '_set_connection', self._collect_connection, None)
         # uninstall our hooks when we are finished
         self.addCleanup(self.reset_hooks)
 

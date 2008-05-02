@@ -42,7 +42,7 @@ from bzrlib.errors import (BzrError, TestamentMismatch, NotABundle, BadBundle,
                            NoSuchFile,)
 from bzrlib.merge import Merge3Merger
 from bzrlib.repofmt import knitrepo
-from bzrlib.osutils import sha_file
+from bzrlib.osutils import sha_file, sha_string
 from bzrlib.tests import (
     SymlinkFeature,
     TestCase,
@@ -1015,18 +1015,28 @@ class BundleTester(object):
         self.assertNotContainsRe(inv_text, 'format="5"')
         self.assertContainsRe(inv_text, 'format="7"')
 
-    def test_across_models(self):
+    def make_repo_with_installed_revisions(self):
         tree = self.make_simple_tree('knit')
         tree.commit('hello', rev_id='rev1')
         tree.commit('hello', rev_id='rev2')
         bundle = read_bundle(self.create_bundle_text('null:', 'rev2')[0])
         repo = self.make_repository('repo', format='dirstate-with-subtree')
         bundle.install_revisions(repo)
+        return repo
+
+    def test_across_models(self):
+        repo = self.make_repo_with_installed_revisions()
         inv = repo.get_inventory('rev2')
         self.assertEqual('rev2', inv.root.revision)
         root_vf = repo.weave_store.get_weave(inv.root.file_id,
                                              repo.get_transaction())
         self.assertEqual(root_vf.versions(), ['rev1', 'rev2'])
+
+    def test_inv_hash_across_serializers(self):
+        repo = self.make_repo_with_installed_revisions()
+        recorded_inv_sha1 = repo.get_inventory_sha1('rev2')
+        xml = repo.get_inventory_xml('rev2')
+        self.assertEqual(sha_string(xml), recorded_inv_sha1)
 
     def test_across_models_incompatible(self):
         tree = self.make_simple_tree('dirstate-with-subtree')

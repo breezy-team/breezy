@@ -260,21 +260,6 @@ class BundleInfo(object):
             elif revision_id not in checked:
                 missing[revision_id] = sha1
 
-        for inv_id, sha1 in inv_to_sha.iteritems():
-            if repository.has_revision(inv_id):
-                # Note: branch.get_inventory_sha1() just returns the value that
-                # is stored in the revision text, and that value may be out
-                # of date. This is bogus, because that means we aren't
-                # validating the actual text, just that we wrote and read the
-                # string. But for now, what the hell.
-                local_sha1 = repository.get_inventory_sha1(inv_id)
-                if sha1 != local_sha1:
-                    raise BzrError('sha1 mismatch. For inventory id {%s}' 
-                                   'local: %s, bundle: %s' % 
-                                   (inv_id, local_sha1, sha1))
-                else:
-                    count += 1
-
         if len(missing) > 0:
             # I don't know if this is an error yet
             warning('Not all revision hashes could be validated.'
