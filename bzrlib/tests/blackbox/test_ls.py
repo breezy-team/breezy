@@ -55,15 +55,23 @@ class TestLS(TestCaseWithTransport):
         self.ls_equals('?        .bzrignore\n'
                        '?        a\n',
                        '--verbose')
+        self.ls_equals('?        .bzrignore\n'
+                       '?        a\n',
+                       '-V')
         self.ls_equals('.bzrignore\n'
                        'a\n',
                        '--unknown')
         self.ls_equals('', '--ignored')
         self.ls_equals('', '--versioned')
+        self.ls_equals('', '-V')
         self.ls_equals('.bzrignore\n'
                        'a\n',
                        '--unknown --ignored --versioned')
+        self.ls_equals('.bzrignore\n'
+                       'a\n',
+                       '--unknown --ignored -V')
         self.ls_equals('', '--ignored --versioned')
+        self.ls_equals('', '--ignored -V')
         self.ls_equals('.bzrignore\0a\0', '--null')
 
     def test_ls_added(self):
@@ -215,6 +223,9 @@ class TestLS(TestCaseWithTransport):
         self.ls_equals('.bzrignore\n'
                        'a\n'
                        , '--versioned')
+        self.ls_equals('.bzrignore\n'
+                       'a\n'
+                       , '-V')
 
     def test_kinds(self):
         self.build_tree(['subdir/'])
