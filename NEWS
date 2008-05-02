@@ -66,8 +66,9 @@ IN DEVELOPMENT
       Repository.item_keys_introduced_by() no longer take read locks.
       (Aaron Bentley)
 
-    * The methods on ``VersionedFile`` deprecated before bzrlib 1.5 have been
-      removed. (Robert Collins)
+    * Many methods on ``VersionedFile``, ``Repository`` and in
+      ``bzrlib.revision``  deprecated before bzrlib 1.5 have been removed.
+      (Robert Collins)
 
     * ``VersionedFile.join`` is deprecated. This method required local
       instances of both versioned file objects and was thus hostile to being
