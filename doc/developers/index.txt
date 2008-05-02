@@ -14,6 +14,9 @@ Overall developer documentation
 Process
 =======
 
+* `Releasing Bazaar <releasing.html>`_ -- How to make a release of Bazaar,
+  and how to coordinate the monthly development cycle.
+
 * `Profiling notes <profiling.html>`_ |--| Instructions on how to profile 
   bzr code and visualize the results.
 
