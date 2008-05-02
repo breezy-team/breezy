@@ -66,8 +66,11 @@ unknown number of DLLs being loaded into your process. For a concrete
 example, when notepad.exe first starts with an empty file it is using around
 3.5MB of RAM. As soon as the FileOpen dialog is loaded, TortoiseSvn loads
 well over 20 additional DLLs, including the MSVC8 runtime, into the Notepad
-process causing its memory usage to more than double - all without doing
-anything tortoise specific at all.
+process causing its memory usage (as reported by task manager) to more than
+double - all without doing anything tortoise specific at all. (In fairness,
+this illustration is contrived - the code from these DLLs are already in
+memory and there is no reason to suggest TSVN adds any other unreasonable
+burden - but the general point remains valid)
  
 This has wide-ranging implications. It means that such shell extensions
 should be developed using a tool which can never cause conflict with
@@ -108,19 +111,20 @@ outside Windows explorer - only the minimum needed to perform operations
 directly needed by the shell are part of the "shell extension" and the rest
 of TortoiseSvn is "just" a fairly large GUI application implementing many
 commands. The command-line to the app has even been documented for people who
-wish to automate tasks using that GUI. This GUI appears to also be
-implemented in C++ using Windows resource files.
+wish to automate tasks using that GUI. This GUI is also implemented in C++
+using Windows resource files.
  
-TortoiseSvn appears to cache using a separate process, aptly named
-TSVNCache.exe. It uses a named pipe to accept connections from other
-processes for various operations. At this stage, it's still unclear exactly
-what is fetched from the cache and exactly what the shell extension fetches
-directly via the subversion C libraries. 
+TortoiseSvn has an option (enabled by default) which enabled a cache using a
+separate process, aptly named TSVNCache.exe. It uses a named pipe to accept
+connections from other processes for various operations. When enabled, TSVN
+fetches most (all?) status from this process, but it also has the option to
+talk directly to the VCS, along with options to disable various functionality
+in various cases.
 
 There doesn't seem to be a good story for logging or debugging - which is
 what you expect from C++ based apps :( Most of the heavy lifting is done by
 the external application, which might offer better facilities.
- 
+
 Analysis of existing TortoiseBzr code
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -298,7 +302,109 @@ MS. I would argue we spend effort on other parts of the system (ie, the
 external GUI apps themselves, etc) and see if a path forward does emerge for
 Vista. We can re-evaluate this based on user feedback and more information
 about features of the Vista property system.
- 
+
+Reuse of TSVNCache?
+~~~~~~~~~~~~~~~~~~~~
+
+The RPC mechanism and the tasks performed by the RPC server (rpc, file system
+crawling and watching, device notifications, caching) are very similar to
+those already implemented for TSVN and analysis of that code shows that
+it is not particularly tied to any VCS model.  As a result, consideration
+should be given to making the best use of this existing debugged and
+optimized technology.
+
+Discussions with the TSVN developers have indicated that they would prefer us
+to fork their code rather than introduce complexity and instability into
+their code by attempting to share it. See the follow-ups to
+http://thread.gmane.org/gmane.comp.version-control.subversion.tortoisesvn.devel/32635/focus=32651
+for details.
+
+For background, the TSVNCache process is fairly sophisticated - but mainly in
+areas not related to source control. It has had various performance tweaks
+and is smart in terms of minimizing its use of resources when possible. The
+'cloc' utility counts ~5000 lines of C++ code and weighs in just under 200KB
+on disk (not including headers), so this is not a trivial application.
+However, the code that is of most interest (the crawlers, watchers and cache)
+are roughly ~2500 lines of C++. Most of the source files only depend lightly
+on SVN specifics, so it would not be a huge job to make the existing code
+talk to Bazaar. The code is thread-safe, but not particularly thread-friendly
+(ie, fairly coarse-grained locks are taken in most cases)
+
+In practice, this give us 2 options - "fork" or "port":
+
+* Fork the existing C++ code, replacing the existing source-control code with
+  code that talks to Bazaar. This would involve introducing a Python layer,
+  but only at the layers where we need to talk to bzrlib. The bulk of the
+  code would remain in C++.
+
+  This would have the following benefits:
+
+  - May offer significant performance advantages in some cases (eg, a
+    cache-hit would never enter Python at all.)
+
+  - Quickest time to a prototype working - the existing working code can be
+    used quicker.
+
+  And the following drawbacks:
+
+  - More complex to develop. People wishing to hack on it must be on Windows,
+    know C++ and own the most recent MSVC8
+
+  - More complex to build and package: people making binaries must be on
+    Windows and have the most recent MSVC8
+
+  - Is tied to Windows - it would be impractical for this to be
+    cross-platform, even just for test purposes (although parts of it
+    obviously could)
+
+* Port the existing C++ code to Python. We would do this almost
+  "line-for-line", and attempt to keep many optimizations in place (or at
+  least document what the optimizations were for ones we consider dubious).
+  For the windows versions, pywin32 and ctypes would be leaned on - there
+  would be no C++ at all.
+
+  This would have the following benefits:
+
+  - Only need Python and Python skills to hack on it.
+
+  - No C++ compiler needed means easier to cut releases
+
+  - Python makes it easier to understand and maintain - it should appear much
+    less complex than the C++ version.
+
+  And the following drawbacks:
+
+  - Will be slower in some cases - eg, a cache-hit will involve executing
+    Python code.
+
+  - Will take longer to get a minimal system working. In practice this
+    probably means the initial versions will not be as sophisticated.
+
+Given the above, there are two issues which prevent Python being the clear
+winner: (1) will it perform OK? (2) How much longer to a prototype?
+
+My gut feeling on (1) is that it will perform fine, given a suitable Python
+implementation. For example, Python code that simply looked up a dictionary
+would be fast enough - so it all depends on how fast we can make our cache.
+Re (2), it should be possible to have a "stub" process (did almost nothing in
+terms of caching or crawling, but could be connected to by the shell) in a 8
+hours, and some crawling and caching in 40. Note that this is separate from
+the work included for the shell extension itself (the implementation of which
+is largely independent of the TBZRCache implementation). So given the lack of
+a deadline for any particular feature and the better long-term fit of using
+Python, the conclusion is that we should "port" TSVN for bazaar.
+
+Reuse of this code by Mercurial or other Python based VCS systems?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Incidentally, the hope is that this work can be picked up by the Mercurial
+project (or anyone else who thinks it is of use). However, we will limit
+ourselves to attempting to find a clean abstraction for the parts that talk
+to the VCS (as good design would dictate regardless) and then try and assist
+other projects in providing patches which work for both of us. In other
+words, supporting multiple VCS systems is not an explicit goal at this stage,
+but we would hope it is possible in the future.
+
 Implementation plan:
 --------------------
 
@@ -314,16 +420,20 @@ The following is a high-level set of milestones for the implementation:
 
 * Create initial implementation of RPC server in Python. This will use
   bzrlib, but will also maintain a local cache to achieve the required
-  performance. The initial implementation may even be single-threaded, just
-  to keep synchronization issues to a minimum.
+  performance.  File crawling and watching will not be implemented at this stage, but caching will (although cache persistence might be skipped)
+
+  be implemented 
 
 * Analyze performance of prototype. Verify that technique is feasible and
   will offer reasonable performance and user experience.
 
+* Implement file watching, crawling etc by "porting" TSVNCache code to
+  Python, as described above.
+
 * Implement C++ shim: replace the Python prototype with a light-weight C++
-  version. We would work from the current TSVN sources, including its new
-  support for sharing icon overlays. Advice on if we should "fork" TSVN, or
-  try and manage our own svn based branch in bazaar are invited.
+  version. We will fork the current TSVN sources, including its new
+  support for sharing icon overlays (although advice on how to setup this
+  fork is needed!)
  
 * Implement property pages and context menus in C++. Expand RPC server as
   necessary.
