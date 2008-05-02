@@ -1755,7 +1755,7 @@ active role with particular attention to the following tasks:
 .. note::
   As well as prioritizing bugs and nominating them against a
   target milestone, Launchpad lets core developers offer to mentor others in
-  fixing them. Nice.
+  fixing them. 
 
 
 ..
