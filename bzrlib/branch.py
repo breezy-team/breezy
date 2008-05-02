@@ -1720,8 +1720,7 @@ class BzrBranch(Branch):
         # TODO: Maybe delete old location files?
         # URLs should never be unicode, even on the local fs,
         # FIXUP this and get_parent in a future branch format bump:
-        # read and rewrite the file, and have the new format code read
-        # using .get not .get_utf8. RBC 20060125
+        # read and rewrite the file. RBC 20060125
         if url is not None:
             if isinstance(url, unicode):
                 try: 
@@ -1786,7 +1785,7 @@ class BzrBranch5(BzrBranch):
 
     def get_bound_location(self):
         try:
-            return self.control_files.get_utf8('bound').read()[:-1]
+            return self._transport.get_bytes('bound')[:-1]
         except errors.NoSuchFile:
             return None
 
