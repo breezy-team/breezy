@@ -28,7 +28,6 @@ __all__ = ['deprecated_function',
            'deprecated_passed',
            'set_warning_method',
            'warn',
-           'zero_seven',
            'zero_nine',
            'zero_ten',
            'zero_eleven',
@@ -57,7 +56,6 @@ import bzrlib
 
 
 DEPRECATED_PARAMETER = "A deprecated parameter marker."
-zero_seven = "%s was deprecated in version 0.7."
 zero_nine = "%s was deprecated in version 0.9."
 zero_ten = "%s was deprecated in version 0.10."
 zero_eleven = "%s was deprecated in version 0.11."
@@ -186,7 +184,7 @@ def deprecated_passed(parameter_value):
     # we cannot just forward to a new method name.I.e. in the following
     # examples we would want to have callers that pass any value to 'bad' be
     # given a warning - because we have applied:
-    # @deprecated_parameter('bad', zero_seven)
+    # @deprecated_parameter('bad', deprecated_in((1, 5, 0))
     #
     # def __init__(self, bad=None)
     # def __init__(self, bad, other)
