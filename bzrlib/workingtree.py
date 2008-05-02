@@ -111,7 +111,6 @@ from bzrlib.symbol_versioning import (deprecated_passed,
         deprecated_method,
         deprecated_function,
         DEPRECATED_PARAMETER,
-        zero_eight,
         zero_eleven,
         zero_thirteen,
         )
@@ -433,44 +432,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     def _cleanup(self):
         self._flush_ignore_list_cache()
-
-    @staticmethod
-    @deprecated_method(zero_eight)
-    def create(branch, directory):
-        """Create a workingtree for branch at directory.
-
-        If existing_directory already exists it must have a .bzr directory.
-        If it does not exist, it will be created.
-
-        This returns a new WorkingTree object for the new checkout.
-
-        TODO FIXME RBC 20060124 when we have checkout formats in place this
-        should accept an optional revisionid to checkout [and reject this if
-        checking out into the same dir as a pre-checkout-aware branch format.]
-
-        XXX: When BzrDir is present, these should be created through that 
-        interface instead.
-        """
-        warnings.warn('delete WorkingTree.create', stacklevel=3)
-        transport = get_transport(directory)
-        if branch.bzrdir.root_transport.base == transport.base:
-            # same dir 
-            return branch.bzrdir.create_workingtree()
-        # different directory, 
-        # create a branch reference
-        # and now a working tree.
-        raise NotImplementedError
- 
-    @staticmethod
-    @deprecated_method(zero_eight)
-    def create_standalone(directory):
-        """Create a checkout and a branch and a repo at directory.
-
-        Directory must exist and be empty.
-
-        please use BzrDir.create_standalone_workingtree
-        """
-        return bzrdir.BzrDir.create_standalone_workingtree(directory)
 
     def relpath(self, path):
         """Return the local path portion from a given path.
@@ -1546,12 +1507,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             # - RBC 20060907
             self._write_inventory(self._inventory)
     
-    @deprecated_method(zero_eight)
-    def iter_conflicts(self):
-        """List all files in the tree that have text or content conflicts.
-        DEPRECATED.  Use conflicts instead."""
-        return self._iter_conflicts()
-
     def _iter_conflicts(self):
         conflicted = set()
         for info in self.list_files():
