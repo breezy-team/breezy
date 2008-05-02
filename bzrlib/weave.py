@@ -88,6 +88,7 @@ from bzrlib.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
 import bzrlib.errors as errors
 from bzrlib.osutils import sha_strings, split_lines
 import bzrlib.patiencediff
+from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter
 from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import (
@@ -1009,6 +1010,11 @@ class WeaveFile(Weave):
         """See VersionedFile.get_suffixes()."""
         return [WeaveFile.WEAVE_SUFFIX]
 
+    def insert_record_stream(self, stream):
+        super(WeaveFile, self).insert_record_stream(stream)
+        self._save()
+
+    @deprecated_method(one_five)
     def join(self, other, pb=None, msg=None, version_ids=None,
              ignore_missing=False):
         """Join other into self and save."""

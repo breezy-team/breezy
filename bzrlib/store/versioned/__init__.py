@@ -178,7 +178,8 @@ class VersionedFileStore(TransportStore):
     def _put_weave(self, file_id, weave, transaction):
         """Preserved here for upgrades-to-weaves to use."""
         myweave = self._make_new_versionedfile(file_id, transaction)
-        myweave.join(weave)
+        myweave.insert_record_stream(weave.get_record_stream(weave.versions(),
+            'topological', False))
 
     def copy(self, source, result_id, transaction):
         """Copy the source versioned file to result_id in this store."""
@@ -239,7 +240,9 @@ class VersionedFileStore(TransportStore):
                 # joining is fast with knits, and bearable for weaves -
                 # indeed the new case can be optimised if needed.
                 target = self._make_new_versionedfile(f, to_transaction)
-                target.join(from_store.get_weave(f, from_transaction))
+                source = from_store.get_weave(f, from_transaction)
+                target.insert_record_stream(source.get_record_stream(
+                    source.versions(), 'topological', False))
         finally:
             pb.finished()
 
