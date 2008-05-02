@@ -22,7 +22,6 @@ from bzrlib.trace import mutter
 from bzrlib.plugins.svn import version_info
 import calendar
 import errors
-import sha
 import svn
 import time
 import urllib

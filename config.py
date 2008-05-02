@@ -20,7 +20,6 @@ from bzrlib.config import IniBasedConfig, config_dir, ensure_config_dir_exists, 
 
 import os
 
-from mapping3.scheme import BranchingScheme
 import svn.core
 
 # Settings are stored by UUID. 
@@ -63,6 +62,7 @@ class SvnRepositoryConfig(IniBasedConfig):
 
         :return: BranchingScheme instance.
         """
+        from mapping3.scheme import BranchingScheme
         schemename = self._get_user_option("branching-scheme", use_global=False)
         if schemename is not None:
             return BranchingScheme.find_scheme(schemename.encode('ascii'))

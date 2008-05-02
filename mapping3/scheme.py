@@ -46,6 +46,9 @@ class BranchingScheme(RepositoryLayout):
         """
         raise NotImplementedError
 
+    def parse(self, path):
+        return self.unprefix(path)
+
     @staticmethod
     def find_scheme(name):
         """Find a branching scheme by name.

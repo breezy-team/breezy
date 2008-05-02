@@ -115,6 +115,7 @@ class SvnRepository(Repository):
         self._cached_revnum = None
         self._lock_mode = None
         self._lock_count = 0
+        self._layout = None
         self.transport = transport
         self.uuid = transport.get_uuid()
         assert self.uuid is not None
@@ -201,7 +202,12 @@ class SvnRepository(Repository):
     def _make_parents_provider(self):
         return CachingParentsProvider(self)
 
+    def set_layout(self, layout):
+        self._layout = layout
+
     def get_layout(self):
+        if self._layout is not None:
+            return self._layout
         return self.get_mapping().scheme
 
     def _warn_if_deprecated(self):
@@ -247,7 +253,7 @@ class SvnRepository(Repository):
             yielded_paths = set()
             for p in paths:
                 try:
-                    bp = mapping.parse(p)[0]
+                    bp = layout.parse(p)[0]
                     if not bp in yielded_paths:
                         if not paths.has_key(bp) or paths[bp][0] != 'D':
                             assert revnum > 0 or bp == ""
@@ -486,7 +492,7 @@ class SvnRepository(Repository):
 
         return self.get_revmap().get_revision_id(revnum, path, mapping, revprops, changed_fileprops)
 
-    def lookup_revision_id(self, revid, layout=None):
+    def lookup_revision_id(self, revid, layout=None, ancestry=None):
         """Parse an existing Subversion-based revision id.
 
         :param revid: The revision id.
@@ -495,6 +501,7 @@ class SvnRepository(Repository):
         :raises: NoSuchRevision
         :return: Tuple with branch path, revision number and mapping.
         """
+        # FIXME: Use ancestry
         # If there is no entry in the map, walk over all branches:
         if layout is None:
             layout = self.get_layout()

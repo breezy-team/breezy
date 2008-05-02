@@ -180,7 +180,7 @@ class CachingRevidMap(object):
             (branch_path, min_revnum, max_revnum, scheme) = self.cache.lookup_revid(revid)
             assert isinstance(branch_path, str)
 
-        return self.actual.bisect_revid_revnum(revid, branch_path, max_revnum, get_scheme(scheme))
+        return self.actual.bisect_revid_revnum(revid, branch_path, max_revnum)
 
 
 class RevisionIdMapCache(CacheTable):

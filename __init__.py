@@ -147,7 +147,7 @@ def get_scheme(schemename):
     """
     if isinstance(schemename, unicode):
         schemename = schemename.encode("ascii")
-    from scheme import BranchingScheme
+    from mapping3.scheme import BranchingScheme
     from bzrlib.errors import BzrCommandError
     
     ret = BranchingScheme.find_scheme(schemename)
@@ -389,9 +389,9 @@ class cmd_svn_branching_scheme(Command):
             scheme = scheme_from_branch_list(
                 map(lambda x:x.strip("\n"), schemestr.splitlines()))
             if repository_wide:
-                repos.set_property_scheme(scheme)
+                set_property_scheme(repos, scheme)
             else:
-                repos.set_branching_scheme(scheme, mandatory=True)
+                set_config_scheme(repos, scheme, mandatory=True)
         elif scheme is not None:
             info(scheme_str(scheme))
 

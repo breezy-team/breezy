@@ -175,23 +175,10 @@ class TreeBuildEditor(svn.delta.Editor):
         return file_id
 
     def change_dir_prop(self, id, name, value, pool):
-        from mapping import (SVN_PROP_BZR_ANCESTRY, 
-                        SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVISION_INFO, 
-                        SVN_PROP_BZR_FILEIDS, SVN_PROP_BZR_REVISION_ID,
-                        SVN_PROP_BZR_BRANCHING_SCHEME, SVN_PROP_BZR_MERGE)
-
         if name == svn.core.SVN_PROP_ENTRY_COMMITTED_REV:
             self.dir_revnum[id] = int(value)
         elif name == svn.core.SVN_PROP_IGNORE:
             self.dir_ignores[id] = value
-        elif name.startswith(SVN_PROP_BZR_ANCESTRY):
-            if id != self.tree._inventory.root.file_id:
-                mutter('%r set on non-root dir!' % name)
-                return
-        elif name in (SVN_PROP_BZR_FILEIDS, SVN_PROP_BZR_BRANCHING_SCHEME):
-            if id != self.tree._inventory.root.file_id:
-                mutter('%r set on non-root dir!' % name)
-                return
         elif name in (svn.core.SVN_PROP_ENTRY_COMMITTED_DATE,
                       svn.core.SVN_PROP_ENTRY_LAST_AUTHOR,
                       svn.core.SVN_PROP_ENTRY_LOCK_TOKEN,
@@ -200,18 +187,10 @@ class TreeBuildEditor(svn.delta.Editor):
             pass
         elif name.startswith(svn.core.SVN_PROP_WC_PREFIX):
             pass
-        elif (name == SVN_PROP_BZR_REVISION_INFO or 
-              name.startswith(SVN_PROP_BZR_REVISION_ID)):
-            pass
-        elif name == SVN_PROP_BZR_MERGE:
-            pass
-        elif (name.startswith(svn.core.SVN_PROP_PREFIX) or
-              name.startswith(SVN_PROP_BZR_PREFIX)):
+        elif name.startswith(svn.core.SVN_PROP_PREFIX):
             mutter('unsupported dir property %r' % name)
 
     def change_file_prop(self, id, name, value, pool):
-        from mapping import SVN_PROP_BZR_PREFIX
-
         if name == svn.core.SVN_PROP_EXECUTABLE:
             self.is_executable = (value != None)
         elif name == svn.core.SVN_PROP_SPECIAL:
@@ -228,8 +207,7 @@ class TreeBuildEditor(svn.delta.Editor):
             pass
         elif name.startswith(svn.core.SVN_PROP_WC_PREFIX):
             pass
-        elif (name.startswith(svn.core.SVN_PROP_PREFIX) or
-              name.startswith(SVN_PROP_BZR_PREFIX)):
+        elif name.startswith(svn.core.SVN_PROP_PREFIX):
             mutter('unsupported file property %r' % name)
 
     def add_file(self, path, parent_id, copyfrom_path, copyfrom_revnum, baton):

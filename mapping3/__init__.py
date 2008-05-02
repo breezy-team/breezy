@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2007 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2005-2008 Jelmer Vernooij <jelmer@samba.org>
  
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@ from bzrlib.plugins.svn import mapping
 from mapping3.scheme import (BranchingScheme, guess_scheme_from_branch_path, 
                              guess_scheme_from_history, ListBranchingScheme, 
                              parse_list_scheme_text)
+import sha
 
 SVN_PROP_BZR_BRANCHING_SCHEME = 'bzr:branching-scheme'
 
@@ -201,19 +202,19 @@ class BzrSvnMappingv3Hybrid(BzrSvnMappingv3):
         self.fileprops = BzrSvnMappingv3FileProps(scheme)
 
     def get_rhs_parents(self, branch_path, svn_revprops, fileprops):
-        if svn_revprops.has_key(SVN_REVPROP_BZR_MAPPING_VERSION):
+        if svn_revprops.has_key(mapping.SVN_REVPROP_BZR_MAPPING_VERSION):
             return self.revprops.get_rhs_parents(branch_path, svn_revprops, fileprops)
         else:
             return self.fileprops.get_rhs_parents(branch_path, svn_revprops, fileprops)
 
     def get_revision_id(self, branch_path, revprops, fileprops):
-        if revprops.has_key(SVN_REVPROP_BZR_MAPPING_VERSION):
+        if revprops.has_key(mapping.SVN_REVPROP_BZR_MAPPING_VERSION):
             return self.revprops.get_revision_id(branch_path, revprops, fileprops)
         else:
             return self.fileprops.get_revision_id(branch_path, revprops, fileprops)
 
     def import_fileid_map(self, svn_revprops, fileprops):
-        if svn_revprops.has_key(SVN_REVPROP_BZR_MAPPING_VERSION):
+        if svn_revprops.has_key(mapping.SVN_REVPROP_BZR_MAPPING_VERSION):
             return self.revprops.import_fileid_map(svn_revprops, fileprops)
         else:
             return self.fileprops.import_fileid_map(svn_revprops, fileprops)
