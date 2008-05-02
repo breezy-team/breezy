@@ -461,7 +461,19 @@ class ConnectionPool:
             if c.url == url:
                 self.connections.remove(c)
                 return c
-        return Connection(url)
+        # Nothing available? Just pick an existing one and reparent:
+        if len(self.connections) == 0:
+            return Connection(url)
+        c = self.connections.pop()
+        try:
+            c.reparent(url)
+            return c
+        except NotImplementedError:
+            self.connections.add(c)
+            return Connection(url)
+        except:
+            self.connections.add(c)
+            raise
 
     def add(self, connection):
         self.connections.add(connection)
@@ -473,7 +485,7 @@ class SvnRaTransport(Transport):
     This implements just as much of Transport as is necessary 
     to fool Bazaar. """
     @convert_svn_error
-    def __init__(self, url="", _backing_url=None):
+    def __init__(self, url="", _backing_url=None, pool=None):
         self.pool = Pool()
         bzr_url = url
         self.svn_url = bzr_to_svn_url(url)
@@ -484,11 +496,13 @@ class SvnRaTransport(Transport):
         self._backing_url = _backing_url.rstrip("/")
         Transport.__init__(self, bzr_url)
 
-        self.connections = ConnectionPool()
+        if pool is None:
+            self.connections = ConnectionPool()
+        else:
+            self.connections = pool
 
-        connection = Connection(self._backing_url)
-
-        self.connections.add(connection)
+        # Make sure that the URL is valid by connecting to it.
+        self.connections.add(self.connections.get(self._backing_url))
 
         from bzrlib.plugins.svn import lazy_check_versions
         lazy_check_versions()
@@ -604,36 +618,12 @@ class SvnRaTransport(Transport):
             return self.connections.get(self.svn_url)
         return self.get_connection()
 
-    def reparent_root(self):
-        if self._is_http_transport():
-            self.svn_url = self.get_svn_repos_root()
-            self.base = self.get_repos_root()
-        else:
-            self.reparent(self.get_repos_root())
-
     def change_rev_prop(self, revnum, name, value, pool=None):
         conn = self.get_connection()
         try:
             return conn.change_rev_prop(revnum, name, value, pool)
         finally:
             self.add_connection(conn)
-
-    @convert_svn_error
-    def reparent(self, url):
-        url = url.rstrip("/")
-        self.base = url
-        self.svn_url = bzr_to_svn_url(url)
-        if self.svn_url == self._backing_url:
-            return
-        conn = self.get_connection()
-        try:
-            conn.reparent(url)     
-        except NotImplementedError:
-            self.add_connection(conn)
-            self.mutter('svn reparent (reconnect) %r' % url)
-            conn = self.connections.get(self.svn_url.encode('utf8'))
-        self.add_connection(conn)
-        self._backing_url = self.svn_url
 
     def get_dir(self, path, revnum, pool=None, kind=False):
         path = self._request_path(path)
@@ -742,15 +732,17 @@ class SvnRaTransport(Transport):
     def clone_root(self):
         if self._is_http_transport():
             return SvnRaTransport(self.get_repos_root(), 
-                                  bzr_to_svn_url(self.base))
-        return SvnRaTransport(self.get_repos_root())
+                                  bzr_to_svn_url(self.base),
+                                  pool=self.connections)
+        return SvnRaTransport(self.get_repos_root(),
+                              pool=self.connections)
 
     def clone(self, offset=None):
         """See Transport.clone()."""
         if offset is None:
-            return SvnRaTransport(self.base)
+            return SvnRaTransport(self.base, pool=self.connections)
 
-        return SvnRaTransport(urlutils.join(self.base, offset))
+        return SvnRaTransport(urlutils.join(self.base, offset), pool=self.connections)
 
     def local_abspath(self, relpath):
         """See Transport.local_abspath()."""

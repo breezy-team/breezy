@@ -485,7 +485,7 @@ class SvnRepository(Repository):
         assert isinstance(mapping, BzrSvnMapping)
 
         if revprops is None:
-            revprops = logwalker.lazy_dict({}, self._log._get_transport().revprop_list, revnum)
+            revprops = logwalker.lazy_dict({}, self.transport.revprop_list, revnum)
 
         if changed_fileprops is None:
             changed_fileprops = logwalker.lazy_dict({}, self.branchprop_list.get_changed_properties, path, revnum)

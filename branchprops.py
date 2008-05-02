@@ -38,7 +38,7 @@ class PathPropertyProvider(object):
         path = path.lstrip("/")
 
         try:
-            (_, _, props) = self.log._get_transport().get_dir(path, 
+            (_, _, props) = self.log._transport.get_dir(path, 
                 revnum)
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
