@@ -94,6 +94,9 @@ IN DEVELOPMENT
     * New form ``@deprecated_method(deprecated_in(1, 5, 0))`` for making 
       deprecation wrappers.  (Martin Pool)
 
+    * ``Repository.revision_parents`` is now deprecated in favour of 
+      ``Repository.get_parent_map([revid])[revid]``. (Jelmer Vernooij)
+
   API BREAKS:
 
     * Repository.get_data_stream, Repository.get_data_stream_for_search(),

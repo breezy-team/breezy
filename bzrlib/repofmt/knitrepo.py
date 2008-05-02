@@ -288,6 +288,7 @@ class KnitRepository(MetaDirRepository):
         reconciler.reconcile()
         return reconciler
     
+    @symbol_versioning.deprecated_method(symbol_versioning.one_five)
     def revision_parents(self, revision_id):
         return self._get_revision_vf().get_parents(revision_id)
 
