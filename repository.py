@@ -208,7 +208,7 @@ class SvnRepository(Repository):
     def get_layout(self):
         if self._layout is not None:
             return self._layout
-        return self.get_mapping().scheme
+        return self.get_mapping().get_mandated_layout(self)
 
     def _warn_if_deprecated(self):
         # This class isn't deprecated
@@ -253,10 +253,10 @@ class SvnRepository(Repository):
             yielded_paths = set()
             for p in paths:
                 try:
-                    bp = layout.parse(p)[0]
+                    bp = layout.parse(p)[2]
                     if not bp in yielded_paths:
                         if not paths.has_key(bp) or paths[bp][0] != 'D':
-                            assert revnum > 0 or bp == ""
+                            assert revnum > 0 or bp == "", "%r:%r" % (bp, revnum)
                             yielded_paths.add(bp)
                             yield (revnum, bp, paths, revprops)
                 except NotBranchError:

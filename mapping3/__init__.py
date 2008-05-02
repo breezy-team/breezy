@@ -14,8 +14,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from bzrlib import osutils, ui
+from bzrlib.errors import InvalidRevisionId
 from bzrlib.trace import mutter
 from bzrlib.plugins.svn import mapping
+from layout import RepositoryLayout
 from mapping3.scheme import (BranchingScheme, guess_scheme_from_branch_path, 
                              guess_scheme_from_history, ListBranchingScheme, 
                              parse_list_scheme_text)
@@ -25,6 +27,34 @@ SVN_PROP_BZR_BRANCHING_SCHEME = 'bzr:branching-scheme'
 
 # Number of revisions to evaluate when guessing the branching scheme
 SCHEME_GUESS_SAMPLE_SIZE = 2000
+
+class SchemeDerivedLayout(RepositoryLayout):
+    def __init__(self, repository, scheme):
+        self.repository = repository
+        self.scheme = scheme
+
+    def parse(self, path):
+        (bp, rp) = self.scheme.unprefix(path)
+        if self.scheme.is_tag(bp):
+            type = "tag"
+        else:
+            type = "branch"
+        return (type, "", bp, rp)
+
+    def get_branches(self):
+        for (bp, _, _) in filter(lambda (bp, rev, exists): exists,
+                self.repository.find_branchpaths(self.scheme)):
+            yield "", bp, bp.split("/")[-1]
+
+    def is_branch_parent(self, path):
+        # Na, na, na...
+        return self.scheme.is_branch_parent(path)
+
+    def is_tag_parent(self, path):
+        # Na, na, na...
+        return self.scheme.is_tag_parent(path)
+
+
 
 def get_stored_scheme(repository):
     """Retrieve the stored branching scheme, either in the repository 
@@ -88,6 +118,9 @@ class BzrSvnMappingv3(mapping.BzrSvnMapping):
         mapping.BzrSvnMapping.__init__(self)
         self.scheme = scheme
         assert not isinstance(scheme, str)
+
+    def get_mandated_layout(self, repository):
+        return SchemeDerivedLayout(repository, self.scheme)
 
     @classmethod
     def from_repository(cls, repository, _hinted_branch_path=None):

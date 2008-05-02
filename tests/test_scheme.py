@@ -23,15 +23,10 @@ from mapping3.scheme import (ListBranchingScheme, NoBranchingScheme,
                     BranchingScheme, TrunkBranchingScheme, 
                     SingleBranchingSchemev0, 
                     SingleBranchingScheme, 
-                    UnknownBranchingScheme, InvalidSvnBranchPath, 
+                    UnknownBranchingScheme, 
                     parse_list_scheme_text, find_commit_paths, 
                     guess_scheme_from_branch_path, guess_scheme_from_history,
                     guess_scheme_from_path, scheme_from_branch_list)
-
-class TestErrors(TestCase):
-    def test_invalidsvnbranchpath_nonascii(self):
-        InvalidSvnBranchPath('\xc3\xb6', None)
-
 
 class BranchingSchemeTest(TestCase):
     def test_is_branch(self):

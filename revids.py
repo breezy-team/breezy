@@ -146,7 +146,7 @@ class CachingRevidMap(object):
             pass
 
         def get_scheme(name):
-            from scheme import BranchingScheme
+            from mapping3.scheme import BranchingScheme
             assert isinstance(name, str)
             return BranchingScheme.find_scheme(name)
 

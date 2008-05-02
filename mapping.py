@@ -278,6 +278,11 @@ class BzrSvnMapping(object):
         """Whether this mapping can be used with custom file properties."""
         return False
 
+    def get_mandated_layout(self, repository):
+        """Return the repository layout if any is mandated by this mapping, 
+        None otherwise."""
+        return None
+
     def parse_revision_id(self, revid):
         """Parse an existing Subversion-based revision id.
 

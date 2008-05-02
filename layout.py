@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from bzrlib.errors import NotBranchError
 
 class RepositoryLayout:
     """Describes a repository layout."""
@@ -37,10 +38,30 @@ class RepositoryLayout:
     def parse(self, path):
         """Parse a path.
 
-        :return: Tuple with type ('tag' or 'branch'), project name, branch path and path 
+        :return: Tuple with type ('tag', 'branch'), project name, branch path and path 
             inside the branch
         """
         raise NotImplementedError
+
+    def is_branch(self, path):
+        """Check whether a specified path points at a branch."""
+        try:
+            (type, _, bp, rp) = self.parse(path)
+        except NotBranchError:
+            return False
+        if type == "branch" and rp == "":
+            return True
+        return False
+
+    def is_tag(self, path):
+        """Check whether a specified path points at a tag."""
+        try:
+            (type, _, bp, rp) = self.parse(path)
+        except NotBranchError:
+            return False
+        if type == "tag" and rp == "":
+            return True
+        return False
 
     def get_branches(self, project="", revnum=None):
         """Retrieve a list of paths that refer to branches in a specific revision.

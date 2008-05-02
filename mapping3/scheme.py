@@ -22,23 +22,12 @@ from bzrlib.trace import mutter
 from bzrlib.errors import NotBranchError
 
 from base64 import urlsafe_b64decode, urlsafe_b64encode
-from layout import RepositoryLayout
+from errors import InvalidSvnBranchPath
 import util
 import bz2
+import urllib
 
-class InvalidSvnBranchPath(NotBranchError):
-    """Error raised when a path was specified that is not a child of or itself
-    a valid branch path in the current branching scheme."""
-    _fmt = """%(path)s is not a valid Subversion branch path in the current 
-branching scheme. See 'bzr help svn-branching-schemes' for details."""
-
-    def __init__(self, path, scheme):
-        assert isinstance(path, str)
-        NotBranchError.__init__(self, urllib.quote(path))
-        self.scheme = scheme
-
-
-class BranchingScheme(RepositoryLayout):
+class BranchingScheme(object):
     """ Divides SVN repository data up into branches. Since there
     is no proper way to do this, there are several subclasses of this class
     each of which handles a particular convention that may be in use.
@@ -57,9 +46,6 @@ class BranchingScheme(RepositoryLayout):
         :return: Tuple with branch-path and inside-branch path.
         """
         raise NotImplementedError
-
-    def parse(self, path):
-        return self.unprefix(path)
 
     @staticmethod
     def find_scheme(name):
@@ -195,7 +181,7 @@ class ListBranchingScheme(BranchingScheme):
             if self._pattern_cmp(parts[:len(pattern)], pattern):
                 return ("/".join(parts[:len(pattern)]), 
                         "/".join(parts[len(pattern):]))
-        raise InvalidSvnBranchPath(path=path, scheme=self)
+        raise InvalidSvnBranchPath(path, self)
 
     def __eq__(self, other):
         return self.branch_list == other.branch_list
@@ -285,7 +271,7 @@ class TrunkBranchingScheme(ListBranchingScheme):
         assert isinstance(path, str)
         parts = path.strip("/").split("/")
         if len(parts) == 0 or self.level >= len(parts):
-            raise InvalidSvnBranchPath(path=path, scheme=self)
+            raise InvalidSvnBranchPath(path, self)
 
         if parts[self.level] == "trunk" or parts[self.level] == "hooks":
             return ("/".join(parts[0:self.level+1]).strip("/"), 
@@ -295,7 +281,7 @@ class TrunkBranchingScheme(ListBranchingScheme):
             return ("/".join(parts[0:self.level+2]).strip("/"), 
                     "/".join(parts[self.level+2:]).strip("/"))
         else:
-            raise InvalidSvnBranchPath(path=path, scheme=self)
+            raise InvalidSvnBranchPath(path, self)
 
     def __str__(self):
         return "trunk%d" % self.level
