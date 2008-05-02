@@ -420,9 +420,8 @@ The following is a high-level set of milestones for the implementation:
 
 * Create initial implementation of RPC server in Python. This will use
   bzrlib, but will also maintain a local cache to achieve the required
-  performance.  File crawling and watching will not be implemented at this stage, but caching will (although cache persistence might be skipped)
-
-  be implemented 
+  performance. File crawling and watching will not be implemented at this
+  stage, but caching will (although cache persistence might be skipped)
 
 * Analyze performance of prototype. Verify that technique is feasible and
   will offer reasonable performance and user experience.
