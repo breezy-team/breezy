@@ -24,7 +24,7 @@ from bzrlib.trace import mutter
 import urllib
 
 import changes
-from mapping import escape_svn_path
+from bzrlib.plugins.svn.mapping import escape_svn_path
 
 def get_local_changes(paths, branch, mapping, generate_revid, 
                       get_children=None):

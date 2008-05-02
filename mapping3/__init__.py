@@ -13,7 +13,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import mapping
+from bzrlib import osutils
+from bzrlib.plugins.svn import mapping
 from mapping3.scheme import BranchingScheme, guess_scheme_from_branch_path
 
 class BzrSvnMappingv3(mapping.BzrSvnMapping):
@@ -38,10 +39,11 @@ class BzrSvnMappingv3(mapping.BzrSvnMapping):
         assert isinstance(branch, str)
         assert isinstance(inv_path, unicode)
         inv_path = inv_path.encode("utf-8")
-        ret = "%d@%s:%s:%s" % (revnum, uuid, escape_svn_path(branch), escape_svn_path(inv_path))
+        ret = "%d@%s:%s:%s" % (revnum, uuid, mapping.escape_svn_path(branch), 
+                               mapping.escape_svn_path(inv_path))
         if len(ret) > 150:
             ret = "%d@%s:%s;%s" % (revnum, uuid, 
-                                escape_svn_path(branch),
+                                mapping.escape_svn_path(branch),
                                 sha.new(inv_path).hexdigest())
         assert isinstance(ret, str)
         return osutils.safe_file_id(ret)
@@ -64,7 +66,7 @@ class BzrSvnMappingv3(mapping.BzrSvnMapping):
 
         scheme = version[len(cls.revid_prefix):]
 
-        branch_path = unescape_svn_path(branch_path)
+        branch_path = mapping.unescape_svn_path(branch_path)
 
         return (uuid, branch_path, int(srevnum), scheme)
 
@@ -95,7 +97,7 @@ class BzrSvnMappingv3(mapping.BzrSvnMapping):
         assert revnum > 0 or path == "", \
                 "Trying to generate revid for (%r,%r)" % (path, revnum)
         return "%s%s:%s:%s:%d" % (cls.revid_prefix, scheme, uuid, \
-                       escape_svn_path(path.strip("/")), revnum)
+                       mapping.escape_svn_path(path.strip("/")), revnum)
 
     def generate_revision_id(self, uuid, revnum, path):
         return self._generate_revision_id(uuid, revnum, path, self.scheme)

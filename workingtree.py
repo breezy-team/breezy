@@ -36,13 +36,13 @@ from branch import SvnBranch
 from commit import _revision_id_to_svk_feature
 from convert import SvnConverter
 from errors import LocalCommitsUnsupported, NoSvnRepositoryPresent
-from mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS, 
+from bzrlib.plugins.svn.mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_FILEIDS, 
                      SVN_PROP_BZR_REVISION_ID, SVN_PROP_BZR_REVISION_INFO,
                      generate_revision_metadata)
 from remote import SvnRemoteAccess
 from repository import SvnRepository
 from svk import SVN_PROP_SVK_MERGE, parse_svk_features, serialize_svk_features
-from mapping import escape_svn_path
+from bzrlib.plugins.svn.mapping import escape_svn_path
 from transport import (SvnRaTransport, bzr_to_svn_url, create_svn_client,
                        svn_config) 
 from tree import SvnBasisTree

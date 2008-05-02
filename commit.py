@@ -35,7 +35,7 @@ from errors import ChangesRootLHSHistory, MissingPrefix, RevpropChangeFailed
 from svk import (generate_svk_feature, serialize_svk_features, 
                  parse_svk_features, SVN_PROP_SVK_MERGE)
 from logwalker import lazy_dict
-from mapping import parse_revision_id
+from bzrlib.plugins.svn.mapping import parse_revision_id
 from repository import SvnRepositoryFormat, SvnRepository
 import urllib
 

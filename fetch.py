@@ -30,7 +30,7 @@ import svn.core
 
 from bzrlib.plugins.svn.errors import InvalidFileName
 from logwalker import lazy_dict
-from mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_MERGE, 
+from bzrlib.plugins.svn.mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_MERGE, 
                      SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVISION_INFO, 
                      SVN_PROP_BZR_BRANCHING_SCHEME, SVN_PROP_BZR_REVISION_ID,
                      SVN_PROP_BZR_FILEIDS, SVN_REVPROP_BZR_SIGNATURE,

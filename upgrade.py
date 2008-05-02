@@ -21,7 +21,7 @@ import bzrlib.ui as ui
 
 from errors import RebaseNotPresent
 import itertools
-from mapping import parse_revision_id
+from bzrlib.plugins.svn.mapping import parse_revision_id
 
 class UpgradeChangesContent(BzrError):
     """Inconsistency was found upgrading the mapping of a revision."""

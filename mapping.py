@@ -637,8 +637,11 @@ class BzrSvnMappingRegistry(registry.Registry):
 
         This method must be called once and only once.
         """
-        registry.Registry.register(self, 'default', self.get(key), 
-            self.get_help(key))
+        self._set_default_key(key)
+
+    def get_default(self):
+        """Convenience function for obtaining the default mapping to use."""
+        return self.get(self._get_default_key())
 
 mapping_registry = BzrSvnMappingRegistry()
 mapping_registry.register('v1', BzrSvnMappingv1,
@@ -672,7 +675,5 @@ def parse_revision_id(revid):
     mapping = mapping_registry.get(mapping_version)
     return mapping.parse_revision_id(revid)
 
-
 def get_default_mapping():
-    """Convenience function for obtaining the default mapping to use."""
-    return mapping_registry.get("default")
+    return mapping_registry.get_default()
