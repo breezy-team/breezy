@@ -99,7 +99,7 @@ register_lazy_transport('svn://', 'bzrlib.plugins.svn.transport',
 register_lazy_transport('svn+', 'bzrlib.plugins.svn.transport', 
                         'SvnRaTransport')
 topic_registry.register_lazy('svn-branching-schemes', 
-                             'bzrlib.plugins.svn.scheme',
+                             'bzrlib.plugins.svn.mapping3.scheme',
                              'help_schemes', 'Subversion branching schemes')
 
 BzrDirFormat.register_control_format(format.SvnRemoteFormat)

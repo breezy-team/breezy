@@ -36,9 +36,9 @@ class NotSvnBranchPath(NotBranchError):
     _fmt = """%(path)s is not a valid Subversion branch path. 
 See 'bzr help svn-branching-schemes' for details."""
 
-    def __init__(self, branch_path, scheme=None):
+    def __init__(self, branch_path, mapping=None):
         NotBranchError.__init__(self, urllib.quote(branch_path))
-        self.scheme = scheme
+        self.mapping = mapping
 
 
 class InvalidSvnBranchPath(NotBranchError):

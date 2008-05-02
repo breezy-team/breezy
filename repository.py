@@ -47,8 +47,6 @@ from bzrlib.plugins.svn.mapping import (SVN_PROP_BZR_REVISION_ID, SVN_REVPROP_BZ
                      get_default_mapping, parse_revision_id)
 from bzrlib.plugins.svn.mapping3 import BzrSvnMappingv3FileProps
 from revids import CachingRevidMap, RevidMap
-from mapping3.scheme import (ListBranchingScheme, 
-                    parse_list_scheme_text, guess_scheme_from_history)
 from svk import (SVN_PROP_SVK_MERGE, svk_features_merged_since, 
                  parse_svk_feature)
 from tree import SvnRevisionTree
@@ -237,9 +235,9 @@ class SvnRepository(Repository):
         return self.fileid_map.apply_changes(uuid, revnum, branch, changes, 
                                              renames, mapping)[0]
 
-    def iter_all_changes(self, mapping=None, pb=None):
-        if mapping is None:
-            mapping = self.get_mapping()
+    def iter_all_changes(self, layout=None, pb=None):
+        if layout is None:
+            layout = self.get_layout()
     
         latest_revnum = self.get_latest_revnum()
 
@@ -249,17 +247,21 @@ class SvnRepository(Repository):
             yielded_paths = set()
             for p in paths:
                 try:
-                    bp = mapping.scheme.unprefix(p)[0]
+                    bp = mapping.parse(p)[0]
                     if not bp in yielded_paths:
                         if not paths.has_key(bp) or paths[bp][0] != 'D':
                             assert revnum > 0 or bp == ""
                             yielded_paths.add(bp)
-                            yield (revnum, bp, mapping, paths, revprops)
+                            yield (revnum, bp, paths, revprops)
                 except NotBranchError:
                     pass
 
-    def all_revision_ids(self, mapping=None):
-        for (revnum, bp, mapping, changes, revprops) in self.iter_all_changes(mapping):
+    def all_revision_ids(self, layout=None, mapping=None):
+        if mapping is None:
+            mapping = self.get_mapping()
+        if layout is None:
+            layout = self.get_layout()
+        for (revnum, bp, changes, revprops) in self.iter_all_changes(layout):
             yield self.generate_revision_id(revnum, bp, mapping, revprops)
 
     def get_inventory_weave(self):
@@ -609,7 +611,7 @@ class SvnRepository(Repository):
         graph = self.get_graph()
 
         if revision_id is None:
-            revision_ids = self.all_revision_ids(self.get_mapping())
+            revision_ids = self.all_revision_ids(self.get_layout(), self.get_mapping())
         else:
             revision_ids = [revision_id]
 
