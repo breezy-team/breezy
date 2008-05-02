@@ -54,6 +54,9 @@ from svk import (SVN_PROP_SVK_MERGE, svk_features_merged_since,
 from tree import SvnRevisionTree
 import urllib
 
+# Number of revisions to evaluate when guessing the branching scheme
+SCHEME_GUESS_SAMPLE_SIZE = 2000
+
 def svk_feature_to_revision_id(feature, mapping):
     """Convert a SVK feature to a revision id for this repository.
 
@@ -268,7 +271,7 @@ class SvnRepository(Repository):
         pb = ui.ui_factory.nested_progress_bar()
         try:
             scheme = guess_scheme_from_history(
-                self._log.iter_changes("", last_revnum, pb=pb), last_revnum, 
+                self._log.iter_changes("", last_revnum, max(0, last_revnum-SCHEME_GUESS_SAMPLE_SIZE), pb=pb), last_revnum, 
                 branch_path)
         finally:
             pb.finished()

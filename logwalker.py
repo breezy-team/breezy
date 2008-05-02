@@ -145,18 +145,19 @@ class CachingLogWalker(CacheTable):
 
         return row[0]
 
-    def iter_changes(self, path, revnum, limit=0, pb=None):
+    def iter_changes(self, path, from_revnum, to_revnum=0, limit=0, pb=None):
         """Return iterator over all the revisions between revnum and 0 named path or inside path.
 
         :param path:    Branch path to start reporting (in revnum)
-        :param revnum:  Start revision.
+        :param from_revnum:  Start revision.
+        :param to_revnum: End revision
         :return: An iterator that yields tuples with (path, paths, revnum, revprops)
             where paths is a dictionary with all changes that happened in path 
             in revnum.
         """
-        assert revnum >= 0
+        assert from_revnum >= 0 and to_revnum >= 0 and from_revnum >= to_revnum
 
-        orig_revnum = revnum
+        revnum = from_revnum
 
         self.mutter("iter changes %r:%r" % (path, revnum))
 
@@ -166,9 +167,9 @@ class CachingLogWalker(CacheTable):
 
         i = 0
 
-        while revnum >= 0:
+        while revnum >= to_revnum:
             if pb is not None:
-                pb.update("determining changes", orig_revnum-revnum, orig_revnum)
+                pb.update("determining changes", from_revnum-revnum, from_revnum)
             assert revnum > 0 or path == "", "Inconsistent path,revnum: %r,%r" % (revnum, path)
             revpaths = self._get_revision_paths(revnum)
 
@@ -333,23 +334,22 @@ class LogWalker(object):
                 return None
             raise
 
-    def iter_changes(self, path, revnum, limit=0, pb=None):
+    def iter_changes(self, path, from_revnum, to_revnum=0, limit=0, pb=None):
         """Return iterator over all the revisions between revnum and 0 named path or inside path.
 
         :param path:    Branch path to start reporting (in revnum)
-        :param revnum:  Start revision.
+        :param from_revnum:  Start revision.
+        :param to_revnum:  End revision.
         :return: An iterator that yields tuples with (path, paths, revnum, revprops)
             where paths is a dictionary with all changes that happened in path 
             in revnum.
         """
-        assert revnum >= 0
-
-        orig_revnum = revnum
+        assert from_revnum >= 0 and to_revnum >= 0 and from_revnum >= to_revnum
 
         try:
-            for (changed_paths, revnum, known_revprops) in self._get_transport().iter_log(path, revnum, 0, limit, True, False, []):
+            for (changed_paths, revnum, known_revprops) in self._get_transport().iter_log(path, from_revnum, to_revnum, limit, True, False, []):
                 if pb is not None:
-                    pb.update("determining changes", orig_revnum-revnum, orig_revnum)
+                    pb.update("determining changes", from_revnum-revnum, from_revnum)
                 if revnum == 0 and changed_paths is None:
                     revpaths = {"": ('A', None, -1)}
                 else:
