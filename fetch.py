@@ -673,7 +673,7 @@ class InterFromSvnRepository(InterRepository):
                         branch_url = urlutils.join(repos_root, 
                                                    editor.branch_path)
                         conn.reparent(branch_url)
-                        assert conn.url == branch_url.rstrip("/"), \
+                        assert conn.url == branch_url, \
                             "Expected %r, got %r" % (conn.url, branch_url)
                         reporter = conn.do_update(editor.revnum, True, 
                                                        editor, pool)
@@ -695,9 +695,7 @@ class InterFromSvnRepository(InterRepository):
                         # Report status of existing paths
                         reporter.set_path("", parent_revnum, False, None, pool)
 
-                    lock = conn.lock_read(".")
                     reporter.finish_report(pool)
-                    lock.unlock()
                 except:
                     editor.abort_edit()
                     raise

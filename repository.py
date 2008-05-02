@@ -614,12 +614,15 @@ class SvnRepository(Repository):
                 not (mapping.is_branch(paths[bp][1]) or mapping.is_tag(paths[bp][1]))):
                 # Make it look like the branch started here if the mapping 
                 # doesn't support weird paths as branches
-                for c in self._log.find_children(paths[bp][1], paths[bp][2]):
-                    path = c.replace(paths[bp][1], bp+"/", 1).replace("//", "/")
-                    paths[path] = ('A', None, -1)
                 paths[bp] = ('A', None, -1)
 
-                yield (bp, paths, revnum, revprops)
+                def full_paths(paths, bp):
+                    for c in self._log.find_children(paths[bp][1], paths[bp][2]):
+                        path = c.replace(paths[bp][1], bp+"/", 1).replace("//", "/")
+                        paths[path] = ('A', None, -1)
+
+                lazypaths = logwalker.lazy_dict(paths, full_paths, paths, bp)
+                yield (bp, lazypaths, revnum, revprops)
                 return
                      
             yield (bp, paths, revnum, revprops)
