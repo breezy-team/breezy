@@ -219,6 +219,9 @@ class SvnRepository(Repository):
     def _make_parents_provider(self):
         return CachingParentsProvider(self)
 
+    def get_layout(self):
+        return self.get_scheme()
+
     def get_scheme(self):
         """Determine the branching scheme to use for this repository.
 
@@ -271,8 +274,7 @@ class SvnRepository(Repository):
         pb = ui.ui_factory.nested_progress_bar()
         try:
             scheme = guess_scheme_from_history(
-                self._log.iter_changes("", last_revnum, max(0, last_revnum-SCHEME_GUESS_SAMPLE_SIZE), pb=pb), last_revnum, 
-                branch_path)
+                self._log.iter_changes("", last_revnum, max(0, last_revnum-SCHEME_GUESS_SAMPLE_SIZE), pb=pb), last_revnum, branch_path)
         finally:
             pb.finished()
         mutter("Guessed branching scheme: %r" % scheme)
@@ -599,22 +601,22 @@ class SvnRepository(Repository):
         return self._serializer.write_revision_to_string(
             self.get_revision(revision_id))
 
-    def iter_changes(self, branch_path, revnum, mapping, pb=None):
+    def iter_changes(self, branch_path, revnum, mapping=None, pb=None):
         """Iterate over all revisions backwards.
         
         :return: iterator that returns tuples with branch path, 
             changed paths, revision number, changed file properties and 
         """
         assert isinstance(branch_path, str)
-        assert mapping.is_branch(branch_path) or mapping.is_tag(branch_path), \
+        assert mapping is None or mapping.is_branch(branch_path) or mapping.is_tag(branch_path), \
                 "Mapping %r doesn't accept %s as branch or tag" % (mapping, branch_path)
 
         for (bp, paths, revnum, revprops) in self._log.iter_changes(branch_path, revnum, pb=pb):
             assert revnum > 0 or bp == ""
-            assert mapping.is_branch(bp) or mapping.is_tag(bp), "%r is not a valid path" % bp
+            assert mapping is None or mapping.is_branch(bp) or mapping.is_tag(bp), "%r is not a valid path" % bp
 
             if (paths.has_key(bp) and paths[bp][1] is not None and 
-                not (mapping.is_branch(paths[bp][1]) or mapping.is_tag(paths[bp][1]))):
+                not (mapping is None or mapping.is_branch(paths[bp][1]) or mapping.is_tag(paths[bp][1]))):
                 # Make it look like the branch started here if the mapping 
                 # doesn't support weird paths as branches
                 paths[bp] = ('A', None, -1)
@@ -630,7 +632,7 @@ class SvnRepository(Repository):
                      
             yield (bp, paths, revnum, revprops)
 
-    def iter_reverse_branch_changes(self, branch_path, revnum, mapping, pb=None):
+    def iter_reverse_branch_changes(self, branch_path, revnum, mapping=None, pb=None):
         """Return all the changes that happened in a branch 
         until branch_path,revnum. 
 

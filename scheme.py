@@ -22,25 +22,14 @@ from bzrlib.trace import mutter
 from errors import InvalidSvnBranchPath
 
 from base64 import urlsafe_b64decode, urlsafe_b64encode
+from layout import RepositoryLayout
 import bz2
 
-def is_valid_property_name(prop):
-    if not prop[0].isalnum() and not prop[0] in ":_":
-        return False
-    for c in prop[1:]:
-        if not c.isalnum() and not c in "-:._":
-            return False
-    return True
-
-
-class BranchingScheme(object):
+class BranchingScheme(RepositoryLayout):
     """ Divides SVN repository data up into branches. Since there
     is no proper way to do this, there are several subclasses of this class
     each of which handles a particular convention that may be in use.
     """
-    def __init__(self):
-        pass
-
     def is_branch(self, path):
         """Check whether a location refers to a branch.
         

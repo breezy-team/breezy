@@ -382,7 +382,7 @@ class cmd_svn_branching_scheme(Command):
         if repository_wide:
             scheme = repos._get_property_scheme()
         else:
-            scheme = repos.get_scheme()
+            scheme = repos.get_mapping().scheme
         if set:
             schemestr = edit_commit_message("", 
                                             start_message=scheme_str(scheme))
