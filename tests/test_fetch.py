@@ -30,7 +30,7 @@ from convert import load_dumpfile
 from bzrlib.plugins.svn.errors import InvalidFileName
 import format
 import remote
-from scheme import TrunkBranchingScheme, NoBranchingScheme
+from mapping3.scheme import TrunkBranchingScheme, NoBranchingScheme
 from tests import TestCaseWithSubversionRepository
 from transport import SvnRaTransport
 

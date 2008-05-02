@@ -14,6 +14,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import mapping
+from mapping3.scheme import BranchingScheme, guess_scheme_from_branch_path
 
 class BzrSvnMappingv3(mapping.BzrSvnMapping):
     """The third version of the mappings as used in the 0.4.x series.

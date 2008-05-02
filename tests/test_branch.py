@@ -30,7 +30,7 @@ from branch import FakeControlFiles, SvnBranchFormat
 from convert import load_dumpfile
 from mapping import SVN_PROP_BZR_REVISION_ID
 from mapping3 import BzrSvnMappingv3FileProps
-from scheme import TrunkBranchingScheme
+from mapping3.scheme import TrunkBranchingScheme
 from tests import TestCaseWithSubversionRepository
 
 class WorkingSubversionBranch(TestCaseWithSubversionRepository):

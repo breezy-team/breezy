@@ -22,7 +22,6 @@ from bzrlib.trace import mutter
 from bzrlib.plugins.svn import version_info
 import calendar
 import errors
-from scheme import BranchingScheme, guess_scheme_from_branch_path
 import sha
 import svn
 import time
@@ -646,16 +645,19 @@ mapping_registry.register('v1', BzrSvnMappingv1,
         'Original bzr-svn mapping format')
 mapping_registry.register('v2', BzrSvnMappingv2,
         'Second format')
+mapping_registry.register_lazy('v3-revprops', 'bzrlib.plugins.svn.mapping3', 
+                               'BzrSvnMappingv3RevProps', 
+                               'Third format with revision properties')
+mapping_registry.register_lazy('v3-fileprops', 'bzrlib.plugins.svn.mapping3', 
+                               'BzrSvnMappingv3FileProps',
+                               'Third format with file properties')
+mapping_registry.register_lazy('v3-hybrid', 'bzrlib.plugins.svn.mapping3', 
+                               'BzrSvnMappingv3Hybrid', 'Hybrid third format')
+mapping_registry.register_lazy('v3', 'bzrlib.plugins.svn.mapping3', 
+                               'BzrSvnMappingv3FileProps', 
+                               'Default third format')
 mapping_registry.register('v4', BzrSvnMappingv4,
         'Fourth format')
-mapping_registry.register_lazy('v3-revprops', 'bzrlib.plugins.svn.mapping3', 
-                                       'BzrSvnMappingv3RevProps', 'Third format with revision properties')
-mapping_registry.register_lazy('v3-fileprops', 'bzrlib.plugins.svn.mapping3', 'BzrSvnMappingv3FileProps',
-        'Third format with file properties')
-mapping_registry.register_lazy('v3-hybrid', 'bzrlib.plugins.svn.mapping3', 'BzrSvnMappingv3Hybrid',
-        'Hybrid third format')
-mapping_registry.register_lazy('v3', 'bzrlib.plugins.svn.mapping3', 'BzrSvnMappingv3FileProps',
-        'Default third format')
 mapping_registry.set_default('v3-fileprops')
 
 def parse_revision_id(revid):

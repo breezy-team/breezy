@@ -370,7 +370,7 @@ class cmd_svn_branching_scheme(Command):
         from bzrlib.repository import Repository
         from bzrlib.trace import info
         from repository import SvnRepository
-        from scheme import scheme_from_branch_list
+        from mapping3.scheme import scheme_from_branch_list
         def scheme_str(scheme):
             if scheme is None:
                 return ""

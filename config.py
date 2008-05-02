@@ -20,7 +20,7 @@ from bzrlib.config import IniBasedConfig, config_dir, ensure_config_dir_exists, 
 
 import os
 
-from scheme import BranchingScheme
+from mapping3.scheme import BranchingScheme
 import svn.core
 
 # Settings are stored by UUID. 

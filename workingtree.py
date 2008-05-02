@@ -43,7 +43,6 @@ from remote import SvnRemoteAccess
 from repository import SvnRepository
 from svk import SVN_PROP_SVK_MERGE, parse_svk_features, serialize_svk_features
 from mapping import escape_svn_path
-from scheme import BranchingScheme
 from transport import (SvnRaTransport, bzr_to_svn_url, create_svn_client,
                        svn_config) 
 from tree import SvnBasisTree

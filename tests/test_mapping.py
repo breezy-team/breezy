@@ -24,7 +24,7 @@ from mapping import (generate_revision_metadata, parse_revision_metadata,
                      BzrSvnMappingv4, parse_revision_id)
 from mapping3 import (BzrSvnMappingv3FileProps, BzrSvnMappingv3RevProps, 
                       BzrSvnMappingv3Hybrid)
-from scheme import NoBranchingScheme
+from mapping3.scheme import NoBranchingScheme
 
 from bzrlib.errors import InvalidRevisionId
 from bzrlib.tests import (TestCase, adapt_tests, TestNotApplicable)

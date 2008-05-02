@@ -23,7 +23,7 @@ from bzrlib.tests import TestCase
 
 from fileids import simple_apply_changes
 from mapping3 import BzrSvnMappingv3FileProps
-from scheme import TrunkBranchingScheme, NoBranchingScheme
+from mapping3.scheme import TrunkBranchingScheme, NoBranchingScheme
 from tests import TestCaseWithSubversionRepository
 
 class MockRepo(object):

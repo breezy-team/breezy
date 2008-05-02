@@ -27,7 +27,7 @@ from bzrlib.trace import mutter
 import os, sys
 from convert import convert_repository, NotDumpFile, load_dumpfile
 from format import get_rich_root_format
-from scheme import TrunkBranchingScheme, NoBranchingScheme
+from mapping3.scheme import TrunkBranchingScheme, NoBranchingScheme
 from tests import TestCaseWithSubversionRepository
 
 import svn.repos

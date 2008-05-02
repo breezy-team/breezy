@@ -48,7 +48,7 @@ from mapping import (SVN_PROP_BZR_REVISION_ID, SVN_REVPROP_BZR_SIGNATURE,
                      get_default_mapping, parse_revision_id)
 from mapping3 import BzrSvnMappingv3FileProps
 from revids import CachingRevidMap, RevidMap
-from scheme import (BranchingScheme, ListBranchingScheme, 
+from mapping3.scheme import (ListBranchingScheme, 
                     parse_list_scheme_text, guess_scheme_from_history)
 from svk import (SVN_PROP_SVK_MERGE, svk_features_merged_since, 
                  parse_svk_feature)
