@@ -42,15 +42,13 @@ TODO: Get material from http://bazaar-vcs.org/FeatureFreeze.
 
 
 
-Making a Release or Release Candidate
--------------------------------------
+Preparing the tree for release
+------------------------------
 
 .. Was previously at http://bazaar-vcs.org/ReleaseChecklist
 
 .. TODO: Still needs more clarity on what's in a RC versus a final
 .. release?
-
-.. TODO: Too much of this is manual but could be automated...
 
 This is the procedure for making a new bzr release:
 
@@ -99,32 +97,17 @@ This is the procedure for making a new bzr release:
 
 #. When PQM succeeds, pull down the master release branch.
 
-#. Merge the release branch back into the trunk.  Check that changes in NEWS were merged into the right sections.  If it's not already done, advance the version number in bzr and bzrlib/__init__.py Submit this back into pqm for bzr.dev.
+#. Merge the release branch back into the trunk.  Check that changes in NEWS were merged into the right sections.  
+   If it's not already done, advance the version number in ``bzr`` and
+   ``bzrlib/__init__.py``.
+   Submit this back into pqm for bzr.dev.
 
-#. Make a distribution directory by running e.g. ``bzr export /tmp/bzr-<version>/`` in the working directory.
+Making the source tarball
+-------------------------
 
-#. Run make in /tmp/bzr-<version>. This creates the extensions from the pyrex source.
-
-#. Run the test suite in the distribution directory
-
-#. Run ``setup.py install`` --root=prefix to do a test install into your system directory, home directory, or some other prefix.  Check the install worked and that the installed version is usable. (run the bzr script from the installed path with PYTHONPATH set to the site-packages directory it created). i.e. ::
-
-    python setup.py install --root=installed
-    PYTHONPATH=installed/usr/lib/python2.4/site-packages installed/usr/bin/bzr
-
-#. Clean the tree to get rid of .pyc files etc: make clean && rm -rf build && rm bzrlib/_*.c bzrlib/_*.so
-
-#. Generate the reference documentation in text format: make doc/en/user-reference/bzr_man.txt.
-
-#. Change back to your original branch and then run: make clean && make to create the compiled pyrex extensions.  You then need to copy the .c files over to the exported directory. 
-   
-   ``find . -name "*.c"`` will tell you which files you need.
-
-#. Create the release tarball::
-   
-     cd /tmp && tar czf bzr-<version>.tar.gz bzr-<version>
-
-#. Sign the tarball with e.g. ``gpg --detach-sign -a bzr-0.10rc1.tar.gz``
+#. Change into the source directory and run
+  
+     make dist
 
 
 Publishing the release
@@ -138,11 +121,6 @@ available to the world.
    click "Register a release", and add information about this release.
 
 #. Within that release, upload the source tarball and the GPG signature.
-
-   (These used to also be uploaded to 
-   <sftp://escudero.ubuntu.com/srv/bazaar.canonical.com/www/releases/src>
-   but that's not accessible to all developers, and gets some mime types
-   wrong...)
 
 #. Link from http://bazaar-vcs.org/Download to the tarball and signature.
 
@@ -187,10 +165,6 @@ Now that the release is publicly available, tell people about it.
      * For point releases (i.e. a release candidate, or an incremental fix to a released version) take everything in the relevant NEWS secion : for 0.11rc2 take everything in NEWS from the bzr 0.11rc2 line to the bzr 0.11rc1 line further down.
 
      * For major releases (i.e. 0.11, 0.12 etc), take all the combined NEWS sections from within that version: for 0.11 take all of the 0.11 specific section, plus 0.11rc2, plus 0.11rc1 etc.
-
-#. Update the `news side menu`__ -- this currently requires downloading the file, editing it, deleting it, and uploading a replacement.
-
-   __ http://bazaar-vcs.org/site/menu?action=AttachFile&do=view&target=news.html
 
 #. Update the IRC channel topic. Use the ``/topic`` command to do this, ensuring the new topic text keeps the project name, web site link, etc.
 
