@@ -2606,22 +2606,6 @@ def get_conflicted_stem(path):
             return path[:-len(suffix)]
 
 
-@deprecated_function(zero_eight)
-def is_control_file(filename):
-    """See WorkingTree.is_control_filename(filename)."""
-    ## FIXME: better check
-    filename = normpath(filename)
-    while filename != '':
-        head, tail = os.path.split(filename)
-        ## mutter('check %r for control file' % ((head, tail),))
-        if tail == '.bzr':
-            return True
-        if filename == head:
-            break
-        filename = head
-    return False
-
-
 class WorkingTreeFormat(object):
     """An encapsulation of the initialization and open routines for a format.
 
