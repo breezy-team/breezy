@@ -939,10 +939,6 @@ class cmd_branch(Command):
                 revision_id = br_from.last_revision()
             if to_location is None:
                 to_location = urlutils.derive_to_location(from_location)
-                name = None
-            else:
-                name = os.path.basename(to_location) + '\n'
-
             to_transport = transport.get_transport(to_location)
             try:
                 to_transport.mkdir('.')
@@ -963,8 +959,6 @@ class cmd_branch(Command):
                 to_transport.delete_tree('.')
                 msg = "The branch %s has no revision %s." % (from_location, revision[0])
                 raise errors.BzrCommandError(msg)
-            if name:
-                branch.control_files.put_utf8('branch-name', name)
             _merge_tags_if_possible(br_from, branch)
             note('Branched %d revision(s).' % branch.revno())
         finally:

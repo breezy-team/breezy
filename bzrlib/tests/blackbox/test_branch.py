@@ -43,7 +43,6 @@ class TestBranch(ExternalBase):
         self.example_branch('a')
         self.run_bzr('branch a b')
         b = branch.Branch.open('b')
-        self.assertEqual('b\n', b.control_files.get_utf8('branch-name').read())
         self.run_bzr('branch a c -r 1')
         b.bzrdir.open_workingtree().commit(message='foo', allow_pointless=True)
 
