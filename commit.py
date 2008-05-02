@@ -28,6 +28,8 @@ from bzrlib.repository import RootCommitBuilder, InterRepository
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter, warning
 
+from bzrlib.plugins.svn import util
+
 from cStringIO import StringIO
 from errors import ChangesRootLHSHistory, MissingPrefix, RevpropChangeFailed
 from svk import (generate_svk_feature, serialize_svk_features, 
@@ -35,7 +37,6 @@ from svk import (generate_svk_feature, serialize_svk_features,
 from logwalker import lazy_dict
 from mapping import parse_revision_id
 from repository import SvnRepositoryFormat, SvnRepository
-from scheme import is_valid_property_name
 import urllib
 
 
@@ -452,7 +453,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                                               bp_parts, -1)
             self.revision_metadata = None
             for prop in self._svn_revprops:
-                if not is_valid_property_name(prop):
+                if not util.is_valid_property_name(prop):
                     warning("Setting property %r with invalid characters in name" % prop)
             try:
                 self.editor = self.repository.transport.get_commit_editor(
@@ -491,7 +492,7 @@ class SvnCommitBuilder(RootCommitBuilder):
 
             # Set all the revprops
             for prop, value in self._svnprops.items():
-                if not is_valid_property_name(prop):
+                if not util.is_valid_property_name(prop):
                     warning("Setting property %r with invalid characters in name" % prop)
                 if value is not None:
                     value = value.encode('utf-8')
