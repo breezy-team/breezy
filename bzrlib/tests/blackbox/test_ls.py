@@ -55,9 +55,6 @@ class TestLS(TestCaseWithTransport):
         self.ls_equals('?        .bzrignore\n'
                        '?        a\n',
                        '--verbose')
-        self.ls_equals('?        .bzrignore\n'
-                       '?        a\n',
-                       '-V')
         self.ls_equals('.bzrignore\n'
                        'a\n',
                        '--unknown')
