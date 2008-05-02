@@ -24,8 +24,9 @@ import svn.core
 
 from cache import CacheTable
 from errors import InvalidPropertyValue
-from mapping import (parse_revision_id, BzrSvnMapping, BzrSvnMappingv3FileProps,
+from mapping import (parse_revision_id, BzrSvnMapping, 
                      SVN_PROP_BZR_REVISION_ID, parse_revid_property)
+from mapping3 import BzrSvnMappingv3FileProps
 from scheme import BranchingScheme
 
 class RevidMap(object):

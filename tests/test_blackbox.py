@@ -19,7 +19,7 @@ from bzrlib.repository import Repository
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.trace import mutter
 
-from mapping import BzrSvnMappingv3FileProps
+from mapping3 import BzrSvnMappingv3FileProps
 from scheme import NoBranchingScheme
 from tests import TestCaseWithSubversionRepository
 

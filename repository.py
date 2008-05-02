@@ -42,10 +42,11 @@ from config import SvnRepositoryConfig
 import errors
 import logwalker
 from mapping import (SVN_PROP_BZR_REVISION_ID, SVN_REVPROP_BZR_SIGNATURE,
-                     SVN_PROP_BZR_BRANCHING_SCHEME, BzrSvnMappingv3FileProps,
+                     SVN_PROP_BZR_BRANCHING_SCHEME, 
                      parse_revision_metadata, parse_revid_property, 
                      parse_merge_property, BzrSvnMapping,
                      get_default_mapping, parse_revision_id)
+from mapping3 import BzrSvnMappingv3FileProps
 from revids import CachingRevidMap, RevidMap
 from scheme import (BranchingScheme, ListBranchingScheme, 
                     parse_list_scheme_text, guess_scheme_from_history)

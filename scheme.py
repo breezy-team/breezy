@@ -23,6 +23,7 @@ from errors import InvalidSvnBranchPath
 
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from layout import RepositoryLayout
+import util
 import bz2
 
 class BranchingScheme(RepositoryLayout):
@@ -336,7 +337,7 @@ class SingleBranchingScheme(ListBranchingScheme):
                 path[len(self.path):].strip("/"))
 
     def __str__(self):
-        if is_valid_property_name(self.path):
+        if util.is_valid_property_name(self.path):
             return "single-%s" % self.path
         else:
             return "single1-%s" % prop_name_quote(self.path)

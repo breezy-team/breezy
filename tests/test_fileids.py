@@ -22,7 +22,7 @@ from bzrlib.trace import mutter
 from bzrlib.tests import TestCase
 
 from fileids import simple_apply_changes
-from mapping import BzrSvnMappingv3FileProps
+from mapping3 import BzrSvnMappingv3FileProps
 from scheme import TrunkBranchingScheme, NoBranchingScheme
 from tests import TestCaseWithSubversionRepository
 

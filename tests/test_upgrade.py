@@ -23,8 +23,8 @@ from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 
 from errors import RebaseNotPresent
 from format import get_rich_root_format
-from mapping import (BzrSvnMappingv3FileProps, BzrSvnMappingv2, 
-                     BzrSvnMappingv1)
+from mapping import (BzrSvnMappingv2, BzrSvnMappingv1)
+from mapping3 import BzrSvnMappingv3FileProps
 from scheme import TrunkBranchingScheme
 from tests import TestCaseWithSubversionRepository
 from upgrade import (upgrade_repository, upgrade_branch,
