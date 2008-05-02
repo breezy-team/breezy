@@ -154,7 +154,7 @@ e.g.::
 Is it possible to not use the on-disk cache?
 --------------------------------------------
 
-Yes, simply set "cache = False" for the repository in question in ~/.bazaar/subversion.conf. 
+Yes, simply set "use-cache = False" for the repository in question in ~/.bazaar/subversion.conf. 
 This will of course have some consequences for the performance of bzr-svn since it 
 will have to re-fetch data.
 
