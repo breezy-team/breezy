@@ -43,6 +43,7 @@ from bzrlib import (
     graph,
     lockable_files,
     lockdir,
+    osutils,
     registry,
     remote,
     revision as _mod_revision,
@@ -2240,16 +2241,17 @@ class ConvertBzrDir5To6(Converter):
                 if (filename.endswith(".weave") or
                     filename.endswith(".gz") or
                     filename.endswith(".sig")):
-                    file_id = os.path.splitext(filename)[0]
+                    file_id, suffix = os.path.splitext(filename)
                 else:
                     file_id = filename
-                prefix_dir = store.hash_prefix(file_id)
+                    suffix = ''
+                new_name = store._mapper.map((file_id,)) + suffix
                 # FIXME keep track of the dirs made RBC 20060121
                 try:
-                    store_transport.move(filename, prefix_dir + '/' + filename)
+                    store_transport.move(filename, new_name)
                 except errors.NoSuchFile: # catches missing dirs strangely enough
-                    store_transport.mkdir(prefix_dir)
-                    store_transport.move(filename, prefix_dir + '/' + filename)
+                    store_transport.mkdir(osutils.dirname(new_name))
+                    store_transport.move(filename, new_name)
         self.bzrdir._control_files.put_utf8('branch-format', BzrDirFormat6().get_format_string())
 
 

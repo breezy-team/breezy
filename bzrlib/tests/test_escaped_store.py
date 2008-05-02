@@ -34,15 +34,6 @@ class TestEscaped(TestCaseWithTransport):
         t = bzrlib.transport.get_transport(self.get_url())
         return TextStore(t, prefixed=prefixed, escaped=escaped)
 
-    def test_paths(self):
-        text_store = self.get_store()
-
-        self.assertEqual('a', text_store._relpath('a'))
-        self.assertEqual('a', text_store._relpath(u'a'))
-        self.assertEqual('%2520', text_store._relpath(' '))
-        self.assertEqual('%40%253a%253c%253e', text_store._relpath('@:<>'))
-        self.assertEqual('%25c3%25a5', text_store._relpath(u'\xe5'))
-
     def test_prefixed(self):
         # Prefix should be determined by unescaped string
         text_store = self.get_store(prefixed=True)
@@ -58,7 +49,6 @@ class TestEscaped(TestCaseWithTransport):
         self.assertEqual('88/%2520', text_store._relpath(' '))
         self.assertEqual('72/%40%253a%253c%253e',
                 text_store._relpath('@:<>'))
-        self.assertEqual('77/%25c3%25a5', text_store._relpath(u'\xe5'))
 
     def test_files(self):
         text_store = self.get_store(prefixed=True)

@@ -62,6 +62,10 @@ IN DEVELOPMENT
 
     * Implement xml8 serializer.  (Aaron Bentley)
 
+    * New ``versionedfile.KeyMapper`` interface to abstract out the access to
+      underyling .knit/.kndx etc files in repositories with partitioned
+      storage. (Robert Collins)
+
   API BREAKS:
 
     * Repository.get_data_stream, Repository.get_data_stream_for_search(),

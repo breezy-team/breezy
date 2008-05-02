@@ -1545,3 +1545,38 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
         self.assertEqual('base\nleft\nright\nmerged', delta_data)
         self.assertEqual([('get_lines', 'left')], logged_vf.calls)
 
+
+class TestKeyMapper(TestCaseWithMemoryTransport):
+    """Tests for various key mapping logic."""
+
+    def test_identity_mapper(self):
+        mapper = versionedfile.ConstantMapper("inventory")
+        self.assertEqual("inventory", mapper.map(('foo@ar',)))
+        self.assertEqual("inventory", mapper.map(('quux',)))
+
+    def test_prefix_mapper(self):
+        #format5: plain
+        mapper = versionedfile.PrefixMapper()
+        self.assertEqual("file-id", mapper.map(("file-id", "revision-id")))
+        self.assertEqual("new-id", mapper.map(("new-id", "revision-id")))
+        self.assertEqual(('file-id',), mapper.unmap("file-id"))
+        self.assertEqual(('new-id',), mapper.unmap("new-id"))
+
+    def test_hash_prefix_mapper(self):
+        #format6: hash + plain
+        mapper = versionedfile.HashPrefixMapper()
+        self.assertEqual("9b/file-id", mapper.map(("file-id", "revision-id")))
+        self.assertEqual("45/new-id", mapper.map(("new-id", "revision-id")))
+        self.assertEqual(('file-id',), mapper.unmap("9b/file-id"))
+        self.assertEqual(('new-id',), mapper.unmap("45/new-id"))
+
+    def test_hash_escaped_mapper(self):
+        #knit1: hash + escaped
+        mapper = versionedfile.HashEscapedPrefixMapper()
+        self.assertEqual("88/%20", mapper.map((" ", "revision-id")))
+        self.assertEqual("ed/fil%45-%49d", mapper.map(("filE-Id",
+            "revision-id")))
+        self.assertEqual("88/ne%57-%49d", mapper.map(("neW-Id",
+            "revision-id")))
+        self.assertEqual(('filE-Id',), mapper.unmap("ed/fil%45-%49d"))
+        self.assertEqual(('neW-Id',), mapper.unmap("88/ne%57-%49d"))

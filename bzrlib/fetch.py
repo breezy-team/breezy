@@ -205,7 +205,7 @@ class RepoFetcher(object):
             return self.to_repository.search_missing_revision_ids(
                 self.from_repository, self._last_revision,
                 find_ghosts=self.find_ghosts)
-        except errors.NoSuchRevision:
+        except errors.NoSuchRevision, e:
             raise InstallFailed([self._last_revision])
 
     def _fetch_weave_text(self, file_id, required_versions):

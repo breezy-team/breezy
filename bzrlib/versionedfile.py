@@ -19,6 +19,10 @@
 
 """Versioned text file storage api."""
 
+from cStringIO import StringIO
+import urllib
+from zlib import adler32
+
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 
@@ -33,9 +37,6 @@ from bzrlib import (
 from bzrlib.graph import Graph
 from bzrlib.transport.memory import MemoryTransport
 """)
-
-from cStringIO import StringIO
-
 from bzrlib.inter import InterObject
 from bzrlib.registry import Registry
 from bzrlib.symbol_versioning import *
@@ -799,3 +800,92 @@ class InterVersionedFile(InterObject):
                     else:
                         new_version_ids.add(version)
                 return new_version_ids
+
+
+class KeyMapper(object):
+    """KeyMappers map between keys and underlying paritioned storage."""
+
+    def map(self, key):
+        """Map key to an underlying storage identifier.
+
+        :param key: A key tuple e.g. ('file-id', 'revision-id').
+        :return: An underlying storage identifier, specific to the partitioning
+            mechanism.
+        """
+
+    def unmap(self, partition_id):
+        """Map a partitioned storage id back to a key prefix.
+        
+        :param partition_id: The underlying partition id.
+        :return: As much of a key (or prefix) as is derivable from the parition
+            id.
+        """
+
+
+class ConstantMapper(KeyMapper):
+    """A key mapper that maps to a constant result."""
+
+    def __init__(self, result):
+        """Create a ConstantMapper which will return result for all maps."""
+        self._result = result
+
+    def map(self, key):
+        """See KeyMapper.map()."""
+        return self._result
+
+
+class PrefixMapper(KeyMapper):
+    """A key mapper that extracts the first component of a key."""
+
+    def map(self, key):
+        """See KeyMapper.map()."""
+        return key[0]
+
+    def unmap(self, partition_id):
+        """See KeyMapper.unmap()."""
+        return (partition_id,)
+
+
+class HashPrefixMapper(KeyMapper):
+    """A key mapper that combines the first component of a key with a hash."""
+
+    def map(self, key):
+        """See KeyMapper.map()."""
+        prefix = self._escape(key[0])
+        return "%02x/%s" % (adler32(prefix) & 0xff, prefix)
+
+    def _escape(self, prefix):
+        """No escaping needed here."""
+        return prefix
+
+    def unmap(self, partition_id):
+        """See KeyMapper.unmap()."""
+        return (self._unescape(osutils.basename(partition_id)),)
+
+    def _unescape(self, basename):
+        """No unescaping needed for HashPrefixMapper."""
+        return basename
+
+
+class HashEscapedPrefixMapper(HashPrefixMapper):
+    """Combines the escaped first component of a key with a hash."""
+
+    _safe = "abcdefghijklmnopqrstuvwxyz0123456789-_@,."
+
+    def _escape(self, prefix):
+        """Turn a key element into a filesystem safe string.
+
+        This is similar to a plain urllib.quote, except
+        it uses specific safe characters, so that it doesn't
+        have to translate a lot of valid file ids.
+        """
+        # @ does not get escaped. This is because it is a valid
+        # filesystem character we use all the time, and it looks
+        # a lot better than seeing %40 all the time.
+        r = [((c in self._safe) and c or ('%%%02x' % ord(c)))
+             for c in prefix]
+        return ''.join(r)
+
+    def _unescape(self, basename):
+        """Escaped names are unescaped by urlutils."""
+        return urllib.unquote(basename)

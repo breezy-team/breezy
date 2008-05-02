@@ -69,7 +69,7 @@ class VersionedFileStore(TransportStore):
                 if relpath.endswith(suffix):
                     # TODO: use standard remove_suffix function
                     escaped_id = os.path.basename(relpath[:-len(suffix)])
-                    file_id = self._unescape(escaped_id)
+                    file_id = self._mapper.unmap(escaped_id)[0]
                     if file_id not in ids:
                         ids.add(file_id)
                         yield file_id
@@ -153,7 +153,8 @@ class VersionedFileStore(TransportStore):
                 # unexpected error - NoSuchFile is expected to be raised on a
                 # missing dir only and that only occurs when we are prefixed.
                 raise
-            self._transport.mkdir(self.hash_prefix(file_id), mode=self._dir_mode)
+            dirname = osutils.dirname(_filename)
+            self._transport.mkdir(dirname, mode=self._dir_mode)
             weave = self._versionedfile_class(_filename, self._transport,
                                               self._file_mode, create=True,
                                               get_scope=self.get_scope,

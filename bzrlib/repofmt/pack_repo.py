@@ -2126,7 +2126,7 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
             versionedfile_kwargs={'delta': False,
                                   'factory': knit.KnitPlainFactory(),
                                  },
-            escaped=True,
+            escaped=False,
             )
         return KnitRevisionStore(versioned_file_store)
 
