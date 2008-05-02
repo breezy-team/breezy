@@ -28,7 +28,6 @@ __all__ = ['deprecated_function',
            'deprecated_passed',
            'set_warning_method',
            'warn',
-           'zero_nine',
            'zero_ten',
            'zero_eleven',
            'zero_twelve',
@@ -56,7 +55,6 @@ import bzrlib
 
 
 DEPRECATED_PARAMETER = "A deprecated parameter marker."
-zero_nine = "%s was deprecated in version 0.9."
 zero_ten = "%s was deprecated in version 0.10."
 zero_eleven = "%s was deprecated in version 0.11."
 zero_twelve = "%s was deprecated in version 0.12."
@@ -252,7 +250,8 @@ class DeprecatedDict(dict):
         ):
         """Create a dict that warns when read or modified.
 
-        :param deprecation_version: something like zero_nine
+        :param deprecation_version: string for the warning format to raise,
+            typically from deprecated_in()
         :param initial_value: The contents of the dict
         :param variable_name: This allows better warnings to be printed
         :param advice: String of advice on what callers should do instead 
@@ -277,7 +276,8 @@ def deprecated_list(deprecation_version, variable_name,
                     initial_value, extra=None):
     """Create a list that warns when modified
 
-    :param deprecation_version: something like zero_nine
+    :param deprecation_version: string for the warning format to raise,
+        typically from deprecated_in()
     :param initial_value: The contents of the list
     :param variable_name: This allows better warnings to be printed
     :param extra: Extra info to print when printing a warning
