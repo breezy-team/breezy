@@ -163,7 +163,6 @@ class KnitRepository(MetaDirRepository):
             raise errors.NoSuchRevision(self, revision_id)
 
     @symbol_versioning.deprecated_method(symbol_versioning.one_two)
-    @needs_read_lock
     def get_data_stream(self, revision_ids):
         """See Repository.get_data_stream.
         
@@ -172,7 +171,6 @@ class KnitRepository(MetaDirRepository):
         search_result = self.revision_ids_to_search_result(set(revision_ids))
         return self.get_data_stream_for_search(search_result)
 
-    @needs_read_lock
     def get_data_stream_for_search(self, search):
         """See Repository.get_data_stream_for_search."""
         item_keys = self.item_keys_introduced_by(search.get_keys())
@@ -292,6 +290,7 @@ class KnitRepository(MetaDirRepository):
         reconciler.reconcile()
         return reconciler
     
+    @symbol_versioning.deprecated_method(symbol_versioning.one_five)
     def revision_parents(self, revision_id):
         return self._get_revision_vf().get_parents(revision_id)
 
