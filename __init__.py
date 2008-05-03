@@ -183,7 +183,6 @@ class cmd_svn_import(Command):
         from bzrlib import urlutils
         from convert import convert_repository
         from repository import SvnRepository
-        from mapping3 import SchemeDerivedLayout
         import os
 
         if to_location is None:
@@ -231,7 +230,7 @@ class cmd_svn_import(Command):
                 return False
             return True
 
-        convert_repository(from_repos, to_location, SchemeDerivedLayout(from_repos, scheme), 
+        convert_repository(from_repos, to_location, scheme, None, 
                            not standalone, trees, all, filter_branch=filter_branch)
 
         if tmp_repos is not None:

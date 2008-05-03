@@ -332,7 +332,7 @@ class SingleBranchingScheme(ListBranchingScheme):
         assert isinstance(path, str)
         path = path.strip("/")
         if not path.startswith(self.path):
-            raise InvalidSvnBranchPath(path=path, scheme=self)
+            raise InvalidSvnBranchPath(path, self)
 
         return (path[0:len(self.path)].strip("/"), 
                 path[len(self.path):].strip("/"))

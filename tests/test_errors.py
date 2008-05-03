@@ -20,7 +20,7 @@ from bzrlib.errors import (ConnectionError, ConnectionReset, LockError,
 from bzrlib.tests import TestCase
 
 from errors import (convert_svn_error, convert_error, InvalidPropertyValue, 
-                    NotSvnBranchPath, 
+                    NotSvnBranchPath, InvalidSvnBranchPath,
                     SVN_ERR_UNKNOWN_HOSTNAME)
 
 import svn.core

@@ -80,7 +80,7 @@ def load_dumpfile(dumpfile, outputdir):
     return repos
 
 
-def convert_repository(source_repos, output_url, layout=None, 
+def convert_repository(source_repos, output_url, scheme=None, layout=None,
                        create_shared_repo=True, working_trees=False, all=False,
                        format=None, filter_branch=None):
     """Convert a Subversion repository and its' branches to a 
@@ -88,6 +88,7 @@ def convert_repository(source_repos, output_url, layout=None,
 
     :param source_repos: Subversion repository
     :param output_url: URL to write Bazaar repository to.
+    :param scheme: Branching scheme to use.
     :param layout: Repository layout (object) to use
     :param create_shared_repo: Whether to create a shared Bazaar repository
     :param working_trees: Whether to create working trees
@@ -95,6 +96,7 @@ def convert_repository(source_repos, output_url, layout=None,
         branches, should be imported
     :param format: Format to use
     """
+    from mapping3 import SchemeDerivedLayout, set_branching_scheme
     assert not all or create_shared_repo
     if format is None:
         format = get_rich_root_format()
@@ -113,6 +115,9 @@ def convert_repository(source_repos, output_url, layout=None,
 
     if layout is not None:
         source_repos.set_layout(layout)
+    elif scheme is not None:
+        set_branching_scheme(source_repos, scheme)
+        layout = SchemeDerivedLayout(source_repos, scheme)
     else:
         layout = source_repos.get_layout()
 

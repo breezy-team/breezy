@@ -105,7 +105,6 @@ def set_branching_scheme(repository, scheme, mandatory=False):
     repository.get_config().set_branching_scheme(str(scheme), mandatory=mandatory)
 
 
-
 class BzrSvnMappingv3(mapping.BzrSvnMapping):
     """The third version of the mappings as used in the 0.4.x series.
 
