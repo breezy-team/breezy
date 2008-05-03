@@ -188,7 +188,7 @@ class Editor(object):
         return baton
 
 
-class Connection:
+class Connection(object):
     """An single connection to a Subversion repository. This usually can 
     only do one operation at a time."""
     def __init__(self, url):
@@ -450,7 +450,7 @@ class Connection:
             raise NotImplementedError(self.reparent)
 
 
-class ConnectionPool:
+class ConnectionPool(object):
     """Collection of connections to a Subversion repository."""
     def __init__(self):
         self.connections = set()
