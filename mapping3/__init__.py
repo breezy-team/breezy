@@ -21,7 +21,7 @@ from layout import RepositoryLayout
 from mapping3.scheme import (BranchingScheme, guess_scheme_from_branch_path, 
                              guess_scheme_from_history, ListBranchingScheme, 
                              parse_list_scheme_text)
-import sha
+import sha, svn
 
 SVN_PROP_BZR_BRANCHING_SCHEME = 'bzr:branching-scheme'
 

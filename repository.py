@@ -52,6 +52,13 @@ from svk import (SVN_PROP_SVK_MERGE, svk_features_merged_since,
 from tree import SvnRevisionTree
 import urllib
 
+def full_paths(find_children, paths, bp, from_bp, from_rev):
+    for c in find_children(from_bp, from_rev):
+        path = c.replace(from_bp, bp+"/", 1).replace("//", "/")
+        paths[path] = ('A', None, -1)
+    return paths
+
+
 def svk_feature_to_revision_id(feature, mapping):
     """Convert a SVK feature to a revision id for this repository.
 
@@ -548,14 +555,9 @@ class SvnRepository(Repository):
                 not (mapping is None or mapping.is_branch(paths[bp][1]) or mapping.is_tag(paths[bp][1]))):
                 # Make it look like the branch started here if the mapping 
                 # doesn't support weird paths as branches
+                lazypaths = logwalker.lazy_dict(paths, full_paths, self._log.find_children, paths, bp, paths[bp][1], paths[bp][2])
                 paths[bp] = ('A', None, -1)
 
-                def full_paths(paths, bp):
-                    for c in self._log.find_children(paths[bp][1], paths[bp][2]):
-                        path = c.replace(paths[bp][1], bp+"/", 1).replace("//", "/")
-                        paths[path] = ('A', None, -1)
-
-                lazypaths = logwalker.lazy_dict(paths, full_paths, paths, bp)
                 yield (bp, lazypaths, revnum, revprops)
                 return
                      

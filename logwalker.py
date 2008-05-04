@@ -385,11 +385,16 @@ class LogWalker(object):
         :param path:  Path to check
         :param revnum:  Revision to check
         """
+        assert isinstance(path, str), "invalid path"
         path = path.strip("/")
-        ft = self._transport.check_path(path, revnum)
-        if ft == svn.core.svn_node_file:
-            return []
-        assert ft == svn.core.svn_node_dir
+        conn = self._transport.connections.get(self._transport.get_svn_repos_root())
+        try:
+            ft = conn.check_path(path, revnum)
+            if ft == svn.core.svn_node_file:
+                return []
+            assert ft == svn.core.svn_node_dir
+        finally:
+            self._transport.connections.add(conn)
 
         class TreeLister(svn.delta.Editor):
             def __init__(self, base):
@@ -433,10 +438,11 @@ class LogWalker(object):
 
             def apply_textdelta(self, file_id, base_checksum):
                 pass
+
         pool = Pool()
         editor = TreeLister(path)
-        conn = self._transport.connections.get(urlutils.join(self._transport.get_svn_repos_root(), path))
         try:
+            conn = self._transport.connections.get(urlutils.join(self._transport.get_svn_repos_root(), path))
             reporter = conn.do_update(revnum, True, editor, pool)
             reporter.set_path("", revnum, True, None, pool)
             reporter.finish_report(pool)

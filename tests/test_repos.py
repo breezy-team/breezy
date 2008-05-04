@@ -201,10 +201,11 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_update("dc")
         self.client_commit("dc", "commit")
         repos = Repository.open(repos_url)
+        changes = repos.iter_reverse_branch_changes("pygments", 2, SingleBranchingScheme("pygments"))
         self.assertEquals([('pygments',
               {'pygments/bla': ('A', None, -1), 'pygments': ('A', None, -1)},
                 2)],
-                [l[:3] for l in repos.iter_reverse_branch_changes("pygments", 2, SingleBranchingScheme("pygments"))])
+                [l[:3] for l in changes])
 
     def test_history_all(self):
         repos_url = self.make_client("a", "dc")
