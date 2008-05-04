@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2007-2008 Jelmer Vernooij <jelmer@samba.org>
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -56,6 +56,13 @@ class SvnRepositoryConfig(IniBasedConfig):
             if not use_global:
                 return None
             return GlobalConfig()._get_user_option(name)
+
+    def get_reuse_revisions(self):
+        ret = self._get_user_option("reuse-revisions")
+        if ret is None:
+            return "other-branches"
+        assert ret in ("none", "other-branches", "removed-branches")
+        return ret
 
     def get_branching_scheme(self):
         """Get the branching scheme.

@@ -36,6 +36,9 @@ bzr-svn 0.4.10  UNRELEASED
    * Restrict history sample size used for guessing branching scheme to avoid
      looking at the full history for very large repositories.
 
+   * New option ``reuse-revisions'' that determines how hard bzr-svn will 
+     try to reuse revisions when pushing into Subversion.
+
   INTERNALS
 
    * Branching from a Subversion repository will now fetch right-hand side 

@@ -69,7 +69,7 @@ class RevidMap(object):
         raise NoSuchRevision(revid)
 
     def discover_revids(self, layout, from_revnum, to_revnum):
-        for (branch, revno, _) in self.repos.find_branchpaths(layout, from_revnum, to_revnum):
+        for (branch, revno) in self.repos.find_fileprop_branches(layout, from_revnum, to_revnum):
             assert isinstance(branch, str)
             assert isinstance(revno, int)
             # Look at their bzr:revision-id-vX

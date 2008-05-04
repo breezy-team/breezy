@@ -20,13 +20,35 @@ from bzrlib.plugins.svn import mapping
 from layout import RepositoryLayout
 from mapping3.scheme import (BranchingScheme, guess_scheme_from_branch_path, 
                              guess_scheme_from_history, ListBranchingScheme, 
-                             parse_list_scheme_text)
+                             parse_list_scheme_text, NoBranchingScheme,
+                             TrunkBranchingScheme, ListBranchingScheme)
 import sha, svn
 
 SVN_PROP_BZR_BRANCHING_SCHEME = 'bzr:branching-scheme'
 
 # Number of revisions to evaluate when guessing the branching scheme
 SCHEME_GUESS_SAMPLE_SIZE = 2000
+
+def expand_branch_pattern(begin, todo, check_path, get_children):
+    path = "/".join(begin)
+    if len(todo) == 0:
+        if check_path(path):
+            return [path]
+        else:
+            return []
+    if not "*" in todo[0]:
+        return expand_branch_pattern(begin+[todo[0]], todo[1:], check_path, get_children)
+    children = get_children(path)
+    if children is None:
+        return []
+    ret = []
+    for c in children:
+        if len(todo) == 1:
+            ret.append("/".join(begin+[c]))
+        else:
+            ret += expand_branch_pattern(begin+[c], todo[1:])
+    return ret
+
 
 class SchemeDerivedLayout(RepositoryLayout):
     def __init__(self, repository, scheme):
@@ -41,10 +63,22 @@ class SchemeDerivedLayout(RepositoryLayout):
             type = "branch"
         return (type, "", bp, rp)
 
-    def get_branches(self):
-        for (bp, _, _) in filter(lambda (bp, rev, exists): exists,
-                self.repository.find_branchpaths(self.scheme)):
-            yield "", bp, bp.split("/")[-1]
+    def get_branches(self, revnum, project=""):
+        def check_path(path):
+            return self.repository.transport.check_path(path, revnum) == svn.core.svn_node_dir
+        def find_children(path):
+            try:
+                dirents = self.repository.transport.get_dir(path, revnum)[0]
+            except SubversionException, (msg, num):
+                if num == svn.core.SVN_ERR_FS_NOT_DIRECTORY:
+                    return None
+                raise
+            return dirents.keys()
+
+        for pattern in self.scheme.branch_list:
+            for bp in expand_branch_pattern([], pattern.split("/"), check_path,
+                    find_children):
+                yield "", bp, bp.split("/")[-1]
 
     def is_branch_parent(self, path):
         # Na, na, na...
@@ -53,7 +87,6 @@ class SchemeDerivedLayout(RepositoryLayout):
     def is_tag_parent(self, path):
         # Na, na, na...
         return self.scheme.is_tag_parent(path)
-
 
 
 def get_stored_scheme(repository):
@@ -71,6 +104,7 @@ def get_stored_scheme(repository):
 
     return (None, False)
 
+
 def get_property_scheme(repository, revnum=None):
     if revnum is None:
         revnum = repository.get_latest_revnum()
@@ -78,6 +112,7 @@ def get_property_scheme(repository, revnum=None):
     if text is None:
         return None
     return ListBranchingScheme(parse_list_scheme_text(text))
+
 
 def set_property_scheme(repository, scheme):
     def done(revmetadata, pool):
@@ -91,6 +126,7 @@ def set_property_scheme(repository, scheme):
     editor.close_directory(root)
     editor.close()
 
+
 def repository_guess_scheme(repository, last_revnum, branch_path=None):
     pb = ui.ui_factory.nested_progress_bar()
     try:
@@ -100,6 +136,7 @@ def repository_guess_scheme(repository, last_revnum, branch_path=None):
         pb.finished()
     mutter("Guessed branching scheme: %r" % scheme)
     return scheme
+
 
 def set_branching_scheme(repository, scheme, mandatory=False):
     repository.get_mapping().scheme = scheme

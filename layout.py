@@ -63,7 +63,7 @@ class RepositoryLayout:
             return True
         return False
 
-    def get_branches(self, project="", revnum=None):
+    def get_branches(self, revnum, project=""):
         """Retrieve a list of paths that refer to branches in a specific revision.
 
         :result: Iterator over tuples with (project, branch path)

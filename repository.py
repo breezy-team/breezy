@@ -651,7 +651,7 @@ class SvnRepository(Repository):
             layout = self.get_layout()
 
         branches = []
-        for project, bp, nick in layout.get_branches():
+        for project, bp, nick in layout.get_branches(self.get_latest_revnum()):
             try:
                 branches.append(Branch.open(urlutils.join(self.base, bp)))
             except NotBranchError: # Skip non-directories
@@ -749,5 +749,16 @@ class SvnRepository(Repository):
         return SvnCommitBuilder(self, branch, parents, config, timestamp, 
                 timezone, committer, revprops, revision_id)
 
-
+    def find_fileprop_branches(self, layout, from_revnum, to_revnum):
+        reuse_policy = self.get_config().get_reuse_revisions()
+        if reuse_policy == "removed-branches":
+            for (branch, revno, _) in self.find_branchpaths(layout, from_revnum, 
+                                                            to_revnum):
+                yield (branch, revno)
+        elif reuse_policy in ("other-branches", "none"):
+            revnum = self.get_latest_revnum()
+            for (project, branch, nick) in layout.get_branches(revnum):
+                yield (branch, revnum)
+        else:
+            assert False
 
