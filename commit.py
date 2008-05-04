@@ -476,7 +476,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             if len(bp_parts) == len(existing_bp_parts):
                 if self.base_path.strip("/") != "/".join(bp_parts).strip("/"):
                     replace_existing = True
-                elif self.base_revnum < self.repository._log.find_latest_change(self.branch.get_branch_path(), repository_latest_revnum, include_children=True):
+                elif self.base_revnum < self.repository._log.find_latest_change(self.branch.get_branch_path(), repository_latest_revnum):
                     replace_existing = True
 
             if replace_existing and self.branch._get_append_revisions_only():

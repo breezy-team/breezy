@@ -114,7 +114,7 @@ class CachingLogWalker(CacheTable):
           create unique index if not exists path_rev_path_action on changed_path(rev, path, action);
         """)
 
-    def find_latest_change(self, path, revnum, include_children=False):
+    def find_latest_change(self, path, revnum):
         """Find latest revision that touched path.
 
         :param path: Path to check for changes
@@ -127,11 +127,10 @@ class CachingLogWalker(CacheTable):
         self.mutter("latest change: %r:%r" % (path, revnum))
 
         extra = ""
-        if include_children:
-            if path == "":
-                extra += " OR path LIKE '%'"
-            else:
-                extra += " OR path LIKE '%s/%%'" % path.strip("/")
+        if path == "":
+            extra += " OR path LIKE '%'"
+        else:
+            extra += " OR path LIKE '%s/%%'" % path.strip("/")
         extra += " OR ('%s' LIKE (path || '/%%') AND (action = 'R' OR action = 'A'))" % path.strip("/")
  
         query = "SELECT rev FROM changed_path WHERE (path='%s'%s) AND rev <= %d ORDER BY rev DESC LIMIT 1" % (path.strip("/"), extra, revnum)
@@ -308,7 +307,7 @@ class LogWalker(object):
         else:
             self._limit = LOG_CHUNK_LIMIT
 
-    def find_latest_change(self, path, revnum, include_children=True):
+    def find_latest_change(self, path, revnum):
         """Find latest revision that touched path.
 
         :param path: Path to check for changes

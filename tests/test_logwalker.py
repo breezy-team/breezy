@@ -180,7 +180,7 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         walker = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
         self.assertEqual(1, 
-            walker.find_latest_change("", 1, include_children=True))
+            walker.find_latest_change("", 1))
 
     def test_find_latest_parent(self):
         repos_url = self.make_client("a", "dc")

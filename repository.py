@@ -685,8 +685,7 @@ class SvnRepository(Repository):
                                 prev_rev = paths[p][2]
                             else:
                                 prev_path = p
-                                prev_rev = self._log.find_latest_change(p, 
-                                    i-1, include_children=True)
+                                prev_rev = self._log.find_latest_change(p, i-1)
                             assert isinstance(prev_rev, int)
                             ret.append((prev_path, prev_rev, False))
 
@@ -699,8 +698,7 @@ class SvnRepository(Repository):
                             for c in k:
                                 if c.startswith(p+"/") and c in created_branches:
                                     del created_branches[c] 
-                                    j = self._log.find_latest_change(c, i-1, 
-                                            include_children=True)
+                                    j = self._log.find_latest_change(c, i-1)
                                     assert isinstance(j, int)
                                     ret.append((c, j, False))
                         if paths[p][0] in ('A', 'R'):
@@ -725,8 +723,7 @@ class SvnRepository(Repository):
         for p in created_branches:
             pb.update("determining branch last changes", 
                       i, len(created_branches))
-            j = self._log.find_latest_change(p, to_revnum, 
-                                             include_children=True)
+            j = self._log.find_latest_change(p, to_revnum)
             if j is None:
                 j = created_branches[p]
             assert isinstance(j, int)
