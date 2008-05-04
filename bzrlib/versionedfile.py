@@ -889,3 +889,34 @@ class HashEscapedPrefixMapper(HashPrefixMapper):
     def _unescape(self, basename):
         """Escaped names are unescaped by urlutils."""
         return urllib.unquote(basename)
+
+
+def make_pack_factory(graph, delta, keylength):
+    """Create a factory for creating a pack based VersionedFiles.
+    
+    :param graph: Store a graph.
+    :param delta: Delta compress contents.
+    :param keylength: How long should keys be.
+    """
+    return lambda x:None
+
+
+def make_versioned_files_factory(versioned_file_factory, mapper):
+    """Create a ThunkedVersionedFiles factory.
+
+    This will create a callable which when called creates a
+    ThunkedVersionedFiles on a transport, using mapper to access individual
+    versioned files, and versioned_file_factory to create each individual file.
+    """
+    return lambda x:None
+
+
+class VersionedFiles(object):
+    """Storage for many versioned files.
+
+    This object allows a single keyspace for accessing the history graph and
+    contents of named bytestrings.
+
+    Currently no implementation allows the graph of different key prefixes to
+    intersect, but the API does allow such implementations in the future.
+    """

@@ -42,7 +42,14 @@ from bzrlib.knit import (
     KnitPlainFactory,
     )
 from bzrlib.symbol_versioning import one_four, one_five
-from bzrlib.tests import TestCaseWithMemoryTransport, TestSkipped
+from bzrlib.tests import (
+    TestCaseWithMemoryTransport,
+    TestScenarioApplier,
+    TestSkipped,
+    condition_isinstance,
+    split_suite_by_condition,
+    iter_suite_tests,
+    )
 from bzrlib.tests.http_utils import TestCaseWithWebserver
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
@@ -50,8 +57,77 @@ from bzrlib.transport.memory import MemoryTransport
 from bzrlib.tsort import topo_sort
 from bzrlib.tuned_gzip import GzipFile
 import bzrlib.versionedfile as versionedfile
+from bzrlib.versionedfile import (
+    ConstantMapper,
+    HashEscapedPrefixMapper,
+    PrefixMapper,
+    make_pack_factory,
+    make_versioned_files_factory,
+    )
 from bzrlib.weave import WeaveFile
 from bzrlib.weavefile import read_weave, write_weave
+
+
+def load_tests(standard_tests, module, loader):
+    """Parameterize VersionedFiles tests for different implementations."""
+    to_adapt, result = split_suite_by_condition(
+        standard_tests, condition_isinstance(TestVersionedFiles))
+    len_one_adapter = TestScenarioApplier()
+    len_two_adapter = TestScenarioApplier()
+    # We want to be sure of behaviour for:
+    # weaves prefix layout (weave texts)
+    # individually named weaves (weave inventories)
+    # annotated knits - prefix|hash|hash-escape layout, we test the third only
+    #                   as it is the most complex mapper.
+    # individually named knits
+    # individual no-graph knits in packs (signatures)
+    # individual graph knits in packs (inventories)
+    # individual graph nocompression knits in packs (revisions)
+    # plain text knits in packs (texts)
+    len_one_adapter.scenarios = [
+        ('weave-named', {
+            'factory':make_versioned_files_factory(WeaveFile,
+                ConstantMapper('inventory')),
+            'len':1,
+            }),
+        ('named-knit', {
+            'factory':make_versioned_files_factory(make_file_knit,
+                ConstantMapper('revisions')),
+            'len':1,
+            }),
+        ('named-nograph-knit-pack', {
+            'factory':make_pack_factory(False, False, 1),
+            'len':1,
+            }),
+        ('named-graph-knit-pack', {
+            'factory':make_pack_factory(True, True, 1),
+            'len':1,
+            }),
+        ('named-graph-nodelta-knit-pack', {
+            'factory':make_pack_factory(True, False, 1),
+            'len':1,
+            }),
+        ]
+    len_two_adapter.scenarios = [
+        ('weave-prefix', {
+            'factory':make_versioned_files_factory(WeaveFile,
+                PrefixMapper()),
+            'len':2,
+            }),
+        ('annotated-knit-escape', {
+            'factory':make_versioned_files_factory(make_file_knit,
+                HashEscapedPrefixMapper()),
+            'len':2,
+            }),
+        ('plain-knit-pack', {
+            'factory':make_pack_factory(True, True, 2),
+            'len':2,
+            }),
+        ]
+    for test in iter_suite_tests(to_adapt):
+        result.addTests(len_one_adapter.adapt(test))
+        result.addTests(len_two_adapter.adapt(test))
+    return result
 
 
 def get_diamond_vf(f, trailing_eol=True, left_only=False):
@@ -1580,3 +1656,11 @@ class TestKeyMapper(TestCaseWithMemoryTransport):
             "revision-id")))
         self.assertEqual(('filE-Id',), mapper.unmap("ed/fil%45-%49d"))
         self.assertEqual(('neW-Id',), mapper.unmap("88/ne%57-%49d"))
+
+
+class TestVersionedFiles(TestCaseWithMemoryTransport):
+    """Tests for the multiple-file variant of VersionedFile."""
+
+    def test_construct(self):
+        """Each parameterised test can be constructed on a transport."""
+        files = self.factory(self.get_transport())
