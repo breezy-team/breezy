@@ -102,7 +102,9 @@ def repository_guess_scheme(repository, last_revnum, branch_path=None):
     return scheme
 
 def set_branching_scheme(repository, scheme, mandatory=False):
-    repository.get_config().set_branching_scheme(str(scheme), mandatory=mandatory)
+    repository.get_mapping().scheme = scheme
+    repository.get_config().set_branching_scheme(str(scheme), 
+                                                 mandatory=mandatory)
 
 
 class BzrSvnMappingv3(mapping.BzrSvnMapping):

@@ -195,9 +195,9 @@ class SvnRepository(Repository):
         return self._cached_revnum
 
     def get_mapping(self):
-        if self._default_mapping is not None:
-            return self._default_mapping
-        return get_default_mapping().from_repository(self, self._hinted_branch_path)
+        if self._default_mapping is None:
+            self._default_mapping = get_default_mapping().from_repository(self, self._hinted_branch_path)
+        return self._default_mapping
 
     def _make_parents_provider(self):
         return CachingParentsProvider(self)
