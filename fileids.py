@@ -24,7 +24,7 @@ from bzrlib.trace import mutter
 import urllib
 
 import changes
-from mapping import escape_svn_path
+from bzrlib.plugins.svn.mapping import escape_svn_path
 
 def get_local_changes(paths, branch, mapping, generate_revid, 
                       get_children=None):
@@ -131,7 +131,7 @@ class FileIdMap(object):
 
         todo = []
         next_parent_revs = []
-        if mapping.scheme.is_branch(""):
+        if mapping.is_branch(""):
             map = {u"": (mapping.generate_file_id(uuid, 0, "", u""), NULL_REVISION)}
         else:
             map = {}
@@ -243,7 +243,7 @@ class CachingFileIdMap(object):
             return map
 
         if len(next_parent_revs) == 0:
-            if mapping.scheme.is_branch(""):
+            if mapping.is_branch(""):
                 map = {u"": (mapping.generate_file_id(uuid, 0, "", u""), NULL_REVISION)}
             else:
                 map = {}

@@ -99,7 +99,7 @@ register_lazy_transport('svn://', 'bzrlib.plugins.svn.transport',
 register_lazy_transport('svn+', 'bzrlib.plugins.svn.transport', 
                         'SvnRaTransport')
 topic_registry.register_lazy('svn-branching-schemes', 
-                             'bzrlib.plugins.svn.scheme',
+                             'bzrlib.plugins.svn.mapping3.scheme',
                              'help_schemes', 'Subversion branching schemes')
 
 BzrDirFormat.register_control_format(format.SvnRemoteFormat)
@@ -147,7 +147,7 @@ def get_scheme(schemename):
     """
     if isinstance(schemename, unicode):
         schemename = schemename.encode("ascii")
-    from scheme import BranchingScheme
+    from mapping3.scheme import BranchingScheme
     from bzrlib.errors import BzrCommandError
     
     ret = BranchingScheme.find_scheme(schemename)
@@ -230,8 +230,8 @@ class cmd_svn_import(Command):
                 return False
             return True
 
-        convert_repository(from_repos, to_location, scheme, not standalone, 
-                trees, all, filter_branch=filter_branch)
+        convert_repository(from_repos, to_location, scheme, None, 
+                           not standalone, trees, all, filter_branch=filter_branch)
 
         if tmp_repos is not None:
             from bzrlib import osutils
@@ -370,7 +370,7 @@ class cmd_svn_branching_scheme(Command):
         from bzrlib.repository import Repository
         from bzrlib.trace import info
         from repository import SvnRepository
-        from scheme import scheme_from_branch_list
+        from mapping3.scheme import scheme_from_branch_list
         def scheme_str(scheme):
             if scheme is None:
                 return ""
@@ -382,16 +382,16 @@ class cmd_svn_branching_scheme(Command):
         if repository_wide:
             scheme = repos._get_property_scheme()
         else:
-            scheme = repos.get_scheme()
+            scheme = repos.get_mapping().scheme
         if set:
             schemestr = edit_commit_message("", 
                                             start_message=scheme_str(scheme))
             scheme = scheme_from_branch_list(
                 map(lambda x:x.strip("\n"), schemestr.splitlines()))
             if repository_wide:
-                repos.set_property_scheme(scheme)
+                set_property_scheme(repos, scheme)
             else:
-                repos.set_branching_scheme(scheme, mandatory=True)
+                set_config_scheme(repos, scheme, mandatory=True)
         elif scheme is not None:
             info(scheme_str(scheme))
 

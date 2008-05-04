@@ -30,9 +30,9 @@ import svn.core
 
 from bzrlib.plugins.svn.errors import InvalidFileName
 from logwalker import lazy_dict
-from mapping import (SVN_PROP_BZR_ANCESTRY, SVN_PROP_BZR_MERGE, 
+from bzrlib.plugins.svn.mapping import (SVN_PROP_BZR_MERGE, 
                      SVN_PROP_BZR_PREFIX, SVN_PROP_BZR_REVISION_INFO, 
-                     SVN_PROP_BZR_BRANCHING_SCHEME, SVN_PROP_BZR_REVISION_ID,
+                     SVN_PROP_BZR_REVISION_ID,
                      SVN_PROP_BZR_FILEIDS, SVN_REVPROP_BZR_SIGNATURE,
                      parse_merge_property,
                      parse_revision_metadata)
@@ -106,8 +106,6 @@ class RevisionBuildEditor(svn.delta.Editor):
         self._id_map = None
         self.dir_baserev = {}
         self._revinfo = None
-        self._bzr_merges = ()
-        self._svk_merges = []
         self._premature_deletes = set()
         self.pool = Pool()
         self.old_inventory = prev_inventory
@@ -276,37 +274,16 @@ class RevisionBuildEditor(svn.delta.Editor):
                 self._branch_fileprops = {}
             self._branch_fileprops[name] = value
 
-        if name == SVN_PROP_BZR_BRANCHING_SCHEME:
-            if new_id != self.inventory.root.file_id:
-                mutter('rogue %r on non-root directory' % name)
-                return
-        elif name == SVN_PROP_BZR_ANCESTRY+str(self.mapping.scheme):
-            if new_id != self.inventory.root.file_id:
-                mutter('rogue %r on non-root directory' % name)
-                return
-            
-            self._bzr_merges = parse_merge_property(value.splitlines()[-1])
-        elif name == SVN_PROP_SVK_MERGE:
-            self._svk_merges = None # Force Repository.revision_parents() to look it up
-        elif name == SVN_PROP_BZR_REVISION_INFO:
-            if new_id != self.inventory.root.file_id:
-                mutter('rogue %r on non-root directory' % SVN_PROP_BZR_REVISION_INFO)
-                return
- 
-        elif name in (svn.core.SVN_PROP_ENTRY_COMMITTED_DATE,
+        if name in (svn.core.SVN_PROP_ENTRY_COMMITTED_DATE,
                       svn.core.SVN_PROP_ENTRY_COMMITTED_REV,
                       svn.core.SVN_PROP_ENTRY_LAST_AUTHOR,
                       svn.core.SVN_PROP_ENTRY_LOCK_TOKEN,
                       svn.core.SVN_PROP_ENTRY_UUID,
-                      svn.core.SVN_PROP_EXECUTABLE,
-                      SVN_PROP_BZR_MERGE, SVN_PROP_BZR_FILEIDS):
+                      svn.core.SVN_PROP_EXECUTABLE):
             pass
-        elif (name.startswith(SVN_PROP_BZR_ANCESTRY) or 
-              name.startswith(SVN_PROP_BZR_REVISION_ID) or 
-              name.startswith(svn.core.SVN_PROP_WC_PREFIX)):
+        elif (name.startswith(svn.core.SVN_PROP_WC_PREFIX)):
             pass
-        elif (name.startswith(svn.core.SVN_PROP_PREFIX) or
-              name.startswith(SVN_PROP_BZR_PREFIX)):
+        elif name.startswith(svn.core.SVN_PROP_PREFIX):
             mutter('unsupported dir property %r' % name)
 
     def change_file_prop(self, id, name, value, pool):
@@ -537,7 +514,7 @@ class InterFromSvnRepository(InterRepository):
     def _get_repo_format_to_test():
         return None
 
-    def _find_all(self):
+    def _find_all(self, mapping):
         """Find all revisions from the source repository that are not 
         yet in the target repository.
         """
@@ -548,7 +525,7 @@ class InterFromSvnRepository(InterRepository):
         available_revs = set()
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            for (revnum, bp, mapping, changes, revprops) in self.source.iter_all_changes(pb=pb):
+            for (revnum, bp, changes, revprops) in self.source.iter_all_changes(pb=pb):
                 revid = self.source.generate_revision_id(revnum, bp, mapping, revprops)
                 available_revs.add(revid)
                 revprops_map[revid] = revprops
@@ -724,7 +701,7 @@ class InterFromSvnRepository(InterRepository):
             if branches is not None:
                 needed = self._find_branches(branches, find_ghosts, fetch_rhs_ancestry)
             elif revision_id is None:
-                needed = self._find_all()
+                needed = self._find_all(self.source.get_mapping())
             else:
                 needed = self._find_until(revision_id, find_ghosts, fetch_rhs_ancestry)
         finally:

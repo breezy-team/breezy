@@ -1,0 +1,50 @@
+Repository layouts
+==================
+
+.. contents:
+
+Rationale
+---------
+Branching schemes are very inflexible and changing them breaks the ability to 
+use the repository since they are embedded in the generated revision ids. It 
+should be possible to get rid of branching schemes but there are a couple of 
+properties of it that should still be usable. 
+
+When searching for revision ids, we need to search a limited set of paths in 
+the repository for branch properties.
+
+When importing a branch, we need to import the relevant tags so we need 
+to know where to find them.
+
+In order to push right hand side history into Bazaar, it should be 
+possible to create new branches inside the repository automatically.
+
+Since there may be more than one project in a repository and it can be 
+very inefficient to have to browse the full repository it will be useful 
+to be able to restrict the paths searched on a per-project basis.
+
+Storage
+~~~~~~~
+It should be possible to specify the repository layout locally as the user 
+may only have read-only access to the repository. It should be possible to 
+set the layout globally as well, inside of the repository, so it is possible
+to use the repository and just have it work.
+
+If repository layout is known, one should be guess - similar to the way 
+that is currently being done for branching schemes.
+
+Proposal
+--------
+In order to deal with this information, we need to keep a list of branches
+and tags per project.
+
+Backwards compatibility
+-----------------------
+Branching schemes should be derivable from the repository layout. 
+
+Implementation
+--------------
+A new class RepositoryLayout will be created that can manage a list of 
+branch paths, tags paths and locations to add new tags or branches.
+
+.. vim: ft=rest

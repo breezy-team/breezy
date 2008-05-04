@@ -18,7 +18,7 @@
 
 from bzrlib.branch import Branch
 from config import SvnRepositoryConfig, BranchConfig
-from scheme import TrunkBranchingScheme
+from mapping3.scheme import TrunkBranchingScheme
 from tests import TestCaseWithSubversionRepository
 
 from bzrlib.tests import TestCaseInTempDir

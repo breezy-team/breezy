@@ -84,7 +84,7 @@ class SvnBranch(Branch):
                 raise NotBranchError(self.base)
             raise
         if not self.mapping.is_branch(branch_path):
-            raise NotSvnBranchPath(branch_path, scheme=self.mapping.scheme)
+            raise NotSvnBranchPath(branch_path, mapping=self.mapping)
 
     def set_branch_path(self, branch_path):
         """Change the branch path for this branch.
@@ -161,7 +161,7 @@ class SvnBranch(Branch):
         :raises NoSuchRevision: If the revision id was not found.
         """
         (bp, revnum, mapping) = self.repository.lookup_revision_id(revid, 
-                                                             scheme=self.mapping.scheme)
+                                         ancestry=(self.get_branch_path(), self.get_revnum()))
         assert bp.strip("/") == self.get_branch_path(revnum).strip("/"), \
                 "Got %r, expected %r" % (bp, self.get_branch_path(revnum))
         return revnum

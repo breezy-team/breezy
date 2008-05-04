@@ -36,21 +36,9 @@ class NotSvnBranchPath(NotBranchError):
     _fmt = """%(path)s is not a valid Subversion branch path. 
 See 'bzr help svn-branching-schemes' for details."""
 
-    def __init__(self, branch_path, scheme=None):
+    def __init__(self, branch_path, mapping=None):
         NotBranchError.__init__(self, urllib.quote(branch_path))
-        self.scheme = scheme
-
-
-class InvalidSvnBranchPath(NotBranchError):
-    """Error raised when a path was specified that is not a child of or itself
-    a valid branch path in the current branching scheme."""
-    _fmt = """%(path)s is not a valid Subversion branch path in the current 
-branching scheme. See 'bzr help svn-branching-schemes' for details."""
-
-    def __init__(self, path, scheme):
-        assert isinstance(path, str)
-        NotBranchError.__init__(self, urllib.quote(path))
-        self.scheme = scheme
+        self.mapping = mapping
 
 
 class NoSvnRepositoryPresent(NoRepositoryPresent):
@@ -162,3 +150,16 @@ class CorruptMappingData(BzrError):
     def __init__(self, path):
         BzrError.__init__(self)
         self.path = path
+
+
+class InvalidSvnBranchPath(NotBranchError):
+    """Error raised when a path was specified that is not a child of or itself
+    a valid branch path in the current branching scheme."""
+    _fmt = """%(path)s is not a valid Subversion branch path in the current 
+repository layout. See 'bzr help svn-repository-layout' for details."""
+
+    def __init__(self, path, layout):
+        assert isinstance(path, str)
+        NotBranchError.__init__(self, urllib.quote(path))
+        self.layout = layout
+

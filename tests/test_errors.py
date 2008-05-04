@@ -20,7 +20,7 @@ from bzrlib.errors import (ConnectionError, ConnectionReset, LockError,
 from bzrlib.tests import TestCase
 
 from errors import (convert_svn_error, convert_error, InvalidPropertyValue, 
-                    InvalidSvnBranchPath, NotSvnBranchPath, 
+                    NotSvnBranchPath, InvalidSvnBranchPath,
                     SVN_ERR_UNKNOWN_HOSTNAME)
 
 import svn.core
@@ -83,8 +83,9 @@ class TestConvertError(TestCase):
           "Invalid property value for Subversion property svn:foobar: corrupt", 
           str(error))
 
+    def test_notsvnbranchpath_nonascii(self):
+        NotSvnBranchPath('\xc3\xb6', None)
+
     def test_invalidsvnbranchpath_nonascii(self):
         InvalidSvnBranchPath('\xc3\xb6', None)
 
-    def test_notsvnbranchpath_nonascii(self):
-        NotSvnBranchPath('\xc3\xb6', None)

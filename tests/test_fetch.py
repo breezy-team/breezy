@@ -30,7 +30,8 @@ from convert import load_dumpfile
 from bzrlib.plugins.svn.errors import InvalidFileName
 import format
 import remote
-from scheme import TrunkBranchingScheme, NoBranchingScheme
+from mapping3 import set_branching_scheme
+from mapping3.scheme import TrunkBranchingScheme, NoBranchingScheme
 from tests import TestCaseWithSubversionRepository
 from transport import SvnRaTransport
 
@@ -59,7 +60,7 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         self.client_add("dc/proj1")
         self.client_commit("dc", "My Message")
         oldrepos = Repository.open(repos_url)
-        oldrepos.set_branching_scheme(TrunkBranchingScheme(1))
+        set_branching_scheme(oldrepos, TrunkBranchingScheme(1))
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
@@ -103,7 +104,7 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         self.client_update("dc")
         self.client_commit("dc", "strange revision")
         oldrepos = Repository.open(repos_url)
-        oldrepos.set_branching_scheme(TrunkBranchingScheme(0))
+        set_branching_scheme(oldrepos, TrunkBranchingScheme(0))
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
@@ -116,7 +117,7 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         self.client_add("dc/trunk")
         self.client_commit("dc", "My Message")
         oldrepos = Repository.open(repos_url)
-        oldrepos.set_branching_scheme(TrunkBranchingScheme())
+        set_branching_scheme(oldrepos, TrunkBranchingScheme())
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         self.assertRaises(InvalidFileName, oldrepos.copy_content_into, newrepos)
@@ -124,7 +125,7 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
     def test_fetch_null(self):
         repos_url = self.make_client('d', 'dc')
         oldrepos = Repository.open(repos_url)
-        oldrepos.set_branching_scheme(TrunkBranchingScheme(1))
+        set_branching_scheme(oldrepos, TrunkBranchingScheme(1))
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos, NULL_REVISION)
@@ -184,7 +185,7 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         self.client_add("dc/trunk")
         self.client_commit("dc", "My Message")
         oldrepos = Repository.open(repos_url)
-        oldrepos.set_branching_scheme(TrunkBranchingScheme(0))
+        set_branching_scheme(oldrepos, TrunkBranchingScheme(0))
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
@@ -196,7 +197,7 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My Message")
         self.client_set_revprop(repos_url, 1, "bzr:gpg-signature", "SIGNATURE")
         oldrepos = Repository.open(repos_url)
-        oldrepos.set_branching_scheme(TrunkBranchingScheme(0))
+        set_branching_scheme(oldrepos, TrunkBranchingScheme(0))
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
@@ -212,7 +213,7 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         self.client_add(u"dc/trunk/IöC/bar".encode("utf-8"))
         self.client_commit("dc", "My Message")
         oldrepos = Repository.open(repos_url)
-        oldrepos.set_branching_scheme(TrunkBranchingScheme(0))
+        set_branching_scheme(oldrepos, TrunkBranchingScheme(0))
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
@@ -223,7 +224,7 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         self.client_add("dc/trunk")
         self.client_commit("dc", "My Message")
         oldrepos = Repository.open(repos_url)
-        oldrepos.set_branching_scheme(TrunkBranchingScheme(0))
+        set_branching_scheme(oldrepos, TrunkBranchingScheme(0))
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
@@ -237,7 +238,7 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         self.build_tree({u"dc/trunk/€\x2c": "bar"})
         revno = self.client_commit("dc", "My Message2")[0]
         oldrepos = Repository.open(repos_url)
-        oldrepos.set_branching_scheme(TrunkBranchingScheme(0))
+        set_branching_scheme(oldrepos, TrunkBranchingScheme(0))
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
@@ -339,7 +340,7 @@ class TestFetchWorks(TestCaseWithSubversionRepository):
         self.client_copy("dc/trunk/mydir", "dc/branches/tmp/abranch")
         self.client_commit("dc", "Third Message")
         oldrepos = Repository.open("svn+"+repos_url)
-        oldrepos.set_branching_scheme(TrunkBranchingScheme())
+        set_branching_scheme(oldrepos, TrunkBranchingScheme())
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
@@ -1223,7 +1224,7 @@ Node-copyfrom-path: x
         self.client_commit("dc", "split out lib")
 
         oldrepos = Repository.open(repos_url)
-        oldrepos.set_branching_scheme(TrunkBranchingScheme())
+        set_branching_scheme(oldrepos, TrunkBranchingScheme())
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
@@ -1246,7 +1247,7 @@ Node-copyfrom-path: x
         self.client_commit("dc", "revive old trunk")
 
         oldrepos = Repository.open(repos_url)
-        oldrepos.set_branching_scheme(TrunkBranchingScheme())
+        set_branching_scheme(oldrepos, TrunkBranchingScheme())
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
@@ -1268,7 +1269,7 @@ Node-copyfrom-path: x
         self.client_commit("dc", "revive old trunk")
 
         oldrepos = Repository.open(repos_url)
-        oldrepos.set_branching_scheme(TrunkBranchingScheme())
+        set_branching_scheme(oldrepos, TrunkBranchingScheme())
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
@@ -1288,7 +1289,7 @@ Node-copyfrom-path: x
         self.client_commit("dc", "revive old trunk")
 
         oldrepos = Repository.open(repos_url)
-        oldrepos.set_branching_scheme(TrunkBranchingScheme())
+        set_branching_scheme(oldrepos, TrunkBranchingScheme())
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
@@ -1312,7 +1313,7 @@ Node-copyfrom-path: x
         self.client_commit("dc", "split out lib")
 
         oldrepos = Repository.open(repos_url)
-        oldrepos.set_branching_scheme(TrunkBranchingScheme())
+        set_branching_scheme(oldrepos, TrunkBranchingScheme())
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
@@ -1336,7 +1337,7 @@ Node-copyfrom-path: x
         self.client_commit("dc", "foohosts") #4
 
         oldrepos = Repository.open(repos_url)
-        oldrepos.set_branching_scheme(TrunkBranchingScheme())
+        set_branching_scheme(oldrepos, TrunkBranchingScheme())
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
@@ -1372,7 +1373,7 @@ Node-copyfrom-path: x
         self.client_commit("dc", "added branch foobranch") #3
 
         repos = remote.SvnRemoteAccess(SvnRaTransport("svn+"+repos_url), format.SvnRemoteFormat()).find_repository()
-        repos.set_branching_scheme(TrunkBranchingScheme())
+        set_branching_scheme(repos, TrunkBranchingScheme())
 
         mapping = repos.get_mapping()
 
@@ -1411,7 +1412,7 @@ Node-copyfrom-path: x
         self.client_commit("dc", "foohosts") #6
 
         repos = remote.SvnRemoteAccess(SvnRaTransport("svn+"+repos_url), format.SvnRemoteFormat()).find_repository()
-        repos.set_branching_scheme(TrunkBranchingScheme())
+        set_branching_scheme(repos, TrunkBranchingScheme())
 
         mapping = repos.get_mapping()
 
@@ -1627,7 +1628,7 @@ Node-copyfrom-path: x
         self.client_set_prop("dc/trunk", "some:property", "some data3\n")
         self.client_commit("dc", "My 4")
         oldrepos = Repository.open("svn+"+repos_url)
-        oldrepos.set_branching_scheme(TrunkBranchingScheme())
+        set_branching_scheme(oldrepos, TrunkBranchingScheme())
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
@@ -1664,7 +1665,7 @@ Node-copyfrom-path: x
         self.client_commit("dc", "Change dir")
 
         oldrepos = Repository.open("svn+"+repos_url)
-        oldrepos.set_branching_scheme(TrunkBranchingScheme())
+        set_branching_scheme(oldrepos, TrunkBranchingScheme())
         dir = BzrDir.create("f", format.get_rich_root_format())
         newrepos = dir.create_repository()
         mapping = oldrepos.get_mapping()

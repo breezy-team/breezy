@@ -19,11 +19,11 @@
 from bzrlib.errors import NotBranchError, BzrError
 
 from bzrlib.tests import TestCase
-from scheme import (ListBranchingScheme, NoBranchingScheme, 
+from mapping3.scheme import (ListBranchingScheme, NoBranchingScheme, 
                     BranchingScheme, TrunkBranchingScheme, 
                     SingleBranchingSchemev0, 
                     SingleBranchingScheme, 
-                    UnknownBranchingScheme,
+                    UnknownBranchingScheme, 
                     parse_list_scheme_text, find_commit_paths, 
                     guess_scheme_from_branch_path, guess_scheme_from_history,
                     guess_scheme_from_path, scheme_from_branch_list)

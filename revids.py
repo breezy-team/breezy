@@ -24,8 +24,10 @@ import svn.core
 
 from cache import CacheTable
 from errors import InvalidPropertyValue
-from mapping import (parse_revision_id, BzrSvnMapping, BzrSvnMappingv3FileProps,
+from bzrlib.plugins.svn.mapping import (parse_revision_id, BzrSvnMapping, 
                      SVN_PROP_BZR_REVISION_ID, parse_revid_property)
+from bzrlib.plugins.svn.mapping3 import BzrSvnMappingv3FileProps
+from mapping3.scheme import BranchingScheme
 
 class RevidMap(object):
     def __init__(self, repos):
@@ -46,7 +48,8 @@ class RevidMap(object):
 
         return revid
 
-    def get_branch_revnum(self, revid, scheme):
+    def get_branch_revnum(self, revid, layout):
+        """Find the (branch, revnum) tuple for a revision id."""
         # Try a simple parse
         try:
             (uuid, branch_path, revnum, mapping) = parse_revision_id(revid)
@@ -60,52 +63,54 @@ class RevidMap(object):
         except InvalidRevisionId:
             pass
 
-        found = False
-        for entry_revid, branch, revno in self.discover_revids(scheme, 0, self.repos.get_latest_revnum()):
+        for entry_revid, branch, revno, mapping in self.discover_revids(layout, 0, self.repos.get_latest_revnum()):
             if revid == entry_revid:
-                found = True
-                break
-        if found:
-            return self.bisect_revid_revnum(revid, branch, revno, scheme)
+                return self.bisect_revid_revnum(revid, branch, revno)
         raise NoSuchRevision(revid)
 
-    def discover_revids(self, scheme, from_revnum, to_revnum):
-        for (branch, revno, _) in self.repos.find_branchpaths(scheme, from_revnum, to_revnum):
+    def discover_revids(self, layout, from_revnum, to_revnum):
+        for (branch, revno, _) in self.repos.find_branchpaths(layout, from_revnum, to_revnum):
             assert isinstance(branch, str)
             assert isinstance(revno, int)
             # Look at their bzr:revision-id-vX
             revids = set()
             try:
                 props = self.repos.branchprop_list.get_properties(branch, revno)
-                for line in props.get(SVN_PROP_BZR_REVISION_ID+str(scheme), "").splitlines():
-                    try:
-                        revids.add(parse_revid_property(line))
-                    except InvalidPropertyValue, ie:
-                        mutter(str(ie))
+                for propname, propvalue in props.items():
+                    if not propname.startswith(SVN_PROP_BZR_REVISION_ID):
+                        continue
+                    scheme = propname[len(SVN_PROP_BZR_REVISION_ID):]
+                    for line in propvalue.splitlines():
+                        try:
+                            revids.add((parse_revid_property(line), scheme))
+                        except InvalidPropertyValue, ie:
+                            mutter(str(ie))
             except svn.core.SubversionException, (_, svn.core.SVN_ERR_FS_NOT_DIRECTORY):
-                continue
+                    continue
 
             # If there are any new entries that are not yet in the cache, 
             # add them
-            for (entry_revno, entry_revid) in revids:
-                yield (entry_revid, branch, revno)
+            for ((entry_revno, entry_revid), scheme) in revids:
+                yield (entry_revid, branch, revno, BzrSvnMappingv3FileProps(BranchingScheme.find_scheme(scheme)))
 
-    def bisect_revid_revnum(self, revid, branch_path, max_revnum, scheme):
+    def bisect_revid_revnum(self, revid, branch_path, max_revnum):
         # Find the branch property between min_revnum and max_revnum that 
         # added revid
-        propname = SVN_PROP_BZR_REVISION_ID+str(scheme)
-        for (bp, changes, rev, revprops, changed_fileprops) in self.repos.iter_reverse_branch_changes(branch_path, max_revnum, scheme):
-            if not propname in changed_fileprops:
-                continue
-            try:
-                (entry_revno, entry_revid) = parse_revid_property(
-                    changed_fileprops[propname].splitlines()[-1])
-            except InvalidPropertyValue:
-                # Don't warn about encountering an invalid property, 
-                # that will already have happened earlier
-                continue
-            if entry_revid == revid:
-                return (bp, rev, BzrSvnMappingv3FileProps(scheme))
+        for (bp, changes, rev, revprops, changed_fileprops) in self.repos.iter_reverse_branch_changes(branch_path, max_revnum):
+            for propname, propvalue in changed_fileprops.items():
+                if not propname.startswith(SVN_PROP_BZR_REVISION_ID):
+                    continue
+                try:
+                    (entry_revno, entry_revid) = parse_revid_property(
+                        propvalue.splitlines()[-1])
+                except InvalidPropertyValue:
+                    # Don't warn about encountering an invalid property, 
+                    # that will already have happened earlier
+                    continue
+                if entry_revid == revid:
+                    scheme = BranchingScheme.find_scheme(propname[len(SVN_PROP_BZR_REVISION_ID):])
+                    assert scheme.is_tag(bp) or scheme.is_branch(bp)
+                    return (bp, rev, BzrSvnMappingv3FileProps(scheme))
 
         raise AssertionError("Revision id %s was added incorrectly" % revid)
 
@@ -126,7 +131,7 @@ class CachingRevidMap(object):
         self.cache.insert_revid(revid, path, revnum, revnum, str(mapping.scheme))
         return revid
 
-    def get_branch_revnum(self, revid, scheme=None):
+    def get_branch_revnum(self, revid, layout):
         # Try a simple parse
         try:
             (uuid, branch_path, revnum, mapping) = parse_revision_id(revid)
@@ -141,7 +146,7 @@ class CachingRevidMap(object):
             pass
 
         def get_scheme(name):
-            from scheme import BranchingScheme
+            from mapping3.scheme import BranchingScheme
             assert isinstance(name, str)
             return BranchingScheme.find_scheme(name)
 
@@ -156,27 +161,26 @@ class CachingRevidMap(object):
                 return (branch_path, min_revnum, BzrSvnMappingv3FileProps(get_scheme(scheme)))
         except NoSuchRevision, e:
             last_revnum = self.actual.repos.get_latest_revnum()
-            if (last_revnum <= self.cache.last_revnum_checked(str(scheme))):
+            if (last_revnum <= self.cache.last_revnum_checked(str(layout))):
                 # All revision ids in this repository for the current 
-                # scheme have already been discovered. No need to 
+                # layout have already been discovered. No need to 
                 # check again.
                 raise e
             found = False
-            for entry_revid, branch, revno in self.actual.discover_revids(scheme, self.cache.last_revnum_checked(str(scheme)), last_revnum):
+            for entry_revid, branch, revno, mapping in self.actual.discover_revids(layout, self.cache.last_revnum_checked(str(layout)), last_revnum):
                 if entry_revid == revid:
                     found = True
-                self.cache.insert_revid(entry_revid, branch, 0, revno, 
-                            str(scheme))
+                self.cache.insert_revid(entry_revid, branch, 0, revno, str(mapping.scheme))
                 
-            # We've added all the revision ids for this scheme in the repository,
+            # We've added all the revision ids for this layout in the repository,
             # so no need to check again unless new revisions got added
-            self.cache.set_last_revnum_checked(str(scheme), last_revnum)
+            self.cache.set_last_revnum_checked(str(layout), last_revnum)
             if not found:
                 raise e
             (branch_path, min_revnum, max_revnum, scheme) = self.cache.lookup_revid(revid)
             assert isinstance(branch_path, str)
 
-        return self.actual.bisect_revid_revnum(revid, branch_path, max_revnum, get_scheme(scheme))
+        return self.actual.bisect_revid_revnum(revid, branch_path, max_revnum)
 
 
 class RevisionIdMapCache(CacheTable):
@@ -195,25 +199,25 @@ class RevisionIdMapCache(CacheTable):
         create unique index if not exists scheme on revids_seen (scheme);
         """)
 
-    def set_last_revnum_checked(self, scheme, revnum):
+    def set_last_revnum_checked(self, layout, revnum):
         """Remember the latest revision number that has been checked
         for a particular scheme.
 
-        :param scheme: Branching scheme name.
+        :param layout: Repository layout.
         :param revnum: Revision number.
         """
-        self.cachedb.execute("replace into revids_seen (scheme, max_revnum) VALUES (?, ?)", (scheme, revnum))
+        self.cachedb.execute("replace into revids_seen (scheme, max_revnum) VALUES (?, ?)", (layout, revnum))
 
-    def last_revnum_checked(self, scheme):
+    def last_revnum_checked(self, layout):
         """Retrieve the latest revision number that has been checked 
         for revision ids for a particular branching scheme.
 
-        :param scheme: Branching scheme name.
+        :param layout: Repository layout.
         :return: Last revision number checked or 0.
         """
-        self.mutter("last revnum checked %r" % scheme)
+        self.mutter("last revnum checked %r" % layout)
         ret = self.cachedb.execute(
-            "select max_revnum from revids_seen where scheme = ?", (scheme,)).fetchone()
+            "select max_revnum from revids_seen where scheme = ?", (layout,)).fetchone()
         if ret is None:
             return 0
         return int(ret[0])

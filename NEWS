@@ -43,6 +43,9 @@ bzr-svn 0.4.10  UNRELEASED
 
    * Removed revision number cache.
 
+   * Switch to using "repository layouts" rather than branching schemes. 
+     Layouts are not part of the mapping so don't affect the revision identity.
+
   BUGS
 
    * Avoid sometimes incorrect determination of Bazaar revision numbers. (#181773)

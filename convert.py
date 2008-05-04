@@ -80,7 +80,7 @@ def load_dumpfile(dumpfile, outputdir):
     return repos
 
 
-def convert_repository(source_repos, output_url, scheme=None, 
+def convert_repository(source_repos, output_url, scheme=None, layout=None,
                        create_shared_repo=True, working_trees=False, all=False,
                        format=None, filter_branch=None):
     """Convert a Subversion repository and its' branches to a 
@@ -88,13 +88,15 @@ def convert_repository(source_repos, output_url, scheme=None,
 
     :param source_repos: Subversion repository
     :param output_url: URL to write Bazaar repository to.
-    :param scheme: Branching scheme (object) to use
+    :param scheme: Branching scheme to use.
+    :param layout: Repository layout (object) to use
     :param create_shared_repo: Whether to create a shared Bazaar repository
     :param working_trees: Whether to create working trees
     :param all: Whether old revisions, even those not part of any existing 
         branches, should be imported
     :param format: Format to use
     """
+    from mapping3 import SchemeDerivedLayout, set_branching_scheme
     assert not all or create_shared_repo
     if format is None:
         format = get_rich_root_format()
@@ -111,20 +113,23 @@ def convert_repository(source_repos, output_url, scheme=None,
             dirs[path] = format.initialize_on_transport(nt)
         return dirs[path]
 
-    if scheme is not None:
-        source_repos.set_branching_scheme(scheme)
+    if layout is not None:
+        source_repos.set_layout(layout)
+    elif scheme is not None:
+        set_branching_scheme(source_repos, scheme)
+        layout = SchemeDerivedLayout(source_repos, scheme)
+    else:
+        layout = source_repos.get_layout()
 
     if create_shared_repo:
         try:
             target_repos = get_dir("").open_repository()
-            assert (source_repos.get_scheme().is_branch("") or 
-                    source_repos.get_scheme().is_tag("") or 
-                    target_repos.is_shared())
+            assert (layout.is_branch("") or layout.is_tag("") or target_repos.is_shared())
         except NoRepositoryPresent:
             target_repos = get_dir("").create_repository(shared=True)
         target_repos.set_make_working_trees(working_trees)
 
-    existing_branches = source_repos.find_branches(scheme=source_repos.get_scheme())
+    existing_branches = source_repos.find_branches(layout=layout)
     if filter_branch is not None:
         existing_branches = filter(filter_branch, existing_branches)
 
