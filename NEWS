@@ -77,6 +77,9 @@ IN DEVELOPMENT
 
     * Document outlining strategies for TortoiseBzr. (Mark Hammond)
 
+    * Added directory structure and started translation of docs in spanish.
+      (Martin Albisetti, Lucio Albenga)
+
   TESTING:
 
     * Add ``thread_name_suffix`` parameter to SmartTCPServer_for_testing, to
