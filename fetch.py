@@ -566,21 +566,26 @@ class InterFromSvnRepository(InterRepository):
         def check_revid(revision_id):
             prev = None
             (branch_path, revnum, mapping) = self.source.lookup_revision_id(revision_id)
-            for (bp, changes, rev, svn_revprops, svn_fileprops) in self.source.iter_reverse_branch_changes(branch_path, revnum, mapping):
-                revid = self.source.generate_revision_id(rev, bp, mapping, svn_revprops, svn_fileprops)
-                rhs_parents[revid] = mapping.get_rhs_parents(bp, svn_revprops, svn_fileprops)
-                lhs_parent[prev] = revid
-                revprop_map[revid] = svn_revprops
-                changes_map[revid] = changes
-                if fetch_rhs_ancestry:
-                    extra.update(rhs_parents)
-                if not self.target.has_revision(revid):
-                    revs.append(revid)
-                elif not find_ghosts:
-                    prev = None
-                    break
-                prev = revid
-            lhs_parent[prev] = NULL_REVISION
+            pb = ui.ui_factory.nested_progress_bar()
+            try:
+                for (bp, changes, rev, svn_revprops, svn_fileprops) in self.source.iter_reverse_branch_changes(branch_path, revnum, mapping):
+                    pb.update("determining revisions to fetch", revnum-rev, revnum)
+                    revid = self.source.generate_revision_id(rev, bp, mapping, svn_revprops, svn_fileprops)
+                    rhs_parents[revid] = mapping.get_rhs_parents(bp, svn_revprops, svn_fileprops)
+                    lhs_parent[prev] = revid
+                    revprop_map[revid] = svn_revprops
+                    changes_map[revid] = changes
+                    if fetch_rhs_ancestry:
+                        extra.update(rhs_parents)
+                    if not self.target.has_revision(revid):
+                        revs.append(revid)
+                    elif not find_ghosts:
+                        prev = None
+                        break
+                    prev = revid
+                lhs_parent[prev] = NULL_REVISION
+            finally:
+                pb.finished()
 
         check_revid(revision_id)
 
