@@ -21,7 +21,7 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import (NoSuchFile, DivergedBranches, NoSuchRevision, 
                            NotBranchError)
 from bzrlib.inventory import (Inventory)
-from bzrlib.revision import ensure_null, NULL_REVISION
+from bzrlib.revision import is_null, ensure_null, NULL_REVISION
 from bzrlib.workingtree import WorkingTree
 
 import svn.client, svn.core
@@ -71,6 +71,7 @@ class SvnBranch(Branch):
         self._lock_count = 0
         self.mapping = self.repository.get_mapping()
         self._branch_path = branch_path.strip("/")
+        self._revmeta_cache = None
         assert isinstance(self._branch_path, str)
         try:
             revnum = self.get_revnum()
@@ -85,6 +86,10 @@ class SvnBranch(Branch):
             raise
         if not self.mapping.is_branch(branch_path):
             raise NotSvnBranchPath(branch_path, mapping=self.mapping)
+
+    def _clear_cached_state(self):
+        super(SvnBranch, self)._clear_cached_state()
+        self._revmeta_cache = None
 
     def set_branch_path(self, branch_path):
         """Change the branch path for this branch.
@@ -232,6 +237,16 @@ class SvnBranch(Branch):
         last_revid = self.last_revision()
         return self.revision_id_to_revno(last_revid), last_revid
 
+    def revision_id_to_revno(self, revision_id):
+        """Given a revision id, return its revno"""
+        if is_null(revision_id):
+            return 0
+        revmeta_history = self._revision_meta_history()
+        for revmeta in revmeta_history:
+            if revmeta.get_revision_id(self.mapping) == revision_id:
+                return len(revmeta_history) - revmeta_history.index(revmeta)
+        raise NoSuchRevision(self, revision_id)
+
     def get_root_id(self, revnum=None):
         if revnum is None:
             tree = self.basis_tree()
@@ -248,13 +263,19 @@ class SvnBranch(Branch):
         # get_push_location not supported on Subversion
         return None
 
+    def _revision_meta_history(self):
+        if self._revmeta_cache is None:
+            self._revmeta_cache = list(self.repository.iter_reverse_branch_changes(self.get_branch_path(), self.get_revnum(), self.mapping))
+        return self._revmeta_cache
+
     def _gen_revision_history(self):
         """Generate the revision history from last revision
         """
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            history = list(self.repository.iter_reverse_revision_history(
-                self.last_revision(), pb=pb))
+            history = []
+            for revmeta in self._revision_meta_history():
+                history.append(revmeta.get_revision_id(self.mapping))
         finally:
             pb.finished()
         history.reverse()

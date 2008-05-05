@@ -23,6 +23,7 @@ from mapping3.scheme import (BranchingScheme, guess_scheme_from_branch_path,
                              parse_list_scheme_text, NoBranchingScheme,
                              TrunkBranchingScheme, ListBranchingScheme)
 import sha, svn
+from svn.core import SubversionException
 
 SVN_PROP_BZR_BRANCHING_SCHEME = 'bzr:branching-scheme'
 
@@ -46,7 +47,7 @@ def expand_branch_pattern(begin, todo, check_path, get_children):
         if len(todo) == 1:
             ret.append("/".join(begin+[c]))
         else:
-            ret += expand_branch_pattern(begin+[c], todo[1:])
+            ret += expand_branch_pattern(begin+[c], todo[1:], check_path, get_children)
     return ret
 
 
@@ -71,6 +72,8 @@ class SchemeDerivedLayout(RepositoryLayout):
                 dirents = self.repository.transport.get_dir(path, revnum)[0]
             except SubversionException, (msg, num):
                 if num == svn.core.SVN_ERR_FS_NOT_DIRECTORY:
+                    return None
+                if num == svn.core.SVN_ERR_FS_NOT_FOUND:
                     return None
                 raise
             return dirents.keys()
