@@ -43,7 +43,8 @@ class ParentsCache(CacheTable):
 
     def insert_parents(self, revid, parents):
         self.mutter('insert parents: %r -> %r' % (revid, parents))
-        self.cachedb.execute("insert into parent (revision, parent) VALUES (?, ?)", (revid, parents))
+        for parent in parents:
+            self.cachedb.execute("insert into parent (revision, parent) VALUES (?, ?)", (revid, parent))
 
     def lookup_parents(self, revid):
         self.mutter('lookup parents: %r' % (revid,))

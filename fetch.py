@@ -501,7 +501,7 @@ class InterFromSvnRepository(InterRepository):
     def _get_repo_format_to_test():
         return None
 
-    def _find_all(self, mapping):
+    def _find_all(self, mapping, pb=None):
         """Find all revisions from the source repository that are not 
         yet in the target repository.
         """
@@ -509,30 +509,33 @@ class InterFromSvnRepository(InterRepository):
         meta_map = {}
         graph = self.source.get_graph()
         available_revs = set()
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
-            for revmeta in self.source.iter_all_changes(pb=pb):
-                revid = revmeta.get_revision_id(mapping)
-                available_revs.add(revid)
-                meta_map[revid] = revmeta
-        finally:
-            pb.finished()
+        for revmeta in self.source.iter_all_changes(pb=pb):
+            revid = revmeta.get_revision_id(mapping)
+            available_revs.add(revid)
+            meta_map[revid] = revmeta
         missing = available_revs.difference(self.target.has_revisions(available_revs))
         needed = list(graph.iter_topo_order(missing))
         parents = graph.get_parent_map(needed)
         return [(revid, parents[revid][0], meta_map[revid]) for revid in needed]
 
-    def _find_branches(self, branches, find_ghosts=False, fetch_rhs_ancestry=False):
+    def _find_branches(self, branches, find_ghosts=False, fetch_rhs_ancestry=False, pb=None):
         set_needed = set()
         ret_needed = list()
         for revid in branches:
-            for rev in self._find_until(revid, find_ghosts=find_ghosts, fetch_rhs_ancestry=False):
-                if rev[0] not in set_needed:
-                    ret_needed.append(rev)
-                    set_needed.add(rev[0])
-        return ret_needed
+            if pb:
+                pb.update("determining revisions to fetch", branches.index(revid), len(branches))
+            try:
+                nestedpb = ui.ui_factory.nested_progress_bar()
+                for rev in self._find_until(revid, find_ghosts=find_ghosts, fetch_rhs_ancestry=False,
+                                            pb=nestedpb):
+                    if rev[0] not in set_needed:
+                        ret_needed.append(rev)
+                        set_needed.add(rev[0])
+            finally:
+                nestedpb.finished()
+            return ret_needed
 
-    def _find_until(self, revision_id, find_ghosts=False, fetch_rhs_ancestry=False):
+    def _find_until(self, revision_id, find_ghosts=False, fetch_rhs_ancestry=False, pb=None):
         """Find all missing revisions until revision_id
 
         :param revision_id: Stop revision
@@ -549,24 +552,21 @@ class InterFromSvnRepository(InterRepository):
         def check_revid(revision_id):
             prev = None
             (branch_path, revnum, mapping) = self.source.lookup_revision_id(revision_id)
-            pb = ui.ui_factory.nested_progress_bar()
-            try:
-                for revmeta in self.source.iter_reverse_branch_changes(branch_path, revnum, mapping):
+            for revmeta in self.source.iter_reverse_branch_changes(branch_path, revnum, mapping):
+                if pb:
                     pb.update("determining revisions to fetch", revnum-revmeta.revnum, revnum)
-                    revid = revmeta.get_revision_id(mapping)
-                    lhs_parent[prev] = revid
-                    meta_map[revid] = revmeta
-                    if fetch_rhs_ancestry:
-                        extra.update(revmeta.get_rhs_parents(mapping))
-                    if not self.target.has_revision(revid):
-                        revs.append(revid)
-                    elif not find_ghosts:
-                        prev = None
-                        break
-                    prev = revid
-                lhs_parent[prev] = NULL_REVISION
-            finally:
-                pb.finished()
+                revid = revmeta.get_revision_id(mapping)
+                lhs_parent[prev] = revid
+                meta_map[revid] = revmeta
+                if fetch_rhs_ancestry:
+                    extra.update(revmeta.get_rhs_parents(mapping))
+                if not self.target.has_revision(revid):
+                    revs.append(revid)
+                elif not find_ghosts:
+                    prev = None
+                    break
+                prev = revid
+            lhs_parent[prev] = NULL_REVISION
 
         check_revid(revision_id)
 
@@ -677,17 +677,20 @@ class InterFromSvnRepository(InterRepository):
             return
         # Dictionary with paths as keys, revnums as values
 
+        if pb:
+            pb.update("determining revisions to fetch", 0, 2)
+
         # Loop over all the revnums until revision_id
         # (or youngest_revnum) and call self.target.add_revision() 
         # or self.target.add_inventory() each time
         self.target.lock_read()
         try:
             if branches is not None:
-                needed = self._find_branches(branches, find_ghosts, fetch_rhs_ancestry)
+                needed = self._find_branches(branches, find_ghosts, fetch_rhs_ancestry, pb=pb)
             elif revision_id is None:
-                needed = self._find_all(self.source.get_mapping())
+                needed = self._find_all(self.source.get_mapping(), pb=pb)
             else:
-                needed = self._find_until(revision_id, find_ghosts, fetch_rhs_ancestry)
+                needed = self._find_until(revision_id, find_ghosts, fetch_rhs_ancestry, pb=pb)
         finally:
             self.target.unlock()
 
