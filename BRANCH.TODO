@@ -1,6 +1,7 @@
 before 0.4.10:
  - add parent cache
  - regression in http hack?
+ - use branch name when calling has_revision() for push
 
 - Needs more tests
  - Run all tests against repository with revprop changing allowed and without

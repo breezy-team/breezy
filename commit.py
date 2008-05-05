@@ -660,9 +660,9 @@ def push_new(target_repository, target_branch_path, source,
 
         def last_revision(self):
             """See Branch.last_revision()."""
-            parents = source.repository.revision_parents(start_revid)
+            parents = source.repository.get_parent_map(start_revid)[start_revid]
             if parents == []:
-                return None
+                return NULL_REVISION
             return parents[0]
 
         def get_branch_path(self, revnum=None):
@@ -752,7 +752,7 @@ class InterToSvnRepository(InterRepository):
             todo = []
             while not self.target.has_revision(revision_id):
                 todo.append(revision_id)
-                revision_id = self.source.revision_parents(revision_id)[0]
+                revision_id = self.source.get_parent_map(revision_id)[revision_id][0]
                 if revision_id == NULL_REVISION:
                     raise UnrelatedBranches()
             if todo == []:

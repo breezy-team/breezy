@@ -1092,7 +1092,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos_url = self.make_client('d', 'dc')
         repos = Repository.open(repos_url)
         set_branching_scheme(repos, NoBranchingScheme())
-        self.assertEquals(None, repos.lhs_revision_parent("", 0, NoBranchingScheme()))
+        self.assertEquals(NULL_REVISION, repos.lhs_revision_parent("", 0, NoBranchingScheme()))
 
     def testlhs_revision_parent_first(self):
         repos_url = self.make_client('d', 'dc')

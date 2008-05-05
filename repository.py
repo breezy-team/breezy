@@ -39,6 +39,7 @@ from cache import create_cache_dir, sqlite3
 import changes
 from changes import changes_path, find_prev_location
 from config import SvnRepositoryConfig
+from parents import SqliteCachingParentsProvider
 import errors
 import logwalker
 from bzrlib.plugins.svn.mapping import (SVN_PROP_BZR_REVISION_ID, SVN_REVPROP_BZR_SIGNATURE,
@@ -175,6 +176,7 @@ class SvnRepository(Repository):
         self.revmap = RevidMap(self)
         self._default_mapping = None
         self._hinted_branch_path = branch_path
+        self._real_parents_provider = self
 
         cache = self.get_config().get_use_cache()
 
@@ -188,6 +190,7 @@ class SvnRepository(Repository):
             cachedir_transport = get_transport(cache_dir)
             self.fileid_map = CachingFileIdMap(cachedir_transport, self.fileid_map)
             self.revmap = CachingRevidMap(self.revmap, self.cachedb)
+            self._real_parents_provider = SqliteCachingParentsProvider(self._real_parents_provider)
 
         self.branchprop_list = PathPropertyProvider(self._log)
 
@@ -247,7 +250,7 @@ class SvnRepository(Repository):
         return self._default_mapping
 
     def _make_parents_provider(self):
-        return CachingParentsProvider(self)
+        return CachingParentsProvider(self._real_parents_provider)
 
     def set_layout(self, layout):
         self._layout = layout
@@ -262,8 +265,7 @@ class SvnRepository(Repository):
         pass
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, 
-                           self.base)
+        return '%s(%r)' % (self.__class__.__name__, self.base)
 
     def create_cache_dir(self):
         cache_dir = create_cache_dir()
@@ -469,7 +471,7 @@ class SvnRepository(Repository):
             if revid is not None:
                 yield revid
 
-    def revision_parents(self, revision_id, revmeta=None):
+    def revision_parents(self, revision_id):
         """See Repository.revision_parents()."""
         assert isinstance(revision_id, str)
         (branch, revnum, mapping) = self.lookup_revision_id(revision_id)
@@ -500,9 +502,7 @@ class SvnRepository(Repository):
 
         revmeta = RevisionMetadata(self, path, None, revnum, svn_revprops, svn_fileprops)
 
-        parent_ids = self.revision_parents(revision_id, revmeta)
-
-        rev = Revision(revision_id=revision_id, parent_ids=parent_ids,
+        rev = Revision(revision_id=revision_id, parent_ids=revmeta.get_parent_ids(mapping),
                        inventory_sha1=None)
 
         mapping.import_revision(svn_revprops, svn_fileprops, rev)
