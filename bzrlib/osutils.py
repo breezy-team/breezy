@@ -1345,7 +1345,9 @@ def get_user_encoding(use_cache=True):
     # Windows returns 'cp0' to indicate there is no code page. So we'll just
     # treat that as ASCII, and not support printing unicode characters to the
     # console.
-    if user_encoding in (None, 'cp0'):
+    #
+    # For python scripts run under vim, we get '', so also treat that as ASCII
+    if user_encoding in (None, 'cp0', ''):
         user_encoding = 'ascii'
     else:
         # check encoding
