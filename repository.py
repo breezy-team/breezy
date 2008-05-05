@@ -470,18 +470,20 @@ class SvnRepository(Repository):
 
         return parent_ids
 
-    def get_revision(self, revision_id, svn_revprops=None, svn_fileprops=None):
+    def get_revision(self, revision_id):
         """See Repository.get_revision."""
         if not revision_id or not isinstance(revision_id, str):
             raise InvalidRevisionId(revision_id=revision_id, branch=self)
 
         (path, revnum, mapping) = self.lookup_revision_id(revision_id)
         
-        if svn_revprops is None:
-            svn_revprops = logwalker.lazy_dict({}, self.transport.revprop_list, revnum)
-        if svn_fileprops is None:
-            svn_fileprops = logwalker.lazy_dict({}, self.branchprop_list.get_changed_properties, path, revnum)
-        parent_ids = self.revision_parents(revision_id, svn_fileprops=svn_fileprops, svn_revprops=svn_revprops)
+        svn_revprops = logwalker.lazy_dict({}, self.transport.revprop_list, revnum)
+        svn_fileprops = logwalker.lazy_dict({}, self.branchprop_list.get_changed_properties, path, revnum)
+
+        revmeta = RevisionMetadata(self, path, revnum, svn_revprops, svn_fileprops)
+
+        parent_ids = self.revision_parents(revision_id, revmeta.revprops, 
+                                           revmeta.fileprops)
 
         rev = Revision(revision_id=revision_id, parent_ids=parent_ids,
                        inventory_sha1=None)

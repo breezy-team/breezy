@@ -1,5 +1,6 @@
 before 0.4.10:
- - use branchpath, revno -> revid cache again
+ - add parent cache
+ - regression in http hack?
 
 - Needs more tests
  - Run all tests against repository with revprop changing allowed and without
