@@ -141,10 +141,13 @@ def repository_guess_scheme(repository, last_revnum, branch_path=None):
     return scheme
 
 
-def set_branching_scheme(repository, scheme, mandatory=False):
-    repository.get_mapping().scheme = scheme
+def config_set_scheme(repository, scheme, mandatory=False):
     repository.get_config().set_branching_scheme(str(scheme), 
                                                  mandatory=mandatory)
+
+def set_branching_scheme(repository, scheme, mandatory=False):
+    repository.get_mapping().scheme = scheme
+    config_set_scheme(repository, scheme, mandatory)
 
 
 class BzrSvnMappingv3(mapping.BzrSvnMapping):
@@ -177,7 +180,7 @@ class BzrSvnMappingv3(mapping.BzrSvnMapping):
         last_revnum = repository.get_latest_revnum()
         scheme = repository_guess_scheme(repository, last_revnum, _hinted_branch_path)
         if last_revnum > 20:
-            set_branching_scheme(repository, scheme, mandatory=False)
+            config_set_scheme(repository, scheme, mandatory=False)
 
         return cls(scheme)
 
