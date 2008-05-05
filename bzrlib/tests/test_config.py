@@ -159,20 +159,26 @@ class FakeBranch(object):
 class FakeControlFiles(object):
 
     def __init__(self, user_id=None):
-        self.email = user_id
         self.files = {}
+        if user_id:
+            self.files['email'] = user_id
         self._transport = self
 
     def get_utf8(self, filename):
-        if filename != 'email':
-            raise NotImplementedError
-        if self.email is not None:
-            return StringIO(self.email)
-        raise errors.NoSuchFile(filename)
+        # from LockableFiles
+        raise AssertionError("get_utf8 should no longer be used")
 
     def get(self, filename):
+        # from Transport
         try:
             return StringIO(self.files[filename])
+        except KeyError:
+            raise errors.NoSuchFile(filename)
+
+    def get_bytes(self, filename):
+        # from Transport
+        try:
+            return self.files[filename]
         except KeyError:
             raise errors.NoSuchFile(filename)
 
@@ -965,20 +971,19 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
         my_config = config.BranchConfig(branch)
         self.assertEqual("Robert Collins <robertc@example.net>",
                          my_config.username())
-        branch.control_files.email = "John"
+        my_config.branch.control_files.files['email'] = "John"
         my_config.set_user_option('email',
                                   "Robert Collins <robertc@example.org>")
         self.assertEqual("John", my_config.username())
-        branch.control_files.email = None
+        del my_config.branch.control_files.files['email']
         self.assertEqual("Robert Collins <robertc@example.org>",
                          my_config.username())
 
     def test_not_set_in_branch(self):
         my_config = self.get_branch_config(sample_config_text)
-        my_config.branch.control_files.email = None
         self.assertEqual(u"Erik B\u00e5gfors <erik@bagfors.nu>",
                          my_config._get_user_id())
-        my_config.branch.control_files.email = "John"
+        my_config.branch.control_files.files['email'] = "John"
         self.assertEqual("John", my_config._get_user_id())
 
     def test_BZR_EMAIL_OVERRIDES(self):

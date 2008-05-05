@@ -98,9 +98,8 @@ class TextRevisionStore(RevisionStore):
             try:
                 r = self._serializer.read_revision(xml_file)
             except SyntaxError, e:
-                raise errors.BzrError('failed to unpack revision_xml',
-                                   [revision_id,
-                                   str(e)])
+                raise errors.BzrError('failed to unpack revision_xml %s %s' % (
+                    revision_id, str(e)))
             xml_file.close()
             assert r.revision_id == revision_id
             revisions.append(r)

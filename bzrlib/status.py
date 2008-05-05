@@ -63,15 +63,15 @@ def show_tree_status(wt, show_unchanged=None,
     :param show_ids: If set, includes each file's id.
     :param to_file: If set, write to this file (default stdout.)
     :param show_pending: If set, write pending merges.
-    :param revision: If None the compare latest revision with working tree
-        If not None it must be a RevisionSpec list.
-        If one revision show compared it with working tree.
-        If two revisions show status between first and second.
+    :param revision: If None, compare latest revision with working tree
+        If not None, it must be a RevisionSpec list.
+        If one revision, compare with working tree.
+        If two revisions, show status between first and second.
     :param short: If True, gives short SVN-style status lines.
     :param versioned: If True, only shows versioned files.
     """
     if show_unchanged is not None:
-        warn("show_status_trees with show_unchanged has been deprecated "
+        warn("show_tree_status with show_unchanged has been deprecated "
              "since bzrlib 0.9", DeprecationWarning, stacklevel=2)
 
     if to_file is None:

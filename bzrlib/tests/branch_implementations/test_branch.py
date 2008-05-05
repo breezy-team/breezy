@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -372,14 +372,6 @@ class TestBranch(TestCaseWithBranch):
         tree = self.make_branch_and_tree('tree')
         text = tree.branch._format.get_format_description()
         self.failUnless(len(text))
-
-    def test_check_branch_report_results(self):
-        """Checking a branch produces results which can be printed"""
-        branch = self.make_branch('.')
-        result = branch.check()
-        # reports results through logging
-        result.report_results(verbose=True)
-        result.report_results(verbose=False)
 
     def test_get_commit_builder(self):
         branch = self.make_branch(".")
