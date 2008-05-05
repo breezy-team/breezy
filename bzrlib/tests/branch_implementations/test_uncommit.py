@@ -53,8 +53,8 @@ class TestUncommitHook(TestCaseWithBranch):
         tree.add('')
         revid = tree.commit('a revision')
         tree.unlock()
-        Branch.hooks.install_hook('post_uncommit',
-            self.capture_post_uncommit_hook)
+        Branch.hooks.install_named_hook('post_uncommit',
+            self.capture_post_uncommit_hook, None)
         uncommit(tree.branch)
         # with nothing left we should still get a notification, and
         # have the branch locked at notification time.
@@ -76,8 +76,8 @@ class TestUncommitHook(TestCaseWithBranch):
         tree.add('')
         revid = tree.commit('a revision')
         tree.unlock()
-        Branch.hooks.install_hook('post_uncommit',
-            self.capture_post_uncommit_hook)
+        Branch.hooks.install_named_hook('post_uncommit',
+            self.capture_post_uncommit_hook, None)
         uncommit(tree.branch)
         # with nothing left we should still get a notification, and
         # have the branch locked at notification time.
@@ -95,8 +95,8 @@ class TestUncommitHook(TestCaseWithBranch):
         revid2 = tree.commit('second revision')
         revid3 = tree.commit('third revision')
         tree.unlock()
-        Branch.hooks.install_hook('post_uncommit',
-            self.capture_post_uncommit_hook)
+        Branch.hooks.install_named_hook('post_uncommit',
+            self.capture_post_uncommit_hook, None)
         uncommit(tree.branch, revno=2)
         # having uncommitted from up the branch, we should get the
         # before and after revnos and revids correctly.

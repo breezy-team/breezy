@@ -25,8 +25,10 @@ from bzrlib.decorators import (needs_read_lock,
 import bzrlib.errors as errors
 from bzrlib.errors import BzrError
 from bzrlib.osutils import file_iterator, safe_unicode
-from bzrlib.symbol_versioning import (deprecated_method,
-        )
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    deprecated_method,
+    )
 from bzrlib.trace import mutter, note
 import bzrlib.transactions as transactions
 import bzrlib.urlutils as urlutils
@@ -154,6 +156,7 @@ class LockableFiles(object):
         return self._transport.get(relpath)
 
     @needs_read_lock
+    @deprecated_method(deprecated_in((1, 5, 0)))
     def get_utf8(self, relpath):
         """Get a file as a unicode stream."""
         relpath = self._escape(relpath)
