@@ -285,7 +285,7 @@ class SvnRepository(Repository):
     
         latest_revnum = self.get_latest_revnum()
 
-        for (_, paths, revnum, revprops) in self._log.iter_changes("", latest_revnum, pb=pb):
+        for (paths, revnum, revprops) in self._log.iter_changes("", latest_revnum, pb=pb):
             if pb:
                 pb.update("discovering revisions", revnum, latest_revnum)
             yielded_paths = set()
@@ -577,7 +577,11 @@ class SvnRepository(Repository):
         assert mapping is None or mapping.is_branch(branch_path) or mapping.is_tag(branch_path), \
                 "Mapping %r doesn't accept %s as branch or tag" % (mapping, branch_path)
 
-        for (bp, paths, revnum, revprops) in self._log.iter_changes(branch_path, revnum, pb=pb):
+        bp = branch_path
+
+        for (paths, revnum, revprops) in self._log.iter_changes(branch_path, revnum, pb=pb):
+            assert bp is not None
+            next = find_prev_location(paths, bp, revnum)
             assert revnum > 0 or bp == ""
             assert mapping is None or mapping.is_branch(bp) or mapping.is_tag(bp), "%r is not a valid path" % bp
 
@@ -592,6 +596,11 @@ class SvnRepository(Repository):
                 return
                      
             yield (bp, paths, revnum, revprops)
+
+            if next is None:
+                bp = None
+            else:
+                bp = next[0]
 
     def iter_reverse_branch_changes(self, branch_path, revnum, mapping=None, pb=None):
         """Return all the changes that happened in a branch 

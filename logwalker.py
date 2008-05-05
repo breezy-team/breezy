@@ -151,8 +151,8 @@ class CachingLogWalker(CacheTable):
         :param path:    Branch path to start reporting (in revnum)
         :param from_revnum:  Start revision.
         :param to_revnum: End revision.
-        :return: An iterator that yields tuples with (path, paths, revnum, revprops)
-            where paths is a dictionary with all changes that happened in path 
+        :return: An iterator that yields tuples with (paths, revnum, revprops)
+            where paths is a dictionary with all changes that happened 
             in revnum.
         """
         assert from_revnum >= 0 and to_revnum >= 0 and from_revnum >= to_revnum
@@ -178,7 +178,7 @@ class CachingLogWalker(CacheTable):
             revprops = lazy_dict({}, self._transport.revprop_list, revnum)
 
             if changes.changes_path(revpaths, path, True):
-                yield (path, revpaths, revnum, revprops)
+                yield (revpaths, revnum, revprops)
                 i += 1
                 if limit != 0 and i == limit:
                     break
@@ -333,9 +333,8 @@ class LogWalker(object):
         :param path:    Branch path to start reporting (in revnum)
         :param from_revnum:  Start revision.
         :param to_revnum: End revision.
-        :return: An iterator that yields tuples with (path, paths, revnum, revprops)
-            where paths is a dictionary with all changes that happened in path 
-            in revnum.
+        :return: An iterator that yields tuples with (paths, revnum, revprops)
+            where paths is a dictionary with all changes that happened in revnum.
         """
         assert from_revnum >= 0 and to_revnum >= 0 and from_revnum >= to_revnum
 
@@ -348,12 +347,8 @@ class LogWalker(object):
                 else:
                     assert isinstance(changed_paths, dict), "invalid paths in %r:%r" % (revnum, path)
                     revpaths = struct_revpaths_to_tuples(changed_paths)
-                next = changes.find_prev_location(revpaths, path, revnum)
                 revprops = lazy_dict(known_revprops, self._transport.revprop_list, revnum)
-                yield (path, revpaths, revnum, revprops)
-                if next is None:
-                    break
-                path = next[0]
+                yield (revpaths, revnum, revprops)
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
                 raise NoSuchRevision(branch=self, 
