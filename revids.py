@@ -130,6 +130,7 @@ class CachingRevidMap(object):
         revid = self.actual.get_revision_id(revnum, path, mapping, changed_fileprops, revprops)
 
         self.cache.insert_revid(revid, path, revnum, revnum, str(mapping.scheme))
+
         return revid
 
     def get_branch_revnum(self, revid, layout):
@@ -271,6 +272,7 @@ class RevisionIdMapCache(CacheTable):
         assert isinstance(scheme, str)
         assert isinstance(branch, str)
         assert isinstance(min_revnum, int) and isinstance(max_revnum, int)
+        self.mutter("insert revid %r:%r-%r -> %r" % (branch, min_revnum, max_revnum, revid))
         cursor = self.cachedb.execute(
             "update revmap set min_revnum = MAX(min_revnum,?), max_revnum = MIN(max_revnum, ?) WHERE revid=? AND path=? AND scheme=?",
             (min_revnum, max_revnum, revid, branch, scheme))
