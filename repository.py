@@ -481,10 +481,9 @@ class SvnRepository(Repository):
 
         parent_ids = (mainline_parent,)
 
-        if revmeta is None:
-            svn_fileprops = logwalker.lazy_dict({}, self.branchprop_list.get_changed_properties, branch, revnum)
-            svn_revprops = logwalker.lazy_dict({}, self.transport.revprop_list, revnum)
-            revmeta = RevisionMetadata(self, branch, None, revnum, svn_revprops, svn_fileprops)
+        svn_fileprops = logwalker.lazy_dict({}, self.branchprop_list.get_changed_properties, branch, revnum)
+        svn_revprops = logwalker.lazy_dict({}, self.transport.revprop_list, revnum)
+        revmeta = RevisionMetadata(self, branch, None, revnum, svn_revprops, svn_fileprops)
 
         parent_ids += revmeta.get_rhs_parents(mapping)
 
