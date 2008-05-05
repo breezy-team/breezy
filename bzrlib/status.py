@@ -157,7 +157,7 @@ def _get_sorted_revisions(tip_revision, revision_ids, parent_map):
     :param revision_ids: A set of revision_ids
     :param parent_map: The parent information for each node. Revisions which
         are considered ghosts should not be present in the map.
-    :return: An the iterator from MergeSorter.iter_topo_order()
+    :return: iterator from MergeSorter.iter_topo_order()
     """
     # MergeSorter requires that all nodes be present in the graph, so get rid
     # of any references pointing outside of this graph.
@@ -175,6 +175,10 @@ def _get_sorted_revisions(tip_revision, revision_ids, parent_map):
 
 def show_pending_merges(new, to_file, short=False):
     """Write out a display of pending merges in a working tree."""
+    parents = new.get_parent_ids()
+    if len(parents) < 2:
+        return
+
     # we need one extra space for terminals that wrap on last char
     term_width = osutils.terminal_width() - 1
     if short:
@@ -184,15 +188,11 @@ def show_pending_merges(new, to_file, short=False):
         first_prefix = '  '
         sub_prefix = '    '
 
-    parents = new.get_parent_ids()
-    if len(parents) < 2:
-        return
     pending = parents[1:]
     branch = new.branch
     last_revision = parents[0]
     if not short:
         to_file.write('pending merges:\n')
-    ignore = set([None, last_revision, _mod_revision.NULL_REVISION])
     graph = branch.repository.get_graph()
     other_revisions = [last_revision]
     log_formatter = log.LineLogFormatter(to_file)
@@ -239,8 +239,6 @@ def show_pending_merges(new, to_file, short=False):
             raise AssertionError('Somehow we misunderstood how'
                 ' iter_topo_order works %s != %s' % (first, merge))
         for num, sub_merge, depth, eom in rev_id_iterator:
-            if sub_merge in ignore:
-                continue
             rev = revisions[sub_merge]
             if rev is None:
                 to_file.write(sub_prefix + '(ghost) ' + sub_merge + '\n')
