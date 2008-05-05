@@ -407,12 +407,12 @@ class Connection(object):
 
     @convert_svn_error
     @needs_busy
-    def get_log(self, path, from_revnum, to_revnum, limit, 
+    def get_log(self, paths, from_revnum, to_revnum, limit, 
                 discover_changed_paths, strict_node_history, revprops, rcvr, 
                 pool=None):
         self.mutter('svn log %r:%r %r' % (from_revnum, to_revnum, path))
         if hasattr(svn.ra, 'get_log2'):
-            return svn.ra.get_log2(self._ra, [path], 
+            return svn.ra.get_log2(self._ra, paths, 
                            from_revnum, to_revnum, limit, 
                            discover_changed_paths, strict_node_history, False, 
                            revprops, rcvr, pool)
@@ -435,7 +435,7 @@ class Connection(object):
         def rcvr_convert(orig_paths, rev, author, date, message, pool):
             rcvr(LogEntry(orig_paths, rev, author, date, message), pool)
 
-        return svn.ra.get_log(self._ra, [path], 
+        return svn.ra.get_log(self._ra, paths, 
                               from_revnum, to_revnum, limit, discover_changed_paths, 
                               strict_node_history, rcvr_convert, pool)
 
@@ -608,7 +608,7 @@ class SvnRaTransport(Transport):
                 strict_node_history, revprops, rcvr, pool=None):
         conn = self.get_connection()
         try:
-            return conn.get_log(self._request_path(path), 
+            return conn.get_log([self._request_path(path)], 
                     from_revnum, to_revnum,
                     limit, discover_changed_paths, strict_node_history, 
                     revprops, rcvr, pool)
@@ -634,6 +634,10 @@ class SvnRaTransport(Transport):
             return conn.get_dir(path, revnum, pool, kind)
         finally:
             self.add_connection(conn)
+
+    def mutter(self, text):
+        if 'transport' in debug.debug_flags:
+            mutter(text)
 
     def _request_path(self, relpath):
         if self._backing_url == self.svn_url:

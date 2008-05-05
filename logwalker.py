@@ -150,7 +150,7 @@ class CachingLogWalker(CacheTable):
 
         :param path:    Branch path to start reporting (in revnum)
         :param from_revnum:  Start revision.
-        :param to_revnum: End revision
+        :param to_revnum: End revision.
         :return: An iterator that yields tuples with (path, paths, revnum, revprops)
             where paths is a dictionary with all changes that happened in path 
             in revnum.
@@ -316,7 +316,7 @@ class LogWalker(object):
         """
         assert isinstance(path, str)
         assert isinstance(revnum, int) and revnum >= 0
-        
+
         try:
             return self._transport.iter_log(path, revnum, 0, 2, True, False, []).next()[1]
         except SubversionException, (_, num):
@@ -332,7 +332,7 @@ class LogWalker(object):
 
         :param path:    Branch path to start reporting (in revnum)
         :param from_revnum:  Start revision.
-        :param to_revnum:  End revision.
+        :param to_revnum: End revision.
         :return: An iterator that yields tuples with (path, paths, revnum, revprops)
             where paths is a dictionary with all changes that happened in path 
             in revnum.
