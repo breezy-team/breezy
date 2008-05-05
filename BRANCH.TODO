@@ -1,3 +1,6 @@
+before 0.4.10:
+ - use branchpath, revno -> revid cache again
+
 - Needs more tests
  - Run all tests against repository with revprop changing allowed and without
 - Needs upgrade command that can use legacy file properties and set revprops

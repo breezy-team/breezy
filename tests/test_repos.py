@@ -66,7 +66,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEqual([
             ('', {'foo': ('A', None, -1)}, 1), 
             ('', {'': ('A', None, -1)}, 0)],
-            [l[:3] for l in repos.iter_reverse_branch_changes("", 1, NoBranchingScheme())])
+            [(l.branch_path, l.paths, l.revnum) for l in repos.iter_reverse_branch_changes("", 1, NoBranchingScheme())])
 
     def test_make_working_trees(self):
         repos_url = self.make_client("a", "dc")
@@ -190,7 +190,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                      'pykleur/trunk': (u'A', None, -1),
                      'pykleur/trunk/pykleur': (u'A', None, -1)},
              1)],
-            [l[:3] for l in repos.iter_reverse_branch_changes("pygments/trunk", 3, TrunkBranchingScheme(1))])
+            [(l.branch_path, l.paths, l.revnum) for l in repos.iter_reverse_branch_changes("pygments/trunk", 3, TrunkBranchingScheme(1))])
 
     def test_follow_branch_move_single(self):
         repos_url = self.make_client('a', 'dc')
@@ -205,7 +205,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEquals([('pygments',
               {'pygments/bla': ('A', None, -1), 'pygments': ('A', None, -1)},
                 2)],
-                [l[:3] for l in changes])
+                [(l.branch_path, l.paths, l.revnum) for l in changes])
 
     def test_history_all(self):
         repos_url = self.make_client("a", "dc")
@@ -1032,7 +1032,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEquals([('trunk', {'trunk': (u'M', None, -1)}, 3), 
                            ('trunk', {'trunk': (u'M', None, -1)}, 2), 
                            ('trunk', {'trunk/bla': (u'A', None, -1), 'trunk': (u'A', None, -1)}, 1)], 
-                   [l[:3] for l in oldrepos.iter_reverse_branch_changes("trunk", 3, TrunkBranchingScheme())])
+                   [(l.branch_path, l.paths, l.revnum) for l in oldrepos.iter_reverse_branch_changes("trunk", 3, TrunkBranchingScheme())])
 
     def test_control_code_msg(self):
         repos_url = self.make_client('d', 'dc')

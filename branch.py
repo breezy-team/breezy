@@ -261,7 +261,11 @@ class SvnBranch(Branch):
 
     def _revision_meta_history(self):
         if self._revmeta_cache is None:
-            self._revmeta_cache = list(self.repository.iter_reverse_branch_changes(self.get_branch_path(), self.get_revnum(), self.mapping))
+            pb = ui.ui_factory.nested_progress_bar()
+            try:
+                self._revmeta_cache = list(self.repository.iter_reverse_branch_changes(self.get_branch_path(), self.get_revnum(), self.mapping, pb=pb))
+            finally:
+                pb.finished()
         return self._revmeta_cache
 
     def _gen_revision_history(self):
