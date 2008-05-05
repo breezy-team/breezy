@@ -442,6 +442,8 @@ class Connection(object):
     @convert_svn_error
     @needs_busy
     def reparent(self, url):
+        if self.url == url:
+            return
         if hasattr(svn.ra, 'reparent'):
             self.mutter('svn reparent %r' % url)
             svn.ra.reparent(self._ra, url)
