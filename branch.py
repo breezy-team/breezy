@@ -87,10 +87,6 @@ class SvnBranch(Branch):
         if not self.mapping.is_branch(branch_path):
             raise NotSvnBranchPath(branch_path, mapping=self.mapping)
 
-    def _clear_cached_state(self):
-        super(SvnBranch, self)._clear_cached_state()
-        self._revmeta_cache = None
-
     def set_branch_path(self, branch_path):
         """Change the branch path for this branch.
 
@@ -397,6 +393,7 @@ class SvnBranch(Branch):
     def _clear_cached_state(self):
         super(SvnBranch,self)._clear_cached_state()
         self._cached_revnum = None
+        self._revmeta_cache = None
 
     def get_parent(self):
         """See Branch.get_parent()."""

@@ -281,7 +281,11 @@ class SvnRepository(Repository):
                         if not paths.has_key(bp) or paths[bp][0] != 'D':
                             assert revnum > 0 or bp == "", "%r:%r" % (bp, revnum)
                             yielded_paths.add(bp)
-                            yield (revnum, bp, paths, revprops)
+                            if not bp in paths:
+                                svn_fileprops = {}
+                            else:
+                                svn_fileprops = logwalker.lazy_dict({}, self.branchprop_list.get_changed_properties, bp, revnum)
+                            yield RevisionMetadata(self, bp, paths, revnum, revprops, svn_fileprops)
                 except NotBranchError:
                     pass
 
@@ -290,8 +294,8 @@ class SvnRepository(Repository):
             mapping = self.get_mapping()
         if layout is None:
             layout = self.get_layout()
-        for (revnum, bp, changes, revprops) in self.iter_all_changes(layout):
-            yield self.generate_revision_id(revnum, bp, mapping, revprops)
+        for revmeta in self.iter_all_changes(layout):
+            yield revmeta.get_revision_id(mapping)
 
     def get_inventory_weave(self):
         """See Repository.get_inventory_weave()."""
