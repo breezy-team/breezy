@@ -155,7 +155,8 @@ class CachingLogWalker(CacheTable):
             where paths is a dictionary with all changes that happened 
             in revnum.
         """
-        assert from_revnum >= 0 and to_revnum >= 0 and from_revnum >= to_revnum
+        assert from_revnum >= 0 and to_revnum >= 0
+        assert from_revnum >= to_revnum or path == ""
 
         revnum = from_revnum
 
@@ -167,13 +168,17 @@ class CachingLogWalker(CacheTable):
 
         i = 0
 
-        while revnum >= to_revnum:
+        while ((from_revnum >= to_revnum and revnum >= to_revnum) or
+               (to_revnum > from_revnum and revnum <= to_revnum)):
             if pb is not None:
                 pb.update("determining changes", from_revnum-revnum, from_revnum)
             assert revnum > 0 or path == "", "Inconsistent path,revnum: %r,%r" % (revnum, path)
             revpaths = self._get_revision_paths(revnum)
 
-            next = changes.find_prev_location(revpaths, path, revnum)
+            if from_revnum < to_revnum:
+                next = (path, revnum+1)
+            else:
+                next = changes.find_prev_location(revpaths, path, revnum)
 
             revprops = lazy_dict({}, self._transport.revprop_list, revnum)
 
@@ -336,7 +341,7 @@ class LogWalker(object):
         :return: An iterator that yields tuples with (paths, revnum, revprops)
             where paths is a dictionary with all changes that happened in revnum.
         """
-        assert from_revnum >= 0 and to_revnum >= 0 and from_revnum >= to_revnum
+        assert from_revnum >= 0 and to_revnum >= 0
 
         try:
             for (changed_paths, revnum, known_revprops) in self._transport.iter_log(path, from_revnum, to_revnum, limit, True, False, []):

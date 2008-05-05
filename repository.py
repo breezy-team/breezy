@@ -285,7 +285,7 @@ class SvnRepository(Repository):
     
         latest_revnum = self.get_latest_revnum()
 
-        for (paths, revnum, revprops) in self._log.iter_changes("", latest_revnum, pb=pb):
+        for (paths, revnum, revprops) in self._log.iter_changes("", 0, latest_revnum, pb=pb):
             if pb:
                 pb.update("discovering revisions", revnum, latest_revnum)
             yielded_paths = set()
@@ -293,7 +293,7 @@ class SvnRepository(Repository):
                 try:
                     bp = layout.parse(p)[2]
                     if not bp in yielded_paths:
-                        if not paths.has_key(bp) or paths[bp][0] != 'D':
+                        if bp in paths and paths[bp][0] != 'D':
                             assert revnum > 0 or bp == "", "%r:%r" % (bp, revnum)
                             yielded_paths.add(bp)
                             if not bp in paths:

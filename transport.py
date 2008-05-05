@@ -410,7 +410,7 @@ class Connection(object):
     def get_log(self, paths, from_revnum, to_revnum, limit, 
                 discover_changed_paths, strict_node_history, revprops, rcvr, 
                 pool=None):
-        self.mutter('svn log %r:%r %r' % (from_revnum, to_revnum, path))
+        self.mutter('svn log %r:%r %r' % (from_revnum, to_revnum, paths))
         if hasattr(svn.ra, 'get_log2'):
             return svn.ra.get_log2(self._ra, paths, 
                            from_revnum, to_revnum, limit, 

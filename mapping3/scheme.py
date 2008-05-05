@@ -437,7 +437,7 @@ def guess_scheme_from_history(changed_paths, last_revnum,
     pb = ui.ui_factory.nested_progress_bar()
     scheme_cache = {}
     try:
-        for (bp, revpaths, revnum, revprops) in changed_paths:
+        for (revpaths, revnum, revprops) in changed_paths:
             assert isinstance(revpaths, dict)
             pb.update("analyzing repository layout", last_revnum-revnum, 
                       last_revnum)
