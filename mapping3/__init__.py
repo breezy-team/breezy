@@ -134,7 +134,7 @@ def repository_guess_scheme(repository, last_revnum, branch_path=None):
     pb = ui.ui_factory.nested_progress_bar()
     try:
         scheme = guess_scheme_from_history(
-            repository._log.iter_changes("", last_revnum, max(0, last_revnum-SCHEME_GUESS_SAMPLE_SIZE), pb=pb), last_revnum, branch_path)
+            repository._log.iter_changes(None, last_revnum, max(0, last_revnum-SCHEME_GUESS_SAMPLE_SIZE), pb=pb), last_revnum, branch_path)
     finally:
         pb.finished()
     mutter("Guessed branching scheme: %r" % scheme)

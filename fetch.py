@@ -94,15 +94,10 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.source = source
         self.transact = target.get_transaction()
 
-    def start_revision(self, revid, parent_revids, prev_inventory, changes, revprops, fileprops):
+    def start_revision(self, revid, prev_inventory, revmeta):
         self.revid = revid
-        self.parent_revids = parent_revids
-        if self.parent_revids == (NULL_REVISION,):
-            self.parent_revids = ()
         (self.branch_path, self.revnum, self.mapping) = self.source.lookup_revision_id(revid)
-        self.svn_revprops = revprops
-        self.changes = changes
-        self._branch_fileprops = fileprops
+        self.revmeta = revmeta
         self._id_map = None
         self.dir_baserev = {}
         self._revinfo = None
@@ -116,9 +111,9 @@ class RevisionBuildEditor(svn.delta.Editor):
         if self._id_map is not None:
             return self._id_map
 
-        renames = self.mapping.import_fileid_map(self.svn_revprops, self._branch_fileprops)
+        renames = self.mapping.import_fileid_map(self.revmeta.revprops, self.revmeta.fileprops)
         self._id_map = self.source.transform_fileid_map(self.source.uuid, 
-                              self.revnum, self.branch_path, self.changes, renames, 
+                              self.revnum, self.branch_path, self.revmeta.paths, renames, 
                               self.mapping)
 
         return self._id_map
@@ -130,11 +125,11 @@ class RevisionBuildEditor(svn.delta.Editor):
         """
 
         # Commit SVN revision properties to a Revision object
-        rev = Revision(revision_id=revid, parent_ids=self.parent_revids)
+        rev = Revision(revision_id=revid, parent_ids=self.revmeta.get_parent_ids(self.mapping))
 
-        self.mapping.import_revision(self.svn_revprops, self._branch_fileprops, rev)
+        self.mapping.import_revision(self.revmeta.revprops, self.revmeta.fileprops, rev)
 
-        signature = self.svn_revprops.get(SVN_REVPROP_BZR_SIGNATURE)
+        signature = self.revmeta.revprops.get(SVN_REVPROP_BZR_SIGNATURE)
 
         return (rev, signature)
 
@@ -261,9 +256,10 @@ class RevisionBuildEditor(svn.delta.Editor):
 
     def change_dir_prop(self, (old_id, new_id), name, value, pool):
         if new_id == self.inventory.root.file_id:
-            if self._branch_fileprops is None:
-                self._branch_fileprops = {}
-            self._branch_fileprops[name] = value
+            # Replay lazy_dict, since it may be more expensive
+            if type(self.revmeta.fileprops) != dict:
+                self.revmeta.fileprops = {}
+            self.revmeta.fileprops[name] = value
 
         if name in (svn.core.SVN_PROP_ENTRY_COMMITTED_DATE,
                       svn.core.SVN_PROP_ENTRY_COMMITTED_REV,
@@ -524,7 +520,7 @@ class InterFromSvnRepository(InterRepository):
         missing = available_revs.difference(self.target.has_revisions(available_revs))
         needed = list(graph.iter_topo_order(missing))
         parents = graph.get_parent_map(needed)
-        return [(revid, parents[revid], meta_map[revid]) for revid in needed]
+        return [(revid, parents[revid][0], meta_map[revid]) for revid in needed]
 
     def _find_branches(self, branches, find_ghosts=False, fetch_rhs_ancestry=False):
         set_needed = set()
@@ -550,7 +546,6 @@ class InterFromSvnRepository(InterRepository):
         revs = []
         meta_map = {}
         lhs_parent = {}
-        rhs_parents = {}
         def check_revid(revision_id):
             prev = None
             (branch_path, revnum, mapping) = self.source.lookup_revision_id(revision_id)
@@ -559,11 +554,10 @@ class InterFromSvnRepository(InterRepository):
                 for revmeta in self.source.iter_reverse_branch_changes(branch_path, revnum, mapping):
                     pb.update("determining revisions to fetch", revnum-revmeta.revnum, revnum)
                     revid = revmeta.get_revision_id(mapping)
-                    rhs_parents[revid] = revmeta.get_rhs_parents(mapping)
                     lhs_parent[prev] = revid
                     meta_map[revid] = revmeta
                     if fetch_rhs_ancestry:
-                        extra.update(rhs_parents)
+                        extra.update(revmeta.get_rhs_parents(mapping))
                     if not self.target.has_revision(revid):
                         revs.append(revid)
                     elif not find_ghosts:
@@ -580,7 +574,7 @@ class InterFromSvnRepository(InterRepository):
             if revid not in revs:
                 check_revid(revid)
 
-        needed = [(revid, (lhs_parent[revid],)+rhs_parents[revid], meta_map[revid]) for revid in reversed(revs)]
+        needed = [(revid, lhs_parent[revid], meta_map[revid]) for revid in reversed(revs)]
 
         return needed
 
@@ -619,10 +613,8 @@ class InterFromSvnRepository(InterRepository):
         editor = revbuildklass(self.source, self.target)
 
         try:
-            for (revid, parent_revids, revmeta) in revids:
+            for (revid, parent_revid, revmeta) in revids:
                 pb.update('copying revision', num, len(revids))
-
-                parent_revid = parent_revids[0]
 
                 assert parent_revid is not None
 
@@ -633,7 +625,7 @@ class InterFromSvnRepository(InterRepository):
                 else:
                     parent_inv = prev_inv
 
-                editor.start_revision(revid, parent_revids, parent_inv, revmeta.paths, revmeta.revprops, revmeta.fileprops)
+                editor.start_revision(revid, parent_inv, revmeta)
 
                 try:
                     pool = Pool()

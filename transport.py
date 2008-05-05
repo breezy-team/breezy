@@ -410,6 +410,8 @@ class Connection(object):
     def get_log(self, paths, from_revnum, to_revnum, limit, 
                 discover_changed_paths, strict_node_history, revprops, rcvr, 
                 pool=None):
+        if paths is None:
+            paths = [""]
         self.mutter('svn log %r:%r %r' % (from_revnum, to_revnum, paths))
         if hasattr(svn.ra, 'get_log2'):
             return svn.ra.get_log2(self._ra, paths, 
@@ -566,10 +568,10 @@ class SvnRaTransport(Transport):
         finally:
             self.add_connection(conn)
 
-    def iter_log(self, path, from_revnum, to_revnum, limit, discover_changed_paths, 
+    def iter_log(self, paths, from_revnum, to_revnum, limit, discover_changed_paths, 
                  strict_node_history, revprops):
 
-        assert isinstance(path, str)
+        assert paths is None or isinstance(paths, list)
         assert isinstance(from_revnum, int) and isinstance(to_revnum, int)
         assert isinstance(limit, int)
         from threading import Thread, Semaphore
@@ -600,15 +602,22 @@ class SvnRaTransport(Transport):
                     self.pending.append(e)
                 self.semaphore.release()
         
-        fetcher = logfetcher(lambda rcvr: self.get_log(path, from_revnum, to_revnum, limit, discover_changed_paths, strict_node_history, revprops, rcvr))
+        fetcher = logfetcher(lambda rcvr: self.get_log(paths, from_revnum, to_revnum, limit, discover_changed_paths, strict_node_history, revprops, rcvr))
         fetcher.start()
         return iter(fetcher.next, None)
 
-    def get_log(self, path, from_revnum, to_revnum, limit, discover_changed_paths, 
+    def get_log(self, paths, from_revnum, to_revnum, limit, discover_changed_paths, 
                 strict_node_history, revprops, rcvr, pool=None):
+        assert paths is None or isinstance(paths, list)
+
+        if paths is None:
+            newpaths = None
+        else:
+            newpaths = [self._request_path(path) for path in paths]
+
         conn = self.get_connection()
         try:
-            return conn.get_log([self._request_path(path)], 
+            return conn.get_log(newpaths, 
                     from_revnum, to_revnum,
                     limit, discover_changed_paths, strict_node_history, 
                     revprops, rcvr, pool)

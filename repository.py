@@ -71,6 +71,9 @@ class RevisionMetadata(object):
     def get_revision_id(self, mapping):
         return self.repository.generate_revision_id(self.revnum, self.branch_path, mapping, self.revprops, self.fileprops)
 
+    def get_lhs_parent(self, mapping):
+        return self.repository.lhs_revision_parent(self.branch_path, self.revnum, mapping)
+
     def get_rhs_parents(self, mapping):
         extra_rhs_parents = mapping.get_rhs_parents(self.branch_path, self.revprops, self.fileprops)
 
@@ -88,6 +91,12 @@ class RevisionMetadata(object):
             previous = logwalker.lazy_dict({}, self.repository.branchprop_list.get_properties, prev_path.encode("utf-8"), prev_revnum)
 
         return tuple(self.repository._svk_merged_revisions(self.branch_path, self.revnum, mapping, self.fileprops, previous))
+
+    def get_parent_ids(self, mapping):
+        lhs_parent = self.get_lhs_parent(mapping)
+        if lhs_parent == NULL_REVISION:
+            return ()
+        return (lhs_parent,) + self.get_rhs_parents(mapping)
 
 
 def svk_feature_to_revision_id(feature, mapping):
@@ -285,7 +294,7 @@ class SvnRepository(Repository):
     
         latest_revnum = self.get_latest_revnum()
 
-        for (paths, revnum, revprops) in self._log.iter_changes("", 0, latest_revnum, pb=pb):
+        for (paths, revnum, revprops) in self._log.iter_changes(None, 0, latest_revnum, pb=pb):
             if pb:
                 pb.update("discovering revisions", revnum, latest_revnum)
             yielded_paths = set()
@@ -421,9 +430,9 @@ class SvnRepository(Repository):
                 revid = self.generate_revision_id(revnum, path, mapping)
                 if not mapping.is_branch(path) and \
                    not mapping.is_tag(path):
-                       return None
+                       return NULL_REVISION
                 return revid
-        return None
+        return NULL_REVISION
 
     def get_parent_map(self, revids):
         parent_map = {}
@@ -465,7 +474,7 @@ class SvnRepository(Repository):
         assert isinstance(revision_id, str)
         (branch, revnum, mapping) = self.lookup_revision_id(revision_id)
         mainline_parent = self.lhs_revision_parent(branch, revnum, mapping)
-        if mainline_parent is None:
+        if mainline_parent == NULL_REVISION:
             return ()
 
         parent_ids = (mainline_parent,)
@@ -579,7 +588,7 @@ class SvnRepository(Repository):
 
         bp = branch_path
 
-        for (paths, revnum, revprops) in self._log.iter_changes(branch_path, revnum, pb=pb):
+        for (paths, revnum, revprops) in self._log.iter_changes([branch_path], revnum, pb=pb):
             assert bp is not None
             next = find_prev_location(paths, bp, revnum)
             assert revnum > 0 or bp == ""

@@ -145,10 +145,10 @@ class CachingLogWalker(CacheTable):
 
         return row[0]
 
-    def iter_changes(self, path, from_revnum, to_revnum=0, limit=0, pb=None):
+    def iter_changes(self, paths, from_revnum, to_revnum=0, limit=0, pb=None):
         """Return iterator over all the revisions between revnum and 0 named path or inside path.
 
-        :param path:    Branch path to start reporting (in revnum)
+        :param paths:    Paths to report about.
         :param from_revnum:  Start revision.
         :param to_revnum: End revision.
         :return: An iterator that yields tuples with (paths, revnum, revprops)
@@ -156,15 +156,18 @@ class CachingLogWalker(CacheTable):
             in revnum.
         """
         assert from_revnum >= 0 and to_revnum >= 0
-        assert from_revnum >= to_revnum or path == ""
 
         revnum = from_revnum
 
-        self.mutter("iter changes %r:%r" % (path, revnum))
+        self.mutter("iter changes %r:%r" % (paths, revnum))
 
-        recurse = (path != "")
+        if paths is None:
+            path = ""
+        else:
+            assert len(paths) == 1
+            path = paths[0].strip("/")
 
-        path = path.strip("/")
+        assert from_revnum >= to_revnum or path == ""
 
         i = 0
 
@@ -255,7 +258,7 @@ class CachingLogWalker(CacheTable):
         try:
             try:
                 while self.saved_revnum < to_revnum:
-                    for (orig_paths, revision, revprops) in self.actual._transport.iter_log("", self.saved_revnum, 
+                    for (orig_paths, revision, revprops) in self.actual._transport.iter_log(None, self.saved_revnum, 
                                              to_revnum, self.actual._limit, True, 
                                              True, []):
                         pb.update('fetching svn revision info', revision, to_revnum)
@@ -323,7 +326,7 @@ class LogWalker(object):
         assert isinstance(revnum, int) and revnum >= 0
 
         try:
-            return self._transport.iter_log(path, revnum, 0, 2, True, False, []).next()[1]
+            return self._transport.iter_log([path], revnum, 0, 2, True, False, []).next()[1]
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
                 raise NoSuchRevision(branch=self, 
@@ -332,10 +335,10 @@ class LogWalker(object):
                 return None
             raise
 
-    def iter_changes(self, path, from_revnum, to_revnum=0, limit=0, pb=None):
+    def iter_changes(self, paths, from_revnum, to_revnum=0, limit=0, pb=None):
         """Return iterator over all the revisions between revnum and 0 named path or inside path.
 
-        :param path:    Branch path to start reporting (in revnum)
+        :param paths:    Paths report about (in revnum)
         :param from_revnum:  Start revision.
         :param to_revnum: End revision.
         :return: An iterator that yields tuples with (paths, revnum, revprops)
@@ -344,7 +347,7 @@ class LogWalker(object):
         assert from_revnum >= 0 and to_revnum >= 0
 
         try:
-            for (changed_paths, revnum, known_revprops) in self._transport.iter_log(path, from_revnum, to_revnum, limit, True, False, []):
+            for (changed_paths, revnum, known_revprops) in self._transport.iter_log(paths, from_revnum, to_revnum, limit, True, False, []):
                 if pb is not None:
                     pb.update("determining changes", from_revnum-revnum, from_revnum)
                 if revnum == 0 and changed_paths is None:
@@ -373,7 +376,7 @@ class LogWalker(object):
 
         try:
             return struct_revpaths_to_tuples(
-                self._transport.iter_log("", revnum, revnum, 1, True, True, []).next()[0])
+                self._transport.iter_log(None, revnum, revnum, 1, True, True, []).next()[0])
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
                 raise NoSuchRevision(branch=self, 
@@ -462,7 +465,7 @@ class LogWalker(object):
             return (None, -1)
 
         try:
-            paths = struct_revpaths_to_tuples(self._transport.iter_log(path, revnum, revnum, 1, True, False, []).next()[0])
+            paths = struct_revpaths_to_tuples(self._transport.iter_log([path], revnum, revnum, 1, True, False, []).next()[0])
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
                 raise NoSuchRevision(branch=self, 
