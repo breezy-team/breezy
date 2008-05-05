@@ -337,7 +337,7 @@ class SvnRepository(Repository):
         """
         return False
 
-    def iter_reverse_revision_history(self, revision_id, pb=None):
+    def iter_reverse_revision_history(self, revision_id, pb=None, limit=0):
         """Iterate backwards through revision ids in the lefthand history
 
         :param revision_id: The revision id to start with.  All its lefthand
@@ -346,7 +346,7 @@ class SvnRepository(Repository):
         if revision_id in (None, NULL_REVISION):
             return
         (branch_path, revnum, mapping) = self.lookup_revision_id(revision_id)
-        for revmeta in self.iter_reverse_branch_changes(branch_path, revnum, mapping, pb=pb):
+        for revmeta in self.iter_reverse_branch_changes(branch_path, revnum, mapping, pb=pb, limit=limit):
             yield revmeta.get_revision_id(mapping)
 
     def get_ancestry(self, revision_id, topo_sorted=True):
@@ -576,7 +576,7 @@ class SvnRepository(Repository):
         return self._serializer.write_revision_to_string(
             self.get_revision(revision_id))
 
-    def iter_changes(self, branch_path, revnum, mapping=None, pb=None):
+    def iter_changes(self, branch_path, revnum, mapping=None, pb=None, limit=0):
         """Iterate over all revisions backwards.
         
         :return: iterator that returns tuples with branch path, 
@@ -588,7 +588,7 @@ class SvnRepository(Repository):
 
         bp = branch_path
 
-        for (paths, revnum, revprops) in self._log.iter_changes([branch_path], revnum, pb=pb):
+        for (paths, revnum, revprops) in self._log.iter_changes([branch_path], revnum, pb=pb, limit=limit):
             assert bp is not None
             next = find_prev_location(paths, bp, revnum)
             assert revnum > 0 or bp == ""
@@ -611,13 +611,14 @@ class SvnRepository(Repository):
             else:
                 bp = next[0]
 
-    def iter_reverse_branch_changes(self, branch_path, revnum, mapping=None, pb=None):
+    def iter_reverse_branch_changes(self, branch_path, revnum, mapping=None, pb=None, limit=0):
         """Return all the changes that happened in a branch 
         until branch_path,revnum. 
 
         :return: iterator that returns RevisionMetadata objects.
         """
-        history_iter = self.iter_changes(branch_path, revnum, mapping, pb=pb)
+        history_iter = self.iter_changes(branch_path, revnum, mapping, pb=pb, 
+                                         limit=limit)
         for (bp, paths, revnum, revprops) in history_iter:
             if not bp in paths:
                 svn_fileprops = {}
