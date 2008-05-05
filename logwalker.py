@@ -39,6 +39,7 @@ class lazy_dict(object):
     def _ensure_init(self):
         if self.dict is None:
             self.dict = self.create_fn(*self.args)
+            self.create_fn = None
 
     def __len__(self):
         self._ensure_init()

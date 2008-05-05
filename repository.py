@@ -59,6 +59,22 @@ def full_paths(find_children, paths, bp, from_bp, from_rev):
     return paths
 
 
+class RevisionMetadata(object):
+    def __init__(self, repository, branch_path, paths, revnum, revprops, fileprops):
+        self.repository = repository
+        self.branch_path = branch_path
+        self.paths = paths
+        self.revnum = revnum
+        self.revprops = revprops
+        self.fileprops = fileprops
+
+    def get_revision_id(self, mapping):
+        return self.repository.generate_revision_id(self.revnum, self.branch_path, mapping, self.revprops, self.fileprops)
+
+    def get_rhs_parents(self, mapping):
+        return mapping.get_rhs_parents(self.branch_path, self.revprops, self.fileprops)
+
+
 def svk_feature_to_revision_id(feature, mapping):
     """Convert a SVK feature to a revision id for this repository.
 
@@ -302,8 +318,8 @@ class SvnRepository(Repository):
         if revision_id in (None, NULL_REVISION):
             return
         (branch_path, revnum, mapping) = self.lookup_revision_id(revision_id)
-        for (bp, changes, rev, svn_revprops, svn_fileprops) in self.iter_reverse_branch_changes(branch_path, revnum, mapping, pb=pb):
-            yield self.generate_revision_id(rev, bp, mapping, svn_revprops, svn_fileprops)
+        for revmeta in self.iter_reverse_branch_changes(branch_path, revnum, mapping, pb=pb):
+            yield revmeta.get_revision_id(mapping)
 
     def get_ancestry(self, revision_id, topo_sorted=True):
         """See Repository.get_ancestry().
@@ -567,9 +583,7 @@ class SvnRepository(Repository):
         """Return all the changes that happened in a branch 
         until branch_path,revnum. 
 
-        :return: iterator that returns tuples with branch path, 
-            changed paths, revision number, changed file properties and 
-            revision properties.
+        :return: iterator that returns RevisionMetadata objects.
         """
         history_iter = self.iter_changes(branch_path, revnum, mapping, pb=pb)
         for (bp, paths, revnum, revprops) in history_iter:
@@ -578,7 +592,7 @@ class SvnRepository(Repository):
             else:
                 svn_fileprops = logwalker.lazy_dict({}, self.branchprop_list.get_changed_properties, bp, revnum)
 
-            yield (bp, paths, revnum, revprops, svn_fileprops)
+            yield RevisionMetadata(self, bp, paths, revnum, revprops, svn_fileprops)
 
     def get_config(self):
         return SvnRepositoryConfig(self.uuid)

@@ -96,8 +96,8 @@ class RevidMap(object):
     def bisect_revid_revnum(self, revid, branch_path, max_revnum):
         # Find the branch property between min_revnum and max_revnum that 
         # added revid
-        for (bp, changes, rev, revprops, changed_fileprops) in self.repos.iter_reverse_branch_changes(branch_path, max_revnum):
-            for propname, propvalue in changed_fileprops.items():
+        for revmeta in self.repos.iter_reverse_branch_changes(branch_path, max_revnum):
+            for propname, propvalue in revmeta.fileprops.items():
                 if not propname.startswith(SVN_PROP_BZR_REVISION_ID):
                     continue
                 try:
@@ -109,8 +109,9 @@ class RevidMap(object):
                     continue
                 if entry_revid == revid:
                     scheme = BranchingScheme.find_scheme(propname[len(SVN_PROP_BZR_REVISION_ID):])
-                    assert scheme.is_tag(bp) or scheme.is_branch(bp)
-                    return (bp, rev, BzrSvnMappingv3FileProps(scheme))
+                    assert (scheme.is_tag(revmeta.branch_path) or 
+                            scheme.is_branch(revmeta.branch_path))
+                    return (revmeta.branch_path, revmeta.revnum, BzrSvnMappingv3FileProps(scheme))
 
         raise AssertionError("Revision id %s was added incorrectly" % revid)
 

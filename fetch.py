@@ -568,13 +568,13 @@ class InterFromSvnRepository(InterRepository):
             (branch_path, revnum, mapping) = self.source.lookup_revision_id(revision_id)
             pb = ui.ui_factory.nested_progress_bar()
             try:
-                for (bp, changes, rev, svn_revprops, svn_fileprops) in self.source.iter_reverse_branch_changes(branch_path, revnum, mapping):
-                    pb.update("determining revisions to fetch", revnum-rev, revnum)
-                    revid = self.source.generate_revision_id(rev, bp, mapping, svn_revprops, svn_fileprops)
-                    rhs_parents[revid] = mapping.get_rhs_parents(bp, svn_revprops, svn_fileprops)
+                for revmeta in self.source.iter_reverse_branch_changes(branch_path, revnum, mapping):
+                    pb.update("determining revisions to fetch", revnum-revmeta.revnum, revnum)
+                    revid = revmeta.get_revision_id(mapping)
+                    rhs_parents[revid] = revmeta.get_rhs_parents(mapping)
                     lhs_parent[prev] = revid
-                    revprop_map[revid] = svn_revprops
-                    changes_map[revid] = changes
+                    revprop_map[revid] = revmeta.revprops
+                    changes_map[revid] = revmeta.paths
                     if fetch_rhs_ancestry:
                         extra.update(rhs_parents)
                     if not self.target.has_revision(revid):

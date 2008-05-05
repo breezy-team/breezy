@@ -136,28 +136,25 @@ class FileIdMap(object):
         else:
             map = {}
 
-        quickrevidmap = {}
-
         # No history -> empty map
-        for (bp, paths, rev, revprops, changed_fileprops) in self.repos.iter_reverse_branch_changes(branch, revnum, mapping):
-            revid = self.repos.generate_revision_id(rev, bp, mapping, changed_fileprops, revprops)
-            quickrevidmap[revid] = (rev, bp)
-            todo.append((revid, paths, revprops, changed_fileprops))
+        for revmeta in self.repos.iter_reverse_branch_changes(branch, revnum, mapping):
+            revid = revmeta.get_revision_id(mapping)
+            todo.append(revmeta)
    
         pb = ui.ui_factory.nested_progress_bar()
 
         try:
             i = 1
-            for (revid, global_changes, revprops, changed_fileprops) in reversed(todo):
+            for revmeta in reversed(todo):
+                revid = revmeta.get_revision_id(mapping)
                 expensive = False
                 def log_find_children(path, revnum):
                     expensive = True
                     return self.repos._log.find_children(path, revnum)
 
-                (revnum, branch) = quickrevidmap[revid]
                 (idmap, changes) = self.actual.apply_changes(self.repos.uuid, 
-                        revnum, branch, global_changes, 
-                        mapping.import_fileid_map(revprops, changed_fileprops), 
+                        revmeta.revnum, revmeta.branch_path, revmeta.paths,
+                        mapping.import_fileid_map(revmeta.revprops, revmeta.fileprops), 
                         mapping, log_find_children)
                 pb.update('generating file id map', i, len(todo))
 
@@ -223,20 +220,17 @@ class CachingFileIdMap(object):
 
         todo = []
         next_parent_revs = []
-        quickrevidmap = {}
 
         # No history -> empty map
-        for (bp, paths, rev, revprops, changed_fileprops) in self.repos.iter_reverse_branch_changes(branch, revnum, mapping):
-            revid = self.repos.generate_revision_id(rev, bp, mapping, 
-                        changed_fileprops, revprops)
-            quickrevidmap[revid] = (rev, bp)
+        for revmeta in self.repos.iter_reverse_branch_changes(branch, revnum, mapping):
+            revid = revmeta.get_revision_id(mapping)
             try:
                 map = self.load(revid)
                 # found the nearest cached map
                 next_parent_revs = [revid]
                 break
             except RevisionNotPresent:
-                todo.append((revid, paths, revprops, changed_fileprops))
+                todo.append(revmeta)
    
         # target revision was present
         if len(todo) == 0:
@@ -252,16 +246,16 @@ class CachingFileIdMap(object):
 
         try:
             i = 1
-            for (revid, global_changes, revprops, changed_fileprops) in reversed(todo):
+            for revmeta in reversed(todo):
+                revid = revmeta.get_revision_id(mapping)
                 expensive = False
                 def log_find_children(path, revnum):
                     expensive = True
                     return self.repos._log.find_children(path, revnum)
 
-                (revnum, branch) = quickrevidmap[revid]
                 (idmap, changes) = self.actual.apply_changes(self.repos.uuid, 
-                        revnum, branch, global_changes, 
-                        mapping.import_fileid_map(revprops, changed_fileprops), 
+                        revmeta.revnum, revmeta.branch_path, revmeta.paths, 
+                        mapping.import_fileid_map(revmeta.revprops, revmeta.fileprops), 
                         mapping, log_find_children)
                 pb.update('generating file id map', i, len(todo))
 
