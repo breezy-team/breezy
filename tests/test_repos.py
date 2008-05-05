@@ -330,9 +330,9 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         branches = repos.find_branches()
         self.assertEquals(2, len(branches))
         self.assertEquals(urlutils.join(repos.base, "branches/brancha"), 
-                          branches[0].base)
-        self.assertEquals(urlutils.join(repos.base, "branches/branchab"), 
                           branches[1].base)
+        self.assertEquals(urlutils.join(repos.base, "branches/branchab"), 
+                          branches[0].base)
 
     def test_find_branchpaths_moved(self):
         repos_url = self.make_client("a", "dc")
