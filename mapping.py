@@ -273,6 +273,10 @@ class BzrSvnMapping(object):
         """Whether this mapping can be used with custom revision properties."""
         return False
 
+    def is_bzr_revision(self, revprops, fileprops):
+        """Whether this is a revision that was pushed by Bazaar."""
+        return False
+
     @classmethod
     def supports_custom_fileprops(cls):
         """Whether this mapping can be used with custom file properties."""
@@ -499,6 +503,9 @@ class BzrSvnMappingFileProps(object):
 
         return ({}, fileprops)
 
+    def is_bzr_revision(self, revprops, fileprops):
+        return fileprops.has_key(SVN_PROP_BZR_REVISION_ID+str(self.scheme))
+
     def get_revision_id(self, branch_path, revprops, fileprops):
         # Lookup the revision from the bzr:revision-id-vX property
         text = fileprops.get(SVN_PROP_BZR_REVISION_ID+str(self.scheme), None)
@@ -543,8 +550,11 @@ class BzrSvnMappingRevProps(object):
             return []
         return svn_revprops.get(SVN_REVPROP_BZR_MERGE, "").splitlines()
 
+    def is_bzr_revision(self, revprops, fileprops):
+        return revprops.has_key(SVN_REVPROP_BZR_MAPPING_VERSION)
+
     def get_revision_id(self, branch_path, revprops, fileprops):
-        if not revprops.has_key(SVN_REVPROP_BZR_MAPPING_VERSION):
+        if not self.is_bzr_revision(revprops, fileprops):
             return (None, None)
         if revprops[SVN_REVPROP_BZR_ROOT] == branch_path:
             revid = revprops[SVN_REVPROP_BZR_REVISION_ID]

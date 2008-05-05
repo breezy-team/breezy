@@ -25,7 +25,7 @@ from bzrlib.inventory import Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.repository import Repository, RepositoryFormat
 from bzrlib.revisiontree import RevisionTree
-from bzrlib.revision import Revision, NULL_REVISION
+from bzrlib.revision import Revision, NULL_REVISION, ensure_null
 from bzrlib.transport import Transport, get_transport
 from bzrlib.trace import info, mutter
 
@@ -72,7 +72,22 @@ class RevisionMetadata(object):
         return self.repository.generate_revision_id(self.revnum, self.branch_path, mapping, self.revprops, self.fileprops)
 
     def get_rhs_parents(self, mapping):
-        return mapping.get_rhs_parents(self.branch_path, self.revprops, self.fileprops)
+        extra_rhs_parents = mapping.get_rhs_parents(self.branch_path, self.revprops, self.fileprops)
+
+        if extra_rhs_parents != ():
+            return extra_rhs_parents
+
+        if mapping.is_bzr_revision(self.revprops, self.fileprops):
+            return ()
+
+        (prev_path, prev_revnum) = self.repository._log.get_previous(self.branch_path, 
+                                                          self.revnum)
+        if prev_path is None and prev_revnum == -1:
+            previous = {}
+        else:
+            previous = logwalker.lazy_dict({}, self.repository.branchprop_list.get_properties, prev_path.encode("utf-8"), prev_revnum)
+
+        return tuple(self.repository._svk_merged_revisions(self.branch_path, self.revnum, mapping, self.fileprops, previous))
 
 
 def svk_feature_to_revision_id(feature, mapping):
@@ -361,8 +376,7 @@ class SvnRepository(Repository):
 
     def revision_tree(self, revision_id):
         """See Repository.revision_tree()."""
-        if revision_id is None:
-            revision_id = NULL_REVISION
+        revision_id = ensure_null(revision_id)
 
         if revision_id == NULL_REVISION:
             inventory = Inventory(root_id=None)
@@ -437,11 +451,16 @@ class SvnRepository(Repository):
             return
         previous = previous_fileprops.get(SVN_PROP_SVK_MERGE, "")
         for feature in svk_features_merged_since(current, previous):
+            # We assume svk:merge is only relevant on non-bzr-svn revisions. 
+            # If this is a bzr-svn revision, the bzr-svn properties 
+            # would be parsed instead.
+            #
+            # This saves one svn_get_dir() call.
             revid = svk_feature_to_revision_id(feature, mapping)
             if revid is not None:
                 yield revid
 
-    def revision_parents(self, revision_id, svn_fileprops=None, svn_revprops=None):
+    def revision_parents(self, revision_id, revmeta=None):
         """See Repository.revision_parents()."""
         assert isinstance(revision_id, str)
         (branch, revnum, mapping) = self.lookup_revision_id(revision_id)
@@ -451,22 +470,12 @@ class SvnRepository(Repository):
 
         parent_ids = (mainline_parent,)
 
-        if svn_fileprops is None:
+        if revmeta is None:
             svn_fileprops = logwalker.lazy_dict({}, self.branchprop_list.get_changed_properties, branch, revnum)
-
-        if svn_revprops is None:
             svn_revprops = logwalker.lazy_dict({}, self.transport.revprop_list, revnum)
+            revmeta = RevisionMetadata(self, branch, None, revnum, svn_revprops, svn_fileprops)
 
-        extra_rhs_parents = mapping.get_rhs_parents(branch, svn_revprops, svn_fileprops)
-        parent_ids += extra_rhs_parents
-
-        if extra_rhs_parents == ():
-            (prev_path, prev_revnum) = self._log.get_previous(branch, revnum)
-            if prev_path is None and prev_revnum == -1:
-                previous = {}
-            else:
-                previous = logwalker.lazy_dict({}, self.branchprop_list.get_properties, prev_path.encode("utf-8"), prev_revnum)
-            parent_ids += tuple(self._svk_merged_revisions(branch, revnum, mapping, svn_fileprops, previous))
+        parent_ids += revmeta.get_rhs_parents(mapping)
 
         return parent_ids
 
@@ -480,10 +489,9 @@ class SvnRepository(Repository):
         svn_revprops = logwalker.lazy_dict({}, self.transport.revprop_list, revnum)
         svn_fileprops = logwalker.lazy_dict({}, self.branchprop_list.get_changed_properties, path, revnum)
 
-        revmeta = RevisionMetadata(self, path, revnum, svn_revprops, svn_fileprops)
+        revmeta = RevisionMetadata(self, path, None, revnum, svn_revprops, svn_fileprops)
 
-        parent_ids = self.revision_parents(revision_id, revmeta.revprops, 
-                                           revmeta.fileprops)
+        parent_ids = self.revision_parents(revision_id, revmeta)
 
         rev = Revision(revision_id=revision_id, parent_ids=parent_ids,
                        inventory_sha1=None)
