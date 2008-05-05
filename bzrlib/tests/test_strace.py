@@ -20,11 +20,13 @@
 import errno
 import subprocess
 
+from bzrlib import (
+    tests,
+    )
 from bzrlib.strace import StraceFeature, strace_detailed, StraceResult
-from bzrlib.tests import TestCaseWithTransport
 
 
-class TestStraceFeature(TestCaseWithTransport):
+class TestStraceFeature(tests.TestCaseWithTransport):
 
     def test_strace_detection(self):
         """Strace is available if its runnable."""
@@ -43,11 +45,17 @@ class TestStraceFeature(TestCaseWithTransport):
         self.assertEqual(found_strace, StraceFeature.available())
 
 
-class TestStrace(TestCaseWithTransport):
+class TestStrace(tests.TestCaseWithTransport):
 
     _test_needs_features = [StraceFeature]
 
+    # If the following tests are activated, selftest may hang (see bug
+    # #226769). This is due to strace strange behavior when required to trace
+    # its own parent in the presence of threads (or something like that). One
+    # strace is fixed, we may want to activate these tests again.
+
     def test_strace_callable_is_called(self):
+        raise tests.TestSkipped("bug #103133 needs to be fixed.")
         output = []
         def function(positional, *args, **kwargs):
             output.append((positional, args, kwargs))
@@ -56,6 +64,8 @@ class TestStrace(TestCaseWithTransport):
         self.assertEqual([("a", ("b",), {"c":"c"})], output)
 
     def test_strace_callable_result(self):
+        raise tests.TestSkipped("bug #103133 needs to be fixed.")
+
         def function():
             return "foo"
         result, strace_result = strace_detailed(function,[], {},
@@ -65,6 +75,7 @@ class TestStrace(TestCaseWithTransport):
 
     def test_strace_result_has_raw_log(self):
         """Checks that a reasonable raw strace log was found by strace."""
+        raise tests.TestSkipped("bug #103133 needs to be fixed.")
         def function():
             self.build_tree(['myfile'])
         unused, result = strace_detailed(function, [], {},
