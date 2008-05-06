@@ -21,7 +21,6 @@ from cStringIO import StringIO
 import os
 import socket
 import threading
-import unittest
 
 from bzrlib import (
         bzrdir,
@@ -941,6 +940,38 @@ class TestSmartServerStreamMedium(tests.TestCase):
         # A request that starts with "bzr request 2\n" is version two.
         server_protocol = self.build_protocol_socket('bzr request 2\n')
         self.assertProtocolTwo(server_protocol)
+
+
+class TestGetProtocolFactoryForBytes(tests.TestCase):
+    """_get_protocol_factory_for_bytes identifies the protocol factory a server
+    should use to decode a given request.  Any bytes not part of the version
+    marker string (and thus part of the actual request) are returned alongside
+    the protocol factory.
+    """
+
+    def test_version_three(self):
+        result = medium._get_protocol_factory_for_bytes(
+            'bzr message 3 (bzr 1.3)\nextra bytes')
+        protocol_factory, remainder = result
+        self.assertEqual(
+            protocol.build_server_protocol_three, protocol_factory)
+        self.assertEqual('extra bytes', remainder)
+        
+    def test_version_two(self):
+        result = medium._get_protocol_factory_for_bytes(
+            'bzr request 2\nextra bytes')
+        protocol_factory, remainder = result
+        self.assertEqual(
+            protocol.SmartServerRequestProtocolTwo, protocol_factory)
+        self.assertEqual('extra bytes', remainder)
+        
+    def test_version_one(self):
+        """Version one requests have no version markers."""
+        result = medium._get_protocol_factory_for_bytes('anything\n')
+        protocol_factory, remainder = result
+        self.assertEqual(
+            protocol.SmartServerRequestProtocolOne, protocol_factory)
+        self.assertEqual('anything\n', remainder)
         
 
 class TestSmartTCPServer(tests.TestCase):
