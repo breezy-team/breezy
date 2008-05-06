@@ -1,9 +1,10 @@
 before 0.4.10:
- - add parent cache
  - regression in http hack?
  - use branch name when calling has_revision() for push
+ - use -1 to mean youngest revnum
 
 - Needs more tests
+ - parents cache
  - Run all tests against repository with revprop changing allowed and without
 - Needs upgrade command that can use legacy file properties and set revprops
 - Support disabling legacy file property support somehow

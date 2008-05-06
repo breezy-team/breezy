@@ -240,8 +240,8 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         set_branching_scheme(repos, TrunkBranchingScheme())
         mapping = repos.get_mapping()
         self.assertEqual([
-            repos.generate_revision_id(2, "branches/somebranch", mapping),
-            repos.generate_revision_id(1, "trunk", mapping)], 
+            repos.generate_revision_id(1, "trunk", mapping), 
+            repos.generate_revision_id(2, "branches/somebranch", mapping)],
             list(repos.all_revision_ids()))
 
     def test_follow_history_empty(self):
@@ -275,8 +275,9 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         set_branching_scheme(repos, TrunkBranchingScheme())
 
         items = list(repos.all_revision_ids(repos.get_layout()))
-        self.assertEqual([repos.generate_revision_id(2, 'branches/abranch', repos.get_mapping()), 
-                          repos.generate_revision_id(1, 'trunk', repos.get_mapping())], items)
+        self.assertEqual([repos.generate_revision_id(1, 'trunk', repos.get_mapping()),
+                          repos.generate_revision_id(2, 'branches/abranch', repos.get_mapping())
+                          ], items)
 
     def test_branch_log_specific(self):
         repos_url = self.make_client("a", "dc")

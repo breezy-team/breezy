@@ -303,8 +303,11 @@ class SvnRepository(Repository):
             for p in paths:
                 try:
                     bp = layout.parse(p)[2]
+                except NotBranchError:
+                    pass
+                else:
                     if not bp in yielded_paths:
-                        if bp in paths and paths[bp][0] != 'D':
+                        if not bp in paths or paths[bp][0] != 'D':
                             assert revnum > 0 or bp == "", "%r:%r" % (bp, revnum)
                             yielded_paths.add(bp)
                             if not bp in paths:
@@ -312,8 +315,6 @@ class SvnRepository(Repository):
                             else:
                                 svn_fileprops = logwalker.lazy_dict({}, self.branchprop_list.get_changed_properties, bp, revnum)
                             yield RevisionMetadata(self, bp, paths, revnum, revprops, svn_fileprops)
-                except NotBranchError:
-                    pass
 
     def all_revision_ids(self, layout=None, mapping=None):
         if mapping is None:
@@ -473,8 +474,7 @@ class SvnRepository(Repository):
 
     def revision_parents(self, revision_id):
         """See Repository.revision_parents()."""
-        assert isinstance(revision_id, str)
-        (branch, revnum, mapping) = self.lookup_revision_id(revision_id)
+        (branch, revnum, mapping) = self.lookup_revision_id(ensure_null(revision_id))
         mainline_parent = self.lhs_revision_parent(branch, revnum, mapping)
         if mainline_parent == NULL_REVISION:
             return ()

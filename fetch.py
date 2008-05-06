@@ -533,7 +533,7 @@ class InterFromSvnRepository(InterRepository):
                         set_needed.add(rev[0])
             finally:
                 nestedpb.finished()
-            return ret_needed
+        return ret_needed
 
     def _find_until(self, revision_id, find_ghosts=False, fetch_rhs_ancestry=False, pb=None):
         """Find all missing revisions until revision_id

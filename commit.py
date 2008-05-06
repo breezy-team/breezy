@@ -712,14 +712,16 @@ def push(target, source, revision_id):
         source.unlock()
     try:
         builder.commit(rev.message)
+
     except SubversionException, (_, num):
         if num == svn.core.SVN_ERR_FS_TXN_OUT_OF_DATE:
             raise DivergedBranches(source, target)
         raise
     except ChangesRootLHSHistory:
         raise BzrError("Unable to push revision %r because it would change the ordering of existing revisions on the Subversion repository root. Use rebase and try again or push to a non-root path" % revision_id)
-
-    # FIXME: copy revisions signature
+    
+    if source.has_signature_for_revision_id(revision_id):
+        pass # FIXME: Copy revision signature for rev
 
     if 'validate' in debug.debug_flags:
         crev = target.repository.get_revision(revision_id)
@@ -752,7 +754,11 @@ class InterToSvnRepository(InterRepository):
             todo = []
             while not self.target.has_revision(revision_id):
                 todo.append(revision_id)
-                revision_id = self.source.get_parent_map(revision_id)[revision_id][0]
+                try:
+                    revision_id = self.source.get_parent_map(revision_id)[revision_id][0]
+                except KeyError:
+                    # We hit a ghost
+                    break
                 if revision_id == NULL_REVISION:
                     raise UnrelatedBranches()
             if todo == []:
@@ -785,7 +791,8 @@ class InterToSvnRepository(InterRepository):
                 replay_delta(builder, base_tree, old_tree)
                 builder.commit(rev.message)
 
-                # FIXME: Copy revision signature for rev
+                if self.source.has_signature_for_revision_id(revision_id):
+                    pass # FIXME: Copy revision signature for rev
         finally:
             self.source.unlock()
  
