@@ -655,7 +655,7 @@ def push_new(target_repository, target_branch_path, source,
             """See Branch.last_revision_info()."""
             last_revid = self.last_revision()
             if last_revid is None:
-                return (0, None)
+                return (0, NULL_REVISION)
             return (history.index(last_revid), last_revid)
 
         def last_revision(self):
@@ -720,7 +720,7 @@ def push(target, source, revision_id):
     except ChangesRootLHSHistory:
         raise BzrError("Unable to push revision %r because it would change the ordering of existing revisions on the Subversion repository root. Use rebase and try again or push to a non-root path" % revision_id)
     
-    if source.has_signature_for_revision_id(revision_id):
+    if source.repository.has_signature_for_revision_id(revision_id):
         pass # FIXME: Copy revision signature for rev
 
     if 'validate' in debug.debug_flags:

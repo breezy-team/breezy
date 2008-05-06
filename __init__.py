@@ -341,7 +341,11 @@ class cmd_svn_push(Command):
             revision_id = None
         try:
             target_branch = bzrdir.open_branch()
-            target_branch.pull(source_branch, revision_id)
+            target_branch.lock_write()
+            try:
+                target_branch.pull(source_branch, revision_id)
+            finally:
+                target_branch.unlock()
         except NotBranchError:
             target_branch = bzrdir.import_branch(source_branch, revision_id)
         # We successfully created the target, remember it
