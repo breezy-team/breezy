@@ -41,11 +41,7 @@ from bzrlib import (
     globbing,
     osutils,
     )
-import bzrlib.util.configobj
-
-
-# The object providing per-user properties
-_user_properties_provider = _PropertiesProvider(properties_filename())
+from bzrlib.util.configobj import configobj
 
 
 class _PropertiesProvider(object):
@@ -77,3 +73,7 @@ class _PropertiesProvider(object):
 def properties_filename():
     """Return per-user properties file filename."""
     return osutils.pathjoin(config.config_dir(), '.bzrproperties')
+
+
+# The object providing per-user properties
+_user_properties_provider = _PropertiesProvider(properties_filename())
