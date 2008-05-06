@@ -23,10 +23,12 @@ responses.
 
 
 import httplib
+from cStringIO import StringIO
 
 from bzrlib import (
     errors,
     trace,
+    osutils,
     )
 
 
@@ -60,6 +62,9 @@ class RangeFile(object):
     # instead. The underlying file is either a socket or a StringIO, so reading
     # 8k chunks should be fine.
     _discarded_buf_size = 8192
+
+    # maximum size of read requests -- used to avoid MemoryError issues in recv
+    _max_read_size = 512 * 1024
 
     def __init__(self, path, infile):
         """Constructor.
@@ -176,7 +181,8 @@ class RangeFile(object):
         self.read_range_definition()
 
     def read(self, size=-1):
-        """Read size bytes from the current position in the file.
+        """Read size bytes from the current position in the file.  Use size=-1
+        to read to EOF.
 
         Reading across ranges is not supported. We rely on the underlying http
         client to clean the socket if we leave bytes unread. This may occur for
@@ -201,17 +207,17 @@ class RangeFile(object):
                     "Can't read %s bytes across range (%s, %s)"
                     % (size, self._start, self._size))
 
+        # read data from file
+        buffer = StringIO()
+        limited = size
         if self._size > 0:
             # Don't read past the range definition
             limited = self._start + self._size - self._pos
             if size >= 0:
                 limited = min(limited, size)
-            data = self._file.read(limited)
-        else:
-            # Size of file unknown, the user may have specified a size or not,
-            # we delegate that to the filesocket object (-1 means read until
-            # EOF)
-            data = self._file.read(size)
+        osutils.pumpfile(self._file, buffer, limited, self._max_read_size)
+        data = buffer.getvalue()
+
         # Update _pos respecting the data effectively read
         self._pos += len(data)
         return data
