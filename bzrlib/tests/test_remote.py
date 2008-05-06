@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -600,33 +600,6 @@ class TestBranchSetLastRevisionInfo(tests.TestCase):
         self.assertEqual(
             [('set_last_revision_info', 1234, 'a-revision-id')],
             real_branch.calls)
-
-
-class TestBranchControlGetBranchConf(tests.TestCaseWithMemoryTransport):
-    """Test branch.control_files api munging...
-
-    We special case RemoteBranch.control_files.get('branch.conf') to
-    call a specific API so that RemoteBranch's can intercept configuration
-    file reading, allowing them to signal to the client about things like
-    'email is configured for commits'.
-    """
-
-    def test_get_branch_conf(self):
-        raise tests.KnownFailure("branch.conf over hpss not handled specially")
-        # in an empty branch we decode the response properly
-        client = FakeClient([(('ok', ), 'config file body')], self.get_url())
-        # we need to make a real branch because the remote_branch.control_files
-        # will trigger _ensure_real.
-        branch = self.make_branch('quack')
-        transport = branch.bzrdir.root_transport
-        # we do not want bzrdir to make any remote calls
-        bzrdir = RemoteBzrDir(transport, _client=False)
-        branch = RemoteBranch(bzrdir, None, _client=client)
-        result = branch.control_files._transport.get('branch.conf')
-        self.assertEqual('config file body', result.read())
-        self.assertEqual(
-            [('call_expecting_body', 'Branch.get_config_file', ('quack/',))],
-            client._calls)
 
 
 class TestBranchLockWrite(tests.TestCase):

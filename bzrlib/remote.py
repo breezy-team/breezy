@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1158,25 +1158,6 @@ class RemoteBranchLockableFiles(LockableFiles):
         # RemoteBranches don't let the client set the mode of control files.
         self._dir_mode = None
         self._file_mode = None
-
-    @deprecated_method(deprecated_in((1, 5, 0)))
-    def get(self, path):
-        """'get' a remote path as per the LockableFiles interface.
-
-        :param path: the file to 'get'. If this is 'branch.conf', we do not
-             just retrieve a file, instead we ask the smart server to generate
-             a configuration for us - which is retrieved as an INI file.
-        """
-        if path == 'branch.conf':
-            path = self.bzrdir._path_for_remote_call(self._client)
-            response = self._client.call_expecting_body(
-                'Branch.get_config_file', path)
-            assert response[0][0] == 'ok', \
-                'unexpected response code %s' % (response[0],)
-            return StringIO(response[1].read_body_bytes())
-        else:
-            # VFS fallback.
-            return LockableFiles.get(self, path)
 
 
 class RemoteBranchFormat(branch.BranchFormat):

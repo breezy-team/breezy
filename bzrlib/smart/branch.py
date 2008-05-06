@@ -80,6 +80,11 @@ class SmartServerBranchGetConfigFile(SmartServerBranchRequest):
         
         The body is not utf8 decoded - its the literal bytestream from disk.
         """
+        # This was at one time called by RemoteBranchLockableFiles
+        # intercepting access to this file; as of 1.5 it is not called by the
+        # client but retained for compatibility.  It may be called again to
+        # allow the client to get the configuration without needing vfs
+        # access.
         try:
             content = branch.control_files._transport.get_bytes('branch.conf')
         except errors.NoSuchFile:
