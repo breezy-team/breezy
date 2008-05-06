@@ -1740,6 +1740,7 @@ class Repository(object):
     def get_transaction(self):
         return self.control_files.get_transaction()
 
+    @deprecated_method(symbol_versioning.one_five)
     def revision_parents(self, revision_id):
         return self.get_inventory_weave().parent_names(revision_id)
 
