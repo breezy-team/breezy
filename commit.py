@@ -678,12 +678,12 @@ def push_new(target_repository, target_branch_path, source,
     push(ImaginaryBranch(target_repository), source, start_revid)
 
 
-def push_revision_tree(target, source_repo, base_revid, revision_id, rev):
+def push_revision_tree(target, config, source_repo, base_revid, revision_id, rev):
     old_tree = source_repo.revision_tree(revision_id)
     base_tree = source_repo.revision_tree(base_revid)
 
     builder = SvnCommitBuilder(target.repository, target, rev.parent_ids,
-                               target.get_config(), rev.timestamp,
+                               config, rev.timestamp,
                                rev.timezone, rev.committer, rev.properties, 
                                revision_id, base_tree.inventory)
                          
@@ -722,7 +722,7 @@ def push(target, source, revision_id):
 
     source.lock_read()
     try:
-        push_revision_tree(target, source.repository, base_revid, revision_id, rev)
+        push_revision_tree(target, target.get_config(), source.repository, base_revid, revision_id, rev)
     finally:
         source.unlock()
 
@@ -784,7 +784,7 @@ class InterToSvnRepository(InterRepository):
                 if target_branch.get_branch_path() != bp:
                     target_branch.set_branch_path(bp)
 
-                push_revision_tree(target_branch, self.source, parent_revid, revision_id, rev)
+                push_revision_tree(target_branch, target_branch.get_config(), self.source, parent_revid, revision_id, rev)
         finally:
             self.source.unlock()
  
