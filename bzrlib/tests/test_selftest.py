@@ -1815,8 +1815,8 @@ class TestSelftestFiltering(TestCase):
              'TestSelftestFiltering.test_filter_suite_by_id_list'])
 
     def test_filter_suite_by_id_startswith(self):
-        # By design this test may fail if another test is added whose a name
-        # also begins with the start value used.
+        # By design this test may fail if another test is added whose name also
+        # begins with the start value used.
         klass = 'bzrlib.tests.test_selftest.TestSelftestFiltering.'
         start = klass + 'test_filter_suite_by_id_starts'
         test_list = [klass + 'test_filter_suite_by_id_startswith']
@@ -2108,12 +2108,21 @@ class TestFilteredByModuleTestLoader(tests.TestCase):
 class TestFilteredByNameStartTestLoader(tests.TestCase):
 
     def _create_loader(self, name_start):
-        loader = TestUtil.FilteredByModuleTestLoader(name_start.startswith)
+        def needs_module(name):
+            return name.startswith(name_start) or name_start.startswith(name)
+        loader = TestUtil.FilteredByModuleTestLoader(needs_module)
         return loader
 
     def test_load_tests(self):
         test_list = ['bzrlib.tests.test_sampler.DemoTest.test_nothing']
-        loader = self._create_loader('bzrlib.tests.test_sampler.DemoTest')
+        loader = self._create_loader('bzrlib.tests.test_samp')
+
+        suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
+        self.assertEquals(test_list, _test_ids(suite))
+
+    def test_load_tests_inside_module(self):
+        test_list = ['bzrlib.tests.test_sampler.DemoTest.test_nothing']
+        loader = self._create_loader('bzrlib.tests.test_sampler.Demo')
 
         suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
         self.assertEquals(test_list, _test_ids(suite))

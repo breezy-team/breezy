@@ -250,7 +250,7 @@ by community members. Equally importantly, we can be surer that changes
 down the track do not break new features or bug fixes that you are
 contributing today.
 
-As of May 2007, Bazaar ships with a test suite containing over 6000 tests
+As of May 2008, Bazaar ships with a test suite containing over 12000 tests
 and growing. We are proud of it and want to remain so. As community
 members, we all benefit from it. Would you trust version control on
 your project to a product *without* a test suite like Bazaar has?
@@ -283,6 +283,28 @@ To list tests without running them, use the --list-only option like so::
 This option can be combined with other selftest options (like -x) and
 filter patterns to understand their effect.
 
+Once you understand how to create a list of tests, you can use the --load-list
+option to run only a restricted set of tests that you kept in a file, one test
+id by line. Keep in mind that this will never be sufficient to validate your
+modifications, you still need to run the full test suite for that, but using it
+can help in some cases (like running only the failed tests for some time)::
+
+  ./bzr selftest -- load-list my_failing_tests
+
+This option can also be combined with other selftest options, including
+patterns. It has some drawbacks though, the list can become out of date pretty
+quick when doing Test Driven Development.
+
+To address this concern, there is another way to run a restricted set of tests:
+the --starting-with option will run only the tests whose name starts with the
+specified string. It will also avoid loading the other tests and as a
+consequence starts running your tests quicker::
+
+  ./bzr selftest --starting-with bzrlib.blackbox
+
+This option can be combined with all the other selftest options including
+--load-list. The later is rarely used but allows to run a subset of a list of
+failing tests for example.
 
 Writing Tests
 =============

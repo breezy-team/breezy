@@ -2660,6 +2660,7 @@ class cmd_selftest(Command):
                      Option('load-list', type=str, argname='TESTLISTFILE',
                             help='Load a test id list from a text file.'),
                      Option('starting-with', type=str, argname='TESTID',
+                            short_name='s',
                             help='Load only the tests starting with TESTID.'),
                      ]
     encoding_type = 'replace'

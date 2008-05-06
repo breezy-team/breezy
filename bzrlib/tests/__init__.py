@@ -2813,9 +2813,14 @@ def test_suite(keep_only=None, starting_with=None):
     if starting_with is not None:
         # We take precedence over keep_only because *at loading time* using
         # both options means we will load less tests for the same final result.
-        loader = TestUtil.FilteredByModuleTestLoader(starting_with.startswith)
         def interesting_module(name):
-            return name.startswith(starting_with)
+            return (
+                # Either the module name starts with the specified string
+                name.startswith(starting_with)
+                # or it may contain tests starting with the specified string
+                or starting_with.startswith(name)
+                )
+        loader = TestUtil.FilteredByModuleTestLoader(interesting_module)
 
     elif keep_only is not None:
         id_filter = TestIdList(keep_only)
