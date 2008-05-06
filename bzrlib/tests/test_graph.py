@@ -234,12 +234,10 @@ complex_shortcut = {'a':[NULL_REVISION], 'b':['a'], 'c':['b'], 'd':['c'],
 #     |/|/
 #     t u
 complex_shortcut2 = {'a':[NULL_REVISION], 'b':['a'], 'c':['b'], 'd':['c'],
-                    'e':['d'], 'f':['e'],
-                    'g':['f'], 'h':['d'], 'k':['h', 'i'], 'j':['h'],
-                    'i':['g'], 'l':['k'], 'm':['l'],
-                    'n':['m'], 't':['i', 's'], 'u':['s', 'j'],
-                    'o':['n'], 'p':['o'], 'q':['p'],
-                    'r':['q'], 's':['r'],
+                    'e':['d'], 'f':['e'], 'g':['f'], 'h':['d'], 'i':['g'],
+                    'j':['h'], 'k':['h', 'i'], 'l':['k'], 'm':['l'], 'n':['m'],
+                    'o':['n'], 'p':['o'], 'q':['p'], 'r':['q'], 's':['r'],
+                    't':['i', 's'], 'u':['s', 'j'], 
                     }
 
 # Graph where different walkers will race to find the common and uncommon
@@ -285,11 +283,11 @@ complex_shortcut2 = {'a':[NULL_REVISION], 'b':['a'], 'c':['b'], 'd':['c'],
 #     |/
 #     j
 #
-# y is found to be common right away, but is the start of a long series of
+# x is found to be common right away, but is the start of a long series of
 # common commits.
 # o is actually common, but the i-j shortcut makes it look like it is actually
-# unique to j at first, you have to traverse all of y->o to find it.
-# q,n give the walker from j a common point to stop searching, as does p,f.
+# unique to j at first, you have to traverse all of x->o to find it.
+# q,m gives the walker from j a common point to stop searching, as does p,f.
 # k-n exists so that the second pass still has nodes that are worth searching,
 # rather than instantly cancelling the extra walker.
 
@@ -405,10 +403,6 @@ class InstrumentedParentsProvider(object):
     def __init__(self, parents_provider):
         self.calls = []
         self._real_parents_provider = parents_provider
-
-    def get_parent_map(self, nodes):
-        self.calls.extend(nodes)
-        return self._real_parents_provider.get_parent_map(nodes)
 
     def get_parent_map(self, nodes):
         self.calls.extend(nodes)
@@ -1229,7 +1223,7 @@ class TestFindUniqueAncestors(tests.TestCase):
     def test_racing_shortcuts(self):
         graph = self.make_graph(racing_shortcuts)
         self.assertFindUniqueAncestors(graph,
-            ['p', 'q', 'z'], 'z', ['j'])
+            ['p', 'q', 'z'], 'z', ['y'])
         self.assertFindUniqueAncestors(graph,
             ['h', 'i', 'j', 'y'], 'j', ['z'])
 
