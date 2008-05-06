@@ -67,6 +67,9 @@ bzr-svn 0.4.10  UNRELEASED
    * Work around bug in the Subversion libraries which don't accept 
      http(s) URLs with urlencoded characters. (#190229)
 
+   * Make sure committer name is UTF-8 encoded when overriding 
+     revision properties.
+
 bzr-svn 0.4.9    2008-03-23
 
   FEATURES
