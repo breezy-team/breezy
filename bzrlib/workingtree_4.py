@@ -144,6 +144,7 @@ class WorkingTree4(WorkingTree3):
         assert isinstance(_control_files, LockableFiles), \
             "_control_files must be a LockableFiles, not %r" % _control_files
         self._control_files = _control_files
+        self._transport = self._control_files._transport
         self._dirty = None
         #-------------
         # during a read or write lock these objects are set, and are

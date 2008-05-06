@@ -150,15 +150,22 @@ class LockableFiles(object):
         return self._transport.abspath(self._escape(file_or_path))
 
     @needs_read_lock
+    @deprecated_method(deprecated_in((1, 5, 0)))
     def get(self, relpath):
-        """Get a file as a bytestream."""
+        """Get a file as a bytestream.
+        
+        :deprecated: Use a Transport instead of LockableFiles.
+        """
         relpath = self._escape(relpath)
         return self._transport.get(relpath)
 
     @needs_read_lock
     @deprecated_method(deprecated_in((1, 5, 0)))
     def get_utf8(self, relpath):
-        """Get a file as a unicode stream."""
+        """Get a file as a unicode stream.
+        
+        :deprecated: Use a Transport instead of LockableFiles.
+        """
         relpath = self._escape(relpath)
         # DO NOT introduce an errors=replace here.
         return codecs.getreader('utf-8')(self._transport.get(relpath))

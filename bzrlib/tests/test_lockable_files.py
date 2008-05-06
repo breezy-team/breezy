@@ -44,7 +44,10 @@ from bzrlib.transport import get_transport
 class _TestLockableFiles_mixin(object):
 
     def test_read_write(self):
-        self.assertRaises(NoSuchFile, self.lockable.get, 'foo')
+        self.assertRaises(NoSuchFile,
+            self.applyDeprecated,
+            deprecated_in((1, 5, 0)),
+            self.lockable.get, 'foo')
         self.assertRaises(NoSuchFile,
             self.applyDeprecated,
             deprecated_in((1, 5, 0)),
@@ -58,8 +61,11 @@ class _TestLockableFiles_mixin(object):
             self.assertRaises(UnicodeEncodeError, self.lockable.put, 'foo',
                               StringIO(unicode_string))
             self.lockable.put('foo', StringIO(byte_string))
-            self.assertEqual(byte_string,
-                             self.lockable.get('foo').read())
+            byte_stream = self.applyDeprecated(
+                deprecated_in((1, 5, 0)),
+                self.lockable.get,
+                'foo')
+            self.assertEqual(byte_string, byte_stream.read())
             unicode_stream = self.applyDeprecated(
                 deprecated_in((1, 5, 0)),
                 self.lockable.get_utf8,
@@ -78,11 +84,17 @@ class _TestLockableFiles_mixin(object):
                 'bar')
             self.assertEqual(unicode_string,
                 unicode_stream.read())
-            self.assertEqual(byte_string,
-                             self.lockable.get('bar').read())
+            byte_stream = self.applyDeprecated(
+                deprecated_in((1, 5, 0)),
+                self.lockable.get,
+                'bar')
+            self.assertEqual(byte_string, byte_stream.read())
             self.lockable.put_bytes('raw', 'raw\xffbytes')
-            self.assertEqual('raw\xffbytes',
-                             self.lockable.get('raw').read())
+            byte_stream = self.applyDeprecated(
+                deprecated_in((1, 5, 0)),
+                self.lockable.get,
+                'raw')
+            self.assertEqual('raw\xffbytes', byte_stream.read())
         finally:
             self.lockable.unlock()
 

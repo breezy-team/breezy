@@ -241,6 +241,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                     "_control_files must be a LockableFiles, not %r" \
                     % _control_files
             self._control_files = _control_files
+        self._transport = self._control_files._transport
         # update the whole cache up front and write to disk if anything changed;
         # in the future we might want to do this more selectively
         # two possible ways offer themselves : in self._unlock, write the cache
@@ -550,7 +551,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         else:
             parents = [last_rev]
         try:
-            merges_file = self._control_files.get('pending-merges')
+            merges_file = self._control_files._transport.get('pending-merges')
         except errors.NoSuchFile:
             pass
         else:
@@ -946,7 +947,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         still in the working inventory and have that text hash.
         """
         try:
-            hashfile = self._control_files.get('merge-hashes')
+            hashfile = self._control_files._transport.get('merge-hashes')
         except errors.NoSuchFile:
             return {}
         merge_hashes = {}
@@ -1800,7 +1801,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def _reset_data(self):
         """Reset transient data that cannot be revalidated."""
         self._inventory_is_modified = False
-        result = self._deserialize(self._control_files.get('inventory'))
+        result = self._deserialize(self._transport.get('inventory'))
         self._set_inventory(result, dirty=False)
 
     @needs_tree_write_lock
@@ -1867,7 +1868,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def read_basis_inventory(self):
         """Read the cached basis inventory."""
         path = self._basis_inventory_name()
-        return self._control_files.get(path).read()
+        return self._control_files._transport.get_bytes(path)
         
     @needs_read_lock
     def read_working_inventory(self):
@@ -1882,7 +1883,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         # binary.
         if self._inventory_is_modified:
             raise errors.InventoryModified(self)
-        result = self._deserialize(self._control_files.get('inventory'))
+        result = self._deserialize(self._control_files._transport.get('inventory'))
         self._set_inventory(result, dirty=False)
         return result
 
@@ -2589,7 +2590,7 @@ class WorkingTree3(WorkingTree):
     def _last_revision(self):
         """See Mutable.last_revision."""
         try:
-            return self._control_files.get('last-revision').read()
+            return self._transport.get_bytes('last-revision')
         except errors.NoSuchFile:
             return _mod_revision.NULL_REVISION
 
@@ -2620,7 +2621,7 @@ class WorkingTree3(WorkingTree):
     @needs_read_lock
     def conflicts(self):
         try:
-            confile = self._control_files.get('conflicts')
+            confile = self._transport.get('conflicts')
         except errors.NoSuchFile:
             return _mod_conflicts.ConflictList()
         try:

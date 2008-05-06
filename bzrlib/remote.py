@@ -39,6 +39,7 @@ from bzrlib.lockable_files import LockableFiles
 from bzrlib.pack import ContainerPushParser
 from bzrlib.smart import client, vfs
 from bzrlib.symbol_versioning import (
+    deprecated_in,
     deprecated_method,
     zero_ninetyone,
     )
@@ -1158,6 +1159,7 @@ class RemoteBranchLockableFiles(LockableFiles):
         self._dir_mode = None
         self._file_mode = None
 
+    @deprecated_method(deprecated_in((1, 5, 0)))
     def get(self, path):
         """'get' a remote path as per the LockableFiles interface.
 

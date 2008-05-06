@@ -2014,10 +2014,10 @@ class ConvertBzrDir4To5(Converter):
 
     def _convert_working_inv(self):
         inv = xml4.serializer_v4.read_inventory(
-                    self.branch.control_files.get('inventory'))
+                self.branch._transport.get('inventory'))
         new_inv_xml = xml5.serializer_v5.write_inventory_to_string(inv, working=True)
-        # FIXME inventory is a working tree change.
-        self.branch.control_files.put('inventory', StringIO(new_inv_xml))
+        self.branch._transport.put_bytes('inventory', new_inv_xml,
+            mode=self.branch.control_files._file_mode)
 
     def _write_all_weaves(self):
         controlweaves = WeaveStore(self.bzrdir.transport, prefixed=False)

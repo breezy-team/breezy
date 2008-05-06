@@ -1467,7 +1467,7 @@ class BzrBranch(Branch):
         self._run_post_change_branch_tip_hooks(old_revno, old_revid)
 
     def _gen_revision_history(self):
-        history = self.control_files.get('revision-history').read().split('\n')
+        history = self._transport.get_bytes('revision-history').split('\n')
         if history[-1:] == ['']:
             # There shouldn't be a trailing newline, but just in case.
             history.pop()
@@ -1598,7 +1598,7 @@ class BzrBranch(Branch):
         _locs = ['parent', 'pull', 'x-pull']
         for l in _locs:
             try:
-                return self.control_files.get(l).read().strip('\n')
+                return self._transport.get_bytes(l).strip('\n')
             except errors.NoSuchFile:
                 pass
         return None
@@ -1897,7 +1897,7 @@ class BzrBranch6(BzrBranch5):
         return self._last_revision_info_cache
 
     def _last_revision_info(self):
-        revision_string = self.control_files.get('last-revision').read()
+        revision_string = self.control_files._transport.get_bytes('last-revision')
         revno, revision_id = revision_string.rstrip('\n').split(' ', 1)
         revision_id = cache_utf8.get_cached_utf8(revision_id)
         revno = int(revno)
