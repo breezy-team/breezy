@@ -148,10 +148,14 @@ class SvnRemoteAccess(BzrDir):
                 repos.get_latest_revnum()) != svn.core.svn_node_none:
                 raise AlreadyBranchError(full_branch_url)
             push_new(repos, target_branch_path, source, stop_revision)
-            branch = self.open_branch()
-            branch.pull(source, stop_revision=stop_revision)
         finally:
             repos.unlock()
+        branch = self.open_branch()
+        branch.lock_write()
+        try:
+            branch.pull(source, stop_revision=stop_revision)
+        finally:
+            branch.unlock()
         return branch
 
     def create_branch(self):
