@@ -86,6 +86,9 @@ IN DEVELOPMENT
       make it easy to identify which test spawned a thread with an unhandled
       exception. (Andrew Bennetts)
 
+    * Parameterised test ids are preserved correctly to aid diagnosis of test
+      failures. (Robert Collins, Andrew Bennetts)
+
   INTERNALS:
 
     * ``Hooks.install_hook`` is now deprecated in favour of
@@ -101,6 +104,10 @@ IN DEVELOPMENT
       ``Repository.get_parent_map([revid])[revid]``. (Jelmer Vernooij)
 
   API BREAKS:
+
+    * ``bzrlib.status.show_pending_merges`` requires the repository to be
+      locked by the caller. Callers should have been doing it anyway, but it
+      will now raise an exception if they do not. (John Arbash Meinel)
 
     * Repository.get_data_stream, Repository.get_data_stream_for_search(),
       Repository.get_deltas_for_revsions(), Repository.revision_trees(),
