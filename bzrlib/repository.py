@@ -650,8 +650,7 @@ class Repository(object):
         """
         if self.__class__ is not other.__class__:
             return False
-        return (self.control_files._transport.base ==
-                other.control_files._transport.base)
+        return (self._transport.base == other._transport.base)
 
     def is_in_write_group(self):
         """Return True if there is an open write group.
@@ -2004,13 +2003,12 @@ class MetaDirRepository(Repository):
                                                 _revision_store,
                                                 control_store,
                                                 text_store)
-        dir_mode = self.control_files._dir_mode
-        file_mode = self.control_files._file_mode
+        self._transport = control_files._transport
 
     @needs_read_lock
     def is_shared(self):
         """Return True if this repository is flagged as a shared repository."""
-        return self.control_files._transport.has('shared-storage')
+        return self._transport.has('shared-storage')
 
     @needs_write_lock
     def set_make_working_trees(self, new_value):
@@ -2024,7 +2022,7 @@ class MetaDirRepository(Repository):
         """
         if new_value:
             try:
-                self.control_files._transport.delete('no-working-trees')
+                self._transport.delete('no-working-trees')
             except errors.NoSuchFile:
                 pass
         else:
@@ -2032,7 +2030,7 @@ class MetaDirRepository(Repository):
     
     def make_working_trees(self):
         """Returns the policy for making working trees on new branches."""
-        return not self.control_files._transport.has('no-working-trees')
+        return not self._transport.has('no-working-trees')
 
 
 class MetaDirVersionedFileRepository(MetaDirRepository):

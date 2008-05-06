@@ -1339,9 +1339,6 @@ class BzrBranch(Branch):
             raise ValueError('a_bzrdir must be supplied')
         else:
             self.bzrdir = a_bzrdir
-        # self._transport used to point to the directory containing the
-        # control directory, but was not used - now it's just the transport
-        # for the branch control files.  mbp 20070212
         self._base = self.bzrdir.transport.clone('..').base
         self._format = _format
         if _control_files is None:
@@ -1363,8 +1360,7 @@ class BzrBranch(Branch):
 
     def abspath(self, name):
         """See Branch.abspath."""
-        return self.control_files._transport.abspath(name)
-
+        return self._transport.abspath(name)
 
     @deprecated_method(zero_sixteen)
     @needs_read_lock
@@ -1723,7 +1719,7 @@ class BzrBranch(Branch):
         # read and rewrite the file. RBC 20060125
         if url is not None:
             if isinstance(url, unicode):
-                try: 
+                try:
                     url = url.encode('ascii')
                 except UnicodeEncodeError:
                     raise errors.InvalidURL(url,
@@ -1734,10 +1730,11 @@ class BzrBranch(Branch):
 
     def _set_parent_location(self, url):
         if url is None:
-            self.control_files._transport.delete('parent')
+            self._transport.delete('parent')
         else:
             assert isinstance(url, str)
-            self.control_files.put_bytes('parent', url + '\n')
+            self._transport.put_bytes('parent', url + '\n',
+                mode=self.control_files._file_mode)
 
 
 class BzrBranch5(BzrBranch):
@@ -1820,7 +1817,7 @@ class BzrBranch5(BzrBranch):
             self.control_files.put_utf8('bound', location+'\n')
         else:
             try:
-                self.control_files._transport.delete('bound')
+                self._transport.delete('bound')
             except errors.NoSuchFile:
                 return False
             return True
@@ -1897,7 +1894,7 @@ class BzrBranch6(BzrBranch5):
         return self._last_revision_info_cache
 
     def _last_revision_info(self):
-        revision_string = self.control_files._transport.get_bytes('last-revision')
+        revision_string = self._transport.get_bytes('last-revision')
         revno, revision_id = revision_string.rstrip('\n').split(' ', 1)
         revision_id = cache_utf8.get_cached_utf8(revision_id)
         revno = int(revno)
