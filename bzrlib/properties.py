@@ -63,7 +63,7 @@ class _PropertiesProvider(object):
         :param path: tree relative path
         :return: the properties or {} if none
         """
-        pat =_self._globster.match(path)
+        pat = self._globster.match(path)
         if pat is None:
             return {}
         else:

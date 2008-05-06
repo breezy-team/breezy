@@ -43,3 +43,40 @@ class TestPropertiesPath(tests.TestCase):
     def test_properties_filename(self):
         self.assertEqual(properties.properties_filename(),
                          self.bzr_home + '/.bzrproperties')
+
+
+class TestPropertiesProvider(tests.TestCase):
+
+    def make_provider(self, lines):
+        """Make a _PropertiesProvider from a list of strings"""
+        # This works even though the API doesn't document it yet
+        return properties._PropertiesProvider(lines)
+
+    def test_get_properties_file_missing(self):
+        pp = self.make_provider(None)
+        self.assertEquals({}, pp.get_properties('a.txt'))
+
+    def test_get_properties_file_empty(self):
+        pp = self.make_provider([])
+        self.assertEquals({}, pp.get_properties('a.txt'))
+
+    def test_get_properties_from_extension_match(self):
+        pp = self.make_provider(["[*.txt]", "foo=bar", "a=True"])
+        self.assertEquals({}, pp.get_properties('a.py'))
+        self.assertEquals({'foo':'bar', 'a': 'True'},
+            pp.get_properties('a.txt'))
+        self.assertEquals({'foo':'bar', 'a': 'True'},
+            pp.get_properties('dir/a.txt'))
+
+    def test_get_properties_pathname_match(self):
+        pp = self.make_provider(["[./a.txt]", "foo=baz"])
+        self.assertEquals({'foo':'baz'}, pp.get_properties('a.txt'))
+        self.assertEquals({}, pp.get_properties('dir/a.txt'))
+
+    def test_get_properties_match_first(self):
+        pp = self.make_provider([
+            "[./a.txt]", "foo=baz",
+            "[*.txt]", "foo=bar", "a=True"])
+        self.assertEquals({'foo':'baz'}, pp.get_properties('a.txt'))
+        self.assertEquals({'foo':'bar', 'a': 'True'},
+            pp.get_properties('dir/a.txt'))
