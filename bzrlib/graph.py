@@ -272,133 +272,87 @@ class Graph(object):
         unique_tips = self._remove_simple_descendants(unique_nodes,
                         self.get_parent_map(unique_nodes))
 
-        if len(unique_tips) == 1:
-            unique_searchers = []
-            ancestor_all_unique = unique_searcher.find_seen_ancestors(unique_tips)
-        else:
-            unique_searchers = []
-            for tip in unique_tips:
-                revs_to_search = unique_searcher.find_seen_ancestors([tip])
-                revs_to_search.update(
-                    common_searcher.find_seen_ancestors(revs_to_search))
-                searcher = self._make_breadth_first_searcher(revs_to_search)
-                # We don't care about the starting nodes.
-                searcher._label = tip
-                searcher.step()
-                unique_searchers.append(searcher)
+        total_tips = 0
+        unique_searchers = []
+        for tip in unique_tips:
+            revs_to_search = unique_searcher.find_seen_ancestors([tip])
+            revs_to_search.update(
+                common_searcher.find_seen_ancestors(revs_to_search))
+            searcher = self._make_breadth_first_searcher(revs_to_search)
+            # We don't care about the starting nodes.
+            searcher._label = tip
+            unique_searchers.append(searcher)
+            total_tips += len(revs_to_search)
 
-            ancestor_all_unique = None
-            for searcher in unique_searchers:
-                if ancestor_all_unique is None:
-                    ancestor_all_unique = set(searcher.seen)
-                else:
-                    ancestor_all_unique = ancestor_all_unique.intersection(
-                                                searcher.seen)
         # Collapse all the common nodes into a single searcher
-        all_unique_searcher = self._make_breadth_first_searcher(ancestor_all_unique)
-        if ancestor_all_unique:
-            all_unique_searcher.step()
+        _mutter('Created %s unique searchers, searching %s revisions'
+                ' (%s/%s common)',
+                len(unique_searchers), total_tips,
+                len(common_searcher._next_query),
+                len(common_searcher.seen))
 
-            # Stop any search tips that are already known as ancestors of the
-            # unique nodes
-            stopped_common = common_searcher.stop_searching_any(
-                common_searcher.find_seen_ancestors(ancestor_all_unique))
-
-            total_stopped = 0
-            for searcher in unique_searchers:
-                total_stopped += len(searcher.stop_searching_any(
-                    searcher.find_seen_ancestors(ancestor_all_unique)))
-            _mutter('For %s unique nodes, created %s + 1 unique searchers'
-                    ' (%s stopped search tips, %s common ancestors'
-                    ' (%s stopped common)',
-                    len(unique_nodes), len(unique_searchers), total_stopped,
-                    len(ancestor_all_unique), len(stopped_common))
-            del ancestor_all_unique, stopped_common
-
-        # import pdb; pdb.set_trace()
         # While we still have common nodes to search
         while common_searcher._next_query:
             newly_seen_common = set(common_searcher.step())
             newly_seen_unique = set()
             for searcher in unique_searchers:
-                newly_seen_unique.update(searcher.step())
+                # newly_seen_unique.update(searcher.step())
+                next = set(searcher.step())
+                next.update(unique_searcher.find_seen_ancestors(next))
+                next.update(common_searcher.find_seen_ancestors(next))
+                for alt_searcher in unique_searchers:
+                    if alt_searcher is searcher:
+                        continue
+                    next.update(alt_searcher.find_seen_ancestors(next))
+                searcher.start_searching(next)
+                newly_seen_unique.update(next)
+
             # These nodes are common ancestors of all unique nodes
             unique_are_common_nodes = newly_seen_unique.copy()
             for searcher in unique_searchers:
                 unique_are_common_nodes = unique_are_common_nodes.intersection(
                                             searcher.seen)
-            # unique_are_common_nodes = unique_are_common_nodes.intersection(
-            #                             all_unique_searcher.seen)
-            diff = unique_are_common_nodes.intersection(
-                        all_unique_searcher.seen)
-            if diff != unique_are_common_nodes:
-                # import pdb; pdb.set_trace()
-                unique_are_common_nodes = diff
-            unique_are_common_nodes.update(all_unique_searcher.step())
-            if newly_seen_common:
-                # If a 'common' node is an ancestor of all unique searchers, we
-                # can stop searching it.
-                common_searcher.stop_searching_any(
-                    all_unique_searcher.seen.intersection(newly_seen_common))
-            if unique_are_common_nodes:
-                # We have new common-to-all-unique-searchers nodes
-                for searcher in unique_searchers:
-                    unique_are_common_nodes.update(
-                        searcher.find_seen_ancestors(unique_are_common_nodes))
-                unique_are_common_nodes.update(
-                    all_unique_searcher.find_seen_ancestors(unique_are_common_nodes))
-                # Since these are common, we can grab another set of ancestors
-                # that we have seen
-                unique_are_common_nodes.update(
-                    common_searcher.find_seen_ancestors(unique_are_common_nodes))
+            unique_are_common_nodes.update(
+                common_searcher.find_seen_ancestors(unique_are_common_nodes))
+            common_searcher.stop_searching_any(unique_are_common_nodes)
 
-                # The all_unique searcher can start searching the common nodes
-                # but everyone else can stop.
-                all_unique_searcher.start_searching(unique_are_common_nodes)
-                common_searcher.stop_searching_any(unique_are_common_nodes)
-
-            # Filter out searchers that don't actually search different
-            # nodes. We already have the ancestry intersection for them
+            # For all searchers, see if there is overlap with another searcher
+            # If there is, stop searching that node, and create another
+            # searcher which is searching from the intersection.
             unique_search_tips = {}
-            for searcher in unique_searchers:
-                stopped = searcher.stop_searching_any(unique_are_common_nodes)
-                will_search_set = frozenset(searcher._next_query)
-                if not will_search_set:
-                    _mutter('Unique searcher %s was stopped.'
-                            ' (%s iterations) %d nodes stopped',
-                            searcher._label,
-                            searcher._iterations,
-                            len(stopped))
-                elif will_search_set not in unique_search_tips:
-                    # This searcher is searching a unique set of nodes, let it
-                    unique_search_tips[will_search_set] = [searcher]
-                else:
-                    unique_search_tips[will_search_set].append(searcher)
-            next_unique_searchers = []
-            for searchers in unique_search_tips.itervalues():
-                if len(searchers) == 1:
-                    # Searching unique tips, go for it
-                    next_unique_searchers.append(searchers[0])
-                else:
-                    # These searchers have started searching the same tips, we
-                    # don't need them to cover the same ground. The
-                    # intersection of their ancestry won't change, so create a
-                    # new searcher, combining their histories.
-                    next_searcher = searchers[0]
-                    ancestor_intersection = next_searcher.seen
-                    for searcher in searchers[1:]:
-                        ancestor_intersection = ancestor_intersection.intersection(searcher.seen)
-                    next_searcher.seen = ancestor_intersection
-                    _mutter('Combining %s searchers into a single searcher'
-                            ' searching %s nodes with %s ancestry',
-                            len(searchers), len(next_searcher._next_query),
-                            len(next_searcher.seen))
-                    next_unique_searchers.append(next_searcher)
+            next_unique_searchers = unique_searchers[:]
+            i = 0
+            while i < len(next_unique_searchers):
+                searcher = next_unique_searchers[i]
+                next = set(searcher._next_query)
+                j = 0
+                while j < len(next_unique_searchers):
+                    if i == j:
+                        j += 1
+                        continue
+                    alt_searcher = next_unique_searchers[j]
+                    alt_next = set(alt_searcher._next_query)
+                    common_tips = alt_next.intersection(next)
+                    if common_tips == alt_next:
+                        # This searcher is a superset of alt_searcher, so stop
+                        # alt_searcher
+                        # import pdb; pdb.set_trace()
+                        next_unique_searchers.remove(alt_searcher)
+                        ancestor_intersection = searcher.seen.intersection(alt_searcher.seen)
+                        searcher.seen = ancestor_intersection
+                        _mutter('Combining searchers into a single searcher'
+                                ' searching %s nodes with %s ancestry',
+                                len(searcher._next_query),
+                                len(searcher.seen))
+                        if j < i:
+                            i -= 1
+                        j -= 1
+                    j += 1
+                i += 1
+
             if len(unique_searchers) != len(next_unique_searchers):
-                _mutter('Collapsed %s unique searchers => %s'
-                        ' at %s iterations',
-                        len(unique_searchers), len(next_unique_searchers),
-                        all_unique_searcher._iterations)
+                _mutter('Collapsed %s unique searchers => %s',
+                        len(unique_searchers), len(next_unique_searchers))
             unique_searchers = next_unique_searchers
         return unique_nodes.difference(common_searcher.seen)
 
