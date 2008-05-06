@@ -192,6 +192,15 @@ class BranchConfig(Config):
             self._repository_config = SvnRepositoryConfig(self.branch.repository.uuid)
         return self._repository_config
 
+    def get_set_revprops(self):
+        return self._get_repository_config().get_set_revprops()
+
+    def get_log_strip_trailing_newline(self):
+        return self._get_repository_config().get_log_strip_trailing_newline()
+
+    def get_override_svn_revprops(self):
+        return self._get_repository_config().get_override_svn_revprops()
+
     def _get_user_option(self, option_name):
         """See Config._get_user_option."""
         for source in self.option_sources:

@@ -412,7 +412,7 @@ class SvnCommitBuilder(RootCommitBuilder):
         bp_parts = self.branch.get_branch_path().split("/")
         repository_latest_revnum = self.repository.get_latest_revnum()
         lock = self.repository.transport.lock_write(".")
-        set_revprops = self.repository.get_config().get_set_revprops()
+        set_revprops = self._config.get_set_revprops()
         remaining_revprops = self._svn_revprops # Keep track of the revprops that haven't been set yet
 
         # Store file ids
@@ -443,7 +443,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             fileids[path] = id
 
         self.base_mapping.export_fileid_map(fileids, self._svn_revprops, self._svnprops)
-        if self.repository.get_config().get_log_strip_trailing_newline():
+        if self._config.get_log_strip_trailing_newline():
             self.base_mapping.export_message(message, self._svn_revprops, self._svnprops)
             message = message.rstrip("\n")
         self._svn_revprops[svn.core.SVN_PROP_REVISION_LOG] = message.encode("utf-8")
@@ -522,7 +522,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                (self.revision_metadata.revision, self.revision_metadata.author, 
                    self.revision_metadata.date, revid))
 
-        override_svn_revprops = self.repository.get_config().get_override_svn_revprops()
+        override_svn_revprops = self._config.get_override_svn_revprops()
         if override_svn_revprops is not None:
             new_revprops = {}
             if svn.core.SVN_PROP_REVISION_AUTHOR in override_svn_revprops:
@@ -644,7 +644,7 @@ def push_new(target_repository, target_branch_path, source,
 
         def get_config(self):
             """See Branch.get_config()."""
-            return None
+            return self.repository.get_config()
 
         def revision_id_to_revno(self, revid):
             if revid is None:
@@ -678,6 +678,29 @@ def push_new(target_repository, target_branch_path, source,
     push(ImaginaryBranch(target_repository), source, start_revid)
 
 
+def push_revision_tree(target, source_repo, base_revid, revision_id, rev):
+    old_tree = source_repo.revision_tree(revision_id)
+    base_tree = source_repo.revision_tree(base_revid)
+
+    builder = SvnCommitBuilder(target.repository, target, rev.parent_ids,
+                               target.get_config(), rev.timestamp,
+                               rev.timezone, rev.committer, rev.properties, 
+                               revision_id, base_tree.inventory)
+                         
+    replay_delta(builder, base_tree, old_tree)
+    try:
+        builder.commit(rev.message)
+    except SubversionException, (_, num):
+        if num == svn.core.SVN_ERR_FS_TXN_OUT_OF_DATE:
+            raise DivergedBranches(source, target)
+        raise
+    except ChangesRootLHSHistory:
+        raise BzrError("Unable to push revision %r because it would change the ordering of existing revisions on the Subversion repository root. Use rebase and try again or push to a non-root path" % revision_id)
+    
+    if source_repo.has_signature_for_revision_id(revision_id):
+        pass # FIXME: Copy revision signature for rev
+
+
 def push(target, source, revision_id):
     """Push a revision into Subversion.
 
@@ -699,29 +722,9 @@ def push(target, source, revision_id):
 
     source.lock_read()
     try:
-        old_tree = source.repository.revision_tree(revision_id)
-        base_tree = source.repository.revision_tree(base_revid)
-
-        builder = SvnCommitBuilder(target.repository, target, rev.parent_ids,
-                                   target.get_config(), rev.timestamp,
-                                   rev.timezone, rev.committer, rev.properties, 
-                                   revision_id, base_tree.inventory)
-                             
-        replay_delta(builder, base_tree, old_tree)
+        push_revision_tree(target, source.repository, base_revid, revision_id, rev)
     finally:
         source.unlock()
-    try:
-        builder.commit(rev.message)
-
-    except SubversionException, (_, num):
-        if num == svn.core.SVN_ERR_FS_TXN_OUT_OF_DATE:
-            raise DivergedBranches(source, target)
-        raise
-    except ChangesRootLHSHistory:
-        raise BzrError("Unable to push revision %r because it would change the ordering of existing revisions on the Subversion repository root. Use rebase and try again or push to a non-root path" % revision_id)
-    
-    if source.repository.has_signature_for_revision_id(revision_id):
-        pass # FIXME: Copy revision signature for rev
 
     if 'validate' in debug.debug_flags:
         crev = target.repository.get_revision(revision_id)
@@ -773,9 +776,7 @@ class InterToSvnRepository(InterRepository):
 
                 mutter('pushing %r' % (revision_id))
 
-                old_tree = self.source.revision_tree(revision_id)
                 parent_revid = rev.parent_ids[0]
-                base_tree = self.source.revision_tree(parent_revid)
 
                 (bp, _, _) = self.target.lookup_revision_id(parent_revid)
                 if target_branch is None:
@@ -783,16 +784,7 @@ class InterToSvnRepository(InterRepository):
                 if target_branch.get_branch_path() != bp:
                     target_branch.set_branch_path(bp)
 
-                builder = SvnCommitBuilder(self.target, target_branch, 
-                                   rev.parent_ids, target_branch.get_config(),
-                                   rev.timestamp, rev.timezone, rev.committer,
-                                   rev.properties, revision_id, base_tree.inventory)
-                             
-                replay_delta(builder, base_tree, old_tree)
-                builder.commit(rev.message)
-
-                if self.source.has_signature_for_revision_id(revision_id):
-                    pass # FIXME: Copy revision signature for rev
+                push_revision_tree(target_branch, self.source, parent_revid, revision_id, rev)
         finally:
             self.source.unlock()
  
