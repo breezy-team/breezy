@@ -59,6 +59,10 @@ IN DEVELOPMENT
       RemoteRepository.get_parent_map() fallback code.
       (John Arbash Meinel, #214894)
 
+    * Remove leftover code in ``bzr_branch`` that inappropriately creates 
+      a ``branch-name`` file in the branch control directory.
+      (Martin Pool)
+
     * Set SO_REUSEADDR on server sockets of ``bzr serve`` to avoid problems
       rebinding the socket when starting the server a second time.
       (John Arbash Meinel, Martin Pool, #164288)
