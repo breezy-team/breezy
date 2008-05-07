@@ -96,20 +96,6 @@ def internal_tree_files(file_list, default_branch=u'.'):
     return tree, new_list
 
 
-@symbol_versioning.deprecated_function(symbol_versioning.zero_fifteen)
-def get_format_type(typestring):
-    """Parse and return a format specifier."""
-    # Have to use BzrDirMetaFormat1 directly, so that
-    # RepositoryFormat.set_default_format works
-    if typestring == "default":
-        return bzrdir.BzrDirMetaFormat1()
-    try:
-        return bzrdir.format_registry.make_bzrdir(typestring)
-    except KeyError:
-        msg = 'Unknown bzr format "%s". See "bzr help formats".' % typestring
-        raise errors.BzrCommandError(msg)
-
-
 # TODO: Make sure no commands unconditionally use the working directory as a
 # branch.  If a filename argument is used, the first of them should be used to
 # specify the branch.  (Perhaps this can be factored out into some kind of

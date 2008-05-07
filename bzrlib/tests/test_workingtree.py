@@ -28,7 +28,6 @@ from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.lockdir import LockDir
 from bzrlib.mutabletree import needs_tree_write_lock
-from bzrlib.symbol_versioning import zero_thirteen
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.transport import get_transport
 from bzrlib.workingtree import (
@@ -250,19 +249,6 @@ class TestFormat2WorkingTree(TestCaseWithTransport):
         expected = conflicts.ContentsConflict('lala', file_id='lala-id')
         self.assertEqual(list(tree.conflicts()), [expected])
 
-
-class TestNonFormatSpecificCode(TestCaseWithTransport):
-    """This class contains tests of workingtree that are not format specific."""
-
-    def test_gen_file_id(self):
-        file_id = self.applyDeprecated(zero_thirteen, workingtree.gen_file_id,
-                                      'filename')
-        self.assertStartsWith(file_id, 'filename-')
-
-    def test_gen_root_id(self):
-        file_id = self.applyDeprecated(zero_thirteen, workingtree.gen_root_id)
-        self.assertStartsWith(file_id, 'tree_root-')
-        
 
 class InstrumentedTree(object):
     """A instrumented tree to check the needs_tree_write_lock decorator."""

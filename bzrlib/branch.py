@@ -41,9 +41,6 @@ from bzrlib.tag import (
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.hooks import Hooks
-from bzrlib.symbol_versioning import (deprecated_method,
-                                      zero_sixteen,
-                                      )
 from bzrlib.trace import mutter, mutter_callsite, note, is_quiet
 
 
@@ -322,15 +319,6 @@ class Branch(object):
         if not (1 <= revno <= len(rh)):
             raise errors.InvalidRevisionNumber(revno)
         return self.repository.get_revision_delta(rh[revno-1])
-
-    @deprecated_method(zero_sixteen)
-    def get_root_id(self):
-        """Return the id of this branches root
-
-        Deprecated: branches don't have root ids-- trees do.
-        Use basis_tree().get_root_id() instead.
-        """
-        raise NotImplementedError(self.get_root_id)
 
     def print_file(self, file, revision_id):
         """Print `file` to stdout."""
@@ -1364,14 +1352,6 @@ class BzrBranch(Branch):
     def abspath(self, name):
         """See Branch.abspath."""
         return self.control_files._transport.abspath(name)
-
-
-    @deprecated_method(zero_sixteen)
-    @needs_read_lock
-    def get_root_id(self):
-        """See Branch.get_root_id."""
-        tree = self.repository.revision_tree(self.last_revision())
-        return tree.get_root_id()
 
     def is_locked(self):
         return self.control_files.is_locked()
