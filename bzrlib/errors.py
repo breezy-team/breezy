@@ -1476,6 +1476,14 @@ class SmartProtocolError(TransportError):
         self.details = details
 
 
+class UnexpectedProtocolVersionMarker(TransportError):
+
+    _fmt = "Unexpected protocol version marker: %(marker)r"
+
+    def __init__(self, marker):
+        self.marker = marker
+
+
 class UnknownSmartMethod(InternalBzrError):
 
     _fmt = "The server does not recognise the '%(verb)s' request."

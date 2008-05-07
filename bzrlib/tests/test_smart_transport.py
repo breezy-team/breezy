@@ -1230,7 +1230,7 @@ class SmartServerCommandTests(tests.TestCaseWithTransport):
     and the request dispatching.
 
     Note: these tests are rudimentary versions of the command object tests in
-    test_remote.py.
+    test_smart.py.
     """
         
     def test_hello(self):
@@ -1369,22 +1369,18 @@ class TestRemoteTransport(tests.TestCase):
         
     def test_use_connection_factory(self):
         # We want to be able to pass a client as a parameter to RemoteTransport.
-        input = StringIO('ok\x011\n' + 'ok\n3\nbardone\n')
+        input = StringIO('ok\n3\nbardone\n')
         output = StringIO()
         client_medium = medium.SmartSimplePipesClientMedium(input, output)
         transport = remote.RemoteTransport(
             'bzr://localhost/', medium=client_medium)
+        # Disable version detection.
+        transport._client._protocol_version = 1
 
         # We want to make sure the client is used when the first remote
         # method is called.  No data should have been sent, or read.
         self.assertEqual(0, input.tell())
         self.assertEqual('', output.getvalue())
-
-        # Explicitly probe for the server version now, so that it doesn't
-        # happen implicitly when we call our first remote method.
-        client_medium.protocol_version()
-        output.seek(0)
-        output.truncate()
 
         # Now call a method that should result in one request: as the
         # transport makes its own protocol instances, we check on the wire.
@@ -1392,7 +1388,7 @@ class TestRemoteTransport(tests.TestCase):
         # an instrumented protocol for us.
         self.assertEqual('bar', transport.get_bytes('foo'))
         # only the needed data should have been sent/received.
-        self.assertEqual(5 + 13, input.tell())
+        self.assertEqual(13, input.tell())
         self.assertEqual('get\x01/foo\n', output.getvalue())
 
     def test__translate_error_readonly(self):
@@ -1430,6 +1426,7 @@ class TestSmartProtocol(tests.TestCase):
         """
         # This is very similar to
         # bzrlib.smart.client._SmartClient._build_client_protocol
+        # XXX: make this use _SmartClient!
         if input_bytes is None:
             input = StringIO()
         else:
@@ -1445,7 +1442,8 @@ class TestSmartProtocol(tests.TestCase):
             assert self.response_decoder is not None
             requester = self.request_encoder(request)
             response_handler = message.ConventionalResponseHandler()
-            response_protocol = self.response_decoder(response_handler)
+            response_protocol = self.response_decoder(
+                response_handler, expect_version_marker=True)
             response_handler.setProtoAndMediumRequest(
                 response_protocol, request)
             return requester, response_handler, output
@@ -2431,7 +2429,8 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
         correct bytes for that invocation.
         """
         requester, output = self.make_client_encoder_and_output()
-        requester.call('one arg', headers={'header name': 'header value'})
+        requester.set_headers({'header name': 'header value'})
+        requester.call('one arg')
         self.assertEquals(
             'bzr message 3 (bzr 1.3)\n' # protocol version
             '\x00\x00\x00\x1fd11:header name12:header valuee' # headers
@@ -2439,15 +2438,6 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
             'e', # end
             output.getvalue())
 
-    def test_call_default_headers(self):
-        """ProtocolThreeRequester.call by default sends a 'Software
-        version' header.
-        """
-        requester, output = self.make_client_encoder_and_output()
-        requester.call('foo')
-        # XXX: using assertContainsRe is a pretty poor way to assert this.
-        self.assertContainsRe(output.getvalue(), 'Software version')
-        
     def test_call_with_body_bytes_smoke_test(self):
         """A smoke test for ProtocolThreeRequester.call_with_body_bytes.
 
@@ -2455,9 +2445,8 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
         call_with_body_bytes emits the correct bytes for that invocation.
         """
         requester, output = self.make_client_encoder_and_output()
-        requester.call_with_body_bytes(
-            ('one arg',), 'body bytes',
-            headers={'header name': 'header value'})
+        requester.set_headers({'header name': 'header value'})
+        requester.call_with_body_bytes(('one arg',), 'body bytes')
         self.assertEquals(
             'bzr message 3 (bzr 1.3)\n' # protocol version
             '\x00\x00\x00\x1fd11:header name12:header valuee' # headers
@@ -2525,6 +2514,141 @@ class TestSmartClientUnicode(tests.TestCase):
 
     def test_call_with_body_bytes_unicode_body(self):
         self.assertCallDoesNotBreakMedium('method', ('args',), u'body')
+
+
+class MockMediumProtocolThree(object):
+
+    def __init__(self):
+        self._history = []
+        self.base = 'dummy base'
+        
+    def get_request(self):
+        return MockMediumRequestThree(self)
+
+
+class MockMediumRequestThree(object):
+
+    def __init__(self, mock_medium):
+        self._medium = mock_medium
+        self._history = mock_medium._history
+        self._bytes = ''
+
+    def accept_bytes(self, bytes):
+        self._bytes += bytes
+
+    def finished_writing(self):
+        self._history.append(('request', 'finished_writing', self._bytes))
+
+    def finished_reading(self):
+        self._history.append(('request', 'finished_reading'))
+
+    def read_bytes(self, size):
+        self._history.append(('request', 'read_bytes'))
+        return (protocol.MESSAGE_VERSION_THREE +
+                '\0\0\0\x02des\0\0\0\x13l14:response valueee')
+
+
+class MockMediumProtocolTwo(object):
+
+    def __init__(self):
+        self._history = []
+        self.base = 'dummy base'
+        self._request = MockMediumRequestTwo(self)
+        
+    def get_request(self):
+        return self._request
+
+    def disconnect(self):
+        self._history.append(('medium', 'disconnect'))
+        self._request._read_bytes = ''
+        self._request._response = 'bzr response 2\nsuccess\nresponse value\n'
+
+
+class MockMediumRequestTwo(object):
+
+    def __init__(self, mock_medium):
+        self._medium = mock_medium
+        self._history = mock_medium._history
+        self._written_bytes = ''
+        self._read_bytes = ''
+        self._response = 'bzr response 2\nfailed\n\n'
+
+    def accept_bytes(self, bytes):
+        self._written_bytes += bytes
+
+    def finished_writing(self):
+        self._history.append(
+            ('request', 'finished_writing', self._written_bytes))
+        self._written_bytes = ''
+
+    def finished_reading(self):
+        self._history.append(('request', 'finished_reading', self._read_bytes))
+        self._read_bytes = ''
+
+    def read_bytes(self, size):
+        resp = self._response
+        bytes, resp = resp[:size], resp[size:]
+        self._response = resp
+        self._read_bytes += bytes
+        return bytes
+
+    def read_line(self):
+        resp = self._response
+        try:
+            line, resp = resp.split('\n', 1)
+            line += '\n'
+        except ValueError:
+            line, resp = resp, ''
+        self._response = resp
+        self._read_bytes += line
+        return line
+
+
+class Test_SmartClientVersionDetection(tests.TestCase):
+
+    def test_version_three_server(self):
+        medium = MockMediumProtocolThree()
+        smart_client = client._SmartClient(medium, 'base', headers={})
+        result = smart_client.call('method-name', 'arg 1', 'arg 2')
+        self.assertEqual(('response value',), result)
+        self.assertEqual(
+            [('request', 'finished_writing', 'bzr message 3 (bzr 1.3)\n\x00\x00\x00\x02des\x00\x00\x00\x1el11:method-name5:arg 15:arg 2ee'),
+             ('request', 'read_bytes'),
+             ('request', 'finished_reading'),],
+            medium._history)
+        # After the first successful call, we know the version
+        self.assertEqual(3, smart_client._protocol_version)
+
+    def test_version_two_server(self):
+        medium = MockMediumProtocolTwo()
+        smart_client = client._SmartClient(medium, 'base', headers={})
+        result = smart_client.call('method-name', 'arg 1', 'arg 2')
+        self.assertEqual(('response value',), result)
+        self.assertEqual(
+            [('request', 'finished_writing',
+              'bzr message 3 (bzr 1.3)\n\x00\x00\x00\x02de' +
+              's\x00\x00\x00\x1el11:method-name5:arg 15:arg 2ee'),
+             ('medium', 'disconnect'),
+             ('request', 'finished_writing',
+              'bzr request 2\nmethod-name\x01arg 1\x01arg 2\n'),
+             ('request', 'finished_reading',
+              'bzr response 2\nsuccess\nresponse value\n'),
+             ],
+            medium._history)
+        # After the first successful call, we know the version
+        self.assertEqual(2, smart_client._protocol_version)
+
+
+class Test_SmartClient(tests.TestCase):
+
+    def test_call_default_headers(self):
+        """ProtocolThreeRequester.call by default sends a 'Software
+        version' header.
+        """
+        smart_client = client._SmartClient(medium, 'base')
+        self.assertTrue('Software version' in smart_client._headers)
+        # XXX: need a test that smart_client._headers is passed to the request
+        # encoder.
 
 
 class LengthPrefixedBodyDecoder(tests.TestCase):

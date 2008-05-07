@@ -89,6 +89,9 @@ class Requester(object):
         """
         raise NotImplementedError(self.call_with_body_readv_array)
 
+    def set_headers(self, headers):
+        raise NotImplementedError(self.set_headers)
+
 
 class SmartProtocolBase(object):
     """Methods common to client and server"""
@@ -523,6 +526,10 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
         self._body_buffer = None
         self._request_start_time = None
         self._last_verb = None
+        self._headers = None
+
+    def set_headers(self, headers):
+        self._headers = dict(headers)
 
     def call(self, *args):
         if 'hpss' in debug.debug_flags:
@@ -788,13 +795,19 @@ class ProtocolThreeDecoder(_StatefulDecoder):
     response_marker = RESPONSE_VERSION_THREE
     request_marker = REQUEST_VERSION_THREE
 
-    def __init__(self, message_handler):
+    def __init__(self, message_handler, expect_version_marker=False):
         _StatefulDecoder.__init__(self)
         self.has_dispatched = False
         # Initial state
         self._in_buffer = ''
-        self._number_needed_bytes = 4
-        self.state_accept = self._state_accept_expecting_headers
+        if expect_version_marker:
+            self.state_accept = self._state_accept_expecting_protocol_version
+            # We're expecting at least the protocol version marker + some
+            # headers.
+            self._number_needed_bytes = len(MESSAGE_VERSION_THREE) + 4
+        else:
+            self.state_accept = self._state_accept_expecting_headers
+            self._number_needed_bytes = 4
         self.errored = False
 
         self.request_handler = self.message_handler = message_handler
@@ -842,6 +855,19 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         one_byte = self._in_buffer[0]
         self._in_buffer = self._in_buffer[1:]
         return one_byte
+
+    def _state_accept_expecting_protocol_version(self, bytes):
+        self._in_buffer += bytes
+        needed_bytes = len(MESSAGE_VERSION_THREE) - len(self._in_buffer)
+        if needed_bytes > 0:
+            if not MESSAGE_VERSION_THREE.startswith(self._in_buffer):
+                # We have enough bytes to know the protocol version is wrong
+                raise errors.UnexpectedProtocolVersionMarker(self._in_buffer)
+            raise _NeedMoreBytes(len(MESSAGE_VERSION_THREE))
+        if not self._in_buffer.startswith(MESSAGE_VERSION_THREE):
+            raise errors.UnexpectedProtocolVersionMarker(self._in_buffer)
+        self._in_buffer = self._in_buffer[len(MESSAGE_VERSION_THREE):]
+        self.state_accept = self._state_accept_expecting_headers
 
     def _state_accept_expecting_headers(self, bytes):
         self._in_buffer += bytes
@@ -934,9 +960,7 @@ class _ProtocolThreeEncoder(object):
         self._write_func(struct.pack('!L', len(bytes)))
         self._write_func(bytes)
 
-    def _write_headers(self, headers=None):
-        if headers is None:
-            headers = {'Software version': bzrlib.__version__}
+    def _write_headers(self, headers):
         self._write_prefixed_bencode(headers)
 
     def _write_structure(self, args):
@@ -969,6 +993,7 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
     def __init__(self, write_func):
         _ProtocolThreeEncoder.__init__(self, write_func)
         self.response_sent = False
+        self._headers = {'Software version': bzrlib.__version__}
 
     def send_error(self, exception):
         assert not self.response_sent
@@ -978,7 +1003,8 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
             self.send_response(failure)
             return
         self.response_sent = True
-        self._write_headers()
+        self._write_protocol_version()
+        self._write_headers(self._headers)
         self._write_error_status()
         self._write_structure(('error', str(exception)))
         self._write_end()
@@ -986,7 +1012,8 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
     def send_response(self, response):
         assert not self.response_sent
         self.response_sent = True
-        self._write_headers()
+        self._write_protocol_version()
+        self._write_headers(self._headers)
         if response.is_successful():
             self._write_success_status()
         else:
@@ -1005,15 +1032,12 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
     def __init__(self, medium_request):
         _ProtocolThreeEncoder.__init__(self, medium_request.accept_bytes)
         self._medium_request = medium_request
+        self._headers = {}
 
-    def call(self, *args, **kw):
-        # XXX: ideally, signature would be call(self, *args, headers=None), but
-        # python doesn't allow that.  So, we fake it.
-        headers = None
-        if 'headers' in kw:
-            headers = kw.pop('headers')
-        if kw != {}:
-            raise TypeError('Unexpected keyword arguments: %r' % (kw,))
+    def set_headers(self, headers):
+        self._headers = dict(headers)
+        
+    def call(self, *args):
         if 'hpss' in debug.debug_flags:
             mutter('hpss call:   %s', repr(args)[1:-1])
             base = getattr(self._medium_request._medium, 'base', None)
@@ -1021,12 +1045,12 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
                 mutter('             (to %s)', base)
             self._request_start_time = time.time()
         self._write_protocol_version()
-        self._write_headers(headers)
+        self._write_headers(self._headers)
         self._write_structure(args)
         self._write_end()
         self._medium_request.finished_writing()
 
-    def call_with_body_bytes(self, args, body, headers=None):
+    def call_with_body_bytes(self, args, body):
         """Make a remote call of args with body bytes 'body'.
 
         After calling this, call read_response_tuple to find the result out.
@@ -1039,13 +1063,13 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
             mutter('              %d bytes', len(body))
             self._request_start_time = time.time()
         self._write_protocol_version()
-        self._write_headers(headers)
+        self._write_headers(self._headers)
         self._write_structure(args)
         self._write_prefixed_body(body)
         self._write_end()
         self._medium_request.finished_writing()
 
-    def call_with_body_readv_array(self, args, body, headers=None):
+    def call_with_body_readv_array(self, args, body):
         """Make a remote call with a readv array.
 
         The body is encoded with one line per readv offset pair. The numbers in
@@ -1058,7 +1082,7 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
                 mutter('                  (to %s)', path)
             self._request_start_time = time.time()
         self._write_protocol_version()
-        self._write_headers(headers)
+        self._write_headers(self._headers)
         self._write_structure(args)
         readv_bytes = self._serialise_offsets(body)
         if 'hpss' in debug.debug_flags:
