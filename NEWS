@@ -24,6 +24,9 @@ IN DEVELOPMENT
     * Diff now handles revision specs like "branch:" and "submit:" more
       efficiently.  (Aaron Bentley)
 
+    * More friendly error given when attempt to start the smart server
+      on an address already in use. (Andrea Corbellini, #200575)
+
     * Pull completes much faster when there is nothing to pull.
       (Aaron Bentley)
 
