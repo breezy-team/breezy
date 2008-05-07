@@ -19,6 +19,7 @@
 
 import errno
 import subprocess
+import threading
 
 from bzrlib import (
     tests,
@@ -52,10 +53,18 @@ class TestStrace(tests.TestCaseWithTransport):
     # If the following tests are activated, selftest may hang (see bug
     # #226769). This is due to strace strange behavior when required to trace
     # its own parent in the presence of threads (or something like that). One
-    # strace is fixed, we may want to activate these tests again.
+    # strace is fixed, we may want to activate these tests again. Note: running
+    # these tests in isolation is still possible.
+
+    def _check_threads(self):
+        active = threading.activeCount()
+        if active > 1: # There is always the main thread at least
+            raise tests.KnownFailure(
+                '%d active threads, bug #103133 needs to be fixed.' % active)
 
     def test_strace_callable_is_called(self):
-        raise tests.TestSkipped("bug #103133 needs to be fixed.")
+        self._check_threads()
+
         output = []
         def function(positional, *args, **kwargs):
             output.append((positional, args, kwargs))
@@ -64,7 +73,7 @@ class TestStrace(tests.TestCaseWithTransport):
         self.assertEqual([("a", ("b",), {"c":"c"})], output)
 
     def test_strace_callable_result(self):
-        raise tests.TestSkipped("bug #103133 needs to be fixed.")
+        self._check_threads()
 
         def function():
             return "foo"
@@ -75,7 +84,8 @@ class TestStrace(tests.TestCaseWithTransport):
 
     def test_strace_result_has_raw_log(self):
         """Checks that a reasonable raw strace log was found by strace."""
-        raise tests.TestSkipped("bug #103133 needs to be fixed.")
+        self._check_threads()
+
         def function():
             self.build_tree(['myfile'])
         unused, result = strace_detailed(function, [], {},

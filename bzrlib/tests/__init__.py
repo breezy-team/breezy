@@ -42,6 +42,7 @@ import stat
 from subprocess import Popen, PIPE
 import sys
 import tempfile
+import threading
 import time
 import unittest
 import warnings
@@ -758,6 +759,12 @@ class TestUIFactory(ui.CLIUIFactory):
         return password
 
 
+def _report_leaked_threads():
+    bzrlib.trace.warning('%s is leaking threads among %d leaking tests',
+                         TestCase._first_thread_leaker_id,
+                         TestCase._leaking_threads_tests)
+
+
 class TestCase(unittest.TestCase):
     """Base class for bzr unit tests.
     
@@ -779,6 +786,9 @@ class TestCase(unittest.TestCase):
     accidentally overlooked.
     """
 
+    _active_threads = None
+    _leaking_threads_tests = 0
+    _first_thread_leaker_id = None
     _log_file_name = None
     _log_contents = ''
     _keep_log_file = False
@@ -801,6 +811,21 @@ class TestCase(unittest.TestCase):
         self._benchtime = None
         self._clear_hooks()
         self._clear_debug_flags()
+        TestCase._active_threads = threading.activeCount()
+        self.addCleanup(self._check_leaked_threads)
+
+    def _check_leaked_threads(self):
+        active = threading.activeCount()
+        leaked_threads = active - TestCase._active_threads
+        TestCase._active_threads = active
+        if leaked_threads:
+            TestCase._leaking_threads_tests += 1
+            if TestCase._first_thread_leaker_id is None:
+                TestCase._first_thread_leaker_id = self.id()
+                # we're not specifically told when all tests are finished.
+                # This will do. We use a function to avoid keeping a reference
+                # to a TestCase object.
+                atexit.register(_report_leaked_threads)
 
     def _clear_debug_flags(self):
         """Prevent externally set debug flags affecting tests.

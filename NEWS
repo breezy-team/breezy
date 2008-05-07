@@ -48,8 +48,9 @@ IN DEVELOPMENT
     * Conversion from non-rich-root to rich-root(-pack) works even when a
       parent revision has a different root id.  (Aaron Bentley, #177874)
 
-    * Disable strace testing until strace is fixed (see bug #103133).
-     (Vincent Ladeuil, #226769)
+    * Disable strace testing until strace is fixed (see bug #103133) and emit a
+      warning when selftest ends to remind us of leaking tests.
+      (Vincent Ladeuil, #226769)
 
     * Fetching all revisions from a repository does not cause pack collisions.
       (Robert Collins, Aaron Bentley, #212908)
