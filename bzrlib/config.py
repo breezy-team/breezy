@@ -890,6 +890,8 @@ def extract_email_address(e):
 class TreeConfig(IniBasedConfig):
     """Branch configuration data associated with its contents, not location"""
 
+    # XXX: Really needs a better name, as this is not part of the tree! -- mbp 20080507
+
     def __init__(self, branch):
         transport = branch.control_files._transport
         self._config = TransportConfig(transport, 'branch.conf')
