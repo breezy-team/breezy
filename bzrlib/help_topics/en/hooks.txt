@@ -130,3 +130,21 @@ set_rh (Branch)
 
 Note: This hook is now deprecated and will be removed in the near future.
 Please use the ``post_change_branch_tip`` hook instead.
+
+server_started (SmartTCPServer)
+-------------------------------
+
+Invoked whenever the server starts serving a directory.
+The hook signature is (backing urls, public url), where:
+
+  backing_url
+    A list of (string) URLs giving the server-specific directory locations.
+
+  public_url
+    The public URL for the directory.
+
+server_stopped (SmartTCPServer)
+-------------------------------
+
+Invoked whenever the server stops serving a directory.
+The hook signature is the same as ``server_started``.
