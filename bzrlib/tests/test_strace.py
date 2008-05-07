@@ -50,13 +50,12 @@ class TestStrace(tests.TestCaseWithTransport):
 
     _test_needs_features = [StraceFeature]
 
-    # If the following tests are activated, selftest may hang (see bug
-    # #226769). This is due to strace strange behavior when required to trace
-    # its own parent in the presence of threads (or something like that). One
-    # strace is fixed, we may want to activate these tests again. Note: running
-    # these tests in isolation is still possible.
-
     def _check_threads(self):
+        # For bug #226769, it was decided that the strace tests should not be
+        # run when more than one thread is active. A lot of tests are currently
+        # leaking threads for good or bad reasons, once they are fixed or
+        # strace itself is fixed (bug #103133), we can get rid of the
+        # restriction.
         active = threading.activeCount()
         if active > 1: # There is always the main thread at least
             raise tests.KnownFailure(
