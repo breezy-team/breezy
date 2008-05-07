@@ -738,7 +738,7 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
         """
         version = self._request.read_line()
         if version != self.response_marker:
-            raise errors.SmartProtocolError('bad protocol marker %r' % version)
+            raise errors.UnexpectedProtocolVersionMarker(version)
         response_status = self._recv_line()
         result = SmartClientRequestProtocolOne._read_response_tuple(self)
         if response_status == 'success\n':

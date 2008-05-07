@@ -2548,41 +2548,68 @@ class MockMediumRequestThree(object):
                 '\0\0\0\x02des\0\0\0\x13l14:response valueee')
 
 
-class MockMediumProtocolTwo(object):
+class MockMedium(object):
 
-    def __init__(self):
-        self._history = []
+    def __init__(self, *responses):
         self.base = 'dummy base'
-        self._request = MockMediumRequestTwo(self)
+        self._mock_request = MockMediumRequest(self)
+        self._expected_events = []
         
+    def expect_request(self, request_bytes, response_bytes,
+                       allow_partial_read=False):
+        self._expected_events.append(('send request', request_bytes))
+        if allow_partial_read:
+            self._expected_events.append(
+                ('read response (partial)', response_bytes))
+        else:
+            self._expected_events.append(('read response', response_bytes))
+
+    def expect_disconnect(self):
+        self._expected_events.append('disconnect')
+
+    def assertEvent(self, observed_event):
+        expected_event = self._expected_events.pop(0)
+        if expected_event[0] == 'read response (partial)':
+            if observed_event[0] != 'read response':
+                raise AssertionError(
+                    'Mock medium observed event %r, but expected event %r'
+                    % (observed_event, expected_event))
+        elif observed_event != expected_event:
+            raise AssertionError(
+                'Mock medium observed event %r, but expected event %r'
+                % (observed_event, expected_event))
+        if self._expected_events:
+            next_event = self._expected_events[0]
+            if next_event[0].startswith('read response'):
+                self._mock_request._response = next_event[1]
+
     def get_request(self):
-        return self._request
+        return self._mock_request
 
     def disconnect(self):
-        self._history.append(('medium', 'disconnect'))
-        self._request._read_bytes = ''
-        self._request._response = 'bzr response 2\nsuccess\nresponse value\n'
+        if self._mock_request._read_bytes:
+            self.assertEvent(('read response', self._mock_request._read_bytes))
+            self._mock_request._read_bytes = ''
+        self.assertEvent('disconnect')
 
 
-class MockMediumRequestTwo(object):
+class MockMediumRequest(object):
 
     def __init__(self, mock_medium):
         self._medium = mock_medium
-        self._history = mock_medium._history
         self._written_bytes = ''
         self._read_bytes = ''
-        self._response = 'bzr response 2\nfailed\n\n'
+        self._response = None
 
     def accept_bytes(self, bytes):
         self._written_bytes += bytes
 
     def finished_writing(self):
-        self._history.append(
-            ('request', 'finished_writing', self._written_bytes))
+        self._medium.assertEvent(('send request', self._written_bytes))
         self._written_bytes = ''
 
     def finished_reading(self):
-        self._history.append(('request', 'finished_reading', self._read_bytes))
+        self._medium.assertEvent(('read response', self._read_bytes))
         self._read_bytes = ''
 
     def read_bytes(self, size):
@@ -2605,38 +2632,139 @@ class MockMediumRequestTwo(object):
 
 
 class Test_SmartClientVersionDetection(tests.TestCase):
+    """Tests for _SmartClient's automatic protocol version detection.
+
+    On the first remote call, _SmartClient will keep retrying the request with
+    different protocol versions until it finds one that works.
+    """
 
     def test_version_three_server(self):
-        medium = MockMediumProtocolThree()
+        """With a protocol 3 server, only one request is needed."""
+        medium = MockMedium()
         smart_client = client._SmartClient(medium, 'base', headers={})
+        message_start = protocol.MESSAGE_VERSION_THREE + '\x00\x00\x00\x02de'
+        medium.expect_request(
+            message_start +
+            's\x00\x00\x00\x1el11:method-name5:arg 15:arg 2ee',
+            message_start + 's\0\0\0\x13l14:response valueee')
         result = smart_client.call('method-name', 'arg 1', 'arg 2')
+        # The call succeeded without raising any exceptions from the mock
+        # medium, and the smart_client returns the response from the server.
         self.assertEqual(('response value',), result)
-        self.assertEqual(
-            [('request', 'finished_writing', 'bzr message 3 (bzr 1.3)\n\x00\x00\x00\x02des\x00\x00\x00\x1el11:method-name5:arg 15:arg 2ee'),
-             ('request', 'read_bytes'),
-             ('request', 'finished_reading'),],
-            medium._history)
-        # After the first successful call, we know the version
-        self.assertEqual(3, smart_client._protocol_version)
 
     def test_version_two_server(self):
-        medium = MockMediumProtocolTwo()
+        """If the server only speaks protocol 2, the client will first try
+        version 3, then fallback to protocol 2.
+
+        Further, _SmartClient caches the detection, so future requests will all
+        use protocol 2 immediately.
+        """
+        medium = MockMedium()
         smart_client = client._SmartClient(medium, 'base', headers={})
+        # First the client should send a v3 request, but the server will reply
+        # with a v2 error.
+        medium.expect_request(
+            'bzr message 3 (bzr 1.3)\n\x00\x00\x00\x02de' +
+            's\x00\x00\x00\x1el11:method-name5:arg 15:arg 2ee',
+            'bzr response 2\nfailed\n\n')
+        # So then the client should disconnect to reset the connection, because
+        # the client needs to assume the server cannot read any further
+        # requests off the original connection.
+        medium.expect_disconnect()
+        # The client should then retry the original request in v2
+        medium.expect_request(
+            'bzr request 2\nmethod-name\x01arg 1\x01arg 2\n',
+            'bzr response 2\nsuccess\nresponse value\n')
         result = smart_client.call('method-name', 'arg 1', 'arg 2')
+        # The smart_client object will return the result of the successful
+        # query.
         self.assertEqual(('response value',), result)
-        self.assertEqual(
-            [('request', 'finished_writing',
-              'bzr message 3 (bzr 1.3)\n\x00\x00\x00\x02de' +
-              's\x00\x00\x00\x1el11:method-name5:arg 15:arg 2ee'),
-             ('medium', 'disconnect'),
-             ('request', 'finished_writing',
-              'bzr request 2\nmethod-name\x01arg 1\x01arg 2\n'),
-             ('request', 'finished_reading',
-              'bzr response 2\nsuccess\nresponse value\n'),
-             ],
-            medium._history)
-        # After the first successful call, we know the version
-        self.assertEqual(2, smart_client._protocol_version)
+
+        # Now try another request, and this time the client will just use
+        # protocol 2.  (i.e. the autodetection won't be repeated)
+        medium.expect_request(
+            'bzr request 2\nanother-method\n',
+            'bzr response 2\nsuccess\nanother response\n')
+        result = smart_client.call('another-method')
+        self.assertEqual(('another response',), result)
+
+    def test_version_one_server(self):
+        """Similar to test_version_two_server.  The client will try v3, then
+        v2, then finally v1.
+        """
+        medium = MockMedium()
+        smart_client = client._SmartClient(medium, 'base', headers={})
+        # First the client should send a v3 request, but the server will reply
+        # with a v1 error.
+        medium.expect_request(
+            'bzr message 3 (bzr 1.3)\n\x00\x00\x00\x02de' +
+            's\x00\x00\x00\x1el11:method-name5:arg 15:arg 2ee',
+            "Generic bzr smart protocol error: bad request " +
+            "'bzr message 3 (bzr 1.3)\\n'",
+            allow_partial_read=True)
+        # So then the client disconnects.
+        medium.expect_disconnect()
+        # The client should then retry the original request in v2, and get
+        # another v1 error.
+        # (TODO: if the client were very clever, it could notice that the first
+        # error was not a v2 response, so skip trying v2.)
+        medium.expect_request(
+            'bzr request 2\nmethod-name\x01arg 1\x01arg 2\n',
+            "Generic bzr smart protocol error: bad request " +
+            "'bzr request 2\\n'")
+        # So the client disconnects and tries v1, which succeeds.
+        medium.expect_disconnect()
+        medium.expect_request('hello\n', '1\n')
+        medium.expect_request(
+            'method-name\x01arg 1\x01arg 2\n', 'response value\n')
+
+        result = smart_client.call('method-name', 'arg 1', 'arg 2')
+        # The eventual successful response is returned by the client object.
+        self.assertEqual(('response value',), result)
+
+    def test_unknown_version(self):
+        """If the server does not use any known protocol version, a
+        SmartProtocolError is raised.
+        """
+        medium = MockMedium()
+        smart_client = client._SmartClient(medium, 'base', headers={})
+        unknown_protocol_bytes = 'Unknown protocol!'
+        # The client will try v3, v2, and v1 before eventually giving up.
+        medium.expect_request(
+            'bzr message 3 (bzr 1.3)\n\x00\x00\x00\x02de' +
+            's\x00\x00\x00\x1el11:method-name5:arg 15:arg 2ee',
+            unknown_protocol_bytes)
+        medium.expect_disconnect()
+        medium.expect_request(
+            'bzr request 2\nmethod-name\x01arg 1\x01arg 2\n',
+            unknown_protocol_bytes)
+        medium.expect_disconnect()
+        medium.expect_request('hello\n', unknown_protocol_bytes)
+        self.assertRaises(
+            errors.SmartProtocolError,
+            smart_client.call, 'method-name', 'arg 1', 'arg 2')
+
+    def test_unknown_version_newline(self):
+        """If the server does not use any known protocol version, a
+        SmartProtocolError is raised.
+        """
+        medium = MockMedium()
+        smart_client = client._SmartClient(medium, 'base', headers={})
+        unknown_protocol_bytes = 'Unknown protocol!\n'
+        # The client will try v3, v2, and v1 before eventually giving up.
+        medium.expect_request(
+            'bzr message 3 (bzr 1.3)\n\x00\x00\x00\x02de' +
+            's\x00\x00\x00\x1el11:method-name5:arg 15:arg 2ee',
+            unknown_protocol_bytes)
+        medium.expect_disconnect()
+        medium.expect_request(
+            'bzr request 2\nmethod-name\x01arg 1\x01arg 2\n',
+            unknown_protocol_bytes)
+        medium.expect_disconnect()
+        medium.expect_request('hello\n', unknown_protocol_bytes)
+        self.assertRaises(
+            errors.SmartProtocolError,
+            smart_client.call, 'method-name', 'arg 1', 'arg 2')
 
 
 class Test_SmartClient(tests.TestCase):
