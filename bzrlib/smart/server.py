@@ -64,7 +64,10 @@ class SmartTCPServer(object):
         if sys.platform != 'win32':
             self._server_socket.setsockopt(socket.SOL_SOCKET,
                 socket.SO_REUSEADDR, 1)
-        self._server_socket.bind((host, port))
+        try:
+            self._server_socket.bind((host, port))
+        except self._socket_error, message:
+            raise errors.CannotBindAddress(host, port, message)
         self._sockname = self._server_socket.getsockname()
         self.port = self._sockname[1]
         self._server_socket.listen(1)
