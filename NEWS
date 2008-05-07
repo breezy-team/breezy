@@ -63,8 +63,9 @@ IN DEVELOPMENT
       exception. (Andrew Bennetts)
 
     * New ``--debugflag``/``-E`` option to ``bzr selftest`` for setting
-      debug flags.  The ``-Dselftest_debug`` global option has been replaced by
-      the ``-E=allow_debug`` option for selftest. (Andrew Bennetts)
+      options for debugging tests, these are complementary to the the -D
+      options.  The ``-Dselftest_debug`` global option has been replaced by the
+      ``-E=allow_debug`` option for selftest. (Andrew Bennetts)
 
   INTERNALS:
 
