@@ -62,10 +62,6 @@ class RevisionTree(Tree):
         """Return the revision id associated with this tree."""
         return self._revision_id
 
-    @symbol_versioning.deprecated_method(symbol_versioning.zero_ninety)
-    def get_weave(self, file_id):
-        return self._get_weave(file_id)
-
     def _get_weave(self, file_id):
         return self._weave_store.get_weave(file_id,
                 self._repository.get_transaction())

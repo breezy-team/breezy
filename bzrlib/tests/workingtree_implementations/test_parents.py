@@ -51,9 +51,6 @@ class TestParents(TestCaseWithWorkingTree):
                              _mod_revision.ensure_null(tree.last_revision()))
         else:
             self.assertEqual(expected[0], tree.last_revision())
-        self.assertEqual(expected[1:],
-            self.applyDeprecated(symbol_versioning.zero_eleven,
-                tree.pending_merges))
 
 
 class TestGetParents(TestParents):

@@ -119,6 +119,9 @@ IN DEVELOPMENT
       removing LockableFiles and ``.control_files`` entirely.
       (Martin Pool)
 
+    * Methods deprecated prior to 1.1 have been removed.
+      (Martin Pool)
+
 
 bzr 1.4 2008-04-28
 ------------------

@@ -34,7 +34,6 @@ from bzrlib.tests import (
 from bzrlib.tests.EncodingAdapter import EncodingTestAdapter
 from bzrlib.symbol_versioning import (
     deprecated_method,
-    zero_eighteen,
     )
 import bzrlib.ui as ui
 
@@ -129,12 +128,6 @@ def test_suite():
 
 
 class ExternalBase(TestCaseWithTransport):
-
-    @deprecated_method(zero_eighteen)
-    def runbzr(self, args, retcode=0):
-        if isinstance(args, basestring):
-            args = args.split()
-        return self.run_bzr(args, retcode=retcode)
 
     def check_output(self, output, *args):
         """Verify that the expected output matches what bzr says.
