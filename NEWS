@@ -81,6 +81,8 @@ IN DEVELOPMENT
 
     * Document outlining strategies for TortoiseBzr. (Mark Hammond)
 
+    * Improved the documentation on hooks. (Ian Clatworthy)
+
   TESTING:
 
     * Add ``thread_name_suffix`` parameter to SmartTCPServer_for_testing, to
