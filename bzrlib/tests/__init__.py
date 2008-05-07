@@ -81,9 +81,6 @@ from bzrlib.symbol_versioning import (
     deprecated_function,
     deprecated_method,
     deprecated_passed,
-    zero_ninetyone,
-    zero_ninetytwo,
-    one_zero,
     )
 import bzrlib.trace
 from bzrlib.transport import get_transport
@@ -784,7 +781,7 @@ class TestCase(unittest.TestCase):
     _keep_log_file = False
     # record lsprof data when performing benchmark calls.
     _gather_lsprof_in_benchmarks = False
-    attrs_to_keep = ('_testMethodName', '_testMethodDoc',
+    attrs_to_keep = ('id', '_testMethodName', '_testMethodDoc',
                      '_log_contents', '_log_file_name', '_benchtime',
                      '_TestCase__testMethodName')
 
@@ -1098,9 +1095,11 @@ class TestCase(unittest.TestCase):
         To test that a deprecated method raises an error, do something like
         this::
 
-        self.assertRaises(errors.ReservedId,
-            self.applyDeprecated, zero_ninetyone,
-                br.append_revision, 'current:')
+            self.assertRaises(errors.ReservedId,
+                self.applyDeprecated,
+                deprecated_in((1, 5, 0)),
+                br.append_revision,
+                'current:')
 
         :param deprecation_format: The deprecation format that the callable
             should have been deprecated with. This is the same type as the
@@ -1539,9 +1538,7 @@ class TestCase(unittest.TestCase):
             elif isinstance(args[0], basestring):
                 args = list(shlex.split(args[0]))
         else:
-            symbol_versioning.warn(zero_ninetyone %
-                                   "passing varargs to run_bzr_subprocess",
-                                   DeprecationWarning, stacklevel=3)
+            raise ValueError("passing varargs to run_bzr_subprocess")
         process = self.start_bzr_subprocess(args, env_changes=env_changes,
                                             working_dir=working_dir,
                                             allow_plugins=allow_plugins)
@@ -2317,34 +2314,15 @@ def filter_suite_by_condition(suite, condition):
     return TestUtil.TestSuite(result)
 
 
-def filter_suite_by_re(suite, pattern, exclude_pattern=DEPRECATED_PARAMETER,
-                       random_order=DEPRECATED_PARAMETER):
+def filter_suite_by_re(suite, pattern):
     """Create a test suite by filtering another one.
     
     :param suite:           the source suite
     :param pattern:         pattern that names must match
-    :param exclude_pattern: A pattern that names must not match. This parameter
-        is deprecated as of bzrlib 1.0. Please use the separate function
-        exclude_tests_by_re instead.
-    :param random_order:    If True, tests in the new suite will be put in
-        random order. This parameter is deprecated as of bzrlib 1.0. Please
-        use the separate function randomize_suite instead.
     :returns: the newly created suite
     """ 
-    if deprecated_passed(exclude_pattern):
-        symbol_versioning.warn(
-            one_zero % "passing exclude_pattern to filter_suite_by_re",
-                DeprecationWarning, stacklevel=2)
-        if exclude_pattern is not None:
-            suite = exclude_tests_by_re(suite, exclude_pattern)
     condition = condition_id_re(pattern)
     result_suite = filter_suite_by_condition(suite, condition)
-    if deprecated_passed(random_order):
-        symbol_versioning.warn(
-            one_zero % "passing random_order to filter_suite_by_re",
-                DeprecationWarning, stacklevel=2)
-        if random_order:
-            result_suite = randomize_suite(result_suite)
     return result_suite
 
 
@@ -2392,42 +2370,6 @@ def randomize_suite(suite):
     tests = list(iter_suite_tests(suite))
     random.shuffle(tests)
     return TestUtil.TestSuite(tests)
-
-
-@deprecated_function(one_zero)
-def sort_suite_by_re(suite, pattern, exclude_pattern=None,
-                     random_order=False, append_rest=True):
-    """DEPRECATED: Create a test suite by sorting another one.
-
-    This method has been decomposed into separate helper methods that should be
-    called directly:
-     - filter_suite_by_re
-     - exclude_tests_by_re
-     - randomize_suite
-     - split_suite_by_re
-    
-    :param suite:           the source suite
-    :param pattern:         pattern that names must match in order to go
-                            first in the new suite
-    :param exclude_pattern: pattern that names must not match, if any
-    :param random_order:    if True, tests in the new suite will be put in
-                            random order (with all tests matching pattern
-                            first).
-    :param append_rest:     if False, pattern is a strict filter and not
-                            just an ordering directive
-    :returns: the newly created suite
-    """ 
-    if exclude_pattern is not None:
-        suite = exclude_tests_by_re(suite, exclude_pattern)
-    if random_order:
-        order_changer = randomize_suite
-    else:
-        order_changer = preserve_input
-    if append_rest:
-        suites = map(order_changer, split_suite_by_re(suite, pattern))
-        return TestUtil.TestSuite(suites)
-    else:
-        return order_changer(filter_suite_by_re(suite, pattern))
 
 
 def split_suite_by_re(suite, pattern):
@@ -2849,6 +2791,7 @@ def test_suite(keep_only=None):
         'bzrlib.merge3',
         'bzrlib.option',
         'bzrlib.store',
+        'bzrlib.symbol_versioning',
         'bzrlib.tests',
         'bzrlib.timestamp',
         'bzrlib.version_info_formats.format_custom',

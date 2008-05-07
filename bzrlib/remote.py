@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -40,7 +40,6 @@ from bzrlib.pack import ContainerPushParser
 from bzrlib.smart import client, vfs
 from bzrlib.symbol_versioning import (
     deprecated_method,
-    zero_ninetyone,
     )
 from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.trace import mutter, note, warning
@@ -823,7 +822,21 @@ class RemoteRepository(object):
             # :- its because we're working with a deprecated server anyway, and
             # the user will almost certainly have seen a warning about the
             # server version already.
-            return self.get_revision_graph()
+            rg = self.get_revision_graph()
+            # There is an api discrepency between get_parent_map and
+            # get_revision_graph. Specifically, a "key:()" pair in
+            # get_revision_graph just means a node has no parents. For
+            # "get_parent_map" it means the node is a ghost. So fix up the
+            # graph to correct this.
+            #   https://bugs.launchpad.net/bzr/+bug/214894
+            # There is one other "bug" which is that ghosts in
+            # get_revision_graph() are not returned at all. But we won't worry
+            # about that for now.
+            for node_id, parent_ids in rg.iteritems():
+                if parent_ids == ():
+                    rg[node_id] = (NULL_REVISION,)
+            rg[NULL_REVISION] = ()
+            return rg
 
         keys = set(keys)
         if NULL_REVISION in keys:
@@ -1144,24 +1157,6 @@ class RemoteBranchLockableFiles(LockableFiles):
         self._dir_mode = None
         self._file_mode = None
 
-    def get(self, path):
-        """'get' a remote path as per the LockableFiles interface.
-
-        :param path: the file to 'get'. If this is 'branch.conf', we do not
-             just retrieve a file, instead we ask the smart server to generate
-             a configuration for us - which is retrieved as an INI file.
-        """
-        if path == 'branch.conf':
-            path = self.bzrdir._path_for_remote_call(self._client)
-            response = self._client.call_expecting_body(
-                'Branch.get_config_file', path)
-            assert response[0][0] == 'ok', \
-                'unexpected response code %s' % (response[0],)
-            return StringIO(response[1].read_body_bytes())
-        else:
-            # VFS fallback.
-            return LockableFiles.get(self, path)
-
 
 class RemoteBranchFormat(branch.BranchFormat):
 
@@ -1456,9 +1451,6 @@ class RemoteBranch(branch.Branch):
         self._ensure_real()
         return self._real_branch.set_parent(url)
         
-    def get_config(self):
-        return RemoteBranchConfig(self)
-
     def sprout(self, to_bzrdir, revision_id=None):
         # Like Branch.sprout, except that it sprouts a branch in the default
         # format, because RemoteBranches can't be created at arbitrary URLs.
@@ -1531,19 +1523,6 @@ class RemoteBranch(branch.Branch):
         self._ensure_real()
         return self._real_branch.update_revisions(
             other, stop_revision=stop_revision, overwrite=overwrite)
-
-
-class RemoteBranchConfig(BranchConfig):
-
-    def username(self):
-        self.branch._ensure_real()
-        return self.branch._real_branch.get_config().username()
-
-    def _get_branch_data_config(self):
-        self.branch._ensure_real()
-        if self._branch_data_config is None:
-            self._branch_data_config = TreeConfig(self.branch._real_branch)
-        return self._branch_data_config
 
 
 def _extract_tar(tar, to_dir):

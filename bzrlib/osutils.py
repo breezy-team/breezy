@@ -57,7 +57,6 @@ import bzrlib
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
     deprecated_function,
-    one_zero,
     )
 from bzrlib.trace import mutter
 

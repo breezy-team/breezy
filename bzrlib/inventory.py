@@ -142,24 +142,6 @@ class InventoryEntry(object):
         """
         return False, False
 
-    @deprecated_method(symbol_versioning.one_zero)
-    def diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
-             output_to, reverse=False):
-        """Perform a diff from this to to_entry.
-
-        text_diff will be used for textual difference calculation.
-        This is a template method, override _diff in child classes.
-        """
-        self._read_tree_state(tree.id2path(self.file_id), tree)
-        if to_entry:
-            # cannot diff from one kind to another - you must do a removal
-            # and an addif they do not match.
-            assert self.kind == to_entry.kind
-            to_entry._read_tree_state(to_tree.id2path(to_entry.file_id),
-                                      to_tree)
-        self._diff(text_diff, from_label, tree, to_label, to_entry, to_tree,
-                   output_to, reverse)
-
     def _diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
              output_to, reverse=False):
         """Perform a diff between two entries of the same kind."""
@@ -197,76 +179,6 @@ class InventoryEntry(object):
                     # add this revision as a candidate.
                     candidates[ie.revision] = ie
         return candidates
-
-    @deprecated_method(symbol_versioning.zero_ninetyone)
-    def find_previous_heads(self, previous_inventories,
-                            versioned_file_store,
-                            transaction,
-                            entry_vf=None):
-        """Return the revisions and entries that directly precede this.
-
-        Returned as a map from revision to inventory entry.
-
-        This is a map containing the file revisions in all parents
-        for which the file exists, and its revision is not a parent of
-        any other. If the file is new, the set will be empty.
-
-        :param versioned_file_store: A store where ancestry data on this
-                                     file id can be queried.
-        :param transaction: The transaction that queries to the versioned 
-                            file store should be completed under.
-        :param entry_vf: The entry versioned file, if its already available.
-        """
-        candidates = self.parent_candidates(previous_inventories)
-
-        # revision:ie mapping with one revision for each head.
-        heads = {}
-        # common case optimisation
-        if len(candidates) == 1:
-            # if there is only one candidate revision found
-            # then we can avoid opening the versioned file to access ancestry:
-            # there cannot be any ancestors to eliminate when there is 
-            # only one revision available.
-            return candidates
-        
-        # --- what follows is now encapsulated in repository.get_graph.heads(), 
-        #     but that is not accessible from here as we have no repository
-        #     pointer. Note that the repository.get_graph.heads() call can return
-        #     different results *at the moment* because of the kind-changing check
-        #     we have in parent_candidates().
-
-        # eliminate ancestors amongst the available candidates:
-        # heads are those that are not an ancestor of any other candidate
-        # - this provides convergence at a per-file level.
-        def get_ancestors(weave, entry):
-            return set(weave.get_ancestry(entry.revision, topo_sorted=False))
-        # revision: ancestor list for each head
-        head_ancestors = {}
-        for ie in candidates.values():
-            # may be an ancestor of a known head:
-            already_present = 0 != len(
-                [head for head in heads 
-                 if ie.revision in head_ancestors[head]])
-            if already_present:
-                # an ancestor of an analyzed candidate.
-                continue
-            # not an ancestor of a known head:
-            # load the versioned file for this file id if needed
-            if entry_vf is None:
-                entry_vf = versioned_file_store.get_weave_or_empty(
-                    self.file_id, transaction)
-            ancestors = get_ancestors(entry_vf, ie)
-            # may knock something else out:
-            check_heads = list(heads.keys())
-            for head in check_heads:
-                if head in ancestors:
-                    # this previously discovered 'head' is not
-                    # really a head - its an ancestor of the newly 
-                    # found head,
-                    heads.pop(head)
-            head_ancestors[ie.revision] = ancestors
-            heads[ie.revision] = ie
-        return heads
 
     def get_tar_item(self, root, dp, now, tree):
         """Get a tarfile item and a file stream for its content."""

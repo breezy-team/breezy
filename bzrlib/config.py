@@ -643,8 +643,7 @@ class BranchConfig(Config):
         This is looked up in the email controlfile for the branch.
         """
         try:
-            return (self.branch.control_files.get_utf8("email") 
-                    .read()
+            return (self.branch.control_files._transport.get_bytes("email")
                     .decode(bzrlib.user_encoding)
                     .rstrip("\r\n"))
         except errors.NoSuchFile, e:
@@ -890,6 +889,8 @@ def extract_email_address(e):
 
 class TreeConfig(IniBasedConfig):
     """Branch configuration data associated with its contents, not location"""
+
+    # XXX: Really needs a better name, as this is not part of the tree! -- mbp 20080507
 
     def __init__(self, branch):
         transport = branch.control_files._transport

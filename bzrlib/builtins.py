@@ -96,20 +96,6 @@ def internal_tree_files(file_list, default_branch=u'.'):
     return tree, new_list
 
 
-@symbol_versioning.deprecated_function(symbol_versioning.zero_fifteen)
-def get_format_type(typestring):
-    """Parse and return a format specifier."""
-    # Have to use BzrDirMetaFormat1 directly, so that
-    # RepositoryFormat.set_default_format works
-    if typestring == "default":
-        return bzrdir.BzrDirMetaFormat1()
-    try:
-        return bzrdir.format_registry.make_bzrdir(typestring)
-    except KeyError:
-        msg = 'Unknown bzr format "%s". See "bzr help formats".' % typestring
-        raise errors.BzrCommandError(msg)
-
-
 # TODO: Make sure no commands unconditionally use the working directory as a
 # branch.  If a filename argument is used, the first of them should be used to
 # specify the branch.  (Perhaps this can be factored out into some kind of
@@ -669,22 +655,28 @@ class cmd_pull(Command):
                 raise errors.BzrCommandError(
                     'bzr pull --revision takes one value.')
 
-        if verbose:
-            old_rh = branch_to.revision_history()
-        if tree_to is not None:
-            change_reporter = delta._ChangeReporter(
-                unversioned_filter=tree_to.is_ignored)
-            result = tree_to.pull(branch_from, overwrite, revision_id,
-                                  change_reporter,
-                                  possible_transports=possible_transports)
-        else:
-            result = branch_to.pull(branch_from, overwrite, revision_id)
+        branch_to.lock_write()
+        try:
+            if tree_to is not None:
+                change_reporter = delta._ChangeReporter(
+                    unversioned_filter=tree_to.is_ignored)
+                result = tree_to.pull(branch_from, overwrite, revision_id,
+                                      change_reporter,
+                                      possible_transports=possible_transports)
+            else:
+                result = branch_to.pull(branch_from, overwrite, revision_id)
 
-        result.report(self.outf)
-        if verbose:
-            new_rh = branch_to.revision_history()
-            log.show_changed_revisions(branch_to, old_rh, new_rh,
-                                       to_file=self.outf)
+            result.report(self.outf)
+            if verbose and result.old_revid != result.new_revid:
+                old_rh = list(
+                    branch_to.repository.iter_reverse_revision_history(
+                    result.old_revid))
+                old_rh.reverse()
+                new_rh = branch_to.revision_history()
+                log.show_changed_revisions(branch_to, old_rh, new_rh,
+                                           to_file=self.outf)
+        finally:
+            branch_to.unlock()
 
 
 class cmd_push(Command):
@@ -933,10 +925,6 @@ class cmd_branch(Command):
                 revision_id = br_from.last_revision()
             if to_location is None:
                 to_location = urlutils.derive_to_location(from_location)
-                name = None
-            else:
-                name = os.path.basename(to_location) + '\n'
-
             to_transport = transport.get_transport(to_location)
             try:
                 to_transport.mkdir('.')
@@ -957,8 +945,6 @@ class cmd_branch(Command):
                 to_transport.delete_tree('.')
                 msg = "The branch %s has no revision %s." % (from_location, revision[0])
                 raise errors.BzrCommandError(msg)
-            if name:
-                branch.control_files.put_utf8('branch-name', name)
             _merge_tags_if_possible(br_from, branch)
             note('Branched %d revision(s).' % branch.revno())
         finally:

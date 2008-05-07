@@ -20,16 +20,6 @@ from bzrlib import ui
 from bzrlib.log import (
     LogRevision,
     )
-from bzrlib.symbol_versioning import (
-    deprecated_function,
-    zero_seventeen,
-    )
-
-
-@deprecated_function(zero_seventeen)
-def iter_log_data(revisions, revision_source, verbose):
-    for revision in iter_log_revisions(revisions, revision_source, verbose):
-        yield revision.revno, revision.rev, revision.delta
 
 
 def iter_log_revisions(revisions, revision_source, verbose):
