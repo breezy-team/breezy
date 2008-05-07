@@ -73,42 +73,8 @@ class _SmartClient(object):
                 else:
                     self._protocol_version = protocol_version
                     return response_tuple, response_handler
-
-            # As a last resort, try protocol version 1.  Because version 1
-            # responses don't have a protocol version marker it is hard to
-            # distinguish valid v1 error response from random garbage, so we
-            # send a 'hello' request, which does have a predictable response.
-            # Eventually, we should just drop compatibility with servers that
-            # only support version 1.
-            encoder, response_handler = self._construct_protocol(1)
-            self._call(encoder, 'hello', ())
-            try:
-                response_tuple = response_handler.read_response_tuple(
-                    expect_body=False)
-            except errors.ConnectionReset, err:
-                # Either an interrupted connection, or the server doesn't even
-                # speak version 1.  At this point we've already tried a couple
-                # of requests in other protocol versions without seeing this
-                # error, so most likely it is just that the server is not a
-                # Bazaar server.
-                raise errors.SmartProtocolError(
-                    'Server is not a bzr server, or connection interrupted.')
-            # The result must be '1'.  (v2 servers can return '2' for hello
-            # requests, but we've already established that the server doesn't
-            # accept v2 requests.)
-            if response_tuple != ('1',):
-                raise errors.SmartProtocolError(
-                    'Server is not a bzr server: unexpected response %r'
-                    % (response_tuple,))
-            # Ok, apparently this is a version one server.  Issue the original
-            # request.
-            encoder, response_handler = self._construct_protocol(1)
-            self._call(encoder, method, args, body=body,
-                       readv_body=readv_body)
-            response_tuple = response_handler.read_response_tuple(
-                expect_body=expect_response_body)
-            self._protocol_version = 1
-            return response_tuple, response_handler
+            raise errors.SmartProtocolError(
+                'Server is not a Bazaar server: ' + str(err))
 
     def _construct_protocol(self, version):
         request = self._medium.get_request()
