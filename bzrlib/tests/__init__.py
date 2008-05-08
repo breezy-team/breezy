@@ -805,7 +805,7 @@ class TestCase(unittest.TestCase):
         Tests that want to use debug flags can just set them in the
         debug_flags set during setup/teardown.
         """
-        if 'selftest_debug' not in debug.debug_flags:
+        if 'allow_debug' not in selftest_debug_flags:
             self._preserved_debug_flags = set(debug.debug_flags)
             debug.debug_flags.clear()
             self.addCleanup(self._restore_debug_flags)
@@ -2454,6 +2454,10 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
     return result.wasSuccessful()
 
 
+# Controlled by "bzr selftest -E=..." option
+selftest_debug_flags = set()
+
+
 def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              transport=None,
              test_suite_factory=None,
@@ -2465,6 +2469,7 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              exclude_pattern=None,
              strict=False,
              load_list=None,
+             debug_flags=None,
              ):
     """Run the whole test suite under the enhanced runner"""
     # XXX: Very ugly way to do this...
@@ -2478,6 +2483,10 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
         transport = default_transport
     old_transport = default_transport
     default_transport = transport
+    global selftest_debug_flags
+    old_debug_flags = selftest_debug_flags
+    if debug_flags is not None:
+        selftest_debug_flags = set(debug_flags)
     try:
         if load_list is None:
             keep_only = None
@@ -2499,6 +2508,7 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
                      strict=strict)
     finally:
         default_transport = old_transport
+        selftest_debug_flags = old_debug_flags
 
 
 def load_test_id_list(file_name):

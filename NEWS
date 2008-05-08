@@ -90,6 +90,11 @@ IN DEVELOPMENT
       make it easy to identify which test spawned a thread with an unhandled
       exception. (Andrew Bennetts)
 
+    * New ``--debugflag``/``-E`` option to ``bzr selftest`` for setting
+      options for debugging tests, these are complementary to the the -D
+      options.  The ``-Dselftest_debug`` global option has been replaced by the
+      ``-E=allow_debug`` option for selftest. (Andrew Bennetts)
+
     * Parameterised test ids are preserved correctly to aid diagnosis of test
       failures. (Robert Collins, Andrew Bennetts)
 

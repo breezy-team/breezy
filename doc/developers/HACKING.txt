@@ -284,6 +284,17 @@ This option can be combined with other selftest options (like -x) and
 filter patterns to understand their effect.
 
 
+Test suite debug flags
+----------------------
+
+Similar to the global ``-Dfoo`` debug options, bzr selftest accepts
+``-E=foo`` debug flags.  These flags are:
+
+:allow_debug: do *not* clear the global debug flags when running a test.
+  This can provide useful logging to help debug test failures when used
+  with e.g. ``bzr -Dhpss selftest -E=allow_debug``
+
+
 Writing Tests
 =============
 
