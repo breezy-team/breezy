@@ -125,22 +125,6 @@ class Revision(object):
         return self.properties.get('author', self.committer)
 
 
-@deprecated_function(symbol_versioning.one_zero)
-def is_ancestor(revision_id, candidate_id, branch):
-    """Return true if candidate_id is an ancestor of revision_id.
-
-    A false negative will be returned if any intermediate descendent of
-    candidate_id is not present in any of the revision_sources.
-    
-    revisions_source is an object supporting a get_revision operation that
-    behaves like Branch's.
-
-    This function is deprecated, it is better for callers to directly use
-    Graph.is_ancestor() (just watch out that the parameter order is switched)
-    """
-    return branch.repository.get_graph().is_ancestor(candidate_id, revision_id)
-
-
 def iter_ancestors(revision_id, revision_source, only_present=False):
     ancestors = (revision_id,)
     distance = 0
@@ -228,9 +212,6 @@ def _revision_graph(revision, revision_source):
         for parent in parents:
             descendants[parent][node] = 1
         ancestors[node] = set(parents)
-
-    assert root not in descendants[root]
-    assert root not in ancestors[root]
     return root, ancestors, descendants
 
 
@@ -327,7 +308,6 @@ class MultipleRevisionSources(object):
     @symbol_versioning.deprecated_method(symbol_versioning.one_three)
     def __init__(self, *args):
         object.__init__(self)
-        assert len(args) != 0
         self._revision_sources = args
 
     def revision_parents(self, revision_id):

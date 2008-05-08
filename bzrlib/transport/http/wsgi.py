@@ -144,7 +144,8 @@ class SmartWSGIApp(object):
 
         if adjusted_relpath.startswith('/'):
             adjusted_relpath = adjusted_relpath[1:]
-        assert not adjusted_relpath.startswith('/')
+        if adjusted_relpath.startswith('/'):
+            raise AssertionError(adjusted_relpath)
 
         transport = self.backing_transport.clone(adjusted_relpath)
         out_buffer = StringIO()

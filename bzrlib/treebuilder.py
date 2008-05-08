@@ -45,7 +45,6 @@ class TreeBuilder(object):
             self._tree.add('', 'root-id', 'directory')
             self._root_done = True
         for name in recipe:
-            assert isinstance(name, basestring)
             if name[-1] == '/':
                 self._tree.mkdir(name[:-1])
             else:

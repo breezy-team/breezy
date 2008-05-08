@@ -22,8 +22,6 @@ import sys
 from bzrlib.tests import TestCaseWithMemoryTransport
 from bzrlib.branch import Branch
 from bzrlib.branchbuilder import BranchBuilder
-from bzrlib.revision import is_ancestor
-from bzrlib.symbol_versioning import one_zero
 
 
 class TestAncestry(TestCaseWithMemoryTransport):
@@ -42,24 +40,5 @@ class TestAncestry(TestCaseWithMemoryTransport):
         self.assertAncestryEqual([None, rev_id_one, rev_id_two],
             rev_id_two, branch)
         self.assertAncestryEqual([None, rev_id_one], rev_id_one, branch)
-
-    def test_none_is_ancestor_empty_branch(self):
-        branch = self.make_branch('.')
-        self.assertTrue(self.applyDeprecated(one_zero,
-                        is_ancestor, 'null:', 'null:', branch))
-
-    def test_none_is_ancestor_non_empty_branch(self):
-        builder = BranchBuilder(self.get_transport())
-        rev_id = builder.build_commit()
-        branch = builder.get_branch()
-        branch.lock_read()
-        self.addCleanup(branch.unlock)
-        self.assertTrue(self.applyDeprecated(one_zero,
-                        is_ancestor, 'null:', 'null:', branch))
-        self.assertTrue(self.applyDeprecated(one_zero,
-                        is_ancestor, rev_id, 'null:',  branch))
-        self.assertFalse(self.applyDeprecated(one_zero,
-                         is_ancestor, 'null:', rev_id, branch))
-
 
 # TODO: check that ancestry is updated to include indirectly merged revisions
