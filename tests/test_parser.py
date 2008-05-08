@@ -135,7 +135,8 @@ class TestImportParser(tests.TestCase):
         self.assertEqual(None, cmd4.author)
         self.assertEqual(11, cmd4.lineno)
         self.assertEqual('refs/heads/master', cmd4.ref)
-        self.assertEqual([], cmd4.parents)
+        self.assertEqual(None, cmd4.from_)
+        self.assertEqual([], cmd4.merges)
         file_cmd1 = result[4]
         self.assertEqual('filemodify', file_cmd1.name)
         self.assertEqual('README', file_cmd1.path)
@@ -153,7 +154,8 @@ class TestImportParser(tests.TestCase):
         self.assertEqual(None, cmd5.author)
         self.assertEqual(19, cmd5.lineno)
         self.assertEqual('refs/heads/master', cmd5.ref)
-        self.assertEqual([':2'], cmd5.parents)
+        self.assertEqual(':2', cmd5.from_)
+        self.assertEqual([], cmd5.merges)
         file_cmd2 = result[6]
         self.assertEqual('filemodify', file_cmd2.name)
         self.assertEqual('README', file_cmd2.path)

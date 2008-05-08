@@ -46,11 +46,11 @@ class TestRename(tests.TestCaseWithTransport):
                 yield commands.FileModifyCommand(old_path, 'file', False,
                         None, "aaa")
             yield commands.CommitCommand('head', '1', author,
-                committer, "commit 1", [], files_one)
+                committer, "commit 1", None, [], files_one)
             def files_two():
                 yield commands.FileRenameCommand(old_path, new_path)
             yield commands.CommitCommand('head', '2', author,
-                committer, "commit 2", [":1"], files_two)
+                committer, "commit 2", ":1", [], files_two)
         return command_list
 
     # FIXME: [] as a default is bad, as it is mutable, but I want
