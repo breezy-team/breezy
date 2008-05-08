@@ -545,14 +545,17 @@ class Repository(object):
             plaintext = Testament(rev, inv).as_short_text()
             self.store_revision_signature(
                 gpg.GPGStrategy(config), plaintext, revision_id)
-        if not revision_id in self.get_inventory_weave():
+        inventory_vf = self.get_inventory_weave()
+        if not revision_id in inventory_vf:
             if inv is None:
                 raise errors.WeaveRevisionNotPresent(revision_id,
-                                                     self.get_inventory_weave())
+                                                     inventory_vf)
             else:
                 # yes, this is not suitable for adding with ghosts.
-                rev.inventory_sha1 = self.add_inventory(revision_id, inv, 
+                rev.inventory_sha1 = self.add_inventory(revision_id, inv,
                                                         rev.parent_ids)
+        else:
+            rev.inventory_sha1 = inventory_vf.get_sha1s([revision_id])[0]
         self._revision_store.add_revision(rev, self.get_transaction())
 
     def _add_revision_text(self, revision_id, text):
@@ -1109,7 +1112,6 @@ class Repository(object):
         rev_tmp.seek(0)
         return rev_tmp.getvalue()
 
-    @needs_read_lock
     def get_deltas_for_revisions(self, revisions):
         """Produce a generator of revision deltas.
         
@@ -1446,7 +1448,6 @@ class Repository(object):
         # maybe this generator should explicitly have the contract that it
         # should not be iterated until the previously yielded item has been
         # processed?
-        self.lock_read()
         inv_w = self.get_inventory_weave()
 
         # file ids that changed
@@ -1475,7 +1476,6 @@ class Repository(object):
                 pass
             else:
                 revisions_with_signatures.add(rev_id)
-        self.unlock()
         yield ("signatures", None, revisions_with_signatures)
 
         # revisions
@@ -1681,7 +1681,6 @@ class Repository(object):
             inv = self.get_revision_inventory(revision_id)
             return RevisionTree(self, inv, revision_id)
 
-    @needs_read_lock
     def revision_trees(self, revision_ids):
         """Return Tree for a revision on this branch.
 
@@ -1740,6 +1739,7 @@ class Repository(object):
     def get_transaction(self):
         return self.control_files.get_transaction()
 
+    @deprecated_method(symbol_versioning.one_five)
     def revision_parents(self, revision_id):
         return self.get_inventory_weave().parent_names(revision_id)
 
@@ -2383,12 +2383,14 @@ class InterRepository(InterObject):
         :param revision_ids: The start point for the search.
         :return: A set of revision ids.
         """
-        graph = self.source.get_graph()
         target_graph = self.target.get_graph()
-        missing_revs = set()
-        # ensure we don't pay silly lookup costs.
         revision_ids = frozenset(revision_ids)
-        searcher = graph._make_breadth_first_searcher(revision_ids)
+        if set(target_graph.get_parent_map(revision_ids)) == revision_ids:
+            return graph.SearchResult(revision_ids, set(), 0, set())
+        missing_revs = set()
+        source_graph = self.source.get_graph()
+        # ensure we don't pay silly lookup costs.
+        searcher = source_graph._make_breadth_first_searcher(revision_ids)
         null_set = frozenset([_mod_revision.NULL_REVISION])
         while True:
             try:
@@ -2748,6 +2750,11 @@ class InterPackRepo(InterSameDataRepository):
             # inventory parsing etc, IFF nothing to be copied is in the target.
             # till then:
             revision_ids = self.source.all_revision_ids()
+            revision_keys = [(revid,) for revid in revision_ids]
+            index = self.target._pack_collection.revision_index.combined_index
+            present_revision_ids = set(item[1][0] for item in
+                index.iter_entries(revision_keys))
+            revision_ids = set(revision_ids) - present_revision_ids
             # implementing the TODO will involve:
             # - detecting when all of a pack is selected
             # - avoiding as much as possible pre-selection, so the
@@ -2764,6 +2771,8 @@ class InterPackRepo(InterSameDataRepository):
                     find_ghosts=find_ghosts).get_keys()
             except errors.NoSuchRevision:
                 raise errors.InstallFailed([revision_id])
+            if len(revision_ids) == 0:
+                return (0, [])
         packs = self.source._pack_collection.all_packs()
         pack = Packer(self.target._pack_collection, packs, '.fetch',
             revision_ids).pack()

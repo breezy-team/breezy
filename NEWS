@@ -21,10 +21,50 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * Diff now handles revision specs like "branch:" and "submit:" more
+      efficiently.  (Aaron Bentley)
+
+    * More friendly error given when attempt to start the smart server
+      on an address already in use. (Andrea Corbellini, #200575)
+
+    * Pull completes much faster when there is nothing to pull.
+      (Aaron Bentley)
+
   BUGFIXES:
 
     * Avoid muttering every time a child update does not cause a progress bar
       update. (John Arbash Meinel, #213771)
+
+    * ``Branch.reconcile()`` is now implemented. This allows ``bzr reconcile``
+      to fix when a Branch has a non-canonical mainline history. ``bzr check``
+      also detects this condition. (John Arbash Meinel, #177855)
+
+    * ``bzr commit`` now works with Microsoft's FTP service.
+      (Andreas Deininger)
+
+    * Conversion from non-rich-root to rich-root(-pack) updates inventory
+      sha1s, even when bundles are used.  (Aaron Bentley, #181391)
+
+    * Conversion from non-rich-root to rich-root(-pack) works correctly even
+      though search keys are not topologically sorted.  (Aaron Bentley)
+
+    * Conversion from non-rich-root to rich-root(-pack) works even when a
+      parent revision has a different root id.  (Aaron Bentley, #177874)
+
+    * Fetching all revisions from a repository does not cause pack collisions.
+      (Robert Collins, Aaron Bentley, #212908)
+
+    * Fix error about "attempt to add line-delta in non-delta knit".
+      (Andrew Bennetts, #217701)
+
+    * Pushing a branch in "dirstate" format (Branch5) over bzr+ssh would break
+      if the remote server was < version 1.2. This was due to a bug in the
+      RemoteRepository.get_parent_map() fallback code.
+      (John Arbash Meinel, #214894)
+
+    * Remove leftover code in ``bzr_branch`` that inappropriately creates 
+      a ``branch-name`` file in the branch control directory.
+      (Martin Pool)
 
     * Set SO_REUSEADDR on server sockets of ``bzr serve`` to avoid problems
       rebinding the socket when starting the server a second time.
@@ -46,18 +86,100 @@ IN DEVELOPMENT
 
   TESTING:
 
+    * Add ``thread_name_suffix`` parameter to SmartTCPServer_for_testing, to
+      make it easy to identify which test spawned a thread with an unhandled
+      exception. (Andrew Bennetts)
+
+    * New ``--debugflag``/``-E`` option to ``bzr selftest`` for setting
+      options for debugging tests, these are complementary to the the -D
+      options.  The ``-Dselftest_debug`` global option has been replaced by the
+      ``-E=allow_debug`` option for selftest. (Andrew Bennetts)
+
+    * Parameterised test ids are preserved correctly to aid diagnosis of test
+      failures. (Robert Collins, Andrew Bennetts)
+
   INTERNALS:
+
+    * ``Hooks.install_hook`` is now deprecated in favour of
+      ``Hooks.install_named_hook`` which adds a required ``name`` parameter, to
+      avoid having to call ``Hooks.name_hook``. (Daniel Watkins)
+
+    * Implement xml8 serializer.  (Aaron Bentley)
+
+    * New form ``@deprecated_method(deprecated_in(1, 5, 0))`` for making 
+      deprecation wrappers.  (Martin Pool)
+
+    * ``Repository.revision_parents`` is now deprecated in favour of 
+      ``Repository.get_parent_map([revid])[revid]``. (Jelmer Vernooij)
 
     * The Python ``assert`` statement is no longer used in Bazaar source, and 
       a test checks this.  (Martin Pool)
 
-    * Implement xml8 serializer.  (Aaron Bentley)
-
   API BREAKS:
+
+    * ``bzrlib.status.show_pending_merges`` requires the repository to be
+      locked by the caller. Callers should have been doing it anyway, but it
+      will now raise an exception if they do not. (John Arbash Meinel)
+
+    * Repository.get_data_stream, Repository.get_data_stream_for_search(),
+      Repository.get_deltas_for_revsions(), Repository.revision_trees(),
+      Repository.item_keys_introduced_by() no longer take read locks.
+      (Aaron Bentley)
+
+    * ``LockableFiles.get_utf8`` is deprecated, as a start towards 
+      removing LockableFiles and ``.control_files`` entirely.
+      (Martin Pool)
+
+    * Methods deprecated prior to 1.1 have been removed.
+      (Martin Pool)
+
+
+bzr 1.4 2008-04-28
+------------------
+
+This release of Bazaar includes handy improvements to the speed of log and
+status, new options for several commands, improved documentation, and better
+hooks, including initial code for server-side hooks.  A number of bugs have
+been fixed, particularly in interoperability between different formats or
+different releases of Bazaar over there network.  There's been substantial
+internal work in both the repository and network code to enable new features
+and faster performance.
+
+  BUG FIXES:
+
+    * Pushing a branch in "dirstate" format (Branch5) over bzr+ssh would break
+      if the remote server was < version 1.2.  This was due to a bug in the
+      RemoteRepository.get_parent_map() fallback code.
+      (John Arbash Meinel, Andrew Bennetts, #214894)
+
+
+bzr 1.4rc2 2008-04-21
+---------------------
+
+  BUG FIXES:
+
+    * ``bzr log -r ..X bzr://`` was failing, because it was getting a request
+      for ``revision_id=None`` which was not a string.
+      (John Arbash Meinel, #211661)
+
+    * Fixed a bug in handling ghost revisions when logging changes in a 
+      particular file.  (John Arbash Meinel, #209948)
+
+    * Fix error about "attempt to add line-delta in non-delta knit".
+      (Andrew Bennetts, #205156)
+
+    * Fixed performance degradation in fetching from knit repositories to
+      knits and packs due to parsing the entire revisions.kndx on every graph
+      walk iteration fixed by using the Repository.get_graph API.  There was
+      another regression in knit => knit fetching which re-read the index for
+      every revision each side had in common.
+      (Robert Collins, John Arbash Meinel)
 
 
 bzr 1.4rc1 2008-04-11
 ---------------------
+
+  CHANGES:
 
    * bzr main script cannot be imported (Benjamin Peterson)
 
@@ -138,8 +260,11 @@ bzr 1.4rc1 2008-04-11
       one is present.  You can use the new ``nosmart+`` transport decorator
       to get the old behaviour.  (Andrew Bennetts)
 
-     * Various operations with revision specs and commands that calculate
-       revnos and revision ids are faster.  (John A. Meinel, Aaron Bentley)
+    * The ``version`` command takes a ``--short`` option to print just the
+      version number, for easier use in scripts.  (Martin Pool)
+
+    * Various operations with revision specs and commands that calculate
+      revnos and revision ids are faster.  (John A. Meinel, Aaron Bentley)
 
   BUGFIXES:
 
@@ -316,6 +441,9 @@ bzr 1.4rc1 2008-04-11
       had already failed, and should not be relied upon by code. 
       (Martin Pool, #109520)
 
+    * ``make dist`` target to build a release tarball, and also 
+      ``check-dist-tarball`` and ``dist-upload-escudero``.  (Martin Pool)
+
     * The ``read_response_tuple`` method of ``SmartClientRequestProtocol*``
       classes will now raise ``UnknownSmartMethod`` when appropriate, so that
       callers don't need to try distinguish unknown request errors from other
@@ -326,6 +454,23 @@ bzr 1.4rc1 2008-04-11
 
     * ``VersionedFile`` now has a new method ``get_parent_map`` which, like
       ``Graph.get_parent_map`` returns a dict of key:parents. (Robert Collins)
+
+
+bzr 1.3.1 2008-04-09
+--------------------
+
+  No changes from 1.3.1rc1.
+
+
+bzr 1.3rc1 2008-04-04
+---------------------
+
+  BUG FIXES:
+
+    * Fix a bug causing a ValueError crash in ``parse_line_delta_iter`` when
+      fetching revisions from a knit to pack repository or vice versa using
+      bzr:// (including over http or ssh).  
+      (#208418, Andrew Bennetts, Martin Pool, Robert Collins)
 
 
 bzr 1.3 2008-03-20

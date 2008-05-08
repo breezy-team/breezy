@@ -34,7 +34,6 @@ from bzrlib import (
 from bzrlib.smart import medium
 from bzrlib.symbol_versioning import (
         deprecated_method,
-        zero_seventeen,
         )
 from bzrlib.trace import mutter
 from bzrlib.transport import (

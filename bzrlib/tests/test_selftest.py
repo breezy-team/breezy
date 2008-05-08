@@ -65,7 +65,6 @@ from bzrlib.tests import (
                           iter_suite_tests,
                           preserve_input,
                           randomize_suite,
-                          sort_suite_by_re,
                           split_suite_by_re,
                           test_lsprof,
                           test_suite,
@@ -502,7 +501,9 @@ class TestTreeProviderAdapter(TestCase):
         adapter = TreeTestProviderAdapter(server1, server2, formats)
         suite = adapter.adapt(input_test)
         tests = list(iter(suite))
-        self.assertEqual(4, len(tests))
+        # XXX We should not have tests fail as we add more scenarios
+        # abentley 20080412
+        self.assertEqual(5, len(tests))
         # this must match the default format setp up in
         # TreeTestProviderAdapter.adapt
         default_format = WorkingTreeFormat3
@@ -1821,14 +1822,6 @@ class TestSelftestFiltering(TestCase):
         # But not the length. (Possibly redundant with the set test, but not
         # necessarily.)
         self.assertEqual(len(self.all_names), len(_test_ids(randomized_suite)))
-
-    def test_sort_suite_by_re(self):
-        sorted_suite = self.applyDeprecated(one_zero,
-            sort_suite_by_re, self.suite, 'test_filter_suite_by_r')
-        sorted_names = _test_ids(sorted_suite)
-        self.assertEqual(sorted_names[0], 'bzrlib.tests.test_selftest.'
-            'TestSelftestFiltering.test_filter_suite_by_re')
-        self.assertEquals(sorted(self.all_names), sorted(sorted_names))
 
     def test_split_suit_by_re(self):
         self.all_names = _test_ids(self.suite)

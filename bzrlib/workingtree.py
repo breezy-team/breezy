@@ -111,9 +111,6 @@ from bzrlib.symbol_versioning import (deprecated_passed,
         deprecated_method,
         deprecated_function,
         DEPRECATED_PARAMETER,
-        zero_eight,
-        zero_eleven,
-        zero_thirteen,
         )
 
 
@@ -121,24 +118,6 @@ MERGE_MODIFIED_HEADER_1 = "BZR merge-modified list format 1"
 CONFLICT_HEADER_1 = "BZR conflict list format 1"
 
 ERROR_PATH_NOT_FOUND = 3    # WindowsError errno code, equivalent to ENOENT
-
-
-@deprecated_function(zero_thirteen)
-def gen_file_id(name):
-    """Return new file id for the basename 'name'.
-
-    Use bzrlib.generate_ids.gen_file_id() instead
-    """
-    return generate_ids.gen_file_id(name)
-
-
-@deprecated_function(zero_thirteen)
-def gen_root_id():
-    """Return a new tree-root file id.
-
-    This has been deprecated in favor of bzrlib.generate_ids.gen_root_id()
-    """
-    return generate_ids.gen_root_id()
 
 
 class TreeEntry(object):
@@ -428,44 +407,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def _cleanup(self):
         self._flush_ignore_list_cache()
 
-    @staticmethod
-    @deprecated_method(zero_eight)
-    def create(branch, directory):
-        """Create a workingtree for branch at directory.
-
-        If existing_directory already exists it must have a .bzr directory.
-        If it does not exist, it will be created.
-
-        This returns a new WorkingTree object for the new checkout.
-
-        TODO FIXME RBC 20060124 when we have checkout formats in place this
-        should accept an optional revisionid to checkout [and reject this if
-        checking out into the same dir as a pre-checkout-aware branch format.]
-
-        XXX: When BzrDir is present, these should be created through that 
-        interface instead.
-        """
-        warnings.warn('delete WorkingTree.create', stacklevel=3)
-        transport = get_transport(directory)
-        if branch.bzrdir.root_transport.base == transport.base:
-            # same dir 
-            return branch.bzrdir.create_workingtree()
-        # different directory, 
-        # create a branch reference
-        # and now a working tree.
-        raise NotImplementedError
- 
-    @staticmethod
-    @deprecated_method(zero_eight)
-    def create_standalone(directory):
-        """Create a checkout and a branch and a repo at directory.
-
-        Directory must exist and be empty.
-
-        please use BzrDir.create_standalone_workingtree
-        """
-        return bzrdir.BzrDir.create_standalone_workingtree(directory)
-
     def relpath(self, path):
         """Return the local path portion from a given path.
         
@@ -612,7 +553,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     __contains__ = has_id
 
     def get_file_size(self, file_id):
-        return os.path.getsize(self.id2abspath(file_id))
+        """See Tree.get_file_size"""
+        try:
+            return os.path.getsize(self.id2abspath(file_id))
+        except OSError, e:
+            if e.errno != errno.ENOENT:
+                raise
+            else:
+                return None
 
     @needs_read_lock
     def get_file_sha1(self, file_id, path=None, stat_value=None):
@@ -757,19 +705,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             return ('symlink', None, None, os.readlink(abspath))
         else:
             return (kind, None, None, None)
-
-    @deprecated_method(zero_eleven)
-    @needs_read_lock
-    def pending_merges(self):
-        """Return a list of pending merges.
-
-        These are revisions that have been merged into the working
-        directory but not yet committed.
-
-        As of 0.11 this is deprecated. Please see WorkingTree.get_parent_ids()
-        instead - which is available on all tree objects.
-        """
-        return self.get_parent_ids()[1:]
 
     def _check_parents_for_ghosts(self, revision_ids, allow_leftmost_as_ghost):
         """Common ghost checking functionality from set_parent_*.
@@ -1533,12 +1468,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             # - RBC 20060907
             self._write_inventory(self._inventory)
     
-    @deprecated_method(zero_eight)
-    def iter_conflicts(self):
-        """List all files in the tree that have text or content conflicts.
-        DEPRECATED.  Use conflicts instead."""
-        return self._iter_conflicts()
-
     def _iter_conflicts(self):
         conflicted = set()
         for info in self.list_files():
@@ -2083,13 +2012,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         """Set the root id for this tree."""
         # for compatability 
         if file_id is None:
-            symbol_versioning.warn(symbol_versioning.zero_twelve
-                % 'WorkingTree.set_root_id with fileid=None',
-                DeprecationWarning,
-                stacklevel=3)
-            file_id = ROOT_ID
-        else:
-            file_id = osutils.safe_file_id(file_id)
+            raise ValueError(
+                'WorkingTree.set_root_id with fileid=None')
+        file_id = osutils.safe_file_id(file_id)
         self._set_root_id(file_id)
 
     def _set_root_id(self, file_id):
@@ -2635,22 +2560,6 @@ def get_conflicted_stem(path):
     for suffix in _mod_conflicts.CONFLICT_SUFFIXES:
         if path.endswith(suffix):
             return path[:-len(suffix)]
-
-
-@deprecated_function(zero_eight)
-def is_control_file(filename):
-    """See WorkingTree.is_control_filename(filename)."""
-    ## FIXME: better check
-    filename = normpath(filename)
-    while filename != '':
-        head, tail = os.path.split(filename)
-        ## mutter('check %r for control file' % ((head, tail),))
-        if tail == '.bzr':
-            return True
-        if filename == head:
-            break
-        filename = head
-    return False
 
 
 class WorkingTreeFormat(object):

@@ -336,36 +336,6 @@ class TestRepository(TestCaseWithRepository):
         rev_tree = tree.branch.repository.revision_tree(tree.last_revision())
         self.assertEqual('rev_id', rev_tree.inventory.root.revision)
 
-    def DISABLED_DELETE_OR_FIX_BEFORE_MERGE_test_create_basis_inventory(self):
-        # Needs testing here because differences between repo and working tree
-        # basis inventory formats can lead to bugs.
-        t = self.make_branch_and_tree('.')
-        b = t.branch
-        open('a', 'wb').write('a\n')
-        t.add('a')
-        t.commit('a', rev_id='r1')
-
-        t._control_files.get_utf8('basis-inventory-cache')
-
-        basis_inv = t.basis_tree().inventory
-        self.assertEquals('r1', basis_inv.revision_id)
-        
-        store_inv = b.repository.get_inventory('r1')
-        self.assertEquals(store_inv._byid, basis_inv._byid)
-
-        open('b', 'wb').write('b\n')
-        t.add('b')
-        t.commit('b', rev_id='r2')
-
-        t._control_files.get_utf8('basis-inventory-cache')
-
-        basis_inv_txt = t.read_basis_inventory()
-        basis_inv = bzrlib.xml7.serializer_v7.read_inventory_from_string(basis_inv_txt)
-        self.assertEquals('r2', basis_inv.revision_id)
-        store_inv = b.repository.get_inventory('r2')
-
-        self.assertEquals(store_inv._byid, basis_inv._byid)
-
     def test_upgrade_from_format4(self):
         from bzrlib.tests.test_upgrade import _upgrade_dir_template
         if self.repository_format.get_format_description() \
@@ -404,6 +374,8 @@ class TestRepository(TestCaseWithRepository):
         tree.add('foo', 'file1')
         tree.commit('message', rev_id='rev_id')
         repo = tree.branch.repository
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
         try:
             stream = self.applyDeprecated(one_two, repo.get_data_stream,
                 ['rev_id'])
@@ -424,6 +396,8 @@ class TestRepository(TestCaseWithRepository):
         # Get a data stream (a file-like object) for that revision
         search = graph.SearchResult(set(['rev_id']), set([NULL_REVISION]), 1,
             set(['rev_id']))
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
         try:
             stream = repo.get_data_stream_for_search(search)
         except NotImplementedError:
@@ -468,6 +442,8 @@ class TestRepository(TestCaseWithRepository):
         dest_repo = self.make_repository('dest')
         search = dest_repo.search_missing_revision_ids(source_repo,
             revision_id='rev_id')
+        source_repo.lock_read()
+        self.addCleanup(source_repo.unlock)
         try:
             stream = source_repo.get_data_stream_for_search(search)
         except NotImplementedError, e:
@@ -550,6 +526,8 @@ class TestRepository(TestCaseWithRepository):
         tree.add('foo', 'file1')
         tree.commit('message', rev_id='rev_id')
         repo = tree.branch.repository
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
 
         # Item keys will be in this order, for maximum convenience for
         # generating data to insert into knit repository:

@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,10 +23,14 @@ import os
 from bzrlib.diff import internal_diff
 from bzrlib.mutabletree import MutableTree
 from bzrlib.osutils import has_symlinks
-from bzrlib.symbol_versioning import zero_ninetyone, one_zero
 from bzrlib.tests import SymlinkFeature, TestSkipped
 from bzrlib.tests.tree_implementations import TestCaseWithTree
+from bzrlib.transform import _PreviewTree
 from bzrlib.uncommit import uncommit
+
+
+def get_entry(tree, file_id):
+    return tree.iter_entries_by_dir([file_id]).next()[1]
 
 
 class TestPreviousHeads(TestCaseWithTree):
@@ -59,43 +63,11 @@ class TestPreviousHeads(TestCaseWithTree):
         self.tree = self.workingtree_to_test_tree(self.wt)
         self.tree.lock_read()
         self.addCleanup(self.tree.unlock)
-        self.file_active = self.tree.inventory['fileid']
+        self.file_active = get_entry(self.tree, 'fileid')
         self.weave = self.branch.repository.weave_store.get_weave('fileid',
             self.branch.repository.get_transaction())
-        
-    def get_previous_heads(self, inventories):
-        return self.applyDeprecated(zero_ninetyone,
-            self.file_active.find_previous_heads,
-            inventories,
-            self.branch.repository.weave_store,
-            self.branch.repository.get_transaction())
-        
-    def test_fileid_in_no_inventory(self):
-        self.assertEqual({}, self.get_previous_heads([self.inv_A]))
 
-    def test_fileid_in_one_inventory(self):
-        self.assertEqual({'B':self.inv_B['fileid']},
-                         self.get_previous_heads([self.inv_B]))
-        self.assertEqual({'B':self.inv_B['fileid']},
-                         self.get_previous_heads([self.inv_A, self.inv_B]))
-        self.assertEqual({'B':self.inv_B['fileid']},
-                         self.get_previous_heads([self.inv_B, self.inv_A]))
-
-    def test_fileid_in_two_inventories_gives_both_entries(self):
-        self.assertEqual({'B':self.inv_B['fileid'],
-                          'C':self.inv_C['fileid']},
-                          self.get_previous_heads([self.inv_B, self.inv_C]))
-        self.assertEqual({'B':self.inv_B['fileid'],
-                          'C':self.inv_C['fileid']},
-                          self.get_previous_heads([self.inv_C, self.inv_B]))
-
-    def test_fileid_in_two_inventories_already_merged_gives_head(self):
-        self.assertEqual({'D':self.inv_D['fileid']},
-                         self.get_previous_heads([self.inv_B, self.inv_D]))
-        self.assertEqual({'D':self.inv_D['fileid']},
-                         self.get_previous_heads([self.inv_D, self.inv_B]))
-
-    # TODO: test two inventories with the same file revision 
+    # TODO: test two inventories with the same file revision
 
 
 class TestInventory(TestCaseWithTree):
@@ -104,21 +76,32 @@ class TestInventory(TestCaseWithTree):
         self.tree = self.get_tree_with_subdirs_and_all_content_types()
         self.tree.lock_read()
         self.addCleanup(self.tree.unlock)
-        # Commenting out the following line still fails.
-        self.inv = self.tree.inventory
 
     def test_symlink_target(self):
         self.requireFeature(SymlinkFeature)
         self._set_up()
-        if isinstance(self.tree, MutableTree):
+        if isinstance(self.tree, (MutableTree, _PreviewTree)):
             raise TestSkipped(
-                'symlinks not accurately represented in working trees')
-        entry = self.inv[self.inv.path2id('symlink')]
+                'symlinks not accurately represented in working trees and'
+                ' preview trees')
+        entry = get_entry(self.tree, self.tree.path2id('symlink'))
         self.assertEqual(entry.symlink_target, 'link-target')
+
+    def test_symlink_target_tree(self):
+        self.requireFeature(SymlinkFeature)
+        self._set_up()
+        self.assertEqual('link-target',
+                         self.tree.get_symlink_target('symlink'))
+
+    def test_kind_symlink(self):
+        self.requireFeature(SymlinkFeature)
+        self._set_up()
+        self.assertEqual('symlink', self.tree.kind('symlink'))
+        self.assertIs(None, self.tree.get_file_size('symlink'))
 
     def test_symlink(self):
         self.requireFeature(SymlinkFeature)
         self._set_up()
-        entry = self.inv[self.inv.path2id('symlink')]
+        entry = get_entry(self.tree, self.tree.path2id('symlink'))
         self.assertEqual(entry.kind, 'symlink')
         self.assertEqual(None, entry.text_size)

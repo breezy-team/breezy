@@ -254,6 +254,15 @@ class Tree(object):
         """
         raise NotImplementedError(self.get_file_mtime)
 
+    def get_file_size(self, file_id):
+        """Return the size of a file in bytes.
+
+        This applies only to regular files.  If invoked on directories or
+        symlinks, it will return None.
+        :param file_id: The file-id of the file
+        """
+        raise NotImplementedError(self.get_file_size)
+
     def get_file_by_path(self, path):
         return self.get_file(self._inventory.path2id(path), path)
 
@@ -893,17 +902,3 @@ class InterTree(InterObject):
             # the parent's path is necessarily known at this point.
             yield(file_id, (path, to_path), changed_content, versioned, parent,
                   name, kind, executable)
-
-
-# This was deprecated before 0.12, but did not have an official warning
-@symbol_versioning.deprecated_function(symbol_versioning.zero_twelve)
-def RevisionTree(*args, **kwargs):
-    """RevisionTree has moved to bzrlib.revisiontree.RevisionTree()
-
-    Accessing it as bzrlib.tree.RevisionTree has been deprecated as of
-    bzr 0.12.
-    """
-    from bzrlib.revisiontree import RevisionTree as _RevisionTree
-    return _RevisionTree(*args, **kwargs)
- 
-

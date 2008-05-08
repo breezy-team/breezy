@@ -29,6 +29,7 @@ Options include:
  * error - show stack traces for all top level exceptions
  * evil - capture call sites that do expensive or badly-scaling operations.
  * fetch - trace history copying between repositories
+ * graph - trace graph traversal information
  * hashcache - log every time a working file is read to determine its hash
  * hooks - trace hook execution
  * hpss - trace smart protocol requests and responses
@@ -38,6 +39,5 @@ Options include:
  * lock - trace when lockdir locks are taken or released
  * merge - emit information for debugging merges
  * pack - emit information about pack operations
- * selftest_debug - do not disable all debug flags when running selftest
 
 """

@@ -177,35 +177,6 @@ class VersionInfoBuilder(object):
 format_registry = registry.Registry()
 
 
-@deprecated_function(one_zero)
-def register_builder(format, module, class_name):
-    """Register a version info format.
-
-    :param format: The short name of the format, this will be used as the
-        lookup key.
-    :param module: The string name to the module where the format class
-        can be found
-    :param class_name: The string name of the class to instantiate
-    """
-    format_registry.register_lazy(format, module, class_name)
-
-
-@deprecated_function(one_zero)
-def get_builder(format):
-    """Get a handle to the version info builder class
-
-    :param format: The lookup key supplied to register_builder
-    :return: A class, which follows the VersionInfoBuilder api.
-    """
-    return format_registry.get(format)
-
-
-@deprecated_function(one_zero)
-def get_builder_formats():
-    """Get the possible list of formats"""
-    return format_registry.keys()
-
-
 format_registry.register_lazy(
     'rio',
     'bzrlib.version_info_formats.format_rio',

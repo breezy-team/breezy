@@ -80,7 +80,6 @@ from bzrlib.transport.local import LocalTransport
 from bzrlib.symbol_versioning import (
     deprecated_function,
     deprecated_method,
-    zero_ninetyone,
     )
 
 
@@ -432,29 +431,6 @@ class BzrDir(object):
             except errors.NotLocalUrl:
                 pass
         return result
-
-    @staticmethod
-    @deprecated_function(zero_ninetyone)
-    def create_repository(base, shared=False, format=None):
-        """Create a new BzrDir and Repository at the url 'base'.
-
-        If no format is supplied, this will default to the current default
-        BzrDirFormat by default, and use whatever repository format that that
-        uses for bzrdirformat.create_repository.
-
-        :param shared: Create a shared repository rather than a standalone
-                       repository.
-        The Repository object is returned.
-
-        This must be overridden as an instance method in child classes, where
-        it should take no parameters and construct whatever repository format
-        that child class desires.
-
-        This method is deprecated, please call create_repository on a bzrdir
-        instance instead.
-        """
-        bzrdir = BzrDir.create(base, format)
-        return bzrdir.create_repository(shared)
 
     @staticmethod
     def create_standalone_workingtree(base, format=None):
@@ -1628,11 +1604,6 @@ class BzrDirFormat(object):
         file.
         """
         klass._control_server_formats.append(format)
-
-    @classmethod
-    @symbol_versioning.deprecated_method(symbol_versioning.zero_fourteen)
-    def set_default_format(klass, format):
-        klass._set_default_format(format)
 
     @classmethod
     def _set_default_format(klass, format):

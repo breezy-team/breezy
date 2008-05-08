@@ -50,7 +50,6 @@ from bzrlib.symbol_versioning import (
         deprecated_function,
         DEPRECATED_PARAMETER,
         one_four,
-        zero_ninety,
         )
 from bzrlib.trace import (
     mutter,
@@ -178,39 +177,6 @@ def unregister_transport(scheme, factory):
             break
     if len(l) == 0:
         transport_list_registry.remove(scheme)
-
-
-
-@deprecated_function(zero_ninety)
-def split_url(url):
-    # TODO: jam 20060606 urls should only be ascii, or they should raise InvalidURL
-    if isinstance(url, unicode):
-        url = url.encode('utf-8')
-    (scheme, netloc, path, params,
-     query, fragment) = urlparse.urlparse(url, allow_fragments=False)
-    username = password = host = port = None
-    if '@' in netloc:
-        username, host = netloc.split('@', 1)
-        if ':' in username:
-            username, password = username.split(':', 1)
-            password = urllib.unquote(password)
-        username = urllib.unquote(username)
-    else:
-        host = netloc
-
-    if ':' in host:
-        host, port = host.rsplit(':', 1)
-        try:
-            port = int(port)
-        except ValueError:
-            # TODO: Should this be ConnectionError?
-            raise errors.TransportError(
-                'invalid port number %s in url:\n%s' % (port, url))
-    host = urllib.unquote(host)
-
-    path = urllib.unquote(path)
-
-    return (scheme, username, password, host, port, path)
 
 
 class _CoalescedOffset(object):
@@ -1539,15 +1505,6 @@ class ConnectedTransport(Transport):
             transport = self.__class__(other_base, _from_transport=self)
         return transport
 
-
-@deprecated_function(zero_ninety)
-def urlescape(relpath):
-    urlutils.escape(relpath)
-
-
-@deprecated_function(zero_ninety)
-def urlunescape(url):
-    urlutils.unescape(url)
 
 # We try to recognize an url lazily (ignoring user, password, etc)
 _urlRE = re.compile(r'^(?P<proto>[^:/\\]+)://(?P<rest>.*)$')
