@@ -214,7 +214,6 @@ class VersionedFileStore(TransportStore):
         :param from_transaction: required current transaction in from_store.
         """
         from bzrlib.transactions import PassThroughTransaction
-        assert isinstance(from_store, WeaveStore)
         if from_transaction is None:
             warn("WeaveStore.copy_multi without a from_transaction parameter "
                  "is deprecated. Please provide a from_transaction.",

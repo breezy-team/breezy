@@ -241,7 +241,8 @@ class SmartTCPServer_for_testing(SmartTCPServer):
             `bzr://127.0.0.1:nnnn/`.  Default value is `extra`, so that tests
             by default will fail unless they do the necessary path translation.
         """
-        assert client_path_extra.startswith('/')
+        if not client_path_extra.startswith('/'):
+            raise ValueError(client_path_extra)
         from bzrlib.transport.chroot import ChrootServer
         if backing_transport_server is None:
             from bzrlib.transport.local import LocalURLServer
@@ -260,7 +261,6 @@ class SmartTCPServer_for_testing(SmartTCPServer):
 
     def get_url(self):
         url = super(SmartTCPServer_for_testing, self).get_url()
-        assert url.endswith('/')
         return url[:-1] + self.client_path_extra
 
     def get_bogus_url(self):
@@ -275,4 +275,3 @@ class ReadonlySmartTCPServer_for_testing(SmartTCPServer_for_testing):
         """Get a backing transport from a server we are decorating."""
         url = 'readonly+' + backing_transport_server.get_url()
         return transport.get_transport(url)
-

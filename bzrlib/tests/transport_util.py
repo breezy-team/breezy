@@ -65,7 +65,8 @@ class InstrumentedTransport(_backing_transport_class):
     hooks = TransportHooks()
 
     def __init__(self, base, _from_transport=None):
-        assert base.startswith(_hooked_scheme + '://')
+        if not base.startswith(_hooked_scheme + '://'):
+            raise ValueError(base)
         # We need to trick the backing transport class about the scheme used
         # We'll do the reverse when we need to talk to the backing server
         fake_base = _change_scheme_in(base, _hooked_scheme, _backing_scheme)

@@ -159,7 +159,6 @@ class RevisionTree(Tree):
         return entry.kind, entry.executable, None
 
     def _file_size(self, entry, stat_value):
-        assert entry.text_size is not None
         return entry.text_size
 
     def _get_ancestors(self, default_revision):

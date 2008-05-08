@@ -402,11 +402,6 @@ class OpenSSHSubprocessVendor(SubprocessVendor):
 
     def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
                                   command=None):
-        assert subsystem is not None or command is not None, (
-            'Must specify a command or subsystem')
-        if subsystem is not None:
-            assert command is None, (
-                'subsystem and command are mutually exclusive')
         args = ['ssh',
                 '-oForwardX11=no', '-oForwardAgent=no',
                 '-oClearAllForwardings=yes', '-oProtocol=2',
@@ -429,11 +424,6 @@ class SSHCorpSubprocessVendor(SubprocessVendor):
 
     def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
                                   command=None):
-        assert subsystem is not None or command is not None, (
-            'Must specify a command or subsystem')
-        if subsystem is not None:
-            assert command is None, (
-                'subsystem and command are mutually exclusive')
         args = ['ssh', '-x']
         if port is not None:
             args.extend(['-p', str(port)])
@@ -453,11 +443,6 @@ class PLinkSubprocessVendor(SubprocessVendor):
 
     def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
                                   command=None):
-        assert subsystem is not None or command is not None, (
-            'Must specify a command or subsystem')
-        if subsystem is not None:
-            assert command is None, (
-                'subsystem and command are mutually exclusive')
         args = ['plink', '-x', '-a', '-ssh', '-2', '-batch']
         if port is not None:
             args.extend(['-P', str(port)])

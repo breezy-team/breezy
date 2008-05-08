@@ -33,39 +33,6 @@ def get_entry(tree, file_id):
     return tree.iter_entries_by_dir([file_id]).next()[1]
 
 
-class TestEntryDiffing(TestCaseWithTree):
-
-    def setUp(self):
-        super(TestEntryDiffing, self).setUp()
-        self.wt = self.make_branch_and_tree('.')
-        self.branch = self.wt.branch
-        open('file', 'wb').write('foo\n')
-        open('binfile', 'wb').write('foo\n')
-        self.wt.add(['file'], ['fileid'])
-        self.wt.add(['binfile'], ['binfileid'])
-        if has_symlinks():
-            os.symlink('target1', 'symlink')
-            self.wt.add(['symlink'], ['linkid'])
-        self.wt.commit('message_1', rev_id = '1')
-        open('file', 'wb').write('bar\n')
-        open('binfile', 'wb').write('x' * 1023 + '\x00\n')
-        if has_symlinks():
-            os.unlink('symlink')
-            os.symlink('target2', 'symlink')
-        self.tree_1 = self.branch.repository.revision_tree('1')
-        self.inv_1 = self.branch.repository.get_inventory('1')
-        self.file_1 = self.inv_1['fileid']
-        self.file_1b = self.inv_1['binfileid']
-        self.tree_2 = self.workingtree_to_test_tree(self.wt)
-        self.tree_2.lock_read()
-        self.addCleanup(self.tree_2.unlock)
-        self.file_2 = get_entry(self.tree_2, 'fileid')
-        self.file_2b = get_entry(self.tree_2, 'binfileid')
-        if has_symlinks():
-            self.link_1 = self.inv_1['linkid']
-            self.link_2 = get_entry(self.tree_2, 'linkid')
-
-
 class TestPreviousHeads(TestCaseWithTree):
 
     def setUp(self):

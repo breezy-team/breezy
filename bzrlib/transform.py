@@ -439,7 +439,8 @@ class TreeTransformBase(object):
 
     def version_file(self, file_id, trans_id):
         """Schedule a file to become versioned."""
-        assert file_id is not None
+        if file_id is None:
+            raise ValueError()
         unique_add(self._new_id, trans_id, file_id)
         unique_add(self._r_new_id, file_id, trans_id)
 
@@ -509,8 +510,6 @@ class TreeTransformBase(object):
         applied.
         """
         try:
-            # there is a new id for this file
-            assert self._new_id[trans_id] is not None
             return self._new_id[trans_id]
         except KeyError:
             if trans_id in self._removed_id:
@@ -1241,7 +1240,6 @@ class TreeTransform(TreeTransformBase):
                         file_id = self._tree.get_root_id()
                     else:
                         file_id = self.tree_file_id(trans_id)
-                    assert file_id is not None
                     # File-id isn't really being deleted, just moved
                     if file_id in self._r_new_id:
                         continue
@@ -1768,7 +1766,8 @@ def resolve_checkout(tt, conflicts, divert):
     new_conflicts = set()
     for c_type, conflict in ((c[0], c) for c in conflicts):
         # Anything but a 'duplicate' would indicate programmer error
-        assert c_type == 'duplicate', c_type
+        if c_type != 'duplicate':
+            raise AssertionError(c_type)
         # Now figure out which is new and which is old
         if tt.new_contents(conflict[1]):
             new_file = conflict[1]
@@ -1985,8 +1984,8 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                     # preserve the execute bit when backing up
                     if keep_content and executable[0] == executable[1]:
                         tt.set_executability(executable[1], trans_id)
-                else:
-                    assert kind[1] is None
+                elif kind[1] is not None:
+                    raise AssertionError(kind[1])
             if versioned == (False, True):
                 tt.version_file(file_id, trans_id)
             if versioned == (True, False):

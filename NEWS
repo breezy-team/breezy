@@ -112,6 +112,9 @@ IN DEVELOPMENT
     * ``Repository.revision_parents`` is now deprecated in favour of 
       ``Repository.get_parent_map([revid])[revid]``. (Jelmer Vernooij)
 
+    * The Python ``assert`` statement is no longer used in Bazaar source, and 
+      a test checks this.  (Martin Pool)
+
   API BREAKS:
 
     * ``bzrlib.status.show_pending_merges`` requires the repository to be

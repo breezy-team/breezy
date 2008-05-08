@@ -295,7 +295,6 @@ def pop_log_file((magic, old_handlers, new_handler, old_trace_file, new_trace_fi
     This flushes, but does not close the trace file.
     
     Takes the memento returned from _push_log_file."""
-    assert magic == 'log_memento'
     global _trace_file
     _trace_file = old_trace_file
     bzr_logger = logging.getLogger('bzr')

@@ -102,8 +102,6 @@ class SFTPLock(object):
     __slots__ = ['path', 'lock_path', 'lock_file', 'transport']
 
     def __init__(self, path, transport):
-        assert isinstance(transport, SFTPTransport)
-
         self.lock_file = None
         self.path = path
         self.lock_path = path + '.write-lock'
@@ -155,7 +153,6 @@ class SFTPTransport(ConnectedTransport):
     _max_request_size = 32768
 
     def __init__(self, base, _from_transport=None):
-        assert base.startswith('sftp://')
         super(SFTPTransport, self).__init__(base,
                                             _from_transport=_from_transport)
 
@@ -337,9 +334,10 @@ class SFTPTransport(ConnectedTransport):
 
             if cur_data_len < cur_coalesced.length:
                 continue
-            assert cur_data_len == cur_coalesced.length, \
-                "Somehow we read too much: %s != %s" % (cur_data_len,
-                                                        cur_coalesced.length)
+            if cur_data_len != cur_coalesced.length:
+                raise AssertionError(
+                    "Somehow we read too much: %s != %s" 
+                    % (cur_data_len, cur_coalesced.length))
             all_data = ''.join(cur_data)
             cur_data = []
             cur_data_len = 0
@@ -939,10 +937,11 @@ class SFTPServer(Server):
     def setUp(self, backing_server=None):
         # XXX: TODO: make sftpserver back onto backing_server rather than local
         # disk.
-        assert (backing_server is None or
-                isinstance(backing_server, local.LocalURLServer)), (
-            "backing_server should not be %r, because this can only serve the "
-            "local current working directory." % (backing_server,))
+        if not (backing_server is None or
+                isinstance(backing_server, local.LocalURLServer)):
+            raise AssertionError(
+                "backing_server should not be %r, because this can only serve the "
+                "local current working directory." % (backing_server,))
         self._original_vendor = ssh._ssh_vendor_manager._cached_ssh_vendor
         ssh._ssh_vendor_manager._cached_ssh_vendor = self._vendor
         if sys.platform == 'win32':
