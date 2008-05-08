@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -61,12 +61,18 @@ from bzrlib.repository import (
     CommitBuilder,
     MetaDirRepository,
     MetaDirRepositoryFormat,
+    RepositoryFormat,
     RootCommitBuilder,
     )
 import bzrlib.revision as _mod_revision
 from bzrlib.store.revision.knit import KnitRevisionStore
 from bzrlib.store.versioned import VersionedFileStore
-from bzrlib.trace import mutter, note, warning
+from bzrlib.trace import (
+    mutter,
+    mutter_callsite,
+    note,
+    warning,
+    )
 
 
 class PackCommitBuilder(CommitBuilder):
@@ -1096,7 +1102,7 @@ class ReconcilePacker(Packer):
         missing_text_keys = self.new_pack._external_compression_parents_of_texts()
         if missing_text_keys:
             raise errors.BzrError('Reference to missing compression parents %r'
-                % (refs - keys,))
+                % (missing_text_keys,))
         self._log_copied_texts()
 
     def _use_pack(self, new_pack):
