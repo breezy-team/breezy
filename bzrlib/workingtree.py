@@ -1937,7 +1937,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                             # ... but not ignored
                             has_changed_files = True
                             break
-                    elif content_change and (kind[1] != None):
+                    elif content_change and (kind[1] is not None):
                         # Versioned and changed, but not deleted
                         has_changed_files = True
                         break

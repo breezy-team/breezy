@@ -41,7 +41,7 @@ def _recv_tuple(from_file):
 
 
 def _decode_tuple(req_line):
-    if req_line == None or req_line == '':
+    if req_line is None or req_line == '':
         return None
     if req_line[-1] != '\n':
         raise errors.SmartProtocolError("request %r not terminated" % req_line)

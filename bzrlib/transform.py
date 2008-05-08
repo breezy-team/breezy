@@ -1941,7 +1941,7 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                     # preserve the execute bit when backing up
                     if keep_content and executable[0] == executable[1]:
                         tt.set_executability(executable[1], trans_id)
-                elif kind[1] != None:
+                elif kind[1] is not None:
                     raise AssertionError(kind[1])
             if versioned == (False, True):
                 tt.version_file(file_id, trans_id)

@@ -180,7 +180,7 @@ def show_pending_merges(new, to_file, short=False):
             to_file.write(line_log(m_revision, width - len(prefix)))
             to_file.write('\n')
             inner_merges = branch.repository.get_ancestry(merge)
-            if inner_merges.pop(0) != None:
+            if inner_merges.pop(0) is not None:
                 raise AssertionError()
             inner_merges.reverse()
             for mmerge in inner_merges:

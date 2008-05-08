@@ -398,7 +398,7 @@ class Command(object):
             if line.startswith(':') and line.endswith(':') and len(line) > 2:
                 save_section(sections, label, section)
                 label,section = line[1:-1],''
-            elif label != None and len(line) > 1 and not line[0].isspace():
+            elif (label is not None) and len(line) > 1 and not line[0].isspace():
                 save_section(sections, label, section)
                 label,section = None,line
             else:

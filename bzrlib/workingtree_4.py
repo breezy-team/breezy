@@ -551,7 +551,7 @@ class WorkingTree4(WorkingTree3):
         Note: The caller is expected to take a read-lock before calling this.
         """
         relpath = self.id2path(file_id)
-        if relpath == None:
+        if relpath is None:
             raise AssertionError(
                 "path for id {%s} is None!" % file_id)
         return self._kind(relpath)
@@ -1577,7 +1577,7 @@ class DirStateRevisionTree(Tree):
 
     def get_file_lines(self, file_id):
         entry = self._get_entry(file_id=file_id)[1]
-        if entry == None:
+        if entry is None:
             raise errors.NoSuchId(tree=self, file_id=file_id)
         return self._get_weave(file_id).get_lines(entry[1][4])
 
@@ -1638,7 +1638,7 @@ class DirStateRevisionTree(Tree):
 
     def kind(self, file_id):
         entry = self._get_entry(file_id=file_id)[1]
-        if entry == None:
+        if entry is None:
             raise errors.NoSuchId(tree=self, file_id=file_id)
         return dirstate.DirState._minikind_to_kind[entry[1][0]]
 

@@ -2908,7 +2908,7 @@ class cmd_merge(Command):
             merger.show_base = show_base
             self.sanity_check_merger(merger)
             if (merger.base_rev_id == merger.other_rev_id and
-                merger.other_rev_id != None):
+                merger.other_rev_id is not None):
                 note('Nothing to do.')
                 return 0
             if pull:
