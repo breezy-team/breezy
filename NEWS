@@ -104,6 +104,11 @@ IN DEVELOPMENT
     * Parameterised test ids are preserved correctly to aid diagnosis of test
       failures. (Robert Collins, Andrew Bennetts)
 
+    * The test suite modules have been modified to define load_tests() instead
+      of test_suite(). That speeds up selective loading (via --load-list)
+      significantly and provides many examples on how to migrate (grep for
+      load_tests).  (Vincent Ladeuil)
+
   INTERNALS:
 
     * ``Hooks.install_hook`` is now deprecated in favour of
