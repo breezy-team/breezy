@@ -1231,11 +1231,10 @@ def _plan_annotate_merge(annotated_a, annotated_b, ancestors_a, ancestors_b):
             yield status_a(revision, text)
         for revision, text in annotated_b[b_cur:bi]:
             yield status_b(revision, text)
-
         # and now the matched section
         a_cur = ai + l
         b_cur = bi + l
-        for text_a, text_b in zip(plain_a[ai:a_cur], plain_b[bi:b_cur]):
+        for text_a in plain_a[ai:a_cur]:
             yield "unchanged", text_a
 
 

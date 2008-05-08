@@ -260,8 +260,7 @@ class ImportProcessor(object):
         :param import_str: The import string to process
         """
         if not import_str.startswith('import '):
-            raise ValueError('bad import string %r'
-                % (import_str,))
+            raise ValueError('bad import string %r' % (import_str,))
         import_str = import_str[len('import '):]
 
         for path in import_str.split(','):

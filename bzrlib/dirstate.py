@@ -393,7 +393,8 @@ class DirState(object):
         # faster than three separate encodes.
         utf8path = (dirname + '/' + basename).strip('/').encode('utf8')
         dirname, basename = osutils.split(utf8path)
-        if file_id.__class__ != str:
+        # uses __class__ for speed; the check is needed for safety
+        if file_id.__class__ is not str:
             raise AssertionError(
                 "must be a utf8 file_id not %s" % (type(file_id), ))
         # Make sure the file_id does not exist in this tree
@@ -1738,7 +1739,7 @@ class DirState(object):
         """
         self._read_dirblocks_if_needed()
         if path_utf8 is not None:
-            if not isinstance(path_utf8, str):
+            if type(path_utf8) is not str:
                 raise AssertionError('path_utf8 is not a str: %s %s'
                     % (type(path_utf8), path_utf8))
             # path lookups are faster
@@ -2580,12 +2581,12 @@ class DirState(object):
             if not self._dirblocks[0][0] == '':
                 raise AssertionError(
                     "dirblocks don't start with root block:\n" + \
-                    pformat(dirblocks))
+                    pformat(self._dirblocks))
         if len(self._dirblocks) > 1:
             if not self._dirblocks[1][0] == '':
                 raise AssertionError(
                     "dirblocks missing root directory:\n" + \
-                    pformat(dirblocks))
+                    pformat(self._dirblocks))
         # the dirblocks are sorted by their path components, name, and dir id
         dir_names = [d[0].split('/')
                 for d in self._dirblocks[1:]]

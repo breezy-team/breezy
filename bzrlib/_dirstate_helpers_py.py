@@ -201,7 +201,7 @@ def _read_dirblocks_py(state):
     # Remove the last blank entry
     trailing = fields.pop()
     if trailing != '':
-        raise AssertionError("dirtstate line %r has trailing garbage: %r" 
+        raise AssertionError("dirstate line %r has trailing garbage: %r" 
             % (trailing,))
     # consider turning fields into a tuple.
 
