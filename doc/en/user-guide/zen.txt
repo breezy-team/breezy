@@ -17,7 +17,7 @@ You may wish to skim this section now and come back to it at a later time.
 Understanding revision numbers
 ------------------------------
 
-All revisions in the mainline of a branch will have a simple increasing
+All revisions in the mainline of a branch have a simple increasing
 integer. (First commit gets 1, 10th commit gets 10, etc.) This makes them
 fairly natural to use when you want to say "grab the 10th revision from my
 branch", or "fixed in revision 3050".
@@ -128,12 +128,6 @@ This is considered good for many reasons:
    When viewing the mainline like this, you only see high level commits
    (instead of a large number of commits uninteresting at this level).
 
- * If you have a large project with developers working on sub-teams,
-   you can give each team an integration branch and adopt a policy
-   where only integration branches get merged into the mainline.
-   This cascading hierarchy (project-team-change in this case)
-   will be shown correctly when viewing history.
-
  * If required, it makes backing out a feature much easier.
 
  * Continuous integration tools can be used to ensure that
@@ -142,9 +136,14 @@ This is considered good for many reasons:
    every single commit as some tests will fail during development.
    In fact, adding the tests first - TDD style - will guarantee it!)
 
-In summary, the important point is this:
+In summary, the important points are:
+
+  *Organize your work using branches.*
 
   *Use merge+commit to integrate; use push and pull to mirror.*
+
+  *Ordered revision numbers and hierarchy make history easier to follow.*
+
 
 Each branch has its own view of history
 ---------------------------------------
@@ -152,12 +151,13 @@ Each branch has its own view of history
 As explained above, Bazaar makes the distinction between top-level
 revisions (ones you committed in your branch) and merged
 revisions (ones added as ancestors by committing a merge). Each
-branch effectively has its own "view" of history, i.e. different
-branches can give the same revision a different "local revision number".
+branch effectively has its own view of history, i.e. different
+branches can give the same revision a different "local" revision number.
 
 To extend the example above, here's what the revision history of
 Mary's branch would look like had she decided to merge the project
-mainline into her branch (and commit that merge) after completing it::
+mainline into her branch (and commit that merge) after completing her
+changes::
 
   104: Merge mainline
        100.2.1: Merge feature Y
@@ -170,19 +170,40 @@ mainline into her branch (and commit that merge) after completing it::
   101: Add code and tests for X
   100: ...
 
+Once again, it's easy for Mary to look at just *her* top level of history
+to see the steps she has taken to develop this change. In this context,
+merging the mainline (and resolving any conflicts caused by doing that) is
+just one step as far as the history of this branch is concerned.
+
 It's important to remember that Bazaar is not changing history here, nor
 is it changing the global revision identifiers. You can always use the
 latter if you really want to. In fact, you can use the branch specific
 revision numbers when communicating as long as you provide the branch
-URL as context.
+URL as context. (In many Bazaar projects, developers imply the central
+trunk branch if they exchange a revision number without a branch URL.)
 
-Revisions are numbered in a stable way, such that if two branches have the
-same revision in their mainline, all revisions in the ancestry of that
-revision will have the same revision numbers. (So if Alice and Bob's
+Merges do not change revision numbers in a branch, though they do
+allocate local revision numbers to newly merged revisions. The only time
+Bazaar will change revision numbers in a branch is when you explicitly
+ask it to mirror another branch.
+
+Note: Revisions are numbered in a stable way: if two branches have
+the same revision in their mainline, all revisions in the ancestry of that
+revision will have the same revision numbers. For example, if Alice and Bob's
 branches agree on revision 10, they will agree on all revisions before
-that.) Future merges will not change revision numbers. However doing
-``bzr pull`` can change revision numbers, because it changes the
-mainline revisions.
+that.
+
+Summary
+-------
+
+Bazaar may *seem* similar to other distributed VCS tools (like Darcs, Git
+and Mercurial) but it has a different internal model that encourages certain
+ways of working. In general, if you follow the advice given earlier - organise
+your work in branches and use merge to collaborate - you'll find Bazaar
+generally does what you expect.
+
+In coming chapters, we examine various ways of using Bazaar beginning with
+the simplest: using Bazaar for personal projects.
 
 ..
    vim: ft=rst tw=74 ai
