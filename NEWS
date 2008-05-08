@@ -70,6 +70,9 @@ bzr-svn 0.4.10  UNRELEASED
    * Make sure committer name is UTF-8 encoded when overriding 
      revision properties.
 
+   * Fix installation of mapping3 package, don't rely on specific 
+     version of Python. (#227891)
+
 bzr-svn 0.4.9    2008-03-23
 
   FEATURES

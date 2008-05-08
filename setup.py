@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.4
+#!/usr/bin/env python
 
 from distutils.core import setup
 
@@ -19,5 +19,6 @@ setup(name='bzr-svn',
       package_dir={'bzrlib.plugins.svn':'.', 
                    'bzrlib.plugins.svn.tests':'tests'},
       packages=['bzrlib.plugins.svn', 
+                'bzrlib.plugins.svn.mapping3', 
                 'bzrlib.plugins.svn.tests']
       )
