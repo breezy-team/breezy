@@ -227,12 +227,3 @@ class PatchesTester(TestCase):
         for patch in patches:
             patch_files.append((patch.oldname, patch.newname))
         self.assertEqual(patch_files, filenames)
-            
-def test():
-    patchesTestSuite = unittest.makeSuite(PatchesTester,'test')
-    runner = unittest.TextTestRunner(verbosity=0)
-    return runner.run(patchesTestSuite)
-
-
-if __name__ == "__main__":
-    test()
