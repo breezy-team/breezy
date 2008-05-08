@@ -36,6 +36,8 @@ def intersect(ra, rb):
     >>> intersect((0, 9), (7, 15))
     (7, 9)
     """
+    # preconditions: (ra[0] <= ra[1]) and (rb[0] <= rb[1])
+    
     sa = max(ra[0], rb[0])
     sb = min(ra[1], rb[1])
     if sa < sb:
@@ -220,9 +222,18 @@ class Merge3(object):
         
         for zmatch, zend, amatch, aend, bmatch, bend in self.find_sync_regions():
             matchlen = zend - zmatch
+            # invariants:
+            #   matchlen >= 0
+            #   matchlen == (aend - amatch)
+            #   matchlen == (bend - bmatch)
             len_a = amatch - ia
             len_b = bmatch - ib
             len_base = zmatch - iz
+            # invariants:
+            # assert len_a >= 0
+            # assert len_b >= 0
+            # assert len_base >= 0
+
             #print 'unmatched a=%d, b=%d' % (len_a, len_b)
 
             if len_a or len_b:
@@ -260,6 +271,11 @@ class Merge3(object):
             # that's OK, we can just skip it.
 
             if matchlen > 0:
+                # invariants:
+                # assert ia == amatch
+                # assert ib == bmatch
+                # assert iz == zmatch
+                
                 yield 'unchanged', zmatch, zend
                 iz = zend
                 ia = aend
@@ -369,10 +385,23 @@ class Merge3(object):
                 intbase = i[0]
                 intend = i[1]
                 intlen = intend - intbase
+
+                # found a match of base[i[0], i[1]]; this may be less than
+                # the region that matches in either one
+                # assert intlen <= alen
+                # assert intlen <= blen
+                # assert abase <= intbase
+                # assert bbase <= intbase
+
                 asub = amatch + (intbase - abase)
                 bsub = bmatch + (intbase - bbase)
                 aend = asub + intlen
                 bend = bsub + intlen
+
+                # assert self.base[intbase:intend] == self.a[asub:aend], \
+                #       (self.base[intbase:intend], self.a[asub:aend])
+                # assert self.base[intbase:intend] == self.b[bsub:bend]
+
                 sl.append((intbase, intend,
                            asub, aend,
                            bsub, bend))
