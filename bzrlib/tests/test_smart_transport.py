@@ -1375,7 +1375,7 @@ class TestRemoteTransport(tests.TestCase):
         transport = remote.RemoteTransport(
             'bzr://localhost/', medium=client_medium)
         # Disable version detection.
-        transport._client._protocol_version = 1
+        client_medium._protocol_version = 1
 
         # We want to make sure the client is used when the first remote
         # method is called.  No data should have been sent, or read.
@@ -2536,6 +2536,7 @@ class MockMedium(object):
         self.base = 'dummy base'
         self._mock_request = _MockMediumRequest(self)
         self._expected_events = []
+        self._protocol_version = None
         
     def expect_request(self, request_bytes, response_bytes,
                        allow_partial_read=False):

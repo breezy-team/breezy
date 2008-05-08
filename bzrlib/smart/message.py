@@ -238,6 +238,12 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
                 "(and try -Dhpss if further diagnosis is required)")
         self._protocol_decoder.accept_bytes(bytes)
 
+    def protocol_error(self, exception):
+        # Whatever the error is, we're done with this request.
+        self.finished_reading = True
+        self._medium_request.finished_reading()
+        raise
+        
     def read_response_tuple(self, expect_body=False):
         """Read a response tuple from the wire."""
         self._wait_for_response_args()

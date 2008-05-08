@@ -31,7 +31,6 @@ class _SmartClient(object):
         """
         self._medium = medium
         self._base = base
-        self._protocol_version = None
         if headers is None:
             self._headers = {'Software version': bzrlib.__version__}
         else:
@@ -56,9 +55,9 @@ class _SmartClient(object):
 
     def _call_and_read_response(self, method, args, body=None, readv_body=None,
             expect_response_body=True):
-        if self._protocol_version is not None:
+        if self._medium._protocol_version is not None:
             response_handler = self._send_request(
-                self._protocol_version, method, args, body=body,
+                self._medium._protocol_version, method, args, body=body,
                 readv_body=readv_body)
             return (response_handler.read_response_tuple(
                         expect_body=expect_response_body),
@@ -77,7 +76,7 @@ class _SmartClient(object):
                     self._medium.disconnect()
                     continue
                 else:
-                    self._protocol_version = protocol_version
+                    self._medium._protocol_version = protocol_version
                     return response_tuple, response_handler
             raise errors.SmartProtocolError(
                 'Server is not a Bazaar server: ' + str(err))

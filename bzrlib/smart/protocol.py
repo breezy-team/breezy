@@ -738,6 +738,7 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
         """
         version = self._request.read_line()
         if version != self.response_marker:
+            self._request.finished_reading()
             raise errors.UnexpectedProtocolVersionMarker(version)
         response_status = self._recv_line()
         result = SmartClientRequestProtocolOne._read_response_tuple(self)
@@ -819,7 +820,13 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         except KeyboardInterrupt:
             raise
         except Exception, exception:
-            log_exception_quietly()
+            if isinstance(exception, errors.UnexpectedProtocolVersionMarker):
+                # This happens during normal operation when the client tries a
+                # protocol version the server doesn't understand, so no need to
+                # log a traceback every time.
+                pass
+            else:
+                log_exception_quietly()
             self.message_handler.protocol_error(exception)
             self.errored = True
 

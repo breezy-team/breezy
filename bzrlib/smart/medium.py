@@ -431,24 +431,42 @@ class SmartClientMedium(object):
         super(SmartClientMedium, self).__init__()
         self._protocol_version_error = None
         self._protocol_version = None
+        self._done_hello = False
 
     def protocol_version(self):
-        """Find out the best protocol version to use."""
+        """Find out if 'hello' smart request works."""
         if self._protocol_version_error is not None:
             raise self._protocol_version_error
-        if self._protocol_version is None:
+        if not self._done_hello:
             try:
                 medium_request = self.get_request()
                 # Send a 'hello' request in protocol version one, for maximum
                 # backwards compatibility.
                 client_protocol = SmartClientRequestProtocolOne(medium_request)
-                self._protocol_version = client_protocol.query_version()
+                client_protocol.query_version()
+                self._done_hello = True
             except errors.SmartProtocolError, e:
                 # Cache the error, just like we would cache a successful
                 # result.
                 self._protocol_version_error = e
                 raise
-        return self._protocol_version
+        return '2'
+
+    def should_probe(self):
+        """Should RemoteBzrDirFormat.probe_transport send a smart request on
+        this medium?
+
+        Some transports are unambiguously smart-only; there's no need to check
+        if the transport is able to carry smart requests, because that's all
+        it is for.  In those cases, this method should return False.
+
+        But some HTTP transports can sometimes fail to carry smart requests,
+        but still be usuable for accessing remote bzrdirs via plain file
+        accesses.  So for those transports, their media should return True here
+        so that RemoteBzrDirFormat can determine if it is appropriate for that
+        transport.
+        """
+        return False
 
     def disconnect(self):
         """If this medium maintains a persistent connection, close it.
