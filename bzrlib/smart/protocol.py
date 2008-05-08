@@ -860,6 +860,14 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         self._in_buffer += bytes
         needed_bytes = len(MESSAGE_VERSION_THREE) - len(self._in_buffer)
         if needed_bytes > 0:
+            # We don't have enough bytes to check if the protocol version
+            # marker is right.  But we can check if it is already wrong by
+            # checking that the start of MESSAGE_VERSION_THREE matches what
+            # we've read so far.
+            # [In fact, if the remote end isn't bzr we might never receive
+            # len(MESSAGE_VERSION_THREE) bytes.  So if the bytes we have so far
+            # are wrong then we should just raise immediately rather than
+            # stall.]
             if not MESSAGE_VERSION_THREE.startswith(self._in_buffer):
                 # We have enough bytes to know the protocol version is wrong
                 raise errors.UnexpectedProtocolVersionMarker(self._in_buffer)
@@ -1035,7 +1043,7 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
         self._headers = {}
 
     def set_headers(self, headers):
-        self._headers = dict(headers)
+        self._headers = headers.copy()
         
     def call(self, *args):
         if 'hpss' in debug.debug_flags:

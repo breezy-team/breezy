@@ -37,31 +37,37 @@ class _SmartClient(object):
         else:
             self._headers = dict(headers)
 
-    def _call(self, encoder, method, args, body=None, readv_body=None):
+    def _send_request(self, protocol_version, method, args, body=None,
+                      readv_body=None):
+        encoder, response_handler = self._construct_protocol(
+            protocol_version)
         encoder.set_headers(self._headers)
         if body is not None:
+            if readv_body is not None:
+                raise AssertionError(
+                    "body and readv_body are mutually exclusive.")
             encoder.call_with_body_bytes((method, ) + args, body)
         elif readv_body is not None:
             encoder.call_with_body_readv_array((method, ) + args,
                     readv_body)
         else:
             encoder.call(method, *args)
+        return response_handler
 
     def _call_and_read_response(self, method, args, body=None, readv_body=None,
             expect_response_body=True):
         if self._protocol_version is not None:
-            encoder, response_handler = self._construct_protocol(
-                self._protocol_version)
-            self._call(encoder, method, args, body=body, readv_body=readv_body)
+            response_handler = self._send_request(
+                self._protocol_version, method, args, body=body,
+                readv_body=readv_body)
             return (response_handler.read_response_tuple(
                         expect_body=expect_response_body),
                     response_handler)
         else:
             for protocol_version in [3, 2]:
-                encoder, response_handler = self._construct_protocol(
-                    protocol_version)
-                self._call(encoder, method, args, body=body,
-                           readv_body=readv_body)
+                response_handler = self._send_request(
+                    protocol_version, method, args, body=body,
+                    readv_body=readv_body)
                 try:
                     response_tuple = response_handler.read_response_tuple(
                         expect_body=expect_response_body)
