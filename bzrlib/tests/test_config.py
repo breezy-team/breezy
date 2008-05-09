@@ -1195,10 +1195,15 @@ class TestAuthenticationConfigFile(tests.TestCase):
         self.assertEquals({}, conf._get_config())
         self._got_user_passwd(None, None, conf, 'http', 'foo.net')
 
-    def test_broken_config(self):
+    def test_missing_auth_section_header(self):
+        conf = config.AuthenticationConfig(_file=StringIO('foo = bar'))
+        self.assertRaises(ValueError, conf.get_credentials, 'ftp', 'foo.net')
+
+    def test_auth_section_header_not_closed(self):
         conf = config.AuthenticationConfig(_file=StringIO('[DEF'))
         self.assertRaises(errors.ParseConfigError, conf._get_config)
 
+    def test_auth_value_not_boolean(self):
         conf = config.AuthenticationConfig(_file=StringIO(
                 """[broken]
 scheme=ftp
@@ -1206,6 +1211,8 @@ user=joe
 verify_certificates=askme # Error: Not a boolean
 """))
         self.assertRaises(ValueError, conf.get_credentials, 'ftp', 'foo.net')
+
+    def test_auth_value_not_int(self):
         conf = config.AuthenticationConfig(_file=StringIO(
                 """[broken]
 scheme=ftp
