@@ -796,7 +796,7 @@ class GenericCommitHandler(processor.CommitHandler):
             ie.text_sha1 = osutils.sha_strings(lines)
             ie.text_size = sum(map(len, lines))
             self.lines_for_commit[file_id] = lines
-        elif isinstance(ie, inventory.InventoryLnk):
+        elif isinstance(ie, inventory.InventoryLink):
             ie.symlink_target = data
         else:
             raise errors.BzrError("Cannot import items of kind '%s' yet" %
