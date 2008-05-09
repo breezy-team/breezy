@@ -63,9 +63,9 @@ storing them in a relatively safe way.
 
 Note that ssh servers can be configured to use keys instead of (``user``,
 ``password``) and, when used with appropriate agents, provide the same kind of
-comfort this specification aims to provide for all other schemes. These
-specification do not try to cover these configurations by providing
-pass-phrases, but the mechanisms presented *can* be used to provide users.
+comfort this specification aims to provide for all other schemes. Since ssh
+agents provide a safer way to secure the passwords, this specification is
+restricted to providing ``user`` but does not provide ``password``.
 
 Authentication definitions
 --------------------------
@@ -120,7 +120,8 @@ authentication definitions (``scheme``, ``host``, ``port``, ``path``, ``user``,
   * ``password``: can be empty (for security reasons, a user may use the
     definitions without storing the passwords but want to be prompted ; or the
     password will be provided by an external plugin via the
-    ``password_encoding`` mechanism decribed below).
+    ``password_encoding`` mechanism decribed below). Must be left empty for
+    ``ssh``.
 
   * ``password_encoding``: can be empty (default is ``plaintext``).
 

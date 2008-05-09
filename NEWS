@@ -101,6 +101,9 @@ IN DEVELOPMENT
 
     * Improved the documentation on hooks. (Ian Clatworthy)
 
+    * Update authentication docs regarding ssh agents.
+      (Vincent Ladeuil, #183705)
+
   TESTING:
 
     * Add ``thread_name_suffix`` parameter to SmartTCPServer_for_testing, to

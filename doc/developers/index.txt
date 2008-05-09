@@ -31,6 +31,9 @@ Specifications
 
 * `API versioning <api-versioning.html>`_ |--| bzrlib API versioning.
 
+* `Authentication ring <authentication-ring.html>`_ |--| Configuring
+  authentication.
+
 * `Bundles <bundles.html>`_ |--| All about bzr bundles.
 
 * `Container format <container-format.html>`_ |--| Notes on a container format
