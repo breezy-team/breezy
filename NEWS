@@ -91,7 +91,7 @@ IN DEVELOPMENT
     * Improved the documentation on hooks. (Ian Clatworthy)
 
     * Update authentication docs regarding ssh agents.
-     (Vincent Ladeuil, #183705)
+      (Vincent Ladeuil, #183705)
 
   TESTING:
 
