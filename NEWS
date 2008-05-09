@@ -32,6 +32,9 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+    * Authentication.conf can define sections without password.
+      (Vincent Ladeuil, #199440)
+
     * Avoid muttering every time a child update does not cause a progress bar
       update. (John Arbash Meinel, #213771)
 
