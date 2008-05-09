@@ -6,9 +6,9 @@ Intent
 ------
 
 Many different authentication policies can be described in the
-``authentication.conf`` file but a particular user should need
-only a few definitions to cover his needs without having to specify a user and
-a password for every branch he uses.
+``authentication.conf`` file but a particular user should need only a few
+definitions to cover his needs without having to specify a user and a password
+for every branch he uses.
 
 The definitions found in this file are used to find the credentials to use for
 a given url. The same credentials can generally be used for as many branches as
@@ -47,9 +47,10 @@ bzr:
 
 1. user and password
 
-``FTP`` and ``SFTP`` needs a (``user``, ``password``) to authenticate against a
-``host`` (SFTP can use ssh keys too, but we don't talk about that here as ssh
-agents provide a better solution).
+``FTP`` needs a (``user``, ``password``) to authenticate against a ``host``
+(``SFTP`` can use either password or host key to authenticate, but since ssh agents
+are a better and safer solution, we recommand their use and don't try to
+provide an alternative, less secure, way do to so).
 
 2. user, realm and password
 
@@ -174,13 +175,14 @@ In the shp.net (fictious) domain, each project has its own site::
         # The leading '.' ensures that 'shp.net' alone doesn't match
         host=.shp.net
         user=joe
-        password=precious
+        # No pasword here, use ssh agents for providing either a password
+        # or a host key
 
 HTTPS, SFTP servers and their proxy
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-At company.com, the server hosting released and integration code is behind a
-proxy, the two servers use different authentication policies::
+At company.com, the server hosting released and integration branches is behind
+a proxy, the two servers use different authentication policies::
 
         [reference code]
         scheme=https
@@ -195,7 +197,7 @@ proxy, the two servers use different authentication policies::
         host=dev.company.com
         path=/dev/integration
         user=user2
-        password=pass2
+        # No password since we use host keys
         
         # proxy
         [proxy]
