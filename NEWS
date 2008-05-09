@@ -82,6 +82,11 @@ IN DEVELOPMENT
 
   DOCUMENTATION:
 
+    * Expanded the User Guide to include new chapters on popular plugins and
+      integrating Bazaar into your environment. The *Best practices* chapter
+      was renamed to *Miscellaneous topics* as suggested by community
+      feedback as well. (Ian Clatworthy)
+
     * Document outlining strategies for TortoiseBzr. (Mark Hammond)
 
     * Improved the documentation on hooks. (Ian Clatworthy)
