@@ -1031,7 +1031,8 @@ class AuthenticationConfig(object):
                 # Can't find a user
                 continue
             credentials = dict(name=auth_def_name,
-                               user=a_user, password=auth_def['password'],
+                               user=a_user,
+                               password=auth_def.get('password', None),
                                verify_certificates=a_verify_certificates)
             self.decode_password(credentials,
                                  auth_def.get('password_encoding', None))
