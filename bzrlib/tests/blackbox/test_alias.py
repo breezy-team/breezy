@@ -55,8 +55,9 @@ class TestAlias(ExternalBase):
             results)
 
     def test_remove_unknown_alias(self):
-        out = self.run_bzr('alias --remove fooix')[0].rstrip('\n')
-        self.assertEquals('bzr alias: fooix: not found', out)
+        out = self.run_bzr('alias --remove fooix', retcode=3)[1].rstrip('\n')
+        self.assertEquals('bzr: ERROR: The alias "fooix" does not exist.',
+                          out)
 
     def test_remove_known_alias(self):
         self.run_bzr('alias commit="commit --strict"')

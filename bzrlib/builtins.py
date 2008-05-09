@@ -2601,13 +2601,8 @@ class cmd_alias(Command):
                 'bzr alias --remove expects an alias to remove.')
         # If alias is not found, print something like:
         # unalias: foo: not found
-        from bzrlib.commands import get_alias
-        alias = get_alias(alias_name)
-        if alias is None:
-            self.outf.write("bzr alias: %s: not found\n" % alias_name)
-        else:
-            c = config.GlobalConfig()
-            c.unset_alias(alias_name)
+        c = config.GlobalConfig()
+        c.unset_alias(alias_name)
 
     @display_command
     def print_aliases(self):
