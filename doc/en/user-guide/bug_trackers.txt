@@ -1,5 +1,5 @@
-Integrating Bazaar with bug trackers
-====================================
+Bug trackers
+============
 
 Bazaar has a facility that allows you to associate a commit with a bug
 in the project's bug tracker. Other tools (or hooks) can then use this
