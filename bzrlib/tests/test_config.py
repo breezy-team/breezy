@@ -1330,6 +1330,18 @@ password=jimpass
         self._got_user_passwd(None, None,
                               conf, 'http', 'bar.org', user='georges')
 
+    def test_credentials_for_user_without_password(self):
+        conf = config.AuthenticationConfig(_file=StringIO(
+                """
+[without password]
+scheme=http
+host=bar.org
+user=jim
+"""))
+        # Get user but no password
+        self._got_user_passwd('jim', None,
+                              conf, 'http', 'bar.org')
+
     def test_verify_certificates(self):
         conf = config.AuthenticationConfig(_file=StringIO(
                 """
