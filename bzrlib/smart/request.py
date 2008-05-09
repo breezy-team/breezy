@@ -316,7 +316,7 @@ class SmartServerRequestHandler(object):
         try:
             command = self._commands.get(cmd)
         except LookupError:
-            raise errors.SmartProtocolError("bad request %r" % (cmd,))
+            raise errors.UnknownSmartMethod(cmd)
         self._command = command(self._backing_transport)
         self._run_handler_code(self._command.execute, args, {})
 
