@@ -222,16 +222,16 @@ class Config(object):
 
     def username(self):
         """Return email-style username.
-
+    
         Something similar to 'Martin Pool <mbp@sourcefrog.net>'
-
+        
         $BZR_EMAIL can be set to override this (as well as the
         deprecated $BZREMAIL), then
         the concrete policy type is checked, and finally
         $EMAIL is examined.
         If none is found, a reasonable default is (hopefully)
         created.
-
+    
         TODO: Check it's reasonably well-formed.
         """
         v = os.environ.get('BZR_EMAIL')
@@ -391,7 +391,7 @@ class IniBasedConfig(Config):
         super(IniBasedConfig, self).__init__()
         self._get_filename = get_filename
         self._parser = None
-
+        
     def _post_commit(self):
         """See Config.post_commit."""
         return self._get_user_option('post_commit')
@@ -420,7 +420,7 @@ class IniBasedConfig(Config):
 
     def _get_alias(self, value):
         try:
-            return self._get_parser().get_value("ALIASES",
+            return self._get_parser().get_value("ALIASES", 
                                                 value)
         except KeyError:
             pass
@@ -646,7 +646,7 @@ class BranchConfig(Config):
 
     def _get_safe_value(self, option_name):
         """This variant of get_best_value never returns untrusted values.
-
+        
         It does not return values from the branch data, because the branch may
         not be controlled by the user.
 
@@ -661,18 +661,18 @@ class BranchConfig(Config):
 
     def _get_user_id(self):
         """Return the full user id for the branch.
-
+    
         e.g. "John Hacker <jhacker@foo.org>"
         This is looked up in the email controlfile for the branch.
         """
         try:
-            return (self.branch.control_files.get_utf8("email")
+            return (self.branch.control_files.get_utf8("email") 
                     .read()
                     .decode(bzrlib.user_encoding)
                     .rstrip("\r\n"))
         except errors.NoSuchFile, e:
             pass
-
+        
         return self._get_best_value('_get_user_id')
 
     def _get_signature_checking(self):
@@ -718,14 +718,14 @@ class BranchConfig(Config):
     def _gpg_signing_command(self):
         """See Config.gpg_signing_command."""
         return self._get_safe_value('_gpg_signing_command')
-
+        
     def __init__(self, branch):
         super(BranchConfig, self).__init__()
         self._location_config = None
         self._branch_data_config = None
         self._global_config = None
         self.branch = branch
-        self.option_sources = (self._get_location_config,
+        self.option_sources = (self._get_location_config, 
                                self._get_branch_data_config,
                                self._get_global_config)
 
@@ -773,7 +773,7 @@ def config_dir():
     """Return per-user configuration directory.
 
     By default this is ~/.bazaar/
-
+    
     TODO: Global option --config-dir to override this.
     """
     base = os.environ.get('BZR_HOME', None)
@@ -898,7 +898,7 @@ def parse_username(username):
 def extract_email_address(e):
     """Return just the address part of an email string.
 
-    That is just the user@domain part, nothing else.
+    That is just the user@domain part, nothing else. 
     This part is required to contain only ascii characters.
     If it can't be extracted, raises an error.
 
