@@ -42,6 +42,9 @@ IN DEVELOPMENT
     * ``bzr commit`` now works with Microsoft's FTP service.
       (Andreas Deininger)
 
+    * Catch definitions outside sections in authentication.conf.
+      (Vincent Ladeuil, #217650)
+
     * Conversion from non-rich-root to rich-root(-pack) updates inventory
       sha1s, even when bundles are used.  (Aaron Bentley, #181391)
 
