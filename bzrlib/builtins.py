@@ -2558,7 +2558,7 @@ class cmd_nick(Command):
 
 
 class cmd_alias(Command):
-    """Print the list of aliases set.
+    """Set/unset and display aliases.
 
     :Examples:
         Show the current aliases::
@@ -2595,7 +2595,6 @@ class cmd_alias(Command):
             else:
                 self.set_alias(name[:equal_pos], name[equal_pos+1:])
 
-    @display_command
     def remove_alias(self, alias_name):
         if alias_name is None:
             raise errors.BzrCommandError(
@@ -2605,7 +2604,7 @@ class cmd_alias(Command):
         from bzrlib.commands import get_alias
         alias = get_alias(alias_name)
         if alias is None:
-            print "bzr alias: %s: not found" % alias_name
+            self.outf.write("bzr alias: %s: not found\n" % alias_name)
         else:
             c = config.GlobalConfig()
             c.unset_alias(alias_name)
@@ -2614,19 +2613,19 @@ class cmd_alias(Command):
     def print_aliases(self):
         """Print out the defined aliases in a similar format to bash."""
         aliases = config.GlobalConfig().get_aliases()
-        for key in sorted(aliases):
-            print "bzr alias %s='%s'" % (key, aliases[key])
+        for key, value in sorted(aliases.iteritems()):
+            self.outf.write("bzr alias %s='%s'\n" % (key, value))
 
     @display_command
     def print_alias(self, alias_name):
         from bzrlib.commands import get_alias
         alias = get_alias(alias_name)
         if alias is None:
-            print "bzr alias: %s: not found" % alias_name
+            self.outf.write("bzr alias: %s: not found\n" % alias_name)
         else:
-            print "bzr alias %s='%s'" % (alias_name, ' '.join(alias))
+            self.outf.write(
+                "bzr alias %s='%s'" % (alias_name, ' '.join(alias)))
 
-    @display_command
     def set_alias(self, alias_name, alias_commands):
         """Save the alias in the global config."""
         c = config.GlobalConfig()

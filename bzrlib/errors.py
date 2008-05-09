@@ -2678,3 +2678,11 @@ class UnableEncodePath(BzrError):
         self.path = path
         self.kind = kind
         self.user_encoding = osutils.get_user_encoding()
+
+
+class NoSuchAlias(BzrError):
+
+    _fmt = ('The alias "%(alias_name)s" does not exist.')
+
+    def __init__(self, alias_name):
+        BzrError.__init__(self, alias_name=alias_name)

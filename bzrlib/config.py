@@ -456,8 +456,8 @@ class GlobalConfig(IniBasedConfig):
     def unset_alias(self, alias_name):
         """Unset an existing alias."""
         aliases = self._get_parser().get('ALIASES')
-        assert aliases and alias_name in aliases, (
-            "The alias should exist before this is called")
+        if not aliases or alias_name not in aliases:
+            raise errors.NoSuchAlias(alias_name)
         del aliases[alias_name]
         self._writeConfigFile()
 
@@ -466,9 +466,7 @@ class GlobalConfig(IniBasedConfig):
         # file lock on bazaar.conf.
         conf_dir = os.path.dirname(self._get_filename())
         ensure_config_dir_exists(conf_dir)
-        if section not in self._get_parser():
-            self._get_parser()[section] = {}
-        self._get_parser()[section][option] = value
+        self._get_parser().setdefault(section, {})[option] = value
         self._writeConfigFile()
 
     def _writeConfigFile(self):
