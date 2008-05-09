@@ -6,8 +6,7 @@ Grokking Bazaar
 
 While Bazaar is similar to other VCS tools in many ways, there are
 some important differences that are not necessarily obvious at first
-glance. These differences are there for a reason: Bazaar's designers
-want to encourage users to work in particular ways. This section attempts
+glance.  This section attempts
 to explain some of the things users need to know in order to "grok" Bazaar,
 i.e. to deeply understand it.
 
@@ -41,7 +40,7 @@ Imagine a project with multiple developers contributing changes where
 many changes consist of a series of commits. To give a concrete example,
 consider the case where:
 
- * The tip of the project's mainline is revision 100.
+ * The tip of the project's trunk is revision 100.
  * Mary makes 3 changes to deliver feature X.
  * Bill makes 4 changes to deliver feature Y.
 
@@ -59,8 +58,10 @@ with Mary's changes and Bill's changes interleaved. It might look like this::
   100: ...
   
 Many teams use this approach because their tools make branching and merging
-difficult. As a consequence, developers update from and commit to the mainline
+difficult. As a consequence, developers update from and commit to the trunk
 frequently, minimizing integration pain by spreading it over every commit.
+If you wish, you can use Bazaar exactly like this. Bazaar does offer other
+ways though that you ought to consider.
 
 An alternative approach encouraged by distributed VCS tools is to create
 feature branches and to integrate those when they are ready. In this case,
@@ -79,9 +80,10 @@ And Bill's would look like this::
   101: Add tests for Y
   100: ...
 
-If the features were independent, one way to integrate those changes back into
-the mainline is to *push* from each feature branch. The resulting history might
-look like this::
+If the features were independent and you wanted to keep linear history,
+the changes could be pushed back into the trunk in batches. (Technically,
+there are several ways of doing that but that's beyond the scope of
+this discussion.) The resulting history might look like this::
 
   107: Fix bug found in testing X
   106: Add documentation for X
@@ -92,8 +94,10 @@ look like this::
   101: Add tests for Y
   100: ...
 
-Bazaar's preferred way though is to use *merge* instead of *push*. The
-resulting history might look like this::
+While this takes a bit more effort to achieve, it has some advantages over
+having revisions randomly intermixed. Better still though, branches can
+be merged together forming a non-linear history. The result might look
+like this::
 
   102: Merge feature X
        100.2.3: Fix bug found in testing X
@@ -124,9 +128,10 @@ This is considered good for many reasons:
  * It makes it easier to understand the history of a project.
    Related changes are clustered together and clearly partitioned.
 
- * You can use ``bzr log --short`` to see just the top level commits.
-   When viewing the mainline like this, you only see high level commits
-   (instead of a large number of commits uninteresting at this level).
+ * You can easily collapse history to see just the commits on the mainline
+   of a branch. When viewing the trunk history like this, you only see
+   high level commits (instead of a large number of commits uninteresting
+   at this level).
 
  * If required, it makes backing out a feature much easier.
 
@@ -140,7 +145,7 @@ In summary, the important points are:
 
   *Organize your work using branches.*
 
-  *Use merge+commit to integrate; use push and pull to mirror.*
+  *Integrate changes using merge.*
 
   *Ordered revision numbers and hierarchy make history easier to follow.*
 
@@ -148,16 +153,20 @@ In summary, the important points are:
 Each branch has its own view of history
 ---------------------------------------
 
-As explained above, Bazaar makes the distinction between top-level
-revisions (ones you committed in your branch) and merged
-revisions (ones added as ancestors by committing a merge). Each
-branch effectively has its own view of history, i.e. different
+As explained above, Bazaar makes the distinction between:
+
+ * mainline revisions, i.e. ones you committed in your branch, and
+
+ * merged revisions, i.e. ones added as ancestors by committing a merge.
+
+Each branch effectively has its own view of history, i.e. different
 branches can give the same revision a different "local" revision number.
+Mainline revisions always get allocated single number revision numbers
+while merged revisions always get allocated dotted revision numbers.
 
 To extend the example above, here's what the revision history of
 Mary's branch would look like had she decided to merge the project
-mainline into her branch (and commit that merge) after completing her
-changes::
+trunk into her branch after completing her changes::
 
   104: Merge mainline
        100.2.1: Merge feature Y
@@ -172,13 +181,13 @@ changes::
 
 Once again, it's easy for Mary to look at just *her* top level of history
 to see the steps she has taken to develop this change. In this context,
-merging the mainline (and resolving any conflicts caused by doing that) is
+merging the trunk (and resolving any conflicts caused by doing that) is
 just one step as far as the history of this branch is concerned.
 
 It's important to remember that Bazaar is not changing history here, nor
 is it changing the global revision identifiers. You can always use the
 latter if you really want to. In fact, you can use the branch specific
-revision numbers when communicating as long as you provide the branch
+revision numbers when communicating *as long as* you provide the branch
 URL as context. (In many Bazaar projects, developers imply the central
 trunk branch if they exchange a revision number without a branch URL.)
 
@@ -197,7 +206,7 @@ Summary
 -------
 
 Bazaar may *seem* similar to other distributed VCS tools (like Darcs, Git
-and Mercurial) but it has a different internal model that encourages certain
+and Mercurial) but it presents history differently and that encourages certain
 ways of working. In general, if you follow the advice given earlier - organise
 your work in branches and use merge to collaborate - you'll find Bazaar
 generally does what you expect.
