@@ -64,8 +64,8 @@ storing them in a relatively safe way.
 Note that ssh servers can be configured to use keys instead of (``user``,
 ``password``) and, when used with appropriate agents, provide the same kind of
 comfort this specification aims to provide for all other schemes. Since ssh
-agents provide a safer way to secure the passwords, this specification restrict
-itself to providing ``user`` but never try to provide ``password``.
+agents provide a safer way to secure the passwords, this specification is
+restricted to providing ``user`` but does not provide ``password``.
 
 Authentication definitions
 --------------------------
