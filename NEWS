@@ -12,6 +12,29 @@ IN DEVELOPMENT
 
   CHANGES:
 
+  FEATURES:
+
+  IMPROVEMENTS:
+
+  BUGFIXES:
+
+  DOCUMENTATION:
+
+  TESTING:
+
+  INTERNALS:
+
+
+  API BREAKS:
+
+
+bzr 1.5rc1 2008-05-09
+---------------------
+
+  NOTES WHEN UPGRADING:
+
+  CHANGES:
+
     * Broader support of GNU Emacs mail clients. Set
       ``mail_client=emacsclient`` in your bazaar.conf and ``send`` will pop the
       bundle in a mail buffer according to the value of ``mail-user-agent``
