@@ -502,11 +502,11 @@ class SvnRaTransport(Transport):
 
         if pool is None:
             self.connections = ConnectionPool()
+
+            # Make sure that the URL is valid by connecting to it.
+            self.connections.add(self.connections.get(self._backing_url))
         else:
             self.connections = pool
-
-        # Make sure that the URL is valid by connecting to it.
-        self.connections.add(self.connections.get(self._backing_url))
 
         from bzrlib.plugins.svn import lazy_check_versions
         lazy_check_versions()
