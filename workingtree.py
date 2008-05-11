@@ -28,7 +28,7 @@ from bzrlib.lockdir import LockDir
 from bzrlib.osutils import file_kind, fingerprint_file, supports_executable
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
-from bzrlib.tree import RevisionTree
+from bzrlib.revisiontree import RevisionTree
 from bzrlib.transport.local import LocalTransport
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 
