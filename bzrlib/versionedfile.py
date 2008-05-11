@@ -819,8 +819,9 @@ class PlanWeaveMerge(TextMerge):
                 ch_b = ch_a = True
                 lines_b.append(line)
             else:
-                assert state in ('irrelevant', 'ghost-a', 'ghost-b', 
-                                 'killed-base', 'killed-both'), state
+                if state not in ('irrelevant', 'ghost-a', 'ghost-b',
+                        'killed-base', 'killed-both'):
+                    raise AssertionError(state)
         for struct in outstanding_struct():
             yield struct
 

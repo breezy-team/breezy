@@ -186,12 +186,6 @@ class TestErrors(TestCaseWithTransport):
             "to be.",
             str(error))
 
-    def test_read_only_lock_error(self):
-        error = self.applyDeprecated(symbol_versioning.zero_ninetytwo,
-            errors.ReadOnlyLockError, 'filename', 'error message')
-        self.assertEqualDiff("Cannot acquire write lock on filename."
-                             " error message", str(error))
-
     def test_lock_failed(self):
         error = errors.LockFailed('http://canonical.com/', 'readonly transport')
         self.assertEqualDiff("Cannot lock http://canonical.com/: readonly transport",

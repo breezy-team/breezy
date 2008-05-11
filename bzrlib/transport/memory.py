@@ -283,7 +283,6 @@ class _MemoryLock(object):
     """This makes a lock."""
 
     def __init__(self, path, transport):
-        assert isinstance(transport, MemoryTransport)
         self.path = path
         self.transport = transport
         if self.path in self.transport._locks:

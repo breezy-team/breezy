@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -36,15 +36,14 @@ from bzrlib.tests import (
                           adapt_modules,
                           default_transport,
                           TestCaseWithTransport,
-                          TestLoader,
                           TestSkipped,
-                          TestSuite,
                           )
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.tests.workingtree_implementations import (
     WorkingTreeTestProviderAdapter,
     )
 from bzrlib.revisiontree import RevisionTree
+from bzrlib.transform import TransformPreview
 from bzrlib.workingtree import (
     WorkingTreeFormat,
     WorkingTreeFormat3,
@@ -70,6 +69,12 @@ def revision_tree_from_workingtree(testcase, tree):
 def _dirstate_tree_from_workingtree(testcase, tree):
     revid = tree.commit('save tree', allow_pointless=True)
     return tree.basis_tree()
+
+
+def preview_tree_pre(testcase, tree):
+    tt = TransformPreview(tree)
+    testcase.addCleanup(tt.finalize)
+    return tt.get_preview_tree()
 
 
 class TestTreeImplementationSupport(TestCaseWithTransport):
@@ -314,6 +319,8 @@ class TreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
         self.scenarios.append(self.create_tree_scenario(
             DirStateRevisionTree.__name__, _dirstate_tree_from_workingtree,
             WorkingTreeFormat4()))
+        self.scenarios.append(self.create_tree_scenario('PreviewTree',
+            preview_tree_pre))
 
     def create_tree_scenario(self, name, converter, workingtree_format=None):
         """Create a scenario for the specified converter
@@ -334,8 +341,11 @@ class TreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
         return name, scenario_options
 
 
-def test_suite():
-    result = TestSuite()
+def load_tests(basic_tests, module, loader):
+    result = loader.suiteClass()
+    # add the tests for this module
+    result.addTests(basic_tests)
+
     test_tree_implementations = [
         'bzrlib.tests.tree_implementations.test_annotate_iter',
         'bzrlib.tests.tree_implementations.test_get_file_mtime',
@@ -349,14 +359,15 @@ def test_suite():
         'bzrlib.tests.tree_implementations.test_tree',
         'bzrlib.tests.tree_implementations.test_walkdirs',
         ]
+
     adapter = TreeTestProviderAdapter(
         default_transport,
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
-        [(format, format._matchingbzrdir) for format in 
+        [(format, format._matchingbzrdir) for format in
          WorkingTreeFormat._formats.values() + _legacy_formats])
-    loader = TestLoader()
+
+    # add the tests for the sub modules
     adapt_modules(test_tree_implementations, adapter, loader, result)
-    result.addTests(loader.loadTestsFromModuleNames(['bzrlib.tests.tree_implementations']))
     return result

@@ -65,7 +65,8 @@ class InstrumentedTransport(_backing_transport_class):
     hooks = TransportHooks()
 
     def __init__(self, base, _from_transport=None):
-        assert base.startswith(_hooked_scheme + '://')
+        if not base.startswith(_hooked_scheme + '://'):
+            raise ValueError(base)
         # We need to trick the backing transport class about the scheme used
         # We'll do the reverse when we need to talk to the backing server
         fake_base = _change_scheme_in(base, _hooked_scheme, _backing_scheme)
@@ -115,8 +116,8 @@ class TestCaseWithConnectionHookedTransport(_backing_test_class):
         return url
 
     def start_logging_connections(self):
-        ConnectionHookedTransport.hooks.install_hook('_set_connection',
-                                                     self._collect_connection)
+        ConnectionHookedTransport.hooks.install_named_hook(
+            '_set_connection', self._collect_connection, None)
         # uninstall our hooks when we are finished
         self.addCleanup(self.reset_hooks)
 

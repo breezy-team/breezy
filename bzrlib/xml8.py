@@ -161,8 +161,10 @@ class Serializer_v8(Serializer):
         :param inv: An inventory about to be serialised, to be checked.
         :raises: AssertionError if an error has occured.
         """
-        assert inv.revision_id is not None
-        assert inv.root.revision is not None
+        if inv.revision_id is None:
+            raise AssertionError()
+        if inv.root.revision is None:
+            raise AssertionError()
 
     def write_inventory_to_lines(self, inv):
         """Return a list of lines with the encoded inventory."""
@@ -316,7 +318,6 @@ class Serializer_v8(Serializer):
             pelts = SubElement(root, 'parents')
             pelts.tail = pelts.text = '\n'
             for parent_id in rev.parent_ids:
-                assert isinstance(parent_id, basestring)
                 _mod_revision.check_not_reserved_id(parent_id)
                 p = SubElement(pelts, 'revision_ref')
                 p.tail = '\n'
@@ -330,8 +331,6 @@ class Serializer_v8(Serializer):
     def _pack_revision_properties(self, rev, under_element):
         top_elt = SubElement(under_element, 'properties')
         for prop_name, prop_value in sorted(rev.properties.items()):
-            assert isinstance(prop_name, basestring) 
-            assert isinstance(prop_value, basestring) 
             prop_elt = SubElement(top_elt, 'property')
             prop_elt.set('name', prop_name)
             prop_elt.text = prop_value
@@ -353,7 +352,6 @@ class Serializer_v8(Serializer):
         for e in elt:
             ie = self._unpack_entry(e)
             inv.add(ie)
-        assert inv.root.revision is not None
         return inv
 
     def _unpack_entry(self, elt):
@@ -397,7 +395,6 @@ class Serializer_v8(Serializer):
 
     def _unpack_revision(self, elt):
         """XML Element -> Revision object"""
-        assert elt.tag == 'revision'
         format = elt.get('format')
         format_num = self.format_num
         if self.revision_format_num is not None:
@@ -414,8 +411,6 @@ class Serializer_v8(Serializer):
                        )
         parents = elt.find('parents') or []
         for p in parents:
-            assert p.tag == 'revision_ref', \
-                   "bad parent node tag %r" % p.tag
             rev.parent_ids.append(get_cached(p.get('revision_id')))
         self._unpack_revision_properties(elt, rev)
         v = elt.get('timezone')
@@ -429,12 +424,12 @@ class Serializer_v8(Serializer):
     def _unpack_revision_properties(self, elt, rev):
         """Unpack properties onto a revision."""
         props_elt = elt.find('properties')
-        assert len(rev.properties) == 0
         if not props_elt:
             return
         for prop_elt in props_elt:
-            assert prop_elt.tag == 'property', \
-                "bad tag under properties list: %r" % prop_elt.tag
+            if prop_elt.tag != 'property':
+                raise AssertionError(
+                    "bad tag under properties list: %r" % prop_elt.tag)
             name = prop_elt.get('name')
             value = prop_elt.text
             # If a property had an empty value ('') cElementTree reads
@@ -442,8 +437,8 @@ class Serializer_v8(Serializer):
             # properties have string values
             if value is None:
                 value = ''
-            assert name not in rev.properties, \
-                "repeated property %r" % name
+            if name in rev.properties:
+                raise AssertionError("repeated property %r" % name)
             rev.properties[name] = value
 
 

@@ -288,6 +288,7 @@ class KnitRepository(MetaDirRepository):
         reconciler.reconcile()
         return reconciler
     
+    @symbol_versioning.deprecated_method(symbol_versioning.one_five)
     def revision_parents(self, revision_id):
         return self._get_revision_vf().get_parents(revision_id)
 
@@ -301,7 +302,8 @@ class KnitRepository(MetaDirRepository):
         :returns: an iterator yielding tuples of (revison-id, parents-in-index,
             parents-in-revision).
         """
-        assert self.is_locked()
+        if not self.is_locked():
+            raise AssertionError()
         vf = self._get_revision_vf()
         for index_version in vf.versions():
             parents_according_to_index = tuple(vf.get_parents_with_ghosts(
@@ -428,7 +430,6 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
         """
         if not _found:
             format = RepositoryFormat.find_format(a_bzrdir)
-            assert format.__class__ ==  self.__class__
         if _override_transport is not None:
             repo_transport = _override_transport
         else:
