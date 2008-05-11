@@ -411,8 +411,8 @@ class Connection(object):
                 discover_changed_paths, strict_node_history, revprops, rcvr, 
                 pool=None):
         if paths is None:
-            paths = [""]
-        self.mutter('svn log %r:%r %r' % (from_revnum, to_revnum, paths))
+            paths = ["/"]
+        self.mutter('svn log %r:%r %r (limit: %r)' % (from_revnum, to_revnum, paths, limit))
         if hasattr(svn.ra, 'get_log2'):
             return svn.ra.get_log2(self._ra, paths, 
                            from_revnum, to_revnum, limit, 
@@ -578,11 +578,10 @@ class SvnRaTransport(Transport):
         from threading import Thread, Semaphore
 
         class logfetcher(Thread):
-            def __init__(self, transport, *args, **kwargs):
+            def __init__(self, transport, **kwargs):
                 Thread.__init__(self)
                 self.setDaemon(True)
                 self.transport = transport
-                self.args = args
                 self.kwargs = kwargs
                 self.pending = []
                 self.conn = None
@@ -593,7 +592,7 @@ class SvnRaTransport(Transport):
                 ret = self.pending.pop(0)
                 if ret is None:
                     self.transport.add_connection(self.conn)
-                if isinstance(ret, Exception):
+                elif isinstance(ret, Exception):
                     self.transport.add_connection(self.conn)
                     raise ret
                 return ret
@@ -604,7 +603,7 @@ class SvnRaTransport(Transport):
                     self.semaphore.release()
                 self.conn = self.transport.get_connection()
                 try:
-                    self.conn.get_log(rcvr=rcvr, *self.args, **self.kwargs)
+                    self.conn.get_log(rcvr=rcvr, **self.kwargs)
                     self.pending.append(None)
                 except Exception, e:
                     self.pending.append(e)
@@ -615,7 +614,7 @@ class SvnRaTransport(Transport):
         else:
             newpaths = [self._request_path(path) for path in paths]
         
-        fetcher = logfetcher(self, paths, from_revnum, to_revnum, limit, discover_changed_paths, strict_node_history, revprops)
+        fetcher = logfetcher(self, paths=newpaths, from_revnum=from_revnum, to_revnum=to_revnum, limit=limit, discover_changed_paths=discover_changed_paths, strict_node_history=strict_node_history, revprops=revprops)
         fetcher.start()
         return iter(fetcher.next, None)
 
@@ -665,9 +664,10 @@ class SvnRaTransport(Transport):
     def _request_path(self, relpath):
         if self._backing_url == self.svn_url:
             return relpath.strip("/")
-        newrelpath = urlutils.join(
-                urlutils.relative_url(self._backing_url+"/", self.svn_url+"/"),
-                relpath).strip("/")
+        newsvnurl = urlutils.join(self.svn_url, relpath)
+        if newsvnurl == self._backing_url:
+            return ""
+        newrelpath = urlutils.relative_url(self._backing_url+"/", newsvnurl+"/").strip("/")
         self.mutter('request path %r -> %r' % (relpath, newrelpath))
         return newrelpath
 
