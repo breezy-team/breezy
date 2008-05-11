@@ -283,9 +283,9 @@ def rebase(repository, replace_map, replay_fn):
                 continue
             replay_fn(repository, revid, newrevid, newparents)
             assert repository.has_revision(newrevid)
-            assert list(repository.revision_parents(newrevid)) == newparents, \
+            assert list(repository.get_parent_map([newrevid])[newrevid]) == newparents, \
                    "expected parents %r, got %r" % (newparents, 
-                           repository.revision_parents(newrevid))
+                           repository.get_parent_map([newrevid])[newrevid])
             if dependencies.has_key(newrevid):
                 todo.extend(dependencies[newrevid])
                 del dependencies[newrevid]

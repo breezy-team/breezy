@@ -78,8 +78,8 @@ class ConversionTests(TestCaseWithTransport):
                 ["bloe"], {"bla": "bloe"})
         self.assertEqual("bla4", newrev)
         self.assertTrue(wt.branch.repository.has_revision(newrev))
-        self.assertEqual(["bloe"], 
-                wt.branch.repository.revision_parents(newrev))
+        self.assertEqual(("bloe",), 
+                wt.branch.repository.get_parent_map([newrev])[newrev])
         self.assertEqual("bla2", 
             wt.branch.repository.get_revision(newrev).properties["rebase-of"])
         wt.branch.repository.unlock()
