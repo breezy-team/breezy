@@ -146,7 +146,7 @@ class CachingLogWalker(CacheTable):
         return row[0]
 
     def iter_changes(self, paths, from_revnum, to_revnum=0, limit=0, pb=None):
-        """Return iterator over all the revisions between revnum and 0 named path or inside path.
+        """Return iterator over all the revisions between from_revnum and to_revnum named path or inside path.
 
         :param paths:    Paths to report about.
         :param from_revnum:  Start revision.
@@ -157,9 +157,11 @@ class CachingLogWalker(CacheTable):
         """
         assert from_revnum >= 0 and to_revnum >= 0
 
+        ascending = (to_revnum > from_revnum)
+
         revnum = from_revnum
 
-        self.mutter("iter changes %r:%r" % (paths, revnum))
+        self.mutter("iter changes %r->%r (%r)" % (from_revnum, to_revnum, paths))
 
         if paths is None:
             path = ""
@@ -171,14 +173,14 @@ class CachingLogWalker(CacheTable):
 
         i = 0
 
-        while ((from_revnum >= to_revnum and revnum >= to_revnum) or
-               (to_revnum > from_revnum and revnum <= to_revnum)):
+        while ((not ascending and revnum >= to_revnum) or
+               (ascending and revnum <= to_revnum)):
             if pb is not None:
                 pb.update("determining changes", from_revnum-revnum, from_revnum)
             assert revnum > 0 or path == "", "Inconsistent path,revnum: %r,%r" % (revnum, path)
             revpaths = self._get_revision_paths(revnum)
 
-            if from_revnum < to_revnum:
+            if ascending:
                 next = (path, revnum+1)
             else:
                 next = changes.find_prev_location(revpaths, path, revnum)
