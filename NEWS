@@ -1,9 +1,13 @@
 0.4		UNRELEASED
 
+ CHANGES
+
+  * Changed license from GPLv2 or later to GPLv3 or later.
+
  ENHANCEMENTS
 
-  * Set author property to preserve committer and original author of the commit.
-    (Lukáš Lalinský)
+  * Set author property to preserve committer and original author of the 
+    commit.  (Lukáš Lalinský)
 
 0.3		2007-12-06
 
