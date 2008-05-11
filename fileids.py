@@ -222,16 +222,21 @@ class CachingFileIdMap(object):
         next_parent_revs = []
 
         # No history -> empty map
-        for revmeta in self.repos.iter_reverse_branch_changes(branch, revnum, mapping):
-            revid = revmeta.get_revision_id(mapping)
-            try:
-                map = self.load(revid)
-                # found the nearest cached map
-                next_parent_revs = [revid]
-                break
-            except RevisionNotPresent:
-                todo.append(revmeta)
-   
+        try:
+            pb = ui.ui_factory.nested_progress_bar()
+            for revmeta in self.repos.iter_reverse_branch_changes(branch, revnum, mapping):
+                pb.update("fetching changes for file ids", revnum-revmeta.revnum, revnum)
+                revid = revmeta.get_revision_id(mapping)
+                try:
+                    map = self.load(revid)
+                    # found the nearest cached map
+                    next_parent_revs = [revid]
+                    break
+                except RevisionNotPresent:
+                    todo.append(revmeta)
+        finally:
+            pb.finished()
+       
         # target revision was present
         if len(todo) == 0:
             return map
