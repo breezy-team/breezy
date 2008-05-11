@@ -29,7 +29,7 @@ from commit import set_svn_revprops, _revision_id_to_svk_feature
 from copy import copy
 from errors import RevpropChangeFailed
 import os
-from remote import SvnRaTransport
+from transport import SvnRaTransport
 from tests import TestCaseWithSubversionRepository
 
 from svn.core import svn_time_to_cstring
