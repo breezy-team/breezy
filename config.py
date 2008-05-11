@@ -123,7 +123,10 @@ class SvnRepositoryConfig(IniBasedConfig):
                     return [svn.core.SVN_PROP_REVISION_DATE, svn.core.SVN_PROP_REVISION_AUTHOR]
                 return []
             except ValueError:
-                return parser.get_value(section, "override-svn-revprops")
+                val = parser.get_value(section, "override-svn-revprops")
+                if not isinstance(val, list):
+                    return [val]
+                return val
             except KeyError:
                 return None
         ret = get_list(self._get_parser(), self.uuid)
