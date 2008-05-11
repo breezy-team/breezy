@@ -27,7 +27,7 @@ import svn.core, svn.repos
 from errors import NoSvnRepositoryPresent
 from format import get_rich_root_format, SvnRemoteFormat
 from repository import SvnRepository
-from transport import SvnRaTransport, bzr_to_svn_url, get_svn_ra_transport
+from transport import bzr_to_svn_url, get_svn_ra_transport
 
 
 class SvnRemoteAccess(BzrDir):
