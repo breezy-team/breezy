@@ -246,11 +246,11 @@ class Connection(object):
         return self._busy
 
     def _mark_busy(self):
-        assert not self._busy
+        assert not self._busy, "already busy"
         self._busy = True
 
     def _unmark_busy(self):
-        assert self._busy
+        assert self._busy, "not busy"
         self._busy = False
 
     def mutter(self, text):
@@ -572,22 +572,29 @@ class SvnRaTransport(Transport):
                  strict_node_history, revprops):
 
         assert paths is None or isinstance(paths, list)
+        assert paths is None or all([isinstance(x, str) for x in paths])
         assert isinstance(from_revnum, int) and isinstance(to_revnum, int)
         assert isinstance(limit, int)
         from threading import Thread, Semaphore
 
         class logfetcher(Thread):
-            def __init__(self, get_log):
+            def __init__(self, transport, *args, **kwargs):
                 Thread.__init__(self)
                 self.setDaemon(True)
-                self.get_log = get_log
+                self.transport = transport
+                self.args = args
+                self.kwargs = kwargs
                 self.pending = []
+                self.conn = None
                 self.semaphore = Semaphore(0)
 
             def next(self):
                 self.semaphore.acquire()
                 ret = self.pending.pop(0)
+                if ret is None:
+                    self.transport.add_connection(self.conn)
                 if isinstance(ret, Exception):
+                    self.transport.add_connection(self.conn)
                     raise ret
                 return ret
 
@@ -595,20 +602,27 @@ class SvnRaTransport(Transport):
                 def rcvr(log_entry, pool):
                     self.pending.append((log_entry.changed_paths, log_entry.revision, log_entry.revprops))
                     self.semaphore.release()
+                self.conn = self.transport.get_connection()
                 try:
-                    self.get_log(rcvr)
+                    self.conn.get_log(rcvr=rcvr, *self.args, **self.kwargs)
                     self.pending.append(None)
                 except Exception, e:
                     self.pending.append(e)
                 self.semaphore.release()
+
+        if paths is None:
+            newpaths = None
+        else:
+            newpaths = [self._request_path(path) for path in paths]
         
-        fetcher = logfetcher(lambda rcvr: self.get_log(paths, from_revnum, to_revnum, limit, discover_changed_paths, strict_node_history, revprops, rcvr))
+        fetcher = logfetcher(self, paths, from_revnum, to_revnum, limit, discover_changed_paths, strict_node_history, revprops)
         fetcher.start()
         return iter(fetcher.next, None)
 
     def get_log(self, paths, from_revnum, to_revnum, limit, discover_changed_paths, 
                 strict_node_history, revprops, rcvr, pool=None):
-        assert paths is None or isinstance(paths, list)
+        assert paths is None or isinstance(paths, list), "Invalid paths"
+        assert paths is None or all([isinstance(x, str) for x in paths])
 
         if paths is None:
             newpaths = None

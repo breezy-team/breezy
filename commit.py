@@ -509,10 +509,7 @@ class SvnCommitBuilder(RootCommitBuilder):
 
         assert self.revision_metadata is not None
 
-        # Make sure the logwalker doesn't try to use ra 
-        # during checkouts...
         self.repository._clear_cached_state()
-        self.repository._log.fetch_revisions(self.revision_metadata.revision)
 
         revid = self.branch.generate_revision_id(self.revision_metadata.revision)
 

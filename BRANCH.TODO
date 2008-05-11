@@ -1,8 +1,9 @@
 before 0.4.10:
  - regression in http hack?
+
  - use parents cache more agressively
  - use branch name when calling has_revision() for push
-
+ - move some config options from RepositoryConfig to BranchConfig
  - use -1 to mean youngest revnum
 
 - Needs more tests

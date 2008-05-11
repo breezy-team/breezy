@@ -152,7 +152,7 @@ class FileIdMap(object):
                     expensive = True
                     return self.repos._log.find_children(path, revnum)
 
-                (idmap, changes) = self.actual.apply_changes(self.repos.uuid, 
+                (idmap, changes) = self.apply_changes(self.repos.uuid, 
                         revmeta.revnum, revmeta.branch_path, revmeta.paths,
                         mapping.import_fileid_map(revmeta.revprops, revmeta.fileprops), 
                         mapping, log_find_children)
@@ -160,7 +160,7 @@ class FileIdMap(object):
 
                 parent_revs = next_parent_revs
 
-                self.actual.update_map(map, revid, idmap, changes)
+                self.update_map(map, revid, idmap, changes)
                        
                 next_parent_revs = [revid]
                 i += 1

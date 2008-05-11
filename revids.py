@@ -66,7 +66,7 @@ class RevidMap(object):
         for entry_revid, branch, revno, mapping in self.discover_revids(layout, 0, self.repos.get_latest_revnum()):
             if revid == entry_revid:
                 return self.bisect_revid_revnum(revid, branch, revno)
-        raise NoSuchRevision(revid)
+        raise NoSuchRevision(self, revid)
 
     def discover_revids(self, layout, from_revnum, to_revnum):
         for (branch, revno) in self.repos.find_fileprop_branches(layout, from_revnum, to_revnum):
