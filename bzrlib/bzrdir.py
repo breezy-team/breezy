@@ -89,9 +89,9 @@ class BzrDir(object):
     BzrDir instances let you create or open any of the things that can be
     found within .bzr - checkouts, branches and repositories.
     
-    transport
+    :ivar transport:
         the transport which this bzr dir is rooted at (i.e. file:///.../.bzr/)
-    root_transport
+    :ivar root_transport:
         a transport connected to the directory this bzr was opened from
         (i.e. the parent directory holding the .bzr directory).
     """
@@ -1967,7 +1967,7 @@ class ConvertBzrDir4To5(Converter):
         self.pb.note('  %6d revisions not present', len(self.absent_revisions))
         self.pb.note('  %6d texts', self.text_count)
         self._cleanup_spare_files_after_format4()
-        self.branch.control_files._transport.put_bytes(
+        self.branch._transport.put_bytes(
             'branch-format',
             BzrDirFormat5().get_format_string(),
             mode=self.branch.control_files._file_mode)

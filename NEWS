@@ -14,6 +14,13 @@ Bazaar Release Notes
       are now deprecated in favor of using Transport operations.
       (Martin Pool)
 
+    * Branch, Repository, Tree and BzrDir should expose a Transport as an
+      attribute if they have one, rather than having it indirectly accessible
+      as ``.control_files._transport``.  This doesn't add a requirement
+      to support a Transport in cases where it was not needed before;
+      it just simplifies the way it is reached.
+      (Martin Pool)
+
 
 IN DEVELOPMENT
 --------------

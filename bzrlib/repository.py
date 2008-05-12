@@ -454,6 +454,9 @@ class Repository(object):
     The Repository builds on top of Stores and a Transport, which respectively 
     describe the disk data format and the way of accessing the (possibly 
     remote) disk.
+
+    :ivar _transport: Transport for file access to repository, typically
+        pointing to .bzr/repository.
     """
 
     # What class to use for a CommitBuilder. Often its simpler to change this
@@ -608,7 +611,8 @@ class Repository(object):
         """Construct the current default format repository in a_bzrdir."""
         return RepositoryFormat.get_default_format().initialize(a_bzrdir)
 
-    def __init__(self, _format, a_bzrdir, control_files, _revision_store, control_store, text_store):
+    def __init__(self, _format, a_bzrdir, control_files,
+                 _revision_store, control_store, text_store):
         """instantiate a Repository.
 
         :param _format: The format of the repository on disk.
@@ -623,6 +627,7 @@ class Repository(object):
         # the following are part of the public API for Repository:
         self.bzrdir = a_bzrdir
         self.control_files = control_files
+        self._transport = control_files._transport
         self._revision_store = _revision_store
         # backwards compatibility
         self.weave_store = text_store
@@ -1993,7 +1998,11 @@ def _install_revision(repository, rev, revision_tree, signature):
 
 
 class MetaDirRepository(Repository):
-    """Repositories in the new meta-dir layout."""
+    """Repositories in the new meta-dir layout.
+    
+    :ivar _transport: Transport for access to repository control files,
+        typically pointing to .bzr/repository.
+    """
 
     def __init__(self, _format, a_bzrdir, control_files, _revision_store, control_store, text_store):
         super(MetaDirRepository, self).__init__(_format,

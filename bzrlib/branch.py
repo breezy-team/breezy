@@ -1313,6 +1313,12 @@ class BzrBranch(Branch):
     Note that it's "local" in the context of the filesystem; it doesn't
     really matter if it's on an nfs/smb/afs/coda/... share, as long as
     it's writable, and can be accessed via the normal filesystem API.
+
+    :ivar _transport: Transport for file operations on this branch's 
+        control files, typically pointing to the .bzr/branch directory.
+    :ivar repository: Repository for this branch.
+    :ivar base: The url of the base directory for this branch; the one 
+        containing the .bzr directory.
     """
     
     def __init__(self, _format=None,
@@ -1324,6 +1330,7 @@ class BzrBranch(Branch):
         else:
             self.bzrdir = a_bzrdir
         self._base = self.bzrdir.transport.clone('..').base
+        # self.base = self.bzrdir.root_transport.base
         self._format = _format
         if _control_files is None:
             raise ValueError('BzrBranch _control_files is None')
@@ -2207,7 +2214,7 @@ class Converter5to6(object):
             mode=new_branch.control_files._file_mode)
 
         # Clean up old files
-        new_branch.control_files._transport.delete('revision-history')
+        new_branch._transport.delete('revision-history')
         try:
             branch.set_parent(None)
         except errors.NoSuchFile:

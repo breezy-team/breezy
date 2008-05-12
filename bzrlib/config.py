@@ -895,8 +895,11 @@ class TreeConfig(IniBasedConfig):
     # XXX: Really needs a better name, as this is not part of the tree! -- mbp 20080507
 
     def __init__(self, branch):
-        transport = branch.control_files._transport
-        self._config = TransportConfig(transport, 'branch.conf')
+        # XXX: Really this should be asking the branch for its configuration
+        # data, rather than relying on a Transport, so that it can work 
+        # more cleanly with a RemoteBranch that has no transport.
+        self._config = TransportConfig(branch.control_files._transport,
+            'branch.conf')
         self.branch = branch
 
     def _get_parser(self, file=None):

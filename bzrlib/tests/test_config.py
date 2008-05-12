@@ -147,7 +147,8 @@ class FakeBranch(object):
             self.base = "http://example.com/branches/demo"
         else:
             self.base = base
-        self.control_files = FakeControlFiles(user_id=user_id)
+        self._transport = self.control_files = \
+            FakeControlFilesAndTransport(user_id=user_id)
 
     def lock_write(self):
         pass
@@ -156,7 +157,7 @@ class FakeBranch(object):
         pass
 
 
-class FakeControlFiles(object):
+class FakeControlFilesAndTransport(object):
 
     def __init__(self, user_id=None):
         self.files = {}
