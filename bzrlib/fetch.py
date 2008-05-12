@@ -217,8 +217,8 @@ class RepoFetcher(object):
         from_weave = self.from_weaves.get_weave(file_id,
             self.from_repository.get_transaction())
         # Fetch all the texts.
-        to_weave.insert_record_stream(from_weave.get_record_stream(required_versions,
-            'topological', False))
+        to_weave.insert_record_stream(from_weave.get_record_stream(
+            required_versions, 'topological', False))
 
     def _fetch_inventory_weave(self, revs, pb):
         pb.update("fetch inventory", 0, 2)

@@ -882,7 +882,8 @@ class KnitVersionedFile(VersionedFile):
             knit = self
         else:
             knit = None
-        # Double index lookups here : need a unified api ?
+        # We end up doing multiple index lookups here for parents details and
+        # disk layout details - we need a unified api ?
         parent_map = self.get_parent_map(versions)
         absent_versions = set(versions) - set(parent_map)
         if ordering == 'topological':
@@ -894,7 +895,6 @@ class KnitVersionedFile(VersionedFile):
             present_versions = [version for version in versions if version in
                 parent_map]
         position_map = self._get_components_positions(present_versions)
-        # c = component_id, r = record_details, i_m = index_memo, n = next
         records = [(version, position_map[version][1]) for version in
             present_versions]
         record_map = {}
@@ -1101,17 +1101,18 @@ class KnitVersionedFile(VersionedFile):
             annotated = ""
             convertibles = set(["knit-annotated-delta-gz",
                 "knit-annotated-ft-gz"])
+        # The set of types we can cheaply adapt without needing basis texts.
         native_types = set()
         native_types.add("knit-%sdelta-gz" % annotated)
         native_types.add("knit-%sft-gz" % annotated)
         knit_types = native_types.union(convertibles)
         adapters = {}
-        # Buffered index entries that we can't add immediately because their
+        # Buffer all index entries that we can't add immediately because their
         # basis parent is missing. We don't buffer all because generating
         # annotations may require access to some of the new records. However we
         # can't generate annotations from new deltas until their basis parent
         # is present anyway, so we get away with not needing an index that
-        # reports on the new keys.
+        # includes the new keys.
         # key = basis_parent, value = index entry to add
         buffered_index_entries = {}
         for record in stream:

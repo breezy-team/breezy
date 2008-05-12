@@ -136,7 +136,9 @@ class VersionedFile(object):
             sorted stream has compression parents strictly before their
             children.
         :param include_delta_closure: If True then the closure across any
-            compression parents will be included (in the opaque data).
+            compression parents will be included (in the data content of the
+            stream, not in the emitted records). This guarantees that
+            'fulltext' can be used successfully on every record.
         :return: An iterator of ContentFactory objects, each of which is only
             valid until the iterator is advanced.
         """
