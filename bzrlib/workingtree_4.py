@@ -2522,6 +2522,6 @@ class Converter3to4(object):
 
     def update_format(self, tree):
         """Change the format marker."""
-        tree._control_files._transport.put_utf8('format',
+        tree._control_files._transport.put_bytes('format',
             self.target_format.get_format_string(),
             mode=tree._control_files._file_mode)
