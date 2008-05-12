@@ -79,13 +79,13 @@ Here's the recipe from above updated to use a central Bazaar mirror::
   bzr pull
   bzr merge ../beagle-feature1
   bzr commit -m "Complete comment for SVN commit"
-  bzr svn-push
+  bzr push
 
 In this case, committing to the trunk only commits the merge locally.
 To commit back to the master Subversion trunk, an additional command
-(``bzr svn-push``) is required.
+(``bzr push``) is required.
 
-Note: You'll need to give ``pull and ``svn-push`` the relevant URLs
+Note: You'll need to give ``pull and ``push`` the relevant URLs
 the first time you use those commands in the trunk branch. After that,
 bzr remembers them.
 
@@ -100,11 +100,16 @@ Limitations of bzr-svn
 
 Bazaar and Subversion are different tools with different capabilities
 so there will always be some limited interoperability issues.
-Here are some examples current as of bzr-svn 0.49:
+Here are some examples current as of bzr-svn 0.4.10:
 
  * Bazaar doesn't support versioned properties
 
- * Renames are not correctly communicated.
+ * Bazaar doesn't support tracking of file copies.
+
+ * ``bzr push`` to an existing Subversion branch works but 
+   ``bzr push`` to a new Subversion branch doesn't. Until
+   the relevant bug is fixed (#121875), you need to use
+   ``bzr svn-push`` in the latter case.
 
 See the bzr-svn web page,
 http://bazaar-vcs.org/BzrForeignBranches/Subversion,
