@@ -2035,7 +2035,7 @@ class MetaDirRepository(Repository):
                 pass
         else:
             self._transport.put_bytes('no-working-trees', '',
-                mode=self.control_files._file_mode)
+                mode=self.bzrdir._get_file_mode())
     
     def make_working_trees(self):
         """Returns the policy for making working trees on new branches."""
@@ -2278,13 +2278,13 @@ class MetaDirRepositoryFormat(RepositoryFormat):
         if shared == True:
             utf8_files += [('shared-storage', '')]
         try:
-            transport.mkdir_multi(dirs, mode=control_files._dir_mode)
+            transport.mkdir_multi(dirs, mode=a_bzrdir._get_dir_mode())
             for (filename, content_stream) in files:
                 transport.put_file(filename, content_stream,
-                    mode=control_files._file_mode)
+                    mode=a_bzrdir._get_file_mode())
             for (filename, content_bytes) in utf8_files:
                 transport.put_bytes_non_atomic(filename, content_bytes,
-                    mode=control_files._file_mode)
+                    mode=a_bzrdir._get_file_mode())
         finally:
             control_files.unlock()
 

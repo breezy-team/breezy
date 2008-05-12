@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -94,6 +94,8 @@ class BzrDir(object):
     :ivar root_transport:
         a transport connected to the directory this bzr was opened from
         (i.e. the parent directory holding the .bzr directory).
+
+    Everything in the bzrdir should have the same file permissions.
     """
 
     def break_lock(self):
@@ -311,7 +313,6 @@ class BzrDir(object):
             if branch is not None:
                 branches.append(branch)
         return branches
-
 
     def destroy_repository(self):
         """Destroy the repository in this BzrDir"""
@@ -582,6 +583,45 @@ class BzrDir(object):
         guaranteed to point to an existing directory ready for use.
         """
         raise NotImplementedError(self.get_branch_transport)
+
+    def _find_creation_modes(self):
+        """Determine the appropriate modes for files and directories.
+        
+        They're always set to be consistent with the base directory,
+        assuming that this transport allows setting modes.
+        """
+        # TODO: Do we need or want an option (maybe a config setting) to turn
+        # this off or override it for particular locations? -- mbp 20080512
+        if self._mode_check_done:
+            return
+        self._mode_check_done = True
+        try:
+            st = self.transport.stat('.')
+        except errors.TransportNotPossible:
+            self._dir_mode = None
+            self._file_mode = None
+        else:
+            # Check the directory mode, but also make sure the created
+            # directories and files are read-write for this user. This is
+            # mostly a workaround for filesystems which lie about being able to
+            # write to a directory (cygwin & win32)
+            self._dir_mode = (st.st_mode & 07777) | 00700
+            # Remove the sticky and execute bits for files
+            self._file_mode = self._dir_mode & ~07111
+
+    def _get_file_mode(self):
+        """Return Unix mode for newly created files, or None.
+        """
+        if not self._mode_check_done:
+            self._find_creation_modes()
+        return self._file_mode
+
+    def _get_dir_mode(self):
+        """Return Unix mode for newly created directories, or None.
+        """
+        if not self._mode_check_done:
+            self._find_creation_modes()
+        return self._dir_mode
         
     def get_repository_transport(self, repository_format):
         """Get the transport for use by repository format in this BzrDir.
@@ -621,6 +661,7 @@ class BzrDir(object):
         self._format = _format
         self.transport = _transport.clone('.bzr')
         self.root_transport = _transport
+        self._mode_check_done = False
 
     def is_control_filename(self, filename):
         """True if filename is the name of a path which is reserved for bzrdir's.
@@ -1970,7 +2011,7 @@ class ConvertBzrDir4To5(Converter):
         self.branch._transport.put_bytes(
             'branch-format',
             BzrDirFormat5().get_format_string(),
-            mode=self.branch.control_files._file_mode)
+            mode=self.branch.bzrdir._get_file_mode())
 
     def _cleanup_spare_files_after_format4(self):
         # FIXME working tree upgrade foo.
@@ -1988,7 +2029,7 @@ class ConvertBzrDir4To5(Converter):
                 self.branch._transport.get('inventory'))
         new_inv_xml = xml5.serializer_v5.write_inventory_to_string(inv, working=True)
         self.branch._transport.put_bytes('inventory', new_inv_xml,
-            mode=self.branch.control_files._file_mode)
+            mode=self.branch.bzrdir._get_file_mode())
 
     def _write_all_weaves(self):
         controlweaves = WeaveStore(self.bzrdir.transport, prefixed=False)
@@ -2204,7 +2245,7 @@ class ConvertBzrDir5To6(Converter):
         self.bzrdir.transport.put_bytes(
             'branch-format',
             BzrDirFormat6().get_format_string(),
-            mode=self.bzrdir._control_files._file_mode)
+            mode=self.bzrdir._get_file_mode())
 
 
 class ConvertBzrDir6ToMeta(Converter):
@@ -2221,8 +2262,8 @@ class ConvertBzrDir6ToMeta(Converter):
         self.garbage_inventories = []
 
         self.pb.note('starting upgrade from format 6 to metadir')
-        self.dir_mode = self.bzrdir._control_files._dir_mode
-        self.file_mode = self.bzrdir._control_files._file_mode
+        self.dir_mode = self.bzrdir._get_dir_mode()
+        self.file_mode = self.bzrdir._get_file_mode()
         self.bzrdir.transport.put_bytes(
                 'branch-format',
                 "Converting to format 6",

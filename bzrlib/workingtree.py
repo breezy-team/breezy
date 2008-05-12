@@ -225,7 +225,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         wt_trans = self.bzrdir.get_workingtree_transport(None)
         cache_filename = wt_trans.local_abspath('stat-cache')
         self._hashcache = hashcache.HashCache(basedir, cache_filename,
-                                              self._control_files._file_mode)
+            self.bzrdir._get_file_mode())
         hc = self._hashcache
         hc.read()
         # is this scan needed ? it makes things kinda slow.
@@ -722,7 +722,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def _set_merges_from_parent_ids(self, parent_ids):
         merges = parent_ids[1:]
         self._transport.put_bytes('pending-merges', '\n'.join(merges),
-            mode=self._control_files._file_mode)
+            mode=self.bzrdir._get_file_mode())
 
     @needs_tree_write_lock
     def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
@@ -805,7 +805,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         self._must_be_locked()
         my_file = rio_file(stanzas, header)
         self._transport.put_file(filename, my_file,
-            mode=self._control_files._file_mode)
+            mode=self.bzrdir._get_file_mode())
 
     @needs_write_lock # because merge pulls data into the branch.
     def merge_from_branch(self, branch, to_revision=None, from_revision=None,
@@ -1034,7 +1034,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         self._serialize(self._inventory, sio)
         sio.seek(0)
         self._transport.put_file('inventory', sio,
-            mode=self._control_files._file_mode)
+            mode=self.bzrdir._get_file_mode())
         self._inventory_is_modified = False
 
     def _kind(self, relpath):
@@ -1750,7 +1750,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         path = self._basis_inventory_name()
         sio = StringIO(xml)
         self._transport.put_file(path, sio,
-            mode=self._control_files._file_mode)
+            mode=self.bzrdir._get_file_mode())
 
     def _create_basis_xml_from_inventory(self, revision_id, inventory):
         """Create the text that will be saved in basis-inventory"""
@@ -2519,7 +2519,7 @@ class WorkingTree3(WorkingTree):
             return False
         else:
             self._transport.put_bytes('last-revision', revision_id,
-                mode=self._control_files._file_mode)
+                mode=self.bzrdir._get_file_mode())
             return True
 
     @needs_tree_write_lock
@@ -2674,9 +2674,9 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         xml5.serializer_v5.write_inventory(inv, sio, working=True)
         sio.seek(0)
         branch._transport.put_file('inventory', sio,
-            mode=branch.control_files._file_mode)
+            mode=branch.bzrdir._get_file_mode())
         branch._transport.put_bytes('pending-merges', '',
-            mode=branch.control_files._file_mode)
+            mode=branch.bzrdir._get_file_mode())
         
 
     def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
@@ -2792,7 +2792,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         control_files.create_lock()
         control_files.lock_write()
         transport.put_bytes('format', self.get_format_string(),
-            mode=control_files._file_mode)
+            mode=a_bzrdir._get_file_mode())
         if from_branch is not None:
             branch = from_branch
         else:

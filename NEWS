@@ -4,7 +4,7 @@ Bazaar Release Notes
 
 .. contents::
 
-  API BREAKS:
+  API CHANGES:
 
     * ``Branch.abspath`` is deprecated; use the Tree or Transport 
       instead.
@@ -21,9 +21,13 @@ Bazaar Release Notes
       it just simplifies the way it is reached.
       (Martin Pool)
 
+    * The default permissions for creating new files and directories 
+      should now be obtained from ``BzrDir._get_file_mode()`` and 
+      ``_get_dir_mode()``, rather than from LockableFiles.
+      (Martin Pool)
+
     * ``WorkingTreeFormat2.stub_initialize_remote`` is now private.
       (Martin Pool) 
-
 
 IN DEVELOPMENT
 --------------

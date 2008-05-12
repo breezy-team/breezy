@@ -53,9 +53,8 @@ class AllInOneRepository(Repository):
     _serializer = xml5.serializer_v5
 
     def __init__(self, _format, a_bzrdir, _revision_store, control_store, text_store):
-        # we reuse one control files instance.
-        dir_mode = a_bzrdir._control_files._dir_mode
-        file_mode = a_bzrdir._control_files._file_mode
+        dir_mode = a_bzrdir._get_dir_mode()
+        file_mode = a_bzrdir._get_file_mode()
 
         def get_store(name, compressed=True, prefixed=False):
             # FIXME: This approach of assuming stores are all entirely compressed
@@ -372,8 +371,9 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
         transport = a_bzrdir.transport
         try:
             transport.mkdir_multi(['revision-store', 'weaves'],
-                mode=control_files._dir_mode)
-            transport.put_bytes_non_atomic('inventory.weave', empty_weave)
+                mode=a_bzrdir._get_dir_mode())
+            transport.put_bytes_non_atomic('inventory.weave', empty_weave,
+                mode=a_bzrdir._get_file_mode())
         finally:
             control_files.unlock()
         return self.open(a_bzrdir, _found=True)

@@ -913,7 +913,7 @@ class BranchFormat(object):
             for (filename, content) in utf8_files:
                 branch_transport.put_bytes(
                     filename, content,
-                    mode=control_files._file_mode)
+                    mode=a_bzrdir._get_file_mode())
         finally:
             control_files.unlock()
         return self.open(a_bzrdir, _found=True)
@@ -1405,7 +1405,7 @@ class BzrBranch(Branch):
         It is intended to be called by BzrBranch5.set_revision_history."""
         self._transport.put_bytes(
             'revision-history', '\n'.join(history),
-            mode=self.control_files._file_mode)
+            mode=self.bzrdir._get_file_mode())
 
     @needs_write_lock
     def set_revision_history(self, rev_history):
@@ -1722,7 +1722,7 @@ class BzrBranch(Branch):
             self._transport.delete('parent')
         else:
             self._transport.put_bytes('parent', url + '\n',
-                mode=self.control_files._file_mode)
+                mode=self.bzrdir._get_file_mode())
 
 
 class BzrBranch5(BzrBranch):
@@ -1900,7 +1900,7 @@ class BzrBranch6(BzrBranch5):
         revision_id = _mod_revision.ensure_null(revision_id)
         out_string = '%d %s\n' % (revno, revision_id)
         self._transport.put_bytes('last-revision', out_string,
-            mode=self.control_files._file_mode)
+            mode=self.bzrdir._get_file_mode())
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
@@ -2211,7 +2211,7 @@ class Converter5to6(object):
         # Copying done; now update target format
         new_branch._transport.put_bytes('format',
             format.get_format_string(),
-            mode=new_branch.control_files._file_mode)
+            mode=new_branch.bzrdir._get_file_mode())
 
         # Clean up old files
         new_branch._transport.delete('revision-history')
