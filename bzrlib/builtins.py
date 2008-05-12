@@ -2638,6 +2638,9 @@ class cmd_selftest(Command):
                             help='Load a test id list from a text file.'),
                      ListOption('debugflag', type=str, short_name='E',
                                 help='Turn on a selftest debug flag.'),
+                     Option('starting-with', type=str, argname='TESTID',
+                            short_name='s',
+                            help='Load only the tests starting with TESTID.'),
                      ]
     encoding_type = 'replace'
 
@@ -2646,7 +2649,7 @@ class cmd_selftest(Command):
             lsprof_timed=None, cache_dir=None,
             first=False, list_only=False,
             randomize=None, exclude=None, strict=False,
-            load_list=None, debugflag=None):
+            load_list=None, debugflag=None, starting_with=None):
         import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
@@ -2690,6 +2693,7 @@ class cmd_selftest(Command):
                               strict=strict,
                               load_list=load_list,
                               debug_flags=debugflag,
+                              starting_with=starting_with,
                               )
         finally:
             if benchfile is not None:

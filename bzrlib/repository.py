@@ -25,7 +25,6 @@ from bzrlib import (
     bzrdir,
     check,
     debug,
-    deprecated_graph,
     errors,
     generate_ids,
     gpg,
@@ -1546,63 +1545,6 @@ class Repository(object):
         """Return the sha1 hash of the inventory entry
         """
         return self.get_revision(revision_id).inventory_sha1
-
-    @needs_read_lock
-    @deprecated_method(symbol_versioning.one_four)
-    def get_revision_graph(self, revision_id=None):
-        """Return a dictionary containing the revision graph.
-
-        NB: This method should not be used as it accesses the entire graph all
-        at once, which is much more data than most operations should require.
-
-        :param revision_id: The revision_id to get a graph from. If None, then
-        the entire revision graph is returned. This is a deprecated mode of
-        operation and will be removed in the future.
-        :return: a dictionary of revision_id->revision_parents_list.
-        """
-        raise NotImplementedError(self.get_revision_graph)
-
-    @needs_read_lock
-    @deprecated_method(symbol_versioning.one_three)
-    def get_revision_graph_with_ghosts(self, revision_ids=None):
-        """Return a graph of the revisions with ghosts marked as applicable.
-
-        :param revision_ids: an iterable of revisions to graph or None for all.
-        :return: a Graph object with the graph reachable from revision_ids.
-        """
-        if 'evil' in debug.debug_flags:
-            mutter_callsite(3,
-                "get_revision_graph_with_ghosts scales with size of history.")
-        result = deprecated_graph.Graph()
-        if not revision_ids:
-            pending = set(self.all_revision_ids())
-            required = set([])
-        else:
-            pending = set(revision_ids)
-            # special case NULL_REVISION
-            if _mod_revision.NULL_REVISION in pending:
-                pending.remove(_mod_revision.NULL_REVISION)
-            required = set(pending)
-        done = set([])
-        while len(pending):
-            revision_id = pending.pop()
-            try:
-                rev = self.get_revision(revision_id)
-            except errors.NoSuchRevision:
-                if revision_id in required:
-                    raise
-                # a ghost
-                result.add_ghost(revision_id)
-                continue
-            for parent_id in rev.parent_ids:
-                # is this queued or done ?
-                if (parent_id not in pending and
-                    parent_id not in done):
-                    # no, queue it.
-                    pending.add(parent_id)
-            result.add_node(revision_id, rev.parent_ids)
-            done.add(revision_id)
-        return result
 
     def iter_reverse_revision_history(self, revision_id):
         """Iterate backwards through revision ids in the lefthand history

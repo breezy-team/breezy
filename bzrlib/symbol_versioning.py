@@ -50,6 +50,7 @@ __all__ = ['deprecated_function',
            'one_three',
            'one_four',
            'one_five',
+           'one_six',
            ]
 
 from warnings import warn
@@ -80,6 +81,7 @@ one_two = "%s was deprecated in version 1.2."
 one_three = "%s was deprecated in version 1.3."
 one_four = "%s was deprecated in version 1.4."
 one_five = "%s was deprecated in version 1.5."
+one_six = "%s was deprecated in version 1.6."
 
 
 def deprecated_in(version_tuple):
@@ -90,6 +92,7 @@ def deprecated_in(version_tuple):
     """
     return ("%s was deprecated in version "
             + bzrlib._format_version_tuple(version_tuple))
+
 
 def set_warning_method(method):
     """Set the warning method to be used by this module.

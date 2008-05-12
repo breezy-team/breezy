@@ -78,19 +78,50 @@ import warnings
 from bzrlib import (
     progress,
     )
-from bzrlib.trace import mutter
 from bzrlib.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
         RevisionAlreadyPresent,
         RevisionNotPresent,
+        UnavailableRepresentation,
         WeaveRevisionAlreadyPresent,
         WeaveRevisionNotPresent,
         )
 import bzrlib.errors as errors
-from bzrlib.osutils import sha_strings
+from bzrlib.osutils import sha_strings, split_lines
 import bzrlib.patiencediff
+from bzrlib.symbol_versioning import *
+from bzrlib.trace import mutter
 from bzrlib.tsort import topo_sort
-from bzrlib.versionedfile import VersionedFile, InterVersionedFile
+from bzrlib.versionedfile import (
+    AbsentContentFactory,
+    adapter_registry,
+    ContentFactory,
+    InterVersionedFile,
+    VersionedFile,
+    )
 from bzrlib.weavefile import _read_weave_v5, write_weave_v5
+
+
+class WeaveContentFactory(ContentFactory):
+    """Content factory for streaming from weaves.
+
+    :seealso ContentFactory:
+    """
+
+    def __init__(self, version, weave):
+        """Create a WeaveContentFactory for version from weave."""
+        ContentFactory.__init__(self)
+        self.sha1 = weave.get_sha1s([version])[0]
+        self.key = (version,)
+        parents = weave.get_parent_map([version])[version]
+        self.parents = tuple((parent,) for parent in parents)
+        self.storage_kind = 'fulltext'
+        self._weave = weave
+
+    def get_bytes_as(self, storage_kind):
+        if storage_kind == 'fulltext':
+            return self._weave.get_text(self.key[0])
+        else:
+            raise UnavailableRepresentation(self.key, storage_kind, 'fulltext')
 
 
 class Weave(VersionedFile):
@@ -263,6 +294,30 @@ class Weave(VersionedFile):
 
     __contains__ = has_version
 
+    def get_record_stream(self, versions, ordering, include_delta_closure):
+        """Get a stream of records for versions.
+
+        :param versions: The versions to include. Each version is a tuple
+            (version,).
+        :param ordering: Either 'unordered' or 'topological'. A topologically
+            sorted stream has compression parents strictly before their
+            children.
+        :param include_delta_closure: If True then the closure across any
+            compression parents will be included (in the opaque data).
+        :return: An iterator of ContentFactory objects, each of which is only
+            valid until the iterator is advanced.
+        """
+        if ordering == 'topological':
+            parents = self.get_parent_map(versions)
+            new_versions = topo_sort(parents)
+            new_versions.extend(set(versions).difference(set(parents)))
+            versions = new_versions
+        for version in versions:
+            if version in self:
+                yield WeaveContentFactory(version, self)
+            else:
+                yield AbsentContentFactory((version,))
+
     def get_parent_map(self, version_ids):
         """See VersionedFile.get_parent_map."""
         result = {}
@@ -276,6 +331,38 @@ class Weave(VersionedFile):
 
     def get_parents_with_ghosts(self, version_id):
         raise NotImplementedError(self.get_parents_with_ghosts)
+
+    def insert_record_stream(self, stream):
+        """Insert a record stream into this versioned file.
+
+        :param stream: A stream of records to insert. 
+        :return: None
+        :seealso VersionedFile.get_record_stream:
+        """
+        adapters = {}
+        for record in stream:
+            # Raise an error when a record is missing.
+            if record.storage_kind == 'absent':
+                raise RevisionNotPresent([record.key[0]], self)
+            # adapt to non-tuple interface
+            parents = [parent[0] for parent in record.parents]
+            if record.storage_kind == 'fulltext':
+                self.add_lines(record.key[0], parents,
+                    split_lines(record.get_bytes_as('fulltext')))
+            else:
+                adapter_key = record.storage_kind, 'fulltext'
+                try:
+                    adapter = adapters[adapter_key]
+                except KeyError:
+                    adapter_factory = adapter_registry.get(adapter_key)
+                    adapter = adapter_factory(self)
+                    adapters[adapter_key] = adapter
+                lines = split_lines(adapter.get_bytes(
+                    record, record.get_bytes_as(record.storage_kind)))
+                try:
+                    self.add_lines(record.key[0], parents, lines)
+                except RevisionAlreadyPresent:
+                    pass
 
     def _check_repeated_add(self, name, parents, text, sha1):
         """Check that a duplicated add is OK.
@@ -911,6 +998,11 @@ class WeaveFile(Weave):
         """See VersionedFile.get_suffixes()."""
         return [WeaveFile.WEAVE_SUFFIX]
 
+    def insert_record_stream(self, stream):
+        super(WeaveFile, self).insert_record_stream(stream)
+        self._save()
+
+    @deprecated_method(one_five)
     def join(self, other, pb=None, msg=None, version_ids=None,
              ignore_missing=False):
         """Join other into self and save."""
