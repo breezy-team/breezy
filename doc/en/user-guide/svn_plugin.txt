@@ -62,13 +62,17 @@ In particular, the initial checkout can get quite slow so you may wish
 to import the Subversion repository into a Bazaar one once and for all
 for your project, and then branch from that native Bazaar repository
 instead. bzr-svn provides the ``svn-import`` command for doing this
-repository-to-repository conversion. See ``bzr help svn-import`` for details.
+repository-to-repository conversion. Here's an example of how to use it::
+
+  bzr init-repo --rich-root-pack beagle.bzr
+  cd beagle.bzr
+  bzr svn-import svn+ssh://svn.gnome.org/svn/beagle
 
 Here's the recipe from above updated to use a central Bazaar mirror::
 
   bzr init-repo --rich-root-pack beagle-repo
   cd beagle-repo
-  bzr branch bzr+ssh://bzr.gnome.org/bzr/beagle/trunk beagle-trunk
+  bzr branch bzr+ssh://bzr.gnome.org/beagle.bzr/trunk beagle-trunk
   bzr branch beagle-trunk beagle-feature1
   cd beagle-feature1
   *changes*
