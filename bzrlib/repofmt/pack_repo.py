@@ -605,7 +605,7 @@ class Packer(object):
         return NewPack(self._pack_collection._upload_transport,
             self._pack_collection._index_transport,
             self._pack_collection._pack_transport, upload_suffix=self.suffix,
-            file_mode=self._pack_collection.repo.control_files._file_mode)
+            file_mode=self._pack_collection.repo.bzrdir._get_file_mode())
 
     def _copy_revision_texts(self):
         """Copy revision data to the new pack."""
@@ -1587,7 +1587,7 @@ class RepositoryPackCollection(object):
             for key, value in disk_nodes:
                 builder.add_node(key, value)
             self.transport.put_file('pack-names', builder.finish(),
-                mode=self.repo.control_files._file_mode)
+                mode=self.repo.bzrdir._get_file_mode())
             # move the baseline forward
             self._packs_at_load = disk_nodes
             # now clear out the obsolete packs directory
@@ -1631,7 +1631,7 @@ class RepositoryPackCollection(object):
             raise errors.NotWriteLocked(self)
         self._new_pack = NewPack(self._upload_transport, self._index_transport,
             self._pack_transport, upload_suffix='.pack',
-            file_mode=self.repo.control_files._file_mode)
+            file_mode=self.repo.bzrdir._get_file_mode())
         # allow writing: queue writes to a new index
         self.revision_index.add_writable_index(self._new_pack.revision_index,
             self._new_pack)
@@ -1714,7 +1714,7 @@ class KnitPackRevisionStore(KnitRevisionStore):
             add_callback=add_callback)
         self.repo._revision_knit = knit.KnitVersionedFile(
             'revisions', self.transport.clone('..'),
-            self.repo.control_files._file_mode,
+            self.repo.bzrdir._get_file_mode(),
             create=False,
             index=knit_index, delta=False, factory=knit.KnitPlainFactory(),
             access_method=self.repo._pack_collection.revision_index.knit_access)
@@ -1732,7 +1732,7 @@ class KnitPackRevisionStore(KnitRevisionStore):
             add_callback=add_callback, parents=False)
         self.repo._signature_knit = knit.KnitVersionedFile(
             'signatures', self.transport.clone('..'),
-            self.repo.control_files._file_mode,
+            self.repo.bzrdir._get_file_mode(),
             create=False,
             index=knit_index, delta=False, factory=knit.KnitPlainFactory(),
             access_method=self.repo._pack_collection.signature_index.knit_access)
@@ -1821,7 +1821,7 @@ class InventoryKnitThunk(object):
             add_callback=add_callback, deltas=True, parents=True)
         return knit.KnitVersionedFile(
             'inventory', self.transport.clone('..'),
-            self.repo.control_files._file_mode,
+            self.repo.bzrdir._get_file_mode(),
             create=False,
             index=knit_index, delta=True, factory=knit.KnitPlainFactory(),
             access_method=self.repo._pack_collection.inventory_index.knit_access)

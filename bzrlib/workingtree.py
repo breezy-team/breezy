@@ -224,7 +224,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         wt_trans = self.bzrdir.get_workingtree_transport(None)
         cache_filename = wt_trans.local_abspath('stat-cache')
         self._hashcache = hashcache.HashCache(basedir, cache_filename,
-                                              self._control_files._file_mode)
+            self.bzrdir._get_file_mode())
         hc = self._hashcache
         hc.read()
         # is this scan needed ? it makes things kinda slow.

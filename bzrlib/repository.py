@@ -2003,8 +2003,6 @@ class MetaDirRepository(Repository):
                                                 _revision_store,
                                                 control_store,
                                                 text_store)
-        dir_mode = self.control_files._dir_mode
-        file_mode = self.control_files._file_mode
 
     @needs_read_lock
     def is_shared(self):
@@ -2268,7 +2266,7 @@ class MetaDirRepositoryFormat(RepositoryFormat):
         control_files.lock_write()
         try:
             control_files._transport.mkdir_multi(dirs,
-                    mode=control_files._dir_mode)
+                mode=a_bzrdir._get_dir_mode())
             for file, content in files:
                 control_files.put(file, content)
             for file, content in utf8_files:

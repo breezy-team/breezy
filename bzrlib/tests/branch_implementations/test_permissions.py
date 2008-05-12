@@ -1,5 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
-# -*- coding: utf-8 -*-
+# Copyright (C) 2005, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -57,12 +56,16 @@ class TestPermissions(TestCaseWithTransport):
         mode = stat.S_IMODE(os.stat('a').st_mode)
         t = self.make_branch_and_tree('.')
         b = t.branch
+        self.assertEqualMode(mode, b.bzrdir._get_dir_mode())
+        self.assertEqualMode(mode & ~07111, b.bzrdir._get_file_mode())
         self.assertEqualMode(mode, b.control_files._dir_mode)
         self.assertEqualMode(mode & ~07111, b.control_files._file_mode)
 
         os.mkdir('b')
         os.chmod('b', 02777)
         b = self.make_branch('b')
+        self.assertEqualMode(02777, b.bzrdir._get_dir_mode())
+        self.assertEqualMode(00666, b.bzrdir._get_file_mode())
         self.assertEqualMode(02777, b.control_files._dir_mode)
         self.assertEqualMode(00666, b.control_files._file_mode)
         check_mode_r(self, 'b/.bzr', 00666, 02777)
@@ -70,13 +73,17 @@ class TestPermissions(TestCaseWithTransport):
         os.mkdir('c')
         os.chmod('c', 02750)
         b = self.make_branch('c')
-        self.assertEqualMode(02750, b.control_files._dir_mode)
+        self.assertEqualMode(02750, b.bzrdir._get_dir_mode())
+        self.assertEqualMode(02750, b.bzrdir._get_dir_mode())
+        self.assertEqualMode(00640, b.control_files._file_mode)
         self.assertEqualMode(00640, b.control_files._file_mode)
         check_mode_r(self, 'c/.bzr', 00640, 02750)
 
         os.mkdir('d')
         os.chmod('d', 0700)
         b = self.make_branch('d')
+        self.assertEqualMode(0700, b.bzrdir._get_dir_mode())
+        self.assertEqualMode(0600, b.bzrdir._get_file_mode())
         self.assertEqualMode(0700, b.control_files._dir_mode)
         self.assertEqualMode(0600, b.control_files._file_mode)
         check_mode_r(self, 'd/.bzr', 00600, 00700)

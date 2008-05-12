@@ -2272,8 +2272,8 @@ class ConvertBzrDir6ToMeta(Converter):
             if name.startswith('basis-inventory.'):
                 self.garbage_inventories.append(name)
         # create new directories for repository, working tree and branch
-        self.dir_mode = self.bzrdir._control_files._dir_mode
-        self.file_mode = self.bzrdir._control_files._file_mode
+        self.dir_mode = self.bzrdir._get_dir_mode()
+        self.file_mode = self.bzrdir._get_file_mode()
         repository_names = [('inventory.weave', True),
                             ('revision-store', True),
                             ('weaves', True)]
