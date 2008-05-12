@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -41,6 +41,10 @@ from bzrlib.tag import (
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.hooks import Hooks
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    deprecated_method,
+    )
 from bzrlib.trace import mutter, mutter_callsite, note, is_quiet
 
 
@@ -218,6 +222,7 @@ class Branch(object):
         """
         self.control_files.dont_leave_in_place()
 
+    @deprecated_method(deprecated_in((0, 16, 0)))
     def abspath(self, name):
         """Return absolute filename for something in the branch
         
@@ -1337,6 +1342,7 @@ class BzrBranch(Branch):
 
     base = property(_get_base, doc="The URL for the root of this branch.")
 
+    @deprecated_method(deprecated_in((0, 16, 0)))
     def abspath(self, name):
         """See Branch.abspath."""
         return self._transport.abspath(name)
