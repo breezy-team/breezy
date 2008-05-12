@@ -59,6 +59,10 @@ class LockableFiles(object):
     the object is constructed.  In older formats OSLocks are used everywhere.
     in newer formats a LockDir is used for Repositories and Branches, and 
     OSLocks for the local filesystem.
+
+    This class is now deprecated; code should move to using the Transport 
+    directly for file operations and using the lock or CountedLock for 
+    locking.
     """
 
     # _lock_mode: None, or 'r' or 'w'
