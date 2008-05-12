@@ -562,6 +562,18 @@ class InvalidURLJoin(PathError):
         PathError.__init__(self, base, reason)
 
 
+class UnavailableRepresentation(InternalBzrError):
+
+    _fmt = ("The encoding '%(wanted)s' is not available for key %(key)s which "
+        "is encoded as '%(native)s'.")
+
+    def __init__(self, key, wanted, native):
+        InternalBzrError.__init__(self)
+        self.wanted = wanted
+        self.native = native
+        self.key = key
+
+
 class UnknownHook(BzrError):
 
     _fmt = "The %(type)s hook '%(hook)s' is unknown in this version of bzrlib."

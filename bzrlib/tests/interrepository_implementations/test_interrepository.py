@@ -91,7 +91,6 @@ class TestInterRepository(TestCaseWithInterRepository):
         pass
 
 
-
 class TestCaseWithComplexRepository(TestCaseWithInterRepository):
 
     def setUp(self):

@@ -93,6 +93,7 @@ def deprecated_in(version_tuple):
     return ("%s was deprecated in version "
             + bzrlib._format_version_tuple(version_tuple))
 
+
 def set_warning_method(method):
     """Set the warning method to be used by this module.
 
