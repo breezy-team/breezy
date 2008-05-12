@@ -2265,15 +2265,17 @@ class MetaDirRepositoryFormat(RepositoryFormat):
         """Upload the initial blank content."""
         control_files = self._create_control_files(a_bzrdir)
         control_files.lock_write()
+        transport = control_files._transport
+        if shared == True:
+            utf8_files += [('shared-storage', '')]
         try:
-            control_files._transport.mkdir_multi(dirs,
-                    mode=control_files._dir_mode)
-            for file, content in files:
-                control_files.put(file, content)
-            for file, content in utf8_files:
-                control_files.put_utf8(file, content)
-            if shared == True:
-                control_files.put_utf8('shared-storage', '')
+            transport.mkdir_multi(dirs, mode=control_files._dir_mode)
+            for (filename, content_stream) in files:
+                transport.put_file(filename, content_stream,
+                    mode=control_files._file_mode)
+            for (filename, content_bytes) in utf8_files:
+                transport.put_bytes_non_atomic(filename, content_bytes,
+                    mode=control_files._file_mode)
         finally:
             control_files.unlock()
 

@@ -361,21 +361,18 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
         empty_weave = sio.getvalue()
 
         mutter('creating repository in %s.', a_bzrdir.transport.base)
-        dirs = ['revision-store', 'weaves']
-        files = [('inventory.weave', StringIO(empty_weave)),
-                 ]
         
         # FIXME: RBC 20060125 don't peek under the covers
         # NB: no need to escape relative paths that are url safe.
         control_files = lockable_files.LockableFiles(a_bzrdir.transport,
-                                'branch-lock', lockable_files.TransportLock)
+            'branch-lock', lockable_files.TransportLock)
         control_files.create_lock()
         control_files.lock_write()
-        control_files._transport.mkdir_multi(dirs,
-                mode=control_files._dir_mode)
+        transport = control_files._transport
         try:
-            for file, content in files:
-                control_files.put(file, content)
+            transport.mkdir_multi(['revision-store', 'weaves'],
+                mode=control_files._dir_mode)
+            transport.put_bytes_non_atomic('inventory.weave', empty_weave)
         finally:
             control_files.unlock()
         return self.open(a_bzrdir, _found=True)
