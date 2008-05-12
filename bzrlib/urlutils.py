@@ -75,10 +75,10 @@ def file_relpath(base, path):
     
     This assumes that both paths are already fully specified file:// URLs.
     """
-    assert len(base) >= MIN_ABS_FILEURL_LENGTH, ('Length of base must be equal or'
-        ' exceed the platform minimum url length (which is %d)' % 
-        MIN_ABS_FILEURL_LENGTH)
-
+    if len(base) < MIN_ABS_FILEURL_LENGTH:
+        raise ValueError('Length of base must be equal or'
+            ' exceed the platform minimum url length (which is %d)' %
+            MIN_ABS_FILEURL_LENGTH)
     base = local_path_from_url(base)
     path = local_path_from_url(path)
     return escape(osutils.relpath(base, path))
@@ -574,7 +574,8 @@ def unescape_for_display(url, encoding):
     :return: A unicode string which can be safely encoded into the 
          specified encoding.
     """
-    assert encoding is not None, 'you cannot specify None for the display encoding.'
+    if encoding is None:
+        raise ValueError('you cannot specify None for the display encoding')
     if url.startswith('file://'):
         try:
             path = local_path_from_url(url)

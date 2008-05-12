@@ -162,7 +162,7 @@ class TestCaseWithDirState(TestCaseWithTransport):
         """
         # The state should already be write locked, since we just had to do
         # some operation to get here.
-        assert state._lock_token is not None
+        self.assertTrue(state._lock_token is not None)
         try:
             self.assertEqual(expected_result[0],  state.get_parent_ids())
             # there should be no ghosts in this tree.
@@ -2054,7 +2054,7 @@ class TestBisect(TestCaseWithDirState):
         # the end it would still be fairly arbitrary, and we don't want the
         # extra overhead if we can avoid it. So sort everything to make sure
         # equality is true
-        assert len(map_keys) == len(paths)
+        self.assertEqual(len(map_keys), len(paths))
         expected = {}
         for path, keys in zip(paths, map_keys):
             if keys is None:
@@ -2079,8 +2079,7 @@ class TestBisect(TestCaseWithDirState):
         :param paths: A list of directories
         """
         result = state._bisect_dirblocks(paths)
-        assert len(map_keys) == len(paths)
-
+        self.assertEqual(len(map_keys), len(paths))
         expected = {}
         for path, keys in zip(paths, map_keys):
             if keys is None:

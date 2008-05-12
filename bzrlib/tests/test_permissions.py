@@ -47,7 +47,6 @@ from bzrlib.workingtree import WorkingTree
 
 def chmod_r(base, file_mode, dir_mode):
     """Recursively chmod from a base directory"""
-    assert os.path.isdir(base)
     os.chmod(base, dir_mode)
     for root, dirs, files in os.walk(base):
         for d in dirs:
@@ -67,7 +66,6 @@ def check_mode_r(test, base, file_mode, dir_mode, include_base=True):
     :param dir_mode: The mode for all directories
     :param include_base: If false, only check the subdirectories
     """
-    assert os.path.isdir(base)
     t = get_transport(".")
     if include_base:
         test.assertTransportMode(t, base, dir_mode)

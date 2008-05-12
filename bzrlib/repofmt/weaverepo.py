@@ -43,7 +43,6 @@ from bzrlib.repository import (
     RepositoryFormat,
     )
 from bzrlib.store.text import TextStore
-from bzrlib.symbol_versioning import deprecated_method, one_four
 from bzrlib.trace import mutter
 
 
@@ -144,42 +143,6 @@ class AllInOneRepository(Repository):
         for rev in revs:
             self._check_revision_parents(rev, inv)
         return revs
-
-    @deprecated_method(one_four)
-    @needs_read_lock
-    def get_revision_graph(self, revision_id=None):
-        """Return a dictionary containing the revision graph.
-        
-        :param revision_id: The revision_id to get a graph from. If None, then
-        the entire revision graph is returned. This is a deprecated mode of
-        operation and will be removed in the future.
-        :return: a dictionary of revision_id->revision_parents_list.
-        """
-        if 'evil' in debug.debug_flags:
-            mutter_callsite(2,
-                "get_revision_graph scales with size of history.")
-        # special case NULL_REVISION
-        if revision_id == _mod_revision.NULL_REVISION:
-            return {}
-        a_weave = self.get_inventory_weave()
-        all_revisions = self._eliminate_revisions_not_present(
-                                a_weave.versions())
-        entire_graph = a_weave.get_parent_map(all_revisions)
-        if revision_id is None:
-            return entire_graph
-        elif revision_id not in entire_graph:
-            raise errors.NoSuchRevision(self, revision_id)
-        else:
-            # add what can be reached from revision_id
-            result = {}
-            pending = set([revision_id])
-            while len(pending) > 0:
-                node = pending.pop()
-                result[node] = entire_graph[node]
-                for revision_id in result[node]:
-                    if revision_id not in result:
-                        pending.add(revision_id)
-            return result
 
     def has_revisions(self, revision_ids):
         """See Repository.has_revisions()."""
@@ -286,42 +249,6 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
         inv = self.get_inventory_weave()
         self._check_revision_parents(r, inv)
         return r
-
-    @deprecated_method(one_four)
-    @needs_read_lock
-    def get_revision_graph(self, revision_id=None):
-        """Return a dictionary containing the revision graph.
-        
-        :param revision_id: The revision_id to get a graph from. If None, then
-        the entire revision graph is returned. This is a deprecated mode of
-        operation and will be removed in the future.
-        :return: a dictionary of revision_id->revision_parents_list.
-        """
-        if 'evil' in debug.debug_flags:
-            mutter_callsite(3,
-                "get_revision_graph scales with size of history.")
-        # special case NULL_REVISION
-        if revision_id == _mod_revision.NULL_REVISION:
-            return {}
-        a_weave = self.get_inventory_weave()
-        all_revisions = self._eliminate_revisions_not_present(
-                                a_weave.versions())
-        entire_graph = a_weave.get_parent_map(all_revisions)
-        if revision_id is None:
-            return entire_graph
-        elif revision_id not in entire_graph:
-            raise errors.NoSuchRevision(self, revision_id)
-        else:
-            # add what can be reached from revision_id
-            result = {}
-            pending = set([revision_id])
-            while len(pending) > 0:
-                node = pending.pop()
-                result[node] = entire_graph[node]
-                for revision_id in result[node]:
-                    if revision_id not in result:
-                        pending.add(revision_id)
-            return result
 
     def has_revisions(self, revision_ids):
         """See Repository.has_revisions()."""
@@ -605,7 +532,6 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
         """
         if not _found:
             format = RepositoryFormat.find_format(a_bzrdir)
-            assert format.__class__ ==  self.__class__
         if _override_transport is not None:
             repo_transport = _override_transport
         else:

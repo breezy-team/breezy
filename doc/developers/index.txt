@@ -2,11 +2,20 @@
 Bazaar Developer Document Catalog
 =================================
 
-See the `Main Document Catalog <../index.html>`_ for additional documents
-including the Bazaar Developer Guide and bzrlib API reference.
+Bazaar user documentation is in the 
+`Main Document Catalog <../index.html>`_.
+
+Overall developer documentation
+===============================
+
+* `Developer Guide <en/developer-guide/HACKING.html>`_
+* `bzrlib API reference <http://bazaar-vcs.org/BzrLib>`_
 
 Process
 =======
+
+* `Releasing Bazaar <releasing.html>`_ -- How to make a release of Bazaar,
+  and how to coordinate the monthly development cycle.
 
 * `Profiling notes <profiling.html>`_ |--| Instructions on how to profile 
   bzr code and visualize the results.
@@ -21,6 +30,9 @@ Specifications
 ==============
 
 * `API versioning <api-versioning.html>`_ |--| bzrlib API versioning.
+
+* `Authentication ring <authentication-ring.html>`_ |--| Configuring
+  authentication.
 
 * `Bundles <bundles.html>`_ |--| All about bzr bundles.
 

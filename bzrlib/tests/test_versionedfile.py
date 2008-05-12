@@ -218,7 +218,7 @@ class VersionedFileTestMixIn(object):
                 str)
 
     def test_get_record_stream_interface(self):
-        """each item in a stream has to provide a regular interface."""
+        """Each item in a stream has to provide a regular interface."""
         f, parents = get_diamond_vf(self.get_file())
         entries = f.get_record_stream(['merged', 'left', 'right', 'base'],
             'unordered', False)
@@ -228,7 +228,7 @@ class VersionedFileTestMixIn(object):
             seen)
 
     def test_get_record_stream_interface_ordered(self):
-        """each item in a stream has to provide a regular interface."""
+        """Each item in a stream has to provide a regular interface."""
         f, parents = get_diamond_vf(self.get_file())
         entries = f.get_record_stream(['merged', 'left', 'right', 'base'],
             'topological', False)
@@ -241,7 +241,7 @@ class VersionedFileTestMixIn(object):
             ))
 
     def test_get_record_stream_interface_ordered_with_delta_closure(self):
-        """each item in a stream has to provide a regular interface."""
+        """Each item in a stream has to provide a regular interface."""
         f, parents = get_diamond_vf(self.get_file())
         entries = f.get_record_stream(['merged', 'left', 'right', 'base'],
             'topological', True)
@@ -1512,7 +1512,7 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
             create=True, factory=factory)
 
     def helpGetBytes(self, f, ft_adapter, delta_adapter):
-        """grab the interested adapted texts for tests."""
+        """Grab the interested adapted texts for tests."""
         # origin is a fulltext
         entries = f.get_record_stream(['origin'], 'unordered', False)
         base = entries.next()

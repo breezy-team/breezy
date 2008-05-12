@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -603,17 +603,18 @@ class TestBranchSetLastRevisionInfo(tests.TestCase):
 
 
 class TestBranchControlGetBranchConf(tests.TestCaseWithMemoryTransport):
-    """Test branch.control_files api munging...
-
-    We special case RemoteBranch.control_files.get('branch.conf') to
-    call a specific API so that RemoteBranch's can intercept configuration
-    file reading, allowing them to signal to the client about things like
-    'email is configured for commits'.
+    """Getting the branch configuration should use an abstract method not vfs.
     """
 
     def test_get_branch_conf(self):
+        raise tests.KnownFailure('branch.conf is not retrieved by get_config_file')
+        # We should see that branch.get_config() does a single rpc to get the
+        # remote configuration file, abstracting away where that is stored on
+        # the server.  However at the moment it always falls back to using the
+        # vfs, and this would need some changes in config.py.
+
         # in an empty branch we decode the response properly
-        client = FakeClient([(('ok', ), 'config file body')], self.get_url())
+        client = FakeClient([(('ok', ), '# config file body')], self.get_url())
         # we need to make a real branch because the remote_branch.control_files
         # will trigger _ensure_real.
         branch = self.make_branch('quack')
@@ -621,11 +622,10 @@ class TestBranchControlGetBranchConf(tests.TestCaseWithMemoryTransport):
         # we do not want bzrdir to make any remote calls
         bzrdir = RemoteBzrDir(transport, _client=False)
         branch = RemoteBranch(bzrdir, None, _client=client)
-        result = branch.control_files.get('branch.conf')
+        config = branch.get_config()
         self.assertEqual(
             [('call_expecting_body', 'Branch.get_config_file', ('quack/',))],
             client._calls)
-        self.assertEqual('config file body', result.read())
 
 
 class TestBranchLockWrite(tests.TestCase):
@@ -829,6 +829,7 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(
             responses, transport_path)
+        self.assertTrue(client._medium._remote_is_at_least_1_2)
         rev_id = 'revision-id'
         expected_deprecations = [
             'bzrlib.remote.RemoteRepository.get_revision_graph was deprecated '
@@ -842,6 +843,36 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
              ('call_expecting_body', 'Repository.get_revision_graph',
               ('quack/', ''))],
             client._calls)
+        # The medium is now marked as being connected to an older server
+        self.assertFalse(client._medium._remote_is_at_least_1_2)
+
+    def test_get_parent_map_fallback_parentless_node(self):
+        """get_parent_map falls back to get_revision_graph on old servers.  The
+        results from get_revision_graph are tweaked to match the get_parent_map
+        API.
+
+        Specifically, a {key: ()} result from get_revision_graph means "no
+        parents" for that key, which in get_parent_map results should be
+        represented as {key: ('null:',)}.
+
+        This is the test for https://bugs.launchpad.net/bzr/+bug/214894
+        """
+        rev_id = 'revision-id'
+        responses = [(('ok',), rev_id)]
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(
+            responses, transport_path)
+        client._medium._remote_is_at_least_1_2 = False
+        expected_deprecations = [
+            'bzrlib.remote.RemoteRepository.get_revision_graph was deprecated '
+            'in version 1.4.']
+        parents = self.callDeprecated(
+            expected_deprecations, repo.get_parent_map, [rev_id])
+        self.assertEqual(
+            [('call_expecting_body', 'Repository.get_revision_graph',
+             ('quack/', ''))],
+            client._calls)
+        self.assertEqual({rev_id: ('null:',)}, parents)
 
     def test_get_parent_map_unexpected_response(self):
         responses = [
