@@ -4,6 +4,12 @@ Bazaar Release Notes
 
 .. contents::
 
+  API CHANGES:
+
+    * The default permissions for creating new files and directories 
+      should now be obtained from ``BzrDir._get_file_mode()`` and 
+      ``_get_dir_mode()``, rather than from LockableFiles.
+      (Martin Pool)
 
 IN DEVELOPMENT
 --------------

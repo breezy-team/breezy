@@ -126,7 +126,10 @@ class LockableFiles(object):
         return urlutils.escape(safe_unicode(file_or_path))
 
     def _find_modes(self):
-        """Determine the appropriate modes for files and directories."""
+        """Determine the appropriate modes for files and directories.
+        
+        :deprecated: Replaced by BzrDir._find_modes.
+        """
         try:
             st = self._transport.stat('.')
         except errors.TransportNotPossible:
