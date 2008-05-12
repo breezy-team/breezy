@@ -65,15 +65,19 @@ class CountedLock(object):
             self._lock_count = 1
             self._lock_mode = 'r'
 
-    def lock_write(self):
+    def lock_write(self, token=None):
         """Acquire the lock in write mode.
 
         If the lock was originally acquired in read mode this will fail.
 
+        :param token: If given and the lock is already held, 
+            then validate that we already hold the real
+            lock with this token.
+
         :returns: The token from the underlying lock.
         """
         if self._lock_count == 0:
-            self._token = self._real_lock.lock_write()
+            self._token = self._real_lock.lock_write(token=token)
             self._lock_mode = 'w'
         elif self._lock_mode != 'w':
             raise ReadOnlyError(self)

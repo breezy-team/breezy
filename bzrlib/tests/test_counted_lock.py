@@ -39,7 +39,13 @@ class DummyLock(object):
         self._lock_mode = 'r'
         self._calls.append('lock_read')
 
-    def lock_write(self):
+    def lock_write(self, token=None):
+        if token is not None:
+            if token == 'token':
+                # already held by this caller
+                return 'token'
+            else:
+                raise errors.TokenMismatch()
         self._assert_not_locked()
         self._lock_mode = 'w'
         self._calls.append('lock_write')
@@ -168,6 +174,26 @@ class TestCountedLock(TestCase):
         self.assertEqual('token', l.lock_write())
         l.unlock()
         l.unlock()
+
+    def test_reenter_with_token(self):
+        real_lock = DummyLock()
+        l1 = CountedLock(real_lock)
+        l2 = CountedLock(real_lock)
+        token = l1.lock_write()
+        self.assertEqual('token', token)
+        # now imagine that we lost that connection, but we still have the
+        # token...
+        del l1
+        # because we can supply the token, we can acquire the lock through
+        # another instance
+        self.assertTrue(real_lock.is_locked())
+        self.assertFalse(l2.is_locked())
+        self.assertEqual(token, l2.lock_write(token=token))
+        self.assertTrue(l2.is_locked())
+        self.assertTrue(real_lock.is_locked())
+        l2.unlock()
+        self.assertFalse(l2.is_locked())
+        self.assertFalse(real_lock.is_locked())
 
     def test_break_lock(self):
         real_lock = DummyLock()
