@@ -86,7 +86,7 @@ def bzr_to_svn_url(url):
 
 
 def needs_busy(unbound):
-    """Decorator that marks a transport as busy before running a methd on it.
+    """Decorator that marks a connection as busy before running a methd on it.
     """
     def convert(self, *args, **kwargs):
         self._mark_busy()
@@ -102,11 +102,11 @@ def needs_busy(unbound):
 
 class Editor(object):
     """Simple object wrapper around the Subversion delta editor interface."""
-    def __init__(self, transport, (editor, editor_baton)):
+    def __init__(self, connection, (editor, editor_baton)):
         self.editor = editor
         self.editor_baton = editor_baton
         self.recent_baton = []
-        self._transport = transport
+        self._connection = connection
 
     @convert_svn_error
     def open_root(self, base_revnum):
@@ -126,7 +126,7 @@ class Editor(object):
     def close(self):
         assert self.recent_baton == []
         svn.delta.editor_invoke_close_edit(self.editor, self.editor_baton)
-        self._transport._unmark_busy()
+        self._connection._unmark_busy()
 
     @convert_svn_error
     def apply_textdelta(self, baton, *args, **kwargs):
@@ -195,6 +195,7 @@ class Connection(object):
         self._busy = False
         self._root = None
         self._client = create_svn_client(url)
+        self._unbusy_handler = None
         try:
             self.mutter('opening SVN RA connection to %r' % url)
             self._ra = svn.client.open_ra_session(url.encode('utf8'), 
@@ -208,10 +209,10 @@ class Connection(object):
         self.url = url
 
     class Reporter(object):
-        def __init__(self, transport, (reporter, report_baton)):
+        def __init__(self, connection, (reporter, report_baton)):
             self._reporter = reporter
             self._baton = report_baton
-            self._transport = transport
+            self._connection = connection
 
         @convert_svn_error
         def set_path(self, path, revnum, start_empty, lock_token, pool=None):
@@ -232,15 +233,19 @@ class Connection(object):
 
         @convert_svn_error
         def finish_report(self, pool=None):
-            svn.ra.reporter2_invoke_finish_report(self._reporter, 
-                    self._baton, pool)
-            self._transport._unmark_busy()
+            try:
+                svn.ra.reporter2_invoke_finish_report(self._reporter, 
+                        self._baton, pool)
+            finally:
+                self._connection._unmark_busy()
 
         @convert_svn_error
         def abort_report(self, pool=None):
-            svn.ra.reporter2_invoke_abort_report(self._reporter, 
-                    self._baton, pool)
-            self._transport._unmark_busy()
+            try:
+                svn.ra.reporter2_invoke_abort_report(self._reporter, 
+                        self._baton, pool)
+            finally:
+                self._connection._unmark_busy()
 
     def is_busy(self):
         return self._busy
@@ -249,9 +254,15 @@ class Connection(object):
         assert not self._busy, "already busy"
         self._busy = True
 
+    def set_unbusy_handler(self, handler):
+        self._unbusy_handler = handler
+
     def _unmark_busy(self):
         assert self._busy, "not busy"
         self._busy = False
+        if self._unbusy_handler is not None:
+            self._unbusy_handler()
+            self._unbusy_handler = None
 
     def mutter(self, text):
         if 'transport' in debug.debug_flags:
@@ -389,12 +400,12 @@ class Connection(object):
             raise
 
     class SvnLock(object):
-        def __init__(self, transport, tokens):
+        def __init__(self, connection, tokens):
             self._tokens = tokens
-            self._transport = transport
+            self._connection = connection
 
         def unlock(self):
-            self.transport.unlock(self.locks)
+            self._connection.unlock(self.locks)
 
     @convert_svn_error
     @needs_busy
@@ -462,6 +473,7 @@ class ConnectionPool(object):
     def get(self, url):
         # Check if there is an existing connection we can use
         for c in self.connections:
+            assert not c.is_busy(), "busy connection in pool"
             if c.url == url:
                 self.connections.remove(c)
                 return c
@@ -480,6 +492,7 @@ class ConnectionPool(object):
             raise
 
     def add(self, connection):
+        assert not connection.is_busy(), "adding busy connection in pool"
         self.connections.add(connection)
     
 
@@ -563,10 +576,8 @@ class SvnRaTransport(Transport):
 
     def do_switch(self, switch_rev, recurse, switch_url, editor, pool=None):
         conn = self._open_real_transport()
-        try:
-            return conn.do_switch(switch_rev, recurse, switch_url, editor, pool)
-        finally:
-            self.add_connection(conn)
+        conn.set_unbusy_handler(lambda: self.add_connection(conn))
+        return conn.do_switch(switch_rev, recurse, switch_url, editor, pool)
 
     def iter_log(self, paths, from_revnum, to_revnum, limit, discover_changed_paths, 
                  strict_node_history, revprops):
@@ -598,6 +609,7 @@ class SvnRaTransport(Transport):
                 return ret
 
             def run(self):
+                assert self.conn is None, "already running"
                 def rcvr(log_entry, pool):
                     self.pending.append((log_entry.changed_paths, log_entry.revision, log_entry.revprops))
                     self.semaphore.release()
@@ -708,10 +720,8 @@ class SvnRaTransport(Transport):
 
     def do_update(self, revnum, recurse, editor, pool=None):
         conn = self._open_real_transport()
-        try:
-            return conn.do_update(revnum, recurse, editor, pool)
-        finally:
-            self.add_connection(conn)
+        conn.set_unbusy_handler(lambda: self.add_connection(conn))
+        return conn.do_update(revnum, recurse, editor, pool)
 
     def has_capability(self, cap):
         conn = self.get_connection()
@@ -729,11 +739,9 @@ class SvnRaTransport(Transport):
 
     def get_commit_editor(self, revprops, done_cb, lock_token, keep_locks):
         conn = self._open_real_transport()
-        try:
-            return conn.get_commit_editor(revprops, done_cb,
-                                         lock_token, keep_locks)
-        finally:
-            self.add_connection(conn)
+        conn.set_unbusy_handler(lambda: self.add_connection(conn))
+        return conn.get_commit_editor(revprops, done_cb,
+                                     lock_token, keep_locks)
 
     def listable(self):
         """See Transport.listable().

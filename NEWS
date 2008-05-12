@@ -5,6 +5,8 @@ bzr-svn 0.4.11	UNRELEASED
    * Deal with parent branch changing name in Repository.iter_changes().
      (#229410)
 
+   * Fix ability to use bzr-svn with disabling cache.
+
 bzr-svn 0.4.10  2008-05-12
 
   CHANGES
