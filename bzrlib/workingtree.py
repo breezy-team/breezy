@@ -2662,8 +2662,8 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         """See WorkingTreeFormat.get_format_description()."""
         return "Working tree format 2"
 
-    def stub_initialize_remote(self, control_files):
-        """As a special workaround create critical control files for a remote working tree
+    def _stub_initialize_remote(self, branch):
+        """As a special workaround create critical control files for a remote working tree.
         
         This ensures that it can later be updated and dealt with locally,
         since BzrDirFormat6 and BzrDirFormat5 cannot represent dirs with 
@@ -2673,10 +2673,10 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         inv = Inventory()
         xml5.serializer_v5.write_inventory(inv, sio, working=True)
         sio.seek(0)
-        control_files._transport.put_file('inventory', sio,
-            mode=control_files._file_mode)
-        control_files._transport.put_bytes('pending-merges', '',
-            mode=control_files._file_mode)
+        branch._transport.put_file('inventory', sio,
+            mode=branch.control_files._file_mode)
+        branch._transport.put_bytes('pending-merges', '',
+            mode=branch.control_files._file_mode)
         
 
     def initialize(self, a_bzrdir, revision_id=None, from_branch=None,

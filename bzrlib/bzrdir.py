@@ -1045,7 +1045,7 @@ class BzrDirPreSplitOut(BzrDir):
             except errors.NotLocalUrl:
                 # but we cannot do it for remote trees.
                 to_branch = result.open_branch()
-                WorkingTreeFormat2().stub_initialize_remote(to_branch.control_files)
+                WorkingTreeFormat2()._stub_initialize_remote(to_branch)
         return result
 
     def create_branch(self):
@@ -1721,7 +1721,7 @@ class BzrDirFormat5(BzrDirFormat):
             except errors.NotLocalUrl:
                 # Even though we can't access the working tree, we need to
                 # create its control files.
-                WorkingTreeFormat2().stub_initialize_remote(branch.control_files)
+                WorkingTreeFormat2()._stub_initialize_remote(branch)
         return result
 
     def _open(self, transport):
@@ -1780,7 +1780,7 @@ class BzrDirFormat6(BzrDirFormat):
             except errors.NotLocalUrl:
                 # Even though we can't access the working tree, we need to
                 # create its control files.
-                WorkingTreeFormat2().stub_initialize_remote(branch.control_files)
+                WorkingTreeFormat2()._stub_initialize_remote(branch)
         return result
 
     def _open(self, transport):

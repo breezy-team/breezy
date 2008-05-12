@@ -21,6 +21,9 @@ Bazaar Release Notes
       it just simplifies the way it is reached.
       (Martin Pool)
 
+    * ``WorkingTreeFormat2.stub_initialize_remote`` is now private.
+      (Martin Pool) 
+
 
 IN DEVELOPMENT
 --------------
